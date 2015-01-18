@@ -162,7 +162,7 @@ fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     match tcx.def_map.borrow().get(&id) {
         Some(x) => x.clone(),
         _ => {
-            tcx.sess.span_fatal(sp, "internal error looking up a definition")
+            span_fatal!(tcx.sess, sp, E0242, "internal error looking up a definition")
         }
     }
 }

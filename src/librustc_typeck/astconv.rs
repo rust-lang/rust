@@ -339,22 +339,22 @@ fn create_substs_for_ast_path<'tcx>(
         } else {
             "expected"
         };
-        this.tcx().sess.span_fatal(span,
-                                   &format!("wrong number of type arguments: {} {}, found {}",
+        span_fatal!(this.tcx().sess, span, E0243,
+                                   "wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            required_ty_param_count,
-                                           supplied_ty_param_count)[]);
+                                           supplied_ty_param_count);
     } else if supplied_ty_param_count > formal_ty_param_count {
         let expected = if required_ty_param_count < formal_ty_param_count {
             "expected at most"
         } else {
             "expected"
         };
-        this.tcx().sess.span_fatal(span,
-                                   &format!("wrong number of type arguments: {} {}, found {}",
+        span_fatal!(this.tcx().sess, span, E0244,
+                                   "wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            formal_ty_param_count,
-                                           supplied_ty_param_count)[]);
+                                           supplied_ty_param_count);
     }
 
     let mut substs = Substs::new_type(types, regions);
@@ -557,10 +557,9 @@ pub fn instantiate_trait_ref<'tcx>(
             trait_ref
         }
         _ => {
-            this.tcx().sess.span_fatal(
-                ast_trait_ref.path.span,
-                &format!("`{}` is not a trait",
-                        ast_trait_ref.path.user_string(this.tcx()))[]);
+            span_fatal!(this.tcx().sess, ast_trait_ref.path.span, E0245,
+                "`{}` is not a trait",
+                        ast_trait_ref.path.user_string(this.tcx()));
         }
     }
 }
@@ -1036,7 +1035,7 @@ pub fn ast_ty_to_ty<'tcx>(
     match ast_ty_to_ty_cache.get(&ast_ty.id) {
         Some(&ty::atttce_resolved(ty)) => return ty,
         Some(&ty::atttce_unresolved) => {
-            tcx.sess.span_fatal(ast_ty.span,
+            span_fatal!(tcx.sess, ast_ty.span, E0246,
                                 "illegal recursive type; insert an enum \
                                  or struct in the cycle, if this is \
                                  desired");
@@ -1136,9 +1135,9 @@ pub fn ast_ty_to_ty<'tcx>(
                         ty::mk_self_type(tcx)
                     }
                     def::DefMod(id) => {
-                        tcx.sess.span_fatal(ast_ty.span,
-                            &format!("found module name used as a type: {}",
-                                    tcx.map.node_to_string(id.node))[]);
+                        span_fatal!(tcx.sess, ast_ty.span, E0247,
+                            "found module name used as a type: {}",
+                                    tcx.map.node_to_string(id.node));
                     }
                     def::DefPrimTy(_) => {
                         panic!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
@@ -1164,10 +1163,10 @@ pub fn ast_ty_to_ty<'tcx>(
                         associated_path_def_to_ty(this, ast_ty, provenance, assoc_ident.name)
                     }
                     _ => {
-                        tcx.sess.span_fatal(ast_ty.span,
-                                            &format!("found value name used \
+                        span_fatal!(tcx.sess, ast_ty.span, E0248,
+                                            "found value name used \
                                                      as a type: {:?}",
-                                                    a_def)[]);
+                                                    a_def);
                     }
                 }
             }
@@ -1185,17 +1184,16 @@ pub fn ast_ty_to_ty<'tcx>(
                                 ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
                                            Some(i as uint)),
                             _ => {
-                                tcx.sess.span_fatal(
-                                    ast_ty.span, "expected constant expr for array length");
+                                span_fatal!(tcx.sess, ast_ty.span, E0249,
+                                            "expected constant expr for array length");
                             }
                         }
                     }
                     Err(ref r) => {
-                        tcx.sess.span_fatal(
-                            ast_ty.span,
-                            &format!("expected constant expr for array \
+                        span_fatal!(tcx.sess, ast_ty.span, E0250,
+                            "expected constant expr for array \
                                      length: {}",
-                                    *r)[]);
+                                    *r);
                     }
                 }
             }
