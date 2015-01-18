@@ -16,7 +16,7 @@ struct Recbox<T> {x: Box<T>}
 fn reclift<T>(t: T) -> Recbox<T> { return Recbox {x: box t}; }
 
 pub fn main() {
-    let foo: int = 17;
-    let rbfoo: Recbox<int> = reclift::<int>(foo);
+    let foo: i32 = 17;
+    let rbfoo: Recbox<i32> = reclift::<i32>(foo);
     assert_eq!(*rbfoo.x, foo);
 }

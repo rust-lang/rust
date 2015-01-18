@@ -12,7 +12,7 @@
 
 fn id<T>(x: T) -> T { return x; }
 
-struct Triple {x: int, y: int, z: int}
+struct Triple {x: i32, y: i32, z: i32}
 
 impl Copy for Triple {}
 
@@ -23,7 +23,7 @@ pub fn main() {
     let mut b = 'b';
     let p: Triple = Triple {x: 65, y: 66, z: 67};
     let mut q: Triple = Triple {x: 68, y: 69, z: 70};
-    y = id::<int>(x);
+    y = id::<i32>(x);
     println!("{}", y);
     assert_eq!(x, y);
     b = id::<char>(a);

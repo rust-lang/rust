@@ -11,5 +11,5 @@
 struct S<T>(T);
 
 pub fn main() {
-    let _s = S(2i);
+    let _s = S(2);
 }

@@ -17,8 +17,8 @@ struct Vec<T, A = default_type_params_xc::Heap>;
 struct Foo;
 
 fn main() {
-    let _a = Vec::<int>;
-    let _b = Vec::<int, default_type_params_xc::FakeHeap>;
-    let _c = default_type_params_xc::FakeVec::<int>;
-    let _d = default_type_params_xc::FakeVec::<int, Foo>;
+    let _a = Vec::<i32>;
+    let _b = Vec::<i32, default_type_params_xc::FakeHeap>;
+    let _c = default_type_params_xc::FakeVec::<i32>;
+    let _d = default_type_params_xc::FakeVec::<i32, Foo>;
 }
