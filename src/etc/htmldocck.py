@@ -176,6 +176,9 @@ def concat_multi_lines(f):
             firstlineno = None
             catenated = ''
 
+    if lastline is not None:
+        raise RuntimeError('Trailing backslash in the end of file')
+
 LINE_PATTERN = re.compile(r'''
     (?<=(?<!\S)@)(?P<negated>!?)
     (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
