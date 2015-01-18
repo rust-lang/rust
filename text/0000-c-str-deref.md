@@ -1,0 +1,130 @@
+- Start Date: 2015-01-17
+- RFC PR: 
+- Rust Issue: 
+
+# Summary
+
+Make `CString` dereference to a token type `CStr`, which designates
+null-terminated string data.
+
+```rust
+// Type-checked to only accept C strings
+fn safe_puts(s: &CStr) {
+    unsafe { libc::puts(s.as_ptr()) };
+}
+
+fn main() {
+    safe_puts(c_str!("Look ma, a `&'static CStr` from a literal!"));
+}
+```
+
+# Motivation
+
+The type `std::ffi::CString` is used to prepare string data for passing
+as null-terminated strings to FFI functions. This type dereferences to a
+DST, `[libc::c_char]`. The DST, however, is a poor choice for representing
+borrowed C string data, since:
+
+1. The slice does not enforce the C string invariant at compile time.
+   Safe interfaces wrapping FFI functions cannot take slice references as is
+   without dynamic checks (when null-terminated slices are expected) or
+   building a temporary `CString` internally (in this case plain Rust slices
+   must be passed with no interior NULs). `CString`, for its part, is an
+   owning container and is not convenient for passing by reference. A string
+   literal, for example, would require a `CString` constructed from it at
+   runtime to pass into a function expecting `&CString`.
+2. The primary consumers of the borrowed pointers, FFI functions, do not care
+   about the 'sized' aspect of the DST. The borrowed reference is
+   therefore needlessly 'fat' for its primary purpose.
+
+As a pattern of owned/borrowed type pairs has been established
+thoughout other modules (see e.g.
+[path reform](https://github.com/rust-lang/rfcs/pull/474)),
+it makes sense that `CString` gets its own borrowed counterpart.
+
+# Detailed design
+
+## CStr, an Irrelevantly Sized Type
+
+This proposal introduces `CStr`, a token type to designate a null-terminated
+string. This type does not implement `Copy` or `Clone` and is only used in
+borrowed references. `CStr` is sized, but its size and layout are of no
+consequence to its users. It's only safely obtained by dereferencing
+`CString` and a few other helper methods, described below.
+
+```rust
+#[repr(C)]
+pub struct CStr {
+    head: libc::c_char,
+    marker: std::marker::NoCopy
+}
+
+impl CStr {
+    pub fn as_ptr(&self) -> *const libc::c_char {
+        &self.head as *const libc::c_char
+    }
+}
+
+impl Deref for CString {
+    type Target = CStr;
+    fn deref(&self) -> &CStr { ... }
+}
+```
+
+## Static C strings
+
+A way to create static references asserted as null-terminated strings is
+provided by a couple of functions:
+
+```rust
+fn static_c_str_from_bytes(bytes: &'static [u8]) -> &'static CStr
+```
+```rust
+fn static_c_str_from_str(s: &'static str) -> &'static CStr
+```
+
+## c_str!
+
+For added convenience in passing literal string data to FFI functions,
+a macro is provided that appends a literal with `"\0"` and returns it
+as `&'static CStr`:
+```rust
+#[macro_export]
+macro_rules! c_str {
+    ($lit:expr) => {
+        $crate::ffi::static_c_str_from_str(concat!($lit, "\0"))
+    }
+}
+```
+Going forward, it would be good to make `c_str!` also accept byte strings
+on input, through a [byte string concatenation
+macro](https://github.com/rust-lang/rfcs/pull/566). Ultimately, it could be
+made workable in static expressions through a compiler plugin.
+
+## Proof of concept
+
+The described additions are implemented in crate
+[c_string](https://github.com/mzabaluev/rust-c-str/tree/v0.3.0).
+
+# Drawbacks
+
+The change of the deref type is another breaking change to `CString`.
+In practice the main purpose of borrowing from `CString` is to obtain a
+raw pointer with `.as_ptr()`; for code which only does this and does not
+expose the slice in type annotations, parameter signatures and so on,
+the change should not be breaking since `CStr` also provides
+this method.
+
+# Alternatives
+
+The users of Rust can turn to third-party libraries for better convenience
+and safety when working with C strings. This can result in proliferation of
+incompatible helper types in public APIs until a dominant de-facto solution
+is established.
+
+# Unresolved questions
+
+There is room for a helper type wrapping an allocated C string with a supplied
+deallocation function to invoke when dropped. That type should also dereference
+to `CStr`. My library crate [c_string](https://crates.io/crates/c_string)
+provides an example in `OwnedCString`.
