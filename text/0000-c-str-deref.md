@@ -99,7 +99,7 @@ as `&'static CStr`:
 #[macro_export]
 macro_rules! c_str {
     ($lit:expr) => {
-        $crate::ffi::static_c_str_from_str(concat!($lit, "\0"))
+        $crate::ffi::CStr::from_static_str(concat!($lit, "\0"))
     }
 }
 ```
