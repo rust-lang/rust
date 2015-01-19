@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub mod testtypes {
-    use std::intrinsics::TypeId;
+    use std::any::TypeId;
 
     pub fn type_ids() -> Vec<TypeId> {
         let mut ids = vec!();

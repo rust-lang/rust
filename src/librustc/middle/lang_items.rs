@@ -307,8 +307,6 @@ lets_do_this! {
     TyDescStructLangItem,            "ty_desc",                 ty_desc;
     OpaqueStructLangItem,            "opaque",                  opaque;
 
-    TypeIdLangItem,                  "type_id",                 type_id;
-
     EhPersonalityLangItem,           "eh_personality",          eh_personality;
 
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
