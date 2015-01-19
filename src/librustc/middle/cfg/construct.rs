@@ -46,7 +46,7 @@ pub fn construct(tcx: &ty::ctxt,
     let block_exit;
 
     let mut cfg_builder = CFGBuilder {
-        exit_map: NodeMap::new(),
+        exit_map: NodeMap(),
         graph: graph,
         fn_exit: fn_exit,
         tcx: tcx,

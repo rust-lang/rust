@@ -288,7 +288,7 @@ fn determine_parameters_to_be_inferred<'a, 'tcx>(tcx: &'a ty::ctxt<'tcx>,
     let mut terms_cx = TermsContext {
         tcx: tcx,
         arena: arena,
-        inferred_map: NodeMap::new(),
+        inferred_map: NodeMap(),
         inferred_infos: Vec::new(),
 
         // cache and share the variance struct used for items with

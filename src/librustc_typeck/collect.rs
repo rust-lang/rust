@@ -449,7 +449,7 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CollectCtxt<'a, 'tcx>,
            rcvr_ty_generics.repr(ccx.tcx));
 
     let tcx = ccx.tcx;
-    let mut seen_methods = FnvHashSet::new();
+    let mut seen_methods = FnvHashSet();
     for m in ms {
         if !seen_methods.insert(m.pe_ident().repr(tcx)) {
             tcx.sess.span_err(m.span, "duplicate method in trait impl");
@@ -737,7 +737,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
     let tcx = ccx.tcx;
 
     // Write the type of each of the members and check for duplicate fields.
-    let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap::new();
+    let mut seen_fields: FnvHashMap<ast::Name, Span> = FnvHashMap();
     let field_tys = struct_def.fields.iter().map(|f| {
         let result = convert_field(ccx, &scheme.generics, f, local_def(id));
 

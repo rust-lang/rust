@@ -2362,71 +2362,71 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx>
 {
-    let mut interner = FnvHashMap::new();
+    let mut interner = FnvHashMap();
     let common_types = CommonTypes::new(&arenas.type_, &mut interner);
 
     ctxt {
         arenas: arenas,
         interner: RefCell::new(interner),
-        substs_interner: RefCell::new(FnvHashMap::new()),
-        bare_fn_interner: RefCell::new(FnvHashMap::new()),
-        region_interner: RefCell::new(FnvHashMap::new()),
+        substs_interner: RefCell::new(FnvHashMap()),
+        bare_fn_interner: RefCell::new(FnvHashMap()),
+        region_interner: RefCell::new(FnvHashMap()),
         types: common_types,
         named_region_map: named_region_map,
-        item_variance_map: RefCell::new(DefIdMap::new()),
+        item_variance_map: RefCell::new(DefIdMap()),
         variance_computed: Cell::new(false),
         sess: s,
         def_map: dm,
         region_maps: region_maps,
-        node_types: RefCell::new(FnvHashMap::new()),
-        item_substs: RefCell::new(NodeMap::new()),
-        trait_refs: RefCell::new(NodeMap::new()),
-        trait_defs: RefCell::new(DefIdMap::new()),
-        object_cast_map: RefCell::new(NodeMap::new()),
+        node_types: RefCell::new(FnvHashMap()),
+        item_substs: RefCell::new(NodeMap()),
+        trait_refs: RefCell::new(NodeMap()),
+        trait_defs: RefCell::new(DefIdMap()),
+        object_cast_map: RefCell::new(NodeMap()),
         map: map,
-        intrinsic_defs: RefCell::new(DefIdMap::new()),
+        intrinsic_defs: RefCell::new(DefIdMap()),
         freevars: freevars,
-        tcache: RefCell::new(DefIdMap::new()),
-        rcache: RefCell::new(FnvHashMap::new()),
-        short_names_cache: RefCell::new(FnvHashMap::new()),
-        tc_cache: RefCell::new(FnvHashMap::new()),
-        ast_ty_to_ty_cache: RefCell::new(NodeMap::new()),
-        enum_var_cache: RefCell::new(DefIdMap::new()),
-        impl_or_trait_items: RefCell::new(DefIdMap::new()),
-        trait_item_def_ids: RefCell::new(DefIdMap::new()),
-        trait_items_cache: RefCell::new(DefIdMap::new()),
-        impl_trait_cache: RefCell::new(DefIdMap::new()),
-        ty_param_defs: RefCell::new(NodeMap::new()),
-        adjustments: RefCell::new(NodeMap::new()),
-        normalized_cache: RefCell::new(FnvHashMap::new()),
+        tcache: RefCell::new(DefIdMap()),
+        rcache: RefCell::new(FnvHashMap()),
+        short_names_cache: RefCell::new(FnvHashMap()),
+        tc_cache: RefCell::new(FnvHashMap()),
+        ast_ty_to_ty_cache: RefCell::new(NodeMap()),
+        enum_var_cache: RefCell::new(DefIdMap()),
+        impl_or_trait_items: RefCell::new(DefIdMap()),
+        trait_item_def_ids: RefCell::new(DefIdMap()),
+        trait_items_cache: RefCell::new(DefIdMap()),
+        impl_trait_cache: RefCell::new(DefIdMap()),
+        ty_param_defs: RefCell::new(NodeMap()),
+        adjustments: RefCell::new(NodeMap()),
+        normalized_cache: RefCell::new(FnvHashMap()),
         lang_items: lang_items,
-        provided_method_sources: RefCell::new(DefIdMap::new()),
-        struct_fields: RefCell::new(DefIdMap::new()),
-        destructor_for_type: RefCell::new(DefIdMap::new()),
-        destructors: RefCell::new(DefIdSet::new()),
-        trait_impls: RefCell::new(DefIdMap::new()),
-        inherent_impls: RefCell::new(DefIdMap::new()),
-        impl_items: RefCell::new(DefIdMap::new()),
-        used_unsafe: RefCell::new(NodeSet::new()),
-        used_mut_nodes: RefCell::new(NodeSet::new()),
-        populated_external_types: RefCell::new(DefIdSet::new()),
-        populated_external_traits: RefCell::new(DefIdSet::new()),
-        upvar_borrow_map: RefCell::new(FnvHashMap::new()),
-        extern_const_statics: RefCell::new(DefIdMap::new()),
-        extern_const_variants: RefCell::new(DefIdMap::new()),
-        method_map: RefCell::new(FnvHashMap::new()),
-        dependency_formats: RefCell::new(FnvHashMap::new()),
-        unboxed_closures: RefCell::new(DefIdMap::new()),
-        node_lint_levels: RefCell::new(FnvHashMap::new()),
+        provided_method_sources: RefCell::new(DefIdMap()),
+        struct_fields: RefCell::new(DefIdMap()),
+        destructor_for_type: RefCell::new(DefIdMap()),
+        destructors: RefCell::new(DefIdSet()),
+        trait_impls: RefCell::new(DefIdMap()),
+        inherent_impls: RefCell::new(DefIdMap()),
+        impl_items: RefCell::new(DefIdMap()),
+        used_unsafe: RefCell::new(NodeSet()),
+        used_mut_nodes: RefCell::new(NodeSet()),
+        populated_external_types: RefCell::new(DefIdSet()),
+        populated_external_traits: RefCell::new(DefIdSet()),
+        upvar_borrow_map: RefCell::new(FnvHashMap()),
+        extern_const_statics: RefCell::new(DefIdMap()),
+        extern_const_variants: RefCell::new(DefIdMap()),
+        method_map: RefCell::new(FnvHashMap()),
+        dependency_formats: RefCell::new(FnvHashMap()),
+        unboxed_closures: RefCell::new(DefIdMap()),
+        node_lint_levels: RefCell::new(FnvHashMap()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
         capture_modes: capture_modes,
-        associated_types: RefCell::new(DefIdMap::new()),
+        associated_types: RefCell::new(DefIdMap()),
         selection_cache: traits::SelectionCache::new(),
-        repr_hint_cache: RefCell::new(DefIdMap::new()),
+        repr_hint_cache: RefCell::new(DefIdMap()),
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
-        object_safety_cache: RefCell::new(DefIdMap::new()),
+        object_safety_cache: RefCell::new(DefIdMap()),
    }
 }
 
@@ -3331,7 +3331,7 @@ pub fn type_interior_is_unsafe<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
 pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
     return memoized(&cx.tc_cache, ty, |ty| {
-        tc_ty(cx, ty, &mut FnvHashMap::new())
+        tc_ty(cx, ty, &mut FnvHashMap())
     });
 
     fn tc_ty<'tcx>(cx: &ctxt<'tcx>,
@@ -6760,7 +6760,7 @@ pub fn replace_late_bound_regions<'tcx, T, F>(
 {
     debug!("replace_late_bound_regions({})", binder.repr(tcx));
 
-    let mut map = FnvHashMap::new();
+    let mut map = FnvHashMap();
 
     // Note: fold the field `0`, not the binder, so that late-bound
     // regions bound by `binder` are considered free.

@@ -321,9 +321,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             // These items live in the type namespace.
             ItemTy(..) => {
                 let name_bindings =
-                    self.add_child(name, parent, ForbidDuplicateTypesAndModules, sp);
+                    self.add_child(name, parent, ForbidDuplicateTypesAndModules,
+                                   sp);
 
-                name_bindings.define_type(DefTy(local_def(item.id), false), sp, modifiers);
+                name_bindings.define_type(DefTy(local_def(item.id), false), sp,
+                                          modifiers);
+
+                let parent_link = self.get_parent_link(parent, name);
+                name_bindings.set_module_kind(parent_link,
+                                              Some(local_def(item.id)),
+                                              TypeModuleKind,
+                                              false,
+                                              is_public,
+                                              sp);
                 parent.clone()
             }
 
@@ -412,118 +422,116 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     }
                 };
 
-                match mod_name {
+                let mod_name = match mod_name {
+                    Some(mod_name) => mod_name,
                     None => {
                         self.resolve_error(ty.span,
                                            "inherent implementations may \
                                             only be implemented in the same \
                                             module as the type they are \
-                                            implemented for")
+                                            implemented for");
+                        return parent.clone();
                     }
-                    Some(mod_name) => {
-                        // Create the module and add all methods.
-                        let parent_opt = parent.children.borrow().get(&mod_name).cloned();
-                        let new_parent = match parent_opt {
-                            // It already exists
-                            Some(ref child) if child.get_module_if_available()
-                                .is_some() &&
-                                (child.get_module().kind.get() == ImplModuleKind ||
-                                 child.get_module().kind.get() == TraitModuleKind) => {
-                                    child.get_module()
-                                }
-                            Some(ref child) if child.get_module_if_available()
-                                .is_some() &&
-                                child.get_module().kind.get() ==
-                                EnumModuleKind => child.get_module(),
-                            // Create the module
-                            _ => {
-                                let name_bindings =
-                                    self.add_child(mod_name, parent, ForbidDuplicateModules, sp);
+                };
+                // Create the module and add all methods.
+                let child_opt = parent.children.borrow().get(&mod_name)
+                                       .and_then(|m| m.get_module_if_available());
+                let new_parent = match child_opt {
+                    // It already exists
+                    Some(ref child) if (child.kind.get() == ImplModuleKind ||
+                                        child.kind.get() == TraitModuleKind) => {
+                        child.clone()
+                    }
+                    Some(ref child) if child.kind.get() == EnumModuleKind ||
+                                       child.kind.get() == TypeModuleKind => {
+                        child.clone()
+                    }
+                    // Create the module
+                    _ => {
+                        let name_bindings =
+                            self.add_child(mod_name, parent, ForbidDuplicateModules, sp);
 
-                                let parent_link = self.get_parent_link(parent, name);
-                                let def_id = local_def(item.id);
-                                let ns = TypeNS;
-                                let is_public =
-                                    !name_bindings.defined_in_namespace(ns) ||
-                                    name_bindings.defined_in_public_namespace(ns);
+                        let parent_link = self.get_parent_link(parent, name);
+                        let def_id = local_def(item.id);
+                        let ns = TypeNS;
+                        let is_public =
+                            !name_bindings.defined_in_namespace(ns) ||
+                            name_bindings.defined_in_public_namespace(ns);
 
-                                name_bindings.define_module(parent_link,
-                                                            Some(def_id),
-                                                            ImplModuleKind,
-                                                            false,
-                                                            is_public,
-                                                            sp);
+                        name_bindings.define_module(parent_link,
+                                                    Some(def_id),
+                                                    ImplModuleKind,
+                                                    false,
+                                                    is_public,
+                                                    sp);
 
-                                name_bindings.get_module()
-                            }
-                        };
+                        name_bindings.get_module()
+                    }
+                };
 
-                        // For each implementation item...
-                        for impl_item in impl_items.iter() {
-                            match *impl_item {
-                                MethodImplItem(ref method) => {
-                                    // Add the method to the module.
-                                    let name = method.pe_ident().name;
-                                    let method_name_bindings =
-                                        self.add_child(name,
-                                                       &new_parent,
-                                                       ForbidDuplicateValues,
-                                                       method.span);
-                                    let def = match method.pe_explicit_self()
-                                        .node {
-                                            SelfStatic => {
-                                                // Static methods become
-                                                // `DefStaticMethod`s.
-                                                DefStaticMethod(local_def(method.id),
-                                                                FromImpl(local_def(item.id)))
-                                            }
-                                            _ => {
-                                                // Non-static methods become
-                                                // `DefMethod`s.
-                                                DefMethod(local_def(method.id),
-                                                          None,
-                                                          FromImpl(local_def(item.id)))
-                                            }
-                                        };
+                // For each implementation item...
+                for impl_item in impl_items.iter() {
+                    match *impl_item {
+                        MethodImplItem(ref method) => {
+                            // Add the method to the module.
+                            let name = method.pe_ident().name;
+                            let method_name_bindings =
+                                self.add_child(name,
+                                               &new_parent,
+                                               ForbidDuplicateValues,
+                                               method.span);
+                            let def = match method.pe_explicit_self()
+                                .node {
+                                    SelfStatic => {
+                                        // Static methods become
+                                        // `DefStaticMethod`s.
+                                        DefStaticMethod(local_def(method.id),
+                                                        FromImpl(local_def(item.id)))
+                                    }
+                                    _ => {
+                                        // Non-static methods become
+                                        // `DefMethod`s.
+                                        DefMethod(local_def(method.id),
+                                                  None,
+                                                  FromImpl(local_def(item.id)))
+                                    }
+                                };
 
-                                    // NB: not IMPORTABLE
-                                    let modifiers = if method.pe_vis() == ast::Public {
-                                        PUBLIC
-                                    } else {
-                                        DefModifiers::empty()
-                                    };
-                                    method_name_bindings.define_value(
-                                        def,
-                                        method.span,
-                                        modifiers);
-                                }
-                                TypeImplItem(ref typedef) => {
-                                    // Add the typedef to the module.
-                                    let name = typedef.ident.name;
-                                    let typedef_name_bindings =
-                                        self.add_child(
-                                            name,
-                                            &new_parent,
-                                            ForbidDuplicateTypesAndModules,
-                                            typedef.span);
-                                    let def = DefAssociatedTy(local_def(
-                                        typedef.id));
-                                    // NB: not IMPORTABLE
-                                    let modifiers = if typedef.vis == ast::Public {
-                                        PUBLIC
-                                    } else {
-                                        DefModifiers::empty()
-                                    };
-                                    typedef_name_bindings.define_type(
-                                        def,
-                                        typedef.span,
-                                        modifiers);
-                                }
-                            }
+                            // NB: not IMPORTABLE
+                            let modifiers = if method.pe_vis() == ast::Public {
+                                PUBLIC
+                            } else {
+                                DefModifiers::empty()
+                            };
+                            method_name_bindings.define_value(
+                                def,
+                                method.span,
+                                modifiers);
+                        }
+                        TypeImplItem(ref typedef) => {
+                            // Add the typedef to the module.
+                            let name = typedef.ident.name;
+                            let typedef_name_bindings =
+                                self.add_child(
+                                    name,
+                                    &new_parent,
+                                    ForbidDuplicateTypesAndModules,
+                                    typedef.span);
+                            let def = DefAssociatedTy(local_def(
+                                typedef.id));
+                            // NB: not IMPORTABLE
+                            let modifiers = if typedef.vis == ast::Public {
+                                PUBLIC
+                            } else {
+                                DefModifiers::empty()
+                            };
+                            typedef_name_bindings.define_type(
+                                def,
+                                typedef.span,
+                                modifiers);
                         }
                     }
                 }
-
                 parent.clone()
             }
 
@@ -859,7 +867,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         let kind = match def {
             DefTy(_, true) => EnumModuleKind,
-            DefStruct(..) | DefTy(..) => ImplModuleKind,
+            DefTy(_, false) => TypeModuleKind,
+            DefStruct(..) => ImplModuleKind,
             _ => NormalModuleKind
         };
 

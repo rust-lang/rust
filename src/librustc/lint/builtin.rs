@@ -575,7 +575,7 @@ pub struct RawPointerDerive {
 impl RawPointerDerive {
     pub fn new() -> RawPointerDerive {
         RawPointerDerive {
-            checked_raw_pointers: NodeSet::new(),
+            checked_raw_pointers: NodeSet(),
         }
     }
 }
@@ -1323,7 +1323,7 @@ impl UnusedMut {
         // collect all mutable pattern and group their NodeIDs by their Identifier to
         // avoid false warnings in match arms with multiple patterns
 
-        let mut mutables = FnvHashMap::new();
+        let mut mutables = FnvHashMap();
         for p in pats.iter() {
             pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
                 let ident = path1.node;

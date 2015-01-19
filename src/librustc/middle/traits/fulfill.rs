@@ -96,7 +96,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
             duplicate_set: HashSet::new(),
             predicates: Vec::new(),
             attempted_mark: 0,
-            region_obligations: NodeMap::new(),
+            region_obligations: NodeMap(),
         }
     }
 
