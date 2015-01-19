@@ -395,7 +395,7 @@ static FOO: i32 = 5;
 let x: &'static i32 = &FOO;
 ```
 
-This adds an `i32` to the data segment of the binary, and `FOO` is a reference
+This adds an `i32` to the data segment of the binary, and `x` is a reference
 to it.
 
 # Shared Ownership
