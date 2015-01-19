@@ -265,7 +265,7 @@ impl<V> VecMap<V> {
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order by
-    /// the keys, emptying (but not consuming) the original `VecMap`.
+    /// the keys, consuming the original `VecMap`.
     /// The iterator's element type is `(uint, &'r V)`.
     ///
     /// # Examples
@@ -284,14 +284,13 @@ impl<V> VecMap<V> {
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[stable]
-    pub fn into_iter(&mut self) -> IntoIter<V> {
+    pub fn into_iter(self) -> IntoIter<V> {
         fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
             v.map(|v| (i, v))
         }
         let filter: fn((uint, Option<V>)) -> Option<(uint, V)> = filter; // coerce to fn ptr
 
-        let values = replace(&mut self.v, vec!());
-        IntoIter { iter: values.into_iter().enumerate().filter_map(filter) }
+        IntoIter { iter: self.v.into_iter().enumerate().filter_map(filter) }
     }
 
     /// Return the number of elements in the map.
