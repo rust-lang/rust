@@ -115,20 +115,6 @@ pub struct Config {
     // Write out a parseable log of tests that were run
     pub logfile: Option<Path>,
 
-    // Write out a json file containing any metrics of the run
-    pub save_metrics: Option<Path>,
-
-    // Write and ratchet a metrics file
-    pub ratchet_metrics: Option<Path>,
-
-    // Percent change in metrics to consider noise
-    pub ratchet_noise_percent: Option<f64>,
-
-    // "Shard" of the testsuite to pub run: this has the form of
-    // two numbers (a,b), and causes only those tests with
-    // positional order equal to a mod b to run.
-    pub test_shard: Option<(uint,uint)>,
-
     // A command line to prefix program execution with,
     // for running under valgrind
     pub runtool: Option<String>,
