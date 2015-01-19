@@ -68,7 +68,7 @@ use ops::{Add, Deref, FnMut};
 use option::Option;
 use option::Option::{Some, None};
 use std::marker::Sized;
-use uint;
+use usize;
 
 /// An interface for dealing with "external iterators". These types of iterators
 /// can be resumed at any time as all state is stored internally as opposed to
@@ -93,10 +93,10 @@ pub trait Iterator {
     /// Returns a lower and upper bound on the remaining length of the iterator.
     ///
     /// An upper bound of `None` means either there is no known upper bound, or the upper bound
-    /// does not fit within a `uint`.
+    /// does not fit within a `usize`.
     #[inline]
     #[stable]
-    fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
+    fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
 }
 
 /// Conversion from an `Iterator`
@@ -124,13 +124,12 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
-    /// let mut it = a.iter();
-    /// assert!(it.count() == 5);
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert_eq!(a.iter().count(), 5);
     /// ```
     #[inline]
     #[stable]
-    fn count(self) -> uint {
+    fn count(self) -> usize {
         self.fold(0, |cnt, _x| cnt + 1)
     }
 
@@ -140,7 +139,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().last().unwrap() == &5);
     /// ```
     #[inline]
@@ -157,14 +156,14 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.nth(2).unwrap() == &3);
     /// assert!(it.nth(2) == None);
     /// ```
     #[inline]
     #[stable]
-    fn nth(&mut self, mut n: uint) -> Option<Self::Item> {
+    fn nth(&mut self, mut n: usize) -> Option<Self::Item> {
         for x in *self {
             if n == 0 { return Some(x) }
             n -= 1;
@@ -179,8 +178,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [0i];
-    /// let b = [1i];
+    /// let a = [0];
+    /// let b = [1];
     /// let mut it = a.iter().chain(b.iter());
     /// assert_eq!(it.next().unwrap(), &0);
     /// assert_eq!(it.next().unwrap(), &1);
@@ -202,11 +201,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [0i];
-    /// let b = [1i];
+    /// let a = [0];
+    /// let b = [1];
     /// let mut it = a.iter().zip(b.iter());
-    /// let (x0, x1) = (0i, 1i);
-    /// assert_eq!(it.next().unwrap(), (&x0, &x1));
+    /// assert_eq!(it.next().unwrap(), (&0, &1));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -223,7 +221,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2];
+    /// let a = [1, 2];
     /// let mut it = a.iter().map(|&x| 2 * x);
     /// assert_eq!(it.next().unwrap(), 2);
     /// assert_eq!(it.next().unwrap(), 4);
@@ -238,13 +236,13 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Creates an iterator that applies the predicate to each element returned
-    /// by this iterator. Only elements that have the predicate evaluate to
-    /// `true` will be yielded.
+    /// by this iterator. The only elements that will be yieled are those that
+    /// make the predicate evaluate to `true`.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2];
+    /// let a = [1, 2];
     /// let mut it = a.iter().filter(|&x| *x > 1);
     /// assert_eq!(it.next().unwrap(), &2);
     /// assert!(it.next().is_none());
@@ -264,7 +262,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2];
+    /// let a = [1, 2];
     /// let mut it = a.iter().filter_map(|&x| if x > 1 {Some(2 * x)} else {None});
     /// assert_eq!(it.next().unwrap(), 4);
     /// assert!(it.next().is_none());
@@ -283,11 +281,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [100i, 200];
+    /// let a = [100, 200];
     /// let mut it = a.iter().enumerate();
-    /// let (x100, x200) = (100i, 200i);
-    /// assert_eq!(it.next().unwrap(), (0, &x100));
-    /// assert_eq!(it.next().unwrap(), (1, &x200));
+    /// assert_eq!(it.next().unwrap(), (0, &100));
+    /// assert_eq!(it.next().unwrap(), (1, &200));
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -302,7 +299,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let xs = [100i, 200, 300];
+    /// let xs = [100, 200, 300];
     /// let mut it = xs.iter().map(|x| *x).peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
@@ -326,11 +323,11 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 2, 1];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip_while(|&a| *a < 3);
     /// assert_eq!(it.next().unwrap(), &3);
-    /// assert_eq!(it.next().unwrap(), &2);
-    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next().unwrap(), &4);
+    /// assert_eq!(it.next().unwrap(), &5);
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
@@ -348,7 +345,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 2, 1];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take_while(|&a| *a < 3);
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
@@ -368,7 +365,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().skip(3);
     /// assert_eq!(it.next().unwrap(), &4);
     /// assert_eq!(it.next().unwrap(), &5);
@@ -376,17 +373,17 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable]
-    fn skip(self, n: uint) -> Skip<Self> {
+    fn skip(self, n: usize) -> Skip<Self> {
         Skip{iter: self, n: n}
     }
 
     /// Creates an iterator that yields the first `n` elements of this
-    /// iterator, and then will always return None.
+    /// iterator.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().take(3);
     /// assert_eq!(it.next().unwrap(), &1);
     /// assert_eq!(it.next().unwrap(), &2);
@@ -395,7 +392,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable]
-    fn take(self, n: uint) -> Take<Self> {
+    fn take(self, n: usize) -> Take<Self> {
         Take{iter: self, n: n}
     }
 
@@ -407,7 +404,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter().scan(1, |fac, &x| {
     ///   *fac = *fac * x;
     ///   Some(*fac)
@@ -432,21 +429,17 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Creates an iterator that maps each element to an iterator,
-    /// and yields the elements of the produced iterators
+    /// and yields the elements of the produced iterators.
     ///
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::count;
-    ///
-    /// let xs = [2u, 3];
-    /// let ys = [0u, 1, 0, 1, 2];
-    /// let mut it = xs.iter().flat_map(|&x| count(0u, 1).take(x));
+    /// let xs = [2, 3];
+    /// let ys = [0, 1, 0, 1, 2];
+    /// let it = xs.iter().flat_map(|&x| std::iter::count(0, 1).take(x));
     /// // Check that `it` has the same elements as `ys`
-    /// let mut i = 0;
-    /// for x in it {
+    /// for (i, x) in it.enumerate() {
     ///     assert_eq!(x, ys[i]);
-    ///     i += 1;
     /// }
     /// ```
     #[inline]
@@ -465,7 +458,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// fn process<U: Iterator<Item=int>>(it: U) -> int {
+    /// fn process<U: Iterator<Item=usize>>(it: U) -> isize {
     ///     let mut it = it.fuse();
     ///     let mut sum = 0;
     ///     for x in it {
@@ -480,9 +473,9 @@ pub trait IteratorExt: Iterator + Sized {
     ///     }
     ///     sum
     /// }
-    /// let x = vec![1i,2,3,7,8,9];
+    /// let x = vec![1, 2, 3, 7, 8, 9];
     /// assert_eq!(process(x.into_iter()), 6);
-    /// let x = vec![1i,2,3];
+    /// let x = vec![1, 2, 3];
     /// assert_eq!(process(x.into_iter()), 1006);
     /// ```
     #[inline]
@@ -500,8 +493,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use std::iter::AdditiveIterator;
     ///
-    /// let xs = [1u, 4, 2, 3, 8, 9, 6];
-    /// let sum = xs.iter()
+    /// let a = [1, 4, 2, 3, 8, 9, 6];
+    /// let sum = a.iter()
     ///             .map(|&x| x)
     ///             .inspect(|&x| println!("filtering {}", x))
     ///             .filter(|&x| x % 2 == 0)
@@ -525,11 +518,10 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let mut xs = range(0u, 10);
+    /// let mut it = 0 ..10;
     /// // sum the first five values
-    /// let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
+    /// let partial_sum = it.by_ref().take(5).fold(0, |a, b| a + b);
     /// assert!(partial_sum == 10);
-    /// // xs.next() is now `5`
     /// assert!(xs.next() == Some(5));
     /// ```
     #[stable]
@@ -543,9 +535,9 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
-    /// let b: Vec<int> = a.iter().map(|&x| x).collect();
-    /// assert!(a.as_slice() == b.as_slice());
+    /// let a = [1, 2, 3, 4, 5];
+    /// let b: Vec<u32> = a.iter().map(|&x| x).collect();
+    /// assert_eq!(a, b);
     /// ```
     #[inline]
     #[stable]
@@ -559,8 +551,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// do not.
     ///
     /// ```
-    /// let vec = vec![1i, 2i, 3i, 4i];
-    /// let (even, odd): (Vec<int>, Vec<int>) = vec.into_iter().partition(|&n| n % 2 == 0);
+    /// let vec = vec![1, 2, 3, 4];
+    /// let (even, odd): (Vec<isize>, Vec<isize>) = vec.into_iter().partition(|&n| n % 2 == 0);
     /// assert_eq!(even, vec![2, 4]);
     /// assert_eq!(odd, vec![1, 3]);
     /// ```
@@ -589,7 +581,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ```
     #[inline]
@@ -620,16 +612,18 @@ pub trait IteratorExt: Iterator + Sized {
         true
     }
 
-    /// Tests whether any element of an iterator satisfies the specified
-    /// predicate.
+    /// Tests whether any element of an iterator satisfies the specified predicate.
+    ///
+    /// Does not consume the iterator past the first found element.
     ///
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// let mut it = a.iter();
     /// assert!(it.any(|x| *x == 3));
-    /// assert!(!it.any(|x| *x == 3));
+    /// assert_eq!(it.as_slice(), [4, 5]);
+    ///
     /// ```
     #[inline]
     #[stable]
@@ -641,6 +635,13 @@ pub trait IteratorExt: Iterator + Sized {
     /// Returns the first element satisfying the specified predicate.
     ///
     /// Does not consume the iterator past the first found element.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert_eq!(it.find(|&x| *x == 3).unwrap(), &3);
+    /// assert_eq!(it.as_slice(), [4, 5]);
     #[inline]
     #[stable]
     fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
@@ -653,9 +654,18 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Return the index of the first element satisfying the specified predicate
+    ///
+    /// Does not consume the iterator past the first found element.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = [1, 2, 3, 4, 5];
+    /// let mut it = a.iter();
+    /// assert_eq!(it.position(|x| *x == 3).unwrap(), 2);
+    /// assert_eq!(it.as_slice(), [4, 5]);
     #[inline]
     #[stable]
-    fn position<P>(&mut self, mut predicate: P) -> Option<uint> where
+    fn position<P>(&mut self, mut predicate: P) -> Option<usize> where
         P: FnMut(Self::Item) -> bool,
     {
         let mut i = 0;
@@ -671,9 +681,17 @@ pub trait IteratorExt: Iterator + Sized {
     /// Return the index of the last element satisfying the specified predicate
     ///
     /// If no element matches, None is returned.
+    /// Does not consume the iterator *before* the first found element.
+    ///
+    /// # Example
+    /// ```rust
+    /// let a = [1, 2, 2, 4, 5];
+    /// let mut it = a.iter();
+    /// assert_eq!(it.rposition(|x| *x == 2).unwrap(), 2);
+    /// assert_eq!(it.as_slice(), [1, 2]);
     #[inline]
     #[stable]
-    fn rposition<P>(&mut self, mut predicate: P) -> Option<uint> where
+    fn rposition<P>(&mut self, mut predicate: P) -> Option<usize> where
         P: FnMut(Self::Item) -> bool,
         Self: ExactSizeIterator + DoubleEndedIterator
     {
@@ -691,7 +709,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().max().unwrap() == &5);
     /// ```
     #[inline]
@@ -711,7 +729,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().min().unwrap() == &1);
     /// ```
     #[inline]
@@ -744,20 +762,17 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use std::iter::MinMaxResult::{NoElements, OneElement, MinMax};
     ///
-    /// let v: [int; 0] = [];
-    /// assert_eq!(v.iter().min_max(), NoElements);
+    /// let a: [isize; 0] = [];
+    /// assert_eq!(a.iter().min_max(), NoElements);
     ///
-    /// let v = [1i];
-    /// assert!(v.iter().min_max() == OneElement(&1));
+    /// let a = [1];
+    /// assert!(a.iter().min_max() == OneElement(&1));
     ///
-    /// let v = [1i, 2, 3, 4, 5];
-    /// assert!(v.iter().min_max() == MinMax(&1, &5));
+    /// let a = [1, 2, 3, 4, 5];
+    /// assert!(a.iter().min_max() == MinMax(&1, &5));
     ///
-    /// let v = [1i, 2, 3, 4, 5, 6];
-    /// assert!(v.iter().min_max() == MinMax(&1, &6));
-    ///
-    /// let v = [1i, 1, 1, 1];
-    /// assert!(v.iter().min_max() == MinMax(&1, &1));
+    /// let a = [1, 1, 1, 1];
+    /// assert!(a.iter().min_max() == MinMax(&1, &1));
     /// ```
     #[unstable = "return type may change"]
     fn min_max(mut self) -> MinMaxResult<Self::Item> where Self::Item: Ord
@@ -810,10 +825,12 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
+    /// extern crate core;
+    ///
     /// use core::num::SignedInt;
     ///
-    /// let xs = [-3i, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().max_by(|x| x.abs()).unwrap(), -10);
+    /// let a = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*a.iter().max_by(|x| x.abs()).unwrap(), -10);
     /// ```
     #[inline]
     #[unstable = "may want to produce an Ordering directly; see #15311"]
@@ -841,8 +858,8 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```rust
     /// use core::num::SignedInt;
     ///
-    /// let xs = [-3i, 0, 1, 5, -10];
-    /// assert_eq!(*xs.iter().min_by(|x| x.abs()).unwrap(), 0);
+    /// let a = [-3, 0, 1, 5, -10];
+    /// assert_eq!(*a.iter().min_by(|x| x.abs()).unwrap(), 0);
     /// ```
     #[inline]
     #[unstable = "may want to produce an Ordering directly; see #15311"]
@@ -873,7 +890,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// of the original iterator.
     ///
     /// Note: Random access with flipped indices still only applies to the first
-    /// `uint::MAX` elements of the original iterator.
+    /// `std::usize::MAX` elements of the original iterator.
     #[inline]
     #[stable]
     fn rev(self) -> Rev<Self> {
@@ -884,18 +901,27 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// Loops through the entire iterator, collecting the first component of
     /// each item into one new container, and the second component into another.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// let a = [(1, 2), (3, 4)];
+    /// let (left, right): (Vec<isize>, Vec<isize>) = a.iter().map(|&x| x).unzip();
+    /// assert_eq!([1, 3], left);
+    /// assert_eq!([2, 4], right);
+    /// ```
     #[unstable = "recent addition"]
     fn unzip<A, B, FromA, FromB>(mut self) -> (FromA, FromB) where
         FromA: Default + Extend<A>,
         FromB: Default + Extend<B>,
         Self: Iterator<Item=(A, B)>,
     {
-        struct SizeHint<A>(uint, Option<uint>);
+        struct SizeHint<A>(usize, Option<usize>);
         impl<A> Iterator for SizeHint<A> {
             type Item = A;
 
             fn next(&mut self) -> Option<A> { None }
-            fn size_hint(&self) -> (uint, Option<uint>) {
+            fn size_hint(&self) -> (usize, Option<usize>) {
                 (self.0, self.1)
             }
         }
@@ -931,12 +957,11 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Example
     ///
     /// ```rust
-    /// use std::iter::count;
-    ///
-    /// let a = count(1i,1i).take(1);
-    /// let mut cy = a.cycle();
-    /// assert_eq!(cy.next(), Some(1));
-    /// assert_eq!(cy.next(), Some(1));
+    /// let a = [1, 2];
+    /// let mut it = a.iter().cycle();
+    /// assert_eq!(it.next().unwrap(), &1);
+    /// assert_eq!(it.next().unwrap(), &2);
+    /// assert_eq!(it.next().unwrap(), &1);
     /// ```
     #[stable]
     #[inline]
@@ -972,7 +997,7 @@ pub trait DoubleEndedIterator: Iterator {
     fn next_back(&mut self) -> Option<Self::Item>;
 }
 
-/// An object implementing random access indexing by `uint`
+/// An object implementing random access indexing by `usize`
 ///
 /// A `RandomAccessIterator` should be either infinite or a `DoubleEndedIterator`.
 /// Calling `next()` or `next_back()` on a `RandomAccessIterator`
@@ -980,12 +1005,12 @@ pub trait DoubleEndedIterator: Iterator {
 /// after `it.next()` is called.
 #[unstable = "not widely used, may be better decomposed into Index and ExactSizeIterator"]
 pub trait RandomAccessIterator: Iterator {
-    /// Return the number of indexable elements. At most `std::uint::MAX`
+    /// Return the number of indexable elements. At most `std::usize::MAX`
     /// elements are indexable, even if the iterator represents a longer range.
-    fn indexable(&self) -> uint;
+    fn indexable(&self) -> usize;
 
     /// Return an element at an index, or `None` if the index is out of bounds
-    fn idx(&mut self, index: uint) -> Option<Self::Item>;
+    fn idx(&mut self, index: usize) -> Option<Self::Item>;
 }
 
 /// An iterator that knows its exact length
@@ -994,12 +1019,12 @@ pub trait RandomAccessIterator: Iterator {
 /// it can support double-ended enumeration.
 ///
 /// `Iterator::size_hint` *must* return the exact size of the iterator.
-/// Note that the size must fit in `uint`.
+/// Note that the size must fit in `usize`.
 #[stable]
 pub trait ExactSizeIterator: Iterator {
     #[inline]
     /// Return the exact length of the iterator.
-    fn len(&self) -> uint {
+    fn len(&self) -> usize {
         let (lower, upper) = self.size_hint();
         // Note: This assertion is overly defensive, but it checks the invariant
         // guaranteed by the trait. If this trait were rust-internal,
@@ -1044,7 +1069,7 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next_back() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
 #[stable]
@@ -1056,9 +1081,9 @@ impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
 #[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Rev<I> where I: DoubleEndedIterator + RandomAccessIterator {
     #[inline]
-    fn indexable(&self) -> uint { self.iter.indexable() }
+    fn indexable(&self) -> usize { self.iter.indexable() }
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<<I as Iterator>::Item> {
+    fn idx(&mut self, index: usize) -> Option<<I as Iterator>::Item> {
         let amt = self.indexable();
         self.iter.idx(amt - index - 1)
     }
@@ -1078,7 +1103,7 @@ impl<'a, I> Iterator for ByRef<'a, I> where I: 'a + Iterator {
     #[inline]
     fn next(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
 #[stable]
@@ -1119,12 +1144,12 @@ impl_additive! { i8,   0 }
 impl_additive! { i16,  0 }
 impl_additive! { i32,  0 }
 impl_additive! { i64,  0 }
-impl_additive! { int,  0 }
+impl_additive! { isize,  0 }
 impl_additive! { u8,   0 }
 impl_additive! { u16,  0 }
 impl_additive! { u32,  0 }
 impl_additive! { u64,  0 }
-impl_additive! { uint, 0 }
+impl_additive! { usize, 0 }
 impl_additive! { f32,  0.0 }
 impl_additive! { f64,  0.0 }
 
@@ -1138,7 +1163,7 @@ pub trait MultiplicativeIterator<A> {
     /// ```rust
     /// use std::iter::{count, MultiplicativeIterator};
     ///
-    /// fn factorial(n: uint) -> uint {
+    /// fn factorial(n: usize) -> usize {
     ///     count(1u, 1).take_while(|&i| i <= n).product()
     /// }
     /// assert!(factorial(0) == 1);
@@ -1163,12 +1188,12 @@ impl_multiplicative! { i8,   1 }
 impl_multiplicative! { i16,  1 }
 impl_multiplicative! { i32,  1 }
 impl_multiplicative! { i64,  1 }
-impl_multiplicative! { int,  1 }
+impl_multiplicative! { isize,  1 }
 impl_multiplicative! { u8,   1 }
 impl_multiplicative! { u16,  1 }
 impl_multiplicative! { u32,  1 }
 impl_multiplicative! { u64,  1 }
-impl_multiplicative! { uint, 1 }
+impl_multiplicative! { usize, 1 }
 impl_multiplicative! { f32,  1.0 }
 impl_multiplicative! { f64,  1.0 }
 
@@ -1236,7 +1261,7 @@ impl<T, D, I> Iterator for Cloned<I> where
         self.it.next().cloned()
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         self.it.size_hint()
     }
 }
@@ -1281,12 +1306,12 @@ impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         // the cycle iterator is either empty or infinite
         match self.orig.size_hint() {
             sz @ (0, Some(0)) => sz,
             (0, _) => (0, None),
-            _ => (uint::MAX, None)
+            _ => (usize::MAX, None)
         }
     }
 }
@@ -1296,16 +1321,16 @@ impl<I> RandomAccessIterator for Cycle<I> where
     I: Clone + RandomAccessIterator,
 {
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         if self.orig.indexable() > 0 {
-            uint::MAX
+            usize::MAX
         } else {
             0
         }
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<<I as Iterator>::Item> {
+    fn idx(&mut self, index: usize) -> Option<<I as Iterator>::Item> {
         let liter = self.iter.indexable();
         let lorig = self.orig.indexable();
         if lorig == 0 {
@@ -1347,7 +1372,7 @@ impl<T, A, B> Iterator for Chain<A, B> where A: Iterator<Item=T>, B: Iterator<It
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
@@ -1382,13 +1407,13 @@ impl<T, A, B> RandomAccessIterator for Chain<A, B> where
     B: RandomAccessIterator<Item=T>,
 {
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         let (a, b) = (self.a.indexable(), self.b.indexable());
         a.saturating_add(b)
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<T> {
+    fn idx(&mut self, index: usize) -> Option<T> {
         let len = self.a.indexable();
         if index < len {
             self.a.idx(index)
@@ -1426,7 +1451,7 @@ impl<T, U, A, B> Iterator for Zip<A, B> where
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (a_lower, a_upper) = self.a.size_hint();
         let (b_lower, b_upper) = self.b.size_hint();
 
@@ -1474,12 +1499,12 @@ impl<T, U, A, B> RandomAccessIterator for Zip<A, B> where
     B: RandomAccessIterator<Item=U>,
 {
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         cmp::min(self.a.indexable(), self.b.indexable())
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<(T, U)> {
+    fn idx(&mut self, index: usize) -> Option<(T, U)> {
         match self.a.idx(index) {
             None => None,
             Some(x) => match self.b.idx(index) {
@@ -1533,7 +1558,7 @@ impl<A, B, I, F> Iterator for Map<A, B, I, F> where I: Iterator<Item=A>, F: FnMu
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
@@ -1556,12 +1581,12 @@ impl<A, B, I, F> RandomAccessIterator for Map<A, B, I, F> where
     F: FnMut(A) -> B,
 {
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         self.iter.indexable()
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<B> {
+    fn idx(&mut self, index: usize) -> Option<B> {
         let elt = self.iter.idx(index);
         self.do_map(elt)
     }
@@ -1606,7 +1631,7 @@ impl<A, I, P> Iterator for Filter<A, I, P> where I: Iterator<Item=A>, P: FnMut(&
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
     }
@@ -1669,7 +1694,7 @@ impl<A, B, I, F> Iterator for FilterMap<A, B, I, F> where
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
     }
@@ -1698,15 +1723,15 @@ impl<A, B, I, F> DoubleEndedIterator for FilterMap<A, B, I, F> where
 #[stable]
 pub struct Enumerate<I> {
     iter: I,
-    count: uint
+    count: usize
 }
 
 #[stable]
 impl<I> Iterator for Enumerate<I> where I: Iterator {
-    type Item = (uint, <I as Iterator>::Item);
+    type Item = (usize, <I as Iterator>::Item);
 
     #[inline]
-    fn next(&mut self) -> Option<(uint, <I as Iterator>::Item)> {
+    fn next(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
         match self.iter.next() {
             Some(a) => {
                 let ret = Some((self.count, a));
@@ -1718,7 +1743,7 @@ impl<I> Iterator for Enumerate<I> where I: Iterator {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
@@ -1728,7 +1753,7 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
     I: ExactSizeIterator + DoubleEndedIterator
 {
     #[inline]
-    fn next_back(&mut self) -> Option<(uint, <I as Iterator>::Item)> {
+    fn next_back(&mut self) -> Option<(usize, <I as Iterator>::Item)> {
         match self.iter.next_back() {
             Some(a) => {
                 let len = self.iter.len();
@@ -1742,12 +1767,12 @@ impl<I> DoubleEndedIterator for Enumerate<I> where
 #[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         self.iter.indexable()
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<(uint, <I as Iterator>::Item)> {
+    fn idx(&mut self, index: usize) -> Option<(usize, <I as Iterator>::Item)> {
         match self.iter.idx(index) {
             Some(a) => Some((self.count + index, a)),
             _ => None,
@@ -1775,7 +1800,7 @@ impl<T, I> Iterator for Peekable<T, I> where I: Iterator<Item=T> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (lo, hi) = self.iter.size_hint();
         if self.peeked.is_some() {
             let lo = lo.saturating_add(1);
@@ -1852,7 +1877,7 @@ impl<A, I, P> Iterator for SkipWhile<A, I, P> where I: Iterator<Item=A>, P: FnMu
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
     }
@@ -1906,7 +1931,7 @@ impl<A, I, P> Iterator for TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMu
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the predicate
     }
@@ -1918,7 +1943,7 @@ impl<A, I, P> Iterator for TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMu
 #[stable]
 pub struct Skip<I> {
     iter: I,
-    n: uint
+    n: usize
 }
 
 #[stable]
@@ -1951,7 +1976,7 @@ impl<I> Iterator for Skip<I> where I: Iterator {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (lower, upper) = self.iter.size_hint();
 
         let lower = lower.saturating_sub(self.n);
@@ -1968,12 +1993,12 @@ impl<I> Iterator for Skip<I> where I: Iterator {
 #[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         self.iter.indexable().saturating_sub(self.n)
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<<I as Iterator>::Item> {
+    fn idx(&mut self, index: usize) -> Option<<I as Iterator>::Item> {
         if index >= self.indexable() {
             None
         } else {
@@ -1988,7 +2013,7 @@ impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
 #[stable]
 pub struct Take<I> {
     iter: I,
-    n: uint
+    n: usize
 }
 
 #[stable]
@@ -2006,7 +2031,7 @@ impl<I> Iterator for Take<I> where I: Iterator{
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (lower, upper) = self.iter.size_hint();
 
         let lower = cmp::min(lower, self.n);
@@ -2023,12 +2048,12 @@ impl<I> Iterator for Take<I> where I: Iterator{
 #[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         cmp::min(self.iter.indexable(), self.n)
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<<I as Iterator>::Item> {
+    fn idx(&mut self, index: usize) -> Option<<I as Iterator>::Item> {
         if index >= self.n {
             None
         } else {
@@ -2078,7 +2103,7 @@ impl<A, B, I, St, F> Iterator for Scan<A, B, I, St, F> where
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (_, upper) = self.iter.size_hint();
         (0, upper) // can't know a lower bound, due to the scan function
     }
@@ -2141,7 +2166,7 @@ impl<A, B, I, U, F> Iterator for FlatMap<A, B, I, U, F> where
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (flo, fhi) = self.frontiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
         let (blo, bhi) = self.backiter.as_ref().map_or((0, Some(0)), |it| it.size_hint());
         let lo = flo.saturating_add(blo);
@@ -2205,7 +2230,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         if self.done {
             (0, Some(0))
         } else {
@@ -2236,12 +2261,12 @@ impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
 #[unstable = "trait is experimental"]
 impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         self.iter.indexable()
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<<I as Iterator>::Item> {
+    fn idx(&mut self, index: usize) -> Option<<I as Iterator>::Item> {
         self.iter.idx(index)
     }
 }
@@ -2302,7 +2327,7 @@ impl<A, I, F> Iterator for Inspect<A, I, F> where I: Iterator<Item=A>, F: FnMut(
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
@@ -2325,12 +2350,12 @@ impl<A, I, F> RandomAccessIterator for Inspect<A, I, F> where
     F: FnMut(&A),
 {
     #[inline]
-    fn indexable(&self) -> uint {
+    fn indexable(&self) -> usize {
         self.iter.indexable()
     }
 
     #[inline]
-    fn idx(&mut self, index: uint) -> Option<A> {
+    fn idx(&mut self, index: usize) -> Option<A> {
         let element = self.iter.idx(index);
         self.do_inspect(element)
     }
@@ -2412,7 +2437,7 @@ impl<A, St, F> Iterator for Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         // no possible known bounds at this point
         (0, None)
     }
@@ -2448,8 +2473,8 @@ impl<A: Add<Output=A> + Clone> Iterator for Counter<A> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        (uint::MAX, None) // Too bad we can't specify an infinite lower bound
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (usize::MAX, None) // Too bad we can't specify an infinite lower bound
     }
 }
 
@@ -2502,15 +2527,15 @@ impl<A: Int + ToPrimitive> Iterator for Range<A> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         // This first checks if the elements are representable as i64. If they aren't, try u64 (to
-        // handle cases like range(huge, huger)). We don't use uint/int because the difference of
+        // handle cases like range(huge, huger)). We don't use usize/int because the difference of
         // the i64/u64 might lie within their range.
         let bound = match self.state.to_i64() {
             Some(a) => {
                 let sz = self.stop.to_i64().map(|b| b.checked_sub(a));
                 match sz {
-                    Some(Some(bound)) => bound.to_uint(),
+                    Some(Some(bound)) => bound.to_usize(),
                     _ => None,
                 }
             },
@@ -2518,7 +2543,7 @@ impl<A: Int + ToPrimitive> Iterator for Range<A> {
                 Some(a) => {
                     let sz = self.stop.to_u64().map(|b| b.checked_sub(a));
                     match sz {
-                        Some(Some(bound)) => bound.to_uint(),
+                        Some(Some(bound)) => bound.to_usize(),
                         _ => None
                     }
                 },
@@ -2587,7 +2612,7 @@ impl<A: Int + ToPrimitive> Iterator for RangeInclusive<A> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (lo, hi) = self.range.size_hint();
         if self.done {
             (lo, hi)
@@ -2716,7 +2741,7 @@ pub trait Step: Ord {
     /// start should always be less than end, so the result should never be negative.
     /// Return None if it is not possible to calculate steps_between without
     /// overflow.
-    fn steps_between(start: &Self, end: &Self) -> Option<uint>;
+    fn steps_between(start: &Self, end: &Self) -> Option<usize>;
 }
 
 macro_rules! step_impl {
@@ -2728,9 +2753,9 @@ macro_rules! step_impl {
             #[inline]
             fn step_back(&mut self) { *self -= 1; }
             #[inline]
-            fn steps_between(start: &$t, end: &$t) -> Option<uint> {
+            fn steps_between(start: &$t, end: &$t) -> Option<usize> {
                 debug_assert!(end >= start);
-                Some((*end - *start) as uint)
+                Some((*end - *start) as usize)
             }
         }
     )*)
@@ -2745,14 +2770,14 @@ macro_rules! step_impl_no_between {
             #[inline]
             fn step_back(&mut self) { *self -= 1; }
             #[inline]
-            fn steps_between(_start: &$t, _end: &$t) -> Option<uint> {
+            fn steps_between(_start: &$t, _end: &$t) -> Option<usize> {
                 None
             }
         }
     )*)
 }
 
-step_impl!(uint u8 u16 u32 int i8 i16 i32);
+step_impl!(usize u8 u16 u32 isize i8 i16 i32);
 #[cfg(target_pointer_width = "64")]
 step_impl!(u64 i64);
 #[cfg(target_pointer_width = "32")]
@@ -2773,7 +2798,7 @@ impl<A: Clone> Iterator for Repeat<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.idx(0) }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { (uint::MAX, None) }
+    fn size_hint(&self) -> (usize, Option<usize>) { (usize::MAX, None) }
 }
 
 #[stable]
@@ -2785,9 +2810,9 @@ impl<A: Clone> DoubleEndedIterator for Repeat<A> {
 #[unstable = "trait is experimental"]
 impl<A: Clone> RandomAccessIterator for Repeat<A> {
     #[inline]
-    fn indexable(&self) -> uint { uint::MAX }
+    fn indexable(&self) -> usize { usize::MAX }
     #[inline]
-    fn idx(&mut self, _: uint) -> Option<A> { Some(self.element.clone()) }
+    fn idx(&mut self, _: usize) -> Option<A> { Some(self.element.clone()) }
 }
 
 type IterateState<T, F> = (F, Option<T>, bool);
