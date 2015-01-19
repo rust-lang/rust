@@ -226,6 +226,7 @@ pub mod compat {
     /// * `CreateSymbolicLinkW`: Windows XP, Windows Server 2003
     /// * `GetFinalPathNameByHandleW`: Windows XP, Windows Server 2003
     pub mod kernel32 {
+        use libc::c_uint;
         use libc::types::os::arch::extra::{DWORD, LPCWSTR, BOOLEAN, HANDLE};
         use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
 
@@ -246,6 +247,12 @@ pub mod compat {
                                                 _lpszFilePath: LPCWSTR,
                                                 _cchFilePath: DWORD,
                                                 _dwFlags: DWORD) -> DWORD {
+                unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
+            }
+        }
+
+        compat_fn! {
+            kernel32::SetThreadErrorMode(_dwNewMode: DWORD, _lpOldMode: *mut DWORD) -> c_uint {
                 unsafe { SetLastError(ERROR_CALL_NOT_IMPLEMENTED as DWORD); 0 }
             }
         }
