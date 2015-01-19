@@ -966,7 +966,19 @@ mod test_map {
             assert_eq!(v, box 2i);
         }
         assert!(called);
-        m.insert(2, box 1i);
+    }
+
+    #[test]
+    fn test_drain_iterator() {
+        let mut map = VecMap::new();
+        map.insert(1, "a");
+        map.insert(3, "c");
+        map.insert(2, "b");
+
+        let vec: Vec<(usize, &str)> = map.drain().collect();
+
+        assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+        assert_eq!(map.len(), 0);
     }
 
     #[test]
