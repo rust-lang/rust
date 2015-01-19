@@ -29,7 +29,7 @@ use syntax::ast;
 use syntax::ast::{IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
+use syntax::diagnostic::{ColorConfig, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 
@@ -228,7 +228,7 @@ pub fn basic_options() -> Options {
         write_dependency_info: (false, None),
         prints: Vec::new(),
         cg: basic_codegen_options(),
-        color: Auto,
+        color: ColorConfig::Auto,
         show_span: None,
         externs: HashMap::new(),
         crate_name: None,
@@ -1073,11 +1073,11 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| &s[]) {
-        Some("auto")   => Auto,
-        Some("always") => Always,
-        Some("never")  => Never,
+        Some("auto")   => ColorConfig::Auto,
+        Some("always") => ColorConfig::Always,
+        Some("never")  => ColorConfig::Never,
 
-        None => Auto,
+        None => ColorConfig::Auto,
 
         Some(arg) => {
             early_error(&format!("argument for --color must be auto, always \

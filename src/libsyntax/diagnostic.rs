@@ -10,7 +10,6 @@
 
 pub use self::Level::*;
 pub use self::RenderSpan::*;
-pub use self::ColorConfig::*;
 use self::Destination::*;
 
 use codemap::{COMMAND_LINE_SP, COMMAND_LINE_EXPN, Pos, Span};
@@ -335,9 +334,9 @@ impl EmitterWriter {
         let stderr = io::stderr();
 
         let use_color = match color_config {
-            Always => true,
-            Never  => false,
-            Auto   => stderr.get_ref().isatty()
+            ColorConfig::Always => true,
+            ColorConfig::Never  => false,
+            ColorConfig::Auto   => stderr.get_ref().isatty()
         };
 
         if use_color {
