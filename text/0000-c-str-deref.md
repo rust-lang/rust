@@ -73,8 +73,8 @@ impl Deref for CString {
 
 ## Static C strings
 
-A way to create static references asserted as null-terminated strings is
-provided by a couple of functions:
+A way to create `CStr` references from static Rust expressions asserted as
+null-terminated string or byte slices is provided by a couple of functions:
 
 ```rust
 fn static_c_str_from_bytes(bytes: &'static [u8]) -> &'static CStr
@@ -82,6 +82,13 @@ fn static_c_str_from_bytes(bytes: &'static [u8]) -> &'static CStr
 ```rust
 fn static_c_str_from_str(s: &'static str) -> &'static CStr
 ```
+
+As these functions mostly work with literals, they only assert that the
+slice is terminated by a zero byte. It's the responsibility of the programmer
+to ensure that the static data does not contain any unintended interior NULs
+(the program will not crash, but the string will be interpreted up to the
+first `'\0'` encountered). For non-literal data, `CStrBuf::from_bytes` or
+`CStrBuf::from_vec` should be preferred.
 
 ## c_str!
 
