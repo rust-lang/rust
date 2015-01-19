@@ -18,6 +18,7 @@ use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
+use core::iter::Iterator;
 use core::marker::Sized;
 use core::mem;
 use core::option::Option;
@@ -183,6 +184,16 @@ impl<T: ?Sized> Deref for Box<T> {
 #[stable]
 impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
+}
+
+// FIXME(#21363) remove `old_impl_check` when bug is fixed
+#[old_impl_check]
+impl<'a, T> Iterator for Box<Iterator<Item=T> + 'a> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        (**self).next()
+    }
 }
 
 #[cfg(test)]
