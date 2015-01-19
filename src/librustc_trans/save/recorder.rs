@@ -496,13 +496,13 @@ impl<'a> FmtStrs<'a> {
     }
 
     pub fn extern_crate_str(&mut self,
-                          span: Span,
-                          sub_span: Option<Span>,
-                          id: NodeId,
-                          cnum: ast::CrateNum,
-                          name: &str,
-                          loc: &str,
-                          parent: NodeId) {
+                            span: Span,
+                            sub_span: Option<Span>,
+                            id: NodeId,
+                            cnum: ast::CrateNum,
+                            name: &str,
+                            loc: &str,
+                            parent: NodeId) {
         self.check_and_record(ExternCrate,
                               span,
                               sub_span,
