@@ -356,7 +356,7 @@ impl<T> Vec<T> {
                 }
                 self.cap = 0;
             }
-        } else {
+        } else if self.cap != self.len {
             unsafe {
                 // Overflow check is unnecessary as the vector is already at
                 // least this large.
