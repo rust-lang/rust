@@ -585,7 +585,7 @@ fn check_randacc_iter<A, T>(a: T, len: uint) where
 fn test_double_ended_flat_map() {
     let u = [0u,1];
     let v = [5u,6,7,8];
-    let mut it = u.iter().flat_map(|x| v[(*x)..v.len()].iter());
+    let mut it = u.iter().flat_map(|x| v[*x..v.len()].iter());
     assert_eq!(it.next_back().unwrap(), &8);
     assert_eq!(it.next().unwrap(),      &5);
     assert_eq!(it.next_back().unwrap(), &7);

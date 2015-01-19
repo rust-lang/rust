@@ -240,7 +240,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn init(&self) -> &[T] {
-        &self[..(self.len() - 1)]
+        &self[..self.len() - 1]
     }
 
     #[inline]
@@ -449,7 +449,7 @@ impl<T> SliceExt for [T] {
     #[inline]
     fn ends_with(&self, needle: &[T]) -> bool where T: PartialEq {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle == &self[(m-n)..]
+        m >= n && needle == &self[m-n..]
     }
 
     #[unstable]
@@ -973,7 +973,7 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
             None => self.finish(),
             Some(idx) => {
                 let ret = Some(&self.v[..idx]);
-                self.v = &self.v[(idx + 1)..];
+                self.v = &self.v[idx + 1..];
                 ret
             }
         }
@@ -998,7 +998,7 @@ impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> boo
         match self.v.iter().rposition(|x| (self.pred)(x)) {
             None => self.finish(),
             Some(idx) => {
-                let ret = Some(&self.v[(idx + 1)..]);
+                let ret = Some(&self.v[idx + 1..]);
                 self.v = &self.v[..idx];
                 ret
             }

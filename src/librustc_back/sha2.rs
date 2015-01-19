@@ -156,7 +156,7 @@ impl FixedBuffer for FixedBuffer64 {
         // While we have at least a full buffer size chunk's worth of data, process that data
         // without copying it into the buffer
         while input.len() - i >= size {
-            func(&input[i..(i + size)]);
+            func(&input[i..i + size]);
             i += size;
         }
 

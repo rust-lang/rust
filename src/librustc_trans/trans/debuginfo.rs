@@ -1163,7 +1163,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         if let Some(code_snippet) = code_snippet {
             let bytes = code_snippet.as_bytes();
 
-            if bytes.len() > 0 && &bytes[(bytes.len()-1)..] == b"}" {
+            if bytes.len() > 0 && &bytes[bytes.len()-1..] == b"}" {
                 cleanup_span = Span {
                     lo: node_span.hi - codemap::BytePos(1),
                     hi: node_span.hi,
@@ -1752,7 +1752,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
     let work_dir = cx.sess().working_dir.as_str().unwrap();
     let file_name =
         if full_path.starts_with(work_dir) {
-            &full_path[(work_dir.len() + 1u)..full_path.len()]
+            &full_path[work_dir.len() + 1u..full_path.len()]
         } else {
             full_path
         };
