@@ -157,8 +157,9 @@ slices. It's not clear if this is useful, and the need to calculate length
 up front might prevent some optimized uses possible with the 'thin'
 reference.
 
-The users of Rust can turn to third-party libraries for better convenience
-and safety when working with C strings. This can result in proliferation of
+If the proposed enhancements or other equivalent facilities are not adopted,
+users of Rust can turn to third-party libraries for better convenience
+and safety when working with C strings. This may result in proliferation of
 incompatible helper types in public APIs until a dominant de-facto solution
 is established.
 
