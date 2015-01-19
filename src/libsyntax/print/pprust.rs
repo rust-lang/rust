@@ -2351,10 +2351,8 @@ impl<'a> State<'a> {
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, "|"));
 
-        if let ast::Return(ref ty) = decl.output {
-            if ty.node == ast::TyInfer {
-                return self.maybe_print_comment(ty.span.lo);
-            }
+        if let ast::DefaultReturn(..) = decl.output {
+            return Ok(());
         }
 
         try!(self.space_if_not_bol());
@@ -2364,6 +2362,7 @@ impl<'a> State<'a> {
                 try!(self.print_type(&**ty));
                 self.maybe_print_comment(ty.span.lo)
             }
+            ast::DefaultReturn(..) => unreachable!(),
             ast::NoReturn(span) => {
                 try!(self.word_nbsp("!"));
                 self.maybe_print_comment(span.lo)
@@ -2385,10 +2384,8 @@ impl<'a> State<'a> {
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, ")"));
 
-        if let ast::Return(ref ty) = decl.output {
-            if ty.node == ast::TyInfer {
-                return self.maybe_print_comment(ty.span.lo);
-            }
+        if let ast::DefaultReturn(..) = decl.output {
+            return Ok(());
         }
 
         try!(self.space_if_not_bol());
@@ -2398,6 +2395,7 @@ impl<'a> State<'a> {
                 try!(self.print_type(&**ty));
                 self.maybe_print_comment(ty.span.lo)
             }
+            ast::DefaultReturn(..) => unreachable!(),
             ast::NoReturn(span) => {
                 try!(self.word_nbsp("!"));
                 self.maybe_print_comment(span.lo)
@@ -2684,13 +2682,8 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_output(&mut self, decl: &ast::FnDecl) -> IoResult<()> {
-        if let ast::Return(ref ty) = decl.output {
-            match ty.node {
-                ast::TyTup(ref tys) if tys.is_empty() => {
-                    return self.maybe_print_comment(ty.span.lo);
-                }
-                _ => ()
-            }
+        if let ast::DefaultReturn(..) = decl.output {
+            return Ok(());
         }
 
         try!(self.space_if_not_bol());
@@ -2699,6 +2692,7 @@ impl<'a> State<'a> {
         match decl.output {
             ast::NoReturn(_) =>
                 try!(self.word_nbsp("!")),
+            ast::DefaultReturn(..) => unreachable!(),
             ast::Return(ref ty) =>
                 try!(self.print_type(&**ty))
         }
@@ -3071,9 +3065,7 @@ mod test {
 
         let decl = ast::FnDecl {
             inputs: Vec::new(),
-            output: ast::Return(P(ast::Ty {id: 0,
-                               node: ast::TyTup(vec![]),
-                               span: codemap::DUMMY_SP})),
+            output: ast::DefaultReturn(codemap::DUMMY_SP),
             variadic: false
         };
         let generics = ast_util::empty_generics();

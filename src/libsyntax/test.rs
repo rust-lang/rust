@@ -297,11 +297,8 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
         match &i.node {
           &ast::ItemFn(ref decl, _, _, ref generics, _) => {
             let no_output = match decl.output {
-                ast::Return(ref ret_ty) => match ret_ty.node {
-                    ast::TyTup(ref tys) if tys.is_empty() => true,
-                    _ => false,
-                },
-                ast::NoReturn(_) => false
+                ast::DefaultReturn(..) => true,
+                _ => false
             };
             if decl.inputs.is_empty()
                    && no_output
@@ -336,11 +333,8 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
             ast::ItemFn(ref decl, _, _, ref generics, _) => {
                 let input_cnt = decl.inputs.len();
                 let no_output = match decl.output {
-                    ast::Return(ref ret_ty) => match ret_ty.node {
-                        ast::TyTup(ref tys) if tys.is_empty() => true,
-                        _ => false,
-                    },
-                    ast::NoReturn(_) => false
+                    ast::DefaultReturn(..) => true,
+                    _ => false
                 };
                 let tparm_cnt = generics.ty_params.len();
                 // NB: inadequate check, but we're running
