@@ -199,7 +199,7 @@ impl AtomicBool {
     #[inline]
     #[stable]
     pub fn load(&self, order: Ordering) -> bool {
-        unsafe { atomic_load(self.v.get() as *const usize, order) > 0 }
+        unsafe { atomic_load(self.v.get(), order) > 0 }
     }
 
     /// Stores a value into the bool.
@@ -438,7 +438,7 @@ impl AtomicIsize {
     /// ```
     #[inline]
     pub fn load(&self, order: Ordering) -> isize {
-        unsafe { atomic_load(self.v.get() as *const isize, order) }
+        unsafe { atomic_load(self.v.get(), order) }
     }
 
     /// Stores a value into the isize.
@@ -615,7 +615,7 @@ impl AtomicUsize {
     /// ```
     #[inline]
     pub fn load(&self, order: Ordering) -> usize {
-        unsafe { atomic_load(self.v.get() as *const usize, order) }
+        unsafe { atomic_load(self.v.get(), order) }
     }
 
     /// Stores a value into the usize.
@@ -796,7 +796,7 @@ impl<T> AtomicPtr<T> {
     #[stable]
     pub fn load(&self, order: Ordering) -> *mut T {
         unsafe {
-            atomic_load(self.p.get() as *const *mut T, order) as *mut T
+            atomic_load(self.p.get(), order) as *mut T
         }
     }
 
@@ -1070,7 +1070,7 @@ impl AtomicInt {
 
     #[inline]
     pub fn load(&self, order: Ordering) -> int {
-        unsafe { atomic_load(self.v.get() as *const int, order) }
+        unsafe { atomic_load(self.v.get(), order) }
     }
 
     #[inline]
@@ -1123,7 +1123,7 @@ impl AtomicUint {
 
     #[inline]
     pub fn load(&self, order: Ordering) -> uint {
-        unsafe { atomic_load(self.v.get() as *const uint, order) }
+        unsafe { atomic_load(self.v.get(), order) }
     }
 
     #[inline]

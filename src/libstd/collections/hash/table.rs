@@ -395,9 +395,6 @@ impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
     /// This works similarly to `put`, building an `EmptyBucket` out of the
     /// taken bucket.
     pub fn take(mut self) -> (EmptyBucket<K, V, M>, K, V) {
-        let key = self.raw.key as *const K;
-        let val = self.raw.val as *const V;
-
         self.table.size -= 1;
 
         unsafe {
@@ -408,8 +405,8 @@ impl<K, V, M: Deref<Target=RawTable<K, V>> + DerefMut> FullBucket<K, V, M> {
                     idx: self.idx,
                     table: self.table
                 },
-                ptr::read(key),
-                ptr::read(val)
+                ptr::read(self.raw.key),
+                ptr::read(self.raw.val)
             )
         }
     }
@@ -477,8 +474,8 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> GapThenFull<K, V, M> {
     pub fn shift(mut self) -> Option<GapThenFull<K, V, M>> {
         unsafe {
             *self.gap.raw.hash = mem::replace(&mut *self.full.raw.hash, EMPTY_BUCKET);
-            copy_nonoverlapping_memory(self.gap.raw.key, self.full.raw.key as *const K, 1);
-            copy_nonoverlapping_memory(self.gap.raw.val, self.full.raw.val as *const V, 1);
+            copy_nonoverlapping_memory(self.gap.raw.key, self.full.raw.key, 1);
+            copy_nonoverlapping_memory(self.gap.raw.val, self.full.raw.val, 1);
         }
 
         let FullBucket { raw: prev_raw, idx: prev_idx, .. } = self.full;
@@ -781,8 +778,8 @@ impl<'a, K, V> Iterator for RevMoveBuckets<'a, K, V> {
                 if *self.raw.hash != EMPTY_BUCKET {
                     self.elems_left -= 1;
                     return Some((
-                        ptr::read(self.raw.key as *const K),
-                        ptr::read(self.raw.val as *const V)
+                        ptr::read(self.raw.key),
+                        ptr::read(self.raw.val)
                     ));
                 }
             }
@@ -878,8 +875,8 @@ impl<K, V> Iterator for IntoIter<K, V> {
                     SafeHash {
                         hash: *bucket.hash,
                     },
-                    ptr::read(bucket.key as *const K),
-                    ptr::read(bucket.val as *const V)
+                    ptr::read(bucket.key),
+                    ptr::read(bucket.val)
                 )
             }
         })
@@ -906,8 +903,8 @@ impl<'a, K, V> Iterator for Drain<'a, K, V> {
                     SafeHash {
                         hash: ptr::replace(bucket.hash, EMPTY_BUCKET),
                     },
-                    ptr::read(bucket.key as *const K),
-                    ptr::read(bucket.val as *const V)
+                    ptr::read(bucket.key),
+                    ptr::read(bucket.val)
                 )
             }
         })

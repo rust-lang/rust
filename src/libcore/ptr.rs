@@ -329,7 +329,7 @@ impl<T> PtrExt for *mut T {
     #[inline]
     #[stable]
     unsafe fn offset(self, count: int) -> *mut T {
-        intrinsics::offset(self as *const T, count) as *mut T
+        intrinsics::offset(self, count) as *mut T
     }
 
     #[inline]
