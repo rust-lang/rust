@@ -2377,10 +2377,6 @@ These types help drive the compiler's analysis
   : ___Needs filling in___
 * `no_copy_bound`
   : This type does not implement "copy", even if eligible.
-* `no_send_bound`
-  : This type does not implement "send", even if eligible.
-* `no_sync_bound`
-  : This type does not implement "sync", even if eligible.
 * `eh_personality`
   : ___Needs filling in___
 * `exchange_free`
