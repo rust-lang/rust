@@ -98,7 +98,7 @@ pub trait Encoder {
     fn emit_map<F>(&mut self, len: uint, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>;
     fn emit_map_elt_key<F>(&mut self, idx: uint, f: F) -> Result<(), Self::Error>
-        where F: FnMut(&mut Self) -> Result<(), Self::Error>;
+        where F: FnOnce(&mut Self) -> Result<(), Self::Error>;
     fn emit_map_elt_val<F>(&mut self, idx: uint, f: F) -> Result<(), Self::Error>
         where F: FnOnce(&mut Self) -> Result<(), Self::Error>;
 }
