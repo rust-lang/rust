@@ -445,9 +445,8 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
         for (input, ty) in decl.inputs.iter().zip(sig.inputs.iter()) {
             check(&*input.ty, *ty)
         }
-        match decl.output {
-            ast::NoReturn(_) => {}
-            ast::Return(ref ty) => check(&**ty, sig.output.unwrap())
+        if let ast::Return(ref ty) = decl.output {
+            check(&**ty, sig.output.unwrap())
         }
     }
 }

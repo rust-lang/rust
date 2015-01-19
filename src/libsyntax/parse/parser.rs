@@ -19,7 +19,8 @@ use ast::{Mod, BiAdd, Arg, Arm, Attribute, BindByRef, BindByValue};
 use ast::{BiBitAnd, BiBitOr, BiBitXor, BiRem, BiLt, BiGt, Block};
 use ast::{BlockCheckMode, CaptureByRef, CaptureByValue, CaptureClause};
 use ast::{Crate, CrateConfig, Decl, DeclItem};
-use ast::{DeclLocal, DefaultBlock, UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
+use ast::{DeclLocal, DefaultBlock, DefaultReturn};
+use ast::{UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
@@ -1426,11 +1427,7 @@ impl<'a> Parser<'a> {
             }
         } else {
             let pos = self.span.lo;
-            Return(P(Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: TyTup(vec![]),
-                span: mk_sp(pos, pos),
-            }))
+            DefaultReturn(mk_sp(pos, pos))
         }
     }
 
@@ -4550,15 +4547,7 @@ impl<'a> Parser<'a> {
                 (optional_unboxed_closure_kind, args)
             }
         };
-        let output = if self.check(&token::RArrow) {
-            self.parse_ret_ty()
-        } else {
-            Return(P(Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: TyInfer,
-                span: self.span,
-            }))
-        };
+        let output = self.parse_ret_ty();
 
         (P(FnDecl {
             inputs: inputs_captures,
@@ -4575,15 +4564,7 @@ impl<'a> Parser<'a> {
                                      seq_sep_trailing_allowed(token::Comma),
                                      |p| p.parse_fn_block_arg());
 
-        let output = if self.check(&token::RArrow) {
-            self.parse_ret_ty()
-        } else {
-            Return(P(Ty {
-                id: ast::DUMMY_NODE_ID,
-                node: TyInfer,
-                span: self.span,
-            }))
-        };
+        let output = self.parse_ret_ty();
 
         P(FnDecl {
             inputs: inputs,

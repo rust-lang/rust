@@ -1390,6 +1390,10 @@ pub enum FunctionRetTy {
     /// Functions with return type ! that always
     /// raise an error or exit (i.e. never return to the caller)
     NoReturn(Span),
+    /// Return type is not specified. Functions default to () and
+    /// closures default to inference. Span points to where return
+    /// type would be inserted.
+    DefaultReturn(Span),
     /// Everything else
     Return(P<Ty>),
 }
@@ -1398,6 +1402,7 @@ impl FunctionRetTy {
     pub fn span(&self) -> Span {
         match *self {
             NoReturn(span) => span,
+            DefaultReturn(span) => span,
             Return(ref ty) => ty.span
         }
     }
