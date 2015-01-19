@@ -99,9 +99,9 @@ impl<'a> Context<'a> {
                 self.items.missing.push(lang_items::$item);
             }
         } else)* {
-            self.sess.span_err(span,
-                               format!("unknown external lang item: `{}`",
-                                       name).as_slice());
+            span_err!(self.sess, span, E0264,
+                               "unknown external lang item: `{}`",
+                                       name);
         }
     }
 }
