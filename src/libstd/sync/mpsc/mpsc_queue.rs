@@ -46,6 +46,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::mem;
+use core::ptr;
 use core::cell::UnsafeCell;
 
 use sync::atomic::{AtomicPtr, Ordering};
@@ -82,7 +83,7 @@ unsafe impl<T:Send> Sync for Queue<T> { }
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
         mem::transmute(box Node {
-            next: AtomicPtr::new(0 as *mut Node<T>),
+            next: AtomicPtr::new(ptr::null_mut()),
             value: v,
         })
     }

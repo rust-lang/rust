@@ -24,6 +24,7 @@ use prelude::v1::*;
 
 use cell::UnsafeCell;
 use mem;
+use ptr;
 use rt;
 use sync::{StaticMutex, StaticCondvar};
 use sync::mpsc::{channel, Sender, Receiver};
@@ -132,7 +133,7 @@ impl<M: Send> Helper<M> {
 
             // Close the channel by destroying it
             let chan: Box<Sender<M>> = mem::transmute(*self.chan.get());
-            *self.chan.get() = 0 as *mut Sender<M>;
+            *self.chan.get() = ptr::null_mut();
             drop(chan);
             helper_signal::signal(*self.signal.get() as helper_signal::signal);
 

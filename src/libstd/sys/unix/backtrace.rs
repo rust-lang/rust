@@ -353,7 +353,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
     if state.is_null() {
         return output(w, idx, addr, None)
     }
-    let mut data = 0 as *const libc::c_char;
+    let mut data = ptr::null();
     let data_addr = &mut data as *mut *const libc::c_char;
     let ret = unsafe {
         backtrace_syminfo(state, addr as libc::uintptr_t,
