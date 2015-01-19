@@ -542,7 +542,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         0
     };
 
-    for t in tps[..(tps.len() - num_defaults)].iter() {
+    for t in tps[..tps.len() - num_defaults].iter() {
         strs.push(ty_to_string(cx, *t))
     }
 
@@ -550,9 +550,9 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         format!("{}({}){}",
                 base,
                 if strs[0].starts_with("(") && strs[0].ends_with(",)") {
-                    &strs[0][1 .. (strs[0].len() - 2)] // Remove '(' and ',)'
+                    &strs[0][1 .. strs[0].len() - 2] // Remove '(' and ',)'
                 } else if strs[0].starts_with("(") && strs[0].ends_with(")") {
-                    &strs[0][1 .. (strs[0].len() - 1)] // Remove '(' and ')'
+                    &strs[0][1 .. strs[0].len() - 1] // Remove '(' and ')'
                 } else {
                     &strs[0][]
                 },

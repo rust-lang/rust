@@ -1418,7 +1418,7 @@ impl StrExt for str {
     #[inline]
     fn ends_with(&self, needle: &str) -> bool {
         let (m, n) = (self.len(), needle.len());
-        m >= n && needle.as_bytes() == &self.as_bytes()[(m-n)..]
+        m >= n && needle.as_bytes() == &self.as_bytes()[m-n..]
     }
 
     #[inline]
