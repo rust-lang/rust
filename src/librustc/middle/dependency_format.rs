@@ -137,7 +137,7 @@ fn calculate_type(sess: &session::Session,
         config::CrateTypeExecutable | config::CrateTypeDylib => {},
     }
 
-    let mut formats = FnvHashMap::new();
+    let mut formats = FnvHashMap();
 
     // Sweep all crates for found dylibs. Add all dylibs, as well as their
     // dependencies, ensuring there are no conflicts. The only valid case for a

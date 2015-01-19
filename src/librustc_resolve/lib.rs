@@ -459,6 +459,7 @@ enum ModuleKind {
     TraitModuleKind,
     ImplModuleKind,
     EnumModuleKind,
+    TypeModuleKind,
     AnonymousModuleKind,
 }
 
@@ -522,7 +523,7 @@ impl Module {
             children: RefCell::new(HashMap::new()),
             imports: RefCell::new(Vec::new()),
             external_module_children: RefCell::new(HashMap::new()),
-            anonymous_children: RefCell::new(NodeMap::new()),
+            anonymous_children: RefCell::new(NodeMap()),
             import_resolutions: RefCell::new(HashMap::new()),
             glob_count: Cell::new(0),
             resolved_import_count: Cell::new(0),
@@ -942,8 +943,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             graph_root: graph_root,
 
-            trait_item_map: FnvHashMap::new(),
-            structs: FnvHashMap::new(),
+            trait_item_map: FnvHashMap(),
+            structs: FnvHashMap(),
 
             unresolved_imports: 0,
 
@@ -960,16 +961,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             primitive_type_table: PrimitiveTypeTable::new(),
 
-            def_map: RefCell::new(NodeMap::new()),
-            freevars: RefCell::new(NodeMap::new()),
-            freevars_seen: RefCell::new(NodeMap::new()),
-            capture_mode_map: NodeMap::new(),
-            export_map: NodeMap::new(),
-            trait_map: NodeMap::new(),
+            def_map: RefCell::new(NodeMap()),
+            freevars: RefCell::new(NodeMap()),
+            freevars_seen: RefCell::new(NodeMap()),
+            capture_mode_map: NodeMap(),
+            export_map: NodeMap(),
+            trait_map: NodeMap(),
             used_imports: HashSet::new(),
             used_crates: HashSet::new(),
-            external_exports: DefIdSet::new(),
-            last_private: NodeMap::new(),
+            external_exports: DefIdSet(),
+            last_private: NodeMap(),
 
             emit_errors: true,
             make_glob_map: make_glob_map == MakeGlobMap::Yes,
@@ -2240,6 +2241,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         TraitModuleKind |
                         ImplModuleKind |
                         EnumModuleKind |
+                        TypeModuleKind |
                         AnonymousModuleKind => {
                             search_module = parent_module_node.upgrade().unwrap();
                         }
@@ -2337,6 +2339,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         TraitModuleKind |
                         ImplModuleKind |
                         EnumModuleKind |
+                        TypeModuleKind |
                         AnonymousModuleKind => module_ = new_module,
                     }
                 }
@@ -2353,6 +2356,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             TraitModuleKind |
             ImplModuleKind |
             EnumModuleKind |
+            TypeModuleKind |
             AnonymousModuleKind => {
                 match self.get_nearest_normal_module_parent(module_.clone()) {
                     None => module_,
@@ -2631,7 +2635,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let mut seen = self.freevars_seen.borrow_mut();
                             let seen = match seen.entry(function_id) {
                                 Occupied(v) => v.into_mut(),
-                                Vacant(v) => v.insert(NodeSet::new()),
+                                Vacant(v) => v.insert(NodeSet()),
                             };
                             if seen.contains(&node_id) {
                                 continue;

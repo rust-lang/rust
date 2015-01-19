@@ -1306,7 +1306,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
     let ccx = bcx.ccx();
     let tcx = bcx.tcx();
     let reassigned = is_discr_reassigned(bcx, discr, body);
-    let mut bindings_map = FnvHashMap::new();
+    let mut bindings_map = FnvHashMap();
     pat_bindings(&tcx.def_map, &*pat, |bm, p_id, span, path1| {
         let ident = path1.node;
         let variable_ty = node_id_type(bcx, p_id);

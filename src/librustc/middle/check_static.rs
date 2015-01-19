@@ -64,10 +64,10 @@ struct GlobalChecker {
 
 pub fn check_crate(tcx: &ty::ctxt) {
     let mut checker = GlobalChecker {
-        static_consumptions: NodeSet::new(),
-        const_borrows: NodeSet::new(),
-        static_interior_borrows: NodeSet::new(),
-        static_local_borrows: NodeSet::new(),
+        static_consumptions: NodeSet(),
+        const_borrows: NodeSet(),
+        static_interior_borrows: NodeSet(),
+        static_local_borrows: NodeSet(),
     };
     {
         let param_env = ty::empty_parameter_environment(tcx);

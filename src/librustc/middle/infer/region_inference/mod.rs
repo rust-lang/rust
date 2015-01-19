@@ -236,11 +236,11 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             tcx: tcx,
             var_origins: RefCell::new(Vec::new()),
             values: RefCell::new(None),
-            constraints: RefCell::new(FnvHashMap::new()),
+            constraints: RefCell::new(FnvHashMap()),
             verifys: RefCell::new(Vec::new()),
-            givens: RefCell::new(FnvHashSet::new()),
-            lubs: RefCell::new(FnvHashMap::new()),
-            glbs: RefCell::new(FnvHashMap::new()),
+            givens: RefCell::new(FnvHashSet()),
+            lubs: RefCell::new(FnvHashMap()),
+            glbs: RefCell::new(FnvHashMap()),
             skolemization_count: Cell::new(0),
             bound_count: Cell::new(0),
             undo_log: RefCell::new(Vec::new())
@@ -1200,7 +1200,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                                       values: &Vec<VarValue>,
                                       errors: &mut Vec<RegionResolutionError<'tcx>>)
     {
-        let mut reg_reg_dups = FnvHashSet::new();
+        let mut reg_reg_dups = FnvHashSet();
         for verify in self.verifys.borrow().iter() {
             match *verify {
                 VerifyRegSubReg(ref origin, sub, sup) => {
@@ -1476,7 +1476,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             dup_found: bool
         }
         let mut state = WalkState {
-            set: FnvHashSet::new(),
+            set: FnvHashSet(),
             stack: vec!(orig_node_idx),
             result: Vec::new(),
             dup_found: false

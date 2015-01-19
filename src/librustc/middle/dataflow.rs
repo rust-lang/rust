@@ -145,7 +145,7 @@ impl<'a, 'tcx, O:DataFlowOperator> pprust::PpAnn for DataFlowContext<'a, 'tcx, O
 
 fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
                          cfg: &cfg::CFG) -> NodeMap<CFGIndex> {
-    let mut index = NodeMap::new();
+    let mut index = NodeMap();
 
     // FIXME (#6298): Would it be better to fold formals from decl
     // into cfg itself?  i.e. introduce a fn-based flow-graph in
