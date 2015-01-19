@@ -807,6 +807,7 @@ macro_rules! shr_impl_all {
 
 shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 
+
 /// The `Index` trait is used to specify the functionality of indexing operations
 /// like `arr[idx]` when used in an immutable context.
 ///

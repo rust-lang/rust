@@ -28,6 +28,8 @@
 pub use marker::{Copy, Send, Sized, Sync};
 pub use ops::{Drop, Fn, FnMut, FnOnce, FullRange};
 
+pub use num::wrapping::{Wrapping, WrappingOps};
+
 // Reexported functions
 pub use iter::range;
 pub use mem::drop;

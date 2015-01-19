@@ -347,17 +347,19 @@ impl Engine256State {
         // Sha-512 and Sha-256 use basically the same calculations which are implemented
         // by these macros. Inlining the calculations seems to result in better generated code.
         macro_rules! schedule_round { ($t:expr) => (
-                w[$t] = sigma1(w[$t - 2]) + w[$t - 7] + sigma0(w[$t - 15]) + w[$t - 16];
-                )
+            w[$t] = sigma1(w[$t - 2]).wrapping_add(w[$t - 7])
+                .wrapping_add(sigma0(w[$t - 15])).wrapping_add(w[$t - 16]);
+            )
         }
 
         macro_rules! sha2_round {
             ($A:ident, $B:ident, $C:ident, $D:ident,
              $E:ident, $F:ident, $G:ident, $H:ident, $K:ident, $t:expr) => (
                 {
-                    $H += sum1($E) + ch($E, $F, $G) + $K[$t] + w[$t];
-                    $D += $H;
-                    $H += sum0($A) + maj($A, $B, $C);
+                    $H = $H.wrapping_add(sum1($E)).wrapping_add(ch($E, $F, $G))
+                        .wrapping_add($K[$t]).wrapping_add(w[$t]);
+                    $D = $D.wrapping_add($H);
+                    $H = $H.wrapping_add(sum0($A)).wrapping_add(maj($A, $B, $C));
                 }
              )
         }
@@ -397,14 +399,14 @@ impl Engine256State {
             sha2_round!(b, c, d, e, f, g, h, a, K32, t + 7);
         }
 
-        self.h0 += a;
-        self.h1 += b;
-        self.h2 += c;
-        self.h3 += d;
-        self.h4 += e;
-        self.h5 += f;
-        self.h6 += g;
-        self.h7 += h;
+        self.h0 = self.h0.wrapping_add(a);
+        self.h1 = self.h1.wrapping_add(b);
+        self.h2 = self.h2.wrapping_add(c);
+        self.h3 = self.h3.wrapping_add(d);
+        self.h4 = self.h4.wrapping_add(e);
+        self.h5 = self.h5.wrapping_add(f);
+        self.h6 = self.h6.wrapping_add(g);
+        self.h7 = self.h7.wrapping_add(h);
     }
 }
 

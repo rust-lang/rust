@@ -5338,6 +5338,7 @@ pub fn type_is_empty(cx: &ctxt, ty: Ty) -> bool {
 
 pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                            -> Rc<Vec<Rc<VariantInfo<'tcx>>>> {
+    use std::num::Int; // For checked_add
     memoized(&cx.enum_var_cache, id, |id: ast::DefId| {
         if ast::LOCAL_CRATE != id.krate {
             Rc::new(csearch::get_enum_variants(cx, id))
@@ -5354,10 +5355,7 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                             let mut last_discriminant: Option<Disr> = None;
                             Rc::new(enum_definition.variants.iter().map(|variant| {
 
-                                let mut discriminant = match last_discriminant {
-                                    Some(val) => val + 1,
-                                    None => INITIAL_DISCRIMINANT_VALUE
-                                };
+                                let mut discriminant = INITIAL_DISCRIMINANT_VALUE;
 
                                 match variant.node.disr_expr {
                                     Some(ref e) =>
@@ -5380,7 +5378,19 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                                                     *err)[]);
                                             }
                                         },
-                                    None => {}
+                                    None => {
+                                        if let Some(val) = last_discriminant {
+                                            if let Some(v) = val.checked_add(1) {
+                                                discriminant = v
+                                            } else {
+                                                cx.sess.span_err(
+                                                    variant.span,
+                                                    &format!("Discriminant overflowed!")[]);
+                                            }
+                                        } else {
+                                            discriminant = INITIAL_DISCRIMINANT_VALUE;
+                                        }
+                                    }
                                 };
 
                                 last_discriminant = Some(discriminant);

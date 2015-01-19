@@ -29,6 +29,9 @@ use option::Option;
 use option::Option::{Some, None};
 use str::{FromStr, StrExt};
 
+#[experimental = "may be removed or relocated"]
+pub mod wrapping;
+
 /// A built-in signed or unsigned integer.
 #[stable]
 pub trait Int

@@ -65,6 +65,7 @@ use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 
 use syntax::{ast, ast_util, codemap};
+use syntax::parse::token::InternedString;
 use syntax::print::pprust::{expr_to_string};
 use syntax::ptr::P;
 use syntax::parse::token;
@@ -1688,22 +1689,34 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
     let is_float = ty::type_is_fp(intype);
     let is_signed = ty::type_is_signed(intype);
-
     let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
+    let sp = binop_expr.span;
 
     let mut bcx = bcx;
     let val = match op {
       ast::BiAdd => {
         if is_float { FAdd(bcx, lhs, rhs) }
-        else { Add(bcx, lhs, rhs) }
+        else {
+            let (newbcx, res) = with_overflow_check(bcx, OverflowOp::Add, sp, lhs_t, lhs, rhs);
+            bcx = newbcx;
+            res
+        }
       }
       ast::BiSub => {
         if is_float { FSub(bcx, lhs, rhs) }
-        else { Sub(bcx, lhs, rhs) }
+        else {
+            let (newbcx, res) = with_overflow_check(bcx, OverflowOp::Sub, sp, lhs_t, lhs, rhs);
+            bcx = newbcx;
+            res
+        }
       }
       ast::BiMul => {
         if is_float { FMul(bcx, lhs, rhs) }
-        else { Mul(bcx, lhs, rhs) }
+        else {
+            let (newbcx, res) = with_overflow_check(bcx, OverflowOp::Mul, sp, lhs_t, lhs, rhs);
+            bcx = newbcx;
+            res
+        }
       }
       ast::BiDiv => {
         if is_float {
@@ -2278,5 +2291,109 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let datum = Datum { ty: content_ty, val: llptr, kind: kind };
         DatumBlock { bcx: bcx, datum: datum }
+    }
+}
+
+enum OverflowOp {
+    Add,
+    Sub,
+    Mul,
+}
+
+impl OverflowOp {
+    fn to_intrinsic_name(&self, tcx: &ty::ctxt, ty: Ty) -> &'static str {
+        use syntax::ast::IntTy::*;
+        use syntax::ast::UintTy::*;
+        use middle::ty::{ty_int, ty_uint};
+
+        let new_sty = match ty.sty {
+            ty_int(TyIs(_)) => match &tcx.sess.target.target.target_pointer_width[] {
+                "32" => ty_int(TyI32),
+                "64" => ty_int(TyI64),
+                _ => panic!("unsupported target word size")
+            },
+            ty_uint(TyUs(_)) => match &tcx.sess.target.target.target_pointer_width[] {
+                "32" => ty_uint(TyU32),
+                "64" => ty_uint(TyU64),
+                _ => panic!("unsupported target word size")
+            },
+            ref t @ ty_uint(_) | ref t @ ty_int(_) => t.clone(),
+            _ => panic!("tried to get overflow intrinsic for non-int type")
+        };
+
+        match *self {
+            OverflowOp::Add => match new_sty {
+                ty_int(TyI8) => "llvm.sadd.with.overflow.i8",
+                ty_int(TyI16) => "llvm.sadd.with.overflow.i16",
+                ty_int(TyI32) => "llvm.sadd.with.overflow.i32",
+                ty_int(TyI64) => "llvm.sadd.with.overflow.i64",
+
+                ty_uint(TyU8) => "llvm.uadd.with.overflow.i8",
+                ty_uint(TyU16) => "llvm.uadd.with.overflow.i16",
+                ty_uint(TyU32) => "llvm.uadd.with.overflow.i32",
+                ty_uint(TyU64) => "llvm.uadd.with.overflow.i64",
+
+                _ => unreachable!(),
+            },
+            OverflowOp::Sub => match new_sty {
+                ty_int(TyI8) => "llvm.ssub.with.overflow.i8",
+                ty_int(TyI16) => "llvm.ssub.with.overflow.i16",
+                ty_int(TyI32) => "llvm.ssub.with.overflow.i32",
+                ty_int(TyI64) => "llvm.ssub.with.overflow.i64",
+
+                ty_uint(TyU8) => "llvm.usub.with.overflow.i8",
+                ty_uint(TyU16) => "llvm.usub.with.overflow.i16",
+                ty_uint(TyU32) => "llvm.usub.with.overflow.i32",
+                ty_uint(TyU64) => "llvm.usub.with.overflow.i64",
+
+                _ => unreachable!(),
+            },
+            OverflowOp::Mul => match new_sty {
+                ty_int(TyI8) => "llvm.smul.with.overflow.i8",
+                ty_int(TyI16) => "llvm.smul.with.overflow.i16",
+                ty_int(TyI32) => "llvm.smul.with.overflow.i32",
+                ty_int(TyI64) => "llvm.smul.with.overflow.i64",
+
+                ty_uint(TyU8) => "llvm.umul.with.overflow.i8",
+                ty_uint(TyU16) => "llvm.umul.with.overflow.i16",
+                ty_uint(TyU32) => "llvm.umul.with.overflow.i32",
+                ty_uint(TyU64) => "llvm.umul.with.overflow.i64",
+
+                _ => unreachable!(),
+            },
+        }
+    }
+}
+
+
+fn with_overflow_check<'a, 'b>(bcx: Block<'a, 'b>, oop: OverflowOp, sp: codemap::Span,
+                       lhs_t: Ty, lhs: ValueRef, rhs: ValueRef) -> (Block<'a, 'b>, ValueRef) {
+    if bcx.unreachable.get() { return (bcx, _Undef(lhs)); }
+    if bcx.ccx().check_overflow() {
+        let name = oop.to_intrinsic_name(bcx.tcx(), lhs_t);
+        let llfn = bcx.ccx().get_intrinsic(&name);
+
+        let val = Call(bcx, llfn, &[lhs, rhs], None);
+        let result = ExtractValue(bcx, val, 0); // iN operation result
+        let overflow = ExtractValue(bcx, val, 1); // i1 "did it overflow?"
+
+        let cond = ICmp(bcx, llvm::IntEQ, overflow, C_integral(Type::i1(bcx.ccx()), 1, false));
+
+        let expect = bcx.ccx().get_intrinsic(&"llvm.expect.i1");
+        Call(bcx, expect, &[cond, C_integral(Type::i1(bcx.ccx()), 0, false)], None);
+
+        let bcx =
+            base::with_cond(bcx, cond, |bcx|
+                controlflow::trans_fail(bcx, sp,
+                    InternedString::new("arithmetic operation overflowed")));
+
+        (bcx, result)
+    } else {
+        let res = match oop {
+            OverflowOp::Add => Add(bcx, lhs, rhs),
+            OverflowOp::Sub => Sub(bcx, lhs, rhs),
+            OverflowOp::Mul => Mul(bcx, lhs, rhs),
+        };
+        (bcx, res)
     }
 }

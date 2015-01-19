@@ -4465,6 +4465,7 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
                           id: ast::NodeId,
                           hint: attr::ReprAttr)
                           -> Vec<Rc<ty::VariantInfo<'tcx>>> {
+        use std::num::Int;
 
         let rty = ty::node_id_to_type(ccx.tcx, id);
         let mut variants: Vec<Rc<ty::VariantInfo>> = Vec::new();
@@ -4476,7 +4477,13 @@ pub fn check_enum_variants(ccx: &CrateCtxt,
             // If the discriminant value is specified explicitly in the enum check whether the
             // initialization expression is valid, otherwise use the last value plus one.
             let mut current_disr_val = match prev_disr_val {
-                Some(prev_disr_val) => prev_disr_val + 1,
+                Some(prev_disr_val) => {
+                    if let Some(v) = prev_disr_val.checked_add(1) {
+                        v
+                    } else {
+                        ty::INITIAL_DISCRIMINANT_VALUE
+                    }
+                }
                 None => ty::INITIAL_DISCRIMINANT_VALUE
             };
 
@@ -5407,6 +5414,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "u64_add_with_overflow" | "u64_sub_with_overflow"  | "u64_mul_with_overflow" =>
                 (0, vec!(tcx.types.u64, tcx.types.u64),
                 ty::mk_tup(tcx, vec!(tcx.types.u64, tcx.types.bool))),
+
+            "overflowing_add" | "overflowing_sub" | "overflowing_mul" =>
+                (1, vec![param(ccx, 0), param(ccx, 0)], param(ccx, 0)),
 
             "return_address" => (0, vec![], ty::mk_imm_ptr(tcx, tcx.types.u8)),
 
