@@ -413,48 +413,48 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
 
 fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
     if let &CloseDelim(_) = tok {
-        return Ok(true);
+        Ok(true)
+    } else {
+        match frag {
+            "item" => {
+                // since items *must* be followed by either a `;` or a `}`, we can
+                // accept anything after them
+                Ok(true)
+            },
+            "block" => {
+                // anything can follow block, the braces provide a easy boundary to
+                // maintain
+                Ok(true)
+            },
+            "stmt" | "expr"  => {
+                match *tok {
+                    FatArrow | Comma | Semi => Ok(true),
+                    _ => Ok(false)
+                }
+            },
+            "pat" => {
+                match *tok {
+                    FatArrow | Comma | Eq => Ok(true),
+                    _ => Ok(false)
+                }
+            },
+            "path" | "ty" => {
+                match *tok {
+                    Comma | FatArrow | Colon | Eq | Gt => Ok(true),
+                    Ident(i, _) if i.as_str() == "as" => Ok(true),
+                    _ => Ok(false)
+                }
+            },
+            "ident" => {
+                // being a single token, idents are harmless
+                Ok(true)
+            },
+            "meta" | "tt" => {
+                // being either a single token or a delimited sequence, tt is
+                // harmless
+                Ok(true)
+            },
+            _ => Err(format!("unrecognized builtin nonterminal `{}`", frag))
+        }
     }
-
-    Ok(match frag {
-        "item" => {
-            // since items *must* be followed by either a `;` or a `}`, we can
-            // accept anything after them
-            true
-        },
-        "block" => {
-            // anything can follow block, the braces provide a easy boundary to
-            // maintain
-            true
-        },
-        "stmt" | "expr"  => {
-            match *tok {
-                FatArrow | Comma | Semi => true,
-                _ => false
-            }
-        },
-        "pat" => {
-            match *tok {
-                FatArrow | Comma | Eq => true,
-                _ => false
-            }
-        },
-        "path" | "ty" => {
-            match *tok {
-                Comma | FatArrow | Colon | Eq | Gt => true,
-                Ident(i, _) if i.as_str() == "as" => true,
-                _ => false
-            }
-        },
-        "ident" => {
-            // being a single token, idents are harmless
-            true
-        },
-        "meta" | "tt" => {
-            // being either a single token or a delimited sequence, tt is
-            // harmless
-            true
-        },
-        _ => return Err(format!("unrecognized builtin nonterminal `{}`", frag)),
-    })
 }
