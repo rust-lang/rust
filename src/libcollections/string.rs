@@ -1295,10 +1295,10 @@ mod tests {
     fn test_vectors() {
         let x: Vec<int> = vec![];
         assert_eq!(format!("{:?}", x), "[]");
-        assert_eq!(format!("{:?}", vec![1i]), "[1i]");
-        assert_eq!(format!("{:?}", vec![1i, 2, 3]), "[1i, 2i, 3i]");
-        assert!(format!("{:?}", vec![vec![], vec![1i], vec![1i, 1]]) ==
-               "[[], [1i], [1i, 1i]]");
+        assert_eq!(format!("{:?}", vec![1is]), "[1is]");
+        assert_eq!(format!("{:?}", vec![1is, 2, 3]), "[1is, 2is, 3is]");
+        assert!(format!("{:?}", vec![vec![], vec![1is], vec![1is, 1]]) ==
+               "[[], [1is], [1is, 1is]]");
     }
 
     #[test]

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:assertion failed: `(left == right) && (right == left)` (left: `14i`, right: `15i`)
+// error-pattern:assertion failed: `(left == right) && (right == left)` (left: `4is`, right: `5is`)
 
 fn main() {
-    assert_eq!(14i,15i);
+    assert_eq!(4is,5is);
 }

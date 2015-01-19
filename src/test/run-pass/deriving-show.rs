@@ -32,9 +32,9 @@ macro_rules! t {
 
 pub fn main() {
     t!(Unit, "Unit");
-    t!(Tuple(1, 2), "Tuple(1i, 2u)");
-    t!(Struct { x: 1, y: 2 }, "Struct { x: 1i, y: 2u }");
+    t!(Tuple(1, 2), "Tuple(1is, 2us)");
+    t!(Struct { x: 1, y: 2 }, "Struct { x: 1is, y: 2us }");
     t!(Enum::Nullary, "Nullary");
-    t!(Enum::Variant(1, 2), "Variant(1i, 2u)");
-    t!(Enum::StructVariant { x: 1, y: 2 }, "StructVariant { x: 1i, y: 2u }");
+    t!(Enum::Variant(1, 2), "Variant(1is, 2us)");
+    t!(Enum::StructVariant { x: 1, y: 2 }, "StructVariant { x: 1is, y: 2us }");
 }

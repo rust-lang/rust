@@ -892,7 +892,7 @@ mod test {
 
         let set_str = format!("{:?}", set);
 
-        assert_eq!(set_str, "BTreeSet {1i, 2i}");
+        assert_eq!(set_str, "BTreeSet {1is, 2is}");
         assert_eq!(format!("{:?}", empty), "BTreeSet {}");
     }
 }

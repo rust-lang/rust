@@ -63,8 +63,8 @@ pub fn main() {
     t!(format!("{}", 10i), "10");
     t!(format!("{}", 10u), "10");
     t!(format!("{:?}", '☃'), "'\\u{2603}'");
-    t!(format!("{:?}", 10i), "10i");
-    t!(format!("{:?}", 10u), "10u");
+    t!(format!("{:?}", 10i), "10is");
+    t!(format!("{:?}", 10u), "10us");
     t!(format!("{:?}", "true"), "\"true\"");
     t!(format!("{:?}", "foo\nbar"), "\"foo\\nbar\"");
     t!(format!("{:o}", 10u), "12");

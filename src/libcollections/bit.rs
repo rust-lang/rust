@@ -2622,7 +2622,7 @@ mod bitv_set_test {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("BitvSet {1u, 2u, 10u, 50u}", format!("{:?}", s));
+        assert_eq!("BitvSet {1us, 2us, 10us, 50us}", format!("{:?}", s));
     }
 
     #[test]
