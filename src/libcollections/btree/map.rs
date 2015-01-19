@@ -27,6 +27,7 @@ use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator};
 use core::ops::{Index, IndexMut};
 use core::{iter, fmt, mem};
+use Bound::{self, Included, Excluded, Unbounded};
 
 use ring_buf::RingBuf;
 
@@ -36,8 +37,6 @@ use super::node::ForceResult::{Leaf, Internal};
 use super::node::TraversalItem::{self, Elem, Edge};
 use super::node::{Traversal, MutTraversal, MoveTraversal};
 use super::node::{self, Node, Found, GoDown};
-
-// FIXME(conventions): implement bounded iterators
 
 /// A map based on a B-Tree.
 ///
@@ -92,9 +91,7 @@ pub struct BTreeMap<K, V> {
 
 /// An abstract base over-which all other BTree iterators are built.
 struct AbsIter<T> {
-    lca: T,
-    left: RingBuf<T>,
-    right: RingBuf<T>,
+    traversals: RingBuf<T>,
     size: uint,
 }
 
@@ -126,6 +123,16 @@ pub struct Keys<'a, K: 'a, V: 'a> {
 #[stable]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+}
+
+/// An iterator over a sub-range of BTreeMap's entries.
+pub struct Range<'a, K: 'a, V: 'a> {
+    inner: AbsIter<Traversal<'a, K, V>>
+}
+
+/// A mutable iterator over a sub-range of BTreeMap's entries.
+pub struct RangeMut<'a, K: 'a, V: 'a> {
+    inner: AbsIter<MutTraversal<'a, K, V>>
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
@@ -924,74 +931,45 @@ impl<K, V> Traverse<Node<K, V>> for MoveTraversal<K, V> {
 }
 
 /// Represents an operation to perform inside the following iterator methods.
-/// This is necessary to use in `next` because we want to modify self.left inside
-/// a match that borrows it. Similarly, in `next_back` for self.right. Instead, we use this
-/// enum to note what we want to do, and do it after the match.
+/// This is necessary to use in `next` because we want to modify `self.traversals` inside
+/// a match that borrows it. Similarly in `next_back`. Instead, we use this enum to note
+/// what we want to do, and do it after the match.
 enum StackOp<T> {
     Push(T),
     Pop,
 }
-
 impl<K, V, E, T> Iterator for AbsIter<T> where
     T: DoubleEndedIterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
 {
     type Item = (K, V);
 
-    // This function is pretty long, but only because there's a lot of cases to consider.
-    // Our iterator represents two search paths, left and right, to the smallest and largest
-    // elements we have yet to yield. lca represents the least common ancestor of these two paths,
-    // above-which we never walk, since everything outside it has already been consumed (or was
-    // never in the range to iterate).
-    //
-    // Note that the design of these iterators permits an *arbitrary* initial pair of min and max,
-    // making these arbitrary sub-range iterators. However the logic to construct these paths
-    // efficiently is fairly involved, so this is a FIXME. The sub-range iterators also wouldn't be
-    // able to accurately predict size, so those iterators can't implement ExactSizeIterator.
+    // Our iterator represents a queue of all ancestors of elements we have
+    // yet to yield, from smallest to largest.  Note that the design of these
+    // iterators permits an *arbitrary* initial pair of min and max, making
+    // these arbitrary sub-range iterators.
     fn next(&mut self) -> Option<(K, V)> {
         loop {
-            // We want the smallest element, so try to get the top of the left stack
-            let op = match self.left.back_mut() {
-                // The left stack is empty, so try to get the next element of the two paths
-                // LCAs (the left search path is currently a subpath of the right one)
-                None => match self.lca.next() {
-                    // The lca has been exhausted, walk further down the right path
-                    None => match self.right.pop_front() {
-                        // The right path is exhausted, so we're done
-                        None => return None,
-                        // The right path had something, make that the new LCA
-                        // and restart the whole process
-                        Some(right) => {
-                            self.lca = right;
-                            continue;
-                        }
-                    },
-                    // The lca yielded an edge, make that the new head of the left path
-                    Some(Edge(next)) => Push(Traverse::traverse(next)),
-                    // The lca yielded an entry, so yield that
-                    Some(Elem(k, v)) => {
-                        self.size -= 1;
-                        return Some((k, v))
-                    }
-                },
-                // The left stack wasn't empty, so continue along the node in its head
+            // We want the smallest element, so try to get the back of the queue
+            let op = match self.traversals.back_mut() {
+                None => return None,
+                // The queue wasn't empty, so continue along the node in its head
                 Some(iter) => match iter.next() {
-                    // The head of the left path is empty, so Pop it off and restart the process
+                    // The head is empty, so Pop it off and continue the process
                     None => Pop,
-                    // The head of the left path yielded an edge, so make that the new head
-                    // of the left path
+                    // The head yielded an edge, so make that the new head
                     Some(Edge(next)) => Push(Traverse::traverse(next)),
-                    // The head of the left path yielded entry, so yield that
-                    Some(Elem(k, v)) => {
+                    // The head yielded an entry, so yield that
+                    Some(Elem(kv)) => {
                         self.size -= 1;
-                        return Some((k, v))
+                        return Some(kv)
                     }
                 }
             };
 
-            // Handle any operation on the left stack as necessary
+            // Handle any operation as necessary, without a conflicting borrow of the queue
             match op {
-                Push(item) => { self.left.push_back(item); },
-                Pop => { self.left.pop_back(); },
+                Push(item) => { self.traversals.push_back(item); },
+                Pop => { self.traversals.pop_back(); },
             }
         }
     }
@@ -1005,36 +983,24 @@ impl<K, V, E, T> DoubleEndedIterator for AbsIter<T> where
     T: DoubleEndedIterator<Item=TraversalItem<K, V, E>> + Traverse<E>,
 {
     // next_back is totally symmetric to next
+    #[inline]
     fn next_back(&mut self) -> Option<(K, V)> {
         loop {
-            let op = match self.right.back_mut() {
-                None => match self.lca.next_back() {
-                    None => match self.left.pop_front() {
-                        None => return None,
-                        Some(left) => {
-                            self.lca = left;
-                            continue;
-                        }
-                    },
-                    Some(Edge(next)) => Push(Traverse::traverse(next)),
-                    Some(Elem(k, v)) => {
-                        self.size -= 1;
-                        return Some((k, v))
-                    }
-                },
+            let op = match self.traversals.front_mut() {
+                None => return None,
                 Some(iter) => match iter.next_back() {
                     None => Pop,
                     Some(Edge(next)) => Push(Traverse::traverse(next)),
-                    Some(Elem(k, v)) => {
+                    Some(Elem(kv)) => {
                         self.size -= 1;
-                        return Some((k, v))
+                        return Some(kv)
                     }
                 }
             };
 
             match op {
-                Push(item) => { self.right.push_back(item); },
-                Pop => { self.right.pop_back(); }
+                Push(item) => { self.traversals.push_front(item); },
+                Pop => { self.traversals.pop_front(); }
             }
         }
     }
@@ -1110,6 +1076,24 @@ impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
 }
 #[stable]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {}
+
+impl<'a, K, V> Iterator for Range<'a, K, V> {
+    type Item = (&'a K, &'a V);
+
+    fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
+}
+impl<'a, K, V> DoubleEndedIterator for Range<'a, K, V> {
+    fn next_back(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next_back() }
+}
+
+impl<'a, K, V> Iterator for RangeMut<'a, K, V> {
+    type Item = (&'a K, &'a mut V);
+
+    fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
+}
+impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
+    fn next_back(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next_back() }
+}
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
     #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
@@ -1188,11 +1172,12 @@ impl<K, V> BTreeMap<K, V> {
     #[stable]
     pub fn iter(&self) -> Iter<K, V> {
         let len = self.len();
+        // NB. The initial capacity for ringbuf is large enough to avoid reallocs in many cases.
+        let mut lca = RingBuf::new();
+        lca.push_back(Traverse::traverse(&self.root));
         Iter {
             inner: AbsIter {
-                lca: Traverse::traverse(&self.root),
-                left: RingBuf::new(),
-                right: RingBuf::new(),
+                traversals: lca,
                 size: len,
             }
         }
@@ -1220,11 +1205,11 @@ impl<K, V> BTreeMap<K, V> {
     #[stable]
     pub fn iter_mut(&mut self) -> IterMut<K, V> {
         let len = self.len();
+        let mut lca = RingBuf::new();
+        lca.push_back(Traverse::traverse(&mut self.root));
         IterMut {
             inner: AbsIter {
-                lca: Traverse::traverse(&mut self.root),
-                left: RingBuf::new(),
-                right: RingBuf::new(),
+                traversals: lca,
                 size: len,
             }
         }
@@ -1249,11 +1234,11 @@ impl<K, V> BTreeMap<K, V> {
     #[stable]
     pub fn into_iter(self) -> IntoIter<K, V> {
         let len = self.len();
+        let mut lca = RingBuf::new();
+        lca.push_back(Traverse::traverse(self.root));
         IntoIter {
             inner: AbsIter {
-                lca: Traverse::traverse(self.root),
-                left: RingBuf::new(),
-                right: RingBuf::new(),
+                traversals: lca,
                 size: len,
             }
         }
@@ -1334,7 +1319,189 @@ impl<K, V> BTreeMap<K, V> {
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 }
 
+macro_rules! range_impl {
+    ($root:expr, $min:expr, $max:expr, $as_slices_internal:ident, $iter:ident, $Range:ident,
+                                       $edges:ident, [$($mutability:ident)*]) => (
+        {
+            // A deque that encodes two search paths containing (left-to-right):
+            // a series of truncated-from-the-left iterators, the LCA's doubly-truncated iterator,
+            // and a series of truncated-from-the-right iterators.
+            let mut traversals = RingBuf::new();
+            let (root, min, max) = ($root, $min, $max);
+
+            let mut leftmost = None;
+            let mut rightmost = None;
+
+            match (&min, &max) {
+                (&Unbounded, &Unbounded) => {
+                    traversals.push_back(Traverse::traverse(root))
+                }
+                (&Unbounded, &Included(_)) | (&Unbounded, &Excluded(_)) => {
+                    rightmost = Some(root);
+                }
+                (&Included(_), &Unbounded) | (&Excluded(_), &Unbounded) => {
+                    leftmost = Some(root);
+                }
+                  (&Included(min_key), &Included(max_key))
+                | (&Included(min_key), &Excluded(max_key))
+                | (&Excluded(min_key), &Included(max_key))
+                | (&Excluded(min_key), &Excluded(max_key)) => {
+                    // lca represents the Lowest Common Ancestor, above which we never
+                    // walk, since everything else is outside the range to iterate.
+                    //       ___________________
+                    //      |__0_|_80_|_85_|_90_|  (root)
+                    //      |    |    |    |    |
+                    //           |
+                    //           v
+                    //  ___________________
+                    // |__5_|_15_|_30_|_73_|
+                    // |    |    |    |    |
+                    //                |
+                    //                v
+                    //       ___________________
+                    //      |_33_|_58_|_63_|_68_|  lca for the range [41, 65]
+                    //      |    |\___|___/|    |  iterator at traversals[2]
+                    //           |         |
+                    //           |         v
+                    //           v         rightmost
+                    //           leftmost
+                    let mut is_leaf = root.is_leaf();
+                    let mut lca = root.$as_slices_internal();
+                    loop {
+                        let slice = lca.slice_from(min_key).slice_to(max_key);
+                        if let [ref $($mutability)* edge] = slice.edges {
+                            // Follow the only edge that leads the node that covers the range.
+                            is_leaf = edge.is_leaf();
+                            lca = edge.$as_slices_internal();
+                        } else {
+                            let mut iter = slice.$iter();
+                            if is_leaf {
+                                leftmost = None;
+                                rightmost = None;
+                            } else {
+                                // Only change the state of nodes with edges.
+                                leftmost = iter.next_edge_item();
+                                rightmost = iter.next_edge_item_back();
+                            }
+                            traversals.push_back(iter);
+                            break;
+                        }
+                    }
+                }
+            }
+            // Keep narrowing the range by going down.
+            //               ___________________
+            //              |_38_|_43_|_48_|_53_|
+            //              |    |____|____|____/ iterator at traversals[1]
+            //                   |
+            //                   v
+            //  ___________________
+            // |_39_|_40_|_41_|_42_|  (leaf, the last leftmost)
+            //           \_________|  iterator at traversals[0]
+            match min {
+                Included(key) | Excluded(key) =>
+                    while let Some(left) = leftmost {
+                        let is_leaf = left.is_leaf();
+                        let mut iter = left.$as_slices_internal().slice_from(key).$iter();
+                        leftmost = if is_leaf {
+                            None
+                        } else {
+                            // Only change the state of nodes with edges.
+                            iter.next_edge_item()
+                        };
+                        traversals.push_back(iter);
+                    },
+                _ => {}
+            }
+            // If the leftmost iterator starts with an element, then it was an exact match.
+            if let (Excluded(_), Some(leftmost_iter)) = (min, traversals.back_mut()) {
+                // Drop this excluded element. `next_kv_item` has no effect when
+                // the next item is an edge.
+                leftmost_iter.next_kv_item();
+            }
+
+            // The code for the right side is similar.
+            match max {
+                Included(key) | Excluded(key) =>
+                    while let Some(right) = rightmost {
+                        let is_leaf = right.is_leaf();
+                        let mut iter = right.$as_slices_internal().slice_to(key).$iter();
+                        rightmost = if is_leaf {
+                            None
+                        } else {
+                            iter.next_edge_item_back()
+                        };
+                        traversals.push_front(iter);
+                    },
+                _ => {}
+            }
+            if let (Excluded(_), Some(rightmost_iter)) = (max, traversals.front_mut()) {
+                rightmost_iter.next_kv_item_back();
+            }
+
+            $Range {
+                inner: AbsIter {
+                    traversals: traversals,
+                    size: 0, // unused
+                }
+            }
+        }
+    )
+}
+
 impl<K: Ord, V> BTreeMap<K, V> {
+    /// Constructs a double-ended iterator over a sub-range of elements in the map, starting
+    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
+    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
+    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::Bound::{Included, Unbounded};
+    ///
+    /// let mut map = BTreeMap::new();
+    /// map.insert(3u, "a");
+    /// map.insert(5u, "b");
+    /// map.insert(8u, "c");
+    /// for (&key, &value) in map.range(Included(&4), Included(&8)) {
+    ///     println!("{}: {}", key, value);
+    /// }
+    /// assert_eq!(Some((&5u, &"b")), map.range(Included(&4), Unbounded).next());
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn range<'a>(&'a self, min: Bound<&K>, max: Bound<&K>) -> Range<'a, K, V> {
+        range_impl!(&self.root, min, max, as_slices_internal, iter, Range, edges, [])
+    }
+
+    /// Constructs a mutable double-ended iterator over a sub-range of elements in the map, starting
+    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
+    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
+    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeMap;
+    /// use std::collections::Bound::{Included, Excluded};
+    ///
+    /// let mut map: BTreeMap<&str, i32> = ["Alice", "Bob", "Carol", "Cheryl"].iter()
+    ///                                                                       .map(|&s| (s, 0))
+    ///                                                                       .collect();
+    /// for (_, balance) in map.range_mut(Included(&"B"), Excluded(&"Cheryl")) {
+    ///     *balance += 100;
+    /// }
+    /// for (name, balance) in map.iter() {
+    ///     println!("{} => {}", name, balance);
+    /// }
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn range_mut<'a>(&'a mut self, min: Bound<&K>, max: Bound<&K>) -> RangeMut<'a, K, V> {
+        range_impl!(&mut self.root, min, max, as_slices_internal_mut, iter_mut, RangeMut,
+                                                                      edges_mut, [mut])
+    }
+
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
     ///
     /// # Examples
@@ -1410,8 +1577,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
 #[cfg(test)]
 mod test {
     use prelude::*;
+    use std::iter::range_inclusive;
 
     use super::{BTreeMap, Occupied, Vacant};
+    use Bound::{self, Included, Excluded, Unbounded};
 
     #[test]
     fn test_basic_large() {
@@ -1481,28 +1650,7 @@ mod test {
         // Forwards
         let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
 
-        {
-            let mut iter = map.iter();
-            for i in range(0, size) {
-                assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
-                assert_eq!(iter.next().unwrap(), (&i, &i));
-            }
-            assert_eq!(iter.size_hint(), (0, Some(0)));
-            assert_eq!(iter.next(), None);
-        }
-
-        {
-            let mut iter = map.iter_mut();
-            for i in range(0, size) {
-                assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
-                assert_eq!(iter.next().unwrap(), (&i, &mut (i + 0)));
-            }
-            assert_eq!(iter.size_hint(), (0, Some(0)));
-            assert_eq!(iter.next(), None);
-        }
-
-        {
-            let mut iter = map.into_iter();
+        fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
             for i in range(0, size) {
                 assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
                 assert_eq!(iter.next().unwrap(), (i, i));
@@ -1510,7 +1658,9 @@ mod test {
             assert_eq!(iter.size_hint(), (0, Some(0)));
             assert_eq!(iter.next(), None);
         }
-
+        test(size, map.iter().map(|(&k, &v)| (k, v)));
+        test(size, map.iter_mut().map(|(&k, &mut v)| (k, v)));
+        test(size, map.into_iter());
     }
 
     #[test]
@@ -1520,28 +1670,7 @@ mod test {
         // Forwards
         let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
 
-        {
-            let mut iter = map.iter().rev();
-            for i in range(0, size) {
-                assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
-                assert_eq!(iter.next().unwrap(), (&(size - i - 1), &(size - i - 1)));
-            }
-            assert_eq!(iter.size_hint(), (0, Some(0)));
-            assert_eq!(iter.next(), None);
-        }
-
-        {
-            let mut iter = map.iter_mut().rev();
-            for i in range(0, size) {
-                assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
-                assert_eq!(iter.next().unwrap(), (&(size - i - 1), &mut(size - i - 1)));
-            }
-            assert_eq!(iter.size_hint(), (0, Some(0)));
-            assert_eq!(iter.next(), None);
-        }
-
-        {
-            let mut iter = map.into_iter().rev();
+        fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
             for i in range(0, size) {
                 assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
                 assert_eq!(iter.next().unwrap(), (size - i - 1, size - i - 1));
@@ -1549,7 +1678,93 @@ mod test {
             assert_eq!(iter.size_hint(), (0, Some(0)));
             assert_eq!(iter.next(), None);
         }
+        test(size, map.iter().rev().map(|(&k, &v)| (k, v)));
+        test(size, map.iter_mut().rev().map(|(&k, &mut v)| (k, v)));
+        test(size, map.into_iter().rev());
+    }
 
+    #[test]
+    fn test_iter_mixed() {
+        let size = 10000u;
+
+        // Forwards
+        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+
+        fn test<T>(size: uint, mut iter: T)
+                where T: Iterator<Item=(uint, uint)> + DoubleEndedIterator {
+            for i in range(0, size / 4) {
+                assert_eq!(iter.size_hint(), (size - i * 2, Some(size - i * 2)));
+                assert_eq!(iter.next().unwrap(), (i, i));
+                assert_eq!(iter.next_back().unwrap(), (size - i - 1, size - i - 1));
+            }
+            for i in range(size / 4, size * 3 / 4) {
+                assert_eq!(iter.size_hint(), (size * 3 / 4 - i, Some(size * 3 / 4 - i)));
+                assert_eq!(iter.next().unwrap(), (i, i));
+            }
+            assert_eq!(iter.size_hint(), (0, Some(0)));
+            assert_eq!(iter.next(), None);
+        }
+        test(size, map.iter().map(|(&k, &v)| (k, v)));
+        test(size, map.iter_mut().map(|(&k, &mut v)| (k, v)));
+        test(size, map.into_iter());
+    }
+
+    #[test]
+    fn test_range_small() {
+        let size = 5u;
+
+        // Forwards
+        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+
+        let mut j = 0u;
+        for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(range(2u, size)) {
+            assert_eq!(k, i);
+            assert_eq!(v, i);
+            j += 1;
+        }
+        assert_eq!(j, size - 2);
+    }
+
+    #[test]
+    fn test_range_1000() {
+        let size = 1000u;
+        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+
+        fn test(map: &BTreeMap<uint, uint>, size: uint, min: Bound<&uint>, max: Bound<&uint>) {
+            let mut kvs = map.range(min, max).map(|(&k, &v)| (k, v));
+            let mut pairs = range(0, size).map(|i| (i, i));
+
+            for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
+                assert_eq!(kv, pair);
+            }
+            assert_eq!(kvs.next(), None);
+            assert_eq!(pairs.next(), None);
+        }
+        test(&map, size, Included(&0), Excluded(&size));
+        test(&map, size, Unbounded, Excluded(&size));
+        test(&map, size, Included(&0), Included(&(size - 1)));
+        test(&map, size, Unbounded, Included(&(size - 1)));
+        test(&map, size, Included(&0), Unbounded);
+        test(&map, size, Unbounded, Unbounded);
+    }
+
+    #[test]
+    fn test_range() {
+        let size = 200u;
+        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+
+        for i in range(0, size) {
+            for j in range(i, size) {
+                let mut kvs = map.range(Included(&i), Included(&j)).map(|(&k, &v)| (k, v));
+                let mut pairs = range_inclusive(i, j).map(|i| (i, i));
+
+                for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
+                    assert_eq!(kv, pair);
+                }
+                assert_eq!(kvs.next(), None);
+                assert_eq!(pairs.next(), None);
+            }
+        }
     }
 
     #[test]
