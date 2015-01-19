@@ -25,6 +25,7 @@ use core::iter::{Peekable, Map, FromIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
 use btree_map::{BTreeMap, Keys};
+use Bound;
 
 // FIXME(conventions): implement bounded iterators
 
@@ -48,6 +49,11 @@ pub struct Iter<'a, T: 'a> {
 #[stable]
 pub struct IntoIter<T> {
     iter: Map<(T, ()), T, ::btree_map::IntoIter<T, ()>, fn((T, ())) -> T>
+}
+
+/// An iterator over a sub-range of BTreeSet's items.
+pub struct Range<'a, T: 'a> {
+    iter: Map<(&'a T, &'a ()), &'a T, ::btree_map::Range<'a, T, ()>, fn((&'a T, &'a ())) -> &'a T>
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
@@ -142,6 +148,36 @@ impl<T> BTreeSet<T> {
         let first: fn((T, ())) -> T = first; // coerce to fn pointer
 
         IntoIter { iter: self.map.into_iter().map(first) }
+    }
+}
+
+impl<T: Ord> BTreeSet<T> {
+    /// Constructs a double-ended iterator over a sub-range of elements in the set, starting
+    /// at min, and ending at max. If min is `Unbounded`, then it will be treated as "negative
+    /// infinity", and if max is `Unbounded`, then it will be treated as "positive infinity".
+    /// Thus range(Unbounded, Unbounded) will yield the whole collection.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::BTreeSet;
+    /// use std::collections::Bound::{Included, Unbounded};
+    ///
+    /// let mut set = BTreeSet::new();
+    /// set.insert(3u);
+    /// set.insert(5u);
+    /// set.insert(8u);
+    /// for &elem in set.range(Included(&4), Included(&8)) {
+    ///     println!("{}", elem);
+    /// }
+    /// assert_eq!(Some(&5u), set.range(Included(&4), Unbounded).next());
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn range<'a>(&'a self, min: Bound<&T>, max: Bound<&T>) -> Range<'a, T> {
+        fn first<A, B>((a, _): (A, B)) -> A { a }
+        let first: fn((&'a T, &'a ())) -> &'a T = first; // coerce to fn pointer
+
+        Range { iter: self.map.range(min, max).map(first) }
     }
 }
 
@@ -597,6 +633,16 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 }
 #[stable]
 impl<T> ExactSizeIterator for IntoIter<T> {}
+
+
+impl<'a, T> Iterator for Range<'a, T> {
+    type Item = &'a T;
+
+    fn next(&mut self) -> Option<&'a T> { self.iter.next() }
+}
+impl<'a, T> DoubleEndedIterator for Range<'a, T> {
+    fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
+}
 
 /// Compare `x` and `y`, but return `short` if x is None and `long` if y is None
 fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
