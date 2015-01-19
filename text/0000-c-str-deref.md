@@ -108,6 +108,34 @@ on input, through a [byte string concatenation
 macro](https://github.com/rust-lang/rfcs/pull/566). Ultimately, it could be
 made workable in static expressions through a compiler plugin.
 
+## Returning C strings
+
+In cases when an FFI function returns a pointer to a non-owned C string,
+it might be preferable to wrap the returned string safely as a 'thin'
+`&CStr` rather than scan it into a slice up front. To facilitate this,
+conversion from a raw pointer should be added (using the
+[lifetime anchor](https://github.com/rust-lang/rfcs/pull/556) convention):
+```rust
+impl CStr {
+    pub unsafe fn from_raw_ptr<'a, T: ?Sized>(ptr: *const libc::c_char,
+                                              life_anchor: &'a T)
+                                             -> &'a CStr
+    { ... }
+}
+```
+
+For getting a slice out of a `CStr` reference, method `parse_as_bytes` is
+provided. The name is chosen to reflect the linear cost of calculating the
+length.
+```rust
+impl CStr {
+    pub fn parse_as_bytes(&self) -> &[u8] { ... }
+}
+```
+
+An odd consequence is that it is valid, if wasteful, to call
+`parse_as_bytes` on `CString` via auto-dereferencing.
+
 ## Proof of concept
 
 The described changes are implemented in crate
