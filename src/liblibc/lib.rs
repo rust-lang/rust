@@ -2207,10 +2207,10 @@ pub mod consts {
             pub const IPPROTO_TCP: c_int = 6;
             pub const IPPROTO_IP: c_int = 0;
             pub const IPPROTO_IPV6: c_int = 41;
-            pub const IP_MULTICAST_TTL: c_int = 3;
-            pub const IP_MULTICAST_LOOP: c_int = 4;
-            pub const IP_ADD_MEMBERSHIP: c_int = 5;
-            pub const IP_DROP_MEMBERSHIP: c_int = 6;
+            pub const IP_MULTICAST_TTL: c_int = 10;
+            pub const IP_MULTICAST_LOOP: c_int = 11;
+            pub const IP_ADD_MEMBERSHIP: c_int = 12;
+            pub const IP_DROP_MEMBERSHIP: c_int = 13;
             pub const IPV6_ADD_MEMBERSHIP: c_int = 5;
             pub const IPV6_DROP_MEMBERSHIP: c_int = 6;
             pub const IP_TTL: c_int = 4;
