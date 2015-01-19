@@ -38,7 +38,7 @@ impl SearchPaths {
         SearchPaths { paths: Vec::new() }
     }
 
-    pub fn add_path(&mut self, path: &str, color: diagnostic::ColorConfig) {
+    pub fn add_path(&mut self, path: &str, cfg: diagnostic::EmitterConfig) {
         let (kind, path) = if path.starts_with("native=") {
             (PathKind::Native, &path["native=".len()..])
         } else if path.starts_with("crate=") {
@@ -53,7 +53,7 @@ impl SearchPaths {
             (PathKind::All, path)
         };
         if path.is_empty() {
-            early_error(color, "empty search path given via `-L`");
+            early_error(cfg, "empty search path given via `-L`");
         }
         self.paths.push((kind, PathBuf::from(path)));
     }

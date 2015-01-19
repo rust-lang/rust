@@ -19,6 +19,7 @@ use std::path::PathBuf;
 use std::process::Command;
 use std::str;
 use std::sync::{Arc, Mutex};
+use std::default::Default;
 
 use testing;
 use rustc_lint;
@@ -67,7 +68,7 @@ pub fn run(input: &str,
     };
 
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::Handler::new(diagnostic::Auto, None, true);
+    let diagnostic_handler = diagnostic::Handler::new(Default::default(), None, true);
     let span_diagnostic_handler =
     diagnostic::SpanHandler::new(diagnostic_handler, codemap);
 

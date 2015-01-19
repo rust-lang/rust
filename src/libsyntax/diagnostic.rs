@@ -16,6 +16,7 @@ use codemap::{self, COMMAND_LINE_SP, COMMAND_LINE_EXPN, Pos, Span};
 use diagnostics;
 
 use std::cell::{RefCell, Cell};
+use std::default::Default;
 use std::{cmp, error, fmt};
 use std::io::prelude::*;
 use std::io;
@@ -67,6 +68,49 @@ pub enum ColorConfig {
     Auto,
     Always,
     Never
+}
+
+#[derive(Clone, Copy)]
+pub struct EmitterConfig {
+    pub color: ColorConfig,
+    pub drawing: bool,
+}
+
+impl Default for EmitterConfig {
+    fn default() -> EmitterConfig {
+        EmitterConfig {
+            color: ColorConfig::Auto,
+            drawing: false,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SpanFormat {
+    single: char,
+    begin:  char,
+    middle: char,
+    end:    char,
+}
+
+impl EmitterConfig {
+    #[inline]
+    fn span_format(&self) -> SpanFormat {
+        match self.drawing {
+            false => SpanFormat {
+                single: '^',
+                begin:  '^',
+                middle: '~',
+                end:    '~',
+            },
+            true => SpanFormat {
+                single: '\u{25B2}', // BLACK UP-POINTING TRIANGLE
+                begin:  '\u{2517}', // BOX DRAWINGS HEAVY UP AND RIGHT
+                middle: '\u{2501}', // BOX DRAWINGS HEAVY HORIZONTAL
+                end:    '\u{251B}', // BOX DRAWINGS HEAVY UP AND LEFT
+            },
+        }
+    }
 }
 
 pub trait Emitter {
@@ -192,10 +236,10 @@ pub struct Handler {
 }
 
 impl Handler {
-    pub fn new(color_config: ColorConfig,
+    pub fn new(emitter_config: EmitterConfig,
                registry: Option<diagnostics::registry::Registry>,
                can_emit_warnings: bool) -> Handler {
-        let emitter = Box::new(EmitterWriter::stderr(color_config, registry));
+        let emitter = Box::new(EmitterWriter::stderr(emitter_config, registry));
         Handler::with_emitter(can_emit_warnings, emitter)
     }
     pub fn with_emitter(can_emit_warnings: bool, e: Box<Emitter + Send>) -> Handler {
@@ -313,7 +357,8 @@ impl Level {
 
 pub struct EmitterWriter {
     dst: Destination,
-    registry: Option<diagnostics::registry::Registry>
+    registry: Option<diagnostics::registry::Registry>,
+    cfg: EmitterConfig,
 }
 
 enum Destination {
@@ -336,11 +381,11 @@ macro_rules! println_maybe_styled {
 }
 
 impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig,
+    pub fn stderr(cfg: EmitterConfig,
                   registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
         let stderr = io::stderr();
 
-        let use_color = match color_config {
+        let use_color = match cfg.color {
             ColorConfig::Always => true,
             ColorConfig::Never  => false,
             ColorConfig::Auto   => stderr_isatty()
@@ -351,15 +396,15 @@ impl EmitterWriter {
                 Some(t) => Terminal(t),
                 None    => Raw(Box::new(stderr)),
             };
-            EmitterWriter { dst: dst, registry: registry }
+            EmitterWriter { dst: dst, registry: registry, cfg: cfg }
         } else {
-            EmitterWriter { dst: Raw(Box::new(stderr)), registry: registry }
+            EmitterWriter { dst: Raw(Box::new(stderr)), registry: registry, cfg: cfg }
         }
     }
 
     pub fn new(dst: Box<Write + Send>,
                registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
-        EmitterWriter { dst: Raw(dst), registry: registry }
+        EmitterWriter { dst: Raw(dst), registry: registry, cfg: Default::default() }
     }
 
     fn print_maybe_styled(&mut self,
@@ -618,14 +663,16 @@ impl EmitterWriter {
                 }
 
                 try!(write!(&mut self.dst, "{}", s));
-                let mut s = String::from("^");
+                let mut s = String::new();
+                let fmt = self.cfg.span_format();
                 let count = match lastc {
                     // Most terminals have a tab stop every eight columns by default
                     '\t' => 8 - col%8,
                     _ => 1,
                 };
                 col += count;
-                s.extend(::std::iter::repeat('~').take(count));
+                s.push(fmt.begin);
+                s.extend(::std::iter::repeat(fmt.middle).take(count));
 
                 let hi = cm.lookup_char_pos(sp.hi);
                 if hi.col != lo.col {
@@ -636,13 +683,20 @@ impl EmitterWriter {
                             _ => 1,
                         };
                         col += count;
-                        s.extend(::std::iter::repeat('~').take(count));
+                        s.extend(::std::iter::repeat(fmt.middle).take(count));
                     }
                 }
 
                 if s.len() > 1 {
                     // One extra squiggly is replaced by a "^"
                     s.pop();
+                }
+
+                s.pop();
+                if s.is_empty() {
+                    s.push(fmt.single);
+                } else {
+                    s.push(fmt.end);
                 }
 
                 try!(println_maybe_styled!(self, term::attr::ForegroundColor(lvl.color()),
@@ -717,7 +771,7 @@ impl EmitterWriter {
                 }
             }
         }
-        s.push('^');
+        s.push(self.cfg.span_format().single);
         println_maybe_styled!(self, term::attr::ForegroundColor(lvl.color()),
                               "{}", s)
     }
