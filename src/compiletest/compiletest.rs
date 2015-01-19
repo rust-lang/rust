@@ -268,15 +268,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         run_benchmarks: true,
-        ratchet_metrics: None,
-        ratchet_noise_percent: None,
-        save_metrics: None,
-        test_shard: None,
         nocapture: false,
         color: test::AutoColor,
-        show_boxplot: false,
-        boxplot_width: 50,
-        show_all_stats: false,
     }
 }
 

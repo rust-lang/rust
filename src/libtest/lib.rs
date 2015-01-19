@@ -300,16 +300,9 @@ pub struct TestOpts {
     pub run_ignored: bool,
     pub run_tests: bool,
     pub run_benchmarks: bool,
-    pub ratchet_metrics: Option<Path>,
-    pub ratchet_noise_percent: Option<f64>,
-    pub save_metrics: Option<Path>,
-    pub test_shard: Option<(uint,uint)>,
     pub logfile: Option<Path>,
     pub nocapture: bool,
     pub color: ColorConfig,
-    pub show_boxplot: bool,
-    pub boxplot_width: uint,
-    pub show_all_stats: bool,
 }
 
 impl TestOpts {
@@ -320,16 +313,9 @@ impl TestOpts {
             run_ignored: false,
             run_tests: false,
             run_benchmarks: false,
-            ratchet_metrics: None,
-            ratchet_noise_percent: None,
-            save_metrics: None,
-            test_shard: None,
             logfile: None,
             nocapture: false,
             color: AutoColor,
-            show_boxplot: false,
-            boxplot_width: 50,
-            show_all_stats: false,
         }
     }
 }
@@ -342,28 +328,14 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optflag("", "test", "Run tests and not benchmarks"),
       getopts::optflag("", "bench", "Run benchmarks instead of tests"),
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
-      getopts::optopt("", "save-metrics", "Location to save bench metrics",
-                     "PATH"),
-      getopts::optopt("", "ratchet-metrics",
-                     "Location to load and save metrics from. The metrics \
-                      loaded are cause benchmarks to fail if they run too \
-                      slowly", "PATH"),
-      getopts::optopt("", "ratchet-noise-percent",
-                     "Tests within N% of the recorded metrics will be \
-                      considered as passing", "PERCENTAGE"),
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
-      getopts::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
-                     "A.B"),
       getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
                                          task, allow printing directly"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never"),
-      getopts::optflag("", "boxplot", "Display a boxplot of the benchmark statistics"),
-      getopts::optopt("", "boxplot-width", "Set the boxplot width (default 50)", "WIDTH"),
-      getopts::optflag("", "stats", "Display the benchmark min, max, and quartiles"))
+            never  = never colorize output;", "auto|always|never"))
 }
 
 fn usage(binary: &str) {
@@ -428,19 +400,6 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let run_tests = ! run_benchmarks ||
         matches.opt_present("test");
 
-    let ratchet_metrics = matches.opt_str("ratchet-metrics");
-    let ratchet_metrics = ratchet_metrics.map(|s| Path::new(s));
-
-    let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
-    let ratchet_noise_percent =
-        ratchet_noise_percent.map(|s| s.as_slice().parse::<f64>().unwrap());
-
-    let save_metrics = matches.opt_str("save-metrics");
-    let save_metrics = save_metrics.map(|s| Path::new(s));
-
-    let test_shard = matches.opt_str("test-shard");
-    let test_shard = opt_shard(test_shard);
-
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
         nocapture = os::getenv("RUST_TEST_NOCAPTURE").is_some();
@@ -456,62 +415,18 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
                                             v))),
     };
 
-    let show_boxplot = matches.opt_present("boxplot");
-    let boxplot_width = match matches.opt_str("boxplot-width") {
-        Some(width) => {
-            match FromStr::from_str(width.as_slice()) {
-                Some(width) => width,
-                None => {
-                    return Some(Err(format!("argument for --boxplot-width must be a uint")));
-                }
-            }
-        }
-        None => 50,
-    };
-
-    let show_all_stats = matches.opt_present("stats");
-
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
         run_tests: run_tests,
         run_benchmarks: run_benchmarks,
-        ratchet_metrics: ratchet_metrics,
-        ratchet_noise_percent: ratchet_noise_percent,
-        save_metrics: save_metrics,
-        test_shard: test_shard,
         logfile: logfile,
         nocapture: nocapture,
         color: color,
-        show_boxplot: show_boxplot,
-        boxplot_width: boxplot_width,
-        show_all_stats: show_all_stats,
     };
 
     Some(Ok(test_opts))
 }
-
-pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
-    match maybestr {
-        None => None,
-        Some(s) => {
-            let mut it = s.split('.');
-            match (it.next().and_then(|s| s.parse::<uint>()),
-                   it.next().and_then(|s| s.parse::<uint>()),
-                   it.next()) {
-                (Some(a), Some(b), None) => {
-                    if a <= 0 || a > b {
-                        panic!("tried to run shard {a}.{b}, but {a} is out of bounds \
-                              (should be between 1 and {b}", a=a, b=b)
-                    }
-                    Some((a, b))
-                }
-                _ => None,
-            }
-        }
-    }
-}
-
 
 #[derive(Clone, PartialEq)]
 pub struct BenchSamples {
@@ -568,9 +483,9 @@ impl<T: Writer> ConsoleTestState<T> {
             out: out,
             log_out: log_out,
             use_color: use_color(opts),
-            show_boxplot: opts.show_boxplot,
-            boxplot_width: opts.boxplot_width,
-            show_all_stats: opts.show_all_stats,
+            show_boxplot: false,
+            boxplot_width: 50,
+            show_all_stats: false,
             total: 0u,
             passed: 0u,
             failed: 0u,
@@ -913,15 +828,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         None => {}
     }
     try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
-    match opts.save_metrics {
-        None => (),
-        Some(ref pth) => {
-            try!(st.metrics.save(pth));
-            try!(st.write_plain(format!("\nmetrics saved to: {:?}",
-                                          pth.display()).as_slice()));
-        }
-    }
-    return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
+    return st.write_run_finish(&None, None);
 }
 
 #[test]
@@ -1095,18 +1002,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     // Sort the tests alphabetically
     filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
 
-    // Shard the remaining tests, if sharding requested.
-    match opts.test_shard {
-        None => filtered,
-        Some((a,b)) => {
-            filtered.into_iter().enumerate()
-            // note: using a - 1 so that the valid shards, for example, are
-            // 1.2 and 2.2 instead of 0.2 and 1.2
-            .filter(|&(i,_)| i % b == (a - 1))
-            .map(|(_,t)| t)
-            .collect()
-        }
-    }
+    filtered
 }
 
 pub fn run_test(opts: &TestOpts,
