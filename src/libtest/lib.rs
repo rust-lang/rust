@@ -44,7 +44,6 @@ extern crate "serialize" as rustc_serialize;
 extern crate term;
 
 pub use self::TestFn::*;
-pub use self::MetricChange::*;
 pub use self::ColorConfig::*;
 pub use self::TestResult::*;
 pub use self::TestName::*;
@@ -62,7 +61,6 @@ use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
-use std::f64;
 use std::fmt::Show;
 use std::fmt;
 use std::io::fs::PathExtensions;
@@ -82,8 +80,7 @@ use std::time::Duration;
 pub mod test {
     pub use {Bencher, TestName, TestResult, TestDesc,
              TestDescAndFn, TestOpts, TrFailed, TrIgnored, TrOk,
-             Metric, MetricMap, MetricAdded, MetricRemoved,
-             MetricChange, Improvement, Regression, LikelyNoise,
+             Metric, MetricMap,
              StaticTestFn, StaticTestName, DynTestName, DynTestFn,
              run_test, test_main, test_main_static, filter_tests,
              parse_opts, StaticBenchFn, ShouldFail};
@@ -244,13 +241,7 @@ impl Clone for MetricMap {
 
 /// Analysis of a single change in metric
 #[derive(Copy, PartialEq, Show)]
-pub enum MetricChange {
-    LikelyNoise,
-    MetricAdded,
-    MetricRemoved,
-    Improvement(f64),
-    Regression(f64)
-}
+pub struct MetricChange;
 
 pub type MetricDiff = BTreeMap<String,MetricChange>;
 
@@ -602,22 +593,6 @@ impl<T: Writer> ConsoleTestState<T> {
         self.write_pretty("bench", term::color::CYAN)
     }
 
-    pub fn write_added(&mut self) -> io::IoResult<()> {
-        self.write_pretty("added", term::color::GREEN)
-    }
-
-    pub fn write_improved(&mut self) -> io::IoResult<()> {
-        self.write_pretty("improved", term::color::GREEN)
-    }
-
-    pub fn write_removed(&mut self) -> io::IoResult<()> {
-        self.write_pretty("removed", term::color::YELLOW)
-    }
-
-    pub fn write_regressed(&mut self) -> io::IoResult<()> {
-        self.write_pretty("regressed", term::color::RED)
-    }
-
     pub fn write_pretty(&mut self,
                         word: &str,
                         color: term::color::Color) -> io::IoResult<()> {
@@ -741,55 +716,6 @@ impl<T: Writer> ConsoleTestState<T> {
         Ok(())
     }
 
-    pub fn write_metric_diff(&mut self, diff: &MetricDiff) -> io::IoResult<()> {
-        let mut noise = 0u;
-        let mut improved = 0u;
-        let mut regressed = 0u;
-        let mut added = 0u;
-        let mut removed = 0u;
-
-        for (k, v) in diff.iter() {
-            match *v {
-                LikelyNoise => noise += 1,
-                MetricAdded => {
-                    added += 1;
-                    try!(self.write_added());
-                    try!(self.write_plain(format!(": {}\n", *k).as_slice()));
-                }
-                MetricRemoved => {
-                    removed += 1;
-                    try!(self.write_removed());
-                    try!(self.write_plain(format!(": {}\n", *k).as_slice()));
-                }
-                Improvement(pct) => {
-                    improved += 1;
-                    try!(self.write_plain(format!(": {} ", *k).as_slice()));
-                    try!(self.write_improved());
-                    try!(self.write_plain(format!(" by {:.2}%\n",
-                                                  pct as f64).as_slice()));
-                }
-                Regression(pct) => {
-                    regressed += 1;
-                    try!(self.write_plain(format!(": {} ", *k).as_slice()));
-                    try!(self.write_regressed());
-                    try!(self.write_plain(format!(" by {:.2}%\n",
-                                                  pct as f64).as_slice()));
-                }
-            }
-        }
-        try!(self.write_plain(format!("result of ratchet: {} metrics added, \
-                                        {} removed, {} improved, {} regressed, \
-                                        {} noise\n",
-                                       added, removed, improved, regressed,
-                                       noise).as_slice()));
-        if regressed == 0 {
-            try!(self.write_plain("updated ratchet file\n"));
-        } else {
-            try!(self.write_plain("left ratchet file untouched\n"));
-        }
-        Ok(())
-    }
-
     pub fn write_run_finish(&mut self,
                             ratchet_metrics: &Option<Path>,
                             ratchet_pct: Option<f64>) -> io::IoResult<bool> {
@@ -807,9 +733,7 @@ impl<T: Writer> ConsoleTestState<T> {
                                                          forced to: {}%\n",
                                                         pct).as_slice()))
                 }
-                let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
-                try!(self.write_metric_diff(&diff));
-                ok
+                true
             }
         };
 
@@ -1233,8 +1157,8 @@ impl MetricMap {
         let MetricMap(ref selfmap) = *self;
         let MetricMap(ref old) = *old;
         for (k, vold) in old.iter() {
-            let r = match selfmap.get(k) {
-                None => MetricRemoved,
+            match selfmap.get(k) {
+                None => (),
                 Some(v) => {
                     let delta = v.value - vold.value;
                     let noise = match noise_pct {
@@ -1242,38 +1166,26 @@ impl MetricMap {
                         Some(pct) => vold.value * pct / 100.0
                     };
                     if delta.abs() <= noise {
-                        LikelyNoise
                     } else {
-                        let pct = delta.abs() / vold.value.max(f64::EPSILON) * 100.0;
                         if vold.noise < 0.0 {
                             // When 'noise' is negative, it means we want
                             // to see deltas that go up over time, and can
                             // only tolerate slight negative movement.
                             if delta < 0.0 {
-                                Regression(pct)
                             } else {
-                                Improvement(pct)
                             }
                         } else {
                             // When 'noise' is positive, it means we want
                             // to see deltas that go down over time, and
                             // can only tolerate slight positive movements.
                             if delta < 0.0 {
-                                Improvement(pct)
                             } else {
-                                Regression(pct)
                             }
                         }
                     }
                 }
             };
-            diff.insert((*k).clone(), r);
-        }
-        let MetricMap(ref map) = *self;
-        for (k, _) in map.iter() {
-            if !diff.contains_key(k) {
-                diff.insert((*k).clone(), MetricAdded);
-            }
+            diff.insert((*k).clone(), MetricChange);
         }
         diff
     }
@@ -1316,7 +1228,6 @@ impl MetricMap {
         let diff : MetricDiff = self.compare_to_old(&old, pct);
         let ok = diff.iter().all(|(_, v)| {
             match *v {
-                Regression(_) => false,
                 _ => true
             }
         });
@@ -1467,8 +1378,7 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
                TestDesc, TestDescAndFn, TestOpts, run_test,
-               Metric, MetricMap, MetricAdded, MetricRemoved,
-               Improvement, Regression, LikelyNoise,
+               Metric, MetricMap,
                StaticTestName, DynTestName, DynTestFn, ShouldFail};
     use std::io::TempDir;
     use std::thunk::Thunk;
@@ -1737,32 +1647,10 @@ mod tests {
 
         let diff1 = m2.compare_to_old(&m1, None);
 
-        assert_eq!(*(diff1.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff1.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff1.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff1.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
-                   Regression(100.0));
-        assert_eq!(*(diff1.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
-                   Improvement(50.0));
-        assert_eq!(*(diff1.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
-                   Regression(50.0));
-        assert_eq!(*(diff1.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
-                   Improvement(100.0));
         assert_eq!(diff1.len(), 7);
 
         let diff2 = m2.compare_to_old(&m1, Some(200.0));
 
-        assert_eq!(*(diff2.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff2.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff2.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
-                   LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
-                   LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
-                   LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
-                   LikelyNoise);
         assert_eq!(diff2.len(), 7);
     }
 
@@ -1786,8 +1674,6 @@ mod tests {
         let (diff1, ok1) = m2.ratchet(&pth, None);
         assert_eq!(ok1, false);
         assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.get(&"runtime".to_string()).unwrap()), Regression(10.0));
-        assert_eq!(*(diff1.get(&"throughput".to_string()).unwrap()), LikelyNoise);
 
         // Check that it was not rewritten.
         let m3 = MetricMap::load(&pth);
@@ -1801,8 +1687,6 @@ mod tests {
         let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
         assert_eq!(ok2, true);
         assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.get(&"runtime".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.get(&"throughput".to_string()).unwrap()), LikelyNoise);
 
         // Check that it was rewritten.
         let m4 = MetricMap::load(&pth);
