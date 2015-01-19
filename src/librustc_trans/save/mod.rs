@@ -124,12 +124,18 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         let mut result: Vec<(Span, String)> = vec!();
 
         let mut segs = vec!();
-        for (seg, span) in path.segments.iter().zip(spans.iter()) {
+        for (i, (seg, span)) in path.segments.iter().zip(spans.iter()).enumerate() {
             segs.push(seg.clone());
             let sub_path = ast::Path{span: *span, // span for the last segment
                                      global: path.global,
                                      segments: segs};
-            let qualname = path_to_string(&sub_path);
+            let qualname = if i == 0 && path.global {
+                let mut result = "::".to_string();
+                result.push_str(&path_to_string(&sub_path)[]);
+                result
+            } else {
+                path_to_string(&sub_path)
+            };
             result.push((*span, qualname));
             segs = sub_path.segments;
         }
@@ -137,9 +143,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         result
     }
 
-    fn write_sub_paths(&mut self, path: &ast::Path) {
+    fn write_sub_paths(&mut self, path: &ast::Path, global: bool) {
         let sub_paths = self.process_path_prefixes(path);
-        for &(ref span, ref qualname) in sub_paths.iter() {
+        for (i, &(ref span, ref qualname)) in sub_paths.iter().enumerate() {
+            let qualname = if i == 0 && global && !path.global {
+                format!("::{}", qualname)
+            } else {
+                qualname.clone()
+            };
             self.fmt.sub_mod_ref_str(path.span,
                                      *span,
                                      &qualname[],
@@ -149,15 +160,20 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
     // will be processed elsewhere).
-    fn write_sub_paths_truncated(&mut self, path: &ast::Path) {
+    fn write_sub_paths_truncated(&mut self, path: &ast::Path, global: bool) {
         let sub_paths = self.process_path_prefixes(path);
         let len = sub_paths.len();
         if len <= 1 {
             return;
         }
 
-        let sub_paths = &sub_paths[.. (len-1)];
-        for &(ref span, ref qualname) in sub_paths.iter() {
+        let sub_paths = sub_paths[..len-1];
+        for (i, &(ref span, ref qualname)) in sub_paths.iter().enumerate() {
+            let qualname = if i == 0 && global && !path.global {
+                format!("::{}", qualname)
+            } else {
+                qualname.clone()
+            };
             self.fmt.sub_mod_ref_str(path.span,
                                      *span,
                                      &qualname[],
@@ -276,8 +292,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         let mut scope_id;
         // The qualname for a method is the trait name or name of the struct in an impl in
         // which the method is declared in followed by the method's name.
-        let mut qualname = match ty::impl_of_method(&self.analysis.ty_cx,
-                                                    ast_util::local_def(method.id)) {
+        let qualname = match ty::impl_of_method(&self.analysis.ty_cx,
+                                                ast_util::local_def(method.id)) {
             Some(impl_id) => match self.analysis.ty_cx.map.get(impl_id.node) {
                 NodeItem(item) => {
                     scope_id = item.id;
@@ -339,7 +355,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             },
         };
 
-        qualname.push_str(get_ident(method.pe_ident()).get());
+        let qualname = format!("::{}{}", qualname, get_ident(method.pe_ident()).get());
         let qualname = &qualname[];
 
         // record the decl for this def (if it has one)
@@ -434,7 +450,8 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     }
 
     // Dump generic params bindings, then visit_generics
-    fn process_generic_params(&mut self, generics:&ast::Generics,
+    fn process_generic_params(&mut self,
+                              generics:&ast::Generics,
                               full_span: Span,
                               prefix: &str,
                               id: NodeId) {
@@ -464,7 +481,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                   decl: &ast::FnDecl,
                   ty_params: &ast::Generics,
                   body: &ast::Block) {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Fn);
         self.fmt.fn_str(item.span,
@@ -496,7 +513,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                       mt: ast::Mutability,
                       expr: &ast::Expr)
     {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
         // If the variable is immutable, save the initialising expression.
         let value = match mt {
@@ -524,7 +541,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                       typ: &ast::Ty,
                       expr: &ast::Expr)
     {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
         let sub_span = self.span.sub_span_after_keyword(item.span,
                                                         keywords::Const);
@@ -546,7 +563,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                       item: &ast::Item,
                       def: &ast::StructDef,
                       ty_params: &ast::Generics) {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
         let ctor_id = match def.ctor_id {
             Some(node_id) => node_id,
@@ -575,7 +592,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     item: &ast::Item,
                     enum_definition: &ast::EnumDef,
                     ty_params: &ast::Generics) {
-        let enum_name = self.analysis.ty_cx.map.path_to_string(item.id);
+        let enum_name = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
         let val = self.span.snippet(item.span);
         match self.span.sub_span_after_keyword(item.span, keywords::Enum) {
             Some(sub_span) => self.fmt.enum_str(item.span,
@@ -701,7 +718,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                      generics: &ast::Generics,
                      trait_refs: &OwnedSlice<ast::TyParamBound>,
                      methods: &Vec<ast::TraitItem>) {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
         let val = self.span.snippet(item.span);
         let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Trait);
         self.fmt.trait_str(item.span,
@@ -750,7 +767,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     fn process_mod(&mut self,
                    item: &ast::Item,  // The module in question, represented as an item.
                    m: &ast::Mod) {
-        let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+        let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
 
         let cm = self.sess.codemap();
         let filename = cm.span_to_filename(m.inner);
@@ -855,7 +872,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefConst(..) |
             def::DefStruct(_) |
             def::DefVariant(..) |
-            def::DefFn(..) => self.write_sub_paths_truncated(path),
+            def::DefFn(..) => self.write_sub_paths_truncated(path, false),
             _ => {},
         }
     }
@@ -883,7 +900,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             None => ()
         }
 
-        self.write_sub_paths_truncated(path);
+        self.write_sub_paths_truncated(path, false);
 
         for field in fields.iter() {
             match struct_def {
@@ -1069,7 +1086,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                                mod_id,
                                                get_ident(ident).get(),
                                                self.cur_scope);
-                        self.write_sub_paths_truncated(path);
+                        self.write_sub_paths_truncated(path, true);
                     }
                     ast::ViewPathGlob(ref path) => {
                         // Make a comma-separated list of names of imported modules.
@@ -1092,7 +1109,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                               item.id,
                                               name_string.as_slice(),
                                               self.cur_scope);
-                        self.write_sub_paths(path);
+                        self.write_sub_paths(path, true);
                     }
                     ast::ViewPathList(ref path, ref list) => {
                         for plid in list.iter() {
@@ -1116,7 +1133,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                             }
                         }
 
-                        self.write_sub_paths(path);
+                        self.write_sub_paths(path, true);
                     }
                 }
             }
@@ -1163,7 +1180,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 self.process_trait(item, generics, trait_refs, methods),
             ast::ItemMod(ref m) => self.process_mod(item, m),
             ast::ItemTy(ref ty, ref ty_params) => {
-                let qualname = self.analysis.ty_cx.map.path_to_string(item.id);
+                let qualname = format!("::{}", self.analysis.ty_cx.map.path_to_string(item.id));
                 let value = ty_to_string(&**ty);
                 let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Type);
                 self.fmt.typedef_str(item.span,
@@ -1223,9 +1240,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                                            ast_util::local_def(method_type.id)) {
                     Some(def_id) => {
                         scope_id = def_id.node;
-                        let mut s = ty::item_path_str(&self.analysis.ty_cx, def_id);
-                        s.push_str("::");
-                        s
+                        format!("::{}::", ty::item_path_str(&self.analysis.ty_cx, def_id))
                     },
                     None => {
                         self.sess.span_bug(method_type.span,
@@ -1282,7 +1297,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                     None => ()
                 }
 
-                self.write_sub_paths_truncated(path);
+                self.write_sub_paths_truncated(path, false);
 
                 visit::walk_path(self, path);
             },
