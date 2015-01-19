@@ -186,7 +186,7 @@ impl<V> VecMap<V> {
         }
     }
 
-    /// Returns an iterator visiting all keys in ascending order by the keys.
+    /// Returns an iterator visiting all keys in ascending order of the keys.
     /// The iterator's element type is `uint`.
     #[stable]
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
@@ -196,7 +196,7 @@ impl<V> VecMap<V> {
         Keys { iter: self.iter().map(first) }
     }
 
-    /// Returns an iterator visiting all values in ascending order by the keys.
+    /// Returns an iterator visiting all values in ascending order of the keys.
     /// The iterator's element type is `&'r V`.
     #[stable]
     pub fn values<'r>(&'r self) -> Values<'r, V> {
@@ -206,7 +206,7 @@ impl<V> VecMap<V> {
         Values { iter: self.iter().map(second) }
     }
 
-    /// Returns an iterator visiting all key-value pairs in ascending order by the keys.
+    /// Returns an iterator visiting all key-value pairs in ascending order of the keys.
     /// The iterator's element type is `(uint, &'r V)`.
     ///
     /// # Examples
@@ -233,7 +233,7 @@ impl<V> VecMap<V> {
         }
     }
 
-    /// Returns an iterator visiting all key-value pairs in ascending order by the keys,
+    /// Returns an iterator visiting all key-value pairs in ascending order of the keys,
     /// with mutable references to the values.
     /// The iterator's element type is `(uint, &'r mut V)`.
     ///
@@ -264,7 +264,7 @@ impl<V> VecMap<V> {
         }
     }
 
-    /// Returns an iterator visiting all key-value pairs in ascending order by
+    /// Returns an iterator visiting all key-value pairs in ascending order of
     /// the keys, consuming the original `VecMap`.
     /// The iterator's element type is `(uint, &'r V)`.
     ///
@@ -278,7 +278,6 @@ impl<V> VecMap<V> {
     /// map.insert(3, "c");
     /// map.insert(2, "b");
     ///
-    /// // Not possible with .iter()
     /// let vec: Vec<(uint, &str)> = map.into_iter().collect();
     ///
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
@@ -291,6 +290,34 @@ impl<V> VecMap<V> {
         let filter: fn((uint, Option<V>)) -> Option<(uint, V)> = filter; // coerce to fn ptr
 
         IntoIter { iter: self.v.into_iter().enumerate().filter_map(filter) }
+    }
+
+    /// Returns an iterator visiting all key-value pairs in ascending order of
+    /// the keys, emptying (but not consuming) the original `VecMap`.
+    /// The iterator's element type is `(uint, &'r V)`. Keeps the allocated memory for reuse.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    ///
+    /// let mut map = VecMap::new();
+    /// map.insert(1, "a");
+    /// map.insert(3, "c");
+    /// map.insert(2, "b");
+    ///
+    /// let vec: Vec<(uint, &str)> = map.drain().collect();
+    ///
+    /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+    /// ```
+    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    pub fn drain<'a>(&'a mut self) -> Drain<'a, V> {
+        fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
+            v.map(|v| (i, v))
+        }
+        let filter: fn((uint, Option<V>)) -> Option<(uint, V)> = filter; // coerce to fn ptr
+
+        Drain { iter: self.v.drain().enumerate().filter_map(filter) }
     }
 
     /// Return the number of elements in the map.
@@ -670,6 +697,28 @@ pub struct IntoIter<V> {
     (uint, V),
     Enumerate<vec::IntoIter<Option<V>>>,
     fn((uint, Option<V>)) -> Option<(uint, V)>>
+}
+
+#[unstable]
+pub struct Drain<'a, V> {
+    iter: FilterMap<
+    (uint, Option<V>),
+    (uint, V),
+    Enumerate<vec::Drain<'a, Option<V>>>,
+    fn((uint, Option<V>)) -> Option<(uint, V)>>
+}
+
+#[unstable]
+impl<'a, V> Iterator for Drain<'a, V> {
+    type Item = (uint, V);
+
+    fn next(&mut self) -> Option<(uint, V)> { self.iter.next() }
+    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+}
+
+#[unstable]
+impl<'a, V> DoubleEndedIterator for Drain<'a, V> {
+    fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
 }
 
 #[stable]
