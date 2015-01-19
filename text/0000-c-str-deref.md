@@ -77,10 +77,10 @@ A way to create `CStr` references from static Rust expressions asserted as
 null-terminated string or byte slices is provided by a couple of functions:
 
 ```rust
-fn static_c_str_from_bytes(bytes: &'static [u8]) -> &'static CStr
-```
-```rust
-fn static_c_str_from_str(s: &'static str) -> &'static CStr
+impl CStr {
+    pub fn from_static_bytes(bytes: &'static [u8]) -> &'static CStr { ... }
+    pub fn from_static_str(s: &'static str) -> &'static CStr { ... }
+}
 ```
 
 As these functions mostly work with literals, they only assert that the
