@@ -67,6 +67,7 @@ _rustc_opts_switches=(
     {-V,--verbose}'[use verbose output]'
     -O'[Equivalent to -C opt-level=2]'
     --test'[Build a test harness]'
+    --drawing'[Use drawing characters in diagnostic output]'
 )
 
 

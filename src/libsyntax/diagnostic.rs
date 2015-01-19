@@ -21,6 +21,7 @@ use std::fmt;
 use std::io;
 use std::iter::range;
 use std::string::String;
+use std::default::Default;
 use term::WriterWrapper;
 use term;
 
@@ -58,6 +59,49 @@ pub enum ColorConfig {
     Auto,
     Always,
     Never
+}
+
+#[derive(Clone, Copy)]
+pub struct EmitterConfig {
+    pub color: ColorConfig,
+    pub drawing: bool,
+}
+
+impl Default for EmitterConfig {
+    fn default() -> EmitterConfig {
+        EmitterConfig {
+            color: ColorConfig::Auto,
+            drawing: false,
+        }
+    }
+}
+
+#[derive(Clone, Copy)]
+struct SpanFormat {
+    single: char,
+    begin:  char,
+    middle: char,
+    end:    char,
+}
+
+impl EmitterConfig {
+    #[inline]
+    fn span_format(&self) -> SpanFormat {
+        match self.drawing {
+            false => SpanFormat {
+                single: '^',
+                begin:  '^',
+                middle: '~',
+                end:    '~',
+            },
+            true => SpanFormat {
+                single: '\u{25B2}', // BLACK UP-POINTING TRIANGLE
+                begin:  '\u{2517}', // BOX DRAWINGS HEAVY UP AND RIGHT
+                middle: '\u{2501}', // BOX DRAWINGS HEAVY HORIZONTAL
+                end:    '\u{251B}', // BOX DRAWINGS HEAVY UP AND LEFT
+            },
+        }
+    }
 }
 
 pub trait Emitter {
@@ -212,9 +256,9 @@ pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
     }
 }
 
-pub fn default_handler(color_config: ColorConfig,
+pub fn default_handler(cfg: EmitterConfig,
                        registry: Option<diagnostics::registry::Registry>) -> Handler {
-    mk_handler(box EmitterWriter::stderr(color_config, registry))
+    mk_handler(box EmitterWriter::stderr(cfg, registry))
 }
 
 pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
@@ -320,7 +364,8 @@ fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
 
 pub struct EmitterWriter {
     dst: Destination,
-    registry: Option<diagnostics::registry::Registry>
+    registry: Option<diagnostics::registry::Registry>,
+    cfg: EmitterConfig,
 }
 
 enum Destination {
@@ -329,11 +374,11 @@ enum Destination {
 }
 
 impl EmitterWriter {
-    pub fn stderr(color_config: ColorConfig,
+    pub fn stderr(cfg: EmitterConfig,
                   registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
         let stderr = io::stderr();
 
-        let use_color = match color_config {
+        let use_color = match cfg.color {
             ColorConfig::Always => true,
             ColorConfig::Never  => false,
             ColorConfig::Auto   => stderr.get_ref().isatty()
@@ -344,15 +389,15 @@ impl EmitterWriter {
                 Some(t) => Terminal(t),
                 None    => Raw(box stderr),
             };
-            EmitterWriter { dst: dst, registry: registry }
+            EmitterWriter { dst: dst, registry: registry, cfg: cfg }
         } else {
-            EmitterWriter { dst: Raw(box stderr), registry: registry }
+            EmitterWriter { dst: Raw(box stderr), registry: registry, cfg: cfg }
         }
     }
 
     pub fn new(dst: Box<Writer + Send>,
                registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
-        EmitterWriter { dst: Raw(dst), registry: registry }
+        EmitterWriter { dst: Raw(dst), registry: registry, cfg: Default::default() }
     }
 }
 
@@ -497,14 +542,20 @@ fn highlight_lines(err: &mut EmitterWriter,
         }
 
         try!(write!(&mut err.dst, "{}", s));
-        let mut s = String::from_str("^");
+        let fmt = err.cfg.span_format();
+        let mut s = String::new();
+
         let hi = cm.lookup_char_pos(sp.hi);
-        if hi.col != lo.col {
-            // the ^ already takes up one space
-            let num_squigglies = hi.col.to_uint() - lo.col.to_uint() - 1u;
+        let len = hi.col.to_uint() - lo.col.to_uint();
+        if len <= 1 {
+            s.push(fmt.single);
+        } else {
+            s.push(fmt.begin);
+            let num_squigglies = len - 2u;
             for _ in range(0, num_squigglies) {
-                s.push('~');
+                s.push(fmt.middle);
             }
+            s.push(fmt.end);
         }
         try!(print_maybe_styled(err,
                                 &format!("{}\n", s)[],
@@ -555,7 +606,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     for _ in range(0, skip) {
         s.push(' ');
     }
-    s.push('^');
+    s.push(w.cfg.span_format().single);
     s.push('\n');
     print_maybe_styled(w,
                        &s[],

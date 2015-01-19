@@ -222,7 +222,7 @@ impl Target {
         // this is 1. ugly, 2. error prone.
 
 
-        let handler = diagnostic::default_handler(diagnostic::ColorConfig::Auto, None);
+        let handler = diagnostic::default_handler(Default::default(), None);
 
         let get_req_field = |&: name: &str| {
             match obj.find(name)

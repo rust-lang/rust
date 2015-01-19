@@ -29,6 +29,7 @@ use syntax::ast;
 use syntax::ast::{IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
+use syntax::diagnostic;
 use syntax::diagnostic::{ColorConfig, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
@@ -37,6 +38,7 @@ use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use getopts;
 use std::fmt;
+use std::default;
 
 use llvm;
 
@@ -104,7 +106,7 @@ pub struct Options {
     pub write_dependency_info: (bool, Option<Path>),
     pub prints: Vec<PrintRequest>,
     pub cg: CodegenOptions,
-    pub color: ColorConfig,
+    pub emit_cfg: diagnostic::EmitterConfig,
     pub show_span: Option<String>,
     pub externs: HashMap<String, Vec<String>>,
     pub crate_name: Option<String>,
@@ -228,7 +230,7 @@ pub fn basic_options() -> Options {
         write_dependency_info: (false, None),
         prints: Vec::new(),
         cg: basic_codegen_options(),
-        color: ColorConfig::Auto,
+        emit_cfg: default::Default::default(),
         show_span: None,
         externs: HashMap::new(),
         crate_name: None,
@@ -793,6 +795,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             auto   = colorize, if output goes to a tty (default);
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
+        opt::flag("", "drawing", "Use drawing characters in diagnostic output"),
 
         // DEPRECATED
         opt::flag("", "print-crate-name", "Output the crate name and exit"),
@@ -1072,19 +1075,21 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     --debuginfo");
     }
 
-    let color = match matches.opt_str("color").as_ref().map(|s| &s[]) {
-        Some("auto")   => ColorConfig::Auto,
-        Some("always") => ColorConfig::Always,
-        Some("never")  => ColorConfig::Never,
-
-        None => ColorConfig::Auto,
-
-        Some(arg) => {
-            early_error(&format!("argument for --color must be auto, always \
-                                 or never (instead was `{}`)",
-                                arg)[])
-        }
+    let mut emit_cfg: diagnostic::EmitterConfig = default::Default::default();
+    if let Some(arg) = matches.opt_str("color").as_ref() {
+        emit_cfg.color = match &arg[] {
+            "auto"   => ColorConfig::Auto,
+            "always" => ColorConfig::Always,
+            "never"  => ColorConfig::Never,
+            _ => {
+                early_error(&format!("argument for --color must be auto, always \
+                                     or never (instead was `{}`)", arg)[]);
+            }
+        };
     };
+    if matches.opt_present("drawing") {
+        emit_cfg.drawing = true;
+    }
 
     let mut externs = HashMap::new();
     for arg in matches.opt_strs("extern").iter() {
@@ -1126,7 +1131,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         write_dependency_info: write_dependency_info,
         prints: prints,
         cg: cg,
-        color: color,
+        emit_cfg: emit_cfg,
         show_span: None,
         externs: externs,
         crate_name: crate_name,
