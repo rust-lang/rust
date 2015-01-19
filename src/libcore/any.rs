@@ -71,11 +71,11 @@
 
 #![stable]
 
-use mem::{transmute};
-use option::Option;
-use option::Option::{Some, None};
+use mem::transmute;
+use option::Option::{self, Some, None};
 use raw::TraitObject;
-use intrinsics::TypeId;
+use intrinsics;
+#[cfg(not(stage0))] use marker::Sized;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -99,7 +99,6 @@ impl<T: 'static> Any for T {
 
 ///////////////////////////////////////////////////////////////////////////////
 // Extension methods for Any trait objects.
-// Implemented as three extension traits so that the methods can be generic.
 ///////////////////////////////////////////////////////////////////////////////
 
 impl Any {
@@ -119,9 +118,9 @@ impl Any {
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    #[unstable = "naming conventions around acquiring references may change"]
+    #[stable]
     #[inline]
-    pub fn downcast_ref<'a, T: 'static>(&'a self) -> Option<&'a T> {
+    pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -137,9 +136,9 @@ impl Any {
 
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    #[unstable = "naming conventions around acquiring references may change"]
+    #[stable]
     #[inline]
-    pub fn downcast_mut<'a, T: 'static>(&'a mut self) -> Option<&'a mut T> {
+    pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
@@ -151,5 +150,42 @@ impl Any {
         } else {
             None
         }
+    }
+}
+
+///////////////////////////////////////////////////////////////////////////////
+// TypeID and its methods
+///////////////////////////////////////////////////////////////////////////////
+
+/// A `TypeId` represents a globally unique identifier for a type.
+///
+/// Each `TypeId` is an opaque object which does not allow inspection of what's
+/// inside but does allow basic operations such as cloning, comparison,
+/// printing, and showing.
+///
+/// A `TypeId` is currently only available for types which ascribe to `'static`,
+/// but this limitation may be removed in the future.
+#[cfg_attr(stage0, lang = "type_id")]
+#[derive(Clone, Copy, PartialEq, Eq, Show, Hash)]
+#[stable]
+pub struct TypeId {
+    t: u64,
+}
+
+impl TypeId {
+    /// Returns the `TypeId` of the type this generic function has been
+    /// instantiated with
+    #[cfg(not(stage0))]
+    #[unstable = "may grow a `Reflect` bound soon via marker traits"]
+    pub fn of<T: ?Sized + 'static>() -> TypeId {
+        TypeId {
+            t: unsafe { intrinsics::type_id::<T>() },
+        }
+    }
+
+    /// dox
+    #[cfg(stage0)]
+    pub fn of<T: 'static>() -> TypeId {
+        unsafe { intrinsics::type_id::<T>() }
     }
 }

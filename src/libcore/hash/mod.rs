@@ -62,7 +62,6 @@ use prelude::*;
 
 use borrow::{Cow, ToOwned};
 use default::Default;
-use intrinsics::TypeId;
 use mem;
 use num::Int;
 
@@ -240,13 +239,6 @@ impl<S: Writer + Hasher, T> Hash<S> for *mut T {
         // NB: raw-pointer Hash does _not_ dereference
         // to the target; it just gives you the pointer-bytes.
         (*self as uint).hash(state);
-    }
-}
-
-impl<S: Writer + Hasher> Hash<S> for TypeId {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.hash().hash(state)
     }
 }
 
