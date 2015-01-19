@@ -1,4 +1,4 @@
-% `if`
+% If
 
 Rust's take on `if` is not particularly complex, but it's much more like the
 `if` you'll find in a dynamically typed language than in a more traditional
