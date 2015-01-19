@@ -152,6 +152,11 @@ this method.
 
 # Alternatives
 
+`CStr` could be made a newtype on DST `[libc::c_char]`, allowing no-cost
+slices. It's not clear if this is useful, and the need to calculate length
+up front might prevent some optimized uses possible with the 'thin'
+reference.
+
 The users of Rust can turn to third-party libraries for better convenience
 and safety when working with C strings. This can result in proliferation of
 incompatible helper types in public APIs until a dominant de-facto solution
