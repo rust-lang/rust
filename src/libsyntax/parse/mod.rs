@@ -12,7 +12,7 @@
 
 use ast;
 use codemap::{self, Span, CodeMap, FileMap};
-use diagnostic::{SpanHandler, Handler, Auto, FatalError};
+use diagnostic::{SpanHandler, Handler, ColorConfig, FatalError};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
 use parse::token::InternedString;
@@ -48,7 +48,7 @@ pub struct ParseSess {
 
 impl ParseSess {
     pub fn new() -> ParseSess {
-        let handler = SpanHandler::new(Handler::new(Auto, None, true), CodeMap::new());
+        let handler = SpanHandler::new(Handler::new(ColorConfig::Auto, None, true), CodeMap::new());
         ParseSess::with_span_handler(handler)
     }
 

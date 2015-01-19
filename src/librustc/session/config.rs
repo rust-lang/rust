@@ -27,7 +27,7 @@ use metadata::cstore;
 use syntax::ast::{self, IntTy, UintTy};
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
+use syntax::diagnostic::{ColorConfig, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::feature_gate::UnstableFeatures;
@@ -216,7 +216,7 @@ pub fn basic_options() -> Options {
         debugging_opts: basic_debugging_options(),
         prints: Vec::new(),
         cg: basic_codegen_options(),
-        color: Auto,
+        color: ColorConfig::Auto,
         show_span: None,
         externs: HashMap::new(),
         crate_name: None,
@@ -854,16 +854,17 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
 
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
-        Some("auto")   => Auto,
-        Some("always") => Always,
-        Some("never")  => Never,
+        Some("auto")   => ColorConfig::Auto,
+        Some("always") => ColorConfig::Always,
+        Some("never")  => ColorConfig::Never,
 
-        None => Auto,
+        None => ColorConfig::Auto,
 
         Some(arg) => {
-            early_error(Auto, &format!("argument for --color must be auto, always \
-                                        or never (instead was `{}`)",
-                                       arg))
+            early_error(ColorConfig::Auto,
+                        &format!("argument for --color must be auto, always \
+                                  or never (instead was `{}`)",
+                                 arg))
         }
     };
 

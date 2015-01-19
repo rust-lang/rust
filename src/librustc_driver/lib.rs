@@ -706,15 +706,16 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                             &opt.opt_group.short_name
                         };
                         if m.opt_present(opt_name) {
-                            early_error(diagnostic::Auto, &format!("use of unstable option '{}' \
-                                                                    requires -Z unstable-options",
-                                                                   opt_name));
+                            early_error(diagnostic::ColorConfig::Auto,
+                                        &format!("use of unstable option '{}' \
+                                                  requires -Z unstable-options",
+                                                 opt_name));
                         }
                     }
                 }
                 m
             }
-            Err(f) => early_error(diagnostic::Auto, &f.to_string())
+            Err(f) => early_error(diagnostic::ColorConfig::Auto, &f.to_string())
         }
     }
 
@@ -819,7 +820,8 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
-                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+                let mut emitter = diagnostic::EmitterWriter::stderr(
+                    diagnostic::ColorConfig::Auto, None);
 
                 // a .span_bug or .bug call has already printed what
                 // it wants to print.
