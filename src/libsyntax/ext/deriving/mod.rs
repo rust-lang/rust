@@ -13,10 +13,9 @@
 //! FIXME (#2810): hygiene. Search for "__" strings (in other files too). We also assume "extra" is
 //! the standard library, and "std" is the core library.
 
-use ast::{Item, MetaItem, MetaList, MetaNameValue, MetaWord};
-use ext::base::ExtCtxt;
+use ast::{MetaItem, MetaList, MetaNameValue, MetaWord};
+use ext::base::{Annotatable, ExtCtxt};
 use codemap::Span;
-use ptr::P;
 
 pub mod bounds;
 pub mod clone;
@@ -49,10 +48,20 @@ pub fn expand_deprecated_deriving(cx: &mut ExtCtxt,
 }
 
 pub fn expand_meta_derive(cx: &mut ExtCtxt,
-                          _span: Span,
+                          span: Span,
                           mitem: &MetaItem,
-                          item: &Item,
-                          mut push: Box<FnMut(P<Item>)>) {
+                          annotatable: &Annotatable,
+                          mut push: Box<FnMut(Annotatable)>)
+{
+    // Derive can only be applied to items
+    let item = match annotatable {
+        &Annotatable::Item(ref it) => it.clone(),
+        _ => {
+            cx.span_err(span, "`derive` can only be applied to items");
+            return;
+        }
+    };
+
     match mitem.node {
         MetaNameValue(_, ref l) => {
             cx.span_err(l.span, "unexpected value in `derive`");
@@ -70,8 +79,8 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                     MetaList(ref tname, _) |
                     MetaWord(ref tname) => {
                         macro_rules! expand {
-                            ($func:path) => ($func(cx, titem.span, &**titem, item,
-                                                   |i| push(i)))
+                            ($func:path) => ($func(cx, titem.span, &**titem,
+                                                   &*item, |i| push(Annotatable::Item(i))))
                         }
 
                         match tname.get() {

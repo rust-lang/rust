@@ -39,6 +39,8 @@ pub trait ItemDecorator {
               push: Box<FnMut(P<ast::Item>)>);
 }
 
+#[allow(deprecated)]
+#[deprecated="Replaced by MultiItemDecorator"]
 impl<F> ItemDecorator for F
     where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, Box<FnMut(P<ast::Item>)>)
 {
@@ -62,6 +64,7 @@ pub trait ItemModifier {
               -> P<ast::Item>;
 }
 
+#[allow(deprecated)]
 #[deprecated="Replaced by MultiItemModifier"]
 impl<F> ItemModifier for F
     where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item>
@@ -157,18 +160,18 @@ pub trait MultiItemDecorator {
               sp: Span,
               meta_item: &ast::MetaItem,
               item: &Annotatable,
-              push: Box<FnMut(P<Annotatable>)>);
+              push: Box<FnMut(Annotatable)>);
 }
 
 impl<F> MultiItemDecorator for F
-    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &Annotatable, Box<FnMut(P<Annotatable>)>)
+    where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &Annotatable, Box<FnMut(Annotatable)>)
 {
     fn expand(&self,
               ecx: &mut ExtCtxt,
               sp: Span,
               meta_item: &ast::MetaItem,
               item: &Annotatable,
-              push: Box<FnMut(P<Annotatable>)>) {
+              push: Box<FnMut(Annotatable)>) {
         (*self)(ecx, sp, meta_item, item, push)
     }
 }
@@ -426,7 +429,7 @@ pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
     ///
-    /// `#[derive(...)]` is an `ItemDecorator`.
+    /// `#[derive(...)]` is a `MultiItemDecorator`.
     MultiDecorator(Box<MultiItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
@@ -499,7 +502,7 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("derive"),
-                            Decorator(box ext::deriving::expand_meta_derive));
+                            MultiDecorator(box ext::deriving::expand_meta_derive));
     syntax_expanders.insert(intern("deriving"),
                             Decorator(box ext::deriving::expand_deprecated_deriving));
 
@@ -562,7 +565,7 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg));
     syntax_expanders.insert(intern("cfg_attr"),
-                            Modifier(box ext::cfg_attr::expand));
+                            MultiModifier(box ext::cfg_attr::expand));
     syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));
