@@ -485,7 +485,7 @@ Examples of integer literals of various forms:
 ```
 123is;                             // type isize
 123us;                             // type usize
-123_us                             // type usize
+123_us;                            // type usize
 0xff_u8;                           // type u8
 0o70_i16;                          // type i16
 0b1111_1111_1001_0000_i32;         // type i32
@@ -1500,11 +1500,11 @@ Constants should in general be preferred over statics, unless large amounts of
 data are being stored, or single-address and mutability properties are required.
 
 ```
-use std::sync::atomic::{AtomicUint, Ordering, ATOMIC_USIZE_INIT};;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
 // Note that ATOMIC_USIZE_INIT is a *const*, but it may be used to initialize a
 // static. This static can be modified, so it is not placed in read-only memory.
-static COUNTER: AtomicUint = ATOMIC_USIZE_INIT;
+static COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
 
 // This table is a candidate to be placed in read-only memory.
 static TABLE: &'static [usize] = &[1, 2, 3, /* ... */];
@@ -3437,8 +3437,8 @@ fn is_symmetric(list: &[u32]) -> bool {
 }
 
 fn main() {
-    let sym     = &[0us, 1, 4, 2, 4, 1, 0];
-    let not_sym = &[0us, 1, 7, 2, 4, 1, 0];
+    let sym     = &[0, 1, 4, 2, 4, 1, 0];
+    let not_sym = &[0, 1, 7, 2, 4, 1, 0];
     assert!(is_symmetric(sym));
     assert!(!is_symmetric(not_sym));
 }
