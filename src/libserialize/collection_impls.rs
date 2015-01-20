@@ -10,13 +10,14 @@
 
 //! Implementations of serialization for structures found in libcollections
 
-use std::uint;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
-use std::collections::hash_state::HashState;
+use std::uint;
 
 use {Decodable, Encodable, Decoder, Encoder};
 use std::collections::{DList, RingBuf, BTreeMap, BTreeSet, HashMap, HashSet, VecMap};
+use std::collections::hash_state::HashState;
+use std::collections::vec_map::VecMapKey;
 use collections::enum_set::{EnumSet, CLike};
 
 impl<
@@ -230,7 +231,7 @@ impl<T, S> Decodable for HashSet<T, S>
     }
 }
 
-impl<V: Encodable> Encodable for VecMap<V> {
+impl<K: VecMapKey + Encodable, V: Encodable> Encodable for VecMap<K, V> {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         e.emit_map(self.len(), |e| {
                 for (i, (key, val)) in self.iter().enumerate() {
@@ -242,8 +243,8 @@ impl<V: Encodable> Encodable for VecMap<V> {
     }
 }
 
-impl<V: Decodable> Decodable for VecMap<V> {
-    fn decode<D: Decoder>(d: &mut D) -> Result<VecMap<V>, D::Error> {
+impl<K: VecMapKey + Decodable, V: Decodable> Decodable for VecMap<K, V> {
+    fn decode<D: Decoder>(d: &mut D) -> Result<VecMap<K, V>, D::Error> {
         d.read_map(|d, len| {
             let mut map = VecMap::new();
             for i in range(0u, len) {
