@@ -1222,7 +1222,7 @@ fn insertion_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> O
                                  &*buf_v.offset(j),
                                  (i - j) as uint);
                 ptr::copy_nonoverlapping_memory(buf_v.offset(j),
-                                                &tmp as *const T,
+                                                &tmp,
                                                 1);
                 mem::forget(tmp);
             }
