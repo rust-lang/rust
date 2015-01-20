@@ -213,7 +213,12 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
         let inner_ty = match a.sty {
             ty::ty_uniq(_) => return Err(ty::terr_mismatch),
-            ty::ty_rptr(_, mt_a) => mt_a.ty,
+            ty::ty_rptr(_, mt_a) => {
+                if !can_coerce_mutbls(mt_a.mutbl, mutbl_b) {
+                    return Err(ty::terr_mutability);
+                }
+                mt_a.ty
+            }
             _ => {
                 return self.subtype(a, b);
             }
