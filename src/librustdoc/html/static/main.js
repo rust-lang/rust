@@ -635,7 +635,7 @@
             $('.do-search').on('click', search);
             $('.search-input').on('keyup', function() {
                 clearTimeout(keyUpTimeout);
-                keyUpTimeout = setTimeout(search, 100);
+                keyUpTimeout = setTimeout(search, 500);
             });
 
             // Push and pop states are used to add search results to the browser
