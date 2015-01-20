@@ -22,6 +22,7 @@ pub use self::imp::Lock;
 mod imp {
     use std::ffi::CString;
     use libc;
+    use std::os as stdos;
 
     #[cfg(target_os = "linux")]
     mod os {
@@ -116,7 +117,8 @@ mod imp {
                 libc::open(buf.as_ptr(), libc::O_RDWR | libc::O_CREAT,
                            libc::S_IRWXU)
             };
-            assert!(fd > 0);
+            assert!(fd > 0, "failed to open lockfile: [{}] {}",
+                    stdos::errno(), stdos::last_os_error());
             let flock = os::flock {
                 l_start: 0,
                 l_len: 0,
@@ -129,8 +131,10 @@ mod imp {
                 libc::fcntl(fd, os::F_SETLKW, &flock as *const os::flock)
             };
             if ret == -1 {
+                let errno = stdos::errno();
                 unsafe { libc::close(fd); }
-                panic!("could not lock `{}`", p.display())
+                panic!("could not lock `{}`: [{}] {}", p.display(),
+                       errno, stdos::error_string(errno))
             }
             Lock { fd: fd }
         }
@@ -199,7 +203,8 @@ mod imp {
                                   ptr::null_mut())
             };
             if handle == libc::INVALID_HANDLE_VALUE {
-                panic!("create file error: {}", os::last_os_error());
+                panic!("create file error: [{}] {}",
+                       os::errno(), os::last_os_error());
             }
             let mut overlapped: libc::OVERLAPPED = unsafe { mem::zeroed() };
             let ret = unsafe {
@@ -207,9 +212,10 @@ mod imp {
                            &mut overlapped)
             };
             if ret == 0 {
+                let errno = os::errno();
                 unsafe { libc::CloseHandle(handle); }
-                panic!("could not lock `{}`: {}", p.display(),
-                      os::last_os_error())
+                panic!("could not lock `{}`: [{}] {}", p.display(),
+                       errno, os::error_string(errno));
             }
             Lock { handle: handle }
         }
