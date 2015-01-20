@@ -111,7 +111,7 @@ pub fn main() {
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).scoped(move || {
         main_args(std::os::args().as_slice())
     }).join();
-    std::os::set_exit_status(res.map_err(|_| ()).unwrap());
+    std::os::set_exit_status(res.ok().unwrap());
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {

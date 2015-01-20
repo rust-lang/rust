@@ -1351,7 +1351,7 @@ impl<'a> Item<'a> {
 }
 
 
-impl<'a> fmt::String for Item<'a> {
+impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
         try!(write!(fmt, "\n<h1 class='fqn'><span class='in-band'>"));
@@ -1626,7 +1626,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
 struct Initializer<'a>(&'a str);
 
-impl<'a> fmt::String for Initializer<'a> {
+impl<'a> fmt::Display for Initializer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Initializer(s) = *self;
         if s.len() == 0 { return Ok(()); }
@@ -2188,7 +2188,7 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
     document(w, it)
 }
 
-impl<'a> fmt::String for Sidebar<'a> {
+impl<'a> fmt::Display for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
         let it = self.item;
@@ -2243,7 +2243,7 @@ impl<'a> fmt::String for Sidebar<'a> {
     }
 }
 
-impl<'a> fmt::String for Source<'a> {
+impl<'a> fmt::Display for Source<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Source(s) = *self;
         let lines = s.lines().count();

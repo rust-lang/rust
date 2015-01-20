@@ -72,7 +72,7 @@ use core::prelude::*;
 use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
 use core::borrow::BorrowFrom;
-use core::fmt::{self, Show};
+use core::fmt;
 use core::cmp::{Ordering};
 use core::default::Default;
 use core::mem::{min_align_of, size_of};
@@ -578,16 +578,17 @@ impl<T: Ord> Ord for Arc<T> {
 #[stable]
 impl<T: Eq> Eq for Arc<T> {}
 
-impl<T: fmt::Show> fmt::Show for Arc<T> {
+#[stable]
+impl<T: fmt::Display> fmt::Display for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Arc({:?})", (**self))
+        fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable]
-impl<T: fmt::String> fmt::String for Arc<T> {
+impl<T: fmt::Debug> fmt::Debug for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&**self, f)
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
@@ -806,7 +807,7 @@ mod tests {
     #[test]
     fn show_arc() {
         let a = Arc::new(5u32);
-        assert!(format!("{:?}", a) == "Arc(5u32)")
+        assert_eq!(format!("{:?}", a), "5");
     }
 
     // Make sure deriving works with Arc<T>

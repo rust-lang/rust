@@ -124,7 +124,7 @@ impl<'a,T> FromIterator<T> for MaybeOwnedVector<'a,T> {
     }
 }
 
-impl<'a,T:fmt::Show> fmt::Show for MaybeOwnedVector<'a,T> {
+impl<'a,T:fmt::Debug> fmt::Debug for MaybeOwnedVector<'a,T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_slice().fmt(f)
     }

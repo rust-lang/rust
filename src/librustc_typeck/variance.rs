@@ -240,7 +240,7 @@ enum VarianceTerm<'a> {
     InferredTerm(InferredIndex),
 }
 
-impl<'a> fmt::Show for VarianceTerm<'a> {
+impl<'a> fmt::Debug for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ConstantTerm(c1) => write!(f, "{:?}", c1),

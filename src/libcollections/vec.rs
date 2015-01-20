@@ -1486,10 +1486,10 @@ impl<T> Default for Vec<T> {
     }
 }
 
-#[unstable = "waiting on Show stability"]
-impl<T: fmt::Show> fmt::Show for Vec<T> {
+#[stable]
+impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(self.as_slice(), f)
+        fmt::Debug::fmt(self.as_slice(), f)
     }
 }
 

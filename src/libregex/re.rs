@@ -90,10 +90,10 @@ impl Clone for ExNative {
     }
 }
 
-impl fmt::String for Regex {
+impl fmt::Display for Regex {
     /// Shows the original regular expression.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self.as_str(), f)
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 

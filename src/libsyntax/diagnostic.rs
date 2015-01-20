@@ -235,9 +235,9 @@ pub enum Level {
     Help,
 }
 
-impl fmt::String for Level {
+impl fmt::Display for Level {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        use std::fmt::String;
+        use std::fmt::Display;
 
         match *self {
             Bug => "error: internal compiler error".fmt(f),

@@ -397,7 +397,7 @@ impl Command {
     }
 }
 
-impl fmt::String for Command {
+impl fmt::Debug for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
@@ -496,7 +496,7 @@ pub enum StdioContainer {
 
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Show)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
     ExitStatus(int),
@@ -505,15 +505,8 @@ pub enum ProcessExit {
     ExitSignal(int),
 }
 
-impl fmt::Show for ProcessExit {
-    /// Format a ProcessExit enum, to nicely present the information.
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
-
-impl fmt::String for ProcessExit {
+#[stable]
+impl fmt::Display for ProcessExit {
     /// Format a ProcessExit enum, to nicely present the information.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

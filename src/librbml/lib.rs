@@ -38,6 +38,7 @@ pub use self::EbmlEncoderTag::*;
 pub use self::Error::*;
 
 use std::str;
+use std::fmt;
 
 pub mod io;
 
@@ -112,6 +113,13 @@ pub enum Error {
     Expected(String),
     IoError(std::io::IoError),
     ApplicationError(String)
+}
+
+impl fmt::Display for Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // FIXME: this should be a more useful display form
+        fmt::Debug::fmt(self, f)
+    }
 }
 // --------------------------------------
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Show;
+use std::fmt::Debug;
 use std::default::Default;
 
 trait MyTrait {
@@ -23,7 +23,7 @@ impl<T> MyTrait for T
     }
 }
 
-#[derive(Clone,Show,PartialEq)]
+#[derive(Clone,Debug,PartialEq)]
 struct MyType {
     dummy: uint
 }
@@ -35,7 +35,7 @@ impl MyTrait for MyType {
 }
 
 fn test_eq<M>(m: M, n: M)
-where M : MyTrait + Show + PartialEq
+where M : MyTrait + Debug + PartialEq
 {
     assert_eq!(m.get(), n);
 }

@@ -358,9 +358,9 @@ pub enum StabilityLevel {
     Locked
 }
 
-impl fmt::String for StabilityLevel {
+impl fmt::Display for StabilityLevel {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(self, f)
+        fmt::Debug::fmt(self, f)
     }
 }
 

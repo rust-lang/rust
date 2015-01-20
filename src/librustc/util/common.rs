@@ -12,7 +12,7 @@
 
 use std::cell::{RefCell, Cell};
 use std::collections::HashMap;
-use std::fmt::Show;
+use std::fmt::Debug;
 use std::hash::{Hash, Hasher};
 use std::iter::repeat;
 use std::time::Duration;
@@ -58,7 +58,7 @@ pub fn time<T, U, F>(do_it: bool, what: &str, u: U, f: F) -> T where
 }
 
 pub fn indent<R, F>(op: F) -> R where
-    R: Show,
+    R: Debug,
     F: FnOnce() -> R,
 {
     // Use in conjunction with the log post-processor like `src/etc/indenter`
