@@ -933,12 +933,26 @@ trait RcBoxPtr<T> {
 
 impl<T> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> { unsafe { &(**self._ptr) } }
+    fn inner(&self) -> &RcBox<T> {
+        unsafe {
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway
+            assume(!self._ptr.is_null());
+            &(**self._ptr)
+        }
+    }
 }
 
 impl<T> RcBoxPtr<T> for Weak<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> { unsafe { &(**self._ptr) } }
+    fn inner(&self) -> &RcBox<T> {
+        unsafe {
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway
+            assume(!self._ptr.is_null());
+            &(**self._ptr)
+        }
+    }
 }
 
 #[cfg(test)]
