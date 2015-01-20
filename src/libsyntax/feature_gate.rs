@@ -78,6 +78,8 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("while_let", Accepted),
 
     ("plugin", Active),
+    ("start", Active),
+    ("main", Active),
 
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
@@ -278,6 +280,18 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 if attr::contains_name(&i.attrs[], "plugin_registrar") {
                     self.gate_feature("plugin_registrar", i.span,
                                       "compiler plugins are experimental and possibly buggy");
+                }
+                if attr::contains_name(&i.attrs[], "start") {
+                    self.gate_feature("start", i.span,
+                                      "a #[start] function is an experimental \
+                                       feature whose signature may change \
+                                       over time");
+                }
+                if attr::contains_name(&i.attrs[], "main") {
+                    self.gate_feature("main", i.span,
+                                      "declaration of a nonstandard #[main] \
+                                       function may change over time, for now \
+                                       a top-level `fn main()` is required");
                 }
             }
 

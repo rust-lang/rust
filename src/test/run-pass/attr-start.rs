@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(start)]
 
 #[start]
 fn start(_argc: int, _argv: *const *const u8) -> int {
