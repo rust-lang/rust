@@ -16,7 +16,6 @@ use core::prelude::*;
 use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
-use core::fmt::Show;
 use core::fmt;
 // NOTE(stage0) remove import after a snapshot
 #[cfg(stage0)]
@@ -591,19 +590,26 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     }
 }
 
-#[stable]
-impl<T: Show> Show for BTreeSet<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "BTreeSet {{"));
+macro_rules! fmt_btree_set {
+    ($($Trait:ident),*) => {
+        $(
+            impl<T: fmt::$Trait> fmt::$Trait for BTreeSet<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    try!(write!(f, "BTreeSet {{"));
 
-        for (i, x) in self.iter().enumerate() {
-            if i != 0 { try!(write!(f, ", ")); }
-            try!(write!(f, "{:?}", *x));
-        }
+                    for (i, x) in self.iter().enumerate() {
+                        if i != 0 { try!(write!(f, ", ")); }
+                        try!(fmt::$Trait::fmt(x, f));
+                    }
 
-        write!(f, "}}")
+                    write!(f, "}}")
+                }
+            }
+        )*
     }
 }
+
+fmt_btree_set! { Show, String, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable]
 impl<'a, T> Iterator for Iter<'a, T> {

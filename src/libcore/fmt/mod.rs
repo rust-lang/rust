@@ -822,27 +822,6 @@ impl<'a> Show for &'a (any::Any+'a) {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
 }
 
-impl<T: Show> Show for [T] {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "["));
-        }
-        let mut is_first = true;
-        for x in self.iter() {
-            if is_first {
-                is_first = false;
-            } else {
-                try!(write!(f, ", "));
-            }
-            try!(write!(f, "{:?}", *x))
-        }
-        if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
-            try!(write!(f, "]"));
-        }
-        Ok(())
-    }
-}
-
 impl Show for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
@@ -890,6 +869,35 @@ impl String for Utf8Error {
         }
     }
 }
+
+macro_rules! fmt_dst {
+    ($($Trait:ident),*) => {
+        $(
+            impl<T: $Trait> $Trait for [T] {
+                fn fmt(&self, f: &mut Formatter) -> Result {
+                    if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+                        try!(write!(f, "["));
+                    }
+                    let mut is_first = true;
+                    for x in self.iter() {
+                        if is_first {
+                            is_first = false;
+                        } else {
+                            try!(write!(f, ", "));
+                        }
+                        try!($Trait::fmt(x, f));
+                    }
+                    if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
+                        try!(write!(f, "]"));
+                    }
+                    Ok(())
+                }
+            }
+        )*
+    }
+}
+
+fmt_dst! { Show, String, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 // If you expected tests to be here, look instead at the run-pass/ifmt.rs test,
 // it's a lot easier than creating all of the rt::Piece structures here.

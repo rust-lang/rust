@@ -1486,12 +1486,19 @@ impl<T> Default for Vec<T> {
     }
 }
 
-#[unstable = "waiting on Show stability"]
-impl<T: fmt::Show> fmt::Show for Vec<T> {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(self.as_slice(), f)
+macro_rules! fmt_vec {
+    ($($Trait:ident),*) => {
+        $(
+            impl<T: fmt::$Trait> fmt::$Trait for Vec<T> {
+                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+                    fmt::$Trait::fmt(self.as_slice(), f)
+                }
+            }
+        )*
     }
 }
+
+fmt_vec! { Show, String, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 impl<'a> fmt::Writer for Vec<u8> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
