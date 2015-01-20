@@ -13,14 +13,11 @@
 extern crate syntax;
 extern crate rustc;
 
-extern crate regex;
-
 #[macro_use]
 extern crate log;
 
 use std::collections::HashMap;
 use std::io::File;
-use regex::Regex;
 
 use syntax::parse;
 use syntax::parse::lexer;
@@ -167,15 +164,19 @@ fn count(lit: &str) -> usize {
 }
 
 fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAndSpan {
-    let re = Regex::new(
-      r"\[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]"
-    ).unwrap();
+    // old regex:
+    // \[@(?P<seq>\d+),(?P<start>\d+):(?P<end>\d+)='(?P<content>.+?)',<(?P<toknum>-?\d+)>,\d+:\d+]
+    let start = s.find_str("[@").unwrap();
+    let comma = start + s[start..].find_str(",").unwrap();
+    let colon = comma + s[comma..].find_str(":").unwrap();
+    let content_start = colon + s[colon..].find_str("='").unwrap();
+    let content_end = content_start + s[content_start..].find_str("',<").unwrap();
+    let toknum_end = content_end + s[content_end..].find_str(">,").unwrap();
 
-    let m = re.captures(s).expect(format!("The regex didn't match {}", s).as_slice());
-    let start = m.name("start").unwrap_or("");
-    let end = m.name("end").unwrap_or("");
-    let toknum = m.name("toknum").unwrap_or("");
-    let content = m.name("content").unwrap_or("");
+    let start = &s[comma + 1 .. colon];
+    let end = &s[colon + 1 .. content_start];
+    let content = &s[content_start + 2 .. content_end];
+    let toknum = &s[content_end + 3 .. toknum_end];
 
     let proto_tok = tokens.get(toknum).expect(format!("didn't find token {:?} in the map",
                                                               toknum).as_slice());

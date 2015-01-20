@@ -38,7 +38,6 @@
 #![allow(unstable)]
 
 extern crate getopts;
-extern crate regex;
 extern crate serialize;
 extern crate "serialize" as rustc_serialize;
 extern crate term;
@@ -53,7 +52,6 @@ use self::OutputLocation::*;
 
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
-use regex::Regex;
 use serialize::Encodable;
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
@@ -279,7 +277,7 @@ pub enum ColorConfig {
 }
 
 pub struct TestOpts {
-    pub filter: Option<Regex>,
+    pub filter: Option<String>,
     pub run_ignored: bool,
     pub run_tests: bool,
     pub run_benchmarks: bool,
@@ -365,11 +363,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     if matches.opt_present("h") { usage(args[0].as_slice()); return None; }
 
     let filter = if matches.free.len() > 0 {
-        let s = matches.free[0].as_slice();
-        match Regex::new(s) {
-            Ok(re) => Some(re),
-            Err(e) => return Some(Err(format!("could not parse /{}/: {:?}", s, e)))
-        }
+        Some(matches.free[0].clone())
     } else {
         None
     };
@@ -833,9 +827,10 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     // Remove tests that don't match the test filter
     filtered = match opts.filter {
         None => filtered,
-        Some(ref re) => {
-            filtered.into_iter()
-                .filter(|test| re.is_match(test.desc.name.as_slice())).collect()
+        Some(ref filter) => {
+            filtered.into_iter().filter(|test| {
+                test.desc.name.as_slice().contains(&filter[])
+            }).collect()
         }
     };
 
@@ -1231,16 +1226,6 @@ mod tests {
     }
 
     #[test]
-    fn first_free_arg_should_be_a_filter() {
-        let args = vec!("progname".to_string(), "some_regex_filter".to_string());
-        let opts = match parse_opts(args.as_slice()) {
-            Some(Ok(o)) => o,
-            _ => panic!("Malformed arg in first_free_arg_should_be_a_filter")
-        };
-        assert!(opts.filter.expect("should've found filter").is_match("some_regex_filter"))
-    }
-
-    #[test]
     fn parse_ignored_flag() {
         let args = vec!("progname".to_string(),
                         "filter".to_string(),
@@ -1333,37 +1318,6 @@ mod tests {
 
         for (a, b) in expected.iter().zip(filtered.iter()) {
             assert!(*a == b.desc.name.to_string());
-        }
-    }
-
-    #[test]
-    pub fn filter_tests_regex() {
-        let mut opts = TestOpts::new();
-        opts.filter = Some(::regex::Regex::new("a.*b.+c").unwrap());
-
-        let mut names = ["yes::abXc", "yes::aXXXbXXXXc",
-                         "no::XYZ", "no::abc"];
-        names.sort();
-
-        fn test_fn() {}
-        let tests = names.iter().map(|name| {
-            TestDescAndFn {
-                desc: TestDesc {
-                    name: DynTestName(name.to_string()),
-                    ignore: false,
-                    should_fail: ShouldFail::No,
-                },
-                testfn: DynTestFn(Thunk::new(test_fn))
-            }
-        }).collect();
-        let filtered = filter_tests(&opts, tests);
-
-        let expected: Vec<&str> =
-            names.iter().map(|&s| s).filter(|name| name.starts_with("yes")).collect();
-
-        assert_eq!(filtered.len(), expected.len());
-        for (test, expected_name) in filtered.iter().zip(expected.iter()) {
-            assert_eq!(test.desc.name.as_slice(), *expected_name);
         }
     }
 

@@ -22,7 +22,6 @@ extern crate getopts;
 
 #[macro_use]
 extern crate log;
-extern crate regex;
 
 use std::os;
 use std::io;
@@ -33,7 +32,6 @@ use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
 use util::logv;
-use regex::Regex;
 
 pub mod procsrv;
 pub mod util;
@@ -116,14 +114,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     }
 
     let filter = if !matches.free.is_empty() {
-        let s = matches.free[0].as_slice();
-        match regex::Regex::new(s) {
-            Ok(re) => Some(re),
-            Err(e) => {
-                println!("failed to parse filter /{}/: {:?}", s, e);
-                panic!()
-            }
-        }
+        Some(matches.free[0].clone())
     } else {
         None
     };
@@ -145,7 +136,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
                                        .as_slice()).expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: filter,
-        cfail_regex: Regex::new(errors::EXPECTED_PATTERN).unwrap(),
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
@@ -374,18 +364,24 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
           if full_version_line.as_slice().trim().len() > 0 => {
             let full_version_line = full_version_line.as_slice().trim();
 
-            let re = Regex::new(r"(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)").unwrap();
-
-            match re.captures(full_version_line) {
-                Some(captures) => {
-                    Some(captures.at(2).unwrap_or("").to_string())
+            // used to be a regex "(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)"
+            for (pos, c) in full_version_line.char_indices() {
+                if !c.is_digit(10) { continue }
+                if pos + 2 >= full_version_line.len() { continue }
+                if full_version_line.char_at(pos + 1) != '.' { continue }
+                if !full_version_line.char_at(pos + 2).is_digit(10) { continue }
+                if pos > 0 && full_version_line.char_at_reverse(pos).is_digit(10) {
+                    continue
                 }
-                None => {
-                    println!("Could not extract GDB version from line '{}'",
-                             full_version_line);
-                    None
+                if pos + 3 < full_version_line.len() &&
+                   full_version_line.char_at(pos + 3).is_digit(10) {
+                    continue
                 }
+                return Some(full_version_line[pos..pos+3].to_string());
             }
+            println!("Could not extract GDB version from line '{}'",
+                     full_version_line);
+            None
         },
         _ => None
     }
@@ -408,18 +404,26 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
           if full_version_line.as_slice().trim().len() > 0 => {
             let full_version_line = full_version_line.as_slice().trim();
 
-            let re = Regex::new(r"[Ll][Ll][Dd][Bb]-([0-9]+)").unwrap();
+            for (pos, l) in full_version_line.char_indices() {
+                if l != 'l' && l != 'L' { continue }
+                if pos + 5 >= full_version_line.len() { continue }
+                let l = full_version_line.char_at(pos + 1);
+                if l != 'l' && l != 'L' { continue }
+                let d = full_version_line.char_at(pos + 2);
+                if d != 'd' && d != 'D' { continue }
+                let b = full_version_line.char_at(pos + 3);
+                if b != 'b' && b != 'B' { continue }
+                let dash = full_version_line.char_at(pos + 4);
+                if dash != '-' { continue }
 
-            match re.captures(full_version_line) {
-                Some(captures) => {
-                    Some(captures.at(1).unwrap_or("").to_string())
-                }
-                None => {
-                    println!("Could not extract LLDB version from line '{}'",
-                             full_version_line);
-                    None
-                }
+                let vers = full_version_line[pos + 5..].chars().take_while(|c| {
+                    c.is_digit(10)
+                }).collect::<String>();
+                if vers.len() > 0 { return Some(vers) }
             }
+            println!("Could not extract LLDB version from line '{}'",
+                     full_version_line);
+            None
         },
         _ => None
     }
