@@ -10,17 +10,29 @@
 
 pub trait MyTrait {}
 
+// @matches foo/struct.Alpha.html '//pre' "Alpha.*where.*A:.*MyTrait"
 pub struct Alpha<A> where A: MyTrait;
+// @matches foo/trait.Bravo.html '//pre' "Bravo.*where.*B:.*MyTrait"
 pub trait Bravo<B> where B: MyTrait {}
+// @matches foo/fn.charlie.html '//pre' "charlie.*where.*C:.*MyTrait"
 pub fn charlie<C>() where C: MyTrait {}
 
 pub struct Delta<D>;
+// @matches foo/struct.Delta.html '//*[@class="impl"]//code' "impl.*Delta.*where.*D:.*MyTrait"
 impl<D> Delta<D> where D: MyTrait {
     pub fn delta() {}
 }
 
 pub struct Echo<E>;
+// @matches foo/struct.Echo.html '//*[@class="impl"]//code' \
+//          "impl.*MyTrait.*for.*Echo.*where.*E:.*MyTrait"
+// @matches foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' \
+//          "impl.*MyTrait.*for.*Echo.*where.*E:.*MyTrait"
 impl<E> MyTrait for Echo<E> where E: MyTrait {}
 
 pub enum Foxtrot<F> {}
+// @matches foo/enum.Foxtrot.html '//*[@class="impl"]//code' \
+//          "impl.*MyTrait.*for.*Foxtrot.*where.*F:.*MyTrait"
+// @matches foo/trait.MyTrait.html '//*[@id="implementors-list"]//code' \
+//          "impl.*MyTrait.*for.*Foxtrot.*where.*F:.*MyTrait"
 impl<F> MyTrait for Foxtrot<F> where F: MyTrait {}
