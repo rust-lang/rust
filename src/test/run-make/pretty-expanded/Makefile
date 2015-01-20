@@ -1,4 +1,5 @@
 -include ../tools.mk
 
 all:
-	$(RUSTC) -o $(TMPDIR)/input.expanded.rs --pretty=expanded input.rs
+	$(RUSTC) -o $(TMPDIR)/input.expanded.rs -Z unstable-options \
+		--pretty=expanded input.rs
