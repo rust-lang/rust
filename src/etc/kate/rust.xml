@@ -249,7 +249,7 @@
 			<DetectChar char="=" attribute="Normal Text" context="#pop"/>
 			<DetectChar char="&lt;" attribute="Normal Text" context="#pop"/>
 		</context>
-		<context attribute="String" lineEndContext="#stay" name="String">
+		<context attribute="String" lineEndContext="#pop" name="String">
 			<LineContinue attribute="String" context="#stay"/>
 			<DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
 			<DetectChar attribute="String" context="#pop" char="&quot;"/>
