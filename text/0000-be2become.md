@@ -29,7 +29,9 @@ Some code might be using `become` as an identifier.
 
 # Alternatives
 
-The main alternative is to keep the `be` keyword reserved for supporting guaranteed tail calls in a backward-compatible way. Using `become` as the keyword for tail calls would not be backward-compatible because it would introduce a new keyword, which might have been used in valid code.
+The main alternative is to do nothing, i.e. to keep the `be` keyword reserved for supporting guaranteed tail calls in a backward-compatible way. Using `become` as the keyword for tail calls would not be backward-compatible because it would introduce a new keyword, which might have been used in valid code.
+
+Another option is to add the `become` keyword, without removing `be`. This would have the same drawbacks as the current proposal (might break existing code), but it would also guarantee that the `become` keyword is available in the future.
 
 # Unresolved questions
 
