@@ -426,7 +426,7 @@ impl<T> Vec<T> {
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
             mem::transmute(RawSlice {
-                data: *self.ptr as *const T,
+                data: *self.ptr,
                 len: self.len,
             })
         }
@@ -574,7 +574,7 @@ impl<T> Vec<T> {
                 let ptr = self.as_mut_ptr().offset(index as int);
                 // copy it out, unsafely having a copy of the value on
                 // the stack and in the vector at the same time.
-                ret = ptr::read(ptr as *const T);
+                ret = ptr::read(ptr);
 
                 // Shift everything down to fill in that spot.
                 ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
@@ -879,7 +879,7 @@ impl<T> Vec<T> {
                     //          |         |
                     //          end_u     end_t
 
-                    let t = ptr::read(pv.start_t as *const T);
+                    let t = ptr::read(pv.start_t);
                     //  start_u start_t
                     //  |       |
                     // +-+-+-+-+-+-+-+-+-+
@@ -1443,7 +1443,7 @@ impl<T> AsSlice<T> for Vec<T> {
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe {
             mem::transmute(RawSlice {
-                data: *self.ptr as *const T,
+                data: *self.ptr,
                 len: self.len
             })
         }
@@ -1806,11 +1806,11 @@ impl<T,U> Drop for PartialVecNonZeroSized<T,U> {
 
             // We have instances of `U`s and `T`s in `vec`. Destruct them.
             while self.start_u != self.end_u {
-                let _ = ptr::read(self.start_u as *const U); // Run a `U` destructor.
+                let _ = ptr::read(self.start_u); // Run a `U` destructor.
                 self.start_u = self.start_u.offset(1);
             }
             while self.start_t != self.end_t {
-                let _ = ptr::read(self.start_t as *const T); // Run a `T` destructor.
+                let _ = ptr::read(self.start_t); // Run a `T` destructor.
                 self.start_t = self.start_t.offset(1);
             }
             // After this destructor ran, the destructor of `vec` will run,
