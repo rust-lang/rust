@@ -2451,7 +2451,7 @@ There are three different types of inline attributes:
 * `#[inline(always)]` asks the compiler to always perform an inline expansion.
 * `#[inline(never)]` asks the compiler to never perform an inline expansion.
 
-### Derive
+### `derive`
 
 The `derive` attribute allows certain traits to be automatically implemented
 for data structures. For example, the following will create an `impl` for the

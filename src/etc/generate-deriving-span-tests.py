@@ -12,8 +12,8 @@
 
 """
 This script creates a pile of compile-fail tests check that all the
-derivings have spans that point to the fields, rather than the
-#[deriving(...)] line.
+derives have spans that point to the fields, rather than the
+#[derive(...)] line.
 
 sample usage: src/etc/generate-deriving-span-tests.py
 """
@@ -46,7 +46,7 @@ fn main() {{}}
 """
 
 ENUM_STRING = """
-#[deriving({traits})]
+#[derive({traits})]
 enum Enum {{
    A(
      Error {errors}
@@ -54,7 +54,7 @@ enum Enum {{
 }}
 """
 ENUM_STRUCT_VARIANT_STRING = """
-#[deriving({traits})]
+#[derive({traits})]
 enum Enum {{
    A {{
      x: Error {errors}
@@ -62,13 +62,13 @@ enum Enum {{
 }}
 """
 STRUCT_STRING = """
-#[deriving({traits})]
+#[derive({traits})]
 struct Struct {{
     x: Error {errors}
 }}
 """
 STRUCT_TUPLE_STRING = """
-#[deriving({traits})]
+#[derive({traits})]
 struct Struct(
     Error {errors}
 );
@@ -80,14 +80,14 @@ def create_test_case(type, trait, super_traits, number_of_errors):
     string = [ENUM_STRING, ENUM_STRUCT_VARIANT_STRING, STRUCT_STRING, STRUCT_TUPLE_STRING][type]
     all_traits = ','.join([trait] + super_traits)
     super_traits = ','.join(super_traits)
-    error_deriving = '#[deriving(%s)]' % super_traits if super_traits else ''
+    error_deriving = '#[derive(%s)]' % super_traits if super_traits else ''
 
     errors = '\n'.join('//~%s ERROR' % ('^' * n) for n in range(error_count))
     code = string.format(traits = all_traits, errors = errors)
     return TEMPLATE.format(year = YEAR, error_deriving=error_deriving, code = code)
 
 def write_file(name, string):
-    test_file = os.path.join(TEST_DIR, 'deriving-span-%s.rs' % name)
+    test_file = os.path.join(TEST_DIR, 'derives-span-%s.rs' % name)
 
     # set write permission if file exists, so it can be changed
     if os.path.exists(test_file):

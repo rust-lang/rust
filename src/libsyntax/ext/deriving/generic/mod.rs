@@ -1191,7 +1191,7 @@ impl<'a> TraitDef<'a> {
         to_set.expn_id = cx.codemap().record_expansion(codemap::ExpnInfo {
             call_site: to_set,
             callee: codemap::NameAndSpan {
-                name: format!("deriving({})", trait_name),
+                name: format!("derive({})", trait_name),
                 format: codemap::MacroAttribute,
                 span: Some(self.span)
             }
