@@ -145,7 +145,7 @@ world is not, in fact, UTF-8 (or even Unicode) everywhere.
 Currently our story for platform APIs is that we either assume they can take or
 return Unicode strings (suitably encoded) or an uninterpreted byte
 sequence. Sadly, this approach does *not* actually cover all platform needs, and
-is also not highly ergonomic as presently implemented. (Consider `os::getev`
+is also not highly ergonomic as presently implemented. (Consider `os::getenv`
 which introduces replacement characters (!) versus `os::getenv_as_bytes` which
 yields a `Vec<u8>`; neither is ideal.)
 
