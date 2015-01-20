@@ -814,7 +814,13 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                        sub_span,
                                                        def_id,
                                                        self.cur_scope),
-            def::DefStaticMethod(declid, provenence) => {
+            def::DefTy(def_id, _) => self.fmt.ref_str(recorder::TypeRef,
+                                                      span,
+                                                      sub_span,
+                                                      def_id,
+                                                      self.cur_scope),
+            def::DefStaticMethod(declid, provenence) |
+            def::DefMethod(declid, _, provenence) => {
                 let sub_span = self.span.sub_span_for_meth_name(span);
                 let defid = if declid.krate == ast::LOCAL_CRATE {
                     let ti = ty::impl_or_trait_item(&self.analysis.ty_cx,
@@ -856,13 +862,17 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                        Some(declid),
                                        self.cur_scope);
             },
-            def::DefFn(def_id, _) => self.fmt.fn_call_str(span,
-                                                          sub_span,
-                                                          def_id,
-                                                          self.cur_scope),
+            def::DefFn(def_id, _) => {
+                self.fmt.fn_call_str(span,
+                                     sub_span,
+                                     def_id,
+                                     self.cur_scope)
+            }
             _ => self.sess.span_bug(span,
-                                    &format!("Unexpected def kind while looking up path in '{}'",
-                                            self.span.snippet(span))[]),
+                                    &format!("Unexpected def kind while looking \
+                                              up path in `{}`: `{:?}`",
+                                             self.span.snippet(span),
+                                             *def)[]),
         }
         // modules or types in the path prefix
         match *def {
@@ -886,21 +896,21 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             return
         }
 
-        let mut struct_def: Option<DefId> = None;
-        match self.lookup_type_ref(ex.id) {
-            Some(id) => {
-                struct_def = Some(id);
+        self.write_sub_paths_truncated(path, false);
+
+        let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, ex).sty;
+        let struct_def = match *ty {
+            ty::ty_struct(def_id, _) => {
                 let sub_span = self.span.span_for_last_ident(path.span);
                 self.fmt.ref_str(recorder::StructRef,
                                  path.span,
                                  sub_span,
-                                 id,
+                                 def_id,
                                  self.cur_scope);
-            },
-            None => ()
-        }
-
-        self.write_sub_paths_truncated(path, false);
+                Some(def_id)
+            }
+            _ => None
+        };
 
         for field in fields.iter() {
             match struct_def {
@@ -1335,8 +1345,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 }
 
                 self.visit_expr(&**sub_ex);
-
-                match ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty {
+                let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty;
+                match *ty {
                     ty::ty_struct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
                         for f in fields.iter() {
@@ -1350,9 +1360,9 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                 break;
                             }
                         }
-                    },
+                    }
                     _ => self.sess.span_bug(ex.span,
-                                            "Expected struct type, but not ty_struct"),
+                                            &format!("Expected struct type, found {:?}", ty)[]),
                 }
             },
             ast::ExprTupField(ref sub_ex, idx) => {
@@ -1362,12 +1372,13 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
                 self.visit_expr(&**sub_ex);
 
-                match ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty {
+                let ty = &ty::expr_ty_adjusted(&self.analysis.ty_cx, &**sub_ex).sty;
+                match *ty {
                     ty::ty_struct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
                         for (i, f) in fields.iter().enumerate() {
                             if i == idx.node {
-                                let sub_span = self.span.span_for_last_ident(ex.span);
+                                let sub_span = self.span.sub_span_after_token(ex.span, token::Dot);
                                 self.fmt.ref_str(recorder::VarRef,
                                                  ex.span,
                                                  sub_span,
@@ -1376,9 +1387,11 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                 break;
                             }
                         }
-                    },
+                    }
+                    ty::ty_tup(_) => {}
                     _ => self.sess.span_bug(ex.span,
-                                            "Expected struct type, but not ty_struct"),
+                                            &format!("Expected struct or tuple \
+                                                      type, found {:?}", ty)[]),
                 }
             },
             ast::ExprClosure(_, _, ref decl, ref body) => {
@@ -1454,7 +1467,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                           &value[],
                                           "")
                 }
-                def::DefVariant(..) => {
+                def::DefVariant(..) | def::DefTy(..) | def::DefStruct(..) => {
                     paths_to_process.push((id, p.clone(), Some(ref_kind)))
                 }
                 // FIXME(nrc) what are these doing here?
