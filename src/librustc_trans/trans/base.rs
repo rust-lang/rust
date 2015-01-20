@@ -2901,7 +2901,8 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
                     let llfn = foreign::register_foreign_item_fn(ccx, abi, ty, &name.get()[]);
-                    foreign::add_abi_attributes(ccx, llfn, abi, &ni.attrs[]);
+                    // FIXME(aatch) Re-enable pending RFC
+                    //foreign::add_abi_attributes(ccx, llfn, abi, &ni.attrs[]);
                     llfn
                 }
                 ast::ForeignItemStatic(..) => {

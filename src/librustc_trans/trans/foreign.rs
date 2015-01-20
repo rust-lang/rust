@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -639,7 +639,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                       llrustfn: ValueRef,
                                       llwrapfn: ValueRef,
                                       tys: &ForeignTypes<'tcx>,
-                                      t: Ty<'tcx>, attrs: &[ast::Attribute]) {
+                                      t: Ty<'tcx>, _attrs: &[ast::Attribute]) {
         let _icx = push_ctxt(
             "foreign::trans_rust_fn_with_foreign_abi::build_wrap_fn");
         let tcx = ccx.tcx();
@@ -816,42 +816,10 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Perform the call itself
         debug!("calling llrustfn = {}, t = {}",
                ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
+        // FIXME(aatch) Wrap the call in a try-catch and handle unwinding
+        //              pending RFC
         let attributes = base::get_fn_llvm_attributes(ccx, t);
-        let llrust_ret_val = if attr::contains_name(attrs, "can_unwind") {
-            debug!("fn can unwind - using call");
-            builder.call(llrustfn, llrust_args.as_slice(), Some(attributes))
-        } else {
-            debug!("fn can't unwind - using invoke");
-            // Create the landing pad and the return blocks
-            let ptr = "catch\0".as_ptr();
-            let catch_block = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn,
-                                                                ptr as *const _);
-
-            let ptr = "return\0".as_ptr();
-            let return_block = llvm::LLVMAppendBasicBlockInContext(ccx.llcx(), llwrapfn,
-                                                                ptr as *const _);
-
-
-            let llrust_ret_val = builder.invoke(llrustfn, llrust_args.as_slice(),
-                                                return_block, catch_block,
-                                                Some(attributes));
-
-            // Populate the landing pad
-            builder.position_at_end(catch_block);
-            let pad_ty = Type::struct_(ccx, &[Type::i8p(ccx), Type::i32(ccx)], false);
-            let llpersonality = base::get_eh_personality(ccx);
-
-            let pad_ret_val = builder.landing_pad(pad_ty, llpersonality, 1us);
-            builder.add_clause(pad_ret_val, C_null(Type::i8p(ccx)));
-            let trap = ccx.get_intrinsic(&("llvm.trap"));
-            builder.call(trap, &[], None);
-            builder.unreachable();
-
-            builder.position_at_end(return_block);
-
-            llrust_ret_val
-
-        };
+        let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), Some(attributes));
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
