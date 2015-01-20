@@ -239,12 +239,6 @@ impl Clone for MetricMap {
     }
 }
 
-/// Analysis of a single change in metric
-#[derive(Copy, PartialEq, Show)]
-pub struct MetricChange;
-
-pub type MetricDiff = BTreeMap<String,MetricChange>;
-
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
@@ -1166,26 +1160,6 @@ impl MetricMap {
         let MetricMap(ref mut map) = *self;
         map.insert(name.to_string(), m);
     }
-
-    /// Attempt to "ratchet" an external metric file. This involves loading
-    /// metrics from a metric file (if it exists), comparing against
-    /// the metrics in `self` using `compare_to_old`, and rewriting the
-    /// file to contain the metrics in `self` if none of the
-    /// `MetricChange`s are `Regression`. Returns the diff as well
-    /// as a boolean indicating whether the ratchet succeeded.
-    pub fn ratchet(&self, p: &Path) -> (MetricDiff, bool) {
-        let diff : MetricDiff = BTreeMap::new();
-        let ok = diff.iter().all(|(_, v)| {
-            match *v {
-                _ => true
-            }
-        });
-
-        if ok {
-            self.save(p).unwrap();
-        }
-        return (diff, ok)
-    }
 }
 
 
@@ -1593,47 +1567,5 @@ mod tests {
 
         m1.insert_metric("in-both-want-upwards-and-improved", 1000.0, -10.0);
         m2.insert_metric("in-both-want-upwards-and-improved", 2000.0, -10.0);
-    }
-
-    #[test]
-    pub fn ratchet_test() {
-
-        let dpth = TempDir::new("test-ratchet").ok().expect("missing test for ratchet");
-        let pth = dpth.path().join("ratchet.json");
-
-        let mut m1 = MetricMap::new();
-        m1.insert_metric("runtime", 1000.0, 2.0);
-        m1.insert_metric("throughput", 50.0, 2.0);
-
-        let mut m2 = MetricMap::new();
-        m2.insert_metric("runtime", 1100.0, 2.0);
-        m2.insert_metric("throughput", 50.0, 2.0);
-
-        m1.save(&pth).unwrap();
-
-        // Ask for a ratchet that should fail to advance.
-        let (diff1, ok1) = m2.ratchet(&pth);
-        assert_eq!(ok1, false);
-        assert_eq!(diff1.len(), 2);
-
-        // Check that it was not rewritten.
-        let m3 = MetricMap::load(&pth);
-        let MetricMap(m3) = m3;
-        assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.get(&"runtime".to_string()).unwrap()), Metric::new(1000.0, 2.0));
-        assert_eq!(*(m3.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
-
-        // Ask for a ratchet with an explicit noise-percentage override,
-        // that should advance.
-        let (diff2, ok2) = m2.ratchet(&pth);
-        assert_eq!(ok2, true);
-        assert_eq!(diff2.len(), 2);
-
-        // Check that it was rewritten.
-        let m4 = MetricMap::load(&pth);
-        let MetricMap(m4) = m4;
-        assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.get(&"runtime".to_string()).unwrap()), Metric::new(1100.0, 2.0));
-        assert_eq!(*(m4.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
     }
 }
