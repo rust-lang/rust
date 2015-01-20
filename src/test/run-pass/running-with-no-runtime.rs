@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(start)]
+
 use std::ffi;
 use std::io::process::{Command, ProcessOutput};
 use std::os;

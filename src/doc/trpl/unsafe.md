@@ -447,7 +447,7 @@ in the same format as C:
 
 ```
 #![no_std]
-#![feature(lang_items)]
+#![feature(lang_items, start)]
 
 // Pull in the system libc library for what crt0.o likely requires
 extern crate libc;
@@ -475,7 +475,7 @@ compiler's name mangling too:
 ```ignore
 #![no_std]
 #![no_main]
-#![feature(lang_items)]
+#![feature(lang_items, start)]
 
 extern crate libc;
 
@@ -529,7 +529,7 @@ vectors provided from C, using idiomatic Rust practices.
 
 ```
 #![no_std]
-#![feature(lang_items)]
+#![feature(lang_items, start)]
 
 # extern crate libc;
 extern crate core;
@@ -653,7 +653,7 @@ sugar for dynamic allocations via `malloc` and `free`:
 
 ```
 #![no_std]
-#![feature(lang_items, box_syntax)]
+#![feature(lang_items, box_syntax, start)]
 
 extern crate libc;
 

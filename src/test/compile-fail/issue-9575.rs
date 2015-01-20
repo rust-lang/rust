@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(start)]
+
 #[start]
 fn start(argc: isize, argv: *const *const u8, crate_map: *const u8) -> isize {
     //~^ ERROR incorrect number of function parameters
