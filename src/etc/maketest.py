@@ -46,6 +46,8 @@ putenv('LD_LIB_PATH_ENVVAR', sys.argv[8]);
 putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[9]));
 putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[10]));
 putenv('RUST_BUILD_STAGE', sys.argv[11])
+putenv('S', os.path.abspath(sys.argv[12]))
+putenv('PYTHON', sys.executable)
 
 if not filt in sys.argv[1]:
     sys.exit(0)
