@@ -73,18 +73,18 @@
     ;; open bracket ends the line
     (when (not (looking-at "[[:blank:]]*\\(?://.*\\)?$"))
       (when (looking-at "[[:space:]]")
-	(forward-word 1)
-	(backward-word 1))
+    (forward-word 1)
+    (backward-word 1))
       (current-column))))
 
 (defun rust-align-to-method-chain ()
   (save-excursion
-	(previous-line)
-	(end-of-line)
-	(backward-word 1)
-	(backward-char)
-	(when (looking-at "\\..+\(.*\)\n")
-	  (- (current-column) rust-indent-offset))))
+    (previous-line)
+    (end-of-line)
+    (backward-word 1)
+    (backward-char)
+    (when (looking-at "\\..+\(.*\)\n")
+      (- (current-column) rust-indent-offset))))
 
 (defun rust-rewind-to-beginning-of-current-level-expr ()
   (let ((current-level (rust-paren-level)))
@@ -108,9 +108,9 @@
                    ;; the inside of it correctly relative to the outside.
                    (if (= 0 level)
                        0
-					 (or
-					  (when rust-indent-method-chain
-						(rust-align-to-method-chain))
+                     (or
+                      (when rust-indent-method-chain
+                        (rust-align-to-method-chain))
                      (save-excursion
                        (backward-up-list)
                        (rust-rewind-to-beginning-of-current-level-expr)
@@ -126,16 +126,16 @@
               ;; A closing brace is 1 level unindended
               ((looking-at "}") (- baseline rust-indent-offset))
 
-			  ;;Line up method chains by their .'s
-			  ((when (and rust-indent-method-chain
-						  (looking-at "\..+\(.*\);?\n"))
-				 (or
-				  (let ((method-indent (rust-align-to-method-chain)))
-					(when method-indent
-					  (+ method-indent rust-indent-offset)))
-				  (+ baseline rust-indent-offset))))
+              ;;Line up method chains by their .'s
+              ((when (and rust-indent-method-chain
+                          (looking-at "\..+\(.*\);?\n"))
+                 (or
+                  (let ((method-indent (rust-align-to-method-chain)))
+                    (when method-indent
+                      (+ method-indent rust-indent-offset)))
+                  (+ baseline rust-indent-offset))))
 
-			  
+              
               ;; Doc comments in /** style with leading * indent to line up the *s
               ((and (nth 4 (syntax-ppss)) (looking-at "*"))
                (+ 1 baseline))
