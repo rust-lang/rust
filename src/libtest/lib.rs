@@ -187,7 +187,7 @@ impl fmt::Show for TestFn {
 
 /// Manager of the benchmarking runs.
 ///
-/// This is feed into functions marked with `#[bench]` to allow for
+/// This is fed into functions marked with `#[bench]` to allow for
 /// set-up & tear-down before running a piece of code repeatedly via a
 /// call to `iter`.
 #[derive(Copy)]
