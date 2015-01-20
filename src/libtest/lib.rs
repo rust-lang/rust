@@ -1145,51 +1145,6 @@ impl MetricMap {
         write!(&mut file, "{}", json::as_json(map))
     }
 
-    /// Compare against another MetricMap. Optionally compare all
-    /// measurements in the maps using the provided `noise_pct` as a
-    /// percentage of each value to consider noise. If `None`, each
-    /// measurement's noise threshold is independently chosen as the
-    /// maximum of that measurement's recorded noise quantity in either
-    /// map.
-    pub fn compare_to_old(&self, old: &MetricMap,
-                          noise_pct: Option<f64>) -> MetricDiff {
-        let mut diff : MetricDiff = BTreeMap::new();
-        let MetricMap(ref selfmap) = *self;
-        let MetricMap(ref old) = *old;
-        for (k, vold) in old.iter() {
-            match selfmap.get(k) {
-                None => (),
-                Some(v) => {
-                    let delta = v.value - vold.value;
-                    let noise = match noise_pct {
-                        None => vold.noise.abs().max(v.noise.abs()),
-                        Some(pct) => vold.value * pct / 100.0
-                    };
-                    if delta.abs() <= noise {
-                    } else {
-                        if vold.noise < 0.0 {
-                            // When 'noise' is negative, it means we want
-                            // to see deltas that go up over time, and can
-                            // only tolerate slight negative movement.
-                            if delta < 0.0 {
-                            } else {
-                            }
-                        } else {
-                            // When 'noise' is positive, it means we want
-                            // to see deltas that go down over time, and
-                            // can only tolerate slight positive movements.
-                            if delta < 0.0 {
-                            } else {
-                            }
-                        }
-                    }
-                }
-            };
-            diff.insert((*k).clone(), MetricChange);
-        }
-        diff
-    }
-
     /// Insert a named `value` (+/- `noise`) metric into the map. The value
     /// must be non-negative. The `noise` indicates the uncertainty of the
     /// metric, which doubles as the "noise range" of acceptable
@@ -1218,14 +1173,8 @@ impl MetricMap {
     /// file to contain the metrics in `self` if none of the
     /// `MetricChange`s are `Regression`. Returns the diff as well
     /// as a boolean indicating whether the ratchet succeeded.
-    pub fn ratchet(&self, p: &Path, pct: Option<f64>) -> (MetricDiff, bool) {
-        let old = if p.exists() {
-            MetricMap::load(p)
-        } else {
-            MetricMap::new()
-        };
-
-        let diff : MetricDiff = self.compare_to_old(&old, pct);
+    pub fn ratchet(&self, p: &Path) -> (MetricDiff, bool) {
+        let diff : MetricDiff = BTreeMap::new();
         let ok = diff.iter().all(|(_, v)| {
             match *v {
                 _ => true
@@ -1644,14 +1593,6 @@ mod tests {
 
         m1.insert_metric("in-both-want-upwards-and-improved", 1000.0, -10.0);
         m2.insert_metric("in-both-want-upwards-and-improved", 2000.0, -10.0);
-
-        let diff1 = m2.compare_to_old(&m1, None);
-
-        assert_eq!(diff1.len(), 7);
-
-        let diff2 = m2.compare_to_old(&m1, Some(200.0));
-
-        assert_eq!(diff2.len(), 7);
     }
 
     #[test]
@@ -1671,7 +1612,7 @@ mod tests {
         m1.save(&pth).unwrap();
 
         // Ask for a ratchet that should fail to advance.
-        let (diff1, ok1) = m2.ratchet(&pth, None);
+        let (diff1, ok1) = m2.ratchet(&pth);
         assert_eq!(ok1, false);
         assert_eq!(diff1.len(), 2);
 
@@ -1684,7 +1625,7 @@ mod tests {
 
         // Ask for a ratchet with an explicit noise-percentage override,
         // that should advance.
-        let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
+        let (diff2, ok2) = m2.ratchet(&pth);
         assert_eq!(ok2, true);
         assert_eq!(diff2.len(), 2);
 
