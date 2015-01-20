@@ -229,7 +229,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
     }
 
     let mut info: Dl_info = unsafe { intrinsics::init() };
-    if unsafe { dladdr(addr as *const libc::c_void, &mut info) == 0 } {
+    if unsafe { dladdr(addr, &mut info) == 0 } {
         output(w, idx,addr, None)
     } else {
         output(w, idx, addr, Some(unsafe {

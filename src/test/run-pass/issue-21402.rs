@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test mutability and slicing syntax.
-
-fn main() {
-    let x: &[isize] = &[1, 2, 3, 4, 5];
-    // Immutable slices are not mutable.
-    let y: &mut[_] = &x[2..4];
-    //~^ ERROR mismatched types
-    //~| expected `&mut [_]`
-    //~| found `&_`
-    //~| values differ in mutability
+#[derive(Hash)]
+struct Foo {
+    a: Vec<bool>,
+    b: (bool, bool),
+    c: [bool; 2],
 }
+
+fn main() {}

@@ -128,7 +128,7 @@ mod imp {
                 l_sysid: 0,
             };
             let ret = unsafe {
-                libc::fcntl(fd, os::F_SETLKW, &flock as *const os::flock)
+                libc::fcntl(fd, os::F_SETLKW, &flock)
             };
             if ret == -1 {
                 let errno = stdos::errno();
@@ -151,7 +151,7 @@ mod imp {
                 l_sysid: 0,
             };
             unsafe {
-                libc::fcntl(self.fd, os::F_SETLK, &flock as *const os::flock);
+                libc::fcntl(self.fd, os::F_SETLK, &flock);
                 libc::close(self.fd);
             }
         }

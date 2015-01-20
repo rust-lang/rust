@@ -11,7 +11,7 @@
 use prelude::v1::*;
 
 use cell::UnsafeCell;
-use error::FromError;
+use error::{Error, FromError};
 use fmt;
 use thread::Thread;
 
@@ -92,7 +92,13 @@ pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
 impl<T> fmt::Show for PoisonError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        "poisoned lock: another task failed inside".fmt(f)
+        self.description().fmt(f)
+    }
+}
+
+impl<T> Error for PoisonError<T> {
+    fn description(&self) -> &str {
+        "poisoned lock: another task failed inside"
     }
 }
 
@@ -126,11 +132,22 @@ impl<T> FromError<PoisonError<T>> for TryLockError<T> {
 
 impl<T> fmt::Show for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+impl<T> Error for TryLockError<T> {
+    fn description(&self) -> &str {
         match *self {
-            TryLockError::Poisoned(ref p) => p.fmt(f),
-            TryLockError::WouldBlock => {
-                "try_lock failed because the operation would block".fmt(f)
-            }
+            TryLockError::Poisoned(ref p) => p.description(),
+            TryLockError::WouldBlock => "try_lock failed because the operation would block"
+        }
+    }
+
+    fn cause(&self) -> Option<&Error> {
+        match *self {
+            TryLockError::Poisoned(ref p) => Some(p),
+            _ => None
         }
     }
 }

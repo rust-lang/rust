@@ -57,7 +57,7 @@ pub fn expand_deriving_rand<F>(cx: &mut ExtCtxt,
 fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) -> P<Expr> {
     let rng = match substr.nonself_args {
         [ref rng] => rng,
-        _ => cx.bug("Incorrect number of arguments to `rand` in `deriving(Rand)`")
+        _ => cx.bug("Incorrect number of arguments to `rand` in `derive(Rand)`")
     };
     let rand_ident = vec!(
         cx.ident_of("std"),
@@ -131,7 +131,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
             let block = cx.block(trait_span, vec!( let_statement ), Some(match_expr));
             cx.expr_block(block)
         }
-        _ => cx.bug("Non-static method in `deriving(Rand)`")
+        _ => cx.bug("Non-static method in `derive(Rand)`")
     };
 
     fn rand_thing<F>(cx: &mut ExtCtxt,

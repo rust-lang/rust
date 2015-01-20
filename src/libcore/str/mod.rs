@@ -678,18 +678,15 @@ struct TwoWaySearcher {
 */
 impl TwoWaySearcher {
     fn new(needle: &[u8]) -> TwoWaySearcher {
-        let (crit_pos1, period1) = TwoWaySearcher::maximal_suffix(needle, false);
-        let (crit_pos2, period2) = TwoWaySearcher::maximal_suffix(needle, true);
+        let (crit_pos_false, period_false) = TwoWaySearcher::maximal_suffix(needle, false);
+        let (crit_pos_true, period_true) = TwoWaySearcher::maximal_suffix(needle, true);
 
-        let crit_pos;
-        let period;
-        if crit_pos1 > crit_pos2 {
-            crit_pos = crit_pos1;
-            period = period1;
-        } else {
-            crit_pos = crit_pos2;
-            period = period2;
-        }
+        let (crit_pos, period) =
+            if crit_pos_false > crit_pos_true {
+                (crit_pos_false, period_false)
+            } else {
+                (crit_pos_true, period_true)
+            };
 
         // This isn't in the original algorithm, as far as I'm aware.
         let byteset = needle.iter()

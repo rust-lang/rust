@@ -156,7 +156,7 @@ mod svh_visitor {
         StrictVersionHashVisitor { st: st }
     }
 
-    // To off-load the bulk of the hash-computation on deriving(Hash),
+    // To off-load the bulk of the hash-computation on #[derive(Hash)],
     // we define a set of enums corresponding to the content that our
     // crate visitor will encounter as it traverses the ast.
     //

@@ -102,10 +102,10 @@ pub fn fixme_14344_be_sure_to_link_to_collections() {}
 mod std {
     pub use core::fmt;      // necessary for panic!()
     pub use core::option;   // necessary for panic!()
-    pub use core::clone;    // deriving(Clone)
-    pub use core::cmp;      // deriving(Eq, Ord, etc.)
-    pub use core::marker;  // deriving(Copy)
-    pub use core::hash;     // deriving(Hash)
+    pub use core::clone;    // derive(Clone)
+    pub use core::cmp;      // derive(Eq, Ord, etc.)
+    pub use core::marker;  // derive(Copy)
+    pub use core::hash;     // derive(Hash)
 }
 
 #[cfg(test)]

@@ -173,7 +173,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 cx.lambda_expr_1(trait_span, result, blkarg)
             ))
         }
-        _ => cx.bug("expected StaticEnum or StaticStruct in deriving(Decodable)")
+        _ => cx.bug("expected StaticEnum or StaticStruct in derive(Decodable)")
     };
 }
 

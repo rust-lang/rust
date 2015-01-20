@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test mutability and slicing syntax.
+fn f(x: &mut i32) {}
 
 fn main() {
-    let x: &[isize] = &[1, 2, 3, 4, 5];
-    // Immutable slices are not mutable.
-    let y: &mut[_] = &x[2..4];
+    let x = 0;
+    f(&x);
     //~^ ERROR mismatched types
-    //~| expected `&mut [_]`
+    //~| expected `&mut i32`
     //~| found `&_`
     //~| values differ in mutability
 }

@@ -17,6 +17,7 @@
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use fmt;
+use hash::{Hash, Hasher, self};
 use marker::Copy;
 use ops::{Deref, FullRange};
 use option::Option;
@@ -29,6 +30,12 @@ macro_rules! array_impls {
             impl<T:Copy> Clone for [T; $N] {
                 fn clone(&self) -> [T; $N] {
                     *self
+                }
+            }
+
+            impl<S: hash::Writer + Hasher, T: Hash<S>> Hash<S> for [T; $N] {
+                fn hash(&self, state: &mut S) {
+                    Hash::hash(&self[], state)
                 }
             }
 
