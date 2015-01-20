@@ -108,7 +108,7 @@ pub trait Drop {
 // based on "op T" where T is expected to be `Copy`able
 macro_rules! forward_ref_unop {
     (impl $imp:ident, $method:ident for $t:ty) => {
-        #[unstable]
+        #[unstable = "recently added, waiting for dust to settle"]
         impl<'a> $imp for &'a $t {
             type Output = <$t as $imp>::Output;
 
@@ -124,7 +124,7 @@ macro_rules! forward_ref_unop {
 // based on "T op U" where T and U are expected to be `Copy`able
 macro_rules! forward_ref_binop {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        #[unstable]
+        #[unstable = "recently added, waiting for dust to settle"]
         impl<'a> $imp<$u> for &'a $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -134,7 +134,7 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable]
+        #[unstable = "recently added, waiting for dust to settle"]
         impl<'a> $imp<&'a $u> for $t {
             type Output = <$t as $imp<$u>>::Output;
 
@@ -144,7 +144,7 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable]
+        #[unstable = "recently added, waiting for dust to settle"]
         impl<'a, 'b> $imp<&'a $u> for &'b $t {
             type Output = <$t as $imp<$u>>::Output;
 
