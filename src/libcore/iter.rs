@@ -107,6 +107,10 @@ impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {
     fn next(&mut self) -> Option<T> {
         (**self).next()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
 }
 
 /// Conversion from an `Iterator`
