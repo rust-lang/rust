@@ -253,9 +253,8 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     let bytes = match File::open(path).read_to_end() {
         Ok(bytes) => bytes,
         Err(e) => {
-            err(&format!("couldn't read {:?}: {:?}",
-                        path.display(),
-                        e)[]);
+            err(&format!("couldn't read {:?}: {}",
+                        path.display(), e)[]);
             unreachable!()
         }
     };

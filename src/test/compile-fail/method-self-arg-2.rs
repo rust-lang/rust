@@ -22,6 +22,7 @@ fn main() {
     let y = &mut x;
     Foo::bar(&x); //~ERROR cannot borrow `x`
 
-    let x = Foo;
-    Foo::baz(&x); //~ERROR cannot borrow immutable borrowed content as mutable
+    let mut x = Foo;
+    let y = &mut x;
+    Foo::baz(&mut x); //~ERROR cannot borrow `x`
 }

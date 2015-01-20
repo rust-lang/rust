@@ -254,7 +254,7 @@ things from the standard library if you need them.
 Okay, let's talk about the actual code in the example. `cmp` is a function that
 compares two things, and returns an `Ordering`. We return either
 `Ordering::Less`, `Ordering::Greater`, or `Ordering::Equal`, depending on if
-the two values are greater, less, or equal. Note that each variant of the
+the two values are less, greater, or equal. Note that each variant of the
 `enum` is namespaced under the `enum` itself: it's `Ordering::Greater` not
 `Greater`.
 

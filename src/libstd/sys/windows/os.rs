@@ -281,7 +281,7 @@ pub fn join_paths<T: BytesContainer>(paths: &[T]) -> Result<Vec<u8>, &'static st
 pub fn load_self() -> Option<Vec<u8>> {
     unsafe {
         fill_utf16_buf_and_decode(|buf, sz| {
-            libc::GetModuleFileNameW(0u as libc::DWORD, buf, sz)
+            libc::GetModuleFileNameW(ptr::null_mut(), buf, sz)
         }).map(|s| s.to_string().into_bytes())
     }
 }

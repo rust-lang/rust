@@ -880,7 +880,7 @@ pub trait IndexMut<Index: ?Sized> {
 }
 
 /// An unbounded range.
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="full_range"]
 #[unstable = "API still in development"]
 pub struct FullRange;
@@ -893,7 +893,7 @@ impl fmt::Show for FullRange {
 }
 
 /// A (half-open) range which is bounded at both ends.
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range"]
 #[unstable = "API still in development"]
 pub struct Range<Idx> {
@@ -952,7 +952,7 @@ impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
 }
 
 /// A range which is only bounded below.
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_from"]
 #[unstable = "API still in development"]
 pub struct RangeFrom<Idx> {
@@ -981,7 +981,7 @@ impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
 }
 
 /// A range which is only bounded above.
-#[derive(Copy, PartialEq, Eq)]
+#[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_to"]
 #[unstable = "API still in development"]
 pub struct RangeTo<Idx> {

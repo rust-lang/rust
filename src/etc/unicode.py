@@ -392,7 +392,7 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
     use core::slice;
 
     #[allow(non_camel_case_types)]
-    #[deriving(Clone)]
+    #[derive(Clone)]
     pub enum GraphemeCat {
 """)
     for cat in grapheme_cats + ["Any"]:

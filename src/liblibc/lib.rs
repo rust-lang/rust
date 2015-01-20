@@ -1541,7 +1541,8 @@ pub mod types {
                 pub type DWORDLONG = c_ulonglong;
 
                 pub type HANDLE = LPVOID;
-                pub type HMODULE = c_uint;
+                pub type HINSTANCE = HANDLE;
+                pub type HMODULE = HINSTANCE;
 
                 pub type LONG = c_long;
                 pub type PLONG = *mut c_long;

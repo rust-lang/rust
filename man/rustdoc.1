@@ -35,8 +35,26 @@ space-separated list of plugins to run (default: '')
 --plugin-path <val>
 directory to load plugins from (default: /tmp/rustdoc_ng/plugins)
 .TP
+--target <val>
+target triple to document
+.TP
+--crate-name <val>
+specify the name of this crate
+.TP
 -L --library-path <val>
 directory to add to crate search path
+.TP
+--cfg <val>
+pass a --cfg to rustc
+.TP
+--extern <val>
+pass an --extern to rustc
+.TP
+--test
+run code examples as tests
+.TP
+--test-args <val>
+pass arguments to the test runner
 .TP
 --html-in-header <val>
 file to add to <head>
@@ -47,8 +65,20 @@ file to add in <body>, before content
 --html-after-content <val>
 file to add in <body>, after content
 .TP
+--markdown-css <val>
+CSS files to include via <link> in a rendered Markdown file
+.TP
+--markdown-playground-url <val>
+URL to send code snippets to
+.TP
+--markdown-no-toc
+don't include table of contents
+.TP
 -h, --help
 Print help
+.TP
+-V, --version
+Print rustdoc's version
 
 .SH "OUTPUT FORMATS"
 
