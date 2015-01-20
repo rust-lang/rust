@@ -52,7 +52,7 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
                     fcx.ccx.tcx.sess.span_err(
                         expr.span,
-                        "can't infer the \"kind\" of the closure, explicitly annotate it. e.g. \
+                        "can't infer the \"kind\" of the closure; explicitly annotate it; e.g. \
                         `|&:| {}`");
                 },
                 Some((sig, kind)) => {
