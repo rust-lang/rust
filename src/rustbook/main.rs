@@ -11,8 +11,6 @@
 #![feature(slicing_syntax, box_syntax)]
 #![allow(unstable)]
 
-extern crate regex;
-
 extern crate rustdoc;
 
 use std::os;

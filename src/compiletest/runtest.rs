@@ -99,7 +99,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     }
 
     let output_to_check = get_output(props, &proc_res);
-    let expected_errors = errors::load_errors(&config.cfail_regex, testfile);
+    let expected_errors = errors::load_errors(testfile);
     if !expected_errors.is_empty() {
         if !props.error_patterns.is_empty() {
             fatal("both error pattern and expected errors specified");

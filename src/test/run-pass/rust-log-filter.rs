@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:RUST_LOG=rust-log-filter/f.o
+// exec-env:RUST_LOG=rust-log-filter/foo
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
@@ -42,18 +42,14 @@ pub fn main() {
     let _t = Thread::spawn(move|| {
         log::set_logger(logger);
 
-        // our regex is "f.o"
-        // ensure it is a regex, and isn't anchored
         info!("foo");
         info!("bar");
         info!("foo bar");
         info!("bar foo");
-        info!("f1o");
     });
 
     assert_eq!(rx.recv().unwrap().as_slice(), "foo");
     assert_eq!(rx.recv().unwrap().as_slice(), "foo bar");
     assert_eq!(rx.recv().unwrap().as_slice(), "bar foo");
-    assert_eq!(rx.recv().unwrap().as_slice(), "f1o");
     assert!(rx.recv().is_err());
 }

@@ -13,7 +13,6 @@
 use std::io::BufferedReader;
 use std::iter;
 use std::iter::AdditiveIterator;
-use regex::Regex;
 
 pub struct BookItem {
     pub title: String,
@@ -94,8 +93,6 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
         }
     }
 
-    let regex = r"(?P<indent>[\t ]*)\*[:space:]*\[(?P<title>.*)\]\((?P<path>.*)\)";
-    let item_re = Regex::new(regex).unwrap();
     let mut top_items = vec!();
     let mut stack = vec!();
     let mut errors = vec!();
@@ -117,45 +114,51 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
             }
         };
 
-        item_re.captures(&line[]).map(|cap| {
-            let given_path = cap.name("path");
-            let title = cap.name("title").unwrap().to_string();
+        let star_idx = match line.find_str("*") { Some(i) => i, None => continue };
 
-            let path_from_root = match src.join(given_path.unwrap()).path_relative_from(src) {
-                Some(p) => p,
-                None => {
-                    errors.push(format!("paths in SUMMARY.md must be relative, \
-                                         but path '{}' for section '{}' is not.",
-                                         given_path.unwrap(), title));
-                    Path::new("")
-                }
-            };
-            let path_to_root = Path::new(iter::repeat("../")
-                                             .take(path_from_root.components().count() - 1)
-                                             .collect::<String>());
-            let item = BookItem {
-                title: title,
-                path: path_from_root,
-                path_to_root: path_to_root,
-                children: vec!(),
-            };
-            let level = cap.name("indent").unwrap().chars().map(|c| {
-                match c {
-                    ' ' => 1us,
-                    '\t' => 4,
-                    _ => unreachable!()
-                }
-            }).sum() / 4 + 1;
+        let start_bracket = star_idx + line[star_idx..].find_str("[").unwrap();
+        let end_bracket = start_bracket + line[start_bracket..].find_str("](").unwrap();
+        let start_paren = end_bracket + 1;
+        let end_paren = start_paren + line[start_paren..].find_str(")").unwrap();
 
-            if level > stack.len() + 1 {
-                errors.push(format!("section '{}' is indented too deeply; \
-                                     found {}, expected {} or less",
-                                    item.title, level, stack.len() + 1));
-            } else if level <= stack.len() {
-                collapse(&mut stack, &mut top_items, level);
+        let given_path = &line[start_paren + 1 .. end_paren];
+        let title = line[start_bracket + 1..end_bracket].to_string();
+        let indent = &line[..star_idx];
+
+        let path_from_root = match src.join(given_path).path_relative_from(src) {
+            Some(p) => p,
+            None => {
+                errors.push(format!("paths in SUMMARY.md must be relative, \
+                                     but path '{}' for section '{}' is not.",
+                                     given_path, title));
+                Path::new("")
             }
-            stack.push(item)
-        });
+        };
+        let path_to_root = Path::new(iter::repeat("../")
+                                         .take(path_from_root.components().count() - 1)
+                                         .collect::<String>());
+        let item = BookItem {
+            title: title,
+            path: path_from_root,
+            path_to_root: path_to_root,
+            children: vec!(),
+        };
+        let level = indent.chars().map(|c| {
+            match c {
+                ' ' => 1us,
+                '\t' => 4,
+                _ => unreachable!()
+            }
+        }).sum() / 4 + 1;
+
+        if level > stack.len() + 1 {
+            errors.push(format!("section '{}' is indented too deeply; \
+                                 found {}, expected {} or less",
+                                item.title, level, stack.len() + 1));
+        } else if level <= stack.len() {
+            collapse(&mut stack, &mut top_items, level);
+        }
+        stack.push(item)
     }
 
     if errors.is_empty() {
