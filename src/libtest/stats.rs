@@ -333,7 +333,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 }
 
 /// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
-pub fn write_5_number_summary<W: Writer, T: Float + fmt::String + fmt::Show>(w: &mut W,
+pub fn write_5_number_summary<W: Writer, T: Float + fmt::Display + fmt::Debug>(w: &mut W,
                                                           s: &Summary<T>) -> io::IoResult<()> {
     let (q1,q2,q3) = s.quartiles;
     write!(w, "(min={}, q1={}, med={}, q3={}, max={})",
@@ -355,7 +355,7 @@ pub fn write_5_number_summary<W: Writer, T: Float + fmt::String + fmt::Show>(w: 
 /// ```{.ignore}
 ///   10 |        [--****#******----------]          | 40
 /// ```
-pub fn write_boxplot<W: Writer, T: Float + fmt::String + fmt::Show + FromPrimitive>(
+pub fn write_boxplot<W: Writer, T: Float + fmt::Display + fmt::Debug + FromPrimitive>(
                      w: &mut W,
                      s: &Summary<T>,
                      width_hint: uint)

@@ -133,7 +133,6 @@ impl<T> ToOwned<T> for T where T: Clone {
 ///     }
 /// }
 /// ```
-#[derive(Show)]
 pub enum Cow<'a, T, B: ?Sized + 'a> where B: ToOwned<T> {
     /// Borrowed data.
     Borrowed(&'a B),
@@ -239,14 +238,27 @@ impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwne
 }
 
 #[stable]
-impl<'a, T, B: ?Sized> fmt::String for Cow<'a, T, B> where
-    B: fmt::String + ToOwned<T>,
-    T: fmt::String,
+impl<'a, T, B: ?Sized> fmt::Debug for Cow<'a, T, B> where
+    B: fmt::Debug + ToOwned<T>,
+    T: fmt::Debug,
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            Borrowed(ref b) => fmt::String::fmt(b, f),
-            Owned(ref o) => fmt::String::fmt(o, f),
+            Borrowed(ref b) => fmt::Debug::fmt(b, f),
+            Owned(ref o) => fmt::Debug::fmt(o, f),
+        }
+    }
+}
+
+#[stable]
+impl<'a, T, B: ?Sized> fmt::Display for Cow<'a, T, B> where
+    B: fmt::Display + ToOwned<T>,
+    T: fmt::Display,
+{
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Borrowed(ref b) => fmt::Display::fmt(b, f),
+            Owned(ref o) => fmt::Display::fmt(o, f),
         }
     }
 }

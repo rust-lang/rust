@@ -63,7 +63,6 @@ use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::f64;
-use std::fmt::Show;
 use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
@@ -109,9 +108,9 @@ impl TestName {
         }
     }
 }
-impl fmt::String for TestName {
+impl fmt::Display for TestName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self.as_slice(), f)
+        fmt::Display::fmt(self.as_slice(), f)
     }
 }
 
@@ -172,7 +171,7 @@ impl TestFn {
     }
 }
 
-impl fmt::Show for TestFn {
+impl fmt::Debug for TestFn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
             StaticTestFn(..) => "StaticTestFn(..)",

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Show;
+use std::fmt::Debug;
 
 trait MyTrait<T> {
     fn get(&self) -> T;
@@ -29,7 +29,7 @@ impl MyTrait<u8> for MyType {
 }
 
 fn test_eq<T,M>(m: M, v: T)
-where T : Eq + Show,
+where T : Eq + Debug,
       M : MyTrait<T>
 {
     assert_eq!(m.get(), v);

@@ -22,7 +22,7 @@ use core::prelude::*;
 use core::borrow::BorrowFrom;
 use core::cmp::Ordering;
 use core::default::Default;
-use core::fmt::Show;
+use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
 use core::iter::{Map, FromIterator};
 use core::ops::{Index, IndexMut};
@@ -871,7 +871,7 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
 }
 
 #[stable]
-impl<K: Show, V: Show> Show for BTreeMap<K, V> {
+impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "BTreeMap {{"));
 

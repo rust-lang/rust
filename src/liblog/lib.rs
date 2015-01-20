@@ -239,21 +239,15 @@ struct DefaultLogger {
 }
 
 /// Wraps the log level with fmt implementations.
-#[derive(Copy, PartialEq, PartialOrd)]
+#[derive(Copy, PartialEq, PartialOrd, Show)]
 pub struct LogLevel(pub u32);
 
-impl fmt::Show for LogLevel {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, fmt)
-    }
-}
-
-impl fmt::String for LogLevel {
+impl fmt::Display for LogLevel {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let LogLevel(level) = *self;
         match LOG_LEVEL_NAMES.get(level as uint - 1) {
-            Some(ref name) => fmt::String::fmt(name, fmt),
-            None => fmt::String::fmt(&level, fmt)
+            Some(ref name) => fmt::Display::fmt(name, fmt),
+            None => fmt::Display::fmt(&level, fmt)
         }
     }
 }

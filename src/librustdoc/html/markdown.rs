@@ -426,7 +426,7 @@ pub fn reset_headers() {
     USED_HEADER_MAP.with(|s| s.borrow_mut().clear());
 }
 
-impl<'a> fmt::String for Markdown<'a> {
+impl<'a> fmt::Display for Markdown<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
@@ -435,7 +435,7 @@ impl<'a> fmt::String for Markdown<'a> {
     }
 }
 
-impl<'a> fmt::String for MarkdownWithToc<'a> {
+impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
         render(fmt, md.as_slice(), true)

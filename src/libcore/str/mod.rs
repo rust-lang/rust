@@ -20,8 +20,10 @@ use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
 use cmp::{self, Eq};
 use default::Default;
-use iter::range;
+use error::Error;
+use fmt;
 use iter::ExactSizeIterator;
+use iter::range;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use marker::Sized;
 use mem;
@@ -239,6 +241,30 @@ impl<'a> CharEq for &'a [char] {
     #[inline]
     fn only_ascii(&self) -> bool {
         self.iter().all(|m| m.only_ascii())
+    }
+}
+
+#[stable]
+impl Error for Utf8Error {
+    fn description(&self) -> &str {
+        match *self {
+            Utf8Error::TooShort => "invalid utf-8: not enough bytes",
+            Utf8Error::InvalidByte(..) => "invalid utf-8: corrupt contents",
+        }
+    }
+}
+
+#[stable]
+impl fmt::Display for Utf8Error {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            Utf8Error::InvalidByte(n) => {
+                write!(f, "invalid utf-8: invalid byte at index {}", n)
+            }
+            Utf8Error::TooShort => {
+                write!(f, "invalid utf-8: byte slice too short")
+            }
+        }
     }
 }
 

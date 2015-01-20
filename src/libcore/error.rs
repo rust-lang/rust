@@ -14,14 +14,15 @@
 //!
 //! `Error` is a trait representing the basic expectations for error values,
 //! i.e. values of type `E` in `Result<T, E>`. At a minimum, errors must provide
-//! a description, but they may optionally provide additional detail and cause
-//! chain information:
+//! a description, but they may optionally provide additional detail (via
+//! `Display`) and cause chain information:
 //!
 //! ```
-//! trait Error {
+//! use std::fmt::Display;
+//!
+//! trait Error: Display {
 //!     fn description(&self) -> &str;
 //!
-//!     fn detail(&self) -> Option<String> { None }
 //!     fn cause(&self) -> Option<&Error> { None }
 //! }
 //! ```
@@ -80,19 +81,14 @@
 
 #![stable]
 
-use prelude::v1::*;
-
-use str::Utf8Error;
-use string::{FromUtf8Error, FromUtf16Error};
+use prelude::*;
+use fmt::Display;
 
 /// Base functionality for all errors in Rust.
 #[unstable = "the exact API of this trait may change"]
-pub trait Error {
+pub trait Error: Display {
     /// A short description of the error; usually a static string.
     fn description(&self) -> &str;
-
-    /// A detailed description of the error, usually including dynamic information.
-    fn detail(&self) -> Option<String> { None }
 
     /// The lower-level cause of this error, if any.
     fn cause(&self) -> Option<&Error> { None }
@@ -111,27 +107,4 @@ impl<E> FromError<E> for E {
     fn from_error(err: E) -> E {
         err
     }
-}
-
-#[stable]
-impl Error for Utf8Error {
-    fn description(&self) -> &str {
-        match *self {
-            Utf8Error::TooShort => "invalid utf-8: not enough bytes",
-            Utf8Error::InvalidByte(..) => "invalid utf-8: corrupt contents",
-        }
-    }
-
-    fn detail(&self) -> Option<String> { Some(self.to_string()) }
-}
-
-#[stable]
-impl Error for FromUtf8Error {
-    fn description(&self) -> &str { "invalid utf-8" }
-    fn detail(&self) -> Option<String> { Some(self.to_string()) }
-}
-
-#[stable]
-impl Error for FromUtf16Error {
-    fn description(&self) -> &str { "invalid utf-16" }
 }

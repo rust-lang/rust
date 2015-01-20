@@ -200,7 +200,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         ty::Predicate::Equate(ref predicate) => {
                             let predicate = infcx.resolve_type_vars_if_possible(predicate);
                             let err = infcx.equality_predicate(obligation.cause.span,
-                                                               &predicate).unwrap_err();
+                                                               &predicate).err().unwrap();
                             infcx.tcx.sess.span_err(
                                 obligation.cause.span,
                                 format!(
@@ -212,7 +212,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         ty::Predicate::RegionOutlives(ref predicate) => {
                             let predicate = infcx.resolve_type_vars_if_possible(predicate);
                             let err = infcx.region_outlives_predicate(obligation.cause.span,
-                                                                      &predicate).unwrap_err();
+                                                                      &predicate).err().unwrap();
                             infcx.tcx.sess.span_err(
                                 obligation.cause.span,
                                 format!(

@@ -586,10 +586,10 @@ impl<'a> StringReader<'a> {
     /// `\x00` marker.
     #[inline(never)]
     fn scan_embedded_hygienic_ident(&mut self) -> ast::Ident {
-        fn bump_expecting_char<'a,D:fmt::Show>(r: &mut StringReader<'a>,
-                                               c: char,
-                                               described_c: D,
-                                               whence: &str) {
+        fn bump_expecting_char<'a,D:fmt::Debug>(r: &mut StringReader<'a>,
+                                                c: char,
+                                                described_c: D,
+                                                whence: &str) {
             match r.curr {
                 Some(r_c) if r_c == c => r.bump(),
                 Some(r_c) => panic!("expected {:?}, hit {:?}, {}", described_c, r_c, whence),

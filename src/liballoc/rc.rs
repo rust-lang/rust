@@ -693,17 +693,17 @@ impl<S: hash::Hasher, T: Hash<S>> Hash<S> for Rc<T> {
     }
 }
 
-#[unstable = "Show is experimental."]
-impl<T: fmt::Show> fmt::Show for Rc<T> {
+#[stable]
+impl<T: fmt::Display> fmt::Display for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Rc({:?})", **self)
+        fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable]
-impl<T: fmt::String> fmt::String for Rc<T> {
+impl<T: fmt::Debug> fmt::Debug for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&**self, f)
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
@@ -890,8 +890,8 @@ impl<T> Clone for Weak<T> {
     }
 }
 
-#[unstable = "Show is experimental."]
-impl<T: fmt::Show> fmt::Show for Weak<T> {
+#[stable]
+impl<T: fmt::Debug> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Weak)")
     }
@@ -1134,7 +1134,7 @@ mod tests {
     #[test]
     fn test_show() {
         let foo = Rc::new(75u);
-        assert!(format!("{:?}", foo) == "Rc(75u)")
+        assert_eq!(format!("{:?}", foo), "75");
     }
 
 }

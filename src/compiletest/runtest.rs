@@ -547,7 +547,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             // Add line breakpoints
             for line in breakpoint_lines.iter() {
-                script_str.push_str(&format!("break '{:?}':{}\n",
+                script_str.push_str(&format!("break '{}':{}\n",
                                              testfile.filename_display(),
                                              *line)[]);
             }
@@ -750,7 +750,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
             status: status,
             stdout: out,
             stderr: err,
-            cmdline: format!("{}", cmd)
+            cmdline: format!("{:?}", cmd)
         };
     }
 }
@@ -953,7 +953,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
-        format!("{:?}:{}:", testfile.display(), ee.line)
+        format!("{}:{}:", testfile.display(), ee.line)
     }).collect::<Vec<String> >();
 
     #[cfg(windows)]

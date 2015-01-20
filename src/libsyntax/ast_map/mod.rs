@@ -46,7 +46,7 @@ impl PathElem {
     }
 }
 
-impl fmt::String for PathElem {
+impl fmt::Display for PathElem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let slot = token::get_name(self.name());
         write!(f, "{}", slot)

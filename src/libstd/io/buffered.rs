@@ -52,7 +52,8 @@ pub struct BufferedReader<R> {
     cap: uint,
 }
 
-impl<R> fmt::Show for BufferedReader<R> where R: fmt::Show {
+#[stable]
+impl<R> fmt::Debug for BufferedReader<R> where R: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "BufferedReader {{ reader: {:?}, buffer: {}/{} }}",
                self.inner, self.cap - self.pos, self.buf.len())
@@ -150,7 +151,8 @@ pub struct BufferedWriter<W> {
     pos: uint
 }
 
-impl<W> fmt::Show for BufferedWriter<W> where W: fmt::Show {
+#[stable]
+impl<W> fmt::Debug for BufferedWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "BufferedWriter {{ writer: {:?}, buffer: {}/{} }}",
                self.inner.as_ref().unwrap(), self.pos, self.buf.len())
@@ -249,7 +251,8 @@ pub struct LineBufferedWriter<W> {
     inner: BufferedWriter<W>,
 }
 
-impl<W> fmt::Show for LineBufferedWriter<W> where W: fmt::Show {
+#[stable]
+impl<W> fmt::Debug for LineBufferedWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "LineBufferedWriter {{ writer: {:?}, buffer: {}/{} }}",
                self.inner.inner, self.inner.pos, self.inner.buf.len())
@@ -339,7 +342,8 @@ pub struct BufferedStream<S> {
     inner: BufferedReader<InternalBufferedWriter<S>>
 }
 
-impl<S> fmt::Show for BufferedStream<S> where S: fmt::Show {
+#[stable]
+impl<S> fmt::Debug for BufferedStream<S> where S: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let reader = &self.inner;
         let writer = &self.inner.inner.0;

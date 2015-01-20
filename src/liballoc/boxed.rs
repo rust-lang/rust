@@ -16,16 +16,17 @@ use core::any::Any;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
+use core::error::{Error, FromError};
 use core::fmt;
 use core::hash::{self, Hash};
 use core::marker::Sized;
 use core::mem;
+use core::ops::{Deref, DerefMut};
 use core::option::Option;
 use core::ptr::Unique;
 use core::raw::TraitObject;
-use core::result::Result;
 use core::result::Result::{Ok, Err};
-use core::ops::{Deref, DerefMut};
+use core::result::Result;
 
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.
@@ -156,20 +157,22 @@ impl BoxAny for Box<Any> {
     }
 }
 
-impl<T: ?Sized + fmt::Show> fmt::Show for Box<T> {
+#[stable]
+impl<T: fmt::Display + ?Sized> fmt::Display for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Box({:?})", &**self)
+        fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable]
-impl<T: ?Sized + fmt::String> fmt::String for Box<T> {
+impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&**self, f)
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
-impl fmt::Show for Box<Any> {
+#[stable]
+impl fmt::Debug for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }
@@ -185,6 +188,12 @@ impl<T: ?Sized> Deref for Box<T> {
 #[stable]
 impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
+}
+
+impl<'a, E: Error + 'a> FromError<E> for Box<Error + 'a> {
+    fn from_error(err: E) -> Box<Error + 'a> {
+        Box::new(err)
+    }
 }
 
 #[cfg(test)]

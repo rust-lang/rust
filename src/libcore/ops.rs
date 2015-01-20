@@ -885,10 +885,10 @@ pub trait IndexMut<Index: ?Sized> {
 #[unstable = "API still in development"]
 pub struct FullRange;
 
-#[unstable = "API still in development"]
-impl fmt::Show for FullRange {
+#[stable]
+impl fmt::Debug for FullRange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt("..", fmt)
+        fmt::Debug::fmt("..", fmt)
     }
 }
 
@@ -944,8 +944,8 @@ impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
 #[unstable = "API still in development"]
 impl<Idx: Clone + Step> ExactSizeIterator for Range<Idx> {}
 
-#[unstable = "API still in development"]
-impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
+#[stable]
+impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..{:?}", self.start, self.end)
     }
@@ -973,8 +973,8 @@ impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
     }
 }
 
-#[unstable = "API still in development"]
-impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
+#[stable]
+impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..", self.start)
     }
@@ -989,8 +989,8 @@ pub struct RangeTo<Idx> {
     pub end: Idx,
 }
 
-#[unstable = "API still in development"]
-impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
+#[stable]
+impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..{:?}", self.end)
     }

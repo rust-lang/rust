@@ -123,8 +123,8 @@
 //! This allows multiple actual types to be formatted via `{:x}` (like `i8` as
 //! well as `int`).  The current mapping of types to traits is:
 //!
-//! * *nothing* ⇒ `String`
-//! * `?` ⇒ `Show`
+//! * *nothing* ⇒ `Display`
+//! * `?` ⇒ `Debug`
 //! * `o` ⇒ `Octal`
 //! * `x` ⇒ `LowerHex`
 //! * `X` ⇒ `UpperHex`
@@ -137,7 +137,7 @@
 //! `std::fmt::Binary` trait can then be formatted with `{:b}`. Implementations
 //! are provided for these traits for a number of primitive types by the
 //! standard library as well. If no format is specified (as in `{}` or `{:6}`),
-//! then the format trait used is the `String` trait.
+//! then the format trait used is the `Display` trait.
 //!
 //! When implementing a format trait for your own type, you will have to
 //! implement a method of the signature:
@@ -145,7 +145,7 @@
 //! ```rust
 //! # use std::fmt;
 //! # struct Foo; // our custom type
-//! # impl fmt::Show for Foo {
+//! # impl fmt::Display for Foo {
 //! fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
 //! # write!(f, "testing, testing")
 //! # } }
@@ -171,13 +171,13 @@
 //! use std::f64;
 //! use std::num::Float;
 //!
-//! #[derive(Show)]
+//! #[derive(Debug)]
 //! struct Vector2D {
 //!     x: int,
 //!     y: int,
 //! }
 //!
-//! impl fmt::String for Vector2D {
+//! impl fmt::Display for Vector2D {
 //!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //!         // The `f` value implements the `Writer` trait, which is what the
 //!         // write! macro is expecting. Note that this formatting ignores the
@@ -211,22 +211,22 @@
 //! }
 //! ```
 //!
-//! #### fmt::String vs fmt::Show
+//! #### fmt::Display vs fmt::Debug
 //!
 //! These two formatting traits have distinct purposes:
 //!
-//! - `fmt::String` implementations assert that the type can be faithfully
+//! - `fmt::Display` implementations assert that the type can be faithfully
 //!   represented as a UTF-8 string at all times. It is **not** expected that
-//!   all types implement the `String` trait.
-//! - `fmt::Show` implementations should be implemented for **all** public types.
+//!   all types implement the `Display` trait.
+//! - `fmt::Debug` implementations should be implemented for **all** public types.
 //!   Output will typically represent the internal state as faithfully as possible.
-//!   The purpose of the `Show` trait is to facilitate debugging Rust code. In
-//!   most cases, using `#[derive(Show)]` is sufficient and recommended.
+//!   The purpose of the `Debug` trait is to facilitate debugging Rust code. In
+//!   most cases, using `#[derive(Debug)]` is sufficient and recommended.
 //!
 //! Some examples of the output from both traits:
 //!
 //! ```
-//! assert_eq!(format!("{} {:?}", 3i32, 4i32), "3 4i32");
+//! assert_eq!(format!("{} {:?}", 3i32, 4i32), "3 4");
 //! assert_eq!(format!("{} {:?}", 'a', 'b'), "a 'b'");
 //! assert_eq!(format!("{} {:?}", "foo\n", "bar\n"), "foo\n \"bar\\n\"");
 //! ```
@@ -409,6 +409,7 @@ use string;
 
 pub use core::fmt::{Formatter, Result, Writer, rt};
 pub use core::fmt::{Show, String, Octal, Binary};
+pub use core::fmt::{Display, Debug};
 pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;

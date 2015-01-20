@@ -249,7 +249,7 @@ pub enum EntryFnType {
     EntryNone,
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Show)]
 pub enum CrateType {
     CrateTypeExecutable,
     CrateTypeDylib,
@@ -1159,7 +1159,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
     return Ok(crate_types);
 }
 
-impl fmt::Show for CrateType {
+impl fmt::Display for CrateType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CrateTypeExecutable => "bin".fmt(f),

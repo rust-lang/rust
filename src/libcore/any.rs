@@ -34,11 +34,11 @@
 //! use runtime reflection instead.
 //!
 //! ```rust
-//! use std::fmt::Show;
+//! use std::fmt::Debug;
 //! use std::any::Any;
 //!
-//! // Logger function for any type that implements Show.
-//! fn log<T: Any+Show>(value: &T) {
+//! // Logger function for any type that implements Debug.
+//! fn log<T: Any + Debug>(value: &T) {
 //!     let value_any = value as &Any;
 //!
 //!     // try to convert our value to a String.  If successful, we want to
@@ -55,7 +55,7 @@
 //! }
 //!
 //! // This function wants to log its parameter out prior to doing work with it.
-//! fn do_work<T: Show+'static>(value: &T) {
+//! fn do_work<T: Debug + 'static>(value: &T) {
 //!     log(value);
 //!     // ...do some other work
 //! }
