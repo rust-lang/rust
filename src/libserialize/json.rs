@@ -34,7 +34,7 @@
 //!
 //! An object is a series of string keys mapping to values, in `"key": value` format.
 //! Arrays are enclosed in square brackets ([ ... ]) and objects in curly brackets ({ ... }).
-//! A simple JSON document encoding a person, his/her age, address and phone numbers could look like
+//! A simple JSON document encoding a person, their age, address and phone numbers could look like
 //!
 //! ```ignore
 //! {
