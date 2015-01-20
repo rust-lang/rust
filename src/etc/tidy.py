@@ -8,7 +8,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import sys, fileinput, subprocess, re
+import sys, fileinput, subprocess, re, os
 from licenseck import *
 import snapshot
 
@@ -58,20 +58,20 @@ try:
     for line in fileinput.input(file_names,
                                 openhook=fileinput.hook_encoded("utf-8")):
 
-        if fileinput.filename().find("tidy.py") == -1:
-            if line.find(cr_flag) != -1:
+        if "tidy.py" not in fileinput.filename():
+            if cr_flag in line:
                 check_cr = False
-            if line.find(tab_flag) != -1:
+            if tab_flag in line:
                 check_tab = False
-            if line.find(linelength_flag) != -1:
+            if linelength_flag in line:
                 check_linelength = False
-            if line.find("TODO") != -1:
+            if "TODO" in line:
                 report_err("TODO is deprecated; use FIXME")
             match = re.match(r'^.*/(\*|/!?)\s*XXX', line)
             if match:
                 report_err("XXX is no longer necessary, use FIXME")
             match = re.match(r'^.*//\s*(NOTE.*)$', line)
-            if match:
+            if match and "TRAVIS" not in os.environ:
                 m = match.group(1)
                 if "snap" in m.lower():
                     report_warn(match.group(1))
@@ -86,10 +86,10 @@ try:
                 if "SNAP" in line:
                     report_warn("unmatched SNAP line: " + line)
 
-        if check_tab and (line.find('\t') != -1 and
-            fileinput.filename().find("Makefile") == -1):
+        if check_tab and ('\t' in line and
+            "Makefile" not in fileinput.filename()):
             report_err("tab character")
-        if check_cr and not autocrlf and line.find('\r') != -1:
+        if check_cr and not autocrlf and '\r' in line:
             report_err("CR character")
         if line.endswith(" \n") or line.endswith("\t\n"):
             report_err("trailing whitespace")

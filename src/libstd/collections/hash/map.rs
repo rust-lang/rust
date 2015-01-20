@@ -2113,23 +2113,6 @@ mod test_map {
     }
 
     #[test]
-    fn test_find_equiv() {
-        let mut m = HashMap::new();
-
-        let (foo, bar, baz) = (1i,2i,3i);
-        m.insert("foo".to_string(), foo);
-        m.insert("bar".to_string(), bar);
-        m.insert("baz".to_string(), baz);
-
-
-        assert_eq!(m.get("foo"), Some(&foo));
-        assert_eq!(m.get("bar"), Some(&bar));
-        assert_eq!(m.get("baz"), Some(&baz));
-
-        assert_eq!(m.get("qux"), None);
-    }
-
-    #[test]
     fn test_from_iter() {
         let xs = [(1i, 1i), (2, 2), (3, 3), (4, 4), (5, 5), (6, 6)];
 

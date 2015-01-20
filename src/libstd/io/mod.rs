@@ -234,7 +234,7 @@ use error::{FromError, Error};
 use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
-use marker::Sized;
+use marker::{Sized, Send};
 use mem::transmute;
 use ops::FnOnce;
 use option::Option;
@@ -363,8 +363,8 @@ impl Error for IoError {
     }
 }
 
-impl FromError<IoError> for Box<Error> {
-    fn from_error(err: IoError) -> Box<Error> {
+impl FromError<IoError> for Box<Error + Send> {
+    fn from_error(err: IoError) -> Box<Error + Send> {
         box err
     }
 }

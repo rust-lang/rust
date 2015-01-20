@@ -257,10 +257,10 @@ cases mentioned in [Number literals](#number-literals) below.
 
 | [Number literals](#number-literals)`*` | Example | Exponentiation | Suffixes |
 |----------------------------------------|---------|----------------|----------|
-| Decimal integer | `98_222i` | `N/A` | Integer suffixes |
-| Hex integer | `0xffi` | `N/A` | Integer suffixes |
-| Octal integer | `0o77i` | `N/A` | Integer suffixes |
-| Binary integer | `0b1111_0000i` | `N/A` | Integer suffixes |
+| Decimal integer | `98_222is` | `N/A` | Integer suffixes |
+| Hex integer | `0xffis` | `N/A` | Integer suffixes |
+| Octal integer | `0o77is` | `N/A` | Integer suffixes |
+| Binary integer | `0b1111_0000is` | `N/A` | Integer suffixes |
 | Floating-point | `123.0E+77f64` | `Optional` | Floating-point suffixes |
 
 `*` All number literals allow `_` as a visual separator: `1_234.0E+18f64`
@@ -268,7 +268,7 @@ cases mentioned in [Number literals](#number-literals) below.
 ##### Suffixes
 | Integer | Floating-point |
 |---------|----------------|
-| `i` (`int`), `u` (`uint`), `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64` | `f32`, `f64` |
+| `is` (`isize`), `us` (`usize`), `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64` | `f32`, `f64` |
 
 #### Character and string literals
 
@@ -468,7 +468,7 @@ Like any literal, an integer literal may be followed (immediately,
 without any spaces) by an _integer suffix_, which forcibly sets the
 type of the literal. There are 10 valid values for an integer suffix:
 
-* The `i` and `u` suffixes give the literal type `int` or `uint`,
+* The `is` and `us` suffixes give the literal type `isize` or `usize`,
   respectively.
 * Each of the signed and unsigned machine types `u8`, `i8`,
   `u16`, `i16`, `u32`, `i32`, `u64` and `i64`
@@ -483,9 +483,9 @@ context overconstrains the type, it is also considered a static type error.
 Examples of integer literals of various forms:
 
 ```
-123i;                              // type int
-123u;                              // type uint
-123_u;                             // type uint
+123is;                             // type isize
+123us;                             // type usize
+123_us;                            // type usize
 0xff_u8;                           // type u8
 0o70_i16;                          // type i16
 0b1111_1111_1001_0000_i32;         // type i32
@@ -578,8 +578,8 @@ Two examples of paths with type arguments:
 # struct HashMap<K, V>;
 # fn f() {
 # fn id<T>(t: T) -> T { t }
-type T = HashMap<int,String>;  // Type arguments used in a type expression
-let x = id::<int>(10);       // Type arguments used in a call expression
+type T = HashMap<i32,String>; // Type arguments used in a type expression
+let x  = id::<i32>(10);       // Type arguments used in a call expression
 # }
 ```
 
@@ -971,7 +971,7 @@ path_glob : ident [ "::" [ path_glob
                           | '*' ] ] ?
           | '{' path_item [ ',' path_item ] * '}' ;
 
-path_item : ident | "mod" ;
+path_item : ident | "self" ;
 ```
 
 A _use declaration_ creates one or more local name bindings synonymous with
@@ -991,22 +991,22 @@ Use declarations support a number of convenient shortcuts:
 * Binding all paths matching a given prefix, using the asterisk wildcard syntax
   `use a::b::*;`
 * Simultaneously binding a list of paths differing only in their final element
-  and their immediate parent module, using the `mod` keyword, such as
-  `use a::b::{mod, c, d};`
+  and their immediate parent module, using the `self` keyword, such as
+  `use a::b::{self, c, d};`
 
 An example of `use` declarations:
 
 ```
 use std::iter::range_step;
 use std::option::Option::{Some, None};
-use std::collections::hash_map::{mod, HashMap};
+use std::collections::hash_map::{self, HashMap};
 
 fn foo<T>(_: T){}
-fn bar(map1: HashMap<String, uint>, map2: hash_map::HashMap<String, uint>){}
+fn bar(map1: HashMap<String, usize>, map2: hash_map::HashMap<String, usize>){}
 
 fn main() {
-    // Equivalent to 'std::iter::range_step(0u, 10u, 2u);'
-    range_step(0u, 10u, 2u);
+    // Equivalent to 'std::iter::range_step(0us, 10, 2);'
+    range_step(0us, 10, 2);
 
     // Equivalent to 'foo(vec![std::option::Option::Some(1.0f64),
     // std::option::Option::None]);'
@@ -1104,7 +1104,7 @@ interpreted as an implicit `return` expression applied to the final-expression.
 An example of a function:
 
 ```
-fn add(x: int, y: int) -> int {
+fn add(x: i32, y: i32) -> i32 {
     return x + y;
 }
 ```
@@ -1113,7 +1113,7 @@ As with `let` bindings, function arguments are irrefutable patterns, so any
 pattern that is valid in a let binding is also valid as an argument.
 
 ```
-fn first((value, _): (int, int)) -> int { value }
+fn first((value, _): (i32, i32)) -> i32 { value }
 ```
 
 
@@ -1139,8 +1139,8 @@ used as a type name.
 
 When a generic function is referenced, its type is instantiated based on the
 context of the reference. For example, calling the `iter` function defined
-above on `[1, 2]` will instantiate type parameter `T` with `int`, and require
-the closure parameter to have type `fn(int)`.
+above on `[1, 2]` will instantiate type parameter `T` with `isize`, and require
+the closure parameter to have type `fn(isize)`.
 
 The type parameters can also be explicitly supplied in a trailing
 [path](#paths) component after the function name. This might be necessary if
@@ -1272,7 +1272,7 @@ typecheck:
 ```
 # fn my_err(s: &str) -> ! { panic!() }
 
-fn f(i: int) -> int {
+fn f(i: i32) -> i32 {
    if i == 42 {
      return 42;
    }
@@ -1283,7 +1283,7 @@ fn f(i: int) -> int {
 ```
 
 This will not compile without the `!` annotation on `my_err`, since the `else`
-branch of the conditional in `f` does not return an `int`, as required by the
+branch of the conditional in `f` does not return an `i32`, as required by the
 signature of `f`. Adding the `!` annotation to `my_err` informs the
 typechecker that, should control ever enter `my_err`, no further type judgments
 about `f` need to hold, since control will never resume in any context that
@@ -1301,18 +1301,18 @@ modifier.
 
 ```
 // Declares an extern fn, the ABI defaults to "C"
-extern fn new_int() -> int { 0 }
+extern fn new_i32() -> i32 { 0 }
 
 // Declares an extern fn with "stdcall" ABI
-extern "stdcall" fn new_int_stdcall() -> int { 0 }
+extern "stdcall" fn new_i32_stdcall() -> i32 { 0 }
 ```
 
 Unlike normal functions, extern fns have an `extern "ABI" fn()`. This is the
 same type as the functions declared in an extern block.
 
 ```
-# extern fn new_int() -> int { 0 }
-let fptr: extern "C" fn() -> int = new_int;
+# extern fn new_i32() -> i32 { 0 }
+let fptr: extern "C" fn() -> i32 = new_i32;
 ```
 
 Extern functions may be called directly from Rust code as Rust uses large,
@@ -1348,18 +1348,18 @@ keyword `struct`.
 An example of a `struct` item and its use:
 
 ```
-struct Point {x: int, y: int}
+struct Point {x: i32, y: i32}
 let p = Point {x: 10, y: 11};
-let px: int = p.x;
+let px: i32 = p.x;
 ```
 
 A _tuple structure_ is a nominal [tuple type](#tuple-types), also defined with
 the keyword `struct`. For example:
 
 ```
-struct Point(int, int);
+struct Point(i32, i32);
 let p = Point(10, 11);
-let px: int = match p { Point(x, _) => x };
+let px: i32 = match p { Point(x, _) => x };
 ```
 
 A _unit-like struct_ is a structure without any fields, defined by leaving off
@@ -1457,14 +1457,14 @@ a type derived from those primitive types. The derived types are references with
 the `static` lifetime, fixed-size arrays, tuples, enum variants, and structs.
 
 ```
-const BIT1: uint = 1 << 0;
-const BIT2: uint = 1 << 1;
+const BIT1: u32 = 1 << 0;
+const BIT2: u32 = 1 << 1;
 
-const BITS: [uint; 2] = [BIT1, BIT2];
+const BITS: [u32; 2] = [BIT1, BIT2];
 const STRING: &'static str = "bitstring";
 
 struct BitsNStrings<'a> {
-    mybits: [uint; 2],
+    mybits: [u32; 2],
     mystring: &'a str
 }
 
@@ -1500,14 +1500,14 @@ Constants should in general be preferred over statics, unless large amounts of
 data are being stored, or single-address and mutability properties are required.
 
 ```
-use std::sync::atomic::{AtomicUint, Ordering, ATOMIC_UINT_INIT};;
+use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
-// Note that ATOMIC_UINT_INIT is a *const*, but it may be used to initialize a
+// Note that ATOMIC_USIZE_INIT is a *const*, but it may be used to initialize a
 // static. This static can be modified, so it is not placed in read-only memory.
-static COUNTER: AtomicUint = ATOMIC_UINT_INIT;
+static COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
 
 // This table is a candidate to be placed in read-only memory.
-static TABLE: &'static [uint] = &[1, 2, 3, /* ... */];
+static TABLE: &'static [usize] = &[1, 2, 3, /* ... */];
 
 for slot in TABLE.iter() {
     println!("{}", slot);
@@ -1529,13 +1529,13 @@ Mutable statics are still very useful, however. They can be used with C
 libraries and can also be bound from C libraries (in an `extern` block).
 
 ```
-# fn atomic_add(_: &mut uint, _: uint) -> uint { 2 }
+# fn atomic_add(_: &mut u32, _: u32) -> u32 { 2 }
 
-static mut LEVELS: uint = 0;
+static mut LEVELS: u32 = 0;
 
 // This violates the idea of no shared state, and this doesn't internally
 // protect against races, so this function is `unsafe`
-unsafe fn bump_levels_unsafe1() -> uint {
+unsafe fn bump_levels_unsafe1() -> u32 {
     let ret = LEVELS;
     LEVELS += 1;
     return ret;
@@ -1544,7 +1544,7 @@ unsafe fn bump_levels_unsafe1() -> uint {
 // Assuming that we have an atomic_add function which returns the old value,
 // this function is "safe" but the meaning of the return value may not be what
 // callers expect, so it's still marked as `unsafe`
-unsafe fn bump_levels_unsafe2() -> uint {
+unsafe fn bump_levels_unsafe2() -> u32 {
     return atomic_add(&mut LEVELS, 1);
 }
 ```
@@ -1564,8 +1564,8 @@ Traits are implemented for specific types through separate
 [implementations](#implementations).
 
 ```
-# type Surface = int;
-# type BoundingBox = int;
+# type Surface = i32;
+# type BoundingBox = i32;
 trait Shape {
     fn draw(&self, Surface);
     fn bounding_box(&self) -> BoundingBox;
@@ -1583,8 +1583,8 @@ functions](#generic-functions).
 
 ```
 trait Seq<T> {
-   fn len(&self) -> uint;
-   fn elt_at(&self, n: uint) -> T;
+   fn len(&self) -> u32;
+   fn elt_at(&self, n: u32) -> T;
    fn iter<F>(&self, F) where F: Fn(T);
 }
 ```
@@ -1595,7 +1595,7 @@ parameter, and within the generic function, the methods of the trait can be
 called on values that have the parameter's type. For example:
 
 ```
-# type Surface = int;
+# type Surface = i32;
 # trait Shape { fn draw(&self, Surface); }
 fn draw_twice<T: Shape>(surface: Surface, sh: T) {
     sh.draw(surface);
@@ -1610,8 +1610,8 @@ trait is in scope) to pointers to the trait name, used as a type.
 
 ```
 # trait Shape { }
-# impl Shape for int { }
-# let mycircle = 0i;
+# impl Shape for i32 { }
+# let mycircle = 0i32;
 let myshape: Box<Shape> = Box::new(mycircle) as Box<Shape>;
 ```
 
@@ -1629,12 +1629,12 @@ module. For example:
 
 ```
 trait Num {
-    fn from_int(n: int) -> Self;
+    fn from_i32(n: i32) -> Self;
 }
 impl Num for f64 {
-    fn from_int(n: int) -> f64 { n as f64 }
+    fn from_i32(n: i32) -> f64 { n as f64 }
 }
-let x: f64 = Num::from_int(42);
+let x: f64 = Num::from_i32(42);
 ```
 
 Traits may inherit from other traits. For example, in
@@ -1669,9 +1669,9 @@ Likewise, supertrait methods may also be called on trait objects.
 ```{.ignore}
 # trait Shape { fn area(&self) -> f64; }
 # trait Circle : Shape { fn radius(&self) -> f64; }
-# impl Shape for int { fn area(&self) -> f64 { 0.0 } }
-# impl Circle for int { fn radius(&self) -> f64 { 0.0 } }
-# let mycircle = 0;
+# impl Shape for i32 { fn area(&self) -> f64 { 0.0 } }
+# impl Circle for i32 { fn radius(&self) -> f64 { 0.0 } }
+# let mycircle = 0i32;
 let mycircle = Box::new(mycircle) as Box<Circle>;
 let nonsense = mycircle.radius() * mycircle.area();
 ```
@@ -1686,7 +1686,7 @@ Implementations are defined with the keyword `impl`.
 ```
 # struct Point {x: f64, y: f64};
 # impl Copy for Point {}
-# type Surface = int;
+# type Surface = i32;
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
 # trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }
 # fn do_draw_circle(s: Surface, c: Circle) { }
@@ -1715,7 +1715,7 @@ limited to nominal types (enums, structs), and the implementation must appear
 in the same module or a sub-module as the `self` type:
 
 ```
-struct Point {x: int, y: int}
+struct Point {x: i32, y: i32}
 
 impl Point {
     fn log(&self) {
@@ -1826,7 +1826,7 @@ struct Foo;
 
 // Declare a public struct with a private field
 pub struct Bar {
-    field: int
+    field: i32
 }
 
 // Declare a public enum with two public variants
@@ -2226,15 +2226,15 @@ plugins](book/plugin.html#lint-plugins) can provide additional lint checks.
 mod m1 {
     // Missing documentation is ignored here
     #[allow(missing_docs)]
-    pub fn undocumented_one() -> int { 1 }
+    pub fn undocumented_one() -> i32 { 1 }
 
     // Missing documentation signals a warning here
     #[warn(missing_docs)]
-    pub fn undocumented_too() -> int { 2 }
+    pub fn undocumented_too() -> i32 { 2 }
 
     // Missing documentation signals an error here
     #[deny(missing_docs)]
-    pub fn undocumented_end() -> int { 3 }
+    pub fn undocumented_end() -> i32 { 3 }
 }
 ```
 
@@ -2247,16 +2247,16 @@ mod m2{
     #[allow(missing_docs)]
     mod nested {
         // Missing documentation is ignored here
-        pub fn undocumented_one() -> int { 1 }
+        pub fn undocumented_one() -> i32 { 1 }
 
         // Missing documentation signals a warning here,
         // despite the allow above.
         #[warn(missing_docs)]
-        pub fn undocumented_two() -> int { 2 }
+        pub fn undocumented_two() -> i32 { 2 }
     }
 
     // Missing documentation signals a warning here
-    pub fn undocumented_too() -> int { 3 }
+    pub fn undocumented_too() -> i32 { 3 }
 }
 ```
 
@@ -2269,7 +2269,7 @@ mod m3 {
     // Attempting to toggle warning signals an error here
     #[allow(missing_docs)]
     /// Returns 2.
-    pub fn undocumented_too() -> int { 2 }
+    pub fn undocumented_too() -> i32 { 2 }
 }
 ```
 
@@ -2451,7 +2451,7 @@ There are three different types of inline attributes:
 * `#[inline(always)]` asks the compiler to always perform an inline expansion.
 * `#[inline(never)]` asks the compiler to never perform an inline expansion.
 
-### Derive
+### `derive`
 
 The `derive` attribute allows certain traits to be automatically implemented
 for data structures. For example, the following will create an `impl` for the
@@ -2461,7 +2461,7 @@ the `PartialEq` or `Clone` constraints for the appropriate `impl`:
 ```
 #[derive(PartialEq, Clone)]
 struct Foo<T> {
-    a: int,
+    a: i32,
     b: T
 }
 ```
@@ -2469,7 +2469,7 @@ struct Foo<T> {
 The generated `impl` for `PartialEq` is equivalent to
 
 ```
-# struct Foo<T> { a: int, b: T }
+# struct Foo<T> { a: i32, b: T }
 impl<T: PartialEq> PartialEq for Foo<T> {
     fn eq(&self, other: &Foo<T>) -> bool {
         self.a == other.a && self.b == other.b
@@ -2821,7 +2821,7 @@ parentheses. They are used to create [tuple-typed](#tuple-types) values.
 ```{.tuple}
 (0,);
 (0.0, 4.5);
-("a", 4u, true);
+("a", 4us, true);
 ```
 
 ### Unit expressions
@@ -2862,7 +2862,7 @@ The following are examples of structure expressions:
 ```
 # struct Point { x: f64, y: f64 }
 # struct TuplePoint(f64, f64);
-# mod game { pub struct User<'a> { pub name: &'a str, pub age: uint, pub score: uint } }
+# mod game { pub struct User<'a> { pub name: &'a str, pub age: u32, pub score: uint } }
 # struct Cookie; fn some_fn<T>(t: T) {}
 Point {x: 10.0, y: 20.0};
 TuplePoint(10.0, 20.0);
@@ -2883,7 +2883,7 @@ were explicitly specified and the values in the base expression for all other
 fields.
 
 ```
-# struct Point3d { x: int, y: int, z: int }
+# struct Point3d { x: i32, y: i32, z: i32 }
 let base = Point3d {x: 1, y: 2, z: 3};
 Point3d {y: 0, z: 10, .. base};
 ```
@@ -2958,9 +2958,9 @@ constant expression that can be evaluated at compile time, such as a
 [literal](#literals) or a [static item](#static-items).
 
 ```
-[1i, 2, 3, 4];
+[1is, 2, 3, 4];
 ["a", "b", "c", "d"];
-[0i; 128];             // array with 128 zeros
+[0is; 128];            // array with 128 zeros
 [0u8, 0u8, 0u8, 0u8];
 ```
 
@@ -3113,7 +3113,7 @@ An example of an `as` expression:
 
 ```
 # fn sum(v: &[f64]) -> f64 { 0.0 }
-# fn len(v: &[f64]) -> int { 0 }
+# fn len(v: &[f64]) -> i32 { 0 }
 
 fn avg(v: &[f64]) -> f64 {
   let sum: f64 = sum(v);
@@ -3133,7 +3133,7 @@ moves](#moved-and-copied-types) its right-hand operand to its left-hand
 operand.
 
 ```
-# let mut x = 0i;
+# let mut x = 0is;
 # let y = 0;
 
 x = y;
@@ -3184,7 +3184,7 @@ paren_expr : '(' expr ')' ;
 An example of a parenthesized expression:
 
 ```
-let x: int = (2 + 3) * 4;
+let x: i32 = (2 + 3) * 4;
 ```
 
 
@@ -3204,9 +3204,9 @@ then the expression completes.
 Some examples of call expressions:
 
 ```
-# fn add(x: int, y: int) -> int { 0 }
+# fn add(x: i32, y: i32) -> i32 { 0 }
 
-let x: int = add(1, 2);
+let x: i32 = add(1i32, 2i32);
 let pi: Option<f32> = "3.14".parse();
 ```
 
@@ -3245,8 +3245,8 @@ In this example, we define a function `ten_times` that takes a higher-order
 function argument, and call it with a lambda expression as an argument:
 
 ```
-fn ten_times<F>(f: F) where F: Fn(int) {
-    let mut i = 0;
+fn ten_times<F>(f: F) where F: Fn(i32) {
+    let mut i = 0i32;
     while i < 10 {
         f(i);
         i += 1;
@@ -3270,7 +3270,7 @@ conditional expression evaluates to `false`, the `while` expression completes.
 An example:
 
 ```
-let mut i = 0u;
+let mut i = 0us;
 
 while i < 10 {
     println!("hello");
@@ -3333,7 +3333,7 @@ by an implementation of `std::iter::Iterator`.
 An example of a for loop over the contents of an array:
 
 ```
-# type Foo = int;
+# type Foo = i32;
 # fn bar(f: Foo) { }
 # let a = 0;
 # let b = 0;
@@ -3349,8 +3349,8 @@ for e in v.iter() {
 An example of a for loop over a series of integers:
 
 ```
-# fn bar(b:uint) { }
-for i in range(0u, 256) {
+# fn bar(b:usize) { }
+for i in range(0us, 256) {
     bar(i);
 }
 ```
@@ -3402,7 +3402,7 @@ fields of a particular variant. For example:
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
 fn main() {
-    let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
+    let x: List<i32> = List::Cons(10, box List::Cons(11, box List::Nil));
 
     match x {
         List::Cons(_, box List::Nil) => panic!("singleton list"),
@@ -3423,12 +3423,12 @@ Used inside an array pattern, `..` stands for any number of elements, when the
 `advanced_slice_patterns` feature gate is turned on. This wildcard can be used
 at most once for a given array, which implies that it cannot be used to
 specifically match elements that are at an unknown distance from both ends of a
-array, like `[.., 42, ..]`. If followed by a variable name, it will bind the
+array, like `[.., 42, ..]`. If preceded by a variable name, it will bind the
 corresponding slice to the variable. Example:
 
 ```
 # #![feature(advanced_slice_patterns)]
-fn is_symmetric(list: &[uint]) -> bool {
+fn is_symmetric(list: &[u32]) -> bool {
     match list {
         [] | [_]                   => true,
         [x, inside.., y] if x == y => is_symmetric(inside),
@@ -3462,13 +3462,13 @@ An example of a `match` expression:
 
 ```
 #![feature(box_syntax)]
-# fn process_pair(a: int, b: int) { }
+# fn process_pair(a: i32, b: i32) { }
 # fn process_ten() { }
 
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
 fn main() {
-    let x: List<int> = List::Cons(10, box List::Cons(11, box List::Nil));
+    let x: List<i32> = List::Cons(10, box List::Cons(11, box List::Nil));
 
     match x {
         List::Cons(a, box List::Cons(b, _)) => {
@@ -3520,11 +3520,11 @@ fn main() {
 ```
 
 Patterns can also dereference pointers by using the `&`, `&mut` and `box`
-symbols, as appropriate. For example, these two matches on `x: &int` are
+symbols, as appropriate. For example, these two matches on `x: &isize` are
 equivalent:
 
 ```
-# let x = &3i;
+# let x = &3is;
 let y = match *x { 0 => "zero", _ => "some" };
 let z = match x { &0 => "zero", _ => "some" };
 
@@ -3545,7 +3545,7 @@ Multiple match patterns may be joined with the `|` operator. A range of values
 may be specified with `...`. For example:
 
 ```
-# let x = 2i;
+# let x = 2is;
 
 let message = match x {
   0 | 1  => "not many",
@@ -3565,8 +3565,8 @@ may refer to the variables bound within the pattern they follow.
 
 ```
 # let maybe_digit = Some(0);
-# fn process_digit(i: int) { }
-# fn process_other(i: int) { }
+# fn process_digit(i: i32) { }
+# fn process_other(i: i32) { }
 
 let message = match maybe_digit {
   Some(x) if x < 10 => process_digit(x),
@@ -3614,7 +3614,7 @@ caller frame.
 An example of a `return` expression:
 
 ```
-fn max(a: int, b: int) -> int {
+fn max(a: i32, b: i32) -> i32 {
    if a > b {
       return a;
    }
@@ -3666,12 +3666,12 @@ The machine types are the following:
 
 #### Machine-dependent integer types
 
-The `uint` type is an unsigned integer type with the same number of bits as the
+The `usize` type is an unsigned integer type with the same number of bits as the
 platform's pointer type. It can represent every memory address in the process.
 
-The `int` type is a signed integer type with the same number of bits as the
+The `isize` type is a signed integer type with the same number of bits as the
 platform's pointer type. The theoretical upper bound on object and array size
-is the maximum `int` value. This ensures that `int` can be used to calculate
+is the maximum `isize` value. This ensures that `isize` can be used to calculate
 differences between pointers into an object or array and can address every byte
 within an object along with one byte past the end.
 
@@ -3707,7 +3707,7 @@ by the tuple type.
 An example of a tuple type and its use:
 
 ```
-type Pair<'a> = (int, &'a str);
+type Pair<'a> = (i32, &'a str);
 let p: Pair<'static> = (10, "hello");
 let (a, b) = p;
 assert!(b != "world");
@@ -3858,13 +3858,13 @@ or `extern`), a sequence of input types and an output type.
 An example of a `fn` type:
 
 ```
-fn add(x: int, y: int) -> int {
+fn add(x: i32, y: i32) -> i32 {
   return x + y;
 }
 
 let mut x = add(5,7);
 
-type Binop = fn(int, int) -> int;
+type Binop = fn(i32, i32) -> i32;
 let bo: Binop = add;
 x = bo(5,7);
 ```
@@ -3886,16 +3886,16 @@ The type of a closure mapping an input of type `A` to an output of type `B` is
 An example of creating and calling a closure:
 
 ```rust
-let captured_var = 10i;
+let captured_var = 10is;
 
 let closure_no_args = |&:| println!("captured_var={}", captured_var);
 
-let closure_args = |&: arg: int| -> int {
+let closure_args = |&: arg: isize| -> isize {
   println!("captured_var={}, arg={}", captured_var, arg);
   arg // Note lack of semicolon after 'arg'
 };
 
-fn call_closure<F: Fn(), G: Fn(int) -> int>(c1: F, c2: G) {
+fn call_closure<F: Fn(), G: Fn(isize) -> isize>(c1: F, c2: G) {
   c1();
   c2(2);
 }
@@ -3927,7 +3927,7 @@ trait Printable {
   fn stringify(&self) -> String;
 }
 
-impl Printable for int {
+impl Printable for isize {
   fn stringify(&self) -> String { self.to_string() }
 }
 
@@ -3936,7 +3936,7 @@ fn print(a: Box<Printable>) {
 }
 
 fn main() {
-   print(Box::new(10i) as Box<Printable>);
+   print(Box::new(10is) as Box<Printable>);
 }
 ```
 
@@ -4102,7 +4102,7 @@ Local variables are immutable unless declared otherwise like: `let mut x = ...`.
 
 Function parameters are immutable unless declared with `mut`. The `mut` keyword
 applies only to the following parameter (so `|mut x, y|` and `fn f(mut x:
-Box<int>, y: Box<int>)` declare one mutable variable `x` and one immutable
+Box<i32>, y: Box<i32>)` declare one mutable variable `x` and one immutable
 variable `y`).
 
 Methods that take either `self` or `Box<Self>` can optionally place them in a
@@ -4130,7 +4130,7 @@ the type of a box is `std::owned::Box<T>`.
 An example of a box type and value:
 
 ```
-let x: Box<int> = Box::new(10);
+let x: Box<i32> = Box::new(10);
 ```
 
 Box values exist in 1:1 correspondence with their heap allocation, copying a
@@ -4139,7 +4139,7 @@ copy of a box to move ownership of the value. After a value has been moved,
 the source location cannot be used unless it is reinitialized.
 
 ```
-let x: Box<int> = Box::new(10);
+let x: Box<i32> = Box::new(10);
 let y = x;
 // attempting to use `x` will result in an error here
 ```

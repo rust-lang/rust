@@ -276,6 +276,6 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             cx.expr_block(cx.block(trait_span, vec!(me), Some(ret)))
         }
 
-        _ => cx.bug("expected Struct or EnumMatching in deriving(Encodable)")
+        _ => cx.bug("expected Struct or EnumMatching in derive(Encodable)")
     };
 }

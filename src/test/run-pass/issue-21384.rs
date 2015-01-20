@@ -8,14 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test mutability and slicing syntax.
+fn test<T : Clone>(arg: T) -> T {
+    arg.clone()
+}
+
+#[derive(PartialEq)]
+struct Test(int);
 
 fn main() {
-    let x: &[isize] = &[1, 2, 3, 4, 5];
-    // Immutable slices are not mutable.
-    let y: &mut[_] = &x[2..4];
-    //~^ ERROR mismatched types
-    //~| expected `&mut [_]`
-    //~| found `&_`
-    //~| values differ in mutability
+    // Check that ranges implement clone
+    assert!(test(1..5) == (1..5));
+    assert!(test(..5) == (..5));
+    assert!(test(1..) == (1..));
+    assert!(test(FullRange) == (FullRange));
+
+    // Check that ranges can still be used with non-clone limits
+    assert!((Test(1)..Test(5)) == (Test(1)..Test(5)));
 }

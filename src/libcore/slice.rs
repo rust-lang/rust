@@ -741,7 +741,7 @@ macro_rules! make_slice {
             diff / mem::size_of::<$t>()
         };
         unsafe {
-            transmute::<_, $result>(RawSlice { data: $start as *const T, len: len })
+            transmute::<_, $result>(RawSlice { data: $start, len: len })
         }
     }}
 }
@@ -1409,7 +1409,7 @@ pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
 #[inline]
 #[unstable = "should be renamed to from_raw_parts_mut"]
 pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
-    transmute(RawSlice { data: *p as *const T, len: len })
+    transmute(RawSlice { data: *p, len: len })
 }
 
 //

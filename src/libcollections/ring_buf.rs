@@ -88,19 +88,19 @@ impl<T> RingBuf<T> {
     /// Turn ptr into a slice
     #[inline]
     unsafe fn buffer_as_slice(&self) -> &[T] {
-        mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
+        mem::transmute(RawSlice { data: self.ptr, len: self.cap })
     }
 
     /// Turn ptr into a mut slice
     #[inline]
     unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        mem::transmute(RawSlice { data: self.ptr as *const T, len: self.cap })
+        mem::transmute(RawSlice { data: self.ptr, len: self.cap })
     }
 
     /// Moves an element out of the buffer
     #[inline]
     unsafe fn buffer_read(&mut self, off: uint) -> T {
-        ptr::read(self.ptr.offset(off as int) as *const T)
+        ptr::read(self.ptr.offset(off as int))
     }
 
     /// Writes an element into the buffer, moving it.

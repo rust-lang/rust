@@ -79,9 +79,9 @@ This type is generic over _two_ types: `T` and `E`. By the way, the capital lett
 can be any letter you'd like. We could define `Result<T, E>` as:
 
 ```{rust}
-enum Result<H, N> {
-    Ok(H),
-    Err(N),
+enum Result<A, Z> {
+    Ok(A),
+    Err(Z),
 }
 ```
 
