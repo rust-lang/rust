@@ -909,6 +909,8 @@ trait RcBoxPtr<T> {
     fn inc_strong(&self) {
         let strong = self.strong();
         // The reference count is always at least one unless we're about to drop the type
+        // This allows the bulk of the destructor to be omitted in cases where we know that
+        // the reference count must be > 0.
         unsafe { assume(strong > 0); }
         self.inner().strong.set(strong + 1);
     }
@@ -917,6 +919,8 @@ trait RcBoxPtr<T> {
     fn dec_strong(&self) {
         let strong = self.strong();
         // The reference count is always at least one unless we're about to drop the type
+        // This allows the bulk of the destructor to be omitted in cases where we know that
+        // the reference count must be > 0
         unsafe { assume(strong > 0); }
         self.inner().strong.set(strong - 1);
     }
@@ -936,7 +940,9 @@ impl<T> RcBoxPtr<T> for Rc<T> {
     fn inner(&self) -> &RcBox<T> {
         unsafe {
             // Safe to assume this here, as if it weren't true, we'd be breaking
-            // the contract anyway
+            // the contract anyway.
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
             assume(!self._ptr.is_null());
             &(**self._ptr)
         }
@@ -949,6 +955,8 @@ impl<T> RcBoxPtr<T> for Weak<T> {
         unsafe {
             // Safe to assume this here, as if it weren't true, we'd be breaking
             // the contract anyway
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
             assume(!self._ptr.is_null());
             &(**self._ptr)
         }
