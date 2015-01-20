@@ -194,6 +194,10 @@ impl<'a, T> Iterator for Box<Iterator<Item=T> + 'a> {
     fn next(&mut self) -> Option<T> {
         (**self).next()
     }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
 }
 
 #[cfg(test)]
