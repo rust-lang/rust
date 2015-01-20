@@ -152,7 +152,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
             let new = {
                 let other_f = match other_fs {
                     [ref o_f] => o_f,
-                    _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`"),
+                    _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`"),
                 };
 
                 let args = vec![
@@ -176,7 +176,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
         equals_expr.clone(),
         box |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
+                cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {
                 some_ordering_collapsed(cx, span, PartialCmpOp, tag_tuple)
             }
@@ -210,7 +210,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
             */
             let other_f = match other_fs {
                 [ref o_f] => o_f,
-                _ => cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
+                _ => cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             };
 
             let cmp = cx.expr_binary(span, op, self_f.clone(), other_f.clone());
@@ -224,7 +224,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
         cx.expr_bool(span, equal),
         box |cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
-                cx.span_bug(span, "not exactly 2 arguments in `deriving(PartialOrd)`")
+                cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {
                 let op = match (less, equal) {
                     (true,  true) => LeOp, (true,  false) => LtOp,
