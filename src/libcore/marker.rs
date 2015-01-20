@@ -30,6 +30,7 @@ use clone::Clone;
 /// Types able to be transferred across task boundaries.
 #[unstable = "will be overhauled with new lifetime rules; see RFC 458"]
 #[lang="send"]
+#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
 pub unsafe trait Send: 'static {
     // empty.
 }
@@ -37,6 +38,7 @@ pub unsafe trait Send: 'static {
 /// Types with a constant size known at compile-time.
 #[stable]
 #[lang="sized"]
+#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
 pub trait Sized {
     // Empty.
 }
@@ -193,6 +195,7 @@ pub trait Copy {
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
 #[unstable = "will be overhauled with new lifetime rules; see RFC 458"]
 #[lang="sync"]
+#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync {
     // Empty
 }

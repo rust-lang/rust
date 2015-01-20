@@ -243,6 +243,8 @@ pub trait Show {
 /// Format trait for the `:?` format. Useful for debugging, most all types
 /// should implement this.
 #[unstable = "I/O and core have yet to be reconciled"]
+#[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is defined in your \
+                            crate, add `#[derive(Debug)]` or manually implement it"]
 pub trait Debug {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -266,6 +268,8 @@ pub trait String {
 /// When a value can be semantically expressed as a String, this trait may be
 /// used. It corresponds to the default format, `{}`.
 #[unstable = "I/O and core have yet to be reconciled"]
+#[rustc_on_unimplemented = "`{Self}` cannot be formatted with the default formatter; try using \
+                            `:?` instead if you are using a format string"]
 pub trait Display {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
