@@ -8,7 +8,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import sys, fileinput, subprocess, re
+import sys, fileinput, subprocess, re, os
 from licenseck import *
 import snapshot
 
@@ -71,7 +71,7 @@ try:
             if match:
                 report_err("XXX is no longer necessary, use FIXME")
             match = re.match(r'^.*//\s*(NOTE.*)$', line)
-            if match:
+            if match and "TRAVIS" not in os.environ:
                 m = match.group(1)
                 if "snap" in m.lower():
                     report_warn(match.group(1))
