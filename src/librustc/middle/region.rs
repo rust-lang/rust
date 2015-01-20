@@ -22,9 +22,6 @@ use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 use util::common::can_reach;
 
 use std::cell::RefCell;
-// NOTE(stage0) remove import after a snapshot
-#[cfg(stage0)]
-use std::hash::{Hash};
 use syntax::codemap::Span;
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};

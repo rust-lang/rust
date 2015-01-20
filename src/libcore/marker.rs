@@ -376,16 +376,6 @@ pub struct ContravariantLifetime<'a>;
 #[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
 pub struct InvariantLifetime<'a>;
 
-/// A type which is considered "not sendable", meaning that it cannot
-/// be safely sent between tasks, even if it is owned. This is
-/// typically embedded in other types, such as `Gc`, to ensure that
-/// their instances remain thread-local.
-#[unstable = "likely to change with new variance strategy"]
-#[lang="no_send_bound"]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg(stage0)] // NOTE remove impl after next snapshot
-pub struct NoSend;
-
 /// A type which is considered "not POD", meaning that it is not
 /// implicitly copyable. This is typically embedded in other types to
 /// ensure that they are never copied, even if they lack a destructor.
@@ -394,15 +384,6 @@ pub struct NoSend;
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 #[allow(missing_copy_implementations)]
 pub struct NoCopy;
-
-/// A type which is considered "not sync", meaning that
-/// its contents are not threadsafe, hence they cannot be
-/// shared between tasks.
-#[unstable = "likely to change with new variance strategy"]
-#[lang="no_sync_bound"]
-#[derive(Clone, Copy, PartialEq, Eq, PartialOrd, Ord)]
-#[cfg(stage0)] // NOTE remove impl after next snapshot
-pub struct NoSync;
 
 /// A type which is considered managed by the GC. This is typically
 /// embedded in other types.
