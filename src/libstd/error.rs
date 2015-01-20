@@ -18,7 +18,7 @@
 //! chain information:
 //!
 //! ```
-//! trait Error: Send {
+//! trait Error {
 //!     fn description(&self) -> &str;
 //!
 //!     fn detail(&self) -> Option<String> { None }
@@ -87,7 +87,7 @@ use string::{FromUtf8Error, FromUtf16Error};
 
 /// Base functionality for all errors in Rust.
 #[unstable = "the exact API of this trait may change"]
-pub trait Error: Send {
+pub trait Error {
     /// A short description of the error; usually a static string.
     fn description(&self) -> &str;
 
