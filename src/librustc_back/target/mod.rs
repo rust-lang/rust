@@ -65,6 +65,7 @@ mod arm_linux_androideabi;
 mod arm_unknown_linux_gnueabi;
 mod arm_unknown_linux_gnueabihf;
 mod aarch64_apple_ios;
+mod aarch64_linux_android;
 mod aarch64_unknown_linux_gnu;
 mod i686_apple_darwin;
 mod i686_pc_windows_gnu;
@@ -357,6 +358,7 @@ impl Target {
             i386_apple_ios,
             x86_64_apple_ios,
             aarch64_apple_ios,
+            aarch64_linux_android,
             armv7_apple_ios,
             armv7s_apple_ios,
 
