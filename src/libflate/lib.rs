@@ -45,13 +45,13 @@ pub struct Bytes {
 impl Deref for Bytes {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts_mut(self.ptr.0, self.len) }
+        unsafe { slice::from_raw_parts_mut(self.ptr.ptr, self.len) }
     }
 }
 
 impl Drop for Bytes {
     fn drop(&mut self) {
-        unsafe { libc::free(self.ptr.0 as *mut _); }
+        unsafe { libc::free(self.ptr.ptr as *mut _); }
     }
 }
 

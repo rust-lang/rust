@@ -72,6 +72,8 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, Writer, SipHasher, Hasher};
+#[cfg(stage0)]
+use std::marker;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
@@ -931,6 +933,26 @@ pub struct TyS<'tcx> {
 
     // the maximal depth of any bound regions appearing in this type.
     region_depth: u32,
+
+    // force the lifetime to be invariant to work-around
+    // region-inference issues with a covariant lifetime.
+    #[cfg(stage0)]
+    marker: ShowInvariantLifetime<'tcx>,
+}
+
+#[cfg(stage0)]
+struct ShowInvariantLifetime<'a>(marker::InvariantLifetime<'a>);
+#[cfg(stage0)]
+impl<'a> ShowInvariantLifetime<'a> {
+    fn new() -> ShowInvariantLifetime<'a> {
+        ShowInvariantLifetime(marker::InvariantLifetime)
+    }
+}
+#[cfg(stage0)]
+impl<'a> fmt::Debug for ShowInvariantLifetime<'a> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "InvariantLifetime")
+    }
 }
 
 impl fmt::Debug for TypeFlags {
@@ -939,9 +961,18 @@ impl fmt::Debug for TypeFlags {
     }
 }
 
+#[cfg(stage0)]
+impl<'tcx> PartialEq for TyS<'tcx> {
+    fn eq<'a,'b>(&'a self, other: &'b TyS<'tcx>) -> bool {
+        let other: &'a TyS<'tcx> = unsafe { mem::transmute(other) };
+        (self as *const _) == (other as *const _)
+    }
+}
+#[cfg(not(stage0))]
 impl<'tcx> PartialEq for TyS<'tcx> {
     fn eq(&self, other: &TyS<'tcx>) -> bool {
-        (self as *const _) == (other as *const _)
+        // (self as *const _) == (other as *const _)
+        (self as *const TyS<'tcx>) == (other as *const TyS<'tcx>)
     }
 }
 impl<'tcx> Eq for TyS<'tcx> {}
@@ -2475,11 +2506,17 @@ fn intern_ty<'tcx>(type_arena: &'tcx TypedArena<TyS<'tcx>>,
 
     let flags = FlagComputation::for_sty(&st);
 
-    let ty = type_arena.alloc(TyS {
-        sty: st,
-        flags: flags.flags,
-        region_depth: flags.depth,
-    });
+    let ty = match () {
+        #[cfg(stage0)]
+        () => type_arena.alloc(TyS { sty: st,
+                                     flags: flags.flags,
+                                     region_depth: flags.depth,
+                                     marker: ShowInvariantLifetime::new(), }),
+        #[cfg(not(stage0))]
+        () => type_arena.alloc(TyS { sty: st,
+                                     flags: flags.flags,
+                                     region_depth: flags.depth, }),
+    };
 
     debug!("Interned type: {:?} Pointer: {:?}",
            ty, ty as *const _);

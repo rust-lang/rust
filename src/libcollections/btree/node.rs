@@ -278,7 +278,7 @@ impl<T> Drop for RawItems<T> {
 #[unsafe_destructor]
 impl<K, V> Drop for Node<K, V> {
     fn drop(&mut self) {
-        if self.keys.0.is_null() {
+        if self.keys.ptr.is_null() {
             // We have already cleaned up this node.
             return;
         }
@@ -292,7 +292,7 @@ impl<K, V> Drop for Node<K, V> {
             self.destroy();
         }
 
-        self.keys.0 = ptr::null_mut();
+        self.keys.ptr = ptr::null_mut();
     }
 }
 
@@ -337,18 +337,18 @@ impl<K, V> Node<K, V> {
     unsafe fn destroy(&mut self) {
         let (alignment, size) =
                 calculate_allocation_generic::<K, V>(self.capacity(), self.is_leaf());
-        heap::deallocate(self.keys.0 as *mut u8, size, alignment);
+        heap::deallocate(self.keys.ptr as *mut u8, size, alignment);
     }
 
     #[inline]
     pub fn as_slices<'a>(&'a self) -> (&'a [K], &'a [V]) {
         unsafe {(
             mem::transmute(raw::Slice {
-                data: self.keys.0,
+                data: self.keys.ptr,
                 len: self.len()
             }),
             mem::transmute(raw::Slice {
-                data: self.vals.0,
+                data: self.vals.ptr,
                 len: self.len()
             })
         )}
@@ -368,7 +368,7 @@ impl<K, V> Node<K, V> {
         } else {
             unsafe {
                 mem::transmute(raw::Slice {
-                    data: self.edges.0,
+                    data: self.edges.ptr,
                     len: self.len() + 1
                 })
             }
@@ -586,7 +586,7 @@ impl <K, V> Node<K, V> {
 
     /// If the node has any children
     pub fn is_leaf(&self) -> bool {
-        self.edges.0.is_null()
+        self.edges.ptr.is_null()
     }
 
     /// if the node has too few elements
@@ -1064,7 +1064,7 @@ impl<K, V> Node<K, V> {
                     vals: RawItems::from_slice(self.vals()),
                     edges: RawItems::from_slice(self.edges()),
 
-                    ptr: self.keys.0 as *mut u8,
+                    ptr: self.keys.ptr as *mut u8,
                     capacity: self.capacity(),
                     is_leaf: self.is_leaf()
                 },
