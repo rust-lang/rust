@@ -757,11 +757,10 @@ mod test {
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
-    use print::pprust::view_item_to_string;
+    use print::pprust::item_to_string;
     use ptr::P;
     use util::parser_testing::{string_to_tts, string_to_parser};
-    use util::parser_testing::{string_to_expr, string_to_item};
-    use util::parser_testing::{string_to_stmt, string_to_view_item};
+    use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
 
     // produce a codemap::span
     fn sp(a: u32, b: u32) -> Span {
@@ -1079,7 +1078,6 @@ mod test {
                                         }
                                     },
                                     P(ast::Block {
-                                        view_items: Vec::new(),
                                         stmts: vec!(P(Spanned{
                                             node: ast::StmtSemi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
@@ -1111,25 +1109,25 @@ mod test {
 
     #[test] fn parse_use() {
         let use_s = "use foo::bar::baz;";
-        let vitem = string_to_view_item(use_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], use_s);
 
         let use_s = "use foo::bar as baz;";
-        let vitem = string_to_view_item(use_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], use_s);
     }
 
     #[test] fn parse_extern_crate() {
         let ex_s = "extern crate foo;";
-        let vitem = string_to_view_item(ex_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], ex_s);
 
         let ex_s = "extern crate \"foo\" as bar;";
-        let vitem = string_to_view_item(ex_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], ex_s);
     }
 

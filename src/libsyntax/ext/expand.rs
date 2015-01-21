@@ -206,7 +206,6 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                     // wrap the if-let expr in a block
                     let span = els.span;
                     let blk = P(ast::Block {
-                        view_items: vec![],
                         stmts: vec![],
                         expr: Some(P(els)),
                         id: ast::DUMMY_NODE_ID,
@@ -799,8 +798,7 @@ pub fn expand_block(blk: P<Block>, fld: &mut MacroExpander) -> P<Block> {
 
 // expand the elements of a block.
 pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
-    b.map(|Block {id, view_items, stmts, expr, rules, span}| {
-        let new_view_items = view_items.into_iter().map(|x| fld.fold_view_item(x)).collect();
+    b.map(|Block {id, stmts, expr, rules, span}| {
         let new_stmts = stmts.into_iter().flat_map(|x| {
             // perform all pending renames
             let renamed_stmt = {
@@ -821,7 +819,6 @@ pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
         });
         Block {
             id: fld.new_id(id),
-            view_items: new_view_items,
             stmts: new_stmts,
             expr: new_expr,
             rules: rules,

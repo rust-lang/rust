@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub extern crate core; //~ ERROR: `pub` visibility is not allowed
+mod foo { pub mod foo {  } }
 
-fn main() {
-    pub use std::usize; //~ ERROR: imports in functions are never reachable
-}
+use foo::foo; //~ ERROR import `foo` conflicts with existing submodule
+
+fn main() {}
