@@ -785,7 +785,7 @@ pub fn make_vtable<I: Iterator<Item=ValueRef>>(ccx: &CrateContext,
     unsafe {
         let tbl = C_struct(ccx, &components[], false);
         let sym = token::gensym("vtable");
-        let buf = CString::from_vec(format!("vtable{}", sym.uint()).into_bytes());
+        let buf = CString::from_vec(format!("vtable{}", sym.usize()).into_bytes());
         let vt_gvar = llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(),
                                           buf.as_ptr());
         llvm::LLVMSetInitializer(vt_gvar, tbl);

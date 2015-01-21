@@ -174,8 +174,8 @@ pub trait Folder : Sized {
         noop_fold_ident(i, self)
     }
 
-    fn fold_uint(&mut self, i: uint) -> uint {
-        noop_fold_uint(i, self)
+    fn fold_usize(&mut self, i: usize) -> usize {
+        noop_fold_usize(i, self)
     }
 
     fn fold_path(&mut self, p: Path) -> Path {
@@ -505,7 +505,7 @@ pub fn noop_fold_ident<T: Folder>(i: Ident, _: &mut T) -> Ident {
     i
 }
 
-pub fn noop_fold_uint<T: Folder>(i: uint, _: &mut T) -> uint {
+pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
     i
 }
 
@@ -1371,7 +1371,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
             }
             ExprTupField(el, ident) => {
                 ExprTupField(folder.fold_expr(el),
-                             respan(ident.span, folder.fold_uint(ident.node)))
+                             respan(ident.span, folder.fold_usize(ident.node)))
             }
             ExprIndex(el, er) => {
                 ExprIndex(folder.fold_expr(el), folder.fold_expr(er))

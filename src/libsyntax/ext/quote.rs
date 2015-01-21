@@ -588,7 +588,7 @@ fn mk_token(cx: &ExtCtxt, sp: Span, tok: &token::Token) -> P<ast::Expr> {
         }
 
         token::Literal(token::StrRaw(ident, n), suf) => {
-            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ident.ident()), cx.expr_uint(sp, n))
+            return mk_lit!("StrRaw", suf, mk_name(cx, sp, ident.ident()), cx.expr_usize(sp, n))
         }
 
         token::Ident(ident, style) => {
@@ -716,7 +716,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // try removing it when enough of them are gone.
 
     let mut p = cx.new_parser_from_tts(tts);
-    p.quote_depth += 1u;
+    p.quote_depth += 1us;
 
     let cx_expr = p.parse_expr();
     if !p.eat(&token::Comma) {

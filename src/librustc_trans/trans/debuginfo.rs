@@ -1204,7 +1204,7 @@ pub fn set_source_location(fcx: &FunctionContext,
 
                 set_debug_location(cx, DebugLocation::new(scope,
                                                           loc.line,
-                                                          loc.col.to_uint()));
+                                                          loc.col.to_usize()));
             } else {
                 set_debug_location(cx, UnknownLocation);
             }
@@ -1716,7 +1716,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     set_debug_location(cx, DebugLocation::new(scope_metadata,
                                               loc.line,
-                                              loc.col.to_uint()));
+                                              loc.col.to_usize()));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -3279,7 +3279,7 @@ fn create_scope_map(cx: &CrateContext,
                 parent_scope,
                 file_metadata,
                 loc.line as c_uint,
-                loc.col.to_uint() as c_uint)
+                loc.col.to_usize() as c_uint)
         };
 
         scope_stack.push(ScopeStackEntry { scope_metadata: scope_metadata,
@@ -3401,7 +3401,7 @@ fn create_scope_map(cx: &CrateContext,
                                 parent_scope,
                                 file_metadata,
                                 loc.line as c_uint,
-                                loc.col.to_uint() as c_uint)
+                                loc.col.to_usize() as c_uint)
                         };
 
                         scope_stack.push(ScopeStackEntry {
