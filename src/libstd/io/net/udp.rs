@@ -71,6 +71,16 @@ impl UdpSocket {
         })
     }
 
+    /// Creates a UDP socket from the given address with `SO_REUSEADDR` set to true.
+    ///
+    /// Address type can be any implementor of `ToSocketAddr` trait. See its
+    /// documentation for concrete examples.
+    pub fn bind_reusable<A: ToSocketAddr>(addr: A) -> IoResult<UdpSocket> {
+        super::with_addresses(addr, |addr| {
+            UdpSocketImp::bind_reusable(addr).map(|s| UdpSocket { inner: s })
+        })
+    }
+
     /// Receives data from the socket. On success, returns the number of bytes
     /// read and the address from whence the data came.
     pub fn recv_from(&mut self, buf: &mut [u8]) -> IoResult<(uint, SocketAddr)> {

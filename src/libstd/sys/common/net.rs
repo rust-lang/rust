@@ -809,6 +809,28 @@ impl UdpSocket {
         }
     }
 
+    pub fn bind_reusable(addr: SocketAddr) -> IoResult<UdpSocket> {
+        sys::init_net();
+
+        let fd = try!(socket(addr, libc::SOCK_DGRAM));
+        let ret = UdpSocket {
+            inner: Arc::new(Inner::new(fd)),
+            read_deadline: 0,
+            write_deadline: 0,
+        };
+
+        setsockopt(self.fd(), libc::SOL_SOCKET, libc::SO_REUSEADDR, on as libc::c_int);        
+
+        let mut storage = unsafe { mem::zeroed() };
+        let len = addr_to_sockaddr(addr, &mut storage);
+        let addrp = &storage as *const _ as *const libc::sockaddr;
+
+        match unsafe { libc::bind(fd, addrp, len) } {
+            -1 => Err(last_error()),
+            _ => Ok(ret),
+        }
+    }
+
     pub fn fd(&self) -> sock_t { self.inner.fd }
 
     pub fn set_broadcast(&mut self, on: bool) -> IoResult<()> {
