@@ -317,6 +317,7 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
             }
         }
     }).collect();
+    let polarity = csearch::get_impl_polarity(tcx, did);
     return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             derived: clean::detect_derived(attrs.as_slice()),
@@ -329,6 +330,7 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
             for_: ty.ty.clean(cx),
             generics: (&ty.generics, subst::TypeSpace).clean(cx),
             items: trait_items,
+            polarity: polarity.map(|p| { p.clean(cx) }),
         }),
         source: clean::Span::empty(),
         name: None,
