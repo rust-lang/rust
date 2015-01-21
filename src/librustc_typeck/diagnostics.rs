@@ -10,38 +10,7 @@
 
 #![allow(non_snake_case)]
 
-register_diagnostic! {
-    E0001,
-r##"
-    This error suggests that the expression arm corresponding to the noted pattern
-    will never be reached as for all possible values of the expression being matched,
-    one of the preceeding patterns will match.
-
-    This means that perhaps some of the preceeding patterns are too general, this
-    one is too specific or the ordering is incorrect.
-"## }
-
 register_diagnostics! {
-    E0002,
-    E0003,
-    E0004,
-    E0005,
-    E0006,
-    E0007,
-    E0008,
-    E0009,
-    E0010,
-    E0011,
-    E0012,
-    E0013,
-    E0014,
-    E0015,
-    E0016,
-    E0017,
-    E0018,
-    E0019,
-    E0020,
-    E0022,
     E0023,
     E0024,
     E0025,
@@ -61,12 +30,9 @@ register_diagnostics! {
     E0046,
     E0049,
     E0050,
-    E0051,
-    E0052,
     E0053,
     E0054,
     E0055,
-    E0056,
     E0057,
     E0059,
     E0060,
@@ -101,16 +67,12 @@ register_diagnostics! {
     E0092,
     E0093,
     E0094,
-    E0100,
     E0101,
     E0102,
     E0103,
     E0104,
     E0106,
     E0107,
-    E0108,
-    E0109,
-    E0110,
     E0116,
     E0117,
     E0118,
@@ -125,38 +87,92 @@ register_diagnostics! {
     E0130,
     E0131,
     E0132,
-    E0133,
-    E0134,
-    E0135,
-    E0136,
-    E0137,
-    E0138,
-    E0139,
-    E0140,
     E0141,
-    E0152,
-    E0153,
-    E0157,
-    E0158,
     E0159,
-    E0161,
-    E0162,
     E0163,
     E0164,
-    E0165,
     E0166,
     E0167,
     E0168,
-    E0169,
-    E0171,
     E0172,
     E0173, // manual implementations of unboxed closure traits are experimental
     E0174, // explicit use of unboxed closure methods are experimental
-    E0177,
     E0178,
-    E0180,
-    E0181,
     E0182,
     E0183,
-    E0184
+    E0184,
+    E0185,
+    E0186,
+    E0187, // can't infer the kind of the closure
+    E0188, // types differ in mutability
+    E0189, // can only cast a boxed pointer to a boxed object
+    E0190, // can only cast a &-pointer to an &-object
+    E0191, // value of the associated type must be specified
+    E0192, // negative imples are allowed just fo `Send` and `Sync`
+    E0193, // cannot bound type where clause bounds may only be attached to types
+           // involving type parameters
+    E0194,
+    E0195, // lifetime parameters or bounds on method do not match the trait declaration
+    E0196, // cannot determine a type for this unboxed closure
+    E0197, // inherent impls cannot be declared as unsafe
+    E0198, // negative implementations are not unsafe
+    E0199, // implementing trait is not unsafe
+    E0200, // trait requires an `unsafe impl` declaration
+    E0201, // duplicate method in trait impl
+    E0202, // associated items are not allowed in inherint impls
+    E0203, // type parameter has more than one relaxed default bound,
+           // and only one is supported
+    E0204, // trait `Copy` may not be implemented for this type; field
+           // does not implement `Copy`
+    E0205, // trait `Copy` may not be implemented for this type; variant
+           // does not implement `copy`
+    E0206, // trait `Copy` may not be implemented for this type; type is
+           // not a structure or enumeration
+    E0207, // type parameter is not constrained by the impl trait, self type, or predicate
+    E0208,
+    E0209, // builtin traits can only be implemented on structs or enums
+    E0210, // type parameter is not constrained by any local type
+    E0211,
+    E0212, // cannot extract an associated type from a higher-ranked trait bound
+    E0213, // associated types are not accepted in this context
+    E0214, // parenthesized parameters may only be used with a trait
+    E0215, // angle-bracket notation is not stable with `Fn`
+    E0216, // parenthetical notation is only stable with `Fn`
+    E0217, // ambiguous associated type, defined in multiple supertraits
+    E0218, // no associated type defined
+    E0219, // associated type defined in higher-ranked supertrait
+    E0220, // associated type not found for type parameter
+    E0221, // ambiguous associated type in bounds
+    E0222, // variadic function must have C calling convention
+    E0223, // ambiguous associated type
+    E0224, // at least one non-builtin train is required for an object type
+    E0225, // only the builtin traits can be used as closure or object bounds
+    E0226, // only a single explicit lifetime bound is permitted
+    E0227, // ambiguous lifetime bound, explicit lifetime bound required
+    E0228, // explicit lifetime bound required
+    E0229, // associated type bindings are not allowed here
+    E0230, // there is no type parameter on trait
+    E0231, // only named substitution parameters are allowed
+    E0232, // this attribute must have a value
+    E0233,
+    E0234, // `for` loop expression has type which does not implement the `Iterator` trait
+    E0235, // structure constructor specifies a structure of type but
+    E0236, // no lang item for range syntax
+    E0237, // no lang item for range syntax
+    E0238, // parenthesized parameters may only be used with a trait
+    E0239, // `next` method of `Iterator` trait has unexpected type
+    E0240,
+    E0241,
+    E0242, // internal error looking up a definition
+    E0243, // wrong number of type arguments
+    E0244, // wrong number of type arguments
+    E0245, // not a trait
+    E0246, // illegal recursive type
+    E0247, // found module name used as a type
+    E0248, // found value name used as a type
+    E0249, // expected constant expr for array length
+    E0250  // expected constant expr for array length
 }
+
+__build_diagnostic_array! { DIAGNOSTICS }
+

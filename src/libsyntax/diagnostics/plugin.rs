@@ -65,6 +65,13 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         }
         ()
     });
+    with_registered_diagnostics(|diagnostics| {
+        if !diagnostics.contains_key(&code.name) {
+            ecx.span_err(span, &format!(
+                "used diagnostic code {} not registered", token::get_ident(code).get()
+            )[]);
+        }
+    });
     MacExpr::new(quote_expr!(ecx, ()))
 }
 

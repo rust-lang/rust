@@ -371,12 +371,11 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
             infer::EquatePredicate(_) => "equality predicate not satisfied",
         };
 
-        self.tcx.sess.span_err(
-            trace.origin.span(),
-            &format!("{}: {} ({})",
+        span_err!(self.tcx.sess, trace.origin.span(), E0308,
+            "{}: {} ({})",
                  message_root_str,
                  expected_found_str,
-                 ty::type_err_to_str(self.tcx, terr))[]);
+                 ty::type_err_to_str(self.tcx, terr));
 
         match trace.origin {
             infer::MatchExpressionArm(_, arm_span) =>
@@ -443,9 +442,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         match sub {
             ty::ReFree(ty::FreeRegion {bound_region: ty::BrNamed(..), ..}) => {
                 // Does the required lifetime have a nice name we can print?
-                self.tcx.sess.span_err(
-                    origin.span(),
-                    &format!("{} may not live long enough", labeled_user_string)[]);
+                span_err!(self.tcx.sess, origin.span(), E0309,
+                    "{} may not live long enough", labeled_user_string);
                 self.tcx.sess.span_help(
                     origin.span(),
                     &format!(
@@ -456,9 +454,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
             ty::ReStatic => {
                 // Does the required lifetime have a nice name we can print?
-                self.tcx.sess.span_err(
-                    origin.span(),
-                    &format!("{} may not live long enough", labeled_user_string)[]);
+                span_err!(self.tcx.sess, origin.span(), E0310,
+                    "{} may not live long enough", labeled_user_string);
                 self.tcx.sess.span_help(
                     origin.span(),
                     &format!(
@@ -468,11 +465,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
 
             _ => {
                 // If not, be less specific.
-                self.tcx.sess.span_err(
-                    origin.span(),
-                    &format!(
+                span_err!(self.tcx.sess, origin.span(), E0311,
                         "{} may not live long enough",
-                        labeled_user_string)[]);
+                        labeled_user_string);
                 self.tcx.sess.span_help(
                     origin.span(),
                     &format!(
@@ -499,8 +494,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                 self.report_and_explain_type_error(trace, &terr);
             }
             infer::Reborrow(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess, span, E0312,
                     "lifetime of reference outlines \
                      lifetime of borrowed content...");
                 note_and_explain_region(
@@ -515,14 +509,13 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::ReborrowUpvar(span, ref upvar_id) => {
-                self.tcx.sess.span_err(
-                    span,
-                    &format!("lifetime of borrowed pointer outlives \
+                span_err!(self.tcx.sess, span, E0313,
+                    "lifetime of borrowed pointer outlives \
                             lifetime of captured variable `{}`...",
                             ty::local_var_name_str(self.tcx,
                                                    upvar_id.var_id)
                                 .get()
-                                .to_string())[]);
+                                .to_string());
                 note_and_explain_region(
                     self.tcx,
                     "...the borrowed pointer is valid for ",
@@ -539,8 +532,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::InfStackClosure(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess, span, E0314,
                     "closure outlives stack frame");
                 note_and_explain_region(
                     self.tcx,
@@ -554,8 +546,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     "");
             }
             infer::InvokeClosure(span) => {
-                self.tcx.sess.span_err(
-                    span,
+                span_err!(self.tcx.sess, span, E0315,
                     "cannot invoke closure outside of its lifetime");
                 note_and_explain_region(
                     self.tcx,

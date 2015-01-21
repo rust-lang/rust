@@ -801,16 +801,15 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         }) {
                             Some(_) => (),
                             None => {
-                                ccx.tcx.sess.span_err(attr.span,
-                                                 format!("there is no type parameter \
+                                span_err!(ccx.tcx.sess, attr.span, E0230,
+                                                 "there is no type parameter \
                                                           {} on trait {}",
-                                                           s, item.ident.as_str())
-                                            .as_slice());
+                                                           s, item.ident.as_str());
                             }
                         },
                         // `{:1}` and `{}` are not to be used
                         Position::ArgumentIs(_) | Position::ArgumentNext => {
-                            ccx.tcx.sess.span_err(attr.span,
+                            span_err!(ccx.tcx.sess, attr.span, E0231,
                                                   "only named substitution \
                                                    parameters are allowed");
                         }
@@ -818,7 +817,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                 }
             }
         } else {
-            ccx.tcx.sess.span_err(attr.span,
+            span_err!(ccx.tcx.sess, attr.span, E0232,
                                   "this attribute must have a value, \
                                    eg `#[rustc_on_unimplemented = \"foo\"]`")
         }
@@ -2099,8 +2098,8 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     let trait_did = match fcx.tcx().lang_items.require(IteratorItem) {
         Ok(trait_did) => trait_did,
         Err(ref err_string) => {
-            fcx.tcx().sess.span_err(iterator_expr.span,
-                                    &err_string[]);
+            span_err!(fcx.tcx().sess, iterator_expr.span, E0233,
+                                    "{}", &err_string[]);
             return fcx.tcx().types.err
         }
     };
@@ -2123,11 +2122,10 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
             if !ty::type_is_error(true_expr_type) {
                 let ty_string = fcx.infcx().ty_to_string(true_expr_type);
-                fcx.tcx().sess.span_err(iterator_expr.span,
-                                        &format!("`for` loop expression has type `{}` which does \
+                span_err!(fcx.tcx().sess, iterator_expr.span, E0234,
+                                        "`for` loop expression has type `{}` which does \
                                                 not implement the `Iterator` trait; \
-                                                maybe try .iter()",
-                                                ty_string)[]);
+                                                maybe try .iter()", ty_string);
             }
             fcx.tcx().types.err
         }
@@ -2162,11 +2160,10 @@ fn lookup_method_for_for_loop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     fcx.tcx().types.err
                 }
                 _ => {
-                    fcx.tcx().sess.span_err(iterator_expr.span,
-                                            &format!("`next` method of the `Iterator` \
+                    span_err!(fcx.tcx().sess, iterator_expr.span, E0239,
+                                            "`next` method of the `Iterator` \
                                                     trait has an unexpected type `{}`",
-                                                    fcx.infcx().ty_to_string(return_type))
-                                            []);
+                                                    fcx.infcx().ty_to_string(return_type));
                     fcx.tcx().types.err
                 }
             }
@@ -3880,10 +3877,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 Err(type_error) => {
                     let type_error_description =
                         ty::type_err_to_str(tcx, &type_error);
-                    fcx.tcx()
-                       .sess
-                       .span_err(path.span,
-                                 &format!("structure constructor specifies a \
+                    span_err!(fcx.tcx().sess, path.span, E0235,
+                                 "structure constructor specifies a \
                                          structure of type `{}`, but this \
                                          structure has type `{}`: {}",
                                          fcx.infcx()
@@ -3891,7 +3886,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                          fcx.infcx()
                                             .ty_to_string(
                                                 actual_structure_type),
-                                         type_error_description)[]);
+                                         type_error_description);
                     ty::note_and_explain_type_err(tcx, &type_error);
                 }
             }
@@ -4012,7 +4007,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
                     ty::mk_struct(tcx, did, tcx.mk_substs(substs))
                 } else {
-                    tcx.sess.span_err(expr.span, "No lang item for range syntax");
+                    span_err!(tcx.sess, expr.span, E0236, "no lang item for range syntax");
                     fcx.tcx().types.err
                 }
             }
@@ -4022,7 +4017,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     let substs = Substs::new_type(vec![], vec![]);
                     ty::mk_struct(tcx, did, tcx.mk_substs(substs))
                 } else {
-                    tcx.sess.span_err(expr.span, "No lang item for range syntax");
+                    span_err!(tcx.sess, expr.span, E0237, "no lang item for range syntax");
                     fcx.tcx().types.err
                 }
             }
@@ -4872,8 +4867,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             }
 
             ast::ParenthesizedParameters(ref data) => {
-                fcx.tcx().sess.span_err(
-                    span,
+                span_err!(fcx.tcx().sess, span, E0238,
                     "parenthesized parameters may only be used with a trait");
                 push_explicit_parenthesized_parameters_from_segment_to_substs(
                     fcx, space, span, type_defs, data, substs);
@@ -5230,7 +5224,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
             "get_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
                   Ok(t) => t,
-                  Err(s) => { tcx.sess.span_fatal(it.span, &s[]); }
+                  Err(s) => { span_fatal!(tcx.sess, it.span, E0240, "{}", &s[]); }
               };
               let td_ptr = ty::mk_ptr(ccx.tcx, ty::mt {
                   ty: tydesc_ty,

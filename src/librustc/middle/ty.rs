@@ -5369,15 +5369,13 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                                 discriminant = val as Disr
                                             }
                                             Ok(_) => {
-                                                cx.sess
-                                                  .span_err(e.span,
+                                                span_err!(cx.sess, e.span, E0304,
                                                             "expected signed integer constant");
                                             }
                                             Err(ref err) => {
-                                                cx.sess
-                                                  .span_err(e.span,
-                                                            &format!("expected constant: {}",
-                                                                    *err)[]);
+                                                span_err!(cx.sess, e.span, E0305,
+                                                            "expected constant: {}",
+                                                                    *err);
                                             }
                                         },
                                     None => {}
@@ -5851,9 +5849,9 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
                 const_eval::const_binary(_) =>
                     "binary array"
             };
-            tcx.sess.span_err(count_expr.span, &format!(
+            span_err!(tcx.sess, count_expr.span, E0306,
                 "expected positive integer for repeat count, found {}",
-                found)[]);
+                found);
         }
         Err(_) => {
             let found = match count_expr.node {
@@ -5866,9 +5864,9 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
                 _ =>
                     "non-constant expression"
             };
-            tcx.sess.span_err(count_expr.span, &format!(
+            span_err!(tcx.sess, count_expr.span, E0307,
                 "expected constant integer for repeat count, found {}",
-                found)[]);
+                found);
         }
     }
     0
