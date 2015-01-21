@@ -2036,6 +2036,35 @@ impl LintPass for HardwiredLints {
     }
 }
 
+declare_lint! {
+    PRIVATE_NO_MANGLE_FNS,
+    Warn,
+    "functions marked #[no_mangle] should be exported"
+}
+
+#[derive(Copy)]
+pub struct PrivateNoMangleFns;
+
+impl LintPass for PrivateNoMangleFns {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(PRIVATE_NO_MANGLE_FNS)
+    }
+
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+        match it.node {
+            ast::ItemFn(..) => {
+                if attr::contains_name(it.attrs.as_slice(), "no_mangle") &&
+                       !cx.exported_items.contains(&it.id) {
+                    let msg = format!("function {} is marked #[no_mangle], but not exported",
+                                      it.ident);
+                    cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg.as_slice());
+                }
+            },
+            _ => {},
+        }
+    }
+}
+
 /// Forbids using the `#[feature(...)]` attribute
 #[derive(Copy)]
 pub struct UnstableFeatures;
