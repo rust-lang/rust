@@ -26,11 +26,14 @@ use ops::{Deref, FnOnce};
 use result;
 use slice::SliceExt;
 use slice;
-use str::{self, StrExt, Utf8Error};
+use str::{self, StrExt};
 
 pub use self::num::radix;
 pub use self::num::Radix;
 pub use self::num::RadixFmt;
+
+#[cfg(stage0)] pub use self::Debug as Show;
+#[cfg(stage0)] pub use self::Display as String;
 
 mod num;
 mod float;
@@ -46,7 +49,7 @@ pub type Result = result::Result<(), Error>;
 /// occurred. Any extra information must be arranged to be transmitted through
 /// some other means.
 #[unstable = "core and I/O reconciliation may alter this definition"]
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub struct Error;
 
 /// A collection of methods that are required to format a message into a stream.
@@ -133,7 +136,7 @@ pub struct Argument<'a> {
 impl<'a> Argument<'a> {
     #[inline(never)]
     fn show_uint(x: &uint, f: &mut Formatter) -> Result {
-        Show::fmt(x, f)
+        Display::fmt(x, f)
     }
 
     fn new<'b, T>(x: &'b T, f: fn(&T, &mut Formatter) -> Result) -> Argument<'b> {
@@ -214,14 +217,15 @@ pub struct Arguments<'a> {
     args: &'a [Argument<'a>],
 }
 
-impl<'a> Show for Arguments<'a> {
+#[stable]
+impl<'a> Debug for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
-        String::fmt(self, fmt)
+        Display::fmt(self, fmt)
     }
 }
 
 #[stable]
-impl<'a> String for Arguments<'a> {
+impl<'a> Display for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
         write(fmt.buf, *self)
     }
@@ -229,8 +233,32 @@ impl<'a> String for Arguments<'a> {
 
 /// Format trait for the `:?` format. Useful for debugging, most all types
 /// should implement this.
-#[unstable = "I/O and core have yet to be reconciled"]
+#[deprecated = "renamed to Debug"]
+#[cfg(not(stage0))]
 pub trait Show {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
+/// Format trait for the `:?` format. Useful for debugging, most all types
+/// should implement this.
+#[unstable = "I/O and core have yet to be reconciled"]
+pub trait Debug {
+    /// Formats the value using the given formatter.
+    fn fmt(&self, &mut Formatter) -> Result;
+}
+
+#[cfg(not(stage0))]
+impl<T: Show + ?Sized> Debug for T {
+    #[allow(deprecated)]
+    fn fmt(&self, f: &mut Formatter) -> Result { Show::fmt(self, f) }
+}
+
+/// When a value can be semantically expressed as a String, this trait may be
+/// used. It corresponds to the default format, `{}`.
+#[deprecated = "renamed to Display"]
+#[cfg(not(stage0))]
+pub trait String {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
@@ -238,11 +266,16 @@ pub trait Show {
 /// When a value can be semantically expressed as a String, this trait may be
 /// used. It corresponds to the default format, `{}`.
 #[unstable = "I/O and core have yet to be reconciled"]
-pub trait String {
+pub trait Display {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
+#[cfg(not(stage0))]
+impl<T: String + ?Sized> Display for T {
+    #[allow(deprecated)]
+    fn fmt(&self, f: &mut Formatter) -> Result { String::fmt(self, f) }
+}
 
 /// Format trait for the `o` character
 #[unstable = "I/O and core have yet to be reconciled"]
@@ -583,9 +616,10 @@ impl<'a> Formatter<'a> {
     pub fn precision(&self) -> Option<uint> { self.precision }
 }
 
-impl Show for Error {
+#[stable]
+impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        String::fmt("an error occurred when formatting an argument", f)
+        Display::fmt("an error occurred when formatting an argument", f)
     }
 }
 
@@ -611,9 +645,11 @@ pub fn argumentuint<'a>(s: &'a uint) -> Argument<'a> {
 macro_rules! fmt_refs {
     ($($tr:ident),*) => {
         $(
+        #[stable]
         impl<'a, T: ?Sized + $tr> $tr for &'a T {
             fn fmt(&self, f: &mut Formatter) -> Result { $tr::fmt(&**self, f) }
         }
+        #[stable]
         impl<'a, T: ?Sized + $tr> $tr for &'a mut T {
             fn fmt(&self, f: &mut Formatter) -> Result { $tr::fmt(&**self, f) }
         }
@@ -621,22 +657,24 @@ macro_rules! fmt_refs {
     }
 }
 
-fmt_refs! { Show, String, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
+fmt_refs! { Debug, Display, Octal, Binary, LowerHex, UpperHex, LowerExp, UpperExp }
 
-impl Show for bool {
+#[stable]
+impl Debug for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        String::fmt(self, f)
+        Display::fmt(self, f)
     }
 }
 
 #[stable]
-impl String for bool {
+impl Display for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        String::fmt(if *self { "true" } else { "false" }, f)
+        Display::fmt(if *self { "true" } else { "false" }, f)
     }
 }
 
-impl Show for str {
+#[stable]
+impl Debug for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         try!(write!(f, "\""));
         for c in self.chars().flat_map(|c| c.escape_default()) {
@@ -647,13 +685,14 @@ impl Show for str {
 }
 
 #[stable]
-impl String for str {
+impl Display for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad(self)
     }
 }
 
-impl Show for char {
+#[stable]
+impl Debug for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         use char::CharExt;
         try!(write!(f, "'"));
@@ -665,15 +704,16 @@ impl Show for char {
 }
 
 #[stable]
-impl String for char {
+impl Display for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8; 4];
         let amt = self.encode_utf8(&mut utf8).unwrap_or(0);
         let s: &str = unsafe { mem::transmute(&utf8[..amt]) };
-        String::fmt(s, f)
+        Display::fmt(s, f)
     }
 }
 
+#[stable]
 impl<T> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.flags |= 1 << (rt::FlagAlternate as uint);
@@ -683,18 +723,21 @@ impl<T> Pointer for *const T {
     }
 }
 
+#[stable]
 impl<T> Pointer for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Pointer::fmt(&(*self as *const T), f)
     }
 }
 
+#[stable]
 impl<'a, T> Pointer for &'a T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Pointer::fmt(&(*self as *const T), f)
     }
 }
 
+#[stable]
 impl<'a, T> Pointer for &'a mut T {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Pointer::fmt(&(&**self as *const T), f)
@@ -703,15 +746,15 @@ impl<'a, T> Pointer for &'a mut T {
 
 macro_rules! floating { ($ty:ident) => {
 
-    impl Show for $ty {
+    #[stable]
+    impl Debug for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
-            try!(String::fmt(self, fmt));
-            fmt.write_str(stringify!($ty))
+            Display::fmt(self, fmt)
         }
     }
 
     #[stable]
-    impl String for $ty {
+    impl Display for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
 
@@ -732,6 +775,7 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 
+    #[stable]
     impl LowerExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
@@ -753,6 +797,7 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 
+    #[stable]
     impl UpperExp for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
@@ -777,12 +822,14 @@ macro_rules! floating { ($ty:ident) => {
 floating! { f32 }
 floating! { f64 }
 
-// Implementation of Show for various core types
+// Implementation of Display/Debug for various core types
 
-impl<T> Show for *const T {
+#[stable]
+impl<T> Debug for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
-impl<T> Show for *mut T {
+#[stable]
+impl<T> Debug for *mut T {
     fn fmt(&self, f: &mut Formatter) -> Result { Pointer::fmt(self, f) }
 }
 
@@ -793,7 +840,8 @@ macro_rules! peel {
 macro_rules! tuple {
     () => ();
     ( $($name:ident,)+ ) => (
-        impl<$($name:Show),*> Show for ($($name,)*) {
+        #[stable]
+        impl<$($name:Debug),*> Debug for ($($name,)*) {
             #[allow(non_snake_case, unused_assignments)]
             fn fmt(&self, f: &mut Formatter) -> Result {
                 try!(write!(f, "("));
@@ -818,11 +866,13 @@ macro_rules! tuple {
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
-impl<'a> Show for &'a (any::Any+'a) {
+#[stable]
+impl<'a> Debug for &'a (any::Any+'a) {
     fn fmt(&self, f: &mut Formatter) -> Result { f.pad("&Any") }
 }
 
-impl<T: Show> Show for [T] {
+#[stable]
+impl<T: Debug> Debug for [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
         if f.flags & (1 << (rt::FlagAlternate as uint)) == 0 {
             try!(write!(f, "["));
@@ -843,20 +893,22 @@ impl<T: Show> Show for [T] {
     }
 }
 
-impl Show for () {
+#[stable]
+impl Debug for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
     }
 }
 
-impl<T: Copy + Show> Show for Cell<T> {
+#[stable]
+impl<T: Copy + Debug> Debug for Cell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         write!(f, "Cell {{ value: {:?} }}", self.get())
     }
 }
 
-#[unstable]
-impl<T: Show> Show for RefCell<T> {
+#[stable]
+impl<T: Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match self.try_borrow() {
             Some(val) => write!(f, "RefCell {{ value: {:?} }}", val),
@@ -865,29 +917,17 @@ impl<T: Show> Show for RefCell<T> {
     }
 }
 
-impl<'b, T: Show> Show for Ref<'b, T> {
+#[stable]
+impl<'b, T: Debug> Debug for Ref<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        Show::fmt(&**self, f)
-    }
-}
-
-impl<'b, T: Show> Show for RefMut<'b, T> {
-    fn fmt(&self, f: &mut Formatter) -> Result {
-        Show::fmt(&*(self.deref()), f)
+        Debug::fmt(&**self, f)
     }
 }
 
 #[stable]
-impl String for Utf8Error {
+impl<'b, T: Debug> Debug for RefMut<'b, T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        match *self {
-            Utf8Error::InvalidByte(n) => {
-                write!(f, "invalid utf-8: invalid byte at index {}", n)
-            }
-            Utf8Error::TooShort => {
-                write!(f, "invalid utf-8: byte slice too short")
-            }
-        }
+        Debug::fmt(&*(self.deref()), f)
     }
 }
 

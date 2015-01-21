@@ -57,7 +57,7 @@ struct Matrix<'a>(Vec<Vec<&'a Pat>>);
 /// ++++++++++++++++++++++++++
 /// + _     + [_, _, ..tail] +
 /// ++++++++++++++++++++++++++
-impl<'a> fmt::Show for Matrix<'a> {
+impl<'a> fmt::Debug for Matrix<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "\n"));
 

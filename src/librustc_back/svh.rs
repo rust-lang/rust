@@ -52,7 +52,7 @@ use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Show)]
 pub struct Svh {
     hash: String,
 }
@@ -117,13 +117,7 @@ impl Svh {
     }
 }
 
-impl fmt::Show for Svh {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Svh {{ {} }}", self.as_str())
-    }
-}
-
-impl fmt::String for Svh {
+impl fmt::Display for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.as_str())
     }

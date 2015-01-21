@@ -65,7 +65,7 @@ pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
     LoopScopeKind(ast::NodeId, [Block<'blk, 'tcx>; EXIT_MAX])
 }
 
-impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
+impl<'blk, 'tcx: 'blk> fmt::Debug for CleanupScopeKind<'blk, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CustomScopeKind => write!(f, "CustomScopeKind"),

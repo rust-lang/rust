@@ -18,7 +18,7 @@ use borrow::BorrowFrom;
 use clone::Clone;
 use cmp::{max, Eq, PartialEq};
 use default::Default;
-use fmt::{self, Show};
+use fmt::{self, Debug};
 use hash::{self, Hash, SipHasher};
 use iter::{self, Iterator, ExactSizeIterator, IteratorExt, FromIterator, Extend, Map};
 use marker::Sized;
@@ -270,7 +270,7 @@ fn test_resize_policy() {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// #[derive(Hash, Eq, PartialEq, Show)]
+/// #[derive(Hash, Eq, PartialEq, Debug)]
 /// struct Viking {
 ///     name: String,
 ///     country: String,
@@ -1216,8 +1216,8 @@ impl<K, V, S, H> Eq for HashMap<K, V, S>
 {}
 
 #[stable]
-impl<K, V, S, H> Show for HashMap<K, V, S>
-    where K: Eq + Hash<H> + Show, V: Show,
+impl<K, V, S, H> Debug for HashMap<K, V, S>
+    where K: Eq + Hash<H> + Debug, V: Debug,
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
@@ -1996,8 +1996,8 @@ mod test_map {
 
         let map_str = format!("{:?}", map);
 
-        assert!(map_str == "HashMap {1i: 2i, 3i: 4i}" ||
-                map_str == "HashMap {3i: 4i, 1i: 2i}");
+        assert!(map_str == "HashMap {1: 2, 3: 4}" ||
+                map_str == "HashMap {3: 4, 1: 2}");
         assert_eq!(format!("{:?}", empty), "HashMap {}");
     }
 

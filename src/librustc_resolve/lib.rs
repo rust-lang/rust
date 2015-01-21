@@ -540,7 +540,7 @@ impl Module {
     }
 }
 
-impl fmt::Show for Module {
+impl fmt::Debug for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}, kind: {:?}, {}",
                self.def_id,

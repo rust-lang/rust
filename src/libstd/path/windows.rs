@@ -85,9 +85,10 @@ pub struct Path {
     sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr
 }
 
-impl fmt::Show for Path {
+#[stable]
+impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(&self.display(), f)
+        fmt::Debug::fmt(&self.display(), f)
     }
 }
 

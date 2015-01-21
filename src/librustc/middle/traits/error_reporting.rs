@@ -189,7 +189,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         ty::Predicate::Equate(ref predicate) => {
                             let predicate = infcx.resolve_type_vars_if_possible(predicate);
                             let err = infcx.equality_predicate(obligation.cause.span,
-                                                               &predicate).unwrap_err();
+                                                               &predicate).err().unwrap();
                             span_err!(infcx.tcx.sess, obligation.cause.span, E0278,
                                     "the requirement `{}` is not satisfied (`{}`)",
                                     predicate.user_string(infcx.tcx),
@@ -199,7 +199,7 @@ pub fn report_selection_error<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                         ty::Predicate::RegionOutlives(ref predicate) => {
                             let predicate = infcx.resolve_type_vars_if_possible(predicate);
                             let err = infcx.region_outlives_predicate(obligation.cause.span,
-                                                                      &predicate).unwrap_err();
+                                                                      &predicate).err().unwrap();
                             span_err!(infcx.tcx.sess, obligation.cause.span, E0279,
                                     "the requirement `{}` is not satisfied (`{}`)",
                                     predicate.user_string(infcx.tcx),
