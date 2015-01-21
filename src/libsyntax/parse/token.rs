@@ -375,7 +375,7 @@ pub enum Nonterminal {
     NtTT(P<ast::TokenTree>), // needs P'ed to break a circularity
 }
 
-impl fmt::Show for Nonterminal {
+impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             NtItem(..) => f.pad("NtItem(..)"),
@@ -651,15 +651,15 @@ impl BytesContainer for InternedString {
     }
 }
 
-impl fmt::Show for InternedString {
+impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Debug::fmt(&self.string[], f)
     }
 }
 
-impl fmt::String for InternedString {
+impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", &self.string[])
+        fmt::Display::fmt(&self.string[], f)
     }
 }
 

@@ -198,13 +198,13 @@ pub fn check_crate(tcx: &ty::ctxt) {
     tcx.sess.abort_if_errors();
 }
 
-impl fmt::Show for LiveNode {
+impl fmt::Debug for LiveNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ln({})", self.get())
     }
 }
 
-impl fmt::Show for Variable {
+impl fmt::Debug for Variable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "v({})", self.get())
     }

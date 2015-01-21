@@ -544,7 +544,7 @@ impl Fail {
     }
 }
 
-impl fmt::String for Fail {
+impl fmt::Display for Fail {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ArgumentMissing(ref nm) => {

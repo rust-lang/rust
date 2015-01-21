@@ -103,7 +103,7 @@ impl ItemType {
     }
 }
 
-impl fmt::String for ItemType {
+impl fmt::Display for ItemType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.to_static_str().fmt(f)
     }

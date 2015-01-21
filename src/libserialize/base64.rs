@@ -177,7 +177,7 @@ pub trait FromBase64 {
 }
 
 /// Errors that can occur when decoding a base64 encoded string
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub enum FromBase64Error {
     /// The input contained a character not part of the base64 format
     InvalidBase64Byte(u8, uint),
@@ -185,7 +185,7 @@ pub enum FromBase64Error {
     InvalidBase64Length,
 }
 
-impl fmt::Show for FromBase64Error {
+impl fmt::Display for FromBase64Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidBase64Byte(ch, idx) =>
@@ -201,10 +201,6 @@ impl error::Error for FromBase64Error {
             InvalidBase64Byte(_, _) => "invalid character",
             InvalidBase64Length => "invalid length",
         }
-    }
-
-    fn detail(&self) -> Option<String> {
-        Some(format!("{:?}", self))
     }
 }
 

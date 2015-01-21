@@ -228,13 +228,12 @@ pub use self::FileAccess::*;
 pub use self::IoErrorKind::*;
 
 use char::CharExt;
-use clone::Clone;
 use default::Default;
-use error::{FromError, Error};
+use error::Error;
 use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
-use marker::{Sized, Send};
+use marker::Sized;
 use mem::transmute;
 use ops::FnOnce;
 use option::Option;
@@ -340,7 +339,8 @@ impl IoError {
     }
 }
 
-impl fmt::String for IoError {
+#[stable]
+impl fmt::Display for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             IoError { kind: OtherIoError, desc: "unknown error", detail: Some(ref detail) } =>
@@ -354,19 +354,7 @@ impl fmt::String for IoError {
 }
 
 impl Error for IoError {
-    fn description(&self) -> &str {
-        self.desc
-    }
-
-    fn detail(&self) -> Option<String> {
-        self.detail.clone()
-    }
-}
-
-impl FromError<IoError> for Box<Error + Send> {
-    fn from_error(err: IoError) -> Box<Error + Send> {
-        box err
-    }
+    fn description(&self) -> &str { self.desc }
 }
 
 /// A list specifying general categories of I/O error.
@@ -1779,6 +1767,7 @@ pub struct UnstableFileStat {
 bitflags! {
     /// A set of permissions for a file or directory is represented by a set of
     /// flags which are or'd together.
+    #[derive(Show)]
     flags FilePermission: u32 {
         const USER_READ     = 0o400,
         const USER_WRITE    = 0o200,
@@ -1820,13 +1809,8 @@ impl Default for FilePermission {
     fn default() -> FilePermission { FilePermission::empty() }
 }
 
-impl fmt::Show for FilePermission {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
-impl fmt::String for FilePermission {
+#[stable]
+impl fmt::Display for FilePermission {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04o}", self.bits)
     }

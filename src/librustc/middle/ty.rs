@@ -925,7 +925,7 @@ pub struct TyS<'tcx> {
     region_depth: u32,
 }
 
-impl fmt::Show for TypeFlags {
+impl fmt::Debug for TypeFlags {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.bits)
     }
@@ -1689,37 +1689,37 @@ impl cmp::PartialEq for InferRegion {
     }
 }
 
-impl fmt::Show for TyVid {
+impl fmt::Debug for TyVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result{
         write!(f, "_#{}t", self.index)
     }
 }
 
-impl fmt::Show for IntVid {
+impl fmt::Debug for IntVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "_#{}i", self.index)
     }
 }
 
-impl fmt::Show for FloatVid {
+impl fmt::Debug for FloatVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "_#{}f", self.index)
     }
 }
 
-impl fmt::Show for RegionVid {
+impl fmt::Debug for RegionVid {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "'_#{}r", self.index)
     }
 }
 
-impl<'tcx> fmt::Show for FnSig<'tcx> {
+impl<'tcx> fmt::Debug for FnSig<'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "({:?}; variadic: {})->{:?}", self.inputs, self.variadic, self.output)
     }
 }
 
-impl fmt::Show for InferTy {
+impl fmt::Debug for InferTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TyVar(ref v) => v.fmt(f),
@@ -1731,7 +1731,7 @@ impl fmt::Show for InferTy {
     }
 }
 
-impl fmt::Show for IntVarValue {
+impl fmt::Debug for IntVarValue {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             IntType(ref v) => v.fmt(f),
@@ -3305,7 +3305,7 @@ impl ops::Sub for TypeContents {
     }
 }
 
-impl fmt::Show for TypeContents {
+impl fmt::Debug for TypeContents {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "TypeContents({:b})", self.bits)
     }

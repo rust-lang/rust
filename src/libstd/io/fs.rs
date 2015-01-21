@@ -156,7 +156,7 @@ impl File {
                 })
             }
         }).update_err("couldn't open path as file", |e| {
-            format!("{}; path={:?}; mode={}; access={}", e, path.display(),
+            format!("{}; path={}; mode={}; access={}", e, path.display(),
                 mode_string(mode), access_string(access))
         })
     }
@@ -211,7 +211,7 @@ impl File {
     pub fn fsync(&mut self) -> IoResult<()> {
         self.fd.fsync()
             .update_err("couldn't fsync file",
-                        |e| format!("{}; path={:?}", e, self.path.display()))
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
     /// This function is similar to `fsync`, except that it may not synchronize
@@ -221,7 +221,7 @@ impl File {
     pub fn datasync(&mut self) -> IoResult<()> {
         self.fd.datasync()
             .update_err("couldn't datasync file",
-                        |e| format!("{}; path={:?}", e, self.path.display()))
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
     /// Either truncates or extends the underlying file, updating the size of
@@ -235,7 +235,7 @@ impl File {
     pub fn truncate(&mut self, size: i64) -> IoResult<()> {
         self.fd.truncate(size)
             .update_err("couldn't truncate file", |e|
-                format!("{}; path={:?}; size={:?}", e, self.path.display(), size))
+                format!("{}; path={}; size={}", e, self.path.display(), size))
     }
 
     /// Returns true if the stream has reached the end of the file.
@@ -255,7 +255,7 @@ impl File {
     pub fn stat(&self) -> IoResult<FileStat> {
         self.fd.fstat()
             .update_err("couldn't fstat file", |e|
-                format!("{}; path={:?}", e, self.path.display()))
+                format!("{}; path={}", e, self.path.display()))
     }
 }
 
@@ -283,7 +283,7 @@ impl File {
 pub fn unlink(path: &Path) -> IoResult<()> {
     fs_imp::unlink(path)
            .update_err("couldn't unlink path", |e|
-               format!("{}; path={:?}", e, path.display()))
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Given a path, query the file system to get information about a file,
@@ -310,7 +310,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 pub fn stat(path: &Path) -> IoResult<FileStat> {
     fs_imp::stat(path)
            .update_err("couldn't stat path", |e|
-               format!("{}; path={:?}", e, path.display()))
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Perform the same operation as the `stat` function, except that this
@@ -324,7 +324,7 @@ pub fn stat(path: &Path) -> IoResult<FileStat> {
 pub fn lstat(path: &Path) -> IoResult<FileStat> {
     fs_imp::lstat(path)
            .update_err("couldn't lstat path", |e|
-               format!("{}; path={:?}", e, path.display()))
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Rename a file or directory to a new name.
@@ -424,14 +424,14 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 pub fn chmod(path: &Path, mode: io::FilePermission) -> IoResult<()> {
     fs_imp::chmod(path, mode.bits() as uint)
            .update_err("couldn't chmod path", |e|
-               format!("{}; path={:?}; mode={:?}", e, path.display(), mode))
+               format!("{}; path={}; mode={:?}", e, path.display(), mode))
 }
 
 /// Change the user and group owners of a file at the specified path.
 pub fn chown(path: &Path, uid: int, gid: int) -> IoResult<()> {
     fs_imp::chown(path, uid, gid)
            .update_err("couldn't chown path", |e|
-               format!("{}; path={:?}; uid={}; gid={}", e, path.display(), uid, gid))
+               format!("{}; path={}; uid={}; gid={}", e, path.display(), uid, gid))
 }
 
 /// Creates a new hard link on the filesystem. The `dst` path will be a
@@ -460,7 +460,7 @@ pub fn symlink(src: &Path, dst: &Path) -> IoResult<()> {
 pub fn readlink(path: &Path) -> IoResult<Path> {
     fs_imp::readlink(path)
            .update_err("couldn't resolve symlink for path", |e|
-               format!("{}; path={:?}", e, path.display()))
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Create a new, empty directory at the provided path
@@ -483,7 +483,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
     fs_imp::mkdir(path, mode.bits() as uint)
            .update_err("couldn't create directory", |e|
-               format!("{}; path={:?}; mode={:?}", e, path.display(), mode))
+               format!("{}; path={}; mode={}", e, path.display(), mode))
 }
 
 /// Remove an existing, empty directory
@@ -505,7 +505,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 pub fn rmdir(path: &Path) -> IoResult<()> {
     fs_imp::rmdir(path)
            .update_err("couldn't remove directory", |e|
-               format!("{}; path={:?}", e, path.display()))
+               format!("{}; path={}", e, path.display()))
 }
 
 /// Retrieve a vector containing all entries within a provided directory
@@ -545,7 +545,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
     fs_imp::readdir(path)
            .update_err("couldn't read directory",
-                       |e| format!("{}; path={:?}", e, path.display()))
+                       |e| format!("{}; path={}", e, path.display()))
 }
 
 /// Returns an iterator that will recursively walk the directory structure
@@ -555,7 +555,7 @@ pub fn readdir(path: &Path) -> IoResult<Vec<Path>> {
 pub fn walk_dir(path: &Path) -> IoResult<Directories> {
     Ok(Directories {
         stack: try!(readdir(path).update_err("couldn't walk directory",
-                                             |e| format!("{}; path={:?}", e, path.display())))
+                                             |e| format!("{}; path={}", e, path.display())))
     })
 }
 
@@ -605,7 +605,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
 
         let result = mkdir(&curpath, mode)
             .update_err("couldn't recursively mkdir",
-                        |e| format!("{}; path={:?}", e, path.display()));
+                        |e| format!("{}; path={}", e, path.display()));
 
         match result {
             Err(mkdir_err) => {
@@ -632,7 +632,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
     rm_stack.push(path.clone());
 
     fn rmdir_failed(err: &IoError, path: &Path) -> String {
-        format!("rmdir_recursive failed; path={:?}; cause={}",
+        format!("rmdir_recursive failed; path={}; cause={}",
                 path.display(), err)
     }
 
@@ -692,14 +692,14 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
 pub fn change_file_times(path: &Path, atime: u64, mtime: u64) -> IoResult<()> {
     fs_imp::utime(path, atime, mtime)
            .update_err("couldn't change_file_times", |e|
-               format!("{}; path={:?}", e, path.display()))
+               format!("{}; path={}", e, path.display()))
 }
 
 impl Reader for File {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
         fn update_err<T>(result: IoResult<T>, file: &File) -> IoResult<T> {
             result.update_err("couldn't read file",
-                              |e| format!("{}; path={:?}",
+                              |e| format!("{}; path={}",
                                           e, file.path.display()))
         }
 
@@ -722,7 +722,7 @@ impl Writer for File {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         self.fd.write(buf)
             .update_err("couldn't write to file",
-                        |e| format!("{}; path={:?}", e, self.path.display()))
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 }
 
@@ -730,7 +730,7 @@ impl Seek for File {
     fn tell(&self) -> IoResult<u64> {
         self.fd.tell()
             .update_err("couldn't retrieve file cursor (`tell`)",
-                        |e| format!("{}; path={:?}", e, self.path.display()))
+                        |e| format!("{}; path={}", e, self.path.display()))
     }
 
     fn seek(&mut self, pos: i64, style: SeekStyle) -> IoResult<()> {
@@ -743,7 +743,7 @@ impl Seek for File {
             Err(e) => Err(e),
         };
         err.update_err("couldn't seek in file",
-                       |e| format!("{}; path={:?}", e, self.path.display()))
+                       |e| format!("{}; path={}", e, self.path.display()))
     }
 }
 
@@ -906,7 +906,7 @@ mod test {
         if cfg!(unix) {
             error!(result, "no such file or directory");
         }
-        error!(result, format!("path={:?}; mode=open; access=read", filename.display()));
+        error!(result, format!("path={}; mode=open; access=read", filename.display()));
     }
 
     #[test]
@@ -920,7 +920,7 @@ mod test {
         if cfg!(unix) {
             error!(result, "no such file or directory");
         }
-        error!(result, format!("path={:?}", filename.display()));
+        error!(result, format!("path={}", filename.display()));
     }
 
     #[test]
@@ -1188,7 +1188,7 @@ mod test {
         error!(result, "couldn't recursively mkdir");
         error!(result, "couldn't create directory");
         error!(result, "mode=0700");
-        error!(result, format!("path={:?}", file.display()));
+        error!(result, format!("path={}", file.display()));
     }
 
     #[test]

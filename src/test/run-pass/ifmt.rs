@@ -33,7 +33,7 @@ impl fmt::UpperHex for B {
         f.write_str("adios")
     }
 }
-impl fmt::String for C {
+impl fmt::Display for C {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad_integral(true, "☃", "123")
     }
@@ -63,8 +63,8 @@ pub fn main() {
     t!(format!("{}", 10i), "10");
     t!(format!("{}", 10u), "10");
     t!(format!("{:?}", '☃'), "'\\u{2603}'");
-    t!(format!("{:?}", 10i), "10i");
-    t!(format!("{:?}", 10u), "10u");
+    t!(format!("{:?}", 10i), "10");
+    t!(format!("{:?}", 10u), "10");
     t!(format!("{:?}", "true"), "\"true\"");
     t!(format!("{:?}", "foo\nbar"), "\"foo\\nbar\"");
     t!(format!("{:o}", 10u), "12");
@@ -72,22 +72,22 @@ pub fn main() {
     t!(format!("{:X}", 10u), "A");
     t!(format!("{}", "foo"), "foo");
     t!(format!("{}", "foo".to_string()), "foo");
-    t!(format!("{:p}", 0x1234 as *const int), "0x1234");
-    t!(format!("{:p}", 0x1234 as *mut int), "0x1234");
+    t!(format!("{:p}", 0x1234 as *const isize), "0x1234");
+    t!(format!("{:p}", 0x1234 as *mut isize), "0x1234");
     t!(format!("{:x}", A), "aloha");
     t!(format!("{:X}", B), "adios");
     t!(format!("foo {} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
     t!(format!("{1} {0}", 0i, 1i), "1 0");
-    t!(format!("{foo} {bar}", foo=0i, bar=1i), "0 1");
-    t!(format!("{foo} {1} {bar} {0}", 0i, 1i, foo=2i, bar=3i), "2 1 3 0");
+    t!(format!("{foo} {bar}", foo=0i, bar=1is), "0 1");
+    t!(format!("{foo} {1} {bar} {0}", 0is, 1is, foo=2is, bar=3is), "2 1 3 0");
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1i), "1");
     t!(format!("{}", 5i + 5i), "10");
     t!(format!("{:#4}", C), "☃123");
 
     // FIXME(#20676)
-    // let a: &fmt::Show = &1i;
-    // t!(format!("{:?}", a), "1i");
+    // let a: &fmt::Debug = &1i;
+    // t!(format!("{:?}", a), "1");
 
 
     // Formatting strings and their arguments
@@ -154,7 +154,7 @@ pub fn main() {
     // make sure that format! doesn't cause spurious unused-unsafe warnings when
     // it's inside of an outer unsafe block
     unsafe {
-        let a: int = ::std::mem::transmute(3u);
+        let a: isize = ::std::mem::transmute(3u);
         format!("{}", a);
     }
 
@@ -215,8 +215,8 @@ fn test_format_args() {
 fn test_order() {
     // Make sure format!() arguments are always evaluated in a left-to-right
     // ordering
-    fn foo() -> int {
-        static mut FOO: int = 0;
+    fn foo() -> isize {
+        static mut FOO: isize = 0;
         unsafe {
             FOO += 1;
             FOO

@@ -15,7 +15,7 @@ use clone::Clone;
 use cmp::{Eq, PartialEq};
 use core::marker::Sized;
 use default::Default;
-use fmt::Show;
+use fmt::Debug;
 use fmt;
 use hash::{self, Hash};
 use iter::{Iterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend};
@@ -71,7 +71,7 @@ use super::state::HashState;
 ///
 /// ```
 /// use std::collections::HashSet;
-/// #[derive(Hash, Eq, PartialEq, Show)]
+/// #[derive(Hash, Eq, PartialEq, Debug)]
 /// struct Viking<'a> {
 ///     name: &'a str,
 ///     power: uint,
@@ -596,8 +596,8 @@ impl<T, S, H> Eq for HashSet<T, S>
 {}
 
 #[stable]
-impl<T, S, H> fmt::Show for HashSet<T, S>
-    where T: Eq + Hash<H> + fmt::Show,
+impl<T, S, H> fmt::Debug for HashSet<T, S>
+    where T: Eq + Hash<H> + fmt::Debug,
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
@@ -1179,7 +1179,7 @@ mod test_set {
 
         let set_str = format!("{:?}", set);
 
-        assert!(set_str == "HashSet {1i, 2i}" || set_str == "HashSet {2i, 1i}");
+        assert!(set_str == "HashSet {1, 2}" || set_str == "HashSet {2, 1}");
         assert_eq!(format!("{:?}", empty), "HashSet {}");
     }
 

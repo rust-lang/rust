@@ -100,28 +100,28 @@ impl Ident {
     }
 }
 
-impl fmt::Show for Ident {
+impl fmt::Debug for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}#{}", self.name, self.ctxt)
     }
 }
 
-impl fmt::String for Ident {
+impl fmt::Display for Ident {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&self.name, f)
+        fmt::Display::fmt(&self.name, f)
     }
 }
 
-impl fmt::Show for Name {
+impl fmt::Debug for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Name(nm) = *self;
         write!(f, "{:?}({})", token::get_name(*self).get(), nm)
     }
 }
 
-impl fmt::String for Name {
+impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(token::get_name(*self).get(), f)
+        fmt::Display::fmt(token::get_name(*self).get(), f)
     }
 }
 
@@ -1100,13 +1100,13 @@ impl PartialEq for IntTy {
     }
 }
 
-impl fmt::Show for IntTy {
+impl fmt::Debug for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Display::fmt(self, f)
     }
 }
 
-impl fmt::String for IntTy {
+impl fmt::Display for IntTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::int_ty_to_string(*self, None))
     }
@@ -1155,13 +1155,13 @@ impl UintTy {
     }
 }
 
-impl fmt::Show for UintTy {
+impl fmt::Debug for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Display::fmt(self, f)
     }
 }
 
-impl fmt::String for UintTy {
+impl fmt::Display for UintTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::uint_ty_to_string(*self, None))
     }
@@ -1173,13 +1173,13 @@ pub enum FloatTy {
     TyF64,
 }
 
-impl fmt::Show for FloatTy {
+impl fmt::Debug for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Display::fmt(self, f)
     }
 }
 
-impl fmt::String for FloatTy {
+impl fmt::Display for FloatTy {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", ast_util::float_ty_to_string(*self))
     }
@@ -1222,24 +1222,15 @@ pub enum PrimTy {
     TyChar
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy)]
+#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy, Show)]
 pub enum Onceness {
     Once,
     Many
 }
 
-impl fmt::Show for Onceness {
+impl fmt::Display for Onceness {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(match *self {
-            Once => "once",
-            Many => "many",
-        }, f)
-    }
-}
-
-impl fmt::String for Onceness {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(match *self {
+        fmt::Display::fmt(match *self {
             Once => "once",
             Many => "many",
         }, f)
@@ -1358,9 +1349,9 @@ pub enum Unsafety {
     Normal,
 }
 
-impl fmt::String for Unsafety {
+impl fmt::Display for Unsafety {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(match *self {
+        fmt::Display::fmt(match *self {
             Unsafety::Normal => "normal",
             Unsafety::Unsafe => "unsafe",
         }, f)
@@ -1375,7 +1366,7 @@ pub enum ImplPolarity {
     Negative,
 }
 
-impl fmt::Show for ImplPolarity {
+impl fmt::Debug for ImplPolarity {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ImplPolarity::Positive => "positive".fmt(f),

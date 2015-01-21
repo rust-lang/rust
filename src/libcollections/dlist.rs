@@ -874,7 +874,7 @@ impl<A: Clone> Clone for DList<A> {
 }
 
 #[stable]
-impl<A: fmt::Show> fmt::Show for DList<A> {
+impl<A: fmt::Debug> fmt::Debug for DList<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "DList ["));
 
@@ -1333,7 +1333,7 @@ mod tests {
     #[test]
     fn test_show() {
         let list: DList<int> = range(0i, 10).collect();
-        assert_eq!(format!("{:?}", list), "DList [0i, 1i, 2i, 3i, 4i, 5i, 6i, 7i, 8i, 9i]");
+        assert_eq!(format!("{:?}", list), "DList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
                                                                    .map(|&s| s)

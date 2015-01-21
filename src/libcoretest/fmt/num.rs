@@ -26,11 +26,11 @@ fn test_format_int() {
     assert!(format!("{}", -1i16) == "-1");
     assert!(format!("{}", -1i32) == "-1");
     assert!(format!("{}", -1i64) == "-1");
-    assert!(format!("{:?}", 1i) == "1i");
-    assert!(format!("{:?}", 1i8) == "1i8");
-    assert!(format!("{:?}", 1i16) == "1i16");
-    assert!(format!("{:?}", 1i32) == "1i32");
-    assert!(format!("{:?}", 1i64) == "1i64");
+    assert!(format!("{:?}", 1i) == "1");
+    assert!(format!("{:?}", 1i8) == "1");
+    assert!(format!("{:?}", 1i16) == "1");
+    assert!(format!("{:?}", 1i32) == "1");
+    assert!(format!("{:?}", 1i64) == "1");
     assert!(format!("{:b}", 1i) == "1");
     assert!(format!("{:b}", 1i8) == "1");
     assert!(format!("{:b}", 1i16) == "1");
@@ -57,11 +57,11 @@ fn test_format_int() {
     assert!(format!("{}", 1u16) == "1");
     assert!(format!("{}", 1u32) == "1");
     assert!(format!("{}", 1u64) == "1");
-    assert!(format!("{:?}", 1u) == "1u");
-    assert!(format!("{:?}", 1u8) == "1u8");
-    assert!(format!("{:?}", 1u16) == "1u16");
-    assert!(format!("{:?}", 1u32) == "1u32");
-    assert!(format!("{:?}", 1u64) == "1u64");
+    assert!(format!("{:?}", 1u) == "1");
+    assert!(format!("{:?}", 1u8) == "1");
+    assert!(format!("{:?}", 1u16) == "1");
+    assert!(format!("{:?}", 1u32) == "1");
+    assert!(format!("{:?}", 1u64) == "1");
     assert!(format!("{:b}", 1u) == "1");
     assert!(format!("{:b}", 1u8) == "1");
     assert!(format!("{:b}", 1u16) == "1");
@@ -94,14 +94,14 @@ fn test_format_int() {
 #[test]
 fn test_format_int_zero() {
     assert!(format!("{}", 0i) == "0");
-    assert!(format!("{:?}", 0i) == "0i");
+    assert!(format!("{:?}", 0i) == "0");
     assert!(format!("{:b}", 0i) == "0");
     assert!(format!("{:o}", 0i) == "0");
     assert!(format!("{:x}", 0i) == "0");
     assert!(format!("{:X}", 0i) == "0");
 
     assert!(format!("{}", 0u) == "0");
-    assert!(format!("{:?}", 0u) == "0u");
+    assert!(format!("{:?}", 0u) == "0");
     assert!(format!("{:b}", 0u) == "0");
     assert!(format!("{:o}", 0u) == "0");
     assert!(format!("{:x}", 0u) == "0");

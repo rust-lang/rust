@@ -13,7 +13,7 @@ use std::fmt;
 use std::str::FromStr;
 use regex::Regex;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
     RunFail,
@@ -43,9 +43,9 @@ impl FromStr for Mode {
     }
 }
 
-impl fmt::String for Mode {
+impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(match *self {
+        fmt::Display::fmt(match *self {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
@@ -55,12 +55,6 @@ impl fmt::String for Mode {
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
         }, f)
-    }
-}
-
-impl fmt::Show for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 

@@ -30,7 +30,7 @@ pub struct Page<'a> {
     pub keywords: &'a str
 }
 
-pub fn render<T: fmt::String, S: fmt::String>(
+pub fn render<T: fmt::Display, S: fmt::Display>(
     dst: &mut io::Writer, layout: &Layout, page: &Page, sidebar: &S, t: &T)
     -> io::IoResult<()>
 {

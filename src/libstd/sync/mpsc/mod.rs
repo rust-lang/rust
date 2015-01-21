@@ -384,7 +384,7 @@ impl<T> !Sync for SyncSender<T> {}
 /// A `send` operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Show)]
 #[stable]
 pub struct SendError<T>(pub T);
 
@@ -392,13 +392,13 @@ pub struct SendError<T>(pub T);
 ///
 /// The `recv` operation can only fail if the sending half of a channel is
 /// disconnected, implying that no further messages will ever be received.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Show)]
 #[stable]
 pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Show)]
 #[stable]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
@@ -414,7 +414,7 @@ pub enum TryRecvError {
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Show)]
 #[stable]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that
@@ -963,13 +963,15 @@ impl<T: Send> Drop for Receiver<T> {
     }
 }
 
-impl<T> fmt::Show for SendError<T> {
+#[stable]
+impl<T> fmt::Display for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "sending on a closed channel".fmt(f)
     }
 }
 
-impl<T> fmt::Show for TrySendError<T> {
+#[stable]
+impl<T> fmt::Display for TrySendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TrySendError::Full(..) => {
@@ -982,13 +984,15 @@ impl<T> fmt::Show for TrySendError<T> {
     }
 }
 
-impl fmt::Show for RecvError {
+#[stable]
+impl fmt::Display for RecvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "receiving on a closed channel".fmt(f)
     }
 }
 
-impl fmt::Show for TryRecvError {
+#[stable]
+impl fmt::Display for TryRecvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TryRecvError::Empty => {

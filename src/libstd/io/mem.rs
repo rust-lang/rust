@@ -432,8 +432,8 @@ mod test {
             writer.write(&[]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
 
-            assert_eq!(writer.write(&[8, 9]).unwrap_err().kind, io::ShortWrite(1));
-            assert_eq!(writer.write(&[10]).unwrap_err().kind, io::EndOfFile);
+            assert_eq!(writer.write(&[8, 9]).err().unwrap().kind, io::ShortWrite(1));
+            assert_eq!(writer.write(&[10]).err().unwrap().kind, io::EndOfFile);
         }
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
         assert_eq!(buf, b);
