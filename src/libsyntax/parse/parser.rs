@@ -5223,7 +5223,7 @@ impl<'a> Parser<'a> {
             Some(i) => {
                 let mut err = String::from_str("circular modules: ");
                 let len = included_mod_stack.len();
-                for p in included_mod_stack.slice(i, len).iter() {
+                for p in included_mod_stack[i.. len].iter() {
                     err.push_str(&p.display().as_cow()[]);
                     err.push_str(" -> ");
                 }

@@ -1313,7 +1313,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
 
     // HACK(eddyb) replace the fake self type in the AST with the actual type.
     let input_params = if self_ty.is_some() {
-        decl.inputs.slice_from(1)
+        &decl.inputs[1..]
     } else {
         &decl.inputs[]
     };
@@ -1331,9 +1331,9 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     let lifetimes_for_params = if implied_output_region.is_none() {
         let input_tys = if self_ty.is_some() {
             // Skip the first argument if `self` is present.
-            self_and_input_tys.slice_from(1)
+            &self_and_input_tys[1..]
         } else {
-            self_and_input_tys.slice_from(0)
+            &self_and_input_tys[]
         };
 
         let (ior, lfp) = find_implied_output_region(input_tys, input_pats);
@@ -1648,7 +1648,7 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     // of derived region bounds. If so, use that. Otherwise, report an
     // error.
     let r = derived_region_bounds[0];
-    if derived_region_bounds.slice_from(1).iter().any(|r1| r != *r1) {
+    if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
         span_err!(tcx.sess, span, E0227,
             "ambiguous lifetime bound, \
                      explicit lifetime bound required");

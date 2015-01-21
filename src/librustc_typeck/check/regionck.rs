@@ -542,7 +542,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
         ast::ExprMethodCall(_, _, ref args) => {
             constrain_call(rcx, expr, Some(&*args[0]),
-                           args.slice_from(1).iter().map(|e| &**e), false);
+                           args[1..].iter().map(|e| &**e), false);
 
             visit::walk_expr(rcx, expr);
         }

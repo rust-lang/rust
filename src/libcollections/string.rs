@@ -849,6 +849,7 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
+#[stable]
 impl ops::Index<ops::Range<uint>> for String {
     type Output = str;
     #[inline]
@@ -856,6 +857,7 @@ impl ops::Index<ops::Range<uint>> for String {
         &self[][*index]
     }
 }
+#[stable]
 impl ops::Index<ops::RangeTo<uint>> for String {
     type Output = str;
     #[inline]
@@ -863,6 +865,7 @@ impl ops::Index<ops::RangeTo<uint>> for String {
         &self[][*index]
     }
 }
+#[stable]
 impl ops::Index<ops::RangeFrom<uint>> for String {
     type Output = str;
     #[inline]
@@ -870,6 +873,7 @@ impl ops::Index<ops::RangeFrom<uint>> for String {
         &self[][*index]
     }
 }
+#[stable]
 impl ops::Index<ops::FullRange> for String {
     type Output = str;
     #[inline]

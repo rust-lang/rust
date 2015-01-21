@@ -271,9 +271,9 @@ impl<'a> StringReader<'a> {
     fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T where
         F: FnOnce(&str) -> T,
     {
-        f(self.filemap.src.slice(
-                self.byte_offset(start).to_usize(),
-                self.byte_offset(end).to_usize()))
+        f(self.filemap.src[
+                self.byte_offset(start).to_usize()..
+                self.byte_offset(end).to_usize()])
     }
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.

@@ -21,7 +21,7 @@ use core::prelude::*;
 use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{Greater, Less, Equal};
 use core::iter::Zip;
-use core::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::ptr::Unique;
 use core::{slice, mem, ptr, cmp, num, raw};
 use alloc::heap;
@@ -1487,7 +1487,7 @@ impl<K, V, E, Impl> AbsTraversal<Impl>
 
 macro_rules! node_slice_impl {
     ($NodeSlice:ident, $Traversal:ident,
-     $as_slices_internal:ident, $slice_from:ident, $slice_to:ident, $iter:ident) => {
+     $as_slices_internal:ident, $index:ident, $iter:ident) => {
         impl<'a, K: Ord + 'a, V: 'a> $NodeSlice<'a, K, V> {
             /// Performs linear search in a slice. Returns a tuple of (index, is_exact_match).
             fn search_linear<Q: ?Sized>(&self, key: &Q) -> (uint, bool)
@@ -1521,10 +1521,10 @@ macro_rules! node_slice_impl {
                     edges: if !self.has_edges {
                         self.edges
                     } else {
-                        self.edges.$slice_from(pos)
+                        self.edges.$index(&(pos ..))
                     },
-                    keys: self.keys.slice_from(pos),
-                    vals: self.vals.$slice_from(pos),
+                    keys: &self.keys[pos ..],
+                    vals: self.vals.$index(&(pos ..)),
                     head_is_edge: !pos_is_kv,
                     tail_is_edge: self.tail_is_edge,
                 }
@@ -1550,10 +1550,10 @@ macro_rules! node_slice_impl {
                     edges: if !self.has_edges {
                         self.edges
                     } else {
-                        self.edges.$slice_to(pos + 1)
+                        self.edges.$index(&(.. (pos + 1)))
                     },
-                    keys: self.keys.slice_to(pos),
-                    vals: self.vals.$slice_to(pos),
+                    keys: &self.keys[..pos],
+                    vals: self.vals.$index(&(.. pos)),
                     head_is_edge: self.head_is_edge,
                     tail_is_edge: !pos_is_kv,
                 }
@@ -1583,6 +1583,5 @@ macro_rules! node_slice_impl {
     }
 }
 
-node_slice_impl!(NodeSlice, Traversal, as_slices_internal, slice_from, slice_to, iter);
-node_slice_impl!(MutNodeSlice, MutTraversal, as_slices_internal_mut, slice_from_mut,
-                                                                     slice_to_mut, iter_mut);
+node_slice_impl!(NodeSlice, Traversal, as_slices_internal, index, iter);
+node_slice_impl!(MutNodeSlice, MutTraversal, as_slices_internal_mut, index_mut, iter_mut);

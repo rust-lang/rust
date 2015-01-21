@@ -373,12 +373,12 @@ impl<T> VecPerParamSpace<T> {
 
     pub fn get_slice<'a>(&'a self, space: ParamSpace) -> &'a [T] {
         let (start, limit) = self.limits(space);
-        self.content.slice(start, limit)
+        &self.content[start.. limit]
     }
 
     pub fn get_mut_slice<'a>(&'a mut self, space: ParamSpace) -> &'a mut [T] {
         let (start, limit) = self.limits(space);
-        self.content.slice_mut(start, limit)
+        &mut self.content[start.. limit]
     }
 
     pub fn opt_get<'a>(&'a self,
