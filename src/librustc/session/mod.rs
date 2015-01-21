@@ -31,6 +31,7 @@ use rustc_back::target::Target;
 
 use std::os;
 use std::cell::{Cell, RefCell};
+use std::default::Default;
 
 pub mod config;
 pub mod search_paths;
@@ -291,7 +292,7 @@ pub fn build_session(sopts: config::Options,
                      -> Session {
     let codemap = codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::default_handler(sopts.color, Some(registry));
+        diagnostic::default_handler(sopts.emit_cfg, Some(registry));
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -365,13 +366,15 @@ pub fn expect<T, M>(sess: &Session, opt: Option<T>, msg: M) -> T where
     diagnostic::expect(sess.diagnostic(), opt, msg)
 }
 
+pub fn fallback_emitter() -> diagnostic::EmitterWriter {
+    diagnostic::EmitterWriter::stderr(Default::default(), None)
+}
+
 pub fn early_error(msg: &str) -> ! {
-    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
-    emitter.emit(None, msg, None, diagnostic::Fatal);
+    fallback_emitter().emit(None, msg, None, diagnostic::Fatal);
     panic!(diagnostic::FatalError);
 }
 
 pub fn early_warn(msg: &str) {
-    let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
-    emitter.emit(None, msg, None, diagnostic::Warning);
+    fallback_emitter().emit(None, msg, None, diagnostic::Warning);
 }

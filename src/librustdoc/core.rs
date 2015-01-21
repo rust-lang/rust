@@ -22,6 +22,7 @@ use syntax::{ast, ast_map, codemap, diagnostic};
 
 use std::cell::RefCell;
 use std::collections::{HashMap, HashSet};
+use std::default::Default;
 
 use visit_ast::RustdocVisitor;
 use clean;
@@ -103,7 +104,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     };
 
     let codemap = codemap::CodeMap::new();
-    let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto, None);
+    let diagnostic_handler = diagnostic::default_handler(Default::default(), None);
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 

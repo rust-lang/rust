@@ -71,7 +71,7 @@ use std::os;
 use std::sync::mpsc::channel;
 use std::thread;
 
-use rustc::session::early_error;
+use rustc::session::{early_error, fallback_emitter};
 
 use syntax::ast;
 use syntax::parse;
@@ -616,7 +616,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
             if !value.is::<diagnostic::FatalError>() {
-                let mut emitter = diagnostic::EmitterWriter::stderr(diagnostic::Auto, None);
+                let mut emitter = fallback_emitter();
 
                 // a .span_bug or .bug call has already printed what
                 // it wants to print.

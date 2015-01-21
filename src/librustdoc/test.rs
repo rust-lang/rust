@@ -17,6 +17,7 @@ use std::os;
 use std::str;
 use std::thread::Thread;
 use std::thunk::Thunk;
+use std::default::Default;
 
 use std::collections::{HashSet, HashMap};
 use testing;
@@ -58,7 +59,7 @@ pub fn run(input: &str,
     };
 
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::default_handler(diagnostic::Auto, None);
+    let diagnostic_handler = diagnostic::default_handler(Default::default(), None);
     let span_diagnostic_handler =
     diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
