@@ -17,7 +17,6 @@ pub use self::InferTy::*;
 pub use self::InferRegion::*;
 pub use self::ImplOrTraitItemId::*;
 pub use self::UnboxedClosureKind::*;
-pub use self::TraitStore::*;
 pub use self::ast_ty_to_ty_cache_entry::*;
 pub use self::Variance::*;
 pub use self::AutoAdjustment::*;
@@ -61,7 +60,7 @@ use middle::ty;
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use middle::ty_walk::TypeWalker;
 use util::ppaux::{note_and_explain_region, bound_region_ptr_to_string};
-use util::ppaux::{trait_store_to_string, ty_to_string};
+use util::ppaux::ty_to_string;
 use util::ppaux::{Repr, UserString};
 use util::common::{memoized, ErrorReported};
 use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
@@ -245,14 +244,6 @@ pub struct AssociatedType {
 pub struct mt<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show)]
-pub enum TraitStore {
-    /// Box<Trait>
-    UniqTraitStore,
-    /// &Trait and &mut Trait
-    RegionTraitStore(Region, ast::Mutability),
 }
 
 #[derive(Clone, Copy, Show)]
@@ -1041,11 +1032,8 @@ pub struct BareFnTy<'tcx> {
 #[derive(Clone, PartialEq, Eq, Hash, Show)]
 pub struct ClosureTy<'tcx> {
     pub unsafety: ast::Unsafety,
-    pub onceness: ast::Onceness,
-    pub store: TraitStore,
-    pub bounds: ExistentialBounds<'tcx>,
-    pub sig: PolyFnSig<'tcx>,
     pub abi: abi::Abi,
+    pub sig: PolyFnSig<'tcx>,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
@@ -1545,7 +1533,6 @@ pub enum type_err<'tcx> {
     terr_onceness_mismatch(expected_found<Onceness>),
     terr_abi_mismatch(expected_found<abi::Abi>),
     terr_mutability,
-    terr_sigil_mismatch(expected_found<TraitStore>),
     terr_box_mutability,
     terr_ptr_mutability,
     terr_ref_mutability,
@@ -1559,7 +1546,6 @@ pub enum type_err<'tcx> {
     terr_regions_no_overlap(Region, Region),
     terr_regions_insufficiently_polymorphic(BoundRegion, Region),
     terr_regions_overly_polymorphic(BoundRegion, Region),
-    terr_trait_stores_differ(terr_vstore_kind, expected_found<TraitStore>),
     terr_sorts(expected_found<Ty<'tcx>>),
     terr_integer_as_char,
     terr_int_mismatch(expected_found<IntVarValue>),
@@ -4194,19 +4180,6 @@ pub fn ty_fn_args<'tcx>(fty: Ty<'tcx>) -> ty::Binder<Vec<Ty<'tcx>>> {
     ty_fn_sig(fty).inputs()
 }
 
-pub fn ty_closure_store(fty: Ty) -> TraitStore {
-    match fty.sty {
-        ty_unboxed_closure(..) => {
-            // Close enough for the purposes of all the callers of this
-            // function (which is soon to be deprecated anyhow).
-            UniqTraitStore
-        }
-        ref s => {
-            panic!("ty_closure_store() called on non-closure type: {:?}", s)
-        }
-    }
-}
-
 pub fn ty_fn_ret<'tcx>(fty: Ty<'tcx>) -> Binder<FnOutput<'tcx>> {
     match fty.sty {
         ty_bare_fn(_, ref f) => f.sig.output(),
@@ -4751,13 +4724,6 @@ impl<'tcx> Repr<'tcx> for ty::type_err<'tcx> {
 /// afterwards to present additional details, particularly when it comes to lifetime-related
 /// errors.
 pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
-    fn tstore_to_closure(s: &TraitStore) -> String {
-        match s {
-            &UniqTraitStore => "proc".to_string(),
-            &RegionTraitStore(..) => "closure".to_string()
-        }
-    }
-
     match *err {
         terr_cyclic_ty => "cyclic type of infinite size".to_string(),
         terr_mismatch => "types differ".to_string(),
@@ -4775,11 +4741,6 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
             format!("expected {} fn, found {} fn",
                     values.expected,
                     values.found)
-        }
-        terr_sigil_mismatch(values) => {
-            format!("expected {}, found {}",
-                    tstore_to_closure(&values.expected),
-                    tstore_to_closure(&values.found))
         }
         terr_mutability => "values differ in mutability".to_string(),
         terr_box_mutability => {
@@ -4827,11 +4788,6 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
             format!("expected concrete lifetime, \
                      found bound lifetime parameter {}",
                     bound_region_ptr_to_string(cx, br))
-        }
-        terr_trait_stores_differ(_, ref values) => {
-            format!("trait storage differs: expected `{}`, found `{}`",
-                    trait_store_to_string(cx, (*values).expected),
-                    trait_store_to_string(cx, (*values).found))
         }
         terr_sorts(values) => {
             // A naive approach to making sure that we're not reporting silly errors such as:
@@ -7317,11 +7273,8 @@ impl ReferencesError for Region
 
 impl<'tcx> Repr<'tcx> for ClosureTy<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("ClosureTy({},{},{:?},{},{},{})",
+        format!("ClosureTy({},{},{})",
                 self.unsafety,
-                self.onceness,
-                self.store,
-                self.bounds.repr(tcx),
                 self.sig.repr(tcx),
                 self.abi)
     }
@@ -7352,5 +7305,5 @@ impl<'a, 'tcx> Repr<'tcx> for ParameterEnvironment<'a, 'tcx> {
             self.free_substs.repr(tcx),
             self.implicit_region_bound.repr(tcx),
             self.caller_bounds.repr(tcx))
-        }
     }
+}

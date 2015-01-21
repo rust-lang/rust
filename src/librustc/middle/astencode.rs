@@ -515,17 +515,6 @@ impl tr for ty::BoundRegion {
     }
 }
 
-impl tr for ty::TraitStore {
-    fn tr(&self, dcx: &DecodeContext) -> ty::TraitStore {
-        match *self {
-            ty::RegionTraitStore(r, m) => {
-                ty::RegionTraitStore(r.tr(dcx), m)
-            }
-            ty::UniqTraitStore => ty::UniqTraitStore
-        }
-    }
-}
-
 // ______________________________________________________________________
 // Encoding and decoding of freevar information
 

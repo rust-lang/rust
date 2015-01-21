@@ -227,14 +227,6 @@ impl Type {
         Type::vec(ccx, &Type::i8(ccx))
     }
 
-    // The box pointed to by @T.
-    pub fn at_box(ccx: &CrateContext, ty: Type) -> Type {
-        Type::struct_(ccx, &[
-            ccx.int_type(), Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to(),
-            Type::i8p(ccx), Type::i8p(ccx), ty
-        ], false)
-    }
-
     pub fn vtable_ptr(ccx: &CrateContext) -> Type {
         Type::glue_fn(ccx, Type::i8p(ccx)).ptr_to().ptr_to()
     }

@@ -362,18 +362,6 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
     }
 }
 
-// Returns a pointer to the body for the box. The box may be an opaque
-// box. The result will be casted to the type of body_t, if it is statically
-// known.
-pub fn at_box_body<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               body_t: Ty<'tcx>, boxptr: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("at_box_body");
-    let ccx = bcx.ccx();
-    let ty = Type::at_box(ccx, type_of(ccx, body_t));
-    let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
-    GEPi(bcx, boxptr, &[0u, abi::BOX_FIELD_BODY])
-}
-
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 info_ty: Ty<'tcx>, it: LangItem) -> ast::DefId {
     match bcx.tcx().lang_items.require(it) {
@@ -1832,7 +1820,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                    .map(|arg| node_id_type(bcx, arg.id))
                    .collect::<Vec<_>>();
     let monomorphized_arg_types = match closure_env.kind {
-        closure::NotClosure | closure::BoxedClosure(..) => {
+        closure::NotClosure => {
             monomorphized_arg_types
         }
 
@@ -1859,7 +1847,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     bcx = match closure_env.kind {
-        closure::NotClosure | closure::BoxedClosure(..) => {
+        closure::NotClosure => {
             copy_args_to_allocas(bcx,
                                  arg_scope,
                                  &decl.inputs[],
