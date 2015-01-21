@@ -33,4 +33,9 @@ pub fn main() {
 
     let _: Box<[int]> = Box::new([1, 2, 3]);
     let _: Box<Fn(int) -> _> = Box::new(|x| (x as u8));
+
+    let _: Vec<Box<Fn(int) -> _>> = vec![
+        Box::new(|x| (x as u8)),
+        box |x| (x as i16 as u8),
+    ];
 }
