@@ -31,6 +31,7 @@ use mem;
 use ops::Drop;
 use option::Option::{Some, None};
 use path::Path;
+use ptr;
 use result::Result::{Ok, Err};
 use slice::SliceExt;
 use str::{self, StrExt};

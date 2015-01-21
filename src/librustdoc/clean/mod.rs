@@ -2088,7 +2088,7 @@ impl Clean<Mutability> for ast::Mutability {
     }
 }
 
-#[derive(Show, Clone, RustcEncodable, RustcDecodable, PartialEq, Copy, Show)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Copy, Show)]
 pub enum ImplPolarity {
     Positive,
     Negative,

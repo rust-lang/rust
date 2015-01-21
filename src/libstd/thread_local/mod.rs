@@ -459,6 +459,7 @@ mod imp {
 
     use cell::UnsafeCell;
     use mem;
+    use ptr;
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]

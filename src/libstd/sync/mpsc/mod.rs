@@ -319,8 +319,6 @@ use prelude::v1::*;
 
 use sync::Arc;
 use fmt;
-#[cfg(stage0)] // NOTE remove use after next snapshot
-use marker;
 use mem;
 use cell::UnsafeCell;
 
