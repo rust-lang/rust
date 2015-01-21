@@ -102,7 +102,7 @@ pub struct MatchCheckCtxt<'a, 'tcx: 'a> {
     pub param_env: ParameterEnvironment<'a, 'tcx>,
 }
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone)]
 pub enum Constructor {
     /// The constructor of all patterns that don't vary by constructor,
     /// e.g. struct patterns and fixed-length arrays.
@@ -110,13 +110,29 @@ pub enum Constructor {
     /// Enum variants.
     Variant(ast::DefId),
     /// Literal values.
-    ConstantValue(const_val),
+    ConstantValue(NodeId, const_val),
     /// Ranges of literal values (2..5).
-    ConstantRange(const_val, const_val),
+    ConstantRange(NodeId, const_val, NodeId, const_val),
     /// Array patterns of length n.
     Slice(uint),
     /// Array patterns with a subslice.
     SliceWithSubslice(uint, uint)
+}
+
+impl PartialEq for Constructor {
+    fn eq(&self, other: &Constructor) -> bool {
+        match (self, other) {
+            (&Single, &Single) => true,
+            (&Variant(ref id), &Variant(ref o_id)) => id == o_id,
+            (&ConstantValue(_, ref val), &ConstantValue(_, ref o_val)) => val == o_val,
+            (&ConstantRange(_, ref from, _, ref to),
+             &ConstantRange(_, ref o_from, _, ref o_to)) => from == o_from && to == o_to,
+            (&Slice(ref val), &Slice(ref o_val)) => val == o_val,
+            (&SliceWithSubslice(ref from, ref to),
+             &SliceWithSubslice(ref o_from, ref o_to)) => from == o_from && to == o_to,
+            _ => false
+        }
+    }
 }
 
 #[derive(Clone, PartialEq)]
@@ -505,7 +521,7 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
 
         _ => {
             match *ctor {
-                ConstantValue(ref v) => ast::PatLit(const_val_to_expr(v)),
+                ConstantValue(_, ref v) => ast::PatLit(const_val_to_expr(v)),
                 _ => ast::PatWild(ast::PatWildSingle),
             }
         }
@@ -536,7 +552,9 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
                     max_slice_length: uint) -> Vec<Constructor> {
     match left_ty.sty {
         ty::ty_bool =>
-            [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
+            [true, false].iter()
+                .map(|b| ConstantValue(DUMMY_NODE_ID, const_bool(*b)))
+                .collect(),
 
         ty::ty_rptr(_, ty::mt { ty, .. }) => match ty.sty {
             ty::ty_vec(_, None) =>
@@ -655,9 +673,9 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, &r[], &ctor, 0u, arity)
+        specialize(cx, &r[], &ctor, 0u, arity, range_covered_by_constructor)
     }).collect());
-    match specialize(cx, v, &ctor, 0u, arity) {
+    match specialize(cx, v, &ctor, 0u, arity, range_covered_by_constructor) {
         Some(v) => is_useful(cx, &matrix, &v[], witness),
         None => NotUseful
     }
@@ -702,9 +720,11 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
                 _ => vec!(Single)
             },
         ast::PatLit(ref expr) =>
-            vec!(ConstantValue(eval_const_expr(cx.tcx, &**expr))),
+            vec!(ConstantValue(expr.id, eval_const_expr(cx.tcx, &**expr))),
         ast::PatRange(ref lo, ref hi) =>
-            vec!(ConstantRange(eval_const_expr(cx.tcx, &**lo), eval_const_expr(cx.tcx, &**hi))),
+            vec!(ConstantRange(
+                lo.id, eval_const_expr(cx.tcx, &**lo),
+                hi.id, eval_const_expr(cx.tcx, &**hi))),
         ast::PatVec(ref before, ref slice, ref after) =>
             match left_ty.sty {
                 ty::ty_vec(_, Some(_)) => vec!(Single),
@@ -737,7 +757,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uin
         ty::ty_rptr(_, ty::mt { ty, .. }) => match ty.sty {
             ty::ty_vec(_, None) => match *ctor {
                 Slice(length) => length,
-                ConstantValue(_) => 0u,
+                ConstantValue(..) => 0u,
                 _ => unreachable!()
             },
             ty::ty_str => 0u,
@@ -756,17 +776,29 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uin
 }
 
 fn range_covered_by_constructor(ctor: &Constructor,
-                                from: &const_val, to: &const_val) -> Option<bool> {
-    let (c_from, c_to) = match *ctor {
-        ConstantValue(ref value)        => (value, value),
-        ConstantRange(ref from, ref to) => (from, to),
-        Single                          => return Some(true),
-        _                               => unreachable!()
+                                pat_ctor: &Constructor) -> Option<bool> {
+    let (r_from, r_to) = match (ctor, pat_ctor) {
+        (&Single, _) => return Some(true),
+        (&ConstantValue(_, ref val),
+         &ConstantValue(_, ref pat_val)) =>
+            return compare_const_vals(val, pat_val).map(|r| r == 0),
+
+        (&ConstantValue(_, ref val),
+         &ConstantRange(_, ref p_from, _, ref p_to)) =>
+            (compare_const_vals(val, p_from), compare_const_vals(val, p_to)),
+
+        (&ConstantRange(_, ref from, _, ref to),
+         &ConstantValue(_, ref pat_val)) =>
+            (compare_const_vals(from, pat_val), compare_const_vals(to, pat_val)),
+
+        (&ConstantRange(_, ref from, _, ref to),
+         &ConstantRange(_, ref p_from, _, ref p_to)) =>
+            (compare_const_vals(from, p_from), compare_const_vals(to, p_to)),
+
+        _ => unreachable!()
     };
-    let cmp_from = compare_const_vals(c_from, from);
-    let cmp_to = compare_const_vals(c_to, to);
-    match (cmp_from, cmp_to) {
-        (Some(val1), Some(val2)) => Some(val1 >= 0 && val2 <= 0),
+    match (r_from, r_to) {
+        (Some(r1), Some(r2)) => Some(0 <= r1 && r2 <= 0),
         _ => None
     }
 }
@@ -779,8 +811,21 @@ fn range_covered_by_constructor(ctor: &Constructor,
 /// different patterns.
 /// Structure patterns with a partial wild pattern (Foo { a: 42, .. }) have their missing
 /// fields filled with wild patterns.
-pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
-                      constructor: &Constructor, col: uint, arity: uint) -> Option<Vec<&'a Pat>> {
+///
+/// Both `typeck` and `codegen` use the specialization but in slightly different ways.
+/// For typeck's exhaustion and reachability checking, whether a range pattern covers another
+/// range or literal pattern is apparently significant. For codegen, however, the semantic of
+/// the equality of range and literal patterns depends on the generated LLVM instruction.
+/// The `op_range` is to deal with such distinctions. For the concrete examples of some subtle
+/// match expressions, check out `run-pass/issue-18060.rs`.
+pub fn specialize<'a, F>(cx: &MatchCheckCtxt,
+                         r: &[&'a Pat],
+                         constructor: &Constructor,
+                         col: uint,
+                         arity: uint,
+                         op_range: F) -> Option<Vec<&'a Pat>> where
+    F: Fn(&Constructor, &Constructor) -> Option<bool>
+{
     let &Pat {
         id: pat_id, ref node, span: pat_span
     } = raw_pat(r[col]);
@@ -863,8 +908,8 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             Some(vec![&**inner]),
 
         ast::PatLit(ref expr) => {
-            let expr_value = eval_const_expr(cx.tcx, &**expr);
-            match range_covered_by_constructor(constructor, &expr_value, &expr_value) {
+            let pat_ctor = ConstantValue(expr.id, eval_const_expr(cx.tcx, &**expr));
+            match op_range(constructor, &pat_ctor) {
                 Some(true) => Some(vec![]),
                 Some(false) => None,
                 None => {
@@ -875,9 +920,10 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         ast::PatRange(ref from, ref to) => {
-            let from_value = eval_const_expr(cx.tcx, &**from);
-            let to_value = eval_const_expr(cx.tcx, &**to);
-            match range_covered_by_constructor(constructor, &from_value, &to_value) {
+            let pat_ctor = ConstantRange(
+                from.id, eval_const_expr(cx.tcx, &**from),
+                to.id, eval_const_expr(cx.tcx, &**to));
+            match op_range(constructor, &pat_ctor) {
                 Some(true) => Some(vec![]),
                 Some(false) => None,
                 None => {
