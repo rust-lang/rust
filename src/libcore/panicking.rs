@@ -51,7 +51,7 @@ fn panic_bounds_check(file_line: &(&'static str, uint),
 pub fn panic_fmt(fmt: fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     #[allow(improper_ctypes)]
     extern {
-        #[lang = "panic_fmt"]
+        #[lang = "panic_fmt"] #[can_unwind]
         fn panic_impl(fmt: fmt::Arguments, file: &'static str, line: uint) -> !;
     }
     let (file, line) = *file_line;

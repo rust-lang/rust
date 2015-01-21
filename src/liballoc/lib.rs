@@ -70,6 +70,7 @@
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
+#![feature(unwinding_attributes)]
 #![allow(unknown_features)] #![feature(int_uint)]
 
 #[macro_use]
@@ -97,6 +98,7 @@ pub mod rc;
 /// Common out-of-memory routine
 #[cold]
 #[inline(never)]
+#[unsafe_no_unwind]
 pub fn oom() -> ! {
     // FIXME(#14674): This really needs to do something other than just abort
     //                here, but any printing done must be *guaranteed* to not

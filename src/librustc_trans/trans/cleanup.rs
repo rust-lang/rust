@@ -19,9 +19,8 @@ pub use self::Heap::*;
 use llvm::{BasicBlockRef, ValueRef};
 use trans::base;
 use trans::build;
-use trans::callee;
 use trans::common;
-use trans::common::{Block, FunctionContext, ExprId, NodeInfo};
+use trans::common::{Block, FunctionContext, NodeInfo};
 use trans::debuginfo;
 use trans::glue;
 use middle::region;
@@ -715,35 +714,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                                     &[Type::i8p(self.ccx), Type::i32(self.ccx)],
                                     false);
 
-        // The exception handling personality function.
-        //
-        // If our compilation unit has the `eh_personality` lang item somewhere
-        // within it, then we just need to translate that. Otherwise, we're
-        // building an rlib which will depend on some upstream implementation of
-        // this function, so we just codegen a generic reference to it. We don't
-        // specify any of the types for the function, we just make it a symbol
-        // that LLVM can later use.
-        let llpersonality = match pad_bcx.tcx().lang_items.eh_personality() {
-            Some(def_id) => {
-                callee::trans_fn_ref(pad_bcx.ccx(), def_id, ExprId(0),
-                                     pad_bcx.fcx.param_substs).val
-            }
-            None => {
-                let mut personality = self.ccx.eh_personality().borrow_mut();
-                match *personality {
-                    Some(llpersonality) => llpersonality,
-                    None => {
-                        let fty = Type::variadic_func(&[], &Type::i32(self.ccx));
-                        let f = base::decl_cdecl_fn(self.ccx,
-                                                    "rust_eh_personality",
-                                                    fty,
-                                                    self.ccx.tcx().types.i32);
-                        *personality = Some(f);
-                        f
-                    }
-                }
-            }
-        };
+        let llpersonality = base::get_eh_personality(pad_bcx.ccx());
 
         // The only landing pad clause will be 'cleanup'
         let llretval = build::LandingPad(pad_bcx, llretty, llpersonality, 1u);

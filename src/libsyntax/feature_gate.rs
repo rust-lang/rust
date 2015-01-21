@@ -73,6 +73,7 @@ static KNOWN_FEATURES: &'static [(&'static str, Status)] = &[
     ("box_syntax", Active),
     ("on_unimplemented", Active),
     ("simd_ffi", Active),
+    ("unwinding_attributes", Active),
 
     ("if_let", Accepted),
     ("while_let", Accepted),
@@ -259,6 +260,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("on_unimplemented", i.span,
                                   "the `#[rustc_on_unimplemented]` attribute \
                                   is an experimental feature")
+            } else if attr.name() == "can_unwind" {
+                self.gate_feature("unwinding_attributes", i.span,
+                                  "the `#[can_unwind]` attribute is an experimental feature")
+            } else if attr.name() == "unsafe_no_unwind" {
+                self.gate_feature("unwinding_attributes", i.span,
+                                  "the `#[unsafe_no_unwind]` attribute is an experimental feature")
             }
         }
         match i.node {

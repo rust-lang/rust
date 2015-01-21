@@ -133,6 +133,7 @@ pub unsafe fn try<F: FnOnce()>(f: F) -> Result<(), Box<Any + Send>> {
         Err(cause.unwrap())
     };
 
+    #[can_unwind]
     extern fn try_fn<F: FnOnce()>(opt_closure: *mut c_void) {
         let opt_closure = opt_closure as *mut Option<F>;
         unsafe { (*opt_closure).take().unwrap()(); }
@@ -251,6 +252,7 @@ pub mod eabi {
         }
     }
 
+    #[can_unwind]
     #[no_mangle] // referenced from rust_try.ll
     pub extern "C" fn rust_eh_personality_catch(
         _version: c_int,
@@ -479,7 +481,7 @@ pub mod eabi {
 
 #[cfg(not(test))]
 /// Entry point of panic from the libcore crate.
-#[lang = "panic_fmt"]
+#[lang = "panic_fmt"] #[can_unwind]
 pub extern fn rust_begin_unwind(msg: fmt::Arguments,
                                 file: &'static str, line: uint) -> ! {
     begin_unwind_fmt(msg, &(file, line))

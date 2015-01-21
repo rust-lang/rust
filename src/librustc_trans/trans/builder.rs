@@ -184,6 +184,40 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
+    pub fn invoke_with_conv(&self,
+                            llfn: ValueRef,
+                            args: &[ValueRef],
+                            then: BasicBlockRef,
+                            catch: BasicBlockRef,
+                            conv: CallConv,
+                            attributes: Option<AttrBuilder>)
+                            -> ValueRef {
+        self.count_insn("invokewithconv");
+
+        debug!("Invoke {} with args ({})",
+               self.ccx.tn().val_to_string(llfn),
+               args.iter()
+                   .map(|&v| self.ccx.tn().val_to_string(v))
+                   .collect::<Vec<String>>()
+                   .connect(", "));
+
+        unsafe {
+            let v = llvm::LLVMBuildInvoke(self.llbuilder,
+                                          llfn,
+                                          args.as_ptr(),
+                                          args.len() as c_uint,
+                                          then,
+                                          catch,
+                                          noname());
+            match attributes {
+                Some(a) => a.apply_callsite(v),
+                None => {}
+            }
+            llvm::SetInstructionCallConv(v, conv);
+            v
+        }
+    }
+
     pub fn unreachable(&self) {
         self.count_insn("unreachable");
         unsafe {
@@ -949,6 +983,13 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         self.count_insn("setcleanup");
         unsafe {
             llvm::LLVMSetCleanup(landing_pad, llvm::True);
+        }
+    }
+
+    pub fn add_clause(&self, landing_pad: ValueRef, clause: ValueRef) {
+        self.count_insn("addclause");
+        unsafe {
+            llvm::LLVMAddClause(landing_pad, clause);
         }
     }
 
