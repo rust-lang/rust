@@ -382,18 +382,18 @@ impl<'a> Parser<'a> {
     }
 
     /// Convert the current token to a string using self's reader
-    pub fn this_token_to_string(&mut self) -> String {
+    pub fn this_token_to_string(&self) -> String {
         Parser::token_to_string(&self.token)
     }
 
-    pub fn unexpected_last(&mut self, t: &token::Token) -> ! {
+    pub fn unexpected_last(&self, t: &token::Token) -> ! {
         let token_str = Parser::token_to_string(t);
         let last_span = self.last_span;
         self.span_fatal(last_span, &format!("unexpected token: `{}`",
                                                 token_str)[]);
     }
 
-    pub fn unexpected(&mut self) -> ! {
+    pub fn unexpected(&self) -> ! {
         let this_token = self.this_token_to_string();
         self.fatal(&format!("unexpected token: `{}`", this_token)[]);
     }
@@ -660,7 +660,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn expect_no_suffix(&mut self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
+    pub fn expect_no_suffix(&self, sp: Span, kind: &str, suffix: Option<ast::Name>) {
         match suffix {
             None => {/* everything ok */}
             Some(suf) => {
@@ -983,39 +983,39 @@ impl<'a> Parser<'a> {
         }
         f(&self.buffer[((self.buffer_start + dist - 1) & 3) as uint].tok)
     }
-    pub fn fatal(&mut self, m: &str) -> ! {
+    pub fn fatal(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(self.span, m)
     }
-    pub fn span_fatal(&mut self, sp: Span, m: &str) -> ! {
+    pub fn span_fatal(&self, sp: Span, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(sp, m)
     }
-    pub fn span_fatal_help(&mut self, sp: Span, m: &str, help: &str) -> ! {
+    pub fn span_fatal_help(&self, sp: Span, m: &str, help: &str) -> ! {
         self.span_err(sp, m);
         self.span_help(sp, help);
         panic!(diagnostic::FatalError);
     }
-    pub fn span_note(&mut self, sp: Span, m: &str) {
+    pub fn span_note(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_note(sp, m)
     }
-    pub fn span_help(&mut self, sp: Span, m: &str) {
+    pub fn span_help(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_help(sp, m)
     }
-    pub fn bug(&mut self, m: &str) -> ! {
+    pub fn bug(&self, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(self.span, m)
     }
-    pub fn warn(&mut self, m: &str) {
+    pub fn warn(&self, m: &str) {
         self.sess.span_diagnostic.span_warn(self.span, m)
     }
-    pub fn span_warn(&mut self, sp: Span, m: &str) {
+    pub fn span_warn(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_warn(sp, m)
     }
-    pub fn span_err(&mut self, sp: Span, m: &str) {
+    pub fn span_err(&self, sp: Span, m: &str) {
         self.sess.span_diagnostic.span_err(sp, m)
     }
-    pub fn span_bug(&mut self, sp: Span, m: &str) -> ! {
+    pub fn span_bug(&self, sp: Span, m: &str) -> ! {
         self.sess.span_diagnostic.span_bug(sp, m)
     }
-    pub fn abort_if_errors(&mut self) {
+    pub fn abort_if_errors(&self) {
         self.sess.span_diagnostic.handler().abort_if_errors();
     }
 
@@ -1670,7 +1670,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Matches token_lit = LIT_INTEGER | ...
-    pub fn lit_from_token(&mut self, tok: &token::Token) -> Lit_ {
+    pub fn lit_from_token(&self, tok: &token::Token) -> Lit_ {
         match *tok {
             token::Interpolated(token::NtExpr(ref v)) => {
                 match v.node {
