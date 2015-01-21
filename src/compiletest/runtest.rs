@@ -294,6 +294,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
         let aux_dir = aux_output_dir_name(config, testfile);
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_string(),
+                            "-Zunstable-options".to_string(),
                             "--pretty".to_string(),
                             pretty_type,
                             format!("--target={}", config.target),
@@ -340,7 +341,7 @@ actual:\n\
         };
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_string(),
-                            "--no-trans".to_string(),
+                            "-Zno-trans".to_string(),
                             "--crate-type=lib".to_string(),
                             format!("--target={}", target),
                             "-L".to_string(),
