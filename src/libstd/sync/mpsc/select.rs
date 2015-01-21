@@ -59,6 +59,7 @@ use core::prelude::*;
 use core::cell::Cell;
 use core::marker;
 use core::mem;
+use core::ptr;
 use core::uint;
 
 use sync::mpsc::{Receiver, RecvError};
@@ -109,7 +110,6 @@ pub trait Packet {
 }
 
 impl Select {
-
     /// Creates a new selection structure. This set is initially empty and
     /// `wait` will panic!() if called.
     ///
@@ -117,8 +117,8 @@ impl Select {
     /// rather much easier through the `select!` macro.
     pub fn new() -> Select {
         Select {
-            head: 0 as *mut Handle<'static, ()>,
-            tail: 0 as *mut Handle<'static, ()>,
+            head: ptr::null_mut(),
+            tail: ptr::null_mut(),
             next_id: Cell::new(1),
         }
     }
@@ -132,8 +132,8 @@ impl Select {
         Handle {
             id: id,
             selector: self,
-            next: 0 as *mut Handle<'static, ()>,
-            prev: 0 as *mut Handle<'static, ()>,
+            next: ptr::null_mut(),
+            prev: ptr::null_mut(),
             added: false,
             rx: rx,
             packet: rx,
@@ -298,8 +298,8 @@ impl<'rx, T: Send> Handle<'rx, T> {
             (*self.next).prev = self.prev;
         }
 
-        self.next = 0 as *mut Handle<'static, ()>;
-        self.prev = 0 as *mut Handle<'static, ()>;
+        self.next = ptr::null_mut();
+        self.prev = ptr::null_mut();
 
         self.added = false;
     }
