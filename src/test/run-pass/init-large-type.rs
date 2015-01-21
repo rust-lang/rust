@@ -14,6 +14,8 @@
 
 #![feature(intrinsics)]
 
+use std::thread::Thread;
+
 extern "rust-intrinsic" {
     pub fn init<T>() -> T;
 }
@@ -21,5 +23,8 @@ extern "rust-intrinsic" {
 const SIZE: usize = 1024 * 1024;
 
 fn main() {
-    let _memory: [u8; SIZE] = unsafe { init() };
+    // do the test in a new thread to avoid (spurious?) stack overflows
+    let _ = Thread::scoped(|| {
+        let _memory: [u8; SIZE] = unsafe { init() };
+    }).join();
 }
