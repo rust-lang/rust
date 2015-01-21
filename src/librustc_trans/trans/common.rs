@@ -30,7 +30,7 @@ use trans::build;
 use trans::cleanup;
 use trans::consts;
 use trans::datum;
-use trans::debuginfo;
+use trans::debuginfo::{self, DebugLoc};
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -317,13 +317,13 @@ pub struct tydesc_info<'tcx> {
 */
 
 #[derive(Copy)]
-pub struct NodeInfo {
+pub struct NodeIdAndSpan {
     pub id: ast::NodeId,
     pub span: Span,
 }
 
-pub fn expr_info(expr: &ast::Expr) -> NodeInfo {
-    NodeInfo { id: expr.id, span: expr.span }
+pub fn expr_info(expr: &ast::Expr) -> NodeIdAndSpan {
+    NodeIdAndSpan { id: expr.id, span: expr.span }
 }
 
 pub struct BuilderRef_res {
@@ -517,7 +517,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let mut reachable = false;
         for bcx in in_cxs.iter() {
             if !bcx.unreachable.get() {
-                build::Br(*bcx, out.llbb);
+                build::Br(*bcx, out.llbb, DebugLoc::None);
                 reachable = true;
             }
         }

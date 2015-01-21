@@ -24,6 +24,7 @@ use trans::callee;
 use trans::cleanup;
 use trans::common::*;
 use trans::datum::*;
+use trans::debuginfo::DebugLoc;
 use trans::expr::{SaveIn, Ignore};
 use trans::expr;
 use trans::glue;
@@ -676,7 +677,7 @@ pub fn trans_object_shim<'a, 'tcx>(
                            ArgVals(llargs.as_slice()),
                            dest).bcx;
 
-    finish_fn(&fcx, bcx, sig.output);
+    finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
 
     (llfn, method_bare_fn_ty)
 }
