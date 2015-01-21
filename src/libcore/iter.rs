@@ -1088,10 +1088,7 @@ impl<'a, I> DoubleEndedIterator for ByRef<'a, I> where I: 'a + DoubleEndedIterat
 }
 
 #[stable]
-impl<'a, I> ExactSizeIterator for ByRef<'a, I> where I: 'a + ExactSizeIterator {
-    #[inline]
-    fn len(&self) -> uint { self.iter.len() }
-}
+impl<'a, I> ExactSizeIterator for ByRef<'a, I> where I: 'a + ExactSizeIterator {}
 
 /// A trait for iterators over elements which can be added together
 #[unstable = "needs to be re-evaluated as part of numerics reform"]
@@ -1797,14 +1794,7 @@ impl<T, I> Iterator for Peekable<T, I> where I: Iterator<Item=T> {
 }
 
 #[stable]
-impl<T, I> ExactSizeIterator for Peekable<T, I> where I: ExactSizeIterator<Item = T> {
-    #[inline]
-    fn len(&self) -> usize {
-        // This is guarenteed to not overflow because `len()` must have been able to return a valid
-        // value before we peeked.
-        self.iter.len() + if self.peeked.is_some() { 1 } else { 0 }
-    }
-}
+impl<T, I> ExactSizeIterator for Peekable<T, I> where I: ExactSizeIterator<Item = T> {}
 
 #[stable]
 impl<T, I> Peekable<T, I> where I: Iterator<Item=T> {
@@ -1999,10 +1989,7 @@ impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
 }
 
 #[stable]
-impl<I> ExactSizeIterator for Skip<I> where I: ExactSizeIterator {
-    #[inline]
-    fn len(&self) -> uint { self.iter.len().saturating_sub(self.n) }
-}
+impl<I> ExactSizeIterator for Skip<I> where I: ExactSizeIterator {}
 
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 #[derive(Clone)]
@@ -2060,10 +2047,7 @@ impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
 }
 
 #[stable]
-impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {
-    #[inline]
-    fn len(&self) -> uint { cmp::min(self.iter.len(), self.n) }
-}
+impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 
 
 /// An iterator to maintain state while iterating another iterator
@@ -2275,10 +2259,7 @@ impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
 }
 
 #[stable]
-impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {
-    #[inline]
-    fn len(&self) -> uint { self.iter.len() }
-}
+impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
 
 impl<I> Fuse<I> {
     /// Resets the fuse such that the next call to .next() or .next_back() will
