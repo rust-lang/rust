@@ -93,6 +93,8 @@ pub mod heap;
 
 #[cfg(not(test))]
 pub mod boxed;
+#[cfg(test)]
+mod boxed_test;
 pub mod arc;
 pub mod rc;
 
