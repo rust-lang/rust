@@ -11,6 +11,7 @@
 #![allow(non_snake_case)]
 
 register_diagnostics! {
+    E0154,
     E0157,
     E0153,
     E0251, // a named type or value has already been imported in this module

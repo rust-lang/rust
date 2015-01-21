@@ -271,7 +271,7 @@ impl<'a> StringReader<'a> {
     fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T where
         F: FnOnce(&str) -> T,
     {
-        f(self.filemap.src[
+        f(&self.filemap.src[
                 self.byte_offset(start).to_usize()..
                 self.byte_offset(end).to_usize()])
     }
