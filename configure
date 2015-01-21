@@ -617,7 +617,6 @@ putvar CFG_BOOTSTRAP_KEY
 
 step_msg "looking for build programs"
 
-probe_need CFG_PERL        perl
 probe_need CFG_CURLORWGET  curl wget
 probe_need CFG_PYTHON      python2.7 python2.6 python2 python
 
@@ -1375,7 +1374,7 @@ do
 done
 
 # Munge any paths that appear in config.mk back to posix-y
-perl -i.bak -p -e 's@ ([a-zA-Z]):[/\\]@ /\1/@go;' config.tmp
+sed -i.bak -e 's@ \([a-zA-Z]\):[/\\]@ /\1/@g;' config.tmp
 rm -f config.tmp.bak
 
 msg

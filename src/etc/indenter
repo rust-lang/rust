@@ -1,16 +1,19 @@
-#!/usr/bin/perl
-use strict;
-use warnings;
+#!/usr/bin/env python
+import re
+import sys
 
-my $indent = 0;
-while (<>) {
-    if (/^rust: ~">>/) {
-        $indent += 1;
-    }
+indent = 0
+more_re = re.compile(r"^rust: ~\">>")
+less_re = re.compile(r"^rust: ~\"<<")
+while True:
+    line = sys.stdin.readline()
+    if not line:
+        break
 
-    printf "%03d  %s%s", $indent, ("  " x $indent), $_;
+    if more_re.match(line):
+        indent += 1
 
-    if (/^rust: ~"<</) {
-        $indent -= 1;
-    }
-}
+    print "%03d %s%s" % (indent, " " * indent, line.strip())
+
+    if less_re.match(line):
+        indent -= 1
