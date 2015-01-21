@@ -70,6 +70,8 @@
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
+// FIXME(#21363) remove `old_impl_check` when bug is fixed
+#![feature(old_impl_check)]
 #![allow(unknown_features)] #![feature(int_uint)]
 
 #[macro_use]
