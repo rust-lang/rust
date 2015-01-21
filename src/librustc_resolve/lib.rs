@@ -97,6 +97,10 @@ use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
 
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+pub mod diagnostics;
+
 mod check_unused;
 mod record_exports;
 mod build_reduced_graph;
@@ -1718,7 +1722,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            in this module",
                                           namespace_name,
                                           token::get_name(name).get());
-                        self.session.span_err(import_directive.span, msg.as_slice());
+                        span_err!(self.session, import_directive.span, E0251, "{}", msg.as_slice());
                     } else {
                         let target = Target::new(containing_module.clone(),
                                                  name_bindings.clone(),
@@ -1765,7 +1769,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     ValueNS => "value",
                                   },
                                   token::get_name(name).get());
-                self.session.span_err(import_span, &msg[]);
+                span_err!(self.session, import_span, E0252, "{}", &msg[]);
             }
             Some(_) | None => {}
         }
@@ -1780,7 +1784,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if !name_bindings.defined_in_namespace_with(namespace, IMPORTABLE) {
             let msg = format!("`{}` is not directly importable",
                               token::get_name(name));
-            self.session.span_err(import_span, &msg[]);
+            span_err!(self.session, import_span, E0253, "{}", &msg[]);
         }
     }
 
@@ -1805,7 +1809,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        crate in this module \
                                        (maybe you meant `use {0}::*`?)",
                                       token::get_name(name).get());
-                    self.session.span_err(import_span, &msg[]);
+                    span_err!(self.session, import_span, E0254, "{}", &msg[]);
                 }
                 Some(_) | None => {}
             }
@@ -1827,7 +1831,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let msg = format!("import `{}` conflicts with value \
                                        in this module",
                                       token::get_name(name).get());
-                    self.session.span_err(import_span, &msg[]);
+                    span_err!(self.session, import_span, E0255, "{}", &msg[]);
                     if let Some(span) = value.value_span {
                         self.session.span_note(span,
                                                "conflicting value here");
@@ -1845,7 +1849,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let msg = format!("import `{}` conflicts with type in \
                                                this module",
                                               token::get_name(name).get());
-                            self.session.span_err(import_span, &msg[]);
+                            span_err!(self.session, import_span, E0256, "{}", &msg[]);
                             if let Some(span) = ty.type_span {
                                 self.session.span_note(span,
                                                        "note conflicting type here")
@@ -1858,7 +1862,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         let msg = format!("inherent implementations \
                                                            are only allowed on types \
                                                            defined in the current module");
-                                        self.session.span_err(span, &msg[]);
+                                        span_err!(self.session, span, E0257, "{}", &msg[]);
                                         self.session.span_note(import_span,
                                                                "import from other module here")
                                     }
@@ -1867,7 +1871,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     let msg = format!("import `{}` conflicts with existing \
                                                        submodule",
                                                       token::get_name(name).get());
-                                    self.session.span_err(import_span, &msg[]);
+                                    span_err!(self.session, import_span, E0258, "{}", &msg[]);
                                     if let Some(span) = ty.type_span {
                                         self.session.span_note(span,
                                                                "note conflicting module here")
@@ -1893,11 +1897,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if module.external_module_children.borrow().contains_key(&name) {
-            self.session
-                .span_err(span,
-                          &format!("an external crate named `{}` has already \
+                span_err!(self.session, span, E0259,
+                          "an external crate named `{}` has already \
                                    been imported into this module",
-                                  token::get_name(name).get())[]);
+                                  token::get_name(name).get());
         }
     }
 
@@ -1911,12 +1914,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         }
 
         if module.external_module_children.borrow().contains_key(&name) {
-            self.session
-                .span_err(span,
-                          &format!("the name `{}` conflicts with an external \
+                span_err!(self.session, span, E0260,
+                          "the name `{}` conflicts with an external \
                                    crate that has been imported into this \
                                    module",
-                                  token::get_name(name).get())[]);
+                                  token::get_name(name).get());
         }
     }
 

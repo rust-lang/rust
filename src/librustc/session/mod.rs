@@ -69,65 +69,23 @@ impl Session {
     pub fn span_fatal(&self, sp: Span, msg: &str) -> ! {
         self.diagnostic().span_fatal(sp, msg)
     }
+    pub fn span_fatal_with_code(&self, sp: Span, msg: &str, code: &str) -> ! {
+        self.diagnostic().span_fatal_with_code(sp, msg, code)
+    }
     pub fn fatal(&self, msg: &str) -> ! {
         self.diagnostic().handler().fatal(msg)
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
-        // Conditions for enabling multi-line errors:
-        if !msg.contains("mismatched types") &&
-           !msg.contains("type mismatch resolving") &&
-           !msg.contains("if and else have incompatible types") &&
-           !msg.contains("if may be missing an else clause") &&
-           !msg.contains("match arms have incompatible types") &&
-           !msg.contains("structure constructor specifies a structure of type") {
-            return self.diagnostic().span_err(sp, msg);
+        match split_msg_into_multilines(msg) {
+            Some(msg) => self.diagnostic().span_err(sp, &msg[]),
+            None => self.diagnostic().span_err(sp, msg)
         }
-
-        let first  = Regex::new(r"[( ]expected").unwrap();
-        let second = Regex::new(r" found").unwrap();
-        let third  = Regex::new(
-                     r"\((values differ|lifetime|cyclic type of infinite size)").unwrap();
-
-        let mut new_msg = String::new();
-        let mut head = 0u;
-
-        // Insert `\n` before expected and found.
-        for (pos1, pos2) in first.find_iter(msg).zip(
-                            second.find_iter(msg)) {
-            new_msg = new_msg +
-            // A `(` may be preceded by a space and it should be trimmed
-                      msg[head..pos1.0].trim_right() + // prefix
-                      "\n" +                           // insert before first
-                      &msg[pos1.0..pos1.1] +           // insert what first matched
-                      &msg[pos1.1..pos2.0] +           // between matches
-                      "\n   " +                        // insert before second
-            //           123
-            // `expected` is 3 char longer than `found`. To align the types, `found` gets
-            // 3 spaces prepended.
-                      &msg[pos2.0..pos2.1];            // insert what second matched
-
-            head = pos2.1;
-        }
-
-        let mut tail = &msg[head..];
-        // Insert `\n` before any remaining messages which match.
-        for pos in third.find_iter(tail).take(1) {
-            // The end of the message may just be wrapped in `()` without `expected`/`found`.
-            // Push this also to a new line and add the final tail after.
-            new_msg = new_msg +
-            // `(` is usually preceded by a space and should be trimmed.
-                      tail[..pos.0].trim_right() + // prefix
-                      "\n" +                       // insert before paren
-                      &tail[pos.0..];              // append the tail
-
-            tail = "";
-        }
-
-        new_msg.push_str(tail);
-        self.diagnostic().span_err(sp, &new_msg[])
     }
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
-        self.diagnostic().span_err_with_code(sp, msg, code)
+        match split_msg_into_multilines(msg) {
+            Some(msg) => self.diagnostic().span_err_with_code(sp, &msg[], code),
+            None => self.diagnostic().span_err_with_code(sp, msg, code)
+        }
     }
     pub fn err(&self, msg: &str) {
         self.diagnostic().handler().err(msg)
@@ -283,6 +241,62 @@ impl Session {
             &self.opts.search_paths,
             kind)
     }
+}
+
+fn split_msg_into_multilines(msg: &str) -> Option<String> {
+    // Conditions for enabling multi-line errors:
+    if !msg.contains("mismatched types") &&
+        !msg.contains("type mismatch resolving") &&
+        !msg.contains("if and else have incompatible types") &&
+        !msg.contains("if may be missing an else clause") &&
+        !msg.contains("match arms have incompatible types") &&
+        !msg.contains("structure constructor specifies a structure of type") {
+            return None
+    }
+
+    let first  = Regex::new(r"[( ]expected").unwrap();
+    let second = Regex::new(r" found").unwrap();
+    let third  = Regex::new(
+        r"\((values differ|lifetime|cyclic type of infinite size)").unwrap();
+
+    let mut new_msg = String::new();
+    let mut head = 0u;
+
+    // Insert `\n` before expected and found.
+    for (pos1, pos2) in first.find_iter(msg).zip(
+        second.find_iter(msg)) {
+        new_msg = new_msg +
+            // A `(` may be preceded by a space and it should be trimmed
+            msg[head..pos1.0].trim_right() + // prefix
+            "\n" +                           // insert before first
+            &msg[pos1.0..pos1.1] +           // insert what first matched
+            &msg[pos1.1..pos2.0] +           // between matches
+            "\n   " +                        // insert before second
+            //           123
+            // `expected` is 3 char longer than `found`. To align the types, `found` gets
+            // 3 spaces prepended.
+            &msg[pos2.0..pos2.1];            // insert what second matched
+
+        head = pos2.1;
+    }
+
+    let mut tail = &msg[head..];
+    // Insert `\n` before any remaining messages which match.
+    for pos in third.find_iter(tail).take(1) {
+        // The end of the message may just be wrapped in `()` without `expected`/`found`.
+        // Push this also to a new line and add the final tail after.
+        new_msg = new_msg +
+            // `(` is usually preceded by a space and should be trimmed.
+            tail[..pos.0].trim_right() + // prefix
+            "\n" +                       // insert before paren
+            &tail[pos.0..];              // append the tail
+
+        tail = "";
+    }
+
+    new_msg.push_str(tail);
+
+    return Some(new_msg)
 }
 
 pub fn build_session(sopts: config::Options,
