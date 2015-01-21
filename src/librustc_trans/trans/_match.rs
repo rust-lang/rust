@@ -472,7 +472,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     enter_match(bcx, dm, m, col, val, |pats| {
         if pat_is_binding_or_wild(dm, &*pats[col]) {
             let mut r = pats[..col].to_vec();
-            r.push_all(&pats[(col + 1)..]);
+            r.push_all(&pats[col + 1..]);
             Some(r)
         } else {
             None
@@ -983,7 +983,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let dm = &tcx.def_map;
 
     let mut vals_left = vals[0u..col].to_vec();
-    vals_left.push_all(&vals[(col + 1u)..]);
+    vals_left.push_all(&vals[col + 1u..]);
     let ccx = bcx.fcx.ccx;
 
     // Find a real id (we're adding placeholder wildcard patterns, but

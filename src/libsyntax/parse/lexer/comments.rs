@@ -116,7 +116,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
         if can_trim {
             lines.iter().map(|line| {
-                (&line[(i + 1)..line.len()]).to_string()
+                (&line[i + 1..line.len()]).to_string()
             }).collect()
         } else {
             lines
@@ -132,7 +132,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
     }
 
     if comment.starts_with("/*") {
-        let lines = comment[3us..(comment.len() - 2us)]
+        let lines = comment[3..comment.len() - 2]
             .lines_any()
             .map(|s| s.to_string())
             .collect::<Vec<String> >();

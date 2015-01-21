@@ -1449,7 +1449,7 @@ pub trait Buffer: Reader {
                 };
                 match available.iter().position(|&b| b == byte) {
                     Some(i) => {
-                        res.push_all(&available[..(i + 1)]);
+                        res.push_all(&available[..i + 1]);
                         used = i + 1;
                         break
                     }

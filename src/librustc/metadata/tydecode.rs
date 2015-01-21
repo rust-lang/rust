@@ -707,7 +707,7 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
     }
 
     let crate_part = &buf[0u..colon_idx];
-    let def_part = &buf[(colon_idx + 1u)..len];
+    let def_part = &buf[colon_idx + 1u..len];
 
     let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| s.parse::<uint>()) {
        Some(cn) => cn as ast::CrateNum,

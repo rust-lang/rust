@@ -1183,7 +1183,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // against the archive.
         if sess.lto() {
             let name = cratepath.filename_str().unwrap();
-            let name = &name[3..(name.len() - 5)]; // chop off lib/.rlib
+            let name = &name[3..name.len() - 5]; // chop off lib/.rlib
             time(sess.time_passes(),
                  &format!("altering {}.rlib", name)[],
                  (), |()| {

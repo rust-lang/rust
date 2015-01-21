@@ -893,7 +893,7 @@ fn each_split_within<F>(ss: &str, lim: uint, mut it: F) -> bool where
             (B, Cr, UnderLim) => { B }
             (B, Cr, OverLim)  if (i - last_start + 1) > lim
                             => panic!("word starting with {} longer than limit!",
-                                      &ss[last_start..(i + 1)]),
+                                      &ss[last_start..i + 1]),
             (B, Cr, OverLim)  => {
                 *cont = it(&ss[slice_start..last_end]);
                 slice_start = last_start;

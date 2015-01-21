@@ -358,7 +358,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
         // This is a documented path, link to it!
         Some((ref fqp, shortty)) if abs_root.is_some() => {
             let mut url = String::from_str(abs_root.unwrap().as_slice());
-            let to_link = &fqp[..(fqp.len() - 1)];
+            let to_link = &fqp[..fqp.len() - 1];
             for component in to_link.iter() {
                 url.push_str(component.as_slice());
                 url.push_str("/");
