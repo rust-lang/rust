@@ -1635,8 +1635,8 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                         let prefix: &[u8] = &[dotdot[0], ::std::path::SEP_BYTE];
                         let mut path_bytes = p.as_vec().to_vec();
 
-                        if path_bytes.slice_to(2) != prefix &&
-                           path_bytes.slice_to(2) != dotdot {
+                        if &path_bytes[..2] != prefix &&
+                           &path_bytes[..2] != dotdot {
                             path_bytes.insert(0, prefix[0]);
                             path_bytes.insert(1, prefix[1]);
                         }
@@ -4142,4 +4142,3 @@ fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
     !ccx.sess().target.target.options.is_like_windows &&
     ccx.sess().opts.debuginfo != NoDebugInfo
 }
-
