@@ -2158,7 +2158,7 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_1() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        &x[(-1)..];
+        &x[-1..];
     }
 
     #[test]
@@ -2172,7 +2172,7 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_3() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        &x[(-1)..4];
+        &x[-1..4];
     }
 
     #[test]

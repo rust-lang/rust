@@ -2085,8 +2085,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let msg = format!("Could not find `{}` in `{}`",
                                             // idx +- 1 to account for the
                                             // colons on either side
-                                            &mpath[(idx + 1)..],
-                                            &mpath[..(idx - 1)]);
+                                            &mpath[idx + 1..],
+                                            &mpath[..idx - 1]);
                         return Failed(Some((span, msg)));
                     },
                     None => {
@@ -2762,7 +2762,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for (i, rib) in ribs.iter().enumerate().rev() {
             match rib.bindings.get(&name).cloned() {
                 Some(def_like) => {
-                    return self.upvarify(&ribs[(i + 1)..], def_like, span);
+                    return self.upvarify(&ribs[i + 1..], def_like, span);
                 }
                 None => {
                     // Continue.

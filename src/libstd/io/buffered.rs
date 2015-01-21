@@ -281,9 +281,9 @@ impl<W: Writer> Writer for LineBufferedWriter<W> {
     fn write(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == b'\n') {
             Some(i) => {
-                try!(self.inner.write(&buf[..(i + 1)]));
+                try!(self.inner.write(&buf[..i + 1]));
                 try!(self.inner.flush());
-                try!(self.inner.write(&buf[(i + 1)..]));
+                try!(self.inner.write(&buf[i + 1..]));
                 Ok(())
             }
             None => self.inner.write(buf),

@@ -518,7 +518,7 @@ impl<'a> Parser<'a> {
             };
         self.chari = closer;
         let greed = try!(self.get_next_greedy());
-        let inner = self.chars[(start+1)..closer].iter().cloned()
+        let inner = self.chars[start+1..closer].iter().cloned()
                                                .collect::<String>();
 
         // Parse the min and max values from the regex.

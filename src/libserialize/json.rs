@@ -1298,7 +1298,7 @@ impl Stack {
             InternalIndex(i) => StackElement::Index(i),
             InternalKey(start, size) => {
                 StackElement::Key(str::from_utf8(
-                    &self.str_buffer[(start as uint) .. (start as uint + size as uint)])
+                    &self.str_buffer[start as uint .. start as uint + size as uint])
                         .unwrap())
             }
         }
@@ -1341,7 +1341,7 @@ impl Stack {
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
             Some(&InternalKey(start, size)) => {
                 Some(StackElement::Key(str::from_utf8(
-                    &self.str_buffer[(start as uint) .. (start+size) as uint]
+                    &self.str_buffer[start as uint .. (start+size) as uint]
                 ).unwrap()))
             }
         }

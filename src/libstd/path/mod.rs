@@ -399,7 +399,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 match name.rposition_elem(&dot) {
                     None | Some(0) => None,
                     Some(1) if name == b".." => None,
-                    Some(pos) => Some(&name[(pos+1)..])
+                    Some(pos) => Some(&name[pos+1..])
                 }
             }
         }

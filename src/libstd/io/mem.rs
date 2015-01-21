@@ -159,7 +159,7 @@ impl Reader for MemReader {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = &self.buf[self.pos.. (self.pos + write_len)];
+            let input = &self.buf[self.pos.. self.pos + write_len];
             let output = buf.slice_to_mut(write_len);
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
@@ -349,7 +349,7 @@ impl<'a> Reader for BufReader<'a> {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = &self.buf[self.pos.. (self.pos + write_len)];
+            let input = &self.buf[self.pos.. self.pos + write_len];
             let output = buf.slice_to_mut(write_len);
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
