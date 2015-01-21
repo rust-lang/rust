@@ -624,33 +624,13 @@ impl<T: Writer> ConsoleTestState<T> {
         Ok(())
     }
 
-    pub fn write_run_finish(&mut self,
-                            ratchet_metrics: &Option<Path>,
-                            ratchet_pct: Option<f64>) -> io::IoResult<bool> {
+    pub fn write_run_finish(&mut self) -> io::IoResult<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
-        let ratchet_success = match *ratchet_metrics {
-            None => true,
-            Some(ref pth) => {
-                try!(self.write_plain(format!("\nusing metrics ratchet: {:?}\n",
-                                              pth.display()).as_slice()));
-                match ratchet_pct {
-                    None => (),
-                    Some(pct) =>
-                        try!(self.write_plain(format!("with noise-tolerance \
-                                                         forced to: {}%\n",
-                                                        pct).as_slice()))
-                }
-                true
-            }
-        };
-
-        let test_success = self.failed == 0u;
-        if !test_success {
+        let success = self.failed == 0u;
+        if !success {
             try!(self.write_failures());
         }
-
-        let success = ratchet_success && test_success;
 
         try!(self.write_plain("\ntest result: "));
         if success {
@@ -745,7 +725,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         None => {}
     }
     try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
-    return st.write_run_finish(&None, None);
+    return st.write_run_finish();
 }
 
 #[test]
