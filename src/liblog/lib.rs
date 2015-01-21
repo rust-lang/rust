@@ -180,6 +180,7 @@ use std::io::LineBufferedWriter;
 use std::io;
 use std::mem;
 use std::os;
+use std::ptr;
 use std::rt;
 use std::slice;
 use std::sync::{Once, ONCE_INIT};
@@ -437,11 +438,11 @@ fn init() {
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
                 mem::transmute(DIRECTIVES);
-            DIRECTIVES = 0 as *const Vec<directive::LogDirective>;
+            DIRECTIVES = ptr::null();
 
             if !FILTER.is_null() {
                 let _filter: Box<Regex> = mem::transmute(FILTER);
-                FILTER = 0 as *const _;
+                FILTER = ptr::null();
             }
         });
     }
