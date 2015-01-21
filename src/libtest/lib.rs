@@ -54,7 +54,7 @@ use self::OutputLocation::*;
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
 use regex::Regex;
-use serialize::{json, Decodable, Encodable};
+use serialize::Encodable;
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
@@ -62,7 +62,6 @@ use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt;
-use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
@@ -988,30 +987,6 @@ impl MetricMap {
 
     pub fn new() -> MetricMap {
         MetricMap(BTreeMap::new())
-    }
-
-    /// Load MetricDiff from a file.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the path does not exist or the path does not
-    /// contain a valid metric map.
-    pub fn load(p: &Path) -> MetricMap {
-        assert!(p.exists());
-        let mut f = File::open(p).unwrap();
-        let value = json::from_reader(&mut f as &mut io::Reader).unwrap();
-        let mut decoder = json::Decoder::new(value);
-        MetricMap(match Decodable::decode(&mut decoder) {
-            Ok(t) => t,
-            Err(e) => panic!("failure decoding JSON: {:?}", e)
-        })
-    }
-
-    /// Write MetricDiff to a file.
-    pub fn save(&self, p: &Path) -> io::IoResult<()> {
-        let mut file = try!(File::create(p));
-        let MetricMap(ref map) = *self;
-        write!(&mut file, "{}", json::as_json(map))
     }
 
     /// Insert a named `value` (+/- `noise`) metric into the map. The value
