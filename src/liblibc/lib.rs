@@ -4648,13 +4648,13 @@ pub mod funcs {
             use types::os::arch::c95::c_int;
             use types::os::common::posix01::sighandler_t;
 
-            #[cfg(not(target_os = "android"))]
+            #[cfg(not(all(target_os = "android", target_arch = "arm")))]
             extern {
                 pub fn signal(signum: c_int,
                               handler: sighandler_t) -> sighandler_t;
             }
 
-            #[cfg(target_os = "android")]
+            #[cfg(all(target_os = "android", target_arch = "arm"))]
             extern {
                 #[link_name = "bsd_signal"]
                 pub fn signal(signum: c_int,
