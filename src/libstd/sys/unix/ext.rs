@@ -31,7 +31,10 @@
 
 #![unstable]
 
-use sys_common::AsInner;
+use vec::Vec;
+use sys::os_str::Buf;
+use sys_common::{AsInner, IntoInner, FromInner};
+use ffi::{OsStr, OsString};
 use libc;
 
 use io;
@@ -96,6 +99,36 @@ impl AsRawFd for io::net::tcp::TcpAcceptor {
 impl AsRawFd for io::net::udp::UdpSocket {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
+    }
+}
+
+// Unix-specific extensions to `OsString`.
+pub trait OsStringExt {
+    /// Create an `OsString` from a byte vector.
+    fn from_vec(vec: Vec<u8>) -> Self;
+
+    /// Yield the underlying byte vector of this `OsString`.
+    fn into_vec(self) -> Vec<u8>;
+}
+
+impl OsStringExt for OsString {
+    fn from_vec(vec: Vec<u8>) -> OsString {
+        FromInner::from_inner(Buf { inner: vec })
+    }
+
+    fn into_vec(self) -> Vec<u8> {
+        self.into_inner().inner
+    }
+}
+
+// Unix-specific extensions to `OsStr`.
+pub trait OsStrExt {
+    fn as_byte_slice(&self) -> &[u8];
+}
+
+impl OsStrExt for OsStr {
+    fn as_byte_slice(&self) -> &[u8] {
+        &self.as_inner().inner
     }
 }
 

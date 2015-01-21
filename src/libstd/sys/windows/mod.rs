@@ -44,6 +44,7 @@ pub mod fs;
 pub mod helper_signal;
 pub mod mutex;
 pub mod os;
+pub mod os_str;
 pub mod pipe;
 pub mod process;
 pub mod rwlock;
