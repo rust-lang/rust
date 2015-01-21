@@ -39,7 +39,7 @@ would allow this code:
 match (self, other) {
     (&Unknown(ref s1), &Unknown(ref s2)) => s1 == s2,
     (l, r) => unsafe {
-	    discriminant_value(l) == discriminant(r)
+	    discriminant_value(l) == discriminant_value(r)
 	}
 }
 ```
