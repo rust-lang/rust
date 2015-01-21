@@ -819,7 +819,7 @@ impl UdpSocket {
             write_deadline: 0,
         };
 
-        setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR, true as libc::c_int);        
+        setsockopt(fd, libc::SOL_SOCKET, libc::SO_REUSEADDR, true as libc::c_int).unwrap();        
 
         let mut storage = unsafe { mem::zeroed() };
         let len = addr_to_sockaddr(addr, &mut storage);
