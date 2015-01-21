@@ -48,10 +48,10 @@ use super::state::HashState;
 const INITIAL_LOG2_CAP: uint = 5;
 pub const INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
 
-/// The default behavior of HashMap implements a load factor of 90.9%.
+/// The default behavior of HashMap implements a load factor of 98%.
 /// This behavior is characterized by the following condition:
 ///
-/// - if size > 0.909 * capacity: grow the map
+/// - if size > 0.98 * capacity: grow the map
 #[derive(Clone)]
 struct DefaultResizePolicy;
 
@@ -66,7 +66,7 @@ impl DefaultResizePolicy {
         // on capacity:
         //
         // - if `cap < size * 1.1`: grow the map
-        usable_size * 11 / 10
+        (usable_size as f64 * (1.0/0.98)) as uint
     }
 
     /// An inverse of `min_capacity`, approximately.
@@ -76,12 +76,7 @@ impl DefaultResizePolicy {
         // min_capacity(size) must be smaller than the internal capacity,
         // so that the map is not resized:
         // `min_capacity(usable_capacity(x)) <= x`.
-        // The lef-hand side can only be smaller due to flooring by integer
-        // division.
-        //
-        // This doesn't have to be checked for overflow since allocation size
-        // in bytes will overflow earlier than multiplication by 10.
-        cap * 10 / 11
+        (cap as f64 * 0.98) as uint
     }
 }
 
@@ -103,36 +98,25 @@ fn test_resize_policy() {
 //    is higher than how far we've already probed, swap the elements.
 //
 // This massively lowers variance in probe distance, and allows us to get very
-// high load factors with good performance. The 90% load factor I use is rather
+// high load factors with good performance. The 98% load factor I use is rather
 // conservative.
 //
-// > Why a load factor of approximately 90%?
+// > Why a load factor of 98%?
 //
-// In general, all the distances to initial buckets will converge on the mean.
-// At a load factor of α, the odds of finding the target bucket after k
-// probes is approximately 1-α^k. If we set this equal to 50% (since we converge
-// on the mean) and set k=8 (64-byte cache line / 8-byte hash), α=0.92. I round
-// this down to make the math easier on the CPU and avoid its FPU.
-// Since on average we start the probing in the middle of a cache line, this
-// strategy pulls in two cache lines of hashes on every lookup. I think that's
-// pretty good, but if you want to trade off some space, it could go down to one
-// cache line on average with an α of 0.84.
+// Let the expected value of a probe sequence be Epsl, and the load factor be α.
 //
-// > Wait, what? Where did you get 1-α^k from?
+// From the robin hood hashing paper (page 35) [1],
 //
-// On the first probe, your odds of a collision with an existing element is α.
-// The odds of doing this twice in a row is approximately α^2. For three times,
-// α^3, etc. Therefore, the odds of colliding k times is α^k. The odds of NOT
-// colliding after k tries is 1-α^k.
+//   Epsl[α] = -ln(1 - α)/α
 //
-// The paper from 1986 cited below mentions an implementation which keeps track
-// of the distance-to-initial-bucket histogram. This approach is not suitable
-// for modern architectures because it requires maintaining an internal data
-// structure. This allows very good first guesses, but we are most concerned
-// with guessing entire cache lines, not individual indexes. Furthermore, array
-// accesses are no longer linear and in one direction, as we have now. There
-// is also memory and cache pressure that this would entail that would be very
-// difficult to properly see in a microbenchmark.
+// Since one cache line is 8 usizes on 64-bit systems, to keep probes within the
+// same cache line, on average, we should shoot for a probe sequence length of 4.
+// Solving the above equation:
+//
+//   Epsl[0.98] = -ln(1 - 0.98)/0.98 = 3.9919
+//
+// we get a load factor of 98%! For reference, the variance of probe sequence
+// length will be around 1.5 (from the graph on page 30 of the paper).
 //
 // ## Future Improvements (FIXME!)
 //
@@ -203,6 +187,8 @@ fn test_resize_policy() {
 // produces identical results to a linear naive reinsertion from the same
 // element.
 //
+// 1. Pedro Celis. ["Robin Hood Hashing"](https://cs.uwaterloo.ca/research/tr/1986/CS-86-14.pdf)
+
 // FIXME(Gankro, pczarn): review the proof and put it all in a separate doc.rs
 
 /// A hash map implementation which uses linear probing with Robin
