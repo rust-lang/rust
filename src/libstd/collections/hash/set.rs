@@ -1179,7 +1179,7 @@ mod test_set {
 
         let set_str = format!("{:?}", set);
 
-        assert!(set_str == "HashSet {1i, 2i}" || set_str == "HashSet {2i, 1i}");
+        assert!(set_str == "HashSet {1is, 2is}" || set_str == "HashSet {2is, 1is}");
         assert_eq!(format!("{:?}", empty), "HashSet {}");
     }
 

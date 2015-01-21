@@ -2476,19 +2476,19 @@ mod tests {
         }
         let empty: Vec<int> = vec![];
         test_show_vec!(empty, "[]");
-        test_show_vec!(vec![1i], "[1i]");
-        test_show_vec!(vec![1i, 2, 3], "[1i, 2i, 3i]");
-        test_show_vec!(vec![vec![], vec![1u], vec![1u, 1u]],
-                       "[[], [1u], [1u, 1u]]");
+        test_show_vec!(vec![1is], "[1is]");
+        test_show_vec!(vec![1is, 2, 3], "[1is, 2is, 3is]");
+        test_show_vec!(vec![vec![], vec![1u], vec![1us, 1us]],
+                       "[[], [1us], [1us, 1us]]");
 
         let empty_mut: &mut [int] = &mut[];
         test_show_vec!(empty_mut, "[]");
         let v: &mut[int] = &mut[1];
-        test_show_vec!(v, "[1i]");
+        test_show_vec!(v, "[1is]");
         let v: &mut[int] = &mut[1, 2, 3];
-        test_show_vec!(v, "[1i, 2i, 3i]");
-        let v: &mut [&mut[uint]] = &mut[&mut[], &mut[1u], &mut[1u, 1u]];
-        test_show_vec!(v, "[[], [1u], [1u, 1u]]");
+        test_show_vec!(v, "[1is, 2is, 3is]");
+        let v: &mut [&mut[uint]] = &mut[&mut[], &mut[1us], &mut[1us, 1us]];
+        test_show_vec!(v, "[[], [1us], [1us, 1us]]");
     }
 
     #[test]

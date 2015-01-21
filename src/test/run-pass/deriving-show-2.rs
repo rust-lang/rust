@@ -25,11 +25,9 @@ struct F(int);
 #[derive(Show)]
 struct G(int, int);
 #[derive(Show)]
-struct H { a: int }
+struct H { a: int, b: int }
 #[derive(Show)]
-struct I { a: int, b: int }
-#[derive(Show)]
-struct J(Custom);
+struct I(Custom);
 
 struct Custom;
 impl fmt::Show for Custom {
@@ -51,12 +49,12 @@ impl<T: fmt::Show> ToShow for T {
 pub fn main() {
     assert_eq!(B::B1.to_show(), "B1".to_string());
     assert_eq!(B::B2.to_show(), "B2".to_string());
-    assert_eq!(C::C1(3).to_show(), "C1(3i)".to_string());
+    assert_eq!(C::C1(3).to_show(), "C1(3is)".to_string());
     assert_eq!(C::C2(B::B2).to_show(), "C2(B2)".to_string());
-    assert_eq!(D::D1{ a: 2 }.to_show(), "D1 { a: 2i }".to_string());
+    assert_eq!(D::D1{ a: 2 }.to_show(), "D1 { a: 2is }".to_string());
     assert_eq!(E.to_show(), "E".to_string());
-    assert_eq!(F(3).to_show(), "F(3i)".to_string());
-    assert_eq!(G(3, 4).to_show(), "G(3i, 4i)".to_string());
-    assert_eq!(I{ a: 2, b: 4 }.to_show(), "I { a: 2i, b: 4i }".to_string());
-    assert_eq!(J(Custom).to_show(), "J(yay)".to_string());
+    assert_eq!(F(3).to_show(), "F(3is)".to_string());
+    assert_eq!(G(3, 4).to_show(), "G(3is, 4is)".to_string());
+    assert_eq!(H{ a: 2, b: 4 }.to_show(), "H { a: 2is, b: 4is }".to_string());
+    assert_eq!(I(Custom).to_show(), "I(yay)".to_string());
 }

@@ -1333,7 +1333,8 @@ mod tests {
     #[test]
     fn test_show() {
         let list: DList<int> = range(0i, 10).collect();
-        assert_eq!(format!("{:?}", list), "DList [0i, 1i, 2i, 3i, 4i, 5i, 6i, 7i, 8i, 9i]");
+        assert_eq!(format!("{:?}", list),
+          "DList [0is, 1is, 2is, 3is, 4is, 5is, 6is, 7is, 8is, 9is]");
 
         let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
                                                                    .map(|&s| s)

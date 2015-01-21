@@ -990,7 +990,7 @@ mod test_map {
         map.insert(3, 4i);
 
         let map_str = format!("{:?}", map);
-        assert!(map_str == "VecMap {1: 2i, 3: 4i}" || map_str == "{3: 4i, 1: 2i}");
+        assert!(map_str == "VecMap {1: 2is, 3: 4is}" || map_str == "{3: 4is, 1: 2is}");
         assert_eq!(format!("{:?}", empty), "VecMap {}");
     }
 

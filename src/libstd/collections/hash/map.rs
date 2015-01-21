@@ -1996,8 +1996,8 @@ mod test_map {
 
         let map_str = format!("{:?}", map);
 
-        assert!(map_str == "HashMap {1i: 2i, 3i: 4i}" ||
-                map_str == "HashMap {3i: 4i, 1i: 2i}");
+        assert!(map_str == "HashMap {1is: 2is, 3is: 4is}" ||
+                map_str == "HashMap {3is: 4is, 1is: 2is}");
         assert_eq!(format!("{:?}", empty), "HashMap {}");
     }
 
