@@ -80,10 +80,10 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
             if variants.is_empty() {
                 cx.span_err(trait_span, "`Rand` cannot be derived for enums with no variants");
                 // let compilation continue
-                return cx.expr_uint(trait_span, 0);
+                return cx.expr_usize(trait_span, 0);
             }
 
-            let variant_count = cx.expr_uint(trait_span, variants.len());
+            let variant_count = cx.expr_usize(trait_span, variants.len());
 
             let rand_name = cx.path_all(trait_span,
                                         true,
@@ -115,7 +115,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
                                               variant_count);
 
             let mut arms = variants.iter().enumerate().map(|(i, &(ident, v_span, ref summary))| {
-                let i_expr = cx.expr_uint(v_span, i);
+                let i_expr = cx.expr_usize(v_span, i);
                 let pat = cx.pat_lit(v_span, i_expr);
 
                 let path = cx.path(v_span, vec![substr.type_ident, ident]);

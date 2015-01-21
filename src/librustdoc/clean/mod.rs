@@ -1872,9 +1872,9 @@ impl Clean<Span> for syntax::codemap::Span {
         Span {
             filename: filename.to_string(),
             loline: lo.line,
-            locol: lo.col.to_uint(),
+            locol: lo.col.to_usize(),
             hiline: hi.line,
-            hicol: hi.col.to_uint(),
+            hicol: hi.col.to_usize(),
         }
     }
 }

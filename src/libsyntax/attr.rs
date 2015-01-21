@@ -170,7 +170,7 @@ pub fn mk_word_item(name: InternedString) -> P<MetaItem> {
     P(dummy_spanned(MetaWord(name)))
 }
 
-thread_local! { static NEXT_ATTR_ID: Cell<uint> = Cell::new(0) }
+thread_local! { static NEXT_ATTR_ID: Cell<usize> = Cell::new(0) }
 
 pub fn mk_attr_id() -> AttrId {
     let id = NEXT_ATTR_ID.with(|slot| {

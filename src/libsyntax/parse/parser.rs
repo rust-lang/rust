@@ -291,11 +291,11 @@ pub struct Parser<'a> {
     /// the previous token or None (only stashed sometimes).
     pub last_token: Option<Box<token::Token>>,
     pub buffer: [TokenAndSpan; 4],
-    pub buffer_start: int,
-    pub buffer_end: int,
-    pub tokens_consumed: uint,
+    pub buffer_start: isize,
+    pub buffer_end: isize,
+    pub tokens_consumed: usize,
     pub restrictions: Restrictions,
-    pub quote_depth: uint, // not (yet) related to the quasiquoter
+    pub quote_depth: usize, // not (yet) related to the quasiquoter
     pub reader: Box<Reader+'a>,
     pub interner: Rc<token::IdentInterner>,
     /// The set of seen errors about obsolete syntax. Used to suppress
@@ -768,7 +768,7 @@ impl<'a> Parser<'a> {
         // would encounter a `>` and stop. This lets the parser handle trailing
         // commas in generic parameters, because it can stop either after
         // parsing a type or after parsing a comma.
-        for i in iter::count(0u, 1) {
+        for i in iter::count(0us, 1) {
             if self.check(&token::Gt)
                 || self.token == token::BinOp(token::Shr)
                 || self.token == token::Ge
@@ -933,9 +933,9 @@ impl<'a> Parser<'a> {
             self.reader.real_token()
         } else {
             // Avoid token copies with `replace`.
-            let buffer_start = self.buffer_start as uint;
-            let next_index = (buffer_start + 1) & 3 as uint;
-            self.buffer_start = next_index as int;
+            let buffer_start = self.buffer_start as usize;
+            let next_index = (buffer_start + 1) & 3 as usize;
+            self.buffer_start = next_index as isize;
 
             let placeholder = TokenAndSpan {
                 tok: token::Underscore,
@@ -945,7 +945,7 @@ impl<'a> Parser<'a> {
         };
         self.span = next.sp;
         self.token = next.tok;
-        self.tokens_consumed += 1u;
+        self.tokens_consumed += 1us;
         self.expected_tokens.clear();
         // check after each token
         self.check_unknown_macro_variable();
@@ -967,21 +967,21 @@ impl<'a> Parser<'a> {
         self.token = next;
         self.span = mk_sp(lo, hi);
     }
-    pub fn buffer_length(&mut self) -> int {
+    pub fn buffer_length(&mut self) -> isize {
         if self.buffer_start <= self.buffer_end {
             return self.buffer_end - self.buffer_start;
         }
         return (4 - self.buffer_start) + self.buffer_end;
     }
-    pub fn look_ahead<R, F>(&mut self, distance: uint, f: F) -> R where
+    pub fn look_ahead<R, F>(&mut self, distance: usize, f: F) -> R where
         F: FnOnce(&token::Token) -> R,
     {
-        let dist = distance as int;
+        let dist = distance as isize;
         while self.buffer_length() < dist {
-            self.buffer[self.buffer_end as uint] = self.reader.real_token();
+            self.buffer[self.buffer_end as usize] = self.reader.real_token();
             self.buffer_end = (self.buffer_end + 1) & 3;
         }
-        f(&self.buffer[((self.buffer_start + dist - 1) & 3) as uint].tok)
+        f(&self.buffer[((self.buffer_start + dist - 1) & 3) as usize].tok)
     }
     pub fn fatal(&mut self, m: &str) -> ! {
         self.sess.span_diagnostic.span_fatal(self.span, m)
@@ -1496,7 +1496,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::OpenDelim(token::Bracket));
             let t = self.parse_ty_sum();
 
-            // Parse the `; e` in `[ int; e ]`
+            // Parse the `; e` in `[ i32; e ]`
             // where `e` is a const expression
             let t = match self.maybe_parse_fixed_length_of_vec() {
                 None => TyVec(t),
@@ -2084,7 +2084,7 @@ impl<'a> Parser<'a> {
         ExprField(expr, ident)
     }
 
-    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<uint>) -> ast::Expr_ {
+    pub fn mk_tup_field(&mut self, expr: P<Expr>, idx: codemap::Spanned<usize>) -> ast::Expr_ {
         ExprTupField(expr, idx)
     }
 
@@ -2483,7 +2483,7 @@ impl<'a> Parser<'a> {
                     hi = self.span.hi;
                     self.bump();
 
-                    let index = n.as_str().parse::<uint>();
+                    let index = n.as_str().parse::<usize>();
                     match index {
                         Some(n) => {
                             let id = spanned(dot, hi, n);
@@ -2509,7 +2509,7 @@ impl<'a> Parser<'a> {
                         };
                         self.span_help(last_span,
                             &format!("try parenthesizing the first index; e.g., `(foo.{}){}`",
-                                    float.trunc() as uint,
+                                    float.trunc() as usize,
                                     &float.fract().to_string()[1..])[]);
                     }
                     self.abort_if_errors();
@@ -2636,7 +2636,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn check_unknown_macro_variable(&mut self) {
-        if self.quote_depth == 0u {
+        if self.quote_depth == 0us {
             match self.token {
                 token::SubstNt(name, _) =>
                     self.fatal(&format!("unknown macro variable `{}`",
@@ -2705,7 +2705,7 @@ impl<'a> Parser<'a> {
                                     token_str)[])
                 },
                 /* we ought to allow different depths of unquotation */
-                token::Dollar | token::SubstNt(..) if p.quote_depth > 0u => {
+                token::Dollar | token::SubstNt(..) if p.quote_depth > 0us => {
                     p.parse_unquoted()
                 }
                 _ => {
@@ -2863,7 +2863,7 @@ impl<'a> Parser<'a> {
     }
 
     /// Parse an expression of binops of at least min_prec precedence
-    pub fn parse_more_binops(&mut self, lhs: P<Expr>, min_prec: uint) -> P<Expr> {
+    pub fn parse_more_binops(&mut self, lhs: P<Expr>, min_prec: usize) -> P<Expr> {
         if self.expr_is_complete(&*lhs) { return lhs; }
 
         // Prevent dynamic borrow errors later on by limiting the
@@ -4795,7 +4795,7 @@ impl<'a> Parser<'a> {
          Some(attrs))
     }
 
-    /// Parse a::B<String,int>
+    /// Parse a::B<String,i32>
     fn parse_trait_ref(&mut self) -> TraitRef {
         ast::TraitRef {
             path: self.parse_path(LifetimeAndTypesWithoutColons),
@@ -4814,7 +4814,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    /// Parse for<'l> a::B<String,int>
+    /// Parse for<'l> a::B<String,i32>
     fn parse_poly_trait_ref(&mut self) -> PolyTraitRef {
         let lifetime_defs = self.parse_late_bound_lifetime_defs();
 
@@ -5071,7 +5071,7 @@ impl<'a> Parser<'a> {
             }
         }
 
-        if first && attrs_remaining_len > 0u {
+        if first && attrs_remaining_len > 0us {
             // We parsed attributes for the first item but didn't find it
             let last_span = self.last_span;
             self.span_err(last_span,
@@ -5668,7 +5668,7 @@ impl<'a> Parser<'a> {
             return IoviItem(item);
         }
         if self.token.is_keyword(keywords::Unsafe) &&
-            self.look_ahead(1u, |t| t.is_keyword(keywords::Trait))
+            self.look_ahead(1us, |t| t.is_keyword(keywords::Trait))
         {
             // UNSAFE TRAIT ITEM
             self.expect_keyword(keywords::Unsafe);
@@ -5685,7 +5685,7 @@ impl<'a> Parser<'a> {
             return IoviItem(item);
         }
         if self.token.is_keyword(keywords::Unsafe) &&
-            self.look_ahead(1u, |t| t.is_keyword(keywords::Impl))
+            self.look_ahead(1us, |t| t.is_keyword(keywords::Impl))
         {
             // IMPL ITEM
             self.expect_keyword(keywords::Unsafe);
@@ -5715,7 +5715,7 @@ impl<'a> Parser<'a> {
             return IoviItem(item);
         }
         if self.token.is_keyword(keywords::Unsafe)
-            && self.look_ahead(1u, |t| *t != token::OpenDelim(token::Brace)) {
+            && self.look_ahead(1us, |t| *t != token::OpenDelim(token::Brace)) {
             // UNSAFE FUNCTION ITEM
             self.bump();
             let abi = if self.eat_keyword(keywords::Extern) {
@@ -6019,7 +6019,7 @@ impl<'a> Parser<'a> {
                 }
             }
         }
-        let mut rename_to = path[path.len() - 1u];
+        let mut rename_to = path[path.len() - 1us];
         let path = ast::Path {
             span: mk_sp(lo, self.last_span.hi),
             global: false,
