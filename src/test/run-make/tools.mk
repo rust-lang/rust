@@ -5,7 +5,8 @@ HOST_RPATH_ENV = \
 TARGET_RPATH_ENV = \
     $(LD_LIB_PATH_ENVVAR)="$(TMPDIR):$(TARGET_RPATH_DIR):$($(LD_LIB_PATH_ENVVAR))"
 
-RUSTC := $(HOST_RPATH_ENV) $(RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
+BARE_RUSTC := $(HOST_RPATH_ENV) $(RUSTC)
+RUSTC := $(BARE_RUSTC) --out-dir $(TMPDIR) -L $(TMPDIR)
 CC := $(CC) -L $(TMPDIR)
 HTMLDOCCK := $(PYTHON) $(S)/src/etc/htmldocck.py
 
