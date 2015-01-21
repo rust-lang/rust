@@ -43,7 +43,7 @@ pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
     span: DUMMY_SP
 };
 
-struct Matrix<'a>(Vec<Vec<&'a Pat>>);
+pub struct Matrix<'a>(pub Vec<Vec<&'a Pat>>);
 
 /// Pretty-printer for matrices of patterns, example:
 /// ++++++++++++++++++++++++++
@@ -120,14 +120,14 @@ pub enum Constructor {
 }
 
 #[derive(Clone, PartialEq)]
-enum Usefulness {
+pub enum Usefulness {
     Useful,
     UsefulWithWitness(Vec<P<Pat>>),
     NotUseful
 }
 
 #[derive(Copy)]
-enum WitnessPreference {
+pub enum WitnessPreference {
     ConstructWitness,
     LeaveOutWitness
 }
@@ -568,11 +568,10 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
 
 // Note: is_useful doesn't work on empty types, as the paper notes.
 // So it assumes that v is non-empty.
-fn is_useful(cx: &MatchCheckCtxt,
-             matrix: &Matrix,
-             v: &[&Pat],
-             witness: WitnessPreference)
-             -> Usefulness {
+pub fn is_useful(cx: &MatchCheckCtxt,
+                 matrix: &Matrix,
+                 v: &[&Pat],
+                 witness: WitnessPreference) -> Usefulness {
     let &Matrix(ref rows) = matrix;
     debug!("{:?}", matrix);
     if rows.len() == 0u {

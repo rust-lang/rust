@@ -191,6 +191,8 @@ use self::FailureHandler::*;
 use back::abi;
 use llvm::{ValueRef, BasicBlockRef};
 use middle::check_match::StaticInliner;
+use middle::check_match::Usefulness::NotUseful;
+use middle::check_match::WitnessPreference::LeaveOutWitness;
 use middle::check_match;
 use middle::const_eval;
 use middle::def::{self, DefMap};
@@ -1398,14 +1400,27 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
 
     // `compile_submatch` works one column of arm patterns a time and
     // then peels that column off. So as we progress, it may become
-    // impossible to tell whether we have a genuine default arm, i.e.
-    // `_ => foo` or not. Sometimes it is important to know that in order
-    // to decide whether moving on to the next condition or falling back
-    // to the default arm.
-    let has_default = arms.last().map_or(false, |arm| {
-        arm.pats.len() == 1
-        && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
-    });
+    // impossible to tell whether we have a genuine default arm or not.
+    // Computing such property upfront, however, is straightforward -
+    // if the last arm of the match expression shadows a `PatWildSingle`,
+    // then it is a genuine default arm.
+    //
+    // Sometimes it is important to know that in order to decide whether
+    // moving on to the next arm or falling back to the default one.
+    let is_geniune_default = |&: pats: &Vec<P<ast::Pat>>| {
+        let mcx = check_match::MatchCheckCtxt {
+            tcx: tcx,
+            param_env: ty::empty_parameter_environment(tcx),
+        };
+        let ps = pats.iter().map(|p| &**p).collect();
+        let matrix = check_match::Matrix(vec![ps]);
+        let candidate = [check_match::DUMMY_WILD_PAT];
+        match check_match::is_useful(&mcx, &matrix, &candidate, LeaveOutWitness) {
+            NotUseful => true,
+            _ => false
+        }
+    };
+    let has_default = arm_pats.iter().last().map_or(false, is_geniune_default);
 
     compile_submatch(bcx, &matches[], &[discr_datum.val], &chk, has_default);
 
