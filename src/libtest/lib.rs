@@ -437,9 +437,6 @@ struct ConsoleTestState<T> {
     log_out: Option<File>,
     out: OutputLocation<T>,
     use_color: bool,
-    show_boxplot: bool,
-    boxplot_width: uint,
-    show_all_stats: bool,
     total: uint,
     passed: uint,
     failed: uint,
@@ -466,9 +463,6 @@ impl<T: Writer> ConsoleTestState<T> {
             out: out,
             log_out: log_out,
             use_color: use_color(opts),
-            show_boxplot: false,
-            boxplot_width: 50,
-            show_all_stats: false,
             total: 0u,
             passed: 0u,
             failed: 0u,
@@ -549,28 +543,8 @@ impl<T: Writer> ConsoleTestState<T> {
             TrBench(ref bs) => {
                 try!(self.write_bench());
 
-                if self.show_boxplot {
-                    let mut wr = Vec::new();
-
-                    try!(stats::write_boxplot(&mut wr, &bs.ns_iter_summ, self.boxplot_width));
-
-                    let s = String::from_utf8(wr).unwrap();
-
-                    try!(self.write_plain(format!(": {}", s).as_slice()));
-                }
-
-                if self.show_all_stats {
-                    let mut wr = Vec::new();
-
-                    try!(stats::write_5_number_summary(&mut wr, &bs.ns_iter_summ));
-
-                    let s = String::from_utf8(wr).unwrap();
-
-                    try!(self.write_plain(format!(": {}", s).as_slice()));
-                } else {
-                    try!(self.write_plain(format!(": {}",
-                                                  fmt_bench_samples(bs)).as_slice()));
-                }
+                try!(self.write_plain(format!(": {}",
+                                              fmt_bench_samples(bs)).as_slice()));
 
                 Ok(())
             }
@@ -736,9 +710,6 @@ fn should_sort_failures_before_printing_them() {
         log_out: None,
         out: Raw(Vec::new()),
         use_color: false,
-        show_boxplot: false,
-        boxplot_width: 0,
-        show_all_stats: false,
         total: 0u,
         passed: 0u,
         failed: 0u,
