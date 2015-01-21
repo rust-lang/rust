@@ -150,6 +150,11 @@ expose the slice in type annotations, parameter signatures and so on,
 the change should not be breaking since `CStr` also provides
 this method.
 
+While it's not possible outside of unsafe code to unintentionally copy out
+or modify the nominal value of `CStr` under an immutable reference, some
+unforeseen trouble or confusion can arise due to the structure having a
+bogus size.
+
 # Alternatives
 
 `CStr` could be made a newtype on DST `[libc::c_char]`, allowing no-cost
