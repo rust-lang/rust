@@ -2085,6 +2085,10 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     try!(write!(w, "<h3 class='impl'>{}<code>impl{} ",
                 ConciseStability(&i.stability),
                 i.impl_.generics));
+    match i.impl_.polarity {
+        Some(clean::ImplPolarity::Negative) => try!(write!(w, "!")),
+        _ => {}
+    }
     match i.impl_.trait_ {
         Some(ref ty) => try!(write!(w, "{} for ", *ty)),
         None => {}

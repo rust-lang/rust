@@ -2082,6 +2082,21 @@ impl Clean<Mutability> for ast::Mutability {
     }
 }
 
+#[derive(Show, Clone, RustcEncodable, RustcDecodable, PartialEq, Copy)]
+pub enum ImplPolarity {
+    Positive,
+    Negative,
+}
+
+impl Clean<ImplPolarity> for ast::ImplPolarity {
+    fn clean(&self, _: &DocContext) -> ImplPolarity {
+        match self {
+            &ast::ImplPolarity::Positive => ImplPolarity::Positive,
+            &ast::ImplPolarity::Negative => ImplPolarity::Negative,
+        }
+    }
+}
+
 #[derive(Clone, RustcEncodable, RustcDecodable)]
 pub struct Impl {
     pub generics: Generics,
@@ -2089,6 +2104,7 @@ pub struct Impl {
     pub for_: Type,
     pub items: Vec<Item>,
     pub derived: bool,
+    pub polarity: Option<ImplPolarity>,
 }
 
 fn detect_derived<M: AttrMetaMethods>(attrs: &[M]) -> bool {
@@ -2115,6 +2131,7 @@ impl Clean<Item> for doctree::Impl {
                         }
                     }).collect(),
                 derived: detect_derived(self.attrs.as_slice()),
+                polarity: Some(self.polarity.clean(cx)),
             }),
         }
     }
