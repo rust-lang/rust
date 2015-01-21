@@ -364,7 +364,7 @@ pub mod with_hygiene {
 }
 
 /// Abort if necessary
-pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
+pub fn maybe_aborted<T>(result: T, p: Parser) -> T {
     p.abort_if_errors();
     result
 }
