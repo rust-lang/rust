@@ -544,7 +544,7 @@ impl<T: Writer> ConsoleTestState<T> {
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
                 try!(self.write_metric());
-                self.write_plain(format!(": {}", fmt_metrics(mm)).as_slice())
+                self.write_plain(format!(": {}", mm.fmt_metrics()).as_slice())
             }
             TrBench(ref bs) => {
                 try!(self.write_bench());
@@ -587,7 +587,7 @@ impl<T: Writer> ConsoleTestState<T> {
                         TrOk => "ok".to_string(),
                         TrFailed => "failed".to_string(),
                         TrIgnored => "ignored".to_string(),
-                        TrMetrics(ref mm) => fmt_metrics(mm),
+                        TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs)
                     }, test.name.as_slice());
                 o.write(s.as_bytes())
@@ -643,15 +643,6 @@ impl<T: Writer> ConsoleTestState<T> {
         try!(self.write_plain(s.as_slice()));
         return Ok(success);
     }
-}
-
-pub fn fmt_metrics(mm: &MetricMap) -> String {
-    let MetricMap(ref mm) = *mm;
-    let v : Vec<String> = mm.iter()
-        .map(|(k,v)| format!("{}: {} (+/- {})", *k,
-                             v.value as f64, v.noise as f64))
-        .collect();
-    v.connect(", ")
 }
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
@@ -1009,6 +1000,15 @@ impl MetricMap {
         };
         let MetricMap(ref mut map) = *self;
         map.insert(name.to_string(), m);
+    }
+
+    pub fn fmt_metrics(&self) -> String {
+        let MetricMap(ref mm) = *self;
+        let v : Vec<String> = mm.iter()
+            .map(|(k,v)| format!("{}: {} (+/- {})", *k,
+                                 v.value as f64, v.noise as f64))
+            .collect();
+        v.connect(", ")
     }
 }
 
