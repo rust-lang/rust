@@ -228,6 +228,12 @@ mod test {
     use time::Duration;
 
     #[test]
+    fn test_timer_send() {
+        let mut timer = Timer::new().unwrap();
+        Thread::spawn(move || timer.sleep(Duration::milliseconds(1)));
+    }
+
+    #[test]
     fn test_io_timer_sleep_simple() {
         let mut timer = Timer::new().unwrap();
         timer.sleep(Duration::milliseconds(1));
