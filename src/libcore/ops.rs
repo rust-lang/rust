@@ -13,11 +13,19 @@
 //! Implementing these traits allows you to get an effect similar to
 //! overloading operators.
 //!
-//! The values for the right hand side of an operator are automatically
-//! borrowed, so `a + b` is sugar for `a.add(&b)`.
-//!
-//! All of these traits are imported by the prelude, so they are available in
+//! Some of these traits are imported by the prelude, so they are available in
 //! every Rust program.
+//!
+//! Many of the operators take their operands by value. In non-generic
+//! contexts involving built-in types, this is usually not a problem.
+//! However, using these operators in generic code, requires some
+//! attention if values have to be reused as opposed to letting the operators
+//! consume them. One option is to occasionally use `clone()`.
+//! Another option is to rely on the types involved providing additional
+//! operator implementations for references. For example, for a user-defined
+//! type `T` which is supposed to support addition, it is probably a good
+//! idea to have both `T` and `&T` implement the traits `Add<T>` and `Add<&T>`
+//! so that generic code can be written without unnecessary cloning.
 //!
 //! # Example
 //!
@@ -96,6 +104,58 @@ pub trait Drop {
     fn drop(&mut self);
 }
 
+// implements the unary operator "op &T"
+// based on "op T" where T is expected to be `Copy`able
+macro_rules! forward_ref_unop {
+    (impl $imp:ident, $method:ident for $t:ty) => {
+        #[unstable = "recently added, waiting for dust to settle"]
+        impl<'a> $imp for &'a $t {
+            type Output = <$t as $imp>::Output;
+
+            #[inline]
+            fn $method(self) -> <$t as $imp>::Output {
+                $imp::$method(*self)
+            }
+        }
+    }
+}
+
+// implements binary operators "&T op U", "T op &U", "&T op &U"
+// based on "T op U" where T and U are expected to be `Copy`able
+macro_rules! forward_ref_binop {
+    (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
+        #[unstable = "recently added, waiting for dust to settle"]
+        impl<'a> $imp<$u> for &'a $t {
+            type Output = <$t as $imp<$u>>::Output;
+
+            #[inline]
+            fn $method(self, other: $u) -> <$t as $imp<$u>>::Output {
+                $imp::$method(*self, other)
+            }
+        }
+
+        #[unstable = "recently added, waiting for dust to settle"]
+        impl<'a> $imp<&'a $u> for $t {
+            type Output = <$t as $imp<$u>>::Output;
+
+            #[inline]
+            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+                $imp::$method(self, *other)
+            }
+        }
+
+        #[unstable = "recently added, waiting for dust to settle"]
+        impl<'a, 'b> $imp<&'a $u> for &'b $t {
+            type Output = <$t as $imp<$u>>::Output;
+
+            #[inline]
+            fn $method(self, other: &'a $u) -> <$t as $imp<$u>>::Output {
+                $imp::$method(*self, *other)
+            }
+        }
+    }
+}
+
 /// The `Add` trait is used to specify the functionality of `+`.
 ///
 /// # Example
@@ -144,6 +204,8 @@ macro_rules! add_impl {
             #[inline]
             fn add(self, other: $t) -> $t { self + other }
         }
+
+        forward_ref_binop! { impl Add, add for $t, $t }
     )*)
 }
 
@@ -197,6 +259,8 @@ macro_rules! sub_impl {
             #[inline]
             fn sub(self, other: $t) -> $t { self - other }
         }
+
+        forward_ref_binop! { impl Sub, sub for $t, $t }
     )*)
 }
 
@@ -250,6 +314,8 @@ macro_rules! mul_impl {
             #[inline]
             fn mul(self, other: $t) -> $t { self * other }
         }
+
+        forward_ref_binop! { impl Mul, mul for $t, $t }
     )*)
 }
 
@@ -303,6 +369,8 @@ macro_rules! div_impl {
             #[inline]
             fn div(self, other: $t) -> $t { self / other }
         }
+
+        forward_ref_binop! { impl Div, div for $t, $t }
     )*)
 }
 
@@ -356,6 +424,8 @@ macro_rules! rem_impl {
             #[inline]
             fn rem(self, other: $t) -> $t { self % other }
         }
+
+        forward_ref_binop! { impl Rem, rem for $t, $t }
     )*)
 }
 
@@ -371,6 +441,8 @@ macro_rules! rem_float_impl {
                 unsafe { $fmod(self, other) }
             }
         }
+
+        forward_ref_binop! { impl Rem, rem for $t, $t }
     }
 }
 
@@ -429,6 +501,8 @@ macro_rules! neg_impl {
             #[stable]
             fn neg(self) -> $t { -self }
         }
+
+        forward_ref_unop! { impl Neg, neg for $t }
     )*)
 }
 
@@ -441,6 +515,8 @@ macro_rules! neg_uint_impl {
             #[inline]
             fn neg(self) -> $t { -(self as $t_signed) as $t }
         }
+
+        forward_ref_unop! { impl Neg, neg for $t }
     }
 }
 
@@ -502,6 +578,8 @@ macro_rules! not_impl {
             #[inline]
             fn not(self) -> $t { !self }
         }
+
+        forward_ref_unop! { impl Not, not for $t }
     )*)
 }
 
@@ -555,6 +633,8 @@ macro_rules! bitand_impl {
             #[inline]
             fn bitand(self, rhs: $t) -> $t { self & rhs }
         }
+
+        forward_ref_binop! { impl BitAnd, bitand for $t, $t }
     )*)
 }
 
@@ -608,6 +688,8 @@ macro_rules! bitor_impl {
             #[inline]
             fn bitor(self, rhs: $t) -> $t { self | rhs }
         }
+
+        forward_ref_binop! { impl BitOr, bitor for $t, $t }
     )*)
 }
 
@@ -661,6 +743,8 @@ macro_rules! bitxor_impl {
             #[inline]
             fn bitxor(self, other: $t) -> $t { self ^ other }
         }
+
+        forward_ref_binop! { impl BitXor, bitxor for $t, $t }
     )*)
 }
 
@@ -716,6 +800,8 @@ macro_rules! shl_impl {
                 self << other
             }
         }
+
+        forward_ref_binop! { impl Shl, shl for $t, $f }
     )
 }
 
@@ -786,6 +872,8 @@ macro_rules! shr_impl {
                 self >> other
             }
         }
+
+        forward_ref_binop! { impl Shr, shr for $t, $f }
     )
 }
 
