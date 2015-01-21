@@ -99,6 +99,20 @@ pub trait Iterator {
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 }
 
+// FIXME(#21363) remove `old_impl_check` when bug is fixed
+#[old_impl_check]
+impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        (**self).next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
+}
+
 /// Conversion from an `Iterator`
 #[stable]
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
