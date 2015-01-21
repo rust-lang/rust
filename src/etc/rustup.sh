@@ -433,11 +433,16 @@ CFG_TMP_DIR=$(mktemp -d 2>/dev/null \
            || mktemp -d -t 'rustup-tmp-install' 2>/dev/null \
            || create_tmp_dir)
 
-# If we're saving nightlies and we didn't specify which one, grab todays.
-# Otherwise we'll use the latest version.
+# If we're saving nightlies and we didn't specify which one, grab the latest
+# verison from the perspective of the server. Buildbot has typically finished
+# building and uploading by ~8UTC, but we want to include a little buffer.
+#
+# FIXME It would be better to use the known most recent nightly that has been
+# built. This is waiting on a change to have buildbot publish metadata that
+# can be queried.
 if [ -n "${CFG_SAVE}" -a -z "${CFG_DATE}" ];
 then
-    CFG_DATE=`date "+%Y-%m-%d"`
+    CFG_DATE=`TZ=Etc/UTC+9 date "+%Y-%m-%d"`
 fi
 
 RUST_URL="https://static.rust-lang.org/dist"
