@@ -1073,7 +1073,7 @@ impl<'a> MethodDef<'a> {
             //   <delegated expression referring to __self0_vi, et al.>
             // }
             let arm_expr = cx.expr_block(
-                cx.block_all(sp, Vec::new(), index_let_stmts, Some(arm_expr)));
+                cx.block_all(sp, index_let_stmts, Some(arm_expr)));
 
             // Builds arm:
             // _ => { let __self0_vi = ...;

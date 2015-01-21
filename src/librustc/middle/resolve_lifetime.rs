@@ -94,6 +94,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     // Fn lifetimes get added in visit_fn below:
                     visit::walk_item(this, item);
                 }
+                ast::ItemExternCrate(_) |
+                ast::ItemUse(_) |
                 ast::ItemMod(..) |
                 ast::ItemMac(..) |
                 ast::ItemForeignMod(..) |

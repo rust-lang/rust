@@ -63,28 +63,13 @@ pub fn strip_items<F>(krate: ast::Crate, in_cfg: F) -> ast::Crate where
     ctxt.fold_crate(krate)
 }
 
-fn filter_view_item<F>(cx: &mut Context<F>,
-                       view_item: ast::ViewItem)
-                       -> Option<ast::ViewItem> where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    if view_item_in_cfg(cx, &view_item) {
-        Some(view_item)
-    } else {
-        None
-    }
-}
-
 fn fold_mod<F>(cx: &mut Context<F>,
-               ast::Mod {inner,
-               view_items, items}: ast::Mod) -> ast::Mod where
+               ast::Mod {inner, items}: ast::Mod)
+               -> ast::Mod where
     F: FnMut(&[ast::Attribute]) -> bool
 {
     ast::Mod {
         inner: inner,
-        view_items: view_items.into_iter().filter_map(|a| {
-            filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
-        }).collect(),
         items: items.into_iter().flat_map(|a| {
             cx.fold_item(a).into_iter()
         }).collect()
@@ -104,15 +89,12 @@ fn filter_foreign_item<F>(cx: &mut Context<F>,
 }
 
 fn fold_foreign_mod<F>(cx: &mut Context<F>,
-                       ast::ForeignMod {abi, view_items, items}: ast::ForeignMod)
+                       ast::ForeignMod {abi, items}: ast::ForeignMod)
                        -> ast::ForeignMod where
     F: FnMut(&[ast::Attribute]) -> bool
 {
     ast::ForeignMod {
         abi: abi,
-        view_items: view_items.into_iter().filter_map(|a| {
-            filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
-        }).collect(),
         items: items.into_iter()
                     .filter_map(|a| filter_foreign_item(cx, a))
                     .collect()
@@ -216,18 +198,14 @@ fn retain_stmt<F>(cx: &mut Context<F>, stmt: &ast::Stmt) -> bool where
 fn fold_block<F>(cx: &mut Context<F>, b: P<ast::Block>) -> P<ast::Block> where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    b.map(|ast::Block {id, view_items, stmts, expr, rules, span}| {
+    b.map(|ast::Block {id, stmts, expr, rules, span}| {
         let resulting_stmts: Vec<P<ast::Stmt>> =
             stmts.into_iter().filter(|a| retain_stmt(cx, &**a)).collect();
         let resulting_stmts = resulting_stmts.into_iter()
             .flat_map(|stmt| cx.fold_stmt(stmt).into_iter())
             .collect();
-        let filtered_view_items = view_items.into_iter().filter_map(|a| {
-            filter_view_item(cx, a).map(|x| cx.fold_view_item(x))
-        }).collect();
         ast::Block {
             id: id,
-            view_items: filtered_view_items,
             stmts: resulting_stmts,
             expr: expr.map(|x| cx.fold_expr(x)),
             rules: rules,
@@ -262,12 +240,6 @@ fn item_in_cfg<F>(cx: &mut Context<F>, item: &ast::Item) -> bool where
 }
 
 fn foreign_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ForeignItem) -> bool where
-    F: FnMut(&[ast::Attribute]) -> bool
-{
-    return (cx.in_cfg)(item.attrs.as_slice());
-}
-
-fn view_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ViewItem) -> bool where
     F: FnMut(&[ast::Attribute]) -> bool
 {
     return (cx.in_cfg)(item.attrs.as_slice());

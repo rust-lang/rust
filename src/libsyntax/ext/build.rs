@@ -97,7 +97,6 @@ pub trait AstBuilder {
              expr: Option<P<ast::Expr>>) -> P<ast::Block>;
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block>;
     fn block_all(&self, span: Span,
-                 view_items: Vec<ast::ViewItem>,
                  stmts: Vec<P<ast::Stmt>>,
                  expr: Option<P<ast::Expr>>) -> P<ast::Block>;
 
@@ -242,7 +241,7 @@ pub trait AstBuilder {
 
     fn item_mod(&self, span: Span, inner_span: Span,
                 name: Ident, attrs: Vec<ast::Attribute>,
-                vi: Vec<ast::ViewItem> , items: Vec<P<ast::Item>> ) -> P<ast::Item>;
+                items: Vec<P<ast::Item>>) -> P<ast::Item>;
 
     fn item_static(&self,
                    span: Span,
@@ -280,15 +279,15 @@ pub trait AstBuilder {
                        value: ast::Lit_)
                        -> P<ast::MetaItem>;
 
-    fn view_use(&self, sp: Span,
-                vis: ast::Visibility, vp: P<ast::ViewPath>) -> ast::ViewItem;
-    fn view_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> ast::ViewItem;
-    fn view_use_simple_(&self, sp: Span, vis: ast::Visibility,
-                        ident: ast::Ident, path: ast::Path) -> ast::ViewItem;
-    fn view_use_list(&self, sp: Span, vis: ast::Visibility,
-                     path: Vec<ast::Ident> , imports: &[ast::Ident]) -> ast::ViewItem;
-    fn view_use_glob(&self, sp: Span,
-                     vis: ast::Visibility, path: Vec<ast::Ident> ) -> ast::ViewItem;
+    fn item_use(&self, sp: Span,
+                vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item>;
+    fn item_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> P<ast::Item>;
+    fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
+                        ident: ast::Ident, path: ast::Path) -> P<ast::Item>;
+    fn item_use_list(&self, sp: Span, vis: ast::Visibility,
+                     path: Vec<ast::Ident>, imports: &[ast::Ident]) -> P<ast::Item>;
+    fn item_use_glob(&self, sp: Span,
+                     vis: ast::Visibility, path: Vec<ast::Ident>) -> P<ast::Item>;
 }
 
 impl<'a> AstBuilder for ExtCtxt<'a> {
@@ -519,7 +518,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn block(&self, span: Span, stmts: Vec<P<ast::Stmt>>,
              expr: Option<P<Expr>>) -> P<ast::Block> {
-        self.block_all(span, Vec::new(), stmts, expr)
+        self.block_all(span, stmts, expr)
     }
 
     fn stmt_item(&self, sp: Span, item: P<ast::Item>) -> P<ast::Stmt> {
@@ -528,15 +527,13 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn block_expr(&self, expr: P<ast::Expr>) -> P<ast::Block> {
-        self.block_all(expr.span, Vec::new(), Vec::new(), Some(expr))
+        self.block_all(expr.span, Vec::new(), Some(expr))
     }
     fn block_all(&self,
                  span: Span,
-                 view_items: Vec<ast::ViewItem>,
                  stmts: Vec<P<ast::Stmt>>,
                  expr: Option<P<ast::Expr>>) -> P<ast::Block> {
             P(ast::Block {
-               view_items: view_items,
                stmts: stmts,
                expr: expr,
                id: ast::DUMMY_NODE_ID,
@@ -1031,16 +1028,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn item_mod(&self, span: Span, inner_span: Span, name: Ident,
-                attrs: Vec<ast::Attribute> ,
-                vi: Vec<ast::ViewItem> ,
-                items: Vec<P<ast::Item>> ) -> P<ast::Item> {
+                attrs: Vec<ast::Attribute>,
+                items: Vec<P<ast::Item>>) -> P<ast::Item> {
         self.item(
             span,
             name,
             attrs,
             ast::ItemMod(ast::Mod {
                 inner: inner_span,
-                view_items: vi,
                 items: items,
             })
         )
@@ -1101,47 +1096,47 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         P(respan(sp, ast::MetaNameValue(name, respan(sp, value))))
     }
 
-    fn view_use(&self, sp: Span,
-                vis: ast::Visibility, vp: P<ast::ViewPath>) -> ast::ViewItem {
-        ast::ViewItem {
-            node: ast::ViewItemUse(vp),
-            attrs: Vec::new(),
+    fn item_use(&self, sp: Span,
+                vis: ast::Visibility, vp: P<ast::ViewPath>) -> P<ast::Item> {
+        P(ast::Item {
+            id: ast::DUMMY_NODE_ID,
+            ident: special_idents::invalid,
+            attrs: vec![],
+            node: ast::ItemUse(vp),
             vis: vis,
             span: sp
-        }
+        })
     }
 
-    fn view_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> ast::ViewItem {
+    fn item_use_simple(&self, sp: Span, vis: ast::Visibility, path: ast::Path) -> P<ast::Item> {
         let last = path.segments.last().unwrap().identifier;
-        self.view_use_simple_(sp, vis, last, path)
+        self.item_use_simple_(sp, vis, last, path)
     }
 
-    fn view_use_simple_(&self, sp: Span, vis: ast::Visibility,
-                        ident: ast::Ident, path: ast::Path) -> ast::ViewItem {
-        self.view_use(sp, vis,
+    fn item_use_simple_(&self, sp: Span, vis: ast::Visibility,
+                        ident: ast::Ident, path: ast::Path) -> P<ast::Item> {
+        self.item_use(sp, vis,
                       P(respan(sp,
                                ast::ViewPathSimple(ident,
-                                                   path,
-                                                   ast::DUMMY_NODE_ID))))
+                                                   path))))
     }
 
-    fn view_use_list(&self, sp: Span, vis: ast::Visibility,
-                     path: Vec<ast::Ident> , imports: &[ast::Ident]) -> ast::ViewItem {
+    fn item_use_list(&self, sp: Span, vis: ast::Visibility,
+                     path: Vec<ast::Ident>, imports: &[ast::Ident]) -> P<ast::Item> {
         let imports = imports.iter().map(|id| {
             respan(sp, ast::PathListIdent { name: *id, id: ast::DUMMY_NODE_ID })
         }).collect();
 
-        self.view_use(sp, vis,
+        self.item_use(sp, vis,
                       P(respan(sp,
                                ast::ViewPathList(self.path(sp, path),
-                                                 imports,
-                                                 ast::DUMMY_NODE_ID))))
+                                                 imports))))
     }
 
-    fn view_use_glob(&self, sp: Span,
-                     vis: ast::Visibility, path: Vec<ast::Ident> ) -> ast::ViewItem {
-        self.view_use(sp, vis,
+    fn item_use_glob(&self, sp: Span,
+                     vis: ast::Visibility, path: Vec<ast::Ident>) -> P<ast::Item> {
+        self.item_use(sp, vis,
                       P(respan(sp,
-                               ast::ViewPathGlob(self.path(sp, path), ast::DUMMY_NODE_ID))))
+                               ast::ViewPathGlob(self.path(sp, path)))))
     }
 }

@@ -73,8 +73,10 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
     // We need to error on `#[macro_use] extern crate` when it isn't at the
     // crate root, because `$crate` won't work properly. Identify these by
     // spans, because the crate map isn't set up yet.
-    for vi in krate.module.view_items.iter() {
-        loader.span_whitelist.insert(vi.span);
+    for item in krate.module.items.iter() {
+        if let ast::ItemExternCrate(_) = item.node {
+            loader.span_whitelist.insert(item.span);
+        }
     }
 
     visit::walk_crate(&mut loader, krate);
@@ -91,18 +93,21 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
 impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
-    fn visit_view_item(&mut self, vi: &ast::ViewItem) {
+    fn visit_item(&mut self, item: &ast::Item) {
         // We're only interested in `extern crate`.
-        match vi.node {
-            ast::ViewItemExternCrate(..) => (),
-            _ => return,
+        match item.node {
+            ast::ItemExternCrate(_) => {}
+            _ => {
+                visit::walk_item(self, item);
+                return;
+            }
         }
 
         // Parse the attributes relating to macro / plugin loading.
         let mut plugin_attr = None;
         let mut macro_selection = Some(HashSet::new());  // None => load all
         let mut reexport = HashSet::new();
-        for attr in vi.attrs.iter() {
+        for attr in item.attrs.iter() {
             let mut used = true;
             match attr.name().get() {
                 "phase" => {
@@ -155,7 +160,10 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
-        self.load_plugin(CrateOrString::Krate(vi), plugin_attr, macro_selection, Some(reexport))
+        self.load_plugin(CrateOrString::Krate(item),
+                         plugin_attr,
+                         macro_selection,
+                         Some(reexport))
     }
 
     fn visit_mac(&mut self, _: &ast::Mac) {

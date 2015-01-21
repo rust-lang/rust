@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_test.rs
-// ignore-stage1
+mod m {
+    pub fn f<T>(_: T, _: ()) { }
+    pub fn g<T>(_: T, _: ()) { }
+}
 
-#[plugin] #[no_link] extern crate macro_crate_test;
-//~^ ERROR compiler plugins are experimental and possibly buggy
+const BAR: () = ();
+struct Data;
+use m::f;
 
-fn main() {}
+fn main() {
+    const BAR2: () = ();
+    struct Data2;
+    use m::g;
+
+    f(Data, BAR);
+    g(Data2, BAR2);
+}

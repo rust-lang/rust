@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_test.rs
-// ignore-stage1
+mod foo { struct bar; }
 
-#[plugin] #[no_link] extern crate macro_crate_test;
-//~^ ERROR compiler plugins are experimental and possibly buggy
-
-fn main() {}
+fn main() {
+    let bar = 5;
+    //~^ ERROR declaration of `bar` shadows an enum variant or unit-like struct in scope
+    use foo::bar;
+    //~^ ERROR imports are not allowed after non-item statements
+}

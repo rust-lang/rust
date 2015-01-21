@@ -617,7 +617,7 @@ impl fmt::Display for UnsafetySpace {
     }
 }
 
-impl fmt::Display for clean::ViewPath {
+impl fmt::Display for clean::Import {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             clean::SimpleImport(ref name, ref src) => {
