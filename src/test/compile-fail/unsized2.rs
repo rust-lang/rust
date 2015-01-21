@@ -16,5 +16,5 @@ pub fn main() {
     f<type>();
     //~^ ERROR expected identifier, found keyword `type`
     //~^^ ERROR: Chained comparison operators require parentheses
-    //~^^^ HELP: Use ::< instead of < if you meant to specify type arguments.
+    //~^^^ HELP: use ::< instead of < if you meant to specify type arguments
 }
