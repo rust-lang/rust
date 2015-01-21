@@ -153,11 +153,10 @@ pub fn radix<T>(x: T, base: u8) -> RadixFmt<T, Radix> {
 }
 
 macro_rules! radix_fmt {
-    ($T:ty as $U:ty, $fmt:ident, $S:expr) => {
+    ($T:ty as $U:ty, $fmt:ident) => {
         impl fmt::Show for RadixFmt<$T, Radix> {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                try!(fmt::String::fmt(self, f));
-                f.write_str($S)
+                fmt::String::fmt(self, f)
             }
         }
         impl fmt::String for RadixFmt<$T, Radix> {
@@ -178,38 +177,34 @@ macro_rules! int_base {
 }
 
 macro_rules! show {
-    ($T:ident with $S:expr) => {
+    ($T:ident) => {
         impl fmt::Show for $T {
             fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                try!(fmt::String::fmt(self, f));
-                f.write_str($S)
+                fmt::String::fmt(self, f)
             }
         }
     }
 }
 macro_rules! integer {
     ($Int:ident, $Uint:ident) => {
-        integer! { $Int, $Uint, stringify!($Int), stringify!($Uint) }
-    };
-    ($Int:ident, $Uint:ident, $SI:expr, $SU:expr) => {
         int_base! { String   for $Int as $Int   -> Decimal }
         int_base! { Binary   for $Int as $Uint  -> Binary }
         int_base! { Octal    for $Int as $Uint  -> Octal }
         int_base! { LowerHex for $Int as $Uint  -> LowerHex }
         int_base! { UpperHex for $Int as $Uint  -> UpperHex }
-        radix_fmt! { $Int as $Int, fmt_int, $SI }
-        show! { $Int with $SI }
+        radix_fmt! { $Int as $Int, fmt_int }
+        show! { $Int }
 
         int_base! { String   for $Uint as $Uint -> Decimal }
         int_base! { Binary   for $Uint as $Uint -> Binary }
         int_base! { Octal    for $Uint as $Uint -> Octal }
         int_base! { LowerHex for $Uint as $Uint -> LowerHex }
         int_base! { UpperHex for $Uint as $Uint -> UpperHex }
-        radix_fmt! { $Uint as $Uint, fmt_int, $SU }
-        show! { $Uint with $SU }
+        radix_fmt! { $Uint as $Uint, fmt_int }
+        show! { $Uint }
     }
 }
-integer! { int, uint, "i", "u" }
+integer! { int, uint }
 integer! { i8, u8 }
 integer! { i16, u16 }
 integer! { i32, u32 }

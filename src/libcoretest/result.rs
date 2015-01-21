@@ -90,11 +90,11 @@ fn test_collect() {
 
 #[test]
 pub fn test_fmt_default() {
-    let ok: Result<int, &'static str> = Ok(100);
-    let err: Result<int, &'static str> = Err("Err");
+    let ok: Result<i32, &'static str> = Ok(100);
+    let err: Result<i32, &'static str> = Err("Err");
 
     let s = format!("{:?}", ok);
-    assert_eq!(s, "Ok(100i)");
+    assert_eq!(s, "Ok(100)");
     let s = format!("{:?}", err);
     assert_eq!(s, "Err(\"Err\")");
 }
