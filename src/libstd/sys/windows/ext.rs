@@ -16,7 +16,11 @@
 
 #![unstable]
 
-use sys_common::AsInner;
+pub use sys_common::wtf8::{Wtf8Buf, EncodeWide};
+
+use sys::os_str::Buf;
+use sys_common::{AsInner, FromInner};
+use ffi::{OsStr, OsString};
 use libc;
 
 use io;
@@ -92,9 +96,35 @@ impl AsRawSocket for io::net::udp::UdpSocket {
     }
 }
 
+// Windows-specific extensions to `OsString`.
+pub trait OsStringExt {
+    /// Create an `OsString` from a potentially ill-formed UTF-16 slice of 16-bit code units.
+    ///
+    /// This is lossless: calling `.encode_wide()` on the resulting string
+    /// will always return the original code units.
+    fn from_wide(wide: &[u16]) -> Self;
+}
+
+impl OsStringExt for OsString {
+    fn from_wide(wide: &[u16]) -> OsString {
+        FromInner::from_inner(Buf { inner: Wtf8Buf::from_wide(wide) })
+    }
+}
+
+// Windows-specific extensions to `OsStr`.
+pub trait OsStrExt {
+    fn encode_wide(&self) -> EncodeWide;
+}
+
+impl OsStrExt for OsStr {
+    fn encode_wide(&self) -> EncodeWide {
+        self.as_inner().inner.encode_wide()
+    }
+}
+
 /// A prelude for conveniently writing platform-specific code.
 ///
 /// Includes all extension traits, and some important type definitions.
 pub mod prelude {
-    pub use super::{Socket, Handle, AsRawSocket, AsRawHandle};
+    pub use super::{Socket, Handle, AsRawSocket, AsRawHandle, OsStrExt, OsStringExt};
 }

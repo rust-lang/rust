@@ -17,4 +17,9 @@ pub use self::c_str::CString;
 pub use self::c_str::c_str_to_bytes;
 pub use self::c_str::c_str_to_bytes_with_nul;
 
+pub use self::os_str::OsString;
+pub use self::os_str::OsStr;
+pub use self::os_str::AsOsStr;
+
 mod c_str;
+mod os_str;
