@@ -77,8 +77,6 @@ register_diagnostics! {
     E0138,
     E0139,
     E0152,
-    E0153,
-    E0157,
     E0158,
     E0161,
     E0162,

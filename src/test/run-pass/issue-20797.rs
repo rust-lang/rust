@@ -8,6 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-android
+// ignore-windows
+
 // Regression test for #20797.
 
 use std::default::Default;
