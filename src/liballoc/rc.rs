@@ -160,7 +160,6 @@ use core::option::Option::{Some, None};
 use core::ptr::{self, PtrExt};
 use core::result::Result;
 use core::result::Result::{Ok, Err};
-use core::intrinsics::assume;
 
 use heap::deallocate;
 
@@ -752,20 +751,10 @@ trait RcBoxPtr<T> {
     fn strong(&self) -> uint { self.inner().strong.get() }
 
     #[inline]
-    fn inc_strong(&self) {
-        let strong = self.strong();
-        // The reference count is always at least one unless we're about to drop the type
-        unsafe { assume(strong > 0); }
-        self.inner().strong.set(strong + 1);
-    }
+    fn inc_strong(&self) { self.inner().strong.set(self.strong() + 1); }
 
     #[inline]
-    fn dec_strong(&self) {
-        let strong = self.strong();
-        // The reference count is always at least one unless we're about to drop the type
-        unsafe { assume(strong > 0); }
-        self.inner().strong.set(strong - 1);
-    }
+    fn dec_strong(&self) { self.inner().strong.set(self.strong() - 1); }
 
     #[inline]
     fn weak(&self) -> uint { self.inner().weak.get() }
