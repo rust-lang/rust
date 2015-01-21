@@ -457,11 +457,11 @@ impl<'a> LifetimeContext<'a> {
                             format!("lifetime name `{}` shadows another \
                                     lifetime name that is already in scope",
                                     token::get_name(lifetime.name)).as_slice());
-                        self.sess.span_help(
+                        self.sess.span_note(
                             lifetime_def.span,
                             format!("shadowed lifetime `{}` declared here",
                                     token::get_name(lifetime.name)).as_slice());
-                        self.sess.span_help(
+                        self.sess.span_note(
                             lifetime.span,
                             "shadowed lifetimes are deprecated \
                              and will become a hard error before 1.0");

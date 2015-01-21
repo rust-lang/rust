@@ -2921,7 +2921,7 @@ impl<'a> Parser<'a> {
                     "Chained comparison operators require parentheses");
                 if op == BiLt && outer_op == BiGt {
                     self.span_help(op_span,
-                        "Use ::< instead of < if you meant to specify type arguments.");
+                        "use ::< instead of < if you meant to specify type arguments");
                 }
             }
             _ => {}

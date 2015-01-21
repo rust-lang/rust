@@ -19,5 +19,5 @@ fn main() {
 
     f<X>();
     //~^ ERROR: Chained comparison operators require parentheses
-    //~^^ HELP: Use ::< instead of < if you meant to specify type arguments.
+    //~^^ HELP: use ::< instead of < if you meant to specify type arguments
 }
