@@ -1444,7 +1444,7 @@ pub trait Buffer: Reader {
                     }
                 }
             };
-            buffer.consume(used);
+            self.consume(used);
             if done {
                 return Ok(res);
             }

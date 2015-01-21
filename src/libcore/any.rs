@@ -75,7 +75,7 @@ use mem::transmute;
 use option::Option::{self, Some, None};
 use raw::TraitObject;
 use intrinsics;
-#[cfg(not(stage0))] use marker::Sized;
+use marker::Sized;
 
 ///////////////////////////////////////////////////////////////////////////////
 // Any trait
@@ -175,17 +175,10 @@ pub struct TypeId {
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
     /// instantiated with
-    #[cfg(not(stage0))]
     #[unstable = "may grow a `Reflect` bound soon via marker traits"]
     pub fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },
         }
-    }
-
-    /// dox
-    #[cfg(stage0)]
-    pub fn of<T: 'static>() -> TypeId {
-        unsafe { intrinsics::type_id::<T>() }
     }
 }
