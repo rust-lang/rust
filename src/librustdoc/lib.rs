@@ -351,8 +351,10 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     info!("starting to run rustc");
 
     let (mut krate, analysis) = std::thread::Thread::scoped(move |:| {
+        use rustc::session::config::Input;
+
         let cr = cr;
-        core::run_core(paths, cfgs, externs, &cr, triple)
+        core::run_core(paths, cfgs, externs, Input::File(cr), triple)
     }).join().map_err(|_| "rustc failed").unwrap();
     info!("finished with rustc");
     let mut analysis = Some(analysis);

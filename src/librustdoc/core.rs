@@ -12,7 +12,6 @@ pub use self::MaybeTyped::*;
 use rustc_driver::driver;
 use rustc::session::{self, config};
 use rustc::session::config::UnstableFeatures;
-use rustc::session::search_paths::SearchPaths;
 use rustc::middle::{privacy, ty};
 use rustc::lint;
 use rustc_trans::back::link;
@@ -27,6 +26,9 @@ use visit_ast::RustdocVisitor;
 use clean;
 use clean::Clean;
 
+pub use rustc::session::config::Input;
+pub use rustc::session::search_paths::SearchPaths;
+
 /// Are we generating documentation (`Typed`) or tests (`NotTyped`)?
 pub enum MaybeTyped<'tcx> {
     Typed(ty::ctxt<'tcx>),
@@ -39,7 +41,7 @@ pub type ExternalPaths = RefCell<Option<HashMap<ast::DefId,
 pub struct DocContext<'tcx> {
     pub krate: &'tcx ast::Crate,
     pub maybe_typed: MaybeTyped<'tcx>,
-    pub src: Path,
+    pub input: Input,
     pub external_paths: ExternalPaths,
     pub external_traits: RefCell<Option<HashMap<ast::DefId, clean::Trait>>>,
     pub external_typarams: RefCell<Option<HashMap<ast::DefId, String>>>,
@@ -80,12 +82,15 @@ pub struct CrateAnalysis {
 pub type Externs = HashMap<String, Vec<String>>;
 
 pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
-                cpath: &Path, triple: Option<String>)
+                input: Input, triple: Option<String>)
                 -> (clean::Crate, CrateAnalysis) {
 
     // Parse, resolve, and typecheck the given crate.
 
-    let input = config::Input::File(cpath.clone());
+    let cpath = match input {
+        Input::File(ref p) => Some(p.clone()),
+        _ => None
+    };
 
     let warning_lint = lint::builtin::WARNINGS.name_lower();
 
@@ -107,8 +112,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
-    let sess = session::build_session_(sessopts,
-                                       Some(cpath.clone()),
+    let sess = session::build_session_(sessopts, cpath,
                                        span_diagnostic_handler);
 
     let cfg = config::build_configuration(&sess);
@@ -136,7 +140,7 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
     let ctxt = DocContext {
         krate: ty_cx.map.krate(),
         maybe_typed: Typed(ty_cx),
-        src: cpath.clone(),
+        input: input,
         external_traits: RefCell::new(Some(HashMap::new())),
         external_typarams: RefCell::new(Some(HashMap::new())),
         external_paths: RefCell::new(Some(HashMap::new())),
