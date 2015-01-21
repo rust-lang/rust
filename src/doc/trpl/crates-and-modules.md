@@ -257,7 +257,7 @@ fn goodbye() -> String {
 
 (This is "Sayōnara", if you're curious.)
 
-Now that we have our some functionality in our crate, let's try to use it from
+Now that we have some functionality in our crate, let's try to use it from
 another crate.
 
 # Importing External Crates
