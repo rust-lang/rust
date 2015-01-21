@@ -40,6 +40,7 @@ use cmp::{Ordering, PartialEq, PartialOrd, Eq, Ord};
 use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
+use intrinsics;
 use iter::*;
 use marker::Copy;
 use num::Int;
@@ -690,6 +691,13 @@ macro_rules! iterator {
                             let old = self.ptr;
                             self.ptr = self.ptr.offset(1);
 
+                            // LLVM doesn't properly recognise that
+                            // the `&` is never null without this, and
+                            // so doesn't see that the Option we
+                            // create here is always Some, due to the
+                            // null-pointer optimisation.
+                            intrinsics::assume(!old.is_null());
+
                             Some(transmute(old))
                         }
                     }
@@ -723,6 +731,8 @@ macro_rules! iterator {
                         } else {
                             self.end = self.end.offset(-1);
 
+                            // see above
+                            intrinsics::assume(!self.end.is_null());
                             Some(transmute(self.end))
                         }
                     }
