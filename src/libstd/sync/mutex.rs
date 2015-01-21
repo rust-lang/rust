@@ -160,24 +160,6 @@ unsafe impl Sync for StaticMutex {}
 /// Deref and DerefMut implementations
 #[must_use]
 #[stable]
-#[cfg(stage0)] // NOTE remove impl after next snapshot
-pub struct MutexGuard<'a, T: 'a> {
-    // funny underscores due to how Deref/DerefMut currently work (they
-    // disregard field privacy).
-    __lock: &'a StaticMutex,
-    __data: &'a UnsafeCell<T>,
-    __poison: poison::Guard,
-    __marker: marker::NoSend,
-}
-
-/// An RAII implementation of a "scoped lock" of a mutex. When this structure is
-/// dropped (falls out of scope), the lock will be unlocked.
-///
-/// The data protected by the mutex can be access through this guard via its
-/// Deref and DerefMut implementations
-#[must_use]
-#[stable]
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub struct MutexGuard<'a, T: 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
     // disregard field privacy).
@@ -186,7 +168,6 @@ pub struct MutexGuard<'a, T: 'a> {
     __poison: poison::Guard,
 }
 
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 impl<'a, T> !marker::Send for MutexGuard<'a, T> {}
 
 /// Static initialization of a mutex. This constant can be used to initialize
@@ -299,20 +280,7 @@ impl StaticMutex {
 }
 
 impl<'mutex, T> MutexGuard<'mutex, T> {
-    #[cfg(stage0)] // NOTE remove afte next snapshot
-    fn new(lock: &'mutex StaticMutex, data: &'mutex UnsafeCell<T>)
-           -> LockResult<MutexGuard<'mutex, T>> {
-        poison::map_result(lock.poison.borrow(), |guard| {
-            MutexGuard {
-                __lock: lock,
-                __data: data,
-                __poison: guard,
-                __marker: marker::NoSend,
-            }
-        })
-    }
 
-    #[cfg(not(stage0))] // NOTE remove cfg afte next snapshot
     fn new(lock: &'mutex StaticMutex, data: &'mutex UnsafeCell<T>)
            -> LockResult<MutexGuard<'mutex, T>> {
         poison::map_result(lock.poison.borrow(), |guard| {
