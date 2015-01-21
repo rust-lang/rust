@@ -14,7 +14,7 @@
 use std::marker::Sync;
 
 struct Foo {
-    a: uint,
+    a: usize,
     b: *const ()
 }
 
@@ -24,27 +24,24 @@ fn foo<T>(a: T) -> T {
     a
 }
 
-static BLOCK_INTEGRAL: uint = { 1 };
+static BLOCK_INTEGRAL: usize = { 1 };
 static BLOCK_EXPLICIT_UNIT: () = { () };
 static BLOCK_IMPLICIT_UNIT: () = { };
 static BLOCK_FLOAT: f64 = { 1.0 };
-static BLOCK_ENUM: Option<uint> = { Some(100) };
+static BLOCK_ENUM: Option<usize> = { Some(100) };
 static BLOCK_STRUCT: Foo = { Foo { a: 12, b: 0 as *const () } };
-static BLOCK_UNSAFE: uint = unsafe { 1000 };
+static BLOCK_UNSAFE: usize = unsafe { 1000 };
 
-// FIXME: #13970
-// static BLOCK_FN_INFERRED: fn(uint) -> uint = { foo };
+static BLOCK_FN_INFERRED: fn(usize) -> usize = { foo };
 
-// FIXME: #13971
-// static BLOCK_FN: fn(uint) -> uint = { foo::<uint> };
+static BLOCK_FN: fn(usize) -> usize = { foo::<usize> };
 
-// FIXME: #13972
-// static BLOCK_ENUM_CONSTRUCTOR: fn(uint) -> Option<uint> = { Some };
+static BLOCK_ENUM_CONSTRUCTOR: fn(usize) -> Option<usize> = { Some };
 
-// FIXME: #13973
-// static BLOCK_UNSAFE_SAFE_PTR: &'static int = unsafe { &*(0xdeadbeef as *int) };
-// static BLOCK_UNSAFE_SAFE_PTR_2: &'static int = unsafe {
-//     static X: *int = 0xdeadbeef as *int;
+// FIXME #13972
+// static BLOCK_UNSAFE_SAFE_PTR: &'static isize = unsafe { &*(0xdeadbeef as *const isize) };
+// static BLOCK_UNSAFE_SAFE_PTR_2: &'static isize = unsafe {
+//     const X: *const isize = 0xdeadbeef as *const isize;
 //     &*X
 // };
 
@@ -57,17 +54,10 @@ pub fn main() {
     assert_eq!(BLOCK_STRUCT.b, 0 as *const ());
     assert_eq!(BLOCK_ENUM, Some(100));
     assert_eq!(BLOCK_UNSAFE, 1000);
-
-    // FIXME: #13970
-    // assert_eq!(BLOCK_FN_INFERRED(300), 300);
-
-    // FIXME: #13971
-    // assert_eq!(BLOCK_FN(300), 300);
-
-    // FIXME: #13972
-    // assert_eq!(BLOCK_ENUM_CONSTRUCTOR(200), Some(200));
-
-    // FIXME: #13973
-    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR as *int as uint, 0xdeadbeef_u);
-    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR_2 as *int as uint, 0xdeadbeef_u);
+    assert_eq!(BLOCK_FN_INFERRED(300), 300);
+    assert_eq!(BLOCK_FN(300), 300);
+    assert_eq!(BLOCK_ENUM_CONSTRUCTOR(200), Some(200));
+    // FIXME #13972
+    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR as *const isize as usize, 0xdeadbeef_us);
+    // assert_eq!(BLOCK_UNSAFE_SAFE_PTR_2 as *const isize as usize, 0xdeadbeef_us);
 }
