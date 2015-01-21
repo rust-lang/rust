@@ -319,6 +319,7 @@ use prelude::v1::*;
 
 use sync::Arc;
 use fmt;
+#[cfg(stage0)] // NOTE remove use after next snapshot
 use marker;
 use mem;
 use cell::UnsafeCell;
@@ -371,10 +372,12 @@ unsafe impl<T:Send> Send for Sender<T> { }
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable]
 pub struct SyncSender<T> {
-    inner: Arc<RacyCell<sync::Packet<T>>>,
+    inner: Arc<UnsafeCell<sync::Packet<T>>>,
 }
 
-impl<T> !marker::Sync for SyncSender<T> {}
+unsafe impl<T:Send> Send for SyncSender<T> {}
+
+impl<T> !Sync for SyncSender<T> {}
 
 /// An error returned from the `send` function on channels.
 ///
@@ -430,10 +433,10 @@ pub enum TrySendError<T> {
 }
 
 enum Flavor<T> {
-    Oneshot(Arc<RacyCell<oneshot::Packet<T>>>),
-    Stream(Arc<RacyCell<stream::Packet<T>>>),
-    Shared(Arc<RacyCell<shared::Packet<T>>>),
-    Sync(Arc<RacyCell<sync::Packet<T>>>),
+    Oneshot(Arc<UnsafeCell<oneshot::Packet<T>>>),
+    Stream(Arc<UnsafeCell<stream::Packet<T>>>),
+    Shared(Arc<UnsafeCell<shared::Packet<T>>>),
+    Sync(Arc<UnsafeCell<sync::Packet<T>>>),
 }
 
 #[doc(hidden)]
@@ -485,7 +488,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// ```
 #[stable]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
-    let a = Arc::new(RacyCell::new(oneshot::Packet::new()));
+    let a = Arc::new(UnsafeCell::new(oneshot::Packet::new()));
     (Sender::new(Flavor::Oneshot(a.clone())), Receiver::new(Flavor::Oneshot(a)))
 }
 
@@ -525,7 +528,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// ```
 #[stable]
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
-    let a = Arc::new(RacyCell::new(sync::Packet::new(bound)));
+    let a = Arc::new(UnsafeCell::new(sync::Packet::new(bound)));
     (SyncSender::new(a.clone()), Receiver::new(Flavor::Sync(a)))
 }
 
@@ -577,7 +580,7 @@ impl<T: Send> Sender<T> {
                         return (*p).send(t).map_err(SendError);
                     } else {
                         let a =
-                            Arc::new(RacyCell::new(stream::Packet::new()));
+                            Arc::new(UnsafeCell::new(stream::Packet::new()));
                         let rx = Receiver::new(Flavor::Stream(a.clone()));
                         match (*p).upgrade(rx) {
                             oneshot::UpSuccess => {
@@ -619,7 +622,7 @@ impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper, guard) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
-                let a = Arc::new(RacyCell::new(shared::Packet::new()));
+                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     let rx = Receiver::new(Flavor::Shared(a.clone()));
@@ -631,7 +634,7 @@ impl<T: Send> Clone for Sender<T> {
                 }
             }
             Flavor::Stream(ref p) => {
-                let a = Arc::new(RacyCell::new(shared::Packet::new()));
+                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     let rx = Receiver::new(Flavor::Shared(a.clone()));
@@ -677,8 +680,7 @@ impl<T: Send> Drop for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> SyncSender<T> {
-
-    fn new(inner: Arc<RacyCell<sync::Packet<T>>>) -> SyncSender<T> {
+    fn new(inner: Arc<UnsafeCell<sync::Packet<T>>>) -> SyncSender<T> {
         SyncSender { inner: inner }
     }
 
@@ -960,26 +962,6 @@ impl<T: Send> Drop for Receiver<T> {
         }
     }
 }
-
-/// A version of `UnsafeCell` intended for use in concurrent data
-/// structures (for example, you might put it in an `Arc`).
-struct RacyCell<T>(pub UnsafeCell<T>);
-
-impl<T> RacyCell<T> {
-
-    fn new(value: T) -> RacyCell<T> {
-        RacyCell(UnsafeCell { value: value })
-    }
-
-    unsafe fn get(&self) -> *mut T {
-        self.0.get()
-    }
-
-}
-
-unsafe impl<T:Send> Send for RacyCell<T> { }
-
-unsafe impl<T> Sync for RacyCell<T> { } // Oh dear
 
 impl<T> fmt::Show for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
