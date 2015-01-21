@@ -707,7 +707,7 @@ Other features provided by lang items include:
   various kinds; lang items `send`, `sync` and `copy`.
 - the marker types and variance indicators found in
   `std::marker`; lang items `covariant_type`,
-  `contravariant_lifetime`, `no_sync_bound`, etc.
+  `contravariant_lifetime`, etc.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
 `Box` then there is no need to define functions for `exchange_malloc`
