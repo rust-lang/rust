@@ -420,14 +420,15 @@ mod tests {
         static M: StaticMutex = MUTEX_INIT;
 
         let g = M.lock().unwrap();
-        let (g, success) = C.wait_timeout(g, Duration::nanoseconds(1000)).unwrap();
-        assert!(!success);
+        let (g, _no_timeout) = C.wait_timeout(g, Duration::nanoseconds(1000)).unwrap();
+        // spurious wakeups mean this isn't necessarily true
+        // assert!(!no_timeout);
         let _t = Thread::spawn(move || {
             let _g = M.lock().unwrap();
             C.notify_one();
         });
-        let (g, success) = C.wait_timeout(g, Duration::days(1)).unwrap();
-        assert!(success);
+        let (g, no_timeout) = C.wait_timeout(g, Duration::days(1)).unwrap();
+        assert!(no_timeout);
         drop(g);
         unsafe { C.destroy(); M.destroy(); }
     }
