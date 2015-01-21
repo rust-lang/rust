@@ -42,6 +42,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
+use std::marker;
 use std::mem;
 use std::num::{Int, UnsignedInt};
 use std::ptr;
@@ -365,6 +366,10 @@ pub struct TypedArena<T> {
 
     /// A pointer to the first arena segment.
     first: RefCell<*mut TypedArenaChunk<T>>,
+
+    /// Marker indicating that dropping the arena causes its owned
+    /// instances of `T` to be dropped.
+    _own: marker::PhantomData<T>,
 }
 
 struct TypedArenaChunk<T> {
@@ -460,6 +465,7 @@ impl<T> TypedArena<T> {
                 ptr: Cell::new((*chunk).start() as *const T),
                 end: Cell::new((*chunk).end() as *const T),
                 first: RefCell::new(chunk),
+                _own: marker::PhantomData,
             }
         }
     }
