@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -108,6 +108,7 @@ use lint;
 use util::common::{block_query, indenter, loop_query};
 use util::ppaux::{self, Repr};
 use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
+use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
 use std::mem::replace;
@@ -3071,9 +3072,41 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                             actual)
                 },
                 expr_t, None);
+            if let Some(t) = ty::ty_to_def_id(expr_t) {
+                suggest_field_names(t, field, tcx, vec![]);
+            }
         }
 
         fcx.write_error(expr.id);
+    }
+
+    // displays hints about the closest matches in field names
+    fn suggest_field_names<'tcx>(id : DefId,
+                                 field : &ast::SpannedIdent,
+                                 tcx : &ty::ctxt<'tcx>,
+                                 skip : Vec<&str>) {
+        let ident = token::get_ident(field.node);
+        let name = ident.get();
+        // only find fits with at least one matching letter
+        let mut best_dist = name.len();
+        let mut best = None;
+        let fields = ty::lookup_struct_fields(tcx, id);
+        for elem in fields.iter() {
+            let n = elem.name.as_str();
+            // ignore already set fields
+            if skip.iter().any(|&x| x == n) {
+                continue;
+            }
+            let dist = lev_distance(n, name);
+            if dist < best_dist {
+                best = Some(n);
+                best_dist = dist;
+            }
+        }
+        if let Some(n) = best {
+            tcx.sess.span_help(field.span,
+                format!("did you mean `{}`?", n).as_slice());
+        }
     }
 
     // Check tuple index expressions
@@ -3183,6 +3216,13 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                         },
                         struct_ty,
                         None);
+                    // prevent all specified fields from being suggested
+                    let skip_fields = ast_fields.iter().map(|ref x| x.ident.node.name.as_str());
+                    let actual_id = match enum_id_opt {
+                        Some(_) => class_id,
+                        None => ty::ty_to_def_id(struct_ty).unwrap()
+                    };
+                    suggest_field_names(actual_id, &field.ident, tcx, skip_fields.collect());
                     error_happened = true;
                 }
                 Some((_, true)) => {
