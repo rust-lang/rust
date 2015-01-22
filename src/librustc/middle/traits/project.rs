@@ -65,7 +65,7 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
     obligation: &PolyProjectionObligation<'tcx>)
     -> Result<Option<Vec<PredicateObligation<'tcx>>>, MismatchedProjectionTypes<'tcx>>
 {
-    debug!("poly_project(obligation={})",
+    debug!("poly_project_and_unify_type(obligation={})",
            obligation.repr(selcx.tcx()));
 
     let infcx = selcx.infcx();
@@ -109,7 +109,7 @@ fn project_and_unify_type<'cx,'tcx>(
     obligation: &ProjectionObligation<'tcx>)
     -> Result<Option<Vec<PredicateObligation<'tcx>>>, MismatchedProjectionTypes<'tcx>>
 {
-    debug!("project_and_unify(obligation={})",
+    debug!("project_and_unify_type(obligation={})",
            obligation.repr(selcx.tcx()));
 
     let Normalized { value: normalized_ty, obligations } =
