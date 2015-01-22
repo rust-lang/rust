@@ -65,4 +65,36 @@ fn main() {
                                                         .collect::<String>());
         assert!(err.contains(expected_span.as_slice()));
     }
+
+    // Test multi-column characters and tabs
+    {
+        let _ = write!(&mut File::create(&main_file).unwrap(),
+                       r#"extern "路濫狼á́́" fn foo() {{}} extern "路濫狼á́" fn bar() {{}}"#);
+    }
+
+    // Extra characters. Every line is preceded by `filename:lineno <actual code>`
+    let offset = main_file.as_str().unwrap().len() + 3;
+
+    let result = Command::new("sh")
+                         .arg("-c")
+                         .arg(format!("{} {}",
+                                      rustc,
+                                      main_file.as_str()
+                                               .unwrap()).as_slice())
+                         .output().unwrap();
+
+    let err = String::from_utf8_lossy(result.error.as_slice());
+
+    // Test both the length of the snake and the leading spaces up to it
+
+    // First snake is 8 ~s long, with 7 preceding spaces (excluding file name/line offset)
+    let expected_span = format!("\n{}^{}\n",
+                                repeat(" ").take(offset + 7).collect::<String>(),
+                                repeat("~").take(8).collect::<String>());
+    assert!(err.contains(expected_span.as_slice()));
+    // Second snake is 8 ~s long, with 36 preceding spaces
+    let expected_span = format!("\n{}^{}\n",
+                                repeat(" ").take(offset + 36).collect::<String>(),
+                                repeat("~").take(8).collect::<String>());
+    assert!(err.contains(expected_span.as_slice()));
 }
