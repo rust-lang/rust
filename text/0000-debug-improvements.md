@@ -93,7 +93,7 @@ impl<S> fmt::Debug for BufferedStream<S> where S: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let reader = &self.inner;
         let writer = &self.inner.inner.0;
-        ShowStruct::new(fmt, "BufferedStream")
+        fmt.debug_struct("BufferedStream")
             .field("stream", writer.inner)
             .field("write_buffer", &format_args!("{}/{}", writer.pos, writer.buf.len()))
             .field("read_buffer", &format_args!("{}/{}", reader.cap - reader.pos, reader.buf.len()))
@@ -161,8 +161,21 @@ output formats. They will provide a builder-like API to create correctly
 formatted output, respecting the `#` flag as needed. A full implementation can
 be found at https://gist.github.com/sfackler/6d6610c5d9e271146d11. (Note that
 there's a lot of almost-but-not-quite duplicated code in the various impls.
-It can probably be cleaned up a bit). An example of use of the `ShowStruct`
-type is shown in the Motivation section.
+It can probably be cleaned up a bit). For convenience, methods will be added
+to `Formatter` which create them. An example of use of the `debug_struct`
+method is shown in the Motivation section. In addition, the `padded` method
+returns a type implementing `fmt::Writer` that pads input passed to it. This
+is used inside of the other builders, but may be useful for others.
+```rust
+impl Formatter {
+    pub fn debug_struct<'a>(&'a mut self, name: &str) -> DebugStruct<'a> { ... }
+    pub fn debug_tuple<'a>(&'a mut self, name: &str) -> DebugTuple<'a> { ... }
+    pub fn debug_set<'a>(&'a mut self, name: &str) -> DebugSet<'a> { ... }
+    pub fn debug_map<'a>(&'a mut self, name: &str) -> DebugMap<'a> { ... }
+
+    pub fn padded<'a>(&'a mut self) -> PaddedWriter<'a> { ... }
+}
+```
 
 # Drawbacks
 
