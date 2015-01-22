@@ -135,8 +135,6 @@ enum LoopKind<'a> {
     LoopLoop,
     /// A `while` loop, with the given expression as condition.
     WhileLoop(&'a Expr),
-    /// A `for` loop, with the given pattern to bind.
-    ForLoop(&'a ast::Pat),
 }
 
 #[derive(Copy, PartialEq)]
@@ -490,7 +488,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprWhileLet(..) => {
           ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
       }
-      ast::ExprForLoop(ref pat, _, _, _) => {
+      ast::ExprForLoop(..) => {
           ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
       }
       ast::ExprBinary(op, _, _) if ast_util::lazy_binop(op.node) => {
@@ -1023,7 +1021,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
           }
 
-          ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
+          ast::ExprForLoop(..) => {
               self.ir.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
           }
 
@@ -1361,7 +1359,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
         let cond_ln = match kind {
             LoopLoop => ln,
-            ForLoop(ref pat) => self.define_bindings_in_pat(*pat, ln),
             WhileLoop(ref cond) => self.propagate_through_expr(&**cond, ln),
         };
         let body_ln = self.with_loop_nodes(expr.id, succ, ln, |this| {
@@ -1374,9 +1371,6 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
             let new_cond_ln = match kind {
                 LoopLoop => ln,
-                ForLoop(ref pat) => {
-                    self.define_bindings_in_pat(*pat, ln)
-                }
                 WhileLoop(ref cond) => {
                     self.propagate_through_expr(&**cond, ln)
                 }

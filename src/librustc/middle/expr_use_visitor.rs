@@ -537,7 +537,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.tcx().sess.span_bug(expr.span, "non-desugared ExprWhileLet");
             }
 
-            ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
+            ast::ExprForLoop(..) => {
                 self.tcx().sess.span_bug(expr.span, "non-desugared ExprForLoop");
             }
 
