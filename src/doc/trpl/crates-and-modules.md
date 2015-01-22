@@ -287,8 +287,7 @@ mentioned earlier, you can use double colons to refer to sub-modules and the
 functions inside of them.
 
 Also, Cargo assumes that `src/main.rs` is the crate root of a binary crate,
-rather than a library crate. Once we compile `src/main.rs`, we'll get an
-executable that we can run. Our package now has two crates: `src/lib.rs` and
+rather than a library crate. Our package now has two crates: `src/lib.rs` and
 `src/main.rs`. This pattern is quite common for executable crates: most
 functionality is in a library crate, and the executable crate uses that
 library. This way, other programs can also use the library crate, and it's also
