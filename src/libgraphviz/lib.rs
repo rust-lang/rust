@@ -358,19 +358,19 @@ impl<'a> Id<'a> {
     ///
     /// Passing an invalid string (containing spaces, brackets,
     /// quotes, ...) will return an empty `Err` value.
-    pub fn new<Name: IntoCow<'a, String, str>>(name: Name) -> Result<Id<'a>, ()> {
+    pub fn new<Name: IntoCow<'a, String, str>>(name: Name) -> Option<Id<'a>> {
         let name = name.into_cow();
         {
             let mut chars = name.chars();
             match chars.next() {
                 Some(c) if is_letter_or_underscore(c) => { ; },
-                _ => return Err(())
+                _ => return None
             }
             if !chars.all(is_constituent) {
-                return Err(());
+                return None
             }
         }
-        return Ok(Id{ name: name });
+        return Some(Id{ name: name });
 
         fn is_letter_or_underscore(c: char) -> bool {
             in_range('a', c, 'z') || in_range('A', c, 'Z') || c == '_'
@@ -874,8 +874,8 @@ r#"digraph syntax_tree {
     fn simple_id_construction() {
         let id1 = Id::new("hello");
         match id1 {
-            Ok(_) => {;},
-            Err(_) => panic!("'hello' is not a valid value for id anymore")
+            Some(_) => {;},
+            None => panic!("'hello' is not a valid value for id anymore")
         }
     }
 
@@ -883,8 +883,8 @@ r#"digraph syntax_tree {
     fn badly_formatted_id() {
         let id2 = Id::new("Weird { struct : ure } !!!");
         match id2 {
-            Ok(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
-            Err(_) => {;}
+            Some(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
+            None => {;}
         }
     }
 }

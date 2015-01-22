@@ -803,8 +803,9 @@ Crates contain [items](#items), each of which may have some number of
 ## Items
 
 ```{.ebnf .gram}
-item : mod_item | fn_item | type_item | struct_item | enum_item
-     | static_item | trait_item | impl_item | extern_block ;
+item : extern_crate_decl | use_decl | mod_item | fn_item | type_item
+     | struct_item | enum_item | static_item | trait_item | impl_item
+     | extern_block ;
 ```
 
 An _item_ is a component of a crate; some module items can be defined in crate
@@ -818,6 +819,8 @@ execution, and may reside in read-only memory.
 
 There are several kinds of item:
 
+* [`extern crate` declarations](#extern-crate-declarations)
+* [`use` declarations](#use-declarations)
 * [modules](#modules)
 * [functions](#functions)
 * [type definitions](#type-definitions)
@@ -854,13 +857,10 @@ no notion of type abstraction: there are no first-class "forall" types.
 
 ```{.ebnf .gram}
 mod_item : "mod" ident ( ';' | '{' mod '}' );
-mod : [ view_item | item ] * ;
+mod : item * ;
 ```
 
-A module is a container for zero or more [view items](#view-items) and zero or
-more [items](#items). The view items manage the visibility of the items defined
-within the module, as well as the visibility of names from outside the module
-when referenced from inside the module.
+A module is a container for zero or more [items](#items).
 
 A _module item_ is a module, surrounded in braces, named, and prefixed with the
 keyword `mod`. A module item introduces a new, named module into the tree of
@@ -917,19 +917,6 @@ mod thread {
     mod local_data;
 }
 ```
-
-#### View items
-
-```{.ebnf .gram}
-view_item : extern_crate_decl | use_decl ;
-```
-
-A view item manages the namespace of a module. View items do not define new
-items, but rather, simply change other items' visibility. There are two
-kinds of view items:
-
-* [`extern crate` declarations](#extern-crate-declarations)
-* [`use` declarations](#use-declarations)
 
 ##### Extern crate declarations
 
@@ -2377,10 +2364,6 @@ These types help drive the compiler's analysis
   : ___Needs filling in___
 * `no_copy_bound`
   : This type does not implement "copy", even if eligible.
-* `no_send_bound`
-  : This type does not implement "send", even if eligible.
-* `no_sync_bound`
-  : This type does not implement "sync", even if eligible.
 * `eh_personality`
   : ___Needs filling in___
 * `exchange_free`
@@ -2891,13 +2874,12 @@ Point3d {y: 0, z: 10, .. base};
 ### Block expressions
 
 ```{.ebnf .gram}
-block_expr : '{' [ view_item ] *
-                 [ stmt ';' | item ] *
+block_expr : '{' [ stmt ';' | item ] *
                  [ expr ] '}' ;
 ```
 
 A _block expression_ is similar to a module in terms of the declarations that
-are possible. Each block conceptually introduces a new namespace scope. View
+are possible. Each block conceptually introduces a new namespace scope. Use
 items can bring new names into scopes and declared items are in scope for only
 the block itself.
 

@@ -179,7 +179,7 @@ for init_val in 0 .. 3 {
 }
 
 let result = rx.recv().unwrap() + rx.recv().unwrap() + rx.recv().unwrap();
-# fn some_expensive_computation(_i: u32) -> u32 { 42 }
+# fn some_expensive_computation(_i: i32) -> i32 { 42 }
 ```
 
 Cloning a `Sender` produces a new handle to the same channel, allowing multiple
@@ -207,7 +207,7 @@ let rxs = (0 .. 3).map(|&:init_val| {
 
 // Wait on each port, accumulating the results
 let result = rxs.iter().fold(0, |&:accum, rx| accum + rx.recv().unwrap() );
-# fn some_expensive_computation(_i: u32) -> u32 { 42 }
+# fn some_expensive_computation(_i: i32) -> i32 { 42 }
 ```
 
 ## Backgrounding computations: Futures

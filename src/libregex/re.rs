@@ -90,10 +90,10 @@ impl Clone for ExNative {
     }
 }
 
-impl fmt::String for Regex {
+impl fmt::Display for Regex {
     /// Shows the original regular expression.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self.as_str(), f)
+        fmt::Display::fmt(self.as_str(), f)
     }
 }
 
@@ -459,7 +459,7 @@ impl<'t> Captures<'t> {
     pub fn at(&self, i: uint) -> Option<&'t str> {
         match self.pos(i) {
             None => None,
-            Some((s, e)) => Some(self.text.slice(s, e))
+            Some((s, e)) => Some(&self.text[s.. e])
         }
     }
 

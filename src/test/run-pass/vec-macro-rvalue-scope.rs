@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_type = "lib"]
+fn one() -> i32 { 1 }
 
-#[test]
-fn test_1() { }
-#[test]
-fn test_2() { }
+// Make sure the vec![...] macro doesn't introduce hidden rvalue
+// scopes (such as blocks) around the element expressions.
+pub fn main() {
+    assert_eq!(vec![&one(), &one(), &2], vec![&1, &1, &(one()+one())]);
+    assert_eq!(vec![&one(); 2], vec![&1, &one()]);
+}

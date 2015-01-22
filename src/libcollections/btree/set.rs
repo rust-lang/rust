@@ -16,11 +16,8 @@ use core::prelude::*;
 use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
-use core::fmt::Show;
+use core::fmt::Debug;
 use core::fmt;
-// NOTE(stage0) remove import after a snapshot
-#[cfg(stage0)]
-use core::hash::Hash;
 use core::iter::{Peekable, Map, FromIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
@@ -592,7 +589,7 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
 }
 
 #[stable]
-impl<T: Show> Show for BTreeSet<T> {
+impl<T: Debug> Debug for BTreeSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "BTreeSet {{"));
 
@@ -892,7 +889,7 @@ mod test {
 
         let set_str = format!("{:?}", set);
 
-        assert_eq!(set_str, "BTreeSet {1i, 2i}");
+        assert_eq!(set_str, "BTreeSet {1, 2}");
         assert_eq!(format!("{:?}", empty), "BTreeSet {}");
     }
 }

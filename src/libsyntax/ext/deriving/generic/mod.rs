@@ -28,7 +28,7 @@
 //! arguments:
 //!
 //! - `Struct`, when `Self` is a struct (including tuple structs, e.g
-//!   `struct T(int, char)`).
+//!   `struct T(i32, char)`).
 //! - `EnumMatching`, when `Self` is an enum and all the arguments are the
 //!   same variant of the enum (e.g. `Some(1)`, `Some(3)` and `Some(4)`)
 //! - `EnumNonMatchingCollapsed` when `Self` is an enum and the arguments
@@ -54,17 +54,17 @@
 //! following snippet
 //!
 //! ```rust
-//! struct A { x : int }
+//! struct A { x : i32 }
 //!
-//! struct B(int);
+//! struct B(i32);
 //!
 //! enum C {
-//!     C0(int),
-//!     C1 { x: int }
+//!     C0(i32),
+//!     C1 { x: i32 }
 //! }
 //! ```
 //!
-//! The `int`s in `B` and `C0` don't have an identifier, so the
+//! The `i32`s in `B` and `C0` don't have an identifier, so the
 //! `Option<ident>`s would be `None` for them.
 //!
 //! In the static cases, the structure is summarised, either into the just
@@ -90,8 +90,8 @@
 //! trait PartialEq {
 //!     fn eq(&self, other: &Self);
 //! }
-//! impl PartialEq for int {
-//!     fn eq(&self, other: &int) -> bool {
+//! impl PartialEq for i32 {
+//!     fn eq(&self, other: &i32) -> bool {
 //!         *self == *other
 //!     }
 //! }
@@ -117,7 +117,7 @@
 //!
 //! ```{.text}
 //! Struct(vec![FieldInfo {
-//!           span: <span of `int`>,
+//!           span: <span of `i32`>,
 //!           name: None,
 //!           self_: <expr for &a>
 //!           other: vec![<expr for &b>]
@@ -132,7 +132,7 @@
 //! ```{.text}
 //! EnumMatching(0, <ast::Variant for C0>,
 //!              vec![FieldInfo {
-//!                 span: <span of int>
+//!                 span: <span of i32>
 //!                 name: None,
 //!                 self_: <expr for &a>,
 //!                 other: vec![<expr for &b>]
@@ -179,7 +179,7 @@
 //! StaticStruct(<ast::StructDef of B>, Unnamed(vec![<span of x>]))
 //!
 //! StaticEnum(<ast::EnumDef of C>,
-//!            vec![(<ident of C0>, <span of C0>, Unnamed(vec![<span of int>])),
+//!            vec![(<ident of C0>, <span of C0>, Unnamed(vec![<span of i32>])),
 //!                 (<ident of C1>, <span of C1>, Named(vec![(<ident of x>, <span of x>)]))])
 //! ```
 
@@ -294,7 +294,7 @@ pub enum SubstructureFields<'a> {
     /// Matching variants of the enum: variant index, ast::Variant,
     /// fields: the field name is only non-`None` in the case of a struct
     /// variant.
-    EnumMatching(uint, &'a ast::Variant, Vec<FieldInfo>),
+    EnumMatching(usize, &'a ast::Variant, Vec<FieldInfo>),
 
     /// Non-matching variants of the enum, but with all state hidden from
     /// the consequent code.  The first component holds `Ident`s for all of
@@ -719,7 +719,7 @@ impl<'a> MethodDef<'a> {
 
     /// ```
     /// #[derive(PartialEq)]
-    /// struct A { x: int, y: int }
+    /// struct A { x: i32, y: i32 }
     ///
     /// // equivalent to:
     /// impl PartialEq for A {
@@ -748,7 +748,7 @@ impl<'a> MethodDef<'a> {
         let mut raw_fields = Vec::new(); // ~[[fields of self],
                                  // [fields of next Self arg], [etc]]
         let mut patterns = Vec::new();
-        for i in range(0u, self_args.len()) {
+        for i in range(0us, self_args.len()) {
             let struct_path= cx.path(DUMMY_SP, vec!( type_ident ));
             let (pat, ident_expr) =
                 trait_.create_struct_pattern(cx,
@@ -825,7 +825,7 @@ impl<'a> MethodDef<'a> {
     /// #[derive(PartialEq)]
     /// enum A {
     ///     A1,
-    ///     A2(int)
+    ///     A2(i32)
     /// }
     ///
     /// // is equivalent to
@@ -837,8 +837,8 @@ impl<'a> MethodDef<'a> {
     ///             (&A2(ref __self_0),
     ///              &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
     ///             _ => {
-    ///                 let __self_vi = match *self { A1(..) => 0u, A2(..) => 1u };
-    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0u, A2(..) => 1u };
+    ///                 let __self_vi = match *self { A1(..) => 0us, A2(..) => 1us };
+    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0us, A2(..) => 1us };
     ///                 false
     ///             }
     ///         }
@@ -882,8 +882,8 @@ impl<'a> MethodDef<'a> {
     ///   (Variant2, Variant2, Variant2) => ... // delegate Matching on Variant2
     ///   ...
     ///   _ => {
-    ///     let __this_vi = match this { Variant1 => 0u, Variant2 => 1u, ... };
-    ///     let __that_vi = match that { Variant1 => 0u, Variant2 => 1u, ... };
+    ///     let __this_vi = match this { Variant1 => 0us, Variant2 => 1us, ... };
+    ///     let __that_vi = match that { Variant1 => 0us, Variant2 => 1us, ... };
     ///     ... // catch-all remainder can inspect above variant index values.
     ///   }
     /// }
@@ -915,7 +915,7 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<ast::Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
-        // a series of let statements mapping each self_arg to a uint
+        // a series of let statements mapping each self_arg to a usize
         // corresponding to its variant index.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
             .map(|name| { let vi_suffix = format!("{}_vi", &name[]);
@@ -1039,19 +1039,19 @@ impl<'a> MethodDef<'a> {
                 }).collect();
 
             // Build a series of let statements mapping each self_arg
-            // to a uint corresponding to its variant index.
+            // to a usize corresponding to its variant index.
             // i.e. for `enum E<T> { A, B(1), C(T, T) }`, and a deriving
             // with three Self args, builds three statements:
             //
             // ```
             // let __self0_vi = match   self {
-            //     A => 0u, B(..) => 1u, C(..) => 2u
+            //     A => 0us, B(..) => 1us, C(..) => 2us
             // };
             // let __self1_vi = match __arg1 {
-            //     A => 0u, B(..) => 1u, C(..) => 2u
+            //     A => 0us, B(..) => 1us, C(..) => 2us
             // };
             // let __self2_vi = match __arg2 {
-            //     A => 0u, B(..) => 1u, C(..) => 2u
+            //     A => 0us, B(..) => 1us, C(..) => 2us
             // };
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();
@@ -1073,7 +1073,7 @@ impl<'a> MethodDef<'a> {
             //   <delegated expression referring to __self0_vi, et al.>
             // }
             let arm_expr = cx.expr_block(
-                cx.block_all(sp, Vec::new(), index_let_stmts, Some(arm_expr)));
+                cx.block_all(sp, index_let_stmts, Some(arm_expr)));
 
             // Builds arm:
             // _ => { let __self0_vi = ...;

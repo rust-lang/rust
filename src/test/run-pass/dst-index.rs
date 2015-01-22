@@ -12,7 +12,7 @@
 // work and don't ICE.
 
 use std::ops::Index;
-use std::fmt::Show;
+use std::fmt::Debug;
 
 struct S;
 
@@ -27,16 +27,16 @@ impl Index<uint> for S {
 struct T;
 
 impl Index<uint> for T {
-    type Output = Show + 'static;
+    type Output = Debug + 'static;
 
-    fn index<'a>(&'a self, idx: &uint) -> &'a (Show + 'static) {
+    fn index<'a>(&'a self, idx: &uint) -> &'a (Debug + 'static) {
         static X: uint = 42;
-        &X as &(Show + 'static)
+        &X as &(Debug + 'static)
     }
 }
 
 fn main() {
     assert_eq!(&S[0], "hello");
     &T[0];
-    // let x = &x as &Show;
+    // let x = &x as &Debug;
 }

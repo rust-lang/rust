@@ -206,7 +206,6 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                     // wrap the if-let expr in a block
                     let span = els.span;
                     let blk = P(ast::Block {
-                        view_items: vec![],
                         stmts: vec![],
                         expr: Some(P(els)),
                         id: ast::DUMMY_NODE_ID,
@@ -273,7 +272,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
         // in this file.
         // Token-tree macros:
         MacInvocTT(pth, tts, _) => {
-            if pth.segments.len() > 1u {
+            if pth.segments.len() > 1us {
                 fld.cx.span_err(pth.span,
                                 "expected macro name without module \
                                 separators");
@@ -799,8 +798,7 @@ pub fn expand_block(blk: P<Block>, fld: &mut MacroExpander) -> P<Block> {
 
 // expand the elements of a block.
 pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
-    b.map(|Block {id, view_items, stmts, expr, rules, span}| {
-        let new_view_items = view_items.into_iter().map(|x| fld.fold_view_item(x)).collect();
+    b.map(|Block {id, stmts, expr, rules, span}| {
         let new_stmts = stmts.into_iter().flat_map(|x| {
             // perform all pending renames
             let renamed_stmt = {
@@ -821,7 +819,6 @@ pub fn expand_block_elts(b: P<Block>, fld: &mut MacroExpander) -> P<Block> {
         });
         Block {
             id: fld.new_id(id),
-            view_items: new_view_items,
             stmts: new_stmts,
             expr: new_expr,
             rules: rules,
@@ -844,7 +841,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
             },
             _ => unreachable!()
         };
-        if pth.segments.len() > 1u {
+        if pth.segments.len() > 1us {
             fld.cx.span_err(pth.span, "expected macro name without module separators");
             return DummyResult::raw_pat(span);
         }
@@ -1311,7 +1308,7 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
 pub struct ExpansionConfig {
     pub crate_name: String,
     pub enable_quotes: bool,
-    pub recursion_limit: uint,
+    pub recursion_limit: usize,
 }
 
 impl ExpansionConfig {
@@ -1507,7 +1504,7 @@ mod test {
     #[should_fail]
     #[test] fn macros_cant_escape_fns_test () {
         let src = "fn bogus() {macro_rules! z (() => (3+4));}\
-                   fn inty() -> int { z!() }".to_string();
+                   fn inty() -> i32 { z!() }".to_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
@@ -1521,7 +1518,7 @@ mod test {
     #[should_fail]
     #[test] fn macros_cant_escape_mods_test () {
         let src = "mod foo {macro_rules! z (() => (3+4));}\
-                   fn inty() -> int { z!() }".to_string();
+                   fn inty() -> i32 { z!() }".to_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
@@ -1533,7 +1530,7 @@ mod test {
     // macro_use modules should allow macros to escape
     #[test] fn macros_can_escape_flattened_mods_test () {
         let src = "#[macro_use] mod foo {macro_rules! z (() => (3+4));}\
-                   fn inty() -> int { z!() }".to_string();
+                   fn inty() -> i32 { z!() }".to_string();
         let sess = parse::new_parse_sess();
         let crate_ast = parse::parse_crate_from_source_str(
             "<test>".to_string(),
@@ -1564,8 +1561,8 @@ mod test {
     // should be able to use a bound identifier as a literal in a macro definition:
     #[test] fn self_macro_parsing(){
         expand_crate_str(
-            "macro_rules! foo ((zz) => (287u;));
-            fn f(zz : int) {foo!(zz);}".to_string()
+            "macro_rules! foo ((zz) => (287;));
+            fn f(zz: i32) {foo!(zz);}".to_string()
             );
     }
 
@@ -1595,29 +1592,29 @@ mod test {
     // in principle, you might want to control this boolean on a per-varref basis,
     // but that would make things even harder to understand, and might not be
     // necessary for thorough testing.
-    type RenamingTest = (&'static str, Vec<Vec<uint>>, bool);
+    type RenamingTest = (&'static str, Vec<Vec<usize>>, bool);
 
     #[test]
     fn automatic_renaming () {
         let tests: Vec<RenamingTest> =
             vec!(// b & c should get new names throughout, in the expr too:
-                ("fn a() -> int { let b = 13; let c = b; b+c }",
+                ("fn a() -> i32 { let b = 13; let c = b; b+c }",
                  vec!(vec!(0,1),vec!(2)), false),
                 // both x's should be renamed (how is this causing a bug?)
-                ("fn main () {let x: int = 13;x;}",
+                ("fn main () {let x: i32 = 13;x;}",
                  vec!(vec!(0)), false),
                 // the use of b after the + should be renamed, the other one not:
-                ("macro_rules! f (($x:ident) => (b + $x)); fn a() -> int { let b = 13; f!(b)}",
+                ("macro_rules! f (($x:ident) => (b + $x)); fn a() -> i32 { let b = 13; f!(b)}",
                  vec!(vec!(1)), false),
                 // the b before the plus should not be renamed (requires marks)
-                ("macro_rules! f (($x:ident) => ({let b=9; ($x + b)})); fn a() -> int { f!(b)}",
+                ("macro_rules! f (($x:ident) => ({let b=9; ($x + b)})); fn a() -> i32 { f!(b)}",
                  vec!(vec!(1)), false),
                 // the marks going in and out of letty should cancel, allowing that $x to
                 // capture the one following the semicolon.
                 // this was an awesome test case, and caught a *lot* of bugs.
                 ("macro_rules! letty(($x:ident) => (let $x = 15;));
                   macro_rules! user(($x:ident) => ({letty!($x); $x}));
-                  fn main() -> int {user!(z)}",
+                  fn main() -> i32 {user!(z)}",
                  vec!(vec!(0)), false)
                 );
         for (idx,s) in tests.iter().enumerate() {
@@ -1680,13 +1677,13 @@ mod test {
     // can't write this test case until we have macro-generating macros.
 
     // method arg hygiene
-    // method expands to fn get_x(&self_0, x_1:int) {self_0 + self_2 + x_3 + x_1}
+    // method expands to fn get_x(&self_0, x_1: i32) {self_0 + self_2 + x_3 + x_1}
     #[test] fn method_arg_hygiene(){
         run_renaming_test(
             &("macro_rules! inject_x (()=>(x));
               macro_rules! inject_self (()=>(self));
               struct A;
-              impl A{fn get_x(&self, x: int) {self + inject_self!() + inject_x!() + x;} }",
+              impl A{fn get_x(&self, x: i32) {self + inject_self!() + inject_x!() + x;} }",
               vec!(vec!(0),vec!(3)),
               true),
             0)
@@ -1706,21 +1703,21 @@ mod test {
     }
 
     // item fn hygiene
-    // expands to fn q(x_1:int){fn g(x_2:int){x_2 + x_1};}
+    // expands to fn q(x_1: i32){fn g(x_2: i32){x_2 + x_1};}
     #[test] fn issue_9383(){
         run_renaming_test(
-            &("macro_rules! bad_macro (($ex:expr) => (fn g(x:int){ x + $ex }));
-              fn q(x:int) { bad_macro!(x); }",
+            &("macro_rules! bad_macro (($ex:expr) => (fn g(x: i32){ x + $ex }));
+              fn q(x: i32) { bad_macro!(x); }",
               vec!(vec!(1),vec!(0)),true),
             0)
     }
 
     // closure arg hygiene (ExprClosure)
-    // expands to fn f(){(|x_1 : int| {(x_2 + x_1)})(3);}
+    // expands to fn f(){(|x_1 : i32| {(x_2 + x_1)})(3);}
     #[test] fn closure_arg_hygiene(){
         run_renaming_test(
             &("macro_rules! inject_x (()=>(x));
-            fn f(){(|x : int| {(inject_x!() + x)})(3);}",
+            fn f(){(|x : i32| {(inject_x!() + x)})(3);}",
               vec!(vec!(1)),
               true),
             0)
@@ -1729,7 +1726,7 @@ mod test {
     // macro_rules in method position. Sadly, unimplemented.
     #[test] fn macro_in_method_posn(){
         expand_crate_str(
-            "macro_rules! my_method (() => (fn thirteen(&self) -> int {13}));
+            "macro_rules! my_method (() => (fn thirteen(&self) -> i32 {13}));
             struct A;
             impl A{ my_method!(); }
             fn f(){A.thirteen;}".to_string());
@@ -1749,7 +1746,7 @@ mod test {
     }
 
     // run one of the renaming tests
-    fn run_renaming_test(t: &RenamingTest, test_idx: uint) {
+    fn run_renaming_test(t: &RenamingTest, test_idx: usize) {
         let invalid_name = token::special_idents::invalid.name;
         let (teststr, bound_connections, bound_ident_check) = match *t {
             (ref str,ref conns, bic) => (str.to_string(), conns.clone(), bic)
@@ -1876,7 +1873,7 @@ foo_module!();
     // it's the name of a 0-ary variant, and that 'i' appears twice in succession.
     #[test]
     fn crate_bindings_test(){
-        let the_crate = string_to_crate("fn main (a : int) -> int {|b| {
+        let the_crate = string_to_crate("fn main (a: i32) -> i32 {|b| {
         match 34 {None => 3, Some(i) | i => j, Foo{k:z,l:y} => \"banana\"}} }".to_string());
         let idents = crate_bindings(&the_crate);
         assert_eq!(idents, strs_to_idents(vec!("a","b","None","i","i","z","y")));
@@ -1885,10 +1882,10 @@ foo_module!();
     // test the IdentRenamer directly
     #[test]
     fn ident_renamer_test () {
-        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".to_string());
+        let the_crate = string_to_crate("fn f(x: i32){let x = x; x}".to_string());
         let f_ident = token::str_to_ident("f");
         let x_ident = token::str_to_ident("x");
-        let int_ident = token::str_to_ident("int");
+        let int_ident = token::str_to_ident("i32");
         let renames = vec!((x_ident,Name(16)));
         let mut renamer = IdentRenamer{renames: &renames};
         let renamed_crate = renamer.fold_crate(the_crate);
@@ -1900,10 +1897,10 @@ foo_module!();
     // test the PatIdentRenamer; only PatIdents get renamed
     #[test]
     fn pat_ident_renamer_test () {
-        let the_crate = string_to_crate("fn f(x : int){let x = x; x}".to_string());
+        let the_crate = string_to_crate("fn f(x: i32){let x = x; x}".to_string());
         let f_ident = token::str_to_ident("f");
         let x_ident = token::str_to_ident("x");
-        let int_ident = token::str_to_ident("int");
+        let int_ident = token::str_to_ident("i32");
         let renames = vec!((x_ident,Name(16)));
         let mut renamer = PatIdentRenamer{renames: &renames};
         let renamed_crate = renamer.fold_crate(the_crate);

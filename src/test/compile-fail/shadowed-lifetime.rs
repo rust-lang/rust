@@ -13,18 +13,18 @@
 struct Foo<'a>(&'a isize);
 
 impl<'a> Foo<'a> {
-    //~^ HELP shadowed lifetime `'a` declared here
+    //~^ NOTE shadowed lifetime `'a` declared here
     fn shadow_in_method<'a>(&'a self) -> &'a isize {
         //~^ WARNING lifetime name `'a` shadows another lifetime name that is already in scope
-        //~| HELP deprecated
+        //~| NOTE deprecated
         self.0
     }
 
     fn shadow_in_type<'b>(&'b self) -> &'b isize {
-        //~^ HELP shadowed lifetime `'b` declared here
+        //~^ NOTE shadowed lifetime `'b` declared here
         let x: for<'b> fn(&'b isize) = panic!();
         //~^ WARNING lifetime name `'b` shadows another lifetime name that is already in scope
-        //~| HELP deprecated
+        //~| NOTE deprecated
         self.0
     }
 

@@ -149,7 +149,7 @@ impl<'a> fold::DocFolder for Stripper<'a> {
                 }
             }
 
-            clean::ViewItemItem(..) => {
+            clean::ExternCrateItem(..) | clean::ImportItem(_) => {
                 if i.visibility != Some(ast::Public) {
                     return None
                 }
@@ -357,7 +357,7 @@ pub fn unindent(s: &str) -> String {
                 line.to_string()
             } else {
                 assert!(line.len() >= min_indent);
-                line.slice_from(min_indent).to_string()
+                line[min_indent..].to_string()
             }
         }).collect::<Vec<_>>().as_slice());
         unindented.connect("\n")

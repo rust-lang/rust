@@ -319,7 +319,6 @@ use prelude::v1::*;
 
 use sync::Arc;
 use fmt;
-use marker;
 use mem;
 use cell::UnsafeCell;
 
@@ -370,30 +369,20 @@ unsafe impl<T:Send> Send for Sender<T> { }
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
 #[stable]
-#[cfg(stage0)] // NOTE remove impl after next snapshot
 pub struct SyncSender<T> {
-    inner: Arc<RacyCell<sync::Packet<T>>>,
-    // can't share in an arc
-    _marker: marker::NoSync,
+    inner: Arc<UnsafeCell<sync::Packet<T>>>,
 }
 
-/// The sending-half of Rust's synchronous channel type. This half can only be
-/// owned by one task, but it can be cloned to send to other tasks.
-#[stable]
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
-pub struct SyncSender<T> {
-    inner: Arc<RacyCell<sync::Packet<T>>>,
-}
+unsafe impl<T:Send> Send for SyncSender<T> {}
 
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
-impl<T> !marker::Sync for SyncSender<T> {}
+impl<T> !Sync for SyncSender<T> {}
 
 /// An error returned from the `send` function on channels.
 ///
 /// A `send` operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
-#[derive(PartialEq, Eq)]
+#[derive(PartialEq, Eq, Show)]
 #[stable]
 pub struct SendError<T>(pub T);
 
@@ -401,13 +390,13 @@ pub struct SendError<T>(pub T);
 ///
 /// The `recv` operation can only fail if the sending half of a channel is
 /// disconnected, implying that no further messages will ever be received.
-#[derive(PartialEq, Eq, Clone, Copy)]
+#[derive(PartialEq, Eq, Clone, Copy, Show)]
 #[stable]
 pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[derive(PartialEq, Clone, Copy)]
+#[derive(PartialEq, Clone, Copy, Show)]
 #[stable]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
@@ -423,7 +412,7 @@ pub enum TryRecvError {
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
-#[derive(PartialEq, Clone)]
+#[derive(PartialEq, Clone, Show)]
 #[stable]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that
@@ -442,10 +431,10 @@ pub enum TrySendError<T> {
 }
 
 enum Flavor<T> {
-    Oneshot(Arc<RacyCell<oneshot::Packet<T>>>),
-    Stream(Arc<RacyCell<stream::Packet<T>>>),
-    Shared(Arc<RacyCell<shared::Packet<T>>>),
-    Sync(Arc<RacyCell<sync::Packet<T>>>),
+    Oneshot(Arc<UnsafeCell<oneshot::Packet<T>>>),
+    Stream(Arc<UnsafeCell<stream::Packet<T>>>),
+    Shared(Arc<UnsafeCell<shared::Packet<T>>>),
+    Sync(Arc<UnsafeCell<sync::Packet<T>>>),
 }
 
 #[doc(hidden)]
@@ -497,7 +486,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// ```
 #[stable]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
-    let a = Arc::new(RacyCell::new(oneshot::Packet::new()));
+    let a = Arc::new(UnsafeCell::new(oneshot::Packet::new()));
     (Sender::new(Flavor::Oneshot(a.clone())), Receiver::new(Flavor::Oneshot(a)))
 }
 
@@ -537,7 +526,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// ```
 #[stable]
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
-    let a = Arc::new(RacyCell::new(sync::Packet::new(bound)));
+    let a = Arc::new(UnsafeCell::new(sync::Packet::new(bound)));
     (SyncSender::new(a.clone()), Receiver::new(Flavor::Sync(a)))
 }
 
@@ -589,7 +578,7 @@ impl<T: Send> Sender<T> {
                         return (*p).send(t).map_err(SendError);
                     } else {
                         let a =
-                            Arc::new(RacyCell::new(stream::Packet::new()));
+                            Arc::new(UnsafeCell::new(stream::Packet::new()));
                         let rx = Receiver::new(Flavor::Stream(a.clone()));
                         match (*p).upgrade(rx) {
                             oneshot::UpSuccess => {
@@ -631,7 +620,7 @@ impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper, guard) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
-                let a = Arc::new(RacyCell::new(shared::Packet::new()));
+                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     let rx = Receiver::new(Flavor::Shared(a.clone()));
@@ -643,7 +632,7 @@ impl<T: Send> Clone for Sender<T> {
                 }
             }
             Flavor::Stream(ref p) => {
-                let a = Arc::new(RacyCell::new(shared::Packet::new()));
+                let a = Arc::new(UnsafeCell::new(shared::Packet::new()));
                 unsafe {
                     let guard = (*a.get()).postinit_lock();
                     let rx = Receiver::new(Flavor::Shared(a.clone()));
@@ -689,13 +678,7 @@ impl<T: Send> Drop for Sender<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 impl<T: Send> SyncSender<T> {
-    #[cfg(stage0)] // NOTE remove impl after next snapshot
-    fn new(inner: Arc<RacyCell<sync::Packet<T>>>) -> SyncSender<T> {
-        SyncSender { inner: inner, _marker: marker::NoSync }
-    }
-
-    #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
-    fn new(inner: Arc<RacyCell<sync::Packet<T>>>) -> SyncSender<T> {
+    fn new(inner: Arc<UnsafeCell<sync::Packet<T>>>) -> SyncSender<T> {
         SyncSender { inner: inner }
     }
 
@@ -978,33 +961,15 @@ impl<T: Send> Drop for Receiver<T> {
     }
 }
 
-/// A version of `UnsafeCell` intended for use in concurrent data
-/// structures (for example, you might put it in an `Arc`).
-struct RacyCell<T>(pub UnsafeCell<T>);
-
-impl<T> RacyCell<T> {
-
-    fn new(value: T) -> RacyCell<T> {
-        RacyCell(UnsafeCell { value: value })
-    }
-
-    unsafe fn get(&self) -> *mut T {
-        self.0.get()
-    }
-
-}
-
-unsafe impl<T:Send> Send for RacyCell<T> { }
-
-unsafe impl<T> Sync for RacyCell<T> { } // Oh dear
-
-impl<T> fmt::Show for SendError<T> {
+#[stable]
+impl<T> fmt::Display for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "sending on a closed channel".fmt(f)
     }
 }
 
-impl<T> fmt::Show for TrySendError<T> {
+#[stable]
+impl<T> fmt::Display for TrySendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TrySendError::Full(..) => {
@@ -1017,13 +982,15 @@ impl<T> fmt::Show for TrySendError<T> {
     }
 }
 
-impl fmt::Show for RecvError {
+#[stable]
+impl fmt::Display for RecvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "receiving on a closed channel".fmt(f)
     }
 }
 
-impl fmt::Show for TryRecvError {
+#[stable]
+impl fmt::Display for TryRecvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             TryRecvError::Empty => {

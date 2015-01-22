@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub extern crate core; //~ ERROR: `pub` visibility is not allowed
+macro_rules! test { ($wrong:t_ty ..) => () }
+                  //~^ ERROR: unrecognized builtin nonterminal `t_ty`
 
-fn main() {
-    pub use std::usize; //~ ERROR: imports in functions are never reachable
-}
+fn main() {}

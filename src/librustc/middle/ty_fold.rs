@@ -124,10 +124,6 @@ pub trait TypeFolder<'tcx> : Sized {
         r
     }
 
-    fn fold_trait_store(&mut self, s: ty::TraitStore) -> ty::TraitStore {
-        super_fold_trait_store(self, s)
-    }
-
     fn fold_existential_bounds(&mut self, s: &ty::ExistentialBounds<'tcx>)
                                -> ty::ExistentialBounds<'tcx> {
         super_fold_existential_bounds(self, s)
@@ -222,12 +218,6 @@ impl<'tcx, T: TypeFoldable<'tcx>> TypeFoldable<'tcx> for VecPerParamSpace<T> {
             folder.exit_region_binder();
         }
         result
-    }
-}
-
-impl<'tcx> TypeFoldable<'tcx> for ty::TraitStore {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::TraitStore {
-        folder.fold_trait_store(*self)
     }
 }
 
@@ -699,11 +689,8 @@ pub fn super_fold_closure_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                         -> ty::ClosureTy<'tcx>
 {
     ty::ClosureTy {
-        store: fty.store.fold_with(this),
         sig: fty.sig.fold_with(this),
         unsafety: fty.unsafety,
-        onceness: fty.onceness,
-        bounds: fty.bounds.fold_with(this),
         abi: fty.abi,
     }
 }
@@ -724,17 +711,6 @@ pub fn super_fold_mt<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
                                                 -> ty::mt<'tcx> {
     ty::mt {ty: mt.ty.fold_with(this),
             mutbl: mt.mutbl}
-}
-
-pub fn super_fold_trait_store<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
-                                                         trait_store: ty::TraitStore)
-                                                         -> ty::TraitStore {
-    match trait_store {
-        ty::UniqTraitStore => ty::UniqTraitStore,
-        ty::RegionTraitStore(r, m) => {
-            ty::RegionTraitStore(r.fold_with(this), m)
-        }
-    }
 }
 
 pub fn super_fold_existential_bounds<'tcx, T: TypeFolder<'tcx>>(

@@ -1202,17 +1202,17 @@ impl LintPass for UnusedImportBraces {
         lint_array!(UNUSED_IMPORT_BRACES)
     }
 
-    fn check_view_item(&mut self, cx: &Context, view_item: &ast::ViewItem) {
-        match view_item.node {
-            ast::ViewItemUse(ref view_path) => {
+    fn check_item(&mut self, cx: &Context, item: &ast::Item) {
+        match item.node {
+            ast::ItemUse(ref view_path) => {
                 match view_path.node {
-                    ast::ViewPathList(_, ref items, _) => {
+                    ast::ViewPathList(_, ref items) => {
                         if items.len() == 1 {
                             match items[0].node {
                                 ast::PathListIdent {ref name, ..} => {
                                     let m = format!("braces around {} is unnecessary",
                                                     token::get_ident(*name).get());
-                                    cx.span_lint(UNUSED_IMPORT_BRACES, view_item.span,
+                                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
                                                  &m[]);
                                 },
                                 _ => ()
@@ -1329,7 +1329,7 @@ impl UnusedMut {
                 let ident = path1.node;
                 if let ast::BindByValue(ast::MutMutable) = mode {
                     if !token::get_ident(ident).get().starts_with("_") {
-                        match mutables.entry(ident.name.uint()) {
+                        match mutables.entry(ident.name.usize()) {
                             Vacant(entry) => { entry.insert(vec![id]); },
                             Occupied(mut entry) => { entry.get_mut().push(id); },
                         }
@@ -1709,22 +1709,6 @@ impl LintPass for Stability {
         }
     }
 
-    fn check_view_item(&mut self, cx: &Context, item: &ast::ViewItem) {
-        // compiler-generated `extern crate` statements have a dummy span.
-        if item.span == DUMMY_SP { return }
-
-        let id = match item.node {
-            ast::ViewItemExternCrate(_, _, id) => id,
-            ast::ViewItemUse(..) => return,
-        };
-        let cnum = match cx.tcx.sess.cstore.find_extern_mod_stmt_cnum(id) {
-            Some(cnum) => cnum,
-            None => return,
-        };
-        let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
-        self.lint(cx, id, item.span);
-    }
-
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if self.is_internal(cx, e.span) { return; }
 
@@ -1776,6 +1760,17 @@ impl LintPass for Stability {
         if self.is_internal(cx, item.span) { return }
 
         match item.node {
+            ast::ItemExternCrate(_) => {
+                // compiler-generated `extern crate` items have a dummy span.
+                if item.span == DUMMY_SP { return }
+
+                let cnum = match cx.tcx.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
+                    Some(cnum) => cnum,
+                    None => return,
+                };
+                let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+                self.lint(cx, id, item.span);
+            }
             ast::ItemTrait(_, _, ref supertraits, _) => {
                 for t in supertraits.iter() {
                     if let ast::TraitTyParamBound(ref t, _) = *t {

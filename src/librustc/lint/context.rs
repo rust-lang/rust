@@ -231,30 +231,7 @@ impl LintStore {
         // We have one lint pass defined in this module.
         self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
 
-        // Insert temporary renamings for a one-time deprecation (#16545)
-        self.register_renamed("unnecessary_typecast", "unused_typecasts");
-        self.register_renamed("unsigned_negate", "unsigned_negation");
-        self.register_renamed("type_limits", "unused_comparisons");
-        self.register_renamed("type_overflow", "overflowing_literals");
-        self.register_renamed("ctypes", "improper_ctypes");
-        self.register_renamed("owned_heap_memory", "box_pointers");
-        self.register_renamed("unused_attribute", "unused_attributes");
-        self.register_renamed("path_statement", "path_statements");
-        self.register_renamed("unused_result", "unused_results");
-        self.register_renamed("non_uppercase_statics", "non_upper_case_globals");
-        self.register_renamed("unnecessary_parens", "unused_parens");
-        self.register_renamed("unnecessary_import_braces", "unused_import_braces");
-        self.register_renamed("unsafe_block", "unsafe_blocks");
-        self.register_renamed("unnecessary_allocation", "unused_allocation");
-        self.register_renamed("missing_doc", "missing_docs");
-        self.register_renamed("unused_extern_crate", "unused_extern_crates");
-        self.register_renamed("unnecessary_qualification", "unused_qualifications");
-        self.register_renamed("unrecognized_lint", "unknown_lints");
-        self.register_renamed("unused_variable", "unused_variables");
-        self.register_renamed("dead_assignment", "unused_assignments");
-        self.register_renamed("unknown_crate_type", "unknown_crate_types");
-        self.register_renamed("variant_size_difference", "variant_size_differences");
-        self.register_renamed("transmute_fat_ptr", "fat_ptr_transmutes");
+        // Insert temporary renamings for a one-time deprecation
         self.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
 
     }
@@ -600,14 +577,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         self.with_lint_attrs(&it.attrs[], |cx| {
             run_lints!(cx, check_foreign_item, it);
             visit::walk_foreign_item(cx, it);
-        })
-    }
-
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        self.with_lint_attrs(&i.attrs[], |cx| {
-            run_lints!(cx, check_view_item, i);
-            cx.visit_ids(|v| v.visit_view_item(i));
-            visit::walk_view_item(cx, i);
         })
     }
 

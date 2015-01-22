@@ -294,6 +294,7 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
         let aux_dir = aux_output_dir_name(config, testfile);
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_string(),
+                            "-Zunstable-options".to_string(),
                             "--pretty".to_string(),
                             pretty_type,
                             format!("--target={}", config.target),
@@ -340,7 +341,7 @@ actual:\n\
         };
         // FIXME (#9639): This needs to handle non-utf8 paths
         let mut args = vec!("-".to_string(),
-                            "--no-trans".to_string(),
+                            "-Zno-trans".to_string(),
                             "--crate-type=lib".to_string(),
                             format!("--target={}", target),
                             "-L".to_string(),
@@ -547,7 +548,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
             // Add line breakpoints
             for line in breakpoint_lines.iter() {
-                script_str.push_str(&format!("break '{:?}':{}\n",
+                script_str.push_str(&format!("break '{}':{}\n",
                                              testfile.filename_display(),
                                              *line)[]);
             }
@@ -750,7 +751,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
             status: status,
             stdout: out,
             stderr: err,
-            cmdline: format!("{}", cmd)
+            cmdline: format!("{:?}", cmd)
         };
     }
 }
@@ -862,7 +863,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
                         break;
                     }
                     Some(i) => {
-                        rest = rest.slice_from(i + frag.len());
+                        rest = &rest[(i + frag.len())..];
                     }
                 }
                 first = false;
@@ -953,7 +954,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     }
 
     let prefixes = expected_errors.iter().map(|ee| {
-        format!("{:?}:{}:", testfile.display(), ee.line)
+        format!("{}:{}:", testfile.display(), ee.line)
     }).collect::<Vec<String> >();
 
     #[cfg(windows)]
@@ -1045,7 +1046,7 @@ fn scan_until_char(haystack: &str, needle: char, idx: &mut uint) -> bool {
     if *idx >= haystack.len() {
         return false;
     }
-    let opt = haystack.slice_from(*idx).find(needle);
+    let opt = haystack[(*idx)..].find(needle);
     if opt.is_none() {
         return false;
     }

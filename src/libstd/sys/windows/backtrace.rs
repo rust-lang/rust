@@ -31,6 +31,7 @@ use mem;
 use ops::Drop;
 use option::Option::{Some, None};
 use path::Path;
+use ptr;
 use result::Result::{Ok, Err};
 use slice::SliceExt;
 use str::{self, StrExt};
@@ -327,7 +328,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     let image = arch::init_frame(&mut frame, &context);
 
     // Initialize this process's symbols
-    let ret = SymInitialize(process, 0 as *mut libc::c_void, libc::TRUE);
+    let ret = SymInitialize(process, ptr::null_mut(), libc::TRUE);
     if ret != libc::TRUE { return Ok(()) }
     let _c = Cleanup { handle: process, SymCleanup: SymCleanup };
 
@@ -335,10 +336,10 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     let mut i = 0i;
     try!(write!(w, "stack backtrace:\n"));
     while StackWalk64(image, process, thread, &mut frame, &mut context,
-                      0 as *mut libc::c_void,
-                      0 as *mut libc::c_void,
-                      0 as *mut libc::c_void,
-                      0 as *mut libc::c_void) == libc::TRUE{
+                      ptr::null_mut(),
+                      ptr::null_mut(),
+                      ptr::null_mut(),
+                      ptr::null_mut()) == libc::TRUE{
         let addr = frame.AddrPC.Offset;
         if addr == frame.AddrReturn.Offset || addr == 0 ||
            frame.AddrReturn.Offset == 0 { break }
@@ -362,7 +363,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
             let bytes = unsafe { ffi::c_str_to_bytes(&ptr) };
             match str::from_utf8(bytes) {
                 Ok(s) => try!(demangle(w, s)),
-                Err(..) => try!(w.write(&bytes[..(bytes.len()-1)])),
+                Err(..) => try!(w.write(&bytes[..bytes.len()-1])),
             }
         }
         try!(w.write(&['\n' as u8]));

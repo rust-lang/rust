@@ -105,11 +105,11 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
         // Add a special __test module to the crate that will contain code
         // generated for the test harness
         let (mod_, reexport) = mk_test_module(&mut self.cx);
-        folded.module.items.push(mod_);
         match reexport {
-            Some(re) => folded.module.view_items.push(re),
+            Some(re) => folded.module.items.push(re),
             None => {}
         }
+        folded.module.items.push(mod_);
         folded
     }
 
@@ -205,22 +205,19 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
 
 fn mk_reexport_mod(cx: &mut TestCtxt, tests: Vec<ast::Ident>,
                    tested_submods: Vec<(ast::Ident, ast::Ident)>) -> (P<ast::Item>, ast::Ident) {
-    let mut view_items = Vec::new();
     let super_ = token::str_to_ident("super");
 
-    view_items.extend(tests.into_iter().map(|r| {
-        cx.ext_cx.view_use_simple(DUMMY_SP, ast::Public,
+    let items = tests.into_iter().map(|r| {
+        cx.ext_cx.item_use_simple(DUMMY_SP, ast::Public,
                                   cx.ext_cx.path(DUMMY_SP, vec![super_, r]))
-    }));
-    view_items.extend(tested_submods.into_iter().map(|(r, sym)| {
+    }).chain(tested_submods.into_iter().map(|(r, sym)| {
         let path = cx.ext_cx.path(DUMMY_SP, vec![super_, r, sym]);
-        cx.ext_cx.view_use_simple_(DUMMY_SP, ast::Public, r, path)
+        cx.ext_cx.item_use_simple_(DUMMY_SP, ast::Public, r, path)
     }));
 
     let reexport_mod = ast::Mod {
         inner: DUMMY_SP,
-        view_items: view_items,
-        items: Vec::new(),
+        items: items.collect(),
     };
 
     let sym = token::gensym_ident("__test_reexports");
@@ -339,8 +336,8 @@ fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
                 let tparm_cnt = generics.ty_params.len();
                 // NB: inadequate check, but we're running
                 // well before resolve, can't get too deep.
-                input_cnt == 1u
-                    && no_output && tparm_cnt == 0u
+                input_cnt == 1us
+                    && no_output && tparm_cnt == 0us
             }
           _ => false
         }
@@ -388,29 +385,29 @@ mod __test {
 
 */
 
-fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
+fn mk_std(cx: &TestCtxt) -> P<ast::Item> {
     let id_test = token::str_to_ident("test");
-    let (vi, vis) = if cx.is_test_crate {
-        (ast::ViewItemUse(
+    let (vi, vis, ident) = if cx.is_test_crate {
+        (ast::ItemUse(
             P(nospan(ast::ViewPathSimple(id_test,
-                                         path_node(vec!(id_test)),
-                                         ast::DUMMY_NODE_ID)))),
-         ast::Public)
+                                         path_node(vec!(id_test)))))),
+         ast::Public, token::special_idents::invalid)
     } else {
-        (ast::ViewItemExternCrate(id_test, None, ast::DUMMY_NODE_ID),
-         ast::Inherited)
+        (ast::ItemExternCrate(None), ast::Inherited, id_test)
     };
-    ast::ViewItem {
+    P(ast::Item {
+        id: ast::DUMMY_NODE_ID,
+        ident: ident,
         node: vi,
-        attrs: Vec::new(),
+        attrs: vec![],
         vis: vis,
         span: DUMMY_SP
-    }
+    })
 }
 
-fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
+fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
     // Link to test crate
-    let view_items = vec!(mk_std(cx));
+    let import = mk_std(cx);
 
     // A constant vector of test descriptors.
     let tests = mk_tests(cx);
@@ -427,8 +424,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
 
     let testmod = ast::Mod {
         inner: DUMMY_SP,
-        view_items: view_items,
-        items: vec!(mainfn, tests),
+        items: vec![import, mainfn, tests],
     };
     let item_ = ast::ItemMod(testmod);
 
@@ -439,34 +435,35 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
                                            vec![unstable])));
         attr::mk_attr_inner(attr::mk_attr_id(), allow)
     };
-    let item = ast::Item {
-        ident: mod_ident,
+    let item = P(ast::Item {
         id: ast::DUMMY_NODE_ID,
+        ident: mod_ident,
+        attrs: vec![allow_unstable],
         node: item_,
         vis: ast::Public,
         span: DUMMY_SP,
-        attrs: vec![allow_unstable],
-    };
+    });
     let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
         // building `use <ident> = __test::main`
         let reexport_ident = token::str_to_ident(s.get());
 
         let use_path =
             nospan(ast::ViewPathSimple(reexport_ident,
-                                       path_node(vec![mod_ident, token::str_to_ident("main")]),
-                                       ast::DUMMY_NODE_ID));
+                                       path_node(vec![mod_ident, token::str_to_ident("main")])));
 
-        ast::ViewItem {
-            node: ast::ViewItemUse(P(use_path)),
+        P(ast::Item {
+            id: ast::DUMMY_NODE_ID,
+            ident: token::special_idents::invalid,
             attrs: vec![],
+            node: ast::ItemUse(P(use_path)),
             vis: ast::Inherited,
             span: DUMMY_SP
-        }
+        })
     });
 
-    debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&item));
+    debug!("Synthetic test module:\n{}\n", pprust::item_to_string(&*item));
 
-    (P(item), reexport)
+    (item, reexport)
 }
 
 fn nospan<T>(t: T) -> codemap::Spanned<T> {

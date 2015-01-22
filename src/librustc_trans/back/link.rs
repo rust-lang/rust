@@ -178,7 +178,7 @@ pub fn build_link_meta(sess: &Session, krate: &ast::Crate,
 fn truncated_hash_result(symbol_hasher: &mut Sha256) -> String {
     let output = symbol_hasher.result_bytes();
     // 64 bits should be enough to avoid collisions.
-    output.slice_to(8).to_hex().to_string()
+    output[.. 8].to_hex().to_string()
 }
 
 
@@ -779,14 +779,14 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     }
 
     if sess.opts.debugging_opts.print_link_args {
-        println!("{}", &cmd);
+        println!("{:?}", &cmd);
     }
 
     // May have not found libraries in the right formats.
     sess.abort_if_errors();
 
     // Invoke the system linker
-    debug!("{}", &cmd);
+    debug!("{:?}", &cmd);
     let prog = time(sess.time_passes(), "running linker", (), |()| cmd.output());
     match prog {
         Ok(prog) => {
@@ -794,7 +794,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.err(&format!("linking with `{}` failed: {}",
                                  pname,
                                  prog.status)[]);
-                sess.note(&format!("{}", &cmd)[]);
+                sess.note(&format!("{:?}", &cmd)[]);
                 let mut output = prog.error.clone();
                 output.push_all(&prog.output[]);
                 sess.note(str::from_utf8(&output[]).unwrap());
@@ -1183,7 +1183,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
         // against the archive.
         if sess.lto() {
             let name = cratepath.filename_str().unwrap();
-            let name = &name[3..(name.len() - 5)]; // chop off lib/.rlib
+            let name = &name[3..name.len() - 5]; // chop off lib/.rlib
             time(sess.time_passes(),
                  &format!("altering {}.rlib", name)[],
                  (), |()| {

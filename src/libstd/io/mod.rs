@@ -228,13 +228,12 @@ pub use self::FileAccess::*;
 pub use self::IoErrorKind::*;
 
 use char::CharExt;
-use clone::Clone;
 use default::Default;
-use error::{FromError, Error};
+use error::Error;
 use fmt;
 use int;
 use iter::{Iterator, IteratorExt};
-use marker::{Sized, Send};
+use marker::Sized;
 use mem::transmute;
 use ops::FnOnce;
 use option::Option;
@@ -340,7 +339,8 @@ impl IoError {
     }
 }
 
-impl fmt::String for IoError {
+#[stable]
+impl fmt::Display for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             IoError { kind: OtherIoError, desc: "unknown error", detail: Some(ref detail) } =>
@@ -354,19 +354,7 @@ impl fmt::String for IoError {
 }
 
 impl Error for IoError {
-    fn description(&self) -> &str {
-        self.desc
-    }
-
-    fn detail(&self) -> Option<String> {
-        self.detail.clone()
-    }
-}
-
-impl FromError<IoError> for Box<Error + Send> {
-    fn from_error(err: IoError) -> Box<Error + Send> {
-        box err
-    }
+    fn description(&self) -> &str { self.desc }
 }
 
 /// A list specifying general categories of I/O error.
@@ -516,7 +504,7 @@ pub trait Reader {
         while read < min {
             let mut zeroes = 0;
             loop {
-                match self.read(buf.slice_from_mut(read)) {
+                match self.read(&mut buf[read..]) {
                     Ok(0) => {
                         zeroes += 1;
                         if zeroes >= NO_PROGRESS_LIMIT {
@@ -1436,33 +1424,31 @@ pub trait Buffer: Reader {
     fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
         let mut res = Vec::new();
 
-        let mut used;
         loop {
-            {
+            let (done, used) = {
                 let available = match self.fill_buf() {
                     Ok(n) => n,
                     Err(ref e) if res.len() > 0 && e.kind == EndOfFile => {
-                        used = 0;
-                        break
+                        return Ok(res);
                     }
                     Err(e) => return Err(e)
                 };
                 match available.iter().position(|&b| b == byte) {
                     Some(i) => {
-                        res.push_all(&available[..(i + 1)]);
-                        used = i + 1;
-                        break
+                        res.push_all(&available[..i + 1]);
+                        (true, i + 1)
                     }
                     None => {
                         res.push_all(available);
-                        used = available.len();
+                        (false, available.len())
                     }
                 }
-            }
+            };
             self.consume(used);
+            if done {
+                return Ok(res);
+            }
         }
-        self.consume(used);
-        Ok(res)
     }
 
     /// Reads the next utf8-encoded character from the underlying stream.
@@ -1481,7 +1467,7 @@ pub trait Buffer: Reader {
         {
             let mut start = 1;
             while start < width {
-                match try!(self.read(buf.slice_mut(start, width))) {
+                match try!(self.read(&mut buf[start .. width])) {
                     n if n == width - start => break,
                     n if n < width - start => { start += n; }
                     _ => return Err(standard_error(InvalidInput)),
@@ -1781,6 +1767,7 @@ pub struct UnstableFileStat {
 bitflags! {
     /// A set of permissions for a file or directory is represented by a set of
     /// flags which are or'd together.
+    #[derive(Show)]
     flags FilePermission: u32 {
         const USER_READ     = 0o400,
         const USER_WRITE    = 0o200,
@@ -1822,13 +1809,8 @@ impl Default for FilePermission {
     fn default() -> FilePermission { FilePermission::empty() }
 }
 
-impl fmt::Show for FilePermission {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
-    }
-}
-
-impl fmt::String for FilePermission {
+#[stable]
+impl fmt::Display for FilePermission {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04o}", self.bits)
     }

@@ -111,7 +111,7 @@ pub fn main() {
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).scoped(move || {
         main_args(std::os::args().as_slice())
     }).join();
-    std::os::set_exit_status(res.map_err(|_| ()).unwrap());
+    std::os::set_exit_status(res.ok().unwrap());
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {
@@ -351,8 +351,10 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     info!("starting to run rustc");
 
     let (mut krate, analysis) = std::thread::Thread::scoped(move |:| {
+        use rustc::session::config::Input;
+
         let cr = cr;
-        core::run_core(paths, cfgs, externs, &cr, triple)
+        core::run_core(paths, cfgs, externs, Input::File(cr), triple)
     }).join().map_err(|_| "rustc failed").unwrap();
     info!("finished with rustc");
     let mut analysis = Some(analysis);

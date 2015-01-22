@@ -13,7 +13,7 @@ use std::fmt;
 use std::str::FromStr;
 use regex::Regex;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
     RunFail,
@@ -43,9 +43,9 @@ impl FromStr for Mode {
     }
 }
 
-impl fmt::String for Mode {
+impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(match *self {
+        fmt::Display::fmt(match *self {
             CompileFail => "compile-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
@@ -55,12 +55,6 @@ impl fmt::String for Mode {
             DebugInfoLldb => "debuginfo-lldb",
             Codegen => "codegen",
         }, f)
-    }
-}
-
-impl fmt::Show for Mode {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
     }
 }
 
@@ -114,20 +108,6 @@ pub struct Config {
 
     // Write out a parseable log of tests that were run
     pub logfile: Option<Path>,
-
-    // Write out a json file containing any metrics of the run
-    pub save_metrics: Option<Path>,
-
-    // Write and ratchet a metrics file
-    pub ratchet_metrics: Option<Path>,
-
-    // Percent change in metrics to consider noise
-    pub ratchet_noise_percent: Option<f64>,
-
-    // "Shard" of the testsuite to pub run: this has the form of
-    // two numbers (a,b), and causes only those tests with
-    // positional order equal to a mod b to run.
-    pub test_shard: Option<(uint,uint)>,
 
     // A command line to prefix program execution with,
     // for running under valgrind

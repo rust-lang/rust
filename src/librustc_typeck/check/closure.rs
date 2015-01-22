@@ -50,10 +50,9 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 
                     check_unboxed_closure(fcx, expr, kind, decl, body, None);
 
-                    fcx.ccx.tcx.sess.span_err(
-                        expr.span,
-                        "can't infer the \"kind\" of the closure, explicitly annotate it. e.g. \
-                        `|&:| {}`");
+                    span_err!(fcx.ccx.tcx.sess, expr.span, E0187,
+                        "can't infer the \"kind\" of the closure; explicitly annotate it; e.g. \
+                        `|&:| {{}}`");
                 },
                 Some((sig, kind)) => {
                     check_unboxed_closure(fcx, expr, kind, decl, body, Some(sig));
@@ -89,15 +88,6 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     let mut fn_ty = astconv::ty_of_closure(
         fcx,
         ast::Unsafety::Normal,
-        ast::Many,
-
-        // The `RegionTraitStore` and region_existential_bounds
-        // are lies, but we ignore them so it doesn't matter.
-        //
-        // FIXME(pcwalton): Refactor this API.
-        ty::region_existential_bound(ty::ReStatic),
-        ty::RegionTraitStore(ty::ReStatic, ast::MutImmutable),
-
         decl,
         abi::RustCall,
         expected_sig);

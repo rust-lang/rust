@@ -15,6 +15,14 @@ macro_rules! register_diagnostic {
 }
 
 #[macro_export]
+macro_rules! span_fatal {
+    ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
+        __diagnostic_used!($code);
+        $session.span_fatal_with_code($span, format!($($message)*).as_slice(), stringify!($code))
+    })
+}
+
+#[macro_export]
 macro_rules! span_err {
     ($session:expr, $span:expr, $code:ident, $($message:tt)*) => ({
         __diagnostic_used!($code);
@@ -51,3 +59,9 @@ macro_rules! register_diagnostics {
     )
 }
 
+#[macro_export]
+macro_rules! register_long_diagnostics {
+    ($($code:tt: $description:tt),*) => (
+        $(register_diagnostic! { $code, $description })*
+    )
+}

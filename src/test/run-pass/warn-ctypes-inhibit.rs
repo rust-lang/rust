@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-D ctypes
+// compile-flags:-D improper-ctypes
 
-#![allow(ctypes)]
+#![allow(improper_ctypes)]
 
 mod libc {
     extern {

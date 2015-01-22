@@ -19,6 +19,7 @@ use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 use io;
 use libc::{self, c_int, c_void};
 use mem;
+use ptr;
 use sys::retry;
 use sys_common::{keep_going, eof, mkerr_libc};
 
@@ -207,7 +208,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
 
     if dir_ptr as uint != 0 {
         let mut paths = vec!();
-        let mut entry_ptr = 0 as *mut dirent_t;
+        let mut entry_ptr = ptr::null_mut();
         while unsafe { readdir_r(dir_ptr, ptr, &mut entry_ptr) == 0 } {
             if entry_ptr.is_null() { break }
             paths.push(unsafe {

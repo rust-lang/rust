@@ -249,7 +249,7 @@ pub enum EntryFnType {
     EntryNone,
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Show)]
 pub enum CrateType {
     CrateTypeExecutable,
     CrateTypeDylib,
@@ -786,7 +786,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
         opt::multi("", "extern", "Specify where an external rust library is \
                                 located",
                  "NAME=PATH"),
-        opt::opt("", "opt-level", "Optimize with possible levels 0-3", "LEVEL"),
         opt::opt("", "sysroot", "Override the system root", "PATH"),
         opt::multi("Z", "", "Set internal debugging options", "FLAG"),
         opt::opt("", "color", "Configure coloring of output:
@@ -794,22 +793,7 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
             always = always colorize output;
             never  = never colorize output", "auto|always|never"),
 
-        // DEPRECATED
-        opt::flag("", "print-crate-name", "Output the crate name and exit"),
-        opt::flag("", "print-file-name", "Output the file(s) that would be \
-                                        written if compilation \
-                                        continued and exit"),
-        opt::opt("",  "debuginfo",  "Emit DWARF debug info to the objects created:
-             0 = no debug info,
-             1 = line-tables only (for stacktraces and breakpoints),
-             2 = full debug info with variable and type information \
-                    (same as -g)", "LEVEL"),
-        opt::flag("", "no-trans", "Run all passes except translation; no output"),
-        opt::flag("", "no-analysis", "Parse and expand the source, but run no \
-                                    analysis and produce no output"),
-        opt::flag("", "parse-only", "Parse only; do not compile, assemble, \
-                                   or link"),
-        opt::flagopt("", "pretty",
+        opt::flagopt_u("", "pretty",
                    "Pretty-print the input instead of compiling;
                    valid types are: `normal` (un-annotated source),
                    `expanded` (crates expanded),
@@ -823,9 +807,6 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                       `everybody_loops` (all function bodies replaced with `loop {}`).",
                      "TYPE"),
         opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
-        opt::flagopt("", "dep-info",
-                 "Output dependency info to <filename> after compiling, \
-                  in a format suitable for use by Makefiles", "FILENAME"),
     ]);
     opts
 }
@@ -861,27 +842,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let debugging_opts = build_debugging_options(matches);
 
-    let parse_only = if matches.opt_present("parse-only") {
-        // FIXME(acrichto) remove this eventually
-        early_warn("--parse-only is deprecated in favor of -Z parse-only");
-        true
-    } else {
-        debugging_opts.parse_only
-    };
-    let no_trans = if matches.opt_present("no-trans") {
-        // FIXME(acrichto) remove this eventually
-        early_warn("--no-trans is deprecated in favor of -Z no-trans");
-        true
-    } else {
-        debugging_opts.no_trans
-    };
-    let no_analysis = if matches.opt_present("no-analysis") {
-        // FIXME(acrichto) remove this eventually
-        early_warn("--no-analysis is deprecated in favor of -Z no-analysis");
-        true
-    } else {
-        debugging_opts.no_analysis
-    };
+    let parse_only = debugging_opts.parse_only;
+    let no_trans = debugging_opts.no_trans;
+    let no_analysis = debugging_opts.no_analysis;
 
     if debugging_opts.debug_llvm {
         unsafe { llvm::LLVMSetDebug(1); }
@@ -921,28 +884,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         host_triple().to_string());
     let opt_level = {
         if matches.opt_present("O") {
-            if matches.opt_present("opt-level") {
-                early_error("-O and --opt-level both provided");
-            }
             if cg.opt_level.is_some() {
                 early_error("-O and -C opt-level both provided");
             }
             Default
-        } else if matches.opt_present("opt-level") {
-            // FIXME(acrichto) remove this eventually
-            early_warn("--opt-level=N is deprecated in favor of -C opt-level=N");
-            match matches.opt_str("opt-level").as_ref().map(|s| s.as_slice()) {
-                None      |
-                Some("0") => No,
-                Some("1") => Less,
-                Some("2") => Default,
-                Some("3") => Aggressive,
-                Some(arg) => {
-                    early_error(&format!("optimization level needs to be \
-                                         between 0-3 (instead was `{}`)",
-                                        arg)[]);
-                }
-            }
         } else {
             match cg.opt_level {
                 None => No,
@@ -960,27 +905,10 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
     let gc = debugging_opts.gc;
     let debuginfo = if matches.opt_present("g") {
-        if matches.opt_present("debuginfo") {
-            early_error("-g and --debuginfo both provided");
-        }
         if cg.debuginfo.is_some() {
             early_error("-g and -C debuginfo both provided");
         }
         FullDebugInfo
-    } else if matches.opt_present("debuginfo") {
-        // FIXME(acrichto) remove this eventually
-        early_warn("--debuginfo=N is deprecated in favor of -C debuginfo=N");
-        match matches.opt_str("debuginfo").as_ref().map(|s| s.as_slice()) {
-            Some("0") => NoDebugInfo,
-            Some("1") => LimitedDebugInfo,
-            None      |
-            Some("2") => FullDebugInfo,
-            Some(arg) => {
-                early_error(&format!("debug info level needs to be between \
-                                     0-2 (instead was `{}`)",
-                                    arg)[]);
-            }
-        }
     } else {
         match cg.debuginfo {
             None | Some(0) => NoDebugInfo,
@@ -1036,15 +964,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let cfg = parse_cfgspecs(matches.opt_strs("cfg"));
     let test = matches.opt_present("test");
-    let write_dependency_info = if matches.opt_present("dep-info") {
-        // FIXME(acrichto) remove this eventually
-        early_warn("--dep-info has been deprecated in favor of --emit");
-        (true, matches.opt_str("dep-info").map(|p| Path::new(p)))
-    } else {
-        (output_types.contains(&OutputTypeDepInfo), None)
-    };
+    let write_dependency_info = (output_types.contains(&OutputTypeDepInfo), None);
 
-    let mut prints = matches.opt_strs("print").into_iter().map(|s| {
+    let prints = matches.opt_strs("print").into_iter().map(|s| {
         match s.as_slice() {
             "crate-name" => PrintRequest::CrateName,
             "file-names" => PrintRequest::FileNames,
@@ -1054,18 +976,6 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             }
         }
     }).collect::<Vec<_>>();
-    if matches.opt_present("print-crate-name") {
-        // FIXME(acrichto) remove this eventually
-        early_warn("--print-crate-name has been deprecated in favor of \
-                    --print crate-name");
-        prints.push(PrintRequest::CrateName);
-    }
-    if matches.opt_present("print-file-name") {
-        // FIXME(acrichto) remove this eventually
-        early_warn("--print-file-name has been deprecated in favor of \
-                    --print file-names");
-        prints.push(PrintRequest::FileNames);
-    }
 
     if !cg.remark.is_empty() && debuginfo == NoDebugInfo {
         early_warn("-C remark will not show source locations without \
@@ -1159,7 +1069,7 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
     return Ok(crate_types);
 }
 
-impl fmt::Show for CrateType {
+impl fmt::Display for CrateType {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CrateTypeExecutable => "bin".fmt(f),

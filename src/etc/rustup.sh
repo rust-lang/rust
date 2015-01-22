@@ -433,11 +433,16 @@ CFG_TMP_DIR=$(mktemp -d 2>/dev/null \
            || mktemp -d -t 'rustup-tmp-install' 2>/dev/null \
            || create_tmp_dir)
 
-# If we're saving nightlies and we didn't specify which one, grab todays.
-# Otherwise we'll use the latest version.
+# If we're saving nightlies and we didn't specify which one, grab the latest
+# verison from the perspective of the server. Buildbot has typically finished
+# building and uploading by ~8UTC, but we want to include a little buffer.
+#
+# FIXME It would be better to use the known most recent nightly that has been
+# built. This is waiting on a change to have buildbot publish metadata that
+# can be queried.
 if [ -n "${CFG_SAVE}" -a -z "${CFG_DATE}" ];
 then
-    CFG_DATE=`date "+%Y-%m-%d"`
+    CFG_DATE=`TZ=Etc/UTC+9 date "+%Y-%m-%d"`
 fi
 
 RUST_URL="https://static.rust-lang.org/dist"
@@ -453,15 +458,32 @@ then
     RUST_URL="${RUST_URL}/${CFG_DATE}"
 fi
 
-verify_hash() {
-    remote_sha256="$1"
-    local_file="$2"
-
+download_hash() {
     msg "Downloading ${remote_sha256}"
     remote_sha256=`"${CFG_CURL}" -f "${remote_sha256}"`
+    if [ -n "${CFG_SAVE}" ]; then
+        echo "${remote_sha256}" > "${local_sha_file}"
+    fi
     if [ "$?" -ne 0 ]; then
         rm -Rf "${CFG_TMP_DIR}"
         err "Failed to download ${remote_url}"
+    fi
+}
+
+verify_hash() {
+    remote_sha256="$1"
+    local_file="$2"
+    local_sha_file="${local_file}.sha256"
+
+    if [ -n "${CFG_SAVE}" ]; then
+        if [ -f "${local_sha_file}" ]; then
+            msg "Local ${local_sha_file} exists, treating as remote hash"
+            remote_sha256=`cat "${local_sha_file}"`
+        else
+            download_hash
+        fi
+    else
+        download_hash
     fi
 
     msg "Verifying hash"

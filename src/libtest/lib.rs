@@ -44,7 +44,6 @@ extern crate "serialize" as rustc_serialize;
 extern crate term;
 
 pub use self::TestFn::*;
-pub use self::MetricChange::*;
 pub use self::ColorConfig::*;
 pub use self::TestResult::*;
 pub use self::TestName::*;
@@ -62,8 +61,6 @@ use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
-use std::f64;
-use std::fmt::Show;
 use std::fmt;
 use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
@@ -82,8 +79,7 @@ use std::time::Duration;
 pub mod test {
     pub use {Bencher, TestName, TestResult, TestDesc,
              TestDescAndFn, TestOpts, TrFailed, TrIgnored, TrOk,
-             Metric, MetricMap, MetricAdded, MetricRemoved,
-             MetricChange, Improvement, Regression, LikelyNoise,
+             Metric, MetricMap,
              StaticTestFn, StaticTestName, DynTestName, DynTestFn,
              run_test, test_main, test_main_static, filter_tests,
              parse_opts, StaticBenchFn, ShouldFail};
@@ -109,9 +105,9 @@ impl TestName {
         }
     }
 }
-impl fmt::String for TestName {
+impl fmt::Display for TestName {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self.as_slice(), f)
+        fmt::Display::fmt(self.as_slice(), f)
     }
 }
 
@@ -172,7 +168,7 @@ impl TestFn {
     }
 }
 
-impl fmt::Show for TestFn {
+impl fmt::Debug for TestFn {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.write_str(match *self {
             StaticTestFn(..) => "StaticTestFn(..)",
@@ -242,18 +238,6 @@ impl Clone for MetricMap {
     }
 }
 
-/// Analysis of a single change in metric
-#[derive(Copy, PartialEq, Show)]
-pub enum MetricChange {
-    LikelyNoise,
-    MetricAdded,
-    MetricRemoved,
-    Improvement(f64),
-    Regression(f64)
-}
-
-pub type MetricDiff = BTreeMap<String,MetricChange>;
-
 // The default console test runner. It accepts the command line
 // arguments and a vector of test_descs.
 pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
@@ -300,16 +284,9 @@ pub struct TestOpts {
     pub run_ignored: bool,
     pub run_tests: bool,
     pub run_benchmarks: bool,
-    pub ratchet_metrics: Option<Path>,
-    pub ratchet_noise_percent: Option<f64>,
-    pub save_metrics: Option<Path>,
-    pub test_shard: Option<(uint,uint)>,
     pub logfile: Option<Path>,
     pub nocapture: bool,
     pub color: ColorConfig,
-    pub show_boxplot: bool,
-    pub boxplot_width: uint,
-    pub show_all_stats: bool,
 }
 
 impl TestOpts {
@@ -320,16 +297,9 @@ impl TestOpts {
             run_ignored: false,
             run_tests: false,
             run_benchmarks: false,
-            ratchet_metrics: None,
-            ratchet_noise_percent: None,
-            save_metrics: None,
-            test_shard: None,
             logfile: None,
             nocapture: false,
             color: AutoColor,
-            show_boxplot: false,
-            boxplot_width: 50,
-            show_all_stats: false,
         }
     }
 }
@@ -342,28 +312,14 @@ fn optgroups() -> Vec<getopts::OptGroup> {
       getopts::optflag("", "test", "Run tests and not benchmarks"),
       getopts::optflag("", "bench", "Run benchmarks instead of tests"),
       getopts::optflag("h", "help", "Display this message (longer with --help)"),
-      getopts::optopt("", "save-metrics", "Location to save bench metrics",
-                     "PATH"),
-      getopts::optopt("", "ratchet-metrics",
-                     "Location to load and save metrics from. The metrics \
-                      loaded are cause benchmarks to fail if they run too \
-                      slowly", "PATH"),
-      getopts::optopt("", "ratchet-noise-percent",
-                     "Tests within N% of the recorded metrics will be \
-                      considered as passing", "PERCENTAGE"),
       getopts::optopt("", "logfile", "Write logs to the specified file instead \
                           of stdout", "PATH"),
-      getopts::optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite",
-                     "A.B"),
       getopts::optflag("", "nocapture", "don't capture stdout/stderr of each \
                                          task, allow printing directly"),
       getopts::optopt("", "color", "Configure coloring of output:
             auto   = colorize if stdout is a tty and tests are run on serially (default);
             always = always colorize output;
-            never  = never colorize output;", "auto|always|never"),
-      getopts::optflag("", "boxplot", "Display a boxplot of the benchmark statistics"),
-      getopts::optopt("", "boxplot-width", "Set the boxplot width (default 50)", "WIDTH"),
-      getopts::optflag("", "stats", "Display the benchmark min, max, and quartiles"))
+            never  = never colorize output;", "auto|always|never"))
 }
 
 fn usage(binary: &str) {
@@ -428,19 +384,6 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let run_tests = ! run_benchmarks ||
         matches.opt_present("test");
 
-    let ratchet_metrics = matches.opt_str("ratchet-metrics");
-    let ratchet_metrics = ratchet_metrics.map(|s| Path::new(s));
-
-    let ratchet_noise_percent = matches.opt_str("ratchet-noise-percent");
-    let ratchet_noise_percent =
-        ratchet_noise_percent.map(|s| s.as_slice().parse::<f64>().unwrap());
-
-    let save_metrics = matches.opt_str("save-metrics");
-    let save_metrics = save_metrics.map(|s| Path::new(s));
-
-    let test_shard = matches.opt_str("test-shard");
-    let test_shard = opt_shard(test_shard);
-
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
         nocapture = os::getenv("RUST_TEST_NOCAPTURE").is_some();
@@ -456,62 +399,18 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
                                             v))),
     };
 
-    let show_boxplot = matches.opt_present("boxplot");
-    let boxplot_width = match matches.opt_str("boxplot-width") {
-        Some(width) => {
-            match FromStr::from_str(width.as_slice()) {
-                Some(width) => width,
-                None => {
-                    return Some(Err(format!("argument for --boxplot-width must be a uint")));
-                }
-            }
-        }
-        None => 50,
-    };
-
-    let show_all_stats = matches.opt_present("stats");
-
     let test_opts = TestOpts {
         filter: filter,
         run_ignored: run_ignored,
         run_tests: run_tests,
         run_benchmarks: run_benchmarks,
-        ratchet_metrics: ratchet_metrics,
-        ratchet_noise_percent: ratchet_noise_percent,
-        save_metrics: save_metrics,
-        test_shard: test_shard,
         logfile: logfile,
         nocapture: nocapture,
         color: color,
-        show_boxplot: show_boxplot,
-        boxplot_width: boxplot_width,
-        show_all_stats: show_all_stats,
     };
 
     Some(Ok(test_opts))
 }
-
-pub fn opt_shard(maybestr: Option<String>) -> Option<(uint,uint)> {
-    match maybestr {
-        None => None,
-        Some(s) => {
-            let mut it = s.split('.');
-            match (it.next().and_then(|s| s.parse::<uint>()),
-                   it.next().and_then(|s| s.parse::<uint>()),
-                   it.next()) {
-                (Some(a), Some(b), None) => {
-                    if a <= 0 || a > b {
-                        panic!("tried to run shard {a}.{b}, but {a} is out of bounds \
-                              (should be between 1 and {b}", a=a, b=b)
-                    }
-                    Some((a, b))
-                }
-                _ => None,
-            }
-        }
-    }
-}
-
 
 #[derive(Clone, PartialEq)]
 pub struct BenchSamples {
@@ -568,9 +467,9 @@ impl<T: Writer> ConsoleTestState<T> {
             out: out,
             log_out: log_out,
             use_color: use_color(opts),
-            show_boxplot: opts.show_boxplot,
-            boxplot_width: opts.boxplot_width,
-            show_all_stats: opts.show_all_stats,
+            show_boxplot: false,
+            boxplot_width: 50,
+            show_all_stats: false,
             total: 0u,
             passed: 0u,
             failed: 0u,
@@ -600,22 +499,6 @@ impl<T: Writer> ConsoleTestState<T> {
 
     pub fn write_bench(&mut self) -> io::IoResult<()> {
         self.write_pretty("bench", term::color::CYAN)
-    }
-
-    pub fn write_added(&mut self) -> io::IoResult<()> {
-        self.write_pretty("added", term::color::GREEN)
-    }
-
-    pub fn write_improved(&mut self) -> io::IoResult<()> {
-        self.write_pretty("improved", term::color::GREEN)
-    }
-
-    pub fn write_removed(&mut self) -> io::IoResult<()> {
-        self.write_pretty("removed", term::color::YELLOW)
-    }
-
-    pub fn write_regressed(&mut self) -> io::IoResult<()> {
-        self.write_pretty("regressed", term::color::RED)
     }
 
     pub fn write_pretty(&mut self,
@@ -741,55 +624,6 @@ impl<T: Writer> ConsoleTestState<T> {
         Ok(())
     }
 
-    pub fn write_metric_diff(&mut self, diff: &MetricDiff) -> io::IoResult<()> {
-        let mut noise = 0u;
-        let mut improved = 0u;
-        let mut regressed = 0u;
-        let mut added = 0u;
-        let mut removed = 0u;
-
-        for (k, v) in diff.iter() {
-            match *v {
-                LikelyNoise => noise += 1,
-                MetricAdded => {
-                    added += 1;
-                    try!(self.write_added());
-                    try!(self.write_plain(format!(": {}\n", *k).as_slice()));
-                }
-                MetricRemoved => {
-                    removed += 1;
-                    try!(self.write_removed());
-                    try!(self.write_plain(format!(": {}\n", *k).as_slice()));
-                }
-                Improvement(pct) => {
-                    improved += 1;
-                    try!(self.write_plain(format!(": {} ", *k).as_slice()));
-                    try!(self.write_improved());
-                    try!(self.write_plain(format!(" by {:.2}%\n",
-                                                  pct as f64).as_slice()));
-                }
-                Regression(pct) => {
-                    regressed += 1;
-                    try!(self.write_plain(format!(": {} ", *k).as_slice()));
-                    try!(self.write_regressed());
-                    try!(self.write_plain(format!(" by {:.2}%\n",
-                                                  pct as f64).as_slice()));
-                }
-            }
-        }
-        try!(self.write_plain(format!("result of ratchet: {} metrics added, \
-                                        {} removed, {} improved, {} regressed, \
-                                        {} noise\n",
-                                       added, removed, improved, regressed,
-                                       noise).as_slice()));
-        if regressed == 0 {
-            try!(self.write_plain("updated ratchet file\n"));
-        } else {
-            try!(self.write_plain("left ratchet file untouched\n"));
-        }
-        Ok(())
-    }
-
     pub fn write_run_finish(&mut self,
                             ratchet_metrics: &Option<Path>,
                             ratchet_pct: Option<f64>) -> io::IoResult<bool> {
@@ -807,9 +641,7 @@ impl<T: Writer> ConsoleTestState<T> {
                                                          forced to: {}%\n",
                                                         pct).as_slice()))
                 }
-                let (diff, ok) = self.metrics.ratchet(pth, ratchet_pct);
-                try!(self.write_metric_diff(&diff));
-                ok
+                true
             }
         };
 
@@ -913,15 +745,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         None => {}
     }
     try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
-    match opts.save_metrics {
-        None => (),
-        Some(ref pth) => {
-            try!(st.metrics.save(pth));
-            try!(st.write_plain(format!("\nmetrics saved to: {:?}",
-                                          pth.display()).as_slice()));
-        }
-    }
-    return st.write_run_finish(&opts.ratchet_metrics, opts.ratchet_noise_percent);
+    return st.write_run_finish(&None, None);
 }
 
 #[test]
@@ -1095,18 +919,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
     // Sort the tests alphabetically
     filtered.sort_by(|t1, t2| t1.desc.name.as_slice().cmp(t2.desc.name.as_slice()));
 
-    // Shard the remaining tests, if sharding requested.
-    match opts.test_shard {
-        None => filtered,
-        Some((a,b)) => {
-            filtered.into_iter().enumerate()
-            // note: using a - 1 so that the valid shards, for example, are
-            // 1.2 and 2.2 instead of 0.2 and 1.2
-            .filter(|&(i,_)| i % b == (a - 1))
-            .map(|(_,t)| t)
-            .collect()
-        }
-    }
+    filtered
 }
 
 pub fn run_test(opts: &TestOpts,
@@ -1221,63 +1034,6 @@ impl MetricMap {
         write!(&mut file, "{}", json::as_json(map))
     }
 
-    /// Compare against another MetricMap. Optionally compare all
-    /// measurements in the maps using the provided `noise_pct` as a
-    /// percentage of each value to consider noise. If `None`, each
-    /// measurement's noise threshold is independently chosen as the
-    /// maximum of that measurement's recorded noise quantity in either
-    /// map.
-    pub fn compare_to_old(&self, old: &MetricMap,
-                          noise_pct: Option<f64>) -> MetricDiff {
-        let mut diff : MetricDiff = BTreeMap::new();
-        let MetricMap(ref selfmap) = *self;
-        let MetricMap(ref old) = *old;
-        for (k, vold) in old.iter() {
-            let r = match selfmap.get(k) {
-                None => MetricRemoved,
-                Some(v) => {
-                    let delta = v.value - vold.value;
-                    let noise = match noise_pct {
-                        None => vold.noise.abs().max(v.noise.abs()),
-                        Some(pct) => vold.value * pct / 100.0
-                    };
-                    if delta.abs() <= noise {
-                        LikelyNoise
-                    } else {
-                        let pct = delta.abs() / vold.value.max(f64::EPSILON) * 100.0;
-                        if vold.noise < 0.0 {
-                            // When 'noise' is negative, it means we want
-                            // to see deltas that go up over time, and can
-                            // only tolerate slight negative movement.
-                            if delta < 0.0 {
-                                Regression(pct)
-                            } else {
-                                Improvement(pct)
-                            }
-                        } else {
-                            // When 'noise' is positive, it means we want
-                            // to see deltas that go down over time, and
-                            // can only tolerate slight positive movements.
-                            if delta < 0.0 {
-                                Improvement(pct)
-                            } else {
-                                Regression(pct)
-                            }
-                        }
-                    }
-                }
-            };
-            diff.insert((*k).clone(), r);
-        }
-        let MetricMap(ref map) = *self;
-        for (k, _) in map.iter() {
-            if !diff.contains_key(k) {
-                diff.insert((*k).clone(), MetricAdded);
-            }
-        }
-        diff
-    }
-
     /// Insert a named `value` (+/- `noise`) metric into the map. The value
     /// must be non-negative. The `noise` indicates the uncertainty of the
     /// metric, which doubles as the "noise range" of acceptable
@@ -1298,33 +1054,6 @@ impl MetricMap {
         };
         let MetricMap(ref mut map) = *self;
         map.insert(name.to_string(), m);
-    }
-
-    /// Attempt to "ratchet" an external metric file. This involves loading
-    /// metrics from a metric file (if it exists), comparing against
-    /// the metrics in `self` using `compare_to_old`, and rewriting the
-    /// file to contain the metrics in `self` if none of the
-    /// `MetricChange`s are `Regression`. Returns the diff as well
-    /// as a boolean indicating whether the ratchet succeeded.
-    pub fn ratchet(&self, p: &Path, pct: Option<f64>) -> (MetricDiff, bool) {
-        let old = if p.exists() {
-            MetricMap::load(p)
-        } else {
-            MetricMap::new()
-        };
-
-        let diff : MetricDiff = self.compare_to_old(&old, pct);
-        let ok = diff.iter().all(|(_, v)| {
-            match *v {
-                Regression(_) => false,
-                _ => true
-            }
-        });
-
-        if ok {
-            self.save(p).unwrap();
-        }
-        return (diff, ok)
     }
 }
 
@@ -1467,8 +1196,7 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
                TestDesc, TestDescAndFn, TestOpts, run_test,
-               Metric, MetricMap, MetricAdded, MetricRemoved,
-               Improvement, Regression, LikelyNoise,
+               Metric, MetricMap,
                StaticTestName, DynTestName, DynTestFn, ShouldFail};
     use std::io::TempDir;
     use std::thunk::Thunk;
@@ -1734,81 +1462,5 @@ mod tests {
 
         m1.insert_metric("in-both-want-upwards-and-improved", 1000.0, -10.0);
         m2.insert_metric("in-both-want-upwards-and-improved", 2000.0, -10.0);
-
-        let diff1 = m2.compare_to_old(&m1, None);
-
-        assert_eq!(*(diff1.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff1.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff1.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff1.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
-                   Regression(100.0));
-        assert_eq!(*(diff1.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
-                   Improvement(50.0));
-        assert_eq!(*(diff1.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
-                   Regression(50.0));
-        assert_eq!(*(diff1.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
-                   Improvement(100.0));
-        assert_eq!(diff1.len(), 7);
-
-        let diff2 = m2.compare_to_old(&m1, Some(200.0));
-
-        assert_eq!(*(diff2.get(&"in-both-noise".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-first-noise".to_string()).unwrap()), MetricRemoved);
-        assert_eq!(*(diff2.get(&"in-second-noise".to_string()).unwrap()), MetricAdded);
-        assert_eq!(*(diff2.get(&"in-both-want-downwards-but-regressed".to_string()).unwrap()),
-                   LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-downwards-and-improved".to_string()).unwrap()),
-                   LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-upwards-but-regressed".to_string()).unwrap()),
-                   LikelyNoise);
-        assert_eq!(*(diff2.get(&"in-both-want-upwards-and-improved".to_string()).unwrap()),
-                   LikelyNoise);
-        assert_eq!(diff2.len(), 7);
-    }
-
-    #[test]
-    pub fn ratchet_test() {
-
-        let dpth = TempDir::new("test-ratchet").ok().expect("missing test for ratchet");
-        let pth = dpth.path().join("ratchet.json");
-
-        let mut m1 = MetricMap::new();
-        m1.insert_metric("runtime", 1000.0, 2.0);
-        m1.insert_metric("throughput", 50.0, 2.0);
-
-        let mut m2 = MetricMap::new();
-        m2.insert_metric("runtime", 1100.0, 2.0);
-        m2.insert_metric("throughput", 50.0, 2.0);
-
-        m1.save(&pth).unwrap();
-
-        // Ask for a ratchet that should fail to advance.
-        let (diff1, ok1) = m2.ratchet(&pth, None);
-        assert_eq!(ok1, false);
-        assert_eq!(diff1.len(), 2);
-        assert_eq!(*(diff1.get(&"runtime".to_string()).unwrap()), Regression(10.0));
-        assert_eq!(*(diff1.get(&"throughput".to_string()).unwrap()), LikelyNoise);
-
-        // Check that it was not rewritten.
-        let m3 = MetricMap::load(&pth);
-        let MetricMap(m3) = m3;
-        assert_eq!(m3.len(), 2);
-        assert_eq!(*(m3.get(&"runtime".to_string()).unwrap()), Metric::new(1000.0, 2.0));
-        assert_eq!(*(m3.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
-
-        // Ask for a ratchet with an explicit noise-percentage override,
-        // that should advance.
-        let (diff2, ok2) = m2.ratchet(&pth, Some(10.0));
-        assert_eq!(ok2, true);
-        assert_eq!(diff2.len(), 2);
-        assert_eq!(*(diff2.get(&"runtime".to_string()).unwrap()), LikelyNoise);
-        assert_eq!(*(diff2.get(&"throughput".to_string()).unwrap()), LikelyNoise);
-
-        // Check that it was rewritten.
-        let m4 = MetricMap::load(&pth);
-        let MetricMap(m4) = m4;
-        assert_eq!(m4.len(), 2);
-        assert_eq!(*(m4.get(&"runtime".to_string()).unwrap()), Metric::new(1100.0, 2.0));
-        assert_eq!(*(m4.get(&"throughput".to_string()).unwrap()), Metric::new(50.0, 2.0));
     }
 }

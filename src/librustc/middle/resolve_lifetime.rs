@@ -94,6 +94,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     // Fn lifetimes get added in visit_fn below:
                     visit::walk_item(this, item);
                 }
+                ast::ItemExternCrate(_) |
+                ast::ItemUse(_) |
                 ast::ItemMod(..) |
                 ast::ItemMac(..) |
                 ast::ItemForeignMod(..) |
@@ -396,10 +398,9 @@ impl<'a> LifetimeContext<'a> {
     }
 
     fn unresolved_lifetime_ref(&self, lifetime_ref: &ast::Lifetime) {
-        self.sess.span_err(
-            lifetime_ref.span,
-            &format!("use of undeclared lifetime name `{}`",
-                    token::get_name(lifetime_ref.name))[]);
+        span_err!(self.sess, lifetime_ref.span, E0261,
+            "use of undeclared lifetime name `{}`",
+                    token::get_name(lifetime_ref.name));
     }
 
     fn check_lifetime_defs(&mut self, old_scope: Scope, lifetimes: &Vec<ast::LifetimeDef>) {
@@ -409,11 +410,9 @@ impl<'a> LifetimeContext<'a> {
             let special_idents = [special_idents::static_lifetime];
             for lifetime in lifetimes.iter() {
                 if special_idents.iter().any(|&i| i.name == lifetime.lifetime.name) {
-                    self.sess.span_err(
-                        lifetime.lifetime.span,
-                        &format!("illegal lifetime parameter name: `{}`",
-                                token::get_name(lifetime.lifetime.name))
-                        []);
+                    span_err!(self.sess, lifetime.lifetime.span, E0262,
+                        "illegal lifetime parameter name: `{}`",
+                                token::get_name(lifetime.lifetime.name));
                 }
             }
 
@@ -422,12 +421,10 @@ impl<'a> LifetimeContext<'a> {
                 let lifetime_j = &lifetimes[j];
 
                 if lifetime_i.lifetime.name == lifetime_j.lifetime.name {
-                    self.sess.span_err(
-                        lifetime_j.lifetime.span,
-                        &format!("lifetime name `{}` declared twice in \
+                    span_err!(self.sess, lifetime_j.lifetime.span, E0263,
+                        "lifetime name `{}` declared twice in \
                                 the same scope",
-                                token::get_name(lifetime_j.lifetime.name))
-                        []);
+                                token::get_name(lifetime_j.lifetime.name));
                 }
             }
 
@@ -462,11 +459,11 @@ impl<'a> LifetimeContext<'a> {
                             format!("lifetime name `{}` shadows another \
                                     lifetime name that is already in scope",
                                     token::get_name(lifetime.name)).as_slice());
-                        self.sess.span_help(
+                        self.sess.span_note(
                             lifetime_def.span,
                             format!("shadowed lifetime `{}` declared here",
                                     token::get_name(lifetime.name)).as_slice());
-                        self.sess.span_help(
+                        self.sess.span_note(
                             lifetime.span,
                             "shadowed lifetimes are deprecated \
                              and will become a hard error before 1.0");
@@ -602,7 +599,7 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
     }
 }
 
-impl<'a> fmt::Show for ScopeChain<'a> {
+impl<'a> fmt::Debug for ScopeChain<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             EarlyScope(space, defs, _) => write!(fmt, "EarlyScope({:?}, {:?})", space, defs),

@@ -18,6 +18,7 @@ use core::prelude::*;
 
 use core::borrow::{Cow, IntoCow};
 use core::default::Default;
+use core::error::Error;
 use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
@@ -40,6 +41,7 @@ pub struct String {
 
 /// A possible error value from the `String::from_utf8` function.
 #[stable]
+#[derive(Show)]
 pub struct FromUtf8Error {
     bytes: Vec<u8>,
     error: Utf8Error,
@@ -48,6 +50,7 @@ pub struct FromUtf8Error {
 /// A possible error value from the `String::from_utf16` function.
 #[stable]
 #[allow(missing_copy_implementations)]
+#[derive(Show)]
 pub struct FromUtf16Error(());
 
 impl String {
@@ -680,30 +683,28 @@ impl FromUtf8Error {
     pub fn utf8_error(&self) -> Utf8Error { self.error }
 }
 
-impl fmt::Show for FromUtf8Error {
+#[stable]
+impl fmt::Display for FromUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Display::fmt(&self.error, f)
     }
 }
 
 #[stable]
-impl fmt::String for FromUtf8Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&self.error, f)
-    }
+impl Error for FromUtf8Error {
+    fn description(&self) -> &str { "invalid utf-8" }
 }
 
-impl fmt::Show for FromUtf16Error {
+#[stable]
+impl fmt::Display for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Display::fmt("invalid utf-16: lone surrogate found", f)
     }
 }
 
 #[stable]
-impl fmt::String for FromUtf16Error {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt("invalid utf-16: lone surrogate found", f)
-    }
+impl Error for FromUtf16Error {
+    fn description(&self) -> &str { "invalid utf-16" }
 }
 
 #[stable]
@@ -814,18 +815,18 @@ impl Default for String {
 }
 
 #[stable]
-impl fmt::String for String {
+impl fmt::Display for String {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&**self, f)
+        fmt::Display::fmt(&**self, f)
     }
 }
 
-#[unstable = "waiting on fmt stabilization"]
-impl fmt::Show for String {
+#[stable]
+impl fmt::Debug for String {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(&**self, f)
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
@@ -848,6 +849,7 @@ impl<'a> Add<&'a str> for String {
     }
 }
 
+#[stable]
 impl ops::Index<ops::Range<uint>> for String {
     type Output = str;
     #[inline]
@@ -855,6 +857,7 @@ impl ops::Index<ops::Range<uint>> for String {
         &self[][*index]
     }
 }
+#[stable]
 impl ops::Index<ops::RangeTo<uint>> for String {
     type Output = str;
     #[inline]
@@ -862,6 +865,7 @@ impl ops::Index<ops::RangeTo<uint>> for String {
         &self[][*index]
     }
 }
+#[stable]
 impl ops::Index<ops::RangeFrom<uint>> for String {
     type Output = str;
     #[inline]
@@ -869,6 +873,7 @@ impl ops::Index<ops::RangeFrom<uint>> for String {
         &self[][*index]
     }
 }
+#[stable]
 impl ops::Index<ops::FullRange> for String {
     type Output = str;
     #[inline]
@@ -934,7 +939,7 @@ pub trait ToString {
     fn to_string(&self) -> String;
 }
 
-impl<T: fmt::String + ?Sized> ToString for T {
+impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
     fn to_string(&self) -> String {
         use core::fmt::Writer;
@@ -1295,10 +1300,10 @@ mod tests {
     fn test_vectors() {
         let x: Vec<int> = vec![];
         assert_eq!(format!("{:?}", x), "[]");
-        assert_eq!(format!("{:?}", vec![1i]), "[1i]");
-        assert_eq!(format!("{:?}", vec![1i, 2, 3]), "[1i, 2i, 3i]");
+        assert_eq!(format!("{:?}", vec![1i]), "[1]");
+        assert_eq!(format!("{:?}", vec![1i, 2, 3]), "[1, 2, 3]");
         assert!(format!("{:?}", vec![vec![], vec![1i], vec![1i, 1]]) ==
-               "[[], [1i], [1i, 1i]]");
+               "[[], [1], [1, 1]]");
     }
 
     #[test]

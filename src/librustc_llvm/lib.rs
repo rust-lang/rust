@@ -53,7 +53,7 @@ pub use self::Linkage::*;
 
 use std::ffi::CString;
 use std::cell::RefCell;
-use std::{raw, mem};
+use std::{raw, mem, ptr};
 use libc::{c_uint, c_ushort, uint64_t, c_int, size_t, c_char};
 use libc::{c_longlong, c_ulonglong, c_void};
 use debuginfo::{DIBuilderRef, DIDescriptor,
@@ -2262,19 +2262,18 @@ pub unsafe fn static_link_hack_this_sucks() {
     LLVMInitializePowerPCAsmPrinter();
     LLVMInitializePowerPCAsmParser();
 
-    LLVMRustSetLLVMOptions(0 as c_int,
-                                       0 as *const _);
+    LLVMRustSetLLVMOptions(0 as c_int, ptr::null());
 
-    LLVMPassManagerBuilderPopulateModulePassManager(0 as *mut _, 0 as *mut _);
-    LLVMPassManagerBuilderPopulateLTOPassManager(0 as *mut _, 0 as *mut _, False, False);
-    LLVMPassManagerBuilderPopulateFunctionPassManager(0 as *mut _, 0 as *mut _);
-    LLVMPassManagerBuilderSetOptLevel(0 as *mut _, 0 as c_uint);
-    LLVMPassManagerBuilderUseInlinerWithThreshold(0 as *mut _, 0 as c_uint);
-    LLVMWriteBitcodeToFile(0 as *mut _, 0 as *const _);
+    LLVMPassManagerBuilderPopulateModulePassManager(ptr::null_mut(), ptr::null_mut());
+    LLVMPassManagerBuilderPopulateLTOPassManager(ptr::null_mut(), ptr::null_mut(), False, False);
+    LLVMPassManagerBuilderPopulateFunctionPassManager(ptr::null_mut(), ptr::null_mut());
+    LLVMPassManagerBuilderSetOptLevel(ptr::null_mut(), 0 as c_uint);
+    LLVMPassManagerBuilderUseInlinerWithThreshold(ptr::null_mut(), 0 as c_uint);
+    LLVMWriteBitcodeToFile(ptr::null_mut(), ptr::null());
     LLVMPassManagerBuilderCreate();
-    LLVMPassManagerBuilderDispose(0 as *mut _);
+    LLVMPassManagerBuilderDispose(ptr::null_mut());
 
-    LLVMRustLinkInExternalBitcode(0 as *mut _, 0 as *const _, 0 as size_t);
+    LLVMRustLinkInExternalBitcode(ptr::null_mut(), ptr::null(), 0 as size_t);
 
     LLVMLinkInMCJIT();
     LLVMLinkInInterpreter();

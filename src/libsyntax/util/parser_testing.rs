@@ -69,13 +69,6 @@ pub fn string_to_stmt(source_str : String) -> P<ast::Stmt> {
     })
 }
 
-/// Parse a string, return a view item
-pub fn string_to_view_item (source_str : String) -> ast::ViewItem {
-    with_error_checking_parse(source_str, |p| {
-        p.parse_view_item(Vec::new())
-    })
-}
-
 /// Parse a string, return a pat. Uses "irrefutable"... which doesn't
 /// (currently) affect parsing.
 pub fn string_to_pat(source_str: String) -> P<ast::Pat> {
@@ -130,10 +123,10 @@ pub fn matches_codepattern(a : &str, b : &str) -> bool {
     }
 }
 
-/// Given a string and an index, return the first uint >= idx
+/// Given a string and an index, return the first usize >= idx
 /// that is a non-ws-char or is outside of the legal range of
 /// the string.
-fn scan_for_non_ws_or_end(a : &str, idx: uint) -> uint {
+fn scan_for_non_ws_or_end(a : &str, idx: usize) -> usize {
     let mut i = idx;
     let len = a.len();
     while (i < len) && (is_whitespace(a.char_at(i))) {

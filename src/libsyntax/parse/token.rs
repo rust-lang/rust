@@ -83,9 +83,9 @@ pub enum Lit {
     Integer(ast::Name),
     Float(ast::Name),
     Str_(ast::Name),
-    StrRaw(ast::Name, uint), /* raw str delimited by n hash symbols */
+    StrRaw(ast::Name, usize), /* raw str delimited by n hash symbols */
     Binary(ast::Name),
-    BinaryRaw(ast::Name, uint), /* raw binary str delimited by n hash symbols */
+    BinaryRaw(ast::Name, usize), /* raw binary str delimited by n hash symbols */
 }
 
 impl Lit {
@@ -375,7 +375,7 @@ pub enum Nonterminal {
     NtTT(P<ast::TokenTree>), // needs P'ed to break a circularity
 }
 
-impl fmt::Show for Nonterminal {
+impl fmt::Debug for Nonterminal {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             NtItem(..) => f.pad("NtItem(..)"),
@@ -651,15 +651,15 @@ impl BytesContainer for InternedString {
     }
 }
 
-impl fmt::Show for InternedString {
+impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Debug::fmt(&self.string[], f)
     }
 }
 
-impl fmt::String for InternedString {
+impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "{}", &self.string[])
+        fmt::Display::fmt(&self.string[], f)
     }
 }
 
@@ -724,7 +724,7 @@ pub fn intern(s: &str) -> ast::Name {
     get_ident_interner().intern(s)
 }
 
-/// gensym's a new uint, using the current interner.
+/// gensym's a new usize, using the current interner.
 #[inline]
 pub fn gensym(s: &str) -> ast::Name {
     get_ident_interner().gensym(s)
@@ -757,7 +757,7 @@ pub fn fresh_name(src: &ast::Ident) -> ast::Name {
 
 // create a fresh mark.
 pub fn fresh_mark() -> ast::Mrk {
-    gensym("mark").uint() as u32
+    gensym("mark").usize() as u32
 }
 
 #[cfg(test)]

@@ -13,6 +13,7 @@ use prelude::v1::*;
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 use mem;
+use ptr;
 use rt;
 use sys_common::mutex::{MUTEX_INIT, Mutex};
 
@@ -137,7 +138,7 @@ unsafe fn init_dtors() {
     rt::at_exit(move|| {
         DTOR_LOCK.lock();
         let dtors = DTORS;
-        DTORS = 0 as *mut _;
+        DTORS = ptr::null_mut();
         mem::transmute::<_, Box<Vec<(Key, Dtor)>>>(dtors);
         assert!(DTORS.is_null()); // can't re-init after destructing
         DTOR_LOCK.unlock();
@@ -250,7 +251,7 @@ unsafe fn run_dtors() {
         for &(key, dtor) in dtors.iter() {
             let ptr = TlsGetValue(key);
             if !ptr.is_null() {
-                TlsSetValue(key, 0 as *mut _);
+                TlsSetValue(key, ptr::null_mut());
                 dtor(ptr as *mut _);
                 any_run = true;
             }

@@ -548,7 +548,7 @@ pub struct ExtCtxt<'a> {
     pub exported_macros: Vec<ast::MacroDef>,
 
     pub syntax_env: SyntaxEnv,
-    pub recursion_count: uint,
+    pub recursion_count: usize,
 }
 
 impl<'a> ExtCtxt<'a> {

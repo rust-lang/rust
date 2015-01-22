@@ -212,8 +212,8 @@ impl<'a> StringReader<'a> {
     /// offending string to the error message
     fn fatal_span_verbose(&self, from_pos: BytePos, to_pos: BytePos, mut m: String) -> ! {
         m.push_str(": ");
-        let from = self.byte_offset(from_pos).to_uint();
-        let to = self.byte_offset(to_pos).to_uint();
+        let from = self.byte_offset(from_pos).to_usize();
+        let to = self.byte_offset(to_pos).to_usize();
         m.push_str(&self.filemap.src[from..to]);
         self.fatal_span_(from_pos, to_pos, &m[]);
     }
@@ -271,15 +271,15 @@ impl<'a> StringReader<'a> {
     fn with_str_from_to<T, F>(&self, start: BytePos, end: BytePos, f: F) -> T where
         F: FnOnce(&str) -> T,
     {
-        f(self.filemap.src.slice(
-                self.byte_offset(start).to_uint(),
-                self.byte_offset(end).to_uint()))
+        f(&self.filemap.src[
+                self.byte_offset(start).to_usize()..
+                self.byte_offset(end).to_usize()])
     }
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
     fn translate_crlf<'b>(&self, start: BytePos,
                           s: &'b str, errmsg: &'b str) -> CowString<'b> {
-        let mut i = 0u;
+        let mut i = 0us;
         while i < s.len() {
             let str::CharRange { ch, next } = s.char_range_at(i);
             if ch == '\r' {
@@ -295,7 +295,7 @@ impl<'a> StringReader<'a> {
         return s.into_cow();
 
         fn translate_crlf_(rdr: &StringReader, start: BytePos,
-                        s: &str, errmsg: &str, mut i: uint) -> String {
+                        s: &str, errmsg: &str, mut i: usize) -> String {
             let mut buf = String::with_capacity(s.len());
             let mut j = 0;
             while i < s.len() {
@@ -321,7 +321,7 @@ impl<'a> StringReader<'a> {
     /// discovered, add it to the FileMap's list of line start offsets.
     pub fn bump(&mut self) {
         self.last_pos = self.pos;
-        let current_byte_offset = self.byte_offset(self.pos).to_uint();
+        let current_byte_offset = self.byte_offset(self.pos).to_usize();
         if current_byte_offset < self.filemap.src.len() {
             assert!(self.curr.is_some());
             let last_char = self.curr.unwrap();
@@ -329,12 +329,12 @@ impl<'a> StringReader<'a> {
                           .src
                           .char_range_at(current_byte_offset);
             let byte_offset_diff = next.next - current_byte_offset;
-            self.pos = self.pos + Pos::from_uint(byte_offset_diff);
+            self.pos = self.pos + Pos::from_usize(byte_offset_diff);
             self.curr = Some(next.ch);
-            self.col = self.col + CharPos(1u);
+            self.col = self.col + CharPos(1us);
             if last_char == '\n' {
                 self.filemap.next_line(self.last_pos);
-                self.col = CharPos(0u);
+                self.col = CharPos(0us);
             }
 
             if byte_offset_diff > 1 {
@@ -346,7 +346,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_uint();
+        let offset = self.byte_offset(self.pos).to_usize();
         if offset < self.filemap.src.len() {
             Some(self.filemap.src.char_at(offset))
         } else {
@@ -359,7 +359,7 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn nextnextch(&self) -> Option<char> {
-        let offset = self.byte_offset(self.pos).to_uint();
+        let offset = self.byte_offset(self.pos).to_usize();
         let s = self.filemap.src.as_slice();
         if offset >= s.len() { return None }
         let str::CharRange { next, .. } = s.char_range_at(offset);
@@ -472,7 +472,7 @@ impl<'a> StringReader<'a> {
                 cmap.files.borrow_mut().push(self.filemap.clone());
                 let loc = cmap.lookup_char_pos_adj(self.last_pos);
                 debug!("Skipping a shebang");
-                if loc.line == 1u && loc.col == CharPos(0u) {
+                if loc.line == 1us && loc.col == CharPos(0us) {
                     // FIXME: Add shebang "token", return it
                     let start = self.last_pos;
                     while !self.curr_is('\n') && !self.is_eof() { self.bump(); }
@@ -519,7 +519,7 @@ impl<'a> StringReader<'a> {
         let is_doc_comment = self.curr_is('*') || self.curr_is('!');
         let start_bpos = self.last_pos - BytePos(2);
 
-        let mut level: int = 1;
+        let mut level: isize = 1;
         let mut has_cr = false;
         while level > 0 {
             if self.is_eof() {
@@ -586,10 +586,10 @@ impl<'a> StringReader<'a> {
     /// `\x00` marker.
     #[inline(never)]
     fn scan_embedded_hygienic_ident(&mut self) -> ast::Ident {
-        fn bump_expecting_char<'a,D:fmt::Show>(r: &mut StringReader<'a>,
-                                               c: char,
-                                               described_c: D,
-                                               whence: &str) {
+        fn bump_expecting_char<'a,D:fmt::Debug>(r: &mut StringReader<'a>,
+                                                c: char,
+                                                described_c: D,
+                                                whence: &str) {
             match r.curr {
                 Some(r_c) if r_c == c => r.bump(),
                 Some(r_c) => panic!("expected {:?}, hit {:?}, {}", described_c, r_c, whence),
@@ -645,8 +645,8 @@ impl<'a> StringReader<'a> {
 
     /// Scan through any digits (base `radix`) or underscores, and return how
     /// many digits there were.
-    fn scan_digits(&mut self, radix: uint) -> uint {
-        let mut len = 0u;
+    fn scan_digits(&mut self, radix: usize) -> usize {
+        let mut len = 0us;
         loop {
             let c = self.curr;
             if c == Some('_') { debug!("skipping a _"); self.bump(); continue; }
@@ -724,7 +724,7 @@ impl<'a> StringReader<'a> {
     /// Scan over `n_digits` hex digits, stopping at `delim`, reporting an
     /// error if too many or too few digits are encountered.
     fn scan_hex_digits(&mut self,
-                       n_digits: uint,
+                       n_digits: usize,
                        delim: char,
                        below_0x7f_only: bool)
                        -> bool {
@@ -799,14 +799,14 @@ impl<'a> StringReader<'a> {
                                 if self.curr == Some('{') {
                                     self.scan_unicode_escape(delim)
                                 } else {
-                                    let res = self.scan_hex_digits(4u, delim, false);
+                                    let res = self.scan_hex_digits(4us, delim, false);
                                     let sp = codemap::mk_sp(escaped_pos, self.last_pos);
                                     self.old_escape_warning(sp);
                                     res
                                 }
                             }
                             'U' if !ascii_only => {
-                                let res = self.scan_hex_digits(8u, delim, false);
+                                let res = self.scan_hex_digits(8us, delim, false);
                                 let sp = codemap::mk_sp(escaped_pos, self.last_pos);
                                 self.old_escape_warning(sp);
                                 res
@@ -877,7 +877,7 @@ impl<'a> StringReader<'a> {
     fn scan_unicode_escape(&mut self, delim: char) -> bool {
         self.bump(); // past the {
         let start_bpos = self.last_pos;
-        let mut count: uint = 0;
+        let mut count = 0us;
         let mut accum_int = 0;
 
         while !self.curr_is('}') && count <= 6 {
@@ -935,13 +935,13 @@ impl<'a> StringReader<'a> {
 
     /// Check that a base is valid for a floating literal, emitting a nice
     /// error if it isn't.
-    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: uint) {
+    fn check_float_base(&mut self, start_bpos: BytePos, last_bpos: BytePos, base: usize) {
         match base {
-            16u => self.err_span_(start_bpos, last_bpos, "hexadecimal float literal is not \
-                                 supported"),
-            8u => self.err_span_(start_bpos, last_bpos, "octal float literal is not supported"),
-            2u => self.err_span_(start_bpos, last_bpos, "binary float literal is not supported"),
-            _ => ()
+            16us => self.err_span_(start_bpos, last_bpos, "hexadecimal float literal is not \
+                                   supported"),
+            8us => self.err_span_(start_bpos, last_bpos, "octal float literal is not supported"),
+            2us => self.err_span_(start_bpos, last_bpos, "binary float literal is not supported"),
+            _   => ()
         }
     }
 
@@ -1189,7 +1189,7 @@ impl<'a> StringReader<'a> {
           'r' => {
             let start_bpos = self.last_pos;
             self.bump();
-            let mut hash_count = 0u;
+            let mut hash_count = 0us;
             while self.curr_is('#') {
                 self.bump();
                 hash_count += 1;
@@ -1374,7 +1374,7 @@ impl<'a> StringReader<'a> {
     fn scan_raw_byte_string(&mut self) -> token::Lit {
         let start_bpos = self.last_pos;
         self.bump();
-        let mut hash_count = 0u;
+        let mut hash_count = 0us;
         while self.curr_is('#') {
             self.bump();
             hash_count += 1;
@@ -1616,9 +1616,9 @@ mod test {
         test!("1.0", Float, "1.0");
         test!("1.0e10", Float, "1.0e10");
 
-        assert_eq!(setup(&mk_sh(), "2u".to_string()).next_token().tok,
+        assert_eq!(setup(&mk_sh(), "2us".to_string()).next_token().tok,
                    token::Literal(token::Integer(token::intern("2")),
-                                  Some(token::intern("u"))));
+                                  Some(token::intern("us"))));
         assert_eq!(setup(&mk_sh(), "r###\"raw\"###suffix".to_string()).next_token().tok,
                    token::Literal(token::StrRaw(token::intern("raw"), 3),
                                   Some(token::intern("suffix"))));

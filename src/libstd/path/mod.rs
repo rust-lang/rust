@@ -399,7 +399,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
                 match name.rposition_elem(&dot) {
                     None | Some(0) => None,
                     Some(1) if name == b".." => None,
-                    Some(pos) => Some(&name[(pos+1)..])
+                    Some(pos) => Some(&name[pos+1..])
                 }
             }
         }
@@ -823,13 +823,15 @@ pub struct Display<'a, P:'a> {
     filename: bool
 }
 
-impl<'a, P: GenericPath> fmt::Show for Display<'a, P> {
+#[stable]
+impl<'a, P: GenericPath> fmt::Debug for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Debug::fmt(&self.as_cow(), f)
     }
 }
 
-impl<'a, P: GenericPath> fmt::String for Display<'a, P> {
+#[stable]
+impl<'a, P: GenericPath> fmt::Display for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_cow().fmt(f)
     }

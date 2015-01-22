@@ -59,7 +59,7 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
     let mut cmd = Command::new(ar);
 
     cmd.arg(args).args(paths);
-    debug!("{}", cmd);
+    debug!("{:?}", cmd);
 
     match cwd {
         Some(p) => {
@@ -73,9 +73,7 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
         Ok(prog) => {
             let o = prog.wait_with_output().unwrap();
             if !o.status.success() {
-                handler.err(&format!("{} failed with: {}",
-                                 cmd,
-                                 o.status)[]);
+                handler.err(&format!("{:?} failed with: {}", cmd, o.status)[]);
                 handler.note(&format!("stdout ---\n{}",
                                   str::from_utf8(&o.output[]).unwrap())[]);
                 handler.note(&format!("stderr ---\n{}",

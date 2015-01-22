@@ -41,7 +41,7 @@
 extern crate arena;
 
 use std::iter::range_step;
-use std::thread::Thread;
+use std::thread::{Thread, JoinGuard};
 use arena::TypedArena;
 
 struct Tree<'a> {
@@ -71,6 +71,18 @@ fn bottom_up_tree<'r>(arena: &'r TypedArena<Tree<'r>>, item: i32, depth: i32)
     }
 }
 
+fn inner(depth: i32, iterations: i32) -> String {
+    let mut chk = 0;
+    for i in 1 .. iterations + 1 {
+        let arena = TypedArena::new();
+        let a = bottom_up_tree(&arena, i, depth);
+        let b = bottom_up_tree(&arena, -i, depth);
+        chk += item_check(&a) + item_check(&b);
+    }
+    format!("{}\t trees of depth {}\t check: {}",
+            iterations * 2, depth, chk)
+}
+
 fn main() {
     let args = std::os::args();
     let args = args.as_slice();
@@ -97,20 +109,10 @@ fn main() {
     let long_lived_tree = bottom_up_tree(&long_lived_arena, 0, max_depth);
 
     let messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
-            use std::num::Int;
-            let iterations = 2.pow((max_depth - depth + min_depth) as usize);
-            Thread::scoped(move|| {
-                let mut chk = 0;
-                for i in 1 .. iterations + 1 {
-                    let arena = TypedArena::new();
-                    let a = bottom_up_tree(&arena, i, depth);
-                    let b = bottom_up_tree(&arena, -i, depth);
-                    chk += item_check(&a) + item_check(&b);
-                }
-                format!("{}\t trees of depth {}\t check: {}",
-                        iterations * 2, depth, chk)
-            })
-        }).collect::<Vec<_>>();
+        use std::num::Int;
+        let iterations = 2.pow((max_depth - depth + min_depth) as usize);
+        Thread::scoped(move || inner(depth, iterations))
+    }).collect::<Vec<_>>();
 
     for message in messages.into_iter() {
         println!("{}", message.join().ok().unwrap());

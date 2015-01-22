@@ -40,8 +40,8 @@ impl<'a> SpanUtils<'a> {
         format!("file_name,{},file_line,{},file_col,{},extent_start,{},extent_start_bytes,{},\
                  file_line_end,{},file_col_end,{},extent_end,{},extent_end_bytes,{}",
                 lo_loc.file.name,
-                lo_loc.line, lo_loc.col.to_uint(), lo_pos.to_uint(), lo_pos_byte.to_uint(),
-                hi_loc.line, hi_loc.col.to_uint(), hi_pos.to_uint(), hi_pos_byte.to_uint())
+                lo_loc.line, lo_loc.col.to_usize(), lo_pos.to_usize(), lo_pos_byte.to_usize(),
+                hi_loc.line, hi_loc.col.to_usize(), hi_pos.to_usize(), hi_pos_byte.to_usize())
     }
 
     // sub_span starts at span.lo, so we need to adjust the positions etc.

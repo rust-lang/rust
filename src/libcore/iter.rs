@@ -99,6 +99,20 @@ pub trait Iterator {
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 }
 
+// FIXME(#21363) remove `old_impl_check` when bug is fixed
+#[old_impl_check]
+impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        (**self).next()
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
+    }
+}
+
 /// Conversion from an `Iterator`
 #[stable]
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
@@ -2701,63 +2715,93 @@ impl<A: Int> Iterator for RangeStepInclusive<A> {
     }
 }
 
+macro_rules! range_impl {
+    ($($t:ty)*) => ($(
+        #[stable]
+        impl Iterator for ::ops::Range<$t> {
+            type Item = $t;
 
-/// The `Step` trait identifies objects which can be stepped over in both
-/// directions. The `steps_between` function provides a way to
-/// compare two Step objects (it could be provided using `step()` and `Ord`,
-/// but the implementation would be so inefficient as to be useless).
-#[unstable = "design of range notation/iteration is in flux"]
-pub trait Step: Ord {
-    /// Change self to the next object.
-    fn step(&mut self);
-    /// Change self to the previous object.
-    fn step_back(&mut self);
-    /// The steps_between two step objects.
-    /// start should always be less than end, so the result should never be negative.
-    /// Return None if it is not possible to calculate steps_between without
-    /// overflow.
-    fn steps_between(start: &Self, end: &Self) -> Option<uint>;
+            #[inline]
+            fn next(&mut self) -> Option<$t> {
+                if self.start < self.end {
+                    let result = self.start;
+                    self.start += 1;
+                    return Some(result);
+                }
+
+                return None;
+            }
+
+            #[inline]
+            fn size_hint(&self) -> (uint, Option<uint>) {
+                debug_assert!(self.end >= self.start);
+                let hint = (self.end - self.start) as uint;
+                (hint, Some(hint))
+            }
+        }
+
+        #[stable]
+        impl ExactSizeIterator for ::ops::Range<$t> {}
+    )*)
 }
 
-macro_rules! step_impl {
+macro_rules! range_impl_no_hint {
     ($($t:ty)*) => ($(
-        #[unstable = "Trait is unstable."]
-        impl Step for $t {
+        #[stable]
+        impl Iterator for ::ops::Range<$t> {
+            type Item = $t;
+
             #[inline]
-            fn step(&mut self) { *self += 1; }
-            #[inline]
-            fn step_back(&mut self) { *self -= 1; }
-            #[inline]
-            fn steps_between(start: &$t, end: &$t) -> Option<uint> {
-                debug_assert!(end >= start);
-                Some((*end - *start) as uint)
+            fn next(&mut self) -> Option<$t> {
+                if self.start < self.end {
+                    let result = self.start;
+                    self.start += 1;
+                    return Some(result);
+                }
+
+                return None;
             }
         }
     )*)
 }
 
-macro_rules! step_impl_no_between {
+macro_rules! range_other_impls {
     ($($t:ty)*) => ($(
-        #[unstable = "Trait is unstable."]
-        impl Step for $t {
+        #[stable]
+        impl DoubleEndedIterator for ::ops::Range<$t> {
             #[inline]
-            fn step(&mut self) { *self += 1; }
+            fn next_back(&mut self) -> Option<$t> {
+                if self.start < self.end {
+                    self.end -= 1;
+                    return Some(self.end);
+                }
+
+                return None;
+            }
+        }
+
+        #[stable]
+        impl Iterator for ::ops::RangeFrom<$t> {
+            type Item = $t;
+
             #[inline]
-            fn step_back(&mut self) { *self -= 1; }
-            #[inline]
-            fn steps_between(_start: &$t, _end: &$t) -> Option<uint> {
-                None
+            fn next(&mut self) -> Option<$t> {
+                let result = self.start;
+                self.start += 1;
+                debug_assert!(result < self.start);
+                return Some(result);
             }
         }
     )*)
 }
 
-step_impl!(uint u8 u16 u32 int i8 i16 i32);
+range_impl!(uint u8 u16 u32 int i8 i16 i32);
 #[cfg(target_pointer_width = "64")]
-step_impl!(u64 i64);
+range_impl!(u64 i64);
 #[cfg(target_pointer_width = "32")]
-step_impl_no_between!(u64 i64);
+range_impl_no_hint!(u64 i64);
 
+range_other_impls!(uint u8 u16 u32 u64 int i8 i16 i32 i64);
 
 /// An iterator that repeats an element endlessly
 #[derive(Clone)]

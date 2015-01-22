@@ -334,7 +334,8 @@ impl Div<i32> for Duration {
     }
 }
 
-impl fmt::String for Duration {
+#[stable]
+impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // technically speaking, negative duration is not valid ISO 8601,
         // but we need to print it anyway.

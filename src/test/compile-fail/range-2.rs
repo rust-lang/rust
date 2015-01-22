@@ -12,7 +12,7 @@
 
 pub fn main() {
     let r = {
-        (&42is)..&42
+        &42is..&42
         //~^ ERROR borrowed value does not live long enough
         //~^^ ERROR borrowed value does not live long enough
     };

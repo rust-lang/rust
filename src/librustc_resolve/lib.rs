@@ -65,10 +65,10 @@ use syntax::ast::{DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprQPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
-use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemFn};
-use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
-use syntax::ast::{ItemStruct, ItemTrait, ItemTy, Local, LOCAL_CRATE};
-use syntax::ast::{MethodImplItem, Mod, Name, NodeId};
+use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
+use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
+use syntax::ast::{Local, MethodImplItem, Mod, Name, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path};
 use syntax::ast::{PolyTraitRef, PrimTy, SelfExplicit};
@@ -96,6 +96,10 @@ use std::fmt;
 use std::mem::replace;
 use std::rc::{Rc, Weak};
 use std::uint;
+
+// NB: This module needs to be declared first so diagnostics are
+// registered before they are used.
+pub mod diagnostics;
 
 mod check_unused;
 mod record_exports;
@@ -536,7 +540,7 @@ impl Module {
     }
 }
 
-impl fmt::Show for Module {
+impl fmt::Debug for Module {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:?}, kind: {:?}, {}",
                self.def_id,
@@ -1139,7 +1143,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn get_trait_name(&self, did: DefId) -> Name {
-        if did.krate == LOCAL_CRATE {
+        if did.krate == ast::LOCAL_CRATE {
             self.ast_map.expect_item(did.node).ident.name
         } else {
             csearch::get_trait_name(&self.session.cstore, did)
@@ -1718,7 +1722,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            in this module",
                                           namespace_name,
                                           token::get_name(name).get());
-                        self.session.span_err(import_directive.span, msg.as_slice());
+                        span_err!(self.session, import_directive.span, E0251, "{}", msg.as_slice());
                     } else {
                         let target = Target::new(containing_module.clone(),
                                                  name_bindings.clone(),
@@ -1748,10 +1752,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     import_span: Span,
                                     name: Name,
                                     namespace: Namespace) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         debug!("check_for_conflicting_import: {}; target exists: {}",
                token::get_name(name).get(),
                target.is_some());
@@ -1765,7 +1765,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     ValueNS => "value",
                                   },
                                   token::get_name(name).get());
-                self.session.span_err(import_span, &msg[]);
+                span_err!(self.session, import_span, E0252, "{}", &msg[]);
             }
             Some(_) | None => {}
         }
@@ -1780,7 +1780,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         if !name_bindings.defined_in_namespace_with(namespace, IMPORTABLE) {
             let msg = format!("`{}` is not directly importable",
                               token::get_name(name));
-            self.session.span_err(import_span, &msg[]);
+            span_err!(self.session, import_span, E0253, "{}", &msg[]);
         }
     }
 
@@ -1791,10 +1791,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                      &ImportResolution,
                                                      import_span: Span,
                                                      name: Name) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         // First, check for conflicts between imports and `extern crate`s.
         if module.external_module_children
                  .borrow()
@@ -1805,7 +1801,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                        crate in this module \
                                        (maybe you meant `use {0}::*`?)",
                                       token::get_name(name).get());
-                    self.session.span_err(import_span, &msg[]);
+                    span_err!(self.session, import_span, E0254, "{}", &msg[]);
                 }
                 Some(_) | None => {}
             }
@@ -1827,7 +1823,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let msg = format!("import `{}` conflicts with value \
                                        in this module",
                                       token::get_name(name).get());
-                    self.session.span_err(import_span, &msg[]);
+                    span_err!(self.session, import_span, E0255, "{}", &msg[]);
                     if let Some(span) = value.value_span {
                         self.session.span_note(span,
                                                "conflicting value here");
@@ -1845,7 +1841,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             let msg = format!("import `{}` conflicts with type in \
                                                this module",
                                               token::get_name(name).get());
-                            self.session.span_err(import_span, &msg[]);
+                            span_err!(self.session, import_span, E0256, "{}", &msg[]);
                             if let Some(span) = ty.type_span {
                                 self.session.span_note(span,
                                                        "note conflicting type here")
@@ -1858,7 +1854,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         let msg = format!("inherent implementations \
                                                            are only allowed on types \
                                                            defined in the current module");
-                                        self.session.span_err(span, &msg[]);
+                                        span_err!(self.session, span, E0257, "{}", &msg[]);
                                         self.session.span_note(import_span,
                                                                "import from other module here")
                                     }
@@ -1867,7 +1863,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     let msg = format!("import `{}` conflicts with existing \
                                                        submodule",
                                                       token::get_name(name).get());
-                                    self.session.span_err(import_span, &msg[]);
+                                    span_err!(self.session, import_span, E0258, "{}", &msg[]);
                                     if let Some(span) = ty.type_span {
                                         self.session.span_note(span,
                                                                "note conflicting module here")
@@ -1888,16 +1884,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                    module: &Module,
                                                    name: Name,
                                                    span: Span) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         if module.external_module_children.borrow().contains_key(&name) {
-            self.session
-                .span_err(span,
-                          &format!("an external crate named `{}` has already \
+                span_err!(self.session, span, E0259,
+                          "an external crate named `{}` has already \
                                    been imported into this module",
-                                  token::get_name(name).get())[]);
+                                  token::get_name(name).get());
         }
     }
 
@@ -1906,17 +1897,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                              module: &Module,
                                                              name: Name,
                                                              span: Span) {
-        if self.session.features.borrow().import_shadowing {
-            return
-        }
-
         if module.external_module_children.borrow().contains_key(&name) {
-            self.session
-                .span_err(span,
-                          &format!("the name `{}` conflicts with an external \
+                span_err!(self.session, span, E0260,
+                          "the name `{}` conflicts with an external \
                                    crate that has been imported into this \
                                    module",
-                                  token::get_name(name).get())[]);
+                                  token::get_name(name).get());
         }
     }
 
@@ -1965,7 +1951,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let module_name = self.module_to_string(&*search_module);
                     let mut span = span;
                     let msg = if "???" == &module_name[] {
-                        span.hi = span.lo + Pos::from_uint(segment_name.get().len());
+                        span.hi = span.lo + Pos::from_usize(segment_name.get().len());
 
                         match search_parent_externals(name,
                                                      &self.current_module) {
@@ -2083,8 +2069,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let msg = format!("Could not find `{}` in `{}`",
                                             // idx +- 1 to account for the
                                             // colons on either side
-                                            &mpath[(idx + 1)..],
-                                            &mpath[..(idx - 1)]);
+                                            &mpath[idx + 1..],
+                                            &mpath[..idx - 1]);
                         return Failed(Some((span, msg)));
                     },
                     None => {
@@ -2760,7 +2746,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         for (i, rib) in ribs.iter().enumerate().rev() {
             match rib.bindings.get(&name).cloned() {
                 Some(def_like) => {
-                    return self.upvarify(&ribs[(i + 1)..], def_like, span);
+                    return self.upvarify(&ribs[i + 1..], def_like, span);
                 }
                 None => {
                     // Continue.
@@ -2982,9 +2968,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-           ItemMac(..) => {
+            ItemExternCrate(_) | ItemUse(_) | ItemMac(..) => {
                 // do nothing, these are just around to be encoded
-           }
+            }
         }
     }
 
@@ -3522,6 +3508,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 debug!("(resolving block) found anonymous module, moving \
                         down");
                 self.current_module = anonymous_module.clone();
+            }
+        }
+
+        // Check for imports appearing after non-item statements.
+        let mut found_non_item = false;
+        for statement in block.stmts.iter() {
+            if let ast::StmtDecl(ref declaration, _) = statement.node {
+                if let ast::DeclItem(ref i) = declaration.node {
+                    match i.node {
+                        ItemExternCrate(_) | ItemUse(_) if found_non_item => {
+                            span_err!(self.session, i.span, E0154,
+                                "imports are not allowed after non-item statements");
+                        }
+                        _ => {}
+                    }
+                } else {
+                    found_non_item = true
+                }
+            } else {
+                found_non_item = true;
             }
         }
 

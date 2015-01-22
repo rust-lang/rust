@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -18,7 +18,7 @@ use borrow::BorrowFrom;
 use clone::Clone;
 use cmp::{max, Eq, PartialEq};
 use default::Default;
-use fmt::{self, Show};
+use fmt::{self, Debug};
 use hash::{self, Hash, SipHasher};
 use iter::{self, Iterator, ExactSizeIterator, IteratorExt, FromIterator, Extend, Map};
 use marker::Sized;
@@ -76,7 +76,7 @@ impl DefaultResizePolicy {
         // min_capacity(size) must be smaller than the internal capacity,
         // so that the map is not resized:
         // `min_capacity(usable_capacity(x)) <= x`.
-        // The lef-hand side can only be smaller due to flooring by integer
+        // The left-hand side can only be smaller due to flooring by integer
         // division.
         //
         // This doesn't have to be checked for overflow since allocation size
@@ -270,7 +270,7 @@ fn test_resize_policy() {
 /// ```
 /// use std::collections::HashMap;
 ///
-/// #[derive(Hash, Eq, PartialEq, Show)]
+/// #[derive(Hash, Eq, PartialEq, Debug)]
 /// struct Viking {
 ///     name: String,
 ///     country: String,
@@ -838,8 +838,8 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// map.insert("b", 2);
     /// map.insert("c", 3);
     ///
-    /// for key in map.values() {
-    ///     println!("{}", key);
+    /// for val in map.values() {
+    ///     println!("{}", val);
     /// }
     /// ```
     #[stable]
@@ -938,7 +938,7 @@ impl<K, V, S, H> HashMap<K, V, S>
         search_entry_hashed(&mut self.table, hash, key)
     }
 
-    /// Return the number of elements in the map.
+    /// Returns the number of elements in the map.
     ///
     /// # Example
     ///
@@ -953,7 +953,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     #[stable]
     pub fn len(&self) -> uint { self.table.size() }
 
-    /// Return true if the map contains no elements.
+    /// Returns true if the map contains no elements.
     ///
     /// # Example
     ///
@@ -1216,8 +1216,8 @@ impl<K, V, S, H> Eq for HashMap<K, V, S>
 {}
 
 #[stable]
-impl<K, V, S, H> Show for HashMap<K, V, S>
-    where K: Eq + Hash<H> + Show, V: Show,
+impl<K, V, S, H> Debug for HashMap<K, V, S>
+    where K: Eq + Hash<H> + Debug, V: Debug,
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
@@ -1274,7 +1274,7 @@ impl<K, V, S, H, Q: ?Sized> IndexMut<Q> for HashMap<K, V, S>
     }
 }
 
-/// HashMap iterator
+/// HashMap iterator.
 #[stable]
 pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>
@@ -1289,13 +1289,13 @@ impl<'a, K, V> Clone for Iter<'a, K, V> {
     }
 }
 
-/// HashMap mutable values iterator
+/// HashMap mutable values iterator.
 #[stable]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: table::IterMut<'a, K, V>
 }
 
-/// HashMap move iterator
+/// HashMap move iterator.
 #[stable]
 pub struct IntoIter<K, V> {
     inner: iter::Map<
@@ -1306,7 +1306,7 @@ pub struct IntoIter<K, V> {
     >
 }
 
-/// HashMap keys iterator
+/// HashMap keys iterator.
 #[stable]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
@@ -1321,7 +1321,7 @@ impl<'a, K, V> Clone for Keys<'a, K, V> {
     }
 }
 
-/// HashMap values iterator
+/// HashMap values iterator.
 #[stable]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
@@ -1336,7 +1336,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
     }
 }
 
-/// HashMap drain iterator
+/// HashMap drain iterator.
 #[unstable = "matches collection reform specification, waiting for dust to settle"]
 pub struct Drain<'a, K: 'a, V: 'a> {
     inner: iter::Map<
@@ -1347,13 +1347,13 @@ pub struct Drain<'a, K: 'a, V: 'a> {
     >
 }
 
-/// A view into a single occupied location in a HashMap
+/// A view into a single occupied location in a HashMap.
 #[unstable = "precise API still being fleshed out"]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
-/// A view into a single empty location in a HashMap
+/// A view into a single empty location in a HashMap.
 #[unstable = "precise API still being fleshed out"]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
@@ -1361,21 +1361,21 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
     elem: VacantEntryState<K, V, &'a mut RawTable<K, V>>,
 }
 
-/// A view into a single location in a map, which may be vacant or occupied
+/// A view into a single location in a map, which may be vacant or occupied.
 #[unstable = "precise API still being fleshed out"]
 pub enum Entry<'a, K: 'a, V: 'a> {
-    /// An occupied Entry
+    /// An occupied Entry.
     Occupied(OccupiedEntry<'a, K, V>),
-    /// A vacant Entry
+    /// A vacant Entry.
     Vacant(VacantEntry<'a, K, V>),
 }
 
-/// Possible states of a VacantEntry
+/// Possible states of a VacantEntry.
 enum VacantEntryState<K, V, M> {
     /// The index is occupied, but the key to insert has precedence,
-    /// and will kick the current one out on insertion
+    /// and will kick the current one out on insertion.
     NeqElem(FullBucket<K, V, M>, uint),
-    /// The index is genuinely vacant
+    /// The index is genuinely vacant.
     NoElem(EmptyBucket<K, V, M>),
 }
 
@@ -1453,7 +1453,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 
 #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
 impl<'a, K, V> Entry<'a, K, V> {
-    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
+    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant.
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
         match self {
             Occupied(entry) => Ok(entry.into_mut()),
@@ -1464,12 +1464,12 @@ impl<'a, K, V> Entry<'a, K, V> {
 
 #[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
-    /// Gets a reference to the value in the entry
+    /// Gets a reference to the value in the entry.
     pub fn get(&self) -> &V {
         self.elem.read().1
     }
 
-    /// Gets a mutable reference to the value in the entry
+    /// Gets a mutable reference to the value in the entry.
     pub fn get_mut(&mut self) -> &mut V {
         self.elem.read_mut().1
     }
@@ -1996,8 +1996,8 @@ mod test_map {
 
         let map_str = format!("{:?}", map);
 
-        assert!(map_str == "HashMap {1i: 2i, 3i: 4i}" ||
-                map_str == "HashMap {3i: 4i, 1i: 2i}");
+        assert!(map_str == "HashMap {1: 2, 3: 4}" ||
+                map_str == "HashMap {3: 4, 1: 2}");
         assert_eq!(format!("{:?}", empty), "HashMap {}");
     }
 

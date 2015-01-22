@@ -1456,8 +1456,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
             rbml_w.end_tag();
         }
       }
-      ast::ItemMac(..) => {
-        // macros are encoded separately
+      ast::ItemExternCrate(_) | ast::ItemUse(_) |ast::ItemMac(..) => {
+        // these are encoded separately
       }
     }
 }

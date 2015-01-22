@@ -180,6 +180,7 @@ use std::io::LineBufferedWriter;
 use std::io;
 use std::mem;
 use std::os;
+use std::ptr;
 use std::rt;
 use std::slice;
 use std::sync::{Once, ONCE_INIT};
@@ -239,21 +240,15 @@ struct DefaultLogger {
 }
 
 /// Wraps the log level with fmt implementations.
-#[derive(Copy, PartialEq, PartialOrd)]
+#[derive(Copy, PartialEq, PartialOrd, Show)]
 pub struct LogLevel(pub u32);
 
-impl fmt::Show for LogLevel {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, fmt)
-    }
-}
-
-impl fmt::String for LogLevel {
+impl fmt::Display for LogLevel {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let LogLevel(level) = *self;
         match LOG_LEVEL_NAMES.get(level as uint - 1) {
-            Some(ref name) => fmt::String::fmt(name, fmt),
-            None => fmt::String::fmt(&level, fmt)
+            Some(ref name) => fmt::Display::fmt(name, fmt),
+            None => fmt::Display::fmt(&level, fmt)
         }
     }
 }
@@ -437,11 +432,11 @@ fn init() {
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
                 mem::transmute(DIRECTIVES);
-            DIRECTIVES = 0 as *const Vec<directive::LogDirective>;
+            DIRECTIVES = ptr::null();
 
             if !FILTER.is_null() {
                 let _filter: Box<Regex> = mem::transmute(FILTER);
-                FILTER = 0 as *const _;
+                FILTER = ptr::null();
             }
         });
     }

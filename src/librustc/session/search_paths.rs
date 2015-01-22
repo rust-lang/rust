@@ -36,13 +36,13 @@ impl SearchPaths {
 
     pub fn add_path(&mut self, path: &str) {
         let (kind, path) = if path.starts_with("native=") {
-            (PathKind::Native, path.slice_from("native=".len()))
+            (PathKind::Native, &path["native=".len()..])
         } else if path.starts_with("crate=") {
-            (PathKind::Crate, path.slice_from("crate=".len()))
+            (PathKind::Crate, &path["crate=".len()..])
         } else if path.starts_with("dependency=") {
-            (PathKind::Dependency, path.slice_from("dependency=".len()))
+            (PathKind::Dependency, &path["dependency=".len()..])
         } else if path.starts_with("all=") {
-            (PathKind::All, path.slice_from("all=".len()))
+            (PathKind::All, &path["all=".len()..])
         } else {
             (PathKind::All, path)
         };

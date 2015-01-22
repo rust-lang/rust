@@ -42,10 +42,10 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
     let mut valid = true;
     let mut inner = s;
     if s.len() > 4 && s.starts_with("_ZN") && s.ends_with("E") {
-        inner = s.slice(3, s.len() - 1);
+        inner = &s[3 .. s.len() - 1];
     // On Windows, dbghelp strips leading underscores, so we accept "ZN...E" form too.
     } else if s.len() > 3 && s.starts_with("ZN") && s.ends_with("E") {
-        inner = s.slice(2, s.len() - 1);
+        inner = &s[2 .. s.len() - 1];
     } else {
         valid = false;
     }
@@ -83,11 +83,11 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
             }
             let mut rest = inner;
             while rest.char_at(0).is_numeric() {
-                rest = rest.slice_from(1);
+                rest = &rest[1..];
             }
-            let i: uint = inner.slice_to(inner.len() - rest.len()).parse().unwrap();
-            inner = rest.slice_from(i);
-            rest = rest.slice_to(i);
+            let i: uint = inner[.. (inner.len() - rest.len())].parse().unwrap();
+            inner = &rest[i..];
+            rest = &rest[..i];
             while rest.len() > 0 {
                 if rest.starts_with("$") {
                     macro_rules! demangle {
@@ -128,8 +128,8 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                         None => rest.len(),
                         Some(i) => i,
                     };
-                    try!(writer.write_str(rest.slice_to(idx)));
-                    rest = rest.slice_from(idx);
+                    try!(writer.write_str(&rest[..idx]));
+                    rest = &rest[idx..];
                 }
             }
         }
