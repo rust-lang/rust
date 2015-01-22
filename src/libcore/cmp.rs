@@ -110,13 +110,13 @@ pub trait Eq: PartialEq<Self> {
 pub enum Ordering {
     /// An ordering where a compared value is less [than another].
     #[stable]
-    Less = -1i,
+    Less = -1,
     /// An ordering where a compared value is equal [to another].
     #[stable]
-    Equal = 0i,
+    Equal = 0,
     /// An ordering where a compared value is greater [than another].
     #[stable]
-    Greater = 1i,
+    Greater = 1,
 }
 
 impl Ordering {
@@ -132,12 +132,12 @@ impl Ordering {
     /// assert_eq!(Equal.reverse(), Equal);
     /// assert_eq!(Greater.reverse(), Less);
     ///
-    /// let mut data: &mut [_] = &mut [2u, 10, 5, 8];
+    /// let mut data: &mut [_] = &mut [2, 10, 5, 8];
     ///
     /// // sort the array from largest to smallest.
     /// data.sort_by(|a, b| a.cmp(b).reverse());
     ///
-    /// let b: &mut [_] = &mut [10u, 8, 5, 2];
+    /// let b: &mut [_] = &mut [10, 8, 5, 2];
     /// assert!(data == b);
     /// ```
     #[inline]
@@ -174,9 +174,9 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// ```
     /// use std::cmp::Ordering::{Less, Equal, Greater};
     ///
-    /// assert_eq!( 5u.cmp(&10), Less);     // because 5 < 10
-    /// assert_eq!(10u.cmp(&5),  Greater);  // because 10 > 5
-    /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5
+    /// assert_eq!( 5.cmp(&10), Less);     // because 5 < 10
+    /// assert_eq!(10.cmp(&5),  Greater);  // because 10 > 5
+    /// assert_eq!( 5.cmp(&5),  Equal);    // because 5 == 5
     /// ```
     #[stable]
     fn cmp(&self, other: &Self) -> Ordering;

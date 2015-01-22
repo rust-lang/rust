@@ -102,7 +102,7 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
             if num < 10 {
                 Some(transmute(('0' as uint + num) as u32))
             } else {
-                Some(transmute(('a' as uint + num - 10u) as u32))
+                Some(transmute(('a' as uint + num - 10) as u32))
             }
         }
     } else {
@@ -208,8 +208,8 @@ impl CharExt for char {
         }
         let val = match self {
           '0' ... '9' => self as uint - ('0' as uint),
-          'a' ... 'z' => self as uint + 10u - ('a' as uint),
-          'A' ... 'Z' => self as uint + 10u - ('A' as uint),
+          'a' ... 'z' => self as uint + 10 - ('a' as uint),
+          'A' ... 'Z' => self as uint + 10 - ('A' as uint),
           _ => return None,
         };
         if val < radix { Some(val) }
@@ -241,10 +241,10 @@ impl CharExt for char {
     fn len_utf8(self) -> uint {
         let code = self as u32;
         match () {
-            _ if code < MAX_ONE_B   => 1u,
-            _ if code < MAX_TWO_B   => 2u,
-            _ if code < MAX_THREE_B => 3u,
-            _  => 4u,
+            _ if code < MAX_ONE_B   => 1,
+            _ if code < MAX_TWO_B   => 2,
+            _ if code < MAX_THREE_B => 3,
+            _  => 4,
         }
     }
 
@@ -359,7 +359,7 @@ impl Iterator for EscapeUnicode {
                 Some('u')
             }
             EscapeUnicodeState::LeftBrace => {
-                let mut n = 0u;
+                let mut n = 0;
                 while (self.c as u32) >> (4 * (n + 1)) != 0 {
                     n += 1;
                 }
