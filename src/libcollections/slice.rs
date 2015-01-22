@@ -967,11 +967,30 @@ impl<T> SliceExt for [T] {
 /// An extension trait for concatenating slices
 pub trait SliceConcatExt<T: ?Sized, U> {
     /// Flattens a slice of `T` into a single value `U`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = vec!["hello", "world"];
+    ///
+    /// let s: String = v.concat();
+    ///
+    /// println!("{}", s); // prints "helloworld"
+    /// ```
     #[stable]
     fn concat(&self) -> U;
 
-    /// Flattens a slice of `T` into a single value `U`, placing a
-    /// given separator between each.
+    /// Flattens a slice of `T` into a single value `U`, placing a given separator between each.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = vec!["hello", "world"];
+    ///
+    /// let s: String = v.connect(" ");
+    ///
+    /// println!("{}", s); // prints "hello world"
+    /// ```
     #[stable]
     fn connect(&self, sep: &T) -> U;
 }
