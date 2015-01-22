@@ -648,6 +648,9 @@ fn convert_item(ccx: &CollectCtxt, it: &ast::Item) {
                                    predicates,
                                    &enum_definition.variants);
         },
+        ast::ItemDefTrait(_, ref ast_trait_ref) => {
+
+        }
         ast::ItemImpl(_, _,
                       ref generics,
                       ref opt_trait_ref,
@@ -1141,6 +1144,7 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
             let t = ty::mk_struct(tcx, local_def(it.id), tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
+        ast::ItemDefTrait(..) |
         ast::ItemTrait(..) |
         ast::ItemImpl(..) |
         ast::ItemMod(..) |

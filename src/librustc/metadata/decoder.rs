@@ -126,6 +126,7 @@ enum Family {
     TupleVariant,          // v
     StructVariant,         // V
     Impl,                  // i
+    DefTrait,              // d
     Trait,                 // I
     Struct,                // S
     PublicField,           // g
@@ -151,6 +152,7 @@ fn item_family(item: rbml::Doc) -> Family {
       'v' => TupleVariant,
       'V' => StructVariant,
       'i' => Impl,
+      'd' => DefTrait,
       'I' => Trait,
       'S' => Struct,
       'g' => PublicField,
@@ -357,7 +359,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
         }
         Trait => DlDef(def::DefTrait(did)),
         Enum => DlDef(def::DefTy(did, true)),
-        Impl => DlImpl(did),
+        Impl | DefTrait => DlImpl(did),
         PublicField | InheritedField => DlField,
     }
 }
@@ -480,7 +482,7 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
     let item_doc = lookup_item(id, cdata.data());
     let fam = item_family(item_doc);
     match fam {
-        Family::Impl => {
+        Family::Impl | Family::DefTrait => {
             reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
                 doc_trait_ref(tp, tcx, cdata)
             })
@@ -1356,7 +1358,7 @@ pub fn get_trait_of_item(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
     let parent_item_doc = lookup_item(parent_item_id.node, cdata.data());
     match item_family(parent_item_doc) {
         Trait => Some(item_def_id(parent_item_doc, cdata)),
-        Impl => {
+        Impl | DefTrait => {
             reader::maybe_get_doc(parent_item_doc, tag_item_trait_ref)
                 .map(|_| item_trait_ref(parent_item_doc, tcx, cdata).def_id)
         }

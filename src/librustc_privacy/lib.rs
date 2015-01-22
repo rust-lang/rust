@@ -209,7 +209,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
         match item.node {
             // impls/extern blocks do not break the "public chain" because they
             // cannot have visibility qualifiers on them anyway
-            ast::ItemImpl(..) | ast::ItemForeignMod(..) => {}
+            ast::ItemImpl(..) | ast::ItemDefTrait(..) | ast::ItemForeignMod(..) => {}
 
             // Traits are a little special in that even if they themselves are
             // not public they may still be exported.
@@ -1145,6 +1145,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
+            ast::ItemDefTrait(..) |
             ast::ItemConst(..) | ast::ItemStatic(..) | ast::ItemStruct(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
             ast::ItemExternCrate(_) | ast::ItemUse(_) | ast::ItemMac(..) => {}
@@ -1204,7 +1205,7 @@ impl<'a, 'tcx> SanePrivacyVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ItemExternCrate(_) | ast::ItemUse(_) |
+            ast::ItemDefTrait(..) | ast::ItemExternCrate(_) | ast::ItemUse(_) |
             ast::ItemStatic(..) | ast::ItemConst(..) |
             ast::ItemFn(..) | ast::ItemMod(..) | ast::ItemTy(..) |
             ast::ItemMac(..) => {}

@@ -40,7 +40,7 @@ use syntax::ast::{Block, Crate};
 use syntax::ast::{DeclItem, DefId};
 use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic};
 use syntax::ast::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
-use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefTrait};
 use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use syntax::ast::{MethodImplItem, Name, NamedField, NodeId};
 use syntax::ast::{PathListIdent, PathListMod};
@@ -656,6 +656,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 parent.clone()
             }
 
+            ItemDefTrait(_, _) |
             ItemImpl(_, _, _, Some(_), _, _) => parent.clone(),
 
             ItemTrait(_, _, _, ref items) => {

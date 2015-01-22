@@ -115,6 +115,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                 ast::ItemUse(_) |
                 ast::ItemMod(..) |
                 ast::ItemMac(..) |
+                ast::ItemDefTrait(..) |
                 ast::ItemForeignMod(..) |
                 ast::ItemStatic(..) |
                 ast::ItemConst(..) => {

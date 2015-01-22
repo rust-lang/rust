@@ -1201,6 +1201,18 @@ fn encode_info_for_item(ecx: &EncodeContext,
             None => {}
         }
       }
+      ast::ItemDefTrait(unsafety, ref ast_trait_ref) => {
+          add_to_index(item, rbml_w, index);
+          rbml_w.start_tag(tag_items_data_item);
+          encode_def_id(rbml_w, def_id);
+          encode_family(rbml_w, 'd');
+          encode_name(rbml_w, item.ident.name);
+          encode_unsafety(rbml_w, unsafety);
+
+          let trait_ref = ty::node_id_to_trait_ref(tcx, ast_trait_ref.ref_id);
+          encode_trait_ref(rbml_w, ecx, &*trait_ref, tag_item_trait_ref);
+          rbml_w.end_tag();
+      }
       ast::ItemImpl(unsafety, polarity, _, ref opt_trait, ref ty, ref ast_items) => {
         // We need to encode information about the default methods we
         // have inherited, so we drive this based on the impl structure.
