@@ -2088,7 +2088,13 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                   unique_type_id,
                                                   containing_scope);
 
-    let fields = ty::struct_fields(cx.tcx(), def_id, substs);
+    let mut fields = ty::struct_fields(cx.tcx(), def_id, substs);
+
+    // The `Ty` values returned by `ty::struct_fields` can still contain
+    // `ty_projection` variants, so normalize those away.
+    for field in fields.iter_mut() {
+        field.mt.ty = monomorphize::normalize_associated_type(cx.tcx(), &field.mt.ty);
+    }
 
     create_and_register_recursive_type_forward_declaration(
         cx,
