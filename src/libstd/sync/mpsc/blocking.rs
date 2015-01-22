@@ -14,8 +14,6 @@ use thread::Thread;
 use sync::atomic::{AtomicBool, ATOMIC_BOOL_INIT, Ordering};
 use sync::Arc;
 use marker::{Sync, Send};
-#[cfg(stage0)] // NOTE remove use after next snapshot
-use marker::{NoSend, NoSync};
 use mem;
 use clone::Clone;
 
@@ -32,42 +30,14 @@ pub struct SignalToken {
     inner: Arc<Inner>,
 }
 
-#[cfg(stage0)] // NOTE remove impl after next snapshot
-pub struct WaitToken {
-    inner: Arc<Inner>,
-    no_send: NoSend,
-    no_sync: NoSync,
-}
-
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub struct WaitToken {
     inner: Arc<Inner>,
 }
 
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 impl !Send for WaitToken {}
 
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 impl !Sync for WaitToken {}
 
-#[cfg(stage0)] // NOTE remove impl after next snapshot
-pub fn tokens() -> (WaitToken, SignalToken) {
-    let inner = Arc::new(Inner {
-        thread: Thread::current(),
-        woken: ATOMIC_BOOL_INIT,
-    });
-    let wait_token = WaitToken {
-        inner: inner.clone(),
-        no_send: NoSend,
-        no_sync: NoSync,
-    };
-    let signal_token = SignalToken {
-        inner: inner
-    };
-    (wait_token, signal_token)
-}
-
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub fn tokens() -> (WaitToken, SignalToken) {
     let inner = Arc::new(Inner {
         thread: Thread::current(),

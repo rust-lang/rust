@@ -16,16 +16,18 @@ use core::any::Any;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
+use core::error::{Error, FromError};
 use core::fmt;
 use core::hash::{self, Hash};
+use core::iter::Iterator;
 use core::marker::Sized;
 use core::mem;
+use core::ops::{Deref, DerefMut};
 use core::option::Option;
 use core::ptr::Unique;
 use core::raw::TraitObject;
-use core::result::Result;
 use core::result::Result::{Ok, Err};
-use core::ops::{Deref, DerefMut};
+use core::result::Result;
 
 /// A value that represents the global exchange heap. This is the default
 /// place that the `box` keyword allocates into when no place is supplied.
@@ -156,20 +158,22 @@ impl BoxAny for Box<Any> {
     }
 }
 
-impl<T: ?Sized + fmt::Show> fmt::Show for Box<T> {
+#[stable]
+impl<T: fmt::Display + ?Sized> fmt::Display for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Box({:?})", &**self)
+        fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable]
-impl<T: ?Sized + fmt::String> fmt::String for Box<T> {
+impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&**self, f)
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
-impl fmt::Show for Box<Any> {
+#[stable]
+impl fmt::Debug for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }
@@ -187,56 +191,22 @@ impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
-#[cfg(test)]
-mod test {
-    #[test]
-    fn test_owned_clone() {
-        let a = Box::new(5i);
-        let b: Box<int> = a.clone();
-        assert!(a == b);
+// FIXME(#21363) remove `old_impl_check` when bug is fixed
+#[old_impl_check]
+impl<'a, T> Iterator for Box<Iterator<Item=T> + 'a> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        (**self).next()
     }
 
-    #[test]
-    fn any_move() {
-        let a = Box::new(8u) as Box<Any>;
-        let b = Box::new(Test) as Box<Any>;
-
-        match a.downcast::<uint>() {
-            Ok(a) => { assert!(a == Box::new(8u)); }
-            Err(..) => panic!()
-        }
-        match b.downcast::<Test>() {
-            Ok(a) => { assert!(a == Box::new(Test)); }
-            Err(..) => panic!()
-        }
-
-        let a = Box::new(8u) as Box<Any>;
-        let b = Box::new(Test) as Box<Any>;
-
-        assert!(a.downcast::<Box<Test>>().is_err());
-        assert!(b.downcast::<Box<uint>>().is_err());
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
     }
+}
 
-    #[test]
-    fn test_show() {
-        let a = Box::new(8u) as Box<Any>;
-        let b = Box::new(Test) as Box<Any>;
-        let a_str = a.to_str();
-        let b_str = b.to_str();
-        assert_eq!(a_str, "Box<Any>");
-        assert_eq!(b_str, "Box<Any>");
-
-        let a = &8u as &Any;
-        let b = &Test as &Any;
-        let s = format!("{}", a);
-        assert_eq!(s, "&Any");
-        let s = format!("{}", b);
-        assert_eq!(s, "&Any");
-    }
-
-    #[test]
-    fn deref() {
-        fn homura<T: Deref<Target=i32>>(_: T) { }
-        homura(Box::new(765i32));
+impl<'a, E: Error + 'a> FromError<E> for Box<Error + 'a> {
+    fn from_error(err: E) -> Box<Error + 'a> {
+        Box::new(err)
     }
 }

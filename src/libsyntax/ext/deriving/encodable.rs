@@ -16,7 +16,7 @@
 //!
 //! ```ignore
 //! #[derive(Encodable, Decodable)]
-//! struct Node { id: uint }
+//! struct Node { id: usize }
 //! ```
 //!
 //! would generate two implementations like:
@@ -27,7 +27,7 @@
 //!         s.emit_struct("Node", 1, |this| {
 //!             this.emit_struct_field("id", 0, |this| {
 //!                 Encodable::encode(&self.id, this)
-//!                 /* this.emit_uint(self.id) can also be used */
+//!                 /* this.emit_usize(self.id) can also be used */
 //!             })
 //!         })
 //!     }
@@ -192,7 +192,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 let call = cx.expr_method_call(span, blkencoder.clone(),
                                                emit_struct_field,
                                                vec!(cx.expr_str(span, name),
-                                                 cx.expr_uint(span, i),
+                                                 cx.expr_usize(span, i),
                                                  lambda));
 
                 // last call doesn't need a try!
@@ -218,7 +218,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                 cx.ident_of("emit_struct"),
                                 vec!(
                 cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
-                cx.expr_uint(trait_span, fields.len()),
+                cx.expr_usize(trait_span, fields.len()),
                 blk
             ))
         }
@@ -239,7 +239,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 let lambda = cx.lambda_expr_1(span, enc, blkarg);
                 let call = cx.expr_method_call(span, blkencoder.clone(),
                                                emit_variant_arg,
-                                               vec!(cx.expr_uint(span, i),
+                                               vec!(cx.expr_usize(span, i),
                                                  lambda));
                 let call = if i != last {
                     cx.expr_try(span, call)
@@ -262,8 +262,8 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
             let call = cx.expr_method_call(trait_span, blkencoder,
                                            cx.ident_of("emit_enum_variant"),
                                            vec!(name,
-                                             cx.expr_uint(trait_span, idx),
-                                             cx.expr_uint(trait_span, fields.len()),
+                                             cx.expr_usize(trait_span, idx),
+                                             cx.expr_usize(trait_span, fields.len()),
                                              blk));
             let blk = cx.lambda_expr_1(trait_span, call, blkarg);
             let ret = cx.expr_method_call(trait_span,

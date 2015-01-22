@@ -578,7 +578,7 @@ impl<T> RingBuf<T> {
 
             if contiguous {
                 let (empty, buf) = buf.split_at_mut(0);
-                (buf.slice_mut(tail, head), empty)
+                (&mut buf[tail .. head], empty)
             } else {
                 let (mid, right) = buf.split_at_mut(tail);
                 let (left, _) = mid.split_at_mut(head);
@@ -1611,7 +1611,7 @@ impl<A> Extend<A> for RingBuf<A> {
 }
 
 #[stable]
-impl<T: fmt::Show> fmt::Show for RingBuf<T> {
+impl<T: fmt::Debug> fmt::Debug for RingBuf<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "RingBuf ["));
 
@@ -1630,7 +1630,7 @@ mod tests {
     use self::Taggypar::*;
     use prelude::*;
     use core::iter;
-    use std::fmt::Show;
+    use std::fmt::Debug;
     use std::hash::{self, SipHasher};
     use test::Bencher;
     use test;
@@ -1678,7 +1678,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn test_parameterized<T:Clone + PartialEq + Show>(a: T, b: T, c: T, d: T) {
+    fn test_parameterized<T:Clone + PartialEq + Debug>(a: T, b: T, c: T, d: T) {
         let mut deq = RingBuf::new();
         assert_eq!(deq.len(), 0);
         deq.push_front(a.clone());
@@ -2302,7 +2302,7 @@ mod tests {
     #[test]
     fn test_show() {
         let ringbuf: RingBuf<int> = range(0i, 10).collect();
-        assert_eq!(format!("{:?}", ringbuf), "RingBuf [0i, 1i, 2i, 3i, 4i, 5i, 6i, 7i, 8i, 9i]");
+        assert_eq!(format!("{:?}", ringbuf), "RingBuf [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
                                                                         .map(|&s| s)

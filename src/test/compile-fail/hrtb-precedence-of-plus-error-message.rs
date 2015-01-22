@@ -19,17 +19,17 @@ trait Bar {
 struct Foo<'a> {
     a: &'a Bar+'a,
         //~^ ERROR E0178
-        //~^^ NOTE perhaps you meant `&'a (Bar + 'a)`?
+        //~^^ HELP perhaps you meant `&'a (Bar + 'a)`?
 
     b: &'a mut Bar+'a,
         //~^ ERROR E0178
-        //~^^ NOTE perhaps you meant `&'a mut (Bar + 'a)`?
+        //~^^ HELP perhaps you meant `&'a mut (Bar + 'a)`?
 
     c: Box<Bar+'a>, // OK, no paren needed in this context
 
     d: fn() -> Bar+'a,
         //~^ ERROR E0178
-        //~^^ NOTE perhaps you forgot parentheses
+        //~^^ HELP perhaps you forgot parentheses
         //~^^^ WARN deprecated syntax
 }
 

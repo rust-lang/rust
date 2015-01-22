@@ -147,14 +147,22 @@ pub fn record_extern_fqn(cx: &DocContext, did: ast::DefId, kind: clean::TypeKind
 
 pub fn build_external_trait(cx: &DocContext, tcx: &ty::ctxt,
                             did: ast::DefId) -> clean::Trait {
+    use clean::TraitMethod;
+
     let def = ty::lookup_trait_def(tcx, did);
     let trait_items = ty::trait_items(tcx, did).clean(cx);
     let provided = ty::provided_trait_methods(tcx, did);
     let items = trait_items.into_iter().map(|trait_item| {
-        if provided.iter().any(|a| a.def_id == trait_item.def_id) {
-            clean::ProvidedMethod(trait_item)
-        } else {
-            clean::RequiredMethod(trait_item)
+        match trait_item.inner {
+            clean::TyMethodItem(_) => {
+                if provided.iter().any(|a| a.def_id == trait_item.def_id) {
+                    TraitMethod::ProvidedMethod(trait_item)
+                } else {
+                    TraitMethod::RequiredMethod(trait_item)
+                }
+            },
+            clean::AssociatedTypeItem(_) => TraitMethod::TypeTraitItem(trait_item),
+            _ => unreachable!()
         }
     });
     let trait_def = ty::lookup_trait_def(tcx, did);
@@ -311,12 +319,25 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                 };
                 Some(item)
             }
-            ty::TypeTraitItem(_) => {
-                // FIXME(pcwalton): Implement.
-                None
+            ty::TypeTraitItem(ref assoc_ty) => {
+                let did = assoc_ty.def_id;
+                let type_scheme = ty::lookup_item_type(tcx, did);
+                // Not sure the choice of ParamSpace actually matters here, because an
+                // associated type won't have generics on the LHS
+                let typedef = (type_scheme, subst::ParamSpace::TypeSpace).clean(cx);
+                Some(clean::Item {
+                    name: Some(assoc_ty.name.clean(cx)),
+                    inner: clean::TypedefItem(typedef),
+                    source: clean::Span::empty(),
+                    attrs: vec![],
+                    visibility: None,
+                    stability: stability::lookup(tcx, did).clean(cx),
+                    def_id: did
+                })
             }
         }
     }).collect();
+    let polarity = csearch::get_impl_polarity(tcx, did);
     return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
             derived: clean::detect_derived(attrs.as_slice()),
@@ -329,6 +350,7 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
             for_: ty.ty.clean(cx),
             generics: (&ty.generics, subst::TypeSpace).clean(cx),
             items: trait_items,
+            polarity: polarity.map(|p| { p.clean(cx) }),
         }),
         source: clean::Span::empty(),
         name: None,

@@ -61,7 +61,6 @@ use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
 use rustc::metadata::creader::CrateOrString::Str;
-use rustc::DIAGNOSTICS;
 use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
@@ -98,7 +97,7 @@ fn run_compiler(args: &[String]) {
         None => return
     };
 
-    let descriptions = diagnostics::registry::Registry::new(&DIAGNOSTICS);
+    let descriptions = diagnostics_registry();
     match matches.opt_str("explain") {
         Some(ref code) => {
             match descriptions.find_description(&code[]) {
@@ -154,10 +153,14 @@ fn run_compiler(args: &[String]) {
         return
     }
 
-    let pretty = matches.opt_default("pretty", "normal").map(|a| {
-        // stable pretty-print variants only
-        pretty::parse_pretty(&sess, a.as_slice(), false)
-    });
+    let pretty = if sess.opts.debugging_opts.unstable_options {
+        matches.opt_default("pretty", "normal").map(|a| {
+            // stable pretty-print variants only
+            pretty::parse_pretty(&sess, a.as_slice(), false)
+        })
+    } else {
+        None
+    };
     let pretty = if pretty.is_none() &&
         sess.unstable_options() {
             matches.opt_str("xpretty").map(|a| {
@@ -659,8 +662,20 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
     }
 }
 
+pub fn diagnostics_registry() -> diagnostics::registry::Registry {
+    use syntax::diagnostics::registry::Registry;
+
+    let all_errors = Vec::new() +
+        rustc::diagnostics::DIAGNOSTICS.as_slice() +
+        rustc_typeck::diagnostics::DIAGNOSTICS.as_slice() +
+        rustc_resolve::diagnostics::DIAGNOSTICS.as_slice();
+
+    Registry::new(&*all_errors)
+}
+
 pub fn main() {
     let args = std::os::args();
     let result = run(args);
     std::os::set_exit_status(result);
 }
+

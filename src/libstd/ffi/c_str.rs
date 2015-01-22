@@ -115,11 +115,12 @@ impl Deref for CString {
     type Target = [libc::c_char];
 
     fn deref(&self) -> &[libc::c_char] {
-        self.inner.slice_to(self.inner.len() - 1)
+        &self.inner[..(self.inner.len() - 1)]
     }
 }
 
-impl fmt::Show for CString {
+#[stable]
+impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         String::from_utf8_lossy(self.as_bytes()).fmt(f)
     }
@@ -214,5 +215,11 @@ mod tests {
             let s = CString::from_vec_unchecked(vec![0]);
             assert_eq!(s.as_bytes(), b"\0");
         }
+    }
+
+    #[test]
+    fn formatted() {
+        let s = CString::from_slice(b"12");
+        assert_eq!(format!("{:?}", s), "\"12\"");
     }
 }

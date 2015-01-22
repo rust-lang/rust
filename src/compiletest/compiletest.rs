@@ -77,10 +77,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
-          optopt("", "save-metrics", "file to save metrics to", "FILE"),
-          optopt("", "ratchet-metrics", "file to ratchet metrics against", "FILE"),
-          optopt("", "ratchet-noise-percent",
-                 "percent change in metrics to consider noise", "N"),
           optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
@@ -90,7 +86,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
-          optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite", "A.B"),
           optflag("h", "help", "show this message"));
 
     assert!(!args.is_empty());
@@ -152,12 +147,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         filter: filter,
         cfail_regex: Regex::new(errors::EXPECTED_PATTERN).unwrap(),
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
-        save_metrics: matches.opt_str("save-metrics").map(|s| Path::new(s)),
-        ratchet_metrics:
-            matches.opt_str("ratchet-metrics").map(|s| Path::new(s)),
-        ratchet_noise_percent:
-            matches.opt_str("ratchet-noise-percent")
-                   .and_then(|s| s.as_slice().parse::<f64>()),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
@@ -176,7 +165,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
                 opt_str2(matches.opt_str("adb-test-dir")).as_slice() &&
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
-        test_shard: test::opt_shard(matches.opt_str("test-shard")),
         verbose: matches.opt_present("verbose"),
     }
 }
@@ -210,10 +198,6 @@ pub fn log_config(config: &Config) {
     logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}",
                     config.adb_device_status));
-    match config.test_shard {
-        None => logv(c, "test_shard: (all)".to_string()),
-        Some((a,b)) => logv(c, format!("test_shard: {}.{}", a, b))
-    }
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("\n"));
 }
@@ -284,15 +268,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         run_benchmarks: true,
-        ratchet_metrics: config.ratchet_metrics.clone(),
-        ratchet_noise_percent: config.ratchet_noise_percent.clone(),
-        save_metrics: config.save_metrics.clone(),
-        test_shard: config.test_shard.clone(),
         nocapture: false,
         color: test::AutoColor,
-        show_boxplot: false,
-        boxplot_width: 50,
-        show_all_stats: false,
     }
 }
 

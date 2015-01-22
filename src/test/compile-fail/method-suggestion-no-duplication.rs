@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,4 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub fn foo() {}
+// issue #21405
+
+fn foo<F>(f: F) where F: FnMut(usize) {}
+
+fn main() {
+    foo(|s| s.is_empty());
+    //~^ ERROR does not implement any method
+    //~^^ HELP #1: `core::slice::SliceExt`
+    //~^^^ HELP #2: `core::str::StrExt`
+    //~^^^^ HELP #3: `collections::slice::SliceExt`
+    //~^^^^^ HELP #4: `collections::str::StrExt`
+}

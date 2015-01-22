@@ -481,7 +481,7 @@ impl<'tcx> Datum<'tcx, Lvalue> {
 }
 
 /// Generic methods applicable to any sort of datum.
-impl<'tcx, K: KindOps + fmt::Show> Datum<'tcx, K> {
+impl<'tcx, K: KindOps + fmt::Debug> Datum<'tcx, K> {
     pub fn new(val: ValueRef, ty: Ty<'tcx>, kind: K) -> Datum<'tcx, K> {
         Datum { val: val, ty: ty, kind: kind }
     }
@@ -591,7 +591,7 @@ impl<'blk, 'tcx, K> DatumBlock<'blk, 'tcx, K> {
     }
 }
 
-impl<'blk, 'tcx, K: KindOps + fmt::Show> DatumBlock<'blk, 'tcx, K> {
+impl<'blk, 'tcx, K: KindOps + fmt::Debug> DatumBlock<'blk, 'tcx, K> {
     pub fn to_expr_datumblock(self) -> DatumBlock<'blk, 'tcx, Expr> {
         DatumBlock::new(self.bcx, self.datum.to_expr_datum())
     }

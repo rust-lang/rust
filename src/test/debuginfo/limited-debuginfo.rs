@@ -12,7 +12,7 @@
 
 // ignore-lldb
 
-// compile-flags:--debuginfo=1
+// compile-flags:-C debuginfo=1
 
 // Make sure functions have proper names
 // gdb-command:info functions

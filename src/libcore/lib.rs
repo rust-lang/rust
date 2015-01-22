@@ -63,6 +63,8 @@
 #![feature(unboxed_closures)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![feature(on_unimplemented)]
+// FIXME(#21363) remove `old_impl_check` when bug is fixed
+#![feature(old_impl_check)]
 #![deny(missing_docs)]
 
 #[macro_use]
@@ -136,6 +138,7 @@ pub mod slice;
 pub mod str;
 pub mod hash;
 pub mod fmt;
+pub mod error;
 
 // note: does not need to be public
 mod tuple;

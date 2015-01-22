@@ -78,10 +78,6 @@ pub trait Folder : Sized {
         noop_fold_view_path(view_path, self)
     }
 
-    fn fold_view_item(&mut self, vi: ViewItem) -> ViewItem {
-        noop_fold_view_item(vi, self)
-    }
-
     fn fold_foreign_item(&mut self, ni: P<ForeignItem>) -> P<ForeignItem> {
         noop_fold_foreign_item(ni, self)
     }
@@ -174,8 +170,8 @@ pub trait Folder : Sized {
         noop_fold_ident(i, self)
     }
 
-    fn fold_uint(&mut self, i: uint) -> uint {
-        noop_fold_uint(i, self)
+    fn fold_usize(&mut self, i: usize) -> usize {
+        noop_fold_usize(i, self)
     }
 
     fn fold_path(&mut self, p: Path) -> Path {
@@ -349,16 +345,13 @@ pub fn noop_fold_meta_items<T: Folder>(meta_items: Vec<P<MetaItem>>, fld: &mut T
 pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<ViewPath> {
     view_path.map(|Spanned {node, span}| Spanned {
         node: match node {
-            ViewPathSimple(ident, path, node_id) => {
-                let id = fld.new_id(node_id);
-                ViewPathSimple(ident, fld.fold_path(path), id)
+            ViewPathSimple(ident, path) => {
+                ViewPathSimple(ident, fld.fold_path(path))
             }
-            ViewPathGlob(path, node_id) => {
-                let id = fld.new_id(node_id);
-                ViewPathGlob(fld.fold_path(path), id)
+            ViewPathGlob(path) => {
+                ViewPathGlob(fld.fold_path(path))
             }
-            ViewPathList(path, path_list_idents, node_id) => {
-                let id = fld.new_id(node_id);
+            ViewPathList(path, path_list_idents) => {
                 ViewPathList(fld.fold_path(path),
                              path_list_idents.move_map(|path_list_ident| {
                                 Spanned {
@@ -373,8 +366,7 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
                                     },
                                     span: fld.new_span(path_list_ident.span)
                                 }
-                             }),
-                             id)
+                             }))
             }
         },
         span: fld.new_span(span)
@@ -470,11 +462,10 @@ pub fn noop_fold_qpath<T: Folder>(qpath: P<QPath>, fld: &mut T) -> P<QPath> {
     })
 }
 
-pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, view_items, items}: ForeignMod,
+pub fn noop_fold_foreign_mod<T: Folder>(ForeignMod {abi, items}: ForeignMod,
                                         fld: &mut T) -> ForeignMod {
     ForeignMod {
         abi: abi,
-        view_items: view_items.move_map(|x| fld.fold_view_item(x)),
         items: items.move_map(|x| fld.fold_foreign_item(x)),
     }
 }
@@ -505,7 +496,7 @@ pub fn noop_fold_ident<T: Folder>(i: Ident, _: &mut T) -> Ident {
     i
 }
 
-pub fn noop_fold_uint<T: Folder>(i: uint, _: &mut T) -> uint {
+pub fn noop_fold_usize<T: Folder>(i: usize, _: &mut T) -> usize {
     i
 }
 
@@ -953,28 +944,9 @@ fn noop_fold_variant_arg<T: Folder>(VariantArg {id, ty}: VariantArg, folder: &mu
     }
 }
 
-pub fn noop_fold_view_item<T: Folder>(ViewItem {node, attrs, vis, span}: ViewItem,
-                                      folder: &mut T) -> ViewItem {
-    ViewItem {
-        node: match node {
-            ViewItemExternCrate(ident, string, node_id) => {
-                ViewItemExternCrate(ident, string,
-                                    folder.new_id(node_id))
-            }
-            ViewItemUse(view_path) => {
-                ViewItemUse(folder.fold_view_path(view_path))
-            }
-        },
-        attrs: attrs.move_map(|a| folder.fold_attribute(a)),
-        vis: vis,
-        span: folder.new_span(span)
-    }
-}
-
 pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
-    b.map(|Block {id, view_items, stmts, expr, rules, span}| Block {
+    b.map(|Block {id, stmts, expr, rules, span}| Block {
         id: folder.new_id(id),
-        view_items: view_items.move_map(|x| folder.fold_view_item(x)),
         stmts: stmts.into_iter().flat_map(|s| folder.fold_stmt(s).into_iter()).collect(),
         expr: expr.map(|x| folder.fold_expr(x)),
         rules: rules,
@@ -984,6 +956,10 @@ pub fn noop_fold_block<T: Folder>(b: P<Block>, folder: &mut T) -> P<Block> {
 
 pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
     match i {
+        ItemExternCrate(string) => ItemExternCrate(string),
+        ItemUse(view_path) => {
+            ItemUse(folder.fold_view_path(view_path))
+        }
         ItemStatic(t, m, e) => {
             ItemStatic(folder.fold_ty(t), m, folder.fold_expr(e))
         }
@@ -1103,10 +1079,9 @@ pub fn noop_fold_type_method<T: Folder>(m: TypeMethod, fld: &mut T) -> TypeMetho
     }
 }
 
-pub fn noop_fold_mod<T: Folder>(Mod {inner, view_items, items}: Mod, folder: &mut T) -> Mod {
+pub fn noop_fold_mod<T: Folder>(Mod {inner, items}: Mod, folder: &mut T) -> Mod {
     Mod {
         inner: folder.new_span(inner),
-        view_items: view_items.move_map(|x| folder.fold_view_item(x)),
         items: items.into_iter().flat_map(|x| folder.fold_item(x).into_iter()).collect(),
     }
 }
@@ -1137,9 +1112,8 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
         }
         None => (ast::Mod {
             inner: span,
-            view_items: Vec::new(),
-            items: Vec::new(),
-        }, Vec::new(), span)
+            items: vec![],
+        }, vec![], span)
     };
 
     for def in exported_macros.iter_mut() {
@@ -1371,7 +1345,7 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
             }
             ExprTupField(el, ident) => {
                 ExprTupField(folder.fold_expr(el),
-                             respan(ident.span, folder.fold_uint(ident.node)))
+                             respan(ident.span, folder.fold_usize(ident.node)))
             }
             ExprIndex(el, er) => {
                 ExprIndex(folder.fold_expr(el), folder.fold_expr(er))

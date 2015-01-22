@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ast::{TokenTree, TtDelimited, TtSequence, TtToken};
-use ast;
+use ast::{self, TokenTree, TtDelimited, TtSequence, TtToken};
 use codemap::{Span, DUMMY_SP};
 use ext::base::{ExtCtxt, MacResult, SyntaxExtension};
 use ext::base::{NormalTT, TTMacroExpander};
@@ -19,9 +18,8 @@ use ext::tt::macro_parser::{parse, parse_or_else};
 use parse::lexer::{new_tt_reader, new_tt_reader_with_doc_flag};
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
-use parse::token::{special_idents, gensym_ident, NtTT, Token};
+use parse::token::{self, special_idents, gensym_ident, NtTT, Token};
 use parse::token::Token::*;
-use parse::token;
 use print;
 use ptr::P;
 
@@ -336,16 +334,20 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
 
                 let tok = if let TtToken(_, ref tok) = *token { tok } else { unreachable!() };
                 // If T' is in the set FOLLOW(NT), continue. Else, reject.
-                match &next_token {
-                    &Eof => return Some((sp, tok.clone())),
-                    _ if is_in_follow(cx, &next_token, frag_spec.as_str()) => continue,
-                    next => {
+                match (&next_token, is_in_follow(cx, &next_token, frag_spec.as_str())) {
+                    (&Eof, _) => return Some((sp, tok.clone())),
+                    (_, Ok(true)) => continue,
+                    (next, Ok(false)) => {
                         cx.span_err(sp, format!("`${0}:{1}` is followed by `{2}`, which \
                                                  is not allowed for `{1}` fragments",
                                                  name.as_str(), frag_spec.as_str(),
                                                  token_to_string(next)).as_slice());
                         continue
                     },
+                    (_, Err(msg)) => {
+                        cx.span_err(sp, msg.as_slice());
+                        continue
+                    }
                 }
             },
             TtSequence(sp, ref seq) => {
@@ -412,51 +414,50 @@ fn check_matcher<'a, I>(cx: &mut ExtCtxt, matcher: I, follow: &Token)
     last
 }
 
-fn is_in_follow(cx: &ExtCtxt, tok: &Token, frag: &str) -> bool {
+fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
     if let &CloseDelim(_) = tok {
-        return true;
-    }
-
-    match frag {
-        "item" => {
-            // since items *must* be followed by either a `;` or a `}`, we can
-            // accept anything after them
-            true
-        },
-        "block" => {
-            // anything can follow block, the braces provide a easy boundary to
-            // maintain
-            true
-        },
-        "stmt" | "expr"  => {
-            match *tok {
-                FatArrow | Comma | Semi => true,
-                _ => false
-            }
-        },
-        "pat" => {
-            match *tok {
-                FatArrow | Comma | Eq => true,
-                _ => false
-            }
-        },
-        "path" | "ty" => {
-            match *tok {
-                Comma | FatArrow | Colon | Eq | Gt => true,
-                Ident(i, _) if i.as_str() == "as" => true,
-                _ => false
-            }
-        },
-        "ident" => {
-            // being a single token, idents are harmless
-            true
-        },
-        "meta" | "tt" => {
-            // being either a single token or a delimited sequence, tt is
-            // harmless
-            true
-        },
-        _ => cx.bug(format!("unrecognized builtin nonterminal {}",
-                            frag).as_slice()),
+        Ok(true)
+    } else {
+        match frag {
+            "item" => {
+                // since items *must* be followed by either a `;` or a `}`, we can
+                // accept anything after them
+                Ok(true)
+            },
+            "block" => {
+                // anything can follow block, the braces provide a easy boundary to
+                // maintain
+                Ok(true)
+            },
+            "stmt" | "expr"  => {
+                match *tok {
+                    FatArrow | Comma | Semi => Ok(true),
+                    _ => Ok(false)
+                }
+            },
+            "pat" => {
+                match *tok {
+                    FatArrow | Comma | Eq => Ok(true),
+                    _ => Ok(false)
+                }
+            },
+            "path" | "ty" => {
+                match *tok {
+                    Comma | FatArrow | Colon | Eq | Gt => Ok(true),
+                    Ident(i, _) if i.as_str() == "as" => Ok(true),
+                    _ => Ok(false)
+                }
+            },
+            "ident" => {
+                // being a single token, idents are harmless
+                Ok(true)
+            },
+            "meta" | "tt" => {
+                // being either a single token or a delimited sequence, tt is
+                // harmless
+                Ok(true)
+            },
+            _ => Err(format!("unrecognized builtin nonterminal `{}`", frag))
+        }
     }
 }

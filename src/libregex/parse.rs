@@ -30,6 +30,7 @@ static MAX_REPEAT: uint = 1000;
 ///
 /// (Once an expression is compiled, it is not possible to produce an error
 /// via searching, splitting or replacing.)
+#[derive(Show)]
 pub struct Error {
     /// The *approximate* character index of where the error occurred.
     pub pos: uint,
@@ -37,7 +38,7 @@ pub struct Error {
     pub msg: String,
 }
 
-impl fmt::Show for Error {
+impl fmt::Display for Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "Regex syntax error near position {}: {:?}",
                self.pos, self.msg)
@@ -518,7 +519,7 @@ impl<'a> Parser<'a> {
             };
         self.chari = closer;
         let greed = try!(self.get_next_greedy());
-        let inner = self.chars[(start+1)..closer].iter().cloned()
+        let inner = self.chars[start+1..closer].iter().cloned()
                                                .collect::<String>();
 
         // Parse the min and max values from the regex.

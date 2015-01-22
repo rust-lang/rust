@@ -379,14 +379,14 @@ pub fn float_to_str_bytes_common<T: Float>(
 
             // only resize buf if we actually remove digits
             if i < buf_max_i {
-                buf = buf.slice(0, i + 1).to_vec();
+                buf = buf[.. (i + 1)].to_vec();
             }
         }
     } // If exact and trailing '.', just cut that
     else {
         let max_i = buf.len() - 1;
         if buf[max_i] == b'.' {
-            buf = buf.slice(0, max_i).to_vec();
+            buf = buf[.. max_i].to_vec();
         }
     }
 

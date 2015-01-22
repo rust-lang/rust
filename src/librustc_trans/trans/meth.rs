@@ -24,6 +24,7 @@ use trans::callee;
 use trans::cleanup;
 use trans::common::*;
 use trans::datum::*;
+use trans::debuginfo::DebugLoc;
 use trans::expr::{SaveIn, Ignore};
 use trans::expr;
 use trans::glue;
@@ -494,7 +495,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ty::ty_bare_fn(_, ref f) if f.abi == Rust || f.abi == RustCall => {
             let fake_sig =
                 ty::Binder(ty::FnSig {
-                    inputs: f.sig.0.inputs.slice_from(1).to_vec(),
+                    inputs: f.sig.0.inputs[1..].to_vec(),
                     output: f.sig.0.output,
                     variadic: f.sig.0.variadic,
                 });
@@ -634,7 +635,7 @@ pub fn trans_object_shim<'a, 'tcx>(
             }
             _ => {
                 // skip the self parameter:
-                sig.inputs.slice_from(1)
+                &sig.inputs[1..]
             }
         };
 
@@ -676,7 +677,7 @@ pub fn trans_object_shim<'a, 'tcx>(
                            ArgVals(llargs.as_slice()),
                            dest).bcx;
 
-    finish_fn(&fcx, bcx, sig.output);
+    finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
 
     (llfn, method_bare_fn_ty)
 }
@@ -785,7 +786,7 @@ pub fn make_vtable<I: Iterator<Item=ValueRef>>(ccx: &CrateContext,
     unsafe {
         let tbl = C_struct(ccx, &components[], false);
         let sym = token::gensym("vtable");
-        let buf = CString::from_vec(format!("vtable{}", sym.uint()).into_bytes());
+        let buf = CString::from_vec(format!("vtable{}", sym.usize()).into_bytes());
         let vt_gvar = llvm::LLVMAddGlobal(ccx.llmod(), val_ty(tbl).to_ref(),
                                           buf.as_ptr());
         llvm::LLVMSetInitializer(vt_gvar, tbl);

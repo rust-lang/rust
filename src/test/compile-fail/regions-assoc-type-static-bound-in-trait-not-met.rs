@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![crate_name="foo"]
+// Test that the compiler checks that the 'static bound declared in
+// the trait must be satisfied on the impl. Issue #20890.
 
-pub mod foo;
-pub mod bar;
+trait Foo { type Value: 'static; }
+
+impl<'a> Foo for &'a i32 {
+    //~^ ERROR cannot infer
+    type Value = &'a i32;
+}
+
+impl<'a> Foo for i32 {
+    // OK.
+    type Value = i32;
+}
+
+fn main() { }

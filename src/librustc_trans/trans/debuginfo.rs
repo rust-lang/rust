@@ -188,7 +188,7 @@ use self::MemberOffset::*;
 use self::MemberDescriptionFactory::*;
 use self::RecursiveTypeDescription::*;
 use self::EnumDiscriminantInfo::*;
-use self::DebugLocation::*;
+use self::InternalDebugLocation::*;
 
 use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
@@ -196,7 +196,8 @@ use llvm::debuginfo::*;
 use metadata::csearch;
 use middle::subst::{self, Substs};
 use trans::{self, adt, machine, type_of};
-use trans::common::*;
+use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
+                    C_bytes, C_i32, C_i64, NormalizingUnboxedClosureTyper};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
 use trans::type_::Type;
@@ -551,28 +552,14 @@ impl<'tcx> TypeMap<'tcx> {
                                               closure_ty: ty::ClosureTy<'tcx>,
                                               unique_type_id: &mut String) {
         let ty::ClosureTy { unsafety,
-                            onceness,
-                            store,
-                            ref bounds,
                             ref sig,
                             abi: _ } = closure_ty;
+
         if unsafety == ast::Unsafety::Unsafe {
             unique_type_id.push_str("unsafe ");
         }
 
-        if onceness == ast::Once {
-            unique_type_id.push_str("once ");
-        }
-
-        match store {
-            ty::UniqTraitStore => unique_type_id.push_str("~|"),
-            ty::RegionTraitStore(_, ast::MutMutable) => {
-                unique_type_id.push_str("&mut|")
-            }
-            ty::RegionTraitStore(_, ast::MutImmutable) => {
-                unique_type_id.push_str("&|")
-            }
-        };
+        unique_type_id.push_str("|");
 
         let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
 
@@ -600,18 +587,6 @@ impl<'tcx> TypeMap<'tcx> {
             ty::FnDiverging => {
                 unique_type_id.push_str("!");
             }
-        }
-
-        unique_type_id.push(':');
-
-        for bound in bounds.builtin_bounds.iter() {
-            match bound {
-                ty::BoundSend => unique_type_id.push_str("Send"),
-                ty::BoundSized => unique_type_id.push_str("Sized"),
-                ty::BoundCopy => unique_type_id.push_str("Copy"),
-                ty::BoundSync => unique_type_id.push_str("Sync"),
-            };
-            unique_type_id.push('+');
         }
     }
 
@@ -650,7 +625,7 @@ macro_rules! return_if_metadata_created_in_meantime {
 pub struct CrateDebugContext<'tcx> {
     llcontext: ContextRef,
     builder: DIBuilderRef,
-    current_debug_location: Cell<DebugLocation>,
+    current_debug_location: Cell<InternalDebugLocation>,
     created_files: RefCell<FnvHashMap<String, DIFile>>,
     created_enum_disr_types: RefCell<DefIdMap<DIType>>,
 
@@ -940,13 +915,14 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     };
 
-    let variable_type = node_id_type(bcx, node_id);
+    let variable_type = common::node_id_type(bcx, node_id);
     let scope_metadata = bcx.fcx.debug_context.get_ref(cx, span).fn_metadata;
 
     // env_pointer is the alloca containing the pointer to the environment,
     // so it's type is **EnvironmentType. In order to find out the type of
     // the environment we have to "dereference" two times.
-    let llvm_env_data_type = val_ty(env_pointer).element_type().element_type();
+    let llvm_env_data_type = common::val_ty(env_pointer).element_type()
+                                                        .element_type();
     let byte_offset_of_var_in_env = machine::llelement_offset(cx,
                                                               llvm_env_data_type,
                                                               env_index);
@@ -1123,7 +1099,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                     node_id: ast::NodeId,
                                                     node_span: Span,
                                                     is_block: bool)
-                                                 -> NodeInfo {
+                                                 -> NodeIdAndSpan {
     // A debug location needs two things:
     // (1) A span (of which only the beginning will actually be used)
     // (2) An AST node-id which will be used to look up the lexical scope
@@ -1163,7 +1139,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         if let Some(code_snippet) = code_snippet {
             let bytes = code_snippet.as_bytes();
 
-            if bytes.len() > 0 && &bytes[(bytes.len()-1)..] == b"}" {
+            if bytes.len() > 0 && &bytes[bytes.len()-1..] == b"}" {
                 cleanup_span = Span {
                     lo: node_span.hi - codemap::BytePos(1),
                     hi: node_span.hi,
@@ -1173,9 +1149,53 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
     }
 
-    NodeInfo {
+    NodeIdAndSpan {
         id: node_id,
         span: cleanup_span
+    }
+}
+
+#[derive(Copy, Clone, PartialEq, Eq)]
+pub enum DebugLoc {
+    At(ast::NodeId, Span),
+    None
+}
+
+impl DebugLoc {
+    pub fn apply(&self, fcx: &FunctionContext) {
+        match *self {
+            DebugLoc::At(node_id, span) => {
+                set_source_location(fcx, node_id, span);
+            }
+            DebugLoc::None => {
+                clear_source_location(fcx);
+            }
+        }
+    }
+}
+
+pub trait ToDebugLoc {
+    fn debug_loc(&self) -> DebugLoc;
+}
+
+impl ToDebugLoc for ast::Expr {
+    fn debug_loc(&self) -> DebugLoc {
+        DebugLoc::At(self.id, self.span)
+    }
+}
+
+impl ToDebugLoc for NodeIdAndSpan {
+    fn debug_loc(&self) -> DebugLoc {
+        DebugLoc::At(self.id, self.span)
+    }
+}
+
+impl ToDebugLoc for Option<NodeIdAndSpan> {
+    fn debug_loc(&self) -> DebugLoc {
+        match *self {
+            Some(NodeIdAndSpan { id, span }) => DebugLoc::At(id, span),
+            None => DebugLoc::None
+        }
     }
 }
 
@@ -1202,9 +1222,9 @@ pub fn set_source_location(fcx: &FunctionContext,
                 let loc = span_start(cx, span);
                 let scope = scope_metadata(fcx, node_id, span);
 
-                set_debug_location(cx, DebugLocation::new(scope,
-                                                          loc.line,
-                                                          loc.col.to_uint()));
+                set_debug_location(cx, InternalDebugLocation::new(scope,
+                                                                  loc.line,
+                                                                  loc.col.to_usize()));
             } else {
                 set_debug_location(cx, UnknownLocation);
             }
@@ -1615,8 +1635,8 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                         let prefix: &[u8] = &[dotdot[0], ::std::path::SEP_BYTE];
                         let mut path_bytes = p.as_vec().to_vec();
 
-                        if path_bytes.slice_to(2) != prefix &&
-                           path_bytes.slice_to(2) != dotdot {
+                        if &path_bytes[..2] != prefix &&
+                           &path_bytes[..2] != dotdot {
                             path_bytes.insert(0, prefix[0]);
                             path_bytes.insert(1, prefix[1]);
                         }
@@ -1714,9 +1734,9 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         )
     };
 
-    set_debug_location(cx, DebugLocation::new(scope_metadata,
-                                              loc.line,
-                                              loc.col.to_uint()));
+    set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
+                                                      loc.line,
+                                                      loc.col.to_usize()));
     unsafe {
         let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
             DIB(cx),
@@ -1752,7 +1772,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
     let work_dir = cx.sess().working_dir.as_str().unwrap();
     let file_name =
         if full_path.starts_with(work_dir) {
-            &full_path[(work_dir.len() + 1u)..full_path.len()]
+            &full_path[work_dir.len() + 1u..full_path.len()]
         } else {
             full_path
         };
@@ -3095,13 +3115,13 @@ impl MetadataCreationResult {
 }
 
 #[derive(Copy, PartialEq)]
-enum DebugLocation {
+enum InternalDebugLocation {
     KnownLocation { scope: DIScope, line: uint, col: uint },
     UnknownLocation
 }
 
-impl DebugLocation {
-    fn new(scope: DIScope, line: uint, col: uint) -> DebugLocation {
+impl InternalDebugLocation {
+    fn new(scope: DIScope, line: uint, col: uint) -> InternalDebugLocation {
         KnownLocation {
             scope: scope,
             line: line,
@@ -3110,7 +3130,7 @@ impl DebugLocation {
     }
 }
 
-fn set_debug_location(cx: &CrateContext, debug_location: DebugLocation) {
+fn set_debug_location(cx: &CrateContext, debug_location: InternalDebugLocation) {
     if debug_location == debug_context(cx).current_debug_location.get() {
         return;
     }
@@ -3279,7 +3299,7 @@ fn create_scope_map(cx: &CrateContext,
                 parent_scope,
                 file_metadata,
                 loc.line as c_uint,
-                loc.col.to_uint() as c_uint)
+                loc.col.to_usize() as c_uint)
         };
 
         scope_stack.push(ScopeStackEntry { scope_metadata: scope_metadata,
@@ -3401,7 +3421,7 @@ fn create_scope_map(cx: &CrateContext,
                                 parent_scope,
                                 file_metadata,
                                 loc.line as c_uint,
-                                loc.col.to_uint() as c_uint)
+                                loc.col.to_usize() as c_uint)
                         };
 
                         scope_stack.push(ScopeStackEntry {
@@ -4122,4 +4142,3 @@ fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
     !ccx.sess().target.target.options.is_like_windows &&
     ccx.sess().opts.debuginfo != NoDebugInfo
 }
-

@@ -555,6 +555,8 @@
         // This mapping table should match the discriminants of
         // `rustdoc::html::item_type::ItemType` type in Rust.
         var itemTypes = ["mod",
+                         "externcrate",
+                         "import",
                          "struct",
                          "enum",
                          "fn",
@@ -562,13 +564,10 @@
                          "static",
                          "trait",
                          "impl",
-                         "viewitem",
                          "tymethod",
                          "method",
                          "structfield",
                          "variant",
-                         "ffi", // retained for backward compatibility
-                         "ffs", // retained for backward compatibility
                          "macro",
                          "primitive",
                          "associatedtype",

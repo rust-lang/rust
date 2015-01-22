@@ -240,7 +240,7 @@ enum VarianceTerm<'a> {
     InferredTerm(InferredIndex),
 }
 
-impl<'a> fmt::Show for VarianceTerm<'a> {
+impl<'a> fmt::Debug for VarianceTerm<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             ConstantTerm(c1) => write!(f, "{:?}", c1),
@@ -380,6 +380,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
                 visit::walk_item(self, item);
             }
 
+            ast::ItemExternCrate(_) |
+            ast::ItemUse(_) |
             ast::ItemImpl(..) |
             ast::ItemStatic(..) |
             ast::ItemConst(..) |
@@ -532,6 +534,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                 }
             }
 
+            ast::ItemExternCrate(_) |
+            ast::ItemUse(_) |
             ast::ItemStatic(..) |
             ast::ItemConst(..) |
             ast::ItemFn(..) |
@@ -1055,7 +1059,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
             // attribute and report an error with various results if found.
             if ty::has_attr(tcx, item_def_id, "rustc_variance") {
                 let found = item_variances.repr(tcx);
-                tcx.sess.span_err(tcx.map.span(item_id), &found[]);
+                span_err!(tcx.sess, tcx.map.span(item_id), E0208, "{}", &found[]);
             }
 
             let newly_added = tcx.item_variance_map.borrow_mut()

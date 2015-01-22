@@ -85,9 +85,10 @@ pub struct Path {
     sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr
 }
 
-impl fmt::Show for Path {
+#[stable]
+impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(&self.display(), f)
+        fmt::Debug::fmt(&self.display(), f)
     }
 }
 
@@ -428,10 +429,10 @@ impl GenericPath for Path {
         if self.prefix.is_some() {
             Some(Path::new(match self.prefix {
                 Some(DiskPrefix) if self.is_absolute() => {
-                    &self.repr[..(self.prefix_len()+1)]
+                    &self.repr[..self.prefix_len()+1]
                 }
                 Some(VerbatimDiskPrefix) => {
-                    &self.repr[..(self.prefix_len()+1)]
+                    &self.repr[..self.prefix_len()+1]
                 }
                 _ => &self.repr[..self.prefix_len()]
             }))
@@ -635,7 +636,7 @@ impl Path {
             Some(_) => {
                 let plen = self.prefix_len();
                 if repr.len() > plen && repr.as_bytes()[plen] == SEP_BYTE {
-                    &repr[(plen+1)..]
+                    &repr[plen+1..]
                 } else { &repr[plen..] }
             }
             None if repr.as_bytes()[0] == SEP_BYTE => &repr[1..],
@@ -786,9 +787,9 @@ impl Path {
                             }
                             Some(UNCPrefix(a,b)) => {
                                 s.push_str("\\\\");
-                                s.push_str(&prefix_[2..(a+2)]);
+                                s.push_str(&prefix_[2..a+2]);
                                 s.push(SEP);
-                                s.push_str(&prefix_[(3+a)..(3+a+b)]);
+                                s.push_str(&prefix_[3+a..3+a+b]);
                             }
                             Some(_) => s.push_str(prefix_),
                             None => ()
@@ -813,7 +814,7 @@ impl Path {
 
     fn update_sepidx(&mut self) {
         let s = if self.has_nonsemantic_trailing_slash() {
-                    &self.repr[..(self.repr.len()-1)]
+                    &self.repr[..self.repr.len()-1]
                 } else { &self.repr[] };
         let sep_test: fn(char) -> bool = if !prefix_is_verbatim(self.prefix) {
             is_sep
@@ -1029,7 +1030,7 @@ fn parse_prefix<'a>(mut path: &'a str) -> Option<PathPrefix> {
             None => return None,
             Some(x) => x
         };
-        path = &path[(idx_a+1)..];
+        path = &path[idx_a+1..];
         let idx_b = path.find(f).unwrap_or(path.len());
         Some((idx_a, idx_b))
     }

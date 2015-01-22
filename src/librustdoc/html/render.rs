@@ -35,7 +35,7 @@
 pub use self::ExternalLocation::*;
 
 use std::cell::RefCell;
-use std::cmp::Ordering::{self, Less, Greater, Equal};
+use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
 use std::fmt;
@@ -404,7 +404,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
                     search_index.push(IndexItem {
                         ty: shortty(item),
                         name: item.name.clone().unwrap(),
-                        path: fqp[..(fqp.len() - 1)].connect("::"),
+                        path: fqp[..fqp.len() - 1].connect("::"),
                         desc: shorter(item.doc_value()).to_string(),
                         parent: Some(did),
                     });
@@ -559,7 +559,7 @@ fn write_shared(cx: &Context,
         };
 
         let mut mydst = dst.clone();
-        for part in remote_path[..(remote_path.len() - 1)].iter() {
+        for part in remote_path[..remote_path.len() - 1].iter() {
             mydst.push(part.as_slice());
             try!(mkdir(&mydst));
         }
@@ -749,7 +749,7 @@ impl<'a> SourceCollector<'a> {
 
         // Remove the utf-8 BOM if any
         let contents = if contents.starts_with("\u{feff}") {
-            contents.slice_from(3)
+            &contents[3..]
         } else {
             contents
         };
@@ -842,7 +842,7 @@ impl DocFolder for Cache {
                 clean::StructFieldItem(..) |
                 clean::VariantItem(..) => {
                     ((Some(*self.parent_stack.last().unwrap()),
-                      Some(&self.stack[..(self.stack.len() - 1)])),
+                      Some(&self.stack[..self.stack.len() - 1])),
                      false)
                 }
                 clean::MethodItem(..) => {
@@ -853,13 +853,13 @@ impl DocFolder for Cache {
                         let did = *last;
                         let path = match self.paths.get(&did) {
                             Some(&(_, ItemType::Trait)) =>
-                                Some(&self.stack[..(self.stack.len() - 1)]),
+                                Some(&self.stack[..self.stack.len() - 1]),
                             // The current stack not necessarily has correlation for
                             // where the type was defined. On the other hand,
                             // `paths` always has the right information if present.
                             Some(&(ref fqp, ItemType::Struct)) |
                             Some(&(ref fqp, ItemType::Enum)) =>
-                                Some(&fqp[..(fqp.len() - 1)]),
+                                Some(&fqp[..fqp.len() - 1]),
                             Some(..) => Some(self.stack.as_slice()),
                             None => None
                         };
@@ -1185,7 +1185,7 @@ impl Context {
                                            .collect::<String>();
                 match cache().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
-                        for name in (&names[..(names.len() - 1)]).iter() {
+                        for name in (&names[..names.len() - 1]).iter() {
                             url.push_str(name.as_slice());
                             url.push_str("/");
                         }
@@ -1351,7 +1351,7 @@ impl<'a> Item<'a> {
 }
 
 
-impl<'a> fmt::String for Item<'a> {
+impl<'a> fmt::Display for Item<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Write the breadcrumb trail header for the top
         try!(write!(fmt, "\n<h1 class='fqn'><span class='in-band'>"));
@@ -1469,7 +1469,7 @@ fn full_path(cx: &Context, item: &clean::Item) -> String {
 fn shorter<'a>(s: Option<&'a str>) -> &'a str {
     match s {
         Some(s) => match s.find_str("\n\n") {
-            Some(pos) => s.slice_to(pos),
+            Some(pos) => &s[..pos],
             None => s,
         },
         None => ""
@@ -1497,18 +1497,19 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
     // the order of item types in the listing
     fn reorder(ty: ItemType) -> u8 {
         match ty {
-            ItemType::ViewItem        => 0,
-            ItemType::Primitive       => 1,
-            ItemType::Module          => 2,
-            ItemType::Macro           => 3,
-            ItemType::Struct          => 4,
-            ItemType::Enum            => 5,
-            ItemType::Constant        => 6,
-            ItemType::Static          => 7,
-            ItemType::Trait           => 8,
-            ItemType::Function        => 9,
-            ItemType::Typedef         => 10,
-            _                         => 11 + ty as u8,
+            ItemType::ExternCrate     => 0,
+            ItemType::Import          => 1,
+            ItemType::Primitive       => 2,
+            ItemType::Module          => 3,
+            ItemType::Macro           => 4,
+            ItemType::Struct          => 5,
+            ItemType::Enum            => 6,
+            ItemType::Constant        => 7,
+            ItemType::Static          => 8,
+            ItemType::Trait           => 9,
+            ItemType::Function        => 10,
+            ItemType::Typedef         => 12,
+            _                         => 13 + ty as u8,
         }
     }
 
@@ -1518,25 +1519,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         if ty1 == ty2 {
             return i1.name.cmp(&i2.name);
         }
-
-        let tycmp = reorder(ty1).cmp(&reorder(ty2));
-        if let Equal = tycmp {
-            // for reexports, `extern crate` takes precedence.
-            match (&i1.inner, &i2.inner) {
-                (&clean::ViewItemItem(ref a), &clean::ViewItemItem(ref b)) => {
-                    match (&a.inner, &b.inner) {
-                        (&clean::ExternCrate(..), _) => return Less,
-                        (_, &clean::ExternCrate(..)) => return Greater,
-                        _ => {}
-                    }
-                }
-                (_, _) => {}
-            }
-
-            idx1.cmp(&idx2)
-        } else {
-            tycmp
-        }
+        (reorder(ty1), idx1).cmp(&(reorder(ty2), idx2))
     }
 
     indices.sort_by(|&i1, &i2| cmp(&items[i1], &items[i2], i1, i2));
@@ -1547,12 +1530,17 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         let myitem = &items[idx];
 
         let myty = Some(shortty(myitem));
-        if myty != curty {
+        if curty == Some(ItemType::ExternCrate) && myty == Some(ItemType::Import) {
+            // Put `extern crate` and `use` re-exports in the same section.
+            curty = myty;
+        } else if myty != curty {
             if curty.is_some() {
                 try!(write!(w, "</table>"));
             }
             curty = myty;
             let (short, name) = match myty.unwrap() {
+                ItemType::ExternCrate |
+                ItemType::Import          => ("reexports", "Reexports"),
                 ItemType::Module          => ("modules", "Modules"),
                 ItemType::Struct          => ("structs", "Structs"),
                 ItemType::Enum            => ("enums", "Enums"),
@@ -1562,7 +1550,6 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                 ItemType::Constant        => ("constants", "Constants"),
                 ItemType::Trait           => ("traits", "Traits"),
                 ItemType::Impl            => ("impls", "Implementations"),
-                ItemType::ViewItem        => ("reexports", "Reexports"),
                 ItemType::TyMethod        => ("tymethods", "Type Methods"),
                 ItemType::Method          => ("methods", "Methods"),
                 ItemType::StructField     => ("fields", "Struct Fields"),
@@ -1578,28 +1565,25 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
         }
 
         match myitem.inner {
-            clean::ViewItemItem(ref item) => {
-                match item.inner {
-                    clean::ExternCrate(ref name, ref src, _) => {
-                        match *src {
-                            Some(ref src) =>
-                                try!(write!(w, "<tr><td><code>extern crate \"{}\" as {}",
-                                            src.as_slice(),
-                                            name.as_slice())),
-                            None =>
-                                try!(write!(w, "<tr><td><code>extern crate {}",
-                                            name.as_slice())),
-                        }
-                        try!(write!(w, ";</code></td></tr>"));
+            clean::ExternCrateItem(ref name, ref src) => {
+                match *src {
+                    Some(ref src) => {
+                        try!(write!(w, "<tr><td><code>{}extern crate \"{}\" as {};",
+                                    VisSpace(myitem.visibility),
+                                    src.as_slice(),
+                                    name.as_slice()))
                     }
-
-                    clean::Import(ref import) => {
-                        try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
-                                      VisSpace(myitem.visibility),
-                                      *import));
+                    None => {
+                        try!(write!(w, "<tr><td><code>{}extern crate {};",
+                                    VisSpace(myitem.visibility), name.as_slice()))
                     }
                 }
+                try!(write!(w, "</code></td></tr>"));
+            }
 
+            clean::ImportItem(ref import) => {
+                try!(write!(w, "<tr><td><code>{}{}</code></td></tr>",
+                            VisSpace(myitem.visibility), *import));
             }
 
             _ => {
@@ -1626,7 +1610,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
 struct Initializer<'a>(&'a str);
 
-impl<'a> fmt::String for Initializer<'a> {
+impl<'a> fmt::Display for Initializer<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let Initializer(s) = *self;
         if s.len() == 0 { return Ok(()); }
@@ -2085,6 +2069,10 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     try!(write!(w, "<h3 class='impl'>{}<code>impl{} ",
                 ConciseStability(&i.stability),
                 i.impl_.generics));
+    match i.impl_.polarity {
+        Some(clean::ImplPolarity::Negative) => try!(write!(w, "!")),
+        _ => {}
+    }
     match i.impl_.trait_ {
         Some(ref ty) => try!(write!(w, "{} for ", *ty)),
         None => {}
@@ -2188,7 +2176,7 @@ fn item_typedef(w: &mut fmt::Formatter, it: &clean::Item,
     document(w, it)
 }
 
-impl<'a> fmt::String for Sidebar<'a> {
+impl<'a> fmt::Display for Sidebar<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let cx = self.cx;
         let it = self.item;
@@ -2243,7 +2231,7 @@ impl<'a> fmt::String for Sidebar<'a> {
     }
 }
 
-impl<'a> fmt::String for Source<'a> {
+impl<'a> fmt::Display for Source<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let Source(s) = *self;
         let lines = s.lines().count();

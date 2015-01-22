@@ -480,14 +480,12 @@ use std::sync::{Arc,Mutex};
 fn main() {
     let numbers = Arc::new(Mutex::new(vec![1is, 2, 3]));
 
-    for i in 0..3 {
+    for i in 0us..3 {
         let number = numbers.clone();
         Thread::spawn(move || {
             let mut array = number.lock().unwrap();
-
-            (*array)[i] += 1;
-
-            println!("numbers[{}] is {}", i, (*array)[i]);
+            array[i] += 1;
+            println!("numbers[{}] is {}", i, array[i]);
         });
     }
 }

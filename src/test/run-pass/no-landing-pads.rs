@@ -26,6 +26,6 @@ fn main() {
     Thread::scoped(move|| -> () {
         let _a = A;
         panic!();
-    }).join().unwrap_err();
+    }).join().err().unwrap();
     assert!(unsafe { !HIT });
 }

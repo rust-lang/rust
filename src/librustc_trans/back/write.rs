@@ -67,11 +67,11 @@ pub fn write_output_file(
         output: &Path,
         file_type: llvm::FileType) {
     unsafe {
-        let output = CString::from_slice(output.as_vec());
+        let output_c = CString::from_slice(output.as_vec());
         let result = llvm::LLVMRustWriteOutputFile(
-                target, pm, m, output.as_ptr(), file_type);
+                target, pm, m, output_c.as_ptr(), file_type);
         if !result {
-            llvm_err(handler, "could not write output".to_string());
+            llvm_err(handler, format!("could not write output to {}", output.display()));
         }
     }
 }
@@ -716,7 +716,7 @@ pub fn run_passes(sess: &Session,
         cmd.args(&sess.target.target.options.post_link_args[]);
 
         if sess.opts.debugging_opts.print_link_args {
-            println!("{}", &cmd);
+            println!("{:?}", &cmd);
         }
 
         cmd.stdin(::std::io::process::Ignored)
@@ -725,7 +725,7 @@ pub fn run_passes(sess: &Session,
         match cmd.status() {
             Ok(status) => {
                 if !status.success() {
-                    sess.err(&format!("linking of {} with `{}` failed",
+                    sess.err(&format!("linking of {} with `{:?}` failed",
                                      output_path.display(), cmd)[]);
                     sess.abort_if_errors();
                 }
@@ -953,7 +953,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
 
     cmd.arg("-c").arg("-o").arg(outputs.path(config::OutputTypeObject))
                            .arg(outputs.temp_path(config::OutputTypeAssembly));
-    debug!("{}", &cmd);
+    debug!("{:?}", &cmd);
 
     match cmd.output() {
         Ok(prog) => {
@@ -961,7 +961,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                 sess.err(&format!("linking with `{}` failed: {}",
                                  pname,
                                  prog.status)[]);
-                sess.note(&format!("{}", &cmd)[]);
+                sess.note(&format!("{:?}", &cmd)[]);
                 let mut note = prog.error.clone();
                 note.push_all(&prog.output[]);
                 sess.note(str::from_utf8(&note[]).unwrap());

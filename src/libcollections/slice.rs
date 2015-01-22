@@ -169,29 +169,16 @@ pub trait SliceExt {
     #[unstable = "uncertain about this API approach"]
     fn move_from(&mut self, src: Vec<Self::Item>, start: uint, end: uint) -> uint;
 
-    /// Returns a subslice spanning the interval [`start`, `end`).
-    ///
-    /// Panics when the end of the new slice lies beyond the end of the
-    /// original slice (i.e. when `end > self.len()`) or when `start > end`.
-    ///
-    /// Slicing with `start` equal to `end` yields an empty slice.
-    #[unstable = "will be replaced by slice syntax"]
+    /// Deprecated: use `&s[start .. end]` notation instead.
+    #[deprecated = "use &s[start .. end] instead"]
     fn slice(&self, start: uint, end: uint) -> &[Self::Item];
 
-    /// Returns a subslice from `start` to the end of the slice.
-    ///
-    /// Panics when `start` is strictly greater than the length of the original slice.
-    ///
-    /// Slicing from `self.len()` yields an empty slice.
-    #[unstable = "will be replaced by slice syntax"]
+    /// Deprecated: use `&s[start..]` notation instead.
+    #[deprecated = "use &s[start..] isntead"]
     fn slice_from(&self, start: uint) -> &[Self::Item];
 
-    /// Returns a subslice from the start of the slice to `end`.
-    ///
-    /// Panics when `end` is strictly greater than the length of the original slice.
-    ///
-    /// Slicing to `0` yields an empty slice.
-    #[unstable = "will be replaced by slice syntax"]
+    /// Deprecated: use `&s[..end]` notation instead.
+    #[deprecated = "use &s[..end] instead"]
     fn slice_to(&self, end: uint) -> &[Self::Item];
 
     /// Divides one slice into two at an index.
@@ -378,29 +365,16 @@ pub trait SliceExt {
     #[stable]
     fn as_mut_slice(&mut self) -> &mut [Self::Item];
 
-    /// Returns a mutable subslice spanning the interval [`start`, `end`).
-    ///
-    /// Panics when the end of the new slice lies beyond the end of the
-    /// original slice (i.e. when `end > self.len()`) or when `start > end`.
-    ///
-    /// Slicing with `start` equal to `end` yields an empty slice.
-    #[unstable = "will be replaced by slice syntax"]
+    /// Deprecated: use `&mut s[start .. end]` instead.
+    #[deprecated = "use &mut s[start .. end] instead"]
     fn slice_mut(&mut self, start: uint, end: uint) -> &mut [Self::Item];
 
-    /// Returns a mutable subslice from `start` to the end of the slice.
-    ///
-    /// Panics when `start` is strictly greater than the length of the original slice.
-    ///
-    /// Slicing from `self.len()` yields an empty slice.
-    #[unstable = "will be replaced by slice syntax"]
+    /// Deprecated: use `&mut s[start ..]` instead.
+    #[deprecated = "use &mut s[start ..] instead"]
     fn slice_from_mut(&mut self, start: uint) -> &mut [Self::Item];
 
-    /// Returns a mutable subslice from the start of the slice to `end`.
-    ///
-    /// Panics when `end` is strictly greater than the length of the original slice.
-    ///
-    /// Slicing to `0` yields an empty slice.
-    #[unstable = "will be replaced by slice syntax"]
+    /// Deprecated: use `&mut s[.. end]` instead.
+    #[deprecated = "use &mut s[.. end] instead"]
     fn slice_to_mut(&mut self, end: uint) -> &mut [Self::Item];
 
     /// Returns an iterator that allows modifying each value
@@ -712,7 +686,7 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn move_from(&mut self, mut src: Vec<T>, start: uint, end: uint) -> uint {
-        for (a, b) in self.iter_mut().zip(src.slice_mut(start, end).iter_mut()) {
+        for (a, b) in self.iter_mut().zip(src[start .. end].iter_mut()) {
             mem::swap(a, b);
         }
         cmp::min(self.len(), end-start)
@@ -720,17 +694,17 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn slice<'a>(&'a self, start: uint, end: uint) -> &'a [T] {
-        core_slice::SliceExt::slice(self, start, end)
+        &self[start .. end]
     }
 
     #[inline]
     fn slice_from<'a>(&'a self, start: uint) -> &'a [T] {
-        core_slice::SliceExt::slice_from(self, start)
+        &self[start ..]
     }
 
     #[inline]
     fn slice_to<'a>(&'a self, end: uint) -> &'a [T] {
-        core_slice::SliceExt::slice_to(self, end)
+        &self[.. end]
     }
 
     #[inline]
@@ -834,17 +808,17 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     fn slice_mut<'a>(&'a mut self, start: uint, end: uint) -> &'a mut [T] {
-        core_slice::SliceExt::slice_mut(self, start, end)
+        &mut self[start .. end]
     }
 
     #[inline]
     fn slice_from_mut<'a>(&'a mut self, start: uint) -> &'a mut [T] {
-        core_slice::SliceExt::slice_from_mut(self, start)
+        &mut self[start ..]
     }
 
     #[inline]
     fn slice_to_mut<'a>(&'a mut self, end: uint) -> &'a mut [T] {
-        core_slice::SliceExt::slice_to_mut(self, end)
+        &mut self[.. end]
     }
 
     #[inline]
@@ -2409,7 +2383,11 @@ mod tests {
 
     #[test]
     fn test_chunksator() {
+        use core::iter::ExactSizeIterator;
+
         let v = &[1i,2,3,4,5];
+
+        assert_eq!(v.chunks(2).len(), 3);
 
         let chunks: &[&[int]] = &[&[1i,2], &[3,4], &[5]];
         assert_eq!(v.chunks(2).collect::<Vec<&[int]>>(), chunks);
@@ -2476,19 +2454,19 @@ mod tests {
         }
         let empty: Vec<int> = vec![];
         test_show_vec!(empty, "[]");
-        test_show_vec!(vec![1i], "[1i]");
-        test_show_vec!(vec![1i, 2, 3], "[1i, 2i, 3i]");
+        test_show_vec!(vec![1i], "[1]");
+        test_show_vec!(vec![1i, 2, 3], "[1, 2, 3]");
         test_show_vec!(vec![vec![], vec![1u], vec![1u, 1u]],
-                       "[[], [1u], [1u, 1u]]");
+                       "[[], [1], [1, 1]]");
 
         let empty_mut: &mut [int] = &mut[];
         test_show_vec!(empty_mut, "[]");
         let v: &mut[int] = &mut[1];
-        test_show_vec!(v, "[1i]");
+        test_show_vec!(v, "[1]");
         let v: &mut[int] = &mut[1, 2, 3];
-        test_show_vec!(v, "[1i, 2i, 3i]");
+        test_show_vec!(v, "[1, 2, 3]");
         let v: &mut [&mut[uint]] = &mut[&mut[], &mut[1u], &mut[1u, 1u]];
-        test_show_vec!(v, "[[], [1u], [1u, 1u]]");
+        test_show_vec!(v, "[[], [1], [1, 1]]");
     }
 
     #[test]
@@ -2675,7 +2653,10 @@ mod tests {
 
     #[test]
     fn test_mut_chunks() {
+        use core::iter::ExactSizeIterator;
+
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
+        assert_eq!(v.chunks_mut(2).len(), 4);
         for (i, chunk) in v.chunks_mut(3).enumerate() {
             for x in chunk.iter_mut() {
                 *x = i as u8;

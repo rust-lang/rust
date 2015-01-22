@@ -416,7 +416,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
 
                 ResolvingUnboxedClosure(_) => {
                     let span = self.reason.span(self.tcx);
-                    self.tcx.sess.span_err(span,
+                    span_err!(self.tcx.sess, span, E0196,
                                            "cannot determine a type for this \
                                             unboxed closure")
                 }

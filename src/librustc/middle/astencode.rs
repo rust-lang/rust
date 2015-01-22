@@ -332,8 +332,6 @@ impl Folder for NestedItemsDropper {
                 }
             }).collect();
             let blk_sans_items = P(ast::Block {
-                view_items: Vec::new(), // I don't know if we need the view_items
-                                        // here, but it doesn't break tests!
                 stmts: stmts_sans_items,
                 expr: expr,
                 id: id,
@@ -511,17 +509,6 @@ impl tr for ty::BoundRegion {
             ty::BrEnv => *self,
             ty::BrNamed(id, ident) => ty::BrNamed(dcx.tr_def_id(id),
                                                     ident),
-        }
-    }
-}
-
-impl tr for ty::TraitStore {
-    fn tr(&self, dcx: &DecodeContext) -> ty::TraitStore {
-        match *self {
-            ty::RegionTraitStore(r, m) => {
-                ty::RegionTraitStore(r.tr(dcx), m)
-            }
-            ty::UniqTraitStore => ty::UniqTraitStore
         }
     }
 }

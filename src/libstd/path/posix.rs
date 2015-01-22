@@ -57,9 +57,10 @@ pub fn is_sep(c: char) -> bool {
     c == SEP
 }
 
-impl fmt::Show for Path {
+#[stable]
+impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(&self.display(), f)
+        fmt::Debug::fmt(&self.display(), f)
     }
 }
 
@@ -126,7 +127,7 @@ impl GenericPathUnsafe for Path {
             None => {
                 self.repr = Path::normalize(filename);
             }
-            Some(idx) if &self.repr[(idx+1)..] == b".." => {
+            Some(idx) if &self.repr[idx+1..] == b".." => {
                 let mut v = Vec::with_capacity(self.repr.len() + 1 + filename.len());
                 v.push_all(self.repr.as_slice());
                 v.push(SEP_BYTE);
@@ -136,7 +137,7 @@ impl GenericPathUnsafe for Path {
             }
             Some(idx) => {
                 let mut v = Vec::with_capacity(idx + 1 + filename.len());
-                v.push_all(&self.repr[..(idx+1)]);
+                v.push_all(&self.repr[..idx+1]);
                 v.push_all(filename);
                 // FIXME: this is slow
                 self.repr = Path::normalize(v.as_slice());
@@ -178,7 +179,7 @@ impl GenericPath for Path {
             None if b".." == self.repr => self.repr.as_slice(),
             None => dot_static,
             Some(0) => &self.repr[..1],
-            Some(idx) if &self.repr[(idx+1)..] == b".." => self.repr.as_slice(),
+            Some(idx) if &self.repr[idx+1..] == b".." => self.repr.as_slice(),
             Some(idx) => &self.repr[..idx]
         }
     }
@@ -188,9 +189,9 @@ impl GenericPath for Path {
             None if b"." == self.repr ||
                 b".." == self.repr => None,
             None => Some(self.repr.as_slice()),
-            Some(idx) if &self.repr[(idx+1)..] == b".." => None,
+            Some(idx) if &self.repr[idx+1..] == b".." => None,
             Some(0) if self.repr[1..].is_empty() => None,
-            Some(idx) => Some(&self.repr[(idx+1)..])
+            Some(idx) => Some(&self.repr[idx+1..])
         }
     }
 

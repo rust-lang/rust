@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--crate-name crate-name-attr-used -F unused-attribute
+// compile-flags:--crate-name crate-name-attr-used -F unused-attributes
 
 #![crate_name = "crate-name-attr-used"]
 

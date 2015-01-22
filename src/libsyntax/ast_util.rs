@@ -156,7 +156,7 @@ pub fn int_ty_max(t: IntTy) -> u64 {
 }
 
 /// Get a string representation of an unsigned int type, with its value.
-/// We want to avoid "42uint" in favor of "42u"
+/// We want to avoid "42u" in favor of "42us". "42uint" is right out.
 pub fn uint_ty_to_string(t: UintTy, val: Option<u64>) -> String {
     let s = match t {
         TyUs(true) if val.is_some() => "u",
@@ -319,25 +319,25 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 }
 
 /// Maps a binary operator to its precedence
-pub fn operator_prec(op: ast::BinOp) -> uint {
+pub fn operator_prec(op: ast::BinOp) -> usize {
   match op {
       // 'as' sits here with 12
-      BiMul | BiDiv | BiRem     => 11u,
-      BiAdd | BiSub             => 10u,
-      BiShl | BiShr             =>  9u,
-      BiBitAnd                  =>  8u,
-      BiBitXor                  =>  7u,
-      BiBitOr                   =>  6u,
-      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3u,
-      BiAnd                     =>  2u,
-      BiOr                      =>  1u
+      BiMul | BiDiv | BiRem     => 11us,
+      BiAdd | BiSub             => 10us,
+      BiShl | BiShr             =>  9us,
+      BiBitAnd                  =>  8us,
+      BiBitXor                  =>  7us,
+      BiBitOr                   =>  6us,
+      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3us,
+      BiAnd                     =>  2us,
+      BiOr                      =>  1us
   }
 }
 
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
 #[allow(non_upper_case_globals)]
-pub static as_prec: uint = 12u;
+pub static as_prec: usize = 12us;
 
 pub fn empty_generics() -> Generics {
     Generics {
@@ -410,37 +410,6 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         visit::walk_mod(self, module)
     }
 
-    fn visit_view_item(&mut self, view_item: &ViewItem) {
-        if !self.pass_through_items {
-            if self.visited_outermost {
-                return;
-            } else {
-                self.visited_outermost = true;
-            }
-        }
-        match view_item.node {
-            ViewItemExternCrate(_, _, node_id) => {
-                self.operation.visit_id(node_id)
-            }
-            ViewItemUse(ref view_path) => {
-                match view_path.node {
-                    ViewPathSimple(_, _, node_id) |
-                    ViewPathGlob(_, node_id) => {
-                        self.operation.visit_id(node_id)
-                    }
-                    ViewPathList(_, ref paths, node_id) => {
-                        self.operation.visit_id(node_id);
-                        for path in paths.iter() {
-                            self.operation.visit_id(path.node.id())
-                        }
-                    }
-                }
-            }
-        }
-        visit::walk_view_item(self, view_item);
-        self.visited_outermost = false;
-    }
-
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
         self.operation.visit_id(foreign_item.id);
         visit::walk_foreign_item(self, foreign_item)
@@ -456,10 +425,24 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         }
 
         self.operation.visit_id(item.id);
-        if let ItemEnum(ref enum_definition, _) = item.node {
-            for variant in enum_definition.variants.iter() {
-                self.operation.visit_id(variant.node.id)
+        match item.node {
+            ItemUse(ref view_path) => {
+                match view_path.node {
+                    ViewPathSimple(_, _) |
+                    ViewPathGlob(_) => {}
+                    ViewPathList(_, ref paths) => {
+                        for path in paths.iter() {
+                            self.operation.visit_id(path.node.id())
+                        }
+                    }
+                }
             }
+            ItemEnum(ref enum_definition, _) => {
+                for variant in enum_definition.variants.iter() {
+                    self.operation.visit_id(variant.node.id)
+                }
+            }
+            _ => {}
         }
 
         visit::walk_item(self, item);
@@ -660,37 +643,6 @@ pub fn walk_pat<F>(pat: &Pat, mut it: F) -> bool where F: FnMut(&Pat) -> bool {
     }
 
     walk_pat_(pat, &mut it)
-}
-
-pub trait EachViewItem {
-    fn each_view_item<F>(&self, f: F) -> bool where F: FnMut(&ast::ViewItem) -> bool;
-}
-
-struct EachViewItemData<F> where F: FnMut(&ast::ViewItem) -> bool {
-    callback: F,
-}
-
-impl<'v, F> Visitor<'v> for EachViewItemData<F> where F: FnMut(&ast::ViewItem) -> bool {
-    fn visit_view_item(&mut self, view_item: &ast::ViewItem) {
-        let _ = (self.callback)(view_item);
-    }
-}
-
-impl EachViewItem for ast::Crate {
-    fn each_view_item<F>(&self, f: F) -> bool where F: FnMut(&ast::ViewItem) -> bool {
-        let mut visit = EachViewItemData {
-            callback: f,
-        };
-        visit::walk_crate(&mut visit, self);
-        true
-    }
-}
-
-pub fn view_path_id(p: &ViewPath) -> NodeId {
-    match p.node {
-        ViewPathSimple(_, _, id) | ViewPathGlob(_, id)
-        | ViewPathList(_, _, id) => id
-    }
 }
 
 /// Returns true if the given struct def is tuple-like; i.e. that its fields

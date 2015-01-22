@@ -1229,7 +1229,7 @@ impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     }
 }
 
-#[unstable = "waiting on Index stability"]
+#[stable]
 impl<T> Index<uint> for Vec<T> {
     type Output = T;
 
@@ -1239,6 +1239,7 @@ impl<T> Index<uint> for Vec<T> {
     }
 }
 
+#[stable]
 impl<T> IndexMut<uint> for Vec<T> {
     type Output = T;
 
@@ -1249,6 +1250,7 @@ impl<T> IndexMut<uint> for Vec<T> {
 }
 
 
+#[stable]
 impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1256,6 +1258,7 @@ impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
+#[stable]
 impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1263,6 +1266,7 @@ impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
+#[stable]
 impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1270,6 +1274,7 @@ impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
+#[stable]
 impl<T> ops::Index<ops::FullRange> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1278,6 +1283,7 @@ impl<T> ops::Index<ops::FullRange> for Vec<T> {
     }
 }
 
+#[stable]
 impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1285,6 +1291,7 @@ impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
+#[stable]
 impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1292,6 +1299,7 @@ impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
+#[stable]
 impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1299,6 +1307,7 @@ impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
+#[stable]
 impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1306,7 +1315,6 @@ impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
         self.as_mut_slice()
     }
 }
-
 
 #[stable]
 impl<T> ops::Deref for Vec<T> {
@@ -1486,10 +1494,10 @@ impl<T> Default for Vec<T> {
     }
 }
 
-#[unstable = "waiting on Show stability"]
-impl<T: fmt::Show> fmt::Show for Vec<T> {
+#[stable]
+impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt(self.as_slice(), f)
+        fmt::Debug::fmt(self.as_slice(), f)
     }
 }
 
@@ -2158,7 +2166,7 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_1() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        &x[(-1)..];
+        &x[-1..];
     }
 
     #[test]
@@ -2172,7 +2180,7 @@ mod tests {
     #[should_fail]
     fn test_slice_out_of_bounds_3() {
         let x: Vec<int> = vec![1, 2, 3, 4, 5];
-        &x[(-1)..4];
+        &x[-1..4];
     }
 
     #[test]

@@ -28,7 +28,7 @@ impl<K,V> AssociationList<K,V> {
     }
 }
 
-impl<K: PartialEq + std::fmt::Show, V:Clone> Index<K> for AssociationList<K,V> {
+impl<K: PartialEq + std::fmt::Debug, V:Clone> Index<K> for AssociationList<K,V> {
     type Output = V;
 
     fn index<'a>(&'a self, index: &K) -> &'a V {
