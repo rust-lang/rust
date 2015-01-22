@@ -263,7 +263,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
             }
 
-            ast::ExprForLoop(ref pat, ref head, ref body, _) => {
+            ast::ExprForLoop(..) => {
                 self.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
             }
 

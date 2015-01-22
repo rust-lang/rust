@@ -252,7 +252,6 @@ mod svh_visitor {
         SawExprStruct,
         SawExprRepeat,
         SawExprParen,
-        SawExprForLoop,
     }
 
     fn saw_expr<'a>(node: &'a Expr_) -> SawExprComponent<'a> {
