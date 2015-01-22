@@ -468,7 +468,7 @@ wrong, and the situation is more subtle:
 
 * Windows, however, works with *arbitrary `u16` sequences* that are roughly
   interpreted at UTF-16, but may not actually be valid UTF-16 -- an "encoding"
-  often call UCS-2; see http://justsolve.archiveteam.org/wiki/UCS-2 for a bit
+  often called UCS-2; see http://justsolve.archiveteam.org/wiki/UCS-2 for a bit
   more detail.
 
 What this means is that all of Rust's platforms go beyond Unicode, but they do
@@ -497,13 +497,13 @@ offers the possibility of platform-specific APIs.
   other words, making up some methods:
 
   ```rust
-  my_ut8_data.to_wtf_8().to_ucs2().as_u16_slice() == my_utf8_data.to_utf16().as_16_slice()
+  my_ut8_data.to_wtf8().to_ucs2().as_u16_slice() == my_utf8_data.to_utf16().as_u16_slice()
   ```
 
 * Valid UTF-16 data re-encoded as WTF-8 produces the corresponding UTF-8 data:
 
   ```rust
-  my_utf16_data.to_wtf_8().as_bytes() == my_utf16_data.to_utf8().as_bytes()
+  my_utf16_data.to_wtf8().as_bytes() == my_utf16_data.to_utf8().as_bytes()
   ```
 
 These two properties mean that, when working with Unicode data, the WTF-8
@@ -529,14 +529,14 @@ first proposed in the
 to introduce new string and string slice types that (opaquely) represent
 *platform-sensitive strings*, housed in the `std::os_str` module.
 
-The `OsStrBuf` type is analogous to `String`, and `OsStr` is analogous to `str`.
+The `OsString` type is analogous to `String`, and `OsStr` is analogous to `str`.
 Their backing implementation is platform-dependent, but they offer a
 cross-platform API:
 
 ```rust
 pub mod os_str {
     /// Owned OS strings
-    struct OsStrBuf {
+    struct OsString {
         inner: imp::Buf
     }
     /// Slices into OS strings
@@ -559,18 +559,18 @@ pub mod os_str {
         ...
     }
 
-    impl OsStrBuf {
-        pub fn from_string(String) -> OsStrBuf;
-        pub fn from_str(&str) -> OsStrBuf;
+    impl OsString {
+        pub fn from_string(String) -> OsString;
+        pub fn from_str(&str) -> OsString;
         pub fn as_slice(&self) -> &OsStr;
-        pub fn into_string(Self) -> Result<String, OsStrBuf>;
+        pub fn into_string(Self) -> Result<String, OsString>;
         pub fn into_string_lossy(Self) -> String;
 
         // and ultimately other functionality typically found on vectors,
         // but CRUCIALLY NOT as_bytes
     }
 
-    impl Deref<OsStr> for OsStrBuf { ... }
+    impl Deref<OsStr> for OsString { ... }
 
     impl OsStr {
         pub fn from_str(value: &str) -> &OsStr;
@@ -581,12 +581,12 @@ pub mod os_str {
         // but CRUCIALLY NOT as_bytes
     }
 
-    trait IntoOsStrBuf {
-        fn into_os_str_buf(self) -> OsStrBuf;
+    trait IntoOsString {
+        fn into_os_str_buf(self) -> OsString;
     }
 
-    impl IntoOsStrBuf for OsStrBuf { ... }
-    impl<'a> IntoOsStrBuf for &'a OsStr { ... }
+    impl IntoOsString for OsString { ... }
+    impl<'a> IntoOsString for &'a OsStr { ... }
 
     ...
 }
@@ -612,12 +612,12 @@ reveals more about the space of possible values:
 pub mod os {
     #[cfg(unix)]
     pub mod unix {
-        trait OsStrBufExt {
+        trait OsStringExt {
             fn from_vec(Vec<u8>) -> Self;
             fn into_vec(Self) -> Vec<u8>;
         }
 
-        impl OsStrBufExt for os_str::OsStrBuf { ... }
+        impl OsStringExt for os_str::OsString { ... }
 
         trait OsStrExt {
             fn as_byte_slice(&self) -> &[u8];
@@ -633,11 +633,11 @@ pub mod os {
     pub mod windows{
         // The following extension traits provide a UCS-2 view of OS strings
 
-        trait OsStrBufExt {
+        trait OsStringExt {
             fn from_wide_slice(&[u16]) -> Self;
         }
 
-        impl OsStrBufExt for os_str::OsStrBuf { ... }
+        impl OsStringExt for os_str::OsString { ... }
 
         trait OsStrExt {
             fn to_wide_vec(&self) -> Vec<u16>;
@@ -773,15 +773,15 @@ principles or visions) are outside the scope of this RFC.
 
 (Text from @SimonSapin)
 
-Rather than WTF-8, `OsStr` and `OsStrBuf` on Windows could use
+Rather than WTF-8, `OsStr` and `OsString` on Windows could use
 potentially-ill-formed UTF-16 (a.k.a. "wide" strings), with a
 different cost trade off.
 
 Upside:
-* No conversion between `OsStr` / `OsStrBuf` and OS calls.
+* No conversion between `OsStr` / `OsString` and OS calls.
 
 Downsides:
-* More expensive conversions between `OsStr` / `OsStrBuf` and `str` / `String`.
+* More expensive conversions between `OsStr` / `OsString` and `str` / `String`.
 * These conversions have inconsistent performance characteristics between platforms. (Need to allocate on Windows, but not on Unix.)
 * Some of them return `Cow`, which has some ergonomic hit.
 
@@ -797,14 +797,14 @@ pub mod os_str {
     }
 
     impl OsStr {
-        pub fn from_str(&str) -> Cow<OsStrBuf, OsStr>;
+        pub fn from_str(&str) -> Cow<OsString, OsStr>;
         pub fn to_string(&self) -> Option<CowString>;
         pub fn to_string_lossy(&self) -> CowString;
     }
 
     #[cfg(windows)]
     pub mod windows{
-        trait OsStrBufExt {
+        trait OsStringExt {
             fn from_wide_slice(&[u16]) -> Self;
             fn from_wide_vec(Vec<u16>) -> Self;
             fn into_wide_vec(self) -> Vec<u16>;
