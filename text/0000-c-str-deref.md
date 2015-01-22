@@ -153,7 +153,8 @@ this method.
 While it's not possible outside of unsafe code to unintentionally copy out
 or modify the nominal value of `CStr` under an immutable reference, some
 unforeseen trouble or confusion can arise due to the structure having a
-bogus size.
+bogus size. A separate [RFC PR](https://github.com/rust-lang/rfcs/issues/709),
+if accepted, will solve this by opting out of `Sized`.
 
 # Alternatives
 
@@ -169,6 +170,10 @@ incompatible helper types in public APIs until a dominant de-facto solution
 is established.
 
 # Unresolved questions
+
+`CStr` can be made a
+[truly unsized type](https://github.com/rust-lang/rfcs/issues/709),
+pending on that proposal's approval.
 
 There is room for a helper type wrapping an allocated C string with a supplied
 deallocation function to invoke when dropped. That type should also dereference
