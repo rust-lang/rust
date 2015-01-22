@@ -8,24 +8,14 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-license1 = """// Copyright """
-license2 = """ The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+license1 = """// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 // http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 """
 
-license3 = """# Copyright """
-license4 = """ The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+license2 = """# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
 # http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
 # <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 # option. This file may not be copied, modified, or distributed
@@ -57,18 +47,17 @@ exceptions = [
 
 def check_license(name, contents):
     # Whitelist check
-    for exception in exceptions:
-        if name.endswith(exception):
-            return True
+    if any(name.endswith(e) for e in exceptions):
+        return True
 
     # Xfail check
     firstlineish = contents[:100]
-    if firstlineish.find("ignore-license") != -1:
+    if "ignore-license" in firstlineish:
         return True
 
     # License check
     boilerplate = contents[:500]
-    if (boilerplate.find(license1) == -1 or boilerplate.find(license2) == -1) and \
-       (boilerplate.find(license3) == -1 or boilerplate.find(license4) == -1):
+    if (license1 not in boilerplate) and (license2 not in boilerplate):
         return False
+
     return True
