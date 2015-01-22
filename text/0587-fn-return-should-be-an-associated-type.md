@@ -1,6 +1,6 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
+- Start Date: 2015-01-22
+- RFC PR: [rust-lang/rfcs#587](https://github.com/rust-lang/rfcs/pull/587)
+- Rust Issue: [rust-lang/rust#21527](https://github.com/rust-lang/rust/issues/21527)
 
 # Summary
 
