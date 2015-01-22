@@ -198,9 +198,9 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
 #[deprecated = "use std::ffi::c_str_to_bytes + str::from_utf8"]
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;
-    let mut len = 0u;
+    let mut len = 0;
     while *s.offset(len as int) != 0 {
-        len += 1u;
+        len += 1;
     }
     let v: &'static [u8] = ::mem::transmute(Slice { data: s, len: len });
     from_utf8(v).ok().expect("from_c_str passed invalid utf-8 data")
@@ -1510,7 +1510,7 @@ impl StrExt for str {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
-                unsafe { self.slice_unchecked(0u, next) }
+                unsafe { self.slice_unchecked(0, next) }
             }
         }
     }
@@ -1543,7 +1543,7 @@ impl StrExt for str {
         fn multibyte_char_range_at_reverse(s: &str, mut i: uint) -> CharRange {
             // while there is a previous byte == 10......
             while i > 0 && s.as_bytes()[i] & !CONT_MASK == TAG_CONT_U8 {
-                i -= 1u;
+                i -= 1;
             }
 
             let mut val = s.as_bytes()[i] as u32;
@@ -1613,7 +1613,7 @@ impl StrExt for str {
         if self.is_empty() {
             None
         } else {
-            let CharRange {ch, next} = self.char_range_at(0u);
+            let CharRange {ch, next} = self.char_range_at(0);
             let next_s = unsafe { self.slice_unchecked(next, self.len()) };
             Some((ch, next_s))
         }

@@ -53,7 +53,7 @@ pub enum SignFormat {
     SignNeg
 }
 
-static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
+static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11;
 
 /// Converts a number to its string representation as a byte vector.
 /// This is meant to be a common base implementation for all numeric string
@@ -191,7 +191,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
     if deccum != _0 || (limit_digits && exact && digit_count > 0) {
         buf[end] = b'.';
         end += 1;
-        let mut dig = 0u;
+        let mut dig = 0;
 
         // calculate new digits while
         // - there is no limit and there are digits left
@@ -218,7 +218,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
-            dig += 1u;
+            dig += 1;
         }
 
         // If digits are limited, and that limit has been reached,

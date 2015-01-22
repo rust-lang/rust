@@ -187,13 +187,13 @@ pub unsafe fn uninitialized<T>() -> T {
 /// ```
 /// use std::mem;
 ///
-/// let x = &mut 5i;
-/// let y = &mut 42i;
+/// let x = &mut 5;
+/// let y = &mut 42;
 ///
 /// mem::swap(x, y);
 ///
-/// assert_eq!(42i, *x);
-/// assert_eq!(5i, *y);
+/// assert_eq!(42, *x);
+/// assert_eq!(5, *y);
 /// ```
 #[inline]
 #[stable]
@@ -277,7 +277,7 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 /// ```
 /// use std::cell::RefCell;
 ///
-/// let x = RefCell::new(1i);
+/// let x = RefCell::new(1);
 ///
 /// let mut mutable_borrow = x.borrow_mut();
 /// *mutable_borrow = 1;
@@ -306,9 +306,9 @@ pub fn drop<T>(_x: T) { }
 /// ```
 /// use std::mem;
 ///
-/// let one = unsafe { mem::transmute_copy(&1i) };
+/// let one = unsafe { mem::transmute_copy(&1) };
 ///
-/// assert_eq!(1u, one);
+/// assert_eq!(1, one);
 /// ```
 #[inline]
 #[stable]
