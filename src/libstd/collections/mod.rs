@@ -49,8 +49,8 @@
 //! * You want a double-ended queue (deque).
 //!
 //! ### Use a `DList` when:
-//! * You want a `Vec` or `RingBuf` of unknown size, and can't tolerate inconsistent
-//! performance during insertions.
+//! * You want a `Vec` or `RingBuf` of unknown size, and can't tolerate amortization.
+//! * You want to efficiently split and append lists.
 //! * You are *absolutely* certain you *really*, *truly*, want a doubly linked list.
 //!
 //! ### Use a `HashMap` when:
@@ -84,6 +84,56 @@
 //! * You want to store a bunch of elements, but only ever want to process the "biggest"
 //! or "most important" one at any given time.
 //! * You want a priority queue.
+//!
+//! # Performance
+//!
+//! Choosing the right collection for the job requires an understanding of what each collection
+//! is good at. Here we briefly summarize the performance of different collections for certain
+//! important operations. For further details, see each type's documentation.
+//!
+//! Throughout the documentation, we will follow a few conventions. For all operations,
+//! the collection's size is denoted by n. If another collection is involved in the operation, it
+//! contains m elements. Operations which have an *amortized* cost are suffixed with a `*`.
+//! Operations with an *expected* cost are suffixed with a `~`.
+//!
+//! All amortized costs are for the potential need to resize when capacity is exhausted.
+//! If a resize occurs it will take O(n) time. Our collections never automatically shrink,
+//! so removal operations aren't amortized. Over a sufficiently large series of
+//! operations, the average cost per operation will deterministically equal the given cost.
+//!
+//! Only HashMap has expected costs, due to the probabilistic nature of hashing. It is
+//! theoretically possible, though very unlikely, for HashMap to experience worse performance.
+//!
+//! ## Sequences
+//!
+//! |         | get(i)         | insert(i)       | remove(i)      | append | split_off(i)   |
+//! |---------|----------------|-----------------|----------------|--------|----------------|
+//! | Vec     | O(1)           | O(n-i)*         | O(n-i)         | O(m)*  | O(n-i)         |
+//! | RingBuf | O(1)           | O(min(i, n-i))* | O(min(i, n-i)) | O(m)*  | O(min(i, n-i)) |
+//! | DList   | O(min(i, n-i)) | O(min(i, n-i))  | O(min(i, n-i)) | O(1)   | O(min(i, n-i)) |
+//! | Bitv    | O(1)           | O(n-i)*         | O(n-i)         | O(m)*  | O(n-i)         |
+//!
+//! Note that where ties occur, Vec is generally going to be faster than RingBuf, and RingBuf
+//! is generally going to be faster than DList. Bitv is not a general purpose collection, and
+//! therefore cannot reasonably be compared.
+//!
+//! ## Maps
+//!
+//! For Sets, all operations have the cost of the equivalent Map operation. For BitvSet,
+//! refer to VecMap.
+//!
+//! |          | get       | insert   | remove   | predecessor |
+//! |----------|-----------|----------|----------|-------------|
+//! | HashMap  | O(1)~     | O(1)~*   | O(1)~    | N/A         |
+//! | BTreeMap | O(log n)  | O(log n) | O(log n) | O(log n)    |
+//! | VecMap   | O(1)      | O(1)?    | O(1)     | O(n)        |
+//!
+//! Note that VecMap is *incredibly* inefficient in terms of space. The O(1) insertion time
+//! assumes space for the element is already allocated. Otherwise, a large key may require a
+//! massive reallocation, with no direct relation to the number of elements in the collection.
+//! VecMap should only be seriously considered for small keys.
+//!
+//! Note also that BTreeMap's precise preformance depends on the value of B.
 //!
 //! # Correct and Efficient Usage of Collections
 //!
