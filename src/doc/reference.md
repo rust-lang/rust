@@ -739,6 +739,15 @@ Rust syntax is restricted in two ways:
 * `concat!` : concatenates a comma-separated list of literals
 * `concat_idents!` : create a new identifier by concatenating the arguments
 
+The following attributes are used for quasiquoting in procedural macros:
+
+* `quote_expr!`
+* `quote_item!`
+* `quote_pat!`
+* `quote_stmt!`
+* `quote_tokens!`
+* `quote_ty!`
+
 # Crates and source files
 
 Rust is a *compiled* language. Its semantics obey a *phase distinction*
@@ -2028,6 +2037,9 @@ type int8_t = i8;
   item](#language-items) for more details.
 - `test` - indicates that this function is a test function, to only be compiled
   in case of `--test`.
+- `should_fail` - indicates that this test function should panic, inverting the success condition.
+- `cold` - The function is unlikely to be executed, so optimize it (and calls
+  to it) differently.
 
 ### Static-only attributes
 
