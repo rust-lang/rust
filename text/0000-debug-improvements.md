@@ -165,7 +165,8 @@ It can probably be cleaned up a bit). For convenience, methods will be added
 to `Formatter` which create them. An example of use of the `debug_struct`
 method is shown in the Motivation section. In addition, the `padded` method
 returns a type implementing `fmt::Writer` that pads input passed to it. This
-is used inside of the other builders, but may be useful for others.
+is used inside of the other builders, but is provided here for use by `Debug`
+implementations that require formats not provided with the other helpers.
 ```rust
 impl Formatter {
     pub fn debug_struct<'a>(&'a mut self, name: &str) -> DebugStruct<'a> { ... }
