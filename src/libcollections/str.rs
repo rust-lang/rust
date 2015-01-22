@@ -435,12 +435,9 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// # Examples
     ///
     /// ```rust
-    /// let s = "Do you know the muffin man,
-    /// The muffin man, the muffin man, ...".to_string();
+    /// let s = "this is old";
     ///
-    /// assert_eq!(s.replace("muffin man", "little lamb"),
-    ///            "Do you know the little lamb,
-    /// The little lamb, the little lamb, ...".to_string());
+    /// assert_eq!(s.replace("old", "new"), "this is new");
     ///
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
