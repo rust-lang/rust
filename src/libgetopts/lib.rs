@@ -93,6 +93,7 @@
 #![deny(missing_docs)]
 #![feature(collections)]
 #![feature(core)]
+#![cfg_attr(test, feature(rustc_private))]
 
 #[cfg(test)] #[macro_use] extern crate log;
 
@@ -541,7 +542,8 @@ pub fn opt(short_name: &str,
 
 impl Fail {
     /// Convert a `Fail` enum into an error string.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `fmt::String` (`{}` format specifier)")]
     pub fn to_err_msg(self) -> String {
         self.to_string()

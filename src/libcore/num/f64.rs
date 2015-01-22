@@ -185,43 +185,53 @@ impl Float for f64 {
     }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn mantissa_digits(_: Option<f64>) -> uint { MANTISSA_DIGITS }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn digits(_: Option<f64>) -> uint { DIGITS }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn epsilon() -> f64 { EPSILON }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_exp(_: Option<f64>) -> int { MIN_EXP }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn max_exp(_: Option<f64>) -> int { MAX_EXP }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_10_exp(_: Option<f64>) -> int { MIN_10_EXP }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn max_10_exp(_: Option<f64>) -> int { MAX_10_EXP }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_value() -> f64 { MIN_VALUE }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_pos_value(_: Option<f64>) -> f64 { MIN_POS_VALUE }
 
     #[inline]
-    #[deprecated(feature = "oldstuff", since = "1.0.0")]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn max_value() -> f64 { MAX_VALUE }
 
     /// Returns the mantissa, exponent and sign as integers.

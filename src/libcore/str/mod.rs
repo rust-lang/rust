@@ -195,7 +195,8 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
 /// # Panics
 ///
 /// This function will panic if the string pointed to by `s` is not valid UTF-8.
-#[deprecated(feature = "oldstuff", since = "1.0.0",
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
              reason = "use std::ffi::c_str_to_bytes + str::from_utf8")]
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;

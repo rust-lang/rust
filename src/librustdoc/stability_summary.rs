@@ -16,7 +16,7 @@
 use std::cmp::Ordering;
 use std::ops::Add;
 
-use syntax::attr::{Deprecated, Unstable, Stable};
+use syntax::attr::{Unstable, Stable};
 use syntax::ast::Public;
 
 use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
@@ -29,7 +29,6 @@ use html::render::cache;
 /// The counts for each stability level.
 #[derive(Copy)]
 pub struct Counts {
-    pub deprecated: uint,
     pub unstable: uint,
     pub stable: uint,
 
@@ -42,7 +41,6 @@ impl Add for Counts {
 
     fn add(self, other: Counts) -> Counts {
         Counts {
-            deprecated:   self.deprecated   + other.deprecated,
             unstable:     self.unstable     + other.unstable,
             stable:       self.stable       + other.stable,
             unmarked:     self.unmarked     + other.unmarked,
@@ -53,7 +51,6 @@ impl Add for Counts {
 impl Counts {
     fn zero() -> Counts {
         Counts {
-            deprecated:   0,
             unstable:     0,
             stable:       0,
             unmarked:     0,
@@ -61,7 +58,7 @@ impl Counts {
     }
 
     pub fn total(&self) -> uint {
-        self.deprecated + self.unstable + self.stable + self.unmarked
+        self.unstable + self.stable + self.unmarked
     }
 }
 
@@ -96,11 +93,10 @@ fn visible(item: &Item) -> bool {
 
 fn count_stability(stab: Option<&Stability>) -> Counts {
     match stab {
-        None             => Counts { unmarked: 1,     .. Counts::zero() },
+        None            => Counts { unmarked: 1,     .. Counts::zero() },
         Some(ref stab) => match stab.level {
-            Deprecated   => Counts { deprecated: 1,   .. Counts::zero() },
-            Unstable     => Counts { unstable: 1,     .. Counts::zero() },
-            Stable       => Counts { stable: 1,       .. Counts::zero() },
+            Unstable    => Counts { unstable: 1,     .. Counts::zero() },
+            Stable      => Counts { stable: 1,       .. Counts::zero() },
         }
     }
 }

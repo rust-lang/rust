@@ -62,7 +62,8 @@ impl Writer for Vec<u8> {
 ///
 /// assert_eq!(w.into_inner(), vec!(0, 1, 2));
 /// ```
-#[deprecated(feature = "oldstuff", since = "1.0.0",
+#[unstable(feature = "io")]
+#[deprecated(since = "1.0.0",
              reason = "use the Vec<u8> Writer implementation directly")]
 #[derive(Clone)]
 pub struct MemWriter {

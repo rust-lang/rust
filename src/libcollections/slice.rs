@@ -642,7 +642,8 @@ pub trait SliceExt {
     fn binary_search(&self, x: &Self::Item) -> Result<uint, uint> where Self::Item: Ord;
 
     /// Deprecated: use `binary_search` instead.
-    #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "use binary_search instead")]
+    #[unstable(feature = "collections")]
+    #[deprecated(since = "1.0.0", reason = "use binary_search instead")]
     fn binary_search_elem(&self, x: &Self::Item) -> Result<uint, uint> where Self::Item: Ord {
         self.binary_search(x)
     }

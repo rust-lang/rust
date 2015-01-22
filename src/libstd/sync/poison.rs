@@ -105,7 +105,8 @@ impl<T> Error for PoisonError<T> {
 impl<T> PoisonError<T> {
     /// Consumes this error indicating that a lock is poisoned, returning the
     /// underlying guard to allow access regardless.
-    #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "renamed to into_inner")]
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0", reason = "renamed to into_inner")]
     pub fn into_guard(self) -> T { self.guard }
 
     /// Consumes this error indicating that a lock is poisoned, returning the

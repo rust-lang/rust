@@ -37,6 +37,7 @@ Core encoding and decoding interfaces.
 #![feature(rustc_private)]
 #![feature(std_misc)]
 #![feature(unicode)]
+#![cfg_attr(test, feature(test))]
 
 // test harness access
 #[cfg(test)] extern crate test;

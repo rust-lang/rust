@@ -14,7 +14,8 @@
 #![staged_api]
 #![unstable(feature = "test_feature")]
 
-#[deprecated(feature = "oldstuff", since = "1.0.0")]
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[deprecated(since = "1.0.0")]
 pub fn foo() -> uint {
     20
 }

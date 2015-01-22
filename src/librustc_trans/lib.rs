@@ -40,6 +40,7 @@
 #![feature(rustc_private)]
 #![feature(std_misc)]
 #![feature(unicode)]
+#![feature(hash)]
 
 extern crate arena;
 extern crate flate;

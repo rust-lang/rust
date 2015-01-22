@@ -33,6 +33,7 @@
 #![feature(alloc)]
 #![feature(unicode)]
 #![feature(hash)]
+#![cfg_attr(test, feature(test))]
 
 #[macro_use]
 extern crate core;

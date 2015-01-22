@@ -37,6 +37,8 @@
 #![allow(missing_docs)]
 #![feature(alloc)]
 #![feature(core)]
+#![cfg_attr(test, feature(test))]
+#![cfg_attr(test, feature(collections))]
 
 extern crate alloc;
 
