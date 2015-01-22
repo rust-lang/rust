@@ -282,6 +282,24 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     })
 }
 
+/// Craft a span that will be ignored by the stability lint's
+/// call to codemap's is_internal check.
+/// The expanded code calls some unstable functions in the test crate.
+fn ignored_span(cx: &TestCtxt, sp: Span) -> Span {
+    let info = ExpnInfo {
+        call_site: DUMMY_SP,
+        callee: NameAndSpan {
+            name: "test".to_string(),
+            format: MacroAttribute,
+            span: None
+        }
+    };
+    let expn_id = cx.sess.span_diagnostic.cm.record_expansion(info);
+    let mut sp = sp;
+    sp.expn_id = expn_id;
+    return sp;
+}
+
 #[derive(PartialEq)]
 enum HasTestSignature {
     Yes,
@@ -408,6 +426,64 @@ fn mk_std(cx: &TestCtxt) -> ast::ViewItem {
     }
 }
 
+fn mk_main(cx: &mut TestCtxt) -> P<ast::Item> {
+    // Writing this out by hand with 'ignored_span':
+    //        pub fn main() {
+    //            #![main]
+    //            use std::slice::AsSlice;
+    //            test::test_main_static(::std::os::args().as_slice(), TESTS);
+    //        }
+
+    let sp = ignored_span(cx, DUMMY_SP);
+    let ecx = &cx.ext_cx;
+
+    // std::slice::AsSlice
+    let as_slice_path = ecx.path(sp, vec![token::str_to_ident("std"),
+                                          token::str_to_ident("slice"),
+                                          token::str_to_ident("AsSlice")]);
+    // test::test_main_static
+    let test_main_path = ecx.path(sp, vec![token::str_to_ident("test"),
+                                           token::str_to_ident("test_main_static")]);
+    // ::std::os::args
+    let os_args_path = ecx.path_global(sp, vec![token::str_to_ident("std"),
+                                                token::str_to_ident("os"),
+                                                token::str_to_ident("args")]);
+    // use std::slice::AsSlice
+    let as_slice_path = P(nospan(ast::ViewPathSimple(token::str_to_ident("AsSlice"),
+                                                     as_slice_path, ast::DUMMY_NODE_ID)));
+    let use_as_slice = ecx.view_use(sp, ast::Inherited, as_slice_path);
+    // ::std::os::args()
+    let os_args_path_expr = ecx.expr_path(os_args_path);
+    let call_os_args = ecx.expr_call(sp, os_args_path_expr, vec![]);
+    // ::std::os::args().as_slice()
+    let call_as_slice = ecx.expr_method_call(sp, call_os_args,
+                                             token::str_to_ident("as_slice"), vec![]);
+    // test::test_main_static(...)
+    let test_main_path_expr = ecx.expr_path(test_main_path);
+    let tests_ident_expr = ecx.expr_ident(sp, token::str_to_ident("TESTS"));
+    let call_test_main = ecx.expr_call(sp, test_main_path_expr,
+                                       vec![call_as_slice, tests_ident_expr]);
+    let call_test_main = ecx.stmt_expr(call_test_main);
+    // #![main]
+    let main_meta = ecx.meta_word(sp, token::intern_and_get_ident("main"));
+    let main_attr = ecx.attribute(sp, main_meta);
+    // pub fn main() { ... }
+    let main_ret_ty = ecx.ty(sp, ast::TyTup(vec![]));
+    let main_body = ecx.block_all(sp, vec![use_as_slice], vec![call_test_main], None);
+    let main = ast::ItemFn(ecx.fn_decl(vec![], main_ret_ty),
+                           ast::Unsafety::Normal, ::abi::Rust, empty_generics(), main_body);
+    let main = P(ast::Item {
+        ident: token::str_to_ident("main"),
+        attrs: vec![main_attr],
+        id: ast::DUMMY_NODE_ID,
+        node: main,
+        vis: ast::Public,
+        span: sp
+    });
+
+    return main;
+}
+
 fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
     // Link to test crate
     let view_items = vec!(mk_std(cx));
@@ -417,13 +493,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
 
     // The synthesized main function which will call the console test runner
     // with our list of tests
-    let mainfn = (quote_item!(&mut cx.ext_cx,
-        pub fn main() {
-            #![main]
-            use std::slice::AsSlice;
-            test::test_main_static(::std::os::args().as_slice(), TESTS);
-        }
-    )).unwrap();
+    let mainfn = mk_main(cx);
 
     let testmod = ast::Mod {
         inner: DUMMY_SP,
@@ -433,19 +503,13 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<ast::ViewItem>) {
     let item_ = ast::ItemMod(testmod);
 
     let mod_ident = token::gensym_ident("__test");
-    let allow_unstable = {
-        let unstable = P(nospan(ast::MetaWord(InternedString::new("unstable"))));
-        let allow = P(nospan(ast::MetaList(InternedString::new("allow"),
-                                           vec![unstable])));
-        attr::mk_attr_inner(attr::mk_attr_id(), allow)
-    };
     let item = ast::Item {
         ident: mod_ident,
         id: ast::DUMMY_NODE_ID,
         node: item_,
         vis: ast::Public,
         span: DUMMY_SP,
-        attrs: vec![allow_unstable],
+        attrs: vec![],
     };
     let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
         // building `use <ident> = __test::main`
@@ -538,7 +602,7 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // __test_reexports, causing it to be reinterned, losing the
     // gensym information.
 
-    let span = test.span;
+    let span = ignored_span(cx, test.span);
     let path = test.path.clone();
     let ecx = &cx.ext_cx;
     let self_id = ecx.ident_of("self");
