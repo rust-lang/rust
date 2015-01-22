@@ -22,12 +22,12 @@ use num::Float;
 use num::FpCategory as Fp;
 use option::Option;
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "pending integer conventions")]
+#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
 pub const RADIX: uint = 2u;
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "pending integer conventions")]
+#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
 pub const MANTISSA_DIGITS: uint = 24u;
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "pending integer conventions")]
+#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
 pub const DIGITS: uint = 6u;
 
 #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -43,14 +43,14 @@ pub const MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
 #[stable(feature = "grandfathered", since = "1.0.0")]
 pub const MAX_VALUE: f32 = 3.40282347e+38_f32;
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "pending integer conventions")]
+#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
 pub const MIN_EXP: int = -125;
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "pending integer conventions")]
+#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
 pub const MAX_EXP: int = 128;
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "pending integer conventions")]
+#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
 pub const MIN_10_EXP: int = -37;
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "pending integer conventions")]
+#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
 pub const MAX_10_EXP: int = 38;
 
 #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -61,7 +61,7 @@ pub const INFINITY: f32 = 1.0_f32/0.0_f32;
 pub const NEG_INFINITY: f32 = -1.0_f32/0.0_f32;
 
 /// Various useful constants.
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "naming scheme needs to be revisited")]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
@@ -118,7 +118,7 @@ pub mod consts {
     pub const LN_10: f32 = 2.30258509299404568401799145468436421_f32;
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is unstable")]
+#[unstable(feature = "unnamed_feature", reason = "trait is unstable")]
 impl Float for f32 {
     #[inline]
     fn nan() -> f32 { NAN }

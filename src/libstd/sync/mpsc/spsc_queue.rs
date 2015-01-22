@@ -33,7 +33,7 @@
 //! concurrently between two tasks. This data structure is safe to use and
 //! enforces the semantics that there is one pusher and one popper.
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 use core::prelude::*;
 

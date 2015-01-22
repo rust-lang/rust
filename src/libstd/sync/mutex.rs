@@ -145,7 +145,7 @@ unsafe impl<T:Send> Sync for Mutex<T> { }
 /// }
 /// // lock is unlocked here.
 /// ```
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "may be merged with Mutex in the future")]
 pub struct StaticMutex {
     lock: sys::Mutex,
@@ -192,7 +192,7 @@ impl<'a, T> !marker::Send for MutexGuard<'a, T> {}
 
 /// Static initialization of a mutex. This constant can be used to initialize
 /// other mutex constants.
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "may be merged with Mutex in the future")]
 pub const MUTEX_INIT: StaticMutex = StaticMutex {
     lock: sys::MUTEX_INIT,
@@ -267,7 +267,7 @@ static DUMMY: Dummy = Dummy(UnsafeCell { value: () });
 impl StaticMutex {
     /// Acquires this lock, see `Mutex::lock`
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Mutex in the future")]
     pub fn lock(&'static self) -> LockResult<MutexGuard<()>> {
         unsafe { self.lock.lock() }
@@ -276,7 +276,7 @@ impl StaticMutex {
 
     /// Attempts to grab this lock, see `Mutex::try_lock`
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Mutex in the future")]
     pub fn try_lock(&'static self) -> TryLockResult<MutexGuard<()>> {
         if unsafe { self.lock.try_lock() } {
@@ -296,7 +296,7 @@ impl StaticMutex {
     /// *all* platforms. It may be the case that some platforms do not leak
     /// memory if this method is not called, but this is not guaranteed to be
     /// true on all platforms.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Mutex in the future")]
     pub unsafe fn destroy(&'static self) {
         self.lock.destroy()

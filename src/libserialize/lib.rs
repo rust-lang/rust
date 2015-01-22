@@ -15,7 +15,7 @@ Core encoding and decoding interfaces.
 */
 
 #![crate_name = "serialize"]
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "deprecated in favor of rustc-serialize on crates.io")]
 #![staged_api]
 #![crate_type = "rlib"]

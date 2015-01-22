@@ -14,11 +14,11 @@ macro_rules! int_module { ($T:ty, $bits:expr) => (
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `mem::size_of` function.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub const BITS : uint = $bits;
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of
 // calling the `mem::size_of` function.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub const BYTES : uint = ($bits / 8);
 
 // FIXME(#11621): Should be deprecated once CTFE is implemented in favour of

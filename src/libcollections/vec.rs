@@ -255,7 +255,7 @@ impl<T> Vec<T> {
     /// owned by the returned `Vec<T>`. The elements of the buffer are copied into the vector
     /// without cloning, as if `ptr::read()` were called on them.
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be better expressed via composition")]
     pub unsafe fn from_raw_buf(ptr: *const T, elts: uint) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
@@ -377,7 +377,7 @@ impl<T> Vec<T> {
     /// Note that this will drop any excess capacity. Calling this and
     /// converting back to a vector with `into_vec()` is equivalent to calling
     /// `shrink_to_fit()`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         self.shrink_to_fit();
         unsafe {
@@ -697,7 +697,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec2, vec![]);
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "new API, waiting for dust to settle")]
     pub fn append(&mut self, other: &mut Self) {
         if mem::size_of::<T>() == 0 {
@@ -734,7 +734,7 @@ impl<T> Vec<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
         unsafe {
@@ -817,7 +817,7 @@ impl<T> Vec<T> {
     /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
     /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "API may change to provide stronger guarantees")]
     pub fn map_in_place<U, F>(self, mut f: F) -> Vec<U> where F: FnMut(T) -> U {
         // FIXME: Assert statically that the types `T` and `U` have the same
@@ -1012,7 +1012,7 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification; waiting for dust to settle")]
     pub fn resize(&mut self, new_len: uint, value: T) {
         let len = self.len();
@@ -1037,7 +1037,7 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "likely to be replaced by a more optimized extend")]
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve(other.len());
@@ -1206,7 +1206,7 @@ unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(self.as_slice()) }
 
@@ -1235,7 +1235,7 @@ impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on Index stability")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on Index stability")]
 impl<T> Index<uint> for Vec<T> {
     type Output = T;
 
@@ -1339,7 +1339,7 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on Extend stability")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: Iterator<Item=T>>(&mut self, mut iterator: I) {
@@ -1414,7 +1414,7 @@ macro_rules! impl_eq_for_cowvec {
 impl_eq_for_cowvec! { &'b [B] }
 impl_eq_for_cowvec! { &'b mut [B] }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "waiting on PartialOrd stability")]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
@@ -1423,10 +1423,10 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on Eq stability")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on Eq stability")]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on Ord stability")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on Ord stability")]
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
@@ -1457,7 +1457,7 @@ impl<T> AsSlice<T> for Vec<T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "recent addition, needs more experience")]
 impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
     type Output = Vec<T>;
@@ -1494,7 +1494,7 @@ impl<T> Default for Vec<T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on Show stability")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on Show stability")]
 impl<T: fmt::Show> fmt::Show for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt(self.as_slice(), f)
@@ -1512,12 +1512,12 @@ impl<'a> fmt::Writer for Vec<u8> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "unclear how valuable this alias is")]
 /// A clone-on-write vector
 pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
     fn from_iter<I: Iterator<Item=T>>(it: I) -> CowVec<'a, T> {
         Cow::Owned(FromIterator::from_iter(it))
@@ -1555,7 +1555,7 @@ unsafe impl<T: Sync> Sync for IntoIter<T> { }
 impl<T> IntoIter<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
@@ -1646,7 +1646,7 @@ impl<T> Drop for IntoIter<T> {
 
 /// An iterator that drains a vector.
 #[unsafe_no_drop_flag]
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "recently added as part of collections reform 2")]
 pub struct Drain<'a, T> {
     ptr: *const T,
@@ -1735,13 +1735,13 @@ impl<'a, T> Drop for Drain<'a, T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Wrapper type providing a `&Vec<T>` reference via `Deref`.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub struct DerefVec<'a, T> {
     x: Vec<T>,
     l: ContravariantLifetime<'a>
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 impl<'a, T> Deref for DerefVec<'a, T> {
     type Target = Vec<T>;
 
@@ -1761,7 +1761,7 @@ impl<'a, T> Drop for DerefVec<'a, T> {
 }
 
 /// Convert a slice to a wrapper type providing a `&Vec<T>` reference.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
         DerefVec {

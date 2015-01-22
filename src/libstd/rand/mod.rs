@@ -219,7 +219,7 @@
 //! }
 //! ```
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 use cell::RefCell;
 use clone::Clone;

@@ -10,7 +10,7 @@
 
 // Because this module is temporary...
 #![allow(missing_docs)]
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 use alloc::boxed::Box;
 use core::marker::Send;

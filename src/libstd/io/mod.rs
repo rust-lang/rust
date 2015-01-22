@@ -219,7 +219,7 @@
 //! concerned with error handling; instead its caller is responsible for
 //! responding to errors that may occur while attempting to read the numbers.
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 #![deny(unused_must_use)]
 
 pub use self::SeekStyle::*;
@@ -1743,7 +1743,7 @@ pub struct FileStat {
     ///
     /// Usage of this field is discouraged, but if access is desired then the
     /// fields are located here.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub unstable: UnstableFileStat,
 }
 
@@ -1751,7 +1751,7 @@ pub struct FileStat {
 /// returned from a `stat` syscall which is not contained in the `FileStat`
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 #[derive(Copy, Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
