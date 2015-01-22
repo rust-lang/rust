@@ -351,13 +351,15 @@ pub struct Stability {
     pub level: StabilityLevel,
     pub feature: InternedString,
     pub since: Option<InternedString>,
+    pub deprecated_since: Option<InternedString>,
+    // The reason for the current stability level. If deprecated, the
+    // reason for deprecation.
     pub reason: Option<InternedString>,
 }
 
 /// The available stability levels.
 #[derive(RustcEncodable,RustcDecodable,PartialEq,PartialOrd,Clone,Show,Copy)]
 pub enum StabilityLevel {
-    Deprecated,
     Unstable,
     Stable,
 }
@@ -368,18 +370,24 @@ impl fmt::String for StabilityLevel {
     }
 }
 
-pub fn find_stability_generic<'a,
+fn find_stability_generic<'a,
                               AM: AttrMetaMethods,
                               I: Iterator<Item=&'a AM>>
-                             (diagnostic: &SpanHandler, mut attrs: I)
-                             -> Option<(Stability, &'a AM)> {
-    for attr in attrs {
-        let level = match attr.name().get() {
-            "deprecated" => Deprecated,
-            "unstable" => Unstable,
-            "stable" => Stable,
-            _ => continue // not a stability level
-        };
+                             (diagnostic: &SpanHandler, mut attrs: I, item_sp: Span)
+                             -> (Option<Stability>, Vec<&'a AM>) {
+
+    let mut stab: Option<Stability> = None;
+    let mut deprecated: Option<(InternedString, Option<InternedString>)> = None;
+    let mut used_attrs: Vec<&'a AM> = vec![];
+
+    'outer: for attr in attrs {
+        let tag = attr.name();
+        let tag = tag.get();
+        if tag != "deprecated" && tag != "unstable" && tag != "stable" {
+            continue // not a stability level
+        }
+
+        used_attrs.push(attr);
 
         let (feature, since, reason) = match attr.meta_item_list() {
             Some(metas) => {
@@ -392,6 +400,7 @@ pub fn find_stability_generic<'a,
                             Some(v) => feature = Some(v),
                             None => {
                                 diagnostic.span_err(meta.span, "incorrect meta item");
+                                continue 'outer;
                             }
                         }
                     }
@@ -400,6 +409,7 @@ pub fn find_stability_generic<'a,
                             Some(v) => since = Some(v),
                             None => {
                                 diagnostic.span_err(meta.span, "incorrect meta item");
+                                continue 'outer;
                             }
                         }
                     }
@@ -408,6 +418,7 @@ pub fn find_stability_generic<'a,
                             Some(v) => reason = Some(v),
                             None => {
                                 diagnostic.span_err(meta.span, "incorrect meta item");
+                                continue 'outer;
                             }
                         }
                     }
@@ -416,34 +427,71 @@ pub fn find_stability_generic<'a,
             }
             None => {
                 diagnostic.span_err(attr.span(), "incorrect stability attribute type");
-                (None, None, None)
+                continue
             }
         };
 
-        if feature == None {
+        // Deprecated tags don't require feature names
+        if feature == None && tag != "deprecated" {
             diagnostic.span_err(attr.span(), "missing 'feature'");
         }
 
-        if since == None && level != Unstable {
+        // Unstable tags don't require a version
+        if since == None && tag != "unstable" {
             diagnostic.span_err(attr.span(), "missing 'since'");
         }
 
-        return Some((Stability {
-            level: level,
-            feature: feature.unwrap_or(intern_and_get_ident("bogus")),
-            since: since,
-            reason: reason,
-        }, attr));
+        if tag == "unstable" || tag == "stable" {
+            if stab.is_some() {
+                diagnostic.span_err(item_sp, "multiple stability levels");
+            }
+
+            let level = match tag {
+                "unstable" => Unstable,
+                "stable" => Stable,
+                _ => unreachable!()
+            };
+
+            stab = Some(Stability {
+                level: level,
+                feature: feature.unwrap_or(intern_and_get_ident("bogus")),
+                since: since,
+                deprecated_since: None,
+                reason: reason
+            });
+        } else { // "deprecated"
+            if deprecated.is_some() {
+                diagnostic.span_err(item_sp, "multiple deprecated attributes");
+            }
+
+            deprecated = Some((since.unwrap_or(intern_and_get_ident("bogus")), reason));
+        }
     }
-    None
+
+    // Merge the deprecation info into the stability info
+    if deprecated.is_some() {
+        match stab {
+            Some(ref mut s) => {
+                let (since, reason) = deprecated.unwrap();
+                s.deprecated_since = Some(since);
+                s.reason = reason;
+            }
+            None => {
+                diagnostic.span_err(item_sp, "deprecated attribute must be paired with \
+                                              either stable or unstable attribute");
+            }
+        }
+    }
+
+    (stab, used_attrs)
 }
 
 /// Find the first stability attribute. `None` if none exists.
-pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute]) -> Option<Stability> {
-    find_stability_generic(diagnostic, attrs.iter()).map(|(s, attr)| {
-        mark_used(attr);
-        s
-    })
+pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute],
+                      item_sp: Span) -> Option<Stability> {
+    let (s, used) = find_stability_generic(diagnostic, attrs.iter(), item_sp);
+    for used in used.into_iter() { mark_used(used) }
+    return s;
 }
 
 pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {

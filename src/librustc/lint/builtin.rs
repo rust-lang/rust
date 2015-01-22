@@ -1637,7 +1637,7 @@ impl Stability {
 
         // deprecated attributes apply in-crate and cross-crate
         let (lint, label) = match *stability {
-            Some(attr::Stability { level: attr::Deprecated, .. }) =>
+            Some(attr::Stability { deprecated_since: Some(_), .. }) =>
                 (DEPRECATED, "deprecated"),
             _ => return
         };

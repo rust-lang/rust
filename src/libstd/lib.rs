@@ -121,6 +121,7 @@
 #![feature(collections)]
 #![feature(rand)]
 #![feature(hash)]
+#![cfg_attr(test, feature(test))]
 
 // Don't link to std. We are std.
 #![no_std]

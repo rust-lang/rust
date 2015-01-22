@@ -21,6 +21,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![cfg_attr(test, feature(test))]
 
 //! Bindings for the C standard library and other platform libraries
 //!

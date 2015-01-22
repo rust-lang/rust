@@ -568,7 +568,8 @@ impl<'a> ExtCtxt<'a> {
         }
     }
 
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0",
                  reason = "Replaced with `expander().fold_expr()`")]
     pub fn expand_expr(&mut self, e: P<ast::Expr>) -> P<ast::Expr> {
         self.expander().fold_expr(e)

@@ -79,32 +79,39 @@ pub trait Float
     // FIXME (#5527): These should be associated constants
 
     /// Returns the number of binary digits of mantissa that this type supports.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MANTISSA_DIGITS` or \
                            `std::f64::MANTISSA_DIGITS` as appropriate")]
     fn mantissa_digits(unused_self: Option<Self>) -> uint;
     /// Returns the number of base-10 digits of precision that this type supports.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::DIGITS` or `std::f64::DIGITS` as appropriate")]
     fn digits(unused_self: Option<Self>) -> uint;
     /// Returns the difference between 1.0 and the smallest representable number larger than 1.0.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::EPSILON` or `std::f64::EPSILON` as appropriate")]
     fn epsilon() -> Self;
     /// Returns the minimum binary exponent that this type can represent.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MIN_EXP` or `std::f64::MIN_EXP` as appropriate")]
     fn min_exp(unused_self: Option<Self>) -> int;
     /// Returns the maximum binary exponent that this type can represent.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MAX_EXP` or `std::f64::MAX_EXP` as appropriate")]
     fn max_exp(unused_self: Option<Self>) -> int;
     /// Returns the minimum base-10 exponent that this type can represent.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MIN_10_EXP` or `std::f64::MIN_10_EXP` as appropriate")]
     fn min_10_exp(unused_self: Option<Self>) -> int;
     /// Returns the maximum base-10 exponent that this type can represent.
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "use `std::f32::MAX_10_EXP` or `std::f64::MAX_10_EXP` as appropriate")]
     fn max_10_exp(unused_self: Option<Self>) -> int;
 

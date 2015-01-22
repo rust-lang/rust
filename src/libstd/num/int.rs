@@ -14,7 +14,8 @@
 //! alpha cycle along with the development of clearer conventions
 //! around integer types.
 
-#![deprecated(feature = "oldstuff", since = "1.0.0", reason = "replaced by isize")]
+#![unstable(feature = "std_misc")]
+#![deprecated(since = "1.0.0", reason = "replaced by isize")]
 
 pub use core::int::{BITS, BYTES, MIN, MAX};
 

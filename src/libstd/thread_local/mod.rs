@@ -319,7 +319,8 @@ impl<T: 'static> Key<T> {
     }
 
     /// Deprecated
-    #[deprecated(feature = "oldstuff", since = "1.0.0",
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
                  reason = "function renamed to state() and returns more info")]
     pub fn destroyed(&'static self) -> bool { self.state() == State::Destroyed }
 }

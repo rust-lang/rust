@@ -37,5 +37,4 @@
 
 #![stable(feature = "grandfathered", since = "1.0.0")]
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
 pub mod v1;

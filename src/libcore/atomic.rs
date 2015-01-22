@@ -1036,7 +1036,8 @@ pub fn fence(order: Ordering) {
     }
 }
 
-#[deprecated(feature = "core", since = "1.0.0",
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
              reason = "renamed to AtomicIsize")]
 #[allow(missing_docs)]
 pub struct AtomicInt {
@@ -1045,7 +1046,8 @@ pub struct AtomicInt {
 
 unsafe impl Sync for AtomicInt {}
 
-#[deprecated(feature = "core", since = "1.0.0",
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
              reason = "renamed to AtomicUsize")]
 #[allow(missing_docs)]
 pub struct AtomicUint {
@@ -1054,12 +1056,14 @@ pub struct AtomicUint {
 
 unsafe impl Sync for AtomicUint {}
 
-#[deprecated(feature = "core", since = "1.0.0",
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
              reason = "use ATOMIC_ISIZE_INIT instead")]
 #[allow(missing_docs, deprecated)]
 pub const ATOMIC_INT_INIT: AtomicInt =
         AtomicInt { v: UnsafeCell { value: 0 } };
-#[deprecated(feature = "core", since = "1.0.0",
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
              reason = "use ATOMIC_USIZE_INIT instead")]
 #[allow(missing_docs, deprecated)]
 pub const ATOMIC_UINT_INIT: AtomicUint =

@@ -84,8 +84,6 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                     level = "unstable"
                 elif "[stable(" in line:
                     level = "stable"
-                elif "[deprecated(" in line:
-                    level = "deprecated"
                 else:
                     continue
 
@@ -94,12 +92,12 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                 # the same line, e.g.
                 # `#[unstable(feature = "foo", since = "1.0.0")]`
 
-                p = re.compile('(unstable|stable|deprecated).*feature *= *"(\w*)"')
+                p = re.compile('(unstable|stable).*feature *= *"(\w*)"')
                 m = p.search(line)
                 if not m is None:
                     feature_name = m.group(2)
                     since = None
-                    if "stable" in line or "deprecated" in line:
+                    if "stable" in line:
                         pp = re.compile('since *= *"([\w\.]*)"')
                         mm = pp.search(line)
                         since = m.group(1)
@@ -135,7 +133,7 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                     errors = True
 
 # Merge data about both lists
-# name, lang, lib, status, stable since, partially deprecated
+# name, lang, lib, status, stable since
 
 language_feature_stats = {}
 
@@ -145,15 +143,13 @@ for f in language_features:
     lib = False
     status = "unstable"
     stable_since = None
-    partially_deprecated = False
 
     if f[2] == "Accepted":
         status = "stable"
     if status == "stable":
         stable_since = f[1]
 
-    language_feature_stats[name] = (name, lang, lib, status, stable_since, \
-                                    partially_deprecated)
+    language_feature_stats[name] = (name, lang, lib, status, stable_since)
 
 lib_feature_stats = {}
 
@@ -163,11 +159,9 @@ for f in lib_features:
     lib = True
     status = "unstable"
     stable_since = None
-    partially_deprecated = False
 
     is_stable = lib_features_and_level.get((name, "stable")) is not None
     is_unstable = lib_features_and_level.get((name, "unstable")) is not None
-    is_deprecated = lib_features_and_level.get((name, "deprecated")) is not None
 
     if is_stable and is_unstable:
         print "error: feature '" + name + "' is both stable and unstable"
@@ -179,14 +173,8 @@ for f in lib_features:
     elif is_unstable:
         status = "unstable"
         stable_since = lib_features_and_level[(name, "unstable")][0]
-    elif is_deprecated:
-        status = "deprecated"
 
-    if (is_stable or is_unstable) and is_deprecated:
-        partially_deprecated = True
-
-    lib_feature_stats[name] = (name, lang, lib, status, stable_since, \
-                               partially_deprecated)
+    lib_feature_stats[name] = (name, lang, lib, status, stable_since)
 
 # Check for overlap in two sets
 merged_stats = { }
@@ -200,25 +188,18 @@ for name in lib_feature_stats:
         lib_status = lib_feature_stats[name][3]
         lang_stable_since = lang_feature_stats[name][4]
         lib_stable_since = lib_feature_stats[name][4]
-        lang_partially_deprecated = lang_feature_stats[name][5]
-        lib_partially_deprecated = lib_feature_stats[name][5]
 
         if lang_status != lib_status and lib_status != "deprecated":
             print "error: feature '" + name + "' has lang status " + lang_status + \
                   " but lib status " + lib_status
             errors = True
 
-        partially_deprecated = lang_partially_deprecated or lib_partially_deprecated
-        if lib_status == "deprecated" and lang_status != "deprecated":
-            partially_deprecated = True
-
         if lang_stable_since != lib_stable_since:
             print "error: feature '" + name + "' has lang stable since " + lang_stable_since + \
                   " but lib stable since " + lib_stable_since
             errors = True
 
-        merged_stats[name] = (name, True, True, lang_status, lang_stable_since, \
-                              partially_deprecated)
+        merged_stats[name] = (name, True, True, lang_status, lang_stable_since)
 
         del language_feature_stats[name]
         del lib_feature_stats[name]
@@ -244,8 +225,6 @@ for s in stats:
            "{: <8}".format(type_) + \
            "{: <12}".format(s[3]) + \
            "{: <8}".format(str(s[4]))
-    if s[5]:
-        line += "(partially deprecated)"
     lines += [line]
 
 lines.sort()
