@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::path::BytesContainer;
 use std::io::{Command, fs, USER_RWX};
 use std::os;
 
@@ -15,7 +16,8 @@ fn main() {
     // If we're the child, make sure we were invoked correctly
     let args = os::args();
     if args.len() > 1 && args[1].as_slice() == "child" {
-        return assert_eq!(args[0].as_slice(), "mytest");
+        return assert_eq!(args[0],
+                          format!("mytest{}", os::consts::EXE_SUFFIX));
     }
 
     test();
@@ -38,7 +40,12 @@ fn test() {
     path.push(child_dir.clone());
     let path = os::join_paths(path.as_slice()).unwrap();
 
-    assert!(Command::new("mytest").env("PATH", path.as_slice())
-                                  .arg("child")
-                                  .status().unwrap().success());
+    let child_output = Command::new("mytest").env("PATH", path.as_slice())
+                                             .arg("child")
+                                             .output().unwrap();
+
+    assert!(child_output.status.success(),
+            format!("child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
+                    child_output.output.container_as_str().unwrap(),
+                    child_output.error.container_as_str().unwrap()));
 }
