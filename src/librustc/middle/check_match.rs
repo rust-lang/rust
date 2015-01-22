@@ -223,19 +223,6 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 .collect();
             check_exhaustive(cx, ex.span, &matrix, source);
         },
-        ast::ExprForLoop(ref pat, _, _, _) => {
-            let mut static_inliner = StaticInliner::new(cx.tcx);
-            is_refutable(cx, &*static_inliner.fold_pat((*pat).clone()), |uncovered_pat| {
-                span_err!(cx.tcx.sess, pat.span, E0297,
-                    "refutable pattern in `for` loop binding: \
-                            `{}` not covered",
-                            pat_to_string(uncovered_pat));
-            });
-
-            // Check legality of move bindings.
-            check_legality_of_move_bindings(cx, false, slice::ref_slice(pat));
-            check_legality_of_bindings_in_at_patterns(cx, &**pat);
-        }
         _ => ()
     }
 }

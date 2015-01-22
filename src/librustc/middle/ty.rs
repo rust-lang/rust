@@ -4493,9 +4493,6 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             // the index method invoked for `a[i]` always yields an `&T`
             ast::ExprIndex(..) => LvalueExpr,
 
-            // `for` loops are statements
-            ast::ExprForLoop(..) => RvalueStmtExpr,
-
             // in the general case, result could be any type, use DPS
             _ => RvalueDpsExpr
         };
