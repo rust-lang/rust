@@ -70,7 +70,7 @@ use syntax::ast::{ExprClosure, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprQPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
-use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefTrait};
 use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use syntax::ast::{Local, MethodImplItem, Mod, Name, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
@@ -2840,6 +2840,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
+            ItemDefTrait(_, ref trait_ref) => {
+                self.resolve_trait_reference(item.id, trait_ref, TraitImplementation);
+            }
             ItemImpl(_, _,
                      ref generics,
                      ref implemented_traits,
