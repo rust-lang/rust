@@ -86,7 +86,7 @@ A purely manual implementation is tedious to write and error prone. These
 difficulties become even more pronounced with the introduction of the "pretty
 printed" format described above. If `Debug` is too painful to manually
 implement, developers of libraries will create poor implementations or omit
-them entirely. Some simple structures to help automatically create the correct
+them entirely. Some simple structures to automatically create the correct
 output format can significantly help ease these implementations:
 ```rust
 impl<S> fmt::Debug for BufferedStream<S> where S: fmt::Debug {
