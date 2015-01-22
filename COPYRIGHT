@@ -23,12 +23,12 @@ The following third party packages are included, and carry
 their own copyright notices and license terms:
 
 * Two header files that are part of the Valgrind
-  package. These files are found at src/rt/vg/valgrind.h and
-  src/rt/vg/memcheck.h, within this distribution. These files
+  package. These files are found at src/rt/valgrind/valgrind.h and
+  src/rt/valgrind/memcheck.h, within this distribution. These files
   are redistributed under the following terms, as noted in
   them:
 
-  for src/rt/vg/valgrind.h:
+  for src/rt/valgrind/valgrind.h:
 
     This file is part of Valgrind, a dynamic binary
     instrumentation framework.
@@ -74,7 +74,7 @@ their own copyright notices and license terms:
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
     OF SUCH DAMAGE.
 
-  for src/rt/vg/memcheck.h:
+  for src/rt/valgrind/memcheck.h:
 
     This file is part of MemCheck, a heavyweight Valgrind
     tool for detecting memory errors.
@@ -119,18 +119,6 @@ their own copyright notices and license terms:
     NEGLIGENCE OR OTHERWISE) ARISING IN ANY WAY OUT OF THE
     USE OF THIS SOFTWARE, EVEN IF ADVISED OF THE POSSIBILITY
     OF SUCH DAMAGE.
-
-* The auxiliary file src/etc/pkg/modpath.iss contains a
-  library routine compiled, by Inno Setup, into the Windows
-  installer binary. This file is licensed under the LGPL,
-  version 3, but, in our legal interpretation, this does not
-  affect the aggregate "collected work" license of the Rust
-  distribution (MIT/ASL2) nor any other components of it. We
-  believe that the terms governing distribution of the
-  binary Windows installer built from modpath.iss are
-  therefore LGPL, but not the terms governing distribution
-  of any of the files installed by such an installer (such
-  as the Rust compiler or runtime libraries themselves).
 
 * The src/rt/miniz.c file, carrying an implementation of
   RFC1950/RFC1951 DEFLATE, by Rich Geldreich
