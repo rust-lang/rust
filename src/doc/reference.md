@@ -2640,9 +2640,7 @@ The currently implemented features of the reference compiler are:
                    declare a `static` as being unique per-thread leveraging
                    LLVM's implementation which works in concert with the kernel
                    loader and dynamic linker. This is not necessarily available
-                   on all platforms, and usage of it is discouraged (rust
-                   focuses more on thread-local data instead of thread-local
-                   data).
+                   on all platforms, and usage of it is discouraged.
 
 * `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
                    hack that will certainly be removed.
