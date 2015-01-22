@@ -11,19 +11,19 @@
 #![crate_name="lint_output_format"]
 #![crate_type = "lib"]
 #![staged_api]
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 #[deprecated(feature = "oldstuff", since = "1.0.0")]
 pub fn foo() -> uint {
     20
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub fn bar() -> uint {
     40
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub fn baz() -> uint {
     30
 }

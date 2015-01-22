@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "the interaction between semaphores and the acquisition/release \
                       of resources is currently unclear")]
 

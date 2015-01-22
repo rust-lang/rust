@@ -32,7 +32,7 @@ unsafe impl Zeroable for u64 {}
 /// NULL or 0 that might allow certain optimizations.
 #[lang="non_zero"]
 #[derive(Copy, Clone, Eq, PartialEq, Ord, PartialOrd, Show)]
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub struct NonZero<T: Zeroable>(T);
 
 impl<T: Zeroable> NonZero<T> {

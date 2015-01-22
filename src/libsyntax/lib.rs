@@ -15,7 +15,7 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "syntax"]
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

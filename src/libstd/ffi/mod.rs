@@ -10,7 +10,7 @@
 
 //! Utilities related to FFI bindings.
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "module just underwent fairly large reorganization and the dust \
                       still needs to settle")]
 

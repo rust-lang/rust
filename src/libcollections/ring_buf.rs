@@ -480,7 +480,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf.len(), 1);
     /// assert_eq!(Some(&5), buf.get(0));
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification; waiting on panic semantics")]
     pub fn truncate(&mut self, len: uint) {
         for _ in range(len, self.len()) {
@@ -550,7 +550,7 @@ impl<T> RingBuf<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `RingBuf`.
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn as_slices<'a>(&'a self) -> (&'a [T], &'a [T]) {
         unsafe {
@@ -570,7 +570,7 @@ impl<T> RingBuf<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `RingBuf`.
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn as_mut_slices<'a>(&'a mut self) -> (&'a mut [T], &'a mut [T]) {
         unsafe {
@@ -635,7 +635,7 @@ impl<T> RingBuf<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
         Drain {
@@ -876,7 +876,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(10);
     /// assert_eq!(buf.swap_back_remove(1), Some(99));
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "the naming of this function may be altered")]
     pub fn swap_back_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
@@ -909,7 +909,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(20i);
     /// assert_eq!(buf.swap_front_remove(3), Some(99));
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "the naming of this function may be altered")]
     pub fn swap_front_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
@@ -1310,7 +1310,7 @@ impl<T: Clone> RingBuf<T> {
     ///     assert_eq!(a, b);
     /// }
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification; waiting on panic semantics")]
     pub fn resize(&mut self, new_len: uint, value: T) {
         let len = self.len();
@@ -1500,7 +1500,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// A draining RingBuf iterator
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "matches collection reform specification, waiting for dust to settle")]
 pub struct Drain<'a, T: 'a> {
     inner: &'a mut RingBuf<T>,

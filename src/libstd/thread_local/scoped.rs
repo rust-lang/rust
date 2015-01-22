@@ -38,7 +38,7 @@
 //! });
 //! ```
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "scoped TLS has yet to have wide enough use to fully consider \
                       stabilizing its interface")]
 

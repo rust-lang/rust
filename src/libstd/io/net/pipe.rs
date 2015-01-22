@@ -68,7 +68,7 @@ impl UnixStream {
     ///
     /// If a `timeout` with zero or negative duration is specified then
     /// the function returns `Err`, with the error kind set to `TimedOut`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "the timeout argument is likely to change types")]
     pub fn connect_timeout<P>(path: P, timeout: Duration)
                               -> IoResult<UnixStream>
@@ -108,7 +108,7 @@ impl UnixStream {
     /// Sets the read/write timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "the timeout argument may change in type and value")]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_timeout(timeout_ms)
@@ -117,7 +117,7 @@ impl UnixStream {
     /// Sets the read timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "the timeout argument may change in type and value")]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_read_timeout(timeout_ms)
@@ -126,7 +126,7 @@ impl UnixStream {
     /// Sets the write timeout for this socket.
     ///
     /// For more information, see `TcpStream::set_timeout`
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "the timeout argument may change in type and value")]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_write_timeout(timeout_ms)
@@ -221,7 +221,7 @@ impl UnixAcceptor {
     /// When using this method, it is likely necessary to reset the timeout as
     /// appropriate, the timeout specified is specific to this object, not
     /// specific to the next request.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "the name and arguments to this function are likely \
                          to change")]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
@@ -232,7 +232,7 @@ impl UnixAcceptor {
     ///
     /// This function has the same semantics as `TcpAcceptor::close_accept`, and
     /// more information can be found in that documentation.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub fn close_accept(&mut self) -> IoResult<()> {
         self.inner.close_accept()
     }

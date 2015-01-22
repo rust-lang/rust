@@ -86,7 +86,7 @@ use str::Utf8Error;
 use string::{FromUtf8Error, FromUtf16Error};
 
 /// Base functionality for all errors in Rust.
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "the exact API of this trait may change")]
 pub trait Error {
     /// A short description of the error; usually a static string.

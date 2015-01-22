@@ -16,7 +16,7 @@
 //! and should be considered as private implementation details for the
 //! time being.
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 // FIXME: this should not be here.
 #![allow(missing_docs)]

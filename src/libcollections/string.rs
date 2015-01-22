@@ -92,7 +92,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "hello");
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "needs investigation to see if to_string() can match perf")]
     pub fn from_str(string: &str) -> String {
         String { vec: ::slice::SliceExt::to_vec(string.as_bytes()) }
@@ -725,7 +725,7 @@ impl<'a> FromIterator<&'a str> for String {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "waiting on Extend stabilization")]
 impl Extend<char> for String {
     fn extend<I:Iterator<Item=char>>(&mut self, mut iterator: I) {
@@ -737,7 +737,7 @@ impl Extend<char> for String {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "waiting on Extend stabilization")]
 impl<'a> Extend<&'a str> for String {
     fn extend<I: Iterator<Item=&'a str>>(&mut self, mut iterator: I) {
@@ -798,7 +798,7 @@ impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
     fn ne(&self, other: &CowString<'a>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on Str stabilization")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on Str stabilization")]
 impl Str for String {
     #[inline]
     #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -824,7 +824,7 @@ impl fmt::String for String {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on fmt stabilization")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on fmt stabilization")]
 impl fmt::Show for String {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -832,7 +832,7 @@ impl fmt::Show for String {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "waiting on Hash stabilization")]
+#[unstable(feature = "unnamed_feature", reason = "waiting on Hash stabilization")]
 impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for String {
     #[inline]
     fn hash(&self, hasher: &mut H) {
@@ -840,7 +840,7 @@ impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for String {
     }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "recent addition, needs more experience")]
 impl<'a> Add<&'a str> for String {
     type Output = String;
@@ -892,7 +892,7 @@ impl ops::Deref for String {
 }
 
 /// Wrapper type providing a `&String` reference via `Deref`.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub struct DerefString<'a> {
     x: DerefVec<'a, u8>
 }
@@ -920,7 +920,7 @@ impl<'a> Deref for DerefString<'a> {
 /// let string = as_string("foo").clone();
 /// string_consumer(string);
 /// ```
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
 }

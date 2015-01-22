@@ -15,7 +15,7 @@
 //! [mz]: https://code.google.com/p/miniz/
 
 #![crate_name = "flate"]
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 #![staged_api]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![feature(unnamed_feature)]

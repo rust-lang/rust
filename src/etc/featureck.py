@@ -94,11 +94,15 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                 # the same line, e.g.
                 # `#[unstable(feature = "foo", since = "1.0.0")]`
 
-                p = re.compile('feature *= *"(\w*)".*since *= *"([\w\.]*)"')
+                p = re.compile('(unstable|stable|deprecated).*feature *= *"(\w*)"')
                 m = p.search(line)
                 if not m is None:
-                    feature_name = m.group(1)
-                    since = m.group(2)
+                    feature_name = m.group(2)
+                    since = None
+                    if "stable" in line or "deprecated" in line:
+                        pp = re.compile('since *= *"([\w\.]*)"')
+                        mm = pp.search(line)
+                        since = m.group(1)
                     lib_features[feature_name] = feature_name
                     if lib_features_and_level.get((feature_name, level)) is None:
                         # Add it to the observed features

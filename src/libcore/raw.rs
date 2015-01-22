@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![allow(missing_docs)]
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 //! Contains struct definitions for the layout of compiler built-in types.
 //!

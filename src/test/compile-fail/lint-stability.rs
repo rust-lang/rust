@@ -143,9 +143,9 @@ mod this_crate {
     #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
     pub fn deprecated_text() {}
 
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub fn unstable() {}
-    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "text")]
+    #[unstable(feature = "unnamed_feature", reason = "text")]
     pub fn unstable_text() {}
 
     pub fn unmarked() {}
@@ -164,9 +164,9 @@ mod this_crate {
         #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
         pub fn method_deprecated_text(&self) {}
 
-        #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+        #[unstable(feature = "unnamed_feature")]
         pub fn method_unstable(&self) {}
-        #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "text")]
+        #[unstable(feature = "unnamed_feature", reason = "text")]
         pub fn method_unstable_text(&self) {}
 
         pub fn method_unmarked(&self) {}
@@ -183,9 +183,9 @@ mod this_crate {
         #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
         fn trait_deprecated_text(&self) {}
 
-        #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+        #[unstable(feature = "unnamed_feature")]
         fn trait_unstable(&self) {}
-        #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "text")]
+        #[unstable(feature = "unnamed_feature", reason = "text")]
         fn trait_unstable_text(&self) {}
 
         fn trait_unmarked(&self) {}
@@ -200,7 +200,7 @@ mod this_crate {
 
     #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub struct DeprecatedStruct { i: isize }
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub struct UnstableStruct { i: isize }
     pub struct UnmarkedStruct { i: isize }
     #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -208,7 +208,7 @@ mod this_crate {
 
     #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub struct DeprecatedUnitStruct;
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub struct UnstableUnitStruct;
     pub struct UnmarkedUnitStruct;
     #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -217,7 +217,7 @@ mod this_crate {
     pub enum Enum {
         #[deprecated(feature = "oldstuff", since = "1.0.0")]
         DeprecatedVariant,
-        #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+        #[unstable(feature = "unnamed_feature")]
         UnstableVariant,
 
         UnmarkedVariant,
@@ -227,7 +227,7 @@ mod this_crate {
 
     #[deprecated(feature = "oldstuff", since = "1.0.0")]
     pub struct DeprecatedTupleStruct(isize);
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub struct UnstableTupleStruct(isize);
     pub struct UnmarkedTupleStruct(isize);
     #[stable(feature = "grandfathered", since = "1.0.0")]

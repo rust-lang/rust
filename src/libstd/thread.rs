@@ -207,7 +207,7 @@ impl Builder {
     }
 
     /// Redirect thread-local stdout.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "Will likely go away after proc removal")]
     pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Builder {
         self.stdout = Some(stdout);
@@ -215,7 +215,7 @@ impl Builder {
     }
 
     /// Redirect thread-local stderr.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "Will likely go away after proc removal")]
     pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Builder {
         self.stderr = Some(stderr);
@@ -225,7 +225,7 @@ impl Builder {
     /// Spawn a new detached thread, and return a handle to it.
     ///
     /// See `Thead::spawn` and the module doc for more details.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may change with specifics of new Send semantics")]
     pub fn spawn<F>(self, f: F) -> Thread where F: FnOnce(), F: Send + 'static {
         let (native, thread) = self.spawn_inner(Thunk::new(f), Thunk::with_arg(|_| {}));
@@ -237,7 +237,7 @@ impl Builder {
     /// scope, and return a `JoinGuard`.
     ///
     /// See `Thead::scoped` and the module doc for more details.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may change with specifics of new Send semantics")]
     pub fn scoped<'a, T, F>(self, f: F) -> JoinGuard<'a, T> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
@@ -354,7 +354,7 @@ impl Thread {
     /// main thread; the whole process is terminated when the main thread
     /// finishes.) The thread handle can be used for low-level
     /// synchronization. See the module documentation for additional details.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may change with specifics of new Send semantics")]
     pub fn spawn<F>(f: F) -> Thread where F: FnOnce(), F: Send + 'static {
         Builder::new().spawn(f)
@@ -368,7 +368,7 @@ impl Thread {
     /// current thread's stack (hence the "scoped" name), it cannot be detached;
     /// it *must* be joined before the relevant stack frame is popped. See the
     /// module documentation for additional details.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may change with specifics of new Send semantics")]
     pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
@@ -383,7 +383,7 @@ impl Thread {
     }
 
     /// Cooperatively give up a timeslice to the OS scheduler.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "name may change")]
+    #[unstable(feature = "unnamed_feature", reason = "name may change")]
     pub fn yield_now() {
         unsafe { imp::yield_now() }
     }
@@ -404,7 +404,7 @@ impl Thread {
     // future, this will be implemented in a more efficient way, perhaps along the lines of
     //   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
     // or futuxes, and in either case may allow spurious wakeups.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "recently introduced")]
+    #[unstable(feature = "unnamed_feature", reason = "recently introduced")]
     pub fn park() {
         let thread = Thread::current();
         let mut guard = thread.inner.lock.lock().unwrap();
@@ -417,7 +417,7 @@ impl Thread {
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// See the module doc for more detail.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "recently introduced")]
+    #[unstable(feature = "unnamed_feature", reason = "recently introduced")]
     pub fn unpark(&self) {
         let mut guard = self.inner.lock.lock().unwrap();
         if !*guard {
@@ -453,7 +453,7 @@ unsafe impl<T> Sync for Packet<T> {}
 ///
 /// The type `T` is the return type for the thread's main function.
 #[must_use]
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "may change with specifics of new Send semantics")]
 pub struct JoinGuard<'a, T: 'a> {
     native: imp::rust_thread,
@@ -490,7 +490,7 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
 
 impl<T: Send> JoinGuard<'static, T> {
     /// Detaches the child thread, allowing it to outlive its parent.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "unsure whether this API imposes limitations elsewhere")]
     pub fn detach(mut self) {
         unsafe { imp::detach(self.native) };

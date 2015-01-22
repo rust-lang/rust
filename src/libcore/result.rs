@@ -417,7 +417,7 @@ impl<T, E> Result<T, E> {
     /// assert!(x.as_mut_slice().is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "waiting for mut conventions")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         match *self {
@@ -950,7 +950,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
 /// If an `Err` is encountered, it is immediately returned.
 /// Otherwise, the folded value is returned.
 #[inline]
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub fn fold<T,
             V,
             E,

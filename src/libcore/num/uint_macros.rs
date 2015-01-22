@@ -12,9 +12,9 @@
 
 macro_rules! uint_module { ($T:ty, $T_SIGNED:ty, $bits:expr) => (
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub const BITS : uint = $bits;
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub const BYTES : uint = ($bits / 8);
 
 #[stable(feature = "grandfathered", since = "1.0.0")]

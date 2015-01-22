@@ -36,7 +36,7 @@ pub trait Clone : Sized {
     /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
     #[inline(always)]
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "this function is rarely used")]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
@@ -82,7 +82,7 @@ clone_impl! { char }
 
 macro_rules! extern_fn_clone {
     ($($A:ident),*) => (
-        #[unstable(feature = "unnamed_feature", since = "1.0.0",
+        #[unstable(feature = "unnamed_feature",
                    reason = "this may not be sufficient for fns with region parameters")]
         impl<$($A,)* ReturnType> Clone for extern "Rust" fn($($A),*) -> ReturnType {
             /// Return a copy of a function pointer

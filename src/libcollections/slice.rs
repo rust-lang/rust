@@ -166,7 +166,7 @@ pub trait SliceExt {
     /// assert_eq!(num_moved, 3);
     /// assert!(a == [6i, 7, 8, 4, 5]);
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "uncertain about this API approach")]
     fn move_from(&mut self, src: Vec<Self::Item>, start: uint, end: uint) -> uint;
 
@@ -176,7 +176,7 @@ pub trait SliceExt {
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "will be replaced by slice syntax")]
     fn slice(&self, start: uint, end: uint) -> &[Self::Item];
 
@@ -185,7 +185,7 @@ pub trait SliceExt {
     /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "will be replaced by slice syntax")]
     fn slice_from(&self, start: uint) -> &[Self::Item];
 
@@ -194,7 +194,7 @@ pub trait SliceExt {
     /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "will be replaced by slice syntax")]
     fn slice_to(&self, end: uint) -> &[Self::Item];
 
@@ -288,11 +288,11 @@ pub trait SliceExt {
     fn first(&self) -> Option<&Self::Item>;
 
     /// Returns all but the first element of a slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "likely to be renamed")]
+    #[unstable(feature = "unnamed_feature", reason = "likely to be renamed")]
     fn tail(&self) -> &[Self::Item];
 
     /// Returns all but the last element of a slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "likely to be renamed")]
+    #[unstable(feature = "unnamed_feature", reason = "likely to be renamed")]
     fn init(&self) -> &[Self::Item];
 
     /// Returns the last element of a slice, or `None` if it is empty.
@@ -388,7 +388,7 @@ pub trait SliceExt {
     /// original slice (i.e. when `end > self.len()`) or when `start > end`.
     ///
     /// Slicing with `start` equal to `end` yields an empty slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "will be replaced by slice syntax")]
     fn slice_mut(&mut self, start: uint, end: uint) -> &mut [Self::Item];
 
@@ -397,7 +397,7 @@ pub trait SliceExt {
     /// Panics when `start` is strictly greater than the length of the original slice.
     ///
     /// Slicing from `self.len()` yields an empty slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "will be replaced by slice syntax")]
     fn slice_from_mut(&mut self, start: uint) -> &mut [Self::Item];
 
@@ -406,7 +406,7 @@ pub trait SliceExt {
     /// Panics when `end` is strictly greater than the length of the original slice.
     ///
     /// Slicing to `0` yields an empty slice.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "will be replaced by slice syntax")]
     fn slice_to_mut(&mut self, end: uint) -> &mut [Self::Item];
 
@@ -419,12 +419,12 @@ pub trait SliceExt {
     fn first_mut(&mut self) -> Option<&mut Self::Item>;
 
     /// Returns all but the first element of a mutable slice
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "likely to be renamed or removed")]
     fn tail_mut(&mut self) -> &mut [Self::Item];
 
     /// Returns all but the last element of a mutable slice
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "likely to be renamed or removed")]
     fn init_mut(&mut self) -> &mut [Self::Item];
 
@@ -577,7 +577,7 @@ pub trait SliceExt {
     /// assert_eq!(Some(vec![1i, 3, 2]), perms.next());
     /// assert_eq!(Some(vec![3i, 1, 2]), perms.next());
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     fn permutations(&self) -> Permutations<Self::Item> where Self::Item: Clone;
 
     /// Copies as many elements from `src` as it can into `self` (the
@@ -597,7 +597,7 @@ pub trait SliceExt {
     /// assert!(dst.clone_from_slice(&src2) == 3);
     /// assert!(dst == [3i, 4, 5]);
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     fn clone_from_slice(&mut self, &[Self::Item]) -> uint where Self::Item: Clone;
 
     /// Sorts the slice, in place.
@@ -663,7 +663,7 @@ pub trait SliceExt {
     /// let b: &mut [_] = &mut [1i, 0, 2];
     /// assert!(v == b);
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "uncertain if this merits inclusion in std")]
     fn next_permutation(&mut self) -> bool where Self::Item: Ord;
 
@@ -683,16 +683,16 @@ pub trait SliceExt {
     /// let b: &mut [_] = &mut [0i, 1, 2];
     /// assert!(v == b);
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "uncertain if this merits inclusion in std")]
     fn prev_permutation(&mut self) -> bool where Self::Item: Ord;
 
     /// Find the first index containing a matching value.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     fn position_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Find the last index containing a matching value.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     fn rposition_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Return true if the slice contains an element with the given value.
@@ -708,7 +708,7 @@ pub trait SliceExt {
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     /// Convert `self` into a vector without clones or allocation.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
@@ -1000,7 +1000,7 @@ impl<T> SliceExt for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "U should be an associated type")]
+#[unstable(feature = "unnamed_feature", reason = "U should be an associated type")]
 /// An extension trait for concatenating slices
 pub trait SliceConcatExt<T: ?Sized, U> {
     /// Flattens a slice of `T` into a single value `U`.
@@ -1045,7 +1045,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 #[derive(Clone)]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
@@ -1057,7 +1057,7 @@ pub struct ElementSwaps {
 
 impl ElementSwaps {
     /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub fn new(length: uint) -> ElementSwaps {
         // Initialize `sdir` with a direction that position should move in
         // (all negative at the beginning) and the `size` of the
@@ -1074,17 +1074,17 @@ impl ElementSwaps {
 // Standard trait implementations for slices
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is unstable")]
+#[unstable(feature = "unnamed_feature", reason = "trait is unstable")]
 impl<T> BorrowFrom<Vec<T>> for [T] {
     fn borrow_from(owned: &Vec<T>) -> &[T] { &owned[] }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is unstable")]
+#[unstable(feature = "unnamed_feature", reason = "trait is unstable")]
 impl<T> BorrowFromMut<Vec<T>> for [T] {
     fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { &mut owned[] }
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is unstable")]
+#[unstable(feature = "unnamed_feature", reason = "trait is unstable")]
 impl<T: Clone> ToOwned<Vec<T>> for [T] {
     fn to_owned(&self) -> Vec<T> { self.to_vec() }
 }
@@ -1166,13 +1166,13 @@ impl Iterator for ElementSwaps {
 /// swap applied.
 ///
 /// Generates even and odd permutations alternately.
-#[unstable(feature = "unnamed_feature", since = "1.0.0")]
+#[unstable(feature = "unnamed_feature")]
 pub struct Permutations<T> {
     swaps: ElementSwaps,
     v: Vec<T>,
 }
 
-#[unstable(feature = "unnamed_feature", since = "1.0.0", reason = "trait is unstable")]
+#[unstable(feature = "unnamed_feature", reason = "trait is unstable")]
 impl<T: Clone> Iterator for Permutations<T> {
     type Item = Vec<T>;
 

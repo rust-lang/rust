@@ -156,7 +156,7 @@
 //! if logging is disabled, none of the components of the log will be executed.
 
 #![crate_name = "log"]
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "use the crates.io `log` library instead")]
 #![staged_api]
 #![crate_type = "rlib"]

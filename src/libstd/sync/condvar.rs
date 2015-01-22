@@ -76,7 +76,7 @@ unsafe impl Sync for Condvar {}
 ///
 /// static CVAR: StaticCondvar = CONDVAR_INIT;
 /// ```
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "may be merged with Condvar in the future")]
 pub struct StaticCondvar {
     inner: sys::Condvar,
@@ -87,7 +87,7 @@ unsafe impl Send for StaticCondvar {}
 unsafe impl Sync for StaticCondvar {}
 
 /// Constant initializer for a statically allocated condition variable.
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "may be merged with Condvar in the future")]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
@@ -156,7 +156,7 @@ impl Condvar {
     ///
     /// Like `wait`, the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>, dur: Duration)
                            -> LockResult<(MutexGuard<'a, T>, bool)> {
         unsafe {
@@ -171,7 +171,7 @@ impl Condvar {
     /// The semantics of this function are equivalent to `wait_timeout` except
     /// that the implementation will repeatedly wait while the duration has not
     /// passed and the provided function returns `false`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0")]
+    #[unstable(feature = "unnamed_feature")]
     pub fn wait_timeout_with<'a, T, F>(&self,
                                        guard: MutexGuard<'a, T>,
                                        dur: Duration,
@@ -217,7 +217,7 @@ impl StaticCondvar {
     /// notification.
     ///
     /// See `Condvar::wait`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Condvar in the future")]
     pub fn wait<'a, T>(&'static self, guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
@@ -238,7 +238,7 @@ impl StaticCondvar {
     /// specified duration.
     ///
     /// See `Condvar::wait_timeout`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Condvar in the future")]
     pub fn wait_timeout<'a, T>(&'static self, guard: MutexGuard<'a, T>, dur: Duration)
                                -> LockResult<(MutexGuard<'a, T>, bool)> {
@@ -262,7 +262,7 @@ impl StaticCondvar {
     /// passed and the function returns `false`.
     ///
     /// See `Condvar::wait_timeout_with`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Condvar in the future")]
     pub fn wait_timeout_with<'a, T, F>(&'static self,
                                        guard: MutexGuard<'a, T>,
@@ -303,14 +303,14 @@ impl StaticCondvar {
     /// Wake up one blocked thread on this condvar.
     ///
     /// See `Condvar::notify_one`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Condvar in the future")]
     pub fn notify_one(&'static self) { unsafe { self.inner.notify_one() } }
 
     /// Wake up all blocked threads on this condvar.
     ///
     /// See `Condvar::notify_all`.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Condvar in the future")]
     pub fn notify_all(&'static self) { unsafe { self.inner.notify_all() } }
 
@@ -320,7 +320,7 @@ impl StaticCondvar {
     /// active users of the condvar, and this also doesn't prevent any future
     /// users of the condvar. This method is required to be called to not leak
     /// memory on all platforms.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "may be merged with Condvar in the future")]
     pub unsafe fn destroy(&'static self) {
         self.inner.destroy()

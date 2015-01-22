@@ -35,7 +35,7 @@
 //! method, and see the method for more information about it. Due to this
 //! caveat, this queue may not be appropriate for all use-cases.
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 // http://www.1024cores.net/home/lock-free-algorithms
 //                         /queues/non-intrusive-mpsc-node-based-queue

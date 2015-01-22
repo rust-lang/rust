@@ -27,7 +27,7 @@
 //! ```
 
 #![allow(missing_docs)]
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "futures as-is have yet to be deeply reevaluated with recent \
                       core changes to Rust's synchronization story, and will likely \
                       become stable in the future but are unstable until that time")]

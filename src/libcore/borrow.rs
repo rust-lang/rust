@@ -42,7 +42,7 @@
 //! is desired, `to_mut` will obtain a mutable references to an owned
 //! value, cloning if necessary.
 
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "recently added as part of collections reform")]
 
 use clone::Clone;

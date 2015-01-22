@@ -10,7 +10,7 @@
 
 //! Abstraction of a thread pool for basic parallelism.
 
-#![unstable(feature = "unnamed_feature", since="1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "the semantics of a failing task and whether a thread is \
                       re-attached to a thread pool are somewhat unclear, and the \
                       utility of this type in `std::sync` is questionable with \

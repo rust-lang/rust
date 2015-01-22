@@ -136,7 +136,7 @@ pub struct RangeMut<'a, K: 'a, V: 'a> {
 }
 
 /// A view into a single entry in a map, which may either be vacant or occupied.
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "precise API still under development")]
 pub enum Entry<'a, K:'a, V:'a> {
     /// A vacant Entry
@@ -146,7 +146,7 @@ pub enum Entry<'a, K:'a, V:'a> {
 }
 
 /// A vacant Entry.
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "precise API still under development")]
 pub struct VacantEntry<'a, K:'a, V:'a> {
     key: K,
@@ -154,7 +154,7 @@ pub struct VacantEntry<'a, K:'a, V:'a> {
 }
 
 /// An occupied Entry.
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "precise API still under development")]
 pub struct OccupiedEntry<'a, K:'a, V:'a> {
     stack: stack::SearchStack<'a, K, V, node::handle::KV, node::handle::LeafOrInternal>,
@@ -1099,7 +1099,7 @@ impl<'a, K, V> DoubleEndedIterator for RangeMut<'a, K, V> {
 }
 
 impl<'a, K: Ord, V> Entry<'a, K, V> {
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform v2 specification, waiting for dust to settle")]
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
@@ -1113,7 +1113,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform v2 specification, waiting for dust to settle")]
     pub fn insert(self, value: V) -> &'a mut V {
         self.stack.insert(self.key, value)
@@ -1122,21 +1122,21 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the value in the entry.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform v2 specification, waiting for dust to settle")]
     pub fn get(&self) -> &V {
         self.stack.peek()
     }
 
     /// Gets a mutable reference to the value in the entry.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform v2 specification, waiting for dust to settle")]
     pub fn get_mut(&mut self) -> &mut V {
         self.stack.peek_mut()
     }
 
     /// Converts the entry into a mutable reference to its value.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform v2 specification, waiting for dust to settle")]
     pub fn into_mut(self) -> &'a mut V {
         self.stack.into_top()
@@ -1144,7 +1144,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
 
     /// Sets the value of the entry with the OccupiedEntry's key,
     /// and returns the entry's old value.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform v2 specification, waiting for dust to settle")]
     pub fn insert(&mut self, mut value: V) -> V {
         mem::swap(self.stack.peek_mut(), &mut value);
@@ -1152,7 +1152,7 @@ impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     }
 
     /// Takes the value of the entry out of the map, and returns it.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform v2 specification, waiting for dust to settle")]
     pub fn remove(self) -> V {
         self.stack.remove()
@@ -1480,7 +1480,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// }
     /// assert_eq!(Some((&5u, &"b")), map.range(Included(&4), Unbounded).next());
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range<'a>(&'a self, min: Bound<&K>, max: Bound<&K>) -> Range<'a, K, V> {
         range_impl!(&self.root, min, max, as_slices_internal, iter, Range, edges, [])
@@ -1507,7 +1507,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///     println!("{} => {}", name, balance);
     /// }
     /// ```
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range_mut<'a>(&'a mut self, min: Bound<&K>, max: Bound<&K>) -> RangeMut<'a, K, V> {
         range_impl!(&mut self.root, min, max, as_slices_internal_mut, iter_mut, RangeMut,
@@ -1540,7 +1540,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(count["a"], 3u);
     /// ```
     /// The key must have the same ordering before or after `.to_owned()` is called.
-    #[unstable(feature = "unnamed_feature", since = "1.0.0",
+    #[unstable(feature = "unnamed_feature",
                reason = "precise API still under development")]
     pub fn entry<'a>(&'a mut self, mut key: K) -> Entry<'a, K, V> {
         // same basic logic of `swap` and `pop`, blended together

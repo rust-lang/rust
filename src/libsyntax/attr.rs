@@ -350,7 +350,7 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: InternedString,
-    pub since: InternedString,
+    pub since: Option<InternedString>,
     pub reason: Option<InternedString>,
 }
 
@@ -424,14 +424,14 @@ pub fn find_stability_generic<'a,
             diagnostic.span_err(attr.span(), "missing 'feature'");
         }
 
-        if since == None {
+        if since == None && level != Unstable {
             diagnostic.span_err(attr.span(), "missing 'since'");
         }
 
         return Some((Stability {
             level: level,
             feature: feature.unwrap_or(intern_and_get_ident("bogus")),
-            since: since.unwrap_or(intern_and_get_ident("bogus")),
+            since: since,
             reason: reason,
         }, attr));
     }

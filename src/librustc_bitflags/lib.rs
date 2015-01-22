@@ -12,7 +12,7 @@
 #![staged_api]
 #![crate_type = "rlib"]
 #![no_std]
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 
 //! A typesafe bitmask flag generator.
 

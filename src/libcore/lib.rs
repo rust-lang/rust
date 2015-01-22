@@ -48,7 +48,7 @@
 // separate crate, libcoretest, to avoid bizarre issues.
 
 #![crate_name = "core"]
-#![unstable(feature = "unnamed_feature", since = "1.0.0")]
+#![unstable(feature = "unnamed_feature")]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",

@@ -318,7 +318,7 @@ pub unsafe fn transmute_copy<T, U>(src: &T) -> U {
 
 /// Transforms lifetime of the second pointer to match the first.
 #[inline]
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "this function may be removed in the future due to its \
                      questionable utility")]
 pub unsafe fn copy_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a S,
@@ -328,7 +328,7 @@ pub unsafe fn copy_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a S,
 
 /// Transforms lifetime of the second mutable pointer to match the first.
 #[inline]
-#[unstable(feature = "unnamed_feature", since = "1.0.0",
+#[unstable(feature = "unnamed_feature",
            reason = "this function may be removed in the future due to its \
                      questionable utility")]
 pub unsafe fn copy_mut_lifetime<'a, S: ?Sized, T: ?Sized + 'a>(_ptr: &'a mut S,

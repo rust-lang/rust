@@ -2496,7 +2496,8 @@ impl Clean<Stability> for attr::Stability {
         Stability {
             level: self.level,
             feature: self.feature.get().to_string(),
-            since: self.since.get().to_string(),
+            since: self.since.as_ref().map_or("".to_string(),
+                                              |interned| interned.get().to_string()),
             reason: self.reason.as_ref().map_or("".to_string(),
                                                 |interned| interned.get().to_string()),
         }

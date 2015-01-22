@@ -78,7 +78,7 @@
 //! ```
 
 #![crate_name = "getopts"]
-#![unstable(feature = "unnamed_feature", since = "1.0.0",
+#![unstable(feature = "unnamed_feature",
             reason = "use the crates.io `getopts` library instead")]
 #![staged_api]
 #![crate_type = "rlib"]
