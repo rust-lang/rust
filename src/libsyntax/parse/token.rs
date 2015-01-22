@@ -627,7 +627,15 @@ impl InternedString {
     }
 
     #[inline]
+    #[deprecated = "use as_slice() instead"]
     pub fn get<'a>(&'a self) -> &'a str {
+        &self.string[]
+    }
+}
+
+impl Str for InternedString {
+    #[inline]
+    fn as_slice<'a>(&'a self) -> &'a str {
         &self.string[]
     }
 }
