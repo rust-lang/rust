@@ -16,6 +16,7 @@
 
 #![crate_name = "flate"]
 #![unstable(feature = "unnamed_feature")]
+#![feature(staged_api)]
 #![staged_api]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![feature(unnamed_feature)]

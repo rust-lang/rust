@@ -10,6 +10,7 @@
 
 #![crate_name="lint_output_format"]
 #![crate_type = "lib"]
+#![feature(staged_api)]
 #![staged_api]
 #![unstable(feature = "unnamed_feature")]
 

@@ -10,6 +10,7 @@
 #![crate_name="inherited_stability"]
 #![crate_type = "lib"]
 #![unstable(feature = "unnamed_feature")]
+#![feature(staged_api)]
 #![staged_api]
 
 pub fn unstable() {}

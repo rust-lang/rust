@@ -9,6 +9,7 @@
 // except according to those terms.
 #![crate_name="lint_stability"]
 #![crate_type = "lib"]
+#![feature(staged_api)]
 #![staged_api]
 
 #[deprecated(feature = "oldstuff", since = "1.0.0")]

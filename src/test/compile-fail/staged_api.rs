@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--cfg foo
+#![staged_api] //~ ERROR staged_api is for use by rustc only
 
-#![cfg_attr(foo, unstable(feature = "unnamed_feature"))]
-#![cfg_attr(not(foo), stable(feature = "unnamed_feature", since = "1.0.0"))]
-#![feature(staged_api)]
-#![staged_api]
+fn main() { }

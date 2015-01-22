@@ -16,6 +16,7 @@
 
 #![deny(deprecated)]
 #![allow(dead_code)]
+#![feature(staged_api)]
 #![staged_api]
 
 #[macro_use]

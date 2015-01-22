@@ -41,6 +41,7 @@
 #![crate_name = "term"]
 #![unstable(feature = "unnamed_feature",
             reason = "use the crates.io `term` library instead")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
