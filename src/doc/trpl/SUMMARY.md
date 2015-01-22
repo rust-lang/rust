@@ -29,6 +29,7 @@
     * [Traits](traits.md)
     * [Threads](threads.md)
     * [Error Handling](error-handling.md)
+    * [Documentation](documentation.md)
 * [III: Advanced Topics](advanced.md)
     * [FFI](ffi.md)
     * [Unsafe Code](unsafe.md)
