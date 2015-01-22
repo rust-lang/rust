@@ -158,6 +158,7 @@
 #![crate_name = "log"]
 #![unstable(feature = "unnamed_feature",
             reason = "use the crates.io `log` library instead")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

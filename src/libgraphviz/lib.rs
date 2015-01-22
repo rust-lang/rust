@@ -266,6 +266,7 @@
 
 #![crate_name = "graphviz"]
 #![unstable(feature = "unnamed_feature")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

@@ -65,6 +65,7 @@ This API is completely unstable and subject to change.
 
 #![crate_name = "rustc_typeck"]
 #![unstable(feature = "unnamed_feature")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]

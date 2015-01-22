@@ -9,6 +9,8 @@
 // except according to those terms.
 
 #![crate_name = "rustc_bitflags"]
+#![allow(unknown_features)]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![no_std]

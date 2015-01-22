@@ -113,6 +113,9 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // mean anything
     ("test_accepted_feature", "1.0.0", Accepted),
     ("test_removed_feature", "1.0.0", Removed),
+
+    // Allows use of #[staged_api]
+    ("staged_api", "1.0.0", Active),
 ];
 
 enum Status {
@@ -444,6 +447,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
+        if attr.check_name("staged_api") {
+            self.gate_feature("staged_api", attr.span,
+                              "staged_api is for use by rustc only");
+        }
+
         if attr::contains_name(slice::ref_slice(attr), "lang") {
             self.gate_feature("lang_items",
                               attr.span,

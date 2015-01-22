@@ -96,6 +96,7 @@
 
 #![crate_name = "std"]
 #![stable(feature = "grandfathered", since = "1.0.0")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]

@@ -33,7 +33,7 @@ use std::mem::replace;
 
 /// A stability index, giving the stability level for items and methods.
 pub struct Index {
-    // Indicates whether this crate has #![staged_api]
+    // Indicates whether this crate has #![feature(staged_api)]
     staged_api: bool,
     // stability for crate-local items; unmarked stability == no entry
     local: NodeMap<Stability>,

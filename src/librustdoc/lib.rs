@@ -10,6 +10,7 @@
 
 #![crate_name = "rustdoc"]
 #![unstable(feature = "unnamed_feature")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
