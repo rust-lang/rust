@@ -288,8 +288,8 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                     fld.cx.expr_call(span, fld.cx.expr_path(next_path), vec![ref_mut_iter]);
                 let arms = vec![pat_arm, break_arm];
 
-                // FIXME(japaric) This should use `ForLoopDesugar` as MatchSource
-                fld.cx.expr_match(pat_span, next_expr, arms)
+                fld.cx.expr(pat_span,
+                            ast::ExprMatch(next_expr, arms, ast::MatchSource::ForLoopDesugar))
             };
 
             // `[opt_ident]: loop { ... }`
