@@ -13,7 +13,7 @@
 pub use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
-use libc::c_char;
+use libc::{c_char, c_uint};
 use std::ptr;
 
 use {ValueRef, TwineRef, DebugLocRef, DiagnosticInfoRef};
@@ -69,9 +69,37 @@ impl OptimizationDiagnostic {
     }
 }
 
+pub struct InlineAsmDiagnostic {
+    pub cookie: c_uint,
+    pub message: TwineRef,
+    pub instruction: ValueRef,
+}
+
+impl Copy for InlineAsmDiagnostic {}
+
+impl InlineAsmDiagnostic {
+    unsafe fn unpack(di: DiagnosticInfoRef)
+            -> InlineAsmDiagnostic {
+
+        let mut opt = InlineAsmDiagnostic {
+            cookie: 0,
+            message: ptr::null_mut(),
+            instruction: ptr::null_mut(),
+        };
+
+        super::LLVMUnpackInlineAsmDiagnostic(di,
+            &mut opt.cookie,
+            &mut opt.message,
+            &mut opt.instruction);
+
+        opt
+    }
+}
+
 #[derive(Copy)]
 pub enum Diagnostic {
     Optimization(OptimizationDiagnostic),
+    InlineAsm(InlineAsmDiagnostic),
 
     /// LLVM has other types that we do not wrap here.
     UnknownDiagnostic(DiagnosticInfoRef),
@@ -82,6 +110,9 @@ impl Diagnostic {
         let kind = super::LLVMGetDiagInfoKind(di);
 
         match kind {
+            super::DK_InlineAsm
+                => InlineAsm(InlineAsmDiagnostic::unpack(di)),
+
             super::DK_OptimizationRemark
                 => Optimization(OptimizationDiagnostic::unpack(OptimizationRemark, di)),
 

@@ -2049,6 +2049,10 @@ extern {
                                             function_out: *mut ValueRef,
                                             debugloc_out: *mut DebugLocRef,
                                             message_out: *mut TwineRef);
+    pub fn LLVMUnpackInlineAsmDiagnostic(DI: DiagnosticInfoRef,
+                                            cookie_out: *mut c_uint,
+                                            message_out: *mut TwineRef,
+                                            instruction_out: *mut ValueRef);
 
     pub fn LLVMWriteDiagnosticInfoToString(DI: DiagnosticInfoRef, s: RustStringRef);
     pub fn LLVMGetDiagInfoSeverity(DI: DiagnosticInfoRef) -> DiagnosticSeverity;

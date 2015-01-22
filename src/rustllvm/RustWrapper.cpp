@@ -894,6 +894,22 @@ LLVMUnpackOptimizationDiagnostic(
     *message_out = wrap(&opt->getMsg());
 }
 
+extern "C" void
+LLVMUnpackInlineAsmDiagnostic(
+    LLVMDiagnosticInfoRef di,
+    unsigned *cookie_out,
+    LLVMTwineRef *message_out,
+    LLVMValueRef *instruction_out)
+{
+    // Undefined to call this not on an inline assembly diagnostic!
+    llvm::DiagnosticInfoInlineAsm *ia
+        = static_cast<llvm::DiagnosticInfoInlineAsm*>(unwrap(di));
+
+    *cookie_out = ia->getLocCookie();
+    *message_out = wrap(&ia->getMsgStr());
+    *instruction_out = wrap(ia->getInstruction());
+}
+
 extern "C" void LLVMWriteDiagnosticInfoToString(LLVMDiagnosticInfoRef di, RustStringRef str) {
     raw_rust_string_ostream os(str);
     DiagnosticPrinterRawOStream dp(os);
