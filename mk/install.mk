@@ -65,7 +65,7 @@ CFG_ADB_DEVICE_STATUS=$(1)
 endef
 
 $(foreach target,$(CFG_TARGET), \
-  $(if $(findstring $(target),"arm-linux-androideabi"), \
+  $(if $(or $(findstring $(target),"arm-linux-androideabi"),$(findstring $(target),"aarch64-linux-android")), \
     $(if $(findstring adb,$(CFG_ADB)), \
       $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info install: install-runtime-target for $(target) enabled \
@@ -117,8 +117,11 @@ install-runtime-target-$(1)-cleanup:
 	    $$(call ADB_SHELL,rm,$$(CFG_RUNTIME_PUSH_DIR)/$$(call CFG_LIB_GLOB_$(1),$$(crate)));)
 endef
 
-$(eval $(call INSTALL_RUNTIME_TARGET_N,arm-linux-androideabi,$(CFG_BUILD)))
-$(eval $(call INSTALL_RUNTIME_TARGET_CLEANUP_N,arm-linux-androideabi))
+$(foreach target,$(CFG_TARGET), \
+ $(if $(findstring $(CFG_ADB_DEVICE_STATUS),"true"), \
+  $(eval $(call INSTALL_RUNTIME_TARGET_N,$(taget),$(CFG_BUILD))) \
+  $(eval $(call INSTALL_RUNTIME_TARGET_CLEANUP_N,arm-linux-$(target))) \
+  ))
 
 install-runtime-target: \
 	install-runtime-target-arm-linux-androideabi-cleanup \

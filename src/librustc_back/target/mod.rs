@@ -345,10 +345,12 @@ impl Target {
             mips_unknown_linux_gnu,
             mipsel_unknown_linux_gnu,
             powerpc_unknown_linux_gnu,
-            arm_linux_androideabi,
             arm_unknown_linux_gnueabi,
             arm_unknown_linux_gnueabihf,
             aarch64_unknown_linux_gnu,
+
+            arm_linux_androideabi,
+            aarch64_linux_android,
 
             x86_64_unknown_freebsd,
 
@@ -363,7 +365,6 @@ impl Target {
             i386_apple_ios,
             x86_64_apple_ios,
             aarch64_apple_ios,
-            aarch64_linux_android,
             armv7_apple_ios,
             armv7s_apple_ios,
 

@@ -42,7 +42,7 @@ use test::MetricMap;
 pub fn run(config: Config, testfile: String) {
     match &*config.target {
 
-        "arm-linux-androideabi" => {
+        "arm-linux-androideabi" | "aarch64-linux-android" => {
             if !config.adb_device_status {
                 panic!("android device not available");
             }
@@ -382,7 +382,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
 
     let debugger_run_result;
     match &*config.target {
-        "arm-linux-androideabi" => {
+        "arm-linux-androideabi" | "aarch64-linux-android" => {
 
             cmds = cmds.replace("run", "continue").to_string();
 
@@ -470,7 +470,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                      format!("-command={}", debugger_script.as_str().unwrap()));
 
             let mut gdb_path = tool_path;
-            gdb_path.push_str("/bin/arm-linux-androideabi-gdb");
+            gdb_path.push_str(&format!("/bin/{}-gdb", config.target));
             let procsrv::Result {
                 out,
                 err,
@@ -484,7 +484,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 .expect(&format!("failed to exec `{:?}`", gdb_path));
             let cmdline = {
                 let cmdline = make_cmdline("",
-                                           "arm-linux-androideabi-gdb",
+                                           &format!("{}-gdb", config.target),
                                            &debugger_opts);
                 logv(config, format!("executing {}", cmdline));
                 cmdline
@@ -1135,7 +1135,7 @@ fn exec_compiled_test(config: &Config, props: &TestProps,
 
     match &*config.target {
 
-        "arm-linux-androideabi" => {
+        "arm-linux-androideabi" | "aarch64-linux-android" => {
             _arm_exec_compiled_test(config, props, testfile, env)
         }
 
@@ -1200,7 +1200,7 @@ fn compose_and_run_compiler(
         }
 
         match &*config.target {
-            "arm-linux-androideabi" => {
+            "arm-linux-androideabi"  | "aarch64-linux-android" => {
                 _arm_push_aux_shared_library(config, testfile);
             }
             _ => {}
