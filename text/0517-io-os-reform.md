@@ -584,10 +584,18 @@ trait Write {
 }
 
 trait WriteExt {
-    fn write_all(&mut self, buf: &[u8]) -> Result<(), Err> { ... };
-    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Err> { ... }
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Err>
+        where Self::Err: WriteAllError { ... };
+    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Err>
+        where Self::Err: WriteAllError { ... };
 }
+
 impl<W: Write> WriteExt for W {}
+
+trait WriteAllError: Sized {
+    fn eof() -> Self;
+    fn interrupted(&self) -> bool;
+}
 ```
 
 The biggest change here is to the semantics of `write`. Instead of
@@ -603,6 +611,11 @@ occurs. Like `read_to_end`, if an error occurs before the operation is
 complete, the intermediate result (of how much has been written) is
 discarded. To meaningfully recover from an intermediate error, code
 should work with `write` directly.
+
+A trait bound of `WriteAllError` is also imposed on the error type for the
+`write_all` and `write_fmt` methods to construct an "end of file" related error
+when `Ok(0)` is returned from `write` as well as detecting intermittent errors
+like `EINTR` that can be "safely ignored" to try to continue writing data.
 
 The `write_fmt` method, like `write_all`, will loop until its entire
 input is written or an error occurs.
@@ -741,9 +754,10 @@ impl Write for Sink { type Err = Void; ... }
 
 // Copies all data from a `Read` to a `Write`, returning the amount of data
 // copied.
-pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<u64, E> where
-    R: Read<Err = E>,
-    W: Write<Err = E>
+pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<u64, E>
+    where R: Read<Err = E>,
+          W: Write<Err = E>,
+          R::Err: WriteAllError
 ```
 
 Like `write_all`, the `copy` method will discard the amount of data already
