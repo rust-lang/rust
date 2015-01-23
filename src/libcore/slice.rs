@@ -41,7 +41,6 @@ use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use marker::Copy;
 use num::Int;
 use ops::{FnMut, self, Index};
 #[cfg(stage0)]
@@ -800,8 +799,6 @@ impl<'a, T> Iter<'a, T> {
     }
 }
 
-impl<'a,T> Copy for Iter<'a,T> {}
-
 iterator!{struct Iter -> *const T, &'a T}
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -809,7 +806,7 @@ impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
-    fn clone(&self) -> Iter<'a, T> { *self }
+    fn clone(&self) -> Iter<'a, T> { Iter { ptr: self.ptr, end: self.end, marker: self.marker } }
 }
 
 #[unstable(feature = "core", reason = "trait is experimental")]
