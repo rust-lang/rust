@@ -237,6 +237,17 @@ impl<T: Send + Sync> RwLock<T> {
             Err(TryLockError::WouldBlock)
         }
     }
+
+    /// Determine whether the lock is poisoned.
+    ///
+    /// If another thread is active, the lock can still become poisoned at any
+    /// time.  You should not trust a `false` value for program correctness
+    /// without additional synchronization.
+    #[inline]
+    #[unstable(feature = "std_misc")]
+    pub fn is_poisoned(&self) -> bool {
+        self.inner.poison.get()
+    }
 }
 
 #[unsafe_destructor]
@@ -451,12 +462,14 @@ mod tests {
     #[test]
     fn test_rw_arc_poison_ww() {
         let arc = Arc::new(RwLock::new(1));
+        assert!(!arc.is_poisoned());
         let arc2 = arc.clone();
         let _: Result<uint, _> = Thread::scoped(move|| {
             let _lock = arc2.write().unwrap();
             panic!();
         }).join();
         assert!(arc.write().is_err());
+        assert!(arc.is_poisoned());
     }
 
     #[test]
