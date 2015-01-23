@@ -57,18 +57,18 @@ exceptions = [
 
 def check_license(name, contents):
     # Whitelist check
-    for exception in exceptions:
-        if name.endswith(exception):
-            return True
+    if any(name.endswith(e) for e in exceptions):
+        return True
 
     # Xfail check
     firstlineish = contents[:100]
-    if firstlineish.find("ignore-license") != -1:
+    if "ignore-license" in firstlineish:
         return True
 
     # License check
     boilerplate = contents[:500]
-    if (boilerplate.find(license1) == -1 or boilerplate.find(license2) == -1) and \
-       (boilerplate.find(license3) == -1 or boilerplate.find(license4) == -1):
+    if (license1 not in boilerplate or license2 not in boilerplate) and \
+       (license3 not in boilerplate or license4 not in boilerplate):
         return False
+
     return True
