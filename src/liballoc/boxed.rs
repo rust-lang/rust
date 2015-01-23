@@ -8,7 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A unique pointer type.
+//! A pointer type for heap allocation.
+//!
+//! `Box<T>`, casually referred to as a 'box', provides the simplest form of heap allocation in
+//! Rust. Boxes provide ownership for this allocation, and drop their contents when they go out of
+//! scope.
+//!
+//! Boxes are useful in two situations: recursive data structures, and occasionally when returning
+//! data. [The Pointer chapter of the Book](../../../book/pointers.html#best-practices-1) explains
+//! these cases in detail.
+//!
+//! # Examples
+//!
+//! Creating a box:
+//!
+//! ```
+//! let x = Box::new(5);
+//! ```
+//!
+//! Creating a recursive data structure:
+//!
+//! ```
+//! #[derive(Show)]
+//! enum List<T> {
+//!     Cons(T, Box<List<T>>),
+//!     Nil,
+//! }
+//!
+//! fn main() {
+//!     let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
+//!     println!("{:?}", list);
+//! }
+//! ```
+//!
+//! This will print `Cons(1i32, Box(Cons(2i32, Box(Nil))))`.
 
 #![stable]
 
@@ -29,8 +62,8 @@ use core::raw::TraitObject;
 use core::result::Result::{Ok, Err};
 use core::result::Result;
 
-/// A value that represents the global exchange heap. This is the default
-/// place that the `box` keyword allocates into when no place is supplied.
+/// A value that represents the heap. This is the default place that the `box` keyword allocates
+/// into when no place is supplied.
 ///
 /// The following two examples are equivalent:
 ///
@@ -39,23 +72,29 @@ use core::result::Result;
 /// use std::boxed::HEAP;
 ///
 /// fn main() {
-/// # struct Bar;
-/// # impl Bar { fn new(_a: int) { } }
-///     let foo = box(HEAP) Bar::new(2);
-///     let foo = box Bar::new(2);
+///     let foo = box(HEAP) 5;
+///     let foo = box 5;
 /// }
 /// ```
 #[lang = "exchange_heap"]
 #[unstable = "may be renamed; uncertain about custom allocator design"]
 pub static HEAP: () = ();
 
-/// A type that represents a uniquely-owned value.
+/// A pointer type for heap allocation.
+///
+/// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
 #[stable]
 pub struct Box<T>(Unique<T>);
 
 impl<T> Box<T> {
-    /// Moves `x` into a freshly allocated box on the global exchange heap.
+    /// Allocates memory on the heap and then moves `x` into it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new(5);
+    /// ```
     #[stable]
     pub fn new(x: T) -> Box<T> {
         box x
@@ -76,11 +115,29 @@ impl<T> Default for Box<[T]> {
 
 #[stable]
 impl<T: Clone> Clone for Box<T> {
-    /// Returns a copy of the owned box.
+    /// Returns a new box with a `clone()` of this box's contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new(5);
+    /// let y = x.clone();
+    /// ```
     #[inline]
     fn clone(&self) -> Box<T> { box {(**self).clone()} }
 
-    /// Performs copy-assignment from `source` by reusing the existing allocation.
+    /// Copies `source`'s contents into `self` without creating a new allocation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new(5);
+    /// let mut y = Box::new(10);
+    ///
+    /// y.clone_from(&x);
+    ///
+    /// assert_eq!(*y, 5);
+    /// ```
     #[inline]
     fn clone_from(&mut self, source: &Box<T>) {
         (**self).clone_from(&(**source));

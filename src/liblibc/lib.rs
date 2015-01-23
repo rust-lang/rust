@@ -555,7 +555,8 @@ pub mod types {
                 pub type mode_t = u16;
                 pub type ssize_t = i32;
             }
-            #[cfg(target_arch = "x86")]
+            #[cfg(any(target_arch = "x86",
+                      target_arch = "powerpc"))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_short, c_long, time_t};
                 use types::os::arch::posix88::{dev_t, gid_t, ino_t};
@@ -646,8 +647,7 @@ pub mod types {
                 }
             }
             #[cfg(any(target_arch = "mips",
-                      target_arch = "mipsel",
-                      target_arch = "powerpc"))]
+                      target_arch = "mipsel"))]
             pub mod posix01 {
                 use types::os::arch::c95::{c_long, c_ulong, time_t};
                 use types::os::arch::posix88::{gid_t, ino_t};
@@ -2491,7 +2491,8 @@ pub mod consts {
         #[cfg(any(target_arch = "x86",
                   target_arch = "x86_64",
                   target_arch = "arm",
-                  target_arch = "aarch64"))]
+                  target_arch = "aarch64",
+                  target_arch = "powerpc"))]
         pub mod posix88 {
             use types::os::arch::c95::c_int;
             use types::common::c95::c_void;
@@ -2704,8 +2705,7 @@ pub mod consts {
         }
 
         #[cfg(any(target_arch = "mips",
-                  target_arch = "mipsel",
-                  target_arch = "powerpc"))]
+                  target_arch = "mipsel"))]
         pub mod posix88 {
             use types::os::arch::c95::c_int;
             use types::common::c95::c_void;
@@ -3002,7 +3002,8 @@ pub mod consts {
         #[cfg(any(target_arch = "arm",
                   target_arch = "aarch64",
                   target_arch = "x86",
-                  target_arch = "x86_64"))]
+                  target_arch = "x86_64",
+                  target_arch = "powerpc"))]
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
@@ -3050,8 +3051,7 @@ pub mod consts {
             pub const SHUT_RDWR: c_int = 2;
         }
         #[cfg(any(target_arch = "mips",
-                  target_arch = "mipsel",
-                  target_arch = "powerpc"))]
+                  target_arch = "mipsel"))]
         pub mod bsd44 {
             use types::os::arch::c95::c_int;
 
@@ -3099,7 +3099,8 @@ pub mod consts {
         #[cfg(any(target_arch = "x86",
                   target_arch = "x86_64",
                   target_arch = "arm",
-                  target_arch = "aarch64"))]
+                  target_arch = "aarch64",
+                  target_arch = "powerpc"))]
         pub mod extra {
             use types::os::arch::c95::c_int;
 
@@ -3127,8 +3128,7 @@ pub mod consts {
             pub const MAP_STACK : c_int = 0x020000;
         }
         #[cfg(any(target_arch = "mips",
-                  target_arch = "mipsel",
-                  target_arch = "powerpc"))]
+                  target_arch = "mipsel"))]
         pub mod extra {
             use types::os::arch::c95::c_int;
 

@@ -87,7 +87,7 @@ println!("{}", x + z);
 This gives us an error:
 
 ```text
-hello.rs:6:24: 6:25 error: mismatched types: expected `i32` but found `&i32` (expected i32 but found &-ptr)
+hello.rs:6:24: 6:25 error: mismatched types: expected `_`, found `&_` (expected integral variable, found &-ptr)
 hello.rs:6     println!("{}", x + z);
                                   ^
 ```
@@ -305,7 +305,7 @@ References are immutable by default:
 let x = 5;
 let y = &x;
 
-*y = 5; // error: cannot assign to immutable dereference of `&`-pointer `*y`
+*y = 5; // error: cannot assign to immutable borrowed content `*y`
 ```
 
 They can be made mutable with `mut`, but only if its referent is also mutable.
@@ -668,7 +668,7 @@ struct BigStruct {
 }
 
 fn foo(x: Box<BigStruct>) -> Box<BigStruct> {
-    return Box::new(*x);
+    Box::new(*x)
 }
 
 fn main() {
@@ -696,7 +696,7 @@ struct BigStruct {
 }
 
 fn foo(x: Box<BigStruct>) -> BigStruct {
-    return *x;
+    *x
 }
 
 fn main() {
