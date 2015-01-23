@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::FileType;
+use std::old_io::FileType;
 
 pub fn main() {
     let _ = FileType::RegularFile.clone();

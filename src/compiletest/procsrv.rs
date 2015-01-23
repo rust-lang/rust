@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::process::{ProcessExit, Command, Process, ProcessOutput};
+use std::old_io::process::{ProcessExit, Command, Process, ProcessOutput};
 use std::dynamic_lib::DynamicLibrary;
 
 fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {

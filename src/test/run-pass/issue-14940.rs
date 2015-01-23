@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::os;
-use std::io::{stdio, Command};
+use std::old_io::{stdio, Command};
 
 fn main() {
     let args = os::args();

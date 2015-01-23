@@ -13,7 +13,7 @@
 // that we don't die in a large ball of fire
 
 use std::os;
-use std::io::process;
+use std::old_io::process;
 
 pub fn main () {
     let args = os::args();

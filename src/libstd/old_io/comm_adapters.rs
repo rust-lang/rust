@@ -160,7 +160,7 @@ mod test {
 
     use sync::mpsc::channel;
     use super::*;
-    use io;
+    use old_io;
     use thread::Thread;
 
     #[test]

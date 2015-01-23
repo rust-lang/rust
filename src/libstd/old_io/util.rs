@@ -276,7 +276,7 @@ mod test {
     use prelude::v1::*;
 
     use old_io::{MemReader, ByRefReader};
-    use io;
+    use old_io;
     use super::*;
 
     #[test]

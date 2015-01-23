@@ -26,7 +26,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
 use std::collections::hash_map::Entry::Vacant;
-use std::io::{self, File};
+use std::old_io::{self, File};
 use std::os;
 use std::sync::atomic::{AtomicBool, Ordering, ATOMIC_BOOL_INIT};
 use syntax::ast;
@@ -217,7 +217,7 @@ pub type ConstraintMap<'tcx> = FnvHashMap<Constraint, SubregionOrigin<'tcx>>;
 
 fn dump_region_constraints_to<'a, 'tcx:'a >(tcx: &'a ty::ctxt<'tcx>,
                                             map: &ConstraintMap<'tcx>,
-                                            path: &str) -> io::IoResult<()> {
+                                            path: &str) -> old_io::IoResult<()> {
     debug!("dump_region_constraints map (len: {}) path: {}", map.len(), path);
     let g = ConstraintGraph::new(tcx, format!("region_constraints"), map);
     let mut f = File::create(&Path::new(path));

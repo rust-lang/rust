@@ -11,8 +11,8 @@
 //! Implementation of the `build` subcommand, used to compile a book.
 
 use std::os;
-use std::io;
-use std::io::{fs, File, BufferedWriter, TempDir, IoResult};
+use std::old_io;
+use std::old_io::{fs, File, BufferedWriter, TempDir, IoResult};
 
 use subcommand::Subcommand;
 use term::Term;
@@ -119,7 +119,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
             try!(writeln!(&mut toc, "</div></div>"));
         }
 
-        try!(fs::mkdir_recursive(&out_path, io::USER_DIR));
+        try!(fs::mkdir_recursive(&out_path, old_io::USER_DIR));
 
         let rustdoc_args: &[String] = &[
             "".to_string(),
@@ -165,7 +165,7 @@ impl Subcommand for Build {
             tgt = Path::new(os::args()[3].clone());
         }
 
-        try!(fs::mkdir(&tgt, io::USER_DIR));
+        try!(fs::mkdir(&tgt, old_io::USER_DIR));
 
         try!(File::create(&tgt.join("rust-book.css")).write_str(css::STYLE));
 

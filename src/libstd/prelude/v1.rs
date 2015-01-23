@@ -43,6 +43,6 @@
 // NB: remove when path reform lands
 #[doc(no_inline)] pub use path::{Path, GenericPath};
 // NB: remove when I/O reform lands
-#[doc(no_inline)] pub use io::{Buffer, Writer, Reader, Seek, BufferPrelude};
+#[doc(no_inline)] pub use old_io::{Buffer, Writer, Reader, Seek, BufferPrelude};
 // NB: remove when range syntax lands
 #[doc(no_inline)] pub use iter::range;

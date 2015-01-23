@@ -223,7 +223,7 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
 fn iter_header<F>(testfile: &Path, mut it: F) -> bool where
     F: FnMut(&str) -> bool,
 {
-    use std::io::{BufferedReader, File};
+    use std::old_io::{BufferedReader, File};
 
     let mut rdr = BufferedReader::new(File::open(testfile).unwrap());
     for ln in rdr.lines() {

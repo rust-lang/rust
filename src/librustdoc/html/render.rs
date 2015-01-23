@@ -39,9 +39,9 @@ use std::cmp::Ordering;
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
 use std::fmt;
-use std::io::fs::PathExtensions;
-use std::io::{fs, File, BufferedWriter, BufferedReader};
-use std::io;
+use std::old_io::fs::PathExtensions;
+use std::old_io::{fs, File, BufferedWriter, BufferedReader};
+use std::old_io;
 use std::iter::repeat;
 use std::str;
 use std::sync::Arc;
@@ -257,7 +257,7 @@ thread_local!(pub static CURRENT_LOCATION_KEY: RefCell<Vec<String>> =
 pub fn run(mut krate: clean::Crate,
            external_html: &ExternalHtml,
            dst: Path,
-           passes: HashSet<String>) -> io::IoResult<()> {
+           passes: HashSet<String>) -> old_io::IoResult<()> {
     let mut cx = Context {
         dst: dst,
         src_root: krate.src.dir_path(),
@@ -391,7 +391,7 @@ pub fn run(mut krate: clean::Crate,
     cx.krate(krate, summary)
 }
 
-fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> {
+fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<String> {
     // Build the search index from the collected metadata
     let mut nodeid_to_pathid = HashMap::new();
     let mut pathid_to_nodeid = Vec::new();
@@ -485,7 +485,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> io::IoResult<String> 
 fn write_shared(cx: &Context,
                 krate: &clean::Crate,
                 cache: &Cache,
-                search_index: String) -> io::IoResult<()> {
+                search_index: String) -> old_io::IoResult<()> {
     // Write out the shared files. Note that these are shared among all rustdoc
     // docs placed in the output directory, so this needs to be a synchronized
     // operation with respect to all other rustdocs running around.
@@ -517,7 +517,7 @@ fn write_shared(cx: &Context,
                include_bytes!("static/SourceCodePro-Semibold.woff")));
 
     fn collect(path: &Path, krate: &str,
-               key: &str) -> io::IoResult<Vec<String>> {
+               key: &str) -> old_io::IoResult<Vec<String>> {
         let mut ret = Vec::new();
         if path.exists() {
             for line in BufferedReader::new(File::open(path)).lines() {
@@ -607,7 +607,7 @@ fn write_shared(cx: &Context,
 }
 
 fn render_sources(cx: &mut Context,
-                  krate: clean::Crate) -> io::IoResult<clean::Crate> {
+                  krate: clean::Crate) -> old_io::IoResult<clean::Crate> {
     info!("emitting source files");
     let dst = cx.dst.join("src");
     try!(mkdir(&dst));
@@ -625,15 +625,15 @@ fn render_sources(cx: &mut Context,
 
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
-fn write(dst: Path, contents: &[u8]) -> io::IoResult<()> {
+fn write(dst: Path, contents: &[u8]) -> old_io::IoResult<()> {
     File::create(&dst).write(contents)
 }
 
 /// Makes a directory on the filesystem, failing the task if an error occurs and
 /// skipping if the directory already exists.
-fn mkdir(path: &Path) -> io::IoResult<()> {
+fn mkdir(path: &Path) -> old_io::IoResult<()> {
     if !path.exists() {
-        fs::mkdir(path, io::USER_RWX)
+        fs::mkdir(path, old_io::USER_RWX)
     } else {
         Ok(())
     }
@@ -736,7 +736,7 @@ impl<'a> DocFolder for SourceCollector<'a> {
 
 impl<'a> SourceCollector<'a> {
     /// Renders the given filename into its corresponding HTML source file.
-    fn emit_source(&mut self, filename: &str) -> io::IoResult<()> {
+    fn emit_source(&mut self, filename: &str) -> old_io::IoResult<()> {
         let p = Path::new(filename);
 
         // If we couldn't open this file, then just returns because it
@@ -1084,7 +1084,7 @@ impl Context {
     /// This currently isn't parallelized, but it'd be pretty easy to add
     /// parallelization to this function.
     fn krate(mut self, mut krate: clean::Crate,
-             stability: stability_summary::ModuleSummary) -> io::IoResult<()> {
+             stability: stability_summary::ModuleSummary) -> old_io::IoResult<()> {
         let mut item = match krate.module.take() {
             Some(i) => i,
             None => return Ok(())
@@ -1134,11 +1134,11 @@ impl Context {
     /// all sub-items which need to be rendered.
     ///
     /// The rendering driver uses this closure to queue up more work.
-    fn item<F>(&mut self, item: clean::Item, mut f: F) -> io::IoResult<()> where
+    fn item<F>(&mut self, item: clean::Item, mut f: F) -> old_io::IoResult<()> where
         F: FnMut(&mut Context, clean::Item),
     {
-        fn render(w: io::File, cx: &Context, it: &clean::Item,
-                  pushname: bool) -> io::IoResult<()> {
+        fn render(w: old_io::File, cx: &Context, it: &clean::Item,
+                  pushname: bool) -> old_io::IoResult<()> {
             info!("Rendering an item to {}", w.path().display());
             // A little unfortunate that this is done like this, but it sure
             // does make formatting *a lot* nicer.

@@ -11,7 +11,7 @@
 //! Terminfo database interface.
 
 use std::collections::HashMap;
-use std::io::IoResult;
+use std::old_io::IoResult;
 use std::os;
 
 use attr;

@@ -80,7 +80,7 @@ use ptr::P;
 use owned_slice::OwnedSlice;
 
 use std::collections::HashSet;
-use std::io::fs::PathExtensions;
+use std::old_io::fs::PathExtensions;
 use std::iter;
 use std::mem;
 use std::num::Float;

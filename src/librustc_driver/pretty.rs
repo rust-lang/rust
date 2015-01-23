@@ -38,7 +38,7 @@ use syntax::ptr::P;
 
 use graphviz as dot;
 
-use std::io::{self, MemReader};
+use std::old_io::{self, MemReader};
 use std::option;
 use std::str::FromStr;
 
@@ -208,7 +208,7 @@ impl<'ast> PrinterSupport<'ast> for IdentifiedAnnotation<'ast> {
 impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
     fn pre(&self,
            s: &mut pprust::State,
-           node: pprust::AnnNode) -> io::IoResult<()> {
+           node: pprust::AnnNode) -> old_io::IoResult<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
             _ => Ok(())
@@ -216,7 +216,7 @@ impl<'ast> pprust::PpAnn for IdentifiedAnnotation<'ast> {
     }
     fn post(&self,
             s: &mut pprust::State,
-            node: pprust::AnnNode) -> io::IoResult<()> {
+            node: pprust::AnnNode) -> old_io::IoResult<()> {
         match node {
             pprust::NodeIdent(_) | pprust::NodeName(_) => Ok(()),
 
@@ -259,7 +259,7 @@ impl<'ast> PrinterSupport<'ast> for HygieneAnnotation<'ast> {
 impl<'ast> pprust::PpAnn for HygieneAnnotation<'ast> {
     fn post(&self,
             s: &mut pprust::State,
-            node: pprust::AnnNode) -> io::IoResult<()> {
+            node: pprust::AnnNode) -> old_io::IoResult<()> {
         match node {
             pprust::NodeIdent(&ast::Ident { name: ast::Name(nm), ctxt }) => {
                 try!(pp::space(&mut s.s));
@@ -294,7 +294,7 @@ impl<'tcx> PrinterSupport<'tcx> for TypedAnnotation<'tcx> {
 impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
     fn pre(&self,
            s: &mut pprust::State,
-           node: pprust::AnnNode) -> io::IoResult<()> {
+           node: pprust::AnnNode) -> old_io::IoResult<()> {
         match node {
             pprust::NodeExpr(_) => s.popen(),
             _ => Ok(())
@@ -302,7 +302,7 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
     }
     fn post(&self,
             s: &mut pprust::State,
-            node: pprust::AnnNode) -> io::IoResult<()> {
+            node: pprust::AnnNode) -> old_io::IoResult<()> {
         let tcx = &self.analysis.ty_cx;
         match node {
             pprust::NodeExpr(expr) => {
@@ -548,9 +548,9 @@ pub fn pretty_print_input(sess: Session,
     let mut rdr = MemReader::new(src);
 
     let out = match ofile {
-        None => box io::stdout() as Box<Writer+'static>,
+        None => box old_io::stdout() as Box<Writer+'static>,
         Some(p) => {
-            let r = io::File::create(&p);
+            let r = old_io::File::create(&p);
             match r {
                 Ok(w) => box w as Box<Writer+'static>,
                 Err(e) => panic!("print-print failed to open {} due to {}",
@@ -643,11 +643,11 @@ pub fn pretty_print_input(sess: Session,
     }.unwrap()
 }
 
-fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
+fn print_flowgraph<W:old_io::Writer>(variants: Vec<borrowck_dot::Variant>,
                                  analysis: ty::CrateAnalysis,
                                  code: blocks::Code,
                                  mode: PpFlowGraphMode,
-                                 mut out: W) -> io::IoResult<()> {
+                                 mut out: W) -> old_io::IoResult<()> {
     let ty_cx = &analysis.ty_cx;
     let cfg = match code {
         blocks::BlockCode(block) => cfg::CFG::new(ty_cx, &*block),
@@ -687,11 +687,11 @@ fn print_flowgraph<W:io::Writer>(variants: Vec<borrowck_dot::Variant>,
         }
     }
 
-    fn expand_err_details(r: io::IoResult<()>) -> io::IoResult<()> {
+    fn expand_err_details(r: old_io::IoResult<()>) -> old_io::IoResult<()> {
         r.map_err(|ioerr| {
             let orig_detail = ioerr.detail.clone();
             let m = "graphviz::render failed";
-            io::IoError {
+            old_io::IoError {
                 detail: Some(match orig_detail {
                     None => m.to_string(),
                     Some(d) => format!("{}: {}", m, d)

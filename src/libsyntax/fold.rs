@@ -1430,7 +1430,7 @@ pub fn noop_fold_stmt<T: Folder>(Spanned {node, span}: Stmt, folder: &mut T)
 
 #[cfg(test)]
 mod test {
-    use std::io;
+    use std::old_io;
     use ast;
     use util::parser_testing::{string_to_crate, matches_codepattern};
     use parse::token;
@@ -1440,7 +1440,7 @@ mod test {
 
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: &mut pprust::State,
-                        krate: &ast::Crate) -> io::IoResult<()> {
+                        krate: &ast::Crate) -> old_io::IoResult<()> {
         s.print_mod(&krate.module, krate.attrs.as_slice())
     }
 

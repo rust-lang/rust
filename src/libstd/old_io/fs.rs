@@ -407,7 +407,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io;
+/// use std::old_io;
 /// use std::old_io::fs;
 ///
 /// fs::chmod(&Path::new("file.txt"), old_io::USER_FILE);
@@ -469,7 +469,7 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io;
+/// use std::old_io;
 /// use std::old_io::fs;
 ///
 /// let p = Path::new("/some/dir");
@@ -515,7 +515,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// ```rust
 /// use std::old_io::fs::PathExtensions;
 /// use std::old_io::fs;
-/// use std::io;
+/// use std::old_io;
 ///
 /// // one possible implementation of fs::walk_dir only visiting files
 /// fn visit_dirs<F>(dir: &Path, cb: &mut F) -> old_io::IoResult<()> where
@@ -825,7 +825,7 @@ fn access_string(access: FileAccess) -> &'static str {
 mod test {
     use prelude::v1::*;
     use old_io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};
-    use io;
+    use old_io;
     use str;
     use old_io::fs::*;
 

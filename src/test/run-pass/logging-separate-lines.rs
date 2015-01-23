@@ -15,7 +15,7 @@
 #[macro_use]
 extern crate log;
 
-use std::io::Command;
+use std::old_io::Command;
 use std::os;
 use std::str;
 

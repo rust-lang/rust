@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::slice::SliceExt;
-use std::io::{Command, fs, USER_RWX};
+use std::old_io::{Command, fs, USER_RWX};
 use std::os;
 use std::path::BytesContainer;
 use std::rand::random;

@@ -9,9 +9,9 @@
 // except according to those terms.
 
 
-use std::io::process;
-use std::io::Command;
-use std::io;
+use std::old_io::process;
+use std::old_io::Command;
+use std::old_io;
 use std::os;
 
 fn main() {
@@ -25,9 +25,9 @@ fn main() {
 }
 
 fn child() {
-    io::stdout().write_line("foo").unwrap();
-    io::stderr().write_line("bar").unwrap();
-    assert_eq!(io::stdin().lock().read_line().err().unwrap().kind, io::EndOfFile);
+    old_io::stdout().write_line("foo").unwrap();
+    old_io::stderr().write_line("bar").unwrap();
+    assert_eq!(old_io::stdin().lock().read_line().err().unwrap().kind, old_io::EndOfFile);
 }
 
 fn test() {

@@ -238,7 +238,7 @@
 //!
 //! ```ignore
 //! format!      // described above
-//! write!       // first argument is a &mut io::Writer, the destination
+//! write!       // first argument is a &mut old_io::Writer, the destination
 //! writeln!     // same as write but appends a newline
 //! print!       // the format string is printed to the standard output
 //! println!     // same as print but appends a newline
@@ -255,10 +255,8 @@
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
-//! use std::io;
-//!
 //! let mut w = Vec::new();
-//! write!(&mut w as &mut io::Writer, "Hello {}!", "world");
+//! write!(&mut w, "Hello {}!", "world");
 //! ```
 //!
 //! #### `print!`
@@ -282,15 +280,15 @@
 //!
 //! ```
 //! use std::fmt;
-//! use std::io;
+//! use std::old_io;
 //!
 //! fmt::format(format_args!("this returns {}", "String"));
 //!
-//! let some_writer: &mut io::Writer = &mut io::stdout();
-//! write!(some_writer, "{}", format_args!("print with a {}", "macro"));
+//! let mut some_writer = old_io::stdout();
+//! write!(&mut some_writer, "{}", format_args!("print with a {}", "macro"));
 //!
 //! fn my_fmt_fn(args: fmt::Arguments) {
-//!     write!(&mut io::stdout(), "{}", args);
+//!     write!(&mut old_io::stdout(), "{}", args);
 //! }
 //! my_fmt_fn(format_args!("or a {} too", "function"));
 //! ```
