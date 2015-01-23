@@ -746,6 +746,11 @@ pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<u64, E> where
     W: Write<Err = E>
 ```
 
+Like `write_all`, the `copy` method will discard the amount of data already
+written on any error and also discard any partially read data on a `write`
+error. This method is intended to be a convenience and `write` should be used
+directly if this is not desirable.
+
 #### Void
 [Void]: #void
 
