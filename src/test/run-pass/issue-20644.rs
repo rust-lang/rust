@@ -16,7 +16,7 @@
 
 use std::iter;
 use std::os;
-use std::io::File;
+use std::old_io::File;
 
 #[allow(unused)]
 pub fn parse_summary<R: Reader>(_: R, _: &Path) {

@@ -9,7 +9,7 @@
 // except according to those terms.
 use self::WhichLine::*;
 
-use std::io::{BufferedReader, File};
+use std::old_io::{BufferedReader, File};
 
 pub struct ExpectedError {
     pub line: uint,

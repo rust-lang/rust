@@ -18,7 +18,7 @@
 use prelude::v1::*;
 
 use ffi;
-use io::{self, IoResult, IoError};
+use old_io::{self, IoResult, IoError};
 use libc;
 use num::{Int, SignedInt};
 use num;
@@ -94,35 +94,35 @@ pub fn last_gai_error(s: libc::c_int) -> IoError {
 pub fn decode_error(errno: i32) -> IoError {
     // FIXME: this should probably be a bit more descriptive...
     let (kind, desc) = match errno {
-        libc::EOF => (io::EndOfFile, "end of file"),
-        libc::ECONNREFUSED => (io::ConnectionRefused, "connection refused"),
-        libc::ECONNRESET => (io::ConnectionReset, "connection reset"),
+        libc::EOF => (old_io::EndOfFile, "end of file"),
+        libc::ECONNREFUSED => (old_io::ConnectionRefused, "connection refused"),
+        libc::ECONNRESET => (old_io::ConnectionReset, "connection reset"),
         libc::EPERM | libc::EACCES =>
-            (io::PermissionDenied, "permission denied"),
-        libc::EPIPE => (io::BrokenPipe, "broken pipe"),
-        libc::ENOTCONN => (io::NotConnected, "not connected"),
-        libc::ECONNABORTED => (io::ConnectionAborted, "connection aborted"),
-        libc::EADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
-        libc::EADDRINUSE => (io::ConnectionRefused, "address in use"),
-        libc::ENOENT => (io::FileNotFound, "no such file or directory"),
-        libc::EISDIR => (io::InvalidInput, "illegal operation on a directory"),
-        libc::ENOSYS => (io::IoUnavailable, "function not implemented"),
-        libc::EINVAL => (io::InvalidInput, "invalid argument"),
+            (old_io::PermissionDenied, "permission denied"),
+        libc::EPIPE => (old_io::BrokenPipe, "broken pipe"),
+        libc::ENOTCONN => (old_io::NotConnected, "not connected"),
+        libc::ECONNABORTED => (old_io::ConnectionAborted, "connection aborted"),
+        libc::EADDRNOTAVAIL => (old_io::ConnectionRefused, "address not available"),
+        libc::EADDRINUSE => (old_io::ConnectionRefused, "address in use"),
+        libc::ENOENT => (old_io::FileNotFound, "no such file or directory"),
+        libc::EISDIR => (old_io::InvalidInput, "illegal operation on a directory"),
+        libc::ENOSYS => (old_io::IoUnavailable, "function not implemented"),
+        libc::EINVAL => (old_io::InvalidInput, "invalid argument"),
         libc::ENOTTY =>
-            (io::MismatchedFileTypeForOperation,
+            (old_io::MismatchedFileTypeForOperation,
              "file descriptor is not a TTY"),
-        libc::ETIMEDOUT => (io::TimedOut, "operation timed out"),
-        libc::ECANCELED => (io::TimedOut, "operation aborted"),
+        libc::ETIMEDOUT => (old_io::TimedOut, "operation timed out"),
+        libc::ECANCELED => (old_io::TimedOut, "operation aborted"),
         libc::consts::os::posix88::EEXIST =>
-            (io::PathAlreadyExists, "path already exists"),
+            (old_io::PathAlreadyExists, "path already exists"),
 
         // These two constants can have the same value on some systems,
         // but different values on others, so we can't use a match
         // clause
         x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
-            (io::ResourceUnavailable, "resource temporarily unavailable"),
+            (old_io::ResourceUnavailable, "resource temporarily unavailable"),
 
-        _ => (io::OtherIoError, "unknown error")
+        _ => (old_io::OtherIoError, "unknown error")
     };
     IoError { kind: kind, desc: desc, detail: None }
 }

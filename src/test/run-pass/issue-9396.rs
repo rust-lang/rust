@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::sync::mpsc::{TryRecvError, channel};
-use std::io::timer::Timer;
+use std::old_io::timer::Timer;
 use std::thread::Thread;
 use std::time::Duration;
 

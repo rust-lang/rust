@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::BufReader;
-use std::io::BufferedReader;
-use std::io::File;
-use std::io::IoResult;
+use std::old_io::BufReader;
+use std::old_io::BufferedReader;
+use std::old_io::File;
+use std::old_io::IoResult;
 
 struct Lexer<R: Reader>
 {

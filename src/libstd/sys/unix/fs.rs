@@ -13,10 +13,10 @@
 use prelude::v1::*;
 
 use ffi::{self, CString};
-use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
-use io::{IoResult, FileStat, SeekStyle};
-use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
-use io;
+use old_io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
+use old_io::{IoResult, FileStat, SeekStyle};
+use old_io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
+use old_io;
 use libc::{self, c_int, c_void};
 use mem;
 use ptr;
@@ -304,12 +304,12 @@ fn mkstat(stat: &libc::stat) -> FileStat {
     FileStat {
         size: stat.st_size as u64,
         kind: match (stat.st_mode as libc::mode_t) & libc::S_IFMT {
-            libc::S_IFREG => io::FileType::RegularFile,
-            libc::S_IFDIR => io::FileType::Directory,
-            libc::S_IFIFO => io::FileType::NamedPipe,
-            libc::S_IFBLK => io::FileType::BlockSpecial,
-            libc::S_IFLNK => io::FileType::Symlink,
-            _ => io::FileType::Unknown,
+            libc::S_IFREG => old_io::FileType::RegularFile,
+            libc::S_IFDIR => old_io::FileType::Directory,
+            libc::S_IFIFO => old_io::FileType::NamedPipe,
+            libc::S_IFBLK => old_io::FileType::BlockSpecial,
+            libc::S_IFLNK => old_io::FileType::Symlink,
+            _ => old_io::FileType::Unknown,
         },
         perm: FilePermission::from_bits_truncate(stat.st_mode as u32),
         created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),

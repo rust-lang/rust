@@ -10,10 +10,10 @@
 
 //! A helper class for dealing with static archives
 
-use std::io::fs::PathExtensions;
-use std::io::process::{Command, ProcessOutput};
-use std::io::{fs, TempDir};
-use std::io;
+use std::old_io::fs::PathExtensions;
+use std::old_io::process::{Command, ProcessOutput};
+use std::old_io::{fs, TempDir};
+use std::old_io;
 use std::os;
 use std::str;
 use syntax::diagnostic::Handler as ErrorHandler;
@@ -172,7 +172,7 @@ impl<'a> ArchiveBuilder<'a> {
 
     /// Adds all of the contents of a native library to this archive. This will
     /// search in the relevant locations for a library named `name`.
-    pub fn add_native_library(&mut self, name: &str) -> io::IoResult<()> {
+    pub fn add_native_library(&mut self, name: &str) -> old_io::IoResult<()> {
         let location = find_library(name,
                                     &self.archive.slib_prefix[],
                                     &self.archive.slib_suffix[],
@@ -187,7 +187,7 @@ impl<'a> ArchiveBuilder<'a> {
     /// This ignores adding the bytecode from the rlib, and if LTO is enabled
     /// then the object file also isn't added.
     pub fn add_rlib(&mut self, rlib: &Path, name: &str,
-                    lto: bool) -> io::IoResult<()> {
+                    lto: bool) -> old_io::IoResult<()> {
         // Ignoring obj file starting with the crate name
         // as simple comparison is not enough - there
         // might be also an extra name suffix
@@ -205,7 +205,7 @@ impl<'a> ArchiveBuilder<'a> {
     }
 
     /// Adds an arbitrary file to this archive
-    pub fn add_file(&mut self, file: &Path) -> io::IoResult<()> {
+    pub fn add_file(&mut self, file: &Path) -> old_io::IoResult<()> {
         let filename = Path::new(file.filename().unwrap());
         let new_file = self.work_dir.path().join(&filename);
         try!(fs::copy(file, &new_file));
@@ -274,8 +274,9 @@ impl<'a> ArchiveBuilder<'a> {
         self.archive
     }
 
-    fn add_archive<F>(&mut self, archive: &Path, name: &str, mut skip: F) -> io::IoResult<()> where
-        F: FnMut(&str) -> bool,
+    fn add_archive<F>(&mut self, archive: &Path, name: &str,
+                      mut skip: F) -> old_io::IoResult<()>
+        where F: FnMut(&str) -> bool,
     {
         let loc = TempDir::new("rsar").unwrap();
 

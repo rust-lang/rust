@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::{File, Command};
+use std::old_io::{File, Command};
 use std::iter::repeat;
 use std::rand::{thread_rng, Rng};
 use std::{char, os};

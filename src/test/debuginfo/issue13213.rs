@@ -21,5 +21,5 @@ extern crate issue13213aux;
 // be available because they have been optimized out from the exporting crate.
 fn main() {
     let b: issue13213aux::S = issue13213aux::A;
-    ::std::io::println("Nothing to do here...");
+    ::std::old_io::println("Nothing to do here...");
 }

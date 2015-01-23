@@ -16,9 +16,9 @@
 // non-ASCII characters.  The child process ensures all the strings are
 // intact.
 
-use std::io;
-use std::io::fs;
-use std::io::Command;
+use std::old_io;
+use std::old_io::fs;
+use std::old_io::Command;
 use std::os;
 use std::path::Path;
 
@@ -49,7 +49,7 @@ fn main() {
         let child_path     = cwd.join(child_filename);
 
         // make a separate directory for the child
-        drop(fs::mkdir(&cwd, io::USER_RWX).is_ok());
+        drop(fs::mkdir(&cwd, old_io::USER_RWX).is_ok());
         assert!(fs::copy(&my_path, &child_path).is_ok());
         let mut my_env = my_env;
         my_env.push(env);
@@ -62,8 +62,8 @@ fn main() {
                         .spawn().unwrap().wait_with_output().unwrap();
 
         // display the output
-        assert!(io::stdout().write(p.output.as_slice()).is_ok());
-        assert!(io::stderr().write(p.error.as_slice()).is_ok());
+        assert!(old_io::stdout().write(p.output.as_slice()).is_ok());
+        assert!(old_io::stderr().write(p.error.as_slice()).is_ok());
 
         // make sure the child succeeded
         assert!(p.status.success());

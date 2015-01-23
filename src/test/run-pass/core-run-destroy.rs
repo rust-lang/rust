@@ -19,7 +19,7 @@
 
 extern crate libc;
 
-use std::io::{Process, Command, timer};
+use std::old_io::{Process, Command, timer};
 use std::time::Duration;
 use std::str;
 use std::sync::mpsc::channel;
@@ -56,8 +56,8 @@ fn test_destroy_twice() {
 }
 
 pub fn test_destroy_actually_kills(force: bool) {
-    use std::io::process::{Command, ProcessOutput, ExitStatus, ExitSignal};
-    use std::io::timer;
+    use std::old_io::process::{Command, ProcessOutput, ExitStatus, ExitSignal};
+    use std::old_io::timer;
     use libc;
     use std::str;
 

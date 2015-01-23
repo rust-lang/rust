@@ -11,7 +11,7 @@
 #![feature(start)]
 
 use std::ffi;
-use std::io::process::{Command, ProcessOutput};
+use std::old_io::process::{Command, ProcessOutput};
 use std::os;
 use std::rt::unwind::try;
 use std::rt;

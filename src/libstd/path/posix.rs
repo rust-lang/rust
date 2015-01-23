@@ -14,7 +14,7 @@ use clone::Clone;
 use cmp::{Ordering, Eq, Ord, PartialEq, PartialOrd};
 use fmt;
 use hash;
-use io::Writer;
+use old_io::Writer;
 use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map};
 use marker::Sized;

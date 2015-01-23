@@ -12,7 +12,7 @@
 //! verbosity support. For now, just a wrapper around stdout/stderr.
 
 use std::os;
-use std::io::stdio;
+use std::old_io::stdio;
 
 pub struct Term {
     err: Box<Writer + 'static>

@@ -13,9 +13,9 @@
 extern crate rbml;
 extern crate serialize;
 
-use std::io;
+use std::old_io;
 use std::fmt;
-use std::io::{IoResult, SeekStyle};
+use std::old_io::{IoResult, SeekStyle};
 use std::slice;
 
 use serialize::{Encodable, Encoder};

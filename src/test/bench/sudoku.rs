@@ -13,9 +13,9 @@
 #![feature(box_syntax)]
 #![allow(non_snake_case)]
 
-use std::io::BufferedReader;
-use std::io::stdio::StdReader;
-use std::io;
+use std::old_io::BufferedReader;
+use std::old_io::stdio::StdReader;
+use std::old_io;
 use std::iter::repeat;
 use std::num::Int;
 use std::os;
@@ -80,7 +80,7 @@ impl Sudoku {
         return Sudoku::new(g)
     }
 
-    pub fn write(&self, writer: &mut io::Writer) {
+    pub fn write(&self, writer: &mut old_io::Writer) {
         for row in range(0u8, 9u8) {
             write!(writer, "{}", self.grid[row as uint][0]);
             for col in range(1u8, 9u8) {
@@ -274,8 +274,8 @@ fn main() {
     let mut sudoku = if use_default {
         Sudoku::from_vec(&DEFAULT_SUDOKU)
     } else {
-        Sudoku::read(&mut *io::stdin().lock())
+        Sudoku::read(&mut *old_io::stdin().lock())
     };
     sudoku.solve();
-    sudoku.write(&mut io::stdout());
+    sudoku.write(&mut old_io::stdout());
 }

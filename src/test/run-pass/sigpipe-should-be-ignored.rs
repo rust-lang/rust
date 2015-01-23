@@ -12,8 +12,8 @@
 // doesn't die in a ball of fire, but rather it's gracefully handled.
 
 use std::os;
-use std::io::PipeStream;
-use std::io::Command;
+use std::old_io::PipeStream;
+use std::old_io::Command;
 
 fn test() {
     let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };

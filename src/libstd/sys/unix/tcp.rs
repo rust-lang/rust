@@ -10,8 +10,8 @@
 
 use prelude::v1::*;
 
-use io::net::ip;
-use io::IoResult;
+use old_io::net::ip;
+use old_io::IoResult;
 use libc;
 use mem;
 use ptr;

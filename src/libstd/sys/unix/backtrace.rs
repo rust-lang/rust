@@ -86,7 +86,7 @@
 use prelude::v1::*;
 
 use ffi;
-use io::IoResult;
+use old_io::IoResult;
 use libc;
 use mem;
 use str;
@@ -136,7 +136,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
 #[inline(never)] // if we know this is a function call, we can skip it when
                  // tracing
 pub fn write(w: &mut Writer) -> IoResult<()> {
-    use io::IoError;
+    use old_io::IoError;
 
     struct Context<'a> {
         idx: int,

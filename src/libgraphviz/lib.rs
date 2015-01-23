@@ -96,7 +96,7 @@
 //! ```no_run
 //! # pub fn render_to<W:Writer>(output: &mut W) { unimplemented!() }
 //! pub fn main() {
-//!     use std::io::File;
+//!     use std::old_io::File;
 //!     let mut f = File::create(&Path::new("example1.dot"));
 //!     render_to(&mut f)
 //! }
@@ -188,7 +188,7 @@
 //! ```no_run
 //! # pub fn render_to<W:Writer>(output: &mut W) { unimplemented!() }
 //! pub fn main() {
-//!     use std::io::File;
+//!     use std::old_io::File;
 //!     let mut f = File::create(&Path::new("example2.dot"));
 //!     render_to(&mut f)
 //! }
@@ -252,7 +252,7 @@
 //! ```no_run
 //! # pub fn render_to<W:Writer>(output: &mut W) { unimplemented!() }
 //! pub fn main() {
-//!     use std::io::File;
+//!     use std::old_io::File;
 //!     let mut f = File::create(&Path::new("example3.dot"));
 //!     render_to(&mut f)
 //! }
@@ -279,7 +279,7 @@
 use self::LabelText::*;
 
 use std::borrow::IntoCow;
-use std::io;
+use std::old_io;
 use std::string::CowString;
 use std::vec::CowVec;
 
@@ -532,7 +532,7 @@ pub fn default_options() -> Vec<RenderOption> { vec![] }
 /// (Simple wrapper around `render_opts` that passes a default set of options.)
 pub fn render<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
               g: &'a G,
-              w: &mut W) -> io::IoResult<()> {
+              w: &mut W) -> old_io::IoResult<()> {
     render_opts(g, w, &[])
 }
 
@@ -541,14 +541,14 @@ pub fn render<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, 
 pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N,E>, W:Writer>(
               g: &'a G,
               w: &mut W,
-              options: &[RenderOption]) -> io::IoResult<()>
+              options: &[RenderOption]) -> old_io::IoResult<()>
 {
-    fn writeln<W:Writer>(w: &mut W, arg: &[&str]) -> io::IoResult<()> {
+    fn writeln<W:Writer>(w: &mut W, arg: &[&str]) -> old_io::IoResult<()> {
         for &s in arg.iter() { try!(w.write_str(s)); }
         w.write_char('\n')
     }
 
-    fn indent<W:Writer>(w: &mut W) -> io::IoResult<()> {
+    fn indent<W:Writer>(w: &mut W) -> old_io::IoResult<()> {
         w.write_str("    ")
     }
 
@@ -590,7 +590,7 @@ mod tests {
     use self::NodeLabels::*;
     use super::{Id, Labeller, Nodes, Edges, GraphWalk, render};
     use super::LabelText::{self, LabelStr, EscStr};
-    use std::io::IoResult;
+    use std::old_io::IoResult;
     use std::borrow::IntoCow;
     use std::iter::repeat;
 

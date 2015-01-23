@@ -393,7 +393,7 @@ mod test {
     use old_io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
     use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt};
     use prelude::v1::IteratorExt;
-    use io;
+    use old_io;
     use iter::repeat;
     use self::test_crate::Bencher;
     use super::*;
