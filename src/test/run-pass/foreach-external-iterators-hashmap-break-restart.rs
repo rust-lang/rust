@@ -27,7 +27,7 @@ pub fn main() {
 
     let mut i = h.iter();
 
-    for (&k,&v) in i {
+    for (&k,&v) in i.by_ref() {
         x += k;
         y += v;
         break;
