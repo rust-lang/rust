@@ -781,6 +781,7 @@ impl<'a> State<'a> {
     }
 
     fn print_typedef(&mut self, typedef: &ast::Typedef) -> IoResult<()> {
+        try!(self.print_outer_attributes(&typedef.attrs[]));
         try!(self.word_space("type"));
         try!(self.print_ident(typedef.ident));
         try!(space(&mut self.s));
