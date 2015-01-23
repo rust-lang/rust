@@ -10,7 +10,6 @@
 
 // no-pretty-expanded FIXME #15189
 // ignore-windows FIXME #13259
-// ignore-test FIXME(japaric)
 
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
