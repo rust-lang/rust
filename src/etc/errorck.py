@@ -14,11 +14,10 @@
 import sys, os, re
 
 src_dir = sys.argv[1]
-
-errcode_map = { }
+errcode_map = {}
+error_re = re.compile("(E\d\d\d\d)")
 
 for (dirpath, dirnames, filenames) in os.walk(src_dir):
-
     if "src/test" in dirpath or "src/llvm" in dirpath:
         # Short circuit for fast
         continue
@@ -28,15 +27,12 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
             continue
 
         path = os.path.join(dirpath, filename)
-        line_num = 1
+
         with open(path, 'r') as f:
-            for line in f:
-
-                p = re.compile("(E\d\d\d\d)")
-                m = p.search(line)
-                if not m is None:
-                    errcode = m.group(1)
-
+            for line_num, line in enumerate(f, start=1):
+                match = error_re.search(line)
+                if match:
+                    errcode = match.group(1)
                     new_record = [(errcode, path, line_num, line)]
                     existing = errcode_map.get(errcode)
                     if existing is not None:
@@ -45,26 +41,19 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                     else:
                         errcode_map[errcode] = new_record
 
-                line_num += 1
-
 errors = False
 all_errors = []
-for errcode in errcode_map:
-    entries = errcode_map[errcode]
-    all_errors += [entries[0][0]]
+
+for errcode, entries in errcode_map.items():
+    all_errors.append(entries[0][0])
     if len(entries) > 1:
-        print "error: duplicate error code " + errcode
+        print("error: duplicate error code " + errcode)
         for entry in entries:
-            print entry[1] + ": " + str(entry[2])
-            print entry[3]
+            print("{1}: {2}\n{3}".format(*entry))
         errors = True
 
-print str(len(errcode_map)) + " error codes"
-
-all_errors.sort()
-all_errors.reverse()
-
-print "highest error code: " + all_errors[0]
+print("{0} error codes".format(len(errcode_map)))
+print("highest error code: " + max(all_errors))
 
 if errors:
     sys.exit(1)
