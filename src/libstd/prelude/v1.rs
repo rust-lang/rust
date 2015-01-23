@@ -19,7 +19,7 @@
 #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // TEMPORARY
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "std_misc")]
 #[doc(no_inline)] pub use ops::FullRange;
 
 // Reexported functions

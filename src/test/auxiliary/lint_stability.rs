@@ -17,9 +17,9 @@ pub fn deprecated() {}
 #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
 pub fn deprecated_text() {}
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "test_feature")]
 pub fn unstable() {}
-#[unstable(feature = "unnamed_feature", reason = "text")]
+#[unstable(feature = "test_feature", reason = "text")]
 pub fn unstable_text() {}
 
 pub fn unmarked() {}
@@ -38,9 +38,9 @@ impl MethodTester {
     #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
     pub fn method_deprecated_text(&self) {}
 
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "test_feature")]
     pub fn method_unstable(&self) {}
-    #[unstable(feature = "unnamed_feature", reason = "text")]
+    #[unstable(feature = "test_feature", reason = "text")]
     pub fn method_unstable_text(&self) {}
 
     pub fn method_unmarked(&self) {}
@@ -67,9 +67,9 @@ pub trait Trait {
     #[deprecated(feature = "oldstuff", since = "1.0.0", reason = "text")]
     fn trait_deprecated_text(&self) {}
 
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "test_feature")]
     fn trait_unstable(&self) {}
-    #[unstable(feature = "unnamed_feature", reason = "text")]
+    #[unstable(feature = "test_feature", reason = "text")]
     fn trait_unstable_text(&self) {}
 
     fn trait_unmarked(&self) {}
@@ -92,12 +92,12 @@ pub trait Trait {
 
 impl Trait for MethodTester {}
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "test_feature")]
 pub trait UnstableTrait {}
 
 #[deprecated(feature = "oldstuff", since = "1.0.0")]
 pub struct DeprecatedStruct { pub i: int }
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "test_feature")]
 pub struct UnstableStruct { pub i: int }
 pub struct UnmarkedStruct { pub i: int }
 #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -105,7 +105,7 @@ pub struct StableStruct { pub i: int }
 
 #[deprecated(feature = "oldstuff", since = "1.0.0")]
 pub struct DeprecatedUnitStruct;
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "test_feature")]
 pub struct UnstableUnitStruct;
 pub struct UnmarkedUnitStruct;
 #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -114,7 +114,7 @@ pub struct StableUnitStruct;
 pub enum Enum {
     #[deprecated(feature = "oldstuff", since = "1.0.0")]
     DeprecatedVariant,
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "test_feature")]
     UnstableVariant,
 
     UnmarkedVariant,
@@ -124,7 +124,7 @@ pub enum Enum {
 
 #[deprecated(feature = "oldstuff", since = "1.0.0")]
 pub struct DeprecatedTupleStruct(pub int);
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "test_feature")]
 pub struct UnstableTupleStruct(pub int);
 pub struct UnmarkedTupleStruct(pub int);
 #[stable(feature = "grandfathered", since = "1.0.0")]

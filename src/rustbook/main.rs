@@ -9,7 +9,13 @@
 // except according to those terms.
 
 #![feature(slicing_syntax, box_syntax)]
-#![feature(unnamed_feature)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(rustdoc)]
 
 extern crate regex;
 

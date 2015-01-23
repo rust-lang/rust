@@ -48,7 +48,7 @@
 // separate crate, libcoretest, to avoid bizarre issues.
 
 #![crate_name = "core"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "core")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]

@@ -20,7 +20,7 @@
 //! more complex, slower arena which can hold objects of any type.
 
 #![crate_name = "arena"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
@@ -33,9 +33,10 @@
 #![feature(unsafe_destructor)]
 #![feature(unboxed_closures)]
 #![feature(box_syntax)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(missing_docs)]
+#![feature(alloc)]
+#![feature(core)]
 
 extern crate alloc;
 

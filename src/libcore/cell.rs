@@ -201,7 +201,7 @@ impl<T:Copy> Cell<T> {
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
     #[inline]
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
@@ -271,7 +271,7 @@ impl<T> RefCell<T> {
     /// immutable borrows can be taken out at the same time.
     ///
     /// Returns `None` if the value is currently mutably borrowed.
-    #[unstable(feature = "unnamed_feature", reason = "may be renamed or removed")]
+    #[unstable(feature = "core", reason = "may be renamed or removed")]
     pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Some(Ref { _value: unsafe { &*self.value.get() }, _borrow: b }),
@@ -301,7 +301,7 @@ impl<T> RefCell<T> {
     /// cannot be borrowed while this borrow is active.
     ///
     /// Returns `None` if the value is currently borrowed.
-    #[unstable(feature = "unnamed_feature", reason = "may be renamed or removed")]
+    #[unstable(feature = "core", reason = "may be renamed or removed")]
     pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Some(RefMut { _value: unsafe { &mut *self.value.get() }, _borrow: b }),
@@ -331,7 +331,7 @@ impl<T> RefCell<T> {
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
     #[inline]
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
@@ -423,7 +423,7 @@ impl<'b, T> Deref for Ref<'b, T> {
 ///
 /// A `Clone` implementation would interfere with the widespread
 /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "likely to be moved to a method, pending language changes")]
 pub fn clone_ref<'b, T:Clone>(orig: &Ref<'b, T>) -> Ref<'b, T> {
     Ref {
@@ -528,7 +528,7 @@ pub struct UnsafeCell<T> {
     ///
     /// This field should not be accessed directly, it is made public for static
     /// initializers.
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub value: T,
 }
 

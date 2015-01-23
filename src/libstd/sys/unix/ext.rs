@@ -29,7 +29,7 @@
 //! }
 //! ```
 
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "std_misc")]
 
 use sys_common::AsInner;
 use libc;

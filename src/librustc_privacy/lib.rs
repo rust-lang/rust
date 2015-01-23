@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustc_privacy"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
@@ -19,8 +19,10 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(rustc_diagnostic_macros)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(rustc_private)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

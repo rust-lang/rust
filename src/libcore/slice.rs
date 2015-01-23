@@ -131,7 +131,7 @@ pub trait SliceExt {
     fn clone_from_slice(&mut self, &[Self::Item]) -> uint where Self::Item: Clone;
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<T> SliceExt for [T] {
     type Item = T;
 
@@ -258,7 +258,7 @@ impl<T> SliceExt for [T] {
         self.repr().data
     }
 
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     fn binary_search_by<F>(&self, mut f: F) -> Result<uint, uint> where
         F: FnMut(&T) -> Ordering
     {
@@ -452,12 +452,12 @@ impl<T> SliceExt for [T] {
         m >= n && needle == &self[(m-n)..]
     }
 
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     fn binary_search(&self, x: &T) -> Result<uint, uint> where T: Ord {
         self.binary_search_by(|p| p.cmp(x))
     }
 
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     fn next_permutation(&mut self) -> bool where T: Ord {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
@@ -488,7 +488,7 @@ impl<T> SliceExt for [T] {
         true
     }
 
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     fn prev_permutation(&mut self) -> bool where T: Ord {
         // These cases only have 1 permutation each, so we can't do anything.
         if self.len() < 2 { return false; }
@@ -630,26 +630,26 @@ impl<T> ops::IndexMut<ops::FullRange> for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Data that is viewable as a slice.
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "will be replaced by slice syntax")]
 pub trait AsSlice<T> {
     /// Work with `self` as a slice.
     fn as_slice<'a>(&'a self) -> &'a [T];
 }
 
-#[unstable(feature = "unnamed_feature", reason = "trait is experimental")]
+#[unstable(feature = "core", reason = "trait is experimental")]
 impl<T> AsSlice<T> for [T] {
     #[inline(always)]
     fn as_slice<'a>(&'a self) -> &'a [T] { self }
 }
 
-#[unstable(feature = "unnamed_feature", reason = "trait is experimental")]
+#[unstable(feature = "core", reason = "trait is experimental")]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
-#[unstable(feature = "unnamed_feature", reason = "trait is experimental")]
+#[unstable(feature = "core", reason = "trait is experimental")]
 impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
     #[inline(always)]
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
@@ -755,7 +755,7 @@ pub struct Iter<'a, T: 'a> {
     marker: marker::ContravariantLifetime<'a>
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::Range<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -764,7 +764,7 @@ impl<'a, T> ops::Index<ops::Range<uint>> for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::RangeTo<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -773,7 +773,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>> for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -782,7 +782,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::FullRange> for Iter<'a, T> {
     type Output = [T];
     #[inline]
@@ -796,7 +796,7 @@ impl<'a, T> Iter<'a, T> {
     ///
     /// This has the same lifetime as the original slice, and so the
     /// iterator can continue to be used while this exists.
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub fn as_slice(&self) -> &'a [T] {
         make_slice!(T => &'a [T]: self.ptr, self.end)
     }
@@ -814,7 +814,7 @@ impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { *self }
 }
 
-#[unstable(feature = "unnamed_feature", reason = "trait is experimental")]
+#[unstable(feature = "core", reason = "trait is experimental")]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -848,7 +848,7 @@ pub struct IterMut<'a, T: 'a> {
 }
 
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -856,7 +856,7 @@ impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -864,7 +864,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -872,7 +872,7 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
         self.index(&ops::FullRange).index(index)
     }
 }
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -881,7 +881,7 @@ impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -889,7 +889,7 @@ impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -897,7 +897,7 @@ impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -905,7 +905,7 @@ impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
         self.index_mut(&ops::FullRange).index_mut(index)
     }
 }
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 impl<'a, T> ops::IndexMut<ops::FullRange> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
@@ -922,7 +922,7 @@ impl<'a, T> IterMut<'a, T> {
     /// to consume the iterator. Consider using the `Slice` and
     /// `SliceMut` implementations for obtaining slices with more
     /// restricted lifetimes that do not consume the iterator.
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub fn into_slice(self) -> &'a mut [T] {
         make_slice!(T => &'a mut [T]: self.ptr, self.end)
     }
@@ -1270,7 +1270,7 @@ impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", reason = "trait is experimental")]
+#[unstable(feature = "core", reason = "trait is experimental")]
 impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1354,7 +1354,7 @@ impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
 //
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
         transmute(RawSlice { data: s, len: 1 })
@@ -1362,7 +1362,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
 }
 
 /// Converts a pointer to A into a slice of length 1 (without copying).
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
         let ptr: *const A = transmute(s);
@@ -1396,7 +1396,7 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// }
 /// ```
 #[inline]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "should be renamed to from_raw_parts")]
 pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
     transmute(RawSlice { data: *p, len: len })
@@ -1409,7 +1409,7 @@ pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
 /// not being able to provide a non-aliasing guarantee of the returned mutable
 /// slice.
 #[inline]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "should be renamed to from_raw_parts_mut")]
 pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
     transmute(RawSlice { data: *p, len: len })
@@ -1420,7 +1420,7 @@ pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
 //
 
 /// Operations on `[u8]`.
-#[unstable(feature = "unnamed_feature", reason = "needs review")]
+#[unstable(feature = "core", reason = "needs review")]
 pub mod bytes {
     use ptr;
     use slice::SliceExt;
@@ -1508,7 +1508,7 @@ impl<T: PartialOrd> PartialOrd for [T] {
 }
 
 /// Extension methods for slices containing integers.
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 pub trait IntSliceExt<U, S> {
     /// Converts the slice to an immutable slice of unsigned integers with the same width.
     fn as_unsigned<'a>(&'a self) -> &'a [U];
@@ -1523,7 +1523,7 @@ pub trait IntSliceExt<U, S> {
 
 macro_rules! impl_int_slice {
     ($u:ty, $s:ty, $t:ty) => {
-        #[unstable(feature = "unnamed_feature")]
+        #[unstable(feature = "core")]
         impl IntSliceExt<$u, $s> for [$t] {
             #[inline]
             fn as_unsigned(&self) -> &[$u] { unsafe { transmute(self) } }

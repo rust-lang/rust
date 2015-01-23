@@ -14,7 +14,7 @@
 
 
 #![crate_name = "collections"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "collections")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
@@ -27,9 +27,12 @@
 #![feature(unsafe_destructor, slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![no_std]
+#![feature(core)]
+#![feature(alloc)]
+#![feature(unicode)]
+#![feature(hash)]
 
 #[macro_use]
 extern crate core;
@@ -71,13 +74,13 @@ pub mod string;
 pub mod vec;
 pub mod vec_map;
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "collections",
            reason = "RFC 509")]
 pub mod bitv {
     pub use bit::{Bitv, Iter};
 }
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "collections",
            reason = "RFC 509")]
 pub mod bitv_set {
     pub use bit::{BitvSet, Union, Intersection, Difference, SymmetricDifference};

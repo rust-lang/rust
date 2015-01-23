@@ -89,7 +89,7 @@ use intrinsics;
 #[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "this method will likely be replaced by an associated static")]
     fn get_type_id(&self) -> TypeId;
 }
@@ -177,7 +177,7 @@ impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
     /// instantiated with
     #[cfg(not(stage0))]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "may grow a `Reflect` bound soon via marker traits")]
     pub fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {

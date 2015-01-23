@@ -310,7 +310,7 @@ impl<V> VecMap<V> {
     ///
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain<'a>(&'a mut self) -> Drain<'a, V> {
         fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
@@ -700,7 +700,7 @@ pub struct IntoIter<V> {
     fn((uint, Option<V>)) -> Option<(uint, V)>>
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "collections")]
 pub struct Drain<'a, V> {
     iter: FilterMap<
     (uint, Option<V>),
@@ -709,7 +709,7 @@ pub struct Drain<'a, V> {
     fn((uint, Option<V>)) -> Option<(uint, V)>>
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "collections")]
 impl<'a, V> Iterator for Drain<'a, V> {
     type Item = (uint, V);
 
@@ -717,7 +717,7 @@ impl<'a, V> Iterator for Drain<'a, V> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "collections")]
 impl<'a, V> DoubleEndedIterator for Drain<'a, V> {
     fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
 }

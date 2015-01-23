@@ -16,7 +16,7 @@
 //!     http://www.matroska.org/technical/specs/rfc/index.html
 
 #![crate_name = "rbml"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
@@ -27,8 +27,11 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(rustc_private)]
 
 extern crate serialize;
 #[macro_use] extern crate log;

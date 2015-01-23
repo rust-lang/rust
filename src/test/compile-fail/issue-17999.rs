@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![deny(unused_variables)]
-#![feature(unnamed_feature)]
+#![feature(core)]
 
 fn main() {
     for _ in range(1is, 101) {

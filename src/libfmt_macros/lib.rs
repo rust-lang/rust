@@ -15,7 +15,7 @@
 //! generated instead.
 
 #![crate_name = "fmt_macros"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
@@ -27,7 +27,9 @@
 
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![feature(unnamed_feature)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(unicode)]
 
 pub use self::Piece::*;
 pub use self::Position::*;

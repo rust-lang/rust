@@ -219,7 +219,7 @@
 //! }
 //! ```
 
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rand")]
 
 use cell::RefCell;
 use clone::Clone;

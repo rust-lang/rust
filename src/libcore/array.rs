@@ -12,7 +12,7 @@
 //! up to a certain length. Eventually we should able to generalize
 //! to all lengths.
 
-#![unstable(feature = "unnamed_feature")] // not yet reviewed
+#![unstable(feature = "core")] // not yet reviewed
 
 use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
@@ -39,7 +39,7 @@ macro_rules! array_impls {
                 }
             }
 
-            #[unstable(feature = "unnamed_feature",
+            #[unstable(feature = "core",
                        reason = "waiting for Show to stabilize")]
             impl<T:fmt::Show> fmt::Show for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

@@ -9,7 +9,7 @@
 // except according to those terms.
 #![crate_name="inherited_stability"]
 #![crate_type = "lib"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "test_feature")]
 #![feature(staged_api)]
 #![staged_api]
 
@@ -26,9 +26,9 @@ pub mod stable_mod {
     pub fn stable() {}
 }
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "test_feature")]
 pub mod unstable_mod {
-    #[deprecated(feature = "unnamed_feature", since = "1.0.0")]
+    #[deprecated(feature = "test_feature", since = "1.0.0")]
     pub fn deprecated() {}
 
     pub fn unstable() {}

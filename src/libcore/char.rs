@@ -92,7 +92,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// Panics if given an `radix` > 36.
 ///
 #[inline]
-#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub fn from_digit(num: uint, radix: uint) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is too high (maximum 36)");
@@ -126,7 +126,7 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn is_digit(self, radix: uint) -> bool;
 
@@ -141,7 +141,7 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix outside the range [0..36].
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn to_digit(self, radix: uint) -> Option<uint>;
 
@@ -198,13 +198,13 @@ pub trait CharExt {
 
 #[stable(feature = "grandfathered", since = "1.0.0")]
 impl CharExt for char {
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn is_digit(self, radix: uint) -> bool {
         self.to_digit(radix).is_some()
     }
 
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn to_digit(self, radix: uint) -> Option<uint> {
         if radix > 36 {
@@ -260,7 +260,7 @@ impl CharExt for char {
     }
 
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
@@ -289,7 +289,7 @@ impl CharExt for char {
     }
 
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> {
         // Marked #[inline] to allow llvm optimizing it away
@@ -320,7 +320,7 @@ pub struct EscapeUnicode {
 }
 
 #[derive(Clone)]
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 enum EscapeUnicodeState {
     Backslash,
     Type,
@@ -382,7 +382,7 @@ pub struct EscapeDefault {
 }
 
 #[derive(Clone)]
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 enum EscapeDefaultState {
     Backslash(char),
     Char(char),

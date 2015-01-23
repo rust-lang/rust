@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![crate_name = "rustdoc"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustdoc")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
@@ -20,8 +20,17 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(libc)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(test)]
+#![feature(unicode)]
 
 extern crate arena;
 extern crate getopts;

@@ -11,7 +11,9 @@
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 #![deny(dead_code)]
-#![feature(unnamed_feature)]
+#![feature(libc)]
+#![feature(core)]
+#![feature(collections)]
 
 extern crate libc;
 

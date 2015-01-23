@@ -90,7 +90,7 @@ unsafe impl<T> Sync for RwLock<T> {}
 /// }
 /// unsafe { LOCK.destroy() } // free all resources
 /// ```
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "may be merged with RwLock in the future")]
 pub struct StaticRwLock {
     lock: sys::RWLock,
@@ -101,7 +101,7 @@ unsafe impl Send for StaticRwLock {}
 unsafe impl Sync for StaticRwLock {}
 
 /// Constant initialization for a statically-initialized rwlock.
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "may be merged with RwLock in the future")]
 pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
     lock: sys::RWLOCK_INIT,
@@ -276,7 +276,7 @@ impl StaticRwLock {
     ///
     /// See `RwLock::read`.
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "may be merged with RwLock in the future")]
     pub fn read(&'static self) -> LockResult<RwLockReadGuard<'static, ()>> {
         unsafe { self.lock.read() }
@@ -287,7 +287,7 @@ impl StaticRwLock {
     ///
     /// See `RwLock::try_read`.
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "may be merged with RwLock in the future")]
     pub fn try_read(&'static self)
                     -> TryLockResult<RwLockReadGuard<'static, ()>> {
@@ -303,7 +303,7 @@ impl StaticRwLock {
     ///
     /// See `RwLock::write`.
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "may be merged with RwLock in the future")]
     pub fn write(&'static self) -> LockResult<RwLockWriteGuard<'static, ()>> {
         unsafe { self.lock.write() }
@@ -314,7 +314,7 @@ impl StaticRwLock {
     ///
     /// See `RwLock::try_write`.
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "may be merged with RwLock in the future")]
     pub fn try_write(&'static self)
                      -> TryLockResult<RwLockWriteGuard<'static, ()>> {
@@ -331,7 +331,7 @@ impl StaticRwLock {
     /// active users of the lock, and this also doesn't prevent any future users
     /// of this lock. This method is required to be called to not leak memory on
     /// all platforms.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "may be merged with RwLock in the future")]
     pub unsafe fn destroy(&'static self) {
         self.lock.destroy()

@@ -156,7 +156,7 @@ static FALSE: bool = false;
 /// println!("{:?}", bv);
 /// println!("total bits set to true: {}", bv.iter().filter(|x| *x).count());
 /// ```
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "collections",
            reason = "RFC 509")]
 pub struct Bitv {
     /// Internal representation of the bit vector
@@ -403,7 +403,7 @@ impl Bitv {
     /// assert_eq!(bv[3], true);
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "collections",
                reason = "panic semantics are likely to change in the future")]
     pub fn set(&mut self, i: uint, x: bool) {
         assert!(i < self.nbits);
@@ -1109,7 +1109,7 @@ impl<'a> RandomAccessIterator for Iter<'a> {
 /// assert!(bv[3]);
 /// ```
 #[derive(Clone)]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "collections",
            reason = "RFC 509")]
 pub struct BitvSet {
     bitv: Bitv,

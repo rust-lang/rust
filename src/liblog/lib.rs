@@ -156,7 +156,7 @@
 //! if logging is disabled, none of the components of the log will be executed.
 
 #![crate_name = "log"]
-#![unstable(feature = "unnamed_feature",
+#![unstable(feature = "rustc_private",
             reason = "use the crates.io `log` library instead")]
 #![feature(staged_api)]
 #![staged_api]
@@ -170,9 +170,14 @@
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![deny(missing_docs)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(os)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
 
 extern crate regex;
 

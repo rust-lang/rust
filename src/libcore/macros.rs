@@ -235,7 +235,7 @@ macro_rules! writeln {
 /// }
 /// ```
 #[macro_export]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "relationship with panic is unclear")]
 macro_rules! unreachable {
     () => ({
@@ -252,7 +252,7 @@ macro_rules! unreachable {
 /// A standardised placeholder for marking unfinished code. It panics with the
 /// message `"not yet implemented"` when executed.
 #[macro_export]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "relationship with panic is unclear")]
 macro_rules! unimplemented {
     () => (panic!("not yet implemented"))
