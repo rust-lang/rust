@@ -62,7 +62,7 @@ use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
 use ast;
-use ast_util::{self, as_prec, ident_to_path, operator_prec};
+use ast_util::{self, AS_PREC, ident_to_path, operator_prec};
 use codemap::{self, Span, BytePos, Spanned, spanned, mk_sp};
 use diagnostic;
 use ext::tt::macro_parser;
@@ -93,7 +93,6 @@ bitflags! {
         const RESTRICTION_STMT_EXPR         = 0b0001,
         const RESTRICTION_NO_BAR_OP         = 0b0010,
         const RESTRICTION_NO_STRUCT_LITERAL = 0b0100,
-        const RESTRICTION_NO_DOTS           = 0b1000,
     }
 }
 
@@ -2775,13 +2774,6 @@ impl<'a> Parser<'a> {
             hi = e.span.hi;
             ex = ExprAddrOf(m, e);
           }
-          token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
-            // A range, closed above: `..expr`.
-            self.bump();
-            let e = self.parse_expr();
-            hi = e.span.hi;
-            ex = self.mk_range(None, Some(e));
-          }
           token::Ident(_, _) => {
             if !self.token.is_keyword(keywords::Box) {
                 return self.parse_dot_or_call_expr();
@@ -2855,10 +2847,10 @@ impl<'a> Parser<'a> {
                     self.check_no_chained_comparison(&*lhs, cur_op)
                 }
                 let cur_prec = operator_prec(cur_op);
-                if cur_prec > min_prec {
+                if cur_prec >= min_prec {
                     self.bump();
                     let expr = self.parse_prefix_expr();
-                    let rhs = self.parse_more_binops(expr, cur_prec);
+                    let rhs = self.parse_more_binops(expr, cur_prec + 1);
                     let lhs_span = lhs.span;
                     let rhs_span = rhs.span;
                     let binary = self.mk_binary(cur_op, lhs, rhs);
@@ -2869,7 +2861,7 @@ impl<'a> Parser<'a> {
                 }
             }
             None => {
-                if as_prec > min_prec && self.eat_keyword(keywords::As) {
+                if AS_PREC >= min_prec && self.eat_keyword(keywords::As) {
                     let rhs = self.parse_ty();
                     let _as = self.mk_expr(lhs.span.lo,
                                            rhs.span.hi,
@@ -2905,8 +2897,24 @@ impl<'a> Parser<'a> {
     /// actually, this seems to be the main entry point for
     /// parsing an arbitrary expression.
     pub fn parse_assign_expr(&mut self) -> P<Expr> {
-        let lhs = self.parse_binops();
-        self.parse_assign_expr_with(lhs)
+        match self.token {
+          token::DotDot => {
+            // prefix-form of range notation '..expr'
+            // This has the same precedence as assignment expressions
+            // (much lower than other prefix expressions) to be consistent
+            // with the postfix-form 'expr..'
+            let lo = self.span.lo;
+            self.bump();
+            let rhs = self.parse_binops();
+            let hi = rhs.span.hi;
+            let ex = self.mk_range(None, Some(rhs));
+            self.mk_expr(lo, hi, ex)
+          }
+          _ => {
+            let lhs = self.parse_binops();
+            self.parse_assign_expr_with(lhs)
+          }
+        }
     }
 
     pub fn parse_assign_expr_with(&mut self, lhs: P<Expr>) -> P<Expr> {
@@ -2938,11 +2946,11 @@ impl<'a> Parser<'a> {
               self.mk_expr(span.lo, rhs_span.hi, assign_op)
           }
           // A range expression, either `expr..expr` or `expr..`.
-          token::DotDot if !self.restrictions.contains(RESTRICTION_NO_DOTS) => {
+          token::DotDot => {
             self.bump();
 
-            let opt_end = if self.token.can_begin_expr() {
-                let end = self.parse_expr_res(RESTRICTION_NO_DOTS);
+            let opt_end = if self.is_at_start_of_range_notation_rhs() {
+                let end = self.parse_binops();
                 Some(end)
             } else {
                 None
@@ -2957,6 +2965,18 @@ impl<'a> Parser<'a> {
           _ => {
               lhs
           }
+        }
+    }
+
+    fn is_at_start_of_range_notation_rhs(&self) -> bool {
+        if self.token.can_begin_expr() {
+            // parse `for i in 1.. { }` as infinite loop, not as `for i in (1..{})`.
+            if self.token == token::OpenDelim(token::Brace) {
+                return !self.restrictions.contains(RESTRICTION_NO_STRUCT_LITERAL);
+            }
+            true
+        } else {
+            false
         }
     }
 
