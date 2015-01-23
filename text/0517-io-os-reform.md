@@ -923,11 +923,12 @@ It will remain largely as it is today, but its fields will be made
 private. It may eventually grow a field to track the underlying OS
 error code.
 
-The `IoErrorKind` type will become `std::io::ErrorKind`, and
+The `std::io::IoErrorKind` type will become `std::io::ErrorKind`, and
 `ShortWrite` will be dropped (it is no longer needed with the new
 `Write` semantics), which should decrease its footprint. The
 `OtherIoError` variant will become `Other` now that `enum`s are
-namespaced.
+namespaced. Other variants may be added over time, such as `Interrupted`,
+as more errors are classified from the system.
 
 The `EndOfFile` variant will be removed in favor of returning `Ok(0)`
 from `read` on end of file (or `write` on an empty slice for example). This
