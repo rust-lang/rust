@@ -668,6 +668,15 @@
             search();
         }
 
+        function plainSummaryLine(markdown) {
+            var str = markdown.replace(/\n/g, ' ')
+            str = str.replace(/'/g, "\'")
+            str = str.replace(/^#+? (.+?)/, "$1")
+            str = str.replace(/\[(.*?)\]\(.*?\)/g, "$1")
+            str = str.replace(/\[(.*?)\]\[.*?\]/g, "$1")
+            return str;
+        }
+
         index = buildIndex(rawSearchIndex);
         startSearch();
 
@@ -688,8 +697,10 @@
                 if (crates[i] == window.currentCrate) {
                     klass += ' current';
                 }
+                var desc = rawSearchIndex[crates[i]].items[0][3];
                 div.append($('<a>', {'href': '../' + crates[i] + '/index.html',
-                                    'class': klass}).text(crates[i]));
+                                     'title': plainSummaryLine(desc),
+                                     'class': klass}).text(crates[i]));
             }
             sidebar.append(div);
         }
