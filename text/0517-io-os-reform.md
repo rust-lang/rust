@@ -548,7 +548,7 @@ pub mod os_str {
     #[cfg(unix)]
     mod imp {
         type Buf = Vec<u8>;
-        type Slice = [u8;
+        type Slice = [u8];
         ...
     }
 
