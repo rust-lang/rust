@@ -457,7 +457,7 @@ fn is_in_follow(_: &ExtCtxt, tok: &Token, frag: &str) -> Result<bool, String> {
                 // harmless
                 Ok(true)
             },
-            _ => Err(format!("unrecognized builtin nonterminal `{}`", frag))
+            _ => Err(format!("invalid fragment specifier `{}`", frag))
         }
     }
 }

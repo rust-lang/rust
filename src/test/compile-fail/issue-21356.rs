@@ -9,6 +9,6 @@
 // except according to those terms.
 
 macro_rules! test { ($wrong:t_ty ..) => () }
-                  //~^ ERROR: unrecognized builtin nonterminal `t_ty`
+                  //~^ ERROR: invalid fragment specifier `t_ty`
 
 fn main() {}
