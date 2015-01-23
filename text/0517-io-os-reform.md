@@ -639,8 +639,8 @@ The `io` module is split into the parts that can live in `libcore`
 (most of it) and the parts that are added in the `std::io`
 facade. Being able to move components into `libcore` at all is made
 possible through the use of
-[associated error types](#revising-reader-and-writer) for `Reader` and
-`Writer`.
+[associated error types](#revising-reader-and-writer) for `Read` and
+`Write`.
 
 #### Adapters
 [Adapters]: #adapters
@@ -657,13 +657,13 @@ trait ReadExt: Read {
     fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
 
     // Read everything from `self`, then read from `next`
-    fn chain<R: Reader>(self, next: R) -> Chain<Self, R> { ... }
+    fn chain<R: Read>(self, next: R) -> Chain<Self, R> { ... }
 
     // Adapt `self` to yield only the first `limit` bytes
     fn take(self, limit: u64) -> Take<Self> { ... }
 
     // Whenever reading from `self`, push the bytes read to `out`
-    fn tee<W: Writer>(self, out: W) -> Tee<Self, W> { ... }
+    fn tee<W: Write>(self, out: W) -> Tee<Self, W> { ... }
 }
 
 trait WriteExt: Write {
@@ -673,7 +673,7 @@ trait WriteExt: Write {
     fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
 
     // Whenever bytes are written to `self`, write them to `other` as well
-    fn broadcast<W: Writer>(self, other: W) -> Broadcast<Self, W> { ... }
+    fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W> { ... }
 }
 
 // An adaptor converting an `Iterator<u8>` to `Read`.
@@ -715,7 +715,7 @@ readers and writers, as well as `copy`. These are updated as follows:
 
 ```rust
 // A reader that yields no bytes
-fn empty() -> Empty; // in theory just returns `impl Reader`
+fn empty() -> Empty; // in theory just returns `impl Read`
 
 // A reader that yields `byte` repeatedly (generalizes today's ZeroReader)
 fn repeat(byte: u8) -> Repeat;
@@ -723,7 +723,7 @@ fn repeat(byte: u8) -> Repeat;
 // A writer that ignores the bytes written to it (/dev/null)
 fn sink() -> Sink;
 
-// Copies all data from a Reader to a Writer
+// Copies all data from a `Read` to a `Write`
 pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<(), E> where
     R: Read<Err = E>,
     W: Write<Err = E>
@@ -873,7 +873,7 @@ error code.
 
 The `IoErrorKind` type will become `std::io::ErrorKind`, and
 `ShortWrite` will be dropped (it is no longer needed with the new
-`Writer` semantics), which should decrease its footprint. The
+`Write` semantics), which should decrease its footprint. The
 `OtherIoError` variant will become `Other` now that `enum`s are
 namespaced.
 
