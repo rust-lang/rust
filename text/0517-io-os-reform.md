@@ -725,8 +725,8 @@ fn sink() -> Sink;
 
 // Copies all data from a Reader to a Writer
 pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<(), E> where
-    R: Reader<Err = E>,
-    W: Writer<Err = E>
+    R: Read<Err = E>,
+    W: Write<Err = E>
 ```
 
 #### Seeking
@@ -740,7 +740,9 @@ signature is refactored with more precise types:
 pub trait Seek {
     type Err;
     fn position(&self) -> Result<u64, Err>;
-    fn seek(&mut self, pos: SeekPos) -> Result<(), Err>;
+
+    // returns the new position after seeking
+    fn seek(&mut self, pos: SeekPos) -> Result<u64, Err>;
 }
 
 pub enum SeekPos {
