@@ -51,6 +51,8 @@ follow-up PRs against this RFC.
     * [Modules]
         * [core::io]
             * [Adapters]
+            * [Free functions]
+            * [Void]
             * [Seeking]
             * [Buffering]
             * [Cursor]
@@ -582,10 +584,18 @@ trait Write {
 }
 
 trait WriteExt {
-    fn write_all(&mut self, buf: &[u8]) -> Result<(), Err> { ... };
-    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Err> { ... }
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Err>
+        where Self::Err: WriteAllError { ... };
+    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Err>
+        where Self::Err: WriteAllError { ... };
 }
+
 impl<W: Write> WriteExt for W {}
+
+trait WriteAllError: Sized {
+    fn eof() -> Self;
+    fn interrupted(&self) -> bool;
+}
 ```
 
 The biggest change here is to the semantics of `write`. Instead of
@@ -601,6 +611,11 @@ occurs. Like `read_to_end`, if an error occurs before the operation is
 complete, the intermediate result (of how much has been written) is
 discarded. To meaningfully recover from an intermediate error, code
 should work with `write` directly.
+
+A trait bound of `WriteAllError` is also imposed on the error type for the
+`write_all` and `write_fmt` methods to construct an "end of file" related error
+when `Ok(0)` is returned from `write` as well as detecting intermittent errors
+like `EINTR` that can be "safely ignored" to try to continue writing data.
 
 The `write_fmt` method, like `write_all`, will loop until its entire
 input is written or an error occurs.
@@ -639,8 +654,8 @@ The `io` module is split into the parts that can live in `libcore`
 (most of it) and the parts that are added in the `std::io`
 facade. Being able to move components into `libcore` at all is made
 possible through the use of
-[associated error types](#revising-reader-and-writer) for `Reader` and
-`Writer`.
+[associated error types](#revising-reader-and-writer) for `Read` and
+`Write`.
 
 #### Adapters
 [Adapters]: #adapters
@@ -654,16 +669,20 @@ trait ReadExt: Read {
     // ... eliding the methods already described above
 
     // Reify a borrowed reader as owned
-    fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
+    fn by_ref(&mut self) -> ByRef<Self> { ... }
+
+    // Map all errors to another type via `FromError`
+    fn map_err<E: FromError<Self::Err>>(self) -> MapErr<Self, E> { ... }
 
     // Read everything from `self`, then read from `next`
-    fn chain<R: Reader>(self, next: R) -> Chain<Self, R> { ... }
+    fn chain<R: Read>(self, next: R) -> Chain<Self, R> { ... }
 
     // Adapt `self` to yield only the first `limit` bytes
     fn take(self, limit: u64) -> Take<Self> { ... }
 
     // Whenever reading from `self`, push the bytes read to `out`
-    fn tee<W: Writer>(self, out: W) -> Tee<Self, W> { ... }
+    #[unstable] // uncertain semantics of errors "halfway through the operation"
+    fn tee<W: Write>(self, out: W) -> Tee<Self, W> { ... }
 }
 
 trait WriteExt: Write {
@@ -672,8 +691,12 @@ trait WriteExt: Write {
     // Reify a borrowed writer as owned
     fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
 
+    // Map all errors to another type via `FromError`
+    fn map_err<E: FromError<Self::Err>>(self) -> MapErr<Self, E> { ... }
+
     // Whenever bytes are written to `self`, write them to `other` as well
-    fn broadcast<W: Writer>(self, other: W) -> Broadcast<Self, W> { ... }
+    #[unstable] // uncertain semantics of errors "halfway through the operation"
+    fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W> { ... }
 }
 
 // An adaptor converting an `Iterator<u8>` to `Read`.
@@ -715,32 +738,76 @@ readers and writers, as well as `copy`. These are updated as follows:
 
 ```rust
 // A reader that yields no bytes
-fn empty() -> Empty; // in theory just returns `impl Reader`
+fn empty() -> Empty; // in theory just returns `impl Read`
+
+impl Read for Empty { type Err = Void; ... }
 
 // A reader that yields `byte` repeatedly (generalizes today's ZeroReader)
 fn repeat(byte: u8) -> Repeat;
 
+impl Read for Repeat { type Err = Void; ... }
+
 // A writer that ignores the bytes written to it (/dev/null)
 fn sink() -> Sink;
 
-// Copies all data from a Reader to a Writer
-pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<(), E> where
-    R: Read<Err = E>,
-    W: Write<Err = E>
+impl Write for Sink { type Err = Void; ... }
+
+// Copies all data from a `Read` to a `Write`, returning the amount of data
+// copied.
+pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<u64, E>
+    where R: Read<Err = E>,
+          W: Write<Err = E>,
+          R::Err: WriteAllError
 ```
+
+Like `write_all`, the `copy` method will discard the amount of data already
+written on any error and also discard any partially read data on a `write`
+error. This method is intended to be a convenience and `write` should be used
+directly if this is not desirable.
+
+#### Void
+[Void]: #void
+
+A new concrete error type will be added in the standard library. A new module
+`std::void` will be introduced with the following contents:
+
+```rust
+pub enum Void {}
+
+impl<E: Error> FromError<Void> for E {
+    fn from_error(v: Void) -> E {
+        match v {}
+    }
+}
+```
+
+Applications for an uninhabited enum have come up from time-to-time, and some of
+the core I/O adapters represent a fairly concrete use case motivating its
+existence. By using an associated `Err` type of `Void`, each I/O object is
+indicating that it *can never fail*. This allows the types themselves to be more
+optimized in the future as well as enabling interoperation with many other error
+types via the `map_err` adaptor.
+
+Some possible future optimizations include:
+
+* `Result<T, Void>` could be represented in memory exactly as `T` (no
+  discriminant).
+* The `unused_must_use` lint could understand that `Result<T, Void>` does not
+  need to be warned about.
+
+This RFC does not propose implementing these modifications at this time,
+however.
 
 #### Seeking
 [Seeking]: #seeking
 
 The seeking infrastructure is largely the same as today's, except that
-`tell` is renamed to follow the RFC's design principles and the `seek`
-signature is refactored with more precise types:
+`tell` is removed and the `seek` signature is refactored with more precise
+types:
 
 ```rust
 pub trait Seek {
     type Err;
-    fn position(&self) -> Result<u64, Err>;
-
     // returns the new position after seeking
     fn seek(&mut self, pos: SeekPos) -> Result<u64, Err>;
 }
@@ -751,6 +818,8 @@ pub enum SeekPos {
     FromCur(i64),
 }
 ```
+
+The old `tell` function can be regained via `seek(SeekPos::FromCur(0))`.
 
 #### Buffering
 [Buffering]: #buffering
@@ -763,11 +832,10 @@ point):
 pub trait BufferedRead: Read {
     fn fill_buf(&mut self) -> Result<&[u8], Self::Err>;
     fn consume(&mut self, amt: uint);
-
-    fn read_until(&mut self, byte: u8) -> ReadUntil { ... }
 }
 
 pub trait BufferedReadExt: BufferedRead {
+    fn read_until(&mut self, byte: u8) -> ReadUntil { ... }
     fn lines(&mut self) -> Lines<Self, Self::Err> { ... };
 }
 ```
@@ -797,9 +865,9 @@ or `Write`. This is often useful when composing streams or creating test cases.
 This functionality primarily comes from the following implementations:
 
 ```rust
-impl<'a> Read for &'a [u8] { ... }
-impl<'a> Write for &'a mut [u8] { ... }
-impl Write for Vec<u8> { ... }
+impl<'a> Read for &'a [u8] { type Err = Void; ... }
+impl<'a> Write for &'a mut [u8] { type Err = Void; ... }
+impl Write for Vec<u8> { type Err = Void; ... }
 ```
 
 While efficient, none of these implementations support seeking (via an
@@ -819,20 +887,23 @@ impl<T> Cursor<T> {
     pub fn get_ref(&self) -> &T;
 }
 
-impl Seek for Cursor<Vec<u8>> { ... }
-impl<'a> Seek for Cursor<&'a [u8]> { ... }
-impl<'a> Seek for Cursor<&'a mut [u8]> { ... }
+// Error indicating that a negative offset was seeked to.
+pub struct NegativeOffset;
 
-impl Read for Cursor<Vec<u8>> { ... }
-impl<'a> Read for Cursor<&'a [u8]> { ... }
-impl<'a> Read for Cursor<&'a mut [u8]> { ... }
+impl Seek for Cursor<Vec<u8>> { type Err = NegativeOffset; ... }
+impl<'a> Seek for Cursor<&'a [u8]> { type Err = NegativeOffset; ... }
+impl<'a> Seek for Cursor<&'a mut [u8]> { type Err = NegativeOffset; ... }
 
-impl BufferedRead for Cursor<Vec<u8>> { ... }
-impl<'a> BufferedRead for Cursor<&'a [u8]> { ... }
-impl<'a> BufferedRead for Cursor<&'a mut [u8]> { ... }
+impl Read for Cursor<Vec<u8>> { type Err = Void; ... }
+impl<'a> Read for Cursor<&'a [u8]> { type Err = Void; ... }
+impl<'a> Read for Cursor<&'a mut [u8]> { type Err = Void; ... }
 
-impl<'a> Write for Cursor<&'a mut [u8]> { ... }
-impl Write for Cursor<Vec<u8>> { ... }
+impl BufferedRead for Cursor<Vec<u8>> { type Err = Void; ... }
+impl<'a> BufferedRead for Cursor<&'a [u8]> { type Err = Void; ... }
+impl<'a> BufferedRead for Cursor<&'a mut [u8]> { type Err = Void; ... }
+
+impl<'a> Write for Cursor<&'a mut [u8]> { type Err = Void; ... }
+impl Write for Cursor<Vec<u8>> { type Err = Void; ... }
 ```
 
 A sample implementation can be found in [a gist][cursor-impl]. Using one
@@ -871,19 +942,20 @@ It will remain largely as it is today, but its fields will be made
 private. It may eventually grow a field to track the underlying OS
 error code.
 
-The `IoErrorKind` type will become `std::io::ErrorKind`, and
+The `std::io::IoErrorKind` type will become `std::io::ErrorKind`, and
 `ShortWrite` will be dropped (it is no longer needed with the new
-`Writer` semantics), which should decrease its footprint. The
+`Write` semantics), which should decrease its footprint. The
 `OtherIoError` variant will become `Other` now that `enum`s are
-namespaced.
+namespaced. Other variants may be added over time, such as `Interrupted`,
+as more errors are classified from the system.
 
 The `EndOfFile` variant will be removed in favor of returning `Ok(0)`
-from `read` on end of file. This approach clarifies the meaning of the
-return value of `read`, matches Posix APIs, and makes it easier to use
-`try!` in the case that a "real" error should be bubbled out. (The
-main downside is that higher-level operations that might use
-`Result<T, IoError>` with some `T != usize` may need to wrap `IoError`
-in a further enum if they wish to forward unexpected EOF.)
+from `read` on end of file (or `write` on an empty slice for example). This
+approach clarifies the meaning of the return value of `read`, matches Posix
+APIs, and makes it easier to use `try!` in the case that a "real" error should
+be bubbled out. (The main downside is that higher-level operations that might
+use `Result<T, IoError>` with some `T != usize` may need to wrap `IoError` in a
+further enum if they wish to forward unexpected EOF.)
 
 #### Channel adapters
 [Channel adapters]: #channel-adapters
