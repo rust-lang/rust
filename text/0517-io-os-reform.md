@@ -783,14 +783,12 @@ however.
 [Seeking]: #seeking
 
 The seeking infrastructure is largely the same as today's, except that
-`tell` is renamed to follow the RFC's design principles and the `seek`
-signature is refactored with more precise types:
+`tell` is removed and the `seek` signature is refactored with more precise
+types:
 
 ```rust
 pub trait Seek {
     type Err;
-    fn position(&self) -> Result<u64, Err>;
-
     // returns the new position after seeking
     fn seek(&mut self, pos: SeekPos) -> Result<u64, Err>;
 }
@@ -801,6 +799,8 @@ pub enum SeekPos {
     FromCur(i64),
 }
 ```
+
+The old `tell` function can be regained via `seek(SeekPos::FromCur(0))`.
 
 #### Buffering
 [Buffering]: #buffering
