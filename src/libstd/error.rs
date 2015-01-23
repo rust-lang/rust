@@ -103,6 +103,7 @@ pub trait Error {
 #[stable(feature = "grandfathered", since = "1.0.0")]
 pub trait FromError<E> {
     /// Perform the conversion.
+    #[stable(feature = "grandfathered", since = "1.0.0")]
     fn from_error(err: E) -> Self;
 }
 
