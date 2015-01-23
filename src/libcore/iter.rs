@@ -1329,7 +1329,7 @@ impl<T, D, I> ExactSizeIterator for Cloned<I> where
 {}
 
 /// An iterator that repeats endlessly
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cycle<I> {
@@ -1827,7 +1827,6 @@ impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
 /// An iterator with a `peek()` that returns an optional reference to the next element.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Copy)]
 pub struct Peekable<T, I> where I: Iterator<Item=T> {
     iter: I,
     peeked: Option<T>,
@@ -2501,7 +2500,7 @@ impl<A, St, F> Iterator for Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A
 
 /// An infinite iterator starting at `start` and advancing by `step` with each
 /// iteration
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 #[unstable(feature = "core",
            reason = "may be renamed or replaced by range notation adapaters")]
 pub struct Counter<A> {
@@ -2537,7 +2536,7 @@ impl<A: Add<Output=A> + Clone> Iterator for Counter<A> {
 }
 
 /// An iterator over the range [start, stop)
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 #[unstable(feature = "core",
            reason = "will be replaced by range notation")]
 pub struct Range<A> {
