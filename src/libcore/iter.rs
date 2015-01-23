@@ -1128,6 +1128,9 @@ impl<'a, I> DoubleEndedIterator for ByRef<'a, I> where I: 'a + DoubleEndedIterat
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next_back() }
 }
 
+#[stable]
+impl<'a, I> ExactSizeIterator for ByRef<'a, I> where I: 'a + ExactSizeIterator {}
+
 /// A trait for iterators over elements which can be added together
 #[unstable = "needs to be re-evaluated as part of numerics reform"]
 pub trait AdditiveIterator<A> {
@@ -1832,6 +1835,9 @@ impl<T, I> Iterator for Peekable<T, I> where I: Iterator<Item=T> {
 }
 
 #[stable]
+impl<T, I> ExactSizeIterator for Peekable<T, I> where I: ExactSizeIterator<Item = T> {}
+
+#[stable]
 impl<T, I> Peekable<T, I> where I: Iterator<Item=T> {
     /// Return a reference to the next element of the iterator with out advancing it,
     /// or None if the iterator is exhausted.
@@ -2023,6 +2029,9 @@ impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
     }
 }
 
+#[stable]
+impl<I> ExactSizeIterator for Skip<I> where I: ExactSizeIterator {}
+
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
@@ -2077,6 +2086,9 @@ impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
         }
     }
 }
+
+#[stable]
+impl<I> ExactSizeIterator for Take<I> where I: ExactSizeIterator {}
 
 
 /// An iterator to maintain state while iterating another iterator
@@ -2286,6 +2298,9 @@ impl<I> RandomAccessIterator for Fuse<I> where I: RandomAccessIterator {
         self.iter.idx(index)
     }
 }
+
+#[stable]
+impl<I> ExactSizeIterator for Fuse<I> where I: ExactSizeIterator {}
 
 impl<I> Fuse<I> {
     /// Resets the fuse such that the next call to .next() or .next_back() will

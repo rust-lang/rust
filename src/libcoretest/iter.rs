@@ -120,18 +120,32 @@ fn test_iterator_enumerate() {
 fn test_iterator_peekable() {
     let xs = vec![0u, 1, 2, 3, 4, 5];
     let mut it = xs.iter().map(|&x|x).peekable();
+
+    assert_eq!(it.len(), 6);
     assert_eq!(it.peek().unwrap(), &0);
+    assert_eq!(it.len(), 6);
     assert_eq!(it.next().unwrap(), 0);
+    assert_eq!(it.len(), 5);
     assert_eq!(it.next().unwrap(), 1);
+    assert_eq!(it.len(), 4);
     assert_eq!(it.next().unwrap(), 2);
+    assert_eq!(it.len(), 3);
     assert_eq!(it.peek().unwrap(), &3);
+    assert_eq!(it.len(), 3);
     assert_eq!(it.peek().unwrap(), &3);
+    assert_eq!(it.len(), 3);
     assert_eq!(it.next().unwrap(), 3);
+    assert_eq!(it.len(), 2);
     assert_eq!(it.next().unwrap(), 4);
+    assert_eq!(it.len(), 1);
     assert_eq!(it.peek().unwrap(), &5);
+    assert_eq!(it.len(), 1);
     assert_eq!(it.next().unwrap(), 5);
+    assert_eq!(it.len(), 0);
     assert!(it.peek().is_none());
+    assert_eq!(it.len(), 0);
     assert!(it.next().is_none());
+    assert_eq!(it.len(), 0);
 }
 
 #[test]
@@ -166,24 +180,45 @@ fn test_iterator_skip() {
     let ys = [13, 15, 16, 17, 19, 20, 30];
     let mut it = xs.iter().skip(5);
     let mut i = 0;
-    for &x in it {
+    while let Some(&x) = it.next() {
         assert_eq!(x, ys[i]);
         i += 1;
+        assert_eq!(it.len(), xs.len()-5-i);
     }
     assert_eq!(i, ys.len());
+    assert_eq!(it.len(), 0);
 }
 
 #[test]
 fn test_iterator_take() {
-    let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
-    let ys = [0u, 1, 2, 3, 5];
+    let xs = [0us, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+    let ys = [0us, 1, 2, 3, 5];
     let mut it = xs.iter().take(5);
     let mut i = 0;
-    for &x in it {
+    assert_eq!(it.len(), 5);
+    while let Some(&x) = it.next() {
         assert_eq!(x, ys[i]);
         i += 1;
+        assert_eq!(it.len(), 5-i);
     }
     assert_eq!(i, ys.len());
+    assert_eq!(it.len(), 0);
+}
+
+#[test]
+fn test_iterator_take_short() {
+    let xs = [0us, 1, 2, 3];
+    let ys = [0us, 1, 2, 3];
+    let mut it = xs.iter().take(5);
+    let mut i = 0;
+    assert_eq!(it.len(), 4);
+    while let Some(&x) = it.next() {
+        assert_eq!(x, ys[i]);
+        i += 1;
+        assert_eq!(it.len(), 4-i);
+    }
+    assert_eq!(i, ys.len());
+    assert_eq!(it.len(), 0);
 }
 
 #[test]
@@ -826,6 +861,24 @@ fn test_repeat() {
     assert_eq!(it.next(), Some(42u));
     assert_eq!(it.next(), Some(42u));
     assert_eq!(it.next(), Some(42u));
+}
+
+#[test]
+fn test_fuse() {
+    let mut it = 0us..3;
+    assert_eq!(it.len(), 3);
+    assert_eq!(it.next(), Some(0us));
+    assert_eq!(it.len(), 2);
+    assert_eq!(it.next(), Some(1us));
+    assert_eq!(it.len(), 1);
+    assert_eq!(it.next(), Some(2us));
+    assert_eq!(it.len(), 0);
+    assert_eq!(it.next(), None);
+    assert_eq!(it.len(), 0);
+    assert_eq!(it.next(), None);
+    assert_eq!(it.len(), 0);
+    assert_eq!(it.next(), None);
+    assert_eq!(it.len(), 0);
 }
 
 #[bench]
