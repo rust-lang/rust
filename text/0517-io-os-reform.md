@@ -813,11 +813,10 @@ point):
 pub trait BufferedRead: Read {
     fn fill_buf(&mut self) -> Result<&[u8], Self::Err>;
     fn consume(&mut self, amt: uint);
-
-    fn read_until(&mut self, byte: u8) -> ReadUntil { ... }
 }
 
 pub trait BufferedReadExt: BufferedRead {
+    fn read_until(&mut self, byte: u8) -> ReadUntil { ... }
     fn lines(&mut self) -> Lines<Self, Self::Err> { ... };
 }
 ```
