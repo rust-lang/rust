@@ -166,7 +166,7 @@ impl StdinReader {
     /// The read is performed atomically - concurrent read calls in other
     /// threads will not interleave with this one.
     pub fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
-        self.inner.lock().unwrap().0.read_until(byte)
+        self.inner.lock().unwrap().0.read_until(byte).and_then(|x| Ok(x.without_delimiter()))
     }
 
     /// Like `Buffer::read_char`.

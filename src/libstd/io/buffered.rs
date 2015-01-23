@@ -574,12 +574,24 @@ mod test {
 
     #[test]
     fn test_read_until() {
+        use io::ReadUntilHelper;
         let inner = MemReader::new(vec!(0, 1, 2, 1, 0));
         let mut reader = BufferedReader::with_capacity(2, inner);
-        assert_eq!(reader.read_until(0), Ok(vec!(0)));
-        assert_eq!(reader.read_until(2), Ok(vec!(1, 2)));
-        assert_eq!(reader.read_until(1), Ok(vec!(1)));
-        assert_eq!(reader.read_until(8), Ok(vec!(0)));
+        assert_eq!(reader.read_until(0), Ok(ReadUntilHelper::WithDelimiter(vec!(0))));
+        assert_eq!(reader.read_until(2), Ok(ReadUntilHelper::WithDelimiter(vec!(1, 2))));
+        assert_eq!(reader.read_until(1), Ok(ReadUntilHelper::WithDelimiter(vec!(1))));
+        assert_eq!(reader.read_until(8), Ok(ReadUntilHelper::WithoutDelimiter(vec!(0))));
+        assert!(reader.read_until(9).is_err());
+    }
+
+    #[test]
+    fn test_read_until_without_delimiter() {
+        let inner = MemReader::new(vec!(0, 1, 2, 1, 0));
+        let mut reader = BufferedReader::with_capacity(2, inner);
+        assert_eq!(reader.read_until(0).unwrap().without_delimiter(), vec![]);
+        assert_eq!(reader.read_until(2).unwrap().without_delimiter(), vec![1]);
+        assert_eq!(reader.read_until(1).unwrap().without_delimiter(), vec![]);
+        assert_eq!(reader.read_until(8).unwrap().without_delimiter(), vec![0]);
         assert!(reader.read_until(9).is_err());
     }
 

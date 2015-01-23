@@ -1348,6 +1348,32 @@ impl<'r, T: Buffer> Iterator for Chars<'r, T> {
     }
 }
 
+/// Makes the possibility of `read_until` returning a sequence with a delimiter explicit
+/// Use `without_delimiter` if you always want the same type of result
+pub enum ReadUntilHelper {
+    /// If you run `read_until` again after receiving `WithoutDelimiter`, you will get an EOF
+    /// Does not contain the delimiter.
+    WithoutDelimiter(Vec<u8>),
+    /// Always contains the delimiter. If the delimiter was just before the end of the Buffer,
+    /// the next call to `read_until` will also give you an EOF.
+    WithDelimiter(Vec<u8>),
+}
+
+impl ReadUntilHelper {
+    /// Destructures the ReadUntilHelper by either removing the delimiter (if present) or
+    /// directly returning the read block (if no delimiter was present)
+    pub fn without_delimiter(self) -> Vec<u8> {
+        match self {
+            ReadUntilHelper::WithoutDelimiter(x) => x,
+            ReadUntilHelper::WithDelimiter(mut x) => {
+                let len = x.len() - 1;
+                x.truncate(len);
+                x
+            },
+        }
+    }
+}
+
 /// A Buffer is a type of reader which has some form of internal buffering to
 /// allow certain kinds of reading operations to be more optimized than others.
 /// This type extends the `Reader` trait with a few methods that are not
@@ -1374,7 +1400,7 @@ pub trait Buffer: Reader {
 
     /// Reads the next line of input, interpreted as a sequence of UTF-8
     /// encoded Unicode codepoints. If a newline is encountered, then the
-    /// newline is contained in the returned string.
+    /// newline is NOT contained in the returned string.
     ///
     /// # Example
     ///
@@ -1382,7 +1408,7 @@ pub trait Buffer: Reader {
     /// use std::io::BufReader;
     ///
     /// let mut reader = BufReader::new(b"hello\nworld");
-    /// assert_eq!("hello\n", &*reader.read_line().unwrap());
+    /// assert_eq!("hello", &*reader.read_line().unwrap());
     /// ```
     ///
     /// # Error
@@ -1392,13 +1418,11 @@ pub trait Buffer: Reader {
     /// * All non-EOF errors will be returned immediately
     /// * If an error is returned previously consumed bytes are lost
     /// * EOF is only returned if no bytes have been read
-    /// * Reach EOF may mean that the delimiter is not present in the return
-    ///   value
     ///
     /// Additionally, this function can fail if the line of input read is not a
     /// valid UTF-8 sequence of bytes.
     fn read_line(&mut self) -> IoResult<String> {
-        self.read_until(b'\n').and_then(|line|
+        self.read_until(b'\n').and_then(|ruh| Ok(ruh.without_delimiter())).and_then(|line|
             match String::from_utf8(line) {
                 Ok(s)  => Ok(s),
                 Err(_) => Err(standard_error(InvalidInput)),
@@ -1421,7 +1445,7 @@ pub trait Buffer: Reader {
     /// have been read, otherwise the pending byte buffer is returned. This
     /// is the reason that the byte buffer returned may not always contain the
     /// delimiter.
-    fn read_until(&mut self, byte: u8) -> IoResult<Vec<u8>> {
+    fn read_until(&mut self, byte: u8) -> IoResult<ReadUntilHelper> {
         let mut res = Vec::new();
 
         loop {
@@ -1429,7 +1453,7 @@ pub trait Buffer: Reader {
                 let available = match self.fill_buf() {
                     Ok(n) => n,
                     Err(ref e) if res.len() > 0 && e.kind == EndOfFile => {
-                        return Ok(res);
+                        return Ok(ReadUntilHelper::WithoutDelimiter(res));
                     }
                     Err(e) => return Err(e)
                 };
@@ -1446,7 +1470,7 @@ pub trait Buffer: Reader {
             };
             self.consume(used);
             if done {
-                return Ok(res);
+                return Ok(ReadUntilHelper::WithDelimiter(res));
             }
         }
     }
