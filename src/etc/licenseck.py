@@ -8,29 +8,18 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-license1 = """// Copyright """
-license2 = """ The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-"""
+import re
 
-license3 = """# Copyright """
-license4 = """ The Rust Project Developers. See the COPYRIGHT
-# file at the top-level directory of this distribution and at
-# http://rust-lang.org/COPYRIGHT.
-#
-# Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-# http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-# <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-# option. This file may not be copied, modified, or distributed
-# except according to those terms.
-"""
+license_re = re.compile(
+u"""(#|//) Copyright .* The Rust Project Developers. See the COPYRIGHT
+\\1 file at the top-level directory of this distribution and at
+\\1 http://rust-lang.org/COPYRIGHT.
+\\1
+\\1 Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+\\1 http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+\\1 <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+\\1 option. This file may not be copied, modified, or distributed
+\\1 except according to those terms.""")
 
 exceptions = [
     "rt/rust_android_dummy.cpp", # BSD, chromium
@@ -67,8 +56,4 @@ def check_license(name, contents):
 
     # License check
     boilerplate = contents[:500]
-    if (license1 not in boilerplate or license2 not in boilerplate) and \
-       (license3 not in boilerplate or license4 not in boilerplate):
-        return False
-
-    return True
+    return bool(license_re.search(boilerplate))
