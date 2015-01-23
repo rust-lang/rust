@@ -1171,7 +1171,7 @@ impl<'a> State<'a> {
             }
             try!(self.print_tt(tt));
             // There should be no space between the module name and the following `::` in paths,
-            // otherwise imported macros get re-parsed from crate metadata incorrectly (issue #20701)
+            // otherwise imported macros get re-parsed from crate metadata incorrectly (#20701)
             suppress_space = match tt {
                 &ast::TtToken(_, token::Ident(_, token::ModName)) |
                 &ast::TtToken(_, token::MatchNt(_, _, _, token::ModName)) |
