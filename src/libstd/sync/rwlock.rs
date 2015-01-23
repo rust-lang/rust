@@ -130,7 +130,15 @@ pub struct RwLockWriteGuard<'a, T: 'a> {
 impl<'a, T> !marker::Send for RwLockWriteGuard<'a, T> {}
 
 impl<T: Send + Sync> RwLock<T> {
-    /// Creates a new instance of an RwLock which is unlocked and read to go.
+    /// Creates a new instance of an `RwLock<T>` which is unlocked.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::RwLock;
+    ///
+    /// let lock = RwLock::new(5);
+    /// ```
     #[stable]
     pub fn new(t: T) -> RwLock<T> {
         RwLock { inner: box RW_LOCK_INIT, data: UnsafeCell::new(t) }
