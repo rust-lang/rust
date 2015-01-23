@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::path::BytesContainer;
 use std::io::{Command, fs, USER_RWX};
 use std::os;
+use std::path::BytesContainer;
+use std::rand::random;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
@@ -28,8 +29,10 @@ fn test() {
     let my_path = os::self_exe_name().unwrap();
     let my_dir  = my_path.dir_path();
 
-    let child_dir = Path::new(my_dir.join("issue-15149-child"));
-    drop(fs::mkdir(&child_dir, USER_RWX));
+    let random_u32: u32 = random();
+    let child_dir = Path::new(my_dir.join(format!("issue-15149-child-{}",
+                                                  random_u32)));
+    fs::mkdir(&child_dir, USER_RWX).unwrap();
 
     let child_path = child_dir.join(format!("mytest{}",
                                             os::consts::EXE_SUFFIX));
@@ -48,4 +51,7 @@ fn test() {
             format!("child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
                     child_output.output.container_as_str().unwrap(),
                     child_output.error.container_as_str().unwrap()));
+
+    fs::rmdir_recursive(&child_dir).unwrap();
+
 }
