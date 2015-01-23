@@ -727,20 +727,24 @@ readers and writers, as well as `copy`. These are updated as follows:
 // A reader that yields no bytes
 fn empty() -> Empty; // in theory just returns `impl Read`
 
+impl Read for Empty { type Err = Void; ... }
+
 // A reader that yields `byte` repeatedly (generalizes today's ZeroReader)
 fn repeat(byte: u8) -> Repeat;
+
+impl Read for Repeat { type Err = Void; ... }
 
 // A writer that ignores the bytes written to it (/dev/null)
 fn sink() -> Sink;
 
-// Copies all data from a `Read` to a `Write`
-pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<(), E> where
+impl Write for Sink { type Err = Void; ... }
+
+// Copies all data from a `Read` to a `Write`, returning the amount of data
+// copied.
+pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<u64, E> where
     R: Read<Err = E>,
     W: Write<Err = E>
 ```
-
-Each of the `Empty`, `Repeat`, and `Sink` types will use the [`Void`][Void]
-associated error type.
 
 #### Void
 [Void]: #void
@@ -843,9 +847,9 @@ or `Write`. This is often useful when composing streams or creating test cases.
 This functionality primarily comes from the following implementations:
 
 ```rust
-impl<'a> Read for &'a [u8] { ... }
-impl<'a> Write for &'a mut [u8] { ... }
-impl Write for Vec<u8> { ... }
+impl<'a> Read for &'a [u8] { type Err = Void; ... }
+impl<'a> Write for &'a mut [u8] { type Err = Void; ... }
+impl Write for Vec<u8> { type Err = Void; ... }
 ```
 
 While efficient, none of these implementations support seeking (via an
@@ -865,20 +869,23 @@ impl<T> Cursor<T> {
     pub fn get_ref(&self) -> &T;
 }
 
-impl Seek for Cursor<Vec<u8>> { ... }
-impl<'a> Seek for Cursor<&'a [u8]> { ... }
-impl<'a> Seek for Cursor<&'a mut [u8]> { ... }
+// Error indicating that a negative offset was seeked to.
+pub struct NegativeOffset;
 
-impl Read for Cursor<Vec<u8>> { ... }
-impl<'a> Read for Cursor<&'a [u8]> { ... }
-impl<'a> Read for Cursor<&'a mut [u8]> { ... }
+impl Seek for Cursor<Vec<u8>> { type Err = NegativeOffset; ... }
+impl<'a> Seek for Cursor<&'a [u8]> { type Err = NegativeOffset; ... }
+impl<'a> Seek for Cursor<&'a mut [u8]> { type Err = NegativeOffset; ... }
 
-impl BufferedRead for Cursor<Vec<u8>> { ... }
-impl<'a> BufferedRead for Cursor<&'a [u8]> { ... }
-impl<'a> BufferedRead for Cursor<&'a mut [u8]> { ... }
+impl Read for Cursor<Vec<u8>> { type Err = Void; ... }
+impl<'a> Read for Cursor<&'a [u8]> { type Err = Void; ... }
+impl<'a> Read for Cursor<&'a mut [u8]> { type Err = Void; ... }
 
-impl<'a> Write for Cursor<&'a mut [u8]> { ... }
-impl Write for Cursor<Vec<u8>> { ... }
+impl BufferedRead for Cursor<Vec<u8>> { type Err = Void; ... }
+impl<'a> BufferedRead for Cursor<&'a [u8]> { type Err = Void; ... }
+impl<'a> BufferedRead for Cursor<&'a mut [u8]> { type Err = Void; ... }
+
+impl<'a> Write for Cursor<&'a mut [u8]> { type Err = Void; ... }
+impl Write for Cursor<Vec<u8>> { type Err = Void; ... }
 ```
 
 A sample implementation can be found in [a gist][cursor-impl]. Using one
