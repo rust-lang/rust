@@ -10,8 +10,8 @@
 
 //! Temporary files and directories
 
-use io::{fs, IoError, IoErrorKind, IoResult};
-use io;
+use old_io::{fs, IoError, IoErrorKind, IoResult};
+use old_io;
 use iter::{IteratorExt, range};
 use ops::Drop;
 use option::Option;
@@ -29,7 +29,7 @@ use string::String;
 /// # Examples
 ///
 /// ```no_run
-/// use std::io::TempDir;
+/// use std::old_io::TempDir;
 ///
 /// {
 ///     // create a temporary directory
@@ -113,7 +113,7 @@ impl TempDir {
                 suffix
             };
             let path = tmpdir.join(leaf);
-            match fs::mkdir(&path, io::USER_RWX) {
+            match fs::mkdir(&path, old_io::USER_RWX) {
                 Ok(_) => return Ok(TempDir { path: Some(path), disarmed: false }),
                 Err(IoError{kind:IoErrorKind::PathAlreadyExists,..}) => (),
                 Err(e) => return Err(e)

@@ -14,7 +14,7 @@
 
 use cmp;
 use fmt;
-use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
+use old_io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::{IteratorExt, ExactSizeIterator, repeat};
 use ops::Drop;
 use option::Option;
@@ -34,7 +34,7 @@ use vec::Vec;
 /// # Example
 ///
 /// ```rust
-/// use std::io::{BufferedReader, File};
+/// use std::old_io::{BufferedReader, File};
 ///
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut reader = BufferedReader::new(file);
@@ -137,7 +137,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// # Example
 ///
 /// ```rust
-/// use std::io::{BufferedWriter, File};
+/// use std::old_io::{BufferedWriter, File};
 ///
 /// let file = File::create(&Path::new("message.txt")).unwrap();
 /// let mut writer = BufferedWriter::new(file);
@@ -324,7 +324,7 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::{BufferedStream, File};
+/// use std::old_io::{BufferedStream, File};
 ///
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut stream = BufferedStream::new(file);
@@ -437,13 +437,13 @@ mod test {
     pub struct NullStream;
 
     impl Reader for NullStream {
-        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-            Err(io::standard_error(io::EndOfFile))
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+            Err(old_io::standard_error(old_io::EndOfFile))
         }
     }
 
     impl Writer for NullStream {
-        fn write(&mut self, _: &[u8]) -> io::IoResult<()> { Ok(()) }
+        fn write(&mut self, _: &[u8]) -> old_io::IoResult<()> { Ok(()) }
     }
 
     /// A dummy reader intended at testing short-reads propagation.
@@ -452,9 +452,9 @@ mod test {
     }
 
     impl Reader for ShortReader {
-        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
             if self.lengths.is_empty() {
-                Err(io::standard_error(io::EndOfFile))
+                Err(old_io::standard_error(old_io::EndOfFile))
             } else {
                 Ok(self.lengths.remove(0))
             }
@@ -555,13 +555,13 @@ mod test {
     fn test_buffered_stream() {
         struct S;
 
-        impl io::Writer for S {
-            fn write(&mut self, _: &[u8]) -> io::IoResult<()> { Ok(()) }
+        impl old_io::Writer for S {
+            fn write(&mut self, _: &[u8]) -> old_io::IoResult<()> { Ok(()) }
         }
 
-        impl io::Reader for S {
-            fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-                Err(io::standard_error(io::EndOfFile))
+        impl old_io::Reader for S {
+            fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+                Err(old_io::standard_error(old_io::EndOfFile))
             }
         }
 
@@ -664,7 +664,7 @@ mod test {
 
         impl Writer for FailFlushWriter {
             fn write(&mut self, _buf: &[u8]) -> IoResult<()> { Ok(()) }
-            fn flush(&mut self) -> IoResult<()> { Err(io::standard_error(EndOfFile)) }
+            fn flush(&mut self) -> IoResult<()> { Err(old_io::standard_error(EndOfFile)) }
         }
 
         let writer = FailFlushWriter;

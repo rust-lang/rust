@@ -16,8 +16,8 @@
 //! datagram protocol.
 
 use clone::Clone;
-use io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
-use io::IoResult;
+use old_io::net::ip::{SocketAddr, IpAddr, ToSocketAddr};
+use old_io::IoResult;
 use option::Option;
 use sys::udp::UdpSocket as UdpSocketImp;
 use sys_common;
@@ -34,8 +34,8 @@ use sys_common;
 /// # #![allow(unused_must_use)]
 /// #![feature(slicing_syntax)]
 ///
-/// use std::io::net::udp::UdpSocket;
-/// use std::io::net::ip::{Ipv4Addr, SocketAddr};
+/// use std::old_io::net::udp::UdpSocket;
+/// use std::old_io::net::ip::{Ipv4Addr, SocketAddr};
 /// fn main() {
 ///     let addr = SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: 34254 };
 ///     let mut socket = match UdpSocket::bind(addr) {
@@ -181,9 +181,9 @@ mod test {
     use prelude::v1::*;
 
     use sync::mpsc::channel;
-    use io::net::ip::*;
-    use io::test::*;
-    use io::{IoError, TimedOut, PermissionDenied, ShortWrite};
+    use old_io::net::ip::*;
+    use old_io::test::*;
+    use old_io::{IoError, TimedOut, PermissionDenied, ShortWrite};
     use super::*;
     use thread::Thread;
 

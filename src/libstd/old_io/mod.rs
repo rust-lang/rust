@@ -18,6 +18,24 @@
 
 //! I/O, including files, networking, timers, and processes
 //!
+//! > **Warning**: This module is currently called `old_io` for a reason! The
+//! > module is currently being redesigned in a number of RFCs. For more details
+//! > follow the RFC repository in connection with [RFC 517][base] or follow
+//! > some of these sub-RFCs
+//! >
+//! > * [String handling][osstr]
+//! > * [Core I/O support][core]
+//! > * [Deadlines][deadlines]
+//! > * [std::env][env]
+//! > * [std::process][process]
+//!
+//! [base]: https://github.com/rust-lang/rfcs/blob/master/text/0517-io-os-reform.md
+//! [osstr]: https://github.com/rust-lang/rfcs/pull/575
+//! [core]: https://github.com/rust-lang/rfcs/pull/576
+//! [deadlines]: https://github.com/rust-lang/rfcs/pull/577
+//! [env]: https://github.com/rust-lang/rfcs/pull/578
+//! [process]: https://github.com/rust-lang/rfcs/pull/579
+//!
 //! `std::io` provides Rust's basic I/O types,
 //! for reading and writing to files, TCP, UDP,
 //! and other types of sockets and pipes,
@@ -30,7 +48,7 @@
 //! * Read lines from stdin
 //!
 //!     ```rust
-//!     use std::io;
+//!     use std::old_io as io;
 //!
 //!     for line in io::stdin().lock().lines() {
 //!         print!("{}", line.unwrap());
@@ -40,7 +58,7 @@
 //! * Read a complete file
 //!
 //!     ```rust
-//!     use std::io::File;
+//!     use std::old_io::File;
 //!
 //!     let contents = File::open(&Path::new("message.txt")).read_to_end();
 //!     ```
@@ -49,19 +67,19 @@
 //!
 //!     ```rust
 //!     # #![allow(unused_must_use)]
-//!     use std::io::File;
+//!     use std::old_io::File;
 //!
 //!     let mut file = File::create(&Path::new("message.txt"));
 //!     file.write(b"hello, file!\n");
 //!     # drop(file);
-//!     # ::std::io::fs::unlink(&Path::new("message.txt"));
+//!     # ::std::old_io::fs::unlink(&Path::new("message.txt"));
 //!     ```
 //!
 //! * Iterate over the lines of a file
 //!
 //!     ```rust,no_run
-//!     use std::io::BufferedReader;
-//!     use std::io::File;
+//!     use std::old_io::BufferedReader;
+//!     use std::old_io::File;
 //!
 //!     let path = Path::new("message.txt");
 //!     let mut file = BufferedReader::new(File::open(&path));
@@ -73,8 +91,8 @@
 //! * Pull the lines of a file into a vector of strings
 //!
 //!     ```rust,no_run
-//!     use std::io::BufferedReader;
-//!     use std::io::File;
+//!     use std::old_io::BufferedReader;
+//!     use std::old_io::File;
 //!
 //!     let path = Path::new("message.txt");
 //!     let mut file = BufferedReader::new(File::open(&path));
@@ -85,7 +103,7 @@
 //!
 //!     ```rust
 //!     # #![allow(unused_must_use)]
-//!     use std::io::TcpStream;
+//!     use std::old_io::TcpStream;
 //!
 //!     # // connection doesn't fail if a server is running on 8080
 //!     # // locally, we still want to be type checking this code, so lets
@@ -103,8 +121,8 @@
 //!     # fn main() { }
 //!     # fn foo() {
 //!     # #![allow(dead_code)]
-//!     use std::io::{TcpListener, TcpStream};
-//!     use std::io::{Acceptor, Listener};
+//!     use std::old_io::{TcpListener, TcpStream};
+//!     use std::old_io::{Acceptor, Listener};
 //!     use std::thread::Thread;
 //!
 //!     let listener = TcpListener::bind("127.0.0.1:80");
@@ -166,14 +184,14 @@
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
-//! use std::io::File;
+//! use std::old_io::File;
 //!
 //! match File::create(&Path::new("diary.txt")).write(b"Met a girl.\n") {
 //!     Ok(()) => (), // succeeded
 //!     Err(e) => println!("failed to write to my diary: {}", e),
 //! }
 //!
-//! # ::std::io::fs::unlink(&Path::new("diary.txt"));
+//! # ::std::old_io::fs::unlink(&Path::new("diary.txt"));
 //! ```
 //!
 //! So what actually happens if `create` encounters an error?
@@ -199,7 +217,7 @@
 //! If you wanted to read several `u32`s from a file and return their product:
 //!
 //! ```rust
-//! use std::io::{File, IoResult};
+//! use std::old_io::{File, IoResult};
 //!
 //! fn file_product(p: &Path) -> IoResult<u32> {
 //!     let mut f = File::open(p);
@@ -925,9 +943,9 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 /// # Examples
 ///
 /// ```
-/// use std::io;
-/// use std::io::ByRefReader;
-/// use std::io::util::LimitReader;
+/// use std::old_io as io;
+/// use std::old_io::ByRefReader;
+/// use std::old_io::util::LimitReader;
 ///
 /// fn process_input<R: Reader>(r: R) {}
 ///
@@ -1254,8 +1272,8 @@ impl<'a> Writer for &'a mut (Writer+'a) {
 /// # Example
 ///
 /// ```
-/// use std::io::util::TeeReader;
-/// use std::io::{stdin, ByRefWriter};
+/// use std::old_io::util::TeeReader;
+/// use std::old_io::{stdin, ByRefWriter};
 ///
 /// fn process_input<R: Reader>(r: R) {}
 ///
@@ -1379,7 +1397,7 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::BufReader;
+    /// use std::old_io::BufReader;
     ///
     /// let mut reader = BufReader::new(b"hello\nworld");
     /// assert_eq!("hello\n", &*reader.read_line().unwrap());
@@ -1601,7 +1619,7 @@ impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
 /// # Example
 ///
 /// ```
-/// use std::io;
+/// use std::old_io as io;
 ///
 /// let eof = io::standard_error(io::EndOfFile);
 /// let einval = io::standard_error(io::InvalidInput);
@@ -1691,7 +1709,7 @@ pub enum FileType {
 /// ```no_run
 /// # #![allow(unstable)]
 ///
-/// use std::io::fs::PathExtensions;
+/// use std::old_io::fs::PathExtensions;
 ///
 /// let info = match Path::new("foo.txt").stat() {
 ///     Ok(stat) => stat,

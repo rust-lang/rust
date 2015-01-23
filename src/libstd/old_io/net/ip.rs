@@ -19,8 +19,8 @@ pub use self::IpAddr::*;
 
 use boxed::Box;
 use fmt;
-use io::{self, IoResult, IoError};
-use io::net;
+use old_io::{self, IoResult, IoError};
+use old_io::net;
 use iter::{Iterator, IteratorExt};
 use ops::{FnOnce, FnMut};
 use option::Option;
@@ -406,9 +406,9 @@ impl FromStr for SocketAddr {
 /// ```rust,no_run
 /// # #![allow(unused_must_use)]
 ///
-/// use std::io::{TcpStream, TcpListener};
-/// use std::io::net::udp::UdpSocket;
-/// use std::io::net::ip::{Ipv4Addr, SocketAddr};
+/// use std::old_io::{TcpStream, TcpListener};
+/// use std::old_io::net::udp::UdpSocket;
+/// use std::old_io::net::ip::{Ipv4Addr, SocketAddr};
 ///
 /// fn main() {
 ///     // The following lines are equivalent modulo possible "localhost" name resolution
@@ -438,7 +438,7 @@ pub trait ToSocketAddr {
     fn to_socket_addr(&self) -> IoResult<SocketAddr> {
         self.to_socket_addr_all()
             .and_then(|v| v.into_iter().next().ok_or_else(|| IoError {
-                kind: io::InvalidInput,
+                kind: old_io::InvalidInput,
                 desc: "no address available",
                 detail: None
             }))
@@ -481,7 +481,7 @@ fn parse_and_resolve_socket_addr(s: &str) -> IoResult<Vec<SocketAddr>> {
             match $e {
                 Some(r) => r,
                 None => return Err(IoError {
-                    kind: io::InvalidInput,
+                    kind: old_io::InvalidInput,
                     desc: $msg,
                     detail: None
                 })
@@ -526,7 +526,7 @@ impl<'a> ToSocketAddr for &'a str {
         parse_and_resolve_socket_addr(*self)
             .and_then(|v| v.into_iter().next()
                 .ok_or_else(|| IoError {
-                    kind: io::InvalidInput,
+                    kind: old_io::InvalidInput,
                     desc: "no address available",
                     detail: None
                 })

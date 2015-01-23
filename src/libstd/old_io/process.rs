@@ -21,9 +21,9 @@ use prelude::v1::*;
 use collections::HashMap;
 use ffi::CString;
 use fmt;
-use io::pipe::{PipeStream, PipePair};
-use io::{IoResult, IoError};
-use io;
+use old_io::pipe::{PipeStream, PipePair};
+use old_io::{IoResult, IoError};
+use old_io;
 use libc;
 use os;
 use path::BytesContainer;
@@ -58,7 +58,7 @@ use thread::Thread;
 /// # Example
 ///
 /// ```should_fail
-/// use std::io::Command;
+/// use std::old_io::Command;
 ///
 /// let mut child = match Command::new("/bin/cat").arg("file.txt").spawn() {
 ///     Ok(child) => child,
@@ -159,7 +159,7 @@ pub type EnvMap = HashMap<EnvKey, CString>;
 /// to be changed (for example, by adding arguments) prior to spawning:
 ///
 /// ```
-/// use std::io::Command;
+/// use std::old_io::Command;
 ///
 /// let mut process = match Command::new("sh").arg("-c").arg("echo hello").spawn() {
 ///   Ok(p) => p,
@@ -359,7 +359,7 @@ impl Command {
     /// # Example
     ///
     /// ```
-    /// use std::io::Command;
+    /// use std::old_io::Command;
     ///
     /// let output = match Command::new("cat").arg("foot.txt").output() {
     ///     Ok(output) => output,
@@ -380,7 +380,7 @@ impl Command {
     /// # Example
     ///
     /// ```
-    /// use std::io::Command;
+    /// use std::old_io::Command;
     ///
     /// let status = match Command::new("ls").status() {
     ///     Ok(status) => status,
@@ -583,7 +583,7 @@ impl Process {
         // newer process that happens to have the same (re-used) id
         if self.exit_code.is_some() {
             return Err(IoError {
-                kind: io::InvalidInput,
+                kind: old_io::InvalidInput,
                 desc: "invalid argument: can't kill an exited process",
                 detail: None,
             })
@@ -654,8 +654,8 @@ impl Process {
     ///
     /// ```no_run
     /// # #![allow(unstable)]
-    /// use std::io::{Command, IoResult};
-    /// use std::io::process::ProcessExit;
+    /// use std::old_io::{Command, IoResult};
+    /// use std::old_io::process::ProcessExit;
     ///
     /// fn run_gracefully(prog: &str) -> IoResult<ProcessExit> {
     ///     let mut p = try!(Command::new("long-running-process").spawn());
@@ -698,7 +698,7 @@ impl Process {
     /// fail.
     pub fn wait_with_output(mut self) -> IoResult<ProcessOutput> {
         drop(self.stdin.take());
-        fn read(stream: Option<io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
+        fn read(stream: Option<old_io::PipeStream>) -> Receiver<IoResult<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => {
@@ -752,12 +752,12 @@ impl Drop for Process {
 
 #[cfg(test)]
 mod tests {
-    use io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
+    use old_io::{Truncate, Write, TimedOut, timer, process, FileNotFound};
     use prelude::v1::{Ok, Err, range, drop, Some, None, Vec};
     use prelude::v1::{Path, String, Reader, Writer, Clone};
     use prelude::v1::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
-    use io::fs::PathExtensions;
-    use io::timer::*;
+    use old_io::fs::PathExtensions;
+    use old_io::timer::*;
     use rt::running_on_valgrind;
     use str;
     use super::{CreatePipe};

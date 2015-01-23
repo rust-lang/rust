@@ -21,7 +21,7 @@
 //! # #![allow(unused_must_use)]
 //! use std::io;
 //!
-//! let mut out = io::stdout();
+//! let mut out = old_io::stdout();
 //! out.write(b"Hello, world!");
 //! ```
 
@@ -32,7 +32,7 @@ use cell::RefCell;
 use clone::Clone;
 use failure::LOCAL_STDERR;
 use fmt;
-use io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
+use old_io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use marker::{Sync, Send};
 use libc;
@@ -143,7 +143,7 @@ impl StdinReader {
     /// ```rust
     /// use std::io;
     ///
-    /// for line in io::stdin().lock().lines() {
+    /// for line in old_io::stdin().lock().lines() {
     ///     println!("{}", line.unwrap());
     /// }
     /// ```
@@ -539,7 +539,7 @@ mod tests {
 
     #[test]
     fn capture_stdout() {
-        use io::{ChanReader, ChanWriter};
+        use old_io::{ChanReader, ChanWriter};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
@@ -552,7 +552,7 @@ mod tests {
 
     #[test]
     fn capture_stderr() {
-        use io::{ChanReader, ChanWriter, Reader};
+        use old_io::{ChanReader, ChanWriter, Reader};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
