@@ -76,8 +76,8 @@ pub struct WriterWrapper {
 
 impl Writer for WriterWrapper {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.wrapped.write(buf)
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.wrapped.write_all(buf)
     }
 
     #[inline]

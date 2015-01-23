@@ -67,7 +67,7 @@ impl TTY {
             let mut size = winsize { ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0 };
             if c::ioctl(self.fd.fd(), TIOCGWINSZ, &mut size) == -1 {
                 Err(IoError {
-                    kind: io::OtherIoError,
+                    kind: old_io::OtherIoError,
                     desc: "Size of terminal could not be determined",
                     detail: None,
                 })

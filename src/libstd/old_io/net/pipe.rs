@@ -142,7 +142,7 @@ impl Reader for UnixStream {
 }
 
 impl Writer for UnixStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner.write(buf)
     }
 }

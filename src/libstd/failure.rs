@@ -27,7 +27,7 @@ thread_local! {
 }
 
 impl Writer for Stdio {
-    fn write(&mut self, bytes: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, bytes: &[u8]) -> IoResult<()> {
         let _ = self.write_bytes(bytes);
         Ok(())
     }

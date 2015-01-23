@@ -708,11 +708,11 @@ pub mod writer {
 
     fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
         match size {
-            1u => w.write(&[0x80u8 | (n as u8)]),
-            2u => w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
-            3u => w.write(&[0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
+            1u => w.write_all(&[0x80u8 | (n as u8)]),
+            2u => w.write_all(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
+            3u => w.write_all(&[0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
                             n as u8]),
-            4u => w.write(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
+            4u => w.write_all(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
                             (n >> 8_u) as u8, n as u8]),
             _ => Err(old_io::IoError {
                 kind: old_io::OtherIoError,
@@ -760,7 +760,7 @@ pub mod writer {
             // Write a placeholder four-byte size.
             self.size_positions.push(try!(self.writer.tell()) as uint);
             let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
-            self.writer.write(zeroes)
+            self.writer.write_all(zeroes)
         }
 
         pub fn end_tag(&mut self) -> EncodeResult {
@@ -786,7 +786,7 @@ pub mod writer {
         pub fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) -> EncodeResult {
             try!(write_vuint(self.writer, tag_id));
             try!(write_vuint(self.writer, b.len()));
-            self.writer.write(b)
+            self.writer.write_all(b)
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) -> EncodeResult {
@@ -839,12 +839,12 @@ pub mod writer {
 
         pub fn wr_bytes(&mut self, b: &[u8]) -> EncodeResult {
             debug!("Write {:?} bytes", b.len());
-            self.writer.write(b)
+            self.writer.write_all(b)
         }
 
         pub fn wr_str(&mut self, s: &str) -> EncodeResult {
             debug!("Write str: {:?}", s);
-            self.writer.write(s.as_bytes())
+            self.writer.write_all(s.as_bytes())
         }
     }
 

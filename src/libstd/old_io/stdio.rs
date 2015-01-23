@@ -22,7 +22,7 @@
 //! use std::old_io;
 //!
 //! let mut out = old_io::stdout();
-//! out.write(b"Hello, world!");
+//! out.write_all(b"Hello, world!");
 //! ```
 
 use self::StdSource::*;
@@ -370,14 +370,14 @@ pub fn flush() {
 /// Prints a string to the stdout of the current process. No newline is emitted
 /// after the string is printed.
 pub fn print(s: &str) {
-    with_task_stdout(|io| io.write(s.as_bytes()))
+    with_task_stdout(|io| io.write_all(s.as_bytes()))
 }
 
 /// Prints a string to the stdout of the current process. A literal
 /// `\n` character is printed to the console after the string.
 pub fn println(s: &str) {
     with_task_stdout(|io| {
-        io.write(s.as_bytes()).and_then(|()| io.write(&[b'\n']))
+        io.write_all(s.as_bytes()).and_then(|()| io.write_all(&[b'\n']))
     })
 }
 
@@ -498,7 +498,7 @@ impl StdWriter {
 }
 
 impl Writer for StdWriter {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         // As with stdin on windows, stdout often can't handle writes of large
         // sizes. For an example, see #14940. For this reason, chunk the output
         // buffer on windows, but on unix we can just write the whole buffer all

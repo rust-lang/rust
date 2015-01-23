@@ -258,7 +258,7 @@ impl Reader for TcpStream {
 }
 
 impl Writer for TcpStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner.write(buf)
     }
 }

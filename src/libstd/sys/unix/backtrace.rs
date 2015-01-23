@@ -375,7 +375,7 @@ fn output(w: &mut Writer, idx: int, addr: *mut libc::c_void,
         Some(string) => try!(demangle(w, string)),
         None => try!(write!(w, "<unknown>")),
     }
-    w.write(&['\n' as u8])
+    w.write_all(&['\n' as u8])
 }
 
 /// Unwind library interface used for backtraces

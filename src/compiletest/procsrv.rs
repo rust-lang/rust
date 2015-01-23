@@ -47,7 +47,7 @@ pub fn run(lib_path: &str,
     match cmd.spawn() {
         Ok(mut process) => {
             for input in input.iter() {
-                process.stdin.as_mut().unwrap().write(input.as_bytes()).unwrap();
+                process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
             }
             let ProcessOutput { status, output, error } =
                 process.wait_with_output().unwrap();
@@ -79,7 +79,7 @@ pub fn run_background(lib_path: &str,
     match cmd.spawn() {
         Ok(mut process) => {
             for input in input.iter() {
-                process.stdin.as_mut().unwrap().write(input.as_bytes()).unwrap();
+                process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
             }
 
             Some(process)

@@ -80,7 +80,7 @@ impl SeekableMemWriter {
 
 impl Writer for SeekableMemWriter {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.pos == self.buf.len() {
             self.buf.push_all(buf)
         } else {
