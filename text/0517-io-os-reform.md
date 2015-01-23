@@ -53,7 +53,7 @@ follow-up PRs against this RFC.
             * [Adapters]
             * [Seeking]
             * [Buffering]
-            * [MemReader and MemWriter]
+            * [Cursor]
         * [The std::io facade]
             * [Errors]
             * [Channel adapters]
@@ -787,37 +787,72 @@ together with the remaining data:
 fn into_inner(self) -> Result<W, (Vec<u8>, W::Err)>;
 ```
 
-#### `MemReader` and `MemWriter`
-[MemReader and MemWriter]: #memreader-and-memwriter
+#### `Cursor`
+[Cursor]: #cursor
 
-The various in-memory readers and writers available today will be
-consolidated into just `MemReader` and `MemWriter`:
+Many applications want to view in-memory data as either an implementor of `Read`
+or `Write`. This is often useful when composing streams or creating test cases.
+This functionality primarily comes from the following implementations:
 
-`MemReader` (like today's `BufReader`)
- - construct from `&[u8]`
- - implements `Seek`
+```rust
+impl<'a> Read for &'a [u8] { ... }
+impl<'a> Write for &'a mut [u8] { ... }
+impl Write for Vec<u8> { ... }
+```
 
-`MemWriter`
- - construct freshly, or from a `Vec`
- - implements `Seek`
+While efficient, none of these implementations support seeking (via an
+implementation of the `Seek` trait). The implementations of `Read` and `Write`
+for these types is not quite as efficient when `Seek` needs to be used, so the
+`Seek`-ability will be opted-in to with a new `Cursor` structure with the
+following API:
 
-Both will allow decomposing into their inner parts, though the exact
-details are left to the implementation.
+```rust
+pub struct Cursor<T> {
+    pos: u64,
+    inner: T,
+}
+impl<T> Cursor<T> {
+    pub fn new(inner: T) -> Cursor<T>;
+    pub fn into_inner(self) -> T;
+    pub fn get_ref(&self) -> &T;
+}
 
-The rationale for this design is that, if you want to read from a
-`Vec`, it's easy enough to get a slice to read from instead; on the
-other hand, it's rare to want to write into a mutable slice on the
-stack, as opposed to an owned vector. So these two readers and writers
-cover the vast majority of in-memory readers/writers for Rust.
+impl Seek for Cursor<Vec<u8>> { ... }
+impl<'a> Seek for Cursor<&'a [u8]> { ... }
+impl<'a> Seek for Cursor<&'a mut [u8]> { ... }
 
-In addition to these, however, we will have the following `impl`s
-directly on slice/vector types:
+impl Read for Cursor<Vec<u8>> { ... }
+impl<'a> Read for Cursor<&'a [u8]> { ... }
+impl<'a> Read for Cursor<&'a mut [u8]> { ... }
 
-* `impl Writer for Vec<u8>`
-* `impl Writer for &mut [u8]`
-* `impl Reader for &[u8]`
+impl BufferedRead for Cursor<Vec<u8>> { ... }
+impl<'a> BufferedRead for Cursor<&'a [u8]> { ... }
+impl<'a> BufferedRead for Cursor<&'a mut [u8]> { ... }
 
-These `impls` are convenient and efficient, but do not implement `Seek`.
+impl<'a> Write for Cursor<&'a mut [u8]> { ... }
+impl Write for Cursor<Vec<u8>> { ... }
+```
+
+A sample implementation can be found in [a gist][cursor-impl]. Using one
+`Cursor` structure allows to emphasize that the only ability added is an
+implementation of `Seek` while still allowing all possible I/O operations for
+various types of buffers.
+
+[cursor-impl]: https://gist.github.com/alexcrichton/8224f57ed029929447bd
+
+It is not currently proposed to unify these implementations via a trait. For
+example a `Cursor<Rc<[u8]>>` is a reasonable instance to have, but it will not
+have an implementation listed in the standard library to start out. It is
+considered a backwards-compatible addition to unify these various `impl` blocks
+with a trait.
+
+The following types will be removed from the standard library and replaced as
+follows:
+
+* `MemReader` -> `Cursor<Vec<u8>>`
+* `MemWriter` -> `Cursor<Vec<u8>>`
+* `BufReader` -> `Cursor<&[u8]>` or `Cursor<&mut [u8]>`
+* `BufWriter` -> `Cursor<&mut [u8]>`
 
 ### The `std::io` facade
 [The std::io facade]: #the-stdio-facade
