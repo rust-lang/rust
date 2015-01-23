@@ -27,7 +27,7 @@
 
 use prelude::v1::*;
 
-use io::{self, IoError, IoResult, MemReader};
+use old_io::{self, IoError, IoResult, MemReader};
 use iter::repeat;
 use libc::types::os::arch::extra::LPCVOID;
 use libc::{c_int, HANDLE, LPDWORD, DWORD, LPVOID};
@@ -44,7 +44,7 @@ use super::c::{GetConsoleScreenBufferInfo};
 
 fn invalid_encoding() -> IoError {
     IoError {
-        kind: io::InvalidInput,
+        kind: old_io::InvalidInput,
         desc: "text was not valid unicode",
         detail: None,
     }
@@ -83,7 +83,7 @@ impl TTY {
             })
         } else {
             Err(IoError {
-                kind: io::MismatchedFileTypeForOperation,
+                kind: old_io::MismatchedFileTypeForOperation,
                 desc: "invalid handle provided to function",
                 detail: None,
             })

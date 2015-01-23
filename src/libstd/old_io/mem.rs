@@ -43,7 +43,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 
 impl Writer for Vec<u8> {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.push_all(buf);
         Ok(())
     }
@@ -99,7 +99,7 @@ impl MemWriter {
 
 impl Writer for MemWriter {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.buf.push_all(buf);
         Ok(())
     }
@@ -269,7 +269,7 @@ impl<'a> BufWriter<'a> {
 
 impl<'a> Writer for BufWriter<'a> {
     #[inline]
-    fn write(&mut self, src: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, src: &[u8]) -> IoResult<()> {
         let dst = &mut self.buf[self.pos..];
         let dst_len = dst.len();
 

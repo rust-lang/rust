@@ -719,7 +719,7 @@ impl Reader for File {
 }
 
 impl Writer for File {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.fd.write(buf)
             .update_err("couldn't write to file",
                         |e| format!("{}; path={}", e, self.path.display()))

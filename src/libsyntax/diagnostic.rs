@@ -362,10 +362,10 @@ impl EmitterWriter {
 }
 
 impl Writer for Destination {
-    fn write(&mut self, bytes: &[u8]) -> old_io::IoResult<()> {
+    fn write_all(&mut self, bytes: &[u8]) -> old_io::IoResult<()> {
         match *self {
-            Terminal(ref mut t) => t.write(bytes),
-            Raw(ref mut w) => w.write(bytes),
+            Terminal(ref mut t) => t.write_all(bytes),
+            Raw(ref mut w) => w.write_all(bytes),
         }
     }
 }

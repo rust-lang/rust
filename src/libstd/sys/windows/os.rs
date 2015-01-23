@@ -16,7 +16,7 @@
 use prelude::v1::*;
 
 use fmt;
-use io::{IoResult, IoError};
+use old_io::{IoResult, IoError};
 use iter::repeat;
 use libc::{c_int, c_void};
 use libc;
@@ -162,7 +162,7 @@ pub fn fill_utf16_buf_and_decode<F>(mut f: F) -> Option<String> where
 pub fn getcwd() -> IoResult<Path> {
     use libc::DWORD;
     use libc::GetCurrentDirectoryW;
-    use io::OtherIoError;
+    use old_io::OtherIoError;
 
     let mut buf = [0 as u16; BUF_BYTES];
     unsafe {

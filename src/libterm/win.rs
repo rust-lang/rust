@@ -14,7 +14,7 @@
 
 extern crate libc;
 
-use std::io::IoResult;
+use std::old_io::IoResult;
 
 use attr;
 use color;
@@ -130,8 +130,8 @@ impl<T: Writer+Send> WinConsole<T> {
 }
 
 impl<T: Writer> Writer for WinConsole<T> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.buf.write(buf)
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.buf.write_all(buf)
     }
 
     fn flush(&mut self) -> IoResult<()> {

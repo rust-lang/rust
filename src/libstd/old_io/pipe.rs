@@ -105,7 +105,7 @@ impl Reader for PipeStream {
 }
 
 impl Writer for PipeStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner.write(buf)
     }
 }

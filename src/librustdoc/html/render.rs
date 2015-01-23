@@ -626,7 +626,7 @@ fn render_sources(cx: &mut Context,
 /// Writes the entire contents of a string to a destination, not attempting to
 /// catch any errors.
 fn write(dst: Path, contents: &[u8]) -> old_io::IoResult<()> {
-    File::create(&dst).write(contents)
+    File::create(&dst).write_all(contents)
 }
 
 /// Makes a directory on the filesystem, failing the task if an error occurs and

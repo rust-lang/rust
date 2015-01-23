@@ -586,8 +586,7 @@ fn link_rlib<'a>(sess: &'a Session,
             // the same filename for metadata (stomping over one another)
             let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
             let metadata = tmpdir.path().join(METADATA_FILENAME);
-            match fs::File::create(&metadata).write(&trans.metadata
-                                                    []) {
+            match fs::File::create(&metadata).write_all(&trans.metadata[]) {
                 Ok(..) => {}
                 Err(e) => {
                     sess.err(&format!("failed to write {}: {}",
@@ -674,10 +673,10 @@ fn write_rlib_bytecode_object_v1<T: Writer>(writer: &mut T,
                                          -> ::std::old_io::IoResult<()> {
     let bc_data_deflated_size: u64 = bc_data_deflated.len() as u64;
 
-    try! { writer.write(RLIB_BYTECODE_OBJECT_MAGIC) };
+    try! { writer.write_all(RLIB_BYTECODE_OBJECT_MAGIC) };
     try! { writer.write_le_u32(1) };
     try! { writer.write_le_u64(bc_data_deflated_size) };
-    try! { writer.write(&bc_data_deflated[]) };
+    try! { writer.write_all(&bc_data_deflated[]) };
 
     let number_of_bytes_written_so_far =
         RLIB_BYTECODE_OBJECT_MAGIC.len() +                // magic id

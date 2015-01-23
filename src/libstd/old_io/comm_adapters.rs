@@ -142,7 +142,7 @@ impl Clone for ChanWriter {
 }
 
 impl Writer for ChanWriter {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.tx.send(buf.to_vec()).map_err(|_| {
             old_io::IoError {
                 kind: old_io::BrokenPipe,

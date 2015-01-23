@@ -1401,7 +1401,7 @@ fn dump_output(config: &Config, testfile: &Path, out: &str, err: &str) {
 fn dump_output_file(config: &Config, testfile: &Path,
                     out: &str, extension: &str) {
     let outfile = make_out_name(config, testfile, extension);
-    File::create(&outfile).write(out.as_bytes()).unwrap();
+    File::create(&outfile).write_all(out.as_bytes()).unwrap();
 }
 
 fn make_out_name(config: &Config, testfile: &Path, extension: &str) -> Path {

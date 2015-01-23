@@ -83,7 +83,7 @@ pub struct NullWriter;
 
 impl Writer for NullWriter {
     #[inline]
-    fn write(&mut self, _buf: &[u8]) -> old_io::IoResult<()> { Ok(()) }
+    fn write_all(&mut self, _buf: &[u8]) -> old_io::IoResult<()> { Ok(()) }
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
@@ -143,9 +143,9 @@ impl<W> MultiWriter<W> where W: Writer {
 
 impl<W> Writer for MultiWriter<W> where W: Writer {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> old_io::IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> old_io::IoResult<()> {
         for writer in self.writers.iter_mut() {
-            try!(writer.write(buf));
+            try!(writer.write_all(buf));
         }
         Ok(())
     }
@@ -223,7 +223,7 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
     fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         self.reader.read(buf).and_then(|len| {
-            self.writer.write(&mut buf[..len]).map(|()| len)
+            self.writer.write_all(&mut buf[..len]).map(|()| len)
         })
     }
 }
@@ -237,7 +237,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> old_io::IoResult<()> 
             Err(ref e) if e.kind == old_io::EndOfFile => return Ok(()),
             Err(e) => return Err(e),
         };
-        try!(w.write(&buf[..len]));
+        try!(w.write_all(&buf[..len]));
     }
 }
 
@@ -321,7 +321,7 @@ mod test {
     fn test_null_writer() {
         let mut s = NullWriter;
         let buf = vec![0, 0, 0];
-        s.write(buf.as_slice()).unwrap();
+        s.write_all(buf.as_slice()).unwrap();
         s.flush().unwrap();
     }
 
@@ -347,7 +347,7 @@ mod test {
 
         struct TestWriter;
         impl Writer for TestWriter {
-            fn write(&mut self, _buf: &[u8]) -> old_io::IoResult<()> {
+            fn write_all(&mut self, _buf: &[u8]) -> old_io::IoResult<()> {
                 unsafe { writes += 1 }
                 Ok(())
             }
@@ -360,7 +360,7 @@ mod test {
 
         let mut multi = MultiWriter::new(vec!(box TestWriter as Box<Writer>,
                                               box TestWriter as Box<Writer>));
-        multi.write(&[1, 2, 3]).unwrap();
+        multi.write_all(&[1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });
         multi.flush().unwrap();
