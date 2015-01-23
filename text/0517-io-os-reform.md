@@ -663,6 +663,7 @@ trait ReadExt: Read {
     fn take(self, limit: u64) -> Take<Self> { ... }
 
     // Whenever reading from `self`, push the bytes read to `out`
+    #[unstable] // uncertain semantics of errors "halfway through the operation"
     fn tee<W: Write>(self, out: W) -> Tee<Self, W> { ... }
 }
 
@@ -673,6 +674,7 @@ trait WriteExt: Write {
     fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
 
     // Whenever bytes are written to `self`, write them to `other` as well
+    #[unstable] // uncertain semantics of errors "halfway through the operation"
     fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W> { ... }
 }
 
