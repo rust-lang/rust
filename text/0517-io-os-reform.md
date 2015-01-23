@@ -43,9 +43,8 @@ follow-up PRs against this RFC.
             * [Platform-specific opt-in]
         * [Proposed organization]
     * [Revising `Reader` and `Writer`]
-        * [Nonatomic results]
-        * [Reader]
-        * [Writer]
+        * [Read]
+        * [Write]
     * [String handling] (stub)
     * [Deadlines] (stub)
     * [Splitting streams and cancellation] (stub)
@@ -469,8 +468,13 @@ long tradition for blocking IO, but they are still surprisingly subtle
   actual reads or writes, and data is lost when an error occurs after
   some (but not all) operations have completed.
 
-  The proposed strategy for `Reader` operations is to return the
-  already-read data together with an error. For writers, the main
+  The proposed strategy for `Reader` operations is to (1) separate out
+  various deserialization methods into a distinct framework, (2)
+  *never* have the internal `read` implementations loop on errors, (3)
+  cut down on the number of non-atomic read operations and (4) move
+  the remaining operations to a different trait.
+
+  For writers, the main
   change is to make `write` only perform a single underlying write
   (returning the number of bytes written on success), and provide a
   separate `write_all` method.
@@ -503,83 +507,59 @@ long tradition for blocking IO, but they are still surprisingly subtle
 
 With those general points out of the way, let's look at the details.
 
-### Nonatomic results
-[Nonatomic results]: #nonatomic-results
-
-To clarity dealing with nonatomic operations and improve their
-ergonomics, we introduce some new types into `std::error`:
-
-```rust
-// The progress so far (T) paired with an err (Err)
-struct PartialResult<T, Err>(T, Err);
-
-// An operation that may fail after having made some progress:
-// - S is what's produced on complete success,
-// - T is what's produced if an operation fails part of the way through
-type NonatomicResult<S, T, Err> = Result<S, PartialResult<T, Err>>;
-
-// Ergonomically throw out the partial result
-impl<T, Err> FromError<PartialResult<T, Err>> for Err { ... }
-```
-
-The `NonatomicResult` type (which could use a shorter name)
-encapsulates the common pattern of operations that may fail after
-having made some progress. The `PartialResult` type then returns the
-progress that was made along with the error, but with a `FromError`
-implementation that makes it trivial to throw out the partial result
-if desired. For example, the following would be expected to compile:
-
-```rust
-fn write(buf: &[u8]) -> NonatomicResult<(), uint, Error> { /* ... */ }
-
-fn write_bytes() -> Result<(), Error> {
-    try!(write!(&[1, 2, 3, 4]));
-    Ok(())
-}
-```
-
-### `Reader`
-[Reader]: #reader
+### `Read`
+[Read]: #read
 
 The updated `Reader` trait (and its extension) is as follows:
 
 ```rust
-trait Reader {
+trait Read {
     type Err; // new associated error type
 
     // unchanged except for error type
     fn read(&mut self, buf: &mut [u8]) -> Result<uint, Err>;
-
-    // these all return partial results on error
-    fn read_to_end(&mut self) -> NonatomicResult<Vec<u8>, Vec<u8>, Err> { ... }
-    fn read_to_string(&self) -> NonatomicResult<String, Vec<u8>, Err> { ... }
-    fn read_at_least(&mut self, min: uint,  buf: &mut [u8]) -> NonatomicResult<uint, uint, Err>  { ... }
 }
 
 // extension trait needed for object safety
-trait ReaderExt: Reader {
+trait ReadExt: Read {
     fn bytes(&mut self) -> Bytes<Self> { ... }
     fn chars<'r>(&'r mut self) -> Chars<'r, Self, Err> { ... }
 
+    fn read_to_end(&mut self) -> Result<Vec<u8>, Err> { ... }
+    fn read_to_string(&self) -> Result<String, Err> { ... }
+
     ... // more to come later in the RFC
 }
-impl<R: Reader> ReaderExt for R {}
+impl<R: Read> ReadExt for R {}
 ```
+
+Following the
+[trait naming conventions](https://github.com/rust-lang/rfcs/pull/344),
+the trait is renamed to `Read` reflecting the single method it
+provides.
+
+The `read` method should not involve internal looping (even over
+errors like `EINTR`). It is intended to be atomic.
 
 #### Removed methods
 
-The proposed `Reader` trait is much slimmer than today's. The vast
+The proposed `Read` trait is much slimmer than today's `Reader`. The vast
 majority of removed methods are parsing/deserialization, which were
 discussed above.
 
-The remaining methods (`read_exact`, `push`, `push_at_least`) were
-removed largely because they are *not memory safe*: they involve
-extending a vector's capacity, and then *passing in the resulting
-uninitialized memory* to the `read` method, which is not marked
-`unsafe`! Thus the current design can lead to undefined behavior in
-safe code.
+The remaining methods (`read_exact`, `read_at_least`, `push`,
+`push_at_least`) were removed for various reasons:
 
-The solution is to instead extend `Vec<T>` with a useful unsafe method:
+* `read_exact`, `read_at_least`: these are somewhat more obscure
+  conveniences that are not particularly robust due to lack of
+  atomicity.
+
+* `push`, `push_at_least`: these are special-cases for working with
+  `Vec`, which this RFC proposes to replace with a more general
+  mechanism described next.
+
+To provide some of this functionality in a more composition way,
+extend `Vec<T>` with an unsafe method:
 
 ```rust
 unsafe fn with_extra(&mut self, n: uint) -> &mut [T];
@@ -587,27 +567,25 @@ unsafe fn with_extra(&mut self, n: uint) -> &mut [T];
 
 This method is equivalent to calling `reserve(n)` and then providing a
 slice to the memory starting just after `len()` entries. Using this
-method, clients of `Reader` can easily recover the above removed
-methods, but they are explicitly marking the unsafety of doing so.
+method, clients of `Read` can easily recover the `push` method.
 
-(Note: `read_to_end` is currently not memory safe for the same reason,
-but is considered a very important convenience. Thus, we will continue
-to provide it, but will zero the slice beforehand.)
-
-### `Writer`
-[Writer]: #writer
+### `Write`
+[Write]: #write
 
 The `Writer` trait is cut down to even smaller size:
 
 ```rust
-trait Writer {
+trait Write {
     type Err;
     fn write(&mut self, buf: &[u8]) -> Result<uint, Err>;
-
-    fn write_all(&mut self, buf: &[u8]) -> NonatomicResult<(), uint, Err> { ... };
-    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Err> { ... }
     fn flush(&mut self) -> Result<(), Err> { ... }
 }
+
+trait WriteExt {
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Err> { ... };
+    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Err> { ... }
+}
+impl<W: Write> WriteExt for W {}
 ```
 
 The biggest change here is to the semantics of `write`. Instead of
@@ -619,19 +597,18 @@ currently have.
 
 For convenience, `write_all` recovers the behavior of today's `write`,
 looping until either the entire buffer is written or an error
-occurs. In the latter case, however, it now also yields the number of
-bytes that had been written prior to the error.
+occurs. Like `read_to_end`, if an error occurs before the operation is
+complete, the intermediate result (of how much has been written) is
+discarded. To meaningfully recover from an intermediate error, code
+should work with `write` directly.
 
 The `write_fmt` method, like `write_all`, will loop until its entire
-input is written or an error occurs. However, it does not return a
-`NonatomicResult` because the number of bytes written cannot be
-straightforwardly interpreted -- the actual byte sequence written is
-determined by the formatting system.
+input is written or an error occurs.
 
 The other methods include endian conversions (covered by
 serialization) and a few conveniences like `write_str` for other basic
 types. The latter, at least, is already uniformly (and extensibly)
-covered via the `write!` macro. The other helpers, as with `Reader`,
+covered via the `write!` macro. The other helpers, as with `Read`,
 should migrate into a more general (de)serialization library.
 
 ## String handling
@@ -673,10 +650,8 @@ The current `std::io::util` module offers a number of `Reader` and
 follow `std::iter`. Along the way, it generalizes the `by_ref` adapter:
 
 ```rust
-trait ReaderExt: Reader {
-    // already introduced above
-    fn bytes(&mut self) -> Bytes<Self> { ... }
-    fn chars<'r>(&'r mut self) -> Chars<'r, Self, Err> { ... }
+trait ReadExt: Read {
+    // ... eliding the methods already described above
 
     // Reify a borrowed reader as owned
     fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
@@ -690,25 +665,25 @@ trait ReaderExt: Reader {
     // Whenever reading from `self`, push the bytes read to `out`
     fn tee<W: Writer>(self, out: W) -> Tee<Self, W> { ... }
 }
-impl<T: Reader> ReaderExt for T {}
 
-trait WriterExt: Writer {
+trait WriteExt: Write {
+    // ... eliding the methods already described above
+
     // Reify a borrowed writer as owned
     fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
 
     // Whenever bytes are written to `self`, write them to `other` as well
-    fn carbon_copy<W: Writer>(self, other: W) -> CarbonCopy<Self, W> { ... }
+    fn broadcast<W: Writer>(self, other: W) -> Broadcast<Self, W> { ... }
 }
-impl<T: Writer> WriterExt for T {}
 
-// An adaptor converting an `Iterator<u8>` to a `Reader`.
+// An adaptor converting an `Iterator<u8>` to `Read`.
 pub struct IterReader<T> { ... }
 ```
 
 As with `std::iter`, these adapters are object unsafe and hence placed
 in an extension trait with a blanket `impl`.
 
-Note that the same `ByRef` type is used for both `Reader` and `Writer`
+Note that the same `ByRef` type is used for both `Read` and `Write`
 -- and this RFC proposes to use it for `std::iter` as well. The
 insight is that there is no difference between the *type* used for
 by-ref adapters in any of these cases; what changes is just which
@@ -723,7 +698,7 @@ pub struct ByRef<'a, Sized? T:'a> {
 which will allow `impl`s like the following in `core::io`:
 
 ```rust
-impl<'a, W: Writer> Writer for ByRef<'a, W> {
+impl<'a, W: Write> Write for ByRef<'a, W> {
     #[inline]
     fn write(&mut self, buf: &[u8]) -> Result<uint, W::Err> { self.inner.write(buf) }
 
@@ -749,7 +724,7 @@ fn repeat(byte: u8) -> Repeat;
 fn sink() -> Sink;
 
 // Copies all data from a Reader to a Writer
-pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> NonatomicResult<(), uint, E> where
+pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<(), E> where
     R: Reader<Err = E>,
     W: Writer<Err = E>
 ```
@@ -770,7 +745,7 @@ pub trait Seek {
 
 pub enum SeekPos {
     FromStart(u64),
-    FromEnd(u64),
+    FromEnd(i64),
     FromCur(i64),
 }
 ```
@@ -778,29 +753,29 @@ pub enum SeekPos {
 #### Buffering
 [Buffering]: #buffering
 
-The current `Buffer` trait will be renamed to `BufferedReader` for
-clarity (and to open the door to `BufferedWriter` at some later
+The current `Buffer` trait will be renamed to `BufferedRead` for
+clarity (and to open the door to `BufferedWrite` at some later
 point):
 
 ```rust
-pub trait BufferedReader: Reader {
+pub trait BufferedRead: Read {
     fn fill_buf(&mut self) -> Result<&[u8], Self::Err>;
     fn consume(&mut self, amt: uint);
 
-    // This should perhaps move to an iterator like `lines` where the iterator
-    // yields vectors read.
-    fn read_until(&mut self, byte: u8) -> NonatomicResult<Vec<u8>, Vec<u8>, Self::Err> { ... }
+    fn read_until(&mut self, byte: u8) -> ReadUntil { ... }
 }
 
-pub trait BufferedReaderExt: BufferedReader {
+pub trait BufferedReadExt: BufferedRead {
     fn lines(&mut self) -> Lines<Self, Self::Err> { ... };
 }
 ```
 
-In addition, `read_line` is removed in favor of the `lines` iterator,
-and `read_char` is removed in favor of the `chars` iterator (now on
-`ReaderExt`). These iterators will be changed to yield
-`NonatomicResult` values.
+where `ReadUntil: Iterator<Result<Vec<u8>, Self::Err>>`.  In addition,
+`read_line` is removed in favor of the `lines` iterator, and
+`read_char` is removed in favor of the `chars` iterator (now on
+`ReadExt`). As with all nonatomic convenience methods, these methods
+do not offer a means of recovering from a transient errors; one should
+use the lower-level methods in such cases.
 
 The `BufferedReader`, `BufferedWriter` and `BufferedStream` types stay
 essentially as they are today, except that for streams and writers the
@@ -809,7 +784,7 @@ together with the remaining data:
 
 ```rust
 // If flushing fails, you get the unflushed data back
-fn into_inner(self) -> NonatomicResult<W, Vec<u8>, W::Err>;
+fn into_inner(self) -> Result<W, (Vec<u8>, W::Err)>;
 ```
 
 #### `MemReader` and `MemWriter`
@@ -864,6 +839,14 @@ The `IoErrorKind` type will become `std::io::ErrorKind`, and
 `Writer` semantics), which should decrease its footprint. The
 `OtherIoError` variant will become `Other` now that `enum`s are
 namespaced.
+
+The `EndOfFile` variant will be removed in favor of returning `Ok(0)`
+from `read` on end of file. This approach clarifies the meaning of the
+return value of `read`, matches Posix APIs, and makes it easier to use
+`try!` in the case that a "real" error should be bubbled out. (The
+main downside is that higher-level operations that might use
+`Result<T, IoError>` with some `T != usize` may need to wrap `IoError`
+in a further enum if they wish to forward unexpected EOF.)
 
 #### Channel adapters
 [Channel adapters]: #channel-adapters
