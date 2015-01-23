@@ -18,6 +18,8 @@ x.foo().bar().baz();
 Luckily, as you may have guessed with the leading question, you can! Rust provides
 the ability to use this *method call syntax* via the `impl` keyword.
 
+## Method calls
+
 Here's how it works:
 
 ```{rust}
@@ -56,11 +58,56 @@ other parameter. Because we know it's a `Circle`, we can access the `radius`
 just like we would with any other struct. An import of π and some
 multiplications later, and we have our area.
 
+## Chaining method calls
+
+So, now we know how to call a method, such as `foo.bar()`. But what about our
+original example, `foo.bar().baz()`? This is called 'method chaining', and we
+can do it by returning `self`.
+
+```
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * (self.radius * self.radius)
+    }
+
+    fn grow(&self) -> Circle {
+        Circle { x: self.x, y: self.y, radius: (self.radius * 10.0) }
+    }
+}
+
+fn main() {
+    let c = Circle { x: 0.0, y: 0.0, radius: 2.0 };
+    println!("{}", c.area());
+
+    let d = c.grow().area();
+    println!("{}", d);
+}
+```
+
+Check the return type:
+
+```
+# struct Circle;
+# impl Circle {
+fn grow(&self) -> Circle {
+# Circle } }
+```
+
+We just say we're returning a `Circle`. With this, we can grow a new circle
+that's twice as big as the old one.
+
+## Static methods
+
 You can also define methods that do not take a `self` parameter. Here's a
 pattern that's very common in Rust code:
 
-```{rust}
-# #![allow(non_shorthand_field_patterns)]
+```
 struct Circle {
     x: f64,
     y: f64,
@@ -86,3 +133,66 @@ This *static method* builds a new `Circle` for us. Note that static methods
 are called with the `Struct::method()` syntax, rather than the `ref.method()`
 syntax.
 
+## Builder Pattern
+
+Let's say that we want our users to be able to create Circles, but we will
+allow them to only set the properties they care about. Otherwise, the `x`
+and `y` attributes will be `0.0`, and the `radius` will be `1.0`. Rust doesn't
+have method overloading, named arguments, or variable arguments. We employ
+the builder pattern instead. It looks like this:
+
+```
+struct Circle {
+    x: f64,
+    y: f64,
+    radius: f64,
+}
+
+impl Circle {
+    fn area(&self) -> f64 {
+        std::f64::consts::PI * (self.radius * self.radius)
+    }
+}
+
+struct CircleBuilder {
+    coordinate: f64,
+    radius: f64,
+}
+
+impl CircleBuilder {
+    fn new() -> CircleBuilder {
+        CircleBuilder { coordinate: 0.0, radius: 0.0, }
+    }
+
+    fn coordinate(&mut self, coordinate: f64) -> &mut CircleBuilder {
+	self.coordinate = coordinate;
+	self
+    }
+
+    fn radius(&mut self, radius: f64) -> &mut CircleBuilder {
+	self.radius = radius;
+	self
+    }
+
+    fn finalize(&self) -> Circle {
+        Circle { x: self.coordinate, y: self.coordinate, radius: self.radius }
+    }
+}
+
+fn main() {
+    let c = CircleBuilder::new()
+                .coordinate(10.0)
+                .radius(5.0)
+                .finalize();
+
+
+    println!("area: {}", c.area());
+}
+```
+
+What we've done here is make another struct, `CircleBuilder`. We've defined our
+builder methods on it. We've also defined our `area()` method on `Circle`. We
+also made one more method on `CircleBuilder`: `finalize()`. This method creates
+our final `Circle` from the builder. Now, we've used the type system to enforce
+our concerns: we can use the methods on `CircleBuilder` to constrain making
+`Circle`s in any way we choose.
