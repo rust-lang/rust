@@ -16,7 +16,7 @@ use sys::time::SteadyTime;
 use sys_common::condvar as sys;
 use sys_common::mutex as sys_mutex;
 use time::Duration;
-use sync::{mutex, MutexGuard};
+use sync::{mutex, MutexGuard, PoisonError};
 
 /// A Condition Variable
 ///
@@ -228,7 +228,7 @@ impl StaticCondvar {
             mutex::guard_poison(&guard).get()
         };
         if poisoned {
-            Err(poison::new_poison_error(guard))
+            Err(PoisonError::new(guard))
         } else {
             Ok(guard)
         }
@@ -249,7 +249,7 @@ impl StaticCondvar {
             (mutex::guard_poison(&guard).get(), success)
         };
         if poisoned {
-            Err(poison::new_poison_error((guard, success)))
+            Err(PoisonError::new((guard, success)))
         } else {
             Ok((guard, success))
         }
@@ -276,7 +276,7 @@ impl StaticCondvar {
         while !f(guard_result
                     .as_mut()
                     .map(|g| &mut **g)
-                    .map_err(|e| poison::new_poison_error(&mut **e.get_mut()))) {
+                    .map_err(|e| PoisonError::new(&mut **e.get_mut()))) {
             let now = SteadyTime::now();
             let consumed = &now - &start;
             let guard = guard_result.unwrap_or_else(|e| e.into_inner());
@@ -284,7 +284,7 @@ impl StaticCondvar {
                 Ok((new_guard, no_timeout)) => (Ok(new_guard), no_timeout),
                 Err(err) => {
                     let (new_guard, no_timeout) = err.into_inner();
-                    (Err(poison::new_poison_error(new_guard)), no_timeout)
+                    (Err(PoisonError::new(new_guard)), no_timeout)
                 }
             };
             guard_result = new_guard_result;
@@ -292,7 +292,7 @@ impl StaticCondvar {
                 let result = f(guard_result
                                     .as_mut()
                                     .map(|g| &mut **g)
-                                    .map_err(|e| poison::new_poison_error(&mut **e.get_mut())));
+                                    .map_err(|e| PoisonError::new(&mut **e.get_mut())));
                 return poison::map_result(guard_result, |g| (g, result));
             }
         }
