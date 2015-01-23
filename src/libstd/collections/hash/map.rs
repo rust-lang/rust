@@ -1731,7 +1731,6 @@ mod test_map {
     }
 
     #[test]
-    #[ignore]  // FIXME(japaric)
     fn test_move_iter_drops() {
         DROP_VECTOR.with(|v| {
             *v.borrow_mut() = repeat(0).take(200).collect();
@@ -1773,7 +1772,7 @@ mod test_map {
                 }
             });
 
-            for _ in half {}
+            for _ in half.by_ref() {}
 
             DROP_VECTOR.with(|v| {
                 let nk = (0u..100).filter(|&i| {

@@ -48,7 +48,6 @@ mod test {
     }) }
 
     #[test]
-    #[ignore]  // FIXME(japaric)
     fn demangle() {
         t!("test", "test");
         t!("_ZN4testE", "test");
@@ -57,7 +56,6 @@ mod test {
     }
 
     #[test]
-    #[ignore]  // FIXME(japaric)
     fn demangle_dollars() {
         t!("_ZN4$UP$E", "Box");
         t!("_ZN8$UP$testE", "Boxtest");
@@ -66,14 +64,12 @@ mod test {
     }
 
     #[test]
-    #[ignore]  // FIXME(japaric)
     fn demangle_many_dollars() {
         t!("_ZN14test$u{20}test4foobE", "test test::foob");
         t!("_ZN12test$UP$test4foobE", "testBoxtest::foob");
     }
 
     #[test]
-    #[ignore]  // FIXME(japaric)
     fn demangle_windows() {
         t!("ZN4testE", "test");
         t!("ZN14test$u{20}test4foobE", "test test::foob");
