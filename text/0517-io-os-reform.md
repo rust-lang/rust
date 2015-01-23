@@ -43,7 +43,10 @@ follow-up PRs against this RFC.
             * [Platform-specific opt-in]
         * [Proposed organization]
     * [Revising `Reader` and `Writer`] (stub)
-    * [String handling] (stub)
+    * [String handling]
+        * [Key observations]
+        * [The design: `os_str`]
+        * [The future]
     * [Deadlines] (stub)
     * [Splitting streams and cancellation] (stub)
     * [Modules]
@@ -452,7 +455,224 @@ counts, arguments to `main`, and so on).
 ## String handling
 [String handling]: #string-handling
 
-> To be added in a follow-up PR.
+The fundamental problem with Rust's full embrace of UTF-8 strings is that not
+all strings taken or returned by system APIs are Unicode, let alone UTF-8
+encoded.
+
+In the past, `std` has assumed that all strings are *either* in some form of
+Unicode (Windows), *or* are simply `u8` sequences (Unix). Unfortunately, this is
+wrong, and the situation is more subtle:
+
+* Unix platforms do indeed work with arbitrary `u8` sequences (without interior
+  nulls) and today's platforms usually interpret them as UTF-8 when displayed.
+
+* Windows, however, works with *arbitrary `u16` sequences* that are roughly
+  interpreted at UTF-16, but may not actually be valid UTF-16 -- an "encoding"
+  often called UCS-2; see http://justsolve.archiveteam.org/wiki/UCS-2 for a bit
+  more detail.
+
+What this means is that all of Rust's platforms go beyond Unicode, but they do
+so in different and incompatible ways.
+
+The current solution of providing both `str` and `[u8]` versions of
+APIs is therefore problematic for multiple reasons. For one, **the
+`[u8]` versions are not actually cross-platform** -- even today, they
+panic on Windows when given non-UTF-8 data, a platform-specific
+behavior. But they are also incomplete, because on Windows you should
+be able to work directly with UCS-2 data.
+
+### Key observations
+[Key observations]: #key-observations
+
+Fortunately, there is a solution that fits well with Rust's UTF-8 strings *and*
+offers the possibility of platform-specific APIs.
+
+**Observation 1**: it is possible to re-encode UCS-2 data in a way that is also
+  compatible with UTF-8. This is the
+  [WTF-8 encoding format](http://simonsapin.github.io/wtf-8/) proposed by Simon
+  Sapin. This encoding has some remarkable properties:
+
+* Valid UTF-8 data is valid WTF-8 data. When decoded to UCS-2, the result is
+  exactly what would be produced by going straight from UTF-8 to UTF-16. In
+  other words, making up some methods:
+
+  ```rust
+  my_ut8_data.to_wtf8().to_ucs2().as_u16_slice() == my_utf8_data.to_utf16().as_u16_slice()
+  ```
+
+* Valid UTF-16 data re-encoded as WTF-8 produces the corresponding UTF-8 data:
+
+  ```rust
+  my_utf16_data.to_wtf8().as_bytes() == my_utf16_data.to_utf8().as_bytes()
+  ```
+
+These two properties mean that, when working with Unicode data, the WTF-8
+encoding is highly compatible with both UTF-8 *and* UTF-16. In particular, the
+conversion from a Rust string to a WTF-8 string is a no-op, and the conversion
+in the other direction is just a validation.
+
+**Observation 2**: all platforms can *consume* Unicode data (suitably
+  re-encoded), and it's also possible to validate the data they produce as
+  Unicode and extract it.
+
+**Observation 3**: the non-Unicode spaces on various platforms are deeply
+  incompatible: there is no standard way to port non-Unicode data from one to
+  another. Therefore, the only cross-platform APIs are those that work entirely
+  with Unicode.
+
+### The design: `os_str`
+[The design: `os_str`]: #the-design-os_str
+
+The observations above lead to a somewhat radical new treatment of strings,
+first proposed in the
+[Path Reform RFC](https://github.com/rust-lang/rfcs/pull/474). This RFC proposes
+to introduce new string and string slice types that (opaquely) represent
+*platform-sensitive strings*, housed in the `std::os_str` module.
+
+The `OsString` type is analogous to `String`, and `OsStr` is analogous to `str`.
+Their backing implementation is platform-dependent, but they offer a
+cross-platform API:
+
+```rust
+pub mod os_str {
+    /// Owned OS strings
+    struct OsString {
+        inner: imp::Buf
+    }
+    /// Slices into OS strings
+    struct OsStr {
+        inner: imp::Slice
+    }
+
+    // Platform-specific implementation details:
+    #[cfg(unix)]
+    mod imp {
+        type Buf = Vec<u8>;
+        type Slice = [u8;
+        ...
+    }
+
+    #[cfg(windows)]
+    mod imp {
+        type Buf = Wtf8Buf; // See https://github.com/SimonSapin/rust-wtf8
+        type Slice = Wtf8;
+        ...
+    }
+
+    impl OsString {
+        pub fn from_string(String) -> OsString;
+        pub fn from_str(&str) -> OsString;
+        pub fn as_slice(&self) -> &OsStr;
+        pub fn into_string(Self) -> Result<String, OsString>;
+        pub fn into_string_lossy(Self) -> String;
+
+        // and ultimately other functionality typically found on vectors,
+        // but CRUCIALLY NOT as_bytes
+    }
+
+    impl Deref<OsStr> for OsString { ... }
+
+    impl OsStr {
+        pub fn from_str(value: &str) -> &OsStr;
+        pub fn as_str(&self) -> Option<&str>;
+        pub fn to_string_lossy(&self) -> CowString;
+
+        // and ultimately other functionality typically found on slices,
+        // but CRUCIALLY NOT as_bytes
+    }
+
+    trait IntoOsString {
+        fn into_os_str_buf(self) -> OsString;
+    }
+
+    impl IntoOsString for OsString { ... }
+    impl<'a> IntoOsString for &'a OsStr { ... }
+
+    ...
+}
+```
+
+These APIs make OS strings appear roughly as opaque vectors (you
+cannot see the byte representation directly), and can always be
+produced starting from Unicode data. They make it possible to collapse
+functions like `getenv` and `getenv_as_bytes` into a single function
+that produces an OS string, allowing the client to decide how (or
+whether) to extract Unicode data. It will be possible to do things
+like concatenate OS strings without ever going through Unicode.
+
+It will also likely be possible to do things like search for Unicode
+substrings. The exact details of the API are left open and are likely
+to grow over time.
+
+In addition to APIs like the above, there will also be
+platform-specific ways of viewing or constructing OS strings that
+reveals more about the space of possible values:
+
+```rust
+pub mod os {
+    #[cfg(unix)]
+    pub mod unix {
+        trait OsStringExt {
+            fn from_vec(Vec<u8>) -> Self;
+            fn into_vec(Self) -> Vec<u8>;
+        }
+
+        impl OsStringExt for os_str::OsString { ... }
+
+        trait OsStrExt {
+            fn as_byte_slice(&self) -> &[u8];
+            fn from_byte_slice(&[u8]) -> &Self;
+        }
+
+        impl OsStrExt for os_str::OsStr { ... }
+
+        ...
+    }
+
+    #[cfg(windows)]
+    pub mod windows{
+        // The following extension traits provide a UCS-2 view of OS strings
+
+        trait OsStringExt {
+            fn from_wide_slice(&[u16]) -> Self;
+        }
+
+        impl OsStringExt for os_str::OsString { ... }
+
+        trait OsStrExt {
+            fn to_wide_vec(&self) -> Vec<u16>;
+        }
+
+        impl OsStrExt for os_str::OsStr { ... }
+
+        ...
+    }
+
+    ...
+}
+```
+
+By placing these APIs under `os`, using them requires a clear *opt in*
+to platform-specific functionality.
+
+### The future
+[The future]: #the-future
+
+Introducing an additional string type is a bit daunting, since many
+existing APIs take and consume only standard Rust strings. Today's
+solution demands that strings coming from the OS be assumed or turned
+into Unicode, and the proposed API continues to allow that (with more
+explicit and finer-grained control).
+
+In the long run, however, robust applications are likely to work
+opaquely with OS strings far beyond the boundary to the system to
+avoid data loss and ensure maximal compatibility. If this situation
+becomes common, it should be possible to introduce an abstraction over
+various string types and generalize most functions that work with
+`String`/`str` to instead work generically. This RFC does *not*
+propose taking any such steps now -- but it's important that we *can*
+do so later if Rust's standard strings turn out to not be sufficient
+and OS strings become commonplace.
 
 ## Deadlines
 [Deadlines]: #deadlines
@@ -547,4 +767,53 @@ principles or visions) are outside the scope of this RFC.
 # Unresolved questions
 [Unresolved questions]: #unresolved-questions
 
-> To be expanded in a follow-up PR.
+> To be expanded in follow-up PRs.
+
+## Wide string representation
+
+(Text from @SimonSapin)
+
+Rather than WTF-8, `OsStr` and `OsString` on Windows could use
+potentially-ill-formed UTF-16 (a.k.a. "wide" strings), with a
+different cost trade off.
+
+Upside:
+* No conversion between `OsStr` / `OsString` and OS calls.
+
+Downsides:
+* More expensive conversions between `OsStr` / `OsString` and `str` / `String`.
+* These conversions have inconsistent performance characteristics between platforms. (Need to allocate on Windows, but not on Unix.)
+* Some of them return `Cow`, which has some ergonomic hit.
+
+The API (only parts that differ) could look like:
+
+```rust
+pub mod os_str {
+    #[cfg(windows)]
+    mod imp {
+        type Buf = Vec<u16>;
+        type Slice = [u16];
+        ...
+    }
+
+    impl OsStr {
+        pub fn from_str(&str) -> Cow<OsString, OsStr>;
+        pub fn to_string(&self) -> Option<CowString>;
+        pub fn to_string_lossy(&self) -> CowString;
+    }
+
+    #[cfg(windows)]
+    pub mod windows{
+        trait OsStringExt {
+            fn from_wide_slice(&[u16]) -> Self;
+            fn from_wide_vec(Vec<u16>) -> Self;
+            fn into_wide_vec(self) -> Vec<u16>;
+        }
+
+        trait OsStrExt {
+            fn from_wide_slice(&[u16]) -> Self;
+            fn as_wide_slice(&self) -> &[u16];
+        }
+    }
+}
+```
