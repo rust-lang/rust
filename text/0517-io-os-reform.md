@@ -51,6 +51,8 @@ follow-up PRs against this RFC.
     * [Modules]
         * [core::io]
             * [Adapters]
+            * [Free functions]
+            * [Void]
             * [Seeking]
             * [Buffering]
             * [Cursor]
@@ -654,7 +656,10 @@ trait ReadExt: Read {
     // ... eliding the methods already described above
 
     // Reify a borrowed reader as owned
-    fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
+    fn by_ref(&mut self) -> ByRef<Self> { ... }
+
+    // Map all errors to another type via `FromError`
+    fn map_err<E: FromError<Self::Err>>(self) -> MapErr<Self, E> { ... }
 
     // Read everything from `self`, then read from `next`
     fn chain<R: Read>(self, next: R) -> Chain<Self, R> { ... }
@@ -672,6 +677,9 @@ trait WriteExt: Write {
 
     // Reify a borrowed writer as owned
     fn by_ref<'a>(&'a mut self) -> ByRef<'a, Self> { ... }
+
+    // Map all errors to another type via `FromError`
+    fn map_err<E: FromError<Self::Err>>(self) -> MapErr<Self, E> { ... }
 
     // Whenever bytes are written to `self`, write them to `other` as well
     #[unstable] // uncertain semantics of errors "halfway through the operation"
@@ -730,6 +738,42 @@ pub fn copy<E, R, W>(r: &mut R, w: &mut W) -> Result<(), E> where
     R: Read<Err = E>,
     W: Write<Err = E>
 ```
+
+Each of the `Empty`, `Repeat`, and `Sink` types will use the [`Void`][Void]
+associated error type.
+
+#### Void
+[Void]: #void
+
+A new concrete error type will be added in the standard library. A new module
+`std::void` will be introduced with the following contents:
+
+```rust
+pub enum Void {}
+
+impl<E: Error> FromError<Void> for E {
+    fn from_error(v: Void) -> E {
+        match v {}
+    }
+}
+```
+
+Applications for an uninhabited enum have come up from time-to-time, and some of
+the core I/O adapters represent a fairly concrete use case motivating its
+existence. By using an associated `Err` type of `Void`, each I/O object is
+indicating that it *can never fail*. This allows the types themselves to be more
+optimized in the future as well as enabling interoperation with many other error
+types via the `map_err` adaptor.
+
+Some possible future optimizations include:
+
+* `Result<T, Void>` could be represented in memory exactly as `T` (no
+  discriminant).
+* The `unused_must_use` lint could understand that `Result<T, Void>` does not
+  need to be warned about.
+
+This RFC does not propose implementing these modifications at this time,
+however.
 
 #### Seeking
 [Seeking]: #seeking
