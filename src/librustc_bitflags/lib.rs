@@ -14,7 +14,7 @@
 #![staged_api]
 #![crate_type = "rlib"]
 #![no_std]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 
 //! A typesafe bitmask flag generator.
 

@@ -12,7 +12,7 @@
 
 // aux-build:stability_cfg2.rs
 
-#![feature(unnamed_feature)]
+#![feature(test_feature)]
 #![deny(non_snake_case)] // To trigger a hard error
 
 // Shouldn't generate a warning about unstable features

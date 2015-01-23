@@ -46,7 +46,7 @@
 //! ```
 
 #![allow(dead_code)]
-#![unstable(feature = "unnamed_feature",
+#![unstable(feature = "std_misc",
             reason = "This implementation, while likely sufficient, is unsafe and \
                       likely to be error prone. At some point in the future this \
                       module will likely be replaced, and it is currently \

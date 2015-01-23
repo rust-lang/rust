@@ -12,7 +12,8 @@
 
 #![allow(dead_code)]
 #![deny(non_snake_case)]
-#![feature(unnamed_feature)]
+#![feature(path)]
+#![feature(io)]
 
 use std::io::File;
 use std::io::IoError;

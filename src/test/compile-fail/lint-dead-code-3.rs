@@ -11,7 +11,7 @@
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
 #![deny(dead_code)]
-#![feature(unnamed_feature)]
+#![feature(libc)]
 
 #![crate_type="lib"]
 

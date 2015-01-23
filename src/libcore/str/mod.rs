@@ -108,7 +108,7 @@ macro_rules! delegate_iter {
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
 // FIXME(#17307): there should be an `E` associated type for a `Result` return
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "will return a Result once associated types are working")]
 pub trait FromStr {
     /// Parses a string `s` to return an optional value of this type. If the
@@ -144,7 +144,7 @@ Section: Creating a string
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
 #[derive(Copy, Eq, PartialEq, Clone, Show)]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "error enumeration recently added and definitions may be refined")]
 pub enum Utf8Error {
     /// An invalid byte was detected at the byte offset given.
@@ -208,7 +208,7 @@ pub unsafe fn from_c_str(s: *const i8) -> &'static str {
 }
 
 /// Something that can be used to compare against a character
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "definition may change as pattern-related methods are stabilized")]
 pub trait CharEq {
     /// Determine if the splitter should split at the given character
@@ -861,7 +861,7 @@ impl Searcher {
 /// An iterator over the start and end indices of the matches of a
 /// substring within a larger string
 #[derive(Clone)]
-#[unstable(feature = "unnamed_feature", reason = "type may be removed")]
+#[unstable(feature = "core", reason = "type may be removed")]
 pub struct MatchIndices<'a> {
     // constants
     haystack: &'a str,
@@ -872,7 +872,7 @@ pub struct MatchIndices<'a> {
 /// An iterator over the substrings of a string separated by a given
 /// search string
 #[derive(Clone)]
-#[unstable(feature = "unnamed_feature", reason = "type may be removed")]
+#[unstable(feature = "core", reason = "type may be removed")]
 pub struct SplitStr<'a> {
     it: MatchIndices<'a>,
     last_end: uint,
@@ -1056,7 +1056,7 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 /// the next `char` in a string.  This can be used as a data structure
 /// for iterating over the UTF-8 bytes of a string.
 #[derive(Copy)]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "naming is uncertain with container conventions")]
 pub struct CharRange {
     /// Current `char`
@@ -1151,7 +1151,7 @@ mod traits {
 }
 
 /// Any string that can be represented as a slice
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "Instead of taking this bound generically, this trait will be \
                      replaced with one of slicing syntax, deref coercions, or \
                      a more generic conversion trait")]
@@ -1178,7 +1178,7 @@ delegate_iter!{pattern &'a str : Split<'a, P>}
 
 /// Return type of `StrExt::split_terminator`
 #[derive(Clone)]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "might get removed in favour of a constructor method on Split")]
 pub struct SplitTerminator<'a, P>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}

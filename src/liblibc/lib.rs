@@ -11,10 +11,10 @@
 #![crate_name = "libc"]
 #![crate_type = "rlib"]
 #![cfg_attr(not(feature = "cargo-build"),
-            unstable(feature = "unnamed_feature"))]
+            unstable(feature = "libc"))]
 #![cfg_attr(not(feature = "cargo-build"), feature(staged_api))]
 #![cfg_attr(not(feature = "cargo-build"), staged_api)]
-#![cfg_attr(not(feature = "cargo-build"), feature(unnamed_feature))]
+#![cfg_attr(not(feature = "cargo-build"), feature(core))]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![no_std]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -75,7 +75,6 @@
 //! one from Berkeley after the lawsuits died down and the CSRG dissolved.
 
 #![allow(bad_style, raw_pointer_derive)]
-#![cfg_attr(not(feature = "cargo-build"), feature(unnamed_feature))]
 #[cfg(feature = "cargo-build")] extern crate "std" as core;
 #[cfg(not(feature = "cargo-build"))] extern crate core;
 

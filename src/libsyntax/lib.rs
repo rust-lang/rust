@@ -15,7 +15,7 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "syntax"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
@@ -28,8 +28,17 @@
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(quote, unsafe_destructor)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(hash)]
+#![feature(io)]
+#![feature(libc)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(unicode)]
 
 extern crate arena;
 extern crate fmt_macros;

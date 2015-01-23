@@ -102,7 +102,7 @@ impl<T: Ord> BTreeSet<T> {
     /// Makes a new BTreeSet with the given B.
     ///
     /// B cannot be less than 2.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "collections",
                reason = "probably want this to be on the type, eventually")]
     pub fn with_b(b: uint) -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::with_b(b) }
@@ -173,7 +173,7 @@ impl<T: Ord> BTreeSet<T> {
     /// }
     /// assert_eq!(Some(&5u), set.range(Included(&4), Unbounded).next());
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn range<'a>(&'a self, min: Bound<&T>, max: Bound<&T>) -> Range<'a, T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }

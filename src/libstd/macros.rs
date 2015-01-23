@@ -14,7 +14,7 @@
 //! library. Each macro is available for use when linking against the standard
 //! library.
 
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "std_misc")]
 
 /// The entry point for panic of Rust tasks.
 ///
@@ -148,7 +148,7 @@ macro_rules! try {
 ///
 /// For more information about select, see the `std::sync::mpsc::Select` structure.
 #[macro_export]
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "std_misc")]
 macro_rules! select {
     (
         $($name:pat = $rx:ident.$meth:ident() => $code:expr),+

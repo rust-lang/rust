@@ -22,7 +22,7 @@
 //! build speedups.
 
 #![crate_name = "rustc_back"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
@@ -32,8 +32,14 @@
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![allow(unknown_features)]
 #![feature(slicing_syntax, box_syntax)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(hash)]
+#![feature(io)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
 
 extern crate syntax;
 extern crate serialize;

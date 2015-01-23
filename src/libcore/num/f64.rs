@@ -26,11 +26,11 @@ use option::Option;
 // constants are implemented in favour of referencing the respective
 // members of `Bounded` and `Float`.
 
-#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const RADIX: uint = 2u;
 
 pub const MANTISSA_DIGITS: uint = 53u;
-#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const DIGITS: uint = 15u;
 
 #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -46,14 +46,14 @@ pub const MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
 #[stable(feature = "grandfathered", since = "1.0.0")]
 pub const MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
-#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MIN_EXP: int = -1021;
-#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MAX_EXP: int = 1024;
 
-#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MIN_10_EXP: int = -307;
-#[unstable(feature = "unnamed_feature", reason = "pending integer conventions")]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MAX_10_EXP: int = 308;
 
 #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -64,7 +64,7 @@ pub const INFINITY: f64 = 1.0_f64/0.0_f64;
 pub const NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
 /// Various useful constants.
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "naming scheme needs to be revisited")]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
@@ -125,7 +125,7 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[unstable(feature = "unnamed_feature", reason = "trait is unstable")]
+#[unstable(feature = "core", reason = "trait is unstable")]
 impl Float for f64 {
     #[inline]
     fn nan() -> f64 { NAN }

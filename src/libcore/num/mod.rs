@@ -50,25 +50,25 @@ pub trait Int
 {
     /// Returns the `0` value of this integer type.
     // FIXME (#5527): Should be an associated constant
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "unsure about its place in the world")]
     fn zero() -> Self;
 
     /// Returns the `1` value of this integer type.
     // FIXME (#5527): Should be an associated constant
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "unsure about its place in the world")]
     fn one() -> Self;
 
     /// Returns the smallest value that can be represented by this integer type.
     // FIXME (#5527): Should be and associated constant
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "unsure about its place in the world")]
     fn min_value() -> Self;
 
     /// Returns the largest value that can be represented by this integer type.
     // FIXME (#5527): Should be and associated constant
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "unsure about its place in the world")]
     fn max_value() -> Self;
 
@@ -83,7 +83,7 @@ pub trait Int
     ///
     /// assert_eq!(n.count_ones(), 3);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn count_ones(self) -> uint;
 
@@ -98,7 +98,7 @@ pub trait Int
     ///
     /// assert_eq!(n.count_zeros(), 5);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     #[inline]
     fn count_zeros(self) -> uint {
@@ -117,7 +117,7 @@ pub trait Int
     ///
     /// assert_eq!(n.leading_zeros(), 10);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn leading_zeros(self) -> uint;
 
@@ -133,7 +133,7 @@ pub trait Int
     ///
     /// assert_eq!(n.trailing_zeros(), 3);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn trailing_zeros(self) -> uint;
 
@@ -150,7 +150,7 @@ pub trait Int
     ///
     /// assert_eq!(n.rotate_left(12), m);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn rotate_left(self, n: uint) -> Self;
 
@@ -167,7 +167,7 @@ pub trait Int
     ///
     /// assert_eq!(n.rotate_right(12), m);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     fn rotate_right(self, n: uint) -> Self;
 
@@ -368,7 +368,7 @@ pub trait Int
     ///
     /// assert_eq!(2i.pow(4), 16);
     /// ```
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "pending integer conventions")]
     #[inline]
     fn pow(self, mut exp: uint) -> Self {
@@ -632,7 +632,7 @@ pub trait SignedInt
 {
     /// Computes the absolute value of `self`. `Int::min_value()` will be
     /// returned if the number is `Int::min_value()`.
-    #[unstable(feature = "unnamed_feature", reason = "overflow in debug builds?")]
+    #[unstable(feature = "core", reason = "overflow in debug builds?")]
     fn abs(self) -> Self;
 
     /// Returns a number representing sign of `self`.
@@ -737,7 +737,7 @@ impl UnsignedInt for u32 {}
 impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.
-#[unstable(feature = "unnamed_feature", reason = "trait is likely to be removed")]
+#[unstable(feature = "core", reason = "trait is likely to be removed")]
 pub trait ToPrimitive {
     /// Converts the value of `self` to an `int`.
     #[inline]
@@ -1002,7 +1002,7 @@ impl_to_primitive_float! { f32 }
 impl_to_primitive_float! { f64 }
 
 /// A generic trait for converting a number to a value.
-#[unstable(feature = "unnamed_feature", reason = "trait is likely to be removed")]
+#[unstable(feature = "core", reason = "trait is likely to be removed")]
 pub trait FromPrimitive : ::marker::Sized {
     /// Convert an `int` to return an optional value of this type. If the
     /// value cannot be represented by this value, the `None` is returned.
@@ -1084,73 +1084,73 @@ pub trait FromPrimitive : ::marker::Sized {
 }
 
 /// A utility function that just calls `FromPrimitive::from_int`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_int<A: FromPrimitive>(n: int) -> Option<A> {
     FromPrimitive::from_int(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i8`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_i8<A: FromPrimitive>(n: i8) -> Option<A> {
     FromPrimitive::from_i8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i16`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_i16<A: FromPrimitive>(n: i16) -> Option<A> {
     FromPrimitive::from_i16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i32`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_i32<A: FromPrimitive>(n: i32) -> Option<A> {
     FromPrimitive::from_i32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_i64`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_i64<A: FromPrimitive>(n: i64) -> Option<A> {
     FromPrimitive::from_i64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_uint`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_uint<A: FromPrimitive>(n: uint) -> Option<A> {
     FromPrimitive::from_uint(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u8`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_u8<A: FromPrimitive>(n: u8) -> Option<A> {
     FromPrimitive::from_u8(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u16`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_u16<A: FromPrimitive>(n: u16) -> Option<A> {
     FromPrimitive::from_u16(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u32`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_u32<A: FromPrimitive>(n: u32) -> Option<A> {
     FromPrimitive::from_u32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_u64`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_u64<A: FromPrimitive>(n: u64) -> Option<A> {
     FromPrimitive::from_u64(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f32`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_f32<A: FromPrimitive>(n: f32) -> Option<A> {
     FromPrimitive::from_f32(n)
 }
 
 /// A utility function that just calls `FromPrimitive::from_f64`.
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn from_f64<A: FromPrimitive>(n: f64) -> Option<A> {
     FromPrimitive::from_f64(n)
 }
@@ -1201,13 +1201,13 @@ impl_from_primitive! { f64, to_f64 }
 /// ```
 ///
 #[inline]
-#[unstable(feature = "unnamed_feature", reason = "likely to be removed")]
+#[unstable(feature = "core", reason = "likely to be removed")]
 pub fn cast<T: NumCast,U: NumCast>(n: T) -> Option<U> {
     NumCast::from(n)
 }
 
 /// An interface for casting between machine scalars.
-#[unstable(feature = "unnamed_feature", reason = "trait is likely to be removed")]
+#[unstable(feature = "core", reason = "trait is likely to be removed")]
 pub trait NumCast: ToPrimitive {
     /// Creates a number from another value that can be converted into a primitive via the
     /// `ToPrimitive` trait.
@@ -1242,7 +1242,7 @@ impl_num_cast! { f64,   to_f64 }
 
 /// Used for representing the classification of floating point numbers
 #[derive(Copy, PartialEq, Show)]
-#[unstable(feature = "unnamed_feature", reason = "may be renamed")]
+#[unstable(feature = "core", reason = "may be renamed")]
 pub enum FpCategory {
     /// "Not a Number", often obtained by dividing by zero
     Nan,
@@ -1262,7 +1262,7 @@ pub enum FpCategory {
 //
 // FIXME(#8888): Several of these functions have a parameter named
 //               `unused_self`. Removing it requires #8888 to be fixed.
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "distribution of methods between core/std is unclear")]
 pub trait Float
     : Copy + Clone
@@ -1418,20 +1418,20 @@ pub trait Float
 }
 
 /// A generic trait for converting a string with a radix (base) to a value
-#[unstable(feature = "unnamed_feature", reason = "might need to return Result")]
+#[unstable(feature = "core", reason = "might need to return Result")]
 pub trait FromStrRadix {
     fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
 }
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
-#[unstable(feature = "unnamed_feature", reason = "might need to return Result")]
+#[unstable(feature = "core", reason = "might need to return Result")]
 pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
     FromStrRadix::from_str_radix(str, radix)
 }
 
 macro_rules! from_str_radix_float_impl {
     ($T:ty) => {
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "might need to return Result")]
         impl FromStr for $T {
             /// Convert a string in base 10 to a float.
@@ -1465,7 +1465,7 @@ macro_rules! from_str_radix_float_impl {
             }
         }
 
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "might need to return Result")]
         impl FromStrRadix for $T {
             /// Convert a string in a given base to a float.
@@ -1630,7 +1630,7 @@ from_str_radix_float_impl! { f64 }
 
 macro_rules! from_str_radix_int_impl {
     ($T:ty) => {
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "might need to return Result")]
         impl FromStr for $T {
             #[inline]
@@ -1639,7 +1639,7 @@ macro_rules! from_str_radix_int_impl {
             }
         }
 
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "might need to return Result")]
         impl FromStrRadix for $T {
             fn from_str_radix(src: &str, radix: uint) -> Option<$T> {

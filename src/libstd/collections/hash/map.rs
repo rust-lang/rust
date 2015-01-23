@@ -539,7 +539,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// map.insert(1i, 2u);
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
     pub fn with_hash_state(hash_state: S) -> HashMap<K, V, S> {
         HashMap {
             hash_state:    hash_state,
@@ -567,7 +567,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// map.insert(1i, 2u);
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature", reason = "hasher stuff is unclear")]
+    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
     pub fn with_capacity_and_hash_state(capacity: uint, hash_state: S)
                                         -> HashMap<K, V, S> {
         let resize_policy = DefaultResizePolicy::new();
@@ -928,7 +928,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "precise API still being fleshed out")]
     pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V>
     {
@@ -990,7 +990,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert!(a.is_empty());
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
@@ -1339,7 +1339,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
 }
 
 /// HashMap drain iterator
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "matches collection reform specification, waiting for dust to settle")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     inner: iter::Map<
@@ -1351,14 +1351,14 @@ pub struct Drain<'a, K: 'a, V: 'a> {
 }
 
 /// A view into a single occupied location in a HashMap
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "precise API still being fleshed out")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
 /// A view into a single empty location in a HashMap
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "precise API still being fleshed out")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
@@ -1367,7 +1367,7 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 }
 
 /// A view into a single location in a map, which may be vacant or occupied
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "precise API still being fleshed out")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied Entry
@@ -1457,7 +1457,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K, V> Entry<'a, K, V> {
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
@@ -1469,7 +1469,7 @@ impl<'a, K, V> Entry<'a, K, V> {
     }
 }
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the value in the entry
@@ -1501,7 +1501,7 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     }
 }
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
@@ -1554,14 +1554,14 @@ impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
 /// instances are unlikely to produce the same result for the same values.
 #[derive(Clone)]
 #[allow(missing_copy_implementations)]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 pub struct RandomState {
     k0: u64,
     k1: u64,
 }
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 impl RandomState {
     /// Construct a new `RandomState` that is initialized with random keys.
@@ -1572,7 +1572,7 @@ impl RandomState {
     }
 }
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 impl HashState for RandomState {
     type Hasher = Hasher;
@@ -1581,7 +1581,7 @@ impl HashState for RandomState {
     }
 }
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 impl Default for RandomState {
     #[inline]

@@ -24,7 +24,7 @@
 // build off of.
 
 #![crate_name = "test"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "test")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
@@ -35,8 +35,14 @@
 #![allow(unknown_features)]
 #![feature(asm, slicing_syntax)]
 #![feature(box_syntax)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
 
 extern crate getopts;
 extern crate regex;

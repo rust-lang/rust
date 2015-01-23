@@ -33,7 +33,7 @@ pub use core::num::{FpCategory};
 
 use option::Option;
 
-#[unstable(feature = "unnamed_feature", reason = "may be removed or relocated")]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub mod strconv;
 
 /// Mathematical operations on primitive floating point numbers.
@@ -52,27 +52,27 @@ pub trait Float
 {
     // inlined methods from `num::Float`
     /// Returns the NaN value.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn nan() -> Self;
     /// Returns the infinite value.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn infinity() -> Self;
     /// Returns the negative infinite value.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn neg_infinity() -> Self;
     /// Returns the `0` value.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn zero() -> Self;
     /// Returns -0.0.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn neg_zero() -> Self;
     /// Returns the `1` value.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn one() -> Self;
 
@@ -109,37 +109,37 @@ pub trait Float
     fn max_10_exp(unused_self: Option<Self>) -> int;
 
     /// Returns the smallest finite value that this type can represent.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn min_value() -> Self;
     /// Returns the smallest normalized positive number that this type can represent.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn min_pos_value(unused_self: Option<Self>) -> Self;
     /// Returns the largest finite value that this type can represent.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn max_value() -> Self;
 
     /// Returns true if this value is NaN and false otherwise.
-    #[unstable(feature = "unnamed_feature", reason = "position is undecided")]
+    #[unstable(feature = "std_misc", reason = "position is undecided")]
     fn is_nan(self) -> bool;
     /// Returns true if this value is positive infinity or negative infinity and
     /// false otherwise.
-    #[unstable(feature = "unnamed_feature", reason = "position is undecided")]
+    #[unstable(feature = "std_misc", reason = "position is undecided")]
     fn is_infinite(self) -> bool;
     /// Returns true if this number is neither infinite nor NaN.
-    #[unstable(feature = "unnamed_feature", reason = "position is undecided")]
+    #[unstable(feature = "std_misc", reason = "position is undecided")]
     fn is_finite(self) -> bool;
     /// Returns true if this number is neither zero, infinite, denormal, or NaN.
-    #[unstable(feature = "unnamed_feature", reason = "position is undecided")]
+    #[unstable(feature = "std_misc", reason = "position is undecided")]
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.
     #[stable(feature = "grandfathered", since = "1.0.0")]
     fn classify(self) -> FpCategory;
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
-    #[unstable(feature = "unnamed_feature", reason = "signature is undecided")]
+    #[unstable(feature = "std_misc", reason = "signature is undecided")]
     fn integer_decode(self) -> (u64, i16, i8);
 
     /// Return the largest integer less than or equal to a number.
@@ -182,11 +182,11 @@ pub trait Float
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
     /// error. This produces a more accurate result with better performance than
     /// a separate multiplication operation followed by an add.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn mul_add(self, a: Self, b: Self) -> Self;
     /// Take the reciprocal (inverse) of a number, `1/x`.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn recip(self) -> Self;
 
@@ -205,7 +205,7 @@ pub trait Float
     #[stable(feature = "grandfathered", since = "1.0.0")]
     fn sqrt(self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn rsqrt(self) -> Self;
 
@@ -229,15 +229,15 @@ pub trait Float
     fn log10(self) -> Self;
 
     /// Convert radians to degrees.
-    #[unstable(feature = "unnamed_feature", reason = "desirability is unclear")]
+    #[unstable(feature = "std_misc", reason = "desirability is unclear")]
     fn to_degrees(self) -> Self;
     /// Convert degrees to radians.
-    #[unstable(feature = "unnamed_feature", reason = "desirability is unclear")]
+    #[unstable(feature = "std_misc", reason = "desirability is unclear")]
     fn to_radians(self) -> Self;
 
     /// Constructs a floating point number created by multiplying `x` by 2
     /// raised to the power of `exp`.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "pending integer conventions")]
     fn ldexp(x: Self, exp: int) -> Self;
     /// Breaks the number into a normalized fraction and a base-2 exponent,
@@ -246,13 +246,13 @@ pub trait Float
     ///  * `self = x * pow(2, exp)`
     ///
     ///  * `0.5 <= abs(x) < 1.0`
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "pending integer conventions")]
     fn frexp(self) -> (Self, int);
 
     /// Returns the next representable floating-point value in the direction of
     /// `other`.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn next_after(self, other: Self) -> Self;
 
@@ -266,15 +266,15 @@ pub trait Float
     /// The positive difference of two numbers. Returns `0.0` if the number is
     /// less than or equal to `other`, otherwise the difference between`self`
     /// and `other` is returned.
-    #[unstable(feature = "unnamed_feature", reason = "may be renamed")]
+    #[unstable(feature = "std_misc", reason = "may be renamed")]
     fn abs_sub(self, other: Self) -> Self;
 
     /// Take the cubic root of a number.
-    #[unstable(feature = "unnamed_feature", reason = "may be renamed")]
+    #[unstable(feature = "std_misc", reason = "may be renamed")]
     fn cbrt(self) -> Self;
     /// Calculate the length of the hypotenuse of a right-angle triangle given
     /// legs of length `x` and `y`.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "std_misc",
                reason = "unsure about its place in the world")]
     fn hypot(self, other: Self) -> Self;
 
@@ -313,11 +313,11 @@ pub trait Float
 
     /// Returns the exponential of the number, minus 1, in a way that is
     /// accurate even if the number is close to zero.
-    #[unstable(feature = "unnamed_feature", reason = "may be renamed")]
+    #[unstable(feature = "std_misc", reason = "may be renamed")]
     fn exp_m1(self) -> Self;
     /// Returns the natural logarithm of the number plus 1 (`ln(1+n)`) more
     /// accurately than if the operations were performed separately.
-    #[unstable(feature = "unnamed_feature", reason = "may be renamed")]
+    #[unstable(feature = "std_misc", reason = "may be renamed")]
     fn ln_1p(self) -> Self;
 
     /// Hyperbolic sine function.

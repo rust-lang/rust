@@ -9,7 +9,8 @@
 // except according to those terms.
 
 #![allow(unknown_features)]
-#![feature(unnamed_feature)]
+#![cfg_attr(rustc, feature(rustc_private))]
+#![cfg_attr(rustdoc, feature(rustdoc))]
 
 #[cfg(rustdoc)]
 extern crate "rustdoc" as this;

@@ -108,7 +108,7 @@ pub trait Drop {
 // based on "op T" where T is expected to be `Copy`able
 macro_rules! forward_ref_unop {
     (impl $imp:ident, $method:ident for $t:ty) => {
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "recently added, waiting for dust to settle")]
         impl<'a> $imp for &'a $t {
             type Output = <$t as $imp>::Output;
@@ -125,7 +125,7 @@ macro_rules! forward_ref_unop {
 // based on "T op U" where T and U are expected to be `Copy`able
 macro_rules! forward_ref_binop {
     (impl $imp:ident, $method:ident for $t:ty, $u:ty) => {
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "recently added, waiting for dust to settle")]
         impl<'a> $imp<$u> for &'a $t {
             type Output = <$t as $imp<$u>>::Output;
@@ -136,7 +136,7 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "recently added, waiting for dust to settle")]
         impl<'a> $imp<&'a $u> for $t {
             type Output = <$t as $imp<$u>>::Output;
@@ -147,7 +147,7 @@ macro_rules! forward_ref_binop {
             }
         }
 
-        #[unstable(feature = "unnamed_feature",
+        #[unstable(feature = "core",
                    reason = "recently added, waiting for dust to settle")]
         impl<'a, 'b> $imp<&'a $u> for &'b $t {
             type Output = <$t as $imp<$u>>::Output;
@@ -974,10 +974,10 @@ pub trait IndexMut<Index: ?Sized> {
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="full_range"]
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 pub struct FullRange;
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl fmt::Show for FullRange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         fmt::Show::fmt("..", fmt)
@@ -987,7 +987,7 @@ impl fmt::Show for FullRange {
 /// A (half-open) range which is bounded at both ends.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range"]
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
@@ -995,7 +995,7 @@ pub struct Range<Idx> {
     pub end: Idx,
 }
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl<Idx: Clone + Step> Iterator for Range<Idx> {
     type Item = Idx;
 
@@ -1020,7 +1020,7 @@ impl<Idx: Clone + Step> Iterator for Range<Idx> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
     #[inline]
     fn next_back(&mut self) -> Option<Idx> {
@@ -1033,10 +1033,10 @@ impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl<Idx: Clone + Step> ExactSizeIterator for Range<Idx> {}
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..{:?}", self.start, self.end)
@@ -1046,13 +1046,13 @@ impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
 /// A range which is only bounded below.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_from"]
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
 }
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
     type Item = Idx;
 
@@ -1065,7 +1065,7 @@ impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
     }
 }
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..", self.start)
@@ -1075,13 +1075,13 @@ impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
 /// A range which is only bounded above.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_to"]
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
     pub end: Idx,
 }
 
-#[unstable(feature = "unnamed_feature", reason = "API still in development")]
+#[unstable(feature = "core", reason = "API still in development")]
 impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..{:?}", self.end)
@@ -1196,7 +1196,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 
 /// A version of the call operator that takes an immutable receiver.
 #[lang="fn"]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
 pub trait Fn<Args,Result> {
     /// This is called when the call operator is used.
@@ -1205,7 +1205,7 @@ pub trait Fn<Args,Result> {
 
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
 pub trait FnMut<Args,Result> {
     /// This is called when the call operator is used.
@@ -1214,7 +1214,7 @@ pub trait FnMut<Args,Result> {
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
 pub trait FnOnce<Args,Result> {
     /// This is called when the call operator is used.

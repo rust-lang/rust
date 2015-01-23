@@ -34,7 +34,7 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
     fn is_digit(self, radix: uint) -> bool;
 
@@ -49,7 +49,7 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix outside the range [0..36].
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
     fn to_digit(self, radix: uint) -> Option<uint>;
 
@@ -92,7 +92,7 @@ pub trait CharExt {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
 
@@ -101,7 +101,7 @@ pub trait CharExt {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
 
@@ -116,7 +116,7 @@ pub trait CharExt {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "mainly needed for compiler internals")]
     fn is_xid_start(self) -> bool;
 
@@ -126,7 +126,7 @@ pub trait CharExt {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "mainly needed for compiler internals")]
     fn is_xid_continue(self) -> bool;
 
@@ -177,7 +177,7 @@ pub trait CharExt {
     ///
     /// Returns the lowercase equivalent of the character, or the character
     /// itself if no conversion is possible.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending case transformation decisions")]
     fn to_lowercase(self) -> char;
 
@@ -201,7 +201,7 @@ pub trait CharExt {
     /// [`SpecialCasing`.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending case transformation decisions")]
     fn to_uppercase(self) -> char;
 
@@ -214,17 +214,17 @@ pub trait CharExt {
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// recommends that these characters be treated as 1 column (i.e.,
     /// `is_cjk` = `false`) if the context cannot be reliably determined.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
     fn width(self, is_cjk: bool) -> Option<uint>;
 }
 
 #[stable(feature = "grandfathered", since = "1.0.0")]
 impl CharExt for char {
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
     fn is_digit(self, radix: uint) -> bool { C::is_digit(self, radix) }
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
     fn to_digit(self, radix: uint) -> Option<uint> { C::to_digit(self, radix) }
     #[stable(feature = "grandfathered", since = "1.0.0")]
@@ -235,10 +235,10 @@ impl CharExt for char {
     fn len_utf8(self) -> uint { C::len_utf8(self) }
     #[stable(feature = "grandfathered", since = "1.0.0")]
     fn len_utf16(self) -> uint { C::len_utf16(self) }
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> { C::encode_utf8(self, dst) }
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> { C::encode_utf16(self, dst) }
 
@@ -251,11 +251,11 @@ impl CharExt for char {
         }
     }
 
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "mainly needed for compiler internals")]
     fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
 
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "mainly needed for compiler internals")]
     fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
@@ -303,15 +303,15 @@ impl CharExt for char {
         }
     }
 
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending case transformation decisions")]
     fn to_lowercase(self) -> char { conversions::to_lower(self) }
 
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "pending case transformation decisions")]
     fn to_uppercase(self) -> char { conversions::to_upper(self) }
 
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
     fn width(self, is_cjk: bool) -> Option<uint> { charwidth::width(self, is_cjk) }
 }

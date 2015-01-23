@@ -44,7 +44,7 @@ use core::ops::{Deref, DerefMut};
 /// }
 /// ```
 #[lang = "exchange_heap"]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "alloc",
            reason = "may be renamed; uncertain about custom allocator design")]
 pub static HEAP: () = ();
 
@@ -126,7 +126,7 @@ impl<S: hash::Hasher, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
 }
 
 /// Extension methods for an owning `Any` trait object.
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "alloc",
            reason = "this trait will likely disappear once compiler bugs blocking \
                      a direct impl on `Box<Any>` have been fixed ")]
 // FIXME(#18737): this should be a direct impl on `Box<Any>`. If you're

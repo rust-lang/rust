@@ -30,7 +30,7 @@
 //! })
 //! ```
 
-#![deprecated(feature = "unnamed_feature", since = "1.0.0",
+#![deprecated(feature = "core", since = "1.0.0",
               reason = "It is unclear if this module is more robust than implementing \
                         Drop on a custom type, and this module is being removed with no \
                         replacement. Use a custom Drop implementation to regain existing \

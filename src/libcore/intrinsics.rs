@@ -39,7 +39,7 @@
 //!   guaranteed to happen in order. This is the standard mode for working
 //!   with atomic types and is equivalent to Java's `volatile`.
 
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "core")]
 #![allow(missing_docs)]
 
 use marker::Sized;
@@ -303,7 +303,7 @@ extern "rust-intrinsic" {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
@@ -333,12 +333,12 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     ///
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub fn copy_memory<T>(dst: *mut T, src: *const T, count: uint);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "uncertain about naming and semantics")]
     pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
 

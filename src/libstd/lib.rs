@@ -114,7 +114,13 @@
 #![feature(optin_builtin_traits)]
 #![feature(int_uint)]
 #![feature(int_uint)]
-#![feature(unnamed_feature)]
+#![feature(core)]
+#![feature(libc)]
+#![feature(alloc)]
+#![feature(unicode)]
+#![feature(collections)]
+#![feature(rand)]
+#![feature(hash)]
 
 // Don't link to std. We are std.
 #![no_std]

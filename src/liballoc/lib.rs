@@ -57,7 +57,7 @@
 //! default global allocator. It is not compatible with the libc allocator API.
 
 #![crate_name = "alloc"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "alloc")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
@@ -70,8 +70,10 @@
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(core)]
+#![feature(hash)]
+#![feature(libc)]
 
 #[macro_use]
 extern crate core;

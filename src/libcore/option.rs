@@ -285,7 +285,7 @@ impl<T> Option<T> {
     /// assert_eq!(x, Some("Dirt"));
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "waiting for mut conventions")]
     pub fn as_mut_slice<'r>(&'r mut self) -> &'r mut [T] {
         match *self {
@@ -477,7 +477,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or(0i), Err(0i));
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub fn ok_or<E>(self, err: E) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),
@@ -498,7 +498,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.ok_or_else(|| 0i), Err(0i));
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature")]
+    #[unstable(feature = "core")]
     pub fn ok_or_else<E, F: FnOnce() -> E>(self, err: F) -> Result<T, E> {
         match self {
             Some(v) => Ok(v),
@@ -543,7 +543,7 @@ impl<T> Option<T> {
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "waiting for iterator conventions")]
     pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut { inner: Item { opt: self.as_mut() } }
@@ -704,7 +704,7 @@ impl<T> Option<T> {
 impl<'a, T: Clone, D: Deref<Target=T>> Option<D> {
     /// Maps an Option<D> to an Option<T> by dereffing and cloning the contents of the Option.
     /// Useful for converting an Option<&T> to an Option<T>.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "recently added as part of collections reform")]
     pub fn cloned(self) -> Option<T> {
         self.map(|t| t.deref().clone())
@@ -748,7 +748,7 @@ impl<T: Default> Option<T> {
 // Trait implementations
 /////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "waiting on the stability of the trait itself")]
 impl<T> AsSlice<T> for Option<T> {
     /// Convert from `Option<T>` to `&[T]` (without copying)

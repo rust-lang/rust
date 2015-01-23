@@ -99,13 +99,13 @@ use cmp::Ordering::{self, Less, Equal, Greater};
 
 // FIXME #19649: intrinsic docs don't render, so these have no docs :(
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 pub use intrinsics::copy_nonoverlapping_memory;
 
-#[unstable(feature = "unnamed_feature")]
+#[unstable(feature = "core")]
 pub use intrinsics::copy_memory;
 
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "uncertain about naming and semantics")]
 pub use intrinsics::set_memory;
 
@@ -146,7 +146,7 @@ pub fn null_mut<T>() -> *mut T { 0 as *mut T }
 /// Beyond accepting a raw pointer, this is unsafe because it will not drop the
 /// contents of `dst`, and may be used to create invalid instances of `T`.
 #[inline]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "may play a larger role in std::ptr future extensions")]
 pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
     set_memory(dst, 0, count);
@@ -215,7 +215,7 @@ pub unsafe fn read<T>(src: *const T) -> T {
 ///
 /// This is unsafe for the same reasons that `read` is unsafe.
 #[inline(always)]
-#[unstable(feature = "unnamed_feature",
+#[unstable(feature = "core",
            reason = "may play a larger role in std::ptr future extensions")]
 pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     // Copy the data out from `dest`:
@@ -262,7 +262,7 @@ pub trait PtrExt: Sized {
     /// null-safety, it is important to note that this is still an unsafe
     /// operation because the returned value could be pointing to invalid
     /// memory.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "Option is not clearly the right return type, and we may want \
                          to tie the return lifetime to a borrow of the raw pointer")]
     unsafe fn as_ref<'a>(&self) -> Option<&'a Self::Target>;
@@ -291,7 +291,7 @@ pub trait MutPtrExt {
     ///
     /// As with `as_ref`, this is unsafe because it cannot verify the validity
     /// of the returned pointer.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "Option is not clearly the right return type, and we may want \
                          to tie the return lifetime to a borrow of the raw pointer")]
     unsafe fn as_mut<'a>(&self) -> Option<&'a mut Self::Target>;
@@ -312,7 +312,7 @@ impl<T> PtrExt for *const T {
     }
 
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "return value does not necessarily convey all possible \
                          information")]
     unsafe fn as_ref<'a>(&self) -> Option<&'a T> {
@@ -339,7 +339,7 @@ impl<T> PtrExt for *mut T {
     }
 
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "return value does not necessarily convey all possible \
                          information")]
     unsafe fn as_ref<'a>(&self) -> Option<&'a T> {
@@ -356,7 +356,7 @@ impl<T> MutPtrExt for *mut T {
     type Target = T;
 
     #[inline]
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "return value does not necessarily convey all possible \
                          information")]
     unsafe fn as_mut<'a>(&self) -> Option<&'a mut T> {
@@ -521,33 +521,33 @@ impl<T> PartialOrd for *mut T {
 /// raw `*mut T` (which conveys no particular ownership semantics).
 /// Useful for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
-#[unstable(feature = "unnamed_feature", reason = "recently added to this module")]
+#[unstable(feature = "core", reason = "recently added to this module")]
 pub struct Unique<T>(pub *mut T);
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
-#[unstable(feature = "unnamed_feature", reason = "recently added to this module")]
+#[unstable(feature = "core", reason = "recently added to this module")]
 unsafe impl<T:Send> Send for Unique<T> { }
 
 /// `Unique` pointers are `Sync` if `T` is `Sync` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
-#[unstable(feature = "unnamed_feature", reason = "recently added to this module")]
+#[unstable(feature = "core", reason = "recently added to this module")]
 unsafe impl<T:Sync> Sync for Unique<T> { }
 
 impl<T> Unique<T> {
     /// Returns a null Unique.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "recently added to this module")]
     pub fn null() -> Unique<T> {
         Unique(null_mut())
     }
 
     /// Return an (unsafe) pointer into the memory owned by `self`.
-    #[unstable(feature = "unnamed_feature",
+    #[unstable(feature = "core",
                reason = "recently added to this module")]
     pub unsafe fn offset(self, offset: int) -> *mut T {
         self.0.offset(offset)

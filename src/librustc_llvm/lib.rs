@@ -14,7 +14,7 @@
 #![allow(dead_code)]
 
 #![crate_name = "rustc_llvm"]
-#![unstable(feature = "unnamed_feature")]
+#![unstable(feature = "rustc_private")]
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
@@ -26,8 +26,12 @@
 #![allow(unknown_features)]
 #![feature(link_args)]
 #![feature(box_syntax)]
-#![feature(unnamed_feature)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(libc)]
+#![feature(path)]
+#![feature(std_misc)]
 
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
