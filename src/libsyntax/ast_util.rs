@@ -336,8 +336,7 @@ pub fn operator_prec(op: ast::BinOp) -> usize {
 
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
-#[allow(non_upper_case_globals)]
-pub static as_prec: usize = 12us;
+pub const AS_PREC: usize = 12us;
 
 pub fn empty_generics() -> Generics {
     Generics {
