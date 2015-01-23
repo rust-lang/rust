@@ -930,12 +930,12 @@ The `IoErrorKind` type will become `std::io::ErrorKind`, and
 namespaced.
 
 The `EndOfFile` variant will be removed in favor of returning `Ok(0)`
-from `read` on end of file. This approach clarifies the meaning of the
-return value of `read`, matches Posix APIs, and makes it easier to use
-`try!` in the case that a "real" error should be bubbled out. (The
-main downside is that higher-level operations that might use
-`Result<T, IoError>` with some `T != usize` may need to wrap `IoError`
-in a further enum if they wish to forward unexpected EOF.)
+from `read` on end of file (or `write` on an empty slice for example). This
+approach clarifies the meaning of the return value of `read`, matches Posix
+APIs, and makes it easier to use `try!` in the case that a "real" error should
+be bubbled out. (The main downside is that higher-level operations that might
+use `Result<T, IoError>` with some `T != usize` may need to wrap `IoError` in a
+further enum if they wish to forward unexpected EOF.)
 
 #### Channel adapters
 [Channel adapters]: #channel-adapters
