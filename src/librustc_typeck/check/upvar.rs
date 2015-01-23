@@ -121,13 +121,8 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                      capture_clause: ast::CaptureClause,
                      _body: &ast::Block)
     {
-        let is_old_skool_closure = match self.fcx.expr_ty(expr).sty {
-            _ => false,
-        };
-
         match capture_clause {
-            ast::CaptureByValue if !is_old_skool_closure => {
-            }
+            ast::CaptureByValue => {}
             _ => {
                 ty::with_freevars(self.tcx(), expr.id, |freevars| {
                     for freevar in freevars.iter() {

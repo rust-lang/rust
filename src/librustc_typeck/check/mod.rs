@@ -1635,6 +1635,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let raw_ty = self.expr_ty(expr);
         let raw_ty = self.infcx().shallow_resolve(raw_ty);
+        let resolve_ty = |&: ty: Ty<'tcx>| self.infcx().resolve_type_vars_if_possible(&ty);
         ty::adjust_ty(self.tcx(),
                       expr.span,
                       expr.id,
@@ -1642,7 +1643,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                       adjustment,
                       |method_call| self.inh.method_map.borrow()
                                                        .get(&method_call)
-                                                       .map(|method| method.ty))
+                                                       .map(|method| resolve_ty(method.ty)))
     }
 
     pub fn node_ty(&self, id: ast::NodeId) -> Ty<'tcx> {
