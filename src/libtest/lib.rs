@@ -54,7 +54,7 @@ use self::OutputLocation::*;
 use stats::Stats;
 use getopts::{OptGroup, optflag, optopt};
 use regex::Regex;
-use serialize::{json, Decodable, Encodable};
+use serialize::Encodable;
 use term::Terminal;
 use term::color::{Color, RED, YELLOW, GREEN, CYAN};
 
@@ -62,7 +62,6 @@ use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt;
-use std::io::fs::PathExtensions;
 use std::io::stdio::StdWriter;
 use std::io::{File, ChanReader, ChanWriter};
 use std::io;
@@ -438,9 +437,6 @@ struct ConsoleTestState<T> {
     log_out: Option<File>,
     out: OutputLocation<T>,
     use_color: bool,
-    show_boxplot: bool,
-    boxplot_width: uint,
-    show_all_stats: bool,
     total: uint,
     passed: uint,
     failed: uint,
@@ -467,9 +463,6 @@ impl<T: Writer> ConsoleTestState<T> {
             out: out,
             log_out: log_out,
             use_color: use_color(opts),
-            show_boxplot: false,
-            boxplot_width: 50,
-            show_all_stats: false,
             total: 0u,
             passed: 0u,
             failed: 0u,
@@ -545,33 +538,13 @@ impl<T: Writer> ConsoleTestState<T> {
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
                 try!(self.write_metric());
-                self.write_plain(format!(": {}", fmt_metrics(mm)).as_slice())
+                self.write_plain(format!(": {}", mm.fmt_metrics()).as_slice())
             }
             TrBench(ref bs) => {
                 try!(self.write_bench());
 
-                if self.show_boxplot {
-                    let mut wr = Vec::new();
-
-                    try!(stats::write_boxplot(&mut wr, &bs.ns_iter_summ, self.boxplot_width));
-
-                    let s = String::from_utf8(wr).unwrap();
-
-                    try!(self.write_plain(format!(": {}", s).as_slice()));
-                }
-
-                if self.show_all_stats {
-                    let mut wr = Vec::new();
-
-                    try!(stats::write_5_number_summary(&mut wr, &bs.ns_iter_summ));
-
-                    let s = String::from_utf8(wr).unwrap();
-
-                    try!(self.write_plain(format!(": {}", s).as_slice()));
-                } else {
-                    try!(self.write_plain(format!(": {}",
-                                                  fmt_bench_samples(bs)).as_slice()));
-                }
+                try!(self.write_plain(format!(": {}",
+                                              fmt_bench_samples(bs)).as_slice()));
 
                 Ok(())
             }
@@ -588,7 +561,7 @@ impl<T: Writer> ConsoleTestState<T> {
                         TrOk => "ok".to_string(),
                         TrFailed => "failed".to_string(),
                         TrIgnored => "ignored".to_string(),
-                        TrMetrics(ref mm) => fmt_metrics(mm),
+                        TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs)
                     }, test.name.as_slice());
                 o.write(s.as_bytes())
@@ -624,33 +597,13 @@ impl<T: Writer> ConsoleTestState<T> {
         Ok(())
     }
 
-    pub fn write_run_finish(&mut self,
-                            ratchet_metrics: &Option<Path>,
-                            ratchet_pct: Option<f64>) -> io::IoResult<bool> {
+    pub fn write_run_finish(&mut self) -> io::IoResult<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
-        let ratchet_success = match *ratchet_metrics {
-            None => true,
-            Some(ref pth) => {
-                try!(self.write_plain(format!("\nusing metrics ratchet: {:?}\n",
-                                              pth.display()).as_slice()));
-                match ratchet_pct {
-                    None => (),
-                    Some(pct) =>
-                        try!(self.write_plain(format!("with noise-tolerance \
-                                                         forced to: {}%\n",
-                                                        pct).as_slice()))
-                }
-                true
-            }
-        };
-
-        let test_success = self.failed == 0u;
-        if !test_success {
+        let success = self.failed == 0u;
+        if !success {
             try!(self.write_failures());
         }
-
-        let success = ratchet_success && test_success;
 
         try!(self.write_plain("\ntest result: "));
         if success {
@@ -664,15 +617,6 @@ impl<T: Writer> ConsoleTestState<T> {
         try!(self.write_plain(s.as_slice()));
         return Ok(success);
     }
-}
-
-pub fn fmt_metrics(mm: &MetricMap) -> String {
-    let MetricMap(ref mm) = *mm;
-    let v : Vec<String> = mm.iter()
-        .map(|(k,v)| format!("{}: {} (+/- {})", *k,
-                             v.value as f64, v.noise as f64))
-        .collect();
-    v.connect(", ")
 }
 
 pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
@@ -745,7 +689,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoR
         None => {}
     }
     try!(run_tests(opts, tests, |x| callback(&x, &mut st)));
-    return st.write_run_finish(&None, None);
+    return st.write_run_finish();
 }
 
 #[test]
@@ -766,9 +710,6 @@ fn should_sort_failures_before_printing_them() {
         log_out: None,
         out: Raw(Vec::new()),
         use_color: false,
-        show_boxplot: false,
-        boxplot_width: 0,
-        show_all_stats: false,
         total: 0u,
         passed: 0u,
         failed: 0u,
@@ -1010,30 +951,6 @@ impl MetricMap {
         MetricMap(BTreeMap::new())
     }
 
-    /// Load MetricDiff from a file.
-    ///
-    /// # Panics
-    ///
-    /// This function will panic if the path does not exist or the path does not
-    /// contain a valid metric map.
-    pub fn load(p: &Path) -> MetricMap {
-        assert!(p.exists());
-        let mut f = File::open(p).unwrap();
-        let value = json::from_reader(&mut f as &mut io::Reader).unwrap();
-        let mut decoder = json::Decoder::new(value);
-        MetricMap(match Decodable::decode(&mut decoder) {
-            Ok(t) => t,
-            Err(e) => panic!("failure decoding JSON: {:?}", e)
-        })
-    }
-
-    /// Write MetricDiff to a file.
-    pub fn save(&self, p: &Path) -> io::IoResult<()> {
-        let mut file = try!(File::create(p));
-        let MetricMap(ref map) = *self;
-        write!(&mut file, "{}", json::as_json(map))
-    }
-
     /// Insert a named `value` (+/- `noise`) metric into the map. The value
     /// must be non-negative. The `noise` indicates the uncertainty of the
     /// metric, which doubles as the "noise range" of acceptable
@@ -1054,6 +971,15 @@ impl MetricMap {
         };
         let MetricMap(ref mut map) = *self;
         map.insert(name.to_string(), m);
+    }
+
+    pub fn fmt_metrics(&self) -> String {
+        let MetricMap(ref mm) = *self;
+        let v : Vec<String> = mm.iter()
+            .map(|(k,v)| format!("{}: {} (+/- {})", *k,
+                                 v.value as f64, v.noise as f64))
+            .collect();
+        v.connect(", ")
     }
 }
 

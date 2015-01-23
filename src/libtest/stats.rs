@@ -13,9 +13,7 @@
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::collections::hash_map::{self, Hasher};
-use std::fmt;
 use std::hash::Hash;
-use std::io;
 use std::mem;
 use std::num::{Float, FromPrimitive};
 
@@ -332,111 +330,6 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
     }
 }
 
-/// Render writes the min, max and quartiles of the provided `Summary` to the provided `Writer`.
-pub fn write_5_number_summary<W: Writer, T: Float + fmt::Display + fmt::Debug>(w: &mut W,
-                                                          s: &Summary<T>) -> io::IoResult<()> {
-    let (q1,q2,q3) = s.quartiles;
-    write!(w, "(min={}, q1={}, med={}, q3={}, max={})",
-                     s.min,
-                     q1,
-                     q2,
-                     q3,
-                     s.max)
-}
-
-/// Render a boxplot to the provided writer. The boxplot shows the min, max and quartiles of the
-/// provided `Summary` (thus includes the mean) and is scaled to display within the range of the
-/// nearest multiple-of-a-power-of-ten above and below the min and max of possible values, and
-/// target `width_hint` characters of display (though it will be wider if necessary).
-///
-/// As an example, the summary with 5-number-summary `(min=15, q1=17, med=20, q3=24, max=31)` might
-/// display as:
-///
-/// ```{.ignore}
-///   10 |        [--****#******----------]          | 40
-/// ```
-pub fn write_boxplot<W: Writer, T: Float + fmt::Display + fmt::Debug + FromPrimitive>(
-                     w: &mut W,
-                     s: &Summary<T>,
-                     width_hint: uint)
-                      -> io::IoResult<()> {
-
-    let (q1,q2,q3) = s.quartiles;
-
-    // the .abs() handles the case where numbers are negative
-    let ten: T = FromPrimitive::from_uint(10).unwrap();
-    let lomag = ten.powf(s.min.abs().log10().floor());
-    let himag = ten.powf(s.max.abs().log10().floor());
-
-    // need to consider when the limit is zero
-    let zero: T = Float::zero();
-    let lo = if lomag == Float::zero() {
-        zero
-    } else {
-        (s.min / lomag).floor() * lomag
-    };
-
-    let hi = if himag == Float::zero() {
-        zero
-    } else {
-        (s.max / himag).ceil() * himag
-    };
-
-    let range = hi - lo;
-
-    let lostr = lo.to_string();
-    let histr = hi.to_string();
-
-    let overhead_width = lostr.len() + histr.len() + 4;
-    let range_width = width_hint - overhead_width;
-    let range_float = FromPrimitive::from_uint(range_width).unwrap();
-    let char_step = range / range_float;
-
-    try!(write!(w, "{} |", lostr));
-
-    let mut c = 0;
-    let mut v = lo;
-
-    while c < range_width && v < s.min {
-        try!(write!(w, " "));
-        v = v + char_step;
-        c += 1;
-    }
-    try!(write!(w, "["));
-    c += 1;
-    while c < range_width && v < q1 {
-        try!(write!(w, "-"));
-        v = v + char_step;
-        c += 1;
-    }
-    while c < range_width && v < q2 {
-        try!(write!(w, "*"));
-        v = v + char_step;
-        c += 1;
-    }
-    try!(write!(w, "#"));
-    c += 1;
-    while c < range_width && v < q3 {
-        try!(write!(w, "*"));
-        v = v + char_step;
-        c += 1;
-    }
-    while c < range_width && v < s.max {
-        try!(write!(w, "-"));
-        v = v + char_step;
-        c += 1;
-    }
-    try!(write!(w, "]"));
-    while c < range_width {
-        try!(write!(w, " "));
-        v = v + char_step;
-        c += 1;
-    }
-
-    try!(write!(w, "| {}", histr));
-    Ok(())
-}
-
 /// Returns a HashMap with the number of occurrences of every element in the
 /// sequence that the iterator exposes.
 pub fn freq_count<T, U>(mut iter: T) -> hash_map::HashMap<U, uint>
@@ -458,8 +351,6 @@ pub fn freq_count<T, U>(mut iter: T) -> hash_map::HashMap<U, uint>
 mod tests {
     use stats::Stats;
     use stats::Summary;
-    use stats::write_5_number_summary;
-    use stats::write_boxplot;
     use std::io;
     use std::f64;
 
@@ -478,10 +369,6 @@ mod tests {
 
         let mut w = io::stdout();
         let w = &mut w;
-        (write!(w, "\n")).unwrap();
-        write_5_number_summary(w, &summ2).unwrap();
-        (write!(w, "\n")).unwrap();
-        write_boxplot(w, &summ2, 50).unwrap();
         (write!(w, "\n")).unwrap();
 
         assert_eq!(summ.sum, summ2.sum);
@@ -1028,23 +915,6 @@ mod tests {
         check(val, summ);
     }
 
-    #[test]
-    fn test_boxplot_nonpositive() {
-        fn t(s: &Summary<f64>, expected: String) {
-            let mut m = Vec::new();
-            write_boxplot(&mut m, s, 30).unwrap();
-            let out = String::from_utf8(m).unwrap();
-            assert_eq!(out, expected);
-        }
-
-        t(&Summary::new(&[-2.0f64, -1.0f64]),
-                        "-2 |[------******#*****---]| -1".to_string());
-        t(&Summary::new(&[0.0f64, 2.0f64]),
-                        "0 |[-------*****#*******---]| 2".to_string());
-        t(&Summary::new(&[-2.0f64, 0.0f64]),
-                        "-2 |[------******#******---]| 0".to_string());
-
-    }
     #[test]
     fn test_sum_f64s() {
         assert_eq!([0.5f64, 3.2321f64, 1.5678f64].sum(), 5.2999);
