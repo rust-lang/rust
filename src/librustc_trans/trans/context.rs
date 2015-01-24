@@ -873,7 +873,6 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
     ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
-    ifn!("llvm.assume", fn(i1) -> void);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
     // fallbacks in libc or libm and such.
@@ -896,6 +895,7 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     compatible_ifn!("llvm.copysign.f64", copysign(t_f64, t_f64) -> t_f64, 4);
     compatible_ifn!("llvm.round.f32", roundf(t_f32) -> t_f32, 4);
     compatible_ifn!("llvm.round.f64", round(t_f64) -> t_f64, 4);
+    compatible_ifn!("llvm.assume", llvmcompat_assume(i1) -> void, 6);
 
 
     if ccx.sess().opts.debuginfo != NoDebugInfo {

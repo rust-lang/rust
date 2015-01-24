@@ -13,6 +13,7 @@
 #include <string.h>
 #include <assert.h>
 #include <stdlib.h>
+#include <stdbool.h>
 
 #if !defined(__WIN32__)
 #include <sys/time.h>
@@ -198,6 +199,11 @@ rust_unset_sigprocmask() {
 // no symbol exists for it.
 int *__dfly_error(void) { return __error(); }
 #endif
+
+void
+llvmcompat_assume(bool c) {
+    // empty stub for LLVM before 3.6
+}
 
 //
 // Local Variables:
