@@ -19,9 +19,7 @@ use super::{TypeTrace, Subtype};
 
 use middle::ty::{BuiltinBounds};
 use middle::ty::{self, Ty};
-use syntax::ast::{Many, Once};
-use syntax::ast::{Onceness, Unsafety};
-use syntax::ast::{MutMutable, MutImmutable};
+use syntax::ast::{MutMutable, MutImmutable, Unsafety};
 use util::ppaux::mt_to_string;
 use util::ppaux::Repr;
 
@@ -80,13 +78,6 @@ impl<'f, 'tcx> Combine<'tcx> for Lub<'f, 'tcx> {
         match (a, b) {
           (Unsafety::Unsafe, _) | (_, Unsafety::Unsafe) => Ok(Unsafety::Unsafe),
           (Unsafety::Normal, Unsafety::Normal) => Ok(Unsafety::Normal),
-        }
-    }
-
-    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<'tcx, Onceness> {
-        match (a, b) {
-            (Once, _) | (_, Once) => Ok(Once),
-            (Many, Many) => Ok(Many)
         }
     }
 
