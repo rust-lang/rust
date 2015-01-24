@@ -142,7 +142,7 @@
 //! }
 //! ```
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::borrow::BorrowFrom;
 use core::cell::Cell;
@@ -174,7 +174,7 @@ struct RcBox<T> {
 /// See the [module level documentation](../index.html) for more details.
 #[unsafe_no_drop_flag]
 #[cfg(stage0)] // NOTE remove impl after next snapshot
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T> {
     // FIXME #12808: strange names to try to avoid interfering with field accesses of the contained
     // type via Deref
@@ -187,7 +187,7 @@ pub struct Rc<T> {
 ///
 /// See the [module level documentation](../index.html) for more details.
 #[unsafe_no_drop_flag]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub struct Rc<T> {
     // FIXME #12808: strange names to try to avoid interfering with field accesses of the contained
@@ -212,7 +212,7 @@ impl<T> Rc<T> {
     /// let five = Rc::new(5i);
     /// ```
     #[cfg(stage0)] // NOTE remove after next snapshot
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
         unsafe {
             Rc {
@@ -239,7 +239,7 @@ impl<T> Rc<T> {
     ///
     /// let five = Rc::new(5i);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
     pub fn new(value: T) -> Rc<T> {
         unsafe {
@@ -424,7 +424,7 @@ impl<T> BorrowFrom<Rc<T>> for T {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Deref for Rc<T> {
     type Target = T;
 
@@ -435,7 +435,7 @@ impl<T> Deref for Rc<T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
     ///
@@ -483,7 +483,7 @@ impl<T> Drop for Rc<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Rc<T> {
     /// Makes a clone of the `Rc<T>`.
     ///
@@ -526,7 +526,7 @@ impl<T> Clone for Rc<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Rc<T> {
     /// Creates a new `Rc<T>`, with the `Default` value for `T`.
     ///
@@ -539,13 +539,13 @@ impl<T: Default> Default for Rc<T> {
     /// let x: Rc<int> = Default::default();
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Rc<T> {
         Rc::new(Default::default())
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for Rc<T> {
     /// Equality for two `Rc<T>`s.
     ///
@@ -580,10 +580,10 @@ impl<T: PartialEq> PartialEq for Rc<T> {
     fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for Rc<T> {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for Rc<T> {
     /// Partial comparison for two `Rc<T>`s.
     ///
@@ -668,7 +668,7 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for Rc<T> {
     /// Comparison for two `Rc<T>`s.
     ///
@@ -702,7 +702,7 @@ impl<T: fmt::Show> fmt::Show for Rc<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::String> fmt::String for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&**self, f)
@@ -807,7 +807,7 @@ impl<T> Weak<T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///

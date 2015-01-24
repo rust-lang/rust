@@ -35,6 +35,6 @@
 //! pervasive that it would be obnoxious to import for every use, particularly
 //! those that define methods on primitive types.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 pub mod v1;

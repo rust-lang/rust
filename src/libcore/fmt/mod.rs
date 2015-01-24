@@ -11,7 +11,7 @@
 //! Utilities for formatting and printing strings
 
 #![allow(unused_variables)]
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use any;
 use cell::{Cell, RefCell, Ref, RefMut};
@@ -207,7 +207,7 @@ impl<'a> Arguments<'a> {
 /// and pass it to a function or closure, passed as the first argument. The
 /// macro validates the format string at compile-time so usage of the `write`
 /// and `format` functions can be safely performed.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy)]
 pub struct Arguments<'a> {
     // Format string pieces to print.
@@ -227,7 +227,7 @@ impl<'a> Show for Arguments<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> String for Arguments<'a> {
     fn fmt(&self, fmt: &mut Formatter) -> Result {
         write(fmt.buf, *self)
@@ -653,7 +653,7 @@ impl Show for bool {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl String for bool {
     fn fmt(&self, f: &mut Formatter) -> Result {
         String::fmt(if *self { "true" } else { "false" }, f)
@@ -670,7 +670,7 @@ impl Show for str {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl String for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad(self)
@@ -688,7 +688,7 @@ impl Show for char {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl String for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         let mut utf8 = [0u8; 4];
@@ -734,7 +734,7 @@ macro_rules! floating { ($ty:ident) => {
         }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl String for $ty {
         fn fmt(&self, fmt: &mut Formatter) -> Result {
             use num::Float;
@@ -901,7 +901,7 @@ impl<'b, T: Show> Show for RefMut<'b, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl String for Utf8Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
         match *self {

@@ -33,12 +33,12 @@ pub fn unstable_text() {}
 
 pub fn unmarked() {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn stable() {}
-#[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
+#[stable(feature = "rust1", since = "1.0.0", reason = "text")]
 pub fn stable_text() {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct MethodTester;
 
 impl MethodTester {
@@ -63,9 +63,9 @@ impl MethodTester {
 
     pub fn method_unmarked(&self) {}
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn method_stable(&self) {}
-    #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
+    #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
     pub fn method_stable_text(&self) {}
 
     #[locked]
@@ -101,9 +101,9 @@ pub trait Trait {
 
     fn trait_unmarked(&self) {}
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trait_stable(&self) {}
-    #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
+    #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
     fn trait_stable_text(&self) {}
 
     #[locked]
@@ -131,7 +131,7 @@ pub struct DeprecatedUnstableStruct { pub i: int }
 #[unstable(feature = "test_feature")]
 pub struct UnstableStruct { pub i: int }
 pub struct UnmarkedStruct { pub i: int }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableStruct { pub i: int }
 
 #[stable(feature = "test_feature", since = "1.0.0")]
@@ -143,7 +143,7 @@ pub struct DeprecatedUnstableUnitStruct;
 #[unstable(feature = "test_feature")]
 pub struct UnstableUnitStruct;
 pub struct UnmarkedUnitStruct;
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableUnitStruct;
 
 pub enum Enum {
@@ -157,7 +157,7 @@ pub enum Enum {
     UnstableVariant,
 
     UnmarkedVariant,
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     StableVariant,
 }
 
@@ -170,7 +170,7 @@ pub struct DeprecatedUnstableTupleStruct(pub int);
 #[unstable(feature = "test_feature")]
 pub struct UnstableTupleStruct(pub int);
 pub struct UnmarkedTupleStruct(pub int);
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableTupleStruct(pub int);
 
 #[macro_export]

@@ -69,7 +69,7 @@
 //! }
 //! ```
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use mem::transmute;
 use option::Option::{self, Some, None};
@@ -86,7 +86,7 @@ use intrinsics;
 ///
 /// Every type with no non-`'static` references implements `Any`, so `Any` can
 /// be used as a trait object to emulate the effects dynamic typing.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
     #[unstable(feature = "core",
@@ -104,7 +104,7 @@ impl<T: 'static> Any for T {
 
 impl Any {
     /// Returns true if the boxed type is the same as `T`
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is<T: 'static>(&self) -> bool {
         // Get TypeId of the type this function is instantiated with
@@ -119,7 +119,7 @@ impl Any {
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
         if self.is::<T>() {
@@ -137,7 +137,7 @@ impl Any {
 
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
@@ -168,7 +168,7 @@ impl Any {
 /// but this limitation may be removed in the future.
 #[cfg_attr(stage0, lang = "type_id")]
 #[derive(Clone, Copy, PartialEq, Eq, Show, Hash)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,
 }

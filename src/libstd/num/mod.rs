@@ -13,7 +13,7 @@
 //! These are implemented for the primitive numeric types in `std::{u8, u16,
 //! u32, u64, uint, i8, i16, i32, i64, int, f32, f64}`.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
 #[cfg(test)] use fmt::Show;
@@ -37,7 +37,7 @@ use option::Option;
 pub mod strconv;
 
 /// Mathematical operations on primitive floating point numbers.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Float
     : Copy + Clone
     + NumCast
@@ -142,7 +142,7 @@ pub trait Float
     #[unstable(feature = "std_misc", reason = "position is undecided")]
     fn is_normal(self) -> bool;
     /// Returns the category that this number falls into.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn classify(self) -> FpCategory;
 
     /// Returns the mantissa, exponent and sign as integers, respectively.
@@ -150,40 +150,40 @@ pub trait Float
     fn integer_decode(self) -> (u64, i16, i8);
 
     /// Return the largest integer less than or equal to a number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn floor(self) -> Self;
     /// Return the smallest integer greater than or equal to a number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn ceil(self) -> Self;
     /// Return the nearest integer to a number. Round half-way cases away from
     /// `0.0`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn round(self) -> Self;
     /// Return the integer part of a number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trunc(self) -> Self;
     /// Return the fractional part of a number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn fract(self) -> Self;
 
     /// Computes the absolute value of `self`. Returns `Float::nan()` if the
     /// number is `Float::nan()`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn abs(self) -> Self;
     /// Returns a number that represents the sign of `self`.
     ///
     /// - `1.0` if the number is positive, `+0.0` or `Float::infinity()`
     /// - `-1.0` if the number is negative, `-0.0` or `Float::neg_infinity()`
     /// - `Float::nan()` if the number is `Float::nan()`
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn signum(self) -> Self;
     /// Returns `true` if `self` is positive, including `+0.0` and
     /// `Float::infinity()`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_positive(self) -> bool;
     /// Returns `true` if `self` is negative, including `-0.0` and
     /// `Float::neg_infinity()`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_negative(self) -> bool;
 
     /// Fused multiply-add. Computes `(self * a) + b` with only one rounding
@@ -200,16 +200,16 @@ pub trait Float
     /// Raise a number to an integer power.
     ///
     /// Using this function is generally faster than using `powf`
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn powi(self, n: i32) -> Self;
     /// Raise a number to a floating point power.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn powf(self, n: Self) -> Self;
 
     /// Take the square root of a number.
     ///
     /// Returns NaN if `self` is a negative number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn sqrt(self) -> Self;
     /// Take the reciprocal (inverse) square root of a number, `1/sqrt(x)`.
     #[unstable(feature = "std_misc",
@@ -217,22 +217,22 @@ pub trait Float
     fn rsqrt(self) -> Self;
 
     /// Returns `e^(self)`, (the exponential function).
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn exp(self) -> Self;
     /// Returns 2 raised to the power of the number, `2^(self)`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn exp2(self) -> Self;
     /// Returns the natural logarithm of the number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn ln(self) -> Self;
     /// Returns the logarithm of the number with respect to an arbitrary base.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn log(self, base: Self) -> Self;
     /// Returns the base 2 logarithm of the number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn log2(self) -> Self;
     /// Returns the base 10 logarithm of the number.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn log10(self) -> Self;
 
     /// Convert radians to degrees.
@@ -264,10 +264,10 @@ pub trait Float
     fn next_after(self, other: Self) -> Self;
 
     /// Returns the maximum of the two numbers.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn max(self, other: Self) -> Self;
     /// Returns the minimum of the two numbers.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn min(self, other: Self) -> Self;
 
     /// The positive difference of two numbers. Returns `0.0` if the number is
@@ -286,36 +286,36 @@ pub trait Float
     fn hypot(self, other: Self) -> Self;
 
     /// Computes the sine of a number (in radians).
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn sin(self) -> Self;
     /// Computes the cosine of a number (in radians).
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn cos(self) -> Self;
     /// Computes the tangent of a number (in radians).
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn tan(self) -> Self;
 
     /// Computes the arcsine of a number. Return value is in radians in
     /// the range [-pi/2, pi/2] or NaN if the number is outside the range
     /// [-1, 1].
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn asin(self) -> Self;
     /// Computes the arccosine of a number. Return value is in radians in
     /// the range [0, pi] or NaN if the number is outside the range
     /// [-1, 1].
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn acos(self) -> Self;
     /// Computes the arctangent of a number. Return value is in radians in the
     /// range [-pi/2, pi/2];
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn atan(self) -> Self;
     /// Computes the four quadrant arctangent of a number, `y`, and another
     /// number `x`. Return value is in radians in the range [-pi, pi].
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn atan2(self, other: Self) -> Self;
     /// Simultaneously computes the sine and cosine of the number, `x`. Returns
     /// `(sin(x), cos(x))`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn sin_cos(self) -> (Self, Self);
 
     /// Returns the exponential of the number, minus 1, in a way that is
@@ -328,22 +328,22 @@ pub trait Float
     fn ln_1p(self) -> Self;
 
     /// Hyperbolic sine function.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn sinh(self) -> Self;
     /// Hyperbolic cosine function.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn cosh(self) -> Self;
     /// Hyperbolic tangent function.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn tanh(self) -> Self;
     /// Inverse hyperbolic sine function.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn asinh(self) -> Self;
     /// Inverse hyperbolic cosine function.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn acosh(self) -> Self;
     /// Inverse hyperbolic tangent function.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn atanh(self) -> Self;
 }
 

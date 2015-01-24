@@ -58,7 +58,7 @@ use sync::{mutex, MutexGuard};
 ///     started = cvar.wait(started).unwrap();
 /// }
 /// ```
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Condvar { inner: Box<StaticCondvar> }
 
 unsafe impl Send for Condvar {}
@@ -97,7 +97,7 @@ pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
 impl Condvar {
     /// Creates a new condition variable which is ready to be waited on and
     /// notified.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Condvar {
         Condvar {
             inner: box StaticCondvar {
@@ -133,7 +133,7 @@ impl Condvar {
     /// over time. Each condition variable is dynamically bound to exactly one
     /// mutex to ensure defined behavior across platforms. If this functionality
     /// is not desired, then unsafe primitives in `sys` are provided.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
         unsafe {
@@ -191,7 +191,7 @@ impl Condvar {
     /// `notify_one` are not buffered in any way.
     ///
     /// To wake up all threads, see `notify_all()`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_one(&self) { unsafe { self.inner.inner.notify_one() } }
 
     /// Wake up all blocked threads on this condvar.
@@ -201,11 +201,11 @@ impl Condvar {
     /// way.
     ///
     /// To wake up only one thread, see `notify_one()`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_all(&self) { unsafe { self.inner.inner.notify_all() } }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Drop for Condvar {
     fn drop(&mut self) {
         unsafe { self.inner.inner.destroy() }

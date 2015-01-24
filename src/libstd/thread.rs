@@ -144,7 +144,7 @@
 //!
 //! * It can be implemented highly efficiently on many platforms.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use any::Any;
 use boxed::Box;
@@ -166,7 +166,7 @@ use sys_common::{stack, thread_info};
 
 /// Thread configuration. Provides detailed control over the properties
 /// and behavior of new threads.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
     name: Option<String>,
@@ -181,7 +181,7 @@ pub struct Builder {
 impl Builder {
     /// Generate the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
         Builder {
             name: None,
@@ -193,14 +193,14 @@ impl Builder {
 
     /// Name the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
         self
     }
 
     /// Set the size of the stack for the new thread.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: uint) -> Builder {
         self.stack_size = Some(size);
         self
@@ -330,7 +330,7 @@ struct Inner {
 unsafe impl Sync for Inner {}
 
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
 pub struct Thread {
     inner: Arc<Inner>,
@@ -377,7 +377,7 @@ impl Thread {
     }
 
     /// Gets a handle to the thread that invokes it.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn current() -> Thread {
         thread_info::current_thread()
     }
@@ -390,7 +390,7 @@ impl Thread {
 
     /// Determines whether the current thread is panicking.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn panicking() -> bool {
         unwind::panicking()
     }
@@ -427,7 +427,7 @@ impl Thread {
     }
 
     /// Get the thread's name.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
         self.inner.name.as_ref().map(|s| s.as_slice())
     }
@@ -441,7 +441,7 @@ impl thread_info::NewThread for Thread {
 /// Indicates the manner in which a thread exited.
 ///
 /// A thread that completes without panicking is considered to exit successfully.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
 
 struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
@@ -462,12 +462,12 @@ pub struct JoinGuard<'a, T: 'a> {
     packet: Packet<T>,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<'a, T: Send + 'a> Sync for JoinGuard<'a, T> {}
 
 impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     /// Extract a handle to the thread this guard will join on.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn thread(&self) -> &Thread {
         &self.thread
     }
@@ -477,7 +477,7 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     ///
     /// If the child thread panics, `Err` is returned with the parameter given
     /// to `panic`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(mut self) -> Result<T> {
         assert!(!self.joined);
         unsafe { imp::join(self.native) };
@@ -499,7 +499,7 @@ impl<T: Send> JoinGuard<'static, T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     fn drop(&mut self) {
         if !self.joined {

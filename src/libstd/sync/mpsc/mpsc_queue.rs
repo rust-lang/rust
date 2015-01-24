@@ -138,7 +138,7 @@ impl<T: Send> Queue<T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {

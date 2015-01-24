@@ -253,7 +253,7 @@ impl Bitv {
     /// use std::collections::Bitv;
     /// let mut bv = Bitv::new();
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Bitv {
         Bitv { storage: Vec::new(), nbits: 0 }
     }
@@ -289,7 +289,7 @@ impl Bitv {
     ///
     /// It is important to note that this function does not specify the
     /// *length* of the returned bitvector, but only the *capacity*.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(nbits: uint) -> Bitv {
         Bitv {
             storage: Vec::with_capacity(blocks_for_bits(nbits)),
@@ -375,7 +375,7 @@ impl Bitv {
     /// assert_eq!(bv[1], true);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, i: uint) -> Option<bool> {
         if i >= self.nbits {
             return None;
@@ -587,7 +587,7 @@ impl Bitv {
     /// assert_eq!(bv.iter().filter(|x| *x).count(), 7);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter {
         Iter { bitv: self, next_idx: 0, end_idx: self.nbits }
     }
@@ -708,7 +708,7 @@ impl Bitv {
     /// bv.truncate(2);
     /// assert!(bv.eq_vec(&[false, true]));
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: uint) {
         if len < self.len() {
             self.nbits = len;
@@ -735,7 +735,7 @@ impl Bitv {
     /// assert_eq!(bv.len(), 3);
     /// assert!(bv.capacity() >= 13);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: uint) {
         let desired_cap = self.len().checked_add(additional).expect("capacity overflow");
         let storage_len = self.storage.len();
@@ -765,7 +765,7 @@ impl Bitv {
     /// assert_eq!(bv.len(), 3);
     /// assert!(bv.capacity() >= 13);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: uint) {
         let desired_cap = self.len().checked_add(additional).expect("capacity overflow");
         let storage_len = self.storage.len();
@@ -787,7 +787,7 @@ impl Bitv {
     /// assert!(bv.capacity() >= 10);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint {
         self.storage.capacity().checked_mul(u32::BITS).unwrap_or(uint::MAX)
     }
@@ -858,7 +858,7 @@ impl Bitv {
     /// assert_eq!(bv.pop(), Some(false));
     /// assert_eq!(bv.len(), 6);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<bool> {
         if self.is_empty() {
             None
@@ -888,7 +888,7 @@ impl Bitv {
     /// bv.push(false);
     /// assert!(bv.eq_vec(&[true, false]));
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, elem: bool) {
         if self.nbits % u32::BITS == 0 {
             self.storage.push(0);
@@ -900,29 +900,29 @@ impl Bitv {
 
     /// Return the total number of bits in this vector
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { self.nbits }
 
     /// Returns true if there are no bits in this vector
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears all bits in this vector.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         for w in self.storage.iter_mut() { *w = 0u32; }
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for Bitv {
     #[inline]
     fn default() -> Bitv { Bitv::new() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<bool> for Bitv {
     fn from_iter<I:Iterator<Item=bool>>(iterator: I) -> Bitv {
         let mut ret = Bitv::new();
@@ -931,7 +931,7 @@ impl FromIterator<bool> for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<bool> for Bitv {
     #[inline]
     fn extend<I: Iterator<Item=bool>>(&mut self, mut iterator: I) {
@@ -943,7 +943,7 @@ impl Extend<bool> for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for Bitv {
     #[inline]
     fn clone(&self) -> Bitv {
@@ -957,7 +957,7 @@ impl Clone for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for Bitv {
     #[inline]
     fn partial_cmp(&self, other: &Bitv) -> Option<Ordering> {
@@ -965,7 +965,7 @@ impl PartialOrd for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Bitv {
     #[inline]
     fn cmp(&self, other: &Bitv) -> Ordering {
@@ -973,7 +973,7 @@ impl Ord for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Show for Bitv {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for bit in self.iter() {
@@ -983,7 +983,7 @@ impl fmt::Show for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Bitv {
     fn hash(&self, state: &mut S) {
         self.nbits.hash(state);
@@ -993,7 +993,7 @@ impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialEq for Bitv {
     #[inline]
     fn eq(&self, other: &Bitv) -> bool {
@@ -1004,11 +1004,11 @@ impl cmp::PartialEq for Bitv {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Eq for Bitv {}
 
 /// An iterator for `Bitv`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Iter<'a> {
     bitv: &'a Bitv,
@@ -1016,7 +1016,7 @@ pub struct Iter<'a> {
     end_idx: uint,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Iter<'a> {
     type Item = bool;
 
@@ -1037,7 +1037,7 @@ impl<'a> Iterator for Iter<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Iter<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<bool> {
@@ -1050,10 +1050,10 @@ impl<'a> DoubleEndedIterator for Iter<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> ExactSizeIterator for Iter<'a> {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> RandomAccessIterator for Iter<'a> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1115,13 +1115,13 @@ pub struct BitvSet {
     bitv: Bitv,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for BitvSet {
     #[inline]
     fn default() -> BitvSet { BitvSet::new() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<uint> for BitvSet {
     fn from_iter<I:Iterator<Item=uint>>(iterator: I) -> BitvSet {
         let mut ret = BitvSet::new();
@@ -1130,7 +1130,7 @@ impl FromIterator<uint> for BitvSet {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<uint> for BitvSet {
     #[inline]
     fn extend<I: Iterator<Item=uint>>(&mut self, mut iterator: I) {
@@ -1140,7 +1140,7 @@ impl Extend<uint> for BitvSet {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for BitvSet {
     #[inline]
     fn partial_cmp(&self, other: &BitvSet) -> Option<Ordering> {
@@ -1149,7 +1149,7 @@ impl PartialOrd for BitvSet {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for BitvSet {
     #[inline]
     fn cmp(&self, other: &BitvSet) -> Ordering {
@@ -1158,7 +1158,7 @@ impl Ord for BitvSet {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::PartialEq for BitvSet {
     #[inline]
     fn eq(&self, other: &BitvSet) -> bool {
@@ -1167,7 +1167,7 @@ impl cmp::PartialEq for BitvSet {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl cmp::Eq for BitvSet {}
 
 impl BitvSet {
@@ -1181,7 +1181,7 @@ impl BitvSet {
     /// let mut s = BitvSet::new();
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BitvSet {
         BitvSet { bitv: Bitv::new() }
     }
@@ -1198,7 +1198,7 @@ impl BitvSet {
     /// assert!(s.capacity() >= 100);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(nbits: uint) -> BitvSet {
         let bitv = Bitv::from_elem(nbits, false);
         BitvSet::from_bitv(bitv)
@@ -1236,7 +1236,7 @@ impl BitvSet {
     /// assert!(s.capacity() >= 100);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint {
         self.bitv.capacity()
     }
@@ -1257,7 +1257,7 @@ impl BitvSet {
     /// s.reserve_len(10);
     /// assert!(s.capacity() >= 10);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_len(&mut self, len: uint) {
         let cur_len = self.bitv.len();
         if len >= cur_len {
@@ -1283,7 +1283,7 @@ impl BitvSet {
     /// s.reserve_len_exact(10);
     /// assert!(s.capacity() >= 10);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_len_exact(&mut self, len: uint) {
         let cur_len = self.bitv.len();
         if len >= cur_len {
@@ -1377,7 +1377,7 @@ impl BitvSet {
     /// println!("new capacity: {}", s.capacity());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         let bitv = &mut self.bitv;
         // Obtain original length
@@ -1405,7 +1405,7 @@ impl BitvSet {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> bitv_set::Iter {
         SetIter {set: self, next_idx: 0u}
     }
@@ -1427,7 +1427,7 @@ impl BitvSet {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a BitvSet) -> Union<'a> {
         fn or(w1: u32, w2: u32) -> u32 { w1 | w2 }
 
@@ -1457,7 +1457,7 @@ impl BitvSet {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BitvSet) -> Intersection<'a> {
         fn bitand(w1: u32, w2: u32) -> u32 { w1 & w2 }
         let min = cmp::min(self.bitv.len(), other.bitv.len());
@@ -1494,7 +1494,7 @@ impl BitvSet {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a BitvSet) -> Difference<'a> {
         fn diff(w1: u32, w2: u32) -> u32 { w1 & !w2 }
 
@@ -1525,7 +1525,7 @@ impl BitvSet {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BitvSet) -> SymmetricDifference<'a> {
         fn bitxor(w1: u32, w2: u32) -> u32 { w1 ^ w2 }
 
@@ -1642,28 +1642,28 @@ impl BitvSet {
 
     /// Return the number of set bits in this set.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint  {
         self.bitv.blocks().fold(0, |acc, n| acc + n.count_ones())
     }
 
     /// Returns whether there are no bits set in this set
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.bitv.none()
     }
 
     /// Clears all bits in this set
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.bitv.clear();
     }
 
     /// Returns `true` if this set contains the specified integer.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains(&self, value: &uint) -> bool {
         let bitv = &self.bitv;
         *value < bitv.nbits && bitv[*value]
@@ -1672,14 +1672,14 @@ impl BitvSet {
     /// Returns `true` if the set has no elements in common with `other`.
     /// This is equivalent to checking for an empty intersection.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_disjoint(&self, other: &BitvSet) -> bool {
         self.intersection(other).next().is_none()
     }
 
     /// Returns `true` if the set is a subset of another.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_subset(&self, other: &BitvSet) -> bool {
         let self_bitv = &self.bitv;
         let other_bitv = &other.bitv;
@@ -1693,14 +1693,14 @@ impl BitvSet {
 
     /// Returns `true` if the set is a superset of another.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_superset(&self, other: &BitvSet) -> bool {
         other.is_subset(self)
     }
 
     /// Adds a value to the set. Returns `true` if the value was not already
     /// present in the set.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, value: uint) -> bool {
         if self.contains(&value) {
             return false;
@@ -1718,7 +1718,7 @@ impl BitvSet {
 
     /// Removes a value from the set. Returns `true` if the value was
     /// present in the set.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, value: &uint) -> bool {
         if !self.contains(value) {
             return false;
@@ -1755,7 +1755,7 @@ impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for BitvSet {
 
 /// An iterator for `BitvSet`.
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SetIter<'a> {
     set: &'a BitvSet,
     next_idx: uint
@@ -1771,16 +1771,16 @@ struct TwoBitPositions<'a> {
     next_idx: uint
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a>(TwoBitPositions<'a>);
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a>(Take<TwoBitPositions<'a>>);
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a>(TwoBitPositions<'a>);
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a>(TwoBitPositions<'a>);
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for SetIter<'a> {
     type Item = uint;
 
@@ -1803,7 +1803,7 @@ impl<'a> Iterator for SetIter<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for TwoBitPositions<'a> {
     type Item = uint;
 
@@ -1841,7 +1841,7 @@ impl<'a> Iterator for TwoBitPositions<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Union<'a> {
     type Item = uint;
 
@@ -1849,7 +1849,7 @@ impl<'a> Iterator for Union<'a> {
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Intersection<'a> {
     type Item = uint;
 
@@ -1857,7 +1857,7 @@ impl<'a> Iterator for Intersection<'a> {
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Difference<'a> {
     type Item = uint;
 
@@ -1865,7 +1865,7 @@ impl<'a> Iterator for Difference<'a> {
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for SymmetricDifference<'a> {
     type Item = uint;
 

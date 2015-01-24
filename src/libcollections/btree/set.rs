@@ -34,19 +34,19 @@ use Bound;
 /// See BTreeMap's documentation for a detailed discussion of this collection's performance
 /// benefits and drawbacks.
 #[derive(Clone, Hash, PartialEq, Eq, Ord, PartialOrd)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeSet<T>{
     map: BTreeMap<T, ()>,
 }
 
 /// An iterator over a BTreeSet's items.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     iter: Keys<'a, T, ()>
 }
 
 /// An owning iterator over a BTreeSet's items.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     iter: Map<(T, ()), T, ::btree_map::IntoIter<T, ()>, fn((T, ())) -> T>
 }
@@ -57,28 +57,28 @@ pub struct Range<'a, T: 'a> {
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T:'a> {
     a: Peekable<&'a T, Iter<'a, T>>,
     b: Peekable<&'a T, Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set symmetric difference (in-order).
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T:'a> {
     a: Peekable<&'a T, Iter<'a, T>>,
     b: Peekable<&'a T, Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set intersection (in-order).
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T:'a> {
     a: Peekable<&'a T, Iter<'a, T>>,
     b: Peekable<&'a T, Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set union (in-order).
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T:'a> {
     a: Peekable<&'a T, Iter<'a, T>>,
     b: Peekable<&'a T, Iter<'a, T>>,
@@ -94,7 +94,7 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// let mut set: BTreeSet<int> = BTreeSet::new();
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::new() }
     }
@@ -126,7 +126,7 @@ impl<T> BTreeSet<T> {
     /// let v: Vec<uint> = set.iter().map(|&x| x).collect();
     /// assert_eq!(v, vec![1u,2,3,4]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { iter: self.map.keys() }
     }
@@ -143,7 +143,7 @@ impl<T> BTreeSet<T> {
     /// let v: Vec<uint> = set.into_iter().collect();
     /// assert_eq!(v, vec![1u,2,3,4]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
         let first: fn((T, ())) -> T = first; // coerce to fn pointer
@@ -202,7 +202,7 @@ impl<T: Ord> BTreeSet<T> {
     /// let diff: Vec<uint> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, vec![1u]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T> {
         Difference{a: self.iter().peekable(), b: other.iter().peekable()}
     }
@@ -225,7 +225,7 @@ impl<T: Ord> BTreeSet<T> {
     /// let sym_diff: Vec<uint> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, vec![1u,3]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BTreeSet<T>)
         -> SymmetricDifference<'a, T> {
         SymmetricDifference{a: self.iter().peekable(), b: other.iter().peekable()}
@@ -249,7 +249,7 @@ impl<T: Ord> BTreeSet<T> {
     /// let intersection: Vec<uint> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, vec![2u]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>)
         -> Intersection<'a, T> {
         Intersection{a: self.iter().peekable(), b: other.iter().peekable()}
@@ -271,7 +271,7 @@ impl<T: Ord> BTreeSet<T> {
     /// let union: Vec<uint> = a.union(&b).cloned().collect();
     /// assert_eq!(union, vec![1u,2]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> Union<'a, T> {
         Union{a: self.iter().peekable(), b: other.iter().peekable()}
     }
@@ -288,7 +288,7 @@ impl<T: Ord> BTreeSet<T> {
     /// v.insert(1i);
     /// assert_eq!(v.len(), 1);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { self.map.len() }
 
     /// Returns true if the set contains no elements
@@ -303,7 +303,7 @@ impl<T: Ord> BTreeSet<T> {
     /// v.insert(1i);
     /// assert!(!v.is_empty());
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the set, removing all values.
@@ -318,7 +318,7 @@ impl<T: Ord> BTreeSet<T> {
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.map.clear()
     }
@@ -338,7 +338,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.contains_key(value)
     }
@@ -360,7 +360,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(1);
     /// assert_eq!(a.is_disjoint(&b), false);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_disjoint(&self, other: &BTreeSet<T>) -> bool {
         self.intersection(other).next().is_none()
     }
@@ -381,7 +381,7 @@ impl<T: Ord> BTreeSet<T> {
     /// set.insert(4);
     /// assert_eq!(set.is_subset(&sup), false);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_subset(&self, other: &BTreeSet<T>) -> bool {
         // Stolen from TreeMap
         let mut x = self.iter();
@@ -426,7 +426,7 @@ impl<T: Ord> BTreeSet<T> {
     /// set.insert(2);
     /// assert_eq!(set.is_superset(&sub), true);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_superset(&self, other: &BTreeSet<T>) -> bool {
         other.is_subset(self)
     }
@@ -445,7 +445,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.insert(2i), false);
     /// assert_eq!(set.len(), 1);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, value: T) -> bool {
         self.map.insert(value, ()).is_none()
     }
@@ -468,13 +468,13 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
         self.map.remove(value).is_some()
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
     fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BTreeSet<T> {
         let mut set = BTreeSet::new();
@@ -483,7 +483,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
     fn extend<Iter: Iterator<Item=T>>(&mut self, mut iter: Iter) {
@@ -493,15 +493,15 @@ impl<T: Ord> Extend<T> for BTreeSet<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BTreeSet<T> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> BTreeSet<T> {
         BTreeSet::new()
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     type Output = BTreeSet<T>;
 
@@ -524,7 +524,7 @@ impl<'a, 'b, T: Ord + Clone> Sub<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     type Output = BTreeSet<T>;
 
@@ -547,7 +547,7 @@ impl<'a, 'b, T: Ord + Clone> BitXor<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     type Output = BTreeSet<T>;
 
@@ -570,7 +570,7 @@ impl<'a, 'b, T: Ord + Clone> BitAnd<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     type Output = BTreeSet<T>;
 
@@ -593,7 +593,7 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Show> Show for BTreeSet<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "BTreeSet {{"));
@@ -607,33 +607,33 @@ impl<T: Show> Show for BTreeSet<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 
@@ -656,7 +656,7 @@ fn cmp_opt<T: Ord>(x: Option<&T>, y: Option<&T>,
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Difference<'a, T> {
     type Item = &'a T;
 
@@ -671,7 +671,7 @@ impl<'a, T: Ord> Iterator for Difference<'a, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     type Item = &'a T;
 
@@ -686,7 +686,7 @@ impl<'a, T: Ord> Iterator for SymmetricDifference<'a, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     type Item = &'a T;
 
@@ -707,7 +707,7 @@ impl<'a, T: Ord> Iterator for Intersection<'a, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Ord> Iterator for Union<'a, T> {
     type Item = &'a T;
 

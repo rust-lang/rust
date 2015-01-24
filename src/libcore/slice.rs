@@ -12,7 +12,7 @@
 //!
 //! For more details `std::slice`.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "slice")]
 
 // How this module is organized.
@@ -655,9 +655,9 @@ impl<'a, T, U: ?Sized + AsSlice<T>> AsSlice<T> for &'a mut U {
     fn as_slice(&self) -> &[T] { AsSlice::as_slice(*self) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Default for &'a [T] {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> &'a [T] { &[] }
 }
 
@@ -668,7 +668,7 @@ impl<'a, T> Default for &'a [T] {
 // The shared definition of the `Iter` and `IterMut` iterators
 macro_rules! iterator {
     (struct $name:ident -> $ptr:ty, $elem:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, T> Iterator for $name<'a, T> {
             type Item = $elem;
 
@@ -706,7 +706,7 @@ macro_rules! iterator {
             }
         }
 
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, T> DoubleEndedIterator for $name<'a, T> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
@@ -748,7 +748,7 @@ macro_rules! make_slice {
 }
 
 /// Immutable slice iterator
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
@@ -806,10 +806,10 @@ impl<'a,T> Copy for Iter<'a,T> {}
 
 iterator!{struct Iter -> *const T, &'a T}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> { *self }
 }
@@ -840,7 +840,7 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
 }
 
 /// Mutable slice iterator.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T: 'a> {
     ptr: *mut T,
     end: *mut T,
@@ -930,7 +930,7 @@ impl<'a, T> IterMut<'a, T> {
 
 iterator!{struct IterMut -> *mut T, &'a mut T}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// An internal abstraction over the splitting iterators, so that
@@ -943,7 +943,7 @@ trait SplitIter: DoubleEndedIterator {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a [T],
     pred: P,
@@ -951,7 +951,7 @@ pub struct Split<'a, T:'a, P> where P: FnMut(&T) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     fn clone(&self) -> Split<'a, T, P> {
         Split {
@@ -962,7 +962,7 @@ impl<'a, T, P> Clone for Split<'a, T, P> where P: Clone + FnMut(&T) -> bool {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a [T];
 
@@ -990,7 +990,7 @@ impl<'a, T, P> Iterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, P> DoubleEndedIterator for Split<'a, T, P> where P: FnMut(&T) -> bool {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -1016,7 +1016,7 @@ impl<'a, T, P> SplitIter for Split<'a, T, P> where P: FnMut(&T) -> bool {
 
 /// An iterator over the subslices of the vector which are separated
 /// by elements that match `pred`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitMut<'a, T:'a, P> where P: FnMut(&T) -> bool {
     v: &'a mut [T],
     pred: P,
@@ -1035,7 +1035,7 @@ impl<'a, T, P> SplitIter for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     type Item = &'a mut [T];
 
@@ -1070,7 +1070,7 @@ impl<'a, T, P> Iterator for SplitMut<'a, T, P> where P: FnMut(&T) -> bool {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, P> DoubleEndedIterator for SplitMut<'a, T, P> where
     P: FnMut(&T) -> bool,
 {
@@ -1125,7 +1125,7 @@ impl<T, I: SplitIter<Item=T>> Iterator for GenericSplitN<I> {
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
@@ -1133,14 +1133,14 @@ pub struct SplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<Split<'a, T, P>>
 }
 
 /// An iterator over subslices separated by elements that match a predicate
 /// function, limited to a given number of splits.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
@@ -1148,14 +1148,14 @@ pub struct SplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
 /// An iterator over subslices separated by elements that match a
 /// predicate function, limited to a given number of splits, starting
 /// from the end of the slice.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitNMut<'a, T: 'a, P> where P: FnMut(&T) -> bool {
     inner: GenericSplitN<SplitMut<'a, T, P>>
 }
 
 macro_rules! forward_iterator {
     ($name:ident: $elem:ident, $iter_of:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, $elem, P> Iterator for $name<'a, $elem, P> where
             P: FnMut(&T) -> bool
         {
@@ -1181,13 +1181,13 @@ forward_iterator! { RSplitNMut: T, &'a mut [T] }
 
 /// An iterator over overlapping subslices of length `size`.
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Windows<'a, T:'a> {
     v: &'a [T],
     size: uint
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Windows<'a, T> {
     type Item = &'a [T];
 
@@ -1219,13 +1219,13 @@ impl<'a, T> Iterator for Windows<'a, T> {
 /// When the slice len is not evenly divided by the chunk size, the last slice
 /// of the iteration will be the remainder.
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chunks<'a, T:'a> {
     v: &'a [T],
     size: uint
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Chunks<'a, T> {
     type Item = &'a [T];
 
@@ -1254,7 +1254,7 @@ impl<'a, T> Iterator for Chunks<'a, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Chunks<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a [T]> {
@@ -1294,13 +1294,13 @@ impl<'a, T> RandomAccessIterator for Chunks<'a, T> {
 /// An iterator over a slice in (non-overlapping) mutable chunks (`size`
 /// elements at a time). When the slice len is not evenly divided by the chunk
 /// size, the last slice of the iteration will be the remainder.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct ChunksMut<'a, T:'a> {
     v: &'a mut [T],
     chunk_size: uint
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for ChunksMut<'a, T> {
     type Item = &'a mut [T];
 
@@ -1330,7 +1330,7 @@ impl<'a, T> Iterator for ChunksMut<'a, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for ChunksMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut [T]> {
@@ -1461,7 +1461,7 @@ pub mod bytes {
 // Boilerplate traits
 //
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     fn eq(&self, other: &[B]) -> bool {
         self.len() == other.len() &&
@@ -1473,17 +1473,17 @@ impl<A, B> PartialEq<[B]> for [A] where A: PartialEq<B> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for [T] {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for [T] {
     fn cmp(&self, other: &[T]) -> Ordering {
         order::cmp(self.iter(), other.iter())
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for [T] {
     #[inline]
     fn partial_cmp(&self, other: &[T]) -> Option<Ordering> {

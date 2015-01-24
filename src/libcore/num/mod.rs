@@ -12,7 +12,7 @@
 
 //! Numeric traits and functions for the built-in numeric types.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
 use char::CharExt;
@@ -30,7 +30,7 @@ use option::Option::{Some, None};
 use str::{FromStr, StrExt};
 
 /// A built-in signed or unsigned integer.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Int
     : Copy + Clone
     + NumCast
@@ -183,7 +183,7 @@ pub trait Int
     ///
     /// assert_eq!(n.swap_bytes(), m);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn swap_bytes(self) -> Self;
 
     /// Convert an integer from big endian to the target's endianness.
@@ -203,7 +203,7 @@ pub trait Int
     ///     assert_eq!(Int::from_be(n), n.swap_bytes())
     /// }
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn from_be(x: Self) -> Self {
         if cfg!(target_endian = "big") { x } else { x.swap_bytes() }
@@ -226,7 +226,7 @@ pub trait Int
     ///     assert_eq!(Int::from_le(n), n.swap_bytes())
     /// }
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn from_le(x: Self) -> Self {
         if cfg!(target_endian = "little") { x } else { x.swap_bytes() }
@@ -249,7 +249,7 @@ pub trait Int
     ///     assert_eq!(n.to_be(), n.swap_bytes())
     /// }
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn to_be(self) -> Self { // or not to be?
         if cfg!(target_endian = "big") { self } else { self.swap_bytes() }
@@ -272,7 +272,7 @@ pub trait Int
     ///     assert_eq!(n.to_le(), n.swap_bytes())
     /// }
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn to_le(self) -> Self {
         if cfg!(target_endian = "little") { self } else { self.swap_bytes() }
@@ -289,7 +289,7 @@ pub trait Int
     /// assert_eq!(5u16.checked_add(65530), Some(65535));
     /// assert_eq!(6u16.checked_add(65530), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn checked_add(self, other: Self) -> Option<Self>;
 
     /// Checked integer subtraction. Computes `self - other`, returning `None`
@@ -303,7 +303,7 @@ pub trait Int
     /// assert_eq!((-127i8).checked_sub(1), Some(-128));
     /// assert_eq!((-128i8).checked_sub(1), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn checked_sub(self, other: Self) -> Option<Self>;
 
     /// Checked integer multiplication. Computes `self * other`, returning
@@ -317,7 +317,7 @@ pub trait Int
     /// assert_eq!(5u8.checked_mul(51), Some(255));
     /// assert_eq!(5u8.checked_mul(52), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn checked_mul(self, other: Self) -> Option<Self>;
 
     /// Checked integer division. Computes `self / other`, returning `None` if
@@ -332,12 +332,12 @@ pub trait Int
     /// assert_eq!((-128i8).checked_div(-1), None);
     /// assert_eq!((1i8).checked_div(0), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn checked_div(self, other: Self) -> Option<Self>;
 
     /// Saturating integer addition. Computes `self + other`, saturating at
     /// the numeric bounds instead of overflowing.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn saturating_add(self, other: Self) -> Self {
         match self.checked_add(other) {
@@ -349,7 +349,7 @@ pub trait Int
 
     /// Saturating integer subtraction. Computes `self - other`, saturating at
     /// the numeric bounds instead of overflowing.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn saturating_sub(self, other: Self) -> Self {
         match self.checked_sub(other) {
@@ -401,7 +401,7 @@ macro_rules! uint_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -532,7 +532,7 @@ macro_rules! int_impl {
      $add_with_overflow:path,
      $sub_with_overflow:path,
      $mul_with_overflow:path) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Int for $T {
             #[inline]
             fn zero() -> $T { 0 }
@@ -625,7 +625,7 @@ int_impl! { int = i64, u64, 64,
     intrinsics::i64_mul_with_overflow }
 
 /// A built-in two's complement integer.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait SignedInt
     : Int
     + Neg<Output=Self>
@@ -640,23 +640,23 @@ pub trait SignedInt
     /// - `0` if the number is zero
     /// - `1` if the number is positive
     /// - `-1` if the number is negative
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn signum(self) -> Self;
 
     /// Returns `true` if `self` is positive and `false` if the number
     /// is zero or negative.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_positive(self) -> bool;
 
     /// Returns `true` if `self` is negative and `false` if the number
     /// is zero or positive.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_negative(self) -> bool;
 }
 
 macro_rules! signed_int_impl {
     ($T:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl SignedInt for $T {
             #[inline]
             fn abs(self) -> $T {
@@ -688,10 +688,10 @@ signed_int_impl! { i64 }
 signed_int_impl! { int }
 
 /// A built-in unsigned integer.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait UnsignedInt: Int {
     /// Returns `true` iff `self == 2^k` for some `k`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn is_power_of_two(self) -> bool {
         (self - Int::one()) & self == Int::zero() && !(self == Int::zero())
@@ -699,7 +699,7 @@ pub trait UnsignedInt: Int {
 
     /// Returns the smallest power of two greater than or equal to `self`.
     /// Unspecified behavior on overflow.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn next_power_of_two(self) -> Self {
         let bits = size_of::<Self>() * 8;
@@ -710,7 +710,7 @@ pub trait UnsignedInt: Int {
     /// Returns the smallest power of two greater than or equal to `n`. If the
     /// next power of two is greater than the type's maximum value, `None` is
     /// returned, otherwise the power of two is wrapped in `Some`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn checked_next_power_of_two(self) -> Option<Self> {
         let npot = self.next_power_of_two();
         if npot >= self {
@@ -721,19 +721,19 @@ pub trait UnsignedInt: Int {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl UnsignedInt for uint {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl UnsignedInt for u8 {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl UnsignedInt for u16 {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl UnsignedInt for u32 {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl UnsignedInt for u64 {}
 
 /// A generic trait for converting a value to a number.

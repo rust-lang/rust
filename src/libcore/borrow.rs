@@ -143,7 +143,7 @@ pub enum Cow<'a, T, B: ?Sized + 'a> where B: ToOwned<T> {
     Owned(T)
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Clone for Cow<'a, T, B> where B: ToOwned<T> {
     fn clone(&self) -> Cow<'a, T, B> {
         match *self {
@@ -197,7 +197,7 @@ impl<'a, T, B: ?Sized> Cow<'a, T, B> where B: ToOwned<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
     type Target = B;
 
@@ -209,10 +209,10 @@ impl<'a, T, B: ?Sized> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Eq for Cow<'a, T, B> where B: Eq + ToOwned<T> {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     #[inline]
     fn cmp(&self, other: &Cow<'a, T, B>) -> Ordering {
@@ -220,7 +220,7 @@ impl<'a, T, B: ?Sized> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b, T, U, B: ?Sized, C: ?Sized> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B> where
     B: PartialEq<C> + ToOwned<T>,
     C: ToOwned<U>,
@@ -231,7 +231,7 @@ impl<'a, 'b, T, U, B: ?Sized, C: ?Sized> PartialEq<Cow<'b, U, C>> for Cow<'a, T,
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwned<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cow<'a, T, B>) -> Option<Ordering> {
@@ -239,7 +239,7 @@ impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwne
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> fmt::String for Cow<'a, T, B> where
     B: fmt::String + ToOwned<T>,
     T: fmt::String,

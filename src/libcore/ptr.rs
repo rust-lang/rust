@@ -86,7 +86,7 @@
 //! but C APIs hand out a lot of pointers generally, so are a common source
 //! of unsafe pointers in Rust.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use mem;
 use clone::Clone;
@@ -121,7 +121,7 @@ pub use intrinsics::set_memory;
 /// assert!(p.is_null());
 /// ```
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn null<T>() -> *const T { 0 as *const T }
 
 /// Creates a null mutable raw pointer.
@@ -135,7 +135,7 @@ pub fn null<T>() -> *const T { 0 as *const T }
 /// assert!(p.is_null());
 /// ```
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn null_mut<T>() -> *mut T { 0 as *mut T }
 
 /// Zeroes out `count * size_of::<T>` bytes of memory at `dst`. `count` may be
@@ -160,7 +160,7 @@ pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
 ///
 /// This is only unsafe because it accepts a raw pointer.
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
     // Give ourselves some scratch space to work with
     let mut tmp: T = mem::uninitialized();
@@ -184,7 +184,7 @@ pub unsafe fn swap<T>(x: *mut T, y: *mut T) {
 /// This is only unsafe because it accepts a raw pointer.
 /// Otherwise, this operation is identical to `mem::replace`.
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
     mem::swap(mem::transmute(dest), &mut src); // cannot overlap
     src
@@ -202,7 +202,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
 /// `zero_memory`, or `copy_memory`). Note that `*src = foo` counts as a use
 /// because it will attempt to drop the value previously at `*src`.
 #[inline(always)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn read<T>(src: *const T) -> T {
     let mut tmp: T = mem::uninitialized();
     copy_nonoverlapping_memory(&mut tmp, src, 1);
@@ -239,18 +239,18 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
 /// This is appropriate for initializing uninitialized memory, or overwriting
 /// memory that has previously been `read` from.
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn write<T>(dst: *mut T, src: T) {
     intrinsics::move_val_init(&mut *dst, src)
 }
 
 /// Methods on raw pointers
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait PtrExt: Sized {
     type Target;
 
     /// Returns true if the pointer is null.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_null(self) -> bool;
 
     /// Returns `None` if the pointer is null, or else returns a reference to
@@ -275,12 +275,12 @@ pub trait PtrExt: Sized {
     /// The offset must be in-bounds of the object, or one-byte-past-the-end.
     /// Otherwise `offset` invokes Undefined Behaviour, regardless of whether
     /// the pointer is used.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe fn offset(self, count: int) -> Self;
 }
 
 /// Methods on mutable raw pointers
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait MutPtrExt {
     type Target;
 
@@ -297,16 +297,16 @@ pub trait MutPtrExt {
     unsafe fn as_mut<'a>(&self) -> Option<&'a mut Self::Target>;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> PtrExt for *const T {
     type Target = T;
 
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_null(self) -> bool { self as uint == 0 }
 
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe fn offset(self, count: int) -> *const T {
         intrinsics::offset(self, count)
     }
@@ -324,16 +324,16 @@ impl<T> PtrExt for *const T {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> PtrExt for *mut T {
     type Target = T;
 
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_null(self) -> bool { self as uint == 0 }
 
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe fn offset(self, count: int) -> *mut T {
         intrinsics::offset(self, count) as *mut T
     }
@@ -351,7 +351,7 @@ impl<T> PtrExt for *mut T {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> MutPtrExt for *mut T {
     type Target = T;
 
@@ -369,7 +369,7 @@ impl<T> MutPtrExt for *mut T {
 }
 
 // Equality for pointers
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> PartialEq for *const T {
     #[inline]
     fn eq(&self, other: &*const T) -> bool {
@@ -379,10 +379,10 @@ impl<T> PartialEq for *const T {
     fn ne(&self, other: &*const T) -> bool { !self.eq(other) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Eq for *const T {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> PartialEq for *mut T {
     #[inline]
     fn eq(&self, other: &*mut T) -> bool {
@@ -392,10 +392,10 @@ impl<T> PartialEq for *mut T {
     fn ne(&self, other: &*mut T) -> bool { !self.eq(other) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Eq for *mut T {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for *const T {
     #[inline]
     fn clone(&self) -> *const T {
@@ -403,7 +403,7 @@ impl<T> Clone for *const T {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for *mut T {
     #[inline]
     fn clone(&self) -> *mut T {
@@ -416,7 +416,7 @@ mod externfnpointers {
     use mem;
     use cmp::PartialEq;
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<_R> PartialEq for extern "C" fn() -> _R {
         #[inline]
         fn eq(&self, other: &extern "C" fn() -> _R) -> bool {
@@ -427,7 +427,7 @@ mod externfnpointers {
     }
     macro_rules! fnptreq {
         ($($p:ident),*) => {
-            #[stable(feature = "grandfathered", since = "1.0.0")]
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl<_R,$($p),*> PartialEq for extern "C" fn($($p),*) -> _R {
                 #[inline]
                 fn eq(&self, other: &extern "C" fn($($p),*) -> _R) -> bool {
@@ -447,7 +447,7 @@ mod externfnpointers {
 }
 
 // Comparison for pointers
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Ord for *const T {
     #[inline]
     fn cmp(&self, other: &*const T) -> Ordering {
@@ -461,7 +461,7 @@ impl<T> Ord for *const T {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> PartialOrd for *const T {
     #[inline]
     fn partial_cmp(&self, other: &*const T) -> Option<Ordering> {
@@ -481,7 +481,7 @@ impl<T> PartialOrd for *const T {
     fn ge(&self, other: &*const T) -> bool { *self >= *other }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Ord for *mut T {
     #[inline]
     fn cmp(&self, other: &*mut T) -> Ordering {
@@ -495,7 +495,7 @@ impl<T> Ord for *mut T {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> PartialOrd for *mut T {
     #[inline]
     fn partial_cmp(&self, other: &*mut T) -> Option<Ordering> {

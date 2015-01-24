@@ -44,7 +44,7 @@
 //! let two = xs.pop();
 //! ```
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::prelude::*;
 
@@ -134,7 +134,7 @@ use core::uint;
 /// to reallocate, which can be slow. For this reason, it is recommended to use
 /// `Vec::with_capacity` whenever possible to specify how big the vector is expected to get.
 #[unsafe_no_drop_flag]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     ptr: NonZero<*mut T>,
     len: uint,
@@ -159,7 +159,7 @@ impl<T> Vec<T> {
     /// let mut vec: Vec<int> = Vec::new();
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Vec<T> {
         // We want ptr to never be NULL so instead we set it to some arbitrary
         // non-null value which is fine since we never call deallocate on the ptr
@@ -194,7 +194,7 @@ impl<T> Vec<T> {
     /// vec.push(11);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
             Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: uint::MAX }
@@ -243,7 +243,7 @@ impl<T> Vec<T> {
     ///     }
     /// }
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: uint,
                                  capacity: uint) -> Vec<T> {
         Vec { ptr: NonZero::new(ptr), len: length, cap: capacity }
@@ -274,7 +274,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint {
         self.cap
     }
@@ -293,7 +293,7 @@ impl<T> Vec<T> {
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: uint) {
         if self.cap - self.len < additional {
             let err_msg = "Vec::reserve: `uint` overflow";
@@ -322,7 +322,7 @@ impl<T> Vec<T> {
     /// vec.reserve_exact(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: uint) {
         if self.cap - self.len < additional {
             match self.len.checked_add(additional) {
@@ -346,7 +346,7 @@ impl<T> Vec<T> {
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         if mem::size_of::<T>() == 0 { return }
 
@@ -399,7 +399,7 @@ impl<T> Vec<T> {
     /// vec.truncate(2);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: uint) {
         unsafe {
             // drop any extra elements
@@ -423,7 +423,7 @@ impl<T> Vec<T> {
     /// foo(vec.as_mut_slice());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
             mem::transmute(RawSlice {
@@ -447,7 +447,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
         unsafe {
             let ptr = *self.ptr;
@@ -478,7 +478,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
     }
@@ -504,7 +504,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v, vec!["baz", "qux"]);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: uint) -> T {
         let length = self.len();
         self.swap(index, length - 1);
@@ -528,7 +528,7 @@ impl<T> Vec<T> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
         assert!(index <= len);
@@ -564,7 +564,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, vec![1, 3]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: uint) -> T {
         let len = self.len();
         assert!(index < len);
@@ -598,7 +598,7 @@ impl<T> Vec<T> {
     /// vec.retain(|&x| x%2 == 0);
     /// assert_eq!(vec, vec![2, 4]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
         let len = self.len();
         let mut del = 0u;
@@ -632,7 +632,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec!(1, 2, 3));
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, value: T) {
         if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the
@@ -670,7 +670,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -765,7 +765,7 @@ impl<T> Vec<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.truncate(0)
     }
@@ -779,7 +779,7 @@ impl<T> Vec<T> {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { self.len }
 
     /// Returns `true` if the vector contains no elements.
@@ -793,7 +793,7 @@ impl<T> Vec<T> {
     /// v.push(1i);
     /// assert!(!v.is_empty());
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
@@ -1072,7 +1072,7 @@ impl<T: PartialEq> Vec<T> {
     ///
     /// assert_eq!(vec, vec![1i, 2, 3, 2]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
@@ -1314,19 +1314,19 @@ impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
 }
 
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
     fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::DerefMut for Vec<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [T] { self.as_mut_slice() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
@@ -1446,7 +1446,7 @@ impl<T> AsSlice<T> for Vec<T> {
     /// foo(vec.as_slice());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe {
             mem::transmute(RawSlice {
@@ -1470,7 +1470,7 @@ impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         // This is (and should always remain) a no-op if the fields are
@@ -1486,9 +1486,9 @@ impl<T> Drop for Vec<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Vec<T> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Vec<T> {
         Vec::new()
     }
@@ -1541,7 +1541,7 @@ impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// An iterator that moves out of a vector.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     allocation: *mut T, // the block of memory allocated for the vector
     cap: uint, // the capacity of the vector
@@ -1566,7 +1566,7 @@ impl<T> IntoIter<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
@@ -1603,7 +1603,7 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back<'a>(&'a mut self) -> Option<T> {
@@ -1627,11 +1627,11 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
@@ -1654,7 +1654,7 @@ pub struct Drain<'a, T> {
     marker: ContravariantLifetime<'a>,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -1691,7 +1691,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1715,11 +1715,11 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // self.ptr == self.end == null if drop has already been called,
@@ -1752,7 +1752,7 @@ impl<'a, T> Deref for DerefVec<'a, T> {
 
 // Prevent the inner `Vec<T>` from attempting to deallocate memory.
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for DerefVec<'a, T> {
     fn drop(&mut self) {
         self.x.len = 0;

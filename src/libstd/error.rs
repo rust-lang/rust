@@ -78,7 +78,7 @@
 //! }
 //! ```
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::v1::*;
 
@@ -100,22 +100,22 @@ pub trait Error {
 }
 
 /// A trait for types that can be converted from a given error type `E`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromError<E> {
     /// Perform the conversion.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn from_error(err: E) -> Self;
 }
 
 // Any type is convertable from itself
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<E> FromError<E> for E {
     fn from_error(err: E) -> E {
         err
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for Utf8Error {
     fn description(&self) -> &str {
         match *self {
@@ -127,13 +127,13 @@ impl Error for Utf8Error {
     fn detail(&self) -> Option<String> { Some(self.to_string()) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for FromUtf8Error {
     fn description(&self) -> &str { "invalid utf-8" }
     fn detail(&self) -> Option<String> { Some(self.to_string()) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Error for FromUtf16Error {
     fn description(&self) -> &str { "invalid utf-16" }
 }

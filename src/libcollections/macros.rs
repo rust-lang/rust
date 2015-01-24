@@ -10,7 +10,7 @@
 
 /// Creates a `Vec` containing the arguments.
 #[macro_export]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! vec {
     ($x:expr; $y:expr) => ({
         let xs: $crate::boxed::Box<[_]> = $crate::boxed::Box::new([$x; $y]);

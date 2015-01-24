@@ -10,7 +10,7 @@
 
 //! Operations and constants for 64-bits floats (`f64` type)
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 #![doc(primitive = "f64")]
 
@@ -81,7 +81,7 @@ mod cmath {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Float for f64 {
     // inlined methods from `num::Float`
     #[inline]

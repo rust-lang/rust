@@ -45,7 +45,7 @@ macro_rules! delegate_iter {
         }
     };
     ($te:ty : $ti:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> Iterator for $ti {
             type Item = $te;
 
@@ -58,7 +58,7 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> DoubleEndedIterator for $ti {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
@@ -67,7 +67,7 @@ macro_rules! delegate_iter {
         }
     };
     (pattern $te:ty : $ti:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
 
@@ -80,7 +80,7 @@ macro_rules! delegate_iter {
                 self.0.size_hint()
             }
         }
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, P: CharEq> DoubleEndedIterator for $ti {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
@@ -89,7 +89,7 @@ macro_rules! delegate_iter {
         }
     };
     (pattern forward $te:ty : $ti:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, P: CharEq> Iterator for $ti {
             type Item = $te;
 
@@ -169,7 +169,7 @@ pub enum Utf8Error {
 ///
 /// Returns `Err` if the slice is not utf-8 with a description as to why the
 /// provided slice is not utf-8.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
     try!(run_utf8_validation_iterator(&mut v.iter()));
     Ok(unsafe { from_utf8_unchecked(v) })
@@ -177,7 +177,7 @@ pub fn from_utf8(v: &[u8]) -> Result<&str, Utf8Error> {
 
 /// Converts a slice of bytes to a string slice without checking
 /// that the string contains valid UTF-8.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
     mem::transmute(v)
 }
@@ -255,7 +255,7 @@ Section: Iterators
 ///
 /// Created with the method `.chars()`.
 #[derive(Clone, Copy)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
 }
@@ -284,7 +284,7 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Chars<'a> {
     type Item = char;
 
@@ -330,7 +330,7 @@ impl<'a> Iterator for Chars<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
@@ -367,13 +367,13 @@ impl<'a> DoubleEndedIterator for Chars<'a> {
 /// External iterator for a string's characters and their byte offsets.
 /// Use with the `std::iter` module.
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct CharIndices<'a> {
     front_offset: uint,
     iter: Chars<'a>,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for CharIndices<'a> {
     type Item = (uint, char);
 
@@ -397,7 +397,7 @@ impl<'a> Iterator for CharIndices<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for CharIndices<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<(uint, char)> {
@@ -416,7 +416,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 /// Use with the `std::iter` module.
 ///
 /// Created with `StrExt::bytes`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
 pub struct Bytes<'a>(Map<&'a u8, u8, slice::Iter<'a, u8>, BytesDeref>);
 delegate_iter!{exact u8 : Bytes<'a>}
@@ -456,13 +456,13 @@ struct CharSplitsN<'a, Sep> {
 }
 
 /// An iterator over the lines of a string, separated by `\n`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Lines<'a> {
     inner: CharSplits<'a, char>,
 }
 
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinesAny<'a> {
     inner: Map<&'a str, &'a str, Lines<'a>, fn(&str) -> &str>,
 }
@@ -479,7 +479,7 @@ impl<'a, Sep> CharSplits<'a, Sep> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
     type Item = &'a str;
 
@@ -514,7 +514,7 @@ impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
@@ -556,7 +556,7 @@ impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, Sep: CharEq> Iterator for CharSplitsN<'a, Sep> {
     type Item = &'a str;
 
@@ -880,7 +880,7 @@ pub struct SplitStr<'a> {
     finished: bool
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for MatchIndices<'a> {
     type Item = (uint, uint);
 
@@ -897,7 +897,7 @@ impl<'a> Iterator for MatchIndices<'a> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for SplitStr<'a> {
     type Item = &'a str;
 
@@ -1084,7 +1084,7 @@ mod traits {
     use ops;
     use str::{StrExt, eq_slice};
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl Ord for str {
         #[inline]
         fn cmp(&self, other: &str) -> Ordering {
@@ -1100,7 +1100,7 @@ mod traits {
         }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialEq for str {
         #[inline]
         fn eq(&self, other: &str) -> bool {
@@ -1110,10 +1110,10 @@ mod traits {
         fn ne(&self, other: &str) -> bool { !(*self).eq(other) }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl Eq for str {}
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for str {
         #[inline]
         fn partial_cmp(&self, other: &str) -> Option<Ordering> {
@@ -1173,7 +1173,7 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
 
 /// Return type of `StrExt::split`
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Split<'a, P>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str : Split<'a, P>}
 
@@ -1186,13 +1186,13 @@ delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 
 /// Return type of `StrExt::splitn`
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitN<'a, P>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
 
 /// Return type of `StrExt::rsplitn`
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RSplitN<'a, P>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str : RSplitN<'a, P>}
 
@@ -1607,13 +1607,13 @@ impl StrExt for str {
     fn parse<T: FromStr>(&self) -> Option<T> { FromStr::from_str(self) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Default for &'a str {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> &'a str { "" }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Lines<'a> {
     type Item = &'a str;
 
@@ -1623,13 +1623,13 @@ impl<'a> Iterator for Lines<'a> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for Lines<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for LinesAny<'a> {
     type Item = &'a str;
 
@@ -1639,7 +1639,7 @@ impl<'a> Iterator for LinesAny<'a> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> DoubleEndedIterator for LinesAny<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> { self.inner.next_back() }

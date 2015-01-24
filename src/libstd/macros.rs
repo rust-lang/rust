@@ -36,7 +36,7 @@
 /// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
 #[macro_export]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! panic {
     () => ({
         panic!("explicit panic")
@@ -71,7 +71,7 @@ macro_rules! panic {
 /// format!("x = {}, y = {y}", 10i, y = 30i);
 /// ```
 #[macro_export]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! format {
     ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
 }
@@ -79,7 +79,7 @@ macro_rules! format {
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::io::stdio::print_args(format_args!($($arg)*)))
 }
@@ -97,7 +97,7 @@ macro_rules! print {
 /// println!("format {} arguments", "some");
 /// ```
 #[macro_export]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! println {
     ($($arg:tt)*) => ($crate::io::stdio::println_args(format_args!($($arg)*)))
 }
@@ -106,7 +106,7 @@ macro_rules! println {
 /// error if the value of the expression is `Err`. For more information, see
 /// `std::io`.
 #[macro_export]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! try {
     ($expr:expr) => (match $expr {
         $crate::result::Result::Ok(val) => val,
