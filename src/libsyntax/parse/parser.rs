@@ -2840,6 +2840,7 @@ impl<'a> Parser<'a> {
 
         self.expected_tokens.push(TokenType::Operator);
 
+        let cur_op_span = self.span;
         let cur_opt = self.token.to_binop();
         match cur_opt {
             Some(cur_op) => {
@@ -2853,7 +2854,7 @@ impl<'a> Parser<'a> {
                     let rhs = self.parse_more_binops(expr, cur_prec + 1);
                     let lhs_span = lhs.span;
                     let rhs_span = rhs.span;
-                    let binary = self.mk_binary(cur_op, lhs, rhs);
+                    let binary = self.mk_binary(codemap::respan(cur_op_span, cur_op), lhs, rhs);
                     let bin = self.mk_expr(lhs_span.lo, rhs_span.hi, binary);
                     self.parse_more_binops(bin, min_prec)
                 } else {
@@ -2877,16 +2878,17 @@ impl<'a> Parser<'a> {
     /// Produce an error if comparison operators are chained (RFC #558).
     /// We only need to check lhs, not rhs, because all comparison ops
     /// have same precedence and are left-associative
-    fn check_no_chained_comparison(&mut self, lhs: &Expr, outer_op: ast::BinOp) {
+    fn check_no_chained_comparison(&mut self, lhs: &Expr, outer_op: ast::BinOp_) {
         debug_assert!(ast_util::is_comparison_binop(outer_op));
         match lhs.node {
-            ExprBinary(op, _, _) if ast_util::is_comparison_binop(op) => {
-                let op_span = self.span;
+            ExprBinary(op, _, _) if ast_util::is_comparison_binop(op.node) => {
+                // respan to include both operators
+                let op_span = mk_sp(op.span.lo, self.span.hi);
                 self.span_err(op_span,
-                    "Chained comparison operators require parentheses");
-                if op == BiLt && outer_op == BiGt {
+                    "chained comparison operators require parentheses");
+                if op.node == BiLt && outer_op == BiGt {
                     self.span_help(op_span,
-                        "use ::< instead of < if you meant to specify type arguments");
+                        "use `::<...>` instead of `<...>` if you meant to specify type arguments");
                 }
             }
             _ => {}
@@ -2919,6 +2921,7 @@ impl<'a> Parser<'a> {
 
     pub fn parse_assign_expr_with(&mut self, lhs: P<Expr>) -> P<Expr> {
         let restrictions = self.restrictions & RESTRICTION_NO_STRUCT_LITERAL;
+        let op_span = self.span;
         match self.token {
           token::Eq => {
               self.bump();
@@ -2942,7 +2945,7 @@ impl<'a> Parser<'a> {
               };
               let rhs_span = rhs.span;
               let span = lhs.span;
-              let assign_op = self.mk_assign_op(aop, lhs, rhs);
+              let assign_op = self.mk_assign_op(codemap::respan(op_span, aop), lhs, rhs);
               self.mk_expr(span.lo, rhs_span.hi, assign_op)
           }
           // A range expression, either `expr..expr` or `expr..`.

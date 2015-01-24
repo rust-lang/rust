@@ -568,7 +568,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
             }
 
             ast::ExprBinary(op, ref lhs, ref rhs) => {
-                let pass_args = if ast_util::is_by_value_binop(op) {
+                let pass_args = if ast_util::is_by_value_binop(op.node) {
                     PassArgs::ByValue
                 } else {
                     PassArgs::ByRef

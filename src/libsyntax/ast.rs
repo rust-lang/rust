@@ -13,7 +13,7 @@
 pub use self::AsmDialect::*;
 pub use self::AttrStyle::*;
 pub use self::BindingMode::*;
-pub use self::BinOp::*;
+pub use self::BinOp_::*;
 pub use self::BlockCheckMode::*;
 pub use self::CaptureClause::*;
 pub use self::Decl_::*;
@@ -582,7 +582,7 @@ pub enum Mutability {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
-pub enum BinOp {
+pub enum BinOp_ {
     BiAdd,
     BiSub,
     BiMul,
@@ -602,6 +602,8 @@ pub enum BinOp {
     BiGe,
     BiGt,
 }
+
+pub type BinOp = Spanned<BinOp_>;
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
 pub enum UnOp {

@@ -1449,7 +1449,7 @@ pub fn cs_same_method_fold<F>(use_foldl: bool,
 /// Use a given binop to combine the result of calling the derived method
 /// on all the fields.
 #[inline]
-pub fn cs_binop(binop: ast::BinOp, base: P<Expr>,
+pub fn cs_binop(binop: ast::BinOp_, base: P<Expr>,
                 enum_nonmatch_f: EnumNonMatchCollapsedFunc,
                 cx: &mut ExtCtxt, trait_span: Span,
                 substructure: &Substructure) -> P<Expr> {
