@@ -458,9 +458,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     };
 
     // If this is an unboxed closure, redirect to it.
-    match closure::get_or_create_declaration_if_unboxed_closure(ccx,
-                                                                def_id,
-                                                                &substs) {
+    match closure::get_or_create_declaration_if_closure(ccx, def_id, &substs) {
         None => {}
         Some(llfn) => return llfn,
     }

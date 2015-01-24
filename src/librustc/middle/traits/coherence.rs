@@ -138,7 +138,7 @@ fn ty_is_local_constructor<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
             tt.principal_def_id().krate == ast::LOCAL_CRATE
         }
 
-        ty::ty_unboxed_closure(..) |
+        ty::ty_closure(..) |
         ty::ty_infer(..) |
         ty::ty_open(..) |
         ty::ty_err => {

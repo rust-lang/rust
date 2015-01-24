@@ -304,8 +304,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::MethodOrigin<'tcx> {
             ty::MethodStatic(def_id) => {
                 ty::MethodStatic(def_id)
             }
-            ty::MethodStaticUnboxedClosure(def_id) => {
-                ty::MethodStaticUnboxedClosure(def_id)
+            ty::MethodStaticClosure(def_id) => {
+                ty::MethodStaticClosure(def_id)
             }
             ty::MethodTypeParam(ref param) => {
                 ty::MethodTypeParam(ty::MethodParam {
@@ -337,8 +337,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::vtable_origin<'tcx> {
             ty::vtable_param(n, b) => {
                 ty::vtable_param(n, b)
             }
-            ty::vtable_unboxed_closure(def_id) => {
-                ty::vtable_unboxed_closure(def_id)
+            ty::vtable_closure(def_id) => {
+                ty::vtable_closure(def_id)
             }
             ty::vtable_error => {
                 ty::vtable_error
@@ -499,8 +499,8 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Vtable<'tcx, N> {
         match *self {
             traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
-            traits::VtableUnboxedClosure(d, ref s) => {
-                traits::VtableUnboxedClosure(d, s.fold_with(folder))
+            traits::VtableClosure(d, ref s) => {
+                traits::VtableClosure(d, s.fold_with(folder))
             }
             traits::VtableFnPointer(ref d) => {
                 traits::VtableFnPointer(d.fold_with(folder))
@@ -545,9 +545,9 @@ impl<'tcx,T,U> TypeFoldable<'tcx> for ty::OutlivesPredicate<T,U>
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::UnboxedClosureUpvar<'tcx> {
-    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::UnboxedClosureUpvar<'tcx> {
-        ty::UnboxedClosureUpvar {
+impl<'tcx> TypeFoldable<'tcx> for ty::ClosureUpvar<'tcx> {
+    fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ClosureUpvar<'tcx> {
+        ty::ClosureUpvar {
             def: self.def,
             span: self.span,
             ty: self.ty.fold_with(folder),
@@ -624,10 +624,10 @@ pub fn super_fold_ty<'tcx, T: TypeFolder<'tcx>>(this: &mut T,
             let substs = substs.fold_with(this);
             ty::ty_struct(did, this.tcx().mk_substs(substs))
         }
-        ty::ty_unboxed_closure(did, ref region, ref substs) => {
+        ty::ty_closure(did, ref region, ref substs) => {
             let r = region.fold_with(this);
             let s = substs.fold_with(this);
-            ty::ty_unboxed_closure(did, this.tcx().mk_region(r), this.tcx().mk_substs(s))
+            ty::ty_closure(did, this.tcx().mk_region(r), this.tcx().mk_substs(s))
         }
         ty::ty_projection(ref data) => {
             ty::ty_projection(data.fold_with(this))

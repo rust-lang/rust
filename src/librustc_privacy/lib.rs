@@ -40,7 +40,7 @@ use rustc::middle::privacy::{ExportedItems, PublicItems, LastPrivateMap};
 use rustc::middle::privacy::{ExternalExports};
 use rustc::middle::ty::{MethodTypeParam, MethodStatic};
 use rustc::middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam};
-use rustc::middle::ty::{MethodStaticUnboxedClosure, MethodObject};
+use rustc::middle::ty::{MethodStaticClosure, MethodObject};
 use rustc::middle::ty::{MethodTraitObject};
 use rustc::middle::ty::{self, Ty};
 use rustc::util::nodemap::{NodeMap, NodeSet};
@@ -816,7 +816,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             MethodStatic(method_id) => {
                 self.check_static_method(span, method_id, ident)
             }
-            MethodStaticUnboxedClosure(_) => {}
+            MethodStaticClosure(_) => {}
             // Trait methods are always all public. The only controlling factor
             // is whether the trait itself is accessible or not.
             MethodTypeParam(MethodParam { ref trait_ref, .. }) |

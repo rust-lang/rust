@@ -1102,7 +1102,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // closure or an older, legacy style closure. Store this
             // into a variable to ensure the the RefCell-lock is
             // released before we recurse.
-            closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
+            closure::trans_closure_expr(bcx, &**decl, &**body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {

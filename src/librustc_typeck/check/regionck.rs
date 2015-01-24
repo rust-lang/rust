@@ -748,7 +748,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let function_type = rcx.resolve_node_type(expr.id);
 
     match function_type.sty {
-        ty::ty_unboxed_closure(_, region, _) => {
+        ty::ty_closure(_, region, _) => {
             if tcx.capture_modes.borrow()[expr.id].clone() == ast::CaptureByRef {
                 ty::with_freevars(tcx, expr.id, |freevars| {
                     if !freevars.is_empty() {
@@ -768,7 +768,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match function_type.sty {
-        ty::ty_unboxed_closure(_, region, _) => {
+        ty::ty_closure(_, region, _) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 let bounds = ty::region_existential_bound(*region);
                 ensure_free_variable_types_outlive_closure_bound(rcx, &bounds, expr, freevars);
