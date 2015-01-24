@@ -51,7 +51,7 @@
 
 TARGET_CRATES := libc std flate arena term \
                  serialize getopts collections test rand \
-                 log regex graphviz core rbml alloc \
+                 log graphviz core rbml alloc \
                  unicode rustc_bitflags
 RUSTC_CRATES := rustc rustc_typeck rustc_borrowck rustc_resolve rustc_driver \
                 rustc_trans rustc_back rustc_llvm rustc_privacy
@@ -95,16 +95,15 @@ DEPS_term := std log
 DEPS_getopts := std
 DEPS_collections := core alloc unicode
 DEPS_num := std
-DEPS_test := std getopts serialize rbml term regex native:rust_test_helpers
+DEPS_test := std getopts serialize rbml term native:rust_test_helpers
 DEPS_rand := core
-DEPS_log := std regex
-DEPS_regex := std
+DEPS_log := std
 DEPS_fmt_macros = std
 
 TOOL_DEPS_compiletest := test getopts
 TOOL_DEPS_rustdoc := rustdoc
 TOOL_DEPS_rustc := rustc_driver
-TOOL_DEPS_rustbook := std regex rustdoc
+TOOL_DEPS_rustbook := std rustdoc
 TOOL_SOURCE_compiletest := $(S)src/compiletest/compiletest.rs
 TOOL_SOURCE_rustdoc := $(S)src/driver/driver.rs
 TOOL_SOURCE_rustc := $(S)src/driver/driver.rs
@@ -130,9 +129,8 @@ DOC_CRATES := $(filter-out rustc, \
               $(filter-out rustc_driver, \
               $(filter-out rustc_privacy, \
               $(filter-out log, \
-              $(filter-out regex, \
               $(filter-out getopts, \
-              $(filter-out syntax, $(CRATES))))))))))))
+              $(filter-out syntax, $(CRATES)))))))))))
 COMPILER_DOC_CRATES := rustc rustc_trans rustc_borrowck rustc_resolve \
                        rustc_typeck rustc_driver syntax rustc_privacy
 

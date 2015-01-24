@@ -11,7 +11,6 @@ pub use self::Mode::*;
 
 use std::fmt;
 use std::str::FromStr;
-use regex::Regex;
 
 #[derive(Clone, PartialEq, Debug)]
 pub enum Mode {
@@ -101,10 +100,7 @@ pub struct Config {
     pub run_ignored: bool,
 
     // Only run tests that match this filter
-    pub filter: Option<Regex>,
-
-    // Precompiled regex for finding expected errors in cfail
-    pub cfail_regex: Regex,
+    pub filter: Option<String>,
 
     // Write out a parseable log of tests that were run
     pub logfile: Option<Path>,
