@@ -26,8 +26,8 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
                                    _capture: ast::CaptureClause,
                                    opt_kind: Option<ast::ClosureKind>,
-                                   decl: &ast::FnDecl,
-                                   body: &ast::Block,
+                                   decl: &'tcx ast::FnDecl,
+                                   body: &'tcx ast::Block,
                                    expected: Expectation<'tcx>) {
     debug!("check_expr_closure(expr={},expected={})",
            expr.repr(fcx.tcx()),
@@ -76,8 +76,8 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                           expr: &ast::Expr,
                           kind: ty::ClosureKind,
-                          decl: &ast::FnDecl,
-                          body: &ast::Block,
+                          decl: &'tcx ast::FnDecl,
+                          body: &'tcx ast::Block,
                           expected_sig: Option<ty::FnSig<'tcx>>) {
     let expr_def_id = ast_util::local_def(expr.id);
 
