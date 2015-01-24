@@ -1273,6 +1273,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // #18453.
                 true
             }
+            (&DefaultTraitCandidate(_), _) => {
+                // Prefer other candidates over default implementations.
+                true
+            }
             (&ProjectionCandidate, &ParamCandidate(_)) => {
                 // FIXME(#20297) -- this gives where clauses precedent
                 // over projections. Really these are just two means
