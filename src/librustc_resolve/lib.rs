@@ -243,7 +243,7 @@ enum RibKind {
 
     // We passed through a closure scope at the given node ID.
     // Translate upvars as appropriate.
-    ClosureRibKind(NodeId /* func id */, NodeId /* body id if proc or unboxed */),
+    ClosureRibKind(NodeId /* func id */),
 
     // We passed through an impl or trait and are now in one of its
     // methods. Allow references to ty params that impl or trait
@@ -2605,18 +2605,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             DlDef(d @ DefLocal(_)) => {
                 let node_id = d.def_id().node;
                 let mut def = d;
-                let mut last_proc_body_id = ast::DUMMY_NODE_ID;
                 for rib in ribs.iter() {
                     match rib.kind {
                         NormalRibKind => {
                             // Nothing to do. Continue.
                         }
-                        ClosureRibKind(function_id, maybe_proc_body) => {
+                        ClosureRibKind(function_id) => {
                             let prev_def = def;
-                            if maybe_proc_body != ast::DUMMY_NODE_ID {
-                                last_proc_body_id = maybe_proc_body;
-                            }
-                            def = DefUpvar(node_id, function_id, last_proc_body_id);
+                            def = DefUpvar(node_id, function_id);
 
                             let mut seen = self.freevars_seen.borrow_mut();
                             let seen = match seen.entry(function_id) {
@@ -4523,7 +4519,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
             ExprClosure(capture_clause, _, ref fn_decl, ref block) => {
                 self.capture_mode_map.insert(expr.id, capture_clause);
-                self.resolve_function(ClosureRibKind(expr.id, ast::DUMMY_NODE_ID),
+                self.resolve_function(ClosureRibKind(expr.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);
             }

@@ -4622,7 +4622,7 @@ pub fn type_scheme_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                      defn: def::Def)
                                      -> TypeScheme<'tcx> {
     match defn {
-      def::DefLocal(nid) | def::DefUpvar(nid, _, _) => {
+      def::DefLocal(nid) | def::DefUpvar(nid, _) => {
           let typ = fcx.local_ty(sp, nid);
           return no_params(typ);
       }
