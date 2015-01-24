@@ -35,7 +35,6 @@ pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
 pub use self::Method_::*;
 pub use self::Mutability::*;
-pub use self::Onceness::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
 pub use self::PatWildKind::*;
@@ -1220,21 +1219,6 @@ pub enum PrimTy {
     TyStr,
     TyBool,
     TyChar
-}
-
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy, Show)]
-pub enum Onceness {
-    Once,
-    Many
-}
-
-impl fmt::Display for Onceness {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-            Once => "once",
-            Many => "many",
-        }, f)
-    }
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]

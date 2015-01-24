@@ -52,7 +52,7 @@ use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use syntax::ast::{Onceness, Unsafety};
+use syntax::ast::Unsafety;
 use syntax::ast;
 use syntax::abi;
 use syntax::codemap::Span;
@@ -253,8 +253,6 @@ pub trait Combine<'tcx> : Sized {
             Err(ty::terr_abi_mismatch(expected_found(self, a, b)))
         }
     }
-
-    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<'tcx, Onceness>;
 
     fn projection_tys(&self,
                       a: &ty::ProjectionTy<'tcx>,

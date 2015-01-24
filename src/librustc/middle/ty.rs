@@ -81,8 +81,7 @@ use std::collections::{HashMap, HashSet};
 use syntax::abi;
 use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
 use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
-use syntax::ast::{Onceness, StmtExpr, StmtSemi, StructField, UnnamedField};
-use syntax::ast::{Visibility};
+use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def, PostExpansionMethod};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
@@ -1535,7 +1534,6 @@ pub struct expected_found<T> {
 pub enum type_err<'tcx> {
     terr_mismatch,
     terr_unsafety_mismatch(expected_found<ast::Unsafety>),
-    terr_onceness_mismatch(expected_found<Onceness>),
     terr_abi_mismatch(expected_found<abi::Abi>),
     terr_mutability,
     terr_box_mutability,
@@ -4733,11 +4731,6 @@ pub fn type_err_to_str<'tcx>(cx: &ctxt<'tcx>, err: &type_err<'tcx>) -> String {
                     values.found)
         }
         terr_abi_mismatch(values) => {
-            format!("expected {} fn, found {} fn",
-                    values.expected,
-                    values.found)
-        }
-        terr_onceness_mismatch(values) => {
             format!("expected {} fn, found {} fn",
                     values.expected,
                     values.found)
