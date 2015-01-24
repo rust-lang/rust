@@ -777,7 +777,7 @@ pub struct ctxt<'tcx> {
     pub populated_external_traits: RefCell<DefIdSet>,
 
     /// Borrows
-    pub upvar_borrow_map: RefCell<UpvarBorrowMap>,
+    pub upvar_capture_map: RefCell<UpvarCaptureMap>,
 
     /// These two caches are used by const_eval when decoding external statics
     /// and variants that are found.
@@ -802,9 +802,6 @@ pub struct ctxt<'tcx> {
 
     /// Maps any item's def-id to its stability index.
     pub stability: RefCell<stability::Index>,
-
-    /// Maps closures to their capture clauses.
-    pub capture_modes: RefCell<CaptureModeMap>,
 
     /// Maps def IDs to true if and only if they're associated types.
     pub associated_types: RefCell<DefIdMap<bool>>,
@@ -1247,60 +1244,31 @@ pub enum BorrowKind {
     MutBorrow
 }
 
-/// Information describing the borrowing of an upvar. This is computed
-/// during `typeck`, specifically by `regionck`. The general idea is
-/// that the compiler analyses treat closures like:
-///
-///     let closure: &'e fn() = || {
-///        x = 1;   // upvar x is assigned to
-///        use(y);  // upvar y is read
-///        foo(&z); // upvar z is borrowed immutably
-///     };
-///
-/// as if they were "desugared" to something loosely like:
-///
-///     struct Vars<'x,'y,'z> { x: &'x mut int,
-///                             y: &'y const int,
-///                             z: &'z int }
-///     let closure: &'e fn() = {
-///         fn f(env: &Vars) {
-///             *env.x = 1;
-///             use(*env.y);
-///             foo(env.z);
-///         }
-///         let env: &'e mut Vars<'x,'y,'z> = &mut Vars { x: &'x mut x,
-///                                                       y: &'y const y,
-///                                                       z: &'z z };
-///         (env, f)
-///     };
-///
-/// This is basically what happens at runtime. The closure is basically
-/// an existentially quantified version of the `(env, f)` pair.
-///
-/// This data structure indicates the region and mutability of a single
-/// one of the `x...z` borrows.
-///
-/// It may not be obvious why each borrowed variable gets its own
-/// lifetime (in the desugared version of the example, these are indicated
-/// by the lifetime parameters `'x`, `'y`, and `'z` in the `Vars` definition).
-/// Each such lifetime must encompass the lifetime `'e` of the closure itself,
-/// but need not be identical to it. The reason that this makes sense:
-///
-/// - Callers are only permitted to invoke the closure, and hence to
-///   use the pointers, within the lifetime `'e`, so clearly `'e` must
-///   be a sublifetime of `'x...'z`.
-/// - The closure creator knows which upvars were borrowed by the closure
-///   and thus `x...z` will be reserved for `'x...'z` respectively.
-/// - Through mutation, the borrowed upvars can actually escape
-///   the closure, so sometimes it is necessary for them to be larger
-///   than the closure lifetime itself.
+/// Information describing the capture of an upvar. This is computed
+/// during `typeck`, specifically by `regionck`.
+#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
+pub enum UpvarCapture {
+    /// Upvar is captured by value. This is always true when the
+    /// closure is labeled `move`, but can also be true in other cases
+    /// depending on inference.
+    ByValue,
+
+    /// Upvar is captured by reference.
+    ByRef(UpvarBorrow),
+}
+
 #[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub struct UpvarBorrow {
+    /// The kind of borrow: by-ref upvars have access to shared
+    /// immutable borrows, which are not part of the normal language
+    /// syntax.
     pub kind: BorrowKind,
+
+    /// Region of the resulting reference.
     pub region: ty::Region,
 }
 
-pub type UpvarBorrowMap = FnvHashMap<UpvarId, UpvarBorrow>;
+pub type UpvarCaptureMap = FnvHashMap<UpvarId, UpvarCapture>;
 
 impl Region {
     pub fn is_bound(&self) -> bool {
@@ -1320,7 +1288,7 @@ impl Region {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-           RustcEncodable, RustcDecodable, Debug, Copy)]
+         RustcEncodable, RustcDecodable, Debug, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -1329,7 +1297,7 @@ pub struct FreeRegion {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-           RustcEncodable, RustcDecodable, Debug, Copy)]
+         RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -2359,7 +2327,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
                      freevars: RefCell<FreevarMap>,
-                     capture_modes: RefCell<CaptureModeMap>,
                      region_maps: middle::region::RegionMaps,
                      lang_items: middle::lang_items::LanguageItems,
                      stability: stability::Index) -> ctxt<'tcx>
@@ -2413,7 +2380,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         used_mut_nodes: RefCell::new(NodeSet()),
         populated_external_types: RefCell::new(DefIdSet()),
         populated_external_traits: RefCell::new(DefIdSet()),
-        upvar_borrow_map: RefCell::new(FnvHashMap()),
+        upvar_capture_map: RefCell::new(FnvHashMap()),
         extern_const_statics: RefCell::new(DefIdMap()),
         extern_const_variants: RefCell::new(DefIdMap()),
         method_map: RefCell::new(FnvHashMap()),
@@ -2422,7 +2389,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         node_lint_levels: RefCell::new(FnvHashMap()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
-        capture_modes: capture_modes,
         associated_types: RefCell::new(DefIdMap()),
         selection_cache: traits::SelectionCache::new(),
         repr_hint_cache: RefCell::new(DefIdMap()),
@@ -5646,7 +5612,6 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
     // implemented.
     assert!(closure_id.krate == ast::LOCAL_CRATE);
     let tcx = typer.tcx();
-    let capture_mode = tcx.capture_modes.borrow()[closure_id.node].clone();
     match tcx.freevars.borrow().get(&closure_id.node) {
         None => Some(vec![]),
         Some(ref freevars) => {
@@ -5659,43 +5624,38 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
                         };
                         let freevar_ty = freevar_ty.subst(tcx, substs);
 
-                        match capture_mode {
-                            ast::CaptureByValue => {
-                                Some(ClosureUpvar { def: freevar.def,
-                                                    span: freevar.span,
-                                                    ty: freevar_ty })
+                        let upvar_id = ty::UpvarId {
+                            var_id: freevar_def_id.node,
+                            closure_expr_id: closure_id.node
+                        };
+
+                        let captured_freevar_ty = match typer.upvar_capture(upvar_id) {
+                            Some(UpvarCapture::ByValue) => {
+                                freevar_ty
                             }
 
-                            ast::CaptureByRef => {
-                                let upvar_id = ty::UpvarId {
-                                    var_id: freevar_def_id.node,
-                                    closure_expr_id: closure_id.node
-                                };
-
-                                // FIXME
-                                let freevar_ref_ty = match typer.upvar_borrow(upvar_id) {
-                                    Some(borrow) => {
-                                        mk_rptr(tcx,
-                                                tcx.mk_region(borrow.region),
-                                                ty::mt {
-                                                    ty: freevar_ty,
-                                                    mutbl: borrow.kind.to_mutbl_lossy(),
-                                                })
-                                    }
-                                    None => {
-                                        // FIXME(#16640) we should really return None here;
-                                        // but that requires better inference integration,
-                                        // for now gin up something.
-                                        freevar_ty
-                                    }
-                                };
-                                Some(ClosureUpvar {
-                                    def: freevar.def,
-                                    span: freevar.span,
-                                    ty: freevar_ref_ty,
-                                })
+                            Some(UpvarCapture::ByRef(borrow)) => {
+                                mk_rptr(tcx,
+                                        tcx.mk_region(borrow.region),
+                                        ty::mt {
+                                            ty: freevar_ty,
+                                            mutbl: borrow.kind.to_mutbl_lossy(),
+                                        })
                             }
-                        }
+
+                            None => {
+                                // FIXME(#16640) we should really return None here;
+                                // but that requires better inference integration,
+                                // for now gin up something.
+                                freevar_ty
+                            }
+                        };
+
+                        Some(ClosureUpvar {
+                            def: freevar.def,
+                            span: freevar.span,
+                            ty: captured_freevar_ty,
+                        })
                     })
                     .collect()
         }
@@ -6449,13 +6409,12 @@ impl BorrowKind {
 }
 
 impl<'tcx> ctxt<'tcx> {
-    pub fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> ast::CaptureClause {
-        self.capture_modes.borrow()[closure_expr_id].clone()
-    }
-
     pub fn is_method_call(&self, expr_id: ast::NodeId) -> bool {
         self.method_map.borrow().contains_key(&MethodCall::expr(expr_id))
+    }
+
+    pub fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+        Some(self.upvar_capture_map.borrow()[upvar_id].clone())
     }
 }
 
@@ -6494,13 +6453,8 @@ impl<'a,'tcx> mc::Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
         self.tcx.region_maps.temporary_scope(rvalue_id)
     }
 
-    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow> {
-        Some(self.tcx.upvar_borrow_map.borrow()[upvar_id].clone())
-    }
-
-    fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> ast::CaptureClause {
-        self.tcx.capture_mode(closure_expr_id)
+    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+        self.tcx.upvar_capture(upvar_id)
     }
 
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {

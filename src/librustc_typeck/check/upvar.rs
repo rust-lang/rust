@@ -121,25 +121,29 @@ impl<'a,'tcx> SeedBorrowKind<'a,'tcx> {
                      capture_clause: ast::CaptureClause,
                      _body: &ast::Block)
     {
-        match capture_clause {
-            ast::CaptureByValue => {}
-            _ => {
-                ty::with_freevars(self.tcx(), expr.id, |freevars| {
-                    for freevar in freevars.iter() {
-                        let var_node_id = freevar.def.local_node_id();
-                        let upvar_id = ty::UpvarId { var_id: var_node_id,
-                                                     closure_expr_id: expr.id };
-                        debug!("seed upvar_id {:?}", upvar_id);
+        ty::with_freevars(self.tcx(), expr.id, |freevars| {
+            for freevar in freevars.iter() {
+                let var_node_id = freevar.def.local_node_id();
+                let upvar_id = ty::UpvarId { var_id: var_node_id,
+                                             closure_expr_id: expr.id };
+                debug!("seed upvar_id {:?}", upvar_id);
+
+                let capture_kind = match capture_clause {
+                    ast::CaptureByValue => {
+                        ty::UpvarCapture::ByValue
+                    }
+                    ast::CaptureByRef => {
                         let origin = UpvarRegion(upvar_id, expr.span);
                         let freevar_region = self.infcx().next_region_var(origin);
                         let upvar_borrow = ty::UpvarBorrow { kind: ty::ImmBorrow,
                                                              region: freevar_region };
-                        self.fcx.inh.upvar_borrow_map.borrow_mut().insert(upvar_id,
-                                                                          upvar_borrow);
+                        ty::UpvarCapture::ByRef(upvar_borrow)
                     }
-                });
+                };
+
+                self.fcx.inh.upvar_capture_map.borrow_mut().insert(upvar_id, capture_kind);
             }
-        }
+        });
     }
 }
 
@@ -150,7 +154,7 @@ struct AdjustBorrowKind<'a,'tcx:'a> {
     fcx: &'a FnCtxt<'a,'tcx>
 }
 
-impl<'a,'tcx> AdjustBorrowKind<'a,'tcx>{
+impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
     fn new(fcx: &'a FnCtxt<'a,'tcx>) -> AdjustBorrowKind<'a,'tcx> {
         AdjustBorrowKind { fcx: fcx }
     }
@@ -195,8 +199,8 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx>{
                     // upvar, then we need to modify the
                     // borrow_kind of the upvar to make sure it
                     // is inferred to mutable if necessary
-                    let mut upvar_borrow_map = self.fcx.inh.upvar_borrow_map.borrow_mut();
-                    let ub = &mut upvar_borrow_map[upvar_id];
+                    let mut upvar_capture_map = self.fcx.inh.upvar_capture_map.borrow_mut();
+                    let ub = &mut upvar_capture_map[upvar_id];
                     self.adjust_upvar_borrow_kind(upvar_id, ub, ty::MutBorrow);
                 } else {
                     // assignment to deref of an `&mut`
@@ -237,7 +241,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx>{
                     // upvar, then we need to modify the
                     // borrow_kind of the upvar to make sure it
                     // is inferred to unique if necessary
-                    let mut ub = self.fcx.inh.upvar_borrow_map.borrow_mut();
+                    let mut ub = self.fcx.inh.upvar_capture_map.borrow_mut();
                     let ub = &mut ub[upvar_id];
                     self.adjust_upvar_borrow_kind(upvar_id, ub, ty::UniqueImmBorrow);
                 } else {
@@ -262,23 +266,30 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx>{
     /// some particular use.
     fn adjust_upvar_borrow_kind(&self,
                                 upvar_id: ty::UpvarId,
-                                upvar_borrow: &mut ty::UpvarBorrow,
+                                upvar_capture: &mut ty::UpvarCapture,
                                 kind: ty::BorrowKind) {
-        debug!("adjust_upvar_borrow_kind: id={:?} kind=({:?} -> {:?})",
-               upvar_id, upvar_borrow.kind, kind);
+        debug!("adjust_upvar_borrow_kind(upvar_id={:?}, upvar_capture={:?}, kind={:?})",
+               upvar_id, upvar_capture, kind);
 
-        match (upvar_borrow.kind, kind) {
-            // Take RHS:
-            (ty::ImmBorrow, ty::UniqueImmBorrow) |
-            (ty::ImmBorrow, ty::MutBorrow) |
-            (ty::UniqueImmBorrow, ty::MutBorrow) => {
-                upvar_borrow.kind = kind;
+        match *upvar_capture {
+            ty::UpvarCapture::ByValue => {
+                // Upvar is already by-value, the strongest criteria.
             }
-            // Take LHS:
-            (ty::ImmBorrow, ty::ImmBorrow) |
-            (ty::UniqueImmBorrow, ty::ImmBorrow) |
-            (ty::UniqueImmBorrow, ty::UniqueImmBorrow) |
-            (ty::MutBorrow, _) => {
+            ty::UpvarCapture::ByRef(ref mut upvar_borrow) => {
+                match (upvar_borrow.kind, kind) {
+                    // Take RHS:
+                    (ty::ImmBorrow, ty::UniqueImmBorrow) |
+                    (ty::ImmBorrow, ty::MutBorrow) |
+                    (ty::UniqueImmBorrow, ty::MutBorrow) => {
+                        upvar_borrow.kind = kind;
+                    }
+                    // Take LHS:
+                    (ty::ImmBorrow, ty::ImmBorrow) |
+                    (ty::UniqueImmBorrow, ty::ImmBorrow) |
+                    (ty::UniqueImmBorrow, ty::UniqueImmBorrow) |
+                    (ty::MutBorrow, _) => {
+                    }
+                }
             }
         }
     }
