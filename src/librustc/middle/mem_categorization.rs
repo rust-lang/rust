@@ -277,9 +277,7 @@ pub trait Typer<'tcx> : ty::ClosureTyper<'tcx> {
     fn adjustments<'a>(&'a self) -> &'a RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>;
     fn is_method_call(&self, id: ast::NodeId) -> bool;
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<region::CodeExtent>;
-    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow>;
-    fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> ast::CaptureClause;
+    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture>;
 }
 
 impl MutabilityCategory {
@@ -595,8 +593,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
               match ty.sty {
                   ty::ty_closure(closure_id, _, _) => {
                       let kind = self.typer.closure_kind(closure_id);
-                      let mode = self.typer.capture_mode(fn_node_id);
-                      self.cat_upvar(id, span, var_id, fn_node_id, kind, mode)
+                      self.cat_upvar(id, span, var_id, fn_node_id, kind)
                   }
                   _ => {
                       self.tcx().sess.span_bug(
@@ -628,10 +625,13 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                  span: Span,
                  var_id: ast::NodeId,
                  fn_node_id: ast::NodeId,
-                 kind: ty::ClosureKind,
-                 mode: ast::CaptureClause)
-                 -> McResult<cmt<'tcx>> {
-        // An upvar can have up to 3 components.  The base is a
+                 kind: ty::ClosureKind)
+                 -> McResult<cmt<'tcx>>
+    {
+        // An upvar can have up to 3 components. We translate first to a
+        // `cat_upvar`, which is itself a fiction -- it represents the reference to the
+        // field from the environment.
+        //
         // `cat_upvar`.  Next, we add a deref through the implicit
         // environment pointer with an anonymous free region 'env and
         // appropriate borrow kind for closure kinds that take self by
@@ -650,135 +650,130 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // Fn             | copied -> &'env      | upvar -> &'env -> &'up bk
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
-        let var_ty = try!(self.node_ty(var_id));
 
         let upvar_id = ty::UpvarId { var_id: var_id,
                                      closure_expr_id: fn_node_id };
+        let var_ty = try!(self.node_ty(var_id));
 
         // Mutability of original variable itself
         let var_mutbl = MutabilityCategory::from_local(self.tcx(), var_id);
 
-        // Construct information about env pointer dereference, if any
-        let mutbl = match kind {
-            ty::FnOnceClosureKind => None, // None, env is by-value
-            ty::FnMutClosureKind => match mode { // Depends on capture type
-                ast::CaptureByValue => Some(var_mutbl), // Mutable if the original var is
-                ast::CaptureByRef => Some(McDeclared) // Mutable regardless
-            },
-            ty::FnClosureKind => Some(McImmutable) // Never mutable
+        // Construct the upvar. This represents access to the field
+        // from the environment (perhaps we should eventually desugar
+        // this field further, but it will do for now).
+        let cmt_result = cmt_ {
+            id: id,
+            span: span,
+            cat: cat_upvar(Upvar {id: upvar_id, kind: kind}),
+            mutbl: var_mutbl,
+            ty: var_ty,
+            note: NoteNone
         };
-        let env_info = mutbl.map(|env_mutbl| {
-            // Look up the node ID of the closure body so we can construct
-            // a free region within it
-            let fn_body_id = {
-                let fn_expr = match self.tcx().map.find(fn_node_id) {
-                    Some(ast_map::NodeExpr(e)) => e,
-                    _ => unreachable!()
-                };
 
-                match fn_expr.node {
-                    ast::ExprClosure(_, _, _, ref body) => body.id,
-                    _ => unreachable!()
-                }
-            };
+        // If this is a `FnMut` or `Fn` closure, then the above is
+        // conceptually a `&mut` or `&` reference, so we have to add a
+        // deref.
+        let cmt_result = match kind {
+            ty::FnOnceClosureKind => {
+                cmt_result
+            }
+            ty::FnMutClosureKind => {
+                self.env_deref(id, span, upvar_id, var_mutbl, ty::MutBorrow, cmt_result)
+            }
+            ty::FnClosureKind => {
+                self.env_deref(id, span, upvar_id, var_mutbl, ty::ImmBorrow, cmt_result)
+            }
+        };
 
-            // Region of environment pointer
-            let env_region = ty::ReFree(ty::FreeRegion {
-                scope: region::CodeExtent::from_node_id(fn_body_id),
-                bound_region: ty::BrEnv
-            });
-
-            let env_ptr = BorrowedPtr(if env_mutbl.is_mutable() {
-                ty::MutBorrow
-            } else {
-                ty::ImmBorrow
-            }, env_region);
-
-            (env_mutbl, env_ptr)
-        });
-
-        // First, switch by capture mode
-        Ok(match mode {
-            ast::CaptureByValue => {
-                let mut base = cmt_ {
-                    id: id,
-                    span: span,
-                    cat: cat_upvar(Upvar {
-                        id: upvar_id,
-                        kind: kind
-                    }),
-                    mutbl: var_mutbl,
-                    ty: var_ty,
-                    note: NoteNone
-                };
-
-                match env_info {
-                    Some((env_mutbl, env_ptr)) => {
-                        // We need to add the env deref.  This means
-                        // that the above is actually immutable and
-                        // has a ref type.  However, nothing should
-                        // actually look at the type, so we can get
-                        // away with stuffing a `ty_err` in there
-                        // instead of bothering to construct a proper
-                        // one.
-                        base.mutbl = McImmutable;
-                        base.ty = self.tcx().types.err;
-                        Rc::new(cmt_ {
-                            id: id,
-                            span: span,
-                            cat: cat_deref(Rc::new(base), 0, env_ptr),
-                            mutbl: env_mutbl,
-                            ty: var_ty,
-                            note: NoteClosureEnv(upvar_id)
-                        })
-                    }
-                    None => Rc::new(base)
-                }
-            },
-            ast::CaptureByRef => {
-                // The type here is actually a ref (or ref of a ref),
-                // but we can again get away with not constructing one
-                // properly since it will never be used.
-                let mut base = cmt_ {
-                    id: id,
-                    span: span,
-                    cat: cat_upvar(Upvar {
-                        id: upvar_id,
-                        kind: kind
-                    }),
-                    mutbl: McImmutable,
-                    ty: self.tcx().types.err,
-                    note: NoteNone
-                };
-
-                match env_info {
-                    Some((env_mutbl, env_ptr)) => {
-                        base = cmt_ {
-                            id: id,
-                            span: span,
-                            cat: cat_deref(Rc::new(base), 0, env_ptr),
-                            mutbl: env_mutbl,
-                            ty: self.tcx().types.err,
-                            note: NoteClosureEnv(upvar_id)
-                        };
-                    }
-                    None => {}
-                }
-
-                // Look up upvar borrow so we can get its region
-                let upvar_borrow = self.typer.upvar_borrow(upvar_id).unwrap();
+        // If this is a by-ref capture, then the upvar we loaded is
+        // actually a reference, so we have to add an implicit deref
+        // for that.
+        let upvar_id = ty::UpvarId { var_id: var_id,
+                                     closure_expr_id: fn_node_id };
+        let upvar_capture = self.typer.upvar_capture(upvar_id).unwrap();
+        let cmt_result = match upvar_capture {
+            ty::UpvarCapture::ByValue => {
+                cmt_result
+            }
+            ty::UpvarCapture::ByRef(upvar_borrow) => {
                 let ptr = BorrowedPtr(upvar_borrow.kind, upvar_borrow.region);
-
-                Rc::new(cmt_ {
+                cmt_ {
                     id: id,
                     span: span,
-                    cat: cat_deref(Rc::new(base), 0, ptr),
+                    cat: cat_deref(Rc::new(cmt_result), 0, ptr),
                     mutbl: MutabilityCategory::from_borrow_kind(upvar_borrow.kind),
                     ty: var_ty,
                     note: NoteUpvarRef(upvar_id)
-                })
+                }
             }
-        })
+        };
+
+        Ok(Rc::new(cmt_result))
+    }
+
+    fn env_deref(&self,
+                 id: ast::NodeId,
+                 span: Span,
+                 upvar_id: ty::UpvarId,
+                 upvar_mutbl: MutabilityCategory,
+                 env_borrow_kind: ty::BorrowKind,
+                 cmt_result: cmt_<'tcx>)
+                 -> cmt_<'tcx>
+    {
+        // Look up the node ID of the closure body so we can construct
+        // a free region within it
+        let fn_body_id = {
+            let fn_expr = match self.tcx().map.find(upvar_id.closure_expr_id) {
+                Some(ast_map::NodeExpr(e)) => e,
+                _ => unreachable!()
+            };
+
+            match fn_expr.node {
+                ast::ExprClosure(_, _, _, ref body) => body.id,
+                _ => unreachable!()
+            }
+        };
+
+        // Region of environment pointer
+        let env_region = ty::ReFree(ty::FreeRegion {
+            scope: region::CodeExtent::from_node_id(fn_body_id),
+            bound_region: ty::BrEnv
+        });
+
+        let env_ptr = BorrowedPtr(env_borrow_kind, env_region);
+
+        let var_ty = cmt_result.ty;
+
+        // We need to add the env deref.  This means
+        // that the above is actually immutable and
+        // has a ref type.  However, nothing should
+        // actually look at the type, so we can get
+        // away with stuffing a `ty_err` in there
+        // instead of bothering to construct a proper
+        // one.
+        let cmt_result = cmt_ {
+            mutbl: McImmutable,
+            ty: self.tcx().types.err,
+            ..cmt_result
+        };
+
+        let mut deref_mutbl = MutabilityCategory::from_borrow_kind(env_borrow_kind);
+
+        // Issue #18335. If variable is declared as immutable, override the
+        // mutability from the environment and substitute an `&T` anyway.
+        match upvar_mutbl {
+            McImmutable => { deref_mutbl = McImmutable; }
+            McDeclared | McInherited => { }
+        }
+
+        cmt_ {
+            id: id,
+            span: span,
+            cat: cat_deref(Rc::new(cmt_result), 0, env_ptr),
+            mutbl: deref_mutbl,
+            ty: var_ty,
+            note: NoteClosureEnv(upvar_id)
+        }
     }
 
     pub fn cat_rvalue_node(&self,

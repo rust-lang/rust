@@ -182,16 +182,20 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return;
         }
 
-        for (upvar_id, upvar_borrow) in self.fcx.inh.upvar_borrow_map.borrow().iter() {
-            let r = upvar_borrow.region;
-            let r = self.resolve(&r, ResolvingUpvar(*upvar_id));
-            let new_upvar_borrow = ty::UpvarBorrow { kind: upvar_borrow.kind,
-                                                     region: r };
-            debug!("Upvar borrow for {} resolved to {}",
+        for (upvar_id, upvar_capture) in self.fcx.inh.upvar_capture_map.borrow().iter() {
+            let new_upvar_capture = match *upvar_capture {
+                ty::UpvarCapture::ByValue => ty::UpvarCapture::ByValue,
+                ty::UpvarCapture::ByRef(ref upvar_borrow) => {
+                    let r = upvar_borrow.region;
+                    let r = self.resolve(&r, ResolvingUpvar(*upvar_id));
+                    ty::UpvarCapture::ByRef(
+                        ty::UpvarBorrow { kind: upvar_borrow.kind, region: r })
+                }
+            };
+            debug!("Upvar capture for {} resolved to {}",
                    upvar_id.repr(self.tcx()),
-                   new_upvar_borrow.repr(self.tcx()));
-            self.fcx.tcx().upvar_borrow_map.borrow_mut().insert(
-                *upvar_id, new_upvar_borrow);
+                   new_upvar_capture.repr(self.tcx()));
+            self.fcx.tcx().upvar_capture_map.borrow_mut().insert(*upvar_id, new_upvar_capture);
         }
     }
 
