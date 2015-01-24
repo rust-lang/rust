@@ -90,8 +90,8 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         method_name: ast::Name,
                         self_ty: Ty<'tcx>,
                         supplied_method_types: Vec<Ty<'tcx>>,
-                        call_expr: &ast::Expr,
-                        self_expr: &ast::Expr)
+                        call_expr: &'tcx ast::Expr,
+                        self_expr: &'tcx ast::Expr)
                         -> Result<MethodCallee<'tcx>, MethodError>
 {
     debug!("lookup(method_name={}, self_ty={}, call_expr={}, self_expr={})",

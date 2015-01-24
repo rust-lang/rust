@@ -30,7 +30,7 @@ use syntax::print::pprust;
 use syntax::ptr::P;
 
 pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
-                           pat: &ast::Pat,
+                           pat: &'tcx ast::Pat,
                            expected: Ty<'tcx>)
 {
     let fcx = pcx.fcx;
@@ -157,9 +157,10 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         ast::PatIdent(_, ref path, _) => {
             let path = ast_util::ident_to_path(path.span, path.node);
-            check_pat_enum(pcx, pat, &path, &Some(vec![]), expected);
+            check_pat_enum(pcx, pat, &path, Some(&[]), expected);
         }
         ast::PatEnum(ref path, ref subpats) => {
+            let subpats = subpats.as_ref().map(|v| &v[]);
             check_pat_enum(pcx, pat, path, subpats, expected);
         }
         ast::PatStruct(ref path, ref fields, etc) => {
@@ -335,9 +336,9 @@ pub fn check_dereferencable<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
 }
 
 pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                             expr: &ast::Expr,
-                             discrim: &ast::Expr,
-                             arms: &[ast::Arm],
+                             expr: &'tcx ast::Expr,
+                             discrim: &'tcx ast::Expr,
+                             arms: &'tcx [ast::Arm],
                              expected: Expectation<'tcx>,
                              match_src: ast::MatchSource) {
     let tcx = fcx.ccx.tcx;
@@ -424,8 +425,8 @@ pub struct pat_ctxt<'a, 'tcx: 'a> {
     pub map: PatIdMap,
 }
 
-pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
-                                  path: &ast::Path, fields: &[Spanned<ast::FieldPat>],
+pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
+                                  path: &ast::Path, fields: &'tcx [Spanned<ast::FieldPat>],
                                   etc: bool, expected: Ty<'tcx>) {
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
@@ -483,10 +484,12 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                             variant_def_id, etc);
 }
 
-pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
-                                path: &ast::Path, subpats: &Option<Vec<P<ast::Pat>>>,
-                                expected: Ty<'tcx>) {
-
+pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
+                                pat: &ast::Pat,
+                                path: &ast::Path,
+                                subpats: Option<&'tcx [P<ast::Pat>]>,
+                                expected: Ty<'tcx>)
+{
     // Typecheck the path.
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
@@ -536,7 +539,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
                 "`{}` does not name a non-struct variant or a tuple struct", name);
             fcx.write_error(pat.id);
 
-            if let Some(ref subpats) = *subpats {
+            if let Some(subpats) = subpats {
                 for pat in subpats.iter() {
                     check_pat(pcx, &**pat, tcx.types.err);
                 }
@@ -545,7 +548,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
         }
     };
 
-    if let Some(ref subpats) = *subpats {
+    if let Some(subpats) = subpats {
         if subpats.len() == arg_tys.len() {
             for (subpat, arg_ty) in subpats.iter().zip(arg_tys.iter()) {
                 check_pat(pcx, &**subpat, *arg_ty);
@@ -579,7 +582,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &ast::Pat,
 /// `etc` is true if the pattern said '...' and false otherwise.
 pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                                          span: Span,
-                                         fields: &[Spanned<ast::FieldPat>],
+                                         fields: &'tcx [Spanned<ast::FieldPat>],
                                          struct_fields: &[ty::field<'tcx>],
                                          struct_id: ast::DefId,
                                          etc: bool) {
