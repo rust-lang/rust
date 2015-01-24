@@ -2148,7 +2148,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
     encode_macro_defs(&mut rbml_w, krate);
     stats.macro_defs_bytes = rbml_w.writer.tell().unwrap() - i;
 
-    // Encode the types of all unboxed closures in this crate.
+    // Encode the types of all closures in this crate.
     i = rbml_w.writer.tell().unwrap();
     encode_closures(&ecx, &mut rbml_w);
     stats.closure_bytes = rbml_w.writer.tell().unwrap() - i;
@@ -2193,7 +2193,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         println!("          native bytes: {}", stats.native_lib_bytes);
         println!("plugin registrar bytes: {}", stats.plugin_registrar_fn_bytes);
         println!("       macro def bytes: {}", stats.macro_defs_bytes);
-        println!(" unboxed closure bytes: {}", stats.unboxed_closure_bytes);
+        println!("         closure bytes: {}", stats.closure_bytes);
         println!("            impl bytes: {}", stats.impl_bytes);
         println!("            misc bytes: {}", stats.misc_bytes);
         println!("            item bytes: {}", stats.item_bytes);

@@ -432,7 +432,7 @@ pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
     MethodStatic(ast::DefId),
 
-    // fully statically resolved unboxed closure invocation
+    // fully statically resolved closure invocation
     MethodStaticClosure(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
@@ -565,7 +565,7 @@ pub enum vtable_origin<'tcx> {
     vtable_param(param_index, uint),
 
     /*
-      Vtable automatically generated for an unboxed closure. The def ID is the
+      Vtable automatically generated for a closure. The def ID is the
       ID of the closure expression.
      */
     vtable_closure(ast::DefId),
@@ -785,8 +785,8 @@ pub struct ctxt<'tcx> {
 
     pub dependency_formats: RefCell<dependency_format::Dependencies>,
 
-    /// Records the type of each unboxed closure. The def ID is the ID of the
-    /// expression defining the unboxed closure.
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
     pub closures: RefCell<DefIdMap<Closure<'tcx>>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(ast::NodeId, lint::LintId),
@@ -2262,12 +2262,12 @@ pub struct ItemSubsts<'tcx> {
     pub substs: Substs<'tcx>,
 }
 
-/// Records information about each unboxed closure.
+/// Records information about each closure.
 #[derive(Clone)]
 pub struct Closure<'tcx> {
-    /// The type of the unboxed closure.
+    /// The type of the closure.
     pub closure_type: ClosureTy<'tcx>,
-    /// The kind of unboxed closure this is.
+    /// The kind of closure this is.
     pub kind: ClosureKind,
 }
 
@@ -3416,8 +3416,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_closure(did, r, substs) => {
-                // FIXME(#14449): `borrowed_contents` below assumes `&mut`
-                // unboxed closure.
+                // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                 let param_env = ty::empty_parameter_environment(cx);
                 let upvars = closure_upvars(&param_env, did, substs).unwrap();
                 TypeContents::union(upvars.as_slice(),
@@ -3685,7 +3684,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_infer(_) |
             ty_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
-                // inference by-products or unboxed closure types
+                // inference by-products or closure types
                 cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}",
                                     ty).as_slice())
             }
@@ -3778,8 +3777,8 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                 find_nonrepresentable(cx, sp, seen, iter)
             }
             ty_closure(..) => {
-                // this check is run on type definitions, so we don't expect to see
-                // unboxed closure types
+                // this check is run on type definitions, so we don't expect
+                // to see closure types
                 cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}",
                                     ty).as_slice())
             }

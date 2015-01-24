@@ -57,7 +57,7 @@ pub enum DefIdSource {
     // Identifies a region parameter (`fn foo<'X>() { ... }`).
     RegionParameter,
 
-    // Identifies an unboxed closure
+    // Identifies a closure
     ClosureSource
 }
 
