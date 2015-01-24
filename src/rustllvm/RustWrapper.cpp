@@ -237,6 +237,14 @@ extern "C" uint32_t LLVMRustDebugMetadataVersion() {
     return DEBUG_METADATA_VERSION;
 }
 
+extern "C" uint32_t LLVMVersionMinor() {
+  return LLVM_VERSION_MINOR;
+}
+
+extern "C" uint32_t LLVMVersionMajor() {
+  return LLVM_VERSION_MAJOR;
+}
+
 extern "C" void LLVMRustAddModuleFlag(LLVMModuleRef M,
                                       const char *name,
                                       uint32_t value) {
