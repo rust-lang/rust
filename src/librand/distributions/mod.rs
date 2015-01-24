@@ -97,7 +97,7 @@ pub struct Weighted<T> {
 ///                      Weighted { weight: 1, item: 'c' });
 /// let wc = WeightedChoice::new(items.as_mut_slice());
 /// let mut rng = rand::thread_rng();
-/// for _ in 0u..16 {
+/// for _ in 0..16 {
 ///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
 ///      println!("{}", wc.ind_sample(&mut rng));
 /// }
@@ -118,7 +118,7 @@ impl<'a, T: Clone> WeightedChoice<'a, T> {
         // strictly speaking, this is subsumed by the total weight == 0 case
         assert!(!items.is_empty(), "WeightedChoice::new called with no items");
 
-        let mut running_total = 0u;
+        let mut running_total = 0;
 
         // we convert the list from individual weights to cumulative
         // weights so we can binary search. This *could* drop elements

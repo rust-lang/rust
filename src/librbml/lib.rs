@@ -56,7 +56,7 @@ pub struct Doc<'a> {
 
 impl<'doc> Doc<'doc> {
     pub fn new(data: &'doc [u8]) -> Doc<'doc> {
-        Doc { data: data, start: 0u, end: data.len() }
+        Doc { data: data, start: 0, end: data.len() }
     }
 
     pub fn get<'a>(&'a self, tag: uint) -> Doc<'a> {
@@ -170,25 +170,25 @@ pub mod reader {
     fn vuint_at_slow(data: &[u8], start: uint) -> DecodeResult<Res> {
         let a = data[start];
         if a & 0x80u8 != 0u8 {
-            return Ok(Res {val: (a & 0x7fu8) as uint, next: start + 1u});
+            return Ok(Res {val: (a & 0x7fu8) as uint, next: start + 1});
         }
         if a & 0x40u8 != 0u8 {
-            return Ok(Res {val: ((a & 0x3fu8) as uint) << 8u |
-                        (data[start + 1u] as uint),
-                    next: start + 2u});
+            return Ok(Res {val: ((a & 0x3fu8) as uint) << 8 |
+                        (data[start + 1] as uint),
+                    next: start + 2});
         }
         if a & 0x20u8 != 0u8 {
-            return Ok(Res {val: ((a & 0x1fu8) as uint) << 16u |
-                        (data[start + 1u] as uint) << 8u |
-                        (data[start + 2u] as uint),
-                    next: start + 3u});
+            return Ok(Res {val: ((a & 0x1fu8) as uint) << 16 |
+                        (data[start + 1] as uint) << 8 |
+                        (data[start + 2] as uint),
+                    next: start + 3});
         }
         if a & 0x10u8 != 0u8 {
-            return Ok(Res {val: ((a & 0x0fu8) as uint) << 24u |
-                        (data[start + 1u] as uint) << 16u |
-                        (data[start + 2u] as uint) << 8u |
-                        (data[start + 3u] as uint),
-                    next: start + 4u});
+            return Ok(Res {val: ((a & 0x0fu8) as uint) << 24 |
+                        (data[start + 1] as uint) << 16 |
+                        (data[start + 2] as uint) << 8 |
+                        (data[start + 3] as uint),
+                    next: start + 4});
         }
         Err(IntTooBig(a as uint))
     }
@@ -225,7 +225,7 @@ pub mod reader {
             let ptr = data.as_ptr().offset(start as int) as *const u32;
             let val = Int::from_be(*ptr);
 
-            let i = (val >> 28u) as uint;
+            let i = (val >> 28) as uint;
             let (shift, mask) = SHIFT_MASK_TABLE[i];
             Ok(Res {
                 val: ((val >> shift) & mask) as uint,
@@ -311,23 +311,23 @@ pub mod reader {
 
 
     pub fn doc_as_u8(d: Doc) -> u8 {
-        assert_eq!(d.end, d.start + 1u);
+        assert_eq!(d.end, d.start + 1);
         d.data[d.start]
     }
 
     pub fn doc_as_u16(d: Doc) -> u16 {
-        assert_eq!(d.end, d.start + 2u);
-        u64_from_be_bytes(d.data, d.start, 2u) as u16
+        assert_eq!(d.end, d.start + 2);
+        u64_from_be_bytes(d.data, d.start, 2) as u16
     }
 
     pub fn doc_as_u32(d: Doc) -> u32 {
-        assert_eq!(d.end, d.start + 4u);
-        u64_from_be_bytes(d.data, d.start, 4u) as u32
+        assert_eq!(d.end, d.start + 4);
+        u64_from_be_bytes(d.data, d.start, 4) as u32
     }
 
     pub fn doc_as_u64(d: Doc) -> u64 {
-        assert_eq!(d.end, d.start + 8u);
-        u64_from_be_bytes(d.data, d.start, 8u)
+        assert_eq!(d.end, d.start + 8);
+        u64_from_be_bytes(d.data, d.start, 8)
     }
 
     pub fn doc_as_i8(d: Doc) -> i8 { doc_as_u8(d) as i8 }
@@ -712,11 +712,11 @@ pub mod writer {
 
     fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
         match size {
-            1u => w.write_all(&[0x80u8 | (n as u8)]),
-            2u => w.write_all(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
-            3u => w.write_all(&[0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
+            1 => w.write_all(&[0x80u8 | (n as u8)]),
+            2 => w.write_all(&[0x40u8 | ((n >> 8) as u8), n as u8]),
+            3 => w.write_all(&[0x20u8 | ((n >> 16) as u8), (n >> 8_u) as u8,
                             n as u8]),
-            4u => w.write_all(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
+            4 => w.write_all(&[0x10u8 | ((n >> 24) as u8), (n >> 16_u) as u8,
                             (n >> 8_u) as u8, n as u8]),
             _ => Err(old_io::IoError {
                 kind: old_io::OtherIoError,
@@ -727,10 +727,10 @@ pub mod writer {
     }
 
     fn write_vuint<W: Writer>(w: &mut W, n: uint) -> EncodeResult {
-        if n < 0x7f_u { return write_sized_vuint(w, n, 1u); }
-        if n < 0x4000_u { return write_sized_vuint(w, n, 2u); }
-        if n < 0x200000_u { return write_sized_vuint(w, n, 3u); }
-        if n < 0x10000000_u { return write_sized_vuint(w, n, 4u); }
+        if n < 0x7f { return write_sized_vuint(w, n, 1); }
+        if n < 0x4000 { return write_sized_vuint(w, n, 2); }
+        if n < 0x200000 { return write_sized_vuint(w, n, 3); }
+        if n < 0x10000000 { return write_sized_vuint(w, n, 4); }
         Err(old_io::IoError {
             kind: old_io::OtherIoError,
             desc: "int too big",
@@ -772,7 +772,7 @@ pub mod writer {
             let cur_pos = try!(self.writer.tell());
             try!(self.writer.seek(last_size_pos as i64, old_io::SeekSet));
             let size = cur_pos as uint - last_size_pos - 4;
-            try!(write_sized_vuint(self.writer, size, 4u));
+            try!(write_sized_vuint(self.writer, size, 4));
             let r = try!(self.writer.seek(cur_pos as i64, old_io::SeekSet));
 
             debug!("End tag (size = {:?})", size);
@@ -794,19 +794,19 @@ pub mod writer {
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) -> EncodeResult {
-            u64_to_be_bytes(v, 8u, |v| {
+            u64_to_be_bytes(v, 8, |v| {
                 self.wr_tagged_bytes(tag_id, v)
             })
         }
 
         pub fn wr_tagged_u32(&mut self, tag_id: uint, v: u32)  -> EncodeResult{
-            u64_to_be_bytes(v as u64, 4u, |v| {
+            u64_to_be_bytes(v as u64, 4, |v| {
                 self.wr_tagged_bytes(tag_id, v)
             })
         }
 
         pub fn wr_tagged_u16(&mut self, tag_id: uint, v: u16) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 2u, |v| {
+            u64_to_be_bytes(v as u64, 2, |v| {
                 self.wr_tagged_bytes(tag_id, v)
             })
         }
@@ -816,19 +816,19 @@ pub mod writer {
         }
 
         pub fn wr_tagged_i64(&mut self, tag_id: uint, v: i64) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 8u, |v| {
+            u64_to_be_bytes(v as u64, 8, |v| {
                 self.wr_tagged_bytes(tag_id, v)
             })
         }
 
         pub fn wr_tagged_i32(&mut self, tag_id: uint, v: i32) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 4u, |v| {
+            u64_to_be_bytes(v as u64, 4, |v| {
                 self.wr_tagged_bytes(tag_id, v)
             })
         }
 
         pub fn wr_tagged_i16(&mut self, tag_id: uint, v: i16) -> EncodeResult {
-            u64_to_be_bytes(v as u64, 2u, |v| {
+            u64_to_be_bytes(v as u64, 2, |v| {
                 self.wr_tagged_bytes(tag_id, v)
             })
         }
@@ -1190,7 +1190,7 @@ mod bench {
               _ => i as u8,
             }
         }).collect::<Vec<_>>();
-        let mut sum = 0u;
+        let mut sum = 0;
         b.iter(|| {
             let mut i = 0;
             while i < data.len() {
@@ -1208,7 +1208,7 @@ mod bench {
               _ => i as u8
             }
         }).collect::<Vec<_>>();
-        let mut sum = 0u;
+        let mut sum = 0;
         b.iter(|| {
             let mut i = 1;
             while i < data.len() {
@@ -1227,7 +1227,7 @@ mod bench {
               _ => 0u8
             }
         }).collect::<Vec<_>>();
-        let mut sum = 0u;
+        let mut sum = 0;
         b.iter(|| {
             let mut i = 0;
             while i < data.len() {
@@ -1246,7 +1246,7 @@ mod bench {
               _ => 0u8
             }
         }).collect::<Vec<_>>();
-        let mut sum = 0u;
+        let mut sum = 0;
         b.iter(|| {
             let mut i = 1;
             while i < data.len() {

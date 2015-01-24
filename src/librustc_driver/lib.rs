@@ -125,7 +125,7 @@ fn run_compiler(args: &[String]) {
     let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
     let ofile = matches.opt_str("o").map(|o| Path::new(o));
     let (input, input_file_path) = match matches.free.len() {
-        0u => {
+        0 => {
             if sopts.describe_lints {
                 let mut ls = lint::LintStore::new();
                 ls.register_builtin(None);
@@ -138,7 +138,7 @@ fn run_compiler(args: &[String]) {
             }
             early_error("no input filename given");
         }
-        1u => {
+        1 => {
             let ifile = &matches.free[0][];
             if ifile == "-" {
                 let contents = old_io::stdin().read_to_end().unwrap();

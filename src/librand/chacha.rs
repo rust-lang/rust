@@ -268,9 +268,9 @@ mod test {
         // Store the 17*i-th 32-bit word,
         // i.e., the i-th word of the i-th 16-word block
         let mut v : Vec<u32> = Vec::new();
-        for _ in 0u..16 {
+        for _ in 0..16 {
             v.push(ra.next_u32());
-            for _ in 0u..16 {
+            for _ in 0..16 {
                 ra.next_u32();
             }
         }
@@ -287,7 +287,7 @@ mod test {
         let seed : &[_] = &[0u32; 8];
         let mut rng: ChaChaRng = SeedableRng::from_seed(seed);
         let mut clone = rng.clone();
-        for _ in 0u..16 {
+        for _ in 0..16 {
             assert_eq!(rng.next_u64(), clone.next_u64());
         }
     }

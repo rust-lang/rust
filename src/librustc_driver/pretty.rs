@@ -399,7 +399,7 @@ impl UserIdentifiedItem {
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
-        let mut seen = 0u;
+        let mut seen = 0;
         for node in self.all_matching_node_ids(map) {
             saw_node = node;
             seen += 1;
