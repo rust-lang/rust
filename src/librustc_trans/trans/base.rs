@@ -1763,12 +1763,6 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub enum IsUnboxedClosureFlag {
-    NotUnboxedClosure,
-    IsUnboxedClosure,
-}
-
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.

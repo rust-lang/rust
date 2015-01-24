@@ -1237,16 +1237,6 @@ impl fmt::Display for Onceness {
     }
 }
 
-/// Represents the type of a closure
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
-pub struct ClosureTy {
-    pub lifetimes: Vec<LifetimeDef>,
-    pub unsafety: Unsafety,
-    pub onceness: Onceness,
-    pub decl: P<FnDecl>,
-    pub bounds: TyParamBounds,
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub struct BareFnTy {
     pub unsafety: Unsafety,
