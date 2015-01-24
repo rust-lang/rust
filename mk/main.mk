@@ -179,6 +179,7 @@ endif
 
 ifndef CFG_DISABLE_VALGRIND_RPASS
   $(info cfg: enabling valgrind run-pass tests (CFG_ENABLE_VALGRIND_RPASS))
+  $(info cfg: valgrind-rpass command set to $(CFG_VALGRIND))
   CFG_VALGRIND_RPASS :=$(CFG_VALGRIND)
 else
   CFG_VALGRIND_RPASS :=

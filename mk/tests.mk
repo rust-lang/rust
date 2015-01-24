@@ -611,7 +611,6 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
 
 ifdef CFG_VALGRIND_RPASS
 ifdef GOOD_VALGRIND_$(2)
-$(info cfg: valgrind-path set to $(CFG_VALGRIND_RPASS))
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) += --valgrind-path "$(CFG_VALGRIND_RPASS)"
 endif
 endif
