@@ -176,6 +176,41 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         euv.walk_fn(decl, body);
     }
 
+    fn adjust_upvar_borrow_kind_for_consume(&self,
+                                            cmt: mc::cmt<'tcx>,
+                                            mode: euv::ConsumeMode)
+    {
+        debug!("adjust_upvar_borrow_kind_for_consume(cmt={}, mode={:?})",
+               cmt.repr(self.tcx()), mode);
+
+        // we only care about moves
+        match mode {
+            euv::Copy => { return; }
+            euv::Move(_) => { }
+        }
+
+        // watch out for a move of the deref of a borrowed pointer;
+        // for that to be legal, the upvar would have to be borrowed
+        // by value instead
+        let guarantor = cmt.guarantor();
+        debug!("adjust_upvar_borrow_kind_for_consume: guarantor={}",
+               guarantor.repr(self.tcx()));
+        match guarantor.cat {
+            mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
+            mc::cat_deref(_, _, mc::Implicit(..)) => {
+                if let mc::NoteUpvarRef(upvar_id) = cmt.note {
+                    debug!("adjust_upvar_borrow_kind_for_consume: \
+                            setting upvar_id={:?} to by value",
+                           upvar_id);
+
+                    let mut upvar_capture_map = self.fcx.inh.upvar_capture_map.borrow_mut();
+                    upvar_capture_map.insert(upvar_id, ty::UpvarCapture::ByValue);
+                }
+            }
+            _ => { }
+        }
+    }
+
     /// Indicates that `cmt` is being directly mutated (e.g., assigned
     /// to). If cmt contains any by-ref upvars, this implies that
     /// those upvars must be borrowed using an `&mut` borow.
@@ -319,9 +354,12 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
     fn consume(&mut self,
                _consume_id: ast::NodeId,
                _consume_span: Span,
-               _cmt: mc::cmt<'tcx>,
-               _mode: euv::ConsumeMode)
-    {}
+               cmt: mc::cmt<'tcx>,
+               mode: euv::ConsumeMode)
+    {
+        debug!("consume(cmt={},mode={:?})", cmt.repr(self.tcx()), mode);
+        self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
+    }
 
     fn matched_pat(&mut self,
                    _matched_pat: &ast::Pat,
@@ -331,9 +369,12 @@ impl<'a,'tcx> euv::Delegate<'tcx> for AdjustBorrowKind<'a,'tcx> {
 
     fn consume_pat(&mut self,
                    _consume_pat: &ast::Pat,
-                   _cmt: mc::cmt<'tcx>,
-                   _mode: euv::ConsumeMode)
-    {}
+                   cmt: mc::cmt<'tcx>,
+                   mode: euv::ConsumeMode)
+    {
+        debug!("consume_pat(cmt={},mode={:?})", cmt.repr(self.tcx()), mode);
+        self.adjust_upvar_borrow_kind_for_consume(cmt, mode);
+    }
 
     fn borrow(&mut self,
               borrow_id: ast::NodeId,
