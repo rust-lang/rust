@@ -104,10 +104,7 @@ pub enum categorization<'tcx> {
 #[derive(Clone, Copy, PartialEq, Show)]
 pub struct Upvar {
     pub id: ty::UpvarId,
-    // Unboxed closure kinds are used even for old-style closures for simplicity
-    pub kind: ty::ClosureKind,
-    // Is this from an unboxed closure?  Used only for diagnostics.
-    pub is_unboxed: bool
+    pub kind: ty::ClosureKind
 }
 
 // different kinds of pointers:
@@ -599,7 +596,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                   ty::ty_closure(closure_id, _, _) => {
                       let kind = self.typer.closure_kind(closure_id);
                       let mode = self.typer.capture_mode(fn_node_id);
-                      self.cat_upvar(id, span, var_id, fn_node_id, kind, mode, true)
+                      self.cat_upvar(id, span, var_id, fn_node_id, kind, mode)
                   }
                   _ => {
                       self.tcx().sess.span_bug(
@@ -632,8 +629,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                  var_id: ast::NodeId,
                  fn_node_id: ast::NodeId,
                  kind: ty::ClosureKind,
-                 mode: ast::CaptureClause,
-                 is_unboxed: bool)
+                 mode: ast::CaptureClause)
                  -> McResult<cmt<'tcx>> {
         // An upvar can have up to 3 components.  The base is a
         // `cat_upvar`.  Next, we add a deref through the implicit
@@ -654,8 +650,6 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // Fn             | copied -> &'env      | upvar -> &'env -> &'up bk
         // FnMut          | copied -> &'env mut  | upvar -> &'env mut -> &'up bk
         // FnOnce         | copied               | upvar -> &'up bk
-        // old stack      | N/A                  | upvar -> &'env mut -> &'up bk
-        // old proc/once  | copied               | N/A
         let var_ty = try!(self.node_ty(var_id));
 
         let upvar_id = ty::UpvarId { var_id: var_id,
@@ -711,8 +705,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     span: span,
                     cat: cat_upvar(Upvar {
                         id: upvar_id,
-                        kind: kind,
-                        is_unboxed: is_unboxed
+                        kind: kind
                     }),
                     mutbl: var_mutbl,
                     ty: var_ty,
@@ -751,8 +744,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     span: span,
                     cat: cat_upvar(Upvar {
                         id: upvar_id,
-                        kind: kind,
-                        is_unboxed: is_unboxed
+                        kind: kind
                     }),
                     mutbl: McImmutable,
                     ty: self.tcx().types.err,
