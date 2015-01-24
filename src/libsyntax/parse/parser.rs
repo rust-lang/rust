@@ -1133,7 +1133,7 @@ impl<'a> Parser<'a> {
         TyInfer
     }
 
-    /// Parses an optional unboxed closure kind (`&:`, `&mut:`, or `:`).
+    /// Parses an optional closure kind (`&:`, `&mut:`, or `:`).
     pub fn parse_optional_closure_kind(&mut self) -> Option<ClosureKind> {
         if self.check(&token::BinOp(token::And)) &&
                 self.look_ahead(1, |t| t.is_keyword(keywords::Mut)) &&

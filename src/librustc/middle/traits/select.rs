@@ -943,9 +943,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     /// Check for the artificial impl that the compiler will create for an obligation like `X :
-    /// FnMut<..>` where `X` is an unboxed closure type.
+    /// FnMut<..>` where `X` is a closure type.
     ///
-    /// Note: the type parameters on an unboxed closure candidate are modeled as *output* type
+    /// Note: the type parameters on a closure candidate are modeled as *output* type
     /// parameters and hence do not affect whether this trait is a match or not. They will be
     /// unified during the confirmation step.
     fn assemble_closure_candidates(&mut self,
@@ -1932,7 +1932,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                      trait_ref)
     }
 
-    /// In the case of unboxed closure types and fn pointers,
+    /// In the case of closure types and fn pointers,
     /// we currently treat the input type parameters on the trait as
     /// outputs. This means that when we have a match we have only
     /// considered the self type, so we have to go back and make sure
@@ -1942,7 +1942,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// errors as if there is no applicable impl, but rather report
     /// errors are about mismatched argument types.
     ///
-    /// Here is an example. Imagine we have an unboxed closure expression
+    /// Here is an example. Imagine we have an closure expression
     /// and we desugared it so that the type of the expression is
     /// `Closure`, and `Closure` expects an int as argument. Then it
     /// is "as if" the compiler generated this impl:

@@ -133,14 +133,14 @@ impl<'a, 'tcx> ClosureEnv<'a, 'tcx> {
     }
 }
 
-/// Returns the LLVM function declaration for an unboxed closure, creating it
-/// if necessary. If the ID does not correspond to a closure ID, returns None.
-        // Not an unboxed closure.
+/// Returns the LLVM function declaration for a closure, creating it if
+/// necessary. If the ID does not correspond to a closure ID, returns None.
 pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       closure_id: ast::DefId,
                                                       substs: &Substs<'tcx>)
                                                       -> Option<Datum<'tcx, Rvalue>> {
     if !ccx.tcx().closures.borrow().contains_key(&closure_id) {
+        // Not a closure.
         return None
     }
 
@@ -161,8 +161,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
 
     match ccx.closure_vals().borrow().get(&mono_id) {
         Some(&llfn) => {
-            debug!("get_or_create_declaration_if_closure(): found \
-                    closure");
+            debug!("get_or_create_declaration_if_closure(): found closure");
             return Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
         }
         None => {}
@@ -230,8 +229,8 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                   Closure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
-    // to have a zero-size unboxed closure (in which case dest will be
-    // `Ignore`) and we must still generate the closure body.
+    // to have a zero-size closure (in which case dest will be `Ignore`) and
+    // we must still generate the closure body.
     let dest_addr = match dest {
         expr::SaveIn(p) => p,
         expr::Ignore => {
