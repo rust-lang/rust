@@ -361,7 +361,7 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
                     }
                     _ => unreachable!(),
                 };
-                let vec_len = llvec_len(&cls[(i + 1u)..]);
+                let vec_len = llvec_len(&cls[i + 1u..]);
                 let vec_ty = Type::vector(&elt_ty, vec_len as u64 * elts_per_word);
                 tys.push(vec_ty);
                 i += vec_len;

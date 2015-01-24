@@ -74,6 +74,10 @@
 //! }
 //! ```
 //!
+//! Note that this example uses `Rc<T>` and not `Arc<T>`. `RefCell<T>`s are for single-threaded
+//! scenarios. Consider using `Mutex<T>` if you need shared mutability in a multi-threaded
+//! situation.
+//!
 //! ## Implementation details of logically-immutable methods
 //!
 //! Occasionally it may be desirable not to expose in an API that

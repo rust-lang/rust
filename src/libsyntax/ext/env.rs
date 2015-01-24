@@ -104,7 +104,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     let e = match os::getenv(var.get()) {
         None => {
             cx.span_err(sp, msg.get());
-            cx.expr_uint(sp, 0)
+            cx.expr_usize(sp, 0)
         }
         Some(s) => cx.expr_str(sp, token::intern_and_get_ident(&s[]))
     };

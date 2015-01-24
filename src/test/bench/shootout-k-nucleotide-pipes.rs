@@ -101,11 +101,11 @@ fn windows_with_carry<F>(bb: &[u8], nn: uint, mut it: F) -> Vec<u8> where
 
    let len = bb.len();
    while ii < len - (nn - 1u) {
-      it(&bb[ii..(ii+nn)]);
+      it(&bb[ii..ii+nn]);
       ii += 1u;
    }
 
-   return bb[(len - (nn - 1u))..len].to_vec();
+   return bb[len - (nn - 1u)..len].to_vec();
 }
 
 fn make_sequence_processor(sz: uint,

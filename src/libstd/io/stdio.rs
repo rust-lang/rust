@@ -40,6 +40,7 @@ use mem;
 use option::Option;
 use option::Option::{Some, None};
 use ops::{Deref, DerefMut, FnOnce};
+use ptr;
 use result::Result::{Ok, Err};
 use rt;
 use slice::SliceExt;
@@ -238,7 +239,7 @@ pub fn stdin() -> StdinReader {
             // Make sure to free it at exit
             rt::at_exit(|| {
                 mem::transmute::<_, Box<StdinReader>>(STDIN);
-                STDIN = 0 as *const _;
+                STDIN = ptr::null();
             });
         });
 

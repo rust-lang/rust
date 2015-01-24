@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use regex::Regex;
 use std::ascii::AsciiExt;
 use std::cmp;
 
@@ -34,7 +33,7 @@ fn parse_log_level(level: &str) -> Option<u32> {
 ///
 /// Valid log levels are 0-255, with the most likely ones being 1-4 (defined in
 /// std::).  Also supports string log levels of error, warn, info, and debug
-pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<Regex>) {
+pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<String>) {
     let mut dirs = Vec::new();
 
     let mut parts = spec.split('/');
@@ -80,17 +79,7 @@ pub fn parse_logging_spec(spec: &str) -> (Vec<LogDirective>, Option<Regex>) {
         });
     }});
 
-    let filter = filter.map_or(None, |filter| {
-        match Regex::new(filter) {
-            Ok(re) => Some(re),
-            Err(e) => {
-                println!("warning: invalid regex filter - {:?}", e);
-                None
-            }
-        }
-    });
-
-    return (dirs, filter);
+    (dirs, filter.map(|s| s.to_string()))
 }
 
 #[cfg(test)]

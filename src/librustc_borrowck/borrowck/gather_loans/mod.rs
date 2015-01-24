@@ -491,7 +491,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for StaticInitializerCtxt<'a, 'tcx> {
         if let ast::ExprAddrOf(mutbl, ref base) = ex.node {
             let param_env = ty::empty_parameter_environment(self.bccx.tcx);
             let mc = mc::MemCategorizationContext::new(&param_env);
-            let base_cmt = mc.cat_expr(&**base).unwrap();
+            let base_cmt = mc.cat_expr(&**base).ok().unwrap();
             let borrow_kind = ty::BorrowKind::from_mutbl(mutbl);
             // Check that we don't allow borrows of unsafe static items.
             if check_aliasability(self.bccx, ex.span, euv::AddrOf,

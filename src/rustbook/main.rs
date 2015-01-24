@@ -14,10 +14,7 @@
 #![feature(io)]
 #![feature(os)]
 #![feature(path)]
-#![feature(rustc_private)]
 #![feature(rustdoc)]
-
-extern crate regex;
 
 extern crate rustdoc;
 

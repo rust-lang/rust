@@ -100,8 +100,7 @@ pub trait AstConv<'tcx> {
                                         -> Ty<'tcx>
     {
         if ty::binds_late_bound_regions(self.tcx(), &poly_trait_ref) {
-            self.tcx().sess.span_err(
-                span,
+            span_err!(self.tcx().sess, span, E0212,
                 "cannot extract an associated type from a higher-ranked trait bound \
                  in this context");
             self.tcx().types.err
@@ -119,8 +118,7 @@ pub trait AstConv<'tcx> {
                     _item_name: ast::Name)
                     -> Ty<'tcx>
     {
-        self.tcx().sess.span_err(
-            span,
+        span_err!(self.tcx().sess, span, E0213,
             "associated types are not accepted in this context");
 
         self.tcx().types.err
@@ -268,8 +266,7 @@ pub fn ast_path_substs_for_ty<'tcx>(
             convert_angle_bracketed_parameters(this, rscope, data)
         }
         ast::ParenthesizedParameters(ref data) => {
-            tcx.sess.span_err(
-                path.span,
+            span_err!(tcx.sess, path.span, E0214,
                 "parenthesized parameters may only be used with a trait");
             (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
         }
@@ -342,22 +339,22 @@ fn create_substs_for_ast_path<'tcx>(
         } else {
             "expected"
         };
-        this.tcx().sess.span_fatal(span,
-                                   &format!("wrong number of type arguments: {} {}, found {}",
+        span_fatal!(this.tcx().sess, span, E0243,
+                                   "wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            required_ty_param_count,
-                                           supplied_ty_param_count)[]);
+                                           supplied_ty_param_count);
     } else if supplied_ty_param_count > formal_ty_param_count {
         let expected = if required_ty_param_count < formal_ty_param_count {
             "expected at most"
         } else {
             "expected"
         };
-        this.tcx().sess.span_fatal(span,
-                                   &format!("wrong number of type arguments: {} {}, found {}",
+        span_fatal!(this.tcx().sess, span, E0244,
+                                   "wrong number of type arguments: {} {}, found {}",
                                            expected,
                                            formal_ty_param_count,
-                                           supplied_ty_param_count)[]);
+                                           supplied_ty_param_count);
     }
 
     let mut substs = Substs::new_type(types, regions);
@@ -560,10 +557,9 @@ pub fn instantiate_trait_ref<'tcx>(
             trait_ref
         }
         _ => {
-            this.tcx().sess.span_fatal(
-                ast_trait_ref.path.span,
-                &format!("`{}` is not a trait",
-                        ast_trait_ref.path.user_string(this.tcx()))[]);
+            span_fatal!(this.tcx().sess, ast_trait_ref.path.span, E0245,
+                "`{}` is not a trait",
+                        ast_trait_ref.path.user_string(this.tcx()));
         }
     }
 }
@@ -610,7 +606,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
             if !this.tcx().sess.features.borrow().unboxed_closures &&
                 this.tcx().lang_items.fn_trait_kind(trait_def_id).is_some()
             {
-                this.tcx().sess.span_err(path.span,
+                span_err!(this.tcx().sess, path.span, E0215,
                                          "angle-bracket notation is not stable when \
                                          used with the `Fn` family of traits, use parentheses");
                 span_help!(this.tcx().sess, path.span,
@@ -626,7 +622,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
             if !this.tcx().sess.features.borrow().unboxed_closures &&
                 this.tcx().lang_items.fn_trait_kind(trait_def_id).is_none()
             {
-                this.tcx().sess.span_err(path.span,
+                span_err!(this.tcx().sess, path.span, E0216,
                                          "parenthetical notation is only stable when \
                                          used with the `Fn` family of traits");
                 span_help!(this.tcx().sess, path.span,
@@ -738,32 +734,29 @@ fn ast_type_binding_to_projection_predicate<'tcx>(
     }
 
     if candidates.len() > 1 {
-        tcx.sess.span_err(
-            binding.span,
-            format!("ambiguous associated type: `{}` defined in multiple supertraits `{}`",
+        span_err!(tcx.sess, binding.span, E0217,
+            "ambiguous associated type: `{}` defined in multiple supertraits `{}`",
                     token::get_name(binding.item_name),
-                    candidates.user_string(tcx)).as_slice());
+                    candidates.user_string(tcx));
         return Err(ErrorReported);
     }
 
     let candidate = match candidates.pop() {
         Some(c) => c,
         None => {
-            tcx.sess.span_err(
-                binding.span,
-                format!("no associated type `{}` defined in `{}`",
+            span_err!(tcx.sess, binding.span, E0218,
+                "no associated type `{}` defined in `{}`",
                         token::get_name(binding.item_name),
-                        trait_ref.user_string(tcx)).as_slice());
+                        trait_ref.user_string(tcx));
             return Err(ErrorReported);
         }
     };
 
     if ty::binds_late_bound_regions(tcx, &candidate) {
-        tcx.sess.span_err(
-            binding.span,
-            format!("associated type `{}` defined in higher-ranked supertrait `{}`",
+        span_err!(tcx.sess, binding.span, E0219,
+            "associated type `{}` defined in higher-ranked supertrait `{}`",
                     token::get_name(binding.item_name),
-                    candidate.user_string(tcx)).as_slice());
+                    candidate.user_string(tcx));
         return Err(ErrorReported);
     }
 
@@ -893,14 +886,14 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                       pprust::ty_to_string(ty));
             match ty.node {
                 ast::TyRptr(None, ref mut_ty) => {
-                    span_note!(this.tcx().sess, ty.span,
+                    span_help!(this.tcx().sess, ty.span,
                                "perhaps you meant `&{}({} +{})`? (per RFC 438)",
                                ppaux::mutability_to_string(mut_ty.mutbl),
                                pprust::ty_to_string(&*mut_ty.ty),
                                pprust::bounds_to_string(bounds));
                 }
                ast::TyRptr(Some(ref lt), ref mut_ty) => {
-                    span_note!(this.tcx().sess, ty.span,
+                    span_help!(this.tcx().sess, ty.span,
                                "perhaps you meant `&{} {}({} +{})`? (per RFC 438)",
                                pprust::lifetime_to_string(lt),
                                ppaux::mutability_to_string(mut_ty.mutbl),
@@ -909,7 +902,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                 }
 
                 _ => {
-                    span_note!(this.tcx().sess, ty.span,
+                    span_help!(this.tcx().sess, ty.span,
                                "perhaps you forgot parentheses? (per RFC 438)");
                 }
             }
@@ -964,18 +957,18 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     }
 
     if suitable_bounds.len() == 0 {
-        tcx.sess.span_err(ast_ty.span,
-                          format!("associated type `{}` not found for type parameter `{}`",
+        span_err!(tcx.sess, ast_ty.span, E0220,
+                          "associated type `{}` not found for type parameter `{}`",
                                   token::get_name(assoc_name),
-                                  token::get_name(ty_param_name)).as_slice());
+                                  token::get_name(ty_param_name));
         return this.tcx().types.err;
     }
 
     if suitable_bounds.len() > 1 {
-        tcx.sess.span_err(ast_ty.span,
-                          format!("ambiguous associated type `{}` in bounds of `{}`",
+        span_err!(tcx.sess, ast_ty.span, E0221,
+                          "ambiguous associated type `{}` in bounds of `{}`",
                                   token::get_name(assoc_name),
-                                  token::get_name(ty_param_name)).as_slice());
+                                  token::get_name(ty_param_name));
 
         for suitable_bound in suitable_bounds.iter() {
             span_note!(this.tcx().sess, ast_ty.span,
@@ -1042,7 +1035,7 @@ pub fn ast_ty_to_ty<'tcx>(
     match ast_ty_to_ty_cache.get(&ast_ty.id) {
         Some(&ty::atttce_resolved(ty)) => return ty,
         Some(&ty::atttce_unresolved) => {
-            tcx.sess.span_fatal(ast_ty.span,
+            span_fatal!(tcx.sess, ast_ty.span, E0246,
                                 "illegal recursive type; insert an enum \
                                  or struct in the cycle, if this is \
                                  desired");
@@ -1093,7 +1086,7 @@ pub fn ast_ty_to_ty<'tcx>(
             ast::TyParen(ref typ) => ast_ty_to_ty(this, rscope, &**typ),
             ast::TyBareFn(ref bf) => {
                 if bf.decl.variadic && bf.abi != abi::C {
-                    tcx.sess.span_err(ast_ty.span,
+                    span_err!(tcx.sess, ast_ty.span, E0222,
                                       "variadic function must have C calling convention");
                 }
                 let bare_fn = ty_of_bare_fn(this, bf.unsafety, bf.abi, &*bf.decl);
@@ -1142,9 +1135,9 @@ pub fn ast_ty_to_ty<'tcx>(
                         ty::mk_self_type(tcx)
                     }
                     def::DefMod(id) => {
-                        tcx.sess.span_fatal(ast_ty.span,
-                            &format!("found module name used as a type: {}",
-                                    tcx.map.node_to_string(id.node))[]);
+                        span_fatal!(tcx.sess, ast_ty.span, E0247,
+                            "found module name used as a type: {}",
+                                    tcx.map.node_to_string(id.node));
                     }
                     def::DefPrimTy(_) => {
                         panic!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
@@ -1152,8 +1145,8 @@ pub fn ast_ty_to_ty<'tcx>(
                     def::DefAssociatedTy(trait_type_id) => {
                         let path_str = tcx.map.path_to_string(
                             tcx.map.get_parent(trait_type_id.node));
-                        tcx.sess.span_err(ast_ty.span,
-                                          &format!("ambiguous associated \
+                        span_err!(tcx.sess, ast_ty.span, E0223,
+                                          "ambiguous associated \
                                                    type; specify the type \
                                                    using the syntax `<Type \
                                                    as {}>::{}`",
@@ -1163,17 +1156,17 @@ pub fn ast_ty_to_ty<'tcx>(
                                                           .last()
                                                           .unwrap()
                                                           .identifier)
-                                                  .get())[]);
+                                                  .get());
                         this.tcx().types.err
                     }
                     def::DefAssociatedPath(provenance, assoc_ident) => {
                         associated_path_def_to_ty(this, ast_ty, provenance, assoc_ident.name)
                     }
                     _ => {
-                        tcx.sess.span_fatal(ast_ty.span,
-                                            &format!("found value name used \
+                        span_fatal!(tcx.sess, ast_ty.span, E0248,
+                                            "found value name used \
                                                      as a type: {:?}",
-                                                    a_def)[]);
+                                                    a_def);
                     }
                 }
             }
@@ -1191,17 +1184,16 @@ pub fn ast_ty_to_ty<'tcx>(
                                 ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty),
                                            Some(i as uint)),
                             _ => {
-                                tcx.sess.span_fatal(
-                                    ast_ty.span, "expected constant expr for array length");
+                                span_fatal!(tcx.sess, ast_ty.span, E0249,
+                                            "expected constant expr for array length");
                             }
                         }
                     }
                     Err(ref r) => {
-                        tcx.sess.span_fatal(
-                            ast_ty.span,
-                            &format!("expected constant expr for array \
+                        span_fatal!(tcx.sess, ast_ty.span, E0250,
+                            "expected constant expr for array \
                                      length: {}",
-                                    *r)[]);
+                                    *r);
                     }
                 }
             }
@@ -1321,7 +1313,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
 
     // HACK(eddyb) replace the fake self type in the AST with the actual type.
     let input_params = if self_ty.is_some() {
-        decl.inputs.slice_from(1)
+        &decl.inputs[1..]
     } else {
         &decl.inputs[]
     };
@@ -1339,9 +1331,9 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     let lifetimes_for_params = if implied_output_region.is_none() {
         let input_tys = if self_ty.is_some() {
             // Skip the first argument if `self` is present.
-            self_and_input_tys.slice_from(1)
+            &self_and_input_tys[1..]
         } else {
-            self_and_input_tys.slice_from(0)
+            &self_and_input_tys[]
         };
 
         let (ior, lfp) = find_implied_output_region(input_tys, input_pats);
@@ -1457,9 +1449,6 @@ fn determine_explicit_self_category<'a, 'tcx>(this: &AstConv<'tcx>,
 pub fn ty_of_closure<'tcx>(
     this: &AstConv<'tcx>,
     unsafety: ast::Unsafety,
-    onceness: ast::Onceness,
-    bounds: ty::ExistentialBounds<'tcx>,
-    store: ty::TraitStore,
     decl: &ast::FnDecl,
     abi: abi::Abi,
     expected_sig: Option<ty::FnSig<'tcx>>)
@@ -1509,9 +1498,6 @@ pub fn ty_of_closure<'tcx>(
 
     ty::ClosureTy {
         unsafety: unsafety,
-        onceness: onceness,
-        store: store,
-        bounds: bounds,
         abi: abi,
         sig: ty::Binder(ty::FnSig {inputs: input_tys,
                                    output: output_ty,
@@ -1557,8 +1543,7 @@ fn conv_ty_poly_trait_ref<'tcx>(
                                         None,
                                         &mut projection_bounds))
     } else {
-        this.tcx().sess.span_err(
-            span,
+        span_err!(this.tcx().sess, span, E0224,
             "at least one non-builtin trait is required for an object type");
         None
     };
@@ -1593,10 +1578,9 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
 
     if !trait_bounds.is_empty() {
         let b = &trait_bounds[0];
-        this.tcx().sess.span_err(
-            b.trait_ref.path.span,
-            &format!("only the builtin traits can be used \
-                     as closure or object bounds")[]);
+        span_err!(this.tcx().sess, b.trait_ref.path.span, E0225,
+            "only the builtin traits can be used \
+                     as closure or object bounds");
     }
 
     let region_bound = compute_region_bound(this,
@@ -1633,9 +1617,8 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
            builtin_bounds.repr(tcx));
 
     if explicit_region_bounds.len() > 1 {
-        tcx.sess.span_err(
-            explicit_region_bounds[1].span,
-            format!("only a single explicit lifetime bound is permitted").as_slice());
+        span_err!(tcx.sess, explicit_region_bounds[1].span, E0226,
+            "only a single explicit lifetime bound is permitted");
     }
 
     if explicit_region_bounds.len() != 0 {
@@ -1665,11 +1648,10 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     // of derived region bounds. If so, use that. Otherwise, report an
     // error.
     let r = derived_region_bounds[0];
-    if derived_region_bounds.slice_from(1).iter().any(|r1| r != *r1) {
-        tcx.sess.span_err(
-            span,
-            &format!("ambiguous lifetime bound, \
-                     explicit lifetime bound required")[]);
+    if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
+        span_err!(tcx.sess, span, E0227,
+            "ambiguous lifetime bound, \
+                     explicit lifetime bound required");
     }
     return Some(r);
 }
@@ -1693,9 +1675,8 @@ fn compute_region_bound<'tcx>(
             match rscope.default_region_bound(span) {
                 Some(r) => { r }
                 None => {
-                    this.tcx().sess.span_err(
-                        span,
-                        &format!("explicit lifetime bound required")[]);
+                    span_err!(this.tcx().sess, span, E0228,
+                        "explicit lifetime bound required");
                     ty::ReStatic
                 }
             }
@@ -1779,8 +1760,7 @@ fn prohibit_projections<'tcx>(tcx: &ty::ctxt<'tcx>,
                               bindings: &[ConvertedBinding<'tcx>])
 {
     for binding in bindings.iter().take(1) {
-        tcx.sess.span_err(
-            binding.span,
+        span_err!(tcx.sess, binding.span, E0229,
             "associated type bindings are not allowed here");
     }
 }

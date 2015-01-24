@@ -31,7 +31,7 @@ pub struct EnumSet<E> {
 
 impl<E> Copy for EnumSet<E> {}
 
-impl<E:CLike+fmt::Show> fmt::Show for EnumSet<E> {
+impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "EnumSet {{"));
         let mut first = true;

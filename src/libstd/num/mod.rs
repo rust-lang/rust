@@ -16,7 +16,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 
-#[cfg(test)] use fmt::Show;
+#[cfg(test)] use fmt::Debug;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 
 use marker::Copy;
@@ -353,7 +353,7 @@ pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq + NumCast
      + Add<Output=T> + Sub<Output=T>
      + Mul<Output=T> + Div<Output=T>
-     + Rem<Output=T> + Show
+     + Rem<Output=T> + Debug
      + Copy
 {
     assert_eq!(ten.add(two),  cast(12i).unwrap());

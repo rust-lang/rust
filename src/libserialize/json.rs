@@ -235,7 +235,7 @@ pub struct AsJson<'a, T: 'a> { inner: &'a T }
 pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<uint> }
 
 /// The errors that can arise while parsing a JSON stream.
-#[derive(Clone, Copy, PartialEq)]
+#[derive(Clone, Copy, PartialEq, Show)]
 pub enum ErrorCode {
     InvalidSyntax,
     InvalidNumber,
@@ -325,7 +325,7 @@ pub fn encode<T: ::Encodable>(object: &T) -> string::String {
     s
 }
 
-impl fmt::Show for ErrorCode {
+impl fmt::Display for ErrorCode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         error_str(*self).fmt(f)
     }
@@ -335,14 +335,33 @@ fn io_error_to_error(io: io::IoError) -> ParserError {
     IoError(io.kind, io.desc)
 }
 
+impl fmt::Display for ParserError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // FIXME this should be a nicer error
+        fmt::Debug::fmt(self, f)
+    }
+}
+
+impl fmt::Display for DecoderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // FIXME this should be a nicer error
+        fmt::Debug::fmt(self, f)
+    }
+}
+
 impl std::error::Error for DecoderError {
     fn description(&self) -> &str { "decoder error" }
-    fn detail(&self) -> Option<std::string::String> { Some(format!("{:?}", self)) }
+}
+
+impl fmt::Display for EncoderError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        // FIXME this should be a nicer error
+        fmt::Debug::fmt(self, f)
+    }
 }
 
 impl std::error::Error for EncoderError {
     fn description(&self) -> &str { "encoder error" }
-    fn detail(&self) -> Option<std::string::String> { Some(format!("{:?}", self)) }
 }
 
 impl std::error::FromError<fmt::Error> for EncoderError {
@@ -1298,7 +1317,7 @@ impl Stack {
             InternalIndex(i) => StackElement::Index(i),
             InternalKey(start, size) => {
                 StackElement::Key(str::from_utf8(
-                    &self.str_buffer[(start as uint) .. (start as uint + size as uint)])
+                    &self.str_buffer[start as uint .. start as uint + size as uint])
                         .unwrap())
             }
         }
@@ -1341,7 +1360,7 @@ impl Stack {
             Some(&InternalIndex(i)) => Some(StackElement::Index(i)),
             Some(&InternalKey(start, size)) => {
                 Some(StackElement::Key(str::from_utf8(
-                    &self.str_buffer[(start as uint) .. (start+size) as uint]
+                    &self.str_buffer[start as uint .. (start+size) as uint]
                 ).unwrap()))
             }
         }
@@ -2519,7 +2538,7 @@ impl<'a, 'b> fmt::Writer for FormatShim<'a, 'b> {
     }
 }
 
-impl fmt::String for Json {
+impl fmt::Display for Json {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2531,7 +2550,7 @@ impl fmt::String for Json {
     }
 }
 
-impl<'a> fmt::String for PrettyJson<'a> {
+impl<'a> fmt::Display for PrettyJson<'a> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2543,7 +2562,7 @@ impl<'a> fmt::String for PrettyJson<'a> {
     }
 }
 
-impl<'a, T: Encodable> fmt::String for AsJson<'a, T> {
+impl<'a, T: Encodable> fmt::Display for AsJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -2563,7 +2582,7 @@ impl<'a, T> AsPrettyJson<'a, T> {
     }
 }
 
-impl<'a, T: Encodable> fmt::String for AsPrettyJson<'a, T> {
+impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
     /// Encodes a json value into a string
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut shim = FormatShim { inner: f };
@@ -3920,7 +3939,7 @@ mod tests {
         let mut mem_buf = Vec::new();
         let mut encoder = Encoder::new(&mut mem_buf as &mut fmt::Writer);
         let result = hm.encode(&mut encoder);
-        match result.unwrap_err() {
+        match result.err().unwrap() {
             EncoderError::BadHashmapKey => (),
             _ => panic!("expected bad hash map key")
         }

@@ -3,7 +3,8 @@
 REPLACEMENT := s/[0-9][0-9]*\#[0-9][0-9]*/$(shell date)/g
 
 all:
-	$(RUSTC) -o $(TMPDIR)/input.out --pretty expanded,hygiene input.rs
+	$(RUSTC) -o $(TMPDIR)/input.out -Z unstable-options \
+		--pretty expanded,hygiene input.rs
 
 	# the name/ctxt numbers are very internals-dependent and thus
 	# change relatively frequently, and testing for their exact values

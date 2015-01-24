@@ -176,13 +176,13 @@ impl TocBuilder {
     }
 }
 
-impl fmt::Show for Toc {
+impl fmt::Debug for Toc {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(self, f)
+        fmt::Display::fmt(self, f)
     }
 }
 
-impl fmt::String for Toc {
+impl fmt::Display for Toc {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "<ul>"));
         for entry in self.entries.iter() {

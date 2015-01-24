@@ -14,6 +14,7 @@ pub use self::OptimizationDiagnosticKind::*;
 pub use self::Diagnostic::*;
 
 use libc::c_char;
+use std::ptr;
 
 use {ValueRef, TwineRef, DebugLocRef, DiagnosticInfoRef};
 
@@ -52,10 +53,10 @@ impl OptimizationDiagnostic {
 
         let mut opt = OptimizationDiagnostic {
             kind: kind,
-            pass_name: 0 as *const c_char,
-            function: 0 as ValueRef,
-            debug_loc: 0 as DebugLocRef,
-            message: 0 as TwineRef,
+            pass_name: ptr::null(),
+            function: ptr::null_mut(),
+            debug_loc: ptr::null_mut(),
+            message: ptr::null_mut(),
         };
 
         super::LLVMUnpackOptimizationDiagnostic(di,

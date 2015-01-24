@@ -21,6 +21,7 @@ use trans::cleanup;
 use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::datum::*;
+use trans::debuginfo::DebugLoc;
 use trans::expr;
 use trans::glue;
 use trans::type_of::*;
@@ -149,9 +150,8 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                             args: callee::CallArgs<'a, 'tcx>,
                                             dest: expr::Dest,
                                             substs: subst::Substs<'tcx>,
-                                            call_info: NodeInfo)
-                                            -> Result<'blk, 'tcx>
-{
+                                            call_info: NodeIdAndSpan)
+                                            -> Result<'blk, 'tcx> {
     let fcx = bcx.fcx;
     let ccx = fcx.ccx;
     let tcx = bcx.tcx();
@@ -270,10 +270,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     fcx.pop_custom_cleanup_scope(cleanup_scope);
 
+    let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
+
     // These are the only intrinsic functions that diverge.
     if name.get() == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
-        Call(bcx, llfn, &[], None);
+        Call(bcx, llfn, &[], None, call_debug_location);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
     } else if name.get() == "unreachable" {
@@ -304,11 +306,11 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let simple = get_simple_intrinsic(ccx, &*foreign_item);
     let llval = match (simple, name.get()) {
         (Some(llfn), _) => {
-            Call(bcx, llfn, llargs.as_slice(), None)
+            Call(bcx, llfn, llargs.as_slice(), None, call_debug_location)
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));
-            Call(bcx, llfn, &[], None)
+            Call(bcx, llfn, &[], None, call_debug_location)
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
@@ -384,29 +386,63 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
 
         (_, "copy_nonoverlapping_memory") => {
-            copy_intrinsic(bcx, false, false, *substs.types.get(FnSpace, 0),
-                           llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bcx,
+                           false,
+                           false,
+                           *substs.types.get(FnSpace, 0),
+                           llargs[0],
+                           llargs[1],
+                           llargs[2],
+                           call_debug_location)
         }
         (_, "copy_memory") => {
-            copy_intrinsic(bcx, true, false, *substs.types.get(FnSpace, 0),
-                           llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bcx,
+                           true,
+                           false,
+                           *substs.types.get(FnSpace, 0),
+                           llargs[0],
+                           llargs[1],
+                           llargs[2],
+                           call_debug_location)
         }
         (_, "set_memory") => {
-            memset_intrinsic(bcx, false, *substs.types.get(FnSpace, 0),
-                             llargs[0], llargs[1], llargs[2])
+            memset_intrinsic(bcx,
+                             false,
+                             *substs.types.get(FnSpace, 0),
+                             llargs[0],
+                             llargs[1],
+                             llargs[2],
+                             call_debug_location)
         }
 
         (_, "volatile_copy_nonoverlapping_memory") => {
-            copy_intrinsic(bcx, false, true, *substs.types.get(FnSpace, 0),
-                           llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bcx,
+                           false,
+                           true,
+                           *substs.types.get(FnSpace, 0),
+                           llargs[0],
+                           llargs[1],
+                           llargs[2],
+                           call_debug_location)
         }
         (_, "volatile_copy_memory") => {
-            copy_intrinsic(bcx, true, true, *substs.types.get(FnSpace, 0),
-                           llargs[0], llargs[1], llargs[2])
+            copy_intrinsic(bcx,
+                           true,
+                           true,
+                           *substs.types.get(FnSpace, 0),
+                           llargs[0],
+                           llargs[1],
+                           llargs[2],
+                           call_debug_location)
         }
         (_, "volatile_set_memory") => {
-            memset_intrinsic(bcx, true, *substs.types.get(FnSpace, 0),
-                             llargs[0], llargs[1], llargs[2])
+            memset_intrinsic(bcx,
+                             true,
+                             *substs.types.get(FnSpace, 0),
+                             llargs[0],
+                             llargs[1],
+                             llargs[2],
+                             call_debug_location)
         }
         (_, "volatile_load") => {
             VolatileLoad(bcx, llargs[0])
@@ -416,93 +452,208 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             C_nil(ccx)
         },
 
-        (_, "ctlz8") => count_zeros_intrinsic(bcx, "llvm.ctlz.i8", llargs[0]),
-        (_, "ctlz16") => count_zeros_intrinsic(bcx, "llvm.ctlz.i16", llargs[0]),
-        (_, "ctlz32") => count_zeros_intrinsic(bcx, "llvm.ctlz.i32", llargs[0]),
-        (_, "ctlz64") => count_zeros_intrinsic(bcx, "llvm.ctlz.i64", llargs[0]),
-        (_, "cttz8") => count_zeros_intrinsic(bcx, "llvm.cttz.i8", llargs[0]),
-        (_, "cttz16") => count_zeros_intrinsic(bcx, "llvm.cttz.i16", llargs[0]),
-        (_, "cttz32") => count_zeros_intrinsic(bcx, "llvm.cttz.i32", llargs[0]),
-        (_, "cttz64") => count_zeros_intrinsic(bcx, "llvm.cttz.i64", llargs[0]),
+        (_, "ctlz8") => count_zeros_intrinsic(bcx,
+                                              "llvm.ctlz.i8",
+                                              llargs[0],
+                                              call_debug_location),
+        (_, "ctlz16") => count_zeros_intrinsic(bcx,
+                                               "llvm.ctlz.i16",
+                                               llargs[0],
+                                               call_debug_location),
+        (_, "ctlz32") => count_zeros_intrinsic(bcx,
+                                               "llvm.ctlz.i32",
+                                               llargs[0],
+                                               call_debug_location),
+        (_, "ctlz64") => count_zeros_intrinsic(bcx,
+                                               "llvm.ctlz.i64",
+                                               llargs[0],
+                                               call_debug_location),
+        (_, "cttz8") => count_zeros_intrinsic(bcx,
+                                              "llvm.cttz.i8",
+                                              llargs[0],
+                                              call_debug_location),
+        (_, "cttz16") => count_zeros_intrinsic(bcx,
+                                               "llvm.cttz.i16",
+                                               llargs[0],
+                                               call_debug_location),
+        (_, "cttz32") => count_zeros_intrinsic(bcx,
+                                               "llvm.cttz.i32",
+                                               llargs[0],
+                                               call_debug_location),
+        (_, "cttz64") => count_zeros_intrinsic(bcx,
+                                               "llvm.cttz.i64",
+                                               llargs[0],
+                                               call_debug_location),
 
         (_, "i8_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.sadd.with.overflow.i8", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.sadd.with.overflow.i8",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i16_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.sadd.with.overflow.i16", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.sadd.with.overflow.i16",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i32_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.sadd.with.overflow.i32", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.sadd.with.overflow.i32",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i64_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.sadd.with.overflow.i64", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.sadd.with.overflow.i64",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
 
         (_, "u8_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.uadd.with.overflow.i8", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.uadd.with.overflow.i8",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u16_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.uadd.with.overflow.i16", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.uadd.with.overflow.i16",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u32_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.uadd.with.overflow.i32", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.uadd.with.overflow.i32",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u64_add_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.uadd.with.overflow.i64", ret_ty,
-                                   llargs[0], llargs[1]),
-
+            with_overflow_intrinsic(bcx,
+                                    "llvm.uadd.with.overflow.i64",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i8_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.ssub.with.overflow.i8", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.ssub.with.overflow.i8",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i16_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.ssub.with.overflow.i16", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.ssub.with.overflow.i16",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i32_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.ssub.with.overflow.i32", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.ssub.with.overflow.i32",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i64_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.ssub.with.overflow.i64", ret_ty,
-                                   llargs[0], llargs[1]),
-
+            with_overflow_intrinsic(bcx,
+                                    "llvm.ssub.with.overflow.i64",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u8_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.usub.with.overflow.i8", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.usub.with.overflow.i8",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u16_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.usub.with.overflow.i16", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.usub.with.overflow.i16",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u32_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.usub.with.overflow.i32", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.usub.with.overflow.i32",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u64_sub_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.usub.with.overflow.i64", ret_ty,
-                                   llargs[0], llargs[1]),
-
+            with_overflow_intrinsic(bcx,
+                                    "llvm.usub.with.overflow.i64",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i8_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.smul.with.overflow.i8", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.smul.with.overflow.i8",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i16_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.smul.with.overflow.i16", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.smul.with.overflow.i16",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i32_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.smul.with.overflow.i32", ret_ty,
-                                   llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.smul.with.overflow.i32",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "i64_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.smul.with.overflow.i64", ret_ty,
-                                   llargs[0], llargs[1]),
-
+            with_overflow_intrinsic(bcx,
+                                    "llvm.smul.with.overflow.i64",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u8_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.umul.with.overflow.i8", ret_ty,
-                                    llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.umul.with.overflow.i8",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u16_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.umul.with.overflow.i16", ret_ty,
-                                    llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.umul.with.overflow.i16",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u32_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.umul.with.overflow.i32", ret_ty,
-                                    llargs[0], llargs[1]),
+            with_overflow_intrinsic(bcx,
+                                    "llvm.umul.with.overflow.i32",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "u64_mul_with_overflow") =>
-            with_overflow_intrinsic(bcx, "llvm.umul.with.overflow.i64", ret_ty,
-                                    llargs[0], llargs[1]),
-
+            with_overflow_intrinsic(bcx,
+                                    "llvm.umul.with.overflow.i64",
+                                    ret_ty,
+                                    llargs[0],
+                                    llargs[1],
+                                    call_debug_location),
         (_, "return_address") => {
             if !fcx.caller_expects_out_pointer {
                 tcx.sess.span_err(call_info.span,
@@ -609,7 +760,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // If we made a temporary stack slot, let's clean it up
     match dest {
         expr::Ignore => {
-            bcx = glue::drop_ty(bcx, llresult, ret_ty, Some(call_info));
+            bcx = glue::drop_ty(bcx, llresult, ret_ty, call_debug_location);
         }
         expr::SaveIn(_) => {}
     }
@@ -618,8 +769,14 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 }
 
 fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              allow_overlap: bool, volatile: bool, tp_ty: Ty<'tcx>,
-                              dst: ValueRef, src: ValueRef, count: ValueRef) -> ValueRef {
+                              allow_overlap: bool,
+                              volatile: bool,
+                              tp_ty: Ty<'tcx>,
+                              dst: ValueRef,
+                              src: ValueRef,
+                              count: ValueRef,
+                              call_debug_location: DebugLoc)
+                              -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -643,12 +800,25 @@ fn copy_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let src_ptr = PointerCast(bcx, src, Type::i8p(ccx));
     let llfn = ccx.get_intrinsic(&name);
 
-    Call(bcx, llfn, &[dst_ptr, src_ptr, Mul(bcx, size, count), align,
-                      C_bool(ccx, volatile)], None)
+    Call(bcx,
+         llfn,
+         &[dst_ptr,
+           src_ptr,
+           Mul(bcx, size, count, DebugLoc::None),
+           align,
+           C_bool(ccx, volatile)],
+         None,
+         call_debug_location)
 }
 
-fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, volatile: bool, tp_ty: Ty<'tcx>,
-                                dst: ValueRef, val: ValueRef, count: ValueRef) -> ValueRef {
+fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                volatile: bool,
+                                tp_ty: Ty<'tcx>,
+                                dst: ValueRef,
+                                val: ValueRef,
+                                count: ValueRef,
+                                call_debug_location: DebugLoc)
+                                -> ValueRef {
     let ccx = bcx.ccx();
     let lltp_ty = type_of::type_of(ccx, tp_ty);
     let align = C_i32(ccx, type_of::align_of(ccx, tp_ty) as i32);
@@ -662,22 +832,38 @@ fn memset_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, volatile: bool, tp_ty: T
     let dst_ptr = PointerCast(bcx, dst, Type::i8p(ccx));
     let llfn = ccx.get_intrinsic(&name);
 
-    Call(bcx, llfn, &[dst_ptr, val, Mul(bcx, size, count), align,
-                      C_bool(ccx, volatile)], None)
+    Call(bcx,
+         llfn,
+         &[dst_ptr,
+           val,
+           Mul(bcx, size, count, DebugLoc::None),
+           align,
+           C_bool(ccx, volatile)],
+         None,
+         call_debug_location)
 }
 
-fn count_zeros_intrinsic(bcx: Block, name: &'static str, val: ValueRef) -> ValueRef {
+fn count_zeros_intrinsic(bcx: Block,
+                         name: &'static str,
+                         val: ValueRef,
+                         call_debug_location: DebugLoc)
+                         -> ValueRef {
     let y = C_bool(bcx.ccx(), false);
     let llfn = bcx.ccx().get_intrinsic(&name);
-    Call(bcx, llfn, &[val, y], None)
+    Call(bcx, llfn, &[val, y], None, call_debug_location)
 }
 
-fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, name: &'static str,
-                                       t: Ty<'tcx>, a: ValueRef, b: ValueRef) -> ValueRef {
+fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                       name: &'static str,
+                                       t: Ty<'tcx>,
+                                       a: ValueRef,
+                                       b: ValueRef,
+                                       call_debug_location: DebugLoc)
+                                       -> ValueRef {
     let llfn = bcx.ccx().get_intrinsic(&name);
 
     // Convert `i1` to a `bool`, and write it to the out parameter
-    let val = Call(bcx, llfn, &[a, b], None);
+    let val = Call(bcx, llfn, &[a, b], None, call_debug_location);
     let result = ExtractValue(bcx, val, 0);
     let overflow = ZExt(bcx, ExtractValue(bcx, val, 1), Type::bool(bcx.ccx()));
     let ret = C_undef(type_of::type_of(bcx.ccx(), t));

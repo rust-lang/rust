@@ -145,6 +145,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     if !valid_out_of_scope_traits.is_empty() {
         let mut candidates = valid_out_of_scope_traits;
         candidates.sort();
+        candidates.dedup();
         let msg = format!(
             "methods from traits can only be called if the trait is in scope; \
              the following {traits_are} implemented but not in scope, \
@@ -172,6 +173,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     if candidates.len() > 0 {
         // sort from most relevant to least relevant
         candidates.sort_by(|a, b| a.cmp(b).reverse());
+        candidates.dedup();
 
         let msg = format!(
             "methods from traits can only be called if the trait is implemented and in scope; \

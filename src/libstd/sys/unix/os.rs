@@ -143,7 +143,7 @@ pub unsafe fn get_env_pairs() -> Vec<Vec<u8>> {
                os::last_os_error());
     }
     let mut result = Vec::new();
-    while *environ != 0 as *const _ {
+    while *environ != ptr::null() {
         let env_pair = ffi::c_str_to_bytes(&*environ).to_vec();
         result.push(env_pair);
         environ = environ.offset(1);

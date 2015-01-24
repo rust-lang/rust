@@ -48,7 +48,7 @@ impl<R: Reader> Reader for LimitReader<R> {
         }
 
         let len = cmp::min(self.limit, buf.len());
-        let res = self.inner.read(buf.slice_to_mut(len));
+        let res = self.inner.read(&mut buf[..len]);
         match res {
             Ok(len) => self.limit -= len,
             _ => {}

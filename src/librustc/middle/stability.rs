@@ -244,12 +244,6 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 }
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
-    fn visit_view_item(&mut self, item: &ast::ViewItem) {
-        check_view_item(self.tcx, item,
-                        &mut |id, sp, stab| self.check(id, sp, stab));
-        visit::walk_view_item(self, item)
-    }
-
     fn visit_item(&mut self, item: &ast::Item) {
         check_item(self.tcx, item,
                    &mut |id, sp, stab| self.check(id, sp, stab));
@@ -264,22 +258,34 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_view_item(tcx: &ty::ctxt, item: &ast::ViewItem,
-                       cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
-    // compiler-generated `extern crate` statements have a dummy span.
-    if item.span == DUMMY_SP { return }
+pub fn check_item(tcx: &ty::ctxt, item: &ast::Item,
+                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+    match item.node {
+        ast::ItemExternCrate(_) => {
+            // compiler-generated `extern crate` items have a dummy span.
+            if item.span == DUMMY_SP { return }
 
-    let id = match item.node {
-        ast::ViewItemExternCrate(_, _, id) => id,
-        ast::ViewItemUse(..) => return,
-    };
-    let cnum = match tcx.sess.cstore.find_extern_mod_stmt_cnum(id) {
-        Some(cnum) => cnum,
-        None => return,
-    };
-    let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
-
-    maybe_do_stability_check(tcx, id, item.span, cb);
+            let cnum = match tcx.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
+                Some(cnum) => cnum,
+                None => return,
+            };
+            let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
+            maybe_do_stability_check(tcx, id, item.span, cb);
+        }
+        ast::ItemTrait(_, _, ref supertraits, _) => {
+            for t in supertraits.iter() {
+                if let ast::TraitTyParamBound(ref t, _) = *t {
+                    let id = ty::trait_ref_to_def_id(tcx, &t.trait_ref);
+                    maybe_do_stability_check(tcx, id, t.trait_ref.path.span, cb);
+                }
+            }
+        }
+        ast::ItemImpl(_, _, _, Some(ref t), _, _) => {
+            let id = ty::trait_ref_to_def_id(tcx, t);
+            maybe_do_stability_check(tcx, id, t.path.span, cb);
+        }
+        _ => (/* pass */)
+    }
 }
 
 /// Helper for discovering nodes to check for stability
@@ -329,28 +335,6 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
     };
 
     maybe_do_stability_check(tcx, id, span, cb);
-}
-
-/// Helper for discovering nodes to check for stability
-pub fn check_item(tcx: &ty::ctxt, item: &ast::Item,
-                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
-    if is_internal(tcx, item.span) { return }
-
-    match item.node {
-        ast::ItemTrait(_, _, ref supertraits, _) => {
-            for t in supertraits.iter() {
-                if let ast::TraitTyParamBound(ref t, _) = *t {
-                    let id = ty::trait_ref_to_def_id(tcx, &t.trait_ref);
-                    maybe_do_stability_check(tcx, id, t.trait_ref.path.span, cb);
-                }
-            }
-        }
-        ast::ItemImpl(_, _, _, Some(ref t), _, _) => {
-            let id = ty::trait_ref_to_def_id(tcx, t);
-            maybe_do_stability_check(tcx, id, t.path.span, cb);
-        }
-        _ => (/* pass */)
-    }
 }
 
 fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,

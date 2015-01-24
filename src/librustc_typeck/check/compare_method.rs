@@ -59,23 +59,21 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         (&ty::StaticExplicitSelfCategory,
          &ty::StaticExplicitSelfCategory) => {}
         (&ty::StaticExplicitSelfCategory, _) => {
-            tcx.sess.span_err(
-                impl_m_span,
-                format!("method `{}` has a `{}` declaration in the impl, \
+            span_err!(tcx.sess, impl_m_span, E0185,
+                "method `{}` has a `{}` declaration in the impl, \
                         but not in the trait",
                         token::get_name(trait_m.name),
                         ppaux::explicit_self_category_to_str(
-                            &impl_m.explicit_self)).as_slice());
+                            &impl_m.explicit_self));
             return;
         }
         (_, &ty::StaticExplicitSelfCategory) => {
-            tcx.sess.span_err(
-                impl_m_span,
-                format!("method `{}` has a `{}` declaration in the trait, \
+            span_err!(tcx.sess, impl_m_span, E0186,
+                "method `{}` has a `{}` declaration in the trait, \
                         but not in the impl",
                         token::get_name(trait_m.name),
                         ppaux::explicit_self_category_to_str(
-                            &trait_m.explicit_self)).as_slice());
+                            &trait_m.explicit_self));
             return;
         }
         _ => {
@@ -400,11 +398,10 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         // are zero. Since I don't quite know how to phrase things at
         // the moment, give a kind of vague error message.
         if trait_params.len() != impl_params.len() {
-            tcx.sess.span_err(
-                span,
-                &format!("lifetime parameters or bounds on method `{}` do \
+            span_err!(tcx.sess, span, E0195,
+                "lifetime parameters or bounds on method `{}` do \
                          not match the trait declaration",
-                         token::get_name(impl_m.name))[]);
+                         token::get_name(impl_m.name));
             return false;
         }
 

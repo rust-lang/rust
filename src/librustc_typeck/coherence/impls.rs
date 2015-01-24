@@ -34,10 +34,9 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for ImplsChecker<'cx, 'tcx> {
                     match trait_ref.self_ty().sty {
                         ty::ty_struct(..) | ty::ty_enum(..) => {}
                         _ => {
-                            self.tcx.sess.span_err(
-                                item.span,
-                                &format!("builtin traits can only be \
-                                          implemented on structs or enums")[]);
+                            span_err!(self.tcx.sess, item.span, E0209,
+                                "builtin traits can only be \
+                                          implemented on structs or enums");
                         }
                     }
                 }

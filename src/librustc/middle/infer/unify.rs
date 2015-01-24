@@ -17,7 +17,7 @@ use middle::ty::{self, Ty};
 use middle::infer::{uok, ures};
 use middle::infer::InferCtxt;
 use std::cell::RefCell;
-use std::fmt::Show;
+use std::fmt::Debug;
 use syntax::ast;
 use util::ppaux::Repr;
 use util::snapshot_vec as sv;
@@ -32,7 +32,7 @@ use util::snapshot_vec as sv;
 /// (possibly not yet known) sort of integer.
 ///
 /// Implementations of this trait are at the end of this file.
-pub trait UnifyKey<'tcx, V> : Clone + Show + PartialEq + Repr<'tcx> {
+pub trait UnifyKey<'tcx, V> : Clone + Debug + PartialEq + Repr<'tcx> {
     fn index(&self) -> uint;
 
     fn from_index(u: uint) -> Self;

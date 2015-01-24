@@ -10,6 +10,7 @@
 
 use cell::UnsafeCell;
 use libc;
+use ptr;
 use std::option::Option::{Some, None};
 use sys::mutex::{self, Mutex};
 use sys::time;
@@ -62,7 +63,7 @@ impl Condvar {
         // time.
         let mut sys_now = libc::timeval { tv_sec: 0, tv_usec: 0 };
         let stable_now = time::SteadyTime::now();
-        let r = ffi::gettimeofday(&mut sys_now, 0 as *mut _);
+        let r = ffi::gettimeofday(&mut sys_now, ptr::null_mut());
         debug_assert_eq!(r, 0);
 
         let seconds = NumCast::from(dur.num_seconds());

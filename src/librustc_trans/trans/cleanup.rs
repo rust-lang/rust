@@ -21,8 +21,8 @@ use trans::base;
 use trans::build;
 use trans::callee;
 use trans::common;
-use trans::common::{Block, FunctionContext, ExprId, NodeInfo};
-use trans::debuginfo;
+use trans::common::{Block, FunctionContext, ExprId, NodeIdAndSpan};
+use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::glue;
 use middle::region;
 use trans::type_::Type;
@@ -44,7 +44,7 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
 
     // The debug location any drop calls generated for this scope will be
     // associated with.
-    debug_loc: Option<NodeInfo>,
+    debug_loc: DebugLoc,
 
     cached_early_exits: Vec<CachedEarlyExit>,
     cached_landing_pad: Option<BasicBlockRef>,
@@ -65,7 +65,7 @@ pub enum CleanupScopeKind<'blk, 'tcx: 'blk> {
     LoopScopeKind(ast::NodeId, [Block<'blk, 'tcx>; EXIT_MAX])
 }
 
-impl<'blk, 'tcx: 'blk> fmt::Show for CleanupScopeKind<'blk, 'tcx> {
+impl<'blk, 'tcx: 'blk> fmt::Debug for CleanupScopeKind<'blk, 'tcx> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             CustomScopeKind => write!(f, "CustomScopeKind"),
@@ -100,7 +100,7 @@ pub trait Cleanup<'tcx> {
     fn is_lifetime_end(&self) -> bool;
     fn trans<'blk>(&self,
                    bcx: Block<'blk, 'tcx>,
-                   debug_loc: Option<NodeInfo>)
+                   debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx>;
 }
 
@@ -114,7 +114,7 @@ pub enum ScopeId {
 
 impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     /// Invoked when we start to trans the code contained within a new cleanup scope.
-    fn push_ast_cleanup_scope(&self, debug_loc: NodeInfo) {
+    fn push_ast_cleanup_scope(&self, debug_loc: NodeIdAndSpan) {
         debug!("push_ast_cleanup_scope({})",
                self.ccx.tcx().map.node_to_string(debug_loc.id));
 
@@ -139,7 +139,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
         }
 
         self.push_scope(CleanupScope::new(AstScopeKind(debug_loc.id),
-                                          Some(debug_loc)));
+                                          debug_loc.debug_loc()));
     }
 
     fn push_loop_cleanup_scope(&self,
@@ -168,19 +168,20 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                             .borrow()
                             .last()
                             .map(|opt_scope| opt_scope.debug_loc)
-                            .unwrap_or(None);
+                            .unwrap_or(DebugLoc::None);
 
         self.push_scope(CleanupScope::new(CustomScopeKind, debug_loc));
         CustomScopeIndex { index: index }
     }
 
     fn push_custom_cleanup_scope_with_debug_loc(&self,
-                                                debug_loc: NodeInfo)
+                                                debug_loc: NodeIdAndSpan)
                                                 -> CustomScopeIndex {
         let index = self.scopes_len();
         debug!("push_custom_cleanup_scope(): {}", index);
 
-        self.push_scope(CleanupScope::new(CustomScopeKind, Some(debug_loc)));
+        self.push_scope(CleanupScope::new(CustomScopeKind,
+                                          debug_loc.debug_loc()));
         CustomScopeIndex { index: index }
     }
 
@@ -664,7 +665,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
                                                 scope.debug_loc);
                     }
                 }
-                build::Br(bcx_out, prev_llbb);
+                build::Br(bcx_out, prev_llbb, DebugLoc::None);
                 prev_llbb = bcx_in.llbb;
             } else {
                 debug!("no suitable cleanups in {}",
@@ -766,7 +767,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
         // Generate the cleanup block and branch to it.
         let cleanup_llbb = self.trans_cleanups_to_exit_scope(UnwindExit);
-        build::Br(pad_bcx, cleanup_llbb);
+        build::Br(pad_bcx, cleanup_llbb, DebugLoc::None);
 
         return pad_bcx.llbb;
     }
@@ -774,7 +775,7 @@ impl<'blk, 'tcx> CleanupHelperMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx
 
 impl<'blk, 'tcx> CleanupScope<'blk, 'tcx> {
     fn new(kind: CleanupScopeKind<'blk, 'tcx>,
-           debug_loc: Option<NodeInfo>)
+           debug_loc: DebugLoc)
         -> CleanupScope<'blk, 'tcx> {
         CleanupScope {
             kind: kind,
@@ -896,7 +897,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
 
     fn trans<'blk>(&self,
                    bcx: Block<'blk, 'tcx>,
-                   debug_loc: Option<NodeInfo>)
+                   debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
         let bcx = if self.is_immediate {
             glue::drop_ty_immediate(bcx, self.val, self.ty, debug_loc)
@@ -937,9 +938,9 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
 
     fn trans<'blk>(&self,
                    bcx: Block<'blk, 'tcx>,
-                   debug_loc: Option<NodeInfo>)
+                   debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
-        apply_debug_loc(bcx.fcx, debug_loc);
+        debug_loc.apply(bcx.fcx);
 
         match self.heap {
             HeapExchange => {
@@ -972,9 +973,9 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
 
     fn trans<'blk>(&self,
                    bcx: Block<'blk, 'tcx>,
-                   debug_loc: Option<NodeInfo>)
+                   debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
-        apply_debug_loc(bcx.fcx, debug_loc);
+        debug_loc.apply(bcx.fcx);
 
         match self.heap {
             HeapExchange => {
@@ -1004,9 +1005,9 @@ impl<'tcx> Cleanup<'tcx> for LifetimeEnd {
 
     fn trans<'blk>(&self,
                    bcx: Block<'blk, 'tcx>,
-                   debug_loc: Option<NodeInfo>)
+                   debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
-        apply_debug_loc(bcx.fcx, debug_loc);
+        debug_loc.apply(bcx.fcx);
         base::call_lifetime_end(bcx, self.ptr);
         bcx
     }
@@ -1041,33 +1042,22 @@ fn cleanup_is_suitable_for(c: &Cleanup,
     !label.is_unwind() || c.clean_on_unwind()
 }
 
-fn apply_debug_loc(fcx: &FunctionContext, debug_loc: Option<NodeInfo>) {
-    match debug_loc {
-        Some(ref src_loc) => {
-            debuginfo::set_source_location(fcx, src_loc.id, src_loc.span);
-        }
-        None => {
-            debuginfo::clear_source_location(fcx);
-        }
-    }
-}
-
 ///////////////////////////////////////////////////////////////////////////
 // These traits just exist to put the methods into this file.
 
 pub trait CleanupMethods<'blk, 'tcx> {
-    fn push_ast_cleanup_scope(&self, id: NodeInfo);
+    fn push_ast_cleanup_scope(&self, id: NodeIdAndSpan);
     fn push_loop_cleanup_scope(&self,
                                id: ast::NodeId,
                                exits: [Block<'blk, 'tcx>; EXIT_MAX]);
     fn push_custom_cleanup_scope(&self) -> CustomScopeIndex;
     fn push_custom_cleanup_scope_with_debug_loc(&self,
-                                                debug_loc: NodeInfo)
+                                                debug_loc: NodeIdAndSpan)
                                                 -> CustomScopeIndex;
     fn pop_and_trans_ast_cleanup_scope(&self,
-                                              bcx: Block<'blk, 'tcx>,
-                                              cleanup_scope: ast::NodeId)
-                                              -> Block<'blk, 'tcx>;
+                                       bcx: Block<'blk, 'tcx>,
+                                       cleanup_scope: ast::NodeId)
+                                       -> Block<'blk, 'tcx>;
     fn pop_loop_cleanup_scope(&self,
                               cleanup_scope: ast::NodeId);
     fn pop_custom_cleanup_scope(&self,

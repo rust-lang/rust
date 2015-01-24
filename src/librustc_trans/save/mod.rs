@@ -157,7 +157,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             return;
         }
 
-        let sub_paths = sub_paths.slice(0, len-1);
+        let sub_paths = &sub_paths[.. (len-1)];
         for &(ref span, ref qualname) in sub_paths.iter() {
             self.fmt.sub_mod_ref_str(path.span,
                                      *span,
@@ -174,7 +174,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         if len <= 1 {
             return;
         }
-        let sub_paths = sub_paths.slice_to(len-1);
+        let sub_paths = &sub_paths[.. (len-1)];
 
         // write the trait part of the sub-path
         let (ref span, ref qualname) = sub_paths[len-2];
@@ -186,7 +186,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         if len <= 2 {
             return;
         }
-        let sub_paths = &sub_paths[..(len-2)];
+        let sub_paths = &sub_paths[..len-2];
         for &(ref span, ref qualname) in sub_paths.iter() {
             self.fmt.sub_mod_ref_str(path.span,
                                      *span,
@@ -1037,6 +1037,110 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
 
         match item.node {
+            ast::ItemUse(ref use_item) => {
+                match use_item.node {
+                    ast::ViewPathSimple(ident, ref path) => {
+                        let sub_span = self.span.span_for_last_ident(path.span);
+                        let mod_id = match self.lookup_type_ref(item.id) {
+                            Some(def_id) => {
+                                match self.lookup_def_kind(item.id, path.span) {
+                                    Some(kind) => self.fmt.ref_str(kind,
+                                                                   path.span,
+                                                                   sub_span,
+                                                                   def_id,
+                                                                   self.cur_scope),
+                                    None => {},
+                                }
+                                Some(def_id)
+                            },
+                            None => None,
+                        };
+
+                        // 'use' always introduces an alias, if there is not an explicit
+                        // one, there is an implicit one.
+                        let sub_span =
+                            match self.span.sub_span_after_keyword(use_item.span, keywords::As) {
+                                Some(sub_span) => Some(sub_span),
+                                None => sub_span,
+                            };
+
+                        self.fmt.use_alias_str(path.span,
+                                               sub_span,
+                                               item.id,
+                                               mod_id,
+                                               get_ident(ident).get(),
+                                               self.cur_scope);
+                        self.write_sub_paths_truncated(path);
+                    }
+                    ast::ViewPathGlob(ref path) => {
+                        // Make a comma-separated list of names of imported modules.
+                        let mut name_string = String::new();
+                        let glob_map = &self.analysis.glob_map;
+                        let glob_map = glob_map.as_ref().unwrap();
+                        if glob_map.contains_key(&item.id) {
+                            for n in glob_map[item.id].iter() {
+                                if name_string.len() > 0 {
+                                    name_string.push_str(", ");
+                                }
+                                name_string.push_str(n.as_str());
+                            }
+                        }
+
+                        let sub_span = self.span.sub_span_of_token(path.span,
+                                                                   token::BinOp(token::Star));
+                        self.fmt.use_glob_str(path.span,
+                                              sub_span,
+                                              item.id,
+                                              name_string.as_slice(),
+                                              self.cur_scope);
+                        self.write_sub_paths(path);
+                    }
+                    ast::ViewPathList(ref path, ref list) => {
+                        for plid in list.iter() {
+                            match plid.node {
+                                ast::PathListIdent { id, .. } => {
+                                    match self.lookup_type_ref(id) {
+                                        Some(def_id) =>
+                                            match self.lookup_def_kind(id, plid.span) {
+                                                Some(kind) => {
+                                                    self.fmt.ref_str(
+                                                        kind, plid.span,
+                                                        Some(plid.span),
+                                                        def_id, self.cur_scope);
+                                                }
+                                                None => ()
+                                            },
+                                        None => ()
+                                    }
+                                },
+                                ast::PathListMod { .. } => ()
+                            }
+                        }
+
+                        self.write_sub_paths(path);
+                    }
+                }
+            }
+            ast::ItemExternCrate(ref s) => {
+                let name = get_ident(item.ident);
+                let name = name.get();
+                let s = match *s {
+                    Some((ref s, _)) => s.get().to_string(),
+                    None => name.to_string(),
+                };
+                let sub_span = self.span.sub_span_after_keyword(item.span, keywords::Crate);
+                let cnum = match self.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
+                    Some(cnum) => cnum,
+                    None => 0,
+                };
+                self.fmt.extern_crate_str(item.span,
+                                          sub_span,
+                                          item.id,
+                                          cnum,
+                                          name,
+                                          &s[],
+                                          self.cur_scope);
+            }
             ast::ItemFn(ref decl, _, _, ref ty_params, ref body) =>
                 self.process_fn(item, &**decl, ty_params, &**body),
             ast::ItemStatic(ref typ, mt, ref expr) =>
@@ -1157,119 +1261,6 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             }
             ast::ProvidedMethod(ref method) => self.process_method(&**method),
             ast::TypeTraitItem(_) => {}
-        }
-    }
-
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        if generated_code(i.span) {
-            return
-        }
-
-        match i.node {
-            ast::ViewItemUse(ref item) => {
-                match item.node {
-                    ast::ViewPathSimple(ident, ref path, id) => {
-                        let sub_span = self.span.span_for_last_ident(path.span);
-                        let mod_id = match self.lookup_type_ref(id) {
-                            Some(def_id) => {
-                                match self.lookup_def_kind(id, path.span) {
-                                    Some(kind) => self.fmt.ref_str(kind,
-                                                                   path.span,
-                                                                   sub_span,
-                                                                   def_id,
-                                                                   self.cur_scope),
-                                    None => {},
-                                }
-                                Some(def_id)
-                            },
-                            None => None,
-                        };
-
-                        // 'use' always introduces an alias, if there is not an explicit
-                        // one, there is an implicit one.
-                        let sub_span =
-                            match self.span.sub_span_after_keyword(item.span, keywords::As) {
-                                Some(sub_span) => Some(sub_span),
-                                None => sub_span,
-                            };
-
-                        self.fmt.use_alias_str(path.span,
-                                               sub_span,
-                                               id,
-                                               mod_id,
-                                               get_ident(ident).get(),
-                                               self.cur_scope);
-                        self.write_sub_paths_truncated(path);
-                    }
-                    ast::ViewPathGlob(ref path, id) => {
-                        // Make a comma-separated list of names of imported modules.
-                        let mut name_string = String::new();
-                        let glob_map = &self.analysis.glob_map;
-                        let glob_map = glob_map.as_ref().unwrap();
-                        if glob_map.contains_key(&id) {
-                            for n in glob_map[id].iter() {
-                                if name_string.len() > 0 {
-                                    name_string.push_str(", ");
-                                }
-                                name_string.push_str(n.as_str());
-                            }
-                        }
-
-                        let sub_span = self.span.sub_span_of_token(path.span,
-                                                                   token::BinOp(token::Star));
-                        self.fmt.use_glob_str(path.span,
-                                              sub_span,
-                                              id,
-                                              name_string.as_slice(),
-                                              self.cur_scope);
-                        self.write_sub_paths(path);
-                    }
-                    ast::ViewPathList(ref path, ref list, _) => {
-                        for plid in list.iter() {
-                            match plid.node {
-                                ast::PathListIdent { id, .. } => {
-                                    match self.lookup_type_ref(id) {
-                                        Some(def_id) =>
-                                            match self.lookup_def_kind(id, plid.span) {
-                                                Some(kind) => {
-                                                    self.fmt.ref_str(
-                                                        kind, plid.span,
-                                                        Some(plid.span),
-                                                        def_id, self.cur_scope);
-                                                }
-                                                None => ()
-                                            },
-                                        None => ()
-                                    }
-                                },
-                                ast::PathListMod { .. } => ()
-                            }
-                        }
-
-                        self.write_sub_paths(path);
-                    }
-                }
-            },
-            ast::ViewItemExternCrate(ident, ref s, id) => {
-                let name = get_ident(ident);
-                let name = name.get();
-                let s = match *s {
-                    Some((ref s, _)) => s.get().to_string(),
-                    None => name.to_string(),
-                };
-                let sub_span = self.span.sub_span_after_keyword(i.span, keywords::Crate);
-                let cnum = match self.sess.cstore.find_extern_mod_stmt_cnum(id) {
-                    Some(cnum) => cnum,
-                    None => 0,
-                };
-                self.fmt.extern_crate_str(i.span,
-                                          sub_span,
-                                          id,
-                                          cnum,
-                                          name,
-                                          &s[],
-                                          self.cur_scope);
-            },
         }
     }
 

@@ -179,7 +179,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         _ => ()
     }
 
-    buf.slice_to_mut(end).reverse();
+    buf[..end].reverse();
 
     // Remember start of the fractional digits.
     // Points one beyond end of buf if none get generated,
@@ -316,7 +316,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 
             impl<'a> fmt::Writer for Filler<'a> {
                 fn write_str(&mut self, s: &str) -> fmt::Result {
-                    slice::bytes::copy_memory(self.buf.slice_from_mut(*self.end),
+                    slice::bytes::copy_memory(&mut self.buf[(*self.end)..],
                                               s.as_bytes());
                     *self.end += s.len();
                     Ok(())

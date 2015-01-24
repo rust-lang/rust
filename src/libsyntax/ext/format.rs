@@ -31,7 +31,7 @@ enum ArgumentType {
 }
 
 enum Position {
-    Exact(uint),
+    Exact(usize),
     Named(String),
 }
 
@@ -61,11 +61,11 @@ struct Context<'a, 'b:'a> {
     /// Stays `true` if all formatting parameters are default (as in "{}{}").
     all_pieces_simple: bool,
 
-    name_positions: HashMap<String, uint>,
+    name_positions: HashMap<String, usize>,
 
     /// Updated as arguments are consumed or methods are entered
-    nest_level: uint,
-    next_arg: uint,
+    nest_level: usize,
+    next_arg: usize,
 }
 
 /// Parses the arguments from the given list of tokens, returning None
@@ -326,11 +326,11 @@ impl<'a, 'b> Context<'a, 'b> {
         match c {
             parse::CountIs(i) => {
                 self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "CountIs"),
-                                          vec!(self.ecx.expr_uint(sp, i)))
+                                          vec!(self.ecx.expr_usize(sp, i)))
             }
             parse::CountIsParam(i) => {
                 self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "CountIsParam"),
-                                          vec!(self.ecx.expr_uint(sp, i)))
+                                          vec!(self.ecx.expr_usize(sp, i)))
             }
             parse::CountImplied => {
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx,
@@ -349,7 +349,7 @@ impl<'a, 'b> Context<'a, 'b> {
                 };
                 let i = i + self.args.len();
                 self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "CountIsParam"),
-                                          vec!(self.ecx.expr_uint(sp, i)))
+                                          vec!(self.ecx.expr_usize(sp, i)))
             }
         }
     }
@@ -382,7 +382,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     }
                     parse::ArgumentIs(i) => {
                         self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "ArgumentIs"),
-                                                  vec!(self.ecx.expr_uint(sp, i)))
+                                                  vec!(self.ecx.expr_usize(sp, i)))
                     }
                     // Named arguments are converted to positional arguments at
                     // the end of the list of arguments
@@ -393,7 +393,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         };
                         let i = i + self.args.len();
                         self.ecx.expr_call_global(sp, Context::rtpath(self.ecx, "ArgumentIs"),
-                                                  vec!(self.ecx.expr_uint(sp, i)))
+                                                  vec!(self.ecx.expr_usize(sp, i)))
                     }
                 };
 
@@ -432,7 +432,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     }
                 };
                 let align = self.ecx.expr_path(align);
-                let flags = self.ecx.expr_uint(sp, arg.format.flags);
+                let flags = self.ecx.expr_usize(sp, arg.format.flags);
                 let prec = self.trans_count(arg.format.precision);
                 let width = self.trans_count(arg.format.width);
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));
@@ -603,8 +603,8 @@ impl<'a, 'b> Context<'a, 'b> {
         let trait_ = match *ty {
             Known(ref tyname) => {
                 match &tyname[] {
-                    ""  => "String",
-                    "?" => "Show",
+                    ""  => "Display",
+                    "?" => "Debug",
                     "e" => "LowerExp",
                     "E" => "UpperExp",
                     "o" => "Octal",

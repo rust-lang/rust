@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Foo(Box<[u8]>);
 
 pub fn main() {

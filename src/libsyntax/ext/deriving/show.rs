@@ -35,7 +35,7 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "fmt", "Show")),
+        path: Path::new(vec!("std", "fmt", "Debug")),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -67,7 +67,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         Struct(_) => substr.type_ident,
         EnumMatching(_, v, _) => v.node.name,
         EnumNonMatchingCollapsed(..) | StaticStruct(..) | StaticEnum(..) => {
-            cx.span_bug(span, "nonsensical .fields in `#[derive(Show)]`")
+            cx.span_bug(span, "nonsensical .fields in `#[derive(Debug)]`")
         }
     };
 

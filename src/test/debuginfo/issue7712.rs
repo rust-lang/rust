@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:--debuginfo=1
+// compile-flags:-C debuginfo=1
 // min-lldb-version: 310
 
 pub trait TraitWithDefaultMethod : Sized {

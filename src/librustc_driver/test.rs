@@ -200,6 +200,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
             }
 
             return match it.node {
+                ast::ItemUse(..) | ast::ItemExternCrate(..) |
                 ast::ItemConst(..) | ast::ItemStatic(..) | ast::ItemFn(..) |
                 ast::ItemForeignMod(..) | ast::ItemTy(..) => {
                     None

@@ -242,7 +242,7 @@ impl MetadataBlob {
                        ((slice[2] as u32) << 8) |
                        ((slice[3] as u32) << 0)) as uint;
             if len + 4 <= slice.len() {
-                slice.slice(4, len + 4)
+                &slice[4.. len + 4]
             } else {
                 &[] // corrupt or old metadata
             }

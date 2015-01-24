@@ -30,7 +30,7 @@ use trans::build;
 use trans::cleanup;
 use trans::consts;
 use trans::datum;
-use trans::debuginfo;
+use trans::debuginfo::{self, DebugLoc};
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -275,7 +275,7 @@ pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
 /// Generates a unique symbol based off the name given. This is used to create
 /// unique symbols for things like closures.
 pub fn gensym_name(name: &str) -> PathElem {
-    let num = token::gensym(name).uint();
+    let num = token::gensym(name).usize();
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
     PathName(token::gensym(&format!("{}:{}", name, num)[]))
@@ -317,13 +317,13 @@ pub struct tydesc_info<'tcx> {
 */
 
 #[derive(Copy)]
-pub struct NodeInfo {
+pub struct NodeIdAndSpan {
     pub id: ast::NodeId,
     pub span: Span,
 }
 
-pub fn expr_info(expr: &ast::Expr) -> NodeInfo {
-    NodeInfo { id: expr.id, span: expr.span }
+pub fn expr_info(expr: &ast::Expr) -> NodeIdAndSpan {
+    NodeIdAndSpan { id: expr.id, span: expr.span }
 }
 
 pub struct BuilderRef_res {
@@ -517,7 +517,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
         let mut reachable = false;
         for bcx in in_cxs.iter() {
             if !bcx.unreachable.get() {
-                build::Br(*bcx, out.llbb);
+                build::Br(*bcx, out.llbb, DebugLoc::None);
                 reachable = true;
             }
         }
@@ -848,7 +848,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
-        let buf = CString::from_vec(format!("str{}", gsym.uint()).into_bytes());
+        let buf = CString::from_vec(format!("str{}", gsym.usize()).into_bytes());
         let g = llvm::LLVMAddGlobal(cx.llmod(), val_ty(sc).to_ref(), buf.as_ptr());
         llvm::LLVMSetInitializer(g, sc);
         llvm::LLVMSetGlobalConstant(g, True);
@@ -873,7 +873,7 @@ pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
         let lldata = C_bytes(cx, data);
 
         let gsym = token::gensym("binary");
-        let name = format!("binary{}", gsym.uint());
+        let name = format!("binary{}", gsym.usize());
         let name = CString::from_vec(name.into_bytes());
         let g = llvm::LLVMAddGlobal(cx.llmod(), val_ty(lldata).to_ref(),
                                     name.as_ptr());

@@ -89,13 +89,11 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
                         if !ty::has_attr(self.tcx, trait_def_id, "old_orphan_check") {
-                            self.tcx.sess.span_err(
-                                item.span,
-                                format!(
+                            span_err!(self.tcx.sess, item.span, E0210,
                                     "type parameter `{}` is not constrained by any local type; \
                                      only traits defined in the current crate can be implemented \
                                      for a type parameter",
-                                    param_ty.user_string(self.tcx)).as_slice());
+                                    param_ty.user_string(self.tcx));
                             self.tcx.sess.span_note(
                                 item.span,
                                 format!("for a limited time, you can add \

@@ -8,19 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 enum foo {
   a(uint),
   b(String),
 }
 
-fn check_log<T: std::fmt::Show>(exp: String, v: T) {
+fn check_log<T: std::fmt::Debug>(exp: String, v: T) {
     assert_eq!(exp, format!("{:?}", v));
 }
 
 pub fn main() {
-    let mut x = Some(foo::a(22u));
-    let exp = "Some(a(22u))".to_string();
+    let mut x = Some(foo::a(22));
+    let exp = "Some(a(22))".to_string();
     let act = format!("{:?}", x);
     assert_eq!(act, exp);
     check_log(exp, x);

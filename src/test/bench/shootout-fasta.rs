@@ -97,7 +97,7 @@ fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
         }
         n -= nb;
         line[nb] = '\n' as u8;
-        try!(wr.write(&line[..(nb+1)]));
+        try!(wr.write(&line[..nb+1]));
     }
     Ok(())
 }

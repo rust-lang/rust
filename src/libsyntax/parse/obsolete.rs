@@ -62,7 +62,7 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
                 "use a `move ||` expression instead",
             ),
             ObsoleteSyntax::ClosureType => (
-                "`|uint| -> bool` closure type syntax",
+                "`|usize| -> bool` closure type syntax",
                 "use unboxed closures instead, no type annotation needed"
             ),
             ObsoleteSyntax::Sized => (

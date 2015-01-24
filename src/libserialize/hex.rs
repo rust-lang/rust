@@ -61,7 +61,7 @@ pub trait FromHex {
 }
 
 /// Errors that can occur when decoding a hex encoded string
-#[derive(Copy)]
+#[derive(Copy, Show)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, uint),
@@ -69,7 +69,7 @@ pub enum FromHexError {
     InvalidHexLength,
 }
 
-impl fmt::Show for FromHexError {
+impl fmt::Display for FromHexError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
             InvalidHexCharacter(ch, idx) =>
@@ -85,10 +85,6 @@ impl error::Error for FromHexError {
             InvalidHexCharacter(_, _) => "invalid character",
             InvalidHexLength => "invalid length",
         }
-    }
-
-    fn detail(&self) -> Option<String> {
-        Some(format!("{:?}", self))
     }
 }
 

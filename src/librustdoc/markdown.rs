@@ -28,10 +28,10 @@ fn extract_leading_metadata<'a>(s: &'a str) -> (Vec<&'a str>, &'a str) {
     for line in s.lines() {
         if line.starts_with("%") {
             // remove %<whitespace>
-            metadata.push(line.slice_from(1).trim_left())
+            metadata.push(line[1..].trim_left())
         } else {
             let line_start_byte = s.subslice_offset(line);
-            return (metadata, s.slice_from(line_start_byte));
+            return (metadata, &s[line_start_byte..]);
         }
     }
     // if we're here, then all lines were metadata % lines.

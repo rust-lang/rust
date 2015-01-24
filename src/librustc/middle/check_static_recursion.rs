@@ -83,7 +83,7 @@ pub fn check_item_recursion<'a>(sess: &'a Session,
 impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
     fn visit_item(&mut self, it: &ast::Item) {
         if self.idstack.iter().any(|x| x == &(it.id)) {
-            self.sess.span_err(self.root_it.span, "recursive constant");
+            span_err!(self.sess, self.root_it.span, E0265, "recursive constant");
             return;
         }
         self.idstack.push(it.id);
@@ -103,9 +103,9 @@ impl<'a, 'ast, 'v> Visitor<'v> for CheckItemRecursionVisitor<'a, 'ast> {
                             self.visit_item(item),
                           ast_map::NodeForeignItem(_) => {},
                           _ => {
-                            self.sess.span_err(e.span,
-                              &format!("expected item, found {}",
-                                      self.ast_map.node_to_string(def_id.node))[]);
+                            span_err!(self.sess, e.span, E0266,
+                              "expected item, found {}",
+                                      self.ast_map.node_to_string(def_id.node));
                             return;
                           },
                         }

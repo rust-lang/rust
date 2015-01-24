@@ -9,11 +9,11 @@
 // except according to those terms.
 
 pub fn main() {
-    assert_eq!(format!("{:?}", vec!(0i, 1)), "[0i, 1i]".to_string());
+    assert_eq!(format!("{:?}", vec!(0i, 1)), "[0, 1]".to_string());
 
     let foo = vec!(3i, 4);
     let bar: &[int] = &[4, 5];
 
-    assert_eq!(format!("{:?}", foo), "[3i, 4i]");
-    assert_eq!(format!("{:?}", bar), "[4i, 5i]");
+    assert_eq!(format!("{:?}", foo), "[3, 4]");
+    assert_eq!(format!("{:?}", bar), "[4, 5]");
 }

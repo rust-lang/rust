@@ -490,24 +490,21 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
             match ty::can_type_implement_copy(&param_env, span, self_type) {
                 Ok(()) => {}
                 Err(ty::FieldDoesNotImplementCopy(name)) => {
-                    tcx.sess
-                       .span_err(span,
-                                 &format!("the trait `Copy` may not be \
+                       span_err!(tcx.sess, span, E0204,
+                                 "the trait `Copy` may not be \
                                           implemented for this type; field \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))[])
+                                         token::get_name(name))
                 }
                 Err(ty::VariantDoesNotImplementCopy(name)) => {
-                    tcx.sess
-                       .span_err(span,
-                                 &format!("the trait `Copy` may not be \
+                       span_err!(tcx.sess, span, E0205,
+                                 "the trait `Copy` may not be \
                                           implemented for this type; variant \
                                           `{}` does not implement `Copy`",
-                                         token::get_name(name))[])
+                                         token::get_name(name))
                 }
                 Err(ty::TypeIsStructural) => {
-                    tcx.sess
-                       .span_err(span,
+                       span_err!(tcx.sess, span, E0206,
                                  "the trait `Copy` may not be implemented \
                                   for this type; type is not a structure or \
                                   enumeration")

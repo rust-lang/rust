@@ -141,6 +141,8 @@ else ifeq ($(OSTYPE_$(1)), apple-ios)
   JEMALLOC_ARGS_$(1) := --disable-tls
 else ifeq ($(OSTYPE_$(1)), linux-androideabi)
   JEMALLOC_ARGS_$(1) := --disable-tls
+else ifeq ($(OSTYPE_$(1)), linux-android)
+  JEMALLOC_ARGS_$(1) := --disable-tls
 endif
 
 ################################################################################

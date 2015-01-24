@@ -759,70 +759,23 @@ pub trait StrExt: Index<FullRange, Output = str> {
         core_str::StrExt::lines_any(&self[])
     }
 
-    /// Returns a slice of the given string from the byte range
-    /// [`begin`..`end`).
-    ///
-    /// This operation is `O(1)`.
-    ///
-    /// Panics when `begin` and `end` do not point to valid characters
-    /// or point beyond the last character of the string.
-    ///
-    /// See also `slice_to` and `slice_from` for slicing prefixes and
-    /// suffixes of strings, and `slice_chars` for slicing based on
-    /// code point counts.
-    ///
-    /// # Example
-    ///
-    /// ```rust
-    /// let s = "Löwe 老虎 Léopard";
-    /// assert_eq!(s.slice(0, 1), "L");
-    ///
-    /// assert_eq!(s.slice(1, 9), "öwe 老");
-    ///
-    /// // these will panic:
-    /// // byte 2 lies within `ö`:
-    /// // s.slice(2, 3);
-    ///
-    /// // byte 8 lies within `老`
-    /// // s.slice(1, 8);
-    ///
-    /// // byte 100 is outside the string
-    /// // s.slice(3, 100);
-    /// ```
+    /// Deprecated: use `s[a .. b]` instead.
     #[unstable(feature = "collections",
                reason = "use slice notation [a..b] instead")]
-    fn slice(&self, begin: uint, end: uint) -> &str {
-        core_str::StrExt::slice(&self[], begin, end)
-    }
+    #[deprecated(since = "1.0.0", reason = "use slice notation [a..b] instead")]
+    fn slice(&self, begin: uint, end: uint) -> &str;
 
-    /// Returns a slice of the string from `begin` to its end.
-    ///
-    /// Equivalent to `self.slice(begin, self.len())`.
-    ///
-    /// Panics when `begin` does not point to a valid character, or is
-    /// out of bounds.
-    ///
-    /// See also `slice`, `slice_to` and `slice_chars`.
+    /// Deprecated: use `s[a..]` instead.
     #[unstable(feature = "collections",
-               reason = "use slice notation [a..] instead")]
-    fn slice_from(&self, begin: uint) -> &str {
-        core_str::StrExt::slice_from(&self[], begin)
-    }
+               reason = "use slice notation [a..b] instead")]
+    #[deprecated(since = "1.0.0", reason = "use slice notation [a..] instead")]
+    fn slice_from(&self, begin: uint) -> &str;
 
-    /// Returns a slice of the string from the beginning to byte
-    /// `end`.
-    ///
-    /// Equivalent to `self.slice(0, end)`.
-    ///
-    /// Panics when `end` does not point to a valid character, or is
-    /// out of bounds.
-    ///
-    /// See also `slice`, `slice_from` and `slice_chars`.
+    /// Deprecated: use `s[..a]` instead.
     #[unstable(feature = "collections",
-               reason = "use slice notation [..a] instead")]
-    fn slice_to(&self, end: uint) -> &str {
-        core_str::StrExt::slice_to(&self[], end)
-    }
+               reason = "use slice notation [a..b] instead")]
+    #[deprecated(since = "1.0.0", reason = "use slice notation [..a] instead")]
+    fn slice_to(&self, end: uint) -> &str;
 
     /// Returns a slice of the string from the character range
     /// [`begin`..`end`).
@@ -1374,7 +1327,19 @@ pub trait StrExt: Index<FullRange, Output = str> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl StrExt for str {}
+impl StrExt for str {
+    fn slice(&self, begin: uint, end: uint) -> &str {
+        &self[begin..end]
+    }
+
+    fn slice_from(&self, begin: uint) -> &str {
+        &self[begin..]
+    }
+
+    fn slice_to(&self, end: uint) -> &str {
+        &self[..end]
+    }
+}
 
 #[cfg(test)]
 mod tests {

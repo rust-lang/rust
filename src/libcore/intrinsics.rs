@@ -44,8 +44,6 @@
 
 use marker::Sized;
 
-#[cfg(stage0)] use any::TypeId;
-
 pub type GlueFn = extern "Rust" fn(*const i8);
 
 #[lang="ty_desc"]
@@ -208,11 +206,7 @@ extern "rust-intrinsic" {
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever
     /// crate it is invoked in.
-    #[cfg(not(stage0))]
     pub fn type_id<T: ?Sized + 'static>() -> u64;
-
-    #[cfg(stage0)]
-    pub fn type_id<T: ?Sized + 'static>() -> TypeId;
 
     /// Create a value initialized to zero.
     ///

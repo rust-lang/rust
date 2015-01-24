@@ -37,8 +37,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
                         match unsafety {
                             ast::Unsafety::Normal => { /* OK */ }
                             ast::Unsafety::Unsafe => {
-                                self.tcx.sess.span_err(
-                                    item.span,
+                                span_err!(self.tcx.sess, item.span, E0197,
                                     "inherent impls cannot be declared as unsafe");
                             }
                         }
@@ -49,24 +48,21 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for UnsafetyChecker<'cx, 'tcx> {
                         match (trait_def.unsafety, unsafety, polarity) {
                             (ast::Unsafety::Unsafe,
                              ast::Unsafety::Unsafe, ast::ImplPolarity::Negative) => {
-                                self.tcx.sess.span_err(
-                                    item.span,
-                                    format!("negative implementations are not unsafe").as_slice());
+                                span_err!(self.tcx.sess, item.span, E0198,
+                                    "negative implementations are not unsafe");
                             }
 
                             (ast::Unsafety::Normal, ast::Unsafety::Unsafe, _) => {
-                                self.tcx.sess.span_err(
-                                    item.span,
-                                    format!("implementing the trait `{}` is not unsafe",
-                                            trait_ref.user_string(self.tcx)).as_slice());
+                                span_err!(self.tcx.sess, item.span, E0199,
+                                    "implementing the trait `{}` is not unsafe",
+                                            trait_ref.user_string(self.tcx));
                             }
 
                             (ast::Unsafety::Unsafe,
                              ast::Unsafety::Normal, ast::ImplPolarity::Positive) => {
-                                self.tcx.sess.span_err(
-                                    item.span,
-                                    format!("the trait `{}` requires an `unsafe impl` declaration",
-                                            trait_ref.user_string(self.tcx)).as_slice());
+                                span_err!(self.tcx.sess, item.span, E0200,
+                                    "the trait `{}` requires an `unsafe impl` declaration",
+                                            trait_ref.user_string(self.tcx));
                             }
 
                             (ast::Unsafety::Unsafe,

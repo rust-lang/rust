@@ -7,7 +7,7 @@
 ifneq ($(shell uname),FreeBSD)
 ifndef IS_WINDOWS
 all:
-	$(RUSTC) --dep-info --crate-type=lib lib.rs
+	$(RUSTC) --emit dep-info,link --crate-type=lib lib.rs
 	sleep 2
 	touch foo.rs
 	-rm -f $(TMPDIR)/done

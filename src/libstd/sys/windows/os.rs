@@ -146,7 +146,7 @@ pub fn fill_utf16_buf_and_decode<F>(mut f: F) -> Option<String> where
                 done = true;
             }
             if k != 0 && done {
-                let sub = buf.slice(0, k as uint);
+                let sub = &buf[.. (k as uint)];
                 // We want to explicitly catch the case when the
                 // closure returned invalid UTF-16, rather than
                 // set `res` to None and continue.

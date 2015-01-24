@@ -60,6 +60,7 @@ use core::prelude::*;
 use core::cell::Cell;
 use core::marker;
 use core::mem;
+use core::ptr;
 use core::uint;
 
 use sync::mpsc::{Receiver, RecvError};
@@ -67,24 +68,12 @@ use sync::mpsc::blocking::{self, SignalToken};
 
 /// The "receiver set" of the select interface. This structure is used to manage
 /// a set of receivers which are being selected over.
-#[cfg(stage0)] // NOTE remove impl after next snapshot
-pub struct Select {
-    head: *mut Handle<'static, ()>,
-    tail: *mut Handle<'static, ()>,
-    next_id: Cell<uint>,
-    marker1: marker::NoSend,
-}
-
-/// The "receiver set" of the select interface. This structure is used to manage
-/// a set of receivers which are being selected over.
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub struct Select {
     head: *mut Handle<'static, ()>,
     tail: *mut Handle<'static, ()>,
     next_id: Cell<uint>,
 }
 
-#[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 impl !marker::Send for Select {}
 
 /// A handle to a receiver which is currently a member of a `Select` set of
@@ -127,26 +116,10 @@ impl Select {
     ///
     /// Usage of this struct directly can sometimes be burdensome, and usage is
     /// rather much easier through the `select!` macro.
-    #[cfg(stage0)] // NOTE remove impl after next snapshot
     pub fn new() -> Select {
         Select {
-            marker1: marker::NoSend,
-            head: 0 as *mut Handle<'static, ()>,
-            tail: 0 as *mut Handle<'static, ()>,
-            next_id: Cell::new(1),
-        }
-    }
-
-    /// Creates a new selection structure. This set is initially empty and
-    /// `wait` will panic!() if called.
-    ///
-    /// Usage of this struct directly can sometimes be burdensome, and usage is
-    /// rather much easier through the `select!` macro.
-    #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
-    pub fn new() -> Select {
-        Select {
-            head: 0 as *mut Handle<'static, ()>,
-            tail: 0 as *mut Handle<'static, ()>,
+            head: ptr::null_mut(),
+            tail: ptr::null_mut(),
             next_id: Cell::new(1),
         }
     }
@@ -160,8 +133,8 @@ impl Select {
         Handle {
             id: id,
             selector: self,
-            next: 0 as *mut Handle<'static, ()>,
-            prev: 0 as *mut Handle<'static, ()>,
+            next: ptr::null_mut(),
+            prev: ptr::null_mut(),
             added: false,
             rx: rx,
             packet: rx,
@@ -326,8 +299,8 @@ impl<'rx, T: Send> Handle<'rx, T> {
             (*self.next).prev = self.prev;
         }
 
-        self.next = 0 as *mut Handle<'static, ()>;
-        self.prev = 0 as *mut Handle<'static, ()>;
+        self.next = ptr::null_mut();
+        self.prev = ptr::null_mut();
 
         self.added = false;
     }

@@ -305,17 +305,6 @@ pub fn enc_trait_ref<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
     enc_substs(w, cx, s.substs);
 }
 
-pub fn enc_trait_store(w: &mut SeekableMemWriter, cx: &ctxt, s: ty::TraitStore) {
-    match s {
-        ty::UniqTraitStore => mywrite!(w, "~"),
-        ty::RegionTraitStore(re, m) => {
-            mywrite!(w, "&");
-            enc_region(w, cx, re);
-            enc_mutability(w, m);
-        }
-    }
-}
-
 fn enc_unsafety(w: &mut SeekableMemWriter, p: ast::Unsafety) {
     match p {
         ast::Unsafety::Normal => mywrite!(w, "n"),
@@ -329,13 +318,6 @@ fn enc_abi(w: &mut SeekableMemWriter, abi: Abi) {
     mywrite!(w, "]")
 }
 
-fn enc_onceness(w: &mut SeekableMemWriter, o: ast::Onceness) {
-    match o {
-        ast::Once => mywrite!(w, "o"),
-        ast::Many => mywrite!(w, "m")
-    }
-}
-
 pub fn enc_bare_fn_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                                 ft: &ty::BareFnTy<'tcx>) {
     enc_unsafety(w, ft.unsafety);
@@ -346,9 +328,6 @@ pub fn enc_bare_fn_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
 pub fn enc_closure_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                                 ft: &ty::ClosureTy<'tcx>) {
     enc_unsafety(w, ft.unsafety);
-    enc_onceness(w, ft.onceness);
-    enc_trait_store(w, cx, ft.store);
-    enc_existential_bounds(w, cx, &ft.bounds);
     enc_fn_sig(w, cx, &ft.sig);
     enc_abi(w, ft.abi);
 }

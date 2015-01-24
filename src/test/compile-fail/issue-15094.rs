@@ -12,19 +12,19 @@
 
 use std::{fmt, ops};
 
-struct Shower<T> {
+struct Debuger<T> {
     x: T
 }
 
-impl<T: fmt::Show> ops::Fn<(), ()> for Shower<T> {
+impl<T: fmt::Debug> ops::Fn<(), ()> for Debuger<T> {
     fn call(&self, _args: ()) {
 //~^ ERROR `call` has an incompatible type for trait: expected "rust-call" fn, found "Rust" fn
         println!("{:?}", self.x);
     }
 }
 
-fn make_shower<T>(x: T) -> Shower<T> {
-    Shower { x: x }
+fn make_shower<T>(x: T) -> Debuger<T> {
+    Debuger { x: x }
 }
 
 pub fn main() {
