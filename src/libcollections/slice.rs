@@ -174,7 +174,7 @@ pub trait SliceExt {
     fn slice(&self, start: uint, end: uint) -> &[Self::Item];
 
     /// Deprecated: use `&s[start..]` notation instead.
-    #[deprecated = "use &s[start..] isntead"]
+    #[deprecated = "use &s[start..] instead"]
     fn slice_from(&self, start: uint) -> &[Self::Item];
 
     /// Deprecated: use `&s[..end]` notation instead.
