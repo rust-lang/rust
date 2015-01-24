@@ -10,10 +10,6 @@
 
 // Searching for information from the cstore
 
-#![allow(non_camel_case_types)]
-
-pub use self::found_ast::*;
-
 use metadata::common::*;
 use metadata::cstore;
 use metadata::decoder;
@@ -101,10 +97,10 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
     r
 }
 
-pub enum found_ast<'ast> {
-    found(&'ast ast::InlinedItem),
-    found_parent(ast::DefId, &'ast ast::InlinedItem),
-    not_found,
+pub enum FoundAst<'ast> {
+    Found(&'ast ast::InlinedItem),
+    FoundParent(ast::DefId, &'ast ast::InlinedItem),
+    NotFound,
 }
 
 // Finds the AST for this item in the crate metadata, if any.  If the item was
@@ -112,7 +108,7 @@ pub enum found_ast<'ast> {
 // will be returned.
 pub fn maybe_get_item_ast<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId,
                                 decode_inlined_item: decoder::DecodeInlinedItem)
-                                -> found_ast<'tcx> {
+                                -> FoundAst<'tcx> {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
     decoder::maybe_get_item_ast(&*cdata, tcx, def.node, decode_inlined_item)

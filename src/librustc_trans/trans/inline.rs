@@ -43,11 +43,11 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
             box |a,b,c,d| astencode::decode_inlined_item(a, b, c, d));
 
     let inline_def = match csearch_result {
-        csearch::not_found => {
+        csearch::FoundAst::NotFound => {
             ccx.external().borrow_mut().insert(fn_id, None);
             return None;
         }
-        csearch::found(&ast::IIItem(ref item)) => {
+        csearch::FoundAst::Found(&ast::IIItem(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
 
@@ -90,12 +90,12 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
 
             local_def(item.id)
         }
-        csearch::found(&ast::IIForeign(ref item)) => {
+        csearch::FoundAst::Found(&ast::IIForeign(ref item)) => {
             ccx.external().borrow_mut().insert(fn_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, fn_id);
             local_def(item.id)
         }
-        csearch::found_parent(parent_id, &ast::IIItem(ref item)) => {
+        csearch::FoundAst::FoundParent(parent_id, &ast::IIItem(ref item)) => {
             ccx.external().borrow_mut().insert(parent_id, Some(item.id));
             ccx.external_srcs().borrow_mut().insert(item.id, parent_id);
 
@@ -124,11 +124,11 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
           trans_item(ccx, &**item);
           local_def(my_id)
         }
-        csearch::found_parent(_, _) => {
-            ccx.sess().bug("maybe_get_item_ast returned a found_parent \
+        csearch::FoundAst::FoundParent(_, _) => {
+            ccx.sess().bug("maybe_get_item_ast returned a FoundParent \
              with a non-item parent");
         }
-        csearch::found(&ast::IITraitItem(_, ref trait_item)) => {
+        csearch::FoundAst::Found(&ast::IITraitItem(_, ref trait_item)) => {
             match *trait_item {
                 ast::RequiredMethod(_) => ccx.sess().bug("found RequiredMethod IITraitItem"),
                 ast::ProvidedMethod(ref mth) => {
@@ -147,7 +147,7 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                 }
             }
         }
-        csearch::found(&ast::IIImplItem(impl_did, ref impl_item)) => {
+        csearch::FoundAst::Found(&ast::IIImplItem(impl_did, ref impl_item)) => {
             match *impl_item {
                 ast::MethodImplItem(ref mth) => {
                     ccx.external().borrow_mut().insert(fn_id, Some(mth.id));

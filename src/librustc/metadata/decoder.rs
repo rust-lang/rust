@@ -693,23 +693,23 @@ pub type DecodeInlinedItem<'a> =
 
 pub fn maybe_get_item_ast<'tcx>(cdata: Cmd, tcx: &ty::ctxt<'tcx>, id: ast::NodeId,
                                 mut decode_inlined_item: DecodeInlinedItem)
-                                -> csearch::found_ast<'tcx> {
+                                -> csearch::FoundAst<'tcx> {
     debug!("Looking up item: {}", id);
     let item_doc = lookup_item(id, cdata.data());
     let path = item_path(item_doc).init().to_vec();
     match decode_inlined_item(cdata, tcx, path, item_doc) {
-        Ok(ii) => csearch::found(ii),
+        Ok(ii) => csearch::FoundAst::Found(ii),
         Err(path) => {
             match item_parent_item(item_doc) {
                 Some(did) => {
                     let did = translate_def_id(cdata, did);
                     let parent_item = lookup_item(did.node, cdata.data());
                     match decode_inlined_item(cdata, tcx, path, parent_item) {
-                        Ok(ii) => csearch::found_parent(did, ii),
-                        Err(_) => csearch::not_found
+                        Ok(ii) => csearch::FoundAst::FoundParent(did, ii),
+                        Err(_) => csearch::FoundAst::NotFound
                     }
                 }
-                None => csearch::not_found
+                None => csearch::FoundAst::NotFound
             }
         }
     }
