@@ -28,8 +28,8 @@ need_ok() {
 
 need_cmd() {
     if command -v $1 >/dev/null 2>&1
-    then msg "found $1"
-    else err "need $1"
+    then msg "found program $1"
+    else err "need program $1"
     fi
 }
 
@@ -340,6 +340,7 @@ need_cmd date
 need_cmd tr
 need_cmd sed
 need_cmd file
+need_cmd make
 
 msg "inspecting environment"
 
