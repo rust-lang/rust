@@ -88,7 +88,7 @@ pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
         }
         s.push_str(&e[]);
         s
-    }).to_string()
+    })
 }
 
 #[derive(Copy, Show)]
