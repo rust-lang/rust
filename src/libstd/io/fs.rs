@@ -137,6 +137,15 @@ impl File {
                      mode: FileMode,
                      access: FileAccess) -> IoResult<File> {
         fs_imp::open(path, mode, access).and_then(|fd| {
+            unsafe { File::from_fd(fd, path) }
+        }).update_err("couldn't open path as file", |e| {
+            format!("{}; path={:?}; mode={}; access={}", e, path.display(),
+                mode_string(mode), access_string(access))
+        })
+    }
+
+    /// Create a file from already open `fd` file descriptor
+    pub unsafe fn from_fd(fd : fs_imp::FileDesc, path: &Path) -> IoResult<File> {
             // On *BSD systems, we can open a directory as a file and read from it:
             // fd=open("/tmp", O_RDONLY); read(fd, buf, N);
             // due to an old tradition before the introduction of opendir(3).
@@ -155,10 +164,6 @@ impl File {
                     last_nread: -1
                 })
             }
-        }).update_err("couldn't open path as file", |e| {
-            format!("{}; path={}; mode={}; access={}", e, path.display(),
-                mode_string(mode), access_string(access))
-        })
     }
 
     /// Attempts to open a file in read-only mode. This function is equivalent to
