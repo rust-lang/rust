@@ -29,6 +29,7 @@ pub mod stack;
 pub mod thread;
 pub mod thread_info;
 pub mod thread_local;
+pub mod wtf8;
 
 // common error constructors
 
@@ -93,9 +94,19 @@ pub fn keep_going<F>(data: &[u8], mut f: F) -> i64 where
     return (origamt - amt) as i64;
 }
 
-// A trait for extracting representations from std::io types
-pub trait AsInner<Inner> {
+/// A trait for viewing representations from std types
+pub trait AsInner<Inner: ?Sized> {
     fn as_inner(&self) -> &Inner;
+}
+
+/// A trait for extracting representations from std types
+pub trait IntoInner<Inner> {
+    fn into_inner(self) -> Inner;
+}
+
+/// A trait for creating std types from internal representations
+pub trait FromInner<Inner> {
+    fn from_inner(inner: Inner) -> Self;
 }
 
 pub trait ProcessConfig<K: BytesContainer, V: BytesContainer> {
