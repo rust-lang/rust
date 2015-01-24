@@ -82,6 +82,8 @@ use usize;
 /// else.
 #[lang="iterator"]
 #[stable]
+#[rustc_on_unimplemented = "`{Self}` is not an iterator; maybe try calling `.iter()` or a similar \
+                            method"]
 pub trait Iterator {
     #[stable]
     type Item;
