@@ -340,6 +340,7 @@ need_cmd date
 need_cmd tr
 need_cmd sed
 need_cmd file
+need_cmd make
 
 msg "inspecting environment"
 
