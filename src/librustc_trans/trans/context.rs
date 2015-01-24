@@ -876,11 +876,10 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.assume", fn(i1) -> void);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
-    // fallbacks in libc or libm and such. Currently, all of these intrinsics
-    // were introduced in LLVM 3.4, so we case on that.
+    // fallbacks in libc or libm and such.
     macro_rules! compatible_ifn {
-        ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr) => (
-            if unsafe { llvm::LLVMVersionMinor() >= 4 } {
+        ($name:expr, $cname:ident ($($arg:expr),*) -> $ret:expr, $llvm_version:expr) => (
+            if unsafe { llvm::LLVMVersionMinor() >= $llvm_version } {
                 // The `if key == $name` is already in ifn!
                 ifn!($name, fn($($arg),*) -> $ret);
             } else if *key == $name {
@@ -893,10 +892,10 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
         )
     }
 
-    compatible_ifn!("llvm.copysign.f32", copysignf(t_f32, t_f32) -> t_f32);
-    compatible_ifn!("llvm.copysign.f64", copysign(t_f64, t_f64) -> t_f64);
-    compatible_ifn!("llvm.round.f32", roundf(t_f32) -> t_f32);
-    compatible_ifn!("llvm.round.f64", round(t_f64) -> t_f64);
+    compatible_ifn!("llvm.copysign.f32", copysignf(t_f32, t_f32) -> t_f32, 4);
+    compatible_ifn!("llvm.copysign.f64", copysign(t_f64, t_f64) -> t_f64, 4);
+    compatible_ifn!("llvm.round.f32", roundf(t_f32) -> t_f32, 4);
+    compatible_ifn!("llvm.round.f64", round(t_f64) -> t_f64, 4);
 
 
     if ccx.sess().opts.debuginfo != NoDebugInfo {
