@@ -20,6 +20,10 @@
 
 import sys, os, re
 
+if len(sys.argv) < 2:
+    print "usage: featurkck.py <src-dir>"
+    sys.exit(1)
+
 src_dir = sys.argv[1]
 
 # Features that are allowed to exist in both the language and the library
