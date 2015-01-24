@@ -1563,3 +1563,12 @@ pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {
         Some(item) => item_sort(item) == 't',
     }
 }
+
+
+pub fn is_default_trait<'tcx>(cdata: Cmd, id: ast::NodeId) -> bool {
+    let item_doc = lookup_item(id, cdata.data());
+    match item_family(item_doc) {
+        Family::DefTrait => true,
+        _ => false
+    }
+}

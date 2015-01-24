@@ -649,7 +649,10 @@ fn convert_item(ccx: &CollectCtxt, it: &ast::Item) {
                                    &enum_definition.variants);
         },
         ast::ItemDefTrait(_, ref ast_trait_ref) => {
+            let trait_ref = astconv::instantiate_trait_ref(ccx, &ExplicitRscope,
+                                                           ast_trait_ref, None, None);
 
+            ty::record_default_trait_implementation(tcx, trait_ref.def_id)
         }
         ast::ItemImpl(_, _,
                       ref generics,

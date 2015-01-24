@@ -519,6 +519,7 @@ impl<'tcx, N: TypeFoldable<'tcx>> TypeFoldable<'tcx> for traits::Vtable<'tcx, N>
     fn fold_with<F:TypeFolder<'tcx>>(&self, folder: &mut F) -> traits::Vtable<'tcx, N> {
         match *self {
             traits::VtableImpl(ref v) => traits::VtableImpl(v.fold_with(folder)),
+            traits::VtableDefaultTrait(t) => traits::VtableDefaultTrait(t),
             traits::VtableClosure(d, ref s) => {
                 traits::VtableClosure(d, s.fold_with(folder))
             }
