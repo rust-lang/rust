@@ -2859,7 +2859,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let lhs_t = structurally_resolved_type(fcx, lhs.span,
                                                fcx.expr_ty(&*lhs));
 
-        if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op) {
+        if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op.node) {
             // Shift is a special case: rhs must be uint, no matter what lhs is
             check_expr(fcx, &**rhs);
             let rhs_ty = fcx.expr_ty(&**rhs);
@@ -2887,7 +2887,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             demand::suptype(fcx, expr.span, tvar, lhs_t);
             check_expr_has_type(fcx, &**rhs, tvar);
 
-            let result_t = match op {
+            let result_t = match op.node {
                 ast::BiEq | ast::BiNe | ast::BiLt | ast::BiLe | ast::BiGe |
                 ast::BiGt => {
                     if ty::type_is_simd(tcx, lhs_t) {
@@ -2898,7 +2898,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                              operation `{}` not \
                                              supported for floating \
                                              point SIMD vector `{}`",
-                                            ast_util::binop_to_string(op),
+                                            ast_util::binop_to_string(op.node),
                                             actual)
                                 },
                                 lhs_t,
@@ -2919,7 +2919,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             return;
         }
 
-        if op == ast::BiOr || op == ast::BiAnd {
+        if op.node == ast::BiOr || op.node == ast::BiAnd {
             // This is an error; one of the operands must have the wrong
             // type
             fcx.write_error(expr.id);
@@ -2928,7 +2928,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                    |actual| {
                     format!("binary operation `{}` cannot be applied \
                              to type `{}`",
-                            ast_util::binop_to_string(op),
+                            ast_util::binop_to_string(op.node),
                             actual)
                 },
                 lhs_t,
@@ -2945,7 +2945,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                  operation `{}=` \
                                                  cannot be applied to \
                                                  type `{}`",
-                                                ast_util::binop_to_string(op),
+                                                ast_util::binop_to_string(op.node),
                                                 actual)
                                    },
                                    lhs_t,
@@ -2968,7 +2968,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                   rhs: &P<ast::Expr>) -> Ty<'tcx> {
         let tcx = fcx.ccx.tcx;
         let lang = &tcx.lang_items;
-        let (name, trait_did) = match op {
+        let (name, trait_did) = match op.node {
             ast::BiAdd => ("add", lang.add_trait()),
             ast::BiSub => ("sub", lang.sub_trait()),
             ast::BiMul => ("mul", lang.mul_trait()),
@@ -2994,10 +2994,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                          trait_did, lhs_expr, Some(rhs), || {
             fcx.type_error_message(ex.span, |actual| {
                 format!("binary operation `{}` cannot be applied to type `{}`",
-                        ast_util::binop_to_string(op),
+                        ast_util::binop_to_string(op.node),
                         actual)
             }, lhs_resolved_t, None)
-        }, if ast_util::is_by_value_binop(op) { AutorefArgs::No } else { AutorefArgs::Yes })
+        }, if ast_util::is_by_value_binop(op.node) { AutorefArgs::No } else { AutorefArgs::Yes })
     }
 
     fn check_user_unop<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,

@@ -44,7 +44,7 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast, ast_map};
 use syntax::ast_util::is_shift_binop;
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::{Span, DUMMY_SP};
+use syntax::codemap::{self, Span, DUMMY_SP};
 use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ast_util;
@@ -185,7 +185,7 @@ impl LintPass for TypeLimits {
                                  "comparison is useless due to type limits");
                 }
 
-                if is_shift_binop(binop) {
+                if is_shift_binop(binop.node) {
                     let opt_ty_bits = match ty::expr_ty(cx.tcx, &**l).sty {
                         ty::ty_int(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::ty_uint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
@@ -272,7 +272,7 @@ impl LintPass for TypeLimits {
 
         fn is_valid<T:cmp::PartialOrd>(binop: ast::BinOp, v: T,
                                 min: T, max: T) -> bool {
-            match binop {
+            match binop.node {
                 ast::BiLt => v >  min && v <= max,
                 ast::BiLe => v >= min && v <  max,
                 ast::BiGt => v >= min && v <  max,
@@ -283,13 +283,13 @@ impl LintPass for TypeLimits {
         }
 
         fn rev_binop(binop: ast::BinOp) -> ast::BinOp {
-            match binop {
+            codemap::respan(binop.span, match binop.node {
                 ast::BiLt => ast::BiGt,
                 ast::BiLe => ast::BiGe,
                 ast::BiGt => ast::BiLt,
                 ast::BiGe => ast::BiLe,
-                _ => binop
-            }
+                _ => return binop
+            })
         }
 
         // for int & uint, be conservative with the warnings, so that the
@@ -382,7 +382,7 @@ impl LintPass for TypeLimits {
         }
 
         fn is_comparison(binop: ast::BinOp) -> bool {
-            match binop {
+            match binop.node {
                 ast::BiEq | ast::BiLt | ast::BiLe |
                 ast::BiNe | ast::BiGe | ast::BiGt => true,
                 _ => false

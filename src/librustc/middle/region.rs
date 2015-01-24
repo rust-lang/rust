@@ -22,7 +22,7 @@ use util::nodemap::{FnvHashMap, FnvHashSet, NodeMap};
 use util::common::can_reach;
 
 use std::cell::RefCell;
-use syntax::codemap::Span;
+use syntax::codemap::{self, Span};
 use syntax::{ast, visit};
 use syntax::ast::{Block, Item, FnDecl, NodeId, Arm, Pat, Stmt, Expr, Local};
 use syntax::ast_util::{stmt_id};
@@ -496,8 +496,8 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
             // scopes, meaning that temporaries cannot outlive them.
             // This ensures fixed size stacks.
 
-            ast::ExprBinary(ast::BiAnd, _, ref r) |
-            ast::ExprBinary(ast::BiOr, _, ref r) => {
+            ast::ExprBinary(codemap::Spanned { node: ast::BiAnd, .. }, _, ref r) |
+            ast::ExprBinary(codemap::Spanned { node: ast::BiOr, .. }, _, ref r) => {
                 // For shortcircuiting operators, mark the RHS as a terminating
                 // scope since it only executes conditionally.
                 terminating(r.id);
