@@ -64,12 +64,12 @@ static MAX_THREE_B: u32 =  0x10000u32;
 */
 
 /// The highest valid code point
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX: char = '\u{10ffff}';
 
 /// Converts from `u32` to a `char`
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn from_u32(i: u32) -> Option<char> {
     // catch out-of-bounds and surrogates
     if (i > MAX as u32) || (i >= 0xD800 && i <= 0xDFFF) {
@@ -111,7 +111,7 @@ pub fn from_digit(num: uint, radix: uint) -> Option<char> {
 }
 
 /// Basic `char` manipulations.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait CharExt {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
@@ -151,7 +151,7 @@ pub trait CharExt {
     /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
     /// where `NNNN` is the shortest hexadecimal representation of the code
     /// point.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_unicode(self) -> EscapeUnicode;
 
     /// Returns an iterator that yields the 'default' ASCII and
@@ -166,17 +166,17 @@ pub trait CharExt {
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> EscapeDefault;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-16.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -184,7 +184,7 @@ pub trait CharExt {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -192,11 +192,11 @@ pub trait CharExt {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl CharExt for char {
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
@@ -220,12 +220,12 @@ impl CharExt for char {
         else { None }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_unicode(self) -> EscapeUnicode {
         EscapeUnicode { c: self, state: EscapeUnicodeState::Backslash }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> EscapeDefault {
         let init_state = match self {
             '\t' => EscapeDefaultState::Backslash('t'),
@@ -241,7 +241,7 @@ impl CharExt for char {
     }
 
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> uint {
         let code = self as u32;
         match () {
@@ -253,7 +253,7 @@ impl CharExt for char {
     }
 
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> uint {
         let ch = self as u32;
         if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
@@ -313,7 +313,7 @@ impl CharExt for char {
 /// An iterator over the characters that represent a `char`, as escaped by
 /// Rust's unicode escaping rules.
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeUnicode {
     c: char,
     state: EscapeUnicodeState
@@ -330,7 +330,7 @@ enum EscapeUnicodeState {
     Done,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeUnicode {
     type Item = char;
 
@@ -376,7 +376,7 @@ impl Iterator for EscapeUnicode {
 /// An iterator over the characters that represent a `char`, escaped
 /// for maximum portability.
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct EscapeDefault {
     state: EscapeDefaultState
 }
@@ -390,7 +390,7 @@ enum EscapeDefaultState {
     Unicode(EscapeUnicode),
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for EscapeDefault {
     type Item = char;
 

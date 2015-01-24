@@ -66,9 +66,9 @@ pub struct VecMap<V> {
     v: Vec<Option<V>>,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V> Default for VecMap<V> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn default() -> VecMap<V> { VecMap::new() }
 }
@@ -107,7 +107,7 @@ impl<V> VecMap<V> {
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::new();
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> VecMap<V> { VecMap { v: vec![] } }
 
     /// Creates an empty `VecMap` with space for at least `capacity`
@@ -119,7 +119,7 @@ impl<V> VecMap<V> {
     /// use std::collections::VecMap;
     /// let mut map: VecMap<&str> = VecMap::with_capacity(10);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: uint) -> VecMap<V> {
         VecMap { v: Vec::with_capacity(capacity) }
     }
@@ -135,7 +135,7 @@ impl<V> VecMap<V> {
     /// assert!(map.capacity() >= 10);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint {
         self.v.capacity()
     }
@@ -154,7 +154,7 @@ impl<V> VecMap<V> {
     /// map.reserve_len(10);
     /// assert!(map.capacity() >= 10);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_len(&mut self, len: uint) {
         let cur_len = self.v.len();
         if len >= cur_len {
@@ -178,7 +178,7 @@ impl<V> VecMap<V> {
     /// map.reserve_len_exact(10);
     /// assert!(map.capacity() >= 10);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_len_exact(&mut self, len: uint) {
         let cur_len = self.v.len();
         if len >= cur_len {
@@ -188,7 +188,7 @@ impl<V> VecMap<V> {
 
     /// Returns an iterator visiting all keys in ascending order of the keys.
     /// The iterator's element type is `uint`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'r>(&'r self) -> Keys<'r, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
         let first: fn((uint, &'r V)) -> uint = first; // coerce to fn pointer
@@ -198,7 +198,7 @@ impl<V> VecMap<V> {
 
     /// Returns an iterator visiting all values in ascending order of the keys.
     /// The iterator's element type is `&'r V`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'r>(&'r self) -> Values<'r, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
         let second: fn((uint, &'r V)) -> &'r V = second; // coerce to fn pointer
@@ -224,7 +224,7 @@ impl<V> VecMap<V> {
     ///     println!("{}: {}", key, value);
     /// }
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter<'r>(&'r self) -> Iter<'r, V> {
         Iter {
             front: 0,
@@ -255,7 +255,7 @@ impl<V> VecMap<V> {
     ///     assert_eq!(value, &"x");
     /// }
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut<'r>(&'r mut self) -> IterMut<'r, V> {
         IterMut {
             front: 0,
@@ -282,7 +282,7 @@ impl<V> VecMap<V> {
     ///
     /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<V> {
         fn filter<A>((i, v): (uint, Option<A>)) -> Option<(uint, A)> {
             v.map(|v| (i, v))
@@ -333,7 +333,7 @@ impl<V> VecMap<V> {
     /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint {
         self.v.iter().filter(|elt| elt.is_some()).count()
     }
@@ -350,7 +350,7 @@ impl<V> VecMap<V> {
     /// a.insert(1, "a");
     /// assert!(!a.is_empty());
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool {
         self.v.iter().all(|elt| elt.is_none())
     }
@@ -367,7 +367,7 @@ impl<V> VecMap<V> {
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) { self.v.clear() }
 
     /// Returns a reference to the value corresponding to the key.
@@ -382,7 +382,7 @@ impl<V> VecMap<V> {
     /// assert_eq!(map.get(&1), Some(&"a"));
     /// assert_eq!(map.get(&2), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, key: &uint) -> Option<&V> {
         if *key < self.v.len() {
             match self.v[*key] {
@@ -407,7 +407,7 @@ impl<V> VecMap<V> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains_key(&self, key: &uint) -> bool {
         self.get(key).is_some()
     }
@@ -427,7 +427,7 @@ impl<V> VecMap<V> {
     /// }
     /// assert_eq!(map[1], "b");
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self, key: &uint) -> Option<&mut V> {
         if *key < self.v.len() {
             match *(&mut self.v[*key]) {
@@ -455,7 +455,7 @@ impl<V> VecMap<V> {
     /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[37], "c");
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, key: uint, value: V) -> Option<V> {
         let len = self.v.len();
         if len <= key {
@@ -477,7 +477,7 @@ impl<V> VecMap<V> {
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, key: &uint) -> Option<V> {
         if *key >= self.v.len() {
             return None;
@@ -487,17 +487,17 @@ impl<V> VecMap<V> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V: PartialEq> PartialEq for VecMap<V> {
     fn eq(&self, other: &VecMap<V>) -> bool {
         iter::order::eq(self.iter(), other.iter())
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V: Eq> Eq for VecMap<V> {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V: PartialOrd> PartialOrd for VecMap<V> {
     #[inline]
     fn partial_cmp(&self, other: &VecMap<V>) -> Option<Ordering> {
@@ -505,7 +505,7 @@ impl<V: PartialOrd> PartialOrd for VecMap<V> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V: Ord> Ord for VecMap<V> {
     #[inline]
     fn cmp(&self, other: &VecMap<V>) -> Ordering {
@@ -513,7 +513,7 @@ impl<V: Ord> Ord for VecMap<V> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V: fmt::Show> fmt::Show for VecMap<V> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "VecMap {{"));
@@ -527,7 +527,7 @@ impl<V: fmt::Show> fmt::Show for VecMap<V> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V> FromIterator<(uint, V)> for VecMap<V> {
     fn from_iter<Iter: Iterator<Item=(uint, V)>>(iter: Iter) -> VecMap<V> {
         let mut map = VecMap::new();
@@ -536,7 +536,7 @@ impl<V> FromIterator<(uint, V)> for VecMap<V> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V> Extend<(uint, V)> for VecMap<V> {
     fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, mut iter: Iter) {
         for (k, v) in iter {
@@ -554,7 +554,7 @@ impl<V> Index<uint> for VecMap<V> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V> IndexMut<uint> for VecMap<V> {
     type Output = V;
 
@@ -566,7 +566,7 @@ impl<V> IndexMut<uint> for VecMap<V> {
 
 macro_rules! iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, V> Iterator for $name<'a, V> {
             type Item = $elem;
 
@@ -601,7 +601,7 @@ macro_rules! iterator {
 
 macro_rules! double_ended_iterator {
     (impl $name:ident -> $elem:ty, $($getter:ident),+) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a, V> DoubleEndedIterator for $name<'a, V> {
             #[inline]
             fn next_back(&mut self) -> Option<$elem> {
@@ -627,7 +627,7 @@ macro_rules! double_ended_iterator {
 }
 
 /// An iterator over the key-value pairs of a map.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, V:'a> {
     front: uint,
     back: uint,
@@ -650,7 +650,7 @@ double_ended_iterator! { impl Iter -> (uint, &'a V), as_ref }
 
 /// An iterator over the key-value pairs of a map, with the
 /// values being mutable.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, V:'a> {
     front: uint,
     back: uint,
@@ -661,7 +661,7 @@ iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
 double_ended_iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
 
 /// An iterator over the keys of a map.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, V: 'a> {
     iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
 }
@@ -676,7 +676,7 @@ impl<'a, V> Clone for Keys<'a, V> {
 }
 
 /// An iterator over the values of a map.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, V: 'a> {
     iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
 }
@@ -691,7 +691,7 @@ impl<'a, V> Clone for Values<'a, V> {
 }
 
 /// A consuming iterator over the key-value pairs of a map.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<V> {
     iter: FilterMap<
     (uint, Option<V>),
@@ -722,38 +722,38 @@ impl<'a, V> DoubleEndedIterator for Drain<'a, V> {
     fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, V> Iterator for Keys<'a, V> {
     type Item = uint;
 
     fn next(&mut self) -> Option<uint> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, V> DoubleEndedIterator for Keys<'a, V> {
     fn next_back(&mut self) -> Option<uint> { self.iter.next_back() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, V> Iterator for Values<'a, V> {
     type Item = &'a V;
 
     fn next(&mut self) -> Option<(&'a V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, V> DoubleEndedIterator for Values<'a, V> {
     fn next_back(&mut self) -> Option<(&'a V)> { self.iter.next_back() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V> Iterator for IntoIter<V> {
     type Item = (uint, V);
 
     fn next(&mut self) -> Option<(uint, V)> { self.iter.next() }
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<V> DoubleEndedIterator for IntoIter<V> {
     fn next_back(&mut self) -> Option<(uint, V)> { self.iter.next_back() }
 }

@@ -10,7 +10,7 @@
 
 //! Operations and constants for signed 16-bits integers (`i16` type)
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "i16")]
 
 int_module! { i16, 16 }

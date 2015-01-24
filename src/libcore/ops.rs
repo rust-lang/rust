@@ -67,7 +67,7 @@
 //! See the documentation for each trait for a minimum implementation that prints
 //! something to the screen.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use clone::Clone;
 use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
@@ -97,10 +97,10 @@ use fmt;
 /// }
 /// ```
 #[lang="drop"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Drop {
     /// The `drop` method, called when the value goes out of scope.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn drop(&mut self);
 }
 
@@ -189,19 +189,19 @@ macro_rules! forward_ref_binop {
 /// }
 /// ```
 #[lang="add"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Add<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `+` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn add(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! add_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Add for $t {
             type Output = $t;
 
@@ -244,19 +244,19 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="sub"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Sub<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `-` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn sub(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! sub_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Sub for $t {
             type Output = $t;
 
@@ -299,19 +299,19 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="mul"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Mul<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `*` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn mul(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! mul_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Mul for $t {
             type Output = $t;
 
@@ -354,19 +354,19 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="div"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Div<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `/` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn div(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! div_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Div for $t {
             type Output = $t;
 
@@ -409,19 +409,19 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// }
 /// ```
 #[lang="rem"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Rem<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output = Self;
 
     /// The method for the `%` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn rem(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! rem_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
 
@@ -435,7 +435,7 @@ macro_rules! rem_impl {
 
 macro_rules! rem_float_impl {
     ($t:ty, $fmod:ident) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Rem for $t {
             type Output = $t;
 
@@ -484,25 +484,25 @@ rem_float_impl! { f64, fmod }
 /// }
 /// ```
 #[lang="neg"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Neg {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the unary `-` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn neg(self) -> Self::Output;
 }
 
 macro_rules! neg_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Neg for $t {
-            #[stable(feature = "grandfathered", since = "1.0.0")]
+            #[stable(feature = "rust1", since = "1.0.0")]
             type Output = $t;
 
             #[inline]
-            #[stable(feature = "grandfathered", since = "1.0.0")]
+            #[stable(feature = "rust1", since = "1.0.0")]
             fn neg(self) -> $t { -self }
         }
 
@@ -512,7 +512,7 @@ macro_rules! neg_impl {
 
 macro_rules! neg_uint_impl {
     ($t:ty, $t_signed:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Neg for $t {
             type Output = $t;
 
@@ -563,19 +563,19 @@ neg_uint_impl! { u64, i64 }
 /// }
 /// ```
 #[lang="not"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Not {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the unary `!` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn not(self) -> Self::Output;
 }
 
 macro_rules! not_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Not for $t {
             type Output = $t;
 
@@ -618,19 +618,19 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitand"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitAnd<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `&` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn bitand(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitand_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl BitAnd for $t {
             type Output = $t;
 
@@ -673,19 +673,19 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitor"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitOr<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `|` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn bitor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitor_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl BitOr for $t {
             type Output = $t;
 
@@ -728,19 +728,19 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="bitxor"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitXor<RHS=Self> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `^` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn bitxor(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! bitxor_impl {
     ($($t:ty)*) => ($(
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl BitXor for $t {
             type Output = $t;
 
@@ -783,19 +783,19 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// }
 /// ```
 #[lang="shl"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Shl<RHS> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `<<` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn shl(self, rhs: RHS) -> Self::Output;
 }
 
 macro_rules! shl_impl {
     ($t:ty, $f:ty) => (
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Shl<$f> for $t {
             type Output = $t;
 
@@ -856,13 +856,13 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// }
 /// ```
 #[lang="shr"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Shr<RHS> {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
     /// The method for the `>>` operator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn shr(self, rhs: RHS) -> Self::Output;
 }
 
@@ -1120,24 +1120,24 @@ impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
 /// }
 /// ```
 #[lang="deref"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Deref {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Target: ?Sized;
 
     /// The method called to dereference a value
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn deref<'a>(&'a self) -> &'a Self::Target;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Deref for &'a T {
     type Target = T;
 
     fn deref(&self) -> &T { *self }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Deref for &'a mut T {
     type Target = T;
 
@@ -1182,14 +1182,14 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// }
 /// ```
 #[lang="deref_mut"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait DerefMut: Deref {
     /// The method called to mutably dereference a value
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn deref_mut<'a>(&'a mut self) -> &'a mut Self::Target;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> DerefMut for &'a mut T {
     fn deref_mut(&mut self) -> &mut T { *self }
 }

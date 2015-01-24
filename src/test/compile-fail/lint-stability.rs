@@ -185,12 +185,12 @@ mod this_crate {
 
     pub fn unmarked() {}
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stable() {}
-    #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
+    #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
     pub fn stable_text() {}
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub struct MethodTester;
 
     impl MethodTester {
@@ -208,9 +208,9 @@ mod this_crate {
 
         pub fn method_unmarked(&self) {}
 
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         pub fn method_stable(&self) {}
-        #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
+        #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
         pub fn method_stable_text(&self) {}
     }
 
@@ -229,9 +229,9 @@ mod this_crate {
 
         fn trait_unmarked(&self) {}
 
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         fn trait_stable(&self) {}
-        #[stable(feature = "grandfathered", since = "1.0.0", reason = "text")]
+        #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
         fn trait_stable_text(&self) {}
     }
 
@@ -243,7 +243,7 @@ mod this_crate {
     #[unstable(feature = "test_feature")]
     pub struct UnstableStruct { i: isize }
     pub struct UnmarkedStruct { i: isize }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub struct StableStruct { i: isize }
 
     #[unstable(feature = "test_feature")]
@@ -252,7 +252,7 @@ mod this_crate {
     #[unstable(feature = "test_feature")]
     pub struct UnstableUnitStruct;
     pub struct UnmarkedUnitStruct;
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub struct StableUnitStruct;
 
     pub enum Enum {
@@ -263,7 +263,7 @@ mod this_crate {
         UnstableVariant,
 
         UnmarkedVariant,
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         StableVariant,
     }
 
@@ -273,7 +273,7 @@ mod this_crate {
     #[unstable(feature = "test_feature")]
     pub struct UnstableTupleStruct(isize);
     pub struct UnmarkedTupleStruct(isize);
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub struct StableTupleStruct(isize);
 
     fn test() {

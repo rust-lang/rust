@@ -54,7 +54,7 @@
 //!
 //! This `for` loop syntax can be applied to any iterator over any type.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use self::MinMaxResult::*;
 
@@ -81,13 +81,13 @@ use uint;
 /// it wishes, either by returning `None` infinitely, or by doing something
 /// else.
 #[lang="iterator"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Iterator {
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
     /// Advance the iterator and return the next value. Return `None` when the end is reached.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn next(&mut self) -> Option<Self::Item>;
 
     /// Returns a lower and upper bound on the remaining length of the iterator.
@@ -95,12 +95,12 @@ pub trait Iterator {
     /// An upper bound of `None` means either there is no known upper bound, or the upper bound
     /// does not fit within a `uint`.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn size_hint(&self) -> (uint, Option<uint>) { (0, None) }
 }
 
 /// Conversion from an `Iterator`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
                           built from an iterator over elements of type `{A}`"]
 pub trait FromIterator<A> {
@@ -109,15 +109,15 @@ pub trait FromIterator<A> {
 }
 
 /// A type growable from an `Iterator` implementation
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Extend<A> {
     /// Extend a container with the elements yielded by an arbitrary iterator
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn extend<T: Iterator<Item=A>>(&mut self, iterator: T);
 }
 
 /// An extension trait providing numerous methods applicable to all iterators.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait IteratorExt: Iterator + Sized {
     /// Counts the number of elements in this iterator.
     ///
@@ -129,7 +129,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.count() == 5);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn count(self) -> uint {
         self.fold(0, |cnt, _x| cnt + 1)
     }
@@ -144,7 +144,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(a.iter().last().unwrap() == &5);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn last(mut self) -> Option<Self::Item> {
         let mut last = None;
         for x in self { last = Some(x); }
@@ -163,7 +163,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.nth(2) == None);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn nth(&mut self, mut n: uint) -> Option<Self::Item> {
         for x in *self {
             if n == 0 { return Some(x) }
@@ -187,7 +187,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn chain<U>(self, other: U) -> Chain<Self, U> where
         U: Iterator<Item=Self::Item>,
     {
@@ -210,7 +210,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn zip<B, U>(self, other: U) -> Zip<Self, U> where
         U: Iterator<Item=B>,
     {
@@ -230,7 +230,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn map<B, F>(self, f: F) -> Map<Self::Item, B, Self, F> where
         F: FnMut(Self::Item) -> B,
     {
@@ -250,7 +250,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn filter<P>(self, predicate: P) -> Filter<Self::Item, Self, P> where
         P: FnMut(&Self::Item) -> bool,
     {
@@ -270,7 +270,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn filter_map<B, F>(self, f: F) -> FilterMap<Self::Item, B, Self, F> where
         F: FnMut(Self::Item) -> Option<B>,
     {
@@ -291,7 +291,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn enumerate(self) -> Enumerate<Self> {
         Enumerate{iter: self, count: 0}
     }
@@ -314,7 +314,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn peekable(self) -> Peekable<Self::Item, Self> {
         Peekable{iter: self, peeked: None}
     }
@@ -334,7 +334,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn skip_while<P>(self, predicate: P) -> SkipWhile<Self::Item, Self, P> where
         P: FnMut(&Self::Item) -> bool,
     {
@@ -355,7 +355,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn take_while<P>(self, predicate: P) -> TakeWhile<Self::Item, Self, P> where
         P: FnMut(&Self::Item) -> bool,
     {
@@ -375,7 +375,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn skip(self, n: uint) -> Skip<Self> {
         Skip{iter: self, n: n}
     }
@@ -394,7 +394,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn take(self, n: uint) -> Take<Self> {
         Take{iter: self, n: n}
     }
@@ -420,7 +420,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next().is_none());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn scan<St, B, F>(
         self,
         initial_state: St,
@@ -450,7 +450,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// }
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn flat_map<B, U, F>(self, f: F) -> FlatMap<Self::Item, B, Self, U, F> where
         U: Iterator<Item=B>,
         F: FnMut(Self::Item) -> U,
@@ -486,7 +486,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert_eq!(process(x.into_iter()), 1006);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn fuse(self) -> Fuse<Self> {
         Fuse{iter: self, done: false}
     }
@@ -510,7 +510,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// println!("{}", sum);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn inspect<F>(self, f: F) -> Inspect<Self::Item, Self, F> where
         F: FnMut(&Self::Item),
     {
@@ -532,7 +532,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// // xs.next() is now `5`
     /// assert!(xs.next() == Some(5));
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn by_ref<'r>(&'r mut self) -> ByRef<'r, Self> {
         ByRef{iter: self}
     }
@@ -548,7 +548,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(a.as_slice() == b.as_slice());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn collect<B: FromIterator<Self::Item>>(self) -> B {
         FromIterator::from_iter(self)
     }
@@ -594,7 +594,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(a.iter().fold(0, |a, &b| a + b) == 15);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn fold<B, F>(mut self, init: B, mut f: F) -> B where
         F: FnMut(B, Self::Item) -> B,
     {
@@ -615,7 +615,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(!a.iter().all(|x| *x > 2));
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn all<F>(mut self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
         for x in self { if !f(x) { return false; } }
         true
@@ -633,7 +633,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(!it.any(|x| *x == 3));
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn any<F>(&mut self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
         for x in *self { if f(x) { return true; } }
         false
@@ -643,7 +643,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// Does not consume the iterator past the first found element.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn find<P>(&mut self, mut predicate: P) -> Option<Self::Item> where
         P: FnMut(&Self::Item) -> bool,
     {
@@ -655,7 +655,7 @@ pub trait IteratorExt: Iterator + Sized {
 
     /// Return the index of the first element satisfying the specified predicate
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn position<P>(&mut self, mut predicate: P) -> Option<uint> where
         P: FnMut(Self::Item) -> bool,
     {
@@ -673,7 +673,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// If no element matches, None is returned.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn rposition<P>(&mut self, mut predicate: P) -> Option<uint> where
         P: FnMut(Self::Item) -> bool,
         Self: ExactSizeIterator + DoubleEndedIterator
@@ -696,7 +696,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(a.iter().max().unwrap() == &5);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn max(self) -> Option<Self::Item> where Self::Item: Ord
     {
         self.fold(None, |max, x| {
@@ -716,7 +716,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(a.iter().min().unwrap() == &1);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn min(self) -> Option<Self::Item> where Self::Item: Ord
     {
         self.fold(None, |min, x| {
@@ -878,7 +878,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// Note: Random access with flipped indices still only applies to the first
     /// `uint::MAX` elements of the original iterator.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn rev(self) -> Rev<Self> {
         Rev{iter: self}
     }
@@ -941,7 +941,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert_eq!(cy.next(), Some(1));
     /// assert_eq!(cy.next(), Some(1));
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn cycle(self) -> Cycle<Self> where Self: Clone {
         Cycle{orig: self.clone(), iter: self}
@@ -962,17 +962,17 @@ pub trait IteratorExt: Iterator + Sized {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> IteratorExt for I where I: Iterator {}
 
 /// A range iterator able to yield elements from both ends
 ///
 /// A `DoubleEndedIterator` can be thought of as a deque in that `next()` and `next_back()` exhaust
 /// elements from the *same* range, and do not work independently of each other.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait DoubleEndedIterator: Iterator {
     /// Yield an element from the end of the range, returning `None` if the range is empty.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
 }
 
@@ -1000,7 +1000,7 @@ pub trait RandomAccessIterator: Iterator {
 ///
 /// `Iterator::size_hint` *must* return the exact size of the iterator.
 /// Note that the size must fit in `uint`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
     #[inline]
     /// Return the exact length of the iterator.
@@ -1017,32 +1017,32 @@ pub trait ExactSizeIterator: Iterator {
 
 // All adaptors that preserve the size of the wrapped iterator are fine
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Enumerate<I> where I: ExactSizeIterator {}
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, F> ExactSizeIterator for Inspect<A, I, F> where
     I: ExactSizeIterator<Item=A>,
     F: FnMut(&A),
 {}
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> ExactSizeIterator for Rev<I> where I: ExactSizeIterator + DoubleEndedIterator {}
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, F> ExactSizeIterator for Map<A, B, I, F> where
     I: ExactSizeIterator<Item=A>,
     F: FnMut(A) -> B,
 {}
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B> ExactSizeIterator for Zip<A, B> where A: ExactSizeIterator, B: ExactSizeIterator {}
 
 /// An double-ended iterator with the direction inverted
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rev<T> {
     iter: T
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     type Item = <I as Iterator>::Item;
 
@@ -1052,7 +1052,7 @@ impl<I> Iterator for Rev<I> where I: DoubleEndedIterator {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> DoubleEndedIterator for Rev<I> where I: DoubleEndedIterator {
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
@@ -1071,12 +1071,12 @@ impl<I> RandomAccessIterator for Rev<I> where I: DoubleEndedIterator + RandomAcc
 
 /// A mutable reference to an iterator
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct ByRef<'a, I:'a> {
     iter: &'a mut I,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I> Iterator for ByRef<'a, I> where I: 'a + Iterator {
     type Item = <I as Iterator>::Item;
 
@@ -1086,7 +1086,7 @@ impl<'a, I> Iterator for ByRef<'a, I> where I: 'a + Iterator {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, I> DoubleEndedIterator for ByRef<'a, I> where I: 'a + DoubleEndedIterator {
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next_back() }
@@ -1232,7 +1232,7 @@ pub struct Cloned<I> {
     it: I,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, D, I> Iterator for Cloned<I> where
     T: Clone,
     D: Deref<Target=T>,
@@ -1249,7 +1249,7 @@ impl<T, D, I> Iterator for Cloned<I> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, D, I> DoubleEndedIterator for Cloned<I> where
     T: Clone,
     D: Deref<Target=T>,
@@ -1260,7 +1260,7 @@ impl<T, D, I> DoubleEndedIterator for Cloned<I> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, D, I> ExactSizeIterator for Cloned<I> where
     T: Clone,
     D: Deref<Target=T>,
@@ -1270,13 +1270,13 @@ impl<T, D, I> ExactSizeIterator for Cloned<I> where
 /// An iterator that repeats endlessly
 #[derive(Clone, Copy)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cycle<I> {
     orig: I,
     iter: I,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Cycle<I> where I: Clone + Iterator {
     type Item = <I as Iterator>::Item;
 
@@ -1329,14 +1329,14 @@ impl<I> RandomAccessIterator for Cycle<I> where
 /// An iterator that strings two iterators together
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chain<A, B> {
     a: A,
     b: B,
     flag: bool,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A, B> Iterator for Chain<A, B> where A: Iterator<Item=T>, B: Iterator<Item=T> {
     type Item = T;
 
@@ -1370,7 +1370,7 @@ impl<T, A, B> Iterator for Chain<A, B> where A: Iterator<Item=T>, B: Iterator<It
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, A, B> DoubleEndedIterator for Chain<A, B> where
     A: DoubleEndedIterator<Item=T>,
     B: DoubleEndedIterator<Item=T>,
@@ -1409,13 +1409,13 @@ impl<T, A, B> RandomAccessIterator for Chain<A, B> where
 /// An iterator that iterates two other iterators simultaneously
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Zip<A, B> {
     a: A,
     b: B
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U, A, B> Iterator for Zip<A, B> where
     A: Iterator<Item = T>,
     B: Iterator<Item = U>,
@@ -1451,7 +1451,7 @@ impl<T, U, A, B> Iterator for Zip<A, B> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, U, A, B> DoubleEndedIterator for Zip<A, B> where
     A: DoubleEndedIterator + ExactSizeIterator<Item=T>,
     B: DoubleEndedIterator + ExactSizeIterator<Item=U>,
@@ -1500,14 +1500,14 @@ impl<T, U, A, B> RandomAccessIterator for Zip<A, B> where
 
 /// An iterator that maps the values of `iter` with `f`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Map<A, B, I: Iterator<Item=A>, F: FnMut(A) -> B> {
     iter: I,
     f: F,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, F> Clone for Map<A, B, I, F> where
     I: Clone + Iterator<Item=A>,
     F: Clone + FnMut(A) -> B,
@@ -1530,7 +1530,7 @@ impl<A, B, I, F> Map<A, B, I, F> where I: Iterator<Item=A>, F: FnMut(A) -> B {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, F> Iterator for Map<A, B, I, F> where I: Iterator<Item=A>, F: FnMut(A) -> B {
     type Item = B;
 
@@ -1546,7 +1546,7 @@ impl<A, B, I, F> Iterator for Map<A, B, I, F> where I: Iterator<Item=A>, F: FnMu
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, F> DoubleEndedIterator for Map<A, B, I, F> where
     I: DoubleEndedIterator<Item=A>,
     F: FnMut(A) -> B,
@@ -1577,14 +1577,14 @@ impl<A, B, I, F> RandomAccessIterator for Map<A, B, I, F> where
 
 /// An iterator that filters the elements of `iter` with `predicate`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Filter<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     iter: I,
     predicate: P,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, P> Clone for Filter<A, I, P> where
     I: Clone + Iterator<Item=A>,
     P: Clone + FnMut(&A) -> bool,
@@ -1597,7 +1597,7 @@ impl<A, I, P> Clone for Filter<A, I, P> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, P> Iterator for Filter<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     type Item = A;
 
@@ -1620,7 +1620,7 @@ impl<A, I, P> Iterator for Filter<A, I, P> where I: Iterator<Item=A>, P: FnMut(&
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, P> DoubleEndedIterator for Filter<A, I, P> where
     I: DoubleEndedIterator<Item=A>,
     P: FnMut(&A) -> bool,
@@ -1638,14 +1638,14 @@ impl<A, I, P> DoubleEndedIterator for Filter<A, I, P> where
 
 /// An iterator that uses `f` to both filter and map elements from `iter`
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct FilterMap<A, B, I, F> where I: Iterator<Item=A>, F: FnMut(A) -> Option<B> {
     iter: I,
     f: F,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, F> Clone for FilterMap<A, B, I, F> where
     I: Clone + Iterator<Item=A>,
     F: Clone + FnMut(A) -> Option<B>,
@@ -1658,7 +1658,7 @@ impl<A, B, I, F> Clone for FilterMap<A, B, I, F> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, F> Iterator for FilterMap<A, B, I, F> where
     I: Iterator<Item=A>,
     F: FnMut(A) -> Option<B>,
@@ -1683,7 +1683,7 @@ impl<A, B, I, F> Iterator for FilterMap<A, B, I, F> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, F> DoubleEndedIterator for FilterMap<A, B, I, F> where
     I: DoubleEndedIterator<Item=A>,
     F: FnMut(A) -> Option<B>,
@@ -1703,13 +1703,13 @@ impl<A, B, I, F> DoubleEndedIterator for FilterMap<A, B, I, F> where
 /// An iterator that yields the current count and the element during iteration
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Enumerate<I> {
     iter: I,
     count: uint
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Enumerate<I> where I: Iterator {
     type Item = (uint, <I as Iterator>::Item);
 
@@ -1731,7 +1731,7 @@ impl<I> Iterator for Enumerate<I> where I: Iterator {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> DoubleEndedIterator for Enumerate<I> where
     I: ExactSizeIterator + DoubleEndedIterator
 {
@@ -1765,14 +1765,14 @@ impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
 
 /// An iterator with a `peek()` that returns an optional reference to the next element.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Copy)]
 pub struct Peekable<T, I> where I: Iterator<Item=T> {
     iter: I,
     peeked: Option<T>,
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, I> Iterator for Peekable<T, I> where I: Iterator<Item=T> {
     type Item = T;
 
@@ -1798,7 +1798,7 @@ impl<T, I> Iterator for Peekable<T, I> where I: Iterator<Item=T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, I> Peekable<T, I> where I: Iterator<Item=T> {
     /// Return a reference to the next element of the iterator with out advancing it,
     /// or None if the iterator is exhausted.
@@ -1822,7 +1822,7 @@ impl<T, I> Peekable<T, I> where I: Iterator<Item=T> {
 
 /// An iterator that rejects elements while `predicate` is true
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SkipWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     iter: I,
     flag: bool,
@@ -1830,7 +1830,7 @@ pub struct SkipWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, P> Clone for SkipWhile<A, I, P> where
     I: Clone + Iterator<Item=A>,
     P: Clone + FnMut(&A) -> bool,
@@ -1844,7 +1844,7 @@ impl<A, I, P> Clone for SkipWhile<A, I, P> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, P> Iterator for SkipWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     type Item = A;
 
@@ -1868,7 +1868,7 @@ impl<A, I, P> Iterator for SkipWhile<A, I, P> where I: Iterator<Item=A>, P: FnMu
 
 /// An iterator that only accepts elements while `predicate` is true
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     iter: I,
     flag: bool,
@@ -1876,7 +1876,7 @@ pub struct TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, P> Clone for TakeWhile<A, I, P> where
     I: Clone + Iterator<Item=A>,
     P: Clone + FnMut(&A) -> bool,
@@ -1890,7 +1890,7 @@ impl<A, I, P> Clone for TakeWhile<A, I, P> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, P> Iterator for TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMut(&A) -> bool {
     type Item = A;
 
@@ -1923,13 +1923,13 @@ impl<A, I, P> Iterator for TakeWhile<A, I, P> where I: Iterator<Item=A>, P: FnMu
 /// An iterator that skips over `n` elements of `iter`.
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Skip<I> {
     iter: I,
     n: uint
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Skip<I> where I: Iterator {
     type Item = <I as Iterator>::Item;
 
@@ -1993,13 +1993,13 @@ impl<I> RandomAccessIterator for Skip<I> where I: RandomAccessIterator{
 /// An iterator that only iterates over the first `n` iterations of `iter`.
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Take<I> {
     iter: I,
     n: uint
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Take<I> where I: Iterator{
     type Item = <I as Iterator>::Item;
 
@@ -2048,7 +2048,7 @@ impl<I> RandomAccessIterator for Take<I> where I: RandomAccessIterator{
 
 /// An iterator to maintain state while iterating another iterator
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Scan<A, B, I, St, F> where I: Iterator, F: FnMut(&mut St, A) -> Option<B> {
     iter: I,
     f: F,
@@ -2058,7 +2058,7 @@ pub struct Scan<A, B, I, St, F> where I: Iterator, F: FnMut(&mut St, A) -> Optio
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, St, F> Clone for Scan<A, B, I, St, F> where
     I: Clone + Iterator<Item=A>,
     St: Clone,
@@ -2073,7 +2073,7 @@ impl<A, B, I, St, F> Clone for Scan<A, B, I, St, F> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, St, F> Iterator for Scan<A, B, I, St, F> where
     I: Iterator<Item=A>,
     F: FnMut(&mut St, A) -> Option<B>,
@@ -2096,7 +2096,7 @@ impl<A, B, I, St, F> Iterator for Scan<A, B, I, St, F> where
 /// and yields the elements of the produced iterators
 ///
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct FlatMap<A, B, I, U, F> where
     I: Iterator<Item=A>,
     U: Iterator<Item=B>,
@@ -2109,7 +2109,7 @@ pub struct FlatMap<A, B, I, U, F> where
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, U, F> Clone for FlatMap<A, B, I, U, F> where
     I: Clone + Iterator<Item=A>,
     U: Clone + Iterator<Item=B>,
@@ -2125,7 +2125,7 @@ impl<A, B, I, U, F> Clone for FlatMap<A, B, I, U, F> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, U, F> Iterator for FlatMap<A, B, I, U, F> where
     I: Iterator<Item=A>,
     U: Iterator<Item=B>,
@@ -2160,7 +2160,7 @@ impl<A, B, I, U, F> Iterator for FlatMap<A, B, I, U, F> where
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, B, I, U, F> DoubleEndedIterator for FlatMap<A, B, I, U, F> where
     I: DoubleEndedIterator<Item=A>,
     U: DoubleEndedIterator<Item=B>,
@@ -2187,13 +2187,13 @@ impl<A, B, I, U, F> DoubleEndedIterator for FlatMap<A, B, I, U, F> where
 /// yields `None` once.
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Fuse<I> {
     iter: I,
     done: bool
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> Iterator for Fuse<I> where I: Iterator {
     type Item = <I as Iterator>::Item;
 
@@ -2222,7 +2222,7 @@ impl<I> Iterator for Fuse<I> where I: Iterator {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I> DoubleEndedIterator for Fuse<I> where I: DoubleEndedIterator {
     #[inline]
     fn next_back(&mut self) -> Option<<I as Iterator>::Item> {
@@ -2267,14 +2267,14 @@ impl<I> Fuse<I> {
 /// An iterator that calls a function with a reference to each
 /// element before yielding it.
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Inspect<A, I, F> where I: Iterator<Item=A>, F: FnMut(&A) {
     iter: I,
     f: F,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, F> Clone for Inspect<A, I, F> where
     I: Clone + Iterator<Item=A>,
     F: Clone + FnMut(&A),
@@ -2299,7 +2299,7 @@ impl<A, I, F> Inspect<A, I, F> where I: Iterator<Item=A>, F: FnMut(&A) {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, F> Iterator for Inspect<A, I, F> where I: Iterator<Item=A>, F: FnMut(&A) {
     type Item = A;
 
@@ -2315,7 +2315,7 @@ impl<A, I, F> Iterator for Inspect<A, I, F> where I: Iterator<Item=A>, F: FnMut(
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, I, F> DoubleEndedIterator for Inspect<A, I, F> where
     I: DoubleEndedIterator<Item=A>,
     F: FnMut(&A),
@@ -2384,7 +2384,7 @@ pub struct Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, St, F> Clone for Unfold<A, St, F> where
     F: Clone + FnMut(&mut St) -> Option<A>,
     St: Clone,
@@ -2410,7 +2410,7 @@ impl<A, St, F> Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A, St, F> Iterator for Unfold<A, St, F> where F: FnMut(&mut St) -> Option<A> {
     type Item = A;
 
@@ -2446,7 +2446,7 @@ pub fn count<A>(start: A, step: A) -> Counter<A> {
     Counter{state: start, step: step}
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Add<Output=A> + Clone> Iterator for Counter<A> {
     type Item = A;
 
@@ -2786,12 +2786,12 @@ step_impl_no_between!(u64 i64);
 
 /// An iterator that repeats an element endlessly
 #[derive(Clone)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Repeat<A> {
     element: A
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Clone> Iterator for Repeat<A> {
     type Item = A;
 
@@ -2801,7 +2801,7 @@ impl<A: Clone> Iterator for Repeat<A> {
     fn size_hint(&self) -> (uint, Option<uint>) { (uint::MAX, None) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Clone> DoubleEndedIterator for Repeat<A> {
     #[inline]
     fn next_back(&mut self) -> Option<A> { self.idx(0) }
@@ -2855,7 +2855,7 @@ pub fn iterate<T, F>(seed: T, f: F) -> Iterate<T, F> where
 
 /// Create a new iterator that endlessly repeats the element `elt`.
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn repeat<T: Clone>(elt: T) -> Repeat<T> {
     Repeat{element: elt}
 }

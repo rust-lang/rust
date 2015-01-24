@@ -50,7 +50,7 @@
 //! is the same as `&[u8]`.
 
 #![doc(primitive = "str")]
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use self::RecompositionState::*;
 use self::DecompositionType::*;
@@ -173,7 +173,7 @@ pub struct Decompositions<'a> {
     sorted: bool
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Decompositions<'a> {
     type Item = char;
 
@@ -264,7 +264,7 @@ pub struct Recompositions<'a> {
     last_ccc: Option<u8>
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Recompositions<'a> {
     type Item = char;
 
@@ -357,7 +357,7 @@ pub struct Utf16Units<'a> {
     encoder: Utf16Encoder<Chars<'a>>
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Utf16Units<'a> {
     type Item = u16;
 
@@ -407,7 +407,7 @@ Section: Trait implementations
 */
 
 /// Any string that can be represented as a slice.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait StrExt: Index<FullRange, Output = str> {
     /// Escapes each char in `s` with `char::escape_default`.
     #[unstable(feature = "collections",
@@ -447,7 +447,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn replace(&self, from: &str, to: &str) -> String {
         let mut result = String::new();
         let mut last_end = 0;
@@ -529,7 +529,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert!("bananas".contains("nana"));
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn contains(&self, pat: &str) -> bool {
         core_str::StrExt::contains(&self[], pat)
     }
@@ -560,7 +560,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<char> = "abc åäö".chars().collect();
     /// assert_eq!(v, vec!['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn chars(&self) -> Chars {
         core_str::StrExt::chars(&self[])
     }
@@ -573,13 +573,13 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<u8> = "bors".bytes().collect();
     /// assert_eq!(v, b"bors".to_vec());
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn bytes(&self) -> Bytes {
         core_str::StrExt::bytes(&self[])
     }
 
     /// An iterator over the characters of `self` and their byte offsets.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn char_indices(&self) -> CharIndices {
         core_str::StrExt::char_indices(&self[])
     }
@@ -602,7 +602,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "".split('X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn split<P: CharEq>(&self, pat: P) -> Split<P> {
         core_str::StrExt::split(&self[], pat)
     }
@@ -629,7 +629,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
     /// assert_eq!(v, vec![""]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn splitn<P: CharEq>(&self, count: uint, pat: P) -> SplitN<P> {
         core_str::StrExt::splitn(&self[], count, pat)
     }
@@ -679,7 +679,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn rsplitn<P: CharEq>(&self, count: uint, pat: P) -> RSplitN<P> {
         core_str::StrExt::rsplitn(&self[], count, pat)
     }
@@ -738,7 +738,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = four_lines.lines().collect();
     /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(&self) -> Lines {
         core_str::StrExt::lines(&self[])
     }
@@ -754,7 +754,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = four_lines.lines_any().collect();
     /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn lines_any(&self) -> LinesAny {
         core_str::StrExt::lines_any(&self[])
     }
@@ -859,7 +859,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     ///
     /// Caller must check both UTF-8 character boundaries and the boundaries of
     /// the entire slice as well.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe fn slice_unchecked(&self, begin: uint, end: uint) -> &str {
         core_str::StrExt::slice_unchecked(&self[], begin, end)
     }
@@ -871,7 +871,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert!("banana".starts_with("ba"));
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn starts_with(&self, pat: &str) -> bool {
         core_str::StrExt::starts_with(&self[], pat)
     }
@@ -883,7 +883,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert!("banana".ends_with("nana"));
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn ends_with(&self, pat: &str) -> bool {
         core_str::StrExt::ends_with(&self[], pat)
     }
@@ -903,7 +903,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("12foo1bar12".trim_matches(x), "foo1bar");
     /// assert_eq!("123foo1bar123".trim_matches(|&: c: char| c.is_numeric()), "foo1bar");
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_matches<P: CharEq>(&self, pat: P) -> &str {
         core_str::StrExt::trim_matches(&self[], pat)
     }
@@ -923,7 +923,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("12foo1bar12".trim_left_matches(x), "foo1bar12");
     /// assert_eq!("123foo1bar123".trim_left_matches(|&: c: char| c.is_numeric()), "foo1bar123");
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_left_matches<P: CharEq>(&self, pat: P) -> &str {
         core_str::StrExt::trim_left_matches(&self[], pat)
     }
@@ -943,7 +943,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("12foo1bar12".trim_right_matches(x), "12foo1bar");
     /// assert_eq!("123foo1bar123".trim_right_matches(|&: c: char| c.is_numeric()), "123foo1bar");
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_right_matches<P: CharEq>(&self, pat: P) -> &str {
         core_str::StrExt::trim_right_matches(&self[], pat)
     }
@@ -1092,7 +1092,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// ```rust
     /// assert_eq!("bors".as_bytes(), b"bors");
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_bytes(&self) -> &[u8] {
         core_str::StrExt::as_bytes(&self[])
     }
@@ -1120,7 +1120,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.find(x), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn find<P: CharEq>(&self, pat: P) -> Option<uint> {
         core_str::StrExt::find(&self[], pat)
     }
@@ -1148,7 +1148,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let x: &[_] = &['1', '2'];
     /// assert_eq!(s.rfind(x), None);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn rfind<P: CharEq>(&self, pat: P) -> Option<uint> {
         core_str::StrExt::rfind(&self[], pat)
     }
@@ -1227,7 +1227,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// The caller must ensure that the string outlives this pointer,
     /// and that it is not reallocated (e.g. by pushing to the
     /// string).
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn as_ptr(&self) -> *const u8 {
         core_str::StrExt::as_ptr(&self[])
@@ -1248,7 +1248,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert_eq!("foo".len(), 3);
     /// assert_eq!("ƒoo".len(), 4);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn len(&self) -> uint {
         core_str::StrExt::len(&self[])
@@ -1262,7 +1262,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// assert!("".is_empty());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_empty(&self) -> bool {
         core_str::StrExt::is_empty(&self[])
     }
@@ -1334,7 +1334,7 @@ pub trait StrExt: Index<FullRange, Output = str> {
     /// let v: Vec<&str> = some_words.words().collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn words(&self) -> Words {
         UnicodeStr::words(&self[])
     }
@@ -1355,25 +1355,25 @@ pub trait StrExt: Index<FullRange, Output = str> {
     }
 
     /// Returns a string with leading and trailing whitespace removed.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trim(&self) -> &str {
         UnicodeStr::trim(&self[])
     }
 
     /// Returns a string with leading whitespace removed.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_left(&self) -> &str {
         UnicodeStr::trim_left(&self[])
     }
 
     /// Returns a string with trailing whitespace removed.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_right(&self) -> &str {
         UnicodeStr::trim_right(&self[])
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl StrExt for str {}
 
 #[cfg(test)]

@@ -23,7 +23,7 @@
 //! implemented using unsafe code. In that case, you may want to embed
 //! some of the marker types below into your type.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use clone::Clone;
 
@@ -36,7 +36,7 @@ pub unsafe trait Send: 'static {
 }
 
 /// Types with a constant size known at compile-time.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sized"]
 pub trait Sized {
     // Empty.
@@ -141,7 +141,7 @@ pub trait Sized {
 /// to consider though: if you think your type may _not_ be able to implement `Copy` in the future,
 /// then it might be prudent to not implement `Copy`. This is because removing `Copy` is a breaking
 /// change: that second example would fail to compile if we made `Foo` non-`Copy`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[lang="copy"]
 pub trait Copy {
     // Empty.

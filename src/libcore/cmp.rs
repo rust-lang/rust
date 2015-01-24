@@ -39,7 +39,7 @@
 //! assert!(SketchyNum {num: 25} != SketchyNum {num: 57});
 //! ```
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use self::Ordering::*;
 
@@ -68,16 +68,16 @@ use option::Option::{self, Some, None};
 /// the rule that `eq` is a strict inverse of `ne`; that is, `!(a == b)` if and
 /// only if `a != b`.
 #[lang="eq"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[old_orphan_check]
 pub trait PartialEq<Rhs: ?Sized = Self> {
     /// This method tests for `self` and `other` values to be equal, and is used by `==`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn eq(&self, other: &Rhs) -> bool;
 
     /// This method tests for `!=`.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn ne(&self, other: &Rhs) -> bool { !self.eq(other) }
 }
 
@@ -90,7 +90,7 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 /// - reflexive: `a == a`;
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Eq: PartialEq<Self> {
     // FIXME #13101: this method is used solely by #[deriving] to
     // assert that every component of a type implements #[deriving]
@@ -106,16 +106,16 @@ pub trait Eq: PartialEq<Self> {
 
 /// An ordering is, e.g, a result of a comparison between two values.
 #[derive(Clone, Copy, PartialEq, Show)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum Ordering {
     /// An ordering where a compared value is less [than another].
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     Less = -1i,
     /// An ordering where a compared value is equal [to another].
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     Equal = 0i,
     /// An ordering where a compared value is greater [than another].
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     Greater = 1i,
 }
 
@@ -141,7 +141,7 @@ impl Ordering {
     /// assert!(data == b);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reverse(self) -> Ordering {
         unsafe {
             // this compiles really nicely (to a single instruction);
@@ -164,7 +164,7 @@ impl Ordering {
 ///   true; and
 /// - transitive, `a < b` and `b < c` implies `a < c`. The same must hold for
 ///   both `==` and `>`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Ord: Eq + PartialOrd<Self> {
     /// This method returns an ordering between `self` and `other` values.
     ///
@@ -178,26 +178,26 @@ pub trait Ord: Eq + PartialOrd<Self> {
     /// assert_eq!(10u.cmp(&5),  Greater);  // because 10 > 5
     /// assert_eq!( 5u.cmp(&5),  Equal);    // because 5 == 5
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn cmp(&self, other: &Self) -> Ordering;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Eq for Ordering {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Ord for Ordering {
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn cmp(&self, other: &Ordering) -> Ordering {
         (*self as int).cmp(&(*other as int))
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialOrd for Ordering {
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
         (*self as int).partial_cmp(&(*other as int))
     }
@@ -224,16 +224,16 @@ impl PartialOrd for Ordering {
 /// `NaN < 0 == false` and `NaN >= 0 == false` (cf. IEEE 754-2008 section
 /// 5.11).
 #[lang="ord"]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
     /// This method returns an ordering between `self` and `other` values
     /// if one exists.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn partial_cmp(&self, other: &Rhs) -> Option<Ordering>;
 
     /// This method tests less than (for `self` and `other`) and is used by the `<` operator.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn lt(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Less) => true,
@@ -243,7 +243,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
     /// This method tests less than or equal to (`<=`).
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn le(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Less) | Some(Equal) => true,
@@ -253,7 +253,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
     /// This method tests greater than (`>`).
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn gt(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Greater) => true,
@@ -263,7 +263,7 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
     /// This method tests greater than or equal to (`>=`).
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn ge(&self, other: &Rhs) -> bool {
         match self.partial_cmp(other) {
             Some(Greater) | Some(Equal) => true,
@@ -274,14 +274,14 @@ pub trait PartialOrd<Rhs: ?Sized = Self>: PartialEq<Rhs> {
 
 /// Compare and return the minimum of two values.
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn min<T: Ord>(v1: T, v2: T) -> T {
     if v1 < v2 { v1 } else { v2 }
 }
 
 /// Compare and return the maximum of two values.
 #[inline]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn max<T: Ord>(v1: T, v2: T) -> T {
     if v1 > v2 { v1 } else { v2 }
 }
@@ -322,7 +322,7 @@ mod impls {
 
     macro_rules! partial_eq_impl {
         ($($t:ty)*) => ($(
-            #[stable(feature = "grandfathered", since = "1.0.0")]
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialEq for $t {
                 #[inline]
                 fn eq(&self, other: &$t) -> bool { (*self) == (*other) }
@@ -332,7 +332,7 @@ mod impls {
         )*)
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialEq for () {
         #[inline]
         fn eq(&self, _other: &()) -> bool { true }
@@ -346,7 +346,7 @@ mod impls {
 
     macro_rules! eq_impl {
         ($($t:ty)*) => ($(
-            #[stable(feature = "grandfathered", since = "1.0.0")]
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl Eq for $t {}
         )*)
     }
@@ -355,7 +355,7 @@ mod impls {
 
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
-            #[stable(feature = "grandfathered", since = "1.0.0")]
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl PartialOrd for $t {
                 #[inline]
                 fn partial_cmp(&self, other: &$t) -> Option<Ordering> {
@@ -378,7 +378,7 @@ mod impls {
         )*)
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for () {
         #[inline]
         fn partial_cmp(&self, _: &()) -> Option<Ordering> {
@@ -386,7 +386,7 @@ mod impls {
         }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl PartialOrd for bool {
         #[inline]
         fn partial_cmp(&self, other: &bool) -> Option<Ordering> {
@@ -398,7 +398,7 @@ mod impls {
 
     macro_rules! ord_impl {
         ($($t:ty)*) => ($(
-            #[stable(feature = "grandfathered", since = "1.0.0")]
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl Ord for $t {
                 #[inline]
                 fn cmp(&self, other: &$t) -> Ordering {
@@ -410,13 +410,13 @@ mod impls {
         )*)
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl Ord for () {
         #[inline]
         fn cmp(&self, _other: &()) -> Ordering { Equal }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl Ord for bool {
         #[inline]
         fn cmp(&self, other: &bool) -> Ordering {
@@ -428,14 +428,14 @@ mod impls {
 
     // & pointers
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b B> for &'a A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: & &'b B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
         fn ne(&self, other: & &'b B) -> bool { PartialEq::ne(*self, *other) }
     }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b B> for &'a A where A: PartialOrd<B> {
         #[inline]
         fn partial_cmp(&self, other: &&'b B) -> Option<Ordering> {
@@ -450,24 +450,24 @@ mod impls {
         #[inline]
         fn gt(&self, other: & &'b B) -> bool { PartialOrd::gt(*self, *other) }
     }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, A: ?Sized> Ord for &'a A where A: Ord {
         #[inline]
         fn cmp(&self, other: & &'a A) -> Ordering { Ord::cmp(*self, *other) }
     }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, A: ?Sized> Eq for &'a A where A: Eq {}
 
     // &mut pointers
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a mut A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
         #[inline]
         fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
     }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialOrd<&'b mut B> for &'a mut A where A: PartialOrd<B> {
         #[inline]
         fn partial_cmp(&self, other: &&'b mut B) -> Option<Ordering> {
@@ -482,15 +482,15 @@ mod impls {
         #[inline]
         fn gt(&self, other: &&'b mut B) -> bool { PartialOrd::gt(*self, *other) }
     }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, A: ?Sized> Ord for &'a mut A where A: Ord {
         #[inline]
         fn cmp(&self, other: &&'a mut A) -> Ordering { Ord::cmp(*self, *other) }
     }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, A: ?Sized> Eq for &'a mut A where A: Eq {}
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b mut B> for &'a A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: &&'b mut B) -> bool { PartialEq::eq(*self, *other) }
@@ -498,7 +498,7 @@ mod impls {
         fn ne(&self, other: &&'b mut B) -> bool { PartialEq::ne(*self, *other) }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     impl<'a, 'b, A: ?Sized, B: ?Sized> PartialEq<&'b B> for &'a mut A where A: PartialEq<B> {
         #[inline]
         fn eq(&self, other: &&'b B) -> bool { PartialEq::eq(*self, *other) }

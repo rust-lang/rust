@@ -309,7 +309,7 @@
 //! }
 //! ```
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 pub use core_collections::Bound;
 pub use core_collections::{BinaryHeap, Bitv, BitvSet, BTreeMap, BTreeSet};
@@ -323,13 +323,13 @@ pub use self::hash_set::HashSet;
 
 mod hash;
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_map {
     //! A hashmap
     pub use super::hash::map::*;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod hash_set {
     //! A hashset
     pub use super::hash::set::*;

@@ -19,7 +19,7 @@ use core::option::Option;
 use tables::{derived_property, property, general_category, conversions, charwidth};
 
 /// Functionality for manipulating `char`.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait CharExt {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
@@ -59,7 +59,7 @@ pub trait CharExt {
     /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
     /// where `NNNN` is the shortest hexadecimal representation of the code
     /// point.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_unicode(self) -> char::EscapeUnicode;
 
     /// Returns an iterator that yields the 'default' ASCII and
@@ -74,17 +74,17 @@ pub trait CharExt {
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> char::EscapeDefault;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-16.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -107,7 +107,7 @@ pub trait CharExt {
 
     /// Returns whether the specified character is considered a Unicode
     /// alphabetic code point.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphabetic(self) -> bool;
 
     /// Returns whether the specified character satisfies the 'XID_Start'
@@ -134,38 +134,38 @@ pub trait CharExt {
     ///
     /// This is defined according to the terms of the Unicode Derived Core
     /// Property `Lowercase`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_lowercase(self) -> bool;
 
     /// Indicates whether a character is in uppercase.
     ///
     /// This is defined according to the terms of the Unicode Derived Core
     /// Property `Uppercase`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_uppercase(self) -> bool;
 
     /// Indicates whether a character is whitespace.
     ///
     /// Whitespace is defined in terms of the Unicode Property `White_Space`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_whitespace(self) -> bool;
 
     /// Indicates whether a character is alphanumeric.
     ///
     /// Alphanumericness is defined in terms of the Unicode General Categories
     /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphanumeric(self) -> bool;
 
     /// Indicates whether a character is a control code point.
     ///
     /// Control code points are defined in terms of the Unicode General
     /// Category `Cc`.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_control(self) -> bool;
 
     /// Indicates whether the character is numeric (Nd, Nl, or No).
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_numeric(self) -> bool;
 
     /// Converts a character to its lowercase equivalent.
@@ -219,7 +219,7 @@ pub trait CharExt {
     fn width(self, is_cjk: bool) -> Option<uint>;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl CharExt for char {
     #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
@@ -227,13 +227,13 @@ impl CharExt for char {
     #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
     fn to_digit(self, radix: uint) -> Option<uint> { C::to_digit(self, radix) }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_unicode(self) -> char::EscapeUnicode { C::escape_unicode(self) }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> char::EscapeDefault { C::escape_default(self) }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> uint { C::len_utf8(self) }
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> uint { C::len_utf16(self) }
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
@@ -242,7 +242,7 @@ impl CharExt for char {
                reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> { C::encode_utf16(self, dst) }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphabetic(self) -> bool {
         match self {
             'a' ... 'z' | 'A' ... 'Z' => true,
@@ -259,7 +259,7 @@ impl CharExt for char {
                reason = "mainly needed for compiler internals")]
     fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_lowercase(self) -> bool {
         match self {
             'a' ... 'z' => true,
@@ -268,7 +268,7 @@ impl CharExt for char {
         }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_uppercase(self) -> bool {
         match self {
             'A' ... 'Z' => true,
@@ -277,7 +277,7 @@ impl CharExt for char {
         }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09' ... '\x0d' => true,
@@ -286,15 +286,15 @@ impl CharExt for char {
         }
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphanumeric(self) -> bool {
         self.is_alphabetic() || self.is_numeric()
     }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_control(self) -> bool { general_category::Cc(self) }
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_numeric(self) -> bool {
         match self {
             '0' ... '9' => true,

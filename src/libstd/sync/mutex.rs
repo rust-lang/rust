@@ -109,7 +109,7 @@ use sys_common::mutex as sys;
 ///
 /// *guard += 1;
 /// ```
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Mutex<T> {
     // Note that this static mutex is in a *box*, not inlined into the struct
     // itself. Once a native mutex has been used once, its address can never
@@ -161,7 +161,7 @@ unsafe impl Sync for StaticMutex {}
 /// Deref and DerefMut implementations
 #[must_use]
 #[cfg(stage0)] // NOTE remove impl after next snapshot
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct MutexGuard<'a, T: 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
     // disregard field privacy).
@@ -177,7 +177,7 @@ pub struct MutexGuard<'a, T: 'a> {
 /// The data protected by the mutex can be access through this guard via its
 /// Deref and DerefMut implementations
 #[must_use]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub struct MutexGuard<'a, T: 'a> {
     // funny underscores due to how Deref/DerefMut currently work (they
@@ -201,7 +201,7 @@ pub const MUTEX_INIT: StaticMutex = StaticMutex {
 
 impl<T: Send> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
         Mutex {
             inner: box MUTEX_INIT,
@@ -220,7 +220,7 @@ impl<T: Send> Mutex<T> {
     ///
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return an error once the mutex is acquired.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn lock(&self) -> LockResult<MutexGuard<T>> {
         unsafe { self.inner.lock.lock() }
         MutexGuard::new(&*self.inner, &self.data)
@@ -239,7 +239,7 @@ impl<T: Send> Mutex<T> {
     /// If another user of this mutex panicked while holding the mutex, then
     /// this call will return failure if the mutex would otherwise be
     /// acquired.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_lock(&self) -> TryLockResult<MutexGuard<T>> {
         if unsafe { self.inner.lock.try_lock() } {
             Ok(try!(MutexGuard::new(&*self.inner, &self.data)))
@@ -250,7 +250,7 @@ impl<T: Send> Mutex<T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> Drop for Mutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
@@ -330,7 +330,7 @@ impl<'mutex, T> MutexGuard<'mutex, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
     type Target = T;
 
@@ -338,7 +338,7 @@ impl<'mutex, T> Deref for MutexGuard<'mutex, T> {
         unsafe { &*self.__data.get() }
     }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
         unsafe { &mut *self.__data.get() }
@@ -346,7 +346,7 @@ impl<'mutex, T> DerefMut for MutexGuard<'mutex, T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for MutexGuard<'a, T> {
     #[inline]
     fn drop(&mut self) {

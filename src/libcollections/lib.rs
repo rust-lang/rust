@@ -88,12 +88,12 @@ pub mod bitv_set {
     pub use bit::SetIter as Iter;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_map {
     pub use btree::map::*;
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_set {
     pub use btree::set::*;
 }

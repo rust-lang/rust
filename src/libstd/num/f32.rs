@@ -10,7 +10,7 @@
 
 //! Operations and constants for 32-bits floats (`f32` type)
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 #![allow(unsigned_negation)]
 #![doc(primitive = "f32")]
@@ -73,7 +73,7 @@ mod cmath {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Float for f32 {
     #[inline]
     fn nan() -> f32 { num::Float::nan() }

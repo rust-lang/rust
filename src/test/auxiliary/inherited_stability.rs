@@ -15,14 +15,14 @@
 
 pub fn unstable() {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn stable() {}
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod stable_mod {
     pub fn unstable() {}
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stable() {}
 }
 
@@ -35,11 +35,11 @@ pub mod unstable_mod {
     pub fn unstable() {}
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Stable {
     fn unstable(&self);
 
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn stable(&self);
 }
 
@@ -50,6 +50,6 @@ impl Stable for uint {
 
 pub enum Unstable {
     UnstableVariant,
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     StableVariant
 }

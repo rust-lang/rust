@@ -14,7 +14,7 @@
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
 #![allow(overflowing_literals)]
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use intrinsics;
 use mem;
@@ -33,17 +33,17 @@ pub const MANTISSA_DIGITS: uint = 53u;
 #[unstable(feature = "core", reason = "pending integer conventions")]
 pub const DIGITS: uint = 15u;
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
 /// Smallest finite f64 value
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_VALUE: f64 = -1.7976931348623157e+308_f64;
 /// Smallest positive, normalized f64 value
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
 /// Largest finite f64 value
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
@@ -56,11 +56,11 @@ pub const MIN_10_EXP: int = -307;
 #[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MAX_10_EXP: int = 308;
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f64 = 0.0_f64/0.0_f64;
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f64 = 1.0_f64/0.0_f64;
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
 /// Various useful constants.

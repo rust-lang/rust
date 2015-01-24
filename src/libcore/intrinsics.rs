@@ -227,7 +227,7 @@ extern "rust-intrinsic" {
     ///
     /// `forget` is unsafe because the caller is responsible for
     /// ensuring the argument is deallocated already.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn forget<T>(_: T) -> ();
 
     /// Unsafely transforms a value of one type into a value of another type.
@@ -243,7 +243,7 @@ extern "rust-intrinsic" {
     /// let v: &[u8] = unsafe { mem::transmute("L") };
     /// assert!(v == [76u8]);
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn transmute<T,U>(e: T) -> U;
 
     /// Gives the address for the return value of the enclosing function.

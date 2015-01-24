@@ -58,7 +58,7 @@ use sys_common::rwlock as sys;
 ///     assert_eq!(*w, 6);
 /// } // write lock is dropped here
 /// ```
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T> {
     inner: Box<StaticRwLock>,
     data: UnsafeCell<T>,
@@ -111,7 +111,7 @@ pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
 #[must_use]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(stage0)] // NOTE remove impl after next snapshot
 pub struct RwLockReadGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
@@ -123,7 +123,7 @@ pub struct RwLockReadGuard<'a, T: 'a> {
 /// dropped.
 #[must_use]
 #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
@@ -136,7 +136,7 @@ impl<'a, T> !marker::Send for RwLockReadGuard<'a, T> {}
 /// dropped.
 #[must_use]
 #[cfg(stage0)] // NOTE remove impl after next snapshot
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
@@ -147,7 +147,7 @@ pub struct RwLockWriteGuard<'a, T: 'a> {
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
 #[must_use]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[cfg(not(stage0))] // NOTE remove cfg after next snapshot
 pub struct RwLockWriteGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
@@ -160,7 +160,7 @@ impl<'a, T> !marker::Send for RwLockWriteGuard<'a, T> {}
 
 impl<T: Send + Sync> RwLock<T> {
     /// Creates a new instance of an RwLock which is unlocked and read to go.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> RwLock<T> {
         RwLock { inner: box RW_LOCK_INIT, data: UnsafeCell::new(t) }
     }
@@ -183,7 +183,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock.
     /// The failure will occur immediately after the lock has been acquired.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
         unsafe { self.inner.lock.read() }
         RwLockReadGuard::new(&*self.inner, &self.data)
@@ -205,7 +205,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
         if unsafe { self.inner.lock.try_read() } {
             Ok(try!(RwLockReadGuard::new(&*self.inner, &self.data)))
@@ -229,7 +229,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock.
     /// An error will be returned when the lock is acquired.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
         unsafe { self.inner.lock.write() }
         RwLockWriteGuard::new(&*self.inner, &self.data)
@@ -248,7 +248,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
         if unsafe { self.inner.lock.try_read() } {
             Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
@@ -259,7 +259,7 @@ impl<T: Send + Sync> RwLock<T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for RwLock<T> {
     fn drop(&mut self) {
         unsafe { self.inner.lock.destroy() }
@@ -389,19 +389,19 @@ impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T> Deref for RwLockReadGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T> Deref for RwLockWriteGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T> DerefMut for RwLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__data.get() }
@@ -409,7 +409,7 @@ impl<'rwlock, T> DerefMut for RwLockWriteGuard<'rwlock, T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for RwLockReadGuard<'a, T> {
     fn drop(&mut self) {
         unsafe { self.__lock.lock.read_unlock(); }
@@ -417,7 +417,7 @@ impl<'a, T> Drop for RwLockReadGuard<'a, T> {
 }
 
 #[unsafe_destructor]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);

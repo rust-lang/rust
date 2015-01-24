@@ -59,7 +59,7 @@ impl<'a> Annotator<'a> {
             Some(stab) => {
                 self.index.local.insert(id, stab.clone());
 
-                // Don't inherit #[stable(feature = "grandfathered", since = "1.0.0")]
+                // Don't inherit #[stable(feature = "rust1", since = "1.0.0")]
                 if stab.level != attr::Stable {
                     let parent = replace(&mut self.parent, Some(stab));
                     f(self);

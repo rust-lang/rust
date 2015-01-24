@@ -12,7 +12,7 @@
 
 //! An owned, growable string that enforces that its contents are valid UTF-8.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::prelude::*;
 
@@ -33,20 +33,20 @@ use vec::{DerefVec, Vec, as_vec};
 
 /// A growable string stored as a UTF-8 encoded buffer.
 #[derive(Clone, PartialOrd, Eq, Ord)]
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct String {
     vec: Vec<u8>,
 }
 
 /// A possible error value from the `String::from_utf8` function.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct FromUtf8Error {
     bytes: Vec<u8>,
     error: Utf8Error,
 }
 
 /// A possible error value from the `String::from_utf16` function.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[allow(missing_copy_implementations)]
 pub struct FromUtf16Error(());
 
@@ -59,7 +59,7 @@ impl String {
     /// let mut s = String::new();
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> String {
         String {
             vec: Vec::new(),
@@ -76,7 +76,7 @@ impl String {
     /// let mut s = String::with_capacity(10);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: uint) -> String {
         String {
             vec: Vec::with_capacity(capacity),
@@ -121,7 +121,7 @@ impl String {
     /// assert_eq!(s.into_bytes(), vec![240, 144, 128]);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8(vec: Vec<u8>) -> Result<String, FromUtf8Error> {
         match str::from_utf8(vec.as_slice()) {
             Ok(..) => Ok(String { vec: vec }),
@@ -139,7 +139,7 @@ impl String {
     /// let output = String::from_utf8_lossy(input);
     /// assert_eq!(output.as_slice(), "Hello \u{FFFD}World");
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
         let mut i = 0;
         match str::from_utf8(v) {
@@ -277,7 +277,7 @@ impl String {
     /// v[4] = 0xD800;
     /// assert!(String::from_utf16(v).is_err());
     /// ```
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16(v: &[u16]) -> Result<String, FromUtf16Error> {
         let mut s = String::with_capacity(v.len());
         for c in unicode_str::utf16_items(v) {
@@ -304,7 +304,7 @@ impl String {
     ///            "𝄞mus\u{FFFD}ic\u{FFFD}".to_string());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_utf16_lossy(v: &[u16]) -> String {
         unicode_str::utf16_items(v).map(|c| c.to_char_lossy()).collect()
     }
@@ -315,7 +315,7 @@ impl String {
     /// * We call `Vec::from_raw_parts` to get a `Vec<u8>`;
     /// * We assume that the `Vec` contains valid UTF-8.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
         String {
             vec: Vec::from_raw_parts(buf, length, capacity),
@@ -326,7 +326,7 @@ impl String {
     /// it contains valid UTF-8. This is unsafe because it assumes that
     /// the UTF-8-ness of the vector has already been validated.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_utf8_unchecked(bytes: Vec<u8>) -> String {
         String { vec: bytes }
     }
@@ -341,7 +341,7 @@ impl String {
     /// assert_eq!(bytes, vec![104, 101, 108, 108, 111]);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> {
         self.vec
     }
@@ -356,7 +356,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "foobar");
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_str(&mut self, string: &str) {
         self.vec.push_all(string.as_bytes())
     }
@@ -371,7 +371,7 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint {
         self.vec.capacity()
     }
@@ -392,7 +392,7 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: uint) {
         self.vec.reserve(additional)
     }
@@ -417,7 +417,7 @@ impl String {
     /// assert!(s.capacity() >= 10);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: uint) {
         self.vec.reserve_exact(additional)
     }
@@ -434,7 +434,7 @@ impl String {
     /// assert_eq!(s.capacity(), 3);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         self.vec.shrink_to_fit()
     }
@@ -451,7 +451,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "abc123");
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, ch: char) {
         if (ch as u32) < 0x80 {
             self.vec.push(ch as u8);
@@ -484,7 +484,7 @@ impl String {
     /// assert_eq!(s.as_bytes(), b);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
         self.vec.as_slice()
     }
@@ -504,7 +504,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "he");
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, new_len: uint) {
         assert!(self.is_char_boundary(new_len));
         self.vec.truncate(new_len)
@@ -523,7 +523,7 @@ impl String {
     /// assert_eq!(s.pop(), None);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<char> {
         let len = self.len();
         if len == 0 {
@@ -559,7 +559,7 @@ impl String {
     /// assert_eq!(s.remove(0), 'o');
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, idx: uint) -> char {
         let len = self.len();
         assert!(idx <= len);
@@ -586,7 +586,7 @@ impl String {
     /// If `idx` does not lie on a character boundary or is out of bounds, then
     /// this function will panic.
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, idx: uint, ch: char) {
         let len = self.len();
         assert!(idx <= len);
@@ -623,7 +623,7 @@ impl String {
     /// assert_eq!(s.as_slice(), "olleh");
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
         &mut self.vec
     }
@@ -637,7 +637,7 @@ impl String {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { self.vec.len() }
 
     /// Returns true if the string contains no bytes
@@ -651,7 +651,7 @@ impl String {
     /// assert!(!v.is_empty());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Truncates the string, returning it to 0 length.
@@ -664,7 +664,7 @@ impl String {
     /// assert!(s.is_empty());
     /// ```
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.vec.clear()
     }
@@ -673,11 +673,11 @@ impl String {
 impl FromUtf8Error {
     /// Consume this error, returning the bytes that were attempted to make a
     /// `String` with.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_bytes(self) -> Vec<u8> { self.bytes }
 
     /// Access the underlying UTF8-error that was the cause of this error.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn utf8_error(&self) -> Utf8Error { self.error }
 }
 
@@ -687,7 +687,7 @@ impl fmt::Show for FromUtf8Error {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::String for FromUtf8Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt(&self.error, f)
@@ -700,14 +700,14 @@ impl fmt::Show for FromUtf16Error {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::String for FromUtf16Error {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::String::fmt("invalid utf-16: lone surrogate found", f)
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
     fn from_iter<I:Iterator<Item=char>>(iterator: I) -> String {
         let mut buf = String::new();
@@ -716,7 +716,7 @@ impl FromIterator<char> for String {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
     fn from_iter<I:Iterator<Item=&'a str>>(iterator: I) -> String {
         let mut buf = String::new();
@@ -750,7 +750,7 @@ impl<'a> Extend<&'a str> for String {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl PartialEq for String {
     #[inline]
     fn eq(&self, other: &String) -> bool { PartialEq::eq(&**self, &**other) }
@@ -760,7 +760,7 @@ impl PartialEq for String {
 
 macro_rules! impl_eq {
     ($lhs:ty, $rhs: ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> PartialEq<$rhs> for $lhs {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
@@ -768,7 +768,7 @@ macro_rules! impl_eq {
             fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
         }
 
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl<'a> PartialEq<$lhs> for $rhs {
             #[inline]
             fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
@@ -782,7 +782,7 @@ macro_rules! impl_eq {
 impl_eq! { String, &'a str }
 impl_eq! { CowString<'a>, String }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
     #[inline]
     fn eq(&self, other: &&'b str) -> bool { PartialEq::eq(&**self, &**other) }
@@ -790,7 +790,7 @@ impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
     fn ne(&self, other: &&'b str) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
     #[inline]
     fn eq(&self, other: &CowString<'a>) -> bool { PartialEq::eq(&**self, &**other) }
@@ -801,22 +801,22 @@ impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
 #[unstable(feature = "collections", reason = "waiting on Str stabilization")]
 impl Str for String {
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice<'a>(&'a self) -> &'a str {
         unsafe { mem::transmute(self.vec.as_slice()) }
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for String {
     #[inline]
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> String {
         String::new()
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::String for String {
     #[inline]
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -881,7 +881,7 @@ impl ops::Index<ops::FullRange> for String {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Deref for String {
     type Target = str;
 
@@ -964,7 +964,7 @@ impl<'a> IntoCow<'a, String, str> for &'a str {
 }
 
 /// A clone-on-write string
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub type CowString<'a> = Cow<'a, String, str>;
 
 impl<'a> Str for CowString<'a> {

@@ -19,15 +19,15 @@
 //! explicitly, by convention implementing the `Clone` trait and calling
 //! the `clone` method.
 
-#![stable(feature = "grandfathered", since = "1.0.0")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use marker::Sized;
 
 /// A common trait for cloning an object.
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
-    #[stable(feature = "grandfathered", since = "1.0.0")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn clone(&self) -> Self;
 
     /// Perform copy-assignment from `source`.
@@ -43,7 +43,7 @@ pub trait Clone : Sized {
     }
 }
 
-#[stable(feature = "grandfathered", since = "1.0.0")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Clone for &'a T {
     /// Return a shallow copy of the reference.
     #[inline]
@@ -52,7 +52,7 @@ impl<'a, T: ?Sized> Clone for &'a T {
 
 macro_rules! clone_impl {
     ($t:ty) => {
-        #[stable(feature = "grandfathered", since = "1.0.0")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Clone for $t {
             /// Return a deep copy of the value.
             #[inline]
