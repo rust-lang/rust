@@ -274,7 +274,6 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ast_map::NodeArg(..) |
         ast_map::NodeBlock(..) |
         ast_map::NodePat(..) |
-        ast_map::NodeViewItem(..) |
         ast_map::NodeLocal(..) => {
             ccx.sess().bug(&format!("can't monomorphize a {:?}",
                                    map_node)[])

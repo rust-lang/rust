@@ -477,7 +477,7 @@ impl fold::Folder for ReplaceBodyWithLoop {
                          e: Option<P<ast::Expr>>) -> P<ast::Block> {
             P(ast::Block {
                 expr: e,
-                view_items: vec![], stmts: vec![], rules: rules,
+                stmts: vec![], rules: rules,
                 id: ast::DUMMY_NODE_ID, span: codemap::DUMMY_SP,
             })
         }

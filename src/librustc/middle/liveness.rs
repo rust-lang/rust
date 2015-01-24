@@ -198,13 +198,13 @@ pub fn check_crate(tcx: &ty::ctxt) {
     tcx.sess.abort_if_errors();
 }
 
-impl fmt::Show for LiveNode {
+impl fmt::Debug for LiveNode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "ln({})", self.get())
     }
 }
 
-impl fmt::Show for Variable {
+impl fmt::Debug for Variable {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "v({})", self.get())
     }
@@ -1557,8 +1557,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
                             },
                         _ => false
                     };
-                    self.ir.tcx.sess.span_err(
-                        sp, "not all control paths return a value");
+                    span_err!(self.ir.tcx.sess, sp, E0269, "not all control paths return a value");
                     if ends_with_stmt {
                         let last_stmt = body.stmts.first().unwrap();
                         let original_span = original_sp(self.ir.tcx.sess.codemap(),
@@ -1575,7 +1574,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             }
             ty::FnDiverging
                 if self.live_on_entry(entry_ln, self.s.clean_exit_var).is_some() => {
-                    self.ir.tcx.sess.span_err(sp,
+                    span_err!(self.ir.tcx.sess, sp, E0270,
                         "computation may converge in a function marked as diverging");
                 }
 

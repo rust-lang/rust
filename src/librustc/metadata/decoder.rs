@@ -74,7 +74,7 @@ fn lookup_hash<'a, F>(d: rbml::Doc<'a>, mut eq_fn: F, hash: u64) -> Option<rbml:
     let mut ret = None;
     reader::tagged_docs(tagged_doc.doc, belt, |elt| {
         let pos = u64_from_be_bytes(elt.data, elt.start, 4) as uint;
-        if eq_fn(&elt.data[(elt.start + 4) .. elt.end]) {
+        if eq_fn(&elt.data[elt.start + 4 .. elt.end]) {
             ret = Some(reader::doc_at(d.data, pos).unwrap().doc);
             false
         } else {

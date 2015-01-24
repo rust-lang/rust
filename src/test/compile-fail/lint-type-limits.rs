@@ -10,7 +10,7 @@
 
 #![allow(dead_code)]
 
-// compile-flags: -D type-limits
+// compile-flags: -D unused-comparisons
 fn main() { }
 
 fn foo() {

@@ -25,6 +25,8 @@ pub struct Module {
     pub attrs: Vec<ast::Attribute>,
     pub where_outer: Span,
     pub where_inner: Span,
+    pub extern_crates: Vec<ExternCrate>,
+    pub imports: Vec<Import>,
     pub structs: Vec<Struct>,
     pub enums: Vec<Enum>,
     pub fns: Vec<Function>,
@@ -38,7 +40,6 @@ pub struct Module {
     pub stab: Option<attr::Stability>,
     pub impls: Vec<Impl>,
     pub foreigns: Vec<ast::ForeignMod>,
-    pub view_items: Vec<ast::ViewItem>,
     pub macros: Vec<Macro>,
     pub is_crate: bool,
 }
@@ -53,6 +54,8 @@ impl Module {
             where_outer: syntax::codemap::DUMMY_SP,
             where_inner: syntax::codemap::DUMMY_SP,
             attrs      : Vec::new(),
+            extern_crates: Vec::new(),
+            imports    : Vec::new(),
             structs    : Vec::new(),
             enums      : Vec::new(),
             fns        : Vec::new(),
@@ -62,7 +65,6 @@ impl Module {
             constants  : Vec::new(),
             traits     : Vec::new(),
             impls      : Vec::new(),
-            view_items : Vec::new(),
             foreigns   : Vec::new(),
             macros     : Vec::new(),
             is_crate   : false,
@@ -200,6 +202,22 @@ pub struct Macro {
     pub attrs: Vec<ast::Attribute>,
     pub whence: Span,
     pub stab: Option<attr::Stability>,
+}
+
+pub struct ExternCrate {
+    pub name: Ident,
+    pub path: Option<String>,
+    pub vis: ast::Visibility,
+    pub attrs: Vec<ast::Attribute>,
+    pub whence: Span,
+}
+
+pub struct Import {
+    pub id: NodeId,
+    pub vis: ast::Visibility,
+    pub attrs: Vec<ast::Attribute>,
+    pub node: ast::ViewPath_,
+    pub whence: Span,
 }
 
 pub fn struct_type_from_def(sd: &ast::StructDef) -> StructType {

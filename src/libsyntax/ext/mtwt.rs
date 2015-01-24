@@ -187,7 +187,7 @@ fn resolve_internal(id: Ident,
     }
 
     let resolved = {
-        let result = (*table.table.borrow())[id.ctxt as uint];
+        let result = (*table.table.borrow())[id.ctxt as usize];
         match result {
             EmptyCtxt => id.name,
             // ignore marks here:
@@ -231,7 +231,7 @@ fn marksof_internal(ctxt: SyntaxContext,
     let mut result = Vec::new();
     let mut loopvar = ctxt;
     loop {
-        let table_entry = (*table.table.borrow())[loopvar as uint];
+        let table_entry = (*table.table.borrow())[loopvar as usize];
         match table_entry {
             EmptyCtxt => {
                 return result;
@@ -258,7 +258,7 @@ fn marksof_internal(ctxt: SyntaxContext,
 /// FAILS when outside is not a mark.
 pub fn outer_mark(ctxt: SyntaxContext) -> Mrk {
     with_sctable(|sctable| {
-        match (*sctable.table.borrow())[ctxt as uint] {
+        match (*sctable.table.borrow())[ctxt as usize] {
             Mark(mrk, _) => mrk,
             _ => panic!("can't retrieve outer mark when outside is not a mark")
         }
@@ -330,7 +330,7 @@ mod tests {
         let mut result = Vec::new();
         loop {
             let table = table.table.borrow();
-            match (*table)[sc as uint] {
+            match (*table)[sc as usize] {
                 EmptyCtxt => {return result;},
                 Mark(mrk,tail) => {
                     result.push(M(mrk));
@@ -398,7 +398,7 @@ mod tests {
          assert_eq! (marksof_internal (ans, stopname,&t), vec!(16));}
         // rename where stop doesn't match:
         { let chain = vec!(M(9),
-                        R(id(name1.uint() as u32,
+                        R(id(name1.usize() as u32,
                              apply_mark_internal (4, EMPTY_CTXT,&mut t)),
                           Name(100101102)),
                         M(14));
@@ -407,7 +407,7 @@ mod tests {
         // rename where stop does match
         { let name1sc = apply_mark_internal(4, EMPTY_CTXT, &mut t);
          let chain = vec!(M(9),
-                       R(id(name1.uint() as u32, name1sc),
+                       R(id(name1.usize() as u32, name1sc),
                          stopname),
                        M(14));
          let ans = unfold_test_sc(chain,EMPTY_CTXT,&mut t);

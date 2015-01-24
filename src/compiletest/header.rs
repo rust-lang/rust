@@ -332,8 +332,7 @@ pub fn parse_name_value_directive(line: &str, directive: &str)
     let keycolon = format!("{}:", directive);
     match line.find_str(keycolon.as_slice()) {
         Some(colon) => {
-            let value = line.slice(colon + keycolon.len(),
-                                   line.len()).to_string();
+            let value = line[(colon + keycolon.len()) .. line.len()].to_string();
             debug!("{}: {}", directive, value);
             Some(value)
         }

@@ -8,12 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Show;
+use std::fmt::Debug;
 
 trait Str {}
 
 trait Something {
-    fn yay<T: Show>(_: Option<Self>, thing: &[T]);
+    fn yay<T: Debug>(_: Option<Self>, thing: &[T]);
 }
 
 struct X { data: u32 }

@@ -36,5 +36,5 @@ mod b {
 }
 
 fn main() {
-    Thread::scoped(move|| { ::b::g() }).join().unwrap_err();
+    Thread::scoped(move|| { ::b::g() }).join().err().unwrap();
 }

@@ -331,7 +331,7 @@ impl Bitv {
 
         if extra_bytes > 0 {
             let mut last_word = 0u32;
-            for (i, &byte) in bytes[(complete_words*4)..].iter().enumerate() {
+            for (i, &byte) in bytes[complete_words*4..].iter().enumerate() {
                 last_word |= (reverse_bits(byte) as u32) << (i * 8);
             }
             bitv.storage.push(last_word);
@@ -974,7 +974,7 @@ impl Ord for Bitv {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Show for Bitv {
+impl fmt::Debug for Bitv {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         for bit in self.iter() {
             try!(write!(fmt, "{}", if bit { 1u32 } else { 0u32 }));
@@ -1730,7 +1730,7 @@ impl BitvSet {
     }
 }
 
-impl fmt::Show for BitvSet {
+impl fmt::Debug for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "BitvSet {{"));
         let mut first = true;
@@ -2625,7 +2625,7 @@ mod bitv_set_test {
         s.insert(10);
         s.insert(50);
         s.insert(2);
-        assert_eq!("BitvSet {1u, 2u, 10u, 50u}", format!("{:?}", s));
+        assert_eq!("BitvSet {1, 2, 10, 50}", format!("{:?}", s));
     }
 
     #[test]

@@ -40,10 +40,6 @@ pub struct CrateReader<'a> {
 }
 
 impl<'a, 'v> visit::Visitor<'v> for CrateReader<'a> {
-    fn visit_view_item(&mut self, a: &ast::ViewItem) {
-        self.process_view_item(a);
-        visit::walk_view_item(self, a);
-    }
     fn visit_item(&mut self, a: &ast::Item) {
         self.process_item(a);
         visit::walk_item(self, a);
@@ -64,9 +60,8 @@ fn dump_crates(cstore: &CStore) {
     })
 }
 
-fn should_link(i: &ast::ViewItem) -> bool {
+fn should_link(i: &ast::Item) -> bool {
     !attr::contains_name(&i.attrs[], "no_link")
-
 }
 
 struct CrateInfo {
@@ -181,29 +176,10 @@ impl<'a> CrateReader<'a> {
         }
     }
 
-    fn process_view_item(&mut self, i: &ast::ViewItem) {
-        if !should_link(i) {
-            return;
-        }
-
-        match self.extract_crate_info(i) {
-            Some(info) => {
-                let (cnum, _, _) = self.resolve_crate(&None,
-                                                      &info.ident[],
-                                                      &info.name[],
-                                                      None,
-                                                      i.span,
-                                                      PathKind::Crate);
-                self.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
-            }
-            None => ()
-        }
-    }
-
-    fn extract_crate_info(&self, i: &ast::ViewItem) -> Option<CrateInfo> {
+    fn extract_crate_info(&self, i: &ast::Item) -> Option<CrateInfo> {
         match i.node {
-            ast::ViewItemExternCrate(ident, ref path_opt, id) => {
-                let ident = token::get_ident(ident);
+            ast::ItemExternCrate(ref path_opt) => {
+                let ident = token::get_ident(i.ident);
                 debug!("resolving extern crate stmt. ident: {} path_opt: {:?}",
                        ident, path_opt);
                 let name = match *path_opt {
@@ -218,7 +194,7 @@ impl<'a> CrateReader<'a> {
                 Some(CrateInfo {
                     ident: ident.get().to_string(),
                     name: name,
-                    id: id,
+                    id: i.id,
                     should_link: should_link(i),
                 })
             }
@@ -226,8 +202,26 @@ impl<'a> CrateReader<'a> {
         }
     }
 
-    fn process_item(&self, i: &ast::Item) {
+    fn process_item(&mut self, i: &ast::Item) {
         match i.node {
+            ast::ItemExternCrate(_) => {
+                if !should_link(i) {
+                    return;
+                }
+
+                match self.extract_crate_info(i) {
+                    Some(info) => {
+                        let (cnum, _, _) = self.resolve_crate(&None,
+                                                              &info.ident[],
+                                                              &info.name[],
+                                                              None,
+                                                              i.span,
+                                                              PathKind::Crate);
+                        self.sess.cstore.add_extern_mod_stmt_cnum(info.id, cnum);
+                    }
+                    None => ()
+                }
+            }
             ast::ItemForeignMod(ref fm) => {
                 if fm.abi == abi::Rust || fm.abi == abi::RustIntrinsic {
                     return;
@@ -533,7 +527,7 @@ impl<'a> CrateReader<'a> {
 
 #[derive(Copy)]
 pub enum CrateOrString<'a> {
-    Krate(&'a ast::ViewItem),
+    Krate(&'a ast::Item),
     Str(&'a str)
 }
 

@@ -27,6 +27,7 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(rustc_private)]
+#![feature(hash)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

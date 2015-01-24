@@ -22,8 +22,6 @@ use book::{Book, BookItem};
 use css;
 use javascript;
 
-use regex::Regex;
-
 use rustdoc;
 
 struct Build;
@@ -81,9 +79,6 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
 
         let out_path = tgt.join(item.path.dirname());
 
-        let regex = r"\[(?P<title>[^]]*)\]\((?P<url_stem>[^)]*)\.(?P<ext>md|markdown)\)";
-        let md_urls = Regex::new(regex).unwrap();
-
         let src;
         if os::args().len() < 3 {
             src = os::getcwd().unwrap().clone();
@@ -94,7 +89,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         let markdown_data = try!(File::open(&src.join(&item.path)).read_to_string());
         let preprocessed_path = tmp.path().join(item.path.filename().unwrap());
         {
-            let urls = md_urls.replace_all(&markdown_data[], "[$title]($url_stem.html)");
+            let urls = markdown_data.replace(".md)", ".html)");
             try!(File::create(&preprocessed_path)
                       .write_str(&urls[]));
         }

@@ -130,7 +130,7 @@ pub fn abort(args: fmt::Arguments) -> ! {
     }
     impl<'a> fmt::Writer for BufWriter<'a> {
         fn write_str(&mut self, bytes: &str) -> fmt::Result {
-            let left = self.buf.slice_from_mut(self.pos);
+            let left = &mut self.buf[self.pos..];
             let to_write = &bytes.as_bytes()[..cmp::min(bytes.len(), left.len())];
             slice::bytes::copy_memory(left, to_write);
             self.pos += to_write.len();

@@ -1554,10 +1554,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let tcx = this.tcx();
             match bound {
                 ty::BoundSend => {
-                    if
-                        Some(def_id) == tcx.lang_items.no_send_bound() ||
-                        Some(def_id) == tcx.lang_items.managed_bound()
-                    {
+                    if Some(def_id) == tcx.lang_items.managed_bound() {
                         return Err(Unimplemented)
                     }
                 }
@@ -1568,7 +1565,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 ty::BoundSync => {
                     if
-                        Some(def_id) == tcx.lang_items.no_sync_bound() ||
                         Some(def_id) == tcx.lang_items.managed_bound() ||
                         Some(def_id) == tcx.lang_items.unsafe_type()
                     {

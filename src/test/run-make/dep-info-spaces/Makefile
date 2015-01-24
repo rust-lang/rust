@@ -5,7 +5,7 @@
 ifneq ($(shell uname),FreeBSD)
 ifndef IS_WINDOWS
 all:
-	$(RUSTC) --dep-info $(TMPDIR)/custom-deps-file.d --crate-type=lib lib.rs
+	$(RUSTC) --emit link,dep-info --crate-type=lib lib.rs
 	sleep 1
 	touch 'foo foo.rs'
 	-rm -f $(TMPDIR)/done

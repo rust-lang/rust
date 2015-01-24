@@ -33,8 +33,6 @@
 //! demonstrates adding and subtracting two `Point`s.
 //!
 //! ```rust
-//! #![feature(associated_types)]
-//!
 //! use std::ops::{Add, Sub};
 //!
 //! #[derive(Show)]
@@ -69,10 +67,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use clone::Clone;
-use iter::{Step, Iterator,DoubleEndedIterator,ExactSizeIterator};
 use marker::Sized;
-use option::Option::{self, Some, None};
 use fmt;
 
 /// The `Drop` trait is used to run some code when a value goes out of scope. This
@@ -168,8 +163,6 @@ macro_rules! forward_ref_binop {
 /// calling `add`, and therefore, `main` prints `Adding!`.
 ///
 /// ```rust
-/// #![feature(associated_types)]
-///
 /// use std::ops::Add;
 ///
 /// #[derive(Copy)]
@@ -223,8 +216,6 @@ add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `sub`, and therefore, `main` prints `Subtracting!`.
 ///
 /// ```rust
-/// #![feature(associated_types)]
-///
 /// use std::ops::Sub;
 ///
 /// #[derive(Copy)]
@@ -278,8 +269,6 @@ sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `mul`, and therefore, `main` prints `Multiplying!`.
 ///
 /// ```rust
-/// #![feature(associated_types)]
-///
 /// use std::ops::Mul;
 ///
 /// #[derive(Copy)]
@@ -333,8 +322,6 @@ mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `div`, and therefore, `main` prints `Dividing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Div;
 ///
 /// #[derive(Copy)]
@@ -388,8 +375,6 @@ div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
 /// calling `rem`, and therefore, `main` prints `Remainder-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Rem;
 ///
 /// #[derive(Copy)]
@@ -462,8 +447,6 @@ rem_float_impl! { f64, fmod }
 /// `neg`, and therefore, `main` prints `Negating!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Neg;
 ///
 /// struct Foo;
@@ -541,8 +524,6 @@ neg_uint_impl! { u64, i64 }
 /// `not`, and therefore, `main` prints `Not-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Not;
 ///
 /// struct Foo;
@@ -597,8 +578,6 @@ not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitand`, and therefore, `main` prints `Bitwise And-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::BitAnd;
 ///
 /// #[derive(Copy)]
@@ -652,8 +631,6 @@ bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitor`, and therefore, `main` prints `Bitwise Or-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::BitOr;
 ///
 /// #[derive(Copy)]
@@ -707,8 +684,6 @@ bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `bitxor`, and therefore, `main` prints `Bitwise Xor-ing!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::BitXor;
 ///
 /// #[derive(Copy)]
@@ -762,8 +737,6 @@ bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
 /// calling `shl`, and therefore, `main` prints `Shifting left!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Shl;
 ///
 /// #[derive(Copy)]
@@ -835,8 +808,6 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// calling `shr`, and therefore, `main` prints `Shifting right!`.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Shr;
 ///
 /// #[derive(Copy)]
@@ -928,10 +899,12 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// }
 /// ```
 #[lang="index"]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Index<Index: ?Sized> {
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn index<'a>(&'a self, index: &Index) -> &'a Self::Output;
 }
 
@@ -964,30 +937,32 @@ pub trait Index<Index: ?Sized> {
 /// }
 /// ```
 #[lang="index_mut"]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait IndexMut<Index: ?Sized> {
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Self::Output;
 }
 
 /// An unbounded range.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="full_range"]
-#[unstable(feature = "core", reason = "API still in development")]
+#[unstable(feature = "core", reason  = "may be renamed to RangeFull")]
 pub struct FullRange;
 
-#[unstable(feature = "core", reason = "API still in development")]
-impl fmt::Show for FullRange {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for FullRange {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Show::fmt("..", fmt)
+        fmt::Debug::fmt("..", fmt)
     }
 }
 
 /// A (half-open) range which is bounded at both ends.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range"]
-#[unstable(feature = "core", reason = "API still in development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
@@ -995,49 +970,8 @@ pub struct Range<Idx> {
     pub end: Idx,
 }
 
-#[unstable(feature = "core", reason = "API still in development")]
-impl<Idx: Clone + Step> Iterator for Range<Idx> {
-    type Item = Idx;
-
-    #[inline]
-    fn next(&mut self) -> Option<Idx> {
-        if self.start < self.end {
-            let result = self.start.clone();
-            self.start.step();
-            return Some(result);
-        }
-
-        return None;
-    }
-
-    #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        if let Some(hint) = Step::steps_between(&self.start, &self.end) {
-            (hint, Some(hint))
-        } else {
-            (0, None)
-        }
-    }
-}
-
-#[unstable(feature = "core", reason = "API still in development")]
-impl<Idx: Clone + Step> DoubleEndedIterator for Range<Idx> {
-    #[inline]
-    fn next_back(&mut self) -> Option<Idx> {
-        if self.start < self.end {
-            self.end.step_back();
-            return Some(self.end.clone());
-        }
-
-        return None;
-    }
-}
-
-#[unstable(feature = "core", reason = "API still in development")]
-impl<Idx: Clone + Step> ExactSizeIterator for Range<Idx> {}
-
-#[unstable(feature = "core", reason = "API still in development")]
-impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..{:?}", self.start, self.end)
     }
@@ -1046,27 +980,16 @@ impl<Idx: fmt::Show> fmt::Show for Range<Idx> {
 /// A range which is only bounded below.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_from"]
-#[unstable(feature = "core", reason = "API still in development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
     /// The lower bound of the range (inclusive).
     pub start: Idx,
 }
 
-#[unstable(feature = "core", reason = "API still in development")]
-impl<Idx: Clone + Step> Iterator for RangeFrom<Idx> {
-    type Item = Idx;
 
-    #[inline]
-    fn next(&mut self) -> Option<Idx> {
-        // Deliberately overflow so we loop forever.
-        let result = self.start.clone();
-        self.start.step();
-        return Some(result);
-    }
-}
 
-#[unstable(feature = "core", reason = "API still in development")]
-impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<Idx: fmt::Debug> fmt::Debug for RangeFrom<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "{:?}..", self.start)
     }
@@ -1075,14 +998,14 @@ impl<Idx: fmt::Show> fmt::Show for RangeFrom<Idx> {
 /// A range which is only bounded above.
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_to"]
-#[unstable(feature = "core", reason = "API still in development")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeTo<Idx> {
     /// The upper bound of the range (exclusive).
     pub end: Idx,
 }
 
-#[unstable(feature = "core", reason = "API still in development")]
-impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "..{:?}", self.end)
     }
@@ -1098,8 +1021,6 @@ impl<Idx: fmt::Show> fmt::Show for RangeTo<Idx> {
 /// struct.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::Deref;
 ///
 /// struct DerefExample<T> {
@@ -1153,8 +1074,6 @@ impl<'a, T: ?Sized> Deref for &'a mut T {
 /// struct.
 ///
 /// ```
-/// #![feature(associated_types)]
-///
 /// use std::ops::{Deref, DerefMut};
 ///
 /// struct DerefMutExample<T> {

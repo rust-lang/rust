@@ -370,7 +370,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         for (i, &x) in new_loan_indices.iter().enumerate() {
             let old_loan = &self.all_loans[x];
-            for &y in new_loan_indices.slice_from(i+1).iter() {
+            for &y in new_loan_indices[(i+1) ..].iter() {
                 let new_loan = &self.all_loans[y];
                 self.report_error_if_loans_conflict(old_loan, new_loan);
             }

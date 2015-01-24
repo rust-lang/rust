@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Unit;
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Tuple(int, uint);
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Struct { x: int, y: uint }
 
-#[derive(Show)]
+#[derive(Debug)]
 enum Enum {
     Nullary,
     Variant(int, uint),
@@ -32,9 +32,9 @@ macro_rules! t {
 
 pub fn main() {
     t!(Unit, "Unit");
-    t!(Tuple(1, 2), "Tuple(1i, 2u)");
-    t!(Struct { x: 1, y: 2 }, "Struct { x: 1i, y: 2u }");
+    t!(Tuple(1, 2), "Tuple(1, 2)");
+    t!(Struct { x: 1, y: 2 }, "Struct { x: 1, y: 2 }");
     t!(Enum::Nullary, "Nullary");
-    t!(Enum::Variant(1, 2), "Variant(1i, 2u)");
-    t!(Enum::StructVariant { x: 1, y: 2 }, "StructVariant { x: 1i, y: 2u }");
+    t!(Enum::Variant(1, 2), "Variant(1, 2)");
+    t!(Enum::StructVariant { x: 1, y: 2 }, "StructVariant { x: 1, y: 2 }");
 }

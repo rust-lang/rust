@@ -60,7 +60,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
 
         let archive = ArchiveRO::open(&path).expect("wanted an rlib");
         let file = path.filename_str().unwrap();
-        let file = &file[3..(file.len() - 5)]; // chop off lib/.rlib
+        let file = &file[3..file.len() - 5]; // chop off lib/.rlib
         debug!("reading {}", file);
         for i in iter::count(0u, 1) {
             let bc_encoded = time(sess.time_passes(),
@@ -201,7 +201,7 @@ fn extract_compressed_bytecode_size_v1(bc: &[u8]) -> u64 {
 }
 
 fn read_from_le_bytes<T: Int>(bytes: &[u8], position_in_bytes: uint) -> T {
-    let byte_data = &bytes[position_in_bytes..(position_in_bytes + mem::size_of::<T>())];
+    let byte_data = &bytes[position_in_bytes..position_in_bytes + mem::size_of::<T>()];
     let data = unsafe {
         *(byte_data.as_ptr() as *const T)
     };

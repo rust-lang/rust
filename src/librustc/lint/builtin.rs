@@ -1199,17 +1199,17 @@ impl LintPass for UnusedImportBraces {
         lint_array!(UNUSED_IMPORT_BRACES)
     }
 
-    fn check_view_item(&mut self, cx: &Context, view_item: &ast::ViewItem) {
-        match view_item.node {
-            ast::ViewItemUse(ref view_path) => {
+    fn check_item(&mut self, cx: &Context, item: &ast::Item) {
+        match item.node {
+            ast::ItemUse(ref view_path) => {
                 match view_path.node {
-                    ast::ViewPathList(_, ref items, _) => {
+                    ast::ViewPathList(_, ref items) => {
                         if items.len() == 1 {
                             match items[0].node {
                                 ast::PathListIdent {ref name, ..} => {
                                     let m = format!("braces around {} is unnecessary",
                                                     token::get_ident(*name).get());
-                                    cx.span_lint(UNUSED_IMPORT_BRACES, view_item.span,
+                                    cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
                                                  &m[]);
                                 },
                                 _ => ()
@@ -1326,7 +1326,7 @@ impl UnusedMut {
                 let ident = path1.node;
                 if let ast::BindByValue(ast::MutMutable) = mode {
                     if !token::get_ident(ident).get().starts_with("_") {
-                        match mutables.entry(ident.name.uint()) {
+                        match mutables.entry(ident.name.usize()) {
                             Vacant(entry) => { entry.insert(vec![id]); },
                             Occupied(mut entry) => { entry.get_mut().push(id); },
                         }
@@ -1661,11 +1661,6 @@ impl Stability {
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
         lint_array!(DEPRECATED)
-    }
-
-    fn check_view_item(&mut self, cx: &Context, item: &ast::ViewItem) {
-        stability::check_view_item(cx.tcx, item,
-                                   &mut |id, sp, stab| self.lint(cx, id, sp, stab));
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {

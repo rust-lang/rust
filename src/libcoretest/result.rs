@@ -14,11 +14,11 @@ pub fn op2() -> Result<int, &'static str> { Err("sadface") }
 #[test]
 pub fn test_and() {
     assert_eq!(op1().and(Ok(667i)).unwrap(), 667);
-    assert_eq!(op1().and(Err::<(), &'static str>("bad")).unwrap_err(),
+    assert_eq!(op1().and(Err::<i32, &'static str>("bad")).unwrap_err(),
                "bad");
 
     assert_eq!(op2().and(Ok(667i)).unwrap_err(), "sadface");
-    assert_eq!(op2().and(Err::<(),&'static str>("bad")).unwrap_err(),
+    assert_eq!(op2().and(Err::<i32,&'static str>("bad")).unwrap_err(),
                "sadface");
 }
 
@@ -94,7 +94,7 @@ pub fn test_fmt_default() {
     let err: Result<int, &'static str> = Err("Err");
 
     let s = format!("{:?}", ok);
-    assert_eq!(s, "Ok(100i)");
+    assert_eq!(s, "Ok(100)");
     let s = format!("{:?}", err);
     assert_eq!(s, "Err(\"Err\")");
 }

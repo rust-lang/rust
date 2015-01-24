@@ -32,7 +32,7 @@ pub enum PtrTy<'a> {
     Raw(ast::Mutability),
 }
 
-/// A path, e.g. `::std::option::Option::<int>` (global). Has support
+/// A path, e.g. `::std::option::Option::<i32>` (global). Has support
 /// for type parameters and a lifetime.
 #[derive(Clone)]
 pub struct Path<'a> {
@@ -91,7 +91,7 @@ pub enum Ty<'a> {
     /// &/Box/ Ty
     Ptr(Box<Ty<'a>>, PtrTy<'a>),
     /// mod::mod::Type<[lifetime], [Params...]>, including a plain type
-    /// parameter, and things like `int`
+    /// parameter, and things like `i32`
     Literal(Path<'a>),
     /// includes unit
     Tuple(Vec<Ty<'a>> )

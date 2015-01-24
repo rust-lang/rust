@@ -1,8 +1,8 @@
 #![no_std]
-#[macro_use]
-extern crate "std" as std;
 #[prelude_import]
 use std::prelude::v1::*;
+#[macro_use]
+extern crate "std" as std;
 // Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.

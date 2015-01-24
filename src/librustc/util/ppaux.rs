@@ -164,7 +164,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
     fn explain_span(cx: &ctxt, heading: &str, span: Span)
                     -> (String, Option<Span>) {
         let lo = cx.sess.codemap().lookup_char_pos_adj(span.lo);
-        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_uint()),
+        (format!("the {} at {}:{}", heading, lo.line, lo.col.to_usize()),
          Some(span))
     }
 }
@@ -237,15 +237,6 @@ pub fn mt_to_string<'tcx>(cx: &ctxt<'tcx>, m: &mt<'tcx>) -> String {
         ty_to_string(cx, m.ty))
 }
 
-pub fn trait_store_to_string(cx: &ctxt, s: ty::TraitStore) -> String {
-    match s {
-        ty::UniqTraitStore => "Box ".to_string(),
-        ty::RegionTraitStore(r, m) => {
-            format!("{}{}", region_ptr_to_string(cx, r), mutability_to_string(m))
-        }
-    }
-}
-
 pub fn vec_map_to_string<T, F>(ts: &[T], f: F) -> String where
     F: FnMut(&T) -> String,
 {
@@ -285,7 +276,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             _ => { }
         }
 
-        push_sig_to_string(cx, &mut s, '(', ')', sig, "");
+        push_sig_to_string(cx, &mut s, '(', ')', sig);
 
         match opt_def_id {
             Some(def_id) => {
@@ -303,13 +294,6 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
     fn closure_to_string<'tcx>(cx: &ctxt<'tcx>, cty: &ty::ClosureTy<'tcx>) -> String {
         let mut s = String::new();
 
-        match cty.store {
-            ty::UniqTraitStore => {}
-            ty::RegionTraitStore(region, _) => {
-                s.push_str(&region_to_string(cx, "", true, region)[]);
-            }
-        }
-
         match cty.unsafety {
             ast::Unsafety::Normal => {}
             ast::Unsafety::Unsafe => {
@@ -318,24 +302,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             }
         };
 
-        let bounds_str = cty.bounds.user_string(cx);
-
-        match cty.store {
-            ty::UniqTraitStore => {
-                assert_eq!(cty.onceness, ast::Once);
-                s.push_str("proc");
-                push_sig_to_string(cx, &mut s, '(', ')', &cty.sig,
-                                   &bounds_str[]);
-            }
-            ty::RegionTraitStore(..) => {
-                match cty.onceness {
-                    ast::Many => {}
-                    ast::Once => s.push_str("once ")
-                }
-                push_sig_to_string(cx, &mut s, '|', '|', &cty.sig,
-                                   &bounds_str[]);
-            }
-        }
+        push_sig_to_string(cx, &mut s, '|', '|', &cty.sig);
 
         s
     }
@@ -344,8 +311,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                                 s: &mut String,
                                 bra: char,
                                 ket: char,
-                                sig: &ty::PolyFnSig<'tcx>,
-                                bounds: &str) {
+                                sig: &ty::PolyFnSig<'tcx>) {
         s.push(bra);
         let strs = sig.0.inputs
             .iter()
@@ -356,11 +322,6 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             s.push_str(", ...");
         }
         s.push(ket);
-
-        if !bounds.is_empty() {
-            s.push_str(":");
-            s.push_str(bounds);
-        }
 
         match sig.0.output {
             ty::FnConverging(t) => {
@@ -542,7 +503,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         0
     };
 
-    for t in tps[..(tps.len() - num_defaults)].iter() {
+    for t in tps[..tps.len() - num_defaults].iter() {
         strs.push(ty_to_string(cx, *t))
     }
 
@@ -550,9 +511,9 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         format!("{}({}){}",
                 base,
                 if strs[0].starts_with("(") && strs[0].ends_with(",)") {
-                    &strs[0][1 .. (strs[0].len() - 2)] // Remove '(' and ',)'
+                    &strs[0][1 .. strs[0].len() - 2] // Remove '(' and ',)'
                 } else if strs[0].starts_with("(") && strs[0].ends_with(")") {
-                    &strs[0][1 .. (strs[0].len() - 1)] // Remove '(' and ')'
+                    &strs[0][1 .. strs[0].len() - 1] // Remove '(' and ')'
                 } else {
                     &strs[0][]
                 },
@@ -1087,12 +1048,6 @@ impl<'tcx> Repr<'tcx> for ty::MethodObject<'tcx> {
                 self.trait_ref.repr(tcx),
                 self.method_num,
                 self.real_index)
-    }
-}
-
-impl<'tcx> Repr<'tcx> for ty::TraitStore {
-    fn repr(&self, tcx: &ctxt) -> String {
-        trait_store_to_string(tcx, *self)
     }
 }
 

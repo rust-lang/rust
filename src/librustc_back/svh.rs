@@ -52,7 +52,7 @@ use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, PartialEq, Show)]
 pub struct Svh {
     hash: String,
 }
@@ -117,13 +117,7 @@ impl Svh {
     }
 }
 
-impl fmt::Show for Svh {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Svh {{ {} }}", self.as_str())
-    }
-}
-
-impl fmt::String for Svh {
+impl fmt::Display for Svh {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad(self.as_str())
     }
@@ -188,7 +182,6 @@ mod svh_visitor {
         SawLifetimeDef(token::InternedString),
 
         SawMod,
-        SawViewItem,
         SawForeignItem,
         SawItem,
         SawDecl,
@@ -434,19 +427,6 @@ mod svh_visitor {
 
         fn visit_stmt(&mut self, s: &Stmt) {
             SawStmt(saw_stmt(&s.node)).hash(self.st); visit::walk_stmt(self, s)
-        }
-
-        fn visit_view_item(&mut self, i: &ViewItem) {
-            // Two kinds of view items can affect the ABI for a crate:
-            // exported `pub use` view items (since that may expose
-            // items that downstream crates can call), and `use
-            // foo::Trait`, since changing that may affect method
-            // resolution.
-            //
-            // The simplest approach to handling both of the above is
-            // just to adopt the same simple-minded (fine-grained)
-            // hash that I am deploying elsewhere here.
-            SawViewItem.hash(self.st); visit::walk_view_item(self, i)
         }
 
         fn visit_foreign_item(&mut self, i: &ForeignItem) {

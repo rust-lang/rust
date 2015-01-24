@@ -379,11 +379,10 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
             false
         }
         Err(Overflow) => {
-            infcx.tcx.sess.span_err(
-                span,
-                format!("overflow evaluating whether `{}` is `{}`",
-                        ty.user_string(infcx.tcx),
-                        bound.user_string(infcx.tcx)).as_slice());
+            span_err!(infcx.tcx.sess, span, E0285,
+                "overflow evaluating whether `{}` is `{}`",
+                      ty.user_string(infcx.tcx),
+                      bound.user_string(infcx.tcx));
             suggest_new_overflow_limit(infcx.tcx, span);
             false
         }

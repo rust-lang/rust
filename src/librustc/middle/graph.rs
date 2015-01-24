@@ -32,7 +32,7 @@
 
 #![allow(dead_code)] // still WIP
 
-use std::fmt::{Formatter, Error, Show};
+use std::fmt::{Formatter, Error, Debug};
 use std::uint;
 use std::collections::BitvSet;
 
@@ -53,7 +53,7 @@ pub struct Edge<E> {
     pub data: E,
 }
 
-impl<E: Show> Show for Edge<E> {
+impl<E: Debug> Debug for Edge<E> {
     fn fmt(&self, f: &mut Formatter) -> Result<(), Error> {
         write!(f, "Edge {{ next_edge: [{:?}, {:?}], source: {:?}, target: {:?}, data: {:?} }}",
                self.next_edge[0], self.next_edge[1], self.source,
@@ -353,7 +353,7 @@ impl<E> Edge<E> {
 #[cfg(test)]
 mod test {
     use middle::graph::*;
-    use std::fmt::Show;
+    use std::fmt::Debug;
 
     type TestNode = Node<&'static str>;
     type TestEdge = Edge<&'static str>;
@@ -408,7 +408,7 @@ mod test {
         });
     }
 
-    fn test_adjacent_edges<N:PartialEq+Show,E:PartialEq+Show>(graph: &Graph<N,E>,
+    fn test_adjacent_edges<N:PartialEq+Debug,E:PartialEq+Debug>(graph: &Graph<N,E>,
                                       start_index: NodeIndex,
                                       start_data: N,
                                       expected_incoming: &[(E,N)],

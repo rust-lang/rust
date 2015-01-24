@@ -176,6 +176,7 @@ pub use core::raw;
 pub use core::simd;
 pub use core::result;
 pub use core::option;
+pub use core::error;
 
 #[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;
@@ -236,7 +237,6 @@ pub mod thunk;
 
 /* Common traits */
 
-pub mod error;
 pub mod num;
 
 /* Runtime and platform support */

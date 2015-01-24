@@ -202,39 +202,6 @@ pub trait Combine<'tcx> : Sized {
                          sig: sig})
     }
 
-    fn closure_tys(&self, a: &ty::ClosureTy<'tcx>,
-                   b: &ty::ClosureTy<'tcx>) -> cres<'tcx, ty::ClosureTy<'tcx>> {
-
-        let store = match (a.store, b.store) {
-            (ty::RegionTraitStore(a_r, a_m),
-             ty::RegionTraitStore(b_r, b_m)) if a_m == b_m => {
-                let r = try!(self.contraregions(a_r, b_r));
-                ty::RegionTraitStore(r, a_m)
-            }
-
-            _ if a.store == b.store => {
-                a.store
-            }
-
-            _ => {
-                return Err(ty::terr_sigil_mismatch(expected_found(self, a.store, b.store)))
-            }
-        };
-        let unsafety = try!(self.unsafeties(a.unsafety, b.unsafety));
-        let onceness = try!(self.oncenesses(a.onceness, b.onceness));
-        let bounds = try!(self.existential_bounds(&a.bounds, &b.bounds));
-        let sig = try!(self.binders(&a.sig, &b.sig));
-        let abi = try!(self.abi(a.abi, b.abi));
-        Ok(ty::ClosureTy {
-            unsafety: unsafety,
-            onceness: onceness,
-            store: store,
-            bounds: bounds,
-            sig: sig,
-            abi: abi,
-        })
-    }
-
     fn fn_sigs(&self, a: &ty::FnSig<'tcx>, b: &ty::FnSig<'tcx>) -> cres<'tcx, ty::FnSig<'tcx>> {
         if a.variadic != b.variadic {
             return Err(ty::terr_variadic_mismatch(expected_found(self, a.variadic, b.variadic)));
@@ -355,31 +322,6 @@ pub trait Combine<'tcx> : Sized {
                   -> cres<'tcx, ty::Region>;
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region>;
-
-    fn trait_stores(&self,
-                    vk: ty::terr_vstore_kind,
-                    a: ty::TraitStore,
-                    b: ty::TraitStore)
-                    -> cres<'tcx, ty::TraitStore> {
-        debug!("{}.trait_stores(a={:?}, b={:?})", self.tag(), a, b);
-
-        match (a, b) {
-            (ty::RegionTraitStore(a_r, a_m),
-             ty::RegionTraitStore(b_r, b_m)) if a_m == b_m => {
-                self.contraregions(a_r, b_r).and_then(|r| {
-                    Ok(ty::RegionTraitStore(r, a_m))
-                })
-            }
-
-            _ if a == b => {
-                Ok(a)
-            }
-
-            _ => {
-                Err(ty::terr_trait_stores_differ(vk, expected_found(self, a, b)))
-            }
-        }
-    }
 
     fn trait_refs(&self,
                   a: &ty::TraitRef<'tcx>,

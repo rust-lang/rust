@@ -33,7 +33,7 @@ pub fn update_recursion_limit(sess: &Session, krate: &ast::Crate) {
             }
         }
 
-        sess.span_err(attr.span, "malformed recursion limit attribute, \
+        span_err!(sess, attr.span, E0296, "malformed recursion limit attribute, \
                                   expected #![recursion_limit=\"N\"]");
     }
 }

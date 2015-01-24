@@ -114,7 +114,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 cx.expr_try(span,
                     cx.expr_method_call(span, blkdecoder.clone(), read_struct_field,
                                         vec!(cx.expr_str(span, name),
-                                          cx.expr_uint(span, field),
+                                          cx.expr_usize(span, field),
                                           exprdecode.clone())))
             });
             let result = cx.expr_ok(trait_span, result);
@@ -123,7 +123,7 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                 cx.ident_of("read_struct"),
                                 vec!(
                 cx.expr_str(trait_span, token::get_ident(substr.type_ident)),
-                cx.expr_uint(trait_span, nfields),
+                cx.expr_usize(trait_span, nfields),
                 cx.lambda_expr_1(trait_span, result, blkarg)
             ))
         }
@@ -143,14 +143,14 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                    path,
                                                    parts,
                                                    |cx, span, _, field| {
-                    let idx = cx.expr_uint(span, field);
+                    let idx = cx.expr_usize(span, field);
                     cx.expr_try(span,
                         cx.expr_method_call(span, blkdecoder.clone(), rvariant_arg,
                                             vec!(idx, exprdecode.clone())))
                 });
 
                 arms.push(cx.arm(v_span,
-                                 vec!(cx.pat_lit(v_span, cx.expr_uint(v_span, i))),
+                                 vec!(cx.pat_lit(v_span, cx.expr_usize(v_span, i))),
                                  decoded));
             }
 
@@ -179,14 +179,14 @@ fn decodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
 
 /// Create a decoder for a single enum variant/struct:
 /// - `outer_pat_path` is the path to this enum variant/struct
-/// - `getarg` should retrieve the `uint`-th field with name `@str`.
+/// - `getarg` should retrieve the `usize`-th field with name `@str`.
 fn decode_static_fields<F>(cx: &mut ExtCtxt,
                            trait_span: Span,
                            outer_pat_path: ast::Path,
                            fields: &StaticFields,
                            mut getarg: F)
                            -> P<Expr> where
-    F: FnMut(&mut ExtCtxt, Span, InternedString, uint) -> P<Expr>,
+    F: FnMut(&mut ExtCtxt, Span, InternedString, usize) -> P<Expr>,
 {
     match *fields {
         Unnamed(ref fields) => {

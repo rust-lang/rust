@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![allow(deprecated)]
+
 use core::finally::{try_finally, Finally};
 use std::thread::Thread;
 

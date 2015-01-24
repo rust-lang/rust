@@ -53,6 +53,7 @@ pub struct Guard {
 /// is held. The precise semantics for when a lock is poisoned is documented on
 /// each lock, but once a lock is poisoned then all future acquisitions will
 /// return this error.
+#[derive(Show)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct PoisonError<T> {
     guard: T,
@@ -60,6 +61,7 @@ pub struct PoisonError<T> {
 
 /// An enumeration of possible errors which can occur while calling the
 /// `try_lock` method.
+#[derive(Show)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryLockError<T> {
     /// The lock could not be acquired because another task failed while holding
@@ -90,7 +92,8 @@ pub type LockResult<Guard> = Result<Guard, PoisonError<Guard>>;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub type TryLockResult<Guard> = Result<Guard, TryLockError<Guard>>;
 
-impl<T> fmt::Show for PoisonError<T> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> fmt::Display for PoisonError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
     }
@@ -131,7 +134,8 @@ impl<T> FromError<PoisonError<T>> for TryLockError<T> {
     }
 }
 
-impl<T> fmt::Show for TryLockError<T> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> fmt::Display for TryLockError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.description().fmt(f)
     }

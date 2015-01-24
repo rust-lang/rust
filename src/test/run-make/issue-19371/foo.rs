@@ -44,7 +44,7 @@ fn basic_sess(sysroot: Path) -> Session {
     opts.output_types = vec![OutputTypeExe];
     opts.maybe_sysroot = Some(sysroot);
 
-    let descriptions = Registry::new(&rustc::DIAGNOSTICS);
+    let descriptions = Registry::new(&rustc::diagnostics::DIAGNOSTICS);
     let sess = build_session(opts, None, descriptions);
     sess
 }

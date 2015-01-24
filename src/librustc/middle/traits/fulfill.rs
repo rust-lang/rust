@@ -84,6 +84,7 @@ pub struct FulfillmentContext<'tcx> {
     region_obligations: NodeMap<Vec<RegionObligation<'tcx>>>,
 }
 
+#[derive(Clone)]
 pub struct RegionObligation<'tcx> {
     pub sub_region: ty::Region,
     pub sup_type: Ty<'tcx>,

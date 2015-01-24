@@ -244,8 +244,8 @@ three. The ownership system in Rust does this through a concept called
 Remember the function that borrowed an `i32`? Let's look at it again.
 
 ```rust
-fn add_one(num: &i32) -> i32 {
-    *num + 1
+fn add_one(num: &mut i32) {
+    *num += 1;
 }
 ```
 
@@ -255,8 +255,8 @@ cover the others later. Without eliding the lifetimes, `add_one` looks like
 this:
 
 ```rust
-fn add_one<'a>(num: &'a i32) -> i32 {
-    *num + 1
+fn add_one<'a>(num: &'a mut i32) {
+    *num += 1;
 }
 ```
 
@@ -278,12 +278,12 @@ fn add_two<'a, 'b>(...)
 Then in our parameter list, we use the lifetimes we've named:
 
 ```{rust,ignore}
-...(num: &'a i32) -> ...
+...(num: &'a mut i32)
 ```
 
-If you compare `&i32` to `&'a i32`, they're the same, it's just that the
-lifetime `'a` has snuck in between the `&` and the `i32`. We read `&i32` as "a
-reference to an i32" and `&'a i32` as "a reference to an i32 with the lifetime 'a.'"
+If you compare `&mut i32` to `&'a mut i32`, they're the same, it's just that the
+lifetime `'a` has snuck in between the `&` and the `mut i32`. We read `&mut i32` as "a
+mutable reference to an i32" and `&'a mut i32` as "a mutable reference to an i32 with the lifetime 'a.'"
 
 Why do lifetimes matter? Well, for example, here's some code:
 

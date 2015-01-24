@@ -161,8 +161,8 @@ impl Reader for MemReader {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = &self.buf[self.pos.. (self.pos + write_len)];
-            let output = buf.slice_to_mut(write_len);
+            let input = &self.buf[self.pos.. self.pos + write_len];
+            let output = &mut buf[..write_len];
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
         }
@@ -207,11 +207,11 @@ impl<'a> Reader for &'a [u8] {
         let write_len = min(buf.len(), self.len());
         {
             let input = &self[..write_len];
-            let output = buf.slice_to_mut(write_len);
+            let output = &mut buf[.. write_len];
             slice::bytes::copy_memory(output, input);
         }
 
-        *self = self.slice_from(write_len);
+        *self = &self[write_len..];
 
         Ok(write_len)
     }
@@ -272,7 +272,7 @@ impl<'a> BufWriter<'a> {
 impl<'a> Writer for BufWriter<'a> {
     #[inline]
     fn write(&mut self, src: &[u8]) -> IoResult<()> {
-        let dst = self.buf.slice_from_mut(self.pos);
+        let dst = &mut self.buf[self.pos..];
         let dst_len = dst.len();
 
         if dst_len == 0 {
@@ -351,8 +351,8 @@ impl<'a> Reader for BufReader<'a> {
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
-            let input = &self.buf[self.pos.. (self.pos + write_len)];
-            let output = buf.slice_to_mut(write_len);
+            let input = &self.buf[self.pos.. self.pos + write_len];
+            let output = &mut buf[..write_len];
             assert_eq!(input.len(), output.len());
             slice::bytes::copy_memory(output, input);
         }
@@ -434,8 +434,8 @@ mod test {
             writer.write(&[]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
 
-            assert_eq!(writer.write(&[8, 9]).unwrap_err().kind, io::ShortWrite(1));
-            assert_eq!(writer.write(&[10]).unwrap_err().kind, io::EndOfFile);
+            assert_eq!(writer.write(&[8, 9]).err().unwrap().kind, io::ShortWrite(1));
+            assert_eq!(writer.write(&[10]).err().unwrap().kind, io::EndOfFile);
         }
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
         assert_eq!(buf, b);

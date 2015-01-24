@@ -297,14 +297,25 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     fn visit_region_obligations(&mut self, node_id: ast::NodeId)
     {
         debug!("visit_region_obligations: node_id={}", node_id);
-        let fulfillment_cx = self.fcx.inh.fulfillment_cx.borrow();
-        for r_o in fulfillment_cx.region_obligations(node_id).iter() {
+
+        // Make a copy of the region obligations vec because we'll need
+        // to be able to borrow the fulfillment-cx below when projecting.
+        let region_obligations =
+            self.fcx.inh.fulfillment_cx.borrow()
+                                       .region_obligations(node_id)
+                                       .to_vec();
+
+        for r_o in region_obligations.iter() {
             debug!("visit_region_obligations: r_o={}",
                    r_o.repr(self.tcx()));
             let sup_type = self.resolve_type(r_o.sup_type);
             let origin = infer::RelateRegionParamBound(r_o.cause.span);
             type_must_outlive(self, origin, sup_type, r_o.sub_region);
         }
+
+        // Processing the region obligations should not cause the list to grow further:
+        assert_eq!(region_obligations.len(),
+                   self.fcx.inh.fulfillment_cx.borrow().region_obligations(node_id).len());
     }
 
     /// This method populates the region map's `free_region_map`. It walks over the transformed
@@ -531,7 +542,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
 
         ast::ExprMethodCall(_, _, ref args) => {
             constrain_call(rcx, expr, Some(&*args[0]),
-                           args.slice_from(1).iter().map(|e| &**e), false);
+                           args[1..].iter().map(|e| &**e), false);
 
             visit::walk_expr(rcx, expr);
         }
@@ -1480,6 +1491,15 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                    generic.to_ty(rcx.tcx()),
                                    param_env.caller_bounds.predicates.as_slice().to_vec());
 
+    // In the case of a projection T::Foo, we may be able to extract bounds from the trait def:
+    match *generic {
+        GenericKind::Param(..) => { }
+        GenericKind::Projection(ref projection_ty) => {
+            param_bounds.push_all(
+                &projection_bounds(rcx, origin.span(), projection_ty)[]);
+        }
+    }
+
     // Add in the default bound of fn body that applies to all in
     // scope type parameters:
     param_bounds.push(param_env.implicit_region_bound);
@@ -1510,4 +1530,74 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                                          generic.clone(),
                                          region,
                                          param_bounds);
+}
+
+fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
+                              span: Span,
+                              projection_ty: &ty::ProjectionTy<'tcx>)
+                              -> Vec<ty::Region>
+{
+    let fcx = rcx.fcx;
+    let tcx = fcx.tcx();
+    let infcx = fcx.infcx();
+
+    debug!("projection_bounds(projection_ty={})",
+           projection_ty.repr(tcx));
+
+    let ty = ty::mk_projection(tcx, projection_ty.trait_ref.clone(), projection_ty.item_name);
+
+    // Say we have a projection `<T as SomeTrait<'a>>::SomeType`. We are interested
+    // in looking for a trait definition like:
+    //
+    // ```
+    // trait SomeTrait<'a> {
+    //     type SomeType : 'a;
+    // }
+    // ```
+    //
+    // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
+    let trait_def = ty::lookup_trait_def(tcx, projection_ty.trait_ref.def_id);
+    let predicates = trait_def.generics.predicates.as_slice().to_vec();
+    traits::elaborate_predicates(tcx, predicates)
+        .filter_map(|predicate| {
+            // we're only interesting in `T : 'a` style predicates:
+            let outlives = match predicate {
+                ty::Predicate::TypeOutlives(data) => data,
+                _ => { return None; }
+            };
+
+            debug!("projection_bounds: outlives={} (1)",
+                   outlives.repr(tcx));
+
+            // apply the substitutions (and normalize any projected types)
+            let outlives = fcx.instantiate_type_scheme(span,
+                                                       projection_ty.trait_ref.substs,
+                                                       &outlives);
+
+            debug!("projection_bounds: outlives={} (2)",
+                   outlives.repr(tcx));
+
+            let region_result = infcx.try(|_| {
+                let (outlives, _) =
+                    infcx.replace_late_bound_regions_with_fresh_var(
+                        span,
+                        infer::AssocTypeProjection(projection_ty.item_name),
+                        &outlives);
+
+                debug!("projection_bounds: outlives={} (3)",
+                       outlives.repr(tcx));
+
+                // check whether this predicate applies to our current projection
+                match infer::mk_eqty(infcx, false, infer::Misc(span), ty, outlives.0) {
+                    Ok(()) => { Ok(outlives.1) }
+                    Err(_) => { Err(()) }
+                }
+            });
+
+            debug!("projection_bounds: region_result={}",
+                   region_result.repr(tcx));
+
+            region_result.ok()
+        })
+        .collect()
 }

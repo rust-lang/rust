@@ -19,7 +19,7 @@ use std::fmt;
 /// string when passed to a format string.
 pub struct Escape<'a>(pub &'a str);
 
-impl<'a> fmt::String for Escape<'a> {
+impl<'a> fmt::Display for Escape<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
@@ -29,7 +29,7 @@ impl<'a> fmt::String for Escape<'a> {
         for (i, ch) in s.bytes().enumerate() {
             match ch as char {
                 '<' | '>' | '&' | '\'' | '"' => {
-                    try!(fmt.write_str(pile_o_bits.slice(last, i)));
+                    try!(fmt.write_str(&pile_o_bits[last.. i]));
                     let s = match ch as char {
                         '>' => "&gt;",
                         '<' => "&lt;",
@@ -46,7 +46,7 @@ impl<'a> fmt::String for Escape<'a> {
         }
 
         if last < s.len() {
-            try!(fmt.write_str(pile_o_bits.slice_from(last)));
+            try!(fmt.write_str(&pile_o_bits[last..]));
         }
         Ok(())
     }

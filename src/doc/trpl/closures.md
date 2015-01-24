@@ -117,14 +117,7 @@ fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
 arguments. `x` is an `i32`, we've done that a ton of times. `f` is a function,
 though, and that function takes an `i32` and returns an `i32`. This is
 what the requirement `Fn(i32) -> i32` for the type parameter `F` says.
-You might ask yourself: why do we need to introduce a type parameter here?
-That is because in Rust each closure has its own unique type.
-So, not only do closures with different signatures have different types,
-but different closures with the *same* signature have *different* types!
-You can think of it this way: the behaviour of a closure is part of its type.
-And since we want to support many different closures that all take
-an `i32` and return an `i32` we introduced a type parameter that is able
-to represent all these closures. 
+Now `F` represents *any* function that takes an `i32` and returns an `i32`.
 
 This is the most complicated function signature we've seen yet! Give it a read
 a few times until you can see how it works. It takes a teeny bit of practice, and
@@ -180,6 +173,40 @@ fn main() {
 ```
 
 Doing this is not particularly common, but it's useful every once in a while.
+
+Before we move on, let us look at a function that accepts two closures.
+
+```{rust}
+fn compose<F, G>(x: i32, f: F, g: G) -> i32
+    where F: Fn(i32) -> i32, G: Fn(i32) -> i32 {
+    g(f(x))
+}
+
+fn main() {
+    compose(5,
+            |&: n: i32| { n + 42 },
+            |&: n: i32| { n * 2 }); // evaluates to 94
+}
+```
+
+You might ask yourself: why do we need to introduce two type
+parameters `F` and `G` here?  Evidently, both `f` and `g` have the
+same signature: `Fn(i32) -> i32`.
+
+That is because in Rust each closure has its own unique type.
+So, not only do closures with different signatures have different types,
+but different closures with the *same* signature have *different*
+types, as well!
+
+You can think of it this way: the behavior of a closure is part of its
+type.  Therefore, using a single type parameter for both closures
+will accept the first of them, rejecting the second. The distinct
+type of the second closure does not allow it to be represented by the
+same type parameter as that of the first.  We acknowledge this, and
+use two different type parameters `F` and `G`.
+
+This also introduces the `where` clause, which lets us describe type
+parameters in a more flexible manner.
 
 That's all you need to get the hang of closures! Closures are a little bit
 strange at first, but once you're used to them, you'll miss them

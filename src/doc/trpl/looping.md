@@ -123,7 +123,7 @@ We now loop forever with `loop` and use `break` to break out early.
 iteration. This will only print the odd numbers:
 
 ```{rust}
-for x in 0..10 {
+for x in 0u32..10 {
     if x % 2 == 0 { continue; }
 
     println!("{}", x);

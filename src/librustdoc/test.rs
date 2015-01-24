@@ -79,7 +79,7 @@ pub fn run(input: &str,
     let ctx = core::DocContext {
         krate: &krate,
         maybe_typed: core::NotTyped(sess),
-        src: input_path,
+        input: input,
         external_paths: RefCell::new(Some(HashMap::new())),
         external_traits: RefCell::new(None),
         external_typarams: RefCell::new(None),

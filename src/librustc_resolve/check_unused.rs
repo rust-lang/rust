@@ -25,7 +25,6 @@ use Namespace::{TypeNS, ValueNS};
 use rustc::lint;
 use rustc::middle::privacy::{DependsOn, LastImport, Used, Unused};
 use syntax::ast;
-use syntax::ast::{ViewItem, ViewItemExternCrate, ViewItemUse};
 use syntax::ast::{ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::codemap::{Span, DUMMY_SP};
 use syntax::visit::{self, Visitor};
@@ -109,53 +108,54 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
 }
 
 impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
-    fn visit_view_item(&mut self, vi: &ViewItem) {
+    fn visit_item(&mut self, item: &ast::Item) {
         // Ignore is_public import statements because there's no way to be sure
         // whether they're used or not. Also ignore imports with a dummy span
         // because this means that they were generated in some fashion by the
         // compiler and we don't need to consider them.
-        if vi.vis == ast::Public || vi.span == DUMMY_SP {
-            visit::walk_view_item(self, vi);
+        if item.vis == ast::Public || item.span == DUMMY_SP {
+            visit::walk_item(self, item);
             return;
         }
 
-        match vi.node {
-            ViewItemExternCrate(_, _, id) => {
-                if let Some(crate_num) = self.session.cstore.find_extern_mod_stmt_cnum(id) {
+        match item.node {
+            ast::ItemExternCrate(_) => {
+                if let Some(crate_num) = self.session.cstore.find_extern_mod_stmt_cnum(item.id) {
                     if !self.used_crates.contains(&crate_num) {
                         self.session.add_lint(lint::builtin::UNUSED_EXTERN_CRATES,
-                                              id,
-                                              vi.span,
+                                              item.id,
+                                              item.span,
                                               "unused extern crate".to_string());
                     }
                 }
             },
-            ViewItemUse(ref p) => {
+            ast::ItemUse(ref p) => {
                 match p.node {
-                    ViewPathSimple(_, _, id) => {
-                        self.finalize_import(id, p.span)
+                    ViewPathSimple(_, _) => {
+                        self.finalize_import(item.id, p.span)
                     }
 
-                    ViewPathList(_, ref list, _) => {
+                    ViewPathList(_, ref list) => {
                         for i in list.iter() {
                             self.finalize_import(i.node.id(), i.span);
                         }
                     }
-                    ViewPathGlob(_, id) => {
-                        if !self.used_imports.contains(&(id, TypeNS)) &&
-                           !self.used_imports.contains(&(id, ValueNS)) {
+                    ViewPathGlob(_) => {
+                        if !self.used_imports.contains(&(item.id, TypeNS)) &&
+                           !self.used_imports.contains(&(item.id, ValueNS)) {
                             self.session
                                 .add_lint(lint::builtin::UNUSED_IMPORTS,
-                                          id,
+                                          item.id,
                                           p.span,
                                           "unused import".to_string());
                         }
                     }
                 }
             }
+            _ => {}
         }
 
-        visit::walk_view_item(self, vi);
+        visit::walk_item(self, item);
     }
 }
 

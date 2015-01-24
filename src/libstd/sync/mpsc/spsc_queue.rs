@@ -39,6 +39,7 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use core::mem;
+use core::ptr;
 use core::cell::UnsafeCell;
 
 use sync::atomic::{AtomicPtr, AtomicUsize, Ordering};
@@ -82,7 +83,7 @@ impl<T: Send> Node<T> {
         unsafe {
             mem::transmute(box Node {
                 value: None,
-                next: AtomicPtr::new(0 as *mut Node<T>),
+                next: AtomicPtr::new(ptr::null_mut::<Node<T>>()),
             })
         }
     }
@@ -131,7 +132,7 @@ impl<T: Send> Queue<T> {
             let n = self.alloc();
             assert!((*n).value.is_none());
             (*n).value = Some(t);
-            (*n).next.store(0 as *mut Node<T>, Ordering::Relaxed);
+            (*n).next.store(ptr::null_mut(), Ordering::Relaxed);
             (**self.head.get()).next.store(n, Ordering::Release);
             *self.head.get() = n;
         }

@@ -21,6 +21,7 @@ use trans::cleanup::CleanupMethods;
 use trans::common::*;
 use trans::consts;
 use trans::datum::*;
+use trans::debuginfo::DebugLoc;
 use trans::expr::{Dest, Ignore, SaveIn};
 use trans::expr;
 use trans::glue;
@@ -58,7 +59,11 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let dataptr = get_dataptr(bcx, vptr);
         let bcx = if type_needs_drop(tcx, unit_ty) {
             let len = get_len(bcx, vptr);
-            iter_vec_raw(bcx, dataptr, unit_ty, len, |bb, vv, tt| glue::drop_ty(bb, vv, tt, None))
+            iter_vec_raw(bcx,
+                         dataptr,
+                         unit_ty,
+                         len,
+                         |bb, vv, tt| glue::drop_ty(bb, vv, tt, DebugLoc::None))
         } else {
             bcx
         };
@@ -71,7 +76,7 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let not_empty = ICmp(bcx, llvm::IntNE, len, C_uint(ccx, 0u));
                 with_cond(bcx, not_empty, |bcx| {
                     let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty));
-                    let size = Mul(bcx, C_uint(ccx, unit_size), len);
+                    let size = Mul(bcx, C_uint(ccx, unit_size), len, DebugLoc::None);
                     glue::trans_exchange_free_dyn(bcx, dataptr, size, llalign)
                 })
             } else {
@@ -420,14 +425,14 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let cond_bcx = fcx.new_temp_block("expr_repeat: loop cond");
     let body_bcx = fcx.new_temp_block("expr_repeat: body: set");
     let inc_bcx = fcx.new_temp_block("expr_repeat: body: inc");
-    Br(bcx, loop_bcx.llbb);
+    Br(bcx, loop_bcx.llbb, DebugLoc::None);
 
     let loop_counter = {
         // i = 0
         let i = alloca(loop_bcx, bcx.ccx().int_type(), "__i");
         Store(loop_bcx, C_uint(bcx.ccx(), 0u), i);
 
-        Br(loop_bcx, cond_bcx.llbb);
+        Br(loop_bcx, cond_bcx.llbb, DebugLoc::None);
         i
     };
 
@@ -436,7 +441,7 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         let rhs = count;
         let cond_val = ICmp(cond_bcx, llvm::IntULT, lhs, rhs);
 
-        CondBr(cond_bcx, cond_val, body_bcx.llbb, next_bcx.llbb);
+        CondBr(cond_bcx, cond_val, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
     }
 
     { // loop body
@@ -448,15 +453,15 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         };
         let body_bcx = f(body_bcx, lleltptr, vt.unit_ty);
 
-        Br(body_bcx, inc_bcx.llbb);
+        Br(body_bcx, inc_bcx.llbb, DebugLoc::None);
     }
 
     { // i += 1
         let i = Load(inc_bcx, loop_counter);
-        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1u));
+        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1u), DebugLoc::None);
         Store(inc_bcx, plusone, loop_counter);
 
-        Br(inc_bcx, cond_bcx.llbb);
+        Br(inc_bcx, cond_bcx.llbb, DebugLoc::None);
     }
 
     next_bcx
@@ -484,19 +489,19 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
         // Now perform the iteration.
         let header_bcx = fcx.new_temp_block("iter_vec_loop_header");
-        Br(bcx, header_bcx.llbb);
+        Br(bcx, header_bcx.llbb, DebugLoc::None);
         let data_ptr =
             Phi(header_bcx, val_ty(data_ptr), &[data_ptr], &[bcx.llbb]);
         let not_yet_at_end =
             ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr);
         let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
         let next_bcx = fcx.new_temp_block("iter_vec_next");
-        CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb);
+        CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
         let body_bcx = f(body_bcx, data_ptr, vt.unit_ty);
         AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
                                                &[C_int(bcx.ccx(), 1i)]),
                          body_bcx.llbb);
-        Br(body_bcx, header_bcx.llbb);
+        Br(body_bcx, header_bcx.llbb, DebugLoc::None);
         next_bcx
     }
 }

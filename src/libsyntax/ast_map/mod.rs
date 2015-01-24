@@ -46,7 +46,7 @@ impl PathElem {
     }
 }
 
-impl fmt::String for PathElem {
+impl fmt::Display for PathElem {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let slot = token::get_name(self.name());
         write!(f, "{}", slot)
@@ -107,7 +107,6 @@ pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
 #[derive(Copy, Show)]
 pub enum Node<'ast> {
     NodeItem(&'ast Item),
-    NodeViewItem(&'ast ViewItem),
     NodeForeignItem(&'ast ForeignItem),
     NodeTraitItem(&'ast TraitItem),
     NodeImplItem(&'ast ImplItem),
@@ -134,7 +133,6 @@ enum MapEntry<'ast> {
 
     /// All the node types, with a parent ID.
     EntryItem(NodeId, &'ast Item),
-    EntryViewItem(NodeId, &'ast ViewItem),
     EntryForeignItem(NodeId, &'ast ForeignItem),
     EntryTraitItem(NodeId, &'ast TraitItem),
     EntryImplItem(NodeId, &'ast ImplItem),
@@ -169,7 +167,6 @@ impl<'ast> MapEntry<'ast> {
     fn from_node(p: NodeId, node: Node<'ast>) -> MapEntry<'ast> {
         match node {
             NodeItem(n) => EntryItem(p, n),
-            NodeViewItem(n) => EntryViewItem(p, n),
             NodeForeignItem(n) => EntryForeignItem(p, n),
             NodeTraitItem(n) => EntryTraitItem(p, n),
             NodeImplItem(n) => EntryImplItem(p, n),
@@ -188,7 +185,6 @@ impl<'ast> MapEntry<'ast> {
     fn parent(self) -> Option<NodeId> {
         Some(match self {
             EntryItem(id, _) => id,
-            EntryViewItem(id, _) => id,
             EntryForeignItem(id, _) => id,
             EntryTraitItem(id, _) => id,
             EntryImplItem(id, _) => id,
@@ -208,7 +204,6 @@ impl<'ast> MapEntry<'ast> {
     fn to_node(self) -> Option<Node<'ast>> {
         Some(match self {
             EntryItem(_, n) => NodeItem(n),
-            EntryViewItem(_, n) => NodeViewItem(n),
             EntryForeignItem(_, n) => NodeForeignItem(n),
             EntryTraitItem(_, n) => NodeTraitItem(n),
             EntryImplItem(_, n) => NodeImplItem(n),
@@ -264,12 +259,12 @@ pub struct Map<'ast> {
 }
 
 impl<'ast> Map<'ast> {
-    fn entry_count(&self) -> uint {
+    fn entry_count(&self) -> usize {
         self.map.borrow().len()
     }
 
     fn find_entry(&self, id: NodeId) -> Option<MapEntry<'ast>> {
-        self.map.borrow().get(id as uint).map(|e| *e)
+        self.map.borrow().get(id as usize).map(|e| *e)
     }
 
     pub fn krate(&self) -> &'ast Crate {
@@ -338,13 +333,6 @@ impl<'ast> Map<'ast> {
         match self.find(id) {
             Some(NodeItem(item)) => item,
             _ => panic!("expected item, found {}", self.node_to_string(id))
-        }
-    }
-
-    pub fn expect_view_item(&self, id: NodeId) -> &'ast ViewItem {
-        match self.find(id) {
-            Some(NodeViewItem(view_item)) => view_item,
-            _ => panic!("expected view item, found {}", self.node_to_string(id))
         }
     }
 
@@ -525,7 +513,7 @@ impl<'ast> Map<'ast> {
         NodesMatchingSuffix {
             map: self,
             item_name: parts.last().unwrap(),
-            in_which: &parts[..(parts.len() - 1)],
+            in_which: &parts[..parts.len() - 1],
             idx: 0,
         }
     }
@@ -533,7 +521,6 @@ impl<'ast> Map<'ast> {
     pub fn opt_span(&self, id: NodeId) -> Option<Span> {
         let sp = match self.find(id) {
             Some(NodeItem(item)) => item.span,
-            Some(NodeViewItem(item)) => item.span,
             Some(NodeForeignItem(foreign_item)) => foreign_item.span,
             Some(NodeTraitItem(trait_method)) => {
                 match *trait_method {
@@ -652,7 +639,7 @@ impl<'a, 'ast> Iterator for NodesMatchingSuffix<'a, 'ast> {
     fn next(&mut self) -> Option<NodeId> {
         loop {
             let idx = self.idx;
-            if idx as uint >= self.map.entry_count() {
+            if idx as usize >= self.map.entry_count() {
                 return None;
             }
             self.idx += 1;
@@ -744,10 +731,10 @@ impl<'ast> NodeCollector<'ast> {
     fn insert_entry(&mut self, id: NodeId, entry: MapEntry<'ast>) {
         debug!("ast_map: {:?} => {:?}", id, entry);
         let len = self.map.len();
-        if id as uint >= len {
-            self.map.extend(repeat(NotPresent).take(id as uint - len + 1));
+        if id as usize >= len {
+            self.map.extend(repeat(NotPresent).take(id as usize - len + 1));
         }
-        self.map[id as uint] = entry;
+        self.map[id as usize] = entry;
     }
 
     fn insert(&mut self, id: NodeId, node: Node<'ast>) {
@@ -826,11 +813,6 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.parent = parent;
     }
 
-    fn visit_view_item(&mut self, item: &'ast ViewItem) {
-        self.insert(item.id(), NodeViewItem(item));
-        visit::walk_view_item(self, item);
-    }
-
     fn visit_pat(&mut self, pat: &'ast Pat) {
         self.insert(pat.id, match pat.node {
             // Note: this is at least *potentially* a pattern...
@@ -904,7 +886,6 @@ pub fn map_crate<'ast, F: FoldOps>(forest: &'ast mut Forest, fold_ops: F) -> Map
     let krate = mem::replace(&mut forest.krate, Crate {
         module: Mod {
             inner: DUMMY_SP,
-            view_items: vec![],
             items: vec![],
         },
         attrs: vec![],
@@ -1036,7 +1017,6 @@ impl<'a> NodePrinter for pprust::State<'a> {
     fn print_node(&mut self, node: &Node) -> IoResult<()> {
         match *node {
             NodeItem(a)        => self.print_item(&*a),
-            NodeViewItem(a)    => self.print_view_item(&*a),
             NodeForeignItem(a) => self.print_foreign_item(&*a),
             NodeTraitItem(a)   => self.print_trait_method(&*a),
             NodeImplItem(a)    => self.print_impl_item(&*a),
@@ -1065,6 +1045,8 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
         Some(NodeItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);
             let item_str = match item.node {
+                ItemExternCrate(..) => "extern crate",
+                ItemUse(..) => "use",
                 ItemStatic(..) => "static",
                 ItemConst(..) => "const",
                 ItemFn(..) => "fn",
@@ -1078,9 +1060,6 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemMac(..) => "macro"
             };
             format!("{} {}{}", item_str, path_str, id_str)
-        }
-        Some(NodeViewItem(item)) => {
-            format!("view item {}{}", pprust::view_item_to_string(&*item), id_str)
         }
         Some(NodeForeignItem(item)) => {
             let path_str = map.path_to_str_with_ident(id, item.ident);

@@ -13,6 +13,15 @@
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(box_syntax)]
 #![feature(int_uint)]
+#![feature(test)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(path)]
+#![feature(io)]
+#![feature(core)]
+#![feature(collections)]
+#![feature(os)]
+#![feature(unicode)]
 
 #![deny(warnings)]
 
@@ -21,7 +30,6 @@ extern crate getopts;
 
 #[macro_use]
 extern crate log;
-extern crate regex;
 
 use std::os;
 use std::io;
@@ -32,7 +40,6 @@ use getopts::{optopt, optflag, reqopt};
 use common::Config;
 use common::{Pretty, DebugInfoGdb, DebugInfoLldb, Codegen};
 use util::logv;
-use regex::Regex;
 
 pub mod procsrv;
 pub mod util;
@@ -76,10 +83,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "target-rustcflags", "flags to pass to rustc for target", "FLAGS"),
           optflag("", "verbose", "run tests verbosely, showing all output"),
           optopt("", "logfile", "file to log test execution to", "FILE"),
-          optopt("", "save-metrics", "file to save metrics to", "FILE"),
-          optopt("", "ratchet-metrics", "file to ratchet metrics against", "FILE"),
-          optopt("", "ratchet-noise-percent",
-                 "percent change in metrics to consider noise", "N"),
           optflag("", "jit", "run tests under the JIT"),
           optopt("", "target", "the target to build for", "TARGET"),
           optopt("", "host", "the host to build for", "HOST"),
@@ -89,7 +92,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           optopt("", "adb-path", "path to the android debugger", "PATH"),
           optopt("", "adb-test-dir", "path to tests for the android debugger", "PATH"),
           optopt("", "lldb-python-dir", "directory containing LLDB's python module", "PATH"),
-          optopt("", "test-shard", "run shard A, of B shards, worth of the testsuite", "A.B"),
           optflag("h", "help", "show this message"));
 
     assert!(!args.is_empty());
@@ -120,14 +122,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     }
 
     let filter = if !matches.free.is_empty() {
-        let s = matches.free[0].as_slice();
-        match regex::Regex::new(s) {
-            Ok(re) => Some(re),
-            Err(e) => {
-                println!("failed to parse filter /{}/: {:?}", s, e);
-                panic!()
-            }
-        }
+        Some(matches.free[0].clone())
     } else {
         None
     };
@@ -149,14 +144,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
                                        .as_slice()).expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: filter,
-        cfail_regex: Regex::new(errors::EXPECTED_PATTERN).unwrap(),
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),
-        save_metrics: matches.opt_str("save-metrics").map(|s| Path::new(s)),
-        ratchet_metrics:
-            matches.opt_str("ratchet-metrics").map(|s| Path::new(s)),
-        ratchet_noise_percent:
-            matches.opt_str("ratchet-noise-percent")
-                   .and_then(|s| s.as_slice().parse::<f64>()),
         runtool: matches.opt_str("runtool"),
         host_rustcflags: matches.opt_str("host-rustcflags"),
         target_rustcflags: matches.opt_str("target-rustcflags"),
@@ -175,7 +163,6 @@ pub fn parse_config(args: Vec<String> ) -> Config {
                 opt_str2(matches.opt_str("adb-test-dir")).as_slice() &&
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
-        test_shard: test::opt_shard(matches.opt_str("test-shard")),
         verbose: matches.opt_present("verbose"),
     }
 }
@@ -209,10 +196,6 @@ pub fn log_config(config: &Config) {
     logv(c, format!("adb_test_dir: {:?}", config.adb_test_dir));
     logv(c, format!("adb_device_status: {}",
                     config.adb_device_status));
-    match config.test_shard {
-        None => logv(c, "test_shard: (all)".to_string()),
-        Some((a,b)) => logv(c, format!("test_shard: {}.{}", a, b))
-    }
     logv(c, format!("verbose: {}", config.verbose));
     logv(c, format!("\n"));
 }
@@ -263,6 +246,9 @@ pub fn run_tests(config: &Config) {
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
     io::test::raise_fd_limit();
+    // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
+    // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
+    os::setenv("__COMPAT_LAYER", "RunAsInvoker");
     let res = test::run_tests_console(&opts, tests.into_iter().collect());
     match res {
         Ok(true) => {}
@@ -283,15 +269,8 @@ pub fn test_opts(config: &Config) -> test::TestOpts {
         logfile: config.logfile.clone(),
         run_tests: true,
         run_benchmarks: true,
-        ratchet_metrics: config.ratchet_metrics.clone(),
-        ratchet_noise_percent: config.ratchet_noise_percent.clone(),
-        save_metrics: config.save_metrics.clone(),
-        test_shard: config.test_shard.clone(),
         nocapture: false,
         color: test::AutoColor,
-        show_boxplot: false,
-        boxplot_width: 50,
-        show_all_stats: false,
     }
 }
 
@@ -393,18 +372,24 @@ fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
           if full_version_line.as_slice().trim().len() > 0 => {
             let full_version_line = full_version_line.as_slice().trim();
 
-            let re = Regex::new(r"(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)").unwrap();
-
-            match re.captures(full_version_line) {
-                Some(captures) => {
-                    Some(captures.at(2).unwrap_or("").to_string())
+            // used to be a regex "(^|[^0-9])([0-9]\.[0-9])([^0-9]|$)"
+            for (pos, c) in full_version_line.char_indices() {
+                if !c.is_digit(10) { continue }
+                if pos + 2 >= full_version_line.len() { continue }
+                if full_version_line.char_at(pos + 1) != '.' { continue }
+                if !full_version_line.char_at(pos + 2).is_digit(10) { continue }
+                if pos > 0 && full_version_line.char_at_reverse(pos).is_digit(10) {
+                    continue
                 }
-                None => {
-                    println!("Could not extract GDB version from line '{}'",
-                             full_version_line);
-                    None
+                if pos + 3 < full_version_line.len() &&
+                   full_version_line.char_at(pos + 3).is_digit(10) {
+                    continue
                 }
+                return Some(full_version_line[pos..pos+3].to_string());
             }
+            println!("Could not extract GDB version from line '{}'",
+                     full_version_line);
+            None
         },
         _ => None
     }
@@ -427,18 +412,26 @@ fn extract_lldb_version(full_version_line: Option<String>) -> Option<String> {
           if full_version_line.as_slice().trim().len() > 0 => {
             let full_version_line = full_version_line.as_slice().trim();
 
-            let re = Regex::new(r"[Ll][Ll][Dd][Bb]-([0-9]+)").unwrap();
+            for (pos, l) in full_version_line.char_indices() {
+                if l != 'l' && l != 'L' { continue }
+                if pos + 5 >= full_version_line.len() { continue }
+                let l = full_version_line.char_at(pos + 1);
+                if l != 'l' && l != 'L' { continue }
+                let d = full_version_line.char_at(pos + 2);
+                if d != 'd' && d != 'D' { continue }
+                let b = full_version_line.char_at(pos + 3);
+                if b != 'b' && b != 'B' { continue }
+                let dash = full_version_line.char_at(pos + 4);
+                if dash != '-' { continue }
 
-            match re.captures(full_version_line) {
-                Some(captures) => {
-                    Some(captures.at(1).unwrap_or("").to_string())
-                }
-                None => {
-                    println!("Could not extract LLDB version from line '{}'",
-                             full_version_line);
-                    None
-                }
+                let vers = full_version_line[pos + 5..].chars().take_while(|c| {
+                    c.is_digit(10)
+                }).collect::<String>();
+                if vers.len() > 0 { return Some(vers) }
             }
+            println!("Could not extract LLDB version from line '{}'",
+                     full_version_line);
+            None
         },
         _ => None
     }

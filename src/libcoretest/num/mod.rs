@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use core::cmp::PartialEq;
-use core::fmt::Show;
+use core::fmt::Debug;
 use core::num::{NumCast, cast};
 use core::ops::{Add, Sub, Mul, Div, Rem};
 use core::marker::Copy;
@@ -37,7 +37,7 @@ pub fn test_num<T>(ten: T, two: T) where
     T: PartialEq + NumCast
      + Add<Output=T> + Sub<Output=T>
      + Mul<Output=T> + Div<Output=T>
-     + Rem<Output=T> + Show
+     + Rem<Output=T> + Debug
      + Copy
 {
     assert_eq!(ten.add(two),  cast(12i).unwrap());

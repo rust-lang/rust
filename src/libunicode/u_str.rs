@@ -249,8 +249,8 @@ impl<'a> Iterator for Graphemes<'a> {
             Some(cat)
         };
 
-        let retstr = self.string.slice_to(idx);
-        self.string = self.string.slice_from(idx);
+        let retstr = &self.string[..idx];
+        self.string = &self.string[idx..];
         Some(retstr)
     }
 }
@@ -350,8 +350,8 @@ impl<'a> DoubleEndedIterator for Graphemes<'a> {
             Some(cat)
         };
 
-        let retstr = self.string.slice_from(idx);
-        self.string = self.string.slice_to(idx);
+        let retstr = &self.string[idx..];
+        self.string = &self.string[..idx];
         Some(retstr)
     }
 }

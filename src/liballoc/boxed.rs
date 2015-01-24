@@ -8,7 +8,40 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! A unique pointer type.
+//! A pointer type for heap allocation.
+//!
+//! `Box<T>`, casually referred to as a 'box', provides the simplest form of heap allocation in
+//! Rust. Boxes provide ownership for this allocation, and drop their contents when they go out of
+//! scope.
+//!
+//! Boxes are useful in two situations: recursive data structures, and occasionally when returning
+//! data. [The Pointer chapter of the Book](../../../book/pointers.html#best-practices-1) explains
+//! these cases in detail.
+//!
+//! # Examples
+//!
+//! Creating a box:
+//!
+//! ```
+//! let x = Box::new(5);
+//! ```
+//!
+//! Creating a recursive data structure:
+//!
+//! ```
+//! #[derive(Show)]
+//! enum List<T> {
+//!     Cons(T, Box<List<T>>),
+//!     Nil,
+//! }
+//!
+//! fn main() {
+//!     let list: List<i32> = List::Cons(1, Box::new(List::Cons(2, Box::new(List::Nil))));
+//!     println!("{:?}", list);
+//! }
+//! ```
+//!
+//! This will print `Cons(1i32, Box(Cons(2i32, Box(Nil))))`.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -16,19 +49,21 @@ use core::any::Any;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
+use core::error::{Error, FromError};
 use core::fmt;
 use core::hash::{self, Hash};
+use core::iter::Iterator;
 use core::marker::Sized;
 use core::mem;
+use core::ops::{Deref, DerefMut};
 use core::option::Option;
 use core::ptr::Unique;
 use core::raw::TraitObject;
-use core::result::Result;
 use core::result::Result::{Ok, Err};
-use core::ops::{Deref, DerefMut};
+use core::result::Result;
 
-/// A value that represents the global exchange heap. This is the default
-/// place that the `box` keyword allocates into when no place is supplied.
+/// A value that represents the heap. This is the default place that the `box` keyword allocates
+/// into when no place is supplied.
 ///
 /// The following two examples are equivalent:
 ///
@@ -37,10 +72,8 @@ use core::ops::{Deref, DerefMut};
 /// use std::boxed::HEAP;
 ///
 /// fn main() {
-/// # struct Bar;
-/// # impl Bar { fn new(_a: int) { } }
-///     let foo = box(HEAP) Bar::new(2);
-///     let foo = box Bar::new(2);
+///     let foo = box(HEAP) 5;
+///     let foo = box 5;
 /// }
 /// ```
 #[lang = "exchange_heap"]
@@ -48,13 +81,21 @@ use core::ops::{Deref, DerefMut};
            reason = "may be renamed; uncertain about custom allocator design")]
 pub static HEAP: () = ();
 
-/// A type that represents a uniquely-owned value.
+/// A pointer type for heap allocation.
+///
+/// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T>(Unique<T>);
 
 impl<T> Box<T> {
-    /// Moves `x` into a freshly allocated box on the global exchange heap.
+    /// Allocates memory on the heap and then moves `x` into it.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new(5);
+    /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(x: T) -> Box<T> {
         box x
@@ -75,11 +116,29 @@ impl<T> Default for Box<[T]> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for Box<T> {
-    /// Returns a copy of the owned box.
+    /// Returns a new box with a `clone()` of this box's contents.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new(5);
+    /// let y = x.clone();
+    /// ```
     #[inline]
     fn clone(&self) -> Box<T> { box {(**self).clone()} }
 
-    /// Performs copy-assignment from `source` by reusing the existing allocation.
+    /// Copies `source`'s contents into `self` without creating a new allocation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let x = Box::new(5);
+    /// let mut y = Box::new(10);
+    ///
+    /// y.clone_from(&x);
+    ///
+    /// assert_eq!(*y, 5);
+    /// ```
     #[inline]
     fn clone_from(&mut self, source: &Box<T>) {
         (**self).clone_from(&(**source));
@@ -158,20 +217,22 @@ impl BoxAny for Box<Any> {
     }
 }
 
-impl<T: ?Sized + fmt::Show> fmt::Show for Box<T> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: fmt::Display + ?Sized> fmt::Display for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        write!(f, "Box({:?})", &**self)
+        fmt::Display::fmt(&**self, f)
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: ?Sized + fmt::String> fmt::String for Box<T> {
+impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::String::fmt(&**self, f)
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
-impl fmt::Show for Box<Any> {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }
@@ -189,56 +250,22 @@ impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
-#[cfg(test)]
-mod test {
-    #[test]
-    fn test_owned_clone() {
-        let a = Box::new(5i);
-        let b: Box<int> = a.clone();
-        assert!(a == b);
+// FIXME(#21363) remove `old_impl_check` when bug is fixed
+#[old_impl_check]
+impl<'a, T> Iterator for Box<Iterator<Item=T> + 'a> {
+    type Item = T;
+
+    fn next(&mut self) -> Option<T> {
+        (**self).next()
     }
 
-    #[test]
-    fn any_move() {
-        let a = Box::new(8u) as Box<Any>;
-        let b = Box::new(Test) as Box<Any>;
-
-        match a.downcast::<uint>() {
-            Ok(a) => { assert!(a == Box::new(8u)); }
-            Err(..) => panic!()
-        }
-        match b.downcast::<Test>() {
-            Ok(a) => { assert!(a == Box::new(Test)); }
-            Err(..) => panic!()
-        }
-
-        let a = Box::new(8u) as Box<Any>;
-        let b = Box::new(Test) as Box<Any>;
-
-        assert!(a.downcast::<Box<Test>>().is_err());
-        assert!(b.downcast::<Box<uint>>().is_err());
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        (**self).size_hint()
     }
+}
 
-    #[test]
-    fn test_show() {
-        let a = Box::new(8u) as Box<Any>;
-        let b = Box::new(Test) as Box<Any>;
-        let a_str = a.to_str();
-        let b_str = b.to_str();
-        assert_eq!(a_str, "Box<Any>");
-        assert_eq!(b_str, "Box<Any>");
-
-        let a = &8u as &Any;
-        let b = &Test as &Any;
-        let s = format!("{}", a);
-        assert_eq!(s, "&Any");
-        let s = format!("{}", b);
-        assert_eq!(s, "&Any");
-    }
-
-    #[test]
-    fn deref() {
-        fn homura<T: Deref<Target=i32>>(_: T) { }
-        homura(Box::new(765i32));
+impl<'a, E: Error + 'a> FromError<E> for Box<Error + 'a> {
+    fn from_error(err: E) -> Box<Error + 'a> {
+        Box::new(err)
     }
 }

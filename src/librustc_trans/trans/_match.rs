@@ -208,10 +208,10 @@ use trans::cleanup::{self, CleanupMethods};
 use trans::common::*;
 use trans::consts;
 use trans::datum::*;
+use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::expr::{self, Dest};
 use trans::tvec;
 use trans::type_of;
-use trans::debuginfo;
 use middle::ty::{self, Ty};
 use session::config::FullDebugInfo;
 use util::common::indenter;
@@ -472,7 +472,7 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     enter_match(bcx, dm, m, col, val, |pats| {
         if pat_is_binding_or_wild(dm, &*pats[col]) {
             let mut r = pats[..col].to_vec();
-            r.push_all(&pats[(col + 1)..]);
+            r.push_all(&pats[col + 1..]);
             Some(r)
         } else {
             None
@@ -632,7 +632,7 @@ fn bind_subslice_pat(bcx: Block,
 
     let slice_begin = InBoundsGEP(bcx, base, &[C_uint(bcx.ccx(), offset_left)]);
     let slice_len_offset = C_uint(bcx.ccx(), offset_left + offset_right);
-    let slice_len = Sub(bcx, len, slice_len_offset);
+    let slice_len = Sub(bcx, len, slice_len_offset, DebugLoc::None);
     let slice_ty = ty::mk_slice(bcx.tcx(),
                                 bcx.tcx().mk_region(ty::ReStatic),
                                 ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
@@ -656,7 +656,7 @@ fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     elems.extend(range(0, before).map(|i| GEPi(bcx, base, &[i])));
     elems.extend(range(0, after).rev().map(|i| {
         InBoundsGEP(bcx, base, &[
-            Sub(bcx, len, C_uint(bcx.ccx(), i + 1))
+            Sub(bcx, len, C_uint(bcx.ccx(), i + 1), DebugLoc::None)
         ])
     }));
     ExtractedBlock { vals: elems, bcx: bcx }
@@ -731,7 +731,7 @@ impl FailureHandler {
             Infallible =>
                 panic!("attempted to panic in a non-panicking panic handler!"),
             JumpToBasicBlock(basic_block) =>
-                Br(bcx, basic_block),
+                Br(bcx, basic_block, DebugLoc::None),
             Unreachable =>
                 build::Unreachable(bcx)
         }
@@ -889,7 +889,7 @@ fn compile_guard<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         }
     }
 
-    with_cond(bcx, Not(bcx, val), |bcx| {
+    with_cond(bcx, Not(bcx, val, guard_expr.debug_loc()), |bcx| {
         // Guard does not match: remove all bindings from the lllocals table
         for (_, &binding_info) in data.bindings_map.iter() {
             call_lifetime_end(bcx, binding_info.llmatch);
@@ -966,7 +966,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }
                 _ => ()
             }
-            Br(bcx, data.bodycx.llbb);
+            Br(bcx, data.bodycx.llbb, DebugLoc::None);
         }
     }
 }
@@ -983,7 +983,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let dm = &tcx.def_map;
 
     let mut vals_left = vals[0u..col].to_vec();
-    vals_left.push_all(&vals[(col + 1u)..]);
+    vals_left.push_all(&vals[col + 1u..]);
     let ccx = bcx.fcx.ccx;
 
     // Find a real id (we're adding placeholder wildcard patterns, but
@@ -1096,7 +1096,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         if !exhaustive || i + 1 < len {
             opt_cx = bcx.fcx.new_temp_block("match_case");
             match kind {
-                Single => Br(bcx, opt_cx.llbb),
+                Single => Br(bcx, opt_cx.llbb, DebugLoc::None),
                 Switch => {
                     match opt.trans(bcx) {
                         SingleResult(r) => {
@@ -1131,7 +1131,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                     compare_scalar_types(
                                     bcx, test_val, vend,
                                     t, ast::BiLe);
-                                Result::new(bcx, And(bcx, llge, llle))
+                                Result::new(bcx, And(bcx, llge, llle, DebugLoc::None))
                             }
                             LowerBound(Result { bcx, val }) => {
                                 compare_scalar_types(bcx, test_val, val, t, ast::BiGe)
@@ -1149,12 +1149,12 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     if i + 1 < len && (guarded || multi_pats || kind == CompareSliceLength) {
                         branch_chk = Some(JumpToBasicBlock(bcx.llbb));
                     }
-                    CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb);
+                    CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb, DebugLoc::None);
                 }
                 _ => ()
             }
         } else if kind == Compare || kind == CompareSliceLength {
-            Br(bcx, else_cx.llbb);
+            Br(bcx, else_cx.llbb, DebugLoc::None);
         }
 
         let mut size = 0u;
@@ -1194,7 +1194,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // Compile the fall-through case, if any
     if !exhaustive && kind != Single {
         if kind == Compare || kind == CompareSliceLength {
-            Br(bcx, else_cx.llbb);
+            Br(bcx, else_cx.llbb, DebugLoc::None);
         }
         match chk {
             // If there is only one default arm left, move on to the next

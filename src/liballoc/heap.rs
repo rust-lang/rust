@@ -280,7 +280,7 @@ mod imp {
         if align <= MIN_ALIGN {
             libc::malloc(size as libc::size_t) as *mut u8
         } else {
-            let mut out = 0 as *mut libc::c_void;
+            let mut out = ptr::null_mut();
             let ret = posix_memalign(&mut out,
                                      align as libc::size_t,
                                      size as libc::size_t);

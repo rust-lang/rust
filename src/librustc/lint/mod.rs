@@ -128,7 +128,6 @@ pub trait LintPass {
     fn check_crate(&mut self, _: &Context, _: &ast::Crate) { }
     fn check_ident(&mut self, _: &Context, _: Span, _: ast::Ident) { }
     fn check_mod(&mut self, _: &Context, _: &ast::Mod, _: Span, _: ast::NodeId) { }
-    fn check_view_item(&mut self, _: &Context, _: &ast::ViewItem) { }
     fn check_foreign_item(&mut self, _: &Context, _: &ast::ForeignItem) { }
     fn check_item(&mut self, _: &Context, _: &ast::Item) { }
     fn check_local(&mut self, _: &Context, _: &ast::Local) { }

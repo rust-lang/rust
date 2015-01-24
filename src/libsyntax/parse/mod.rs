@@ -181,7 +181,7 @@ pub fn parse_tts_from_source_str(name: String,
         name,
         source
     );
-    p.quote_depth += 1u;
+    p.quote_depth += 1us;
     // right now this is re-creating the token trees from ... token trees.
     maybe_aborted(p.parse_all_token_trees(),p)
 }
@@ -324,7 +324,7 @@ pub mod with_hygiene {
             name,
             source
         );
-        p.quote_depth += 1u;
+        p.quote_depth += 1us;
         // right now this is re-creating the token trees from ... token trees.
         maybe_aborted(p.parse_all_token_trees(),p)
     }
@@ -364,7 +364,7 @@ pub mod with_hygiene {
 }
 
 /// Abort if necessary
-pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
+pub fn maybe_aborted<T>(result: T, p: Parser) -> T {
     p.abort_if_errors();
     result
 }
@@ -373,7 +373,7 @@ pub fn maybe_aborted<T>(result: T, mut p: Parser) -> T {
 /// Rather than just accepting/rejecting a given literal, unescapes it as
 /// well. Can take any slice prefixed by a character escape. Returns the
 /// character and the number of characters consumed.
-pub fn char_lit(lit: &str) -> (char, int) {
+pub fn char_lit(lit: &str) -> (char, isize) {
     use std::{num, char};
 
     let mut chars = lit.chars();
@@ -400,19 +400,19 @@ pub fn char_lit(lit: &str) -> (char, int) {
     let msg = format!("lexer should have rejected a bad character escape {}", lit);
     let msg2 = &msg[];
 
-    fn esc(len: uint, lit: &str) -> Option<(char, int)> {
+    fn esc(len: usize, lit: &str) -> Option<(char, isize)> {
         num::from_str_radix(&lit[2..len], 16)
         .and_then(char::from_u32)
-        .map(|x| (x, len as int))
+        .map(|x| (x, len as isize))
     }
 
-    let unicode_escape = |&: | -> Option<(char, int)>
+    let unicode_escape = |&: | -> Option<(char, isize)>
         if lit.as_bytes()[2] == b'{' {
             let idx = lit.find('}').expect(msg2);
             let subslice = &lit[3..idx];
             num::from_str_radix(subslice, 16)
                 .and_then(char::from_u32)
-                .map(|x| (x, subslice.chars().count() as int + 4))
+                .map(|x| (x, subslice.chars().count() as isize + 4))
         } else {
             esc(6, lit)
         };
@@ -436,7 +436,7 @@ pub fn str_lit(lit: &str) -> String {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a>(it: &mut iter::Peekable<(uint, char), str::CharIndices<'a>>) {
+    fn eat<'a>(it: &mut iter::Peekable<(usize, char), str::CharIndices<'a>>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
@@ -567,13 +567,13 @@ pub fn float_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) -> a
 }
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
-pub fn byte_lit(lit: &str) -> (u8, uint) {
+pub fn byte_lit(lit: &str) -> (u8, usize) {
     let err = |&: i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
 
     if lit.len() == 1 {
         (lit.as_bytes()[0], 1)
     } else {
-        assert!(lit.as_bytes()[0] == b'\\', err(0i));
+        assert!(lit.as_bytes()[0] == b'\\', err(0is));
         let b = match lit.as_bytes()[1] {
             b'"' => b'"',
             b'n' => b'\n',
@@ -605,7 +605,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a, I: Iterator<Item=(uint, u8)>>(it: &mut iter::Peekable<(uint, u8), I>) {
+    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<(usize, u8), I>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
@@ -683,9 +683,9 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     match suffix {
         Some(suf) if looks_like_width_suffix(&['f'], suf) => {
             match base {
-                16u => sd.span_err(sp, "hexadecimal float literal is not supported"),
-                8u => sd.span_err(sp, "octal float literal is not supported"),
-                2u => sd.span_err(sp, "binary float literal is not supported"),
+                16us => sd.span_err(sp, "hexadecimal float literal is not supported"),
+                8us => sd.span_err(sp, "octal float literal is not supported"),
+                2us => sd.span_err(sp, "binary float literal is not supported"),
                 _ => ()
             }
             let ident = token::intern_and_get_ident(&*s);
@@ -757,11 +757,10 @@ mod test {
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
-    use print::pprust::view_item_to_string;
+    use print::pprust::item_to_string;
     use ptr::P;
     use util::parser_testing::{string_to_tts, string_to_parser};
-    use util::parser_testing::{string_to_expr, string_to_item};
-    use util::parser_testing::{string_to_stmt, string_to_view_item};
+    use util::parser_testing::{string_to_expr, string_to_item, string_to_stmt};
 
     // produce a codemap::span
     fn sp(a: u32, b: u32) -> Span {
@@ -854,7 +853,7 @@ mod test {
 
     #[test]
     fn string_to_tts_1 () {
-        let tts = string_to_tts("fn a (b : int) { b; }".to_string());
+        let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
         assert_eq!(json::encode(&tts),
         "[\
     {\
@@ -918,7 +917,7 @@ mod test {
                             {\
                                 \"variant\":\"Ident\",\
                                 \"fields\":[\
-                                    \"int\",\
+                                    \"i32\",\
                                     \"Plain\"\
                                 ]\
                             }\
@@ -1030,8 +1029,8 @@ mod test {
 
     // check the contents of the tt manually:
     #[test] fn parse_fundecl () {
-        // this test depends on the intern order of "fn" and "int"
-        assert!(string_to_item("fn a (b : int) { b; }".to_string()) ==
+        // this test depends on the intern order of "fn" and "i32"
+        assert_eq!(string_to_item("fn a (b : i32) { b; }".to_string()),
                   Some(
                       P(ast::Item{ident:str_to_ident("a"),
                             attrs:Vec::new(),
@@ -1045,7 +1044,7 @@ mod test {
                                         segments: vec!(
                                             ast::PathSegment {
                                                 identifier:
-                                                    str_to_ident("int"),
+                                                    str_to_ident("i32"),
                                                 parameters: ast::PathParameters::none(),
                                             }
                                         ),
@@ -1079,7 +1078,6 @@ mod test {
                                         }
                                     },
                                     P(ast::Block {
-                                        view_items: Vec::new(),
                                         stmts: vec!(P(Spanned{
                                             node: ast::StmtSemi(P(ast::Expr{
                                                 id: ast::DUMMY_NODE_ID,
@@ -1111,25 +1109,25 @@ mod test {
 
     #[test] fn parse_use() {
         let use_s = "use foo::bar::baz;";
-        let vitem = string_to_view_item(use_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], use_s);
 
         let use_s = "use foo::bar as baz;";
-        let vitem = string_to_view_item(use_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(use_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], use_s);
     }
 
     #[test] fn parse_extern_crate() {
         let ex_s = "extern crate foo;";
-        let vitem = string_to_view_item(ex_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], ex_s);
 
         let ex_s = "extern crate \"foo\" as bar;";
-        let vitem = string_to_view_item(ex_s.to_string());
-        let vitem_s = view_item_to_string(&vitem);
+        let vitem = string_to_item(ex_s.to_string()).unwrap();
+        let vitem_s = item_to_string(&*vitem);
         assert_eq!(&vitem_s[], ex_s);
     }
 
@@ -1158,19 +1156,19 @@ mod test {
 
     #[test] fn span_of_self_arg_pat_idents_are_correct() {
 
-        let srcs = ["impl z { fn a (&self, &myarg: int) {} }",
-                    "impl z { fn a (&mut self, &myarg: int) {} }",
-                    "impl z { fn a (&'a self, &myarg: int) {} }",
-                    "impl z { fn a (self, &myarg: int) {} }",
-                    "impl z { fn a (self: Foo, &myarg: int) {} }",
+        let srcs = ["impl z { fn a (&self, &myarg: i32) {} }",
+                    "impl z { fn a (&mut self, &myarg: i32) {} }",
+                    "impl z { fn a (&'a self, &myarg: i32) {} }",
+                    "impl z { fn a (self, &myarg: i32) {} }",
+                    "impl z { fn a (self: Foo, &myarg: i32) {} }",
                     ];
 
         for &src in srcs.iter() {
             let spans = get_spans_of_pat_idents(src);
             let Span{ lo, hi, .. } = spans[0];
-            assert!("self" == &src[lo.to_uint()..hi.to_uint()],
+            assert!("self" == &src[lo.to_usize()..hi.to_usize()],
                     "\"{}\" != \"self\". src=\"{}\"",
-                    &src[lo.to_uint()..hi.to_uint()], src)
+                    &src[lo.to_usize()..hi.to_usize()], src)
         }
     }
 

@@ -46,7 +46,7 @@ use trans::build::*;
 use trans::cleanup::{self, CleanupMethods};
 use trans::common::*;
 use trans::datum::*;
-use trans::debuginfo;
+use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::glue;
 use trans::machine;
 use trans::meth;
@@ -65,7 +65,6 @@ use trans::machine::{llsize_of, llsize_of_alloc};
 use trans::type_::Type;
 
 use syntax::{ast, ast_util, codemap};
-use syntax::print::pprust::{expr_to_string};
 use syntax::ptr::P;
 use syntax::parse::token;
 use std::rc::Rc;
@@ -779,7 +778,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let expected = Call(bcx,
                                 expect,
                                 &[bounds_check, C_bool(ccx, false)],
-                                None);
+                                None,
+                                index_expr.debug_loc());
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
                                                      index_expr.span,
@@ -890,10 +890,10 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_into(bcx, &**e, Ignore)
         }
         ast::ExprBreak(label_opt) => {
-            controlflow::trans_break(bcx, expr.id, label_opt)
+            controlflow::trans_break(bcx, expr, label_opt)
         }
         ast::ExprAgain(label_opt) => {
-            controlflow::trans_cont(bcx, expr.id, label_opt)
+            controlflow::trans_cont(bcx, expr, label_opt)
         }
         ast::ExprRet(ref ex) => {
             // Check to see if the return expression itself is reachable.
@@ -905,7 +905,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             if reachable {
-                controlflow::trans_ret(bcx, ex.as_ref().map(|e| &**e))
+                controlflow::trans_ret(bcx, expr, ex.as_ref().map(|e| &**e))
             } else {
                 // If it's not reachable, just translate the inner expression
                 // directly. This avoids having to manage a return slot when
@@ -921,7 +921,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             }
         }
         ast::ExprWhile(ref cond, ref body, _) => {
-            controlflow::trans_while(bcx, expr.id, &**cond, &**body)
+            controlflow::trans_while(bcx, expr, &**cond, &**body)
         }
         ast::ExprForLoop(ref pat, ref head, ref body, _) => {
             controlflow::trans_for(bcx,
@@ -931,7 +931,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    &**body)
         }
         ast::ExprLoop(ref body, _) => {
-            controlflow::trans_loop(bcx, expr.id, &**body)
+            controlflow::trans_loop(bcx, expr, &**body)
         }
         ast::ExprAssign(ref dst, ref src) => {
             let src_datum = unpack_datum!(bcx, trans(bcx, &**src));
@@ -960,7 +960,7 @@ fn trans_rvalue_stmt_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 bcx = glue::drop_ty(bcx,
                                     dst_datum.val,
                                     dst_datum.ty,
-                                    Some(NodeInfo { id: expr.id, span: expr.span }));
+                                    expr.debug_loc());
                 src_datum.store_to(bcx, dst_datum.val)
             } else {
                 src_datum.store_to(bcx, dst_datum.val)
@@ -1078,7 +1078,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                       &numbered_fields[],
                       None,
                       dest,
-                      Some(NodeInfo { id: expr.id, span: expr.span }))
+                      expr.debug_loc())
         }
         ast::ExprLit(ref lit) => {
             match lit.node {
@@ -1102,17 +1102,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // closure or an older, legacy style closure. Store this
             // into a variable to ensure the the RefCell-lock is
             // released before we recurse.
-            let is_unboxed_closure =
-                bcx.tcx().unboxed_closures.borrow().contains_key(&ast_util::local_def(expr.id));
-            if is_unboxed_closure {
-                closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
-            } else {
-                let expr_ty = expr_ty(bcx, expr);
-                let store = ty::ty_closure_store(expr_ty);
-                debug!("translating block function {} with type {}",
-                       expr_to_string(expr), expr_ty.repr(tcx));
-                closure::trans_expr_fn(bcx, store, &**decl, &**body, expr.id, dest)
-            }
+            closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
@@ -1417,7 +1407,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                   numbered_fields.as_slice(),
                   optbase,
                   dest,
-                  Some(NodeInfo { id: expr_id, span: expr_span }))
+                  DebugLoc::At(expr_id, expr_span))
     })
 }
 
@@ -1448,18 +1438,13 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                  fields: &[(uint, &ast::Expr)],
                                  optbase: Option<StructBaseInfo<'a, 'tcx>>,
                                  dest: Dest,
-                                 source_location: Option<NodeInfo>)
+                                 debug_location: DebugLoc)
                                  -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_adt");
     let fcx = bcx.fcx;
     let repr = adt::represent_type(bcx.ccx(), ty);
 
-    match source_location {
-        Some(src_loc) => debuginfo::set_source_location(bcx.fcx,
-                                                        src_loc.id,
-                                                        src_loc.span),
-        None => {}
-    };
+    debug_location.apply(bcx.fcx);
 
     // If we don't care about the result, just make a
     // temporary stack slot
@@ -1494,12 +1479,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
     }
 
-    match source_location {
-        Some(src_loc) => debuginfo::set_source_location(bcx.fcx,
-                                                        src_loc.id,
-                                                        src_loc.span),
-        None => {}
-    };
+    debug_location.apply(bcx.fcx);
 
     if ty::type_is_simd(bcx.tcx(), ty) {
         // This is the constructor of a SIMD type, such types are
@@ -1540,7 +1520,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     match dest {
         SaveIn(_) => bcx,
         Ignore => {
-            bcx = glue::drop_ty(bcx, addr, ty, source_location);
+            bcx = glue::drop_ty(bcx, addr, ty, debug_location);
             base::call_lifetime_end(bcx, addr);
             bcx
         }
@@ -1579,10 +1559,12 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let un_ty = expr_ty(bcx, expr);
 
+    let debug_loc = expr.debug_loc();
+
     match op {
         ast::UnNot => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
-            let llresult = Not(bcx, datum.to_llscalarish(bcx));
+            let llresult = Not(bcx, datum.to_llscalarish(bcx), debug_loc);
             immediate_rvalue_bcx(bcx, llresult, un_ty).to_expr_datumblock()
         }
         ast::UnNeg => {
@@ -1590,9 +1572,9 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let val = datum.to_llscalarish(bcx);
             let llneg = {
                 if ty::type_is_fp(un_ty) {
-                    FNeg(bcx, val)
+                    FNeg(bcx, val, debug_loc)
                 } else {
-                    Neg(bcx, val)
+                    Neg(bcx, val, debug_loc)
                 }
             };
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
@@ -1691,56 +1673,69 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let rhs = base::cast_shift_expr_rhs(bcx, op, lhs, rhs);
 
+    let binop_debug_loc = binop_expr.debug_loc();
+
     let mut bcx = bcx;
     let val = match op {
       ast::BiAdd => {
-        if is_float { FAdd(bcx, lhs, rhs) }
-        else { Add(bcx, lhs, rhs) }
+        if is_float {
+            FAdd(bcx, lhs, rhs, binop_debug_loc)
+        } else {
+            Add(bcx, lhs, rhs, binop_debug_loc)
+        }
       }
       ast::BiSub => {
-        if is_float { FSub(bcx, lhs, rhs) }
-        else { Sub(bcx, lhs, rhs) }
+        if is_float {
+            FSub(bcx, lhs, rhs, binop_debug_loc)
+        } else {
+            Sub(bcx, lhs, rhs, binop_debug_loc)
+        }
       }
       ast::BiMul => {
-        if is_float { FMul(bcx, lhs, rhs) }
-        else { Mul(bcx, lhs, rhs) }
+        if is_float {
+            FMul(bcx, lhs, rhs, binop_debug_loc)
+        } else {
+            Mul(bcx, lhs, rhs, binop_debug_loc)
+        }
       }
       ast::BiDiv => {
         if is_float {
-            FDiv(bcx, lhs, rhs)
+            FDiv(bcx, lhs, rhs, binop_debug_loc)
         } else {
             // Only zero-check integers; fp /0 is NaN
             bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
                                                   op, lhs, rhs, rhs_t);
             if is_signed {
-                SDiv(bcx, lhs, rhs)
+                SDiv(bcx, lhs, rhs, binop_debug_loc)
             } else {
-                UDiv(bcx, lhs, rhs)
+                UDiv(bcx, lhs, rhs, binop_debug_loc)
             }
         }
       }
       ast::BiRem => {
         if is_float {
-            FRem(bcx, lhs, rhs)
+            FRem(bcx, lhs, rhs, binop_debug_loc)
         } else {
             // Only zero-check integers; fp %0 is NaN
             bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
                                                   op, lhs, rhs, rhs_t);
             if is_signed {
-                SRem(bcx, lhs, rhs)
+                SRem(bcx, lhs, rhs, binop_debug_loc)
             } else {
-                URem(bcx, lhs, rhs)
+                URem(bcx, lhs, rhs, binop_debug_loc)
             }
         }
       }
-      ast::BiBitOr => Or(bcx, lhs, rhs),
-      ast::BiBitAnd => And(bcx, lhs, rhs),
-      ast::BiBitXor => Xor(bcx, lhs, rhs),
-      ast::BiShl => Shl(bcx, lhs, rhs),
+      ast::BiBitOr => Or(bcx, lhs, rhs, binop_debug_loc),
+      ast::BiBitAnd => And(bcx, lhs, rhs, binop_debug_loc),
+      ast::BiBitXor => Xor(bcx, lhs, rhs, binop_debug_loc),
+      ast::BiShl => Shl(bcx, lhs, rhs, binop_debug_loc),
       ast::BiShr => {
         if is_signed {
-            AShr(bcx, lhs, rhs)
-        } else { LShr(bcx, lhs, rhs) }
+            AShr(bcx, lhs, rhs, binop_debug_loc)
+        } else {
+            LShr(bcx, lhs, rhs, binop_debug_loc)
+        }
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if ty::type_is_scalar(rhs_t) {
@@ -1786,8 +1781,8 @@ fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let before_rhs = fcx.new_id_block("before_rhs", b.id);
 
     match op {
-      lazy_and => CondBr(past_lhs, lhs, before_rhs.llbb, join.llbb),
-      lazy_or => CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb)
+      lazy_and => CondBr(past_lhs, lhs, before_rhs.llbb, join.llbb, DebugLoc::None),
+      lazy_or => CondBr(past_lhs, lhs, join.llbb, before_rhs.llbb, DebugLoc::None)
     }
 
     let DatumBlock {bcx: past_rhs, datum: rhs} = trans(before_rhs, b);
@@ -1797,7 +1792,7 @@ fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return immediate_rvalue_bcx(join, lhs, binop_ty).to_expr_datumblock();
     }
 
-    Br(past_rhs, join.llbb);
+    Br(past_rhs, join.llbb, DebugLoc::None);
     let phi = Phi(join, Type::i1(bcx.ccx()), &[lhs, rhs],
                   &[past_lhs.llbb, past_rhs.llbb]);
 

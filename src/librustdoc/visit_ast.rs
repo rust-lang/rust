@@ -20,7 +20,6 @@ use syntax::ast_map;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
 use syntax::codemap::Span;
-use syntax::ptr::P;
 
 use rustc::middle::stability;
 
@@ -142,9 +141,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                               m: &ast::Mod,
                               name: Option<ast::Ident>) -> Module {
         let mut om = Module::new(name);
-        for item in m.view_items.iter() {
-            self.visit_view_item(item, &mut om);
-        }
         om.where_outer = span;
         om.where_inner = m.inner;
         om.attrs = attrs;
@@ -157,68 +153,41 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om
     }
 
-    pub fn visit_view_item(&mut self, item: &ast::ViewItem, om: &mut Module) {
-        if item.vis != ast::Public {
-            return om.view_items.push(item.clone());
-        }
-        let please_inline = item.attrs.iter().any(|item| {
-            match item.meta_item_list() {
-                Some(list) => {
-                    list.iter().any(|i| i.name().get() == "inline")
-                }
-                None => false,
-            }
-        });
-        let item = match item.node {
-            ast::ViewItemUse(ref vpath) => {
-                match self.visit_view_path(&**vpath, om, please_inline) {
-                    None => return,
-                    Some(path) => {
-                        ast::ViewItem {
-                            node: ast::ViewItemUse(path),
-                            .. item.clone()
-                        }
-                    }
-                }
-            }
-            ast::ViewItemExternCrate(..) => item.clone()
-        };
-        om.view_items.push(item);
-    }
-
-    fn visit_view_path(&mut self, path: &ast::ViewPath,
+    fn visit_view_path(&mut self, path: ast::ViewPath_,
                        om: &mut Module,
-                       please_inline: bool) -> Option<P<ast::ViewPath>> {
-        match path.node {
-            ast::ViewPathSimple(dst, _, id) => {
+                       id: ast::NodeId,
+                       please_inline: bool) -> Option<ast::ViewPath_> {
+        match path {
+            ast::ViewPathSimple(dst, base) => {
                 if self.resolve_id(id, Some(dst), false, om, please_inline) {
-                    return None
+                    None
+                } else {
+                    Some(ast::ViewPathSimple(dst, base))
                 }
             }
-            ast::ViewPathList(ref p, ref paths, ref b) => {
-                let mut mine = Vec::new();
-                for path in paths.iter() {
-                    if !self.resolve_id(path.node.id(), None, false, om,
-                                        please_inline) {
-                        mine.push(path.clone());
-                    }
-                }
+            ast::ViewPathList(p, paths) => {
+                let mine = paths.into_iter().filter(|path| {
+                    !self.resolve_id(path.node.id(), None, false, om,
+                                     please_inline)
+                }).collect::<Vec<ast::PathListItem>>();
 
-                if mine.len() == 0 { return None }
-                return Some(P(::syntax::codemap::Spanned {
-                    node: ast::ViewPathList(p.clone(), mine, b.clone()),
-                    span: path.span,
-                }))
+                if mine.len() == 0 {
+                    None
+                } else {
+                    Some(ast::ViewPathList(p, mine))
+                }
             }
 
             // these are feature gated anyway
-            ast::ViewPathGlob(_, id) => {
+            ast::ViewPathGlob(base) => {
                 if self.resolve_id(id, None, true, om, please_inline) {
-                    return None
+                    None
+                } else {
+                    Some(ast::ViewPathGlob(base))
                 }
             }
         }
-        Some(P(path.clone()))
+
     }
 
     fn resolve_id(&mut self, id: ast::NodeId, renamed: Option<ast::Ident>,
@@ -242,9 +211,6 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if glob {
                     match it.node {
                         ast::ItemMod(ref m) => {
-                            for vi in m.view_items.iter() {
-                                self.visit_view_item(vi, om);
-                            }
                             for i in m.items.iter() {
                                 self.visit_item(&**i, None, om);
                             }
@@ -268,6 +234,45 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         debug!("Visiting item {:?}", item);
         let name = renamed.unwrap_or(item.ident);
         match item.node {
+            ast::ItemExternCrate(ref p) => {
+                let path = match *p {
+                    None => None,
+                    Some((ref x, _)) => Some(x.get().to_string()),
+                };
+                om.extern_crates.push(ExternCrate {
+                    name: name,
+                    path: path,
+                    vis: item.vis,
+                    attrs: item.attrs.clone(),
+                    whence: item.span,
+                })
+            }
+            ast::ItemUse(ref vpath) => {
+                let node = vpath.node.clone();
+                let node = if item.vis == ast::Public {
+                    let please_inline = item.attrs.iter().any(|item| {
+                        match item.meta_item_list() {
+                            Some(list) => {
+                                list.iter().any(|i| i.name().get() == "inline")
+                            }
+                            None => false,
+                        }
+                    });
+                    match self.visit_view_path(node, om, item.id, please_inline) {
+                        None => return,
+                        Some(p) => p
+                    }
+                } else {
+                    node
+                };
+                om.imports.push(Import {
+                    id: item.id,
+                    vis: item.vis,
+                    attrs: item.attrs.clone(),
+                    node: node,
+                    whence: item.span,
+                });
+            }
             ast::ItemMod(ref m) => {
                 om.mods.push(self.visit_mod_contents(item.span,
                                                      item.attrs.clone(),

@@ -57,7 +57,7 @@ struct Matrix<'a>(Vec<Vec<&'a Pat>>);
 /// ++++++++++++++++++++++++++
 /// + _     + [_, _, ..tail] +
 /// ++++++++++++++++++++++++++
-impl<'a> fmt::Show for Matrix<'a> {
+impl<'a> fmt::Debug for Matrix<'a> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "\n"));
 
@@ -226,11 +226,10 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
         ast::ExprForLoop(ref pat, _, _, _) => {
             let mut static_inliner = StaticInliner::new(cx.tcx);
             is_refutable(cx, &*static_inliner.fold_pat((*pat).clone()), |uncovered_pat| {
-                cx.tcx.sess.span_err(
-                    pat.span,
-                    &format!("refutable pattern in `for` loop binding: \
+                span_err!(cx.tcx.sess, pat.span, E0297,
+                    "refutable pattern in `for` loop binding: \
                             `{}` not covered",
-                            pat_to_string(uncovered_pat))[]);
+                            pat_to_string(uncovered_pat));
             });
 
             // Check legality of move bindings.
@@ -869,7 +868,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 Some(true) => Some(vec![]),
                 Some(false) => None,
                 None => {
-                    cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
+                    span_err!(cx.tcx.sess, pat_span, E0298, "mismatched types between arms");
                     None
                 }
             }
@@ -882,7 +881,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
                 Some(true) => Some(vec![]),
                 Some(false) => None,
                 None => {
-                    cx.tcx.sess.span_err(pat_span, "mismatched types between arms");
+                    span_err!(cx.tcx.sess, pat_span, E0299, "mismatched types between arms");
                     None
                 }
             }
@@ -921,13 +920,13 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         ast::PatMac(_) => {
-            cx.tcx.sess.span_err(pat_span, "unexpanded macro");
+            span_err!(cx.tcx.sess, pat_span, E0300, "unexpanded macro");
             None
         }
     };
     head.map(|mut head| {
         head.push_all(&r[..col]);
-        head.push_all(&r[(col + 1)..]);
+        head.push_all(&r[col + 1..]);
         head
     })
 }
@@ -1082,11 +1081,8 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
               _: LoanCause) {
         match kind {
             MutBorrow => {
-                self.cx
-                    .tcx
-                    .sess
-                    .span_err(span,
-                              "cannot mutably borrow in a pattern guard")
+                span_err!(self.cx.tcx.sess, span, E0301,
+                          "cannot mutably borrow in a pattern guard")
             }
             ImmBorrow | UniqueImmBorrow => {}
         }
@@ -1095,10 +1091,7 @@ impl<'a, 'tcx> Delegate<'tcx> for MutationChecker<'a, 'tcx> {
     fn mutate(&mut self, _: NodeId, span: Span, _: cmt, mode: MutateMode) {
         match mode {
             JustWrite | WriteAndRead => {
-                self.cx
-                    .tcx
-                    .sess
-                    .span_err(span, "cannot assign in a pattern guard")
+                span_err!(self.cx.tcx.sess, span, E0302, "cannot assign in a pattern guard")
             }
             Init => {}
         }
@@ -1120,7 +1113,7 @@ struct AtBindingPatternVisitor<'a, 'b:'a, 'tcx:'b> {
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for AtBindingPatternVisitor<'a, 'b, 'tcx> {
     fn visit_pat(&mut self, pat: &Pat) {
         if !self.bindings_allowed && pat_is_binding(&self.cx.tcx.def_map, pat) {
-            self.cx.tcx.sess.span_err(pat.span,
+            span_err!(self.cx.tcx.sess, pat.span, E0303,
                                       "pattern bindings are not allowed \
                                        after an `@`");
         }

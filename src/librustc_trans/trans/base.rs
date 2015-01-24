@@ -57,7 +57,7 @@ use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, ExternMap, FunctionContext};
-use trans::common::{NodeInfo, Result};
+use trans::common::{Result};
 use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{tydesc_info, type_is_immediate};
 use trans::common::{type_is_zero_size, val_ty};
@@ -66,7 +66,7 @@ use trans::consts;
 use trans::context::SharedCrateContext;
 use trans::controlflow;
 use trans::datum;
-use trans::debuginfo;
+use trans::debuginfo::{self, DebugLoc};
 use trans::expr;
 use trans::foreign;
 use trans::glue;
@@ -360,18 +360,6 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
         ccx.externs().borrow_mut().insert(name.to_string(), c);
         return c;
     }
-}
-
-// Returns a pointer to the body for the box. The box may be an opaque
-// box. The result will be casted to the type of body_t, if it is statically
-// known.
-pub fn at_box_body<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                               body_t: Ty<'tcx>, boxptr: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("at_box_body");
-    let ccx = bcx.ccx();
-    let ty = Type::at_box(ccx, type_of(ccx, body_t));
-    let boxptr = PointerCast(bcx, boxptr, ty.ptr_to());
-    GEPi(bcx, boxptr, &[0u, abi::BOX_FIELD_BODY])
 }
 
 fn require_alloc_fn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -792,7 +780,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                                        &**variant,
                                        substs,
                                        &mut f);
-                      Br(variant_cx, next_cx.llbb);
+                      Br(variant_cx, next_cx.llbb, DebugLoc::None);
                   }
                   cx = next_cx;
               }
@@ -957,7 +945,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                           llfn: ValueRef,
                           llargs: &[ValueRef],
                           fn_ty: Ty<'tcx>,
-                          call_info: Option<NodeInfo>)
+                          debug_loc: DebugLoc)
                           -> (ValueRef, Block<'blk, 'tcx>) {
     let _icx = push_ctxt("invoke_");
     if bcx.unreachable.get() {
@@ -983,17 +971,13 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let normal_bcx = bcx.fcx.new_temp_block("normal-return");
         let landing_pad = bcx.fcx.get_landing_pad();
 
-        match call_info {
-            Some(info) => debuginfo::set_source_location(bcx.fcx, info.id, info.span),
-            None => debuginfo::clear_source_location(bcx.fcx)
-        };
-
         let llresult = Invoke(bcx,
                               llfn,
                               &llargs[],
                               normal_bcx.llbb,
                               landing_pad,
-                              Some(attributes));
+                              Some(attributes),
+                              debug_loc);
         return (llresult, normal_bcx);
     } else {
         debug!("calling {} at {:?}", bcx.val_to_string(llfn), bcx.llbb);
@@ -1001,12 +985,11 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("arg: {}", bcx.val_to_string(llarg));
         }
 
-        match call_info {
-            Some(info) => debuginfo::set_source_location(bcx.fcx, info.id, info.span),
-            None => debuginfo::clear_source_location(bcx.fcx)
-        };
-
-        let llresult = Call(bcx, llfn, &llargs[], Some(attributes));
+        let llresult = Call(bcx,
+                            llfn,
+                            &llargs[],
+                            Some(attributes),
+                            debug_loc);
         return (llresult, bcx);
     }
 }
@@ -1094,10 +1077,10 @@ pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let fcx = bcx.fcx;
     let next_cx = fcx.new_temp_block("next");
     let cond_cx = fcx.new_temp_block("cond");
-    CondBr(bcx, val, cond_cx.llbb, next_cx.llbb);
+    CondBr(bcx, val, cond_cx.llbb, next_cx.llbb, DebugLoc::None);
     let after_cx = f(cond_cx);
     if !after_cx.terminated.get() {
-        Br(after_cx, next_cx.llbb);
+        Br(after_cx, next_cx.llbb, DebugLoc::None);
     }
     next_cx
 }
@@ -1113,7 +1096,7 @@ pub fn call_lifetime_start(cx: Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_start = ccx.get_intrinsic(&"llvm.lifetime.start");
-    Call(cx, lifetime_start, &[llsize, ptr], None);
+    Call(cx, lifetime_start, &[llsize, ptr], None, DebugLoc::None);
 }
 
 pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
@@ -1127,7 +1110,7 @@ pub fn call_lifetime_end(cx: Block, ptr: ValueRef) {
     let llsize = C_u64(ccx, machine::llsize_of_alloc(ccx, val_ty(ptr).element_type()));
     let ptr = PointerCast(cx, ptr, Type::i8p(ccx));
     let lifetime_end = ccx.get_intrinsic(&"llvm.lifetime.end");
-    Call(cx, lifetime_end, &[llsize, ptr], None);
+    Call(cx, lifetime_end, &[llsize, ptr], None, DebugLoc::None);
 }
 
 pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, align: u32) {
@@ -1144,7 +1127,7 @@ pub fn call_memcpy(cx: Block, dst: ValueRef, src: ValueRef, n_bytes: ValueRef, a
     let size = IntCast(cx, n_bytes, ccx.int_type());
     let align = C_i32(ccx, align as i32);
     let volatile = C_bool(ccx, false);
-    Call(cx, memcpy, &[dst_ptr, src_ptr, size, align, volatile], None);
+    Call(cx, memcpy, &[dst_ptr, src_ptr, size, align, volatile], None, DebugLoc::None);
 }
 
 pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -1697,13 +1680,14 @@ fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
 // and builds the return block.
 pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
                              last_bcx: Block<'blk, 'tcx>,
-                             retty: ty::FnOutput<'tcx>) {
+                             retty: ty::FnOutput<'tcx>,
+                             ret_debug_loc: DebugLoc) {
     let _icx = push_ctxt("finish_fn");
 
     let ret_cx = match fcx.llreturn.get() {
         Some(llreturn) => {
             if !last_bcx.terminated.get() {
-                Br(last_bcx, llreturn);
+                Br(last_bcx, llreturn, DebugLoc::None);
             }
             raw_block(fcx, false, llreturn)
         }
@@ -1713,7 +1697,7 @@ pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
     // This shouldn't need to recompute the return type,
     // as new_fn_ctxt did it already.
     let substd_retty = fcx.monomorphize(&retty);
-    build_return_block(fcx, ret_cx, substd_retty);
+    build_return_block(fcx, ret_cx, substd_retty, ret_debug_loc);
 
     debuginfo::clear_source_location(fcx);
     fcx.cleanup();
@@ -1722,10 +1706,11 @@ pub fn finish_fn<'blk, 'tcx>(fcx: &'blk FunctionContext<'blk, 'tcx>,
 // Builds the return block for a function.
 pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
                                       ret_cx: Block<'blk, 'tcx>,
-                                      retty: ty::FnOutput<'tcx>) {
+                                      retty: ty::FnOutput<'tcx>,
+                                      ret_debug_location: DebugLoc) {
     if fcx.llretslotptr.get().is_none() ||
        (!fcx.needs_ret_allocas && fcx.caller_expects_out_pointer) {
-        return RetVoid(ret_cx);
+        return RetVoid(ret_cx, ret_debug_location);
     }
 
     let retslot = if fcx.needs_ret_allocas {
@@ -1755,9 +1740,9 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
                 if let ty::FnConverging(retty) = retty {
                     store_ty(ret_cx, retval, get_param(fcx.llfn, 0), retty);
                 }
-                RetVoid(ret_cx)
+                RetVoid(ret_cx, ret_debug_location)
             } else {
-                Ret(ret_cx, retval)
+                Ret(ret_cx, retval, ret_debug_location)
             }
         }
         // Otherwise, copy the return value to the ret slot
@@ -1765,16 +1750,16 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
             ty::FnConverging(retty) => {
                 if fcx.caller_expects_out_pointer {
                     memcpy_ty(ret_cx, get_param(fcx.llfn, 0), retslot, retty);
-                    RetVoid(ret_cx)
+                    RetVoid(ret_cx, ret_debug_location)
                 } else {
-                    Ret(ret_cx, load_ty(ret_cx, retslot, retty))
+                    Ret(ret_cx, load_ty(ret_cx, retslot, retty), ret_debug_location)
                 }
             }
             ty::FnDiverging => {
                 if fcx.caller_expects_out_pointer {
-                    RetVoid(ret_cx)
+                    RetVoid(ret_cx, ret_debug_location)
                 } else {
-                    Ret(ret_cx, C_undef(Type::nil(fcx.ccx)))
+                    Ret(ret_cx, C_undef(Type::nil(fcx.ccx)), ret_debug_location)
                 }
             }
         }
@@ -1832,7 +1817,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                    .map(|arg| node_id_type(bcx, arg.id))
                    .collect::<Vec<_>>();
     let monomorphized_arg_types = match closure_env.kind {
-        closure::NotClosure | closure::BoxedClosure(..) => {
+        closure::NotClosure => {
             monomorphized_arg_types
         }
 
@@ -1859,7 +1844,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     };
 
     bcx = match closure_env.kind {
-        closure::NotClosure | closure::BoxedClosure(..) => {
+        closure::NotClosure => {
             copy_args_to_allocas(bcx,
                                  arg_scope,
                                  &decl.inputs[],
@@ -1905,7 +1890,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     match fcx.llreturn.get() {
         Some(_) => {
-            Br(bcx, fcx.return_exit_block());
+            Br(bcx, fcx.return_exit_block(), DebugLoc::None);
             fcx.pop_custom_cleanup_scope(arg_scope);
         }
         None => {
@@ -1924,8 +1909,11 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
     }
 
+    let ret_debug_loc = DebugLoc::At(fn_cleanup_debug_loc.id,
+                                     fn_cleanup_debug_loc.span);
+
     // Insert the mandatory first few basic blocks before lltop.
-    finish_fn(&fcx, bcx, output_type);
+    finish_fn(&fcx, bcx, output_type, ret_debug_loc);
 }
 
 // trans_fn: creates an LLVM function corresponding to a source language
@@ -1977,7 +1965,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                  disr: ty::Disr,
                                                  args: callee::CallArgs,
                                                  dest: expr::Dest,
-                                                 call_info: Option<NodeInfo>)
+                                                 debug_loc: DebugLoc)
                                                  -> Result<'blk, 'tcx> {
 
     let ccx = bcx.fcx.ccx;
@@ -2016,7 +2004,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                       &fields[],
                                       None,
                                       expr::SaveIn(llresult),
-                                      call_info);
+                                      debug_loc);
             }
             _ => ccx.sess().bug("expected expr as arguments for variant/struct tuple constructor")
         }
@@ -2027,7 +2015,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let bcx = match dest {
         expr::SaveIn(_) => bcx,
         expr::Ignore => {
-            glue::drop_ty(bcx, llresult, result_ty, call_info)
+            glue::drop_ty(bcx, llresult, result_ty, debug_loc)
         }
     };
 
@@ -2094,7 +2082,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         adt::trans_set_discr(bcx, &*repr, dest, disr);
     }
 
-    finish_fn(&fcx, bcx, result_ty);
+    finish_fn(&fcx, bcx, result_ty, DebugLoc::None);
 }
 
 fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span, id: ast::NodeId) {

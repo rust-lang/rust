@@ -22,7 +22,7 @@ pub struct OwnedSlice<T> {
     data: Box<[T]>
 }
 
-impl<T:fmt::Show> fmt::Show for OwnedSlice<T> {
+impl<T:fmt::Debug> fmt::Debug for OwnedSlice<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         self.data.fmt(fmt)
     }

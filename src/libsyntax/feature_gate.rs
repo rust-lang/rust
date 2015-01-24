@@ -73,7 +73,7 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     ("rustc_diagnostic_macros", "1.0.0", Active),
     ("unboxed_closures", "1.0.0", Active),
-    ("import_shadowing", "1.0.0", Active),
+    ("import_shadowing", "1.0.0", Removed),
     ("advanced_slice_patterns", "1.0.0", Active),
     ("tuple_indexing", "1.0.0", Accepted),
     ("associated_types", "1.0.0", Accepted),
@@ -138,7 +138,6 @@ enum Status {
 pub struct Features {
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
-    pub import_shadowing: bool,
     pub visible_private_types: bool,
     pub quote: bool,
     pub old_orphan_check: bool,
@@ -151,7 +150,6 @@ impl Features {
         Features {
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
-            import_shadowing: false,
             visible_private_types: false,
             quote: false,
             old_orphan_check: false,
@@ -249,22 +247,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
     }
 
-    fn visit_view_item(&mut self, i: &ast::ViewItem) {
-        match i.node {
-            ast::ViewItemUse(..) => {}
-            ast::ViewItemExternCrate(..) => {
-                for attr in i.attrs.iter() {
-                    if attr.check_name("plugin") {
-                        self.gate_feature("plugin", attr.span,
-                                          "compiler plugins are experimental \
-                                           and possibly buggy");
-                    }
-                }
-            }
-        }
-        visit::walk_view_item(self, i)
-    }
-
     fn visit_item(&mut self, i: &ast::Item) {
         for attr in i.attrs.iter() {
             if attr.name() == "thread_local" {
@@ -283,6 +265,14 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
         }
         match i.node {
+            ast::ItemExternCrate(_) => {
+                if attr::contains_name(&i.attrs[], "plugin") {
+                    self.gate_feature("plugin", i.span,
+                                      "compiler plugins are experimental \
+                                       and possibly buggy");
+                }
+            }
+
             ast::ItemForeignMod(ref foreign_module) => {
                 if attr::contains_name(&i.attrs[], "link_args") {
                     self.gate_feature("link_args", i.span,
@@ -563,7 +553,6 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
     Features {
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
-        import_shadowing: cx.has_feature("import_shadowing"),
         visible_private_types: cx.has_feature("visible_private_types"),
         quote: cx.has_feature("quote"),
         old_orphan_check: cx.has_feature("old_orphan_check"),

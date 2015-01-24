@@ -52,7 +52,6 @@ pub use self::serialize::{Decoder, Encoder, Decodable, Encodable,
 mod serialize;
 mod collection_impls;
 
-pub mod base64;
 pub mod hex;
 pub mod json;
 

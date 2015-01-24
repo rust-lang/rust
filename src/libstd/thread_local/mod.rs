@@ -429,7 +429,7 @@ mod imp {
                     dtor(ptr);
                 }
                 ptr = DTORS.get();
-                DTORS.set(0 as *mut _);
+                DTORS.set(ptr::null_mut());
             }
         }
     }
@@ -463,6 +463,7 @@ mod imp {
 
     use cell::UnsafeCell;
     use mem;
+    use ptr;
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]
@@ -526,7 +527,7 @@ mod imp {
         let key = ptr.key;
         key.os.set(1 as *mut u8);
         drop(ptr);
-        key.os.set(0 as *mut u8);
+        key.os.set(ptr::null_mut());
     }
 }
 
