@@ -1847,8 +1847,14 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                         if ty::try_add_builtin_trait(tcx,
                                                      trait_did,
                                                      &mut builtin_bounds) {
-                            // FIXME(#20302) -- we should check for things like Copy<T>
-                            continue; // success
+                            let segments = &b.trait_ref.path.segments;
+                            let parameters = &segments[segments.len() - 1].parameters;
+                            if parameters.is_empty() {
+                                continue; // success
+                            }
+                            span_err!(tcx.sess, b.trait_ref.path.span, E0316,
+                                      "builtin bounds do not require arguments, {} given",
+                                      parameters.types().len());
                         }
                     }
                     _ => {
