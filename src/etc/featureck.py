@@ -97,10 +97,17 @@ for (dirpath, dirnames, filenames) in os.walk(src_dir):
                 if not m is None:
                     feature_name = m.group(2)
                     since = None
-                    if "stable" in line:
+                    if re.compile("\[ *stable").search(line) is not None:
                         pp = re.compile('since *= *"([\w\.]*)"')
                         mm = pp.search(line)
-                        since = m.group(1)
+                        if not mm is None:
+                            since = mm.group(1)
+                        else:
+                            print "error: misformed stability attribute"
+                            print "line " + str(line_num) + " of " + path + ":"
+                            print line
+                            errors = True
+
                     lib_features[feature_name] = feature_name
                     if lib_features_and_level.get((feature_name, level)) is None:
                         # Add it to the observed features
@@ -172,7 +179,6 @@ for f in lib_features:
         stable_since = lib_features_and_level[(name, "stable")][0]
     elif is_unstable:
         status = "unstable"
-        stable_since = lib_features_and_level[(name, "unstable")][0]
 
     lib_feature_stats[name] = (name, lang, lib, status, stable_since)
 
@@ -220,7 +226,6 @@ for s in stats:
         type_ = "lang/lib"
     elif s[2]:
         type_ = "lib"
-    line = s[0] + ",\t\t\t" + type_ + ",\t" + s[3] + ",\t" + str(s[4])
     line = "{: <32}".format(s[0]) + \
            "{: <8}".format(type_) + \
            "{: <12}".format(s[3]) + \
