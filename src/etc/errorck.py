@@ -54,8 +54,10 @@ for errcode, entries in errcode_map.items():
             print("{1}: {2}\n{3}".format(*entry))
         errors = True
 
-print("{0} error codes".format(len(errcode_map)))
-print("highest error code: " + max(all_errors))
+print
+print("* {0} error codes".format(len(errcode_map)))
+print("* highest error code: " + max(all_errors))
+print
 
 if errors:
     sys.exit(1)
