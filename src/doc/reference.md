@@ -1680,8 +1680,8 @@ specific type.
 Implementations are defined with the keyword `impl`.
 
 ```
+# #[derive(Copy)]
 # struct Point {x: f64, y: f64};
-# impl Copy for Point {}
 # type Surface = i32;
 # struct BoundingBox {x: f64, y: f64, width: f64, height: f64};
 # trait Shape { fn draw(&self, Surface); fn bounding_box(&self) -> BoundingBox; }

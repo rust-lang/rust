@@ -445,9 +445,8 @@ rem_float_impl! { f64, fmod }
 /// ```
 /// use std::ops::Neg;
 ///
+/// #[derive(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Neg for Foo {
 ///     type Output = Foo;
@@ -522,9 +521,8 @@ neg_uint_impl! { u64, i64 }
 /// ```
 /// use std::ops::Not;
 ///
+/// #[derive(Copy)]
 /// struct Foo;
-///
-/// impl Copy for Foo {}
 ///
 /// impl Not for Foo {
 ///     type Output = Foo;

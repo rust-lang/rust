@@ -23,11 +23,10 @@ impl<T> MyTrait<T> for T
     }
 }
 
+#[derive(Copy)]
 struct MyType {
     dummy: uint
 }
-
-impl Copy for MyType {}
 
 impl MyTrait<uint> for MyType {
     fn get(&self) -> uint { self.dummy }

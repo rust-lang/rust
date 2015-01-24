@@ -116,6 +116,7 @@
 #![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
+#[derive(Copy)]
 struct Struct<T> {
     x: T
 }
@@ -150,6 +151,4 @@ fn main() {
 }
 
 fn zzz() {()}
-
-impl<T:Copy> Copy for Struct<T> {}
 

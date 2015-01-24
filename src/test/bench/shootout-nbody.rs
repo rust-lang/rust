@@ -94,13 +94,12 @@ static BODIES: [Planet;N_BODIES] = [
     },
 ];
 
+#[derive(Copy)]
 struct Planet {
     x: f64, y: f64, z: f64,
     vx: f64, vy: f64, vz: f64,
     mass: f64,
 }
-
-impl Copy for Planet {}
 
 fn advance(bodies: &mut [Planet;N_BODIES], dt: f64, steps: int) {
     for _ in range(0, steps) {

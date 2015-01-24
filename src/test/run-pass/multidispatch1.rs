@@ -14,11 +14,10 @@ trait MyTrait<T> {
     fn get(&self) -> T;
 }
 
+#[derive(Copy)]
 struct MyType {
     dummy: uint
 }
-
-impl Copy for MyType {}
 
 impl MyTrait<uint> for MyType {
     fn get(&self) -> uint { self.dummy }

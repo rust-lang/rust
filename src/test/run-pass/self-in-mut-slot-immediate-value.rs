@@ -11,11 +11,10 @@
 // Assert that `mut self` on an immediate value doesn't
 // allow mutating the original - issue #10615.
 
+#[derive(Copy)]
 struct Value {
     n: int
 }
-
-impl Copy for Value {}
 
 impl Value {
     fn squared(mut self) -> Value {

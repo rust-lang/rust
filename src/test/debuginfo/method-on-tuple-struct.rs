@@ -116,6 +116,7 @@
 #![feature(box_syntax)]
 #![omit_gdb_pretty_printer_section]
 
+#[derive(Copy)]
 struct TupleStruct(int, f64);
 
 impl TupleStruct {
@@ -148,6 +149,4 @@ fn main() {
 }
 
 fn zzz() {()}
-
-impl Copy for TupleStruct {}
 

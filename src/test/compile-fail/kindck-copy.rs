@@ -17,12 +17,11 @@ fn assert_copy<T:Copy>() { }
 
 trait Dummy { }
 
+#[derive(Copy)]
 struct MyStruct {
     x: isize,
     y: isize,
 }
-
-impl Copy for MyStruct {}
 
 struct MyNoncopyStruct {
     x: Box<char>,

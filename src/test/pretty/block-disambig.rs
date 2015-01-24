@@ -19,9 +19,8 @@ fn test1() { let val = &0i; { } *val; }
 
 fn test2() -> int { let val = &0i; { } *val }
 
+#[derive(Copy)]
 struct S { eax: int }
-
-impl Copy for S {}
 
 fn test3() {
     let regs = &Cell::new(S {eax: 0});
