@@ -260,7 +260,13 @@ ALL_HS := $(filter-out $(S)src/rt/valgrind/valgrind.h \
 	,$(ALL_HS))
 
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
-tidy:
+.PHONY: tidy
+tidy: tidy-basic tidy-binaries tidy-errors tidy-features
+
+endif
+
+.PHONY: tidy-basic
+tidy-basic:
 		@$(call E, check: formatting)
 		$(Q)find $(S)src -name '*.r[sc]' \
 		    -and -not -regex '^$(S)src/jemalloc.*' \
@@ -286,6 +292,10 @@ tidy:
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
 		$(Q)echo $(ALL_HS) \
 		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+
+.PHONY: tidy-binaries
+tidy-binaries:
+		@$(call E, check: binaries)
 		$(Q)find $(S)src -type f -perm +a+x \
 		    -not -name '*.rs' -and -not -name '*.py' \
 		    -and -not -name '*.sh' \
@@ -300,11 +310,16 @@ tidy:
 		| grep '^$(S)src/libbacktrace' -v \
 		| grep '^$(S)src/rust-installer' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
+
+.PHONY: tidy-errors
+tidy-errors:
+		@$(call E, check: extended errors)
 		$(Q) $(CFG_PYTHON) $(S)src/etc/errorck.py $(S)src/
+
+.PHONY: tidy-features
+tidy-features:
+		@$(call E, check: feature sanity)
 		$(Q) $(CFG_PYTHON) $(S)src/etc/featureck.py $(S)src/
-
-
-endif
 
 
 ######################################################################
