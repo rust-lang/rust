@@ -444,6 +444,9 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
             super::VtableImpl(ref v) =>
                 v.repr(tcx),
 
+            super::VtableDefaultTrait(ref t) =>
+                format!("VtableDefaultTrait({:?})", t),
+
             super::VtableClosure(ref d, ref s) =>
                 format!("VtableClosure({},{})",
                         d.repr(tcx),

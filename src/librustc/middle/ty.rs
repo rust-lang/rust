@@ -757,6 +757,9 @@ pub struct ctxt<'tcx> {
     /// Maps a trait onto a list of impls of that trait.
     pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
+    /// Maps a trait onto a list of *default* trait implementations
+    pub default_trait_impls: RefCell<DefIdSet>,
+
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
     /// Methods in these implementations don't need to be exported.
@@ -2493,6 +2496,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         destructor_for_type: RefCell::new(DefIdMap()),
         destructors: RefCell::new(DefIdSet()),
         trait_impls: RefCell::new(DefIdMap()),
+        default_trait_impls: RefCell::new(DefIdSet()),
         inherent_impls: RefCell::new(DefIdMap()),
         impl_items: RefCell::new(DefIdMap()),
         used_unsafe: RefCell::new(NodeSet()),
@@ -5993,6 +5997,18 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
 }
 
 /// Records a trait-to-implementation mapping.
+pub fn record_default_trait_implementation(tcx: &ctxt, trait_def_id: DefId) {
+
+    //assert!(did.krate != ast::LOCAL_CRATE);
+    if tcx.default_trait_impls.borrow().contains(&trait_def_id) {
+        return;
+    }
+
+    tcx.default_trait_impls.borrow_mut().insert(trait_def_id);
+}
+
+
+/// Records a trait-to-implementation mapping.
 pub fn record_trait_implementation(tcx: &ctxt,
                                    trait_def_id: DefId,
                                    impl_def_id: DefId) {
@@ -6074,11 +6090,21 @@ pub fn populate_implementations_for_trait_if_necessary(
     }
 
     csearch::each_implementation_for_trait(&tcx.sess.cstore, trait_id,
-            |implementation_def_id| {
+            |implementation_def_id|{
         let impl_items = csearch::get_impl_items(&tcx.sess.cstore, implementation_def_id);
 
-        // Record the trait->implementation mapping.
-        record_trait_implementation(tcx, trait_id, implementation_def_id);
+        if csearch::is_default_trait(&tcx.sess.cstore, implementation_def_id) {
+            record_default_trait_implementation(tcx, trait_id);
+            tcx.populated_external_traits.borrow_mut().insert(trait_id);
+
+            // Nothing else to do for default trait implementations since
+            // they are not allowed to have type parameters, methods, or any
+            // other item that could be associated to a trait implementation.
+            return;
+        } else {
+            // Record the trait->implementation mapping.
+            record_trait_implementation(tcx, trait_id, implementation_def_id);
+        }
 
         // For any methods that use a default implementation, add them to
         // the map. This is a bit unfortunate.

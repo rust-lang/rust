@@ -26,7 +26,7 @@ use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
-            VtableFnPointer, VtableObject};
+            VtableFnPointer, VtableObject, VtableDefaultTrait};
 use super::{VtableImplData, VtableObjectData, VtableBuiltinData};
 use super::object_safety;
 use super::{util};
@@ -136,6 +136,7 @@ enum SelectionCandidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(ast::DefId),
+    DefaultTraitCandidate(ast::DefId),
 
     /// This is a trait matching with a projected type as `Self`, and
     /// we found an applicable bound in the trait definition.
@@ -1130,7 +1131,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         debug!("assemble_candidates_from_impls(self_ty={})", self_ty.repr(self.tcx()));
 
-        let all_impls = self.all_impls(obligation.predicate.def_id());
+        let def_id = obligation.predicate.def_id();
+        let all_impls = self.all_impls(def_id);
         for &impl_def_id in &all_impls {
             self.infcx.probe(|snapshot| {
                 let (skol_obligation_trait_pred, skol_map) =
@@ -1144,6 +1146,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             });
         }
+
+        if self.tcx().default_trait_impls.borrow().contains(&def_id) {
+            candidates.vec.push(DefaultTraitCandidate(def_id.clone()))
+        }
+
         Ok(())
     }
 
@@ -1644,6 +1651,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ParamCandidate(param) => {
                 let obligations = self.confirm_param_candidate(obligation, param);
                 Ok(VtableParam(obligations))
+            }
+
+            DefaultTraitCandidate(trait_def_id) => {
+                Ok(VtableDefaultTrait(trait_def_id))
             }
 
             ImplCandidate(impl_def_id) => {
@@ -2308,6 +2319,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
             BuiltinCandidate(b) => format!("BuiltinCandidate({:?})", b),
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
+            DefaultTraitCandidate(t) => format!("DefaultTraitCandidate({:?})", t),
             ProjectionCandidate => format!("ProjectionCandidate"),
             FnPointerCandidate => format!("FnPointerCandidate"),
             ObjectCandidate => {
