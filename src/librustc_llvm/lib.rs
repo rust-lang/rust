@@ -1772,6 +1772,8 @@ extern {
                          -> ValueRef;
 
     pub fn LLVMRustDebugMetadataVersion() -> u32;
+    pub fn LLVMVersionMajor() -> u32;
+    pub fn LLVMVersionMinor() -> u32;
 
     pub fn LLVMRustAddModuleFlag(M: ModuleRef,
                                  name: *const c_char,
