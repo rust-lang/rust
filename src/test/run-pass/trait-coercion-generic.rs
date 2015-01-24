@@ -15,12 +15,11 @@ trait Trait<T> {
     fn f(&self, x: T);
 }
 
+#[derive(Copy)]
 struct Struct {
     x: int,
     y: int,
 }
-
-impl Copy for Struct {}
 
 impl Trait<&'static str> for Struct {
     fn f(&self, x: &'static str) {

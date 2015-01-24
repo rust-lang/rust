@@ -19,10 +19,8 @@ trait Equal {
     fn isEq(&self, a: &Self) -> bool;
 }
 
-#[derive(Clone)]
+#[derive(Clone, Copy)]
 enum Color { cyan, magenta, yellow, black }
-
-impl Copy for Color {}
 
 impl Equal for Color {
     fn isEq(&self, a: &Color) -> bool {

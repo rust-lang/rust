@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[derive(Copy)]
 struct Point {x: int, y: int}
-
-impl Copy for Point {}
 
 type rect = (Point, Point);
 

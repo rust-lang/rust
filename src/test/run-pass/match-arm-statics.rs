@@ -36,9 +36,8 @@ const VARIANT2_NORTH: EnumWithStructVariants = EnumWithStructVariants::Variant2 
     dir: Direction::North };
 
 pub mod glfw {
+    #[derive(Copy)]
     pub struct InputState(uint);
-
-    impl Copy for InputState {}
 
     pub const RELEASE  : InputState = InputState(0);
     pub const PRESS    : InputState = InputState(1);

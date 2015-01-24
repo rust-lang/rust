@@ -54,13 +54,12 @@ fn print_complements() {
     }
 }
 
+#[derive(Copy)]
 enum Color {
     Red,
     Yellow,
     Blue,
 }
-
-impl Copy for Color {}
 
 impl fmt::Show for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
@@ -73,12 +72,11 @@ impl fmt::Show for Color {
     }
 }
 
+#[derive(Copy)]
 struct CreatureInfo {
     name: uint,
     color: Color
 }
-
-impl Copy for CreatureInfo {}
 
 fn show_color_list(set: Vec<Color>) -> String {
     let mut out = String::new();

@@ -17,9 +17,8 @@ static mut COUNT: u64 = 1;
 
 pub fn get_count() -> u64 { unsafe { COUNT } }
 
+#[derive(Copy)]
 pub struct Foo;
-
-impl Copy for Foo {}
 
 impl Foo {
     pub fn run_trait(self) {
