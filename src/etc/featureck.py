@@ -235,9 +235,7 @@ for s in stats:
 lines.sort()
 
 print
-print "Rust feature summary:"
-print
 for line in lines:
-    print line
+    print "* " + line
 print
 
