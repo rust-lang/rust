@@ -5168,7 +5168,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
            tps.len(), ppaux::ty_to_string(ccx.tcx, ty));
 
     // make a vector of booleans initially false, set to true when used
-    if tps.len() == 0u { return; }
+    if tps.len() == 0 { return; }
     let mut tps_used: Vec<_> = repeat(false).take(tps.len()).collect();
 
     ty::walk_ty(ty, |t| {
@@ -5234,13 +5234,13 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
         let (n_tps, inputs, output) = match name.get() {
             "breakpoint" => (0, Vec::new(), ty::mk_nil(tcx)),
             "size_of" |
-            "pref_align_of" | "min_align_of" => (1u, Vec::new(), ccx.tcx.types.uint),
-            "init" => (1u, Vec::new(), param(ccx, 0)),
-            "uninit" => (1u, Vec::new(), param(ccx, 0)),
-            "forget" => (1u, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
+            "pref_align_of" | "min_align_of" => (1, Vec::new(), ccx.tcx.types.uint),
+            "init" => (1, Vec::new(), param(ccx, 0)),
+            "uninit" => (1, Vec::new(), param(ccx, 0)),
+            "forget" => (1, vec!( param(ccx, 0) ), ty::mk_nil(tcx)),
             "transmute" => (2, vec!( param(ccx, 0) ), param(ccx, 1)),
             "move_val_init" => {
-                (1u,
+                (1,
                  vec!(
                     ty::mk_mut_rptr(tcx,
                                     tcx.mk_region(ty::ReLateBound(ty::DebruijnIndex::new(1),
@@ -5250,8 +5250,8 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                   ),
                ty::mk_nil(tcx))
             }
-            "needs_drop" => (1u, Vec::new(), ccx.tcx.types.bool),
-            "owns_managed" => (1u, Vec::new(), ccx.tcx.types.bool),
+            "needs_drop" => (1, Vec::new(), ccx.tcx.types.bool),
+            "owns_managed" => (1, Vec::new(), ccx.tcx.types.bool),
 
             "get_tydesc" => {
               let tydesc_ty = match ty::get_tydesc_ty(ccx.tcx) {
@@ -5262,9 +5262,9 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                   ty: tydesc_ty,
                   mutbl: ast::MutImmutable
               });
-              (1u, Vec::new(), td_ptr)
+              (1, Vec::new(), td_ptr)
             }
-            "type_id" => (1u, Vec::new(), ccx.tcx.types.u64),
+            "type_id" => (1, Vec::new(), ccx.tcx.types.u64),
             "offset" => {
               (1,
                vec!(

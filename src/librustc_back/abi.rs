@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub const BOX_FIELD_DROP_GLUE: uint = 1u;
-pub const BOX_FIELD_BODY: uint = 4u;
+pub const BOX_FIELD_DROP_GLUE: uint = 1;
+pub const BOX_FIELD_BODY: uint = 4;
 
 /// The first half of a fat pointer.
 /// - For a closure, this is the code address.
@@ -21,4 +21,4 @@ pub const FAT_PTR_ADDR: uint = 0;
 /// - For a closure, this is the address of the environment.
 /// - For an object or trait instance, this is the address of the vtable.
 /// - For a slice, this is the length.
-pub const FAT_PTR_EXTRA: uint = 1u;
+pub const FAT_PTR_EXTRA: uint = 1;

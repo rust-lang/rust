@@ -1707,7 +1707,7 @@ pub mod types {
                     pub iSecurityScheme: c_int,
                     pub dwMessageSize: DWORD,
                     pub dwProviderReserved: DWORD,
-                    pub szProtocol: [u8; (WSAPROTOCOL_LEN as uint) + 1u],
+                    pub szProtocol: [u8; (WSAPROTOCOL_LEN as uint) + 1us],
                 }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
