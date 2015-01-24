@@ -16,7 +16,7 @@ pub use self::BuiltinBound::*;
 pub use self::InferTy::*;
 pub use self::InferRegion::*;
 pub use self::ImplOrTraitItemId::*;
-pub use self::UnboxedClosureKind::*;
+pub use self::ClosureKind::*;
 pub use self::ast_ty_to_ty_cache_entry::*;
 pub use self::Variance::*;
 pub use self::AutoAdjustment::*;
@@ -434,7 +434,7 @@ pub enum MethodOrigin<'tcx> {
     MethodStatic(ast::DefId),
 
     // fully statically resolved unboxed closure invocation
-    MethodStaticUnboxedClosure(ast::DefId),
+    MethodStaticClosure(ast::DefId),
 
     // method invoked on a type parameter with a bounded trait
     MethodTypeParam(MethodParam<'tcx>),
@@ -569,7 +569,7 @@ pub enum vtable_origin<'tcx> {
       Vtable automatically generated for an unboxed closure. The def ID is the
       ID of the closure expression.
      */
-    vtable_unboxed_closure(ast::DefId),
+    vtable_closure(ast::DefId),
 
     /*
       Asked to determine the vtable for ty_err. This is the value used
@@ -788,7 +788,7 @@ pub struct ctxt<'tcx> {
 
     /// Records the type of each unboxed closure. The def ID is the ID of the
     /// expression defining the unboxed closure.
-    pub unboxed_closures: RefCell<DefIdMap<UnboxedClosure<'tcx>>>,
+    pub closures: RefCell<DefIdMap<Closure<'tcx>>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(ast::NodeId, lint::LintId),
                                               lint::LevelSource>>,
@@ -913,7 +913,7 @@ impl<'tcx> ctxt<'tcx> {
         sty_debug_print!(
             self,
             ty_enum, ty_uniq, ty_vec, ty_ptr, ty_rptr, ty_bare_fn, ty_trait,
-            ty_struct, ty_unboxed_closure, ty_tup, ty_param, ty_open, ty_infer, ty_projection);
+            ty_struct, ty_closure, ty_tup, ty_param, ty_open, ty_infer, ty_projection);
 
         println!("Substs interner: #{}", self.substs_interner.borrow().len());
         println!("BareFnTy interner: #{}", self.bare_fn_interner.borrow().len());
@@ -1376,7 +1376,7 @@ pub enum sty<'tcx> {
     ty_trait(Box<TyTrait<'tcx>>),
     ty_struct(DefId, &'tcx Substs<'tcx>),
 
-    ty_unboxed_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
+    ty_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
 
     ty_tup(Vec<Ty<'tcx>>),
 
@@ -2266,28 +2266,28 @@ pub struct ItemSubsts<'tcx> {
 
 /// Records information about each unboxed closure.
 #[derive(Clone)]
-pub struct UnboxedClosure<'tcx> {
+pub struct Closure<'tcx> {
     /// The type of the unboxed closure.
     pub closure_type: ClosureTy<'tcx>,
     /// The kind of unboxed closure this is.
-    pub kind: UnboxedClosureKind,
+    pub kind: ClosureKind,
 }
 
 #[derive(Clone, Copy, PartialEq, Eq, Show)]
-pub enum UnboxedClosureKind {
-    FnUnboxedClosureKind,
-    FnMutUnboxedClosureKind,
-    FnOnceUnboxedClosureKind,
+pub enum ClosureKind {
+    FnClosureKind,
+    FnMutClosureKind,
+    FnOnceClosureKind,
 }
 
-impl UnboxedClosureKind {
+impl ClosureKind {
     pub fn trait_did(&self, cx: &ctxt) -> ast::DefId {
         let result = match *self {
-            FnUnboxedClosureKind => cx.lang_items.require(FnTraitLangItem),
-            FnMutUnboxedClosureKind => {
+            FnClosureKind => cx.lang_items.require(FnTraitLangItem),
+            FnMutClosureKind => {
                 cx.lang_items.require(FnMutTraitLangItem)
             }
-            FnOnceUnboxedClosureKind => {
+            FnOnceClosureKind => {
                 cx.lang_items.require(FnOnceTraitLangItem)
             }
         };
@@ -2298,23 +2298,21 @@ impl UnboxedClosureKind {
     }
 }
 
-pub trait UnboxedClosureTyper<'tcx> {
+pub trait ClosureTyper<'tcx> {
     fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
 
-    fn unboxed_closure_kind(&self,
-                            def_id: ast::DefId)
-                            -> ty::UnboxedClosureKind;
+    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind;
 
-    fn unboxed_closure_type(&self,
-                            def_id: ast::DefId,
-                            substs: &subst::Substs<'tcx>)
-                            -> ty::ClosureTy<'tcx>;
+    fn closure_type(&self,
+                    def_id: ast::DefId,
+                    substs: &subst::Substs<'tcx>)
+                    -> ty::ClosureTy<'tcx>;
 
     // Returns `None` if the upvar types cannot yet be definitively determined.
-    fn unboxed_closure_upvars(&self,
-                              def_id: ast::DefId,
-                              substs: &Substs<'tcx>)
-                              -> Option<Vec<UnboxedClosureUpvar<'tcx>>>;
+    fn closure_upvars(&self,
+                      def_id: ast::DefId,
+                      substs: &Substs<'tcx>)
+                      -> Option<Vec<ClosureUpvar<'tcx>>>;
 }
 
 impl<'tcx> CommonTypes<'tcx> {
@@ -2407,7 +2405,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         extern_const_variants: RefCell::new(DefIdMap()),
         method_map: RefCell::new(FnvHashMap()),
         dependency_formats: RefCell::new(FnvHashMap()),
-        unboxed_closures: RefCell::new(DefIdMap()),
+        closures: RefCell::new(DefIdMap()),
         node_lint_levels: RefCell::new(FnvHashMap()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
@@ -2454,19 +2452,16 @@ impl<'tcx> ctxt<'tcx> {
         region
     }
 
-    pub fn unboxed_closure_kind(&self,
-                            def_id: ast::DefId)
-                            -> ty::UnboxedClosureKind
-    {
-        self.unboxed_closures.borrow()[def_id].kind
+    pub fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
+        self.closures.borrow()[def_id].kind
     }
 
-    pub fn unboxed_closure_type(&self,
-                            def_id: ast::DefId,
-                            substs: &subst::Substs<'tcx>)
-                            -> ty::ClosureTy<'tcx>
+    pub fn closure_type(&self,
+                        def_id: ast::DefId,
+                        substs: &subst::Substs<'tcx>)
+                        -> ty::ClosureTy<'tcx>
     {
-        self.unboxed_closures.borrow()[def_id].closure_type.subst(self, substs)
+        self.closures.borrow()[def_id].closure_type.subst(self, substs)
     }
 }
 
@@ -2574,7 +2569,7 @@ impl FlagComputation {
                 }
             }
 
-            &ty_unboxed_closure(_, region, substs) => {
+            &ty_closure(_, region, substs) => {
                 self.add_region(*region);
                 self.add_substs(substs);
             }
@@ -2843,10 +2838,10 @@ pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, struct_id: ast::DefId,
     mk_t(cx, ty_struct(struct_id, substs))
 }
 
-pub fn mk_unboxed_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId,
-                                region: &'tcx Region, substs: &'tcx Substs<'tcx>)
-                                -> Ty<'tcx> {
-    mk_t(cx, ty_unboxed_closure(closure_id, region, substs))
+pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId,
+                        region: &'tcx Region, substs: &'tcx Substs<'tcx>)
+                        -> Ty<'tcx> {
+    mk_t(cx, ty_closure(closure_id, region, substs))
 }
 
 pub fn mk_var<'tcx>(cx: &ctxt<'tcx>, v: TyVid) -> Ty<'tcx> {
@@ -3057,7 +3052,7 @@ pub fn type_is_vec(ty: Ty) -> bool {
 pub fn type_is_structural(ty: Ty) -> bool {
     match ty.sty {
       ty_struct(..) | ty_tup(_) | ty_enum(..) |
-      ty_vec(_, Some(_)) | ty_unboxed_closure(..) => true,
+      ty_vec(_, Some(_)) | ty_closure(..) => true,
       _ => type_is_slice(ty) | type_is_trait(ty)
     }
 }
@@ -3422,11 +3417,11 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 apply_lang_items(cx, did, res)
             }
 
-            ty_unboxed_closure(did, r, substs) => {
+            ty_closure(did, r, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut`
                 // unboxed closure.
                 let param_env = ty::empty_parameter_environment(cx);
-                let upvars = unboxed_closure_upvars(&param_env, did, substs).unwrap();
+                let upvars = closure_upvars(&param_env, did, substs).unwrap();
                 TypeContents::union(upvars.as_slice(),
                                     |f| tc_ty(cx, f.ty, cache))
                     | borrowed_contents(*r, MutMutable)
@@ -3690,7 +3685,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
 
             ty_err |
             ty_infer(_) |
-            ty_unboxed_closure(..) => {
+            ty_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
                 // inference by-products or unboxed closure types
                 cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}",
@@ -3784,7 +3779,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                 find_nonrepresentable(cx, sp, seen, iter)
             }
-            ty_unboxed_closure(..) => {
+            ty_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
                 // unboxed closure types
                 cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}",
@@ -4698,7 +4693,7 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_struct(id, _) => {
             format!("struct `{}`", item_path_str(cx, id))
         }
-        ty_unboxed_closure(..) => "closure".to_string(),
+        ty_closure(..) => "closure".to_string(),
         ty_tup(_) => "tuple".to_string(),
         ty_infer(TyVar(_)) => "inferred type".to_string(),
         ty_infer(IntVar(_)) => "integral variable".to_string(),
@@ -5118,7 +5113,7 @@ pub fn ty_to_def_id(ty: Ty) -> Option<ast::DefId> {
             Some(tt.principal_def_id()),
         ty_struct(id, _) |
         ty_enum(id, _) |
-        ty_unboxed_closure(id, _, _) =>
+        ty_closure(id, _, _) =>
             Some(id),
         _ =>
             None
@@ -5626,17 +5621,17 @@ pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
 }
 
 #[derive(Copy, Clone)]
-pub struct UnboxedClosureUpvar<'tcx> {
+pub struct ClosureUpvar<'tcx> {
     pub def: def::Def,
     pub span: Span,
     pub ty: Ty<'tcx>,
 }
 
-// Returns a list of `UnboxedClosureUpvar`s for each upvar.
-pub fn unboxed_closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
-                                    closure_id: ast::DefId,
-                                    substs: &Substs<'tcx>)
-                                    -> Option<Vec<UnboxedClosureUpvar<'tcx>>>
+// Returns a list of `ClosureUpvar`s for each upvar.
+pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
+                            closure_id: ast::DefId,
+                            substs: &Substs<'tcx>)
+                            -> Option<Vec<ClosureUpvar<'tcx>>>
 {
     // Presently an unboxed closure type cannot "escape" out of a
     // function, so we will only encounter ones that originated in the
@@ -5660,9 +5655,9 @@ pub fn unboxed_closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
 
                         match capture_mode {
                             ast::CaptureByValue => {
-                                Some(UnboxedClosureUpvar { def: freevar.def,
-                                                           span: freevar.span,
-                                                           ty: freevar_ty })
+                                Some(ClosureUpvar { def: freevar.def,
+                                                    span: freevar.span,
+                                                    ty: freevar_ty })
                             }
 
                             ast::CaptureByRef => {
@@ -5688,7 +5683,7 @@ pub fn unboxed_closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
                                         freevar_ty
                                     }
                                 };
-                                Some(UnboxedClosureUpvar {
+                                Some(ClosureUpvar {
                                     def: freevar.def,
                                     span: freevar.span,
                                     ty: freevar_ref_ty,
@@ -6240,7 +6235,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 ty_open(_) => byte!(22),
                 ty_infer(_) => unreachable!(),
                 ty_err => byte!(23),
-                ty_unboxed_closure(d, r, _) => {
+                ty_closure(d, r, _) => {
                     byte!(24);
                     did(state, d);
                     region(state, *r);
@@ -6476,32 +6471,29 @@ impl<'a,'tcx> mc::Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
     }
 }
 
-impl<'a,'tcx> UnboxedClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
+impl<'a,'tcx> ClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
     fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
         self
     }
 
-    fn unboxed_closure_kind(&self,
-                            def_id: ast::DefId)
-                            -> ty::UnboxedClosureKind
-    {
-        self.tcx.unboxed_closure_kind(def_id)
+    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
+        self.tcx.closure_kind(def_id)
     }
 
-    fn unboxed_closure_type(&self,
-                            def_id: ast::DefId,
-                            substs: &subst::Substs<'tcx>)
-                            -> ty::ClosureTy<'tcx>
+    fn closure_type(&self,
+                    def_id: ast::DefId,
+                    substs: &subst::Substs<'tcx>)
+                    -> ty::ClosureTy<'tcx>
     {
-        self.tcx.unboxed_closure_type(def_id, substs)
+        self.tcx.closure_type(def_id, substs)
     }
 
-    fn unboxed_closure_upvars(&self,
-                              def_id: ast::DefId,
-                              substs: &Substs<'tcx>)
-                              -> Option<Vec<UnboxedClosureUpvar<'tcx>>>
+    fn closure_upvars(&self,
+                      def_id: ast::DefId,
+                      substs: &Substs<'tcx>)
+                      -> Option<Vec<ClosureUpvar<'tcx>>>
     {
-        unboxed_closure_upvars(self, def_id, substs)
+        closure_upvars(self, def_id, substs)
     }
 }
 
@@ -6533,7 +6525,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
             ty_struct(_, substs) => {
                 accum_substs(accumulator, substs);
             }
-            ty_unboxed_closure(_, region, substs) => {
+            ty_closure(_, region, substs) => {
                 accumulator.push(*region);
                 accum_substs(accumulator, substs);
             }
@@ -6826,8 +6818,8 @@ impl<'tcx> Repr<'tcx> for vtable_origin<'tcx> {
                 format!("vtable_param({:?}, {})", x, y)
             }
 
-            vtable_unboxed_closure(def_id) => {
-                format!("vtable_unboxed_closure({:?})", def_id)
+            vtable_closure(def_id) => {
+                format!("vtable_closure({:?})", def_id)
             }
 
             vtable_error => {
@@ -7064,7 +7056,7 @@ impl<'tcx> HasProjectionTypes for ClosureTy<'tcx> {
     }
 }
 
-impl<'tcx> HasProjectionTypes for UnboxedClosureUpvar<'tcx> {
+impl<'tcx> HasProjectionTypes for ClosureUpvar<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.ty.has_projection_types()
     }
@@ -7285,9 +7277,9 @@ impl<'tcx> Repr<'tcx> for ClosureTy<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for UnboxedClosureUpvar<'tcx> {
+impl<'tcx> Repr<'tcx> for ClosureUpvar<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("UnboxedClosureUpvar({},{})",
+        format!("ClosureUpvar({},{})",
                 self.def.repr(tcx),
                 self.ty.repr(tcx))
     }

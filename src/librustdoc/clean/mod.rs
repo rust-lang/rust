@@ -1601,7 +1601,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
 
             ty::ty_param(ref p) => Generic(token::get_name(p.name).to_string()),
 
-            ty::ty_unboxed_closure(..) => Tuple(vec![]), // FIXME(pcwalton)
+            ty::ty_closure(..) => Tuple(vec![]), // FIXME(pcwalton)
 
             ty::ty_infer(..) => panic!("ty_infer"),
             ty::ty_open(..) => panic!("ty_open"),

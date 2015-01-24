@@ -618,13 +618,12 @@ fn encode_visibility(rbml_w: &mut Encoder, visibility: ast::Visibility) {
     rbml_w.end_tag();
 }
 
-fn encode_unboxed_closure_kind(rbml_w: &mut Encoder,
-                               kind: ty::UnboxedClosureKind) {
-    rbml_w.start_tag(tag_unboxed_closure_kind);
+fn encode_closure_kind(rbml_w: &mut Encoder, kind: ty::ClosureKind) {
+    rbml_w.start_tag(tag_closure_kind);
     let ch = match kind {
-        ty::FnUnboxedClosureKind => 'f',
-        ty::FnMutUnboxedClosureKind => 'm',
-        ty::FnOnceUnboxedClosureKind => 'o',
+        ty::FnClosureKind => 'f',
+        ty::FnMutClosureKind => 'm',
+        ty::FnOnceClosureKind => 'o',
     };
     rbml_w.wr_str(&ch.to_string()[]);
     rbml_w.end_tag();
@@ -1838,24 +1837,19 @@ fn encode_macro_defs(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
-fn encode_unboxed_closures<'a>(
-                           ecx: &'a EncodeContext,
-                           rbml_w: &'a mut Encoder) {
-    rbml_w.start_tag(tag_unboxed_closures);
-    for (unboxed_closure_id, unboxed_closure) in ecx.tcx
-                                                    .unboxed_closures
-                                                    .borrow()
-                                                    .iter() {
-        if unboxed_closure_id.krate != ast::LOCAL_CRATE {
+fn encode_closures<'a>(ecx: &'a EncodeContext, rbml_w: &'a mut Encoder) {
+    rbml_w.start_tag(tag_closures);
+    for (closure_id, closure) in ecx.tcx.closures.borrow().iter() {
+        if closure_id.krate != ast::LOCAL_CRATE {
             continue
         }
 
-        rbml_w.start_tag(tag_unboxed_closure);
-        encode_def_id(rbml_w, *unboxed_closure_id);
-        rbml_w.start_tag(tag_unboxed_closure_type);
-        write_closure_type(ecx, rbml_w, &unboxed_closure.closure_type);
+        rbml_w.start_tag(tag_closure);
+        encode_def_id(rbml_w, *closure_id);
+        rbml_w.start_tag(tag_closure_type);
+        write_closure_type(ecx, rbml_w, &closure.closure_type);
         rbml_w.end_tag();
-        encode_unboxed_closure_kind(rbml_w, unboxed_closure.kind);
+        encode_closure_kind(rbml_w, closure.kind);
         rbml_w.end_tag();
     }
     rbml_w.end_tag();
@@ -2069,7 +2063,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         native_lib_bytes: u64,
         plugin_registrar_fn_bytes: u64,
         macro_defs_bytes: u64,
-        unboxed_closure_bytes: u64,
+        closure_bytes: u64,
         impl_bytes: u64,
         misc_bytes: u64,
         item_bytes: u64,
@@ -2084,7 +2078,7 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         native_lib_bytes: 0,
         plugin_registrar_fn_bytes: 0,
         macro_defs_bytes: 0,
-        unboxed_closure_bytes: 0,
+        closure_bytes: 0,
         impl_bytes: 0,
         misc_bytes: 0,
         item_bytes: 0,
@@ -2156,8 +2150,8 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
 
     // Encode the types of all unboxed closures in this crate.
     i = rbml_w.writer.tell().unwrap();
-    encode_unboxed_closures(&ecx, &mut rbml_w);
-    stats.unboxed_closure_bytes = rbml_w.writer.tell().unwrap() - i;
+    encode_closures(&ecx, &mut rbml_w);
+    stats.closure_bytes = rbml_w.writer.tell().unwrap() - i;
 
     // Encode the def IDs of impls, for coherence checking.
     i = rbml_w.writer.tell().unwrap();

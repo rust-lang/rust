@@ -740,7 +740,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 /* leaf type -- noop */
             }
 
-            ty::ty_unboxed_closure(..) => {
+            ty::ty_closure(..) => {
                 self.tcx().sess.bug("Unexpected unboxed closure type in variance computation");
             }
 

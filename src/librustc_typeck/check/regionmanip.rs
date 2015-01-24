@@ -68,7 +68,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::ty_unboxed_closure(_, region, _) => {
+            ty::ty_closure(_, region, _) => {
                 // An "unboxed closure type" is basically
                 // modeled here as equivalent to a struct like
                 //

@@ -105,7 +105,7 @@ pub enum categorization<'tcx> {
 pub struct Upvar {
     pub id: ty::UpvarId,
     // Unboxed closure kinds are used even for old-style closures for simplicity
-    pub kind: ty::UnboxedClosureKind,
+    pub kind: ty::ClosureKind,
     // Is this from an unboxed closure?  Used only for diagnostics.
     pub is_unboxed: bool
 }
@@ -269,7 +269,7 @@ pub type McResult<T> = Result<T, ()>;
 /// In the borrow checker, in contrast, type checking is complete and we
 /// know that no errors have occurred, so we simply consult the tcx and we
 /// can be sure that only `Ok` results will occur.
-pub trait Typer<'tcx> : ty::UnboxedClosureTyper<'tcx> {
+pub trait Typer<'tcx> : ty::ClosureTyper<'tcx> {
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>>;
@@ -596,8 +596,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           def::DefUpvar(var_id, fn_node_id, _) => {
               let ty = try!(self.node_ty(fn_node_id));
               match ty.sty {
-                  ty::ty_unboxed_closure(closure_id, _, _) => {
-                      let kind = self.typer.unboxed_closure_kind(closure_id);
+                  ty::ty_closure(closure_id, _, _) => {
+                      let kind = self.typer.closure_kind(closure_id);
                       let mode = self.typer.capture_mode(fn_node_id);
                       self.cat_upvar(id, span, var_id, fn_node_id, kind, mode, true)
                   }
@@ -631,7 +631,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                  span: Span,
                  var_id: ast::NodeId,
                  fn_node_id: ast::NodeId,
-                 kind: ty::UnboxedClosureKind,
+                 kind: ty::ClosureKind,
                  mode: ast::CaptureClause,
                  is_unboxed: bool)
                  -> McResult<cmt<'tcx>> {
@@ -666,12 +666,12 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         // Construct information about env pointer dereference, if any
         let mutbl = match kind {
-            ty::FnOnceUnboxedClosureKind => None, // None, env is by-value
-            ty::FnMutUnboxedClosureKind => match mode { // Depends on capture type
+            ty::FnOnceClosureKind => None, // None, env is by-value
+            ty::FnMutClosureKind => match mode { // Depends on capture type
                 ast::CaptureByValue => Some(var_mutbl), // Mutable if the original var is
                 ast::CaptureByRef => Some(McDeclared) // Mutable regardless
             },
-            ty::FnUnboxedClosureKind => Some(McImmutable) // Never mutable
+            ty::FnClosureKind => Some(McImmutable) // Never mutable
         };
         let env_info = mutbl.map(|env_mutbl| {
             // Look up the node ID of the closure body so we can construct
@@ -1566,7 +1566,7 @@ fn element_kind(t: Ty) -> ElementKind {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::UnboxedClosureKind {
+impl<'tcx> Repr<'tcx> for ty::ClosureKind {
     fn repr(&self, _: &ty::ctxt) -> String {
         format!("Upvar({:?})", self)
     }
@@ -1581,9 +1581,9 @@ impl<'tcx> Repr<'tcx> for Upvar {
 impl<'tcx> UserString<'tcx> for Upvar {
     fn user_string(&self, _: &ty::ctxt) -> String {
         let kind = match self.kind {
-            ty::FnUnboxedClosureKind => "Fn",
-            ty::FnMutUnboxedClosureKind => "FnMut",
-            ty::FnOnceUnboxedClosureKind => "FnOnce",
+            ty::FnClosureKind => "Fn",
+            ty::FnMutClosureKind => "FnMut",
+            ty::FnOnceClosureKind => "FnOnce",
         };
         format!("captured outer variable in an `{}` closure", kind)
     }

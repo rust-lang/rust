@@ -11,11 +11,11 @@
 pub use self::AnnNode::*;
 
 use abi;
-use ast::{self, FnUnboxedClosureKind, FnMutUnboxedClosureKind};
-use ast::{FnOnceUnboxedClosureKind};
+use ast::{self, FnClosureKind, FnMutClosureKind};
+use ast::{FnOnceClosureKind};
 use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
-use ast::{UnboxedClosureKind};
+use ast::{ClosureKind};
 use ast_util;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
@@ -2357,14 +2357,14 @@ impl<'a> State<'a> {
     pub fn print_fn_block_args(
             &mut self,
             decl: &ast::FnDecl,
-            unboxed_closure_kind: Option<UnboxedClosureKind>)
+            closure_kind: Option<ClosureKind>)
             -> IoResult<()> {
         try!(word(&mut self.s, "|"));
-        match unboxed_closure_kind {
+        match closure_kind {
             None => {}
-            Some(FnUnboxedClosureKind) => try!(self.word_space("&:")),
-            Some(FnMutUnboxedClosureKind) => try!(self.word_space("&mut:")),
-            Some(FnOnceUnboxedClosureKind) => try!(self.word_space(":")),
+            Some(FnClosureKind) => try!(self.word_space("&:")),
+            Some(FnMutClosureKind) => try!(self.word_space("&mut:")),
+            Some(FnOnceClosureKind) => try!(self.word_space(":")),
         }
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, "|"));

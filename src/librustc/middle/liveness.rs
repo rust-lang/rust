@@ -114,7 +114,7 @@ use middle::mem_categorization::Typer;
 use middle::pat_util;
 use middle::region::CodeExtent;
 use middle::ty;
-use middle::ty::UnboxedClosureTyper;
+use middle::ty::ClosureTyper;
 use lint;
 use util::nodemap::NodeMap;
 
@@ -1519,8 +1519,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn fn_ret(&self, id: NodeId) -> ty::PolyFnOutput<'tcx> {
         let fn_ty = ty::node_id_to_type(self.ir.tcx, id);
         match fn_ty.sty {
-            ty::ty_unboxed_closure(closure_def_id, _, substs) =>
-                self.ir.tcx.unboxed_closure_type(closure_def_id, substs).sig.output(),
+            ty::ty_closure(closure_def_id, _, substs) =>
+                self.ir.tcx.closure_type(closure_def_id, substs).sig.output(),
             _ =>
                 ty::ty_fn_ret(fn_ty),
         }

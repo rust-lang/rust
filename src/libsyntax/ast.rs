@@ -49,7 +49,7 @@ pub use self::TraitItem::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UintTy::*;
-pub use self::UnboxedClosureKind::*;
+pub use self::ClosureKind::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::VariantKind::*;
@@ -734,7 +734,7 @@ pub enum Expr_ {
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
-    ExprClosure(CaptureClause, Option<UnboxedClosureKind>, P<FnDecl>, P<Block>),
+    ExprClosure(CaptureClause, Option<ClosureKind>, P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(P<Expr>, P<Expr>),
@@ -1710,10 +1710,10 @@ impl ForeignItem_ {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
-pub enum UnboxedClosureKind {
-    FnUnboxedClosureKind,
-    FnMutUnboxedClosureKind,
-    FnOnceUnboxedClosureKind,
+pub enum ClosureKind {
+    FnClosureKind,
+    FnMutClosureKind,
+    FnOnceClosureKind,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not

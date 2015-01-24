@@ -138,7 +138,7 @@ pub struct LocalCrateContext<'tcx> {
     builder: BuilderRef_res,
 
     /// Holds the LLVM values for closure IDs.
-    unboxed_closure_vals: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
+    closure_vals: RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>>,
 
     dbg_cx: Option<debuginfo::CrateDebugContext<'tcx>>,
 
@@ -414,7 +414,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 int_type: Type::from_ref(ptr::null_mut()),
                 opaque_vec_type: Type::from_ref(ptr::null_mut()),
                 builder: BuilderRef_res(llvm::LLVMCreateBuilderInContext(llcx)),
-                unboxed_closure_vals: RefCell::new(FnvHashMap()),
+                closure_vals: RefCell::new(FnvHashMap()),
                 dbg_cx: dbg_cx,
                 eh_personality: RefCell::new(None),
                 intrinsics: RefCell::new(FnvHashMap()),
@@ -684,8 +684,8 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         self.local.opaque_vec_type
     }
 
-    pub fn unboxed_closure_vals<'a>(&'a self) -> &'a RefCell<FnvHashMap<MonoId<'tcx>,ValueRef>> {
-        &self.local.unboxed_closure_vals
+    pub fn closure_vals<'a>(&'a self) -> &'a RefCell<FnvHashMap<MonoId<'tcx>, ValueRef>> {
+        &self.local.closure_vals
     }
 
     pub fn dbg_cx<'a>(&'a self) -> &'a Option<debuginfo::CrateDebugContext<'tcx>> {

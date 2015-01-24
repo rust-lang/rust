@@ -18,7 +18,7 @@ use syntax::codemap::Span;
 use util::ppaux::Repr;
 
 pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
-                                                typer: &(ty::UnboxedClosureTyper<'tcx>+'a),
+                                                typer: &(ty::ClosureTyper<'tcx>+'a),
                                                 fulfillment_cx: &mut FulfillmentContext<'tcx>,
                                                 span: Span,
                                                 body_id: ast::NodeId,

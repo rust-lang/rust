@@ -12,7 +12,7 @@
 //
 //    error: internal compiler error: get_unique_type_id_of_type() -
 //    unexpected type: closure,
-//    ty_unboxed_closure(syntax::ast::DefId{krate: 0u32, node: 66u32},
+//    ty_closure(syntax::ast::DefId{krate: 0u32, node: 66u32},
 //    ReScope(63u32))
 //
 // This is a regression test for issue #17021.
