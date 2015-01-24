@@ -131,8 +131,16 @@ constructors, if approved, is a breaking change.
 
 # Alternatives
 
-Not adding the lifetime-anchored conversion functions, continuing to use the
-current convention despite its problems and inconvenience.
+The `from_raw*` functions can lose input-derived lifetimes altogether,
+reverting to an earlier design:
+```rust
+pub unsafe fn from_raw_buf<'a, T>(ptr: *const T, len: usize) -> &'a T
+```
+Such functions would be usable without explicit type annotation and unelided
+lifetime parameters only in another function's return value context. For other
+uses, wrapper functions would often be created as workarounds.
+
+The status quo convention can be used despite its problems and inconvenience.
 
 # Unresolved questions
 
