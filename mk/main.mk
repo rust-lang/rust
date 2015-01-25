@@ -72,6 +72,7 @@ endif
 # numbers and dots here
 CFG_VERSION_WIN = $(CFG_RELEASE_NUM)
 
+CFG_INFO := $(info cfg: version $(CFG_VERSION))
 
 ######################################################################
 # More configuration
