@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -187,6 +187,8 @@ extern "rust-intrinsic" {
     /// and structures there may be additional padding between
     /// elements.
     pub fn size_of<T>() -> uint;
+    #[cfg(not(stage0))]
+    pub fn size_of_val<T: ?Sized>(val: &T) -> uint;
 
     /// Move a value to an uninitialized memory location.
     ///
@@ -194,7 +196,12 @@ extern "rust-intrinsic" {
     pub fn move_val_init<T>(dst: &mut T, src: T);
 
     pub fn min_align_of<T>() -> uint;
+    #[cfg(not(stage0))]
+    pub fn min_align_of_val<T: ?Sized>(val: &T) -> uint;
+
     pub fn pref_align_of<T>() -> uint;
+    #[cfg(not(stage0))]
+    pub fn pref_align_of_val<T: ?Sized>(val: &T) -> uint;
 
     /// Get a static pointer to a type descriptor.
     #[cfg(not(stage0))]

@@ -82,6 +82,21 @@ pub fn llsize_of(cx: &CrateContext, ty: Type) -> ValueRef {
     return C_uint(cx, llsize_of_alloc(cx, ty));
 }
 
+#[derive(Copy)]
+pub enum AlignType {
+    Min,
+    Pref
+}
+impl AlignType {
+    pub fn align_of<'a, 'tcx>(&self, ccx: &CrateContext<'a, 'tcx>,
+                              ty: Type) -> llalign {
+        match *self {
+            AlignType::Min => llalign_of_min(ccx, ty),
+            AlignType::Pref => llalign_of_pref(ccx, ty)
+        }
+    }
+}
+
 // Returns the preferred alignment of the given type for the current target.
 // The preferred alignment may be larger than the alignment used when
 // packing the type into structs. This will be used for things like

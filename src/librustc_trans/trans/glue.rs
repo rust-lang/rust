@@ -297,38 +297,42 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     })
 }
 
-fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: ValueRef)
+pub fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>,
+                                         info: ValueRef, align: AlignType)
                                      -> (ValueRef, ValueRef) {
     debug!("calculate size of DST: {}; with lost info: {}",
            bcx.ty_to_string(t), bcx.val_to_string(info));
     if type_is_sized(bcx.tcx(), t) {
         let sizing_type = sizing_type_of(bcx.ccx(), t);
         let size = C_uint(bcx.ccx(), llsize_of_alloc(bcx.ccx(), sizing_type));
-        let align = C_uint(bcx.ccx(), align_of(bcx.ccx(), t));
+        let align = C_uint(bcx.ccx(), align.align_of(bcx.ccx(), sizing_type));
         return (size, align);
     }
     match t.sty {
         ty::ty_struct(id, substs) => {
             let ccx = bcx.ccx();
-            // First get the size of all statically known fields.
-            // Don't use type_of::sizing_type_of because that expects t to be sized.
-            assert!(!ty::type_is_simd(bcx.tcx(), t));
-            let repr = adt::represent_type(ccx, t);
-            let sizing_type = adt::sizing_type_of(ccx, &*repr, true);
-            let sized_size = C_uint(ccx, llsize_of_alloc(ccx, sizing_type));
-            let sized_align = C_uint(ccx, llalign_of_min(ccx, sizing_type));
-
             // Recurse to get the size of the dynamically sized field (must be
             // the last field).
             let fields = ty::struct_fields(bcx.tcx(), id, substs);
             let last_field = fields[fields.len()-1];
             let field_ty = last_field.mt.ty;
-            let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty, info);
+            let (unsized_size, unsized_align) = size_and_align_of_dst(bcx, field_ty,
+                                                                      info, align);
+
+            // First get the size of all statically known fields.
+            // Don't use type_of::sizing_type_of because that expects t to be sized.
+            assert!(!ty::type_is_simd(bcx.tcx(), t));
+            let repr = adt::represent_type(ccx, t);
+            let sizing_type = adt::sizing_type_of(ccx, &*repr, true);
+            let dst_type = type_of(ccx, t);
+            let sized_size = C_uint(ccx, llelement_offset(ccx, dst_type,
+                                                          fields.len() - 1));
+            let sized_align = C_uint(ccx, align.align_of(ccx, sizing_type));
 
             // Return the sum of sizes and max of aligns.
             let size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
             let align = Select(bcx,
-                               ICmp(bcx, llvm::IntULT, sized_align, unsized_align),
+                               ICmp(bcx, llvm::IntUGE, sized_align, unsized_align),
                                sized_align,
                                unsized_align);
             (size, align)
@@ -346,7 +350,7 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             // The info in this case is the length of the str, so the size is that
             // times the unit size.
             let llunit_ty = sizing_type_of(bcx.ccx(), unit_ty);
-            let unit_align = llalign_of_min(bcx.ccx(), llunit_ty);
+            let unit_align = align.align_of(bcx.ccx(), llunit_ty);
             let unit_size = llsize_of_alloc(bcx.ccx(), llunit_ty);
             (Mul(bcx, info, C_uint(bcx.ccx(), unit_size), DebugLoc::None),
              C_uint(bcx.ccx(), unit_align))
@@ -393,7 +397,8 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                         let bcx = drop_ty(bcx, v0, content_ty, DebugLoc::None);
                         let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
                         let info = Load(bcx, info);
-                        let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
+                        let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty,
+                                                    info, AlignType::Min);
                         trans_exchange_free_dyn(bcx, llbox, llsize, llalign)
                     })
                 }

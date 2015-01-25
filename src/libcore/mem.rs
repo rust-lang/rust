@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -47,6 +47,22 @@ pub fn size_of<T>() -> uint {
     unsafe { intrinsics::size_of::<T>() }
 }
 
+/// Returns the size of the type that `val` points to in bytes.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::size_of_val(&5i32));
+/// ```
+#[inline]
+#[stable]
+#[cfg(not(stage0))]
+pub fn size_of_val<T: ?Sized>(val: &T) -> uint {
+    unsafe { intrinsics::size_of_val(val) }
+}
+
 /// Returns the size of the type that `_val` points to in bytes.
 ///
 /// # Examples
@@ -58,6 +74,7 @@ pub fn size_of<T>() -> uint {
 /// ```
 #[inline]
 #[stable]
+#[cfg(stage0)]
 pub fn size_of_val<T>(_val: &T) -> uint {
     size_of::<T>()
 }
@@ -79,7 +96,7 @@ pub fn min_align_of<T>() -> uint {
     unsafe { intrinsics::min_align_of::<T>() }
 }
 
-/// Returns the ABI-required minimum alignment of the type of the value that `_val` points to
+/// Returns the ABI-required minimum alignment of the type of the value that `val` points to.
 ///
 /// # Examples
 ///
@@ -90,6 +107,23 @@ pub fn min_align_of<T>() -> uint {
 /// ```
 #[inline]
 #[stable]
+#[cfg(not(stage0))]
+pub fn min_align_of_val<T: ?Sized>(val: &T) -> uint {
+    unsafe { intrinsics::min_align_of_val(val) }
+}
+
+/// Returns the ABI-required minimum alignment of the type of the value that `_val` points to.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::min_align_of_val(&5i32));
+/// ```
+#[inline]
+#[stable]
+#[cfg(stage0)]
 pub fn min_align_of_val<T>(_val: &T) -> uint {
     min_align_of::<T>()
 }
@@ -116,6 +150,25 @@ pub fn align_of<T>() -> uint {
     unsafe { intrinsics::pref_align_of::<T>() }
 }
 
+/// Returns the alignment of the type of the value that `val` points to.
+///
+/// This is similar to `align_of`, but can handle types such as trait object, returning the
+/// alignment for an arbitrary value at runtime.
+///
+/// # Examples
+///
+/// ```
+/// use std::mem;
+///
+/// assert_eq!(4, mem::align_of_val(&5i32));
+/// ```
+#[inline]
+#[stable]
+#[cfg(not(stage0))]
+pub fn align_of_val<T: ?Sized>(val: &T) -> uint {
+    unsafe { intrinsics::pref_align_of_val(val) }
+}
+
 /// Returns the alignment of the type of the value that `_val` points to.
 ///
 /// This is similar to `align_of`, but function will properly handle types such as trait objects
@@ -130,6 +183,7 @@ pub fn align_of<T>() -> uint {
 /// ```
 #[inline]
 #[stable]
+#[cfg(stage0)]
 pub fn align_of_val<T>(_val: &T) -> uint {
     align_of::<T>()
 }
