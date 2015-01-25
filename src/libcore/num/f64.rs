@@ -27,11 +27,11 @@ use option::Option;
 // members of `Bounded` and `Float`.
 
 #[unstable = "pending integer conventions"]
-pub const RADIX: uint = 2u;
+pub const RADIX: uint = 2;
 
-pub const MANTISSA_DIGITS: uint = 53u;
+pub const MANTISSA_DIGITS: uint = 53;
 #[unstable = "pending integer conventions"]
-pub const DIGITS: uint = 15u;
+pub const DIGITS: uint = 15;
 
 #[stable]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;

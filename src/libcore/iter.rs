@@ -33,7 +33,7 @@
 //! translated to the `loop` below.
 //!
 //! ```
-//! let values = vec![1i, 2, 3];
+//! let values = vec![1, 2, 3];
 //!
 //! // "Syntactical sugar" taking advantage of an iterator
 //! for &x in values.iter() {
@@ -615,7 +615,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// # Examples
     ///
     /// ```
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1, 2, 3, 4, 5];
     /// assert!(a.iter().all(|x| *x > 0));
     /// assert!(!a.iter().all(|x| *x > 2));
     /// ```
@@ -1141,7 +1141,7 @@ pub trait AdditiveIterator<A> {
     /// ```
     /// use std::iter::AdditiveIterator;
     ///
-    /// let a = [1i, 2, 3, 4, 5];
+    /// let a = [1i32, 2, 3, 4, 5];
     /// let mut it = a.iter().map(|&x| x);
     /// assert!(it.sum() == 15);
     /// ```
@@ -1183,7 +1183,7 @@ pub trait MultiplicativeIterator<A> {
     /// use std::iter::{count, MultiplicativeIterator};
     ///
     /// fn factorial(n: usize) -> usize {
-    ///     count(1u, 1).take_while(|&i| i <= n).product()
+    ///     count(1, 1).take_while(|&i| i <= n).product()
     /// }
     /// assert!(factorial(0) == 1);
     /// assert!(factorial(1) == 1);
@@ -2526,7 +2526,7 @@ pub struct Range<A> {
 /// ```
 /// let array = [0, 1, 2, 3, 4];
 ///
-/// for i in range(0, 5u) {
+/// for i in range(0, 5) {
 ///     println!("{}", i);
 ///     assert_eq!(i,  array[i]);
 /// }

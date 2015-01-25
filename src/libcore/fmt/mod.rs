@@ -560,8 +560,8 @@ impl<'a> Formatter<'a> {
         };
 
         let (pre_pad, post_pad) = match align {
-            rt::AlignLeft => (0u, padding),
-            rt::AlignRight | rt::AlignUnknown => (padding, 0u),
+            rt::AlignLeft => (0, padding),
+            rt::AlignRight | rt::AlignUnknown => (padding, 0),
             rt::AlignCenter => (padding / 2, (padding + 1) / 2),
         };
 
@@ -846,7 +846,7 @@ macro_rules! tuple {
             fn fmt(&self, f: &mut Formatter) -> Result {
                 try!(write!(f, "("));
                 let ($(ref $name,)*) = *self;
-                let mut n = 0i;
+                let mut n = 0;
                 $(
                     if n > 0 {
                         try!(write!(f, ", "));

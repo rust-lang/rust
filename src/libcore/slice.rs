@@ -653,7 +653,7 @@ macro_rules! iterator {
                             self.ptr = transmute(self.ptr as uint + 1);
 
                             // Use a non-null pointer value
-                            Some(transmute(1u))
+                            Some(&mut *(1 as *mut _))
                         } else {
                             let old = self.ptr;
                             self.ptr = self.ptr.offset(1);
@@ -687,7 +687,7 @@ macro_rules! iterator {
                             self.end = transmute(self.end as uint - 1);
 
                             // Use a non-null pointer value
-                            Some(transmute(1u))
+                            Some(&mut *(1 as *mut _))
                         } else {
                             self.end = self.end.offset(-1);
 
@@ -795,7 +795,7 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
             if index < self.indexable() {
                 if mem::size_of::<T>() == 0 {
                     // Use a non-null pointer value
-                    Some(transmute(1u))
+                    Some(&mut *(1 as *mut _))
                 } else {
                     Some(transmute(self.ptr.offset(index as int)))
                 }
@@ -1175,7 +1175,7 @@ impl<'a, T> Iterator for Windows<'a, T> {
             (0, Some(0))
         } else {
             let x = self.v.len() - self.size;
-            (x.saturating_add(1), x.checked_add(1u))
+            (x.saturating_add(1), x.checked_add(1))
         }
     }
 }
