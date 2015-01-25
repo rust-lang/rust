@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::slice::SliceExt;
 use std::io::{Command, fs, USER_RWX};
 use std::os;
 use std::path::BytesContainer;
@@ -17,8 +18,11 @@ fn main() {
     // If we're the child, make sure we were invoked correctly
     let args = os::args();
     if args.len() > 1 && args[1].as_slice() == "child" {
-        return assert_eq!(args[0],
-                          format!("mytest{}", os::consts::EXE_SUFFIX));
+        // FIXME: This should check the whole `args[0]` instead of just
+        // checking that it ends_with the executable name. This
+        // is needed because of Windows, which has a different behavior.
+        // See #15149 for more info.
+        return assert!(args[0].ends_with(&format!("mytest{}", os::consts::EXE_SUFFIX)[]));
     }
 
     test();
