@@ -482,8 +482,8 @@ impl<T, E> Result<T, E> {
     /// ```
     /// fn stringify(x: uint) -> String { format!("error code: {}", x) }
     ///
-    /// let x: Result<uint, uint> = Ok(2u);
-    /// assert_eq!(x.map_err(stringify), Ok(2u));
+    /// let x: Result<uint, uint> = Ok(2);
+    /// assert_eq!(x.map_err(stringify), Ok(2));
     ///
     /// let x: Result<uint, uint> = Err(13);
     /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_string()));
@@ -546,7 +546,7 @@ impl<T, E> Result<T, E> {
     /// ```
     /// let x: Result<uint, &str> = Ok(5);
     /// let v: Vec<uint> = x.into_iter().collect();
-    /// assert_eq!(v, vec![5u]);
+    /// assert_eq!(v, vec![5]);
     ///
     /// let x: Result<uint, &str> = Err("nothing!");
     /// let v: Vec<uint> = x.into_iter().collect();
@@ -676,9 +676,9 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let optb = 2u;
-    /// let x: Result<uint, &str> = Ok(9u);
-    /// assert_eq!(x.unwrap_or(optb), 9u);
+    /// let optb = 2;
+    /// let x: Result<uint, &str> = Ok(9);
+    /// assert_eq!(x.unwrap_or(optb), 9);
     ///
     /// let x: Result<uint, &str> = Err("error");
     /// assert_eq!(x.unwrap_or(optb), optb);
@@ -700,8 +700,8 @@ impl<T, E> Result<T, E> {
     /// ```
     /// fn count(x: &str) -> uint { x.len() }
     ///
-    /// assert_eq!(Ok(2u).unwrap_or_else(count), 2u);
-    /// assert_eq!(Err("foo").unwrap_or_else(count), 3u);
+    /// assert_eq!(Ok(2).unwrap_or_else(count), 2);
+    /// assert_eq!(Err("foo").unwrap_or_else(count), 3);
     /// ```
     #[inline]
     #[stable]
@@ -725,8 +725,8 @@ impl<T, E: Display> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(2u);
-    /// assert_eq!(x.unwrap(), 2u);
+    /// let x: Result<uint, &str> = Ok(2);
+    /// assert_eq!(x.unwrap(), 2);
     /// ```
     ///
     /// ```{.should_fail}
@@ -756,7 +756,7 @@ impl<T: Display, E> Result<T, E> {
     /// # Example
     ///
     /// ```{.should_fail}
-    /// let x: Result<uint, &str> = Ok(2u);
+    /// let x: Result<uint, &str> = Ok(2);
     /// x.unwrap_err(); // panics with `2`
     /// ```
     ///
@@ -897,12 +897,12 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// ```rust
     /// use std::uint;
     ///
-    /// let v = vec!(1u, 2u);
+    /// let v = vec!(1, 2);
     /// let res: Result<Vec<uint>, &'static str> = v.iter().map(|&x: &uint|
     ///     if x == uint::MAX { Err("Overflow!") }
     ///     else { Ok(x + 1) }
     /// ).collect();
-    /// assert!(res == Ok(vec!(2u, 3u)));
+    /// assert!(res == Ok(vec!(2, 3)));
     /// ```
     #[inline]
     fn from_iter<I: Iterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {

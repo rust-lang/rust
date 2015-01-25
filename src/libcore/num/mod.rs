@@ -356,7 +356,7 @@ pub trait Int
     /// ```rust
     /// use std::num::Int;
     ///
-    /// assert_eq!(2i.pow(4), 16);
+    /// assert_eq!(2.pow(4), 16);
     /// ```
     #[unstable = "pending integer conventions"]
     #[inline]
@@ -1185,7 +1185,7 @@ impl_from_primitive! { f64, to_f64 }
 /// ```
 /// use std::num;
 ///
-/// let twenty: f32 = num::cast(0x14i).unwrap();
+/// let twenty: f32 = num::cast(0x14).unwrap();
 /// assert_eq!(twenty, 20f32);
 /// ```
 ///
@@ -1571,8 +1571,8 @@ macro_rules! from_str_radix_float_impl {
                 let exp = match exp_info {
                     Some((c, offset)) => {
                         let base = match c {
-                            'E' | 'e' if radix == 10 => 10u as $T,
-                            'P' | 'p' if radix == 16 => 2u as $T,
+                            'E' | 'e' if radix == 10 => 10.0,
+                            'P' | 'p' if radix == 16 => 2.0,
                             _ => return None,
                         };
 
