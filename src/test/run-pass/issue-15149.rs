@@ -8,33 +8,54 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::{TempDir, Command, fs};
+use std::slice::SliceExt;
+use std::io::{Command, fs, USER_RWX};
 use std::os;
+use std::path::BytesContainer;
+use std::rand::random;
 
 fn main() {
     // If we're the child, make sure we were invoked correctly
     let args = os::args();
     if args.len() > 1 && args[1].as_slice() == "child" {
-        return assert_eq!(args[0].as_slice(), "mytest");
+        // FIXME: This should check the whole `args[0]` instead of just
+        // checking that it ends_with the executable name. This
+        // is needed because of Windows, which has a different behavior.
+        // See #15149 for more info.
+        return assert!(args[0].ends_with(&format!("mytest{}", os::consts::EXE_SUFFIX)[]));
     }
 
     test();
 }
 
 fn test() {
-    // If we're the parent, copy our own binary to a tempr directory, and then
-    // make it executable.
-    let dir = TempDir::new("mytest").unwrap();
-    let me = os::self_exe_name().unwrap();
-    let dest = dir.path().join(format!("mytest{}", os::consts::EXE_SUFFIX));
-    fs::copy(&me, &dest).unwrap();
+    // If we're the parent, copy our own binary to a new directory.
+    let my_path = os::self_exe_name().unwrap();
+    let my_dir  = my_path.dir_path();
 
-    // Append the temp directory to our own PATH.
+    let random_u32: u32 = random();
+    let child_dir = Path::new(my_dir.join(format!("issue-15149-child-{}",
+                                                  random_u32)));
+    fs::mkdir(&child_dir, USER_RWX).unwrap();
+
+    let child_path = child_dir.join(format!("mytest{}",
+                                            os::consts::EXE_SUFFIX));
+    fs::copy(&my_path, &child_path).unwrap();
+
+    // Append the new directory to our own PATH.
     let mut path = os::split_paths(os::getenv("PATH").unwrap_or(String::new()));
-    path.push(dir.path().clone());
+    path.push(child_dir.clone());
     let path = os::join_paths(path.as_slice()).unwrap();
 
-    Command::new("mytest").env("PATH", path.as_slice())
-                          .arg("child")
-                          .spawn().unwrap();
+    let child_output = Command::new("mytest").env("PATH", path.as_slice())
+                                             .arg("child")
+                                             .output().unwrap();
+
+    assert!(child_output.status.success(),
+            format!("child assertion failed\n child stdout:\n {}\n child stderr:\n {}",
+                    child_output.output.container_as_str().unwrap(),
+                    child_output.error.container_as_str().unwrap()));
+
+    fs::rmdir_recursive(&child_dir).unwrap();
+
 }

@@ -2291,136 +2291,7 @@ The name `str_eq` has a special meaning to the Rust compiler, and the presence
 of this definition means that it will use this definition when generating calls
 to the string equality function.
 
-A complete list of the built-in language items follows:
-
-#### Built-in Traits
-
-* `copy`
-  : Types that do not move ownership when used by-value.
-* `drop`
-  : Have destructors.
-* `send`
-  : Able to be sent across thread boundaries.
-* `sized`
-  : Has a size known at compile time.
-* `sync`
-  : Able to be safely shared between threads when aliased.
-
-#### Operators
-
-These language items are traits:
-
-* `add`
-  : Elements can be added (for example, integers and floats).
-* `sub`
-  : Elements can be subtracted.
-* `mul`
-  : Elements can be multiplied.
-* `div`
-  : Elements have a division operation.
-* `rem`
-  : Elements have a remainder operation.
-* `neg`
-  : Elements can be negated arithmetically.
-* `not`
-  : Elements can be negated logically.
-* `bitxor`
-  : Elements have an exclusive-or operation.
-* `bitand`
-  : Elements have a bitwise `and` operation.
-* `bitor`
-  : Elements have a bitwise `or` operation.
-* `shl`
-  : Elements have a left shift operation.
-* `shr`
-  : Elements have a right shift operation.
-* `index`
-  : Elements can be indexed.
-* `index_mut`
-  : ___Needs filling in___
-* `eq`
-  : Elements can be compared for equality.
-* `ord`
-  : Elements have a partial ordering.
-* `deref`
-  : `*` can be applied, yielding a reference to another type.
-* `deref_mut`
-  : `*` can be applied, yielding a mutable reference to another type.
-
-These are functions:
-
-* `fn`
-  : ___Needs filling in___
-* `fn_mut`
-  : ___Needs filling in___
-* `fn_once`
-  : ___Needs filling in___
-* `str_eq`
-  : Compare two strings (`&str`) for equality.
-* `strdup_uniq`
-  : Return a new unique string
-    containing a copy of the contents of a unique string.
-
-#### Types
-
-* `type_id`
-  : The type returned by the `type_id` intrinsic.
-* `unsafe`
-  : A type whose contents can be mutated through an immutable reference.
-
-#### Marker types
-
-These types help drive the compiler's analysis
-
-* `begin_unwind`
-  : ___Needs filling in___
-* `no_copy_bound`
-  : This type does not implement "copy", even if eligible.
-* `eh_personality`
-  : ___Needs filling in___
-* `exchange_free`
-  : Free memory that was allocated on the exchange heap.
-* `exchange_malloc`
-  : Allocate memory on the exchange heap.
-* `closure_exchange_malloc`
-  : ___Needs filling in___
-* `panic`
-  : Abort the program with an error.
-* `fail_bounds_check`
-  : Abort the program with a bounds check error.
-* `free`
-  : Free memory that was allocated on the managed heap.
-* `gc`
-  : ___Needs filling in___
-* `exchange_heap`
-  : ___Needs filling in___
-* `iterator`
-  : ___Needs filling in___
-* `contravariant_lifetime`
-  : The lifetime parameter should be considered contravariant.
-* `covariant_lifetime`
-  : The lifetime parameter should be considered covariant.
-* `invariant_lifetime`
-  : The lifetime parameter should be considered invariant.
-* `malloc`
-  : Allocate memory on the managed heap.
-* `owned_box`
-  : ___Needs filling in___
-* `stack_exhausted`
-  : ___Needs filling in___
-* `start`
-  : ___Needs filling in___
-* `contravariant_type`
-  : The type parameter should be considered contravariant.
-* `covariant_type`
-  : The type parameter should be considered covariant.
-* `invariant_type`
-  : The type parameter should be considered invariant.
-* `ty_desc`
-  : ___Needs filling in___
-
-> **Note:** This list is likely to become out of date. We should auto-generate
-> it from `librustc/middle/lang_items.rs`.
+A complete list of the built-in language items will be added in the future.
 
 ### Inline attributes
 
@@ -2652,9 +2523,7 @@ The currently implemented features of the reference compiler are:
                    declare a `static` as being unique per-thread leveraging
                    LLVM's implementation which works in concert with the kernel
                    loader and dynamic linker. This is not necessarily available
-                   on all platforms, and usage of it is discouraged (rust
-                   focuses more on thread-local data instead of thread-local
-                   data).
+                   on all platforms, and usage of it is discouraged.
 
 * `trace_macros` - Allows use of the `trace_macros` macro, which is a nasty
                    hack that will certainly be removed.
