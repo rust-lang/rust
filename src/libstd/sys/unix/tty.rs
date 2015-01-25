@@ -11,13 +11,21 @@
 use prelude::v1::*;
 
 use sys::fs::FileDesc;
-use libc::{self, c_int};
+use libc::{self, c_int, c_ulong, funcs};
 use io::{self, IoResult, IoError};
+use sys::c;
 use sys_common;
 
 pub struct TTY {
     pub fd: FileDesc,
 }
+
+#[cfg(any(target_os = "macos",
+          target_os = "freebsd"))]
+const TIOCGWINSZ: c_ulong = 0x40087468;
+
+#[cfg(any(target_os = "linux", target_os = "android"))]
+const TIOCGWINSZ: c_ulong = 0x00005413;
 
 impl TTY {
     pub fn new(fd: c_int) -> IoResult<TTY> {
@@ -41,8 +49,39 @@ impl TTY {
     pub fn set_raw(&mut self, _raw: bool) -> IoResult<()> {
         Err(sys_common::unimpl())
     }
+
+    #[cfg(any(target_os = "linux",
+              target_os = "android",
+              target_os = "macos",
+              target_os = "freebsd"))]
+    pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
+        unsafe {
+            #[repr(C)]
+            struct winsize {
+                ws_row: u16,
+                ws_col: u16,
+                ws_xpixel: u16,
+                ws_ypixel: u16
+            }
+
+            let mut size = winsize { ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0 };
+            if c::ioctl(self.fd.fd(), TIOCGWINSZ, &mut size) == -1 {
+                Err(IoError {
+                    kind: io::OtherIoError,
+                    desc: "Size of terminal could not be determined",
+                    detail: None,
+                })
+            } else {
+                Ok((size.ws_col as int, size.ws_row as int))
+            }
+        }
+    }
+
+    #[cfg(any(target_os = "ios",
+              target_os = "dragonfly"))]
     pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
         Err(sys_common::unimpl())
     }
+
     pub fn isatty(&self) -> bool { false }
 }
