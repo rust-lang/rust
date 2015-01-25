@@ -490,7 +490,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         // current dictionary of lint information. Along the way, keep a history
         // of what we changed so we can roll everything back after invoking the
         // specified closure
-        let mut pushed = 0u;
+        let mut pushed = 0;
 
         for result in gather_attrs(attrs).into_iter() {
             let v = match result {

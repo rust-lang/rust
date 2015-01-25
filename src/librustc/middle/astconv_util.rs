@@ -25,14 +25,14 @@ pub const NO_TPS: uint = 2;
 pub fn check_path_args(tcx: &ty::ctxt,
                        path: &ast::Path,
                        flags: uint) {
-    if (flags & NO_TPS) != 0u {
+    if (flags & NO_TPS) != 0 {
         if path.segments.iter().any(|s| s.parameters.has_types()) {
             span_err!(tcx.sess, path.span, E0109,
                 "type parameters are not allowed on this type");
         }
     }
 
-    if (flags & NO_REGIONS) != 0u {
+    if (flags & NO_REGIONS) != 0 {
         if path.segments.iter().any(|s| s.parameters.has_lifetimes()) {
             span_err!(tcx.sess, path.span, E0110,
                 "region parameters are not allowed on this type");

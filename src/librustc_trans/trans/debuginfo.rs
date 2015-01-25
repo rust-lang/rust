@@ -1730,7 +1730,7 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
     let work_dir = cx.sess().working_dir.as_str().unwrap();
     let file_name =
         if full_path.starts_with(work_dir) {
-            &full_path[work_dir.len() + 1u..full_path.len()]
+            &full_path[work_dir.len() + 1..full_path.len()]
         } else {
             full_path
         };
@@ -2268,7 +2268,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 let null_variant_index = (1 - non_null_variant_index) as uint;
                 let null_variant_name = token::get_name((*self.variants)[null_variant_index].name);
                 let union_member_name = format!("RUST$ENCODED$ENUM${}${}",
-                                                0u,
+                                                0,
                                                 null_variant_name);
 
                 // Finally create the (singleton) list of descriptions of union
@@ -3855,7 +3855,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     output.push_str("::");
                 }
 
-                let mut path_element_count = 0u;
+                let mut path_element_count = 0;
                 for path_element in path {
                     let name = token::get_name(path_element.name());
                     output.push_str(name.get());

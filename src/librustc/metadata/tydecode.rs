@@ -76,13 +76,13 @@ fn peek(st: &PState) -> char {
 
 fn next(st: &mut PState) -> char {
     let ch = st.data[st.pos] as char;
-    st.pos = st.pos + 1u;
+    st.pos = st.pos + 1;
     return ch;
 }
 
 fn next_byte(st: &mut PState) -> u8 {
     let b = st.data[st.pos];
-    st.pos = st.pos + 1u;
+    st.pos = st.pos + 1;
     return b;
 }
 
@@ -498,7 +498,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         assert_eq!(next(st), '[');
         let mut params = Vec::new();
         while peek(st) != ']' { params.push(parse_ty_(st, conv)); }
-        st.pos = st.pos + 1u;
+        st.pos = st.pos + 1;
         return ty::mk_tup(tcx, params);
       }
       'F' => {
@@ -590,7 +590,7 @@ fn parse_uint(st: &mut PState) -> uint {
     loop {
         let cur = peek(st);
         if cur < '0' || cur > '9' { return n; }
-        st.pos = st.pos + 1u;
+        st.pos = st.pos + 1;
         n *= 10;
         n += (cur as uint) - ('0' as uint);
     };
@@ -608,15 +608,15 @@ fn parse_param_space(st: &mut PState) -> subst::ParamSpace {
 }
 
 fn parse_hex(st: &mut PState) -> uint {
-    let mut n = 0u;
+    let mut n = 0;
     loop {
         let cur = peek(st);
         if (cur < '0' || cur > '9') && (cur < 'a' || cur > 'f') { return n; }
-        st.pos = st.pos + 1u;
-        n *= 16u;
+        st.pos = st.pos + 1;
+        n *= 16;
         if '0' <= cur && cur <= '9' {
             n += (cur as uint) - ('0' as uint);
-        } else { n += 10u + (cur as uint) - ('a' as uint); }
+        } else { n += 10 + (cur as uint) - ('a' as uint); }
     };
 }
 
@@ -686,7 +686,7 @@ fn parse_sig_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::PolyF
     while peek(st) != ']' {
         inputs.push(parse_ty_(st, conv));
     }
-    st.pos += 1u; // eat the ']'
+    st.pos += 1; // eat the ']'
     let variadic = match next(st) {
         'V' => true,
         'N' => false,
@@ -694,7 +694,7 @@ fn parse_sig_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::PolyF
     };
     let output = match peek(st) {
         'z' => {
-          st.pos += 1u;
+          st.pos += 1;
           ty::FnDiverging
         }
         _ => ty::FnConverging(parse_ty_(st, conv))
@@ -706,16 +706,16 @@ fn parse_sig_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> ty::PolyF
 
 // Rust metadata parsing
 pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
-    let mut colon_idx = 0u;
+    let mut colon_idx = 0;
     let len = buf.len();
-    while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1u; }
+    while colon_idx < len && buf[colon_idx] != ':' as u8 { colon_idx += 1; }
     if colon_idx == len {
         error!("didn't find ':' when parsing def id");
         panic!();
     }
 
-    let crate_part = &buf[0u..colon_idx];
-    let def_part = &buf[colon_idx + 1u..len];
+    let crate_part = &buf[0..colon_idx];
+    let def_part = &buf[colon_idx + 1..len];
 
     let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| {
         s.parse::<uint>().ok()

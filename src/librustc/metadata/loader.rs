@@ -487,7 +487,7 @@ impl<'a> Context<'a> {
     fn extract_one(&mut self, m: HashMap<Path, PathKind>, flavor: &str,
                    slot: &mut Option<MetadataBlob>) -> Option<(Path, PathKind)> {
         let mut ret = None::<(Path, PathKind)>;
-        let mut error = 0u;
+        let mut error = 0;
 
         if slot.is_some() {
             // FIXME(#10786): for an optimization, we only read one of the
