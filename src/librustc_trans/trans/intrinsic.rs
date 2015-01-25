@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,7 @@
 
 #![allow(non_upper_case_globals)]
 
+use back::abi;
 use llvm;
 use llvm::{SequentiallyConsistent, Acquire, Release, AtomicXchg, ValueRef, TypeKind};
 use middle::subst;
@@ -314,17 +315,62 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         (_, "size_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llsize_of_alloc(ccx, lltp_ty))
+            let llty = type_of::sizing_type_of(ccx, tp_ty);
+            C_uint(ccx, machine::llsize_of_alloc(ccx, llty))
         }
         (_, "min_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            C_uint(ccx, type_of::align_of(ccx, tp_ty))
+            let llty = type_of::sizing_type_of(ccx, tp_ty);
+            C_uint(ccx, machine::llalign_of_min(ccx, llty))
         }
         (_, "pref_align_of") => {
             let tp_ty = *substs.types.get(FnSpace, 0);
-            let lltp_ty = type_of::type_of(ccx, tp_ty);
-            C_uint(ccx, machine::llalign_of_pref(ccx, lltp_ty))
+            let llty = type_of::sizing_type_of(ccx, tp_ty);
+            C_uint(ccx, machine::llalign_of_pref(ccx, llty))
+        }
+        (_, "size_of_val") => {
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            if type_is_sized(tcx, tp_ty) {
+                let llty = type_of::sizing_type_of(ccx, tp_ty);
+                C_uint(ccx, machine::llsize_of_alloc(ccx, llty))
+            } else {
+                let ptr = GEPi(bcx, llargs[0], &[0, abi::FAT_PTR_EXTRA]);
+                let (size, align) = glue::size_and_align_of_dst(bcx, tp_ty,
+                                        Load(bcx, ptr), machine::AlignType::Min);
+
+                // If the size is not aligned to the alignment, then we need to
+                // round it up to the next number which matches the alignment
+                let rem = URem(bcx, size, align, call_debug_location);
+                Select(bcx,
+                       ICmp(bcx, llvm::IntPredicate::IntEQ, rem, C_uint(ccx, 0u64)),
+                       size,
+                       Add(bcx, size, Sub(bcx, align, rem, call_debug_location),
+                           call_debug_location))
+            }
+        }
+        (_, "min_align_of_val") => {
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            if type_is_sized(tcx, tp_ty) {
+                let llty = type_of::sizing_type_of(ccx, tp_ty);
+                C_uint(ccx, machine::llalign_of_min(ccx, llty))
+            } else {
+                let ptr = GEPi(bcx, llargs[0], &[0, abi::FAT_PTR_EXTRA]);
+                let (_, align) = glue::size_and_align_of_dst(bcx, tp_ty,
+                                    Load(bcx, ptr), machine::AlignType::Min);
+                align
+            }
+        }
+        (_, "pref_align_of_val") => {
+            let tp_ty = *substs.types.get(FnSpace, 0);
+            if type_is_sized(tcx, tp_ty) {
+                let llty = type_of::sizing_type_of(ccx, tp_ty);
+                C_uint(ccx, machine::llalign_of_pref(ccx, llty))
+            } else {
+                let ptr = GEPi(bcx, llargs[0], &[0, abi::FAT_PTR_EXTRA]);
+                let (_, align) = glue::size_and_align_of_dst(bcx, tp_ty,
+                                    Load(bcx, ptr), machine::AlignType::Pref);
+                align
+            }
         }
         (_, "move_val_init") => {
             // Create a datum reflecting the value being moved.
@@ -877,3 +923,4 @@ fn with_overflow_intrinsic<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ret
     }
 }
+
