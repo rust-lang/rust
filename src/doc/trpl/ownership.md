@@ -533,6 +533,7 @@ fn substr<'a>(s: &'a str, until: u32) -> &'a str; // expanded
 fn get_str() -> &str; // ILLEGAL, no inputs
 
 fn frob(s: &str, t: &str) -> &str; // ILLEGAL, two inputs
+fn frob<'a, 'b>(s: &'a str, t: &'b str) -> &str; // Expanded: Output lifetime is unclear
 
 fn get_mut(&mut self) -> &mut T; // elided
 fn get_mut<'a>(&'a mut self) -> &'a mut T; // expanded
