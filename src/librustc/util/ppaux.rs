@@ -544,7 +544,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Option<T> {
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for P<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        (*self).repr(tcx)
+        (**self).repr(tcx)
     }
 }
 

@@ -627,6 +627,7 @@ impl<'tcx> tr for MethodOrigin<'tcx> {
                         // def-id is already translated when we read it out
                         trait_ref: mp.trait_ref.clone(),
                         method_num: mp.method_num,
+                        impl_def_id: mp.impl_def_id.tr(dcx),
                     }
                 )
             }
@@ -878,6 +879,16 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                             }));
                             try!(this.emit_struct_field("method_num", 0, |this| {
                                 this.emit_uint(p.method_num)
+                            }));
+                            try!(this.emit_struct_field("impl_def_id", 0, |this| {
+                                this.emit_option(|this| {
+                                    match p.impl_def_id {
+                                        None => this.emit_option_none(),
+                                        Some(did) => this.emit_option_some(|this| {
+                                            Ok(this.emit_def_id(did))
+                                        })
+                                    }
+                                })
                             }));
                             Ok(())
                         })
@@ -1451,6 +1462,17 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                     method_num: {
                                         this.read_struct_field("method_num", 1, |this| {
                                             this.read_uint()
+                                        }).unwrap()
+                                    },
+                                    impl_def_id: {
+                                        this.read_struct_field("impl_def_id", 2, |this| {
+                                            this.read_option(|this, b| {
+                                                if b {
+                                                    Ok(Some(this.read_def_id(dcx)))
+                                                } else {
+                                                    Ok(None)
+                                                }
+                                            })
                                         }).unwrap()
                                     }
                                 }))
