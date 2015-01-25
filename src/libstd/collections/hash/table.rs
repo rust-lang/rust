@@ -274,7 +274,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
         // ... and it's zero at all other times.
         let maybe_wraparound_dist = (self.idx ^ (self.idx + 1)) & self.table.capacity();
         // Finally, we obtain the offset 1 or the offset -cap + 1.
-        let dist = 1i - (maybe_wraparound_dist as int);
+        let dist = 1 - (maybe_wraparound_dist as int);
 
         self.idx += 1;
 

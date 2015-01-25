@@ -9,12 +9,12 @@
 // except according to those terms.
 
 #[cfg(foo)]
-macro_rules! foo { () => (1i) }
+macro_rules! foo { () => (1) }
 
 #[cfg(not(foo))]
-macro_rules! foo { () => (2i) }
+macro_rules! foo { () => (2) }
 
 pub fn main() {
-    assert_eq!(foo!(), 2i);
+    assert_eq!(foo!(), 2);
 }
 

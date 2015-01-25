@@ -12,6 +12,6 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let i = box vec!(100i);
-    assert_eq!((*i)[0], 100i);
+    let i = box vec!(100);
+    assert_eq!((*i)[0], 100);
 }

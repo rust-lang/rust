@@ -134,7 +134,7 @@ mod test {
     #[test]
     fn smoke_once() {
         static O: Once = ONCE_INIT;
-        let mut a = 0i;
+        let mut a = 0;
         O.call_once(|| a += 1);
         assert_eq!(a, 1);
         O.call_once(|| a += 1);

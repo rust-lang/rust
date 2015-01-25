@@ -13,5 +13,5 @@
 extern crate "issue-11225-2" as foo;
 
 pub fn main() {
-    foo::foo(1i);
+    foo::foo(1);
 }

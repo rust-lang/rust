@@ -49,7 +49,7 @@ fn main() {
     let ints = integers();
     let threes = periodical(3);
     let fives = periodical(5);
-    for _ in 1i..100i {
+    for _ in 1..100 {
         match (ints.recv().unwrap(), threes.recv().unwrap(), fives.recv().unwrap()) {
             (_, true, true) => println!("FizzBuzz"),
             (_, true, false) => println!("Fizz"),

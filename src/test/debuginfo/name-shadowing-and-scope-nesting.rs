@@ -103,20 +103,20 @@ fn main() {
     zzz(); // #break
     sentinel();
 
-    let x = 10i;
+    let x = 10;
 
     zzz(); // #break
     sentinel();
 
     let x = 10.5f64;
-    let y = 20i;
+    let y = 20;
 
     zzz(); // #break
     sentinel();
 
     {
         let x = true;
-        let y = 2220i;
+        let y = 2220;
 
         zzz(); // #break
         sentinel();

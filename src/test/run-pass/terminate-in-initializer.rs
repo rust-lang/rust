@@ -16,7 +16,7 @@ use std::thread::Thread;
 
 fn test_break() { loop { let _x: Box<int> = break; } }
 
-fn test_cont() { let mut i = 0i; while i < 1 { i += 1; let _x: Box<int> = continue; } }
+fn test_cont() { let mut i = 0; while i < 1 { i += 1; let _x: Box<int> = continue; } }
 
 fn test_ret() { let _x: Box<int> = return; }
 

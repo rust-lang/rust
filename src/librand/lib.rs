@@ -152,7 +152,7 @@ pub trait Rng : Sized {
         // (3) adds more `unsafe` that needs to be checked, (4)
         // probably doesn't give much performance gain if
         // optimisations are on.
-        let mut count = 0i;
+        let mut count = 0;
         let mut num = 0;
         for byte in dest.iter_mut() {
             if count == 0 {
@@ -269,7 +269,7 @@ pub trait Rng : Sized {
     /// ```
     /// use std::rand::{thread_rng, Rng};
     ///
-    /// let choices = [1i, 2, 4, 8, 16, 32];
+    /// let choices = [1, 2, 4, 8, 16, 32];
     /// let mut rng = thread_rng();
     /// println!("{:?}", rng.choose(&choices));
     /// assert_eq!(rng.choose(&choices[..0]), None);
@@ -290,7 +290,7 @@ pub trait Rng : Sized {
     /// use std::rand::{thread_rng, Rng};
     ///
     /// let mut rng = thread_rng();
-    /// let mut y = [1i, 2, 3];
+    /// let mut y = [1, 2, 3];
     /// rng.shuffle(&mut y);
     /// println!("{:?}", y.as_slice());
     /// rng.shuffle(&mut y);

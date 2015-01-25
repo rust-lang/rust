@@ -38,7 +38,7 @@ impl<S: Clone> Positioned<S> for Point<S> {
 impl<S: Clone + Add<Output=S>> Movable<S> for Point<S> {}
 
 pub fn main() {
-    let mut p = Point{ x: 1i, y: 2i};
+    let mut p = Point{ x: 1, y: 2};
     p.translate(3);
     assert_eq!(p.X(), 4);
 }

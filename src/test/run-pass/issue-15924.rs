@@ -28,5 +28,5 @@ impl<T: Encodable> Drop for Foo<T> {
 }
 
 fn main() {
-    let _ = Foo { v: 10i };
+    let _ = Foo { v: 10 };
 }

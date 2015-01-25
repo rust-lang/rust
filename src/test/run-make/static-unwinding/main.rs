@@ -25,7 +25,7 @@ fn main() {
     Thread::scoped(move|| {
         let _a = A;
         lib::callback(|| panic!());
-        1i
+        1
     }).join().err().unwrap();
 
     unsafe {

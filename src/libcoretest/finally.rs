@@ -15,7 +15,7 @@ use std::thread::Thread;
 
 #[test]
 fn test_success() {
-    let mut i = 0i;
+    let mut i = 0;
     try_finally(
         &mut i, (),
         |i, ()| {
@@ -32,7 +32,7 @@ fn test_success() {
 #[test]
 #[should_fail]
 fn test_fail() {
-    let mut i = 0i;
+    let mut i = 0;
     try_finally(
         &mut i, (),
         |i, ()| {
@@ -47,7 +47,7 @@ fn test_fail() {
 
 #[test]
 fn test_retval() {
-    let mut closure = |&mut:| 10i;
+    let mut closure = |&mut:| 10;
     let i = closure.finally(|| { });
     assert_eq!(i, 10);
 }

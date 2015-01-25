@@ -45,6 +45,6 @@ fn bar<T, I, X>(x: X) where
 }
 
 fn main() {
-    foo(&[0i, 1, 2]);
-    bar(&[0i, 1, 2]);
+    foo(&[0, 1, 2]);
+    bar(&[0, 1, 2]);
 }

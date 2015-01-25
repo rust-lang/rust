@@ -20,5 +20,5 @@ fn f<T:A>(i: T) {
 }
 
 pub fn main () {
-    f(0i);
+    f(0);
 }

@@ -28,16 +28,16 @@ enum Baz {
 
 #[allow(unused,)]
 pub fn main() {
-    f::<int,>(0i,);
-    let (_, _,) = (1i, 1i,);
-    let [_, _,] = [1i, 1,];
-    let [_, _, .., _,] = [1i, 1, 1, 1,];
-    let [_, _, _.., _,] = [1i, 1, 1, 1,];
+    f::<int,>(0,);
+    let (_, _,) = (1, 1,);
+    let [_, _,] = [1, 1,];
+    let [_, _, .., _,] = [1, 1, 1, 1,];
+    let [_, _, _.., _,] = [1, 1, 1, 1,];
 
     let x: Foo<int,> = Foo::<int,>;
 
-    Bar::f(0i,);
-    Bar.g(0i,);
+    Bar::f(0,);
+    Bar.g(0,);
     Bar.h();
 
     let x = Baz::Qux(1,);

@@ -12,7 +12,7 @@ use std::cmp::Ordering::{Equal, Less, Greater};
 
 #[test]
 fn test_clone() {
-    let a = (1i, "2");
+    let a = (1, "2");
     let b = a.clone();
     assert_eq!(a, b);
 }
@@ -59,10 +59,10 @@ fn test_tuple_cmp() {
 
 #[test]
 fn test_show() {
-    let s = format!("{:?}", (1i,));
+    let s = format!("{:?}", (1,));
     assert_eq!(s, "(1,)");
-    let s = format!("{:?}", (1i, true));
+    let s = format!("{:?}", (1, true));
     assert_eq!(s, "(1, true)");
-    let s = format!("{:?}", (1i, "hi", true));
+    let s = format!("{:?}", (1, "hi", true));
     assert_eq!(s, "(1, \"hi\", true)");
 }

@@ -16,8 +16,8 @@ struct Foo<T> {
 
 pub fn main() {
     let foo = Foo {
-        bar: 0i,
-        baz: 1i
+        bar: 0,
+        baz: 1
     };
 
     let foo_ = foo.clone();

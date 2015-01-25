@@ -28,7 +28,7 @@ pub fn main() {
       'a'...'z' => {}
       _ => panic!("should suppport char ranges")
     }
-    match -3i {
+    match -3 {
       -7...5 => {}
       _ => panic!("should match signed range")
     }

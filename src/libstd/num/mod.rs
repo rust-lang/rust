@@ -356,11 +356,11 @@ pub fn test_num<T>(ten: T, two: T) where
      + Rem<Output=T> + Debug
      + Copy
 {
-    assert_eq!(ten.add(two),  cast(12i).unwrap());
-    assert_eq!(ten.sub(two),  cast(8i).unwrap());
-    assert_eq!(ten.mul(two),  cast(20i).unwrap());
-    assert_eq!(ten.div(two),  cast(5i).unwrap());
-    assert_eq!(ten.rem(two),  cast(0i).unwrap());
+    assert_eq!(ten.add(two),  cast(12).unwrap());
+    assert_eq!(ten.sub(two),  cast(8).unwrap());
+    assert_eq!(ten.mul(two),  cast(20).unwrap());
+    assert_eq!(ten.div(two),  cast(5).unwrap());
+    assert_eq!(ten.rem(two),  cast(0).unwrap());
 
     assert_eq!(ten.add(two),  ten + two);
     assert_eq!(ten.sub(two),  ten - two);
@@ -393,7 +393,7 @@ mod tests {
             assert_eq!(20u16, _20.to_u16().unwrap());
             assert_eq!(20u32, _20.to_u32().unwrap());
             assert_eq!(20u64, _20.to_u64().unwrap());
-            assert_eq!(20i,   _20.to_int().unwrap());
+            assert_eq!(20,   _20.to_int().unwrap());
             assert_eq!(20i8,  _20.to_i8().unwrap());
             assert_eq!(20i16, _20.to_i16().unwrap());
             assert_eq!(20i32, _20.to_i32().unwrap());
@@ -406,7 +406,7 @@ mod tests {
             assert_eq!(_20, NumCast::from(20u16).unwrap());
             assert_eq!(_20, NumCast::from(20u32).unwrap());
             assert_eq!(_20, NumCast::from(20u64).unwrap());
-            assert_eq!(_20, NumCast::from(20i).unwrap());
+            assert_eq!(_20, NumCast::from(20).unwrap());
             assert_eq!(_20, NumCast::from(20i8).unwrap());
             assert_eq!(_20, NumCast::from(20i16).unwrap());
             assert_eq!(_20, NumCast::from(20i32).unwrap());
@@ -419,7 +419,7 @@ mod tests {
             assert_eq!(_20, cast(20u16).unwrap());
             assert_eq!(_20, cast(20u32).unwrap());
             assert_eq!(_20, cast(20u64).unwrap());
-            assert_eq!(_20, cast(20i).unwrap());
+            assert_eq!(_20, cast(20).unwrap());
             assert_eq!(_20, cast(20i8).unwrap());
             assert_eq!(_20, cast(20i16).unwrap());
             assert_eq!(_20, cast(20i32).unwrap());
@@ -438,7 +438,7 @@ mod tests {
     #[test] fn test_i16_cast()   { test_cast_20!(20i16) }
     #[test] fn test_i32_cast()   { test_cast_20!(20i32) }
     #[test] fn test_i64_cast()   { test_cast_20!(20i64) }
-    #[test] fn test_int_cast()   { test_cast_20!(20i)   }
+    #[test] fn test_int_cast()   { test_cast_20!(20)   }
     #[test] fn test_f32_cast()   { test_cast_20!(20f32) }
     #[test] fn test_f64_cast()   { test_cast_20!(20f64) }
 
@@ -831,23 +831,23 @@ mod tests {
     #[test]
     fn test_saturating_add_int() {
         use int::{MIN,MAX};
-        assert_eq!(3i.saturating_add(5i), 8i);
-        assert_eq!(3i.saturating_add(MAX-1), MAX);
+        assert_eq!(3.saturating_add(5), 8);
+        assert_eq!(3.saturating_add(MAX-1), MAX);
         assert_eq!(MAX.saturating_add(MAX), MAX);
         assert_eq!((MAX-2).saturating_add(1), MAX-1);
-        assert_eq!(3i.saturating_add(-5i), -2i);
-        assert_eq!(MIN.saturating_add(-1i), MIN);
-        assert_eq!((-2i).saturating_add(-MAX), MIN);
+        assert_eq!(3.saturating_add(-5), -2);
+        assert_eq!(MIN.saturating_add(-1), MIN);
+        assert_eq!((-2).saturating_add(-MAX), MIN);
     }
 
     #[test]
     fn test_saturating_sub_int() {
         use int::{MIN,MAX};
-        assert_eq!(3i.saturating_sub(5i), -2i);
-        assert_eq!(MIN.saturating_sub(1i), MIN);
-        assert_eq!((-2i).saturating_sub(MAX), MIN);
-        assert_eq!(3i.saturating_sub(-5i), 8i);
-        assert_eq!(3i.saturating_sub(-(MAX-1)), MAX);
+        assert_eq!(3.saturating_sub(5), -2);
+        assert_eq!(MIN.saturating_sub(1), MIN);
+        assert_eq!((-2).saturating_sub(MAX), MIN);
+        assert_eq!(3.saturating_sub(-5), 8);
+        assert_eq!(3.saturating_sub(-(MAX-1)), MAX);
         assert_eq!(MAX.saturating_sub(-MAX), MAX);
         assert_eq!((MAX-2).saturating_sub(-1), MAX-1);
     }
@@ -1010,10 +1010,10 @@ mod tests {
                 assert_eq!(result, naive_pow($num, $exp));
             }}
         }
-        assert_pow!((3i,     0 ) => 1);
-        assert_pow!((5i,     1 ) => 5);
-        assert_pow!((-4i,    2 ) => 16);
-        assert_pow!((8i,     3 ) => 512);
+        assert_pow!((3,     0 ) => 1);
+        assert_pow!((5,     1 ) => 5);
+        assert_pow!((-4,    2 ) => 16);
+        assert_pow!((8,     3 ) => 512);
         assert_pow!((2u64,   50) => 1125899906842624);
     }
 }
