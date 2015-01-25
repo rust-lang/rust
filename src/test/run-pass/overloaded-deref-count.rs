@@ -49,7 +49,7 @@ impl<T> DerefMut for DerefCounter<T> {
 }
 
 pub fn main() {
-    let mut n = DerefCounter::new(0i);
+    let mut n = DerefCounter::new(0);
     let mut v = DerefCounter::new(Vec::new());
 
     let _ = *n; // Immutable deref + copy a POD.
@@ -62,7 +62,7 @@ pub fn main() {
     assert_eq!(n.counts(), (2, 1)); assert_eq!(v.counts(), (1, 1));
 
     let mut v2 = Vec::new();
-    v2.push(1i);
+    v2.push(1);
 
     *n = 5; *v = v2; // Mutable deref + assignment.
     assert_eq!(n.counts(), (2, 2)); assert_eq!(v.counts(), (1, 2));

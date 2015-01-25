@@ -202,7 +202,7 @@ fn main() {
         zzz(); // #break
     }
 
-    for i in 1234..1235i {
+    for i in 1234..1235 {
         zzz(); // #break
     }
 

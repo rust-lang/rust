@@ -18,5 +18,5 @@ use std::num::ToPrimitive;
 fn doit<T>(val: T, f: &Fn(T)) { f.call((val,)) }
 
 pub fn main() {
-    doit(0i, &|&: x /*: int*/ | { x.to_int(); });
+    doit(0, &|&: x /*: int*/ | { x.to_int(); });
 }

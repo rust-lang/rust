@@ -12,9 +12,9 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    box 100i;
+    box 100;
 }
 
 fn vec() {
-    vec!(0i);
+    vec!(0);
 }

@@ -11,5 +11,5 @@
 fn foo<'a, I>(mut it: I) where I: Iterator<Item=&'a int> {}
 
 fn main() {
-    foo([1i, 2].iter());
+    foo([1, 2].iter());
 }

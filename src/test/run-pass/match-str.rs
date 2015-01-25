@@ -23,7 +23,7 @@ pub fn main() {
       _ => panic!()
     }
 
-    let x = match "a" { "a" => 1i, "b" => 2i, _ => panic!() };
+    let x = match "a" { "a" => 1, "b" => 2, _ => panic!() };
     assert_eq!(x, 1);
 
     match "a" { "a" => { } "b" => { }, _ => panic!() }

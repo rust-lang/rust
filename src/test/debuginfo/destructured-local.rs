@@ -278,7 +278,7 @@ fn main() {
     let Struct { a: k, b: l } = Struct { a: 12, b: 13 };
 
     // ignored tuple element
-    let (m, _, n) = (14i, 15i, 16i);
+    let (m, _, n) = (14, 15, 16);
 
     // ignored struct field
     let Struct { b: o, .. } = Struct { a: 17, b: 18 };
@@ -291,25 +291,25 @@ fn main() {
 
     // complex nesting
     let ((u, v), ((w, (x, Struct { a: y, b: z})), Struct { a: ae, b: oe }), ue) =
-        ((25i, 26i), ((27i, (28i, Struct { a: 29, b: 30})), Struct { a: 31, b: 32 }), 33i);
+        ((25, 26), ((27, (28, Struct { a: 29, b: 30})), Struct { a: 31, b: 32 }), 33);
 
     // reference
-    let &aa = &(34i, 35i);
+    let &aa = &(34, 35);
 
     // reference
-    let &bb = &(36i, 37i);
+    let &bb = &(36, 37);
 
     // contained reference
-    let (&cc, _) = (&38i, 39i);
+    let (&cc, _) = (&38, 39);
 
     // unique pointer
-    let box dd = box() (40i, 41i, 42i);
+    let box dd = box() (40, 41, 42);
 
     // ref binding
-    let ref ee = (43i, 44i, 45i);
+    let ref ee = (43, 44, 45);
 
     // ref binding in tuple
-    let (ref ff, gg) = (46i, (47i, 48i));
+    let (ref ff, gg) = (46, (47, 48));
 
     // ref binding in struct
     let Struct { b: ref hh, .. } = Struct { a: 49, b: 50 };

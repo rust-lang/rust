@@ -52,35 +52,35 @@ impl TestEquality for stuff::thing {
 
 pub fn main() {
     // Some tests of random things
-    f(0i);
+    f(0);
 
-    assert_eq!(A::lurr(&0i, &1i), 21);
+    assert_eq!(A::lurr(&0, &1), 21);
 
     let a = stuff::thing { x: 0 };
     let b = stuff::thing { x: 1 };
     let c = Something { x: 1 };
 
-    assert_eq!(0i.g(), 10);
+    assert_eq!(0.g(), 10);
     assert_eq!(a.g(), 10);
     assert_eq!(a.h(), 11);
     assert_eq!(c.h(), 11);
 
-    assert_eq!(0i.thing(3.14f64, 1i), (3.14f64, 1i));
-    assert_eq!(B::staticthing(&0i, 3.14f64, 1i), (3.14f64, 1i));
-    assert_eq!(B::<f64>::staticthing::<int>(&0i, 3.14, 1), (3.14, 1));
+    assert_eq!(0.thing(3.14f64, 1), (3.14f64, 1));
+    assert_eq!(B::staticthing(&0, 3.14f64, 1), (3.14f64, 1));
+    assert_eq!(B::<f64>::staticthing::<int>(&0, 3.14, 1), (3.14, 1));
 
-    assert_eq!(g(0i, 3.14f64, 1i), (3.14f64, 1i));
-    assert_eq!(g(false, 3.14f64, 1i), (3.14, 1));
+    assert_eq!(g(0, 3.14f64, 1), (3.14f64, 1));
+    assert_eq!(g(false, 3.14f64, 1), (3.14, 1));
 
 
     // Trying out a real one
-    assert!(12i.test_neq(&10i));
-    assert!(!10i.test_neq(&10i));
+    assert!(12.test_neq(&10));
+    assert!(!10.test_neq(&10));
     assert!(a.test_neq(&b));
     assert!(!a.test_neq(&a));
 
-    assert!(neq(&12i, &10i));
-    assert!(!neq(&10i, &10i));
+    assert!(neq(&12, &10));
+    assert!(!neq(&10, &10));
     assert!(neq(&a, &b));
     assert!(!neq(&a, &a));
 }

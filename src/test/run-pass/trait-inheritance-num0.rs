@@ -22,7 +22,7 @@ pub trait Num {
 pub trait NumExt: NumCast + PartialOrd { }
 
 fn greater_than_one<T:NumExt>(n: &T) -> bool {
-    n.gt(&NumCast::from(1i).unwrap())
+    n.gt(&NumCast::from(1).unwrap())
 }
 
 pub fn main() {}

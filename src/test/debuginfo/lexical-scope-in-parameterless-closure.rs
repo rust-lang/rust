@@ -19,6 +19,6 @@
 // Nothing to do here really, just make sure it compiles. See issue #8513.
 fn main() {
     let _ = |&:|();
-    let _ = (1u..3).map(|_| 5i);
+    let _ = (1u..3).map(|_| 5);
 }
 

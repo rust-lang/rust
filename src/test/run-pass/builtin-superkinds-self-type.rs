@@ -23,6 +23,6 @@ impl <T: Send> Foo for T { }
 
 pub fn main() {
     let (tx, rx) = channel();
-    1193182i.foo(tx);
-    assert!(rx.recv().unwrap() == 1193182i);
+    1193182.foo(tx);
+    assert!(rx.recv().unwrap() == 1193182);
 }

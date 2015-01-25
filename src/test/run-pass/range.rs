@@ -45,9 +45,9 @@ pub fn main() {
     let _ = ..42u;
 
     // Test we can use two different types with a common supertype.
-    let x = &42i;
+    let x = &42;
     {
-        let y = 42i;
+        let y = 42;
         let _ = x..&y;
     }
 }

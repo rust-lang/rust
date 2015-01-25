@@ -18,7 +18,7 @@ pub fn main() {
 }
 
 fn test_misc() {
-    assert_eq!(1i << 1 << 1 << 1 << 1 << 1, 32);
+    assert_eq!(1 << 1 << 1 << 1 << 1 << 1, 32);
 }
 
 fn test_expr() {

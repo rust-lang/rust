@@ -192,7 +192,7 @@ impl<T> Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
@@ -217,7 +217,7 @@ impl<T> Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
     /// let weak_five = five.downgrade();
     /// ```
@@ -247,7 +247,7 @@ pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
 /// use std::rc;
 /// use std::rc::Rc;
 ///
-/// let five = Rc::new(5i);
+/// let five = Rc::new(5);
 ///
 /// rc::is_unique(&five);
 /// ```
@@ -329,7 +329,7 @@ impl<T: Clone> Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let mut five = Rc::new(5i);
+    /// let mut five = Rc::new(5);
     ///
     /// let mut_five = five.make_unique();
     /// ```
@@ -378,14 +378,14 @@ impl<T> Drop for Rc<T> {
     /// use std::rc::Rc;
     ///
     /// {
-    ///     let five = Rc::new(5i);
+    ///     let five = Rc::new(5);
     ///
     ///     // stuff
     ///
     ///     drop(five); // explict drop
     /// }
     /// {
-    ///     let five = Rc::new(5i);
+    ///     let five = Rc::new(5);
     ///
     ///     // stuff
     ///
@@ -425,7 +425,7 @@ impl<T> Clone for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
     /// five.clone();
     /// ```
@@ -466,9 +466,9 @@ impl<T: PartialEq> PartialEq for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five == Rc::new(5i);
+    /// five == Rc::new(5);
     /// ```
     #[inline(always)]
     fn eq(&self, other: &Rc<T>) -> bool { **self == **other }
@@ -482,9 +482,9 @@ impl<T: PartialEq> PartialEq for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five != Rc::new(5i);
+    /// five != Rc::new(5);
     /// ```
     #[inline(always)]
     fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
@@ -504,9 +504,9 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five.partial_cmp(&Rc::new(5i));
+    /// five.partial_cmp(&Rc::new(5));
     /// ```
     #[inline(always)]
     fn partial_cmp(&self, other: &Rc<T>) -> Option<Ordering> {
@@ -522,9 +522,9 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five < Rc::new(5i);
+    /// five < Rc::new(5);
     /// ```
     #[inline(always)]
     fn lt(&self, other: &Rc<T>) -> bool { **self < **other }
@@ -538,9 +538,9 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five <= Rc::new(5i);
+    /// five <= Rc::new(5);
     /// ```
     #[inline(always)]
     fn le(&self, other: &Rc<T>) -> bool { **self <= **other }
@@ -554,9 +554,9 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five > Rc::new(5i);
+    /// five > Rc::new(5);
     /// ```
     #[inline(always)]
     fn gt(&self, other: &Rc<T>) -> bool { **self > **other }
@@ -570,9 +570,9 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five >= Rc::new(5i);
+    /// five >= Rc::new(5);
     /// ```
     #[inline(always)]
     fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
@@ -589,9 +589,9 @@ impl<T: Ord> Ord for Rc<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
-    /// five.partial_cmp(&Rc::new(5i));
+    /// five.partial_cmp(&Rc::new(5));
     /// ```
     #[inline]
     fn cmp(&self, other: &Rc<T>) -> Ordering { (**self).cmp(&**other) }
@@ -653,7 +653,7 @@ impl<T> Weak<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let five = Rc::new(5i);
+    /// let five = Rc::new(5);
     ///
     /// let weak_five = five.downgrade();
     ///
@@ -682,7 +682,7 @@ impl<T> Drop for Weak<T> {
     /// use std::rc::Rc;
     ///
     /// {
-    ///     let five = Rc::new(5i);
+    ///     let five = Rc::new(5);
     ///     let weak_five = five.downgrade();
     ///
     ///     // stuff
@@ -690,7 +690,7 @@ impl<T> Drop for Weak<T> {
     ///     drop(weak_five); // explict drop
     /// }
     /// {
-    ///     let five = Rc::new(5i);
+    ///     let five = Rc::new(5);
     ///     let weak_five = five.downgrade();
     ///
     ///     // stuff
@@ -726,7 +726,7 @@ impl<T> Clone for Weak<T> {
     /// ```
     /// use std::rc::Rc;
     ///
-    /// let weak_five = Rc::new(5i).downgrade();
+    /// let weak_five = Rc::new(5).downgrade();
     ///
     /// weak_five.clone();
     /// ```
@@ -789,7 +789,7 @@ mod tests {
 
     #[test]
     fn test_clone() {
-        let x = Rc::new(RefCell::new(5i));
+        let x = Rc::new(RefCell::new(5));
         let y = x.clone();
         *x.borrow_mut() = 20;
         assert_eq!(*y.borrow(), 20);
@@ -797,13 +797,13 @@ mod tests {
 
     #[test]
     fn test_simple() {
-        let x = Rc::new(5i);
+        let x = Rc::new(5);
         assert_eq!(*x, 5);
     }
 
     #[test]
     fn test_simple_clone() {
-        let x = Rc::new(5i);
+        let x = Rc::new(5);
         let y = x.clone();
         assert_eq!(*x, 5);
         assert_eq!(*y, 5);
@@ -811,20 +811,20 @@ mod tests {
 
     #[test]
     fn test_destructor() {
-        let x = Rc::new(box 5i);
+        let x = Rc::new(box 5);
         assert_eq!(**x, 5);
     }
 
     #[test]
     fn test_live() {
-        let x = Rc::new(5i);
+        let x = Rc::new(5);
         let y = x.downgrade();
         assert!(y.upgrade().is_some());
     }
 
     #[test]
     fn test_dead() {
-        let x = Rc::new(5i);
+        let x = Rc::new(5);
         let y = x.downgrade();
         drop(x);
         assert!(y.upgrade().is_none());

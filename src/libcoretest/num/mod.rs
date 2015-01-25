@@ -40,11 +40,11 @@ pub fn test_num<T>(ten: T, two: T) where
      + Rem<Output=T> + Debug
      + Copy
 {
-    assert_eq!(ten.add(two),  cast(12i).unwrap());
-    assert_eq!(ten.sub(two),  cast(8i).unwrap());
-    assert_eq!(ten.mul(two),  cast(20i).unwrap());
-    assert_eq!(ten.div(two),  cast(5i).unwrap());
-    assert_eq!(ten.rem(two),  cast(0i).unwrap());
+    assert_eq!(ten.add(two),  cast(12).unwrap());
+    assert_eq!(ten.sub(two),  cast(8).unwrap());
+    assert_eq!(ten.mul(two),  cast(20).unwrap());
+    assert_eq!(ten.div(two),  cast(5).unwrap());
+    assert_eq!(ten.rem(two),  cast(0).unwrap());
 
     assert_eq!(ten.add(two),  ten + two);
     assert_eq!(ten.sub(two),  ten - two);

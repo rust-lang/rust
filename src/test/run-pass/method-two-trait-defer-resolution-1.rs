@@ -12,28 +12,28 @@
 // type that is (ultimately) inferred for `x`.
 
 trait foo {
-    fn foo(&self) -> int;
+    fn foo(&self) -> i32;
 }
 
-impl foo for Vec<uint> {
-    fn foo(&self) -> int {1}
+impl foo for Vec<u32> {
+    fn foo(&self) -> i32 {1}
 }
 
-impl foo for Vec<int> {
-    fn foo(&self) -> int {2}
+impl foo for Vec<i32> {
+    fn foo(&self) -> i32 {2}
 }
 
-fn call_foo_uint() -> int {
+fn call_foo_uint() -> i32 {
     let mut x = Vec::new();
     let y = x.foo();
-    x.push(0u);
+    x.push(0u32);
     y
 }
 
-fn call_foo_int() -> int {
+fn call_foo_int() -> i32 {
     let mut x = Vec::new();
     let y = x.foo();
-    x.push(0i);
+    x.push(0i32);
     y
 }
 

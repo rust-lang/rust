@@ -17,7 +17,7 @@ macro_rules! outer {
 }
 
 fn main() {
-    let outer!(g1) = 13i;
+    let outer!(g1) = 13;
     g1;
 }
 

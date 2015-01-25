@@ -24,7 +24,7 @@ fn main() {
     }
     assert_eq!(x.1, 0);
 
-    let mut x = (3i, 2i);
+    let mut x = (3, 2);
     assert_eq!(x.0, 3);
     assert_eq!(x.1, 2);
     x.0 += 5;

@@ -116,7 +116,7 @@ impl FromHex for str {
     fn from_hex(&self) -> Result<Vec<u8>, FromHexError> {
         // This may be an overestimate if there is any whitespace
         let mut b = Vec::with_capacity(self.len() / 2);
-        let mut modulus = 0i;
+        let mut modulus = 0;
         let mut buf = 0u8;
 
         for (idx, byte) in self.bytes().enumerate() {

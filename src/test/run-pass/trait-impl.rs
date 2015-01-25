@@ -33,7 +33,7 @@ struct Foo;
 impl<'a> Bar<'a> for Foo {}
 
 fn main() {
-    let x: &T = &42i;
+    let x: &T = &42;
 
     x.foo();
     T::foo(x);

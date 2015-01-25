@@ -22,5 +22,5 @@ fn doit<T,F>(val: T, f: &F)
 }
 
 pub fn main() {
-    doit(0i, &|&: x /*: int*/ | { x.to_int(); });
+    doit(0, &|&: x /*: int*/ | { x.to_int(); });
 }

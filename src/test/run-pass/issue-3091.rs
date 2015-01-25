@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = 1i;
-    let y = 1i;
+    let x = 1;
+    let y = 1;
     assert_eq!(&x, &y);
 }

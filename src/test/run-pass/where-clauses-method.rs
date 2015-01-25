@@ -22,8 +22,8 @@ impl<T> Foo<T> {
 }
 
 fn main() {
-    let x = Foo { value: 1i };
-    let y = Foo { value: 2i };
+    let x = Foo { value: 1 };
+    let y = Foo { value: 2 };
     println!("{}", x.equals(&x));
     println!("{}", x.equals(&y));
 }

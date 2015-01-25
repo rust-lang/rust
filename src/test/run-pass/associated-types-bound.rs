@@ -8,44 +8,44 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test equality constraints on associated types in a where clause.
+// Test equality constrai32s on associated types in a where clause.
 
-pub trait ToInt {
-    fn to_int(&self) -> int;
+pub trait ToI32 {
+    fn to_i32(&self) -> i32;
 }
 
-impl ToInt for int {
-    fn to_int(&self) -> int { *self }
+impl ToI32 for i32 {
+    fn to_i32(&self) -> i32 { *self }
 }
 
-impl ToInt for uint {
-    fn to_int(&self) -> int { *self as int }
+impl ToI32 for u32 {
+    fn to_i32(&self) -> i32 { *self as i32 }
 }
 
-pub trait GetToInt
+pub trait GetToI32
 {
-    type R : ToInt;
+    type R : ToI32;
 
-    fn get(&self) -> <Self as GetToInt>::R;
+    fn get(&self) -> <Self as GetToI32>::R;
 }
 
-impl GetToInt for int {
-    type R = int;
-    fn get(&self) -> int { *self }
+impl GetToI32 for i32 {
+    type R = i32;
+    fn get(&self) -> i32 { *self }
 }
 
-impl GetToInt for uint {
-    type R = uint;
-    fn get(&self) -> uint { *self }
+impl GetToI32 for u32 {
+    type R = u32;
+    fn get(&self) -> u32 { *self }
 }
 
-fn foo<G>(g: G) -> int
-    where G : GetToInt
+fn foo<G>(g: G) -> i32
+    where G : GetToI32
 {
-    ToInt::to_int(&g.get())
+    ToI32::to_i32(&g.get())
 }
 
 pub fn main() {
-    assert_eq!(foo(22i), 22i);
-    assert_eq!(foo(22u), 22i);
+    assert_eq!(foo(22i32), 22);
+    assert_eq!(foo(22u32), 22);
 }

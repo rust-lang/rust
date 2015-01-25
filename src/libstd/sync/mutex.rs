@@ -428,7 +428,7 @@ mod test {
 
     #[test]
     fn test_arc_condvar_poison() {
-        let packet = Packet(Arc::new((Mutex::new(1i), Condvar::new())));
+        let packet = Packet(Arc::new((Mutex::new(1), Condvar::new())));
         let packet2 = Packet(packet.0.clone());
         let (tx, rx) = channel();
 
@@ -457,7 +457,7 @@ mod test {
 
     #[test]
     fn test_mutex_arc_poison() {
-        let arc = Arc::new(Mutex::new(1i));
+        let arc = Arc::new(Mutex::new(1));
         let arc2 = arc.clone();
         let _ = Thread::scoped(move|| {
             let lock = arc2.lock().unwrap();
@@ -470,7 +470,7 @@ mod test {
     fn test_mutex_arc_nested() {
         // Tests nested mutexes and access
         // to underlying data.
-        let arc = Arc::new(Mutex::new(1i));
+        let arc = Arc::new(Mutex::new(1));
         let arc2 = Arc::new(Mutex::new(arc));
         let (tx, rx) = channel();
         let _t = Thread::spawn(move|| {
@@ -484,7 +484,7 @@ mod test {
 
     #[test]
     fn test_mutex_arc_access_in_unwind() {
-        let arc = Arc::new(Mutex::new(1i));
+        let arc = Arc::new(Mutex::new(1));
         let arc2 = arc.clone();
         let _ = Thread::scoped(move|| -> () {
             struct Unwinder {

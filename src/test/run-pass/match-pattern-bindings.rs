@@ -9,15 +9,15 @@
 // except according to those terms.
 
 fn main() {
-    let value = Some(1i);
+    let value = Some(1);
     assert_eq!(match value {
         ref a @ Some(_) => a,
         ref b @ None => b
-    }, &Some(1i));
+    }, &Some(1));
     assert_eq!(match value {
         ref c @ Some(_) => c,
         ref b @ None => b
-    }, &Some(1i));
+    }, &Some(1));
     assert_eq!(match "foobarbaz" {
         b @ _ => b
     }, "foobarbaz");

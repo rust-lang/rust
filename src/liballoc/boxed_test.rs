@@ -20,7 +20,7 @@ use std::boxed::BoxAny;
 
 #[test]
 fn test_owned_clone() {
-    let a = Box::new(5i);
+    let a = Box::new(5);
     let b: Box<int> = a.clone();
     assert!(a == b);
 }

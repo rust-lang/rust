@@ -13,6 +13,6 @@
 extern crate "priv-impl-prim-ty" as bar;
 
 pub fn main() {
-    bar::frob(1i);
+    bar::frob(1);
 
 }

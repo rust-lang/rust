@@ -15,7 +15,7 @@ use std::thread::Thread;
 fn main() {
     let r: Result<int,_> = Thread::scoped(move|| {
         panic!("test");
-        1i
+        1
     }).join();
     assert!(r.is_ok());
 }

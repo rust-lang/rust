@@ -84,7 +84,7 @@ fn test_as_ref() {
         assert_eq!(q.as_ref().unwrap(), &2);
 
         // Lifetime inference
-        let u = 2i;
+        let u = 2;
         {
             let p: *const int = &u as *const _;
             assert_eq!(p.as_ref().unwrap(), &2);
@@ -102,7 +102,7 @@ fn test_as_mut() {
         assert!(q.as_mut().unwrap() == &mut 2);
 
         // Lifetime inference
-        let mut u = 2i;
+        let mut u = 2;
         {
             let p: *mut int = &mut u as *mut _;
             assert!(p.as_mut().unwrap() == &mut 2);
@@ -113,7 +113,7 @@ fn test_as_mut() {
 #[test]
 fn test_ptr_addition() {
     unsafe {
-        let xs = repeat(5i).take(16).collect::<Vec<_>>();
+        let xs = repeat(5).take(16).collect::<Vec<_>>();
         let mut ptr = xs.as_ptr();
         let end = ptr.offset(16);
 
@@ -131,7 +131,7 @@ fn test_ptr_addition() {
             m_ptr = m_ptr.offset(1);
         }
 
-        assert!(xs_mut == repeat(10i).take(16).collect::<Vec<_>>());
+        assert!(xs_mut == repeat(10).take(16).collect::<Vec<_>>());
     }
 }
 

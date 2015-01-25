@@ -31,7 +31,7 @@ enum D {
 
 pub fn main() {
     // check there's no segfaults
-    for _ in 0i..20 {
+    for _ in 0..20 {
         rand::random::<A>();
         rand::random::<B>();
         rand::random::<C>();

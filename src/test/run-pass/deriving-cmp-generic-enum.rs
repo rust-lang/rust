@@ -19,10 +19,10 @@ enum E<T> {
 
 pub fn main() {
     let e0 = E::E0;
-    let e11 = E::E1(1i);
-    let e12 = E::E1(2i);
-    let e21 = E::E2(1i, 1i);
-    let e22 = E::E2(1i, 2i);
+    let e11 = E::E1(1);
+    let e12 = E::E1(2);
+    let e21 = E::E2(1, 1);
+    let e22 = E::E2(1, 2);
 
     // in order for both PartialOrd and Ord
     let es = [e0, e11, e12, e21, e22];

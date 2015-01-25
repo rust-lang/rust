@@ -10,7 +10,7 @@
 
 pub fn main() {
     let x = [ [true]; 512 ];
-    let y = [ 0i; 1 ];
+    let y = [ 0; 1 ];
 
     print!("[");
     for xi in x.iter() {

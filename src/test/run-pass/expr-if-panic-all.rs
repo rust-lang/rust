@@ -12,7 +12,7 @@
 // expression results in panic.
 pub fn main() {
     let _x = if true {
-        10i
+        10
     } else {
         if true { panic!() } else { panic!() }
     };

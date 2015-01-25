@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    match -5i {
+    match -5 {
       -5 => {}
       _ => { panic!() }
     }
