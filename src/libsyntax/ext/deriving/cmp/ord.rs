@@ -78,7 +78,8 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
             md!("le", true, true),
             md!("gt", false, false),
             md!("ge", false, true)
-        ]
+        ],
+        associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
 }

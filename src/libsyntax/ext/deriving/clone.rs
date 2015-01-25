@@ -44,7 +44,8 @@ pub fn expand_deriving_clone<F>(cx: &mut ExtCtxt,
                     cs_clone("Clone", c, s, sub)
                 }),
             }
-        )
+        ),
+        associated_types: Vec::new(),
     };
 
     trait_def.expand(cx, mitem, item, push)

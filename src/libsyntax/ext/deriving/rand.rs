@@ -49,7 +49,8 @@ pub fn expand_deriving_rand<F>(cx: &mut ExtCtxt,
                     rand_substructure(a, b, c)
                 })
             }
-        )
+        ),
+        associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
 }

@@ -65,7 +65,9 @@ pub fn expand_deriving_from_primitive<F>(cx: &mut ExtCtxt,
                 combine_substructure: combine_substructure(box |c, s, sub| {
                     cs_from("u64", c, s, sub)
                 }),
-            })
+            }
+        ),
+        associated_types: Vec::new(),
     };
 
     trait_def.expand(cx, mitem, item, push)
