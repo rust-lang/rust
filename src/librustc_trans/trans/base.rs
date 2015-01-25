@@ -401,7 +401,7 @@ pub fn get_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => { }
     }
 
-    ccx.stats().n_static_tydescs.set(ccx.stats().n_static_tydescs.get() + 1u);
+    ccx.stats().n_static_tydescs.set(ccx.stats().n_static_tydescs.get() + 1);
     let inf = Rc::new(glue::declare_tydesc(ccx, t));
 
     ccx.tydescs().borrow_mut().insert(t, inf.clone());
@@ -2879,7 +2879,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     panic!("struct variant kind unexpected in get_item_val")
                 }
             };
-            assert!(args.len() != 0u);
+            assert!(args.len() != 0);
             let ty = ty::node_id_to_type(ccx.tcx(), id);
             let parent = ccx.tcx().map.get_parent(id);
             let enm = ccx.tcx().map.expect_item(parent);

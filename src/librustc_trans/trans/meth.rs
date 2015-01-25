@@ -78,7 +78,7 @@ pub fn trans_impl(ccx: &CrateContext,
     for impl_item in impl_items.iter() {
         match *impl_item {
             ast::MethodImplItem(ref method) => {
-                if method.pe_generics().ty_params.len() == 0u {
+                if method.pe_generics().ty_params.len() == 0 {
                     let trans_everywhere = attr::requests_inline(&method.attrs[]);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, method.id);
@@ -488,7 +488,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
            callee_ty.repr(ccx.tcx()),
            vtable_index,
            bcx.val_to_string(llpair));
-    let llboxptr = GEPi(bcx, llpair, &[0u, abi::FAT_PTR_ADDR]);
+    let llboxptr = GEPi(bcx, llpair, &[0, abi::FAT_PTR_ADDR]);
     let llbox = Load(bcx, llboxptr);
     let llself = PointerCast(bcx, llbox, Type::i8p(ccx));
 
@@ -510,9 +510,9 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llvtable = Load(bcx,
                         PointerCast(bcx,
                                     GEPi(bcx, llpair,
-                                         &[0u, abi::FAT_PTR_EXTRA]),
+                                         &[0, abi::FAT_PTR_EXTRA]),
                                     Type::vtable(ccx).ptr_to().ptr_to()));
-    let mptr = Load(bcx, GEPi(bcx, llvtable, &[0u, vtable_index + VTABLE_OFFSET]));
+    let mptr = Load(bcx, GEPi(bcx, llvtable, &[0, vtable_index + VTABLE_OFFSET]));
     let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
 
     return Callee {
@@ -877,13 +877,13 @@ pub fn trans_trait_cast<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let llbox_ty = type_of(bcx.ccx(), datum_ty);
 
     // Store the pointer into the first half of pair.
-    let llboxdest = GEPi(bcx, lldest, &[0u, abi::FAT_PTR_ADDR]);
+    let llboxdest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]);
     let llboxdest = PointerCast(bcx, llboxdest, llbox_ty.ptr_to());
     bcx = datum.store_to(bcx, llboxdest);
 
     // Store the vtable into the second half of pair.
     let vtable = get_vtable(bcx, datum_ty, trait_ref);
-    let llvtabledest = GEPi(bcx, lldest, &[0u, abi::FAT_PTR_EXTRA]);
+    let llvtabledest = GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]);
     let llvtabledest = PointerCast(bcx, llvtabledest, val_ty(vtable).ptr_to());
     Store(bcx, vtable, llvtabledest);
 

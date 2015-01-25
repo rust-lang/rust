@@ -73,7 +73,7 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let unit_size = llsize_of_alloc(ccx, llty);
             if unit_size != 0 {
                 let len = get_len(bcx, vptr);
-                let not_empty = ICmp(bcx, llvm::IntNE, len, C_uint(ccx, 0u));
+                let not_empty = ICmp(bcx, llvm::IntNE, len, C_uint(ccx, 0us));
                 with_cond(bcx, not_empty, |bcx| {
                     let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty));
                     let size = Mul(bcx, C_uint(ccx, unit_size), len, DebugLoc::None);
@@ -213,8 +213,8 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let llbytes = C_uint(bcx.ccx(), bytes);
             let llcstr = C_cstr(bcx.ccx(), str_lit, false);
             let llcstr = consts::ptrcast(llcstr, Type::i8p(bcx.ccx()));
-            Store(bcx, llcstr, GEPi(bcx, lldest, &[0u, abi::FAT_PTR_ADDR]));
-            Store(bcx, llbytes, GEPi(bcx, lldest, &[0u, abi::FAT_PTR_EXTRA]));
+            Store(bcx, llcstr, GEPi(bcx, lldest, &[0, abi::FAT_PTR_ADDR]));
+            Store(bcx, llbytes, GEPi(bcx, lldest, &[0, abi::FAT_PTR_EXTRA]));
             bcx
         }
     }
@@ -375,8 +375,8 @@ pub fn get_fixed_base_and_len(bcx: Block,
 fn get_slice_base_and_len(bcx: Block,
                           llval: ValueRef)
                           -> (ValueRef, ValueRef) {
-    let base = Load(bcx, GEPi(bcx, llval, &[0u, abi::FAT_PTR_ADDR]));
-    let len = Load(bcx, GEPi(bcx, llval, &[0u, abi::FAT_PTR_EXTRA]));
+    let base = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_ADDR]));
+    let len = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_EXTRA]));
     (base, len)
 }
 
@@ -400,7 +400,7 @@ pub fn get_base_and_len(bcx: Block,
         ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
             ty::ty_vec(_, None) | ty::ty_str => get_slice_base_and_len(bcx, llval),
             ty::ty_vec(_, Some(n)) => {
-                let base = GEPi(bcx, Load(bcx, llval), &[0u, 0u]);
+                let base = GEPi(bcx, Load(bcx, llval), &[0, 0]);
                 (base, C_uint(ccx, n))
             }
             _ => ccx.sess().bug("unexpected type in get_base_and_len"),
@@ -430,7 +430,7 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let loop_counter = {
         // i = 0
         let i = alloca(loop_bcx, bcx.ccx().int_type(), "__i");
-        Store(loop_bcx, C_uint(bcx.ccx(), 0u), i);
+        Store(loop_bcx, C_uint(bcx.ccx(), 0us), i);
 
         Br(loop_bcx, cond_bcx.llbb, DebugLoc::None);
         i
@@ -458,7 +458,7 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     { // i += 1
         let i = Load(inc_bcx, loop_counter);
-        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1u), DebugLoc::None);
+        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1us), DebugLoc::None);
         Store(inc_bcx, plusone, loop_counter);
 
         Br(inc_bcx, cond_bcx.llbb, DebugLoc::None);

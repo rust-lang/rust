@@ -531,8 +531,8 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
 
 pub fn ty_to_short_str<'tcx>(cx: &ctxt<'tcx>, typ: Ty<'tcx>) -> String {
     let mut s = typ.repr(cx).to_string();
-    if s.len() >= 32u {
-        s = (&s[0u..32u]).to_string();
+    if s.len() >= 32 {
+        s = (&s[0u..32]).to_string();
     }
     return s;
 }

@@ -1259,7 +1259,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         let mut opt_graph = None;
 
-        for idx in 0u..self.num_vars() as uint {
+        for idx in 0..self.num_vars() as uint {
             match var_data[idx].value {
                 Value(_) => {
                     /* Inference successful */
@@ -1548,7 +1548,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     fn iterate_until_fixed_point<F>(&self, tag: &str, mut body: F) where
         F: FnMut(&Constraint) -> bool,
     {
-        let mut iteration = 0u;
+        let mut iteration = 0;
         let mut changed = true;
         while changed {
             changed = false;
