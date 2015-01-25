@@ -753,17 +753,18 @@ impl LintPass for GatherNodeLevels {
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
-        match it.node {
-            ast::ItemEnum(..) => {
-                let lint_id = LintId::of(builtin::VARIANT_SIZE_DIFFERENCES);
-                let lvlsrc = cx.lints.get_level_source(lint_id);
-                match lvlsrc {
-                    (lvl, _) if lvl != Allow => {
-                        cx.node_levels.borrow_mut()
-                            .insert((it.id, lint_id), lvlsrc);
-                    },
-                    _ => { }
-                }
+        let lint = match it.node {
+            ast::ItemEnum(..) => builtin::VARIANT_SIZE_DIFFERENCES,
+            ast::ItemConst(..) => builtin::LARGE_CONST_ITEMS,
+            _ => return
+        };
+
+        let lint_id = LintId::of(lint);
+        let lvlsrc = cx.lints.get_level_source(lint_id);
+        match lvlsrc {
+            (lvl, _) if lvl != Allow => {
+                cx.node_levels.borrow_mut()
+                    .insert((it.id, lint_id), lvlsrc);
             },
             _ => { }
         }

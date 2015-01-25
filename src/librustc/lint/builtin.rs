@@ -1872,6 +1872,12 @@ declare_lint! {
     "detects potentially-forgotten implementations of `Copy`"
 }
 
+declare_lint! {
+    pub LARGE_CONST_ITEMS,
+    Warn,
+    "detects large `const` items"
+}
+
 /// Does nothing as a lint pass, but registers some `Lint`s
 /// which are used by other parts of the compiler.
 #[derive(Copy)]
@@ -1892,7 +1898,8 @@ impl LintPass for HardwiredLints {
             UNKNOWN_FEATURES,
             UNKNOWN_CRATE_TYPES,
             VARIANT_SIZE_DIFFERENCES,
-            FAT_PTR_TRANSMUTES
+            FAT_PTR_TRANSMUTES,
+            LARGE_CONST_ITEMS
         )
     }
 }

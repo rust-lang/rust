@@ -190,6 +190,7 @@ macro_rules! __thread_local_inner {
     );
     ($init:expr, $t:ty) => ({
         #[cfg(all(any(target_os = "macos", target_os = "linux"), not(target_arch = "aarch64")))]
+        #[cfg_attr(not(stage0), allow(large_const_items))]
         const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
             ::std::thread_local::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: $init },
@@ -199,6 +200,7 @@ macro_rules! __thread_local_inner {
         };
 
         #[cfg(any(not(any(target_os = "macos", target_os = "linux")), target_arch = "aarch64"))]
+        #[cfg_attr(not(stage0), allow(large_const_items))]
         const _INIT: ::std::thread_local::__impl::KeyInner<$t> = {
             unsafe extern fn __destroy(ptr: *mut u8) {
                 ::std::thread_local::__impl::destroy_value::<$t>(ptr);

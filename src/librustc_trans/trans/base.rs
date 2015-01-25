@@ -2159,6 +2159,31 @@ fn enum_variant_size_lint(ccx: &CrateContext, enum_def: &ast::EnumDef, sp: Span,
     }
 }
 
+fn const_size_lint(ccx: &CrateContext, sp: Span, id: ast::NodeId) {
+    let levels = ccx.tcx().node_lint_levels.borrow();
+    let lint_id = lint::LintId::of(lint::builtin::LARGE_CONST_ITEMS);
+    let lvlsrc = levels.get(&(id, lint_id));
+    let is_allow = lvlsrc.map_or(true, |&(lvl, _)| lvl == lint::Allow);
+
+    if is_allow {
+        return
+    }
+
+    let ty = ty::node_id_to_type(ccx.tcx(), id);
+    let size = machine::llsize_of_alloc(ccx, sizing_type_of(ccx, ty));
+
+    const MAX_CONST_SIZE: u64 = 64;
+    if size > MAX_CONST_SIZE {
+        // Use lint::raw_emit_lint rather than sess.add_lint because the lint-printing
+        // pass for the latter already ran.
+        lint::raw_emit_lint(&ccx.tcx().sess, lint::builtin::LARGE_CONST_ITEMS,
+                            *lvlsrc.unwrap(), Some(sp),
+                            &*format!("using large `const` items ({} bytes) is not recommended, \
+                                      consider replacing `const C: T = init` with `const C: \
+                                      &'static T = &init` or `static C: T = init`", size));
+    }
+}
+
 pub struct TransItemVisitor<'a, 'tcx: 'a> {
     pub ccx: &'a CrateContext<'a, 'tcx>,
 }
@@ -2328,6 +2353,8 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
           // Recurse on the expression to catch items in blocks
           let mut v = TransItemVisitor{ ccx: ccx };
           v.visit_expr(&**expr);
+
+          const_size_lint(ccx, item.span, item.id);
       }
       ast::ItemStatic(_, m, ref expr) => {
           // Recurse on the expression to catch items in blocks
