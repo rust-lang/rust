@@ -83,7 +83,6 @@ If not, there are a number of places where you can get help. The easiest is
 you can access through
 [Mibbit](http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust). Click
 that link, and you'll be chatting with other Rustaceans (a silly nickname we
-call ourselves), and we can help you out. Other great resources include [our
-forum](http://discuss.rust-lang.org/), [the /r/rust
-subreddit](http://www.reddit.com/r/rust), and [Stack
+call ourselves), and we can help you out. Other great resources include [the
+/r/rust subreddit](http://www.reddit.com/r/rust), and [Stack
 Overflow](http://stackoverflow.com/questions/tagged/rust).
