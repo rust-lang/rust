@@ -23,7 +23,7 @@ import sys, os, re
 src_dir = sys.argv[1]
 
 # Features that are allowed to exist in both the language and the library
-joint_features = [ "on_unimpleented" ]
+joint_features = [ ]
 
 # Grab the list of language features from the compiler
 language_gate_statuses = [ "Active", "Deprecated", "Removed", "Accepted" ]
