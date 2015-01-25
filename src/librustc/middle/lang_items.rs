@@ -328,4 +328,6 @@ lets_do_this! {
     IteratorItem,                    "iterator",                iterator;
 
     StackExhaustedLangItem,          "stack_exhausted",         stack_exhausted;
+
+    DebugTraitLangItem,              "debug_trait",             debug_trait;
 }
