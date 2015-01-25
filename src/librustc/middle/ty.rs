@@ -453,9 +453,14 @@ pub struct MethodParam<'tcx> {
     // never contains bound regions; those regions should have been
     // instantiated with fresh variables at this point.
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
-
     // index of uint in the list of methods for the trait
     pub method_num: uint,
+
+    /// The impl for the trait from which the method comes. This
+    /// should only be used for certain linting/heuristic purposes
+    /// since there is no guarantee that this is Some in every
+    /// situation that it could/should be.
+    pub impl_def_id: Option<ast::DefId>,
 }
 
 // details for a method invoked with a receiver whose type is an object
