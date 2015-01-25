@@ -54,7 +54,8 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
                     hash_substructure(a, b, c)
                 })
             }
-        )
+        ),
+        associated_types: Vec::new(),
     };
 
     hash_trait_def.expand(cx, mitem, item, push);
