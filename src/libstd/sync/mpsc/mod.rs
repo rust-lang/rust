@@ -382,7 +382,7 @@ impl<T> !Sync for SyncSender<T> {}
 /// A `send` operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
-#[derive(PartialEq, Eq, Show)]
+#[derive(PartialEq, Eq)]
 #[stable]
 pub struct SendError<T>(pub T);
 
@@ -412,7 +412,7 @@ pub enum TryRecvError {
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone)]
 #[stable]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that
@@ -962,9 +962,26 @@ impl<T: Send> Drop for Receiver<T> {
 }
 
 #[stable]
+impl<T> fmt::Debug for SendError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "SendError(..)".fmt(f)
+    }
+}
+
+#[stable]
 impl<T> fmt::Display for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "sending on a closed channel".fmt(f)
+    }
+}
+
+#[stable]
+impl<T> fmt::Debug for TrySendError<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        match *self {
+            TrySendError::Full(..) => "Full(..)".fmt(f),
+            TrySendError::Disconnected(..) => "Disconnected(..)".fmt(f),
+        }
     }
 }
 
