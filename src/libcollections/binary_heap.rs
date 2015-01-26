@@ -67,7 +67,7 @@
 //! // for a simpler implementation.
 //! fn shortest_path(adj_list: &Vec<Vec<Edge>>, start: uint, goal: uint) -> uint {
 //!     // dist[node] = current shortest distance from `start` to `node`
-//!     let mut dist: Vec<_> = range(0, adj_list.len()).map(|_| uint::MAX).collect();
+//!     let mut dist: Vec<_> = (0..adj_list.len()).map(|_| uint::MAX).collect();
 //!
 //!     let mut heap = BinaryHeap::new();
 //!

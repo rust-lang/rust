@@ -983,7 +983,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
     }
 
     fn construct_var_data(&self) -> Vec<VarData> {
-        range(0, self.num_vars() as uint).map(|_| {
+        (0..self.num_vars() as uint).map(|_| {
             VarData {
                 // All nodes are initially classified as contracting; during
                 // the expansion phase, we will shift the classification for
@@ -1259,7 +1259,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
         let mut opt_graph = None;
 
-        for idx in range(0u, self.num_vars() as uint) {
+        for idx in 0u..self.num_vars() as uint {
             match var_data[idx].value {
                 Value(_) => {
                     /* Inference successful */
@@ -1316,7 +1316,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             }
         }
 
-        range(0, self.num_vars() as uint).map(|idx| var_data[idx].value).collect()
+        (0..self.num_vars() as uint).map(|idx| var_data[idx].value).collect()
     }
 
     fn construct_graph(&self) -> RegionGraph {

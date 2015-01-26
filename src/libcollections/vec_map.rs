@@ -459,7 +459,7 @@ impl<V> VecMap<V> {
     pub fn insert(&mut self, key: uint, value: V) -> Option<V> {
         let len = self.v.len();
         if len <= key {
-            self.v.extend(range(0, key - len + 1).map(|_| None));
+            self.v.extend((0..key - len + 1).map(|_| None));
         }
         replace(&mut self.v[key], Some(value))
     }

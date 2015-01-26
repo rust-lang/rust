@@ -800,7 +800,7 @@ impl TwoWaySearcher {
             // See if the right part of the needle matches
             let start = if long_period { self.crit_pos }
                         else { cmp::max(self.crit_pos, self.memory) };
-            for i in range(start, needle.len()) {
+            for i in start..needle.len() {
                 if needle[i] != haystack[self.position + i] {
                     self.position += i - self.crit_pos + 1;
                     if !long_period {

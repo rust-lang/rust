@@ -1217,7 +1217,7 @@ mod test_set {
             for _ in s.iter() { panic!("s should be empty!"); }
 
             // reset to try again.
-            s.extend(range(1, 100));
+            s.extend(1..100);
         }
     }
 }

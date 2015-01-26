@@ -1254,7 +1254,7 @@ impl Iterator for ElementSwaps {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         // For a vector of size n, there are exactly n! permutations.
-        let n = range(2, self.sdir.len() + 1).product();
+        let n = (2..self.sdir.len() + 1).product();
         (n - self.swaps_made, Some(n - self.swaps_made))
     }
 }
@@ -1385,7 +1385,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
     // .offset-ing.
     for start in range_step(0, len, insertion) {
         // start <= i < len;
-        for i in range(start, cmp::min(start + insertion, len)) {
+        for i in start..cmp::min(start + insertion, len) {
             // j satisfies: start <= j <= i;
             let mut j = i as int;
             unsafe {

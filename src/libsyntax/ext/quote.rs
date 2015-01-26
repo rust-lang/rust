@@ -665,7 +665,7 @@ fn mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
         }
         ref tt @ ast::TtToken(_, MatchNt(..)) => {
             let mut seq = vec![];
-            for i in range(0, tt.len()) {
+            for i in 0..tt.len() {
                 seq.push(tt.get_tt(i));
             }
             mk_tts(cx, &seq[])

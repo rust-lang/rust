@@ -135,7 +135,7 @@ impl RegionScope for BindingRscope {
                     count: uint)
                     -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>
     {
-        Ok(range(0, count).map(|_| self.next_region()).collect())
+        Ok((0..count).map(|_| self.next_region()).collect())
     }
 }
 

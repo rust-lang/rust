@@ -199,8 +199,8 @@ fn is_board_unfeasible(board: u64, masks: &Vec<Vec<Vec<u64>>>) -> bool {
 
 // Filter the masks that we can prove to result to unfeasible board.
 fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
-    for i in range(0, masks.len()) {
-        for j in range(0, (*masks)[i].len()) {
+    for i in 0..masks.len() {
+        for j in 0..(*masks)[i].len() {
             masks[i][j] =
                 (*masks)[i][j].iter().map(|&m| m)
                 .filter(|&m| !is_board_unfeasible(m, masks))

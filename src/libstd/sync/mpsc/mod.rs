@@ -1346,7 +1346,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel::<int>();
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1357,7 +1357,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel::<int>();
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1370,7 +1370,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_recv_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel::<int>();
             Thread::spawn(move|| {
                 let res = Thread::scoped(move|| {
@@ -1388,7 +1388,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel();
             let _t = Thread::spawn(move|| {
                 tx.send(box 10i).unwrap();
@@ -1399,7 +1399,7 @@ mod test {
 
     #[test]
     fn stream_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel();
 
             send(tx, 0);
@@ -1810,7 +1810,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<int>(0);
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1821,7 +1821,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_send_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<int>(0);
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1834,7 +1834,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_recv_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<int>(0);
             let _t = Thread::spawn(move|| {
                 let res = Thread::scoped(move|| {
@@ -1852,7 +1852,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<Box<int>>(0);
             let _t = Thread::spawn(move|| {
                 tx.send(box 10i).unwrap();
@@ -1863,7 +1863,7 @@ mod sync_tests {
 
     #[test]
     fn stream_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<Box<int>>(0);
 
             send(tx, 0);

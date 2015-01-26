@@ -1500,7 +1500,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
 
-    let mut indices = range(0, items.len()).filter(|i| {
+    let mut indices = (0..items.len()).filter(|i| {
         !cx.ignore_private_item(&items[*i])
     }).collect::<Vec<uint>>();
 

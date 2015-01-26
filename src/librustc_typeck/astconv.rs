@@ -314,7 +314,7 @@ fn create_substs_for_ast_path<'tcx>(
 
         match anon_regions {
             Ok(v) => v.into_iter().collect(),
-            Err(_) => range(0, expected_num_region_params)
+            Err(_) => (0..expected_num_region_params)
                           .map(|_| ty::ReStatic).collect() // hokey
         }
     };

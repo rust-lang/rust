@@ -392,7 +392,7 @@ pub fn parse(sess: &ParseSess,
                             cur_eis.push(new_ei);
                         }
 
-                        let matches: Vec<_> = range(0, ei.matches.len())
+                        let matches: Vec<_> = (0..ei.matches.len())
                             .map(|_| Vec::new()).collect();
                         let ei_t = ei;
                         cur_eis.push(box MatcherPos {

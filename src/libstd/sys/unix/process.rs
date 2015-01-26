@@ -224,7 +224,7 @@ impl Process {
                 if !setup(err_fd, libc::STDERR_FILENO) { fail(&mut output) }
 
                 // close all other fds
-                for fd in range(3, getdtablesize()).rev() {
+                for fd in (3..getdtablesize()).rev() {
                     if fd != output.fd() {
                         let _ = close(fd as c_int);
                     }

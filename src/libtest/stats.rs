@@ -172,7 +172,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
             let mut j = 0;
             // This inner loop applies `hi`/`lo` summation to each
             // partial so that the list of partial sums remains exact.
-            for i in range(0, partials.len()) {
+            for i in 0..partials.len() {
                 let mut y: T = partials[i];
                 if x.abs() < y.abs() {
                     mem::swap(&mut x, &mut y);
