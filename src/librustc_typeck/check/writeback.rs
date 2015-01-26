@@ -39,7 +39,7 @@ pub fn resolve_type_vars_in_expr(fcx: &FnCtxt, e: &ast::Expr) {
     let mut wbcx = WritebackCx::new(fcx);
     wbcx.visit_expr(e);
     wbcx.visit_upvar_borrow_map();
-    wbcx.visit_unboxed_closures();
+    wbcx.visit_closures();
     wbcx.visit_object_cast_map();
 }
 
@@ -60,7 +60,7 @@ pub fn resolve_type_vars_in_fn(fcx: &FnCtxt,
         }
     }
     wbcx.visit_upvar_borrow_map();
-    wbcx.visit_unboxed_closures();
+    wbcx.visit_closures();
     wbcx.visit_object_cast_map();
 }
 
@@ -195,27 +195,19 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
         }
     }
 
-    fn visit_unboxed_closures(&self) {
+    fn visit_closures(&self) {
         if self.fcx.writeback_errors.get() {
             return
         }
 
-        for (def_id, unboxed_closure) in self.fcx
-                                             .inh
-                                             .unboxed_closures
-                                             .borrow()
-                                             .iter() {
-            let closure_ty = self.resolve(&unboxed_closure.closure_type,
-                                          ResolvingUnboxedClosure(*def_id));
-            let unboxed_closure = ty::UnboxedClosure {
+        for (def_id, closure) in self.fcx.inh.closures.borrow().iter() {
+            let closure_ty = self.resolve(&closure.closure_type,
+                                          ResolvingClosure(*def_id));
+            let closure = ty::Closure {
                 closure_type: closure_ty,
-                kind: unboxed_closure.kind,
+                kind: closure.kind,
             };
-            self.fcx
-                .tcx()
-                .unboxed_closures
-                .borrow_mut()
-                .insert(*def_id, unboxed_closure);
+            self.fcx.tcx().closures.borrow_mut().insert(*def_id, closure);
         }
     }
 
@@ -331,7 +323,7 @@ enum ResolveReason {
     ResolvingLocal(Span),
     ResolvingPattern(Span),
     ResolvingUpvar(ty::UpvarId),
-    ResolvingUnboxedClosure(ast::DefId),
+    ResolvingClosure(ast::DefId),
 }
 
 impl ResolveReason {
@@ -343,7 +335,7 @@ impl ResolveReason {
             ResolvingUpvar(upvar_id) => {
                 ty::expr_span(tcx, upvar_id.closure_expr_id)
             }
-            ResolvingUnboxedClosure(did) => {
+            ResolvingClosure(did) => {
                 if did.krate == ast::LOCAL_CRATE {
                     ty::expr_span(tcx, did.node)
                 } else {
@@ -414,11 +406,10 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                         infer::fixup_err_to_string(e));
                 }
 
-                ResolvingUnboxedClosure(_) => {
+                ResolvingClosure(_) => {
                     let span = self.reason.span(self.tcx);
                     span_err!(self.tcx.sess, span, E0196,
-                                           "cannot determine a type for this \
-                                            unboxed closure")
+                              "cannot determine a type for this closure")
                 }
             }
         }

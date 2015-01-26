@@ -21,7 +21,7 @@ use middle::infer::{TypeTrace, Subtype};
 use middle::infer::type_variable::{EqTo};
 use util::ppaux::{Repr};
 
-use syntax::ast::{Onceness, Unsafety};
+use syntax::ast::Unsafety;
 
 pub struct Equate<'f, 'tcx: 'f> {
     fields: CombineFields<'f, 'tcx>
@@ -73,14 +73,6 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
     fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         if a != b {
             Err(ty::terr_unsafety_mismatch(expected_found(self, a, b)))
-        } else {
-            Ok(a)
-        }
-    }
-
-    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<'tcx, Onceness> {
-        if a != b {
-            Err(ty::terr_onceness_mismatch(expected_found(self, a, b)))
         } else {
             Ok(a)
         }

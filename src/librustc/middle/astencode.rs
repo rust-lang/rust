@@ -21,7 +21,7 @@ use metadata::encoder as e;
 use middle::region;
 use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
-use metadata::tydecode::{RegionParameter, UnboxedClosureSource};
+use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
 use middle::mem_categorization::Typer;
 use middle::subst;
@@ -448,10 +448,8 @@ impl tr for def::Def {
           def::DefPrimTy(p) => def::DefPrimTy(p),
           def::DefTyParam(s, index, def_id, n) => def::DefTyParam(s, index, def_id.tr(dcx), n),
           def::DefUse(did) => def::DefUse(did.tr(dcx)),
-          def::DefUpvar(nid1, nid2, nid3) => {
-            def::DefUpvar(dcx.tr_id(nid1),
-                           dcx.tr_id(nid2),
-                           dcx.tr_id(nid3))
+          def::DefUpvar(nid1, nid2) => {
+            def::DefUpvar(dcx.tr_id(nid1), dcx.tr_id(nid2))
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
           def::DefRegion(nid) => def::DefRegion(dcx.tr_id(nid)),
@@ -618,8 +616,8 @@ impl<'tcx> tr for MethodOrigin<'tcx> {
     fn tr(&self, dcx: &DecodeContext) -> MethodOrigin<'tcx> {
         match *self {
             ty::MethodStatic(did) => ty::MethodStatic(did.tr(dcx)),
-            ty::MethodStaticUnboxedClosure(did) => {
-                ty::MethodStaticUnboxedClosure(did.tr(dcx))
+            ty::MethodStaticClosure(did) => {
+                ty::MethodStaticClosure(did.tr(dcx))
             }
             ty::MethodTypeParam(ref mp) => {
                 ty::MethodTypeParam(
@@ -643,24 +641,23 @@ impl<'tcx> tr for MethodOrigin<'tcx> {
     }
 }
 
-pub fn encode_unboxed_closure_kind(ebml_w: &mut Encoder,
-                                   kind: ty::UnboxedClosureKind) {
+pub fn encode_closure_kind(ebml_w: &mut Encoder, kind: ty::ClosureKind) {
     use serialize::Encoder;
 
-    ebml_w.emit_enum("UnboxedClosureKind", |ebml_w| {
+    ebml_w.emit_enum("ClosureKind", |ebml_w| {
         match kind {
-            ty::FnUnboxedClosureKind => {
-                ebml_w.emit_enum_variant("FnUnboxedClosureKind", 0, 3, |_| {
+            ty::FnClosureKind => {
+                ebml_w.emit_enum_variant("FnClosureKind", 0, 3, |_| {
                     Ok(())
                 })
             }
-            ty::FnMutUnboxedClosureKind => {
-                ebml_w.emit_enum_variant("FnMutUnboxedClosureKind", 1, 3, |_| {
+            ty::FnMutClosureKind => {
+                ebml_w.emit_enum_variant("FnMutClosureKind", 1, 3, |_| {
                     Ok(())
                 })
             }
-            ty::FnOnceUnboxedClosureKind => {
-                ebml_w.emit_enum_variant("FnOnceUnboxedClosureKind",
+            ty::FnOnceClosureKind => {
+                ebml_w.emit_enum_variant("FnOnceClosureKind",
                                          2,
                                          3,
                                          |_| {
@@ -736,7 +733,7 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
             this.read_enum_variant(&["vtable_static",
                                      "vtable_param",
                                      "vtable_error",
-                                     "vtable_unboxed_closure"],
+                                     "vtable_closure"],
                                    |this, i| {
                 Ok(match i {
                   0 => {
@@ -763,7 +760,7 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
                     )
                   }
                   2 => {
-                    ty::vtable_unboxed_closure(
+                    ty::vtable_closure(
                         this.read_enum_variant_arg(0u, |this| {
                             Ok(this.read_def_id_nodcx(cdata))
                         }).unwrap()
@@ -865,8 +862,8 @@ impl<'a, 'tcx> rbml_writer_helpers<'tcx> for Encoder<'a> {
                     })
                 }
 
-                ty::MethodStaticUnboxedClosure(def_id) => {
-                    this.emit_enum_variant("MethodStaticUnboxedClosure", 1, 1, |this| {
+                ty::MethodStaticClosure(def_id) => {
+                    this.emit_enum_variant("MethodStaticClosure", 1, 1, |this| {
                         Ok(this.emit_def_id(def_id))
                     })
                 }
@@ -1322,15 +1319,12 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for unboxed_closure in tcx.unboxed_closures
-                              .borrow()
-                              .get(&ast_util::local_def(id))
-                              .iter() {
-        rbml_w.tag(c::tag_table_unboxed_closures, |rbml_w| {
+    for closure in tcx.closures.borrow().get(&ast_util::local_def(id)).iter() {
+        rbml_w.tag(c::tag_table_closures, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_closure_type(ecx, &unboxed_closure.closure_type);
-                encode_unboxed_closure_kind(rbml_w, unboxed_closure.kind)
+                rbml_w.emit_closure_type(ecx, &closure.closure_type);
+                encode_closure_kind(rbml_w, closure.kind)
             })
         })
     }
@@ -1369,8 +1363,8 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                            -> subst::Substs<'tcx>;
     fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                     -> ty::AutoAdjustment<'tcx>;
-    fn read_unboxed_closure<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                                    -> ty::UnboxedClosure<'tcx>;
+    fn read_closure<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                            -> ty::Closure<'tcx>;
     fn read_auto_deref_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1436,7 +1430,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                                   -> ty::MethodOrigin<'tcx>
     {
         self.read_enum("MethodOrigin", |this| {
-            let variants = &["MethodStatic", "MethodStaticUnboxedClosure",
+            let variants = &["MethodStatic", "MethodStaticClosure",
                              "MethodTypeParam", "MethodTraitObject"];
             this.read_enum_variant(variants, |this, i| {
                 Ok(match i {
@@ -1447,7 +1441,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
                     1 => {
                         let def_id = this.read_def_id(dcx);
-                        ty::MethodStaticUnboxedClosure(def_id)
+                        ty::MethodStaticClosure(def_id)
                     }
 
                     2 => {
@@ -1797,8 +1791,8 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_unboxed_closure<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                                    -> ty::UnboxedClosure<'tcx> {
+    fn read_closure<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+                            -> ty::Closure<'tcx> {
         let closure_type = self.read_opaque(|this, doc| {
             Ok(tydecode::parse_ty_closure_data(
                 doc.data,
@@ -1808,21 +1802,21 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                 |s, a| this.convert_def_id(dcx, s, a)))
         }).unwrap();
         let variants = &[
-            "FnUnboxedClosureKind",
-            "FnMutUnboxedClosureKind",
-            "FnOnceUnboxedClosureKind"
+            "FnClosureKind",
+            "FnMutClosureKind",
+            "FnOnceClosureKind"
         ];
-        let kind = self.read_enum("UnboxedClosureKind", |this| {
+        let kind = self.read_enum("ClosureKind", |this| {
             this.read_enum_variant(variants, |_, i| {
                 Ok(match i {
-                    0 => ty::FnUnboxedClosureKind,
-                    1 => ty::FnMutUnboxedClosureKind,
-                    2 => ty::FnOnceUnboxedClosureKind,
-                    _ => panic!("bad enum variant for ty::UnboxedClosureKind"),
+                    0 => ty::FnClosureKind,
+                    1 => ty::FnMutClosureKind,
+                    2 => ty::FnOnceClosureKind,
+                    _ => panic!("bad enum variant for ty::ClosureKind"),
                 })
             })
         }).unwrap();
-        ty::UnboxedClosure {
+        ty::Closure {
             closure_type: closure_type,
             kind: kind,
         }
@@ -1864,7 +1858,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
                       -> ast::DefId {
         let r = match source {
             NominalType | TypeWithId | RegionParameter => dcx.tr_def_id(did),
-            TypeParameter | UnboxedClosureSource => dcx.tr_intern_def_id(did)
+            TypeParameter | ClosureSource => dcx.tr_intern_def_id(did)
         };
         debug!("convert_def_id(source={:?}, did={:?})={:?}", source, did, r);
         return r;
@@ -1959,14 +1953,11 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(dcx);
                         dcx.tcx.adjustments.borrow_mut().insert(id, adj);
                     }
-                    c::tag_table_unboxed_closures => {
-                        let unboxed_closure =
-                            val_dsr.read_unboxed_closure(dcx);
-                        dcx.tcx
-                           .unboxed_closures
-                           .borrow_mut()
-                           .insert(ast_util::local_def(id),
-                                   unboxed_closure);
+                    c::tag_table_closures => {
+                        let closure =
+                            val_dsr.read_closure(dcx);
+                        dcx.tcx.closures.borrow_mut().insert(ast_util::local_def(id),
+                                                             closure);
                     }
                     _ => {
                         dcx.tcx.sess.bug(

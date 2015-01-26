@@ -311,7 +311,7 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                         ty::MethodStatic(def_id) => {
                             def_id
                         }
-                        ty::MethodStaticUnboxedClosure(def_id) => {
+                        ty::MethodStaticClosure(def_id) => {
                             def_id
                         }
                         ty::MethodTypeParam(ty::MethodParam {

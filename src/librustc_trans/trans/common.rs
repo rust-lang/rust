@@ -248,7 +248,7 @@ pub fn type_is_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
     }
     match ty.sty {
         ty::ty_struct(..) | ty::ty_enum(..) | ty::ty_tup(..) | ty::ty_vec(_, Some(_)) |
-        ty::ty_unboxed_closure(..) => {
+        ty::ty_closure(..) => {
             let llty = sizing_type_of(ccx, ty);
             llsize_of_alloc(ccx, llty) <= llsize_of_alloc(ccx, ccx.int_type())
         }
@@ -693,35 +693,32 @@ impl<'blk, 'tcx> mc::Typer<'tcx> for BlockS<'blk, 'tcx> {
     }
 }
 
-impl<'blk, 'tcx> ty::UnboxedClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
+impl<'blk, 'tcx> ty::ClosureTyper<'tcx> for BlockS<'blk, 'tcx> {
     fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx> {
         &self.fcx.param_env
     }
 
-    fn unboxed_closure_kind(&self,
-                            def_id: ast::DefId)
-                            -> ty::UnboxedClosureKind
-    {
-        let typer = NormalizingUnboxedClosureTyper::new(self.tcx());
-        typer.unboxed_closure_kind(def_id)
+    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
+        let typer = NormalizingClosureTyper::new(self.tcx());
+        typer.closure_kind(def_id)
     }
 
-    fn unboxed_closure_type(&self,
-                            def_id: ast::DefId,
-                            substs: &subst::Substs<'tcx>)
-                            -> ty::ClosureTy<'tcx>
+    fn closure_type(&self,
+                    def_id: ast::DefId,
+                    substs: &subst::Substs<'tcx>)
+                    -> ty::ClosureTy<'tcx>
     {
-        let typer = NormalizingUnboxedClosureTyper::new(self.tcx());
-        typer.unboxed_closure_type(def_id, substs)
+        let typer = NormalizingClosureTyper::new(self.tcx());
+        typer.closure_type(def_id, substs)
     }
 
-    fn unboxed_closure_upvars(&self,
-                              def_id: ast::DefId,
-                              substs: &Substs<'tcx>)
-                              -> Option<Vec<ty::UnboxedClosureUpvar<'tcx>>>
+    fn closure_upvars(&self,
+                      def_id: ast::DefId,
+                      substs: &Substs<'tcx>)
+                      -> Option<Vec<ty::ClosureUpvar<'tcx>>>
     {
-        let typer = NormalizingUnboxedClosureTyper::new(self.tcx());
-        typer.unboxed_closure_upvars(def_id, substs)
+        let typer = NormalizingClosureTyper::new(self.tcx());
+        typer.closure_upvars(def_id, substs)
     }
 }
 
@@ -1011,7 +1008,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // Do the initial selection for the obligation. This yields the
     // shallow result we are looking for -- that is, what specific impl.
-    let typer = NormalizingUnboxedClosureTyper::new(tcx);
+    let typer = NormalizingClosureTyper::new(tcx);
     let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let obligation = traits::Obligation::new(traits::ObligationCause::dummy(),
                                              trait_ref.to_poly_trait_predicate());
@@ -1056,49 +1053,46 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     vtable
 }
 
-pub struct NormalizingUnboxedClosureTyper<'a,'tcx:'a> {
+pub struct NormalizingClosureTyper<'a,'tcx:'a> {
     param_env: ty::ParameterEnvironment<'a, 'tcx>
 }
 
-impl<'a,'tcx> NormalizingUnboxedClosureTyper<'a,'tcx> {
-    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> NormalizingUnboxedClosureTyper<'a,'tcx> {
+impl<'a,'tcx> NormalizingClosureTyper<'a,'tcx> {
+    pub fn new(tcx: &'a ty::ctxt<'tcx>) -> NormalizingClosureTyper<'a,'tcx> {
         // Parameter environment is used to give details about type parameters,
         // but since we are in trans, everything is fully monomorphized.
-        NormalizingUnboxedClosureTyper { param_env: ty::empty_parameter_environment(tcx) }
+        NormalizingClosureTyper { param_env: ty::empty_parameter_environment(tcx) }
     }
 }
 
-impl<'a,'tcx> ty::UnboxedClosureTyper<'tcx> for NormalizingUnboxedClosureTyper<'a,'tcx> {
+impl<'a,'tcx> ty::ClosureTyper<'tcx> for NormalizingClosureTyper<'a,'tcx> {
     fn param_env<'b>(&'b self) -> &'b ty::ParameterEnvironment<'b,'tcx> {
         &self.param_env
     }
 
-    fn unboxed_closure_kind(&self,
-                            def_id: ast::DefId)
-                            -> ty::UnboxedClosureKind
-    {
-        self.param_env.tcx.unboxed_closure_kind(def_id)
+    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
+        self.param_env.tcx.closure_kind(def_id)
     }
 
-    fn unboxed_closure_type(&self,
-                            def_id: ast::DefId,
-                            substs: &subst::Substs<'tcx>)
-                            -> ty::ClosureTy<'tcx>
+    fn closure_type(&self,
+                    def_id: ast::DefId,
+                    substs: &subst::Substs<'tcx>)
+                    -> ty::ClosureTy<'tcx>
     {
         // the substitutions in `substs` are already monomorphized,
         // but we still must normalize associated types
-        let closure_ty = self.param_env.tcx.unboxed_closure_type(def_id, substs);
+        let closure_ty = self.param_env.tcx.closure_type(def_id, substs);
         monomorphize::normalize_associated_type(self.param_env.tcx, &closure_ty)
     }
 
-    fn unboxed_closure_upvars(&self,
-                              def_id: ast::DefId,
-                              substs: &Substs<'tcx>)
-                              -> Option<Vec<ty::UnboxedClosureUpvar<'tcx>>>
+    fn closure_upvars(&self,
+                      def_id: ast::DefId,
+                      substs: &Substs<'tcx>)
+                      -> Option<Vec<ty::ClosureUpvar<'tcx>>>
     {
         // the substitutions in `substs` are already monomorphized,
         // but we still must normalize associated types
-        let result = ty::unboxed_closure_upvars(&self.param_env, def_id, substs);
+        let result = ty::closure_upvars(&self.param_env, def_id, substs);
         monomorphize::normalize_associated_type(self.param_env.tcx, &result)
     }
 }
@@ -1116,7 +1110,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
     // In principle, we only need to do this so long as `result`
     // contains unbound type parameters. It could be a slight
     // optimization to stop iterating early.
-    let typer = NormalizingUnboxedClosureTyper::new(infcx.tcx);
+    let typer = NormalizingClosureTyper::new(infcx.tcx);
     match fulfill_cx.select_all_or_error(infcx, &typer) {
         Ok(()) => { }
         Err(errors) => {

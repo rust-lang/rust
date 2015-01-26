@@ -155,7 +155,9 @@ fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
                 combine_substructure: combine_substructure(box |a, b, c| {
                     encodable_substructure(a, b, c)
                 }),
-            })
+            }
+        ),
+        associated_types: Vec::new(),
     };
 
     trait_def.expand(cx, mitem, item, push)

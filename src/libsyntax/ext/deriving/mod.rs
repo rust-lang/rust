@@ -40,6 +40,14 @@ pub mod totalord;
 
 pub mod generic;
 
+pub fn expand_deprecated_deriving(cx: &mut ExtCtxt,
+                                  span: Span,
+                                  _: &MetaItem,
+                                  _: &Item,
+                                  _: Box<FnMut(P<Item>)>) {
+    cx.span_err(span, "`deriving` has been renamed to `derive`");
+}
+
 pub fn expand_meta_derive(cx: &mut ExtCtxt,
                           _span: Span,
                           mitem: &MetaItem,

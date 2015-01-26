@@ -45,7 +45,8 @@ pub fn expand_deriving_totalord<F>(cx: &mut ExtCtxt,
                     cs_cmp(a, b, c)
                 }),
             }
-        )
+        ),
+        associated_types: Vec::new(),
     };
 
     trait_def.expand(cx, mitem, item, push)

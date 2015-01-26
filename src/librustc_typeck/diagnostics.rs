@@ -113,7 +113,7 @@ register_diagnostics! {
            // involving type parameters
     E0194,
     E0195, // lifetime parameters or bounds on method do not match the trait declaration
-    E0196, // cannot determine a type for this unboxed closure
+    E0196, // cannot determine a type for this closure
     E0197, // inherent impls cannot be declared as unsafe
     E0198, // negative implementations are not unsafe
     E0199, // implementing trait is not unsafe

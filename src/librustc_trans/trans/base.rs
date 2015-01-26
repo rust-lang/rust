@@ -43,7 +43,7 @@ use middle::lang_items::{LangItem, ExchangeMallocFnLangItem, StartFnLangItem};
 use middle::subst;
 use middle::weak_lang_items;
 use middle::subst::{Subst, Substs};
-use middle::ty::{self, Ty, UnboxedClosureTyper};
+use middle::ty::{self, Ty, ClosureTyper};
 use session::config::{self, NoDebugInfo};
 use session::Session;
 use trans::_match;
@@ -255,27 +255,25 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
     f
 }
 
-pub fn self_type_for_unboxed_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                               closure_id: ast::DefId,
-                                               fn_ty: Ty<'tcx>)
-                                               -> Ty<'tcx>
+pub fn self_type_for_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                       closure_id: ast::DefId,
+                                       fn_ty: Ty<'tcx>)
+                                       -> Ty<'tcx>
 {
-    let unboxed_closure_kind = ccx.tcx().unboxed_closure_kind(closure_id);
-    match unboxed_closure_kind {
-        ty::FnUnboxedClosureKind => {
+    let closure_kind = ccx.tcx().closure_kind(closure_id);
+    match closure_kind {
+        ty::FnClosureKind => {
             ty::mk_imm_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
-        ty::FnMutUnboxedClosureKind => {
+        ty::FnMutClosureKind => {
             ty::mk_mut_rptr(ccx.tcx(), ccx.tcx().mk_region(ty::ReStatic), fn_ty)
         }
-        ty::FnOnceUnboxedClosureKind => fn_ty
+        ty::FnOnceClosureKind => fn_ty
     }
 }
 
-pub fn kind_for_unboxed_closure(ccx: &CrateContext, closure_id: ast::DefId)
-                                -> ty::UnboxedClosureKind {
-    let unboxed_closures = ccx.tcx().unboxed_closures.borrow();
-    (*unboxed_closures)[closure_id].kind
+pub fn kind_for_closure(ccx: &CrateContext, closure_id: ast::DefId) -> ty::ClosureKind {
+    ccx.tcx().closures.borrow()[closure_id].kind
 }
 
 pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
@@ -295,10 +293,10 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(_, ref f) => {
             (&f.sig, f.abi, None)
         }
-        ty::ty_unboxed_closure(closure_did, _, substs) => {
-            let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
-            function_type = typer.unboxed_closure_type(closure_did, substs);
-            let self_type = self_type_for_unboxed_closure(ccx, closure_did, fn_ty);
+        ty::ty_closure(closure_did, _, substs) => {
+            let typer = common::NormalizingClosureTyper::new(ccx.tcx());
+            function_type = typer.closure_type(closure_did, substs);
+            let self_type = self_type_for_closure(ccx, closure_did, fn_ty);
             let llenvironment_type = type_of_explicit_arg(ccx, self_type);
             debug!("decl_rust_fn: function_type={} self_type={}",
                    function_type.repr(ccx.tcx()),
@@ -715,10 +713,10 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               }
           })
       }
-      ty::ty_unboxed_closure(def_id, _, substs) => {
+      ty::ty_closure(def_id, _, substs) => {
           let repr = adt::represent_type(cx.ccx(), t);
-          let typer = common::NormalizingUnboxedClosureTyper::new(cx.tcx());
-          let upvars = typer.unboxed_closure_upvars(def_id, substs).unwrap();
+          let typer = common::NormalizingClosureTyper::new(cx.tcx());
+          let upvars = typer.closure_upvars(def_id, substs).unwrap();
           for (i, upvar) in upvars.iter().enumerate() {
               let llupvar = adt::trans_field_ptr(cx, &*repr, data_ptr, 0, i);
               cx = f(cx, llupvar, upvar.ty);
@@ -1626,14 +1624,13 @@ fn copy_args_to_allocas<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx
 }
 
-fn copy_unboxed_closure_args_to_allocas<'blk, 'tcx>(
-                                        mut bcx: Block<'blk, 'tcx>,
-                                        arg_scope: cleanup::CustomScopeIndex,
-                                        args: &[ast::Arg],
-                                        arg_datums: Vec<RvalueDatum<'tcx>>,
-                                        monomorphized_arg_types: &[Ty<'tcx>])
-                                        -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("copy_unboxed_closure_args_to_allocas");
+fn copy_closure_args_to_allocas<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                            arg_scope: cleanup::CustomScopeIndex,
+                                            args: &[ast::Arg],
+                                            arg_datums: Vec<RvalueDatum<'tcx>>,
+                                            monomorphized_arg_types: &[Ty<'tcx>])
+                                            -> Block<'blk, 'tcx> {
+    let _icx = push_ctxt("copy_closure_args_to_allocas");
     let arg_scope_id = cleanup::CustomScope(arg_scope);
 
     assert_eq!(arg_datums.len(), 1);
@@ -1766,12 +1763,6 @@ pub fn build_return_block<'blk, 'tcx>(fcx: &FunctionContext<'blk, 'tcx>,
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub enum IsUnboxedClosureFlag {
-    NotUnboxedClosure,
-    IsUnboxedClosure,
-}
-
 // trans_closure: Builds an LLVM function out of a source function.
 // If the function closes over its environment a closure will be
 // returned.
@@ -1822,7 +1813,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
 
         // Tuple up closure argument types for the "rust-call" ABI.
-        closure::UnboxedClosure(..) => {
+        closure::Closure(..) => {
             vec![ty::mk_tup(ccx.tcx(), monomorphized_arg_types)]
         }
     };
@@ -1850,8 +1841,8 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                  &decl.inputs[],
                                  arg_datums)
         }
-        closure::UnboxedClosure(..) => {
-            copy_unboxed_closure_args_to_allocas(
+        closure::Closure(..) => {
+            copy_closure_args_to_allocas(
                 bcx,
                 arg_scope,
                 &decl.inputs[],
@@ -2430,9 +2421,9 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     let function_type;
     let (fn_sig, abi, has_env) = match fn_ty.sty {
         ty::ty_bare_fn(_, ref f) => (&f.sig, f.abi, false),
-        ty::ty_unboxed_closure(closure_did, _, substs) => {
-            let typer = common::NormalizingUnboxedClosureTyper::new(ccx.tcx());
-            function_type = typer.unboxed_closure_type(closure_did, substs);
+        ty::ty_closure(closure_did, _, substs) => {
+            let typer = common::NormalizingClosureTyper::new(ccx.tcx());
+            function_type = typer.closure_type(closure_did, substs);
             (&function_type.sig, RustCall, true)
         }
         _ => ccx.sess().bug("expected closure or function.")
@@ -2449,7 +2440,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
     // These have an odd calling convention, so we need to manually
     // unpack the input ty's
     let input_tys = match fn_ty.sty {
-        ty::ty_unboxed_closure(_, _, _) => {
+        ty::ty_closure(_, _, _) => {
             assert!(abi == RustCall);
 
             match fn_sig.inputs[0].sty {

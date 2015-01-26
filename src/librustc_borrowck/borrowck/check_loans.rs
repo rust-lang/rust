@@ -806,7 +806,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     mc::cat_upvar(mc::Upvar { kind, .. }) => kind,
                     _ => unreachable!()
                 };
-                if kind == ty::FnUnboxedClosureKind {
+                if kind == ty::FnClosureKind {
                     self.bccx.span_err(
                         assignment_span,
                         &format!("cannot assign to {}",

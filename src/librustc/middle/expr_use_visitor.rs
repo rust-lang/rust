@@ -26,7 +26,7 @@ use middle::mem_categorization::Typer;
 use middle::ty::{self};
 use middle::ty::{MethodCall, MethodObject, MethodTraitObject};
 use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
-use middle::ty::{MethodStatic, MethodStaticUnboxedClosure};
+use middle::ty::{MethodStatic, MethodStaticClosure};
 use util::ppaux::Repr;
 
 use std::marker;
@@ -257,13 +257,13 @@ impl OverloadedCallType {
         OverloadedCallType::from_trait_id(tcx, trait_ref.def_id)
     }
 
-    fn from_unboxed_closure(tcx: &ty::ctxt, closure_did: ast::DefId)
-                            -> OverloadedCallType {
+    fn from_closure(tcx: &ty::ctxt, closure_did: ast::DefId)
+                    -> OverloadedCallType {
         let trait_did =
-            tcx.unboxed_closures
+            tcx.closures
                .borrow()
                .get(&closure_did)
-               .expect("OverloadedCallType::from_unboxed_closure: didn't \
+               .expect("OverloadedCallType::from_closure: didn't \
                         find closure id")
                .kind
                .trait_did(tcx);
@@ -276,8 +276,8 @@ impl OverloadedCallType {
             MethodStatic(def_id) => {
                 OverloadedCallType::from_method_id(tcx, def_id)
             }
-            MethodStaticUnboxedClosure(def_id) => {
-                OverloadedCallType::from_unboxed_closure(tcx, def_id)
+            MethodStaticClosure(def_id) => {
+                OverloadedCallType::from_closure(tcx, def_id)
             }
             MethodTypeParam(MethodParam { ref trait_ref, .. }) |
             MethodTraitObject(MethodObject { ref trait_ref, .. }) => {

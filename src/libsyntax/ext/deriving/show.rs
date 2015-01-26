@@ -35,10 +35,10 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "fmt", "Debug")),
+        path: Path::new(vec!["std", "fmt", "Debug"]),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
-        methods: vec!(
+        methods: vec![
             MethodDef {
                 name: "fmt",
                 generics: LifetimeBounds::empty(),
@@ -50,7 +50,8 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
                     show_substructure(a, b, c)
                 })
             }
-        )
+        ],
+        associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
 }
