@@ -216,7 +216,7 @@ with entirely private contents, like so:
 
 ```rust
 mod foo {
-    pub struct Bar { pub a: u8, pub b: String, _hidden: BarHidden }
+    pub struct Bar { pub a: u8, pub b: String, pub _hidden: BarHidden }
     pub struct BarHidden { _cannot_construct: () }
     fn new_hidden() -> BarHidden {
         BarHidden { _cannot_construct: () }
@@ -241,7 +241,8 @@ fn main() {
 ```
 
 All hidden changes that one would have formerly made to `Bar` itself
-are now made to `BarHidden`.  The struct `Bar` is entirely public, and
+are now made to `BarHidden`.  The struct `Bar` is entirely public (including
+the supposedly-hidden field named `_hidden`), and
 thus can be legally be used with FRU in all client contexts that can
 see the type `Bar`, even under the new rules proposed by this RFC.
 
