@@ -265,3 +265,5 @@ pub const tag_polarity: uint = 0xb4;
 pub const tag_macro_defs: uint = 0xb5;
 pub const tag_macro_def: uint = 0xb6;
 pub const tag_macro_def_body: uint = 0xb7;
+
+pub const tag_paren_sugar: uint = 0xb8;

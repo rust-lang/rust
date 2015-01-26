@@ -2221,6 +2221,12 @@ pub struct TypeScheme<'tcx> {
 pub struct TraitDef<'tcx> {
     pub unsafety: ast::Unsafety,
 
+    /// If `true`, then this trait had the `#[rustc_paren_sugar]`
+    /// attribute, indicating that it should be used with `Foo()`
+    /// sugar. This is a temporary thing -- eventually any trait wil
+    /// be usable with the sugar (or without it).
+    pub paren_sugar: bool,
+
     /// Generic type definitions. Note that `Self` is listed in here
     /// as having a single bound, the trait itself (e.g., in the trait
     /// `Eq`, there is a single bound `Self : Eq`). This is so that
