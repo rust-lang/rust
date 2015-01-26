@@ -40,6 +40,7 @@ body {
     bottom: 0px;
     box-sizing: border-box;
     background: none repeat scroll 0% 0% #FFF;
+    -webkit-overflow-scrolling: touch;
 }
 
 #page {
