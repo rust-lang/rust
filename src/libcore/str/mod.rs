@@ -812,7 +812,7 @@ impl TwoWaySearcher {
 
             // See if the left part of the needle matches
             let start = if long_period { 0 } else { self.memory };
-            for i in range(start, self.crit_pos).rev() {
+            for i in (start..self.crit_pos).rev() {
                 if needle[i] != haystack[self.position + i] {
                     self.position += self.period;
                     if !long_period {

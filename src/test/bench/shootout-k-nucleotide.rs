@@ -135,7 +135,7 @@ struct Items<'a> {
 impl Table {
     fn new() -> Table {
         Table {
-            items: range(0, TABLE_SIZE).map(|_| None).collect()
+            items: (0..TABLE_SIZE).map(|_| None).collect()
         }
     }
 
@@ -299,7 +299,7 @@ fn main() {
     };
     let input = Arc::new(input);
 
-    let nb_freqs: Vec<_> = range(1u, 3).map(|i| {
+    let nb_freqs: Vec<_> = (1u..3).map(|i| {
         let input = input.clone();
         (i, Thread::scoped(move|| generate_frequencies(input.as_slice(), i)))
     }).collect();

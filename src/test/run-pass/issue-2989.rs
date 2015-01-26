@@ -21,7 +21,7 @@ impl methods for () {
 // the position of this function is significant! - if it comes before methods
 // then it works, if it comes after it then it doesn't!
 fn to_bools(bitv: Storage) -> Vec<bool> {
-    range(0, 8).map(|i| {
+    (0..8).map(|i| {
         let w = i / 64;
         let b = i % 64;
         let x = 1u64 & (bitv.storage[w] >> b);

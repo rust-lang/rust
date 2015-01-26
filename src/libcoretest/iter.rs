@@ -731,12 +731,12 @@ fn test_random_access_cycle() {
 #[test]
 fn test_double_ended_range() {
     assert!(range(11i, 14).rev().collect::<Vec<int>>() == vec![13i, 12, 11]);
-    for _ in range(10i, 0).rev() {
+    for _ in (10i..0).rev() {
         panic!("unreachable");
     }
 
     assert!(range(11u, 14).rev().collect::<Vec<uint>>() == vec![13u, 12, 11]);
-    for _ in range(10u, 0).rev() {
+    for _ in (10u..0).rev() {
         panic!("unreachable");
     }
 }
@@ -883,7 +883,7 @@ fn test_fuse() {
 
 #[bench]
 fn bench_rposition(b: &mut Bencher) {
-    let it: Vec<uint> = range(0u, 300).collect();
+    let it: Vec<uint> = (0u..300).collect();
     b.iter(|| {
         it.iter().rposition(|&x| x <= 150);
     });
@@ -900,7 +900,7 @@ fn bench_skip_while(b: &mut Bencher) {
 
 #[bench]
 fn bench_multiple_take(b: &mut Bencher) {
-    let mut it = range(0u, 42).cycle();
+    let mut it = (0u..42).cycle();
     b.iter(|| {
         let n = it.next().unwrap();
         for _ in range(0u, n) {

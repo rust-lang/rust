@@ -717,7 +717,7 @@ pub trait IteratorExt: Iterator + Sized {
         Self: ExactSizeIterator + DoubleEndedIterator
     {
         let len = self.len();
-        for i in range(0, len).rev() {
+        for i in (0..len).rev() {
             if predicate(self.next_back().expect("rposition: incorrect ExactSizeIterator")) {
                 return Some(i);
             }

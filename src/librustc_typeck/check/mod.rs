@@ -2473,7 +2473,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 // FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
 fn err_args<'tcx>(tcx: &ty::ctxt<'tcx>, len: uint) -> Vec<Ty<'tcx>> {
-    range(0, len).map(|_| tcx.types.err).collect()
+    (0..len).map(|_| tcx.types.err).collect()
 }
 
 fn write_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,

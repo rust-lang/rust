@@ -1198,7 +1198,7 @@ mod test_set {
 
     #[test]
     fn test_drain() {
-        let mut s: HashSet<int> = range(1, 100).collect();
+        let mut s: HashSet<int> = (1..100).collect();
 
         // try this a bunch of times to make sure we don't screw up internal state.
         for _ in range(0i, 20) {

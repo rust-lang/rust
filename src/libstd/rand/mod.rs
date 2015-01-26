@@ -176,7 +176,7 @@
 //! }
 //!
 //! fn free_doors(blocked: &[uint]) -> Vec<uint> {
-//!     range(0, 3).filter(|x| !blocked.contains(x)).collect()
+//!     (0u..3).filter(|x| !blocked.contains(x)).collect()
 //! }
 //!
 //! fn main() {
@@ -601,7 +601,7 @@ mod test {
         let max_val = 100i;
 
         let mut r = thread_rng();
-        let vals = range(min_val, max_val).collect::<Vec<int>>();
+        let vals = (min_val..max_val).collect::<Vec<int>>();
         let small_sample = sample(&mut r, vals.iter(), 5);
         let large_sample = sample(&mut r, vals.iter(), vals.len() + 5);
 

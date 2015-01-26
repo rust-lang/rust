@@ -97,7 +97,7 @@ mod imp {
 
     unsafe fn load_argc_and_argv(argc: int, argv: *const *const u8) -> Vec<Vec<u8>> {
         let argv = argv as *const *const libc::c_char;
-        range(0, argc as uint).map(|i| {
+        (0..argc as uint).map(|i| {
             ffi::c_str_to_bytes(&*argv.offset(i as int)).to_vec()
         }).collect()
     }

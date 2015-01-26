@@ -126,7 +126,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
     let cnt = unsafe { backtrace(buf.as_mut_ptr(), SIZE as libc::c_int) as uint};
 
     // skipping the first one as it is write itself
-    let iter = range(1, cnt).map(|i| {
+    let iter = (1..cnt).map(|i| {
         print(w, i as int, buf[i])
     });
     result::fold(iter, (), |_, _| ())

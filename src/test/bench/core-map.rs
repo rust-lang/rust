@@ -62,13 +62,13 @@ fn descending<M: MutableMap>(map: &mut M, n_keys: uint) {
     println!(" Descending integers:");
 
     timed("insert", || {
-        for i in range(0, n_keys).rev() {
+        for i in (0..n_keys).rev() {
             map.insert(i, i + 1);
         }
     });
 
     timed("search", || {
-        for i in range(0, n_keys).rev() {
+        for i in (0..n_keys).rev() {
             assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     });
