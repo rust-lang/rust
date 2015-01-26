@@ -3126,7 +3126,6 @@ pub fn type_is_scalar(ty: Ty) -> bool {
       ty_bool | ty_char | ty_int(_) | ty_float(_) | ty_uint(_) |
       ty_infer(IntVar(_)) | ty_infer(FloatVar(_)) |
       ty_bare_fn(..) | ty_ptr(_) => true,
-      ty_tup(ref tys) if tys.is_empty() => true,
       _ => false
     }
 }
