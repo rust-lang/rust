@@ -305,7 +305,7 @@ Here is an attempt to transcribe/summarize them:
       thread on [Issue 21407].)
 
   5. Add way for struct item to opt out of FRU support entirely,
-     e.g. via an attrible.
+     e.g. via an attribute.
 
      This seems pretty fragile; i.e., easy to forget.
 
