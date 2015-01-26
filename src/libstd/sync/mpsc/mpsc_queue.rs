@@ -181,11 +181,11 @@ mod tests {
         let (tx, rx) = channel();
         let q = Arc::new(q);
 
-        for _ in range(0, nthreads) {
+        for _ in 0..nthreads {
             let tx = tx.clone();
             let q = q.clone();
             Thread::spawn(move|| {
-                for i in range(0, nmsgs) {
+                for i in 0..nmsgs {
                     q.push(i);
                 }
                 tx.send(()).unwrap();
@@ -200,7 +200,7 @@ mod tests {
             }
         }
         drop(tx);
-        for _ in range(0, nthreads) {
+        for _ in 0..nthreads {
             rx.recv().unwrap();
         }
     }

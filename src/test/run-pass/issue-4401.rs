@@ -10,7 +10,7 @@
 
 pub fn main() {
     let mut count = 0i;
-    for _ in range(0i, 999_999) { count += 1; }
+    for _ in 0i..999_999 { count += 1; }
     assert_eq!(count, 999_999);
     println!("{}", count);
 }

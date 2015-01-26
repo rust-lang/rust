@@ -15,7 +15,7 @@ pub fn main() {
         }
     }
 
-    'bar: for _ in range(0i, 100i) {
+    'bar: for _ in 0i..100i {
         loop {
             break 'bar;
         }

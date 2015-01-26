@@ -596,13 +596,13 @@ impl<'a> Formatter<'a> {
         let len = self.fill.encode_utf8(&mut fill).unwrap_or(0);
         let fill = unsafe { str::from_utf8_unchecked(&fill[..len]) };
 
-        for _ in range(0, pre_pad) {
+        for _ in 0..pre_pad {
             try!(self.buf.write_str(fill));
         }
 
         try!(f(self));
 
-        for _ in range(0, post_pad) {
+        for _ in 0..post_pad {
             try!(self.buf.write_str(fill));
         }
 

@@ -186,7 +186,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.len(), 0);
     ///
     /// // These are all done without reallocating...
-    /// for i in range(0i, 10) {
+    /// for i in 0i..10 {
     ///     vec.push(i);
     /// }
     ///
@@ -233,7 +233,7 @@ impl<T> Vec<T> {
     ///         mem::forget(v);
     ///
     ///         // Overwrite memory with 4, 5, 6
-    ///         for i in range(0, len as int) {
+    ///         for i in 0..len as int {
     ///             ptr::write(p.offset(i), 4 + i);
     ///         }
     ///
@@ -605,7 +605,7 @@ impl<T> Vec<T> {
         {
             let v = self.as_mut_slice();
 
-            for i in range(0u, len) {
+            for i in 0u..len {
                 if !f(&v[i]) {
                     del += 1;
                 } else if del > 0 {
@@ -1969,7 +1969,7 @@ mod tests {
         v.reserve(2);
         assert!(v.capacity() >= 2);
 
-        for i in range(0i, 16) {
+        for i in 0i..16 {
             v.push(i);
         }
 
@@ -1989,12 +1989,12 @@ mod tests {
         let mut w = Vec::new();
 
         v.extend(range(0i, 3));
-        for i in range(0i, 3) { w.push(i) }
+        for i in 0i..3 { w.push(i) }
 
         assert_eq!(v, w);
 
         v.extend(range(3i, 10));
-        for i in range(3i, 10) { w.push(i) }
+        for i in 3i..10 { w.push(i) }
 
         assert_eq!(v, w);
     }
@@ -2750,7 +2750,7 @@ mod tests {
         b.iter(|| {
             let mut dst = dst.clone();
 
-            for _ in range(0, times) {
+            for _ in 0..times {
                 dst.clone_from(&src);
 
                 assert_eq!(dst.len(), src_len);

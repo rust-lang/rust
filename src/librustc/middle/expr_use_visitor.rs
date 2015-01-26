@@ -842,7 +842,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                        autoderefs: uint) {
         debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
-        for i in range(0, autoderefs) {
+        for i in 0..autoderefs {
             let deref_id = ty::MethodCall::autoderef(expr.id, i);
             match self.typer.node_method_ty(deref_id) {
                 None => {}

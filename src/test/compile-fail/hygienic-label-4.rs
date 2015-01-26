@@ -9,7 +9,7 @@
 // except according to those terms.
 
 macro_rules! foo {
-    ($e: expr) => { 'x: for _ in range(0,1) { $e } }
+    ($e: expr) => { 'x: for _ in 0..1 { $e } }
 }
 
 pub fn main() {

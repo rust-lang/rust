@@ -901,7 +901,7 @@ fn run_work_multithreaded(sess: &Session,
     let mut diag_emitter = SharedEmitter::new();
     let mut futures = Vec::with_capacity(num_workers);
 
-    for i in range(0, num_workers) {
+    for i in 0..num_workers {
         let work_items_arc = work_items_arc.clone();
         let diag_emitter = diag_emitter.clone();
         let remark = sess.opts.cg.remark.clone();

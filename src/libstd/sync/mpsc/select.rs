@@ -421,10 +421,10 @@ mod test {
         let (tx3, rx3) = channel::<int>();
 
         let _t = Thread::spawn(move|| {
-            for _ in range(0u, 20) { Thread::yield_now(); }
+            for _ in 0u..20 { Thread::yield_now(); }
             tx1.send(1).unwrap();
             rx3.recv().unwrap();
-            for _ in range(0u, 20) { Thread::yield_now(); }
+            for _ in 0u..20 { Thread::yield_now(); }
         });
 
         select! {
@@ -445,7 +445,7 @@ mod test {
         let (tx3, rx3) = channel::<()>();
 
         let _t = Thread::spawn(move|| {
-            for _ in range(0u, 20) { Thread::yield_now(); }
+            for _ in 0u..20 { Thread::yield_now(); }
             tx1.send(1).unwrap();
             tx2.send(2).unwrap();
             rx3.recv().unwrap();
@@ -472,7 +472,7 @@ mod test {
         let (tx3, rx3) = channel::<()>();
 
         let _t = Thread::spawn(move|| {
-            for i in range(0, AMT) {
+            for i in 0..AMT {
                 if i % 2 == 0 {
                     tx1.send(i).unwrap();
                 } else {
@@ -482,7 +482,7 @@ mod test {
             }
         });
 
-        for i in range(0, AMT) {
+        for i in 0..AMT {
             select! {
                 i1 = rx1.recv() => { assert!(i % 2 == 0 && i == i1.unwrap()); },
                 i2 = rx2.recv() => { assert!(i % 2 == 1 && i == i2.unwrap()); }
@@ -550,7 +550,7 @@ mod test {
             tx3.send(()).unwrap();
         });
 
-        for _ in range(0u, 1000) { Thread::yield_now(); }
+        for _ in 0u..1000 { Thread::yield_now(); }
         drop(tx1.clone());
         tx2.send(()).unwrap();
         rx3.recv().unwrap();
@@ -663,7 +663,7 @@ mod test {
             tx2.send(()).unwrap();
         });
 
-        for _ in range(0u, 100) { Thread::yield_now() }
+        for _ in 0u..100 { Thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -683,7 +683,7 @@ mod test {
             tx2.send(()).unwrap();
         });
 
-        for _ in range(0u, 100) { Thread::yield_now() }
+        for _ in 0u..100 { Thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -702,7 +702,7 @@ mod test {
             tx2.send(()).unwrap();
         });
 
-        for _ in range(0u, 100) { Thread::yield_now() }
+        for _ in 0u..100 { Thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -720,7 +720,7 @@ mod test {
     fn sync2() {
         let (tx, rx) = sync_channel::<int>(0);
         let _t = Thread::spawn(move|| {
-            for _ in range(0u, 100) { Thread::yield_now() }
+            for _ in 0u..100 { Thread::yield_now() }
             tx.send(1).unwrap();
         });
         select! {

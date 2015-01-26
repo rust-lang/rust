@@ -472,7 +472,7 @@ pub fn str_lit(lit: &str) -> String {
                         } else {
                             // otherwise, a normal escape
                             let (c, n) = char_lit(&lit[i..]);
-                            for _ in range(0, n - 1) { // we don't need to move past the first \
+                            for _ in 0..n - 1 { // we don't need to move past the first \
                                 chars.next();
                             }
                             res.push(c);
@@ -635,7 +635,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
                         // otherwise, a normal escape
                         let (c, n) = byte_lit(&lit[i..]);
                         // we don't need to move past the first \
-                        for _ in range(0, n - 1) {
+                        for _ in 0..n - 1 {
                             chars.next();
                         }
                         res.push(c);

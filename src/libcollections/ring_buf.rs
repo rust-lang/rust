@@ -1719,21 +1719,21 @@ mod tests {
     #[test]
     fn test_push_front_grow() {
         let mut deq = RingBuf::new();
-        for i in range(0u, 66) {
+        for i in 0u..66 {
             deq.push_front(i);
         }
         assert_eq!(deq.len(), 66);
 
-        for i in range(0u, 66) {
+        for i in 0u..66 {
             assert_eq!(deq[i], 65 - i);
         }
 
         let mut deq = RingBuf::new();
-        for i in range(0u, 66) {
+        for i in 0u..66 {
             deq.push_back(i);
         }
 
-        for i in range(0u, 66) {
+        for i in 0u..66 {
             assert_eq!(deq[i], i);
         }
     }
@@ -1741,7 +1741,7 @@ mod tests {
     #[test]
     fn test_index() {
         let mut deq = RingBuf::new();
-        for i in range(1u, 4) {
+        for i in 1u..4 {
             deq.push_front(i);
         }
         assert_eq!(deq[1], 2);
@@ -1751,7 +1751,7 @@ mod tests {
     #[should_fail]
     fn test_index_out_of_bounds() {
         let mut deq = RingBuf::new();
-        for i in range(1u, 4) {
+        for i in 1u..4 {
             deq.push_front(i);
         }
         deq[3];
@@ -1769,7 +1769,7 @@ mod tests {
     fn bench_push_back_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            for i in range(0i, 100) {
+            for i in 0i..100 {
                 deq.push_back(i);
             }
             deq.head = 0;
@@ -1781,7 +1781,7 @@ mod tests {
     fn bench_push_front_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            for i in range(0i, 100) {
+            for i in 0i..100 {
                 deq.push_front(i);
             }
             deq.head = 0;
@@ -1819,7 +1819,7 @@ mod tests {
     fn bench_grow_1025(b: &mut test::Bencher) {
         b.iter(|| {
             let mut deq = RingBuf::new();
-            for i in range(0i, 1025) {
+            for i in 0i..1025 {
                 deq.push_front(i);
             }
             test::black_box(deq);
@@ -1989,7 +1989,7 @@ mod tests {
         assert_eq!(d.iter().next(), None);
         assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
-        for i in range(0i, 5) {
+        for i in 0i..5 {
             d.push_back(i);
         }
         {
@@ -1997,7 +1997,7 @@ mod tests {
             assert_eq!(d.iter().collect::<Vec<&int>>(), b);
         }
 
-        for i in range(6i, 9) {
+        for i in 6i..9 {
             d.push_front(i);
         }
         {
@@ -2020,7 +2020,7 @@ mod tests {
         let mut d = RingBuf::new();
         assert_eq!(d.iter().rev().next(), None);
 
-        for i in range(0i, 5) {
+        for i in 0i..5 {
             d.push_back(i);
         }
         {
@@ -2028,7 +2028,7 @@ mod tests {
             assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
         }
 
-        for i in range(6i, 9) {
+        for i in 6i..9 {
             d.push_front(i);
         }
         let b: &[_] = &[&4,&3,&2,&1,&0,&6,&7,&8];
@@ -2055,7 +2055,7 @@ mod tests {
         let mut d = RingBuf::new();
         assert!(d.iter_mut().next().is_none());
 
-        for i in range(0u, 3) {
+        for i in 0u..3 {
             d.push_front(i);
         }
 
@@ -2078,7 +2078,7 @@ mod tests {
         let mut d = RingBuf::new();
         assert!(d.iter_mut().rev().next().is_none());
 
-        for i in range(0u, 3) {
+        for i in 0u..3 {
             d.push_front(i);
         }
 
@@ -2112,7 +2112,7 @@ mod tests {
         // simple iter
         {
             let mut d = RingBuf::new();
-            for i in range(0i, 5) {
+            for i in 0i..5 {
                 d.push_back(i);
             }
 
@@ -2123,10 +2123,10 @@ mod tests {
         // wrapped iter
         {
             let mut d = RingBuf::new();
-            for i in range(0i, 5) {
+            for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in range(6, 9) {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
@@ -2137,10 +2137,10 @@ mod tests {
         // partially used
         {
             let mut d = RingBuf::new();
-            for i in range(0i, 5) {
+            for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in range(6, 9) {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
@@ -2176,7 +2176,7 @@ mod tests {
         // simple iter
         {
             let mut d = RingBuf::new();
-            for i in range(0i, 5) {
+            for i in 0i..5 {
                 d.push_back(i);
             }
 
@@ -2187,10 +2187,10 @@ mod tests {
         // wrapped iter
         {
             let mut d = RingBuf::new();
-            for i in range(0i, 5) {
+            for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in range(6, 9) {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
@@ -2201,10 +2201,10 @@ mod tests {
         // partially used
         {
             let mut d = RingBuf::new();
-            for i in range(0i, 5) {
+            for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in range(6, 9) {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
@@ -2389,41 +2389,41 @@ mod tests {
         // test growth path A
         // [T o o H] -> [T o o H . . . . ]
         let mut ring = RingBuf::with_capacity(4);
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             ring.push_back(i);
         }
         ring.reserve(7);
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             assert_eq!(ring.pop_front(), Some(i));
         }
 
         // test growth path B
         // [H T o o] -> [. T o o H . . . ]
         let mut ring = RingBuf::with_capacity(4);
-        for i in range(0i, 1) {
+        for i in 0i..1 {
             ring.push_back(i);
             assert_eq!(ring.pop_front(), Some(i));
         }
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             ring.push_back(i);
         }
         ring.reserve(7);
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             assert_eq!(ring.pop_front(), Some(i));
         }
 
         // test growth path C
         // [o o H T] -> [o o H . . . . T ]
         let mut ring = RingBuf::with_capacity(4);
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             ring.push_back(i);
             assert_eq!(ring.pop_front(), Some(i));
         }
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             ring.push_back(i);
         }
         ring.reserve(7);
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             assert_eq!(ring.pop_front(), Some(i));
         }
     }
@@ -2463,7 +2463,7 @@ mod tests {
     #[test]
     fn test_get_mut() {
         let mut ring = RingBuf::new();
-        for i in range(0i, 3) {
+        for i in 0i..3 {
             ring.push_back(i);
         }
 
@@ -2492,27 +2492,27 @@ mod tests {
             let usable_cap = tester.capacity();
             let final_len = usable_cap / 2;
 
-            for len in range(0, final_len) {
+            for len in 0..final_len {
                 let expected = if back {
                     (0..len).collect()
                 } else {
                     (0..len).rev().collect()
                 };
-                for tail_pos in range(0, usable_cap) {
+                for tail_pos in 0..usable_cap {
                     tester.tail = tail_pos;
                     tester.head = tail_pos;
                     if back {
-                        for i in range(0, len * 2) {
+                        for i in 0..len * 2 {
                             tester.push_front(i);
                         }
-                        for i in range(0, len) {
+                        for i in 0..len {
                             assert_eq!(tester.swap_back_remove(i), Some(len * 2 - 1 - i));
                         }
                     } else {
-                        for i in range(0, len * 2) {
+                        for i in 0..len * 2 {
                             tester.push_back(i);
                         }
-                        for i in range(0, len) {
+                        for i in 0..len {
                             let idx = tester.len() - 1 - i;
                             assert_eq!(tester.swap_front_remove(idx), Some(len * 2 - 1 - i));
                         }
@@ -2540,14 +2540,14 @@ mod tests {
 
 
         // len is the length *after* insertion
-        for len in range(1, cap) {
+        for len in 1..cap {
             // 0, 1, 2, .., len - 1
             let expected = iter::count(0, 1).take(len).collect();
-            for tail_pos in range(0, cap) {
-                for to_insert in range(0, len) {
+            for tail_pos in 0..cap {
+                for to_insert in 0..len {
                     tester.tail = tail_pos;
                     tester.head = tail_pos;
-                    for i in range(0, len) {
+                    for i in 0..len {
                         if i != to_insert {
                             tester.push_back(i);
                         }
@@ -2573,14 +2573,14 @@ mod tests {
         let cap = tester.capacity();
 
         // len is the length *after* removal
-        for len in range(0, cap - 1) {
+        for len in 0..cap - 1 {
             // 0, 1, 2, .., len - 1
             let expected = iter::count(0, 1).take(len).collect();
-            for tail_pos in range(0, cap) {
-                for to_remove in range(0, len + 1) {
+            for tail_pos in 0..cap {
+                for to_remove in 0..len + 1 {
                     tester.tail = tail_pos;
                     tester.head = tail_pos;
-                    for i in range(0, len) {
+                    for i in 0..len {
                         if i == to_remove {
                             tester.push_back(1234);
                         }
@@ -2611,14 +2611,14 @@ mod tests {
         tester.reserve(63);
         let max_cap = tester.capacity();
 
-        for len in range(0, cap + 1) {
+        for len in 0..cap + 1 {
             // 0, 1, 2, .., len - 1
             let expected = iter::count(0, 1).take(len).collect();
-            for tail_pos in range(0, max_cap + 1) {
+            for tail_pos in 0..max_cap + 1 {
                 tester.tail = tail_pos;
                 tester.head = tail_pos;
                 tester.reserve(63);
-                for i in range(0, len) {
+                for i in 0..len {
                     tester.push_back(i);
                 }
                 tester.shrink_to_fit();
@@ -2648,7 +2648,7 @@ mod tests {
         let cap = ring.capacity() as int;
         let first = cap/2;
         let last  = cap - first;
-        for i in range(0, first) {
+        for i in 0..first {
             ring.push_back(i);
 
             let (left, right) = ring.as_slices();
@@ -2657,7 +2657,7 @@ mod tests {
             assert_eq!(right, []);
         }
 
-        for j in range(-last, 0) {
+        for j in -last..0 {
             ring.push_front(j);
             let (left, right) = ring.as_slices();
             let expected_left: Vec<_> = (-last..j+1).rev().collect();
@@ -2676,7 +2676,7 @@ mod tests {
         let cap = ring.capacity() as int;
         let first = cap/2;
         let last  = cap - first;
-        for i in range(0, first) {
+        for i in 0..first {
             ring.push_back(i);
 
             let (left, right) = ring.as_mut_slices();
@@ -2685,7 +2685,7 @@ mod tests {
             assert_eq!(right, []);
         }
 
-        for j in range(-last, 0) {
+        for j in -last..0 {
             ring.push_front(j);
             let (left, right) = ring.as_mut_slices();
             let expected_left: Vec<_> = (-last..j+1).rev().collect();

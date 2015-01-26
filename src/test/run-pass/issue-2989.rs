@@ -35,7 +35,7 @@ pub fn main() {
     let bools = vec!(false, false, true, false, false, true, true, false);
     let bools2 = to_bools(Storage{storage: vec!(0b01100100)});
 
-    for i in range(0u, 8) {
+    for i in 0u..8 {
         println!("{} => {} vs {}", i, bools[i], bools2[i]);
     }
 

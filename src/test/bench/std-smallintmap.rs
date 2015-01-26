@@ -15,13 +15,13 @@ use std::os;
 use std::time::Duration;
 
 fn append_sequential(min: uint, max: uint, map: &mut VecMap<uint>) {
-    for i in range(min, max) {
+    for i in min..max {
         map.insert(i, i + 22u);
     }
 }
 
 fn check_sequential(min: uint, max: uint, map: &VecMap<uint>) {
-    for i in range(min, max) {
+    for i in min..max {
         assert_eq!(map[i], i + 22u);
     }
 }
@@ -41,7 +41,7 @@ fn main() {
     let mut checkf = Duration::seconds(0);
     let mut appendf = Duration::seconds(0);
 
-    for _ in range(0u, rep) {
+    for _ in 0u..rep {
         let mut map = VecMap::new();
         let d1 = Duration::span(|| append_sequential(0u, max, &mut map));
         let d2 = Duration::span(|| check_sequential(0u, max, &map));

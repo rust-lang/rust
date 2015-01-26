@@ -1003,7 +1003,7 @@ mod test_set {
     #[test]
     fn test_iterate() {
         let mut a = HashSet::new();
-        for i in range(0u, 32) {
+        for i in 0u..32 {
             assert!(a.insert(i));
         }
         let mut observed: u32 = 0;
@@ -1201,7 +1201,7 @@ mod test_set {
         let mut s: HashSet<int> = (1..100).collect();
 
         // try this a bunch of times to make sure we don't screw up internal state.
-        for _ in range(0i, 20) {
+        for _ in 0i..20 {
             assert_eq!(s.len(), 99);
 
             {

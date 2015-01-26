@@ -15,7 +15,7 @@ fn periodical(n: int) -> Receiver<bool> {
     let (chan, port) = channel();
     Thread::spawn(move|| {
         loop {
-            for _ in range(1, n) {
+            for _ in 1..n {
                 match chan.send(false) {
                     Ok(()) => {}
                     Err(..) => break,
@@ -49,7 +49,7 @@ fn main() {
     let ints = integers();
     let threes = periodical(3);
     let fives = periodical(5);
-    for _ in range(1i, 100i) {
+    for _ in 1i..100i {
         match (ints.recv().unwrap(), threes.recv().unwrap(), fives.recv().unwrap()) {
             (_, true, true) => println!("FizzBuzz"),
             (_, true, false) => println!("Fizz"),

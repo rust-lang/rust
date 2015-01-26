@@ -1347,7 +1347,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         indexes.contains(&i)
                     });
                     if need_insert {
-                        for i in range(0, expected) {
+                        for i in 0..expected {
                             if indexes.contains(&i) {
                                 new_lts.push(lifetime);
                             } else {
@@ -1767,7 +1767,7 @@ impl LifeGiver {
             let mut s = String::new();
             let (n, r) = (counter/26 + 1, counter % 26);
             let letter: char = from_u32((r+97) as u32).unwrap();
-            for _ in range(0, n) {
+            for _ in 0..n {
                 s.push(letter);
             }
             s

@@ -325,7 +325,7 @@ mod test {
             let (tx, rx) = channel();
             let q2 = q.clone();
             let _t = Thread::spawn(move|| {
-                for _ in range(0u, 100000) {
+                for _ in 0u..100000 {
                     loop {
                         match q2.pop() {
                             Some(1i) => break,
@@ -336,7 +336,7 @@ mod test {
                 }
                 tx.send(()).unwrap();
             });
-            for _ in range(0i, 100000) {
+            for _ in 0i..100000 {
                 q.push(1);
             }
             rx.recv().unwrap();

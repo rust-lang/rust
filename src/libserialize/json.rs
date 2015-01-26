@@ -3513,7 +3513,7 @@ mod tests {
         }
 
         // Test up to 4 spaces of indents (more?)
-        for i in range(0, 4u) {
+        for i in 0..4u {
             let mut writer = Vec::new();
             write!(&mut writer, "{}",
                    super::as_pretty_json(&json).indent(i)).unwrap();
@@ -3982,7 +3982,7 @@ mod tests {
 
     fn big_json() -> string::String {
         let mut src = "[\n".to_string();
-        for _ in range(0i, 500) {
+        for _ in 0i..500 {
             src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
                             [1,2,3]},"#);
         }

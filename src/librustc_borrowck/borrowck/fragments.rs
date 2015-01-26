@@ -358,7 +358,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
                            parent_ty.repr(tcx)),
             };
             let tuple_len = v.len();
-            for i in range(0, tuple_len) {
+            for i in 0..tuple_len {
                 if i == tuple_idx { continue }
                 let field_name = mc::PositionalField(i);
                 add_fragment_sibling_local(field_name, None);

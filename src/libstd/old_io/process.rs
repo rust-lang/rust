@@ -1142,7 +1142,7 @@ mod tests {
     fn test_zero() {
         let mut p = sleeper();
         p.signal_kill().unwrap();
-        for _ in range(0i, 20) {
+        for _ in 0i..20 {
             if p.signal(0).is_err() {
                 assert!(!p.wait().unwrap().success());
                 return

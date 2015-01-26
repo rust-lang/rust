@@ -38,7 +38,7 @@ fn main() {
     let tmpdir = Path::new(args[2].as_slice());
     let main_file = tmpdir.join("span_main.rs");
 
-    for _ in range(0u, 100) {
+    for _ in 0u..100 {
         let n = thread_rng().gen_range(3u, 20);
 
         {

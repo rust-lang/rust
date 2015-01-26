@@ -693,7 +693,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
         }
         i += 1;
     }
-    for i in range(0u, n_opts) {
+    for i in 0u..n_opts {
         let n = vals[i].len();
         let occ = opts[i].occur;
         if occ == Req && n == 0 {
@@ -761,7 +761,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
         // here we just need to indent the start of the description
         let rowlen = row.chars().count();
         if rowlen < 24 {
-            for _ in range(0, 24 - rowlen) {
+            for _ in 0..24 - rowlen {
                 row.push(' ');
             }
         } else {

@@ -2117,7 +2117,7 @@ fn deref_multiple<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                               -> DatumBlock<'blk, 'tcx, Expr> {
     let mut bcx = bcx;
     let mut datum = datum;
-    for i in range(0, times) {
+    for i in 0..times {
         let method_call = MethodCall::autoderef(expr.id, i);
         datum = unpack_datum!(bcx, deref_once(bcx, expr, datum, method_call));
     }

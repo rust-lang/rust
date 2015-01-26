@@ -1509,9 +1509,9 @@ impl<T, U, A, B> DoubleEndedIterator for Zip<A, B> where
         if a_sz != b_sz {
             // Adjust a, b to equal length
             if a_sz > b_sz {
-                for _ in range(0, a_sz - b_sz) { self.a.next_back(); }
+                for _ in 0..a_sz - b_sz { self.a.next_back(); }
             } else {
-                for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
+                for _ in 0..b_sz - a_sz { self.b.next_back(); }
             }
         }
         match (self.a.next_back(), self.b.next_back()) {
@@ -2539,7 +2539,7 @@ pub struct Range<A> {
 /// ```
 /// let array = [0, 1, 2, 3, 4];
 ///
-/// for i in range(0, 5) {
+/// for i in 0..5 {
 ///     println!("{}", i);
 ///     assert_eq!(i,  array[i]);
 /// }

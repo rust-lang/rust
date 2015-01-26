@@ -1305,7 +1305,7 @@ fn insertion_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> O
     let buf_v = v.as_mut_ptr();
 
     // 1 <= i < len;
-    for i in range(1, len) {
+    for i in 1..len {
         // j satisfies: 0 <= j <= i;
         let mut j = i;
         unsafe {
@@ -2097,8 +2097,8 @@ mod tests {
 
     #[test]
     fn test_sort() {
-        for len in range(4u, 25) {
-            for _ in range(0i, 100) {
+        for len in 4u..25 {
+            for _ in 0i..100 {
                 let mut v = thread_rng().gen_iter::<uint>().take(len)
                                       .collect::<Vec<uint>>();
                 let mut v1 = v.clone();
@@ -2125,8 +2125,8 @@ mod tests {
 
     #[test]
     fn test_sort_stability() {
-        for len in range(4i, 25) {
-            for _ in range(0u, 10) {
+        for len in 4i..25 {
+            for _ in 0u..10 {
                 let mut counts = [0i; 10];
 
                 // create a vector like [(6, 1), (5, 1), (6, 2), ...],
@@ -2717,7 +2717,7 @@ mod tests {
     #[test]
     fn test_shrink_to_fit() {
         let mut xs = vec![0, 1, 2, 3];
-        for i in range(4i, 100) {
+        for i in 4i..100 {
             xs.push(i)
         }
         assert_eq!(xs.capacity(), 128);
@@ -2993,7 +2993,7 @@ mod bench {
             unsafe {
                 v.set_len(1024);
             }
-            for i in range(0u, 1024) {
+            for i in 0u..1024 {
                 v[i] = 0;
             }
         });
@@ -3018,7 +3018,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = repeat((0u, 0u)).take(30).collect::<Vec<_>>();
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 let l = v.len();
                 v.insert(rng.gen::<uint>() % (l + 1),
                          (1, 1));
@@ -3030,7 +3030,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = repeat((0u, 0u)).take(130).collect::<Vec<_>>();
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 let l = v.len();
                 v.remove(rng.gen::<uint>() % l);
             }

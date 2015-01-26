@@ -211,7 +211,7 @@ fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
 
 // Gets the identifier of a mask.
 fn get_id(m: u64) -> u8 {
-    for id in range(0u8, 10) {
+    for id in 0u8..10 {
         if m & (1 << (id + 50) as uint) != 0 {return id;}
     }
     panic!("{:016x} does not have a valid identifier", m);
@@ -222,7 +222,7 @@ fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
     let mut sol = repeat('.' as u8).take(50).collect::<Vec<_>>();
     for &m in raw_sol.iter() {
         let id = '0' as u8 + get_id(m);
-        for i in range(0u, 50) {
+        for i in 0u..50 {
             if m & 1 << i != 0 {
                 sol[i] = id;
             }
