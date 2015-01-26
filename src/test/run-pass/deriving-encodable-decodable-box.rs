@@ -24,7 +24,7 @@ struct A {
 
 fn main() {
     let obj = A { foo: box [true, false] };
-    let s = json::encode(&obj);
+    let s = json::encode(&obj).unwrap();
     let obj2: A = json::decode(s.as_slice()).unwrap();
     assert!(obj.foo == obj2.foo);
 }
