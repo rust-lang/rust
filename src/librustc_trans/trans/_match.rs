@@ -1228,19 +1228,19 @@ pub fn trans_match<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn is_discr_reassigned(bcx: Block, discr: &ast::Expr, body: &ast::Expr) -> bool {
     let (vid, field) = match discr.node {
         ast::ExprPath(_) | ast::ExprQPath(_) => match bcx.def(discr.id) {
-            def::DefLocal(vid) | def::DefUpvar(vid, _, _) => (vid, None),
+            def::DefLocal(vid) | def::DefUpvar(vid, _) => (vid, None),
             _ => return false
         },
         ast::ExprField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
-                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _, _)) => vid,
+                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::NamedField(field.node.name)))
         },
         ast::ExprTupField(ref base, field) => {
             let vid = match bcx.tcx().def_map.borrow().get(&base.id) {
-                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _, _)) => vid,
+                Some(&def::DefLocal(vid)) | Some(&def::DefUpvar(vid, _)) => vid,
                 _ => return false
             };
             (vid, Some(mc::PositionalField(field.node)))

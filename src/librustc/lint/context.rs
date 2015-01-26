@@ -219,6 +219,7 @@ impl LintStore {
                               TypeLimits,
                               RawPointerDerive,
                               MissingDoc,
+                              MissingDebugImplementations,
         );
 
         add_lint_group!(sess, "bad_style",

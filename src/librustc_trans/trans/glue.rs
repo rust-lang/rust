@@ -438,7 +438,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                 }
             }
         }
-        ty::ty_unboxed_closure(..) => {
+        ty::ty_closure(..) => {
             iter_structural_ty(bcx,
                                v0,
                                t,

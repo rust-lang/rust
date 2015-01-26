@@ -1625,6 +1625,69 @@ impl LintPass for MissingCopyImplementations {
 }
 
 declare_lint! {
+    MISSING_DEBUG_IMPLEMENTATIONS,
+    Allow,
+    "detects missing implementations of fmt::Debug"
+}
+
+pub struct MissingDebugImplementations {
+    impling_types: Option<NodeSet>,
+}
+
+impl MissingDebugImplementations {
+    pub fn new() -> MissingDebugImplementations {
+        MissingDebugImplementations {
+            impling_types: None,
+        }
+    }
+}
+
+impl LintPass for MissingDebugImplementations {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(MISSING_DEBUG_IMPLEMENTATIONS)
+    }
+
+    fn check_item(&mut self, cx: &Context, item: &ast::Item) {
+        if !cx.exported_items.contains(&item.id) {
+            return;
+        }
+
+        match item.node {
+            ast::ItemStruct(..) | ast::ItemEnum(..) => {},
+            _ => return,
+        }
+
+        let debug = match cx.tcx.lang_items.debug_trait() {
+            Some(debug) => debug,
+            None => return,
+        };
+
+        if self.impling_types.is_none() {
+            let impls = cx.tcx.trait_impls.borrow();
+            let impls = match impls.get(&debug) {
+                Some(impls) => {
+                    impls.borrow().iter()
+                        .filter(|d| d.krate == ast::LOCAL_CRATE)
+                        .filter_map(|d| ty::ty_to_def_id(ty::node_id_to_type(cx.tcx, d.node)))
+                        .map(|d| d.node)
+                        .collect()
+                }
+                None => NodeSet(),
+            };
+            self.impling_types = Some(impls);
+            debug!("{:?}", self.impling_types);
+        }
+
+        if !self.impling_types.as_ref().unwrap().contains(&item.id) {
+            cx.span_lint(MISSING_DEBUG_IMPLEMENTATIONS,
+                         item.span,
+                         "type does not implement `fmt::Debug`; consider adding #[derive(Debug)] \
+                          or a manual implementation")
+        }
+    }
+}
+
+declare_lint! {
     DEPRECATED,
     Warn,
     "detects use of #[deprecated] items"
@@ -1826,7 +1889,7 @@ impl LintPass for UnconditionalRecursion {
                     ty::MethodTraitObject(_) => return false,
 
                     // This `did` refers directly to the method definition.
-                    ty::MethodStatic(did) | ty::MethodStaticUnboxedClosure(did) => did,
+                    ty::MethodStatic(did) | ty::MethodStaticClosure(did) => did,
 
                     // MethodTypeParam are methods from traits:
 

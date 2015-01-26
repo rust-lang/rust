@@ -1098,11 +1098,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             tvec::trans_fixed_vstore(bcx, expr, dest)
         }
         ast::ExprClosure(_, _, ref decl, ref body) => {
-            // Check the side-table to see whether this is an unboxed
-            // closure or an older, legacy style closure. Store this
-            // into a variable to ensure the the RefCell-lock is
-            // released before we recurse.
-            closure::trans_unboxed_closure(bcx, &**decl, &**body, expr.id, dest)
+            closure::trans_closure_expr(bcx, &**decl, &**body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {
             if bcx.tcx().is_method_call(expr.id) {
@@ -1263,7 +1259,7 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_local_var");
 
     match def {
-        def::DefUpvar(nid, _, _) => {
+        def::DefUpvar(nid, _) => {
             // Can't move upvars, so this is never a ZeroMemLastUse.
             let local_ty = node_id_type(bcx, nid);
             match bcx.fcx.llupvars.borrow().get(&nid) {

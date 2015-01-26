@@ -322,7 +322,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
     // FIXME(#20304) -- cache
 
     let infcx = infer::new_infer_ctxt(tcx);
-    let typer = NormalizingUnboxedClosureTyper::new(tcx);
+    let typer = NormalizingClosureTyper::new(tcx);
     let mut selcx = traits::SelectionContext::new(&infcx, &typer);
     let cause = traits::ObligationCause::dummy();
     let traits::Normalized { value: result, obligations } =

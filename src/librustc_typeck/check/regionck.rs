@@ -177,15 +177,8 @@ pub struct Rcx<'a, 'tcx: 'a> {
 fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
     let tcx = fcx.tcx();
     match def {
-        def::DefLocal(node_id) => {
+        def::DefLocal(node_id) | def::DefUpvar(node_id, _) => {
             tcx.region_maps.var_region(node_id)
-        }
-        def::DefUpvar(node_id, _, body_id) => {
-            if body_id == ast::DUMMY_NODE_ID {
-                tcx.region_maps.var_region(node_id)
-            } else {
-                ReScope(CodeExtent::from_node_id(body_id))
-            }
         }
         _ => {
             tcx.sess.bug(&format!("unexpected def in region_of_def: {:?}",
@@ -748,7 +741,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     let function_type = rcx.resolve_node_type(expr.id);
 
     match function_type.sty {
-        ty::ty_unboxed_closure(_, region, _) => {
+        ty::ty_closure(_, region, _) => {
             if tcx.capture_modes.borrow()[expr.id].clone() == ast::CaptureByRef {
                 ty::with_freevars(tcx, expr.id, |freevars| {
                     if !freevars.is_empty() {
@@ -768,7 +761,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
     rcx.set_repeating_scope(repeating_scope);
 
     match function_type.sty {
-        ty::ty_unboxed_closure(_, region, _) => {
+        ty::ty_closure(_, region, _) => {
             ty::with_freevars(tcx, expr.id, |freevars| {
                 let bounds = ty::region_existential_bound(*region);
                 ensure_free_variable_types_outlive_closure_bound(rcx, &bounds, expr, freevars);

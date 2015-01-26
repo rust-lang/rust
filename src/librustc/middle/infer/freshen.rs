@@ -151,7 +151,7 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ty_bare_fn(..) |
             ty::ty_trait(..) |
             ty::ty_struct(..) |
-            ty::ty_unboxed_closure(..) |
+            ty::ty_closure(..) |
             ty::ty_tup(..) |
             ty::ty_projection(..) |
             ty::ty_param(..) => {

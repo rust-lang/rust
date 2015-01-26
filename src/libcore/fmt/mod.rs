@@ -255,6 +255,7 @@ pub trait Show {
            reason = "I/O and core have yet to be reconciled")]
 #[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is defined in your \
                             crate, add `#[derive(Debug)]` or manually implement it"]
+#[lang = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;

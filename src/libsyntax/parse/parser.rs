@@ -28,8 +28,8 @@ use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprQPath};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
-use ast::{FnUnboxedClosureKind, FnMutUnboxedClosureKind};
-use ast::{FnOnceUnboxedClosureKind};
+use ast::{FnClosureKind, FnMutClosureKind};
+use ast::{FnOnceClosureKind};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
@@ -57,7 +57,7 @@ use ast::{TyFixedLengthVec, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
-use ast::{TypeImplItem, TypeTraitItem, Typedef, UnboxedClosureKind};
+use ast::{TypeImplItem, TypeTraitItem, Typedef, ClosureKind};
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
 use ast::{Visibility, WhereClause};
@@ -1133,27 +1133,26 @@ impl<'a> Parser<'a> {
         TyInfer
     }
 
-    /// Parses an optional unboxed closure kind (`&:`, `&mut:`, or `:`).
-    pub fn parse_optional_unboxed_closure_kind(&mut self)
-                                               -> Option<UnboxedClosureKind> {
+    /// Parses an optional closure kind (`&:`, `&mut:`, or `:`).
+    pub fn parse_optional_closure_kind(&mut self) -> Option<ClosureKind> {
         if self.check(&token::BinOp(token::And)) &&
                 self.look_ahead(1, |t| t.is_keyword(keywords::Mut)) &&
                 self.look_ahead(2, |t| *t == token::Colon) {
             self.bump();
             self.bump();
             self.bump();
-            return Some(FnMutUnboxedClosureKind)
+            return Some(FnMutClosureKind)
         }
 
         if self.token == token::BinOp(token::And) &&
                     self.look_ahead(1, |t| *t == token::Colon) {
             self.bump();
             self.bump();
-            return Some(FnUnboxedClosureKind)
+            return Some(FnClosureKind)
         }
 
         if self.eat(&token::Colon) {
-            return Some(FnOnceUnboxedClosureKind)
+            return Some(FnOnceClosureKind)
         }
 
         return None
@@ -3023,8 +3022,7 @@ impl<'a> Parser<'a> {
                              -> P<Expr>
     {
         let lo = self.span.lo;
-        let (decl, optional_unboxed_closure_kind) =
-            self.parse_fn_block_decl();
+        let (decl, optional_closure_kind) = self.parse_fn_block_decl();
         let body = self.parse_expr();
         let fakeblock = P(ast::Block {
             id: ast::DUMMY_NODE_ID,
@@ -3037,7 +3035,7 @@ impl<'a> Parser<'a> {
         self.mk_expr(
             lo,
             fakeblock.span.hi,
-            ExprClosure(capture_clause, optional_unboxed_closure_kind, decl, fakeblock))
+            ExprClosure(capture_clause, optional_closure_kind, decl, fakeblock))
     }
 
     pub fn parse_else_expr(&mut self) -> P<Expr> {
@@ -4506,22 +4504,21 @@ impl<'a> Parser<'a> {
     }
 
     // parse the |arg, arg| header on a lambda
-    fn parse_fn_block_decl(&mut self)
-                           -> (P<FnDecl>, Option<UnboxedClosureKind>) {
-        let (optional_unboxed_closure_kind, inputs_captures) = {
+    fn parse_fn_block_decl(&mut self) -> (P<FnDecl>, Option<ClosureKind>) {
+        let (optional_closure_kind, inputs_captures) = {
             if self.eat(&token::OrOr) {
                 (None, Vec::new())
             } else {
                 self.expect(&token::BinOp(token::Or));
-                let optional_unboxed_closure_kind =
-                    self.parse_optional_unboxed_closure_kind();
+                let optional_closure_kind =
+                    self.parse_optional_closure_kind();
                 let args = self.parse_seq_to_before_end(
                     &token::BinOp(token::Or),
                     seq_sep_trailing_allowed(token::Comma),
                     |p| p.parse_fn_block_arg()
                 );
                 self.bump();
-                (optional_unboxed_closure_kind, args)
+                (optional_closure_kind, args)
             }
         };
         let output = self.parse_ret_ty();
@@ -4530,7 +4527,7 @@ impl<'a> Parser<'a> {
             inputs: inputs_captures,
             output: output,
             variadic: false
-        }), optional_unboxed_closure_kind)
+        }), optional_closure_kind)
     }
 
     /// Parses the `(arg, arg) -> return_type` header on a procedure.

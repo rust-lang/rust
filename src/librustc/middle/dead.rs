@@ -100,7 +100,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
                             None => self.check_def_id(def_id)
                         }
                     }
-                    ty::MethodStaticUnboxedClosure(_) => {}
+                    ty::MethodStaticClosure(_) => {}
                     ty::MethodTypeParam(ty::MethodParam {
                         ref trait_ref,
                         method_num: index,

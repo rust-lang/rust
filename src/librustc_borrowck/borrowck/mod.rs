@@ -845,7 +845,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                             mc::cat_upvar(mc::Upvar { kind, .. }) => kind,
                             _ => unreachable!()
                         };
-                        if kind == ty::FnUnboxedClosureKind {
+                        if kind == ty::FnClosureKind {
                             self.tcx.sess.span_help(
                                 self.tcx.map.span(upvar_id.closure_expr_id),
                                 "consider changing this closure to take \
