@@ -61,7 +61,8 @@ pub fn expand_deriving_totaleq<F>(cx: &mut ExtCtxt,
                     cs_total_eq_assert(a, b, c)
                 })
             }
-        )
+        ),
+        associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
 }

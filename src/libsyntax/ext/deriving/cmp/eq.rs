@@ -88,7 +88,8 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
         methods: vec!(
             md!("eq", cs_eq),
             md!("ne", cs_ne)
-        )
+        ),
+        associated_types: Vec::new(),
     };
     trait_def.expand(cx, mitem, item, push)
 }
