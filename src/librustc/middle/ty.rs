@@ -2288,14 +2288,22 @@ impl ClosureKind {
 pub trait ClosureTyper<'tcx> {
     fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
 
-    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind;
+    /// Is this a `Fn`, `FnMut` or `FnOnce` closure? During typeck,
+    /// returns `None` if the kind of this closure has not yet been
+    /// inferred.
+    fn closure_kind(&self,
+                    def_id: ast::DefId)
+                    -> Option<ty::ClosureKind>;
 
+    /// Returns the argument/return types of this closure.
     fn closure_type(&self,
                     def_id: ast::DefId,
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>;
 
-    // Returns `None` if the upvar types cannot yet be definitively determined.
+    /// Returns the set of all upvars and their transformed
+    /// types. During typeck, maybe return `None` if the upvar types
+    /// have not yet been inferred.
     fn closure_upvars(&self,
                       def_id: ast::DefId,
                       substs: &Substs<'tcx>)
@@ -6473,8 +6481,11 @@ impl<'a,'tcx> ClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
         self
     }
 
-    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
-        self.tcx.closure_kind(def_id)
+    fn closure_kind(&self,
+                    def_id: ast::DefId)
+                    -> Option<ty::ClosureKind>
+    {
+        Some(self.tcx.closure_kind(def_id))
     }
 
     fn closure_type(&self,

@@ -348,8 +348,11 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
         &self.inh.param_env
     }
 
-    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
-        self.inh.closures.borrow()[def_id].kind
+    fn closure_kind(&self,
+                    def_id: ast::DefId)
+                    -> Option<ty::ClosureKind>
+    {
+        Some(self.inh.closures.borrow()[def_id].kind)
     }
 
     fn closure_type(&self,
