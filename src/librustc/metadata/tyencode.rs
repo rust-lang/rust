@@ -139,7 +139,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
-        ty::ty_unboxed_closure(def, region, substs) => {
+        ty::ty_closure(def, region, substs) => {
             mywrite!(w, "k[{}|", (cx.ds)(def));
             enc_region(w, cx, *region);
             enc_substs(w, cx, substs);

@@ -28,7 +28,7 @@ pub enum SimplifiedType {
     TupleSimplifiedType(uint),
     TraitSimplifiedType(ast::DefId),
     StructSimplifiedType(ast::DefId),
-    UnboxedClosureSimplifiedType(ast::DefId),
+    ClosureSimplifiedType(ast::DefId),
     FunctionSimplifiedType(uint),
     ParameterSimplifiedType,
 }
@@ -74,8 +74,8 @@ pub fn simplify_type(tcx: &ty::ctxt,
             let def_id = tcx.lang_items.owned_box().unwrap();
             Some(StructSimplifiedType(def_id))
         }
-        ty::ty_unboxed_closure(def_id, _, _) => {
-            Some(UnboxedClosureSimplifiedType(def_id))
+        ty::ty_closure(def_id, _, _) => {
+            Some(ClosureSimplifiedType(def_id))
         }
         ty::ty_tup(ref tys) => {
             Some(TupleSimplifiedType(tys.len()))

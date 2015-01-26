@@ -68,8 +68,8 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 // No borrowed content reachable here.
             }
 
-            ty::ty_unboxed_closure(_, region, _) => {
-                // An "unboxed closure type" is basically
+            ty::ty_closure(_, region, _) => {
+                // An "closure type" is basically
                 // modeled here as equivalent to a struct like
                 //
                 //     struct TheClosure<'b> {
@@ -79,7 +79,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                 // where the `'b` is the lifetime bound of the
                 // contents (i.e., all contents must outlive 'b).
                 //
-                // Even though unboxed closures are glorified structs
+                // Even though closures are glorified structs
                 // of upvars, we do not need to consider them as they
                 // can't generate any new constraints.  The
                 // substitutions on the closure are equal to the free

@@ -23,7 +23,7 @@ use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use util::ppaux::{Repr};
 
-use syntax::ast::{Onceness, MutImmutable, MutMutable, Unsafety};
+use syntax::ast::{MutImmutable, MutMutable, Unsafety};
 
 
 /// "Greatest lower bound" (common subtype)
@@ -96,12 +96,6 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety> {
         self.lub().unsafeties(a, b).compare(b, || {
             ty::terr_unsafety_mismatch(expected_found(self, a, b))
-        })
-    }
-
-    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<'tcx, Onceness> {
-        self.lub().oncenesses(a, b).compare(b, || {
-            ty::terr_onceness_mismatch(expected_found(self, a, b))
         })
     }
 

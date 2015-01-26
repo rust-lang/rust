@@ -25,7 +25,7 @@ use super::{ObligationCauseCode, BuiltinDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
 use super::{Selection};
 use super::{SelectionResult};
-use super::{VtableBuiltin, VtableImpl, VtableParam, VtableUnboxedClosure,
+use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
             VtableFnPointer, VtableObject};
 use super::{VtableImplData, VtableObjectData, VtableBuiltinData};
 use super::object_safety;
@@ -47,7 +47,7 @@ use util::ppaux::Repr;
 
 pub struct SelectionContext<'cx, 'tcx:'cx> {
     infcx: &'cx InferCtxt<'cx, 'tcx>,
-    closure_typer: &'cx (ty::UnboxedClosureTyper<'tcx>+'cx),
+    closure_typer: &'cx (ty::ClosureTyper<'tcx>+'cx),
 
     /// Freshener used specifically for skolemizing entries on the
     /// obligation stack. This ensures that all entries on the stack
@@ -143,7 +143,7 @@ enum SelectionCandidate<'tcx> {
 
     /// Implementation of a `Fn`-family trait by one of the
     /// anonymous types generated for a `||` expression.
-    UnboxedClosureCandidate(/* closure */ ast::DefId, Substs<'tcx>),
+    ClosureCandidate(/* closure */ ast::DefId, Substs<'tcx>),
 
     /// Implementation of a `Fn`-family trait by one of the anonymous
     /// types generated for a fn pointer type (e.g., `fn(int)->int`)
@@ -181,7 +181,7 @@ enum EvaluationResult<'tcx> {
 
 impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     pub fn new(infcx: &'cx InferCtxt<'cx, 'tcx>,
-               closure_typer: &'cx ty::UnboxedClosureTyper<'tcx>)
+               closure_typer: &'cx ty::ClosureTyper<'tcx>)
                -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
@@ -192,7 +192,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     pub fn intercrate(infcx: &'cx InferCtxt<'cx, 'tcx>,
-                      closure_typer: &'cx ty::UnboxedClosureTyper<'tcx>)
+                      closure_typer: &'cx ty::ClosureTyper<'tcx>)
                       -> SelectionContext<'cx, 'tcx> {
         SelectionContext {
             infcx: infcx,
@@ -751,7 +751,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // For the time being, we ignore user-defined impls for builtin-bounds, other than
                 // `Copy`.
                 // (And unboxed candidates only apply to the Fn/FnMut/etc traits.)
-                try!(self.assemble_unboxed_closure_candidates(obligation, &mut candidates));
+                try!(self.assemble_closure_candidates(obligation, &mut candidates));
                 try!(self.assemble_fn_pointer_candidates(obligation, &mut candidates));
                 try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
                 self.assemble_candidates_from_object_ty(obligation, &mut candidates);
@@ -943,15 +943,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     /// Check for the artificial impl that the compiler will create for an obligation like `X :
-    /// FnMut<..>` where `X` is an unboxed closure type.
+    /// FnMut<..>` where `X` is a closure type.
     ///
-    /// Note: the type parameters on an unboxed closure candidate are modeled as *output* type
+    /// Note: the type parameters on a closure candidate are modeled as *output* type
     /// parameters and hence do not affect whether this trait is a match or not. They will be
     /// unified during the confirmation step.
-    fn assemble_unboxed_closure_candidates(&mut self,
-                                           obligation: &TraitObligation<'tcx>,
-                                           candidates: &mut SelectionCandidateSet<'tcx>)
-                                           -> Result<(),SelectionError<'tcx>>
+    fn assemble_closure_candidates(&mut self,
+                                   obligation: &TraitObligation<'tcx>,
+                                   candidates: &mut SelectionCandidateSet<'tcx>)
+                                   -> Result<(),SelectionError<'tcx>>
     {
         let kind = match self.fn_family_trait_kind(obligation.predicate.0.def_id()) {
             Some(k) => k,
@@ -960,7 +960,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         let (closure_def_id, substs) = match self_ty.sty {
-            ty::ty_unboxed_closure(id, _, ref substs) => (id, substs.clone()),
+            ty::ty_closure(id, _, ref substs) => (id, substs.clone()),
             ty::ty_infer(ty::TyVar(_)) => {
                 candidates.ambiguous = true;
                 return Ok(());
@@ -973,12 +973,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                kind,
                obligation.repr(self.tcx()));
 
-        let closure_kind = self.closure_typer.unboxed_closure_kind(closure_def_id);
+        let closure_kind = self.closure_typer.closure_kind(closure_def_id);
 
         debug!("closure_kind = {:?}", closure_kind);
 
         if closure_kind == kind {
-            candidates.vec.push(UnboxedClosureCandidate(closure_def_id, substs.clone()));
+            candidates.vec.push(ClosureCandidate(closure_def_id, substs.clone()));
         }
 
         Ok(())
@@ -1453,7 +1453,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(If(tys.clone()))
             }
 
-            ty::ty_unboxed_closure(def_id, _, substs) => {
+            ty::ty_closure(def_id, _, substs) => {
                 // FIXME -- This case is tricky. In the case of by-ref
                 // closures particularly, we need the results of
                 // inference to decide how to reflect the type of each
@@ -1471,7 +1471,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return Ok(ParameterBuiltin);
                 }
 
-                match self.closure_typer.unboxed_closure_upvars(def_id, substs) {
+                match self.closure_typer.closure_upvars(def_id, substs) {
                     Some(upvars) => {
                         Ok(If(upvars.iter().map(|c| c.ty).collect()))
                     }
@@ -1616,9 +1616,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(VtableImpl(vtable_impl))
             }
 
-            UnboxedClosureCandidate(closure_def_id, substs) => {
-                try!(self.confirm_unboxed_closure_candidate(obligation, closure_def_id, &substs));
-                Ok(VtableUnboxedClosure(closure_def_id, substs))
+            ClosureCandidate(closure_def_id, substs) => {
+                try!(self.confirm_closure_candidate(obligation, closure_def_id, &substs));
+                Ok(VtableClosure(closure_def_id, substs))
             }
 
             ObjectCandidate => {
@@ -1894,20 +1894,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(self_ty)
     }
 
-    fn confirm_unboxed_closure_candidate(&mut self,
-                                         obligation: &TraitObligation<'tcx>,
-                                         closure_def_id: ast::DefId,
-                                         substs: &Substs<'tcx>)
-                                         -> Result<(),SelectionError<'tcx>>
+    fn confirm_closure_candidate(&mut self,
+                                 obligation: &TraitObligation<'tcx>,
+                                 closure_def_id: ast::DefId,
+                                 substs: &Substs<'tcx>)
+                                 -> Result<(),SelectionError<'tcx>>
     {
-        debug!("confirm_unboxed_closure_candidate({},{},{})",
+        debug!("confirm_closure_candidate({},{},{})",
                obligation.repr(self.tcx()),
                closure_def_id.repr(self.tcx()),
                substs.repr(self.tcx()));
 
-        let closure_type = self.closure_typer.unboxed_closure_type(closure_def_id, substs);
+        let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
 
-        debug!("confirm_unboxed_closure_candidate: closure_def_id={} closure_type={}",
+        debug!("confirm_closure_candidate: closure_def_id={} closure_type={}",
                closure_def_id.repr(self.tcx()),
                closure_type.repr(self.tcx()));
 
@@ -1923,7 +1923,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             substs: self.tcx().mk_substs(trait_substs),
         }));
 
-        debug!("confirm_unboxed_closure_candidate(closure_def_id={}, trait_ref={})",
+        debug!("confirm_closure_candidate(closure_def_id={}, trait_ref={})",
                closure_def_id.repr(self.tcx()),
                trait_ref.repr(self.tcx()));
 
@@ -1932,7 +1932,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                      trait_ref)
     }
 
-    /// In the case of unboxed closure types and fn pointers,
+    /// In the case of closure types and fn pointers,
     /// we currently treat the input type parameters on the trait as
     /// outputs. This means that when we have a match we have only
     /// considered the self type, so we have to go back and make sure
@@ -1942,7 +1942,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// errors as if there is no applicable impl, but rather report
     /// errors are about mismatched argument types.
     ///
-    /// Here is an example. Imagine we have an unboxed closure expression
+    /// Here is an example. Imagine we have an closure expression
     /// and we desugared it so that the type of the expression is
     /// `Closure`, and `Closure` expects an int as argument. Then it
     /// is "as if" the compiler generated this impl:
@@ -2259,15 +2259,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn fn_family_trait_kind(&self,
                             trait_def_id: ast::DefId)
-                            -> Option<ty::UnboxedClosureKind>
+                            -> Option<ty::ClosureKind>
     {
         let tcx = self.tcx();
         if Some(trait_def_id) == tcx.lang_items.fn_trait() {
-            Some(ty::FnUnboxedClosureKind)
+            Some(ty::FnClosureKind)
         } else if Some(trait_def_id) == tcx.lang_items.fn_mut_trait() {
-            Some(ty::FnMutUnboxedClosureKind)
+            Some(ty::FnMutClosureKind)
         } else if Some(trait_def_id) == tcx.lang_items.fn_once_trait() {
-            Some(ty::FnOnceUnboxedClosureKind)
+            Some(ty::FnOnceClosureKind)
         } else {
             None
         }
@@ -2318,8 +2318,8 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
             ObjectCandidate => {
                 format!("ObjectCandidate")
             }
-            UnboxedClosureCandidate(c, ref s) => {
-                format!("UnboxedClosureCandidate({:?},{})", c, s.repr(tcx))
+            ClosureCandidate(c, ref s) => {
+                format!("ClosureCandidate({:?},{})", c, s.repr(tcx))
             }
         }
     }

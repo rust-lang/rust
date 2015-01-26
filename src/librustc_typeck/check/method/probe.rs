@@ -62,7 +62,7 @@ enum CandidateKind<'tcx> {
     ObjectCandidate(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
     ExtensionImplCandidate(/* Impl */ ast::DefId, Rc<ty::TraitRef<'tcx>>,
                            subst::Substs<'tcx>, MethodIndex),
-    UnboxedClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
+    ClosureCandidate(/* Trait */ ast::DefId, MethodIndex),
     WhereClauseCandidate(ty::PolyTraitRef<'tcx>, MethodIndex),
     ProjectionCandidate(ast::DefId, MethodIndex),
 }
@@ -249,7 +249,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             }
             ty::ty_enum(did, _) |
             ty::ty_struct(did, _) |
-            ty::ty_unboxed_closure(did, _, _) => {
+            ty::ty_closure(did, _, _) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
             }
             ty::ty_param(p) => {
@@ -494,9 +494,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                            method.clone(),
                                                            matching_index);
 
-        self.assemble_unboxed_closure_candidates(trait_def_id,
-                                                 method.clone(),
-                                                 matching_index);
+        self.assemble_closure_candidates(trait_def_id,
+                                         method.clone(),
+                                         matching_index);
 
         self.assemble_projection_candidates(trait_def_id,
                                             method.clone(),
@@ -571,19 +571,19 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         simplified_steps.contains(&impl_simplified_type)
     }
 
-    fn assemble_unboxed_closure_candidates(&mut self,
-                                           trait_def_id: ast::DefId,
-                                           method_ty: Rc<ty::Method<'tcx>>,
-                                           method_index: uint)
+    fn assemble_closure_candidates(&mut self,
+                                   trait_def_id: ast::DefId,
+                                   method_ty: Rc<ty::Method<'tcx>>,
+                                   method_index: uint)
     {
         // Check if this is one of the Fn,FnMut,FnOnce traits.
         let tcx = self.tcx();
         let kind = if Some(trait_def_id) == tcx.lang_items.fn_trait() {
-            ty::FnUnboxedClosureKind
+            ty::FnClosureKind
         } else if Some(trait_def_id) == tcx.lang_items.fn_mut_trait() {
-            ty::FnMutUnboxedClosureKind
+            ty::FnMutClosureKind
         } else if Some(trait_def_id) == tcx.lang_items.fn_once_trait() {
-            ty::FnOnceUnboxedClosureKind
+            ty::FnOnceClosureKind
         } else {
             return;
         };
@@ -593,17 +593,17 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let steps = self.steps.clone();
         for step in steps.iter() {
             let (closure_def_id, _, _) = match step.self_ty.sty {
-                ty::ty_unboxed_closure(a, b, ref c) => (a, b, c),
+                ty::ty_closure(a, b, ref c) => (a, b, c),
                 _ => continue,
             };
 
-            let unboxed_closures = self.fcx.inh.unboxed_closures.borrow();
-            let closure_data = match unboxed_closures.get(&closure_def_id) {
+            let closures = self.fcx.inh.closures.borrow();
+            let closure_data = match closures.get(&closure_def_id) {
                 Some(data) => data,
                 None => {
                     self.tcx().sess.span_bug(
                         self.span,
-                        &format!("No entry for unboxed closure: {}",
+                        &format!("No entry for closure: {}",
                                 closure_def_id.repr(self.tcx()))[]);
                 }
             };
@@ -626,7 +626,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             self.inherent_candidates.push(Candidate {
                 xform_self_ty: xform_self_ty,
                 method_ty: method_ty.clone(),
-                kind: UnboxedClosureCandidate(trait_def_id, method_index)
+                kind: ClosureCandidate(trait_def_id, method_index)
             });
         }
     }
@@ -950,7 +950,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
                 ProjectionCandidate(..) |
                 ObjectCandidate(..) |
-                UnboxedClosureCandidate(..) |
+                ClosureCandidate(..) |
                 WhereClauseCandidate(..) => {
                     // These have no additional conditions to check.
                     true
@@ -1173,7 +1173,7 @@ impl<'tcx> Candidate<'tcx> {
                 ExtensionImplCandidate(def_id, _, _, index) => {
                     ExtensionImplPick(def_id, index)
                 }
-                UnboxedClosureCandidate(trait_def_id, index) => {
+                ClosureCandidate(trait_def_id, index) => {
                     TraitPick(trait_def_id, index)
                 }
                 WhereClauseCandidate(ref trait_ref, index) => {
@@ -1198,7 +1198,7 @@ impl<'tcx> Candidate<'tcx> {
             InherentImplCandidate(def_id, _) => ImplSource(def_id),
             ObjectCandidate(def_id, _, _) => TraitSource(def_id),
             ExtensionImplCandidate(def_id, _, _, _) => ImplSource(def_id),
-            UnboxedClosureCandidate(trait_def_id, _) => TraitSource(trait_def_id),
+            ClosureCandidate(trait_def_id, _) => TraitSource(trait_def_id),
             WhereClauseCandidate(ref trait_ref, _) => TraitSource(trait_ref.def_id()),
             ProjectionCandidate(trait_def_id, _) => TraitSource(trait_def_id),
         }
@@ -1210,7 +1210,7 @@ impl<'tcx> Candidate<'tcx> {
             ObjectCandidate(..) => {
                 None
             }
-            UnboxedClosureCandidate(trait_def_id, method_num) => {
+            ClosureCandidate(trait_def_id, method_num) => {
                 Some((trait_def_id, method_num))
             }
             ExtensionImplCandidate(_, ref trait_ref, _, method_num) => {
@@ -1244,8 +1244,8 @@ impl<'tcx> Repr<'tcx> for CandidateKind<'tcx> {
             ExtensionImplCandidate(ref a, ref b, ref c, ref d) =>
                 format!("ExtensionImplCandidate({},{},{},{})", a.repr(tcx), b.repr(tcx),
                         c.repr(tcx), d),
-            UnboxedClosureCandidate(ref a, ref b) =>
-                format!("UnboxedClosureCandidate({},{})", a.repr(tcx), b),
+            ClosureCandidate(ref a, ref b) =>
+                format!("ClosureCandidate({},{})", a.repr(tcx), b),
             WhereClauseCandidate(ref a, ref b) =>
                 format!("WhereClauseCandidate({},{})", a.repr(tcx), b),
             ProjectionCandidate(ref a, ref b) =>

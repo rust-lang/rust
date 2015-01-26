@@ -2489,10 +2489,6 @@ The currently implemented features of the reference compiler are:
                        for now until the specification of identifiers is fully
                        fleshed out.
 
-* `once_fns` - Onceness guarantees a closure is only executed once. Defining a
-               closure as `once` is unlikely to be supported going forward. So
-               they are hidden behind this feature until they are to be removed.
-
 * `plugin` - Usage of [compiler plugins][plugin] for custom lints or syntax extensions.
              These depend on compiler internals and are subject to change.
 

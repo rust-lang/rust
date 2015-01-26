@@ -23,7 +23,7 @@ use trans::debuginfo;
 use trans::expr;
 use trans::monomorphize::{self, MonoId};
 use trans::type_of::*;
-use middle::ty::{self, UnboxedClosureTyper};
+use middle::ty::{self, ClosureTyper};
 use middle::subst::{Substs};
 use session::config::FullDebugInfo;
 
@@ -31,24 +31,23 @@ use syntax::ast;
 use syntax::ast_util;
 
 
-fn load_unboxed_closure_environment<'blk, 'tcx>(
-                                    bcx: Block<'blk, 'tcx>,
-                                    arg_scope_id: ScopeId,
-                                    freevar_mode: ast::CaptureClause,
-                                    freevars: &[ty::Freevar])
-                                    -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("closure::load_unboxed_closure_environment");
+fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                        arg_scope_id: ScopeId,
+                                        freevar_mode: ast::CaptureClause,
+                                        freevars: &[ty::Freevar])
+                                        -> Block<'blk, 'tcx> {
+    let _icx = push_ctxt("closure::load_closure_environment");
 
     // Special case for small by-value selfs.
     let closure_id = ast_util::local_def(bcx.fcx.id);
-    let self_type = self_type_for_unboxed_closure(bcx.ccx(), closure_id,
+    let self_type = self_type_for_closure(bcx.ccx(), closure_id,
                                                   node_id_type(bcx, closure_id.node));
-    let kind = kind_for_unboxed_closure(bcx.ccx(), closure_id);
-    let llenv = if kind == ty::FnOnceUnboxedClosureKind &&
+    let kind = kind_for_closure(bcx.ccx(), closure_id);
+    let llenv = if kind == ty::FnOnceClosureKind &&
             !arg_is_indirect(bcx.ccx(), self_type) {
         let datum = rvalue_scratch_datum(bcx,
                                          self_type,
-                                         "unboxed_closure_env");
+                                         "closure_env");
         store_ty(bcx, bcx.fcx.llenv.unwrap(), datum.val, self_type);
         datum.val
     } else {
@@ -77,7 +76,7 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
         let def_id = freevar.def.def_id();
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
 
-        if kind == ty::FnOnceUnboxedClosureKind && freevar_mode == ast::CaptureByValue {
+        if kind == ty::FnOnceClosureKind && freevar_mode == ast::CaptureByValue {
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
                                       node_id_type(bcx, def_id.node))
@@ -100,8 +99,8 @@ fn load_unboxed_closure_environment<'blk, 'tcx>(
 #[derive(PartialEq)]
 pub enum ClosureKind<'tcx> {
     NotClosure,
-    // See load_unboxed_closure_environment.
-    UnboxedClosure(ast::CaptureClause)
+    // See load_closure_environment.
+    Closure(ast::CaptureClause)
 }
 
 pub struct ClosureEnv<'a, 'tcx> {
@@ -127,21 +126,21 @@ impl<'a, 'tcx> ClosureEnv<'a, 'tcx> {
 
         match self.kind {
             NotClosure => bcx,
-            UnboxedClosure(freevar_mode) => {
-                load_unboxed_closure_environment(bcx, arg_scope, freevar_mode, self.freevars)
+            Closure(freevar_mode) => {
+                load_closure_environment(bcx, arg_scope, freevar_mode, self.freevars)
             }
         }
     }
 }
 
-/// Returns the LLVM function declaration for an unboxed closure, creating it
-/// if necessary. If the ID does not correspond to a closure ID, returns None.
-pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
-                                                              closure_id: ast::DefId,
-                                                              substs: &Substs<'tcx>)
-                                                              -> Option<Datum<'tcx, Rvalue>> {
-    if !ccx.tcx().unboxed_closures.borrow().contains_key(&closure_id) {
-        // Not an unboxed closure.
+/// Returns the LLVM function declaration for a closure, creating it if
+/// necessary. If the ID does not correspond to a closure ID, returns None.
+pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
+                                                      closure_id: ast::DefId,
+                                                      substs: &Substs<'tcx>)
+                                                      -> Option<Datum<'tcx, Rvalue>> {
+    if !ccx.tcx().closures.borrow().contains_key(&closure_id) {
+        // Not a closure.
         return None
     }
 
@@ -152,7 +151,7 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
     // duplicate declarations
     let function_type = erase_regions(ccx.tcx(), &function_type);
     let params = match function_type.sty {
-        ty::ty_unboxed_closure(_, _, ref substs) => substs.types.clone(),
+        ty::ty_closure(_, _, ref substs) => substs.types.clone(),
         _ => unreachable!()
     };
     let mono_id = MonoId {
@@ -160,17 +159,16 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
         params: params
     };
 
-    match ccx.unboxed_closure_vals().borrow().get(&mono_id) {
+    match ccx.closure_vals().borrow().get(&mono_id) {
         Some(&llfn) => {
-            debug!("get_or_create_declaration_if_unboxed_closure(): found \
-                    closure");
+            debug!("get_or_create_declaration_if_closure(): found closure");
             return Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
         }
         None => {}
     }
 
     let symbol = ccx.tcx().map.with_path(closure_id.node, |path| {
-        mangle_internal_name_by_path_and_seq(path, "unboxed_closure")
+        mangle_internal_name_by_path_and_seq(path, "closure")
     });
 
     let llfn = decl_internal_rust_fn(ccx, function_type, &symbol[]);
@@ -178,29 +176,28 @@ pub fn get_or_create_declaration_if_unboxed_closure<'a, 'tcx>(ccx: &CrateContext
     // set an inline hint for all closures
     set_inline_hint(llfn);
 
-    debug!("get_or_create_declaration_if_unboxed_closure(): inserting new \
+    debug!("get_or_create_declaration_if_closure(): inserting new \
             closure {:?} (type {})",
            mono_id,
            ccx.tn().type_to_string(val_ty(llfn)));
-    ccx.unboxed_closure_vals().borrow_mut().insert(mono_id, llfn);
+    ccx.closure_vals().borrow_mut().insert(mono_id, llfn);
 
     Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
 }
 
-pub fn trans_unboxed_closure<'blk, 'tcx>(
-                             mut bcx: Block<'blk, 'tcx>,
-                             decl: &ast::FnDecl,
-                             body: &ast::Block,
-                             id: ast::NodeId,
-                             dest: expr::Dest)
-                             -> Block<'blk, 'tcx>
+pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
+                                      decl: &ast::FnDecl,
+                                      body: &ast::Block,
+                                      id: ast::NodeId,
+                                      dest: expr::Dest)
+                                      -> Block<'blk, 'tcx>
 {
-    let _icx = push_ctxt("closure::trans_unboxed_closure");
+    let _icx = push_ctxt("closure::trans_closure");
 
-    debug!("trans_unboxed_closure()");
+    debug!("trans_closure()");
 
     let closure_id = ast_util::local_def(id);
-    let llfn = get_or_create_declaration_if_unboxed_closure(
+    let llfn = get_or_create_declaration_if_closure(
         bcx.ccx(),
         closure_id,
         bcx.fcx.param_substs).unwrap();
@@ -208,10 +205,10 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
     // Get the type of this closure. Use the current `param_substs` as
     // the closure substitutions. This makes sense because the closure
     // takes the same set of type arguments as the enclosing fn, and
-    // this function (`trans_unboxed_closure`) is invoked at the point
+    // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
-    let typer = NormalizingUnboxedClosureTyper::new(bcx.tcx());
-    let function_type = typer.unboxed_closure_type(closure_id, bcx.fcx.param_substs);
+    let typer = NormalizingClosureTyper::new(bcx.tcx());
+    let function_type = typer.closure_type(closure_id, bcx.fcx.param_substs);
 
     let freevars: Vec<ty::Freevar> =
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
@@ -229,15 +226,15 @@ pub fn trans_unboxed_closure<'blk, 'tcx>(
                   sig.output,
                   function_type.abi,
                   ClosureEnv::new(&freevars[],
-                                  UnboxedClosure(freevar_mode)));
+                                  Closure(freevar_mode)));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
-    // to have a zero-size unboxed closure (in which case dest will be
-    // `Ignore`) and we must still generate the closure body.
+    // to have a zero-size closure (in which case dest will be `Ignore`) and
+    // we must still generate the closure body.
     let dest_addr = match dest {
         expr::SaveIn(p) => p,
         expr::Ignore => {
-            debug!("trans_unboxed_closure() ignoring result");
+            debug!("trans_closure() ignoring result");
             return bcx
         }
     };
