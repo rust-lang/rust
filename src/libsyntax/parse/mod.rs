@@ -854,7 +854,7 @@ mod test {
     #[test]
     fn string_to_tts_1 () {
         let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
-        assert_eq!(json::encode(&tts),
+        assert_eq!(json::encode(&tts).unwrap(),
         "[\
     {\
         \"variant\":\"TtToken\",\
