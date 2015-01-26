@@ -245,7 +245,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     let mut trait_param_env = impl_param_env.clone();
     // The key step here is to update the caller_bounds's predicates to be
     // the new hybrid bounds we computed.
-    trait_param_env.caller_bounds.predicates = hybrid_preds;
+    trait_param_env.caller_bounds = hybrid_preds.into_vec();
 
     debug!("compare_impl_method: trait_bounds={}",
         trait_param_env.caller_bounds.repr(tcx));
