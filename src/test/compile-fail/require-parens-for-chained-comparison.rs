@@ -12,12 +12,12 @@ fn f<T>() {}
 
 fn main() {
     false == false == false;
-    //~^ ERROR: Chained comparison operators require parentheses
+    //~^ ERROR: chained comparison operators require parentheses
 
     false == 0 < 2;
-    //~^ ERROR: Chained comparison operators require parentheses
+    //~^ ERROR: chained comparison operators require parentheses
 
     f<X>();
-    //~^ ERROR: Chained comparison operators require parentheses
-    //~^^ HELP: use ::< instead of < if you meant to specify type arguments
+    //~^ ERROR: chained comparison operators require parentheses
+    //~^^ HELP: use `::<...>` instead of `<...>`
 }

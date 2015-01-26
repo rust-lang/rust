@@ -132,7 +132,8 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         ty::MethodTypeParam(ty::MethodParam {
             ref trait_ref,
-            method_num
+            method_num,
+            impl_def_id: _
         }) => {
             let trait_ref = ty::Binder(bcx.monomorphize(trait_ref));
             let span = bcx.tcx().map.span(method_call.expr_id);

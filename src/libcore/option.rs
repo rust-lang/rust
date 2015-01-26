@@ -254,12 +254,12 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let mut x = Some(2u);
+    /// let mut x = Some(2);
     /// match x.as_mut() {
     ///     Some(v) => *v = 42,
     ///     None => {},
     /// }
-    /// assert_eq!(x, Some(42u));
+    /// assert_eq!(x, Some(42));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -385,9 +385,9 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let k = 10u;
-    /// assert_eq!(Some(4u).unwrap_or_else(|| 2 * k), 4u);
-    /// assert_eq!(None.unwrap_or_else(|| 2 * k), 20u);
+    /// let k = 10i32;
+    /// assert_eq!(Some(4).unwrap_or_else(|| 2 * k), 4);
+    /// assert_eq!(None.unwrap_or_else(|| 2 * k), 20);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -428,10 +428,10 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let x = Some("foo");
-    /// assert_eq!(x.map_or(42u, |v| v.len()), 3u);
+    /// assert_eq!(x.map_or(42, |v| v.len()), 3);
     ///
     /// let x: Option<&str> = None;
-    /// assert_eq!(x.map_or(42u, |v| v.len()), 42u);
+    /// assert_eq!(x.map_or(42, |v| v.len()), 42);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -447,13 +447,13 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let k = 21u;
+    /// let k = 21;
     ///
     /// let x = Some("foo");
-    /// assert_eq!(x.map_or_else(|| 2 * k, |v| v.len()), 3u);
+    /// assert_eq!(x.map_or_else(|| 2 * k, |v| v.len()), 3);
     ///
     /// let x: Option<&str> = None;
-    /// assert_eq!(x.map_or_else(|| 2 * k, |v| v.len()), 42u);
+    /// assert_eq!(x.map_or_else(|| 2 * k, |v| v.len()), 42);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -471,10 +471,10 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let x = Some("foo");
-    /// assert_eq!(x.ok_or(0i), Ok("foo"));
+    /// assert_eq!(x.ok_or(0), Ok("foo"));
     ///
     /// let x: Option<&str> = None;
-    /// assert_eq!(x.ok_or(0i), Err(0i));
+    /// assert_eq!(x.ok_or(0), Err(0));
     /// ```
     #[inline]
     #[unstable(feature = "core")]
@@ -492,10 +492,10 @@ impl<T> Option<T> {
     ///
     /// ```
     /// let x = Some("foo");
-    /// assert_eq!(x.ok_or_else(|| 0i), Ok("foo"));
+    /// assert_eq!(x.ok_or_else(|| 0), Ok("foo"));
     ///
     /// let x: Option<&str> = None;
-    /// assert_eq!(x.ok_or_else(|| 0i), Err(0i));
+    /// assert_eq!(x.ok_or_else(|| 0), Err(0));
     /// ```
     #[inline]
     #[unstable(feature = "core")]
@@ -515,7 +515,7 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let x = Some(4u);
+    /// let x = Some(4);
     /// assert_eq!(x.iter().next(), Some(&4));
     ///
     /// let x: Option<uint> = None;
@@ -532,9 +532,9 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let mut x = Some(4u);
+    /// let mut x = Some(4);
     /// match x.iter_mut().next() {
-    ///     Some(&mut ref mut v) => *v = 42u,
+    ///     Some(&mut ref mut v) => *v = 42,
     ///     None => {},
     /// }
     /// assert_eq!(x, Some(42));
@@ -577,7 +577,7 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let x = Some(2u);
+    /// let x = Some(2);
     /// let y: Option<&str> = None;
     /// assert_eq!(x.and(y), None);
     ///
@@ -585,7 +585,7 @@ impl<T> Option<T> {
     /// let y = Some("foo");
     /// assert_eq!(x.and(y), None);
     ///
-    /// let x = Some(2u);
+    /// let x = Some(2);
     /// let y = Some("foo");
     /// assert_eq!(x.and(y), Some("foo"));
     ///
@@ -630,17 +630,17 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let x = Some(2u);
+    /// let x = Some(2);
     /// let y = None;
-    /// assert_eq!(x.or(y), Some(2u));
+    /// assert_eq!(x.or(y), Some(2));
     ///
     /// let x = None;
-    /// let y = Some(100u);
-    /// assert_eq!(x.or(y), Some(100u));
+    /// let y = Some(100);
+    /// assert_eq!(x.or(y), Some(100));
     ///
-    /// let x = Some(2u);
-    /// let y = Some(100u);
-    /// assert_eq!(x.or(y), Some(2u));
+    /// let x = Some(2);
+    /// let y = Some(100);
+    /// assert_eq!(x.or(y), Some(2));
     ///
     /// let x: Option<uint> = None;
     /// let y = None;
@@ -686,7 +686,7 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let mut x = Some(2u);
+    /// let mut x = Some(2);
     /// x.take();
     /// assert_eq!(x, None);
     ///
@@ -731,8 +731,8 @@ impl<T: Default> Option<T> {
     /// let good_year = good_year_from_input.parse().unwrap_or_default();
     /// let bad_year = bad_year_from_input.parse().unwrap_or_default();
     ///
-    /// assert_eq!(1909i, good_year);
-    /// assert_eq!(0i, bad_year);
+    /// assert_eq!(1909, good_year);
+    /// assert_eq!(0, bad_year);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -898,12 +898,12 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// ```rust
     /// use std::uint;
     ///
-    /// let v = vec!(1u, 2u);
+    /// let v = vec!(1, 2);
     /// let res: Option<Vec<uint>> = v.iter().map(|&x: &uint|
     ///     if x == uint::MAX { None }
     ///     else { Some(x + 1) }
     /// ).collect();
-    /// assert!(res == Some(vec!(2u, 3u)));
+    /// assert!(res == Some(vec!(2, 3)));
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]

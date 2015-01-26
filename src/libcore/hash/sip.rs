@@ -123,7 +123,7 @@ impl Writer for SipHasher {
         let length = msg.len();
         self.length += length;
 
-        let mut needed = 0u;
+        let mut needed = 0;
 
         if self.ntail != 0 {
             needed = 8 - self.ntail;

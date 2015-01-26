@@ -113,7 +113,7 @@ try:
     if current_name != "":
         do_license_check(current_name, current_contents)
 
-except UnicodeDecodeError, e:
+except UnicodeDecodeError as e:
     report_err("UTF-8 decoding error " + str(e))
 
 

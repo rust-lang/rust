@@ -400,7 +400,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
         match (eval_const_expr_partial(tcx, &**a),
                eval_const_expr_partial(tcx, &**b)) {
           (Ok(const_float(a)), Ok(const_float(b))) => {
-            match op {
+            match op.node {
               ast::BiAdd => Ok(const_float(a + b)),
               ast::BiSub => Ok(const_float(a - b)),
               ast::BiMul => Ok(const_float(a * b)),
@@ -416,7 +416,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
-            match op {
+            match op.node {
               ast::BiAdd => Ok(const_int(a + b)),
               ast::BiSub => Ok(const_int(a - b)),
               ast::BiMul => Ok(const_int(a * b)),
@@ -443,7 +443,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
             }
           }
           (Ok(const_uint(a)), Ok(const_uint(b))) => {
-            match op {
+            match op.node {
               ast::BiAdd => Ok(const_uint(a + b)),
               ast::BiSub => Ok(const_uint(a - b)),
               ast::BiMul => Ok(const_uint(a * b)),
@@ -471,21 +471,21 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
           }
           // shifts can have any integral type as their rhs
           (Ok(const_int(a)), Ok(const_uint(b))) => {
-            match op {
+            match op.node {
               ast::BiShl => Ok(const_int(a << b as uint)),
               ast::BiShr => Ok(const_int(a >> b as uint)),
               _ => Err("can't do this op on an int and uint".to_string())
             }
           }
           (Ok(const_uint(a)), Ok(const_int(b))) => {
-            match op {
+            match op.node {
               ast::BiShl => Ok(const_uint(a << b as uint)),
               ast::BiShr => Ok(const_uint(a >> b as uint)),
               _ => Err("can't do this op on a uint and int".to_string())
             }
           }
           (Ok(const_bool(a)), Ok(const_bool(b))) => {
-            Ok(const_bool(match op {
+            Ok(const_bool(match op.node {
               ast::BiAnd => a && b,
               ast::BiOr => a || b,
               ast::BiBitXor => a ^ b,

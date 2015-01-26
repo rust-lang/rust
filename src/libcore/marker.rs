@@ -27,10 +27,11 @@
 
 use clone::Clone;
 
-/// Types able to be transferred across task boundaries.
+/// Types able to be transferred across thread boundaries.
 #[unstable(feature = "core",
            reason = "will be overhauled with new lifetime rules; see RFC 458")]
 #[lang="send"]
+#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
 pub unsafe trait Send: 'static {
     // empty.
 }
@@ -38,6 +39,7 @@ pub unsafe trait Send: 'static {
 /// Types with a constant size known at compile-time.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sized"]
+#[rustc_on_unimplemented = "`{Self}` does not have a constant size known at compile-time"]
 pub trait Sized {
     // Empty.
 }
@@ -147,11 +149,11 @@ pub trait Copy {
     // Empty.
 }
 
-/// Types that can be safely shared between tasks when aliased.
+/// Types that can be safely shared between threads when aliased.
 ///
 /// The precise definition is: a type `T` is `Sync` if `&T` is
 /// thread-safe. In other words, there is no possibility of data races
-/// when passing `&T` references between tasks.
+/// when passing `&T` references between threads.
 ///
 /// As one would expect, primitive types like `u8` and `f64` are all
 /// `Sync`, and so are simple aggregate types containing them (like
@@ -195,6 +197,7 @@ pub trait Copy {
 #[unstable(feature = "core",
            reason = "will be overhauled with new lifetime rules; see RFC 458")]
 #[lang="sync"]
+#[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync {
     // Empty
 }

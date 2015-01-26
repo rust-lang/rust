@@ -28,8 +28,8 @@ need_ok() {
 
 need_cmd() {
     if command -v $1 >/dev/null 2>&1
-    then msg "found $1"
-    else err "need $1"
+    then msg "found program $1"
+    else err "need program $1"
     fi
 }
 
@@ -340,6 +340,7 @@ need_cmd date
 need_cmd tr
 need_cmd sed
 need_cmd file
+need_cmd make
 
 msg "inspecting environment"
 
@@ -645,6 +646,8 @@ probe CFG_ISCC             iscc
 probe CFG_JAVAC            javac
 probe CFG_ANTLR4           antlr4
 probe CFG_GRUN             grun
+probe CFG_FLEX             flex
+probe CFG_BISON            bison
 probe CFG_PANDOC           pandoc
 probe CFG_PDFLATEX         pdflatex
 probe CFG_XELATEX          xelatex

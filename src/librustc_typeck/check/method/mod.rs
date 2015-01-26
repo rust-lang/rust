@@ -287,7 +287,8 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     let callee = MethodCallee {
         origin: MethodTypeParam(MethodParam{trait_ref: trait_ref.clone(),
-                                            method_num: method_num}),
+                                            method_num: method_num,
+                                            impl_def_id: None}),
         ty: fty,
         substs: trait_ref.substs.clone()
     };

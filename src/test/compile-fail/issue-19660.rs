@@ -8,19 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities related to FFI bindings.
+// error-pattern: requires `copy` lang_item
 
-#![unstable(feature = "std_misc",
-            reason = "module just underwent fairly large reorganization and the dust \
-                      still needs to settle")]
+#![feature(lang_items, start)]
+#![no_std]
 
-pub use self::c_str::CString;
-pub use self::c_str::c_str_to_bytes;
-pub use self::c_str::c_str_to_bytes_with_nul;
+#[lang = "sized"]
+trait Sized {}
 
-pub use self::os_str::OsString;
-pub use self::os_str::OsStr;
-pub use self::os_str::AsOsStr;
-
-mod c_str;
-mod os_str;
+#[start]
+fn main(_: int, _: *const *const u8) -> int {
+    0
+}
