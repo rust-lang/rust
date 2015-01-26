@@ -191,9 +191,11 @@ pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, explain: 
 
 pub fn emit_feature_warn(diag: &SpanHandler, feature: &str, span: Span, explain: &str) {
     diag.span_warn(span, explain);
-    diag.span_help(span, &format!("add #![feature({})] to the \
-                                   crate attributes to silence this warning",
-                                   feature)[]);
+    if diag.handler.can_emit_warnings {
+        diag.span_help(span, &format!("add #![feature({})] to the \
+                                       crate attributes to silence this warning",
+                                      feature)[]);
+    }
 }
 
 struct MacroVisitor<'a> {
