@@ -1413,4 +1413,20 @@ mod tests {
             let _ = String::from_utf8_lossy(s.as_slice());
         });
     }
+
+    #[bench]
+    fn bench_exact_size_shrink_to_fit(b: &mut Bencher) {
+        let s = "Hello there, the quick brown fox jumped over the lazy dog! \
+                 Lorem ipsum dolor sit amet, consectetur. ";
+        // ensure our operation produces an exact-size string before we benchmark it
+        let mut r = String::with_capacity(s.len());
+        r.push_str(s);
+        assert_eq!(r.len(), r.capacity());
+        b.iter(|| {
+            let mut r = String::with_capacity(s.len());
+            r.push_str(s);
+            r.shrink_to_fit();
+            r
+        });
+    }
 }
