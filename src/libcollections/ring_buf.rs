@@ -388,7 +388,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::with_capacity(15);
-    /// buf.extend(range(0u, 4));
+    /// buf.extend(0u..4);
     /// assert_eq!(buf.capacity(), 15);
     /// buf.shrink_to_fit();
     /// assert!(buf.capacity() >= 4);
@@ -483,7 +483,7 @@ impl<T> RingBuf<T> {
     #[unstable(feature = "collections",
                reason = "matches collection reform specification; waiting on panic semantics")]
     pub fn truncate(&mut self, len: uint) {
-        for _ in range(len, self.len()) {
+        for _ in len..self.len() {
             self.pop_back();
         }
     }

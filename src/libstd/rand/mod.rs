@@ -427,7 +427,7 @@ pub fn random<T: Rand>() -> T {
 /// use std::rand::{thread_rng, sample};
 ///
 /// let mut rng = thread_rng();
-/// let sample = sample(&mut rng, range(1i, 100), 5);
+/// let sample = sample(&mut rng, 1i..100, 5);
 /// println!("{:?}", sample);
 /// ```
 pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,

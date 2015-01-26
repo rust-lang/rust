@@ -595,7 +595,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut i = 0;
             while i < candidates.len() {
                 let is_dup =
-                    range(0, candidates.len())
+                    (0..candidates.len())
                     .filter(|&j| i != j)
                     .any(|j| self.candidate_should_be_dropped_in_favor_of(stack,
                                                                           &candidates[i],

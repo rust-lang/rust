@@ -1229,8 +1229,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             let mut insert = Vec::new();
                             if lifetimes.len() == 0 {
                                 let anon = self.cur_anon.get();
-                                for (i, a) in range(anon,
-                                                    anon+expected).enumerate() {
+                                for (i, a) in (anon..anon+expected).enumerate() {
                                     if anon_nums.contains(&a) {
                                         insert.push(i as u32);
                                     }

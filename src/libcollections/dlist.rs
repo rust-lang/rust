@@ -599,7 +599,7 @@ impl<T> DList<T> {
         }  else {
             // better off starting from the end
             let mut iter = self.iter_mut();
-            for _ in range(0, len - 1 - (at - 1)) {
+            for _ in 0..len - 1 - (at - 1) {
                 iter.next_back();
             }
             iter.tail

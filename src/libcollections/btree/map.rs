@@ -1730,7 +1730,7 @@ mod test {
         let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         let mut j = 0u;
-        for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(range(2u, size)) {
+        for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(2u..size) {
             assert_eq!(k, i);
             assert_eq!(v, i);
             j += 1;

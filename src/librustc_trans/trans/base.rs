@@ -1651,7 +1651,7 @@ fn copy_closure_args_to_allocas<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                      wasn't a tuple?!")
         }
     };
-    for j in range(0, args.len()) {
+    for j in 0..args.len() {
         let tuple_element_type = untupled_arg_types[j];
         let tuple_element_datum =
             tuple_datum.get_element(bcx,

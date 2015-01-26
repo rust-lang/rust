@@ -49,7 +49,7 @@ fn rotate(x: &mut [i32]) {
 }
 
 fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
-    for i in range(1, perm.len()) {
+    for i in 1..perm.len() {
         rotate(&mut perm[..i + 1]);
         let count_i = &mut count[i];
         if *count_i >= i as i32 {

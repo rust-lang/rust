@@ -1079,7 +1079,7 @@ impl<T: Clone> Vec<T> {
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve(other.len());
 
-        for i in range(0, other.len()) {
+        for i in 0..other.len() {
             let len = self.len();
 
             // Unsafe code so this can be optimised to a memcpy (or something similarly
@@ -1988,12 +1988,12 @@ mod tests {
         let mut v = Vec::new();
         let mut w = Vec::new();
 
-        v.extend(range(0i, 3));
+        v.extend(0i..3);
         for i in 0i..3 { w.push(i) }
 
         assert_eq!(v, w);
 
-        v.extend(range(3i, 10));
+        v.extend(3i..10);
         for i in 3i..10 { w.push(i) }
 
         assert_eq!(v, w);
@@ -2499,7 +2499,7 @@ mod tests {
     }
 
     fn do_bench_from_slice(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(range(0, src_len));
+        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2531,7 +2531,7 @@ mod tests {
     }
 
     fn do_bench_from_iter(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(range(0, src_len));
+        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2563,8 +2563,8 @@ mod tests {
     }
 
     fn do_bench_extend(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0, dst_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0..dst_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2612,8 +2612,8 @@ mod tests {
     }
 
     fn do_bench_push_all(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0, dst_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0..dst_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2661,8 +2661,8 @@ mod tests {
     }
 
     fn do_bench_push_all_move(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0u, dst_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0u..dst_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2710,7 +2710,7 @@ mod tests {
     }
 
     fn do_bench_clone(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(range(0, src_len));
+        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2742,8 +2742,8 @@ mod tests {
     }
 
     fn do_bench_clone_from(b: &mut Bencher, times: uint, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0, src_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0..src_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = (times * src_len) as u64;
 

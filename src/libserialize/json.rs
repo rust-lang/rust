@@ -1326,7 +1326,7 @@ impl Stack {
     /// Compares this stack with an array of StackElements.
     pub fn is_equal_to(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() != rhs.len() { return false; }
-        for i in range(0, rhs.len()) {
+        for i in 0..rhs.len() {
             if self.get(i) != rhs[i] { return false; }
         }
         return true;
@@ -1336,7 +1336,7 @@ impl Stack {
     /// the ones passed as parameter.
     pub fn starts_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
-        for i in range(0, rhs.len()) {
+        for i in 0..rhs.len() {
             if self.get(i) != rhs[i] { return false; }
         }
         return true;
@@ -1347,7 +1347,7 @@ impl Stack {
     pub fn ends_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
         let offset = self.stack.len() - rhs.len();
-        for i in range(0, rhs.len()) {
+        for i in 0..rhs.len() {
             if self.get(i + offset) != rhs[i] { return false; }
         }
         return true;
