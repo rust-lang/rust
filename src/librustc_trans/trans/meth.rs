@@ -601,17 +601,17 @@ pub fn trans_object_shim<'a, 'tcx>(
 
     let sig = ty::erase_late_bound_regions(ccx.tcx(), &fty.sig);
 
-    //
-    let block_arena = TypedArena::new();
     let empty_substs = Substs::trans_empty();
-    let fcx = new_fn_ctxt(ccx,
-                          llfn,
-                          ast::DUMMY_NODE_ID,
-                          false,
-                          sig.output,
-                          &empty_substs,
-                          None,
-                          &block_arena);
+    let (block_arena, fcx): (TypedArena<_>, FunctionContext);
+    block_arena = TypedArena::new();
+    fcx = new_fn_ctxt(ccx,
+                      llfn,
+                      ast::DUMMY_NODE_ID,
+                      false,
+                      sig.output,
+                      &empty_substs,
+                      None,
+                      &block_arena);
     let mut bcx = init_function(&fcx, false, sig.output);
 
     // the first argument (`self`) will be a trait object
