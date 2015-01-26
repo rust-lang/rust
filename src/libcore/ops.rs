@@ -895,6 +895,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// }
 /// ```
 #[lang="index"]
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Index}`"]
 #[stable]
 pub trait Index<Index: ?Sized> {
     type Output: ?Sized;
@@ -933,6 +934,7 @@ pub trait Index<Index: ?Sized> {
 /// }
 /// ```
 #[lang="index_mut"]
+#[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Index}`"]
 #[stable]
 pub trait IndexMut<Index: ?Sized> {
     type Output: ?Sized;
