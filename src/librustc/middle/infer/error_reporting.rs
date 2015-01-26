@@ -809,6 +809,8 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         let scope_id = same_regions[0].scope_id;
         let parent = self.tcx.map.get_parent(scope_id);
         let parent_node = self.tcx.map.find(parent);
+        let taken = lifetimes_in_scope(self.tcx, scope_id);
+        let life_giver = LifeGiver::with_taken(&taken[]);
         let node_inner = match parent_node {
             Some(ref node) => match *node {
                 ast_map::NodeItem(ref item) => {
@@ -851,8 +853,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         };
         let (fn_decl, generics, unsafety, ident, expl_self, span)
                                     = node_inner.expect("expect item fn");
-        let taken = lifetimes_in_scope(self.tcx, scope_id);
-        let life_giver = LifeGiver::with_taken(&taken[]);
         let rebuilder = Rebuilder::new(self.tcx, fn_decl, expl_self,
                                        generics, same_regions, &life_giver);
         let (fn_decl, expl_self, generics) = rebuilder.rebuild();

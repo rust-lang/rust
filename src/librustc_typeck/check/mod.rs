@@ -3101,8 +3101,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let name = ident.get();
         // only find fits with at least one matching letter
         let mut best_dist = name.len();
-        let mut best = None;
         let fields = ty::lookup_struct_fields(tcx, id);
+        let mut best = None;
         for elem in fields.iter() {
             let n = elem.name.as_str();
             // ignore already set fields
