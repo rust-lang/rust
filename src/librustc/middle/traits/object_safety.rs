@@ -126,7 +126,7 @@ fn trait_has_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
     let param_env = ty::construct_parameter_environment(tcx,
                                                         &trait_def.generics,
                                                         ast::DUMMY_NODE_ID);
-    let predicates = param_env.caller_bounds.predicates.as_slice().to_vec();
+    let predicates = param_env.caller_bounds.clone();
     let sized_def_id = match tcx.lang_items.sized_trait() {
         Some(def_id) => def_id,
         None => { return false; /* No Sized trait, can't require it! */ }

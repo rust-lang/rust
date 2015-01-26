@@ -951,7 +951,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                stack.obligation.repr(self.tcx()));
 
         let caller_trait_refs: Vec<_> =
-            self.param_env().caller_bounds.predicates.iter()
+            self.param_env().caller_bounds.iter()
             .filter_map(|o| o.to_opt_poly_trait_ref())
             .collect();
 

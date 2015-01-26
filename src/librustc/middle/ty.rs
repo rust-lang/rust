@@ -2100,7 +2100,7 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations.
-    pub caller_bounds: ty::GenericBounds<'tcx>,
+    pub caller_bounds: Vec<ty::Predicate<'tcx>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
@@ -6258,7 +6258,7 @@ impl Variance {
 pub fn empty_parameter_environment<'a,'tcx>(cx: &'a ctxt<'tcx>) -> ParameterEnvironment<'a,'tcx> {
     ty::ParameterEnvironment { tcx: cx,
                                free_substs: Substs::empty(),
-                               caller_bounds: GenericBounds::empty(),
+                               caller_bounds: Vec::new(),
                                implicit_region_bound: ty::ReEmpty,
                                selection_cache: traits::SelectionCache::new(), }
 }
@@ -6296,6 +6296,7 @@ pub fn construct_parameter_environment<'a,'tcx>(
 
     let bounds = generics.to_bounds(tcx, &free_substs);
     let bounds = liberate_late_bound_regions(tcx, free_id_scope, &ty::Binder(bounds));
+    let predicates = bounds.predicates.into_vec();
 
     //
     // Compute region bounds. For now, these relations are stored in a
@@ -6303,18 +6304,18 @@ pub fn construct_parameter_environment<'a,'tcx>(
     // crazy about this scheme, but it's convenient, at least.
     //
 
-    record_region_bounds(tcx, &bounds);
+    record_region_bounds(tcx, &*predicates);
 
-    debug!("construct_parameter_environment: free_id={:?} free_subst={:?} bounds={:?}",
+    debug!("construct_parameter_environment: free_id={:?} free_subst={:?} predicates={:?}",
            free_id,
            free_substs.repr(tcx),
-           bounds.repr(tcx));
+           predicates.repr(tcx));
 
     return ty::ParameterEnvironment {
         tcx: tcx,
         free_substs: free_substs,
         implicit_region_bound: ty::ReScope(free_id_scope),
-        caller_bounds: bounds,
+        caller_bounds: predicates,
         selection_cache: traits::SelectionCache::new(),
     };
 
@@ -6338,10 +6339,10 @@ pub fn construct_parameter_environment<'a,'tcx>(
        }
     }
 
-    fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>, bounds: &GenericBounds<'tcx>) {
-        debug!("record_region_bounds(bounds={:?})", bounds.repr(tcx));
+    fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>, predicates: &[ty::Predicate<'tcx>]) {
+        debug!("record_region_bounds(predicates={:?})", predicates.repr(tcx));
 
-        for predicate in bounds.predicates.iter() {
+        for predicate in predicates.iter() {
             match *predicate {
                 Predicate::Projection(..) |
                 Predicate::Trait(..) |

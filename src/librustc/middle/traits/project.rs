@@ -440,8 +440,7 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
     obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
     candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
 {
-    let env_predicates = selcx.param_env().caller_bounds.predicates.clone();
-    let env_predicates = env_predicates.iter().cloned().collect();
+    let env_predicates = selcx.param_env().caller_bounds.clone();
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
                                         candidate_set, env_predicates);
 }
