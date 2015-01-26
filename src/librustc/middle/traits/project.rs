@@ -60,6 +60,11 @@ struct ProjectionTyCandidateSet<'tcx> {
     ambiguous: bool
 }
 
+/// Evaluates constraints of the form:
+///
+///     for<...> <T as Trait>::U == V
+///
+/// If successful, this may result in additional obligations.
 pub fn poly_project_and_unify_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &PolyProjectionObligation<'tcx>)
@@ -102,8 +107,11 @@ pub fn poly_project_and_unify_type<'cx,'tcx>(
     }
 }
 
-/// Compute result of projecting an associated type and unify it with
-/// `obligation.predicate.ty` (if we can).
+/// Evaluates constraints of the form:
+///
+///     <T as Trait>::U == V
+///
+/// If successful, this may result in additional obligations.
 fn project_and_unify_type<'cx,'tcx>(
     selcx: &mut SelectionContext<'cx,'tcx>,
     obligation: &ProjectionObligation<'tcx>)
@@ -133,6 +141,10 @@ fn project_and_unify_type<'cx,'tcx>(
     }
 }
 
+/// Normalizes any associated type projections in `value`, replacing
+/// them with a fully resolved type where possible. The return value
+/// combines the normalized result and any additional obligations that
+/// were incurred as result.
 pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
                                cause: ObligationCause<'tcx>,
                                value: &T)
@@ -142,6 +154,7 @@ pub fn normalize<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
     normalize_with_depth(selcx, cause, 0, value)
 }
 
+/// As `normalize`, but with a custom depth.
 pub fn normalize_with_depth<'a,'b,'tcx,T>(selcx: &'a mut SelectionContext<'b,'tcx>,
                                           cause: ObligationCause<'tcx>,
                                           depth: uint,
@@ -251,6 +264,12 @@ impl<'tcx,T> Normalized<'tcx,T> {
     }
 }
 
+/// The guts of `normalize`: normalize a specific projection like `<T
+/// as Trait>::Item`. The result is always a type (and possibly
+/// additional obligations). If ambiguity arises, which implies that
+/// there are unresolved type variables in the projection, we will
+/// substitute a fresh type variable `$X` and generate a new
+/// obligation `<T as Trait>::Item == $X` for later.
 pub fn normalize_projection_type<'a,'b,'tcx>(
     selcx: &'a mut SelectionContext<'b,'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
@@ -277,6 +296,10 @@ pub fn normalize_projection_type<'a,'b,'tcx>(
         })
 }
 
+/// The guts of `normalize`: normalize a specific projection like `<T
+/// as Trait>::Item`. The result is always a type (and possibly
+/// additional obligations). Returns `None` in the case of ambiguity,
+/// which indicates that there are unbound type variables.
 fn opt_normalize_projection_type<'a,'b,'tcx>(
     selcx: &'a mut SelectionContext<'b,'tcx>,
     projection_ty: ty::ProjectionTy<'tcx>,
