@@ -153,7 +153,7 @@ unsafe fn test_triangle() -> bool {
     // Test 3: turn triangle into a square, bottom to top.
     unsafe fn test_3(ascend: &mut [*mut u8]) {
         let new_size = idx_to_size(COUNT-1);
-        for i in range(0u, COUNT / 2).rev() {
+        for i in (0u..COUNT / 2).rev() {
             let (p0, p1, old_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             assert!(old_size < new_size);
 
@@ -168,7 +168,7 @@ unsafe fn test_triangle() -> bool {
     // Test 4: turn the square back into a triangle, bottom to top.
     unsafe fn test_4(ascend: &mut [*mut u8]) {
         let old_size = idx_to_size(COUNT-1);
-        for i in range(0u, COUNT / 2).rev() {
+        for i in (0u..COUNT / 2).rev() {
             let (p0, p1, new_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
             assert!(new_size < old_size);
 

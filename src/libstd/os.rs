@@ -617,7 +617,7 @@ unsafe fn load_argc_and_argv(argc: int,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
     use iter::range;
 
-    range(0, argc as uint).map(|i| {
+    (0..argc as uint).map(|i| {
         ffi::c_str_to_bytes(&*argv.offset(i as int)).to_vec()
     }).collect()
 }
@@ -717,7 +717,7 @@ fn real_args() -> Vec<String> {
     let lpCmdLine = unsafe { GetCommandLineW() };
     let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
-    let args: Vec<_> = range(0, nArgs as uint).map(|i| unsafe {
+    let args: Vec<_> = (0..nArgs as uint).map(|i| unsafe {
         // Determine the length of this argument.
         let ptr = *szArgList.offset(i as int);
         let mut len = 0;

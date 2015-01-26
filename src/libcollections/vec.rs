@@ -2442,7 +2442,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst = range(0, src_len).collect::<Vec<_>>();
+            let dst = (0..src_len).collect::<Vec<_>>();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         })

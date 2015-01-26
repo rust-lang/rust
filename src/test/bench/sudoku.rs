@@ -49,8 +49,8 @@ impl Sudoku {
     }
 
     pub fn from_vec(vec: &[[u8;9];9]) -> Sudoku {
-        let g = range(0, 9u).map(|i| {
-            range(0, 9u).map(|j| { vec[i][j] }).collect()
+        let g = (0..9u).map(|i| {
+            (0..9u).map(|j| { vec[i][j] }).collect()
         }).collect();
         return Sudoku::new(g)
     }

@@ -22,7 +22,7 @@ pub fn main() {
     let (tx, rx) = channel();
     let n = 100u;
     let mut expected = 0u;
-    let _t = range(0u, n).map(|i| {
+    let _t = (0u..n).map(|i| {
         expected += i;
         let tx = tx.clone();
         Thread::scoped(move|| {

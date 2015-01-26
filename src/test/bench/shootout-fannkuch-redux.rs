@@ -97,7 +97,7 @@ impl Perm {
             *place = i as i32 + 1;
         }
 
-        for i in range(1, self.n as uint).rev() {
+        for i in (1..self.n as uint).rev() {
             let d = idx / self.fact[i] as i32;
             self.cnt[i] = d;
             idx %= self.fact[i] as i32;
@@ -161,7 +161,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     let mut futures = vec![];
     let k = perm.max() / N;
 
-    for (_, j) in range(0, N).zip(iter::count(0, k)) {
+    for (_, j) in (0..N).zip(iter::count(0, k)) {
         let max = cmp::min(j+k, perm.max());
 
         futures.push(Thread::scoped(move|| {

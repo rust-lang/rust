@@ -1775,11 +1775,11 @@ mod test_map {
             for _ in half {}
 
             DROP_VECTOR.with(|v| {
-                let nk = range(0u, 100).filter(|&i| {
+                let nk = (0u..100).filter(|&i| {
                     v.borrow()[i] == 1
                 }).count();
 
-                let nv = range(0u, 100).filter(|&i| {
+                let nv = (0u..100).filter(|&i| {
                     v.borrow()[i+100] == 1
                 }).count();
 

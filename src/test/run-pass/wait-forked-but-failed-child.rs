@@ -55,7 +55,7 @@ fn find_zombies() { }
 fn main() {
     let too_long = format!("/NoSuchCommand{:0300}", 0u8);
 
-    let _failures = range(0, 100).map(|_| {
+    let _failures = (0..100).map(|_| {
         let cmd = Command::new(too_long.as_slice());
         let failed = cmd.spawn();
         assert!(failed.is_err(), "Make sure the command fails to spawn(): {:?}", cmd);

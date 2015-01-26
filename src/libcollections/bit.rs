@@ -660,7 +660,7 @@ impl Bitv {
 
         let len = self.nbits/8 +
                   if self.nbits % 8 == 0 { 0 } else { 1 };
-        range(0, len).map(|i|
+        (0..len).map(|i|
             bit(self, i, 0) |
             bit(self, i, 1) |
             bit(self, i, 2) |
@@ -2283,7 +2283,7 @@ mod tests {
 
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), bools);
 
-        let long = range(0, 10000).map(|i| i % 2 == 0).collect::<Vec<_>>();
+        let long = (0..10000).map(|i| i % 2 == 0).collect::<Vec<_>>();
         let bitv: Bitv = long.iter().map(|n| *n).collect();
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), long)
     }
@@ -2647,7 +2647,7 @@ mod bitv_set_test {
         let idxs: Vec<uint> = bitv.iter().collect();
         assert_eq!(idxs, vec![0, 2, 3]);
 
-        let long: BitvSet = range(0u, 10000).filter(|&n| n % 2 == 0).collect();
+        let long: BitvSet = (0u..10000).filter(|&n| n % 2 == 0).collect();
         let real = range_step(0, 10000, 2).collect::<Vec<uint>>();
 
         let idxs: Vec<uint> = long.iter().collect();

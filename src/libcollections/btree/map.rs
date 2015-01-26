@@ -1661,7 +1661,7 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
             for i in range(0, size) {
@@ -1681,7 +1681,7 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
             for i in range(0, size) {
@@ -1701,7 +1701,7 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test<T>(size: uint, mut iter: T)
                 where T: Iterator<Item=(uint, uint)> + DoubleEndedIterator {
@@ -1727,7 +1727,7 @@ mod test {
         let size = 5u;
 
         // Forwards
-        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         let mut j = 0u;
         for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(range(2u, size)) {
@@ -1741,11 +1741,11 @@ mod test {
     #[test]
     fn test_range_1000() {
         let size = 1000u;
-        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test(map: &BTreeMap<uint, uint>, size: uint, min: Bound<&uint>, max: Bound<&uint>) {
             let mut kvs = map.range(min, max).map(|(&k, &v)| (k, v));
-            let mut pairs = range(0, size).map(|i| (i, i));
+            let mut pairs = (0..size).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
                 assert_eq!(kv, pair);
@@ -1764,7 +1764,7 @@ mod test {
     #[test]
     fn test_range() {
         let size = 200u;
-        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         for i in range(0, size) {
             for j in range(i, size) {

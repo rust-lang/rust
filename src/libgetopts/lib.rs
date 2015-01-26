@@ -586,7 +586,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
 
     fn f(_x: uint) -> Vec<Optval> { return Vec::new(); }
 
-    let mut vals: Vec<_> = range(0, n_opts).map(f).collect();
+    let mut vals: Vec<_> = (0..n_opts).map(f).collect();
     let mut free: Vec<String> = Vec::new();
     let l = args.len();
     let mut i = 0;

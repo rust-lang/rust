@@ -1343,7 +1343,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 let mut new_lts = Vec::new();
                 if data.lifetimes.len() == 0 {
                     // traverse once to see if there's a need to insert lifetime
-                    let need_insert = range(0, expected).any(|i| {
+                    let need_insert = (0..expected).any(|i| {
                         indexes.contains(&i)
                     });
                     if need_insert {

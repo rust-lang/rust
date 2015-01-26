@@ -1828,7 +1828,7 @@ mod tests {
 
     #[bench]
     fn bench_iter_1000(b: &mut test::Bencher) {
-        let ring: RingBuf<int> = range(0i, 1000).collect();
+        let ring: RingBuf<int> = (0i..1000).collect();
 
         b.iter(|| {
             let mut sum = 0;
@@ -1841,7 +1841,7 @@ mod tests {
 
     #[bench]
     fn bench_mut_iter_1000(b: &mut test::Bencher) {
-        let mut ring: RingBuf<int> = range(0i, 1000).collect();
+        let mut ring: RingBuf<int> = (0i..1000).collect();
 
         b.iter(|| {
             let mut sum = 0;
@@ -1977,7 +1977,7 @@ mod tests {
 
     #[test]
     fn test_swap() {
-        let mut d: RingBuf<int> = range(0i, 5).collect();
+        let mut d: RingBuf<int> = (0i..5).collect();
         d.pop_front();
         d.swap(0, 3);
         assert_eq!(d.iter().map(|&x|x).collect::<Vec<int>>(), vec!(4, 2, 3, 1));
@@ -2309,7 +2309,7 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let ringbuf: RingBuf<int> = range(0i, 10).collect();
+        let ringbuf: RingBuf<int> = (0i..10).collect();
         assert_eq!(format!("{:?}", ringbuf), "RingBuf [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
@@ -2494,9 +2494,9 @@ mod tests {
 
             for len in range(0, final_len) {
                 let expected = if back {
-                    range(0, len).collect()
+                    (0..len).collect()
                 } else {
-                    range(0, len).rev().collect()
+                    (0..len).rev().collect()
                 };
                 for tail_pos in range(0, usable_cap) {
                     tester.tail = tail_pos;
@@ -2652,7 +2652,7 @@ mod tests {
             ring.push_back(i);
 
             let (left, right) = ring.as_slices();
-            let expected: Vec<_> = range(0, i+1).collect();
+            let expected: Vec<_> = (0..i+1).collect();
             assert_eq!(left, expected);
             assert_eq!(right, []);
         }
@@ -2660,8 +2660,8 @@ mod tests {
         for j in range(-last, 0) {
             ring.push_front(j);
             let (left, right) = ring.as_slices();
-            let expected_left: Vec<_> = range(-last, j+1).rev().collect();
-            let expected_right: Vec<_> = range(0, first).collect();
+            let expected_left: Vec<_> = (-last..j+1).rev().collect();
+            let expected_right: Vec<_> = (0..first).collect();
             assert_eq!(left, expected_left);
             assert_eq!(right, expected_right);
         }
@@ -2680,7 +2680,7 @@ mod tests {
             ring.push_back(i);
 
             let (left, right) = ring.as_mut_slices();
-            let expected: Vec<_> = range(0, i+1).collect();
+            let expected: Vec<_> = (0..i+1).collect();
             assert_eq!(left, expected);
             assert_eq!(right, []);
         }
@@ -2688,8 +2688,8 @@ mod tests {
         for j in range(-last, 0) {
             ring.push_front(j);
             let (left, right) = ring.as_mut_slices();
-            let expected_left: Vec<_> = range(-last, j+1).rev().collect();
-            let expected_right: Vec<_> = range(0, first).collect();
+            let expected_left: Vec<_> = (-last..j+1).rev().collect();
+            let expected_right: Vec<_> = (0..first).collect();
             assert_eq!(left, expected_left);
             assert_eq!(right, expected_right);
         }

@@ -1165,7 +1165,7 @@ impl ElementSwaps {
         // element (equal to the original index).
         ElementSwaps{
             emit_reset: true,
-            sdir: range(0, length).map(|i| SizeDirection{ size: i, dir: Neg }).collect(),
+            sdir: (0..length).map(|i| SizeDirection{ size: i, dir: Neg }).collect(),
             swaps_made: 0
         }
     }
@@ -1526,7 +1526,7 @@ mod tests {
     #[test]
     fn test_from_fn() {
         // Test on-stack from_fn.
-        let mut v = range(0, 3).map(square).collect::<Vec<_>>();
+        let mut v = (0..3).map(square).collect::<Vec<_>>();
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 3u);
@@ -1536,7 +1536,7 @@ mod tests {
         }
 
         // Test on-heap from_fn.
-        v = range(0, 5).map(square).collect::<Vec<_>>();
+        v = (0..5).map(square).collect::<Vec<_>>();
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 5u);
@@ -2134,7 +2134,7 @@ mod tests {
                 // the second item represents which occurrence of that
                 // number this element is, i.e. the second elements
                 // will occur in sorted order.
-                let mut v = range(0, len).map(|_| {
+                let mut v = (0..len).map(|_| {
                         let n = thread_rng().gen::<uint>() % 10;
                         counts[n] += 1;
                         (n, counts[n])
@@ -2723,7 +2723,7 @@ mod tests {
         assert_eq!(xs.capacity(), 128);
         xs.shrink_to_fit();
         assert_eq!(xs.capacity(), 100);
-        assert_eq!(xs, range(0i, 100i).collect::<Vec<_>>());
+        assert_eq!(xs, (0i..100i).collect::<Vec<_>>());
     }
 
     #[test]
@@ -2854,7 +2854,7 @@ mod bench {
     fn iterator(b: &mut Bencher) {
         // peculiar numbers to stop LLVM from optimising the summation
         // out.
-        let v = range(0u, 100).map(|i| i ^ (i << 1) ^ (i >> 1)).collect::<Vec<_>>();
+        let v = (0u..100).map(|i| i ^ (i << 1) ^ (i >> 1)).collect::<Vec<_>>();
 
         b.iter(|| {
             let mut sum = 0;
@@ -2882,7 +2882,7 @@ mod bench {
     #[bench]
     fn concat(b: &mut Bencher) {
         let xss: Vec<Vec<uint>> =
-            range(0, 100u).map(|i| range(0, i).collect()).collect();
+            (0..100u).map(|i| (0..i).collect()).collect();
         b.iter(|| {
             xss.concat();
         });
@@ -2891,7 +2891,7 @@ mod bench {
     #[bench]
     fn connect(b: &mut Bencher) {
         let xss: Vec<Vec<uint>> =
-            range(0, 100u).map(|i| range(0, i).collect()).collect();
+            (0..100u).map(|i| (0..i).collect()).collect();
         b.iter(|| {
             xss.connect(&0)
         });
@@ -2908,7 +2908,7 @@ mod bench {
 
     #[bench]
     fn starts_with_same_vector(b: &mut Bencher) {
-        let vec: Vec<uint> = range(0, 100).collect();
+        let vec: Vec<uint> = (0..100).collect();
         b.iter(|| {
             vec.starts_with(vec.as_slice())
         })
@@ -2924,8 +2924,8 @@ mod bench {
 
     #[bench]
     fn starts_with_diff_one_element_at_end(b: &mut Bencher) {
-        let vec: Vec<uint> = range(0, 100).collect();
-        let mut match_vec: Vec<uint> = range(0, 99).collect();
+        let vec: Vec<uint> = (0..100).collect();
+        let mut match_vec: Vec<uint> = (0..99).collect();
         match_vec.push(0);
         b.iter(|| {
             vec.starts_with(match_vec.as_slice())
@@ -2934,7 +2934,7 @@ mod bench {
 
     #[bench]
     fn ends_with_same_vector(b: &mut Bencher) {
-        let vec: Vec<uint> = range(0, 100).collect();
+        let vec: Vec<uint> = (0..100).collect();
         b.iter(|| {
             vec.ends_with(vec.as_slice())
         })
@@ -2950,8 +2950,8 @@ mod bench {
 
     #[bench]
     fn ends_with_diff_one_element_at_beginning(b: &mut Bencher) {
-        let vec: Vec<uint> = range(0, 100).collect();
-        let mut match_vec: Vec<uint> = range(0, 100).collect();
+        let vec: Vec<uint> = (0..100).collect();
+        let mut match_vec: Vec<uint> = (0..100).collect();
         match_vec.as_mut_slice()[0] = 200;
         b.iter(|| {
             vec.starts_with(match_vec.as_slice())
@@ -2960,7 +2960,7 @@ mod bench {
 
     #[bench]
     fn contains_last_element(b: &mut Bencher) {
-        let vec: Vec<uint> = range(0, 100).collect();
+        let vec: Vec<uint> = (0..100).collect();
         b.iter(|| {
             vec.contains(&99u)
         })
@@ -3069,7 +3069,7 @@ mod bench {
 
     #[bench]
     fn sort_sorted(b: &mut Bencher) {
-        let mut v = range(0u, 10000).collect::<Vec<_>>();
+        let mut v = (0u..10000).collect::<Vec<_>>();
         b.iter(|| {
             v.sort();
         });
@@ -3113,7 +3113,7 @@ mod bench {
 
     #[bench]
     fn sort_big_sorted(b: &mut Bencher) {
-        let mut v = range(0, 10000u).map(|i| (i, i, i, i)).collect::<Vec<_>>();
+        let mut v = (0..10000u).map(|i| (i, i, i, i)).collect::<Vec<_>>();
         b.iter(|| {
             v.sort();
         });

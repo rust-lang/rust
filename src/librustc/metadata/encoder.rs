@@ -1598,7 +1598,7 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
     F: FnMut(&mut SeekableMemWriter, &T),
     T: Hash<SipHasher>,
 {
-    let mut buckets: Vec<Vec<entry<T>>> = range(0, 256u16).map(|_| Vec::new()).collect();
+    let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
     for elt in index.into_iter() {
         let mut s = SipHasher::new();
         elt.val.hash(&mut s);

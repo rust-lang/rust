@@ -21,11 +21,11 @@ static CONSTEXPR: TestStruct = TestStruct{x: &413 as *const _};
 
 
 pub fn main() {
-    let x: Vec<_> = range(0u, 5).collect();
+    let x: Vec<_> = (0u..5).collect();
     let expected: &[uint] = &[0,1,2,3,4];
     assert_eq!(x.as_slice(), expected);
 
-    let x = range(0u, 5).collect::<Vec<_>>();
+    let x = (0u..5).collect::<Vec<_>>();
     assert_eq!(x.as_slice(), expected);
 
     let y: _ = "hello";

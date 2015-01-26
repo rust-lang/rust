@@ -166,7 +166,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
 pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: BytePos)
                            -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[]);
-    let matches: Vec<_> = range(0, match_idx_hi).map(|_| Vec::new()).collect();
+    let matches: Vec<_> = (0..match_idx_hi).map(|_| Vec::new()).collect();
     box MatcherPos {
         stack: vec![],
         top_elts: TtSeq(ms),
