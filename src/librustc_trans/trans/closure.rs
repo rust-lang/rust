@@ -97,37 +97,23 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx
 }
 
-#[derive(PartialEq)]
-pub enum ClosureKind<'tcx> {
+pub enum ClosureEnv<'a> {
     NotClosure,
-    Closure,
+    Closure(&'a [ty::Freevar]),
 }
 
-pub struct ClosureEnv<'a, 'tcx> {
-    freevars: &'a [ty::Freevar],
-    pub kind: ClosureKind<'tcx>
-}
-
-impl<'a, 'tcx> ClosureEnv<'a, 'tcx> {
-    pub fn new(freevars: &'a [ty::Freevar], kind: ClosureKind<'tcx>)
-               -> ClosureEnv<'a, 'tcx> {
-        ClosureEnv {
-            freevars: freevars,
-            kind: kind
-        }
-    }
-
-    pub fn load<'blk>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId)
-                      -> Block<'blk, 'tcx> {
-        // Don't bother to create the block if there's nothing to load
-        if self.freevars.is_empty() {
-            return bcx;
-        }
-
-        match self.kind {
-            ClosureKind::NotClosure => bcx,
-            ClosureKind::Closure => {
-                load_closure_environment(bcx, arg_scope, self.freevars)
+impl<'a> ClosureEnv<'a> {
+    pub fn load<'blk,'tcx>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId)
+                           -> Block<'blk, 'tcx>
+    {
+        match self {
+            ClosureEnv::NotClosure => bcx,
+            ClosureEnv::Closure(freevars) => {
+                if freevars.is_empty() {
+                    bcx
+                } else {
+                    load_closure_environment(bcx, arg_scope, freevars)
+                }
             }
         }
     }
@@ -224,7 +210,7 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                   &[],
                   sig.output,
                   function_type.abi,
-                  ClosureEnv::new(&freevars[], ClosureKind::Closure));
+                  ClosureEnv::Closure(&freevars[]));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
