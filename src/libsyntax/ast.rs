@@ -35,7 +35,6 @@ pub use self::MacStmtStyle::*;
 pub use self::MetaItem_::*;
 pub use self::Method_::*;
 pub use self::Mutability::*;
-pub use self::Onceness::*;
 pub use self::Pat_::*;
 pub use self::PathListItem_::*;
 pub use self::PatWildKind::*;
@@ -49,7 +48,7 @@ pub use self::TraitItem::*;
 pub use self::Ty_::*;
 pub use self::TyParamBound::*;
 pub use self::UintTy::*;
-pub use self::UnboxedClosureKind::*;
+pub use self::ClosureKind::*;
 pub use self::UnOp::*;
 pub use self::UnsafeSource::*;
 pub use self::VariantKind::*;
@@ -734,7 +733,7 @@ pub enum Expr_ {
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.
     ExprLoop(P<Block>, Option<Ident>),
     ExprMatch(P<Expr>, Vec<Arm>, MatchSource),
-    ExprClosure(CaptureClause, Option<UnboxedClosureKind>, P<FnDecl>, P<Block>),
+    ExprClosure(CaptureClause, Option<ClosureKind>, P<FnDecl>, P<Block>),
     ExprBlock(P<Block>),
 
     ExprAssign(P<Expr>, P<Expr>),
@@ -1222,31 +1221,6 @@ pub enum PrimTy {
     TyChar
 }
 
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Copy, Show)]
-pub enum Onceness {
-    Once,
-    Many
-}
-
-impl fmt::Display for Onceness {
-    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(match *self {
-            Once => "once",
-            Many => "many",
-        }, f)
-    }
-}
-
-/// Represents the type of a closure
-#[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
-pub struct ClosureTy {
-    pub lifetimes: Vec<LifetimeDef>,
-    pub unsafety: Unsafety,
-    pub onceness: Onceness,
-    pub decl: P<FnDecl>,
-    pub bounds: TyParamBounds,
-}
-
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub struct BareFnTy {
     pub unsafety: Unsafety,
@@ -1710,10 +1684,10 @@ impl ForeignItem_ {
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show, Copy)]
-pub enum UnboxedClosureKind {
-    FnUnboxedClosureKind,
-    FnMutUnboxedClosureKind,
-    FnOnceUnboxedClosureKind,
+pub enum ClosureKind {
+    FnClosureKind,
+    FnMutClosureKind,
+    FnOnceClosureKind,
 }
 
 /// The data we save and restore about an inlined item or method.  This is not

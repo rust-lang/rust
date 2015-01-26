@@ -52,7 +52,7 @@ use middle::ty_fold::{TypeFoldable};
 use util::ppaux::Repr;
 
 use std::rc::Rc;
-use syntax::ast::{Onceness, Unsafety};
+use syntax::ast::Unsafety;
 use syntax::ast;
 use syntax::abi;
 use syntax::codemap::Span;
@@ -253,8 +253,6 @@ pub trait Combine<'tcx> : Sized {
             Err(ty::terr_abi_mismatch(expected_found(self, a, b)))
         }
     }
-
-    fn oncenesses(&self, a: Onceness, b: Onceness) -> cres<'tcx, Onceness>;
 
     fn projection_tys(&self,
                       a: &ty::ProjectionTy<'tcx>,
@@ -514,15 +512,15 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             Ok(ty::mk_struct(tcx, a_id, tcx.mk_substs(substs)))
       }
 
-      (&ty::ty_unboxed_closure(a_id, a_region, a_substs),
-       &ty::ty_unboxed_closure(b_id, b_region, b_substs))
+      (&ty::ty_closure(a_id, a_region, a_substs),
+       &ty::ty_closure(b_id, b_region, b_substs))
       if a_id == b_id => {
-          // All ty_unboxed_closure types with the same id represent
+          // All ty_closure types with the same id represent
           // the (anonymous) type of the same closure expression. So
           // all of their regions should be equated.
           let region = try!(this.equate().regions(*a_region, *b_region));
           let substs = try!(this.substs_variances(None, a_substs, b_substs));
-          Ok(ty::mk_unboxed_closure(tcx, a_id, tcx.mk_region(region), tcx.mk_substs(substs)))
+          Ok(ty::mk_closure(tcx, a_id, tcx.mk_region(region), tcx.mk_substs(substs)))
       }
 
       (&ty::ty_uniq(a_inner), &ty::ty_uniq(b_inner)) => {

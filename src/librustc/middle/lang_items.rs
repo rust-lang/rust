@@ -113,11 +113,11 @@ impl LanguageItems {
         }
     }
 
-    pub fn fn_trait_kind(&self, id: ast::DefId) -> Option<ty::UnboxedClosureKind> {
+    pub fn fn_trait_kind(&self, id: ast::DefId) -> Option<ty::ClosureKind> {
         let def_id_kinds = [
-            (self.fn_trait(), ty::FnUnboxedClosureKind),
-            (self.fn_mut_trait(), ty::FnMutUnboxedClosureKind),
-            (self.fn_once_trait(), ty::FnOnceUnboxedClosureKind),
+            (self.fn_trait(), ty::FnClosureKind),
+            (self.fn_mut_trait(), ty::FnMutClosureKind),
+            (self.fn_once_trait(), ty::FnOnceClosureKind),
             ];
 
         for &(opt_def_id, kind) in def_id_kinds.iter() {

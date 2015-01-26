@@ -57,8 +57,8 @@ pub enum DefIdSource {
     // Identifies a region parameter (`fn foo<'X>() { ... }`).
     RegionParameter,
 
-    // Identifies an unboxed closure
-    UnboxedClosureSource
+    // Identifies a closure
+    ClosureSource
 }
 
 // type conv_did = impl FnMut(DefIdSource, ast::DefId) -> ast::DefId;
@@ -537,11 +537,11 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
       }
       'k' => {
           assert_eq!(next(st), '[');
-          let did = parse_def_(st, UnboxedClosureSource, conv);
+          let did = parse_def_(st, ClosureSource, conv);
           let region = parse_region_(st, conv);
           let substs = parse_substs_(st, conv);
           assert_eq!(next(st), ']');
-          return ty::mk_unboxed_closure(st.tcx, did,
+          return ty::mk_closure(st.tcx, did,
                   st.tcx.mk_region(region), st.tcx.mk_substs(substs));
       }
       'P' => {

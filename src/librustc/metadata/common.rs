@@ -139,7 +139,7 @@ pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_table_adjustments = 0x51,
     tag_table_moves_map = 0x52,
     tag_table_capture_map = 0x53,
-    tag_table_unboxed_closures = 0x54,
+    tag_table_closures = 0x54,
     tag_table_upvar_borrow_map = 0x55,
     tag_table_capture_modes = 0x56,
     tag_table_object_cast_map = 0x57,
@@ -225,10 +225,10 @@ pub struct LinkMeta {
     pub crate_hash: Svh,
 }
 
-pub const tag_unboxed_closures: uint = 0x95;
-pub const tag_unboxed_closure: uint = 0x96;
-pub const tag_unboxed_closure_type: uint = 0x97;
-pub const tag_unboxed_closure_kind: uint = 0x98;
+pub const tag_closures: uint = 0x95;
+pub const tag_closure: uint = 0x96;
+pub const tag_closure_type: uint = 0x97;
+pub const tag_closure_kind: uint = 0x98;
 
 pub const tag_struct_fields: uint = 0x99;
 pub const tag_struct_field: uint = 0x9a;

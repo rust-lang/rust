@@ -20,7 +20,7 @@ use middle::ty::{mt, Ty, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn};
 use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
-use middle::ty::{ty_unboxed_closure};
+use middle::ty::{ty_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
 use middle::ty_fold::TypeFoldable;
@@ -414,9 +414,8 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                     data.item_name.user_string(cx))
         }
         ty_str => "str".to_string(),
-        ty_unboxed_closure(ref did, _, substs) => {
-            let unboxed_closures = cx.unboxed_closures.borrow();
-            unboxed_closures.get(did).map(|cl| {
+        ty_closure(ref did, _, substs) => {
+            cx.closures.borrow().get(did).map(|cl| {
                 closure_to_string(cx, &cl.closure_type.subst(cx, substs))
             }).unwrap_or_else(|| {
                 if did.krate == ast::LOCAL_CRATE {
@@ -1021,8 +1020,8 @@ impl<'tcx> Repr<'tcx> for ty::MethodOrigin<'tcx> {
             &ty::MethodStatic(def_id) => {
                 format!("MethodStatic({})", def_id.repr(tcx))
             }
-            &ty::MethodStaticUnboxedClosure(def_id) => {
-                format!("MethodStaticUnboxedClosure({})", def_id.repr(tcx))
+            &ty::MethodStaticClosure(def_id) => {
+                format!("MethodStaticClosure({})", def_id.repr(tcx))
             }
             &ty::MethodTypeParam(ref p) => {
                 p.repr(tcx)

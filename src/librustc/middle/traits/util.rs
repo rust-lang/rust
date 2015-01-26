@@ -367,8 +367,8 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
             super::VtableImpl(ref v) =>
                 v.repr(tcx),
 
-            super::VtableUnboxedClosure(ref d, ref s) =>
-                format!("VtableUnboxedClosure({},{})",
+            super::VtableClosure(ref d, ref s) =>
+                format!("VtableClosure({},{})",
                         d.repr(tcx),
                         s.repr(tcx)),
 

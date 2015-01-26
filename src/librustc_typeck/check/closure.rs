@@ -25,7 +25,7 @@ use util::ppaux::Repr;
 pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
                                    _capture: ast::CaptureClause,
-                                   opt_kind: Option<ast::UnboxedClosureKind>,
+                                   opt_kind: Option<ast::ClosureKind>,
                                    decl: &ast::FnDecl,
                                    body: &ast::Block,
                                    expected: Expectation<'tcx>) {
@@ -34,7 +34,7 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            expected.repr(fcx.tcx()));
 
     let expected_sig_and_kind = expected.to_option(fcx).and_then(|ty| {
-        deduce_unboxed_closure_expectations_from_expected_type(fcx, ty)
+        deduce_closure_expectations_from_expected_type(fcx, ty)
     });
 
     match opt_kind {
@@ -42,46 +42,46 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             // If users didn't specify what sort of closure they want,
             // examine the expected type. For now, if we see explicit
             // evidence than an unboxed closure is desired, we'll use
-            // that, otherwise we'll fall back to boxed closures.
+            // that, otherwise we'll error, requesting an annotation.
             match expected_sig_and_kind {
                 None => { // don't have information about the kind, request explicit annotation
                     // NB We still need to typeck the body, so assume `FnMut` kind just for that
-                    let kind = ty::FnMutUnboxedClosureKind;
+                    let kind = ty::FnMutClosureKind;
 
-                    check_unboxed_closure(fcx, expr, kind, decl, body, None);
+                    check_closure(fcx, expr, kind, decl, body, None);
 
                     span_err!(fcx.ccx.tcx.sess, expr.span, E0187,
                         "can't infer the \"kind\" of the closure; explicitly annotate it; e.g. \
                         `|&:| {{}}`");
                 },
                 Some((sig, kind)) => {
-                    check_unboxed_closure(fcx, expr, kind, decl, body, Some(sig));
+                    check_closure(fcx, expr, kind, decl, body, Some(sig));
                 }
             }
         }
 
         Some(kind) => {
             let kind = match kind {
-                ast::FnUnboxedClosureKind => ty::FnUnboxedClosureKind,
-                ast::FnMutUnboxedClosureKind => ty::FnMutUnboxedClosureKind,
-                ast::FnOnceUnboxedClosureKind => ty::FnOnceUnboxedClosureKind,
+                ast::FnClosureKind => ty::FnClosureKind,
+                ast::FnMutClosureKind => ty::FnMutClosureKind,
+                ast::FnOnceClosureKind => ty::FnOnceClosureKind,
             };
 
             let expected_sig = expected_sig_and_kind.map(|t| t.0);
-            check_unboxed_closure(fcx, expr, kind, decl, body, expected_sig);
+            check_closure(fcx, expr, kind, decl, body, expected_sig);
         }
     }
 }
 
-fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                  expr: &ast::Expr,
-                                  kind: ty::UnboxedClosureKind,
-                                  decl: &ast::FnDecl,
-                                  body: &ast::Block,
-                                  expected_sig: Option<ty::FnSig<'tcx>>) {
+fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                          expr: &ast::Expr,
+                          kind: ty::ClosureKind,
+                          decl: &ast::FnDecl,
+                          body: &ast::Block,
+                          expected_sig: Option<ty::FnSig<'tcx>>) {
     let expr_def_id = ast_util::local_def(expr.id);
 
-    debug!("check_unboxed_closure kind={:?} expected_sig={}",
+    debug!("check_closure kind={:?} expected_sig={}",
            kind,
            expected_sig.repr(fcx.tcx()));
 
@@ -100,11 +100,11 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
         Ok(regions) => regions[0],
     };
 
-    let closure_type = ty::mk_unboxed_closure(fcx.ccx.tcx,
-                                              expr_def_id,
-                                              fcx.ccx.tcx.mk_region(region),
-                                              fcx.ccx.tcx.mk_substs(
-                                                  fcx.inh.param_env.free_substs.clone()));
+    let closure_type = ty::mk_closure(fcx.ccx.tcx,
+                                      expr_def_id,
+                                      fcx.ccx.tcx.mk_region(region),
+                                      fcx.ccx.tcx.mk_substs(
+                                        fcx.inh.param_env.free_substs.clone()));
 
     fcx.write_ty(expr.id, closure_type);
 
@@ -121,39 +121,36 @@ fn check_unboxed_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
              fcx.inh);
 
     // Tuple up the arguments and insert the resulting function type into
-    // the `unboxed_closures` table.
+    // the `closures` table.
     fn_ty.sig.0.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.0.inputs)];
 
-    debug!("unboxed_closure for {} --> sig={} kind={:?}",
+    debug!("closure for {} --> sig={} kind={:?}",
            expr_def_id.repr(fcx.tcx()),
            fn_ty.sig.repr(fcx.tcx()),
            kind);
 
-    let unboxed_closure = ty::UnboxedClosure {
+    let closure = ty::Closure {
         closure_type: fn_ty,
         kind: kind,
     };
 
-    fcx.inh
-        .unboxed_closures
-        .borrow_mut()
-        .insert(expr_def_id, unboxed_closure);
+    fcx.inh.closures.borrow_mut().insert(expr_def_id, closure);
 }
 
-fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(
+fn deduce_closure_expectations_from_expected_type<'a,'tcx>(
     fcx: &FnCtxt<'a,'tcx>,
     expected_ty: Ty<'tcx>)
-    -> Option<(ty::FnSig<'tcx>,ty::UnboxedClosureKind)>
+    -> Option<(ty::FnSig<'tcx>,ty::ClosureKind)>
 {
     match expected_ty.sty {
         ty::ty_trait(ref object_type) => {
             let trait_ref =
                 object_type.principal_trait_ref_with_self_ty(fcx.tcx(),
                                                              fcx.tcx().types.err);
-            deduce_unboxed_closure_expectations_from_trait_ref(fcx, &trait_ref)
+            deduce_closure_expectations_from_trait_ref(fcx, &trait_ref)
         }
         ty::ty_infer(ty::TyVar(vid)) => {
-            deduce_unboxed_closure_expectations_from_obligations(fcx, vid)
+            deduce_closure_expectations_from_obligations(fcx, vid)
         }
         _ => {
             None
@@ -161,14 +158,14 @@ fn deduce_unboxed_closure_expectations_from_expected_type<'a,'tcx>(
     }
 }
 
-fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
+fn deduce_closure_expectations_from_trait_ref<'a,'tcx>(
     fcx: &FnCtxt<'a,'tcx>,
     trait_ref: &ty::PolyTraitRef<'tcx>)
-    -> Option<(ty::FnSig<'tcx>, ty::UnboxedClosureKind)>
+    -> Option<(ty::FnSig<'tcx>, ty::ClosureKind)>
 {
     let tcx = fcx.tcx();
 
-    debug!("deduce_unboxed_closure_expectations_from_object_type({})",
+    debug!("deduce_closure_expectations_from_object_type({})",
            trait_ref.repr(tcx));
 
     let kind = match tcx.lang_items.fn_trait_kind(trait_ref.def_id()) {
@@ -202,10 +199,10 @@ fn deduce_unboxed_closure_expectations_from_trait_ref<'a,'tcx>(
     return Some((fn_sig, kind));
 }
 
-fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
+fn deduce_closure_expectations_from_obligations<'a,'tcx>(
     fcx: &FnCtxt<'a,'tcx>,
     expected_vid: ty::TyVid)
-    -> Option<(ty::FnSig<'tcx>, ty::UnboxedClosureKind)>
+    -> Option<(ty::FnSig<'tcx>, ty::ClosureKind)>
 {
     // Here `expected_ty` is known to be a type inference variable.
     for obligation in fcx.inh.fulfillment_cx.borrow().pending_obligations().iter() {
@@ -218,7 +215,7 @@ fn deduce_unboxed_closure_expectations_from_obligations<'a,'tcx>(
                     _ => { continue; }
                 }
 
-                match deduce_unboxed_closure_expectations_from_trait_ref(fcx, &trait_ref) {
+                match deduce_closure_expectations_from_trait_ref(fcx, &trait_ref) {
                     Some(e) => { return Some(e); }
                     None => { }
                 }

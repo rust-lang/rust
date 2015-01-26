@@ -211,7 +211,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
             Type::nil(cx)
         }
 
-        ty::ty_tup(..) | ty::ty_enum(..) | ty::ty_unboxed_closure(..) => {
+        ty::ty_tup(..) | ty::ty_enum(..) | ty::ty_closure(..) => {
             let repr = adt::represent_type(cx, t);
             adt::sizing_type_of(cx, &*repr, false)
         }
@@ -330,7 +330,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           let name = llvm_type_name(cx, an_enum, did, tps);
           adt::incomplete_type_of(cx, &*repr, &name[])
       }
-      ty::ty_unboxed_closure(did, _, ref substs) => {
+      ty::ty_closure(did, _, ref substs) => {
           // Only create the named struct, but don't fill it in. We
           // fill it in *after* placing it into the type cache.
           let repr = adt::represent_type(cx, t);
@@ -338,7 +338,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           // inherited from their environment, so we use entire
           // contents of the VecPerParamSpace to to construct the llvm
           // name
-          let name = llvm_type_name(cx, an_unboxed_closure, did, substs.types.as_slice());
+          let name = llvm_type_name(cx, a_closure, did, substs.types.as_slice());
           adt::incomplete_type_of(cx, &*repr, &name[])
       }
 
@@ -432,7 +432,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
 
     // If this was an enum or struct, fill in the type now.
     match t.sty {
-        ty::ty_enum(..) | ty::ty_struct(..) | ty::ty_unboxed_closure(..)
+        ty::ty_enum(..) | ty::ty_struct(..) | ty::ty_closure(..)
                 if !ty::type_is_simd(cx.tcx(), t) => {
             let repr = adt::represent_type(cx, t);
             adt::finish_type_of(cx, &*repr, &mut llty);
@@ -454,7 +454,7 @@ pub fn align_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
 pub enum named_ty {
     a_struct,
     an_enum,
-    an_unboxed_closure,
+    a_closure,
 }
 
 pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
@@ -465,7 +465,7 @@ pub fn llvm_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let name = match what {
         a_struct => "struct",
         an_enum => "enum",
-        an_unboxed_closure => return "closure".to_string(),
+        a_closure => return "closure".to_string(),
     };
 
     let base = ty::item_path_str(cx.tcx(), did);

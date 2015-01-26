@@ -579,7 +579,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             // in `assemble_candidates_from_param_env`.
         }
         super::VtableBuiltin(..) |
-        super::VtableUnboxedClosure(..) |
+        super::VtableClosure(..) |
         super::VtableFnPointer(..) => {
             // These traits have no associated types.
             selcx.tcx().sess.span_bug(

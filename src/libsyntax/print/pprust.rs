@@ -11,11 +11,11 @@
 pub use self::AnnNode::*;
 
 use abi;
-use ast::{self, FnUnboxedClosureKind, FnMutUnboxedClosureKind};
-use ast::{FnOnceUnboxedClosureKind};
+use ast::{self, FnClosureKind, FnMutClosureKind};
+use ast::{FnOnceClosureKind};
 use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
-use ast::{UnboxedClosureKind};
+use ast::{ClosureKind};
 use ast_util;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
@@ -703,14 +703,11 @@ impl<'a> State<'a> {
                         predicates: Vec::new(),
                     },
                 };
-                try!(self.print_ty_fn(Some(f.abi),
-                                      None,
+                try!(self.print_ty_fn(f.abi,
                                       f.unsafety,
-                                      ast::Many,
                                       &*f.decl,
                                       None,
-                                      &OwnedSlice::empty(),
-                                      Some(&generics),
+                                      &generics,
                                       None));
             }
             ast::TyPath(ref path, _) => {
@@ -1215,14 +1212,11 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(m.span.lo));
         try!(self.print_outer_attributes(&m.attrs[]));
-        try!(self.print_ty_fn(None,
-                              None,
+        try!(self.print_ty_fn(m.abi,
                               m.unsafety,
-                              ast::Many,
                               &*m.decl,
                               Some(m.ident),
-                              &OwnedSlice::empty(),
-                              Some(&m.generics),
+                              &m.generics,
                               Some(&m.explicit_self.node)));
         word(&mut self.s, ";")
     }
@@ -2300,7 +2294,7 @@ impl<'a> State<'a> {
                     opt_explicit_self: Option<&ast::ExplicitSelf_>,
                     vis: ast::Visibility) -> IoResult<()> {
         try!(self.head(""));
-        try!(self.print_fn_header_info(opt_explicit_self, unsafety, abi, vis));
+        try!(self.print_fn_header_info(unsafety, abi, vis));
         try!(self.nbsp());
         try!(self.print_ident(name));
         try!(self.print_generics(generics));
@@ -2357,14 +2351,14 @@ impl<'a> State<'a> {
     pub fn print_fn_block_args(
             &mut self,
             decl: &ast::FnDecl,
-            unboxed_closure_kind: Option<UnboxedClosureKind>)
+            closure_kind: Option<ClosureKind>)
             -> IoResult<()> {
         try!(word(&mut self.s, "|"));
-        match unboxed_closure_kind {
+        match closure_kind {
             None => {}
-            Some(FnUnboxedClosureKind) => try!(self.word_space("&:")),
-            Some(FnMutUnboxedClosureKind) => try!(self.word_space("&mut:")),
-            Some(FnOnceUnboxedClosureKind) => try!(self.word_space(":")),
+            Some(FnClosureKind) => try!(self.word_space("&:")),
+            Some(FnMutClosureKind) => try!(self.word_space("&mut:")),
+            Some(FnOnceClosureKind) => try!(self.word_space(":")),
         }
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, "|"));
@@ -2393,31 +2387,6 @@ impl<'a> State<'a> {
         match capture_clause {
             ast::CaptureByValue => self.word_space("move"),
             ast::CaptureByRef => Ok(()),
-        }
-    }
-
-    pub fn print_proc_args(&mut self, decl: &ast::FnDecl) -> IoResult<()> {
-        try!(word(&mut self.s, "proc"));
-        try!(word(&mut self.s, "("));
-        try!(self.print_fn_args(decl, None));
-        try!(word(&mut self.s, ")"));
-
-        if let ast::DefaultReturn(..) = decl.output {
-            return Ok(());
-        }
-
-        try!(self.space_if_not_bol());
-        try!(self.word_space("->"));
-        match decl.output {
-            ast::Return(ref ty) => {
-                try!(self.print_type(&**ty));
-                self.maybe_print_comment(ty.span.lo)
-            }
-            ast::DefaultReturn(..) => unreachable!(),
-            ast::NoReturn(span) => {
-                try!(self.word_nbsp("!"));
-                self.maybe_print_comment(span.lo)
-            }
         }
     }
 
@@ -2696,31 +2665,15 @@ impl<'a> State<'a> {
     }
 
     pub fn print_ty_fn(&mut self,
-                       opt_abi: Option<abi::Abi>,
-                       opt_sigil: Option<char>,
+                       abi: abi::Abi,
                        unsafety: ast::Unsafety,
-                       onceness: ast::Onceness,
                        decl: &ast::FnDecl,
                        id: Option<ast::Ident>,
-                       bounds: &OwnedSlice<ast::TyParamBound>,
-                       generics: Option<&ast::Generics>,
+                       generics: &ast::Generics,
                        opt_explicit_self: Option<&ast::ExplicitSelf_>)
                        -> IoResult<()> {
         try!(self.ibox(indent_unit));
-
-        // Duplicates the logic in `print_fn_header_info()`.  This is because that
-        // function prints the sigil in the wrong place.  That should be fixed.
-        if opt_sigil == Some('~') && onceness == ast::Once {
-            try!(word(&mut self.s, "proc"));
-        } else if opt_sigil == Some('&') {
-            try!(self.print_unsafety(unsafety));
-            try!(self.print_extern_opt_abi(opt_abi));
-        } else {
-            assert!(opt_sigil.is_none());
-            try!(self.print_unsafety(unsafety));
-            try!(self.print_opt_abi_and_extern_if_nondefault(opt_abi));
-            try!(word(&mut self.s, "fn"));
-        }
+        try!(self.print_fn_header_info(Some(unsafety), abi, ast::Inherited));
 
         match id {
             Some(id) => {
@@ -2730,35 +2683,10 @@ impl<'a> State<'a> {
             _ => ()
         }
 
-        match generics { Some(g) => try!(self.print_generics(g)), _ => () }
+        try!(self.print_generics(generics));
         try!(zerobreak(&mut self.s));
-
-        if opt_sigil == Some('&') {
-            try!(word(&mut self.s, "|"));
-        } else {
-            try!(self.popen());
-        }
-
-        try!(self.print_fn_args(decl, opt_explicit_self));
-
-        if opt_sigil == Some('&') {
-            try!(word(&mut self.s, "|"));
-        } else {
-            if decl.variadic {
-                try!(word(&mut self.s, ", ..."));
-            }
-            try!(self.pclose());
-        }
-
-        try!(self.print_bounds(":", &bounds[]));
-
-        try!(self.print_fn_output(decl));
-
-        match generics {
-            Some(generics) => try!(self.print_where_clause(generics)),
-            None => {}
-        }
-
+        try!(self.print_fn_args_and_ret(decl, opt_explicit_self));
+        try!(self.print_where_clause(generics));
         self.end()
     }
 
@@ -3015,7 +2943,6 @@ impl<'a> State<'a> {
     }
 
     pub fn print_fn_header_info(&mut self,
-                                _opt_explicit_self: Option<&ast::ExplicitSelf_>,
                                 opt_unsafety: Option<ast::Unsafety>,
                                 abi: abi::Abi,
                                 vis: ast::Visibility) -> IoResult<()> {
