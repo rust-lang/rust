@@ -1079,13 +1079,13 @@ mod tests {
     #[test]
     fn test_override_env() {
         use os;
-        let mut new_env = vec![("RUN_TEST_NEW_ENV", "123")];
 
         // In some build environments (such as chrooted Nix builds), `env` can
         // only be found in the explicitly-provided PATH env variable, not in
         // default places such as /bin or /usr/bin. So we need to pass through
         // PATH to our sub-process.
         let path_val: String;
+        let mut new_env = vec![("RUN_TEST_NEW_ENV", "123")];
         match os::getenv("PATH") {
             None => {}
             Some(val) => {
