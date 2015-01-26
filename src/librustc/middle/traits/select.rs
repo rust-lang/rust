@@ -826,6 +826,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             Some(bound @ ty::BoundSend) |
             Some(bound @ ty::BoundSync) => {
+                // Ideally, we shouldn't sepcial case Send/Sync. This will be unified
+                // as soon as default trait implementations for these traits land.
                 try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
 
                 // No explicit impls were declared for this type, consider the fallback rules.
@@ -1599,27 +1601,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                               -> Result<BuiltinBoundConditions<'tcx>,SelectionError<'tcx>>
         {
             // First check for markers and other nonsense.
-            let tcx = this.tcx();
             match bound {
-                ty::BoundSend => {
-                    if Some(def_id) == tcx.lang_items.managed_bound() {
-                        return Err(Unimplemented)
-                    }
-                }
-
                 ty::BoundCopy => {
                     return Ok(ParameterBuiltin)
                 }
 
-                ty::BoundSync => {
-                    if
-                        Some(def_id) == tcx.lang_items.managed_bound() ||
-                        Some(def_id) == tcx.lang_items.unsafe_cell_type()
-                    {
-                        return Err(Unimplemented)
-                    }
-                }
-
+                ty::BoundSend |
+                ty::BoundSync |
                 ty::BoundSized => { }
             }
 

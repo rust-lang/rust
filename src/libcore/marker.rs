@@ -51,6 +51,7 @@ pub unsafe trait Send : MarkerTrait {
 
 impl<T> !Send for *const T { }
 impl<T> !Send for *mut T { }
+impl !Send for Managed { }
 
 /// Types with a constant size known at compile-time.
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -219,6 +220,7 @@ pub unsafe trait Sync : MarkerTrait {
 
 impl<T> !Sync for *const T { }
 impl<T> !Sync for *mut T { }
+impl !Sync for Managed { }
 
 /// A type which is considered "not POD", meaning that it is not
 /// implicitly copyable. This is typically embedded in other types to
