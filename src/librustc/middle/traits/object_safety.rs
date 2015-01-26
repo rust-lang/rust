@@ -122,17 +122,15 @@ fn trait_has_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
                               trait_def_id: ast::DefId)
                               -> bool
 {
-    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
-    let param_env = ty::construct_parameter_environment(tcx,
-                                                        &trait_def.generics,
-                                                        ast::DUMMY_NODE_ID);
-    let predicates = param_env.caller_bounds.clone();
     let sized_def_id = match tcx.lang_items.sized_trait() {
         Some(def_id) => def_id,
         None => { return false; /* No Sized trait, can't require it! */ }
     };
 
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
+    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
+    let free_substs = ty::construct_free_substs(tcx, &trait_def.generics, ast::DUMMY_NODE_ID);
+    let predicates = trait_def.generics.to_bounds(tcx, &free_substs).predicates.into_vec();
     elaborate_predicates(tcx, predicates)
         .any(|predicate| {
             match predicate {

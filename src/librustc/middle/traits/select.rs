@@ -2157,16 +2157,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     where_clause_trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> Result<Vec<PredicateObligation<'tcx>>,()>
     {
-        let where_clause_trait_ref =
-            project::normalize_with_depth(self,
-                                          obligation.cause.clone(),
-                                          obligation.recursion_depth+1,
-                                          &where_clause_trait_ref);
-
         let () =
-            try!(self.match_poly_trait_ref(obligation, where_clause_trait_ref.value.clone()));
+            try!(self.match_poly_trait_ref(obligation, where_clause_trait_ref));
 
-        Ok(where_clause_trait_ref.obligations)
+        Ok(Vec::new())
     }
 
     /// Returns `Ok` if `poly_trait_ref` being true implies that the
