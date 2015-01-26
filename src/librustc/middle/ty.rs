@@ -4344,7 +4344,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                     let mut adjusted_ty = unadjusted_ty;
 
                     if !ty::type_is_error(adjusted_ty) {
-                        for i in range(0, adj.autoderefs) {
+                        for i in 0..adj.autoderefs {
                             let method_call = MethodCall::autoderef(expr_id, i);
                             match method_type(method_call) {
                                 Some(method_ty) => {

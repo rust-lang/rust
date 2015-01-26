@@ -88,7 +88,7 @@ fn cat(in_x: uint, in_y: int, in_name: String) -> cat {
 
 
 fn annoy_neighbors(critter: &mut noisy) {
-    for _i in range(0u, 10) { critter.speak(); }
+    for _i in 0u..10 { critter.speak(); }
 }
 
 pub fn main() {

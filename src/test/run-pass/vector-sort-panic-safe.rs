@@ -55,8 +55,8 @@ impl Drop for DropCounter {
 pub fn main() {
     assert!(MAX_LEN <= std::uint::BITS);
     // len can't go above 64.
-    for len in range(2, MAX_LEN) {
-        for _ in range(0, REPEATS) {
+    for len in 2..MAX_LEN {
+        for _ in 0..REPEATS {
             // reset the count for these new DropCounters, so their
             // IDs start from 0.
             creation_count.store(0, Ordering::Relaxed);
@@ -71,7 +71,7 @@ pub fn main() {
             main.clone().as_mut_slice().sort_by(|a, b| { count += 1; a.cmp(b) });
 
             // ... and then panic on each and every single one.
-            for panic_countdown in range(0i, count) {
+            for panic_countdown in 0i..count {
                 // refresh the counters.
                 for c in drop_counts.iter() {
                     c.store(0, Ordering::Relaxed);

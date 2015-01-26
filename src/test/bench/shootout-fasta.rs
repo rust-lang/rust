@@ -92,7 +92,7 @@ fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
     let mut line = [0u8; LINE_LENGTH + 1];
     while n > 0 {
         let nb = min(LINE_LENGTH, n);
-        for i in range(0, nb) {
+        for i in 0..nb {
             line[i] = it.next().unwrap();
         }
         n -= nb;

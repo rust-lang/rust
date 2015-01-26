@@ -85,7 +85,7 @@ fn f4b() -> isize {
 }
 
 fn f5a() {
-    for x in range(1is, 10) { }
+    for x in 1is..10 { }
     //~^ ERROR unused variable: `x`
 }
 

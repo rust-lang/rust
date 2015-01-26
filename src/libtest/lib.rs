@@ -1008,7 +1008,7 @@ impl Bencher {
     pub fn iter<T, F>(&mut self, mut inner: F) where F: FnMut() -> T {
         self.dur = Duration::span(|| {
             let k = self.iterations;
-            for _ in range(0u64, k) {
+            for _ in 0u64..k {
                 black_box(inner());
             }
         });

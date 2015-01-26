@@ -176,7 +176,7 @@ pub trait Combine<'tcx> : Sized {
             assert_eq!(num_region_params, a_rs.len());
             assert_eq!(num_region_params, b_rs.len());
             let mut rs = vec!();
-            for i in range(0, num_region_params) {
+            for i in 0..num_region_params {
                 let a_r = a_rs[i];
                 let b_r = b_rs[i];
                 let variance = variances[i];

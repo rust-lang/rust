@@ -2251,7 +2251,7 @@ impl<'a> fmt::Display for Source<'a> {
             tmp /= 10;
         }
         try!(write!(fmt, "<pre class=\"line-numbers\">"));
-        for i in range(1, lines + 1) {
+        for i in 1..lines + 1 {
             try!(write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols));
         }
         try!(write!(fmt, "</pre>"));

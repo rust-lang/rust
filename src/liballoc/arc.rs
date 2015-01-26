@@ -37,7 +37,7 @@
 //!
 //! let five = Arc::new(5i);
 //!
-//! for _ in range(0u, 10) {
+//! for _ in 0u..10 {
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
@@ -54,7 +54,7 @@
 //!
 //! let five = Arc::new(Mutex::new(5i));
 //!
-//! for _ in range(0u, 10) {
+//! for _ in 0u..10 {
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
@@ -98,7 +98,7 @@ use heap::deallocate;
 ///     let numbers: Vec<_> = (0..100u32).map(|i| i as f32).collect();
 ///     let shared_numbers = Arc::new(numbers);
 ///
-///     for _ in range(0u, 10) {
+///     for _ in 0u..10 {
 ///         let child_numbers = shared_numbers.clone();
 ///
 ///         Thread::spawn(move || {

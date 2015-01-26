@@ -1328,7 +1328,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         let mut graph = graph::Graph::with_capacity(num_vars as uint + 1,
                                                     num_edges);
 
-        for _ in range(0, num_vars) {
+        for _ in 0..num_vars {
             graph.add_node(());
         }
         let dummy_idx = graph.add_node(());

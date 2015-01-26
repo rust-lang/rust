@@ -16,7 +16,7 @@ trait Fooable {
 
 impl Fooable for uint {
     fn yes(self) {
-        for _ in range(0, self) { println!("yes"); }
+        for _ in 0..self { println!("yes"); }
     }
 }
 

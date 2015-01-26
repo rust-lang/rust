@@ -226,7 +226,7 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
 
     let mut bools_map = HashMap::new();
     if bools_bytes != 0 {
-        for i in range(0, bools_bytes) {
+        for i in 0..bools_bytes {
             let b = try!(file.read_byte());
             if b == 1 {
                 bools_map.insert(bnames[i as uint].to_string(), true);
@@ -240,7 +240,7 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
 
     let mut numbers_map = HashMap::new();
     if numbers_count != 0 {
-        for i in range(0, numbers_count) {
+        for i in 0..numbers_count {
             let n = try!(file.read_le_u16());
             if n != 0xFFFF {
                 numbers_map.insert(nnames[i as uint].to_string(), n);
@@ -252,7 +252,7 @@ pub fn parse(file: &mut old_io::Reader, longnames: bool)
 
     if string_offsets_count != 0 {
         let mut string_offsets = Vec::with_capacity(10);
-        for _ in range(0, string_offsets_count) {
+        for _ in 0..string_offsets_count {
             string_offsets.push(try!(file.read_le_u16()));
         }
 

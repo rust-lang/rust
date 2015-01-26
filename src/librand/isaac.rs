@@ -82,7 +82,7 @@ impl IsaacRng {
             }}
         }
 
-        for _ in range(0u, 4) {
+        for _ in 0u..4 {
             mix!();
         }
 
@@ -323,7 +323,7 @@ impl Isaac64Rng {
             }}
         }
 
-        for _ in range(0u, 4) {
+        for _ in 0u..4 {
             mix!();
         }
 
@@ -581,7 +581,7 @@ mod test {
         let seed: &[_] = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0u, 10000) { rb.next_u32(); }
+        for _ in 0u..10000 { rb.next_u32(); }
 
         let v = (0..10).map(|_| rb.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
@@ -603,7 +603,7 @@ mod test {
         let seed: &[_] = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0u, 10000) { rb.next_u64(); }
+        for _ in 0u..10000 { rb.next_u64(); }
 
         let v = (0..10).map(|_| rb.next_u64()).collect::<Vec<_>>();
         assert_eq!(v,
@@ -618,7 +618,7 @@ mod test {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut rng: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut clone = rng.clone();
-        for _ in range(0u, 16) {
+        for _ in 0u..16 {
             assert_eq!(rng.next_u64(), clone.next_u64());
         }
     }

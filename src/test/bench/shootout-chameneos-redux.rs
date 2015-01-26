@@ -200,7 +200,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
     let mut creatures_met = 0;
 
     // set up meetings...
-    for _ in range(0, nn) {
+    for _ in 0..nn {
         let fst_creature = from_creatures.recv().unwrap();
         let snd_creature = from_creatures.recv().unwrap();
 

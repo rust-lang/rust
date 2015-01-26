@@ -1354,7 +1354,7 @@ mod tests {
         b.bytes = REPETITIONS;
         b.iter(|| {
             let mut r = String::new();
-            for _ in range(0, REPETITIONS) {
+            for _ in 0..REPETITIONS {
                 r.push_str("a")
             }
         });
@@ -1365,7 +1365,7 @@ mod tests {
         b.bytes = REPETITIONS;
         b.iter(|| {
             let mut r = String::new();
-            for _ in range(0, REPETITIONS) {
+            for _ in 0..REPETITIONS {
                 r.push('a')
             }
         });
@@ -1376,7 +1376,7 @@ mod tests {
         b.bytes = REPETITIONS * 2;
         b.iter(|| {
             let mut r = String::new();
-            for _ in range(0, REPETITIONS) {
+            for _ in 0..REPETITIONS {
                 r.push('â')
             }
         });

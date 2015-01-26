@@ -10,4 +10,4 @@
 
 // error-pattern:moop
 
-fn main() { for _ in range(0u, 10u) { panic!("moop"); } }
+fn main() { for _ in 0u..10u { panic!("moop"); } }

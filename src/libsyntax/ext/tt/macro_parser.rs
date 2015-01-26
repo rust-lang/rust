@@ -339,7 +339,7 @@ pub fn parse(sess: &ParseSess,
                         // most of the time.
 
                         // Only touch the binders we have actually bound
-                        for idx in range(ei.match_lo, ei.match_hi) {
+                        for idx in ei.match_lo..ei.match_hi {
                             let sub = (ei.matches[idx]).clone();
                             (&mut new_pos.matches[idx])
                                    .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
@@ -385,7 +385,7 @@ pub fn parse(sess: &ParseSess,
                             new_ei.match_cur += seq.num_captures;
                             new_ei.idx += 1us;
                             //we specifically matched zero repeats.
-                            for idx in range(ei.match_cur, ei.match_cur + seq.num_captures) {
+                            for idx in ei.match_cur..ei.match_cur + seq.num_captures {
                                 (&mut new_ei.matches[idx]).push(Rc::new(MatchedSeq(vec![], sp)));
                             }
 
@@ -495,7 +495,7 @@ pub fn parse(sess: &ParseSess,
                 }
                 cur_eis.push(ei);
 
-                for _ in range(0, rust_parser.tokens_consumed) {
+                for _ in 0..rust_parser.tokens_consumed {
                     let _ = rdr.next_token();
                 }
             }

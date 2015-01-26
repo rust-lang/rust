@@ -390,7 +390,7 @@ mod tests {
         };
 
         let _t = Thread::spawn(move|| {
-            for _ in range(0u, times) {
+            for _ in 0u..times {
                 let mut stream = UnixStream::connect(&path2);
                 match stream.write(&[100]) {
                     Ok(..) => {}
@@ -399,7 +399,7 @@ mod tests {
             }
         });
 
-        for _ in range(0, times) {
+        for _ in 0..times {
             let mut client = acceptor.accept();
             let mut buf = [0];
             match client.read(&mut buf) {
@@ -555,7 +555,7 @@ mod tests {
             tx.send(UnixStream::connect(&addr2).unwrap()).unwrap();
         });
         let l = rx.recv().unwrap();
-        for i in range(0u, 1001) {
+        for i in 0u..1001 {
             match a.accept() {
                 Ok(..) => break,
                 Err(ref e) if e.kind == TimedOut => {}
@@ -683,7 +683,7 @@ mod tests {
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
         s.set_timeout(Some(20));
-        for i in range(0u, 1001) {
+        for i in 0u..1001 {
             match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
@@ -727,7 +727,7 @@ mod tests {
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
         tx.send(()).unwrap();
-        for _ in range(0u, 100) {
+        for _ in 0u..100 {
             assert!(s.write(&[0;128 * 1024]).is_ok());
         }
     }
@@ -746,7 +746,7 @@ mod tests {
 
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
-        for i in range(0u, 1001) {
+        for i in 0u..1001 {
             match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,

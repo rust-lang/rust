@@ -643,7 +643,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 // In general it looks like:
 // res = Vec::new()
 // let args = [[NSProcessInfo processInfo] arguments]
-// for i in range(0, [args count])
+// for i in 0..[args count]
 //      res.push([args objectAtIndex:i])
 // res
 #[cfg(target_os = "ios")]
@@ -679,7 +679,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
         let args = objc_msgSend(info, argumentsSel);
 
         let cnt: int = mem::transmute(objc_msgSend(args, countSel));
-        for i in range(0, cnt) {
+        for i in 0..cnt {
             let tmp = objc_msgSend(args, objectAtSel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8Sel));

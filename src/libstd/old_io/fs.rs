@@ -1101,7 +1101,7 @@ mod test {
         let dir = &tmpdir.join("di_readdir");
         check!(mkdir(dir, old_io::USER_RWX));
         let prefix = "foo";
-        for n in range(0i,3) {
+        for n in 0i..3 {
             let f = dir.join(format!("{}.txt", n));
             let mut w = check!(File::create(&f));
             let msg_str = format!("{}{}", prefix, n.to_string());

@@ -68,7 +68,7 @@
 //! // Simple primality tests below our max bound
 //! let print_primes = 20;
 //! print!("The primes below {} are: ", print_primes);
-//! for x in range(0, print_primes) {
+//! for x in 0..print_primes {
 //!     if primes.contains(&x) {
 //!         print!("{} ", x);
 //!     }
@@ -104,7 +104,7 @@ type MatchWords<'a> = Chain<Enumerate<Blocks<'a>>, Skip<Take<Enumerate<Repeat<u3
 
 fn reverse_bits(byte: u8) -> u8 {
     let mut result = 0;
-    for i in range(0, u8::BITS) {
+    for i in 0..u8::BITS {
         result |= ((byte >> i) & 1) << (u8::BITS - 1 - i);
     }
     result
@@ -320,7 +320,7 @@ impl Bitv {
 
         bitv.nbits = len;
 
-        for i in range(0, complete_words) {
+        for i in 0..complete_words {
             bitv.storage.push(
                 ((reverse_bits(bytes[i * 4 + 0]) as u32) << 0) |
                 ((reverse_bits(bytes[i * 4 + 1]) as u32) << 8) |
@@ -353,7 +353,7 @@ impl Bitv {
     /// ```
     pub fn from_fn<F>(len: uint, mut f: F) -> Bitv where F: FnMut(uint) -> bool {
         let mut bitv = Bitv::from_elem(len, false);
-        for i in range(0u, len) {
+        for i in 0u..len {
             bitv.set(i, f(i));
         }
         bitv
@@ -830,7 +830,7 @@ impl Bitv {
 
         // Fill in words after the old tail word
         let stop_idx = cmp::min(self.storage.len(), new_nblocks);
-        for idx in range(old_last_word + 1, stop_idx) {
+        for idx in old_last_word + 1..stop_idx {
             self.storage[idx] = full_value;
         }
 
@@ -2232,12 +2232,12 @@ mod tests {
     #[test]
     fn test_equal_sneaky_big() {
         let mut a = Bitv::from_elem(100, false);
-        for i in range(0u, 100) {
+        for i in 0u..100 {
             a.set(i, true);
         }
 
         let mut b = Bitv::from_elem(100, true);
-        for i in range(0u, 100) {
+        for i in 0u..100 {
             b.set(i, true);
         }
 
@@ -2526,7 +2526,7 @@ mod bitv_bench {
         let mut r = rng();
         let mut bitv = 0 as uint;
         b.iter(|| {
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 bitv |= 1 << ((r.next_u32() as uint) % u32::BITS);
             }
             black_box(&bitv);
@@ -2538,7 +2538,7 @@ mod bitv_bench {
         let mut r = rng();
         let mut bitv = Bitv::from_elem(BENCH_BITS, false);
         b.iter(|| {
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 bitv.set((r.next_u32() as uint) % BENCH_BITS, true);
             }
             black_box(&bitv);
@@ -2550,7 +2550,7 @@ mod bitv_bench {
         let mut r = rng();
         let mut bitv = Bitv::from_elem(BENCH_BITS, false);
         b.iter(|| {
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 bitv.set((r.next_u32() as uint) % BENCH_BITS, r.gen());
             }
             black_box(&bitv);
@@ -2562,7 +2562,7 @@ mod bitv_bench {
         let mut r = rng();
         let mut bitv = Bitv::from_elem(u32::BITS, false);
         b.iter(|| {
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 bitv.set((r.next_u32() as uint) % u32::BITS, true);
             }
             black_box(&bitv);
@@ -2583,7 +2583,7 @@ mod bitv_bench {
         let bitv = Bitv::from_elem(u32::BITS, false);
         b.iter(|| {
             let mut sum = 0u;
-            for _ in range(0u, 10) {
+            for _ in 0u..10 {
                 for pres in bitv.iter() {
                     sum += pres as uint;
                 }
@@ -3021,7 +3021,7 @@ mod bitv_set_bench {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         b.iter(|| {
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 bitv.insert((r.next_u32() as uint) % u32::BITS);
             }
             black_box(&bitv);
@@ -3033,7 +3033,7 @@ mod bitv_set_bench {
         let mut r = rng();
         let mut bitv = BitvSet::new();
         b.iter(|| {
-            for _ in range(0u, 100) {
+            for _ in 0u..100 {
                 bitv.insert((r.next_u32() as uint) % BENCH_BITS);
             }
             black_box(&bitv);

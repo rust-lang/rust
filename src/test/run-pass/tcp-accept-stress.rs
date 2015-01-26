@@ -58,7 +58,7 @@ fn test() {
     let _t = (0..N).map(|_| {
         let cli_tx = cli_tx.clone();
         Thread::scoped(move|| {
-            for _ in range(0, M) {
+            for _ in 0..M {
                 let _s = TcpStream::connect(addr).unwrap();
             }
             cli_tx.send(());

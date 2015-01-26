@@ -84,7 +84,7 @@ impl Code {
     fn unpack(&self, frame: uint) -> String {
         let mut key = self.hash();
         let mut result = Vec::new();
-        for _ in range(0, frame) {
+        for _ in 0..frame {
             result.push(unpack_symbol((key as u8) & 3));
             key >>= 2;
         }
@@ -242,7 +242,7 @@ fn generate_frequencies(mut input: &[u8], frame: uint) -> Table {
     let mut code = Code(0);
 
     // Pull first frame.
-    for _ in range(0, frame) {
+    for _ in 0..frame {
         code = code.push_char(input[0]);
         input = &input[1..];
     }

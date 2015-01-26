@@ -57,7 +57,7 @@ fn run(args: &[String]) {
         let from_parent = if workers == 1 {
             let (to_child, from_parent) = channel();
             worker_results.push(Thread::scoped(move|| {
-                for _ in range(0u, size / workers) {
+                for _ in 0u..size / workers {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
                     to_child.send(request::bytes(num_bytes));
                 }
@@ -66,10 +66,10 @@ fn run(args: &[String]) {
             from_parent
         } else {
             let (to_child, from_parent) = channel();
-            for _ in range(0u, workers) {
+            for _ in 0u..workers {
                 let to_child = to_child.clone();
                 worker_results.push(Thread::scoped(move|| {
-                    for _ in range(0u, size / workers) {
+                    for _ in 0u..size / workers {
                         //println!("worker {}: sending {} bytes", i, num_bytes);
                         to_child.send(request::bytes(num_bytes));
                     }

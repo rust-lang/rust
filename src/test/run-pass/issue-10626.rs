@@ -19,10 +19,10 @@ pub fn main () {
     let args = os::args();
     let args = args.as_slice();
     if args.len() > 1 && args[1].as_slice() == "child" {
-        for _ in range(0i, 1000i) {
+        for _ in 0i..1000i {
             println!("hello?");
         }
-        for _ in range(0i, 1000i) {
+        for _ in 0i..1000i {
             println!("hello?");
         }
         return;

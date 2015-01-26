@@ -431,7 +431,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = Vec::new();
-        for i in range(lo.line - 1us, hi.line as usize) {
+        for i in lo.line - 1us..hi.line as usize {
             lines.push(i);
         };
         FileLines {file: lo.file, lines: lines}

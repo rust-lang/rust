@@ -102,7 +102,7 @@ impl TempDir {
         }
 
         let mut rng = thread_rng();
-        for _ in range(0, NUM_RETRIES) {
+        for _ in 0..NUM_RETRIES {
             let suffix: String = rng.gen_ascii_chars().take(NUM_RAND_CHARS).collect();
             let leaf = if prefix.len() > 0 {
                 format!("{}.{}", prefix, suffix)

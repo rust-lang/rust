@@ -78,7 +78,7 @@ struct Perm {
 impl Perm {
     fn new(n: u32) -> Perm {
         let mut fact = [1; 16];
-        for i in range(1, n as uint + 1) {
+        for i in 1..n as uint + 1 {
             fact[i] = fact[i - 1] * i as u32;
         }
         Perm {
@@ -106,7 +106,7 @@ impl Perm {
             }
 
             let d = d as uint;
-            for j in range(0, i + 1) {
+            for j in 0..i + 1 {
                 self.perm.p[j] = if j + d <= i {pp[j + d]} else {pp[j+d-i-1]} as i32;
             }
         }

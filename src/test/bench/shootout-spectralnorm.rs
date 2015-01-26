@@ -68,7 +68,7 @@ fn spectralnorm(n: uint) -> f64 {
     let mut u = repeat(1.0).take(n).collect::<Vec<_>>();
     let mut v = u.clone();
     let mut tmp = v.clone();
-    for _ in range(0u, 10) {
+    for _ in 0u..10 {
         mult_AtAv(u.as_slice(), v.as_mut_slice(), tmp.as_mut_slice());
         mult_AtAv(v.as_slice(), u.as_mut_slice(), tmp.as_mut_slice());
     }

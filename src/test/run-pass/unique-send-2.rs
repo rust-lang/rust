@@ -31,7 +31,7 @@ pub fn main() {
     }).collect::<Vec<_>>();
 
     let mut actual = 0u;
-    for _ in range(0u, n) {
+    for _ in 0u..n {
         let j = rx.recv().unwrap();
         actual += *j;
     }

@@ -142,9 +142,9 @@ Section: Iterators
 // Helper functions used for Unicode normalization
 fn canonical_sort(comb: &mut [(char, u8)]) {
     let len = comb.len();
-    for i in range(0, len) {
+    for i in 0..len {
         let mut swapped = false;
-        for j in range(1, len-i) {
+        for j in 1..len-i {
             let class_a = comb[j-1].1;
             let class_b = comb[j].1;
             if class_a != 0 && class_b != 0 && class_a > class_b {

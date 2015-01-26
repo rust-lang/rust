@@ -69,11 +69,11 @@ macro_rules! double_round{
 fn core(output: &mut [u32; STATE_WORDS], input: &[u32; STATE_WORDS]) {
     *output = *input;
 
-    for _ in range(0, CHACHA_ROUNDS / 2) {
+    for _ in 0..CHACHA_ROUNDS / 2 {
         double_round!(output);
     }
 
-    for i in range(0, STATE_WORDS) {
+    for i in 0..STATE_WORDS {
         output[i] += input[i];
     }
 }
@@ -128,7 +128,7 @@ impl ChaChaRng {
         self.state[2] = 0x79622D32;
         self.state[3] = 0x6B206574;
 
-        for i in range(0, KEY_WORDS) {
+        for i in 0..KEY_WORDS {
             self.state[4+i] = key[i];
         }
 
@@ -268,9 +268,9 @@ mod test {
         // Store the 17*i-th 32-bit word,
         // i.e., the i-th word of the i-th 16-word block
         let mut v : Vec<u32> = Vec::new();
-        for _ in range(0u, 16) {
+        for _ in 0u..16 {
             v.push(ra.next_u32());
-            for _ in range(0u, 16) {
+            for _ in 0u..16 {
                 ra.next_u32();
             }
         }
@@ -287,7 +287,7 @@ mod test {
         let seed : &[_] = &[0u32; 8];
         let mut rng: ChaChaRng = SeedableRng::from_seed(seed);
         let mut clone = rng.clone();
-        for _ in range(0u, 16) {
+        for _ in 0u..16 {
             assert_eq!(rng.next_u64(), clone.next_u64());
         }
     }
