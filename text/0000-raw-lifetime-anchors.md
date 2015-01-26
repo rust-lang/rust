@@ -136,9 +136,9 @@ reverting to an earlier design:
 ```rust
 pub unsafe fn from_raw_buf<'a, T>(ptr: *const T, len: usize) -> &'a T
 ```
-Such functions would be usable without explicit type annotation and unelided
-lifetime parameters only in another function's return value context. For other
-uses, wrapper functions would often be created as workarounds.
+In such form the lifetime can be inferred from the use of the return value.
+This has even worse potential for unintentional misuse than the current
+design.
 
 The status quo convention can be used despite its problems and inconvenience.
 
