@@ -29,6 +29,7 @@ body {
     font-size: 16px;
     background: none repeat scroll 0% 0% #FFF;
     box-sizing: border-box;
+    -webkit-overflow-scrolling: touch;
 }
 
 #page-wrapper {
