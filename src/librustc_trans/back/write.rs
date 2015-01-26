@@ -911,7 +911,7 @@ fn run_work_multithreaded(sess: &Session,
         futures.push(rx);
 
         thread::Builder::new().name(format!("codegen-{}", i)).spawn(move |:| {
-            let diag_handler = mk_handler(box diag_emitter);
+            let diag_handler = mk_handler(true, box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
             // fields.
