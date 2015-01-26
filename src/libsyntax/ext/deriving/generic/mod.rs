@@ -228,6 +228,8 @@ pub struct TraitDef<'a> {
     pub generics: LifetimeBounds<'a>,
 
     pub methods: Vec<MethodDef<'a>>,
+
+    pub associated_types: Vec<(ast::Ident, Ty<'a>)>,
 }
 
 
@@ -387,6 +389,22 @@ impl<'a> TraitDef<'a> {
                            methods: Vec<P<ast::Method>>) -> P<ast::Item> {
         let trait_path = self.path.to_path(cx, self.span, type_ident, generics);
 
+        // Transform associated types from `deriving::ty::Ty` into `ast::Typedef`
+        let associated_types = self.associated_types.iter().map(|&(ident, ref type_def)| {
+            P(ast::Typedef {
+                id: ast::DUMMY_NODE_ID,
+                span: self.span,
+                ident: ident,
+                vis: ast::Inherited,
+                attrs: Vec::new(),
+                typ: type_def.to_ty(cx,
+                    self.span,
+                    type_ident,
+                    generics
+                ),
+            })
+        });
+
         let Generics { mut lifetimes, ty_params, mut where_clause } =
             self.generics.to_generics(cx, self.span, type_ident, generics);
         let mut ty_params = ty_params.into_vec();
@@ -494,7 +512,11 @@ impl<'a> TraitDef<'a> {
                           methods.into_iter()
                                  .map(|method| {
                                      ast::MethodImplItem(method)
-                                 }).collect()))
+                                 }).chain(
+                                     associated_types.map(|type_| {
+                                         ast::TypeImplItem(type_)
+                                     })
+                                 ).collect()))
     }
 
     fn expand_struct_def(&self,

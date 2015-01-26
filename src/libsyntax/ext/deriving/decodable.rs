@@ -79,7 +79,9 @@ fn expand_deriving_decodable_imp<F>(cx: &mut ExtCtxt,
                 combine_substructure: combine_substructure(box |a, b, c| {
                     decodable_substructure(a, b, c, krate)
                 }),
-            })
+            }
+        ),
+        associated_types: Vec::new(),
     };
 
     trait_def.expand(cx, mitem, item, push)
