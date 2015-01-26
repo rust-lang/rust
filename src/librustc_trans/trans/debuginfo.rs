@@ -207,7 +207,7 @@ use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
 use util::ppaux;
 
-use libc::c_uint;
+use libc::{c_uint, c_longlong};
 use std::ffi::CString;
 use std::cell::{Cell, RefCell};
 use std::ptr;
@@ -2764,7 +2764,7 @@ fn create_struct_stub(cx: &CrateContext,
 fn fixed_vec_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                 unique_type_id: UniqueTypeId,
                                 element_type: Ty<'tcx>,
-                                len: uint,
+                                len: Option<u64>,
                                 span: Span)
                                 -> MetadataCreationResult {
     let element_type_metadata = type_metadata(cx, element_type, span);
@@ -2774,18 +2774,20 @@ fn fixed_vec_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let element_llvm_type = type_of::type_of(cx, element_type);
     let (element_type_size, element_type_align) = size_and_align_of(cx, element_llvm_type);
 
+    let (array_size_in_bytes, upper_bound) = match len {
+        Some(len) => (element_type_size * len, len as c_longlong),
+        None => (0, -1)
+    };
+
     let subrange = unsafe {
-        llvm::LLVMDIBuilderGetOrCreateSubrange(
-            DIB(cx),
-            0,
-            len as i64)
+        llvm::LLVMDIBuilderGetOrCreateSubrange(DIB(cx), 0, upper_bound)
     };
 
     let subscripts = create_DIArray(DIB(cx), &[subrange]);
     let metadata = unsafe {
         llvm::LLVMDIBuilderCreateArrayType(
             DIB(cx),
-            bytes_to_bits(element_type_size * (len as u64)),
+            bytes_to_bits(array_size_in_bytes),
             bytes_to_bits(element_type_align),
             element_type_metadata,
             subscripts)
@@ -2991,12 +2993,12 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_enum(def_id, _) => {
             prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
         }
-        ty::ty_vec(typ, Some(len)) => {
-            fixed_vec_metadata(cx, unique_type_id, typ, len, usage_site_span)
+        ty::ty_vec(typ, len) => {
+            fixed_vec_metadata(cx, unique_type_id, typ, len.map(|x| x as u64), usage_site_span)
         }
-        // FIXME Can we do better than this for unsized vec/str fields?
-        ty::ty_vec(typ, None) => fixed_vec_metadata(cx, unique_type_id, typ, 0, usage_site_span),
-        ty::ty_str => fixed_vec_metadata(cx, unique_type_id, cx.tcx().types.i8, 0, usage_site_span),
+        ty::ty_str => {
+            fixed_vec_metadata(cx, unique_type_id, cx.tcx().types.i8, None, usage_site_span)
+        }
         ty::ty_trait(..) => {
             MetadataCreationResult::new(
                         trait_pointer_metadata(cx, t, None, unique_type_id),

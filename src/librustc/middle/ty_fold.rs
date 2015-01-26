@@ -310,7 +310,8 @@ impl<'tcx> TypeFoldable<'tcx> for ty::MethodOrigin<'tcx> {
             ty::MethodTypeParam(ref param) => {
                 ty::MethodTypeParam(ty::MethodParam {
                     trait_ref: param.trait_ref.fold_with(folder),
-                    method_num: param.method_num
+                    method_num: param.method_num,
+                    impl_def_id: param.impl_def_id,
                 })
             }
             ty::MethodTraitObject(ref object) => {

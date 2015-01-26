@@ -310,7 +310,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
             let ty = ty::expr_ty(cx.tcx(), &**e1);
             let is_float = ty::type_is_fp(ty);
             let signed = ty::type_is_signed(ty);
-            return match b {
+            return match b.node {
               ast::BiAdd   => {
                 if is_float { llvm::LLVMConstFAdd(te1, te2) }
                 else        { llvm::LLVMConstAdd(te1, te2) }

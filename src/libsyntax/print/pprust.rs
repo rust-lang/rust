@@ -1627,7 +1627,7 @@ impl<'a> State<'a> {
                          rhs: &ast::Expr) -> IoResult<()> {
         try!(self.print_expr(lhs));
         try!(space(&mut self.s));
-        try!(self.word_space(ast_util::binop_to_string(op)));
+        try!(self.word_space(ast_util::binop_to_string(op.node)));
         self.print_expr(rhs)
     }
 
@@ -1795,7 +1795,7 @@ impl<'a> State<'a> {
             ast::ExprAssignOp(op, ref lhs, ref rhs) => {
                 try!(self.print_expr(&**lhs));
                 try!(space(&mut self.s));
-                try!(word(&mut self.s, ast_util::binop_to_string(op)));
+                try!(word(&mut self.s, ast_util::binop_to_string(op.node)));
                 try!(self.word_space("="));
                 try!(self.print_expr(&**rhs));
             }

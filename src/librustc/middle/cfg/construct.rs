@@ -372,7 +372,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 expr_exit
             }
 
-            ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op) => {
+            ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op.node) => {
                 //
                 //     [pred]
                 //       |

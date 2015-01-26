@@ -8,19 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Utilities related to FFI bindings.
+// compile-flags: --test
+// no-pretty-expanded
+extern crate test;
 
-#![unstable(feature = "std_misc",
-            reason = "module just underwent fairly large reorganization and the dust \
-                      still needs to settle")]
+#[bench]
+fn bench_explicit_return_type(_: &mut ::test::Bencher) -> () {}
 
-pub use self::c_str::CString;
-pub use self::c_str::c_str_to_bytes;
-pub use self::c_str::c_str_to_bytes_with_nul;
+#[test]
+fn test_explicit_return_type() -> () {}
 
-pub use self::os_str::OsString;
-pub use self::os_str::OsStr;
-pub use self::os_str::AsOsStr;
-
-mod c_str;
-mod os_str;

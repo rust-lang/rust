@@ -202,9 +202,9 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
              reason = "use std::ffi::c_str_to_bytes + str::from_utf8")]
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;
-    let mut len = 0u;
+    let mut len = 0;
     while *s.offset(len as int) != 0 {
-        len += 1u;
+        len += 1;
     }
     let v: &'static [u8] = ::mem::transmute(Slice { data: s, len: len });
     from_utf8(v).ok().expect("from_c_str passed invalid utf-8 data")
@@ -310,43 +310,52 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
     }
 }
 
+/// Reads the next code point out of a byte iterator (assuming a
+/// UTF-8-like encoding).
+#[unstable(feature = "core")]
+pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
+    // Decode UTF-8
+    let x = match bytes.next() {
+        None => return None,
+        Some(&next_byte) if next_byte < 128 => return Some(next_byte as u32),
+        Some(&next_byte) => next_byte,
+    };
+
+    // Multibyte case follows
+    // Decode from a byte combination out of: [[[x y] z] w]
+    // NOTE: Performance is sensitive to the exact formulation here
+    let init = utf8_first_byte!(x, 2);
+    let y = unwrap_or_0(bytes.next());
+    let mut ch = utf8_acc_cont_byte!(init, y);
+    if x >= 0xE0 {
+        // [[x y z] w] case
+        // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
+        let z = unwrap_or_0(bytes.next());
+        let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
+        ch = init << 12 | y_z;
+        if x >= 0xF0 {
+            // [x y z w] case
+            // use only the lower 3 bits of `init`
+            let w = unwrap_or_0(bytes.next());
+            ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
+        }
+    }
+
+    Some(ch)
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Chars<'a> {
     type Item = char;
 
     #[inline]
     fn next(&mut self) -> Option<char> {
-        // Decode UTF-8, using the valid UTF-8 invariant
-        let x = match self.iter.next() {
-            None => return None,
-            Some(&next_byte) if next_byte < 128 => return Some(next_byte as char),
-            Some(&next_byte) => next_byte,
-        };
-
-        // Multibyte case follows
-        // Decode from a byte combination out of: [[[x y] z] w]
-        // NOTE: Performance is sensitive to the exact formulation here
-        let init = utf8_first_byte!(x, 2);
-        let y = unwrap_or_0(self.iter.next());
-        let mut ch = utf8_acc_cont_byte!(init, y);
-        if x >= 0xE0 {
-            // [[x y z] w] case
-            // 5th bit in 0xE0 .. 0xEF is always clear, so `init` is still valid
-            let z = unwrap_or_0(self.iter.next());
-            let y_z = utf8_acc_cont_byte!((y & CONT_MASK) as u32, z);
-            ch = init << 12 | y_z;
-            if x >= 0xF0 {
-                // [x y z w] case
-                // use only the lower 3 bits of `init`
-                let w = unwrap_or_0(self.iter.next());
-                ch = (init & 7) << 18 | utf8_acc_cont_byte!(y_z, w);
+        next_code_point(&mut self.iter).map(|ch| {
+            // str invariant says `ch` is a valid Unicode Scalar Value
+            unsafe {
+                mem::transmute(ch)
             }
-        }
-
-        // str invariant says `ch` is a valid Unicode Scalar Value
-        unsafe {
-            Some(mem::transmute(ch))
-        }
+        })
     }
 
     #[inline]
@@ -1509,7 +1518,7 @@ impl StrExt for str {
             None => "",
             Some(last) => {
                 let next = self.char_range_at(last).next;
-                unsafe { self.slice_unchecked(0u, next) }
+                unsafe { self.slice_unchecked(0, next) }
             }
         }
     }
@@ -1525,25 +1534,8 @@ impl StrExt for str {
 
     #[inline]
     fn char_range_at(&self, i: uint) -> CharRange {
-        if self.as_bytes()[i] < 128u8 {
-            return CharRange {ch: self.as_bytes()[i] as char, next: i + 1 };
-        }
-
-        // Multibyte case is a fn to allow char_range_at to inline cleanly
-        fn multibyte_char_range_at(s: &str, i: uint) -> CharRange {
-            let mut val = s.as_bytes()[i] as u32;
-            let w = UTF8_CHAR_WIDTH[val as uint] as uint;
-            assert!((w != 0));
-
-            val = utf8_first_byte!(val, w);
-            val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 1]);
-            if w > 2 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 2]); }
-            if w > 3 { val = utf8_acc_cont_byte!(val, s.as_bytes()[i + 3]); }
-
-            return CharRange {ch: unsafe { mem::transmute(val) }, next: i + w};
-        }
-
-        return multibyte_char_range_at(self, i);
+        let (c, n) = char_range_at_raw(self.as_bytes(), i);
+        CharRange { ch: unsafe { mem::transmute(c) }, next: n }
     }
 
     #[inline]
@@ -1559,7 +1551,7 @@ impl StrExt for str {
         fn multibyte_char_range_at_reverse(s: &str, mut i: uint) -> CharRange {
             // while there is a previous byte == 10......
             while i > 0 && s.as_bytes()[i] & !CONT_MASK == TAG_CONT_U8 {
-                i -= 1u;
+                i -= 1;
             }
 
             let mut val = s.as_bytes()[i] as u32;
@@ -1629,7 +1621,7 @@ impl StrExt for str {
         if self.is_empty() {
             None
         } else {
-            let CharRange {ch, next} = self.char_range_at(0u);
+            let CharRange {ch, next} = self.char_range_at(0);
             let next_s = unsafe { self.slice_unchecked(next, self.len()) };
             Some((ch, next_s))
         }
@@ -1659,6 +1651,32 @@ impl StrExt for str {
 
     #[inline]
     fn parse<T: FromStr>(&self) -> Option<T> { FromStr::from_str(self) }
+}
+
+/// Pluck a code point out of a UTF-8-like byte slice and return the
+/// index of the next code point.
+#[inline]
+#[unstable(feature = "core")]
+pub fn char_range_at_raw(bytes: &[u8], i: uint) -> (u32, usize) {
+    if bytes[i] < 128u8 {
+        return (bytes[i] as u32, i + 1);
+    }
+
+    // Multibyte case is a fn to allow char_range_at to inline cleanly
+    fn multibyte_char_range_at(bytes: &[u8], i: uint) -> (u32, usize) {
+        let mut val = bytes[i] as u32;
+        let w = UTF8_CHAR_WIDTH[val as uint] as uint;
+        assert!((w != 0));
+
+        val = utf8_first_byte!(val, w);
+        val = utf8_acc_cont_byte!(val, bytes[i + 1]);
+        if w > 2 { val = utf8_acc_cont_byte!(val, bytes[i + 2]); }
+        if w > 3 { val = utf8_acc_cont_byte!(val, bytes[i + 3]); }
+
+        return (val, i + w);
+    }
+
+    multibyte_char_range_at(bytes, i)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

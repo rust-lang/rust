@@ -256,7 +256,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                         &impl_polytype.substs,
                         &ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap());
                 let origin = MethodTypeParam(MethodParam { trait_ref: impl_trait_ref.clone(),
-                                                           method_num: method_num });
+                                                           method_num: method_num,
+                                                           impl_def_id: Some(impl_def_id) });
                 (impl_trait_ref.substs.clone(), origin)
             }
 
@@ -275,7 +276,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 let trait_ref =
                     Rc::new(ty::TraitRef::new(trait_def_id, self.tcx().mk_substs(substs.clone())));
                 let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
-                                                           method_num: method_num });
+                                                           method_num: method_num,
+                                                           impl_def_id: None });
                 (substs, origin)
             }
 
@@ -285,7 +287,8 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                 let trait_ref = self.replace_late_bound_regions_with_fresh_var(&*poly_trait_ref);
                 let substs = trait_ref.substs.clone();
                 let origin = MethodTypeParam(MethodParam { trait_ref: trait_ref,
-                                                           method_num: method_num });
+                                                           method_num: method_num,
+                                                           impl_def_id: None });
                 (substs, origin)
             }
         }

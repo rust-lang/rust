@@ -23,12 +23,12 @@ use num::FpCategory as Fp;
 use option::Option;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const RADIX: uint = 2u;
+pub const RADIX: uint = 2;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const MANTISSA_DIGITS: uint = 24u;
+pub const MANTISSA_DIGITS: uint = 24;
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub const DIGITS: uint = 6u;
+pub const DIGITS: uint = 6;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f32 = 1.19209290e-07_f32;

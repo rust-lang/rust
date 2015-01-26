@@ -32,10 +32,12 @@ use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use middle::{def, pat_util, stability};
 use middle::const_eval::{eval_const_expr_partial, const_int, const_uint};
+use middle::cfg;
 use util::ppaux::{ty_to_string};
 use util::nodemap::{FnvHashMap, NodeSet};
-use lint::{Context, LintPass, LintArray, Lint};
+use lint::{Level, Context, LintPass, LintArray, Lint};
 
+use std::collections::BitvSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::num::SignedInt;
 use std::{cmp, slice};
@@ -44,7 +46,7 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast, ast_map};
 use syntax::ast_util::is_shift_binop;
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::Span;
+use syntax::codemap::{self, Span};
 use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ast_util;
@@ -185,7 +187,7 @@ impl LintPass for TypeLimits {
                                  "comparison is useless due to type limits");
                 }
 
-                if is_shift_binop(binop) {
+                if is_shift_binop(binop.node) {
                     let opt_ty_bits = match ty::expr_ty(cx.tcx, &**l).sty {
                         ty::ty_int(t) => Some(int_ty_bits(t, cx.sess().target.int_type)),
                         ty::ty_uint(t) => Some(uint_ty_bits(t, cx.sess().target.uint_type)),
@@ -272,7 +274,7 @@ impl LintPass for TypeLimits {
 
         fn is_valid<T:cmp::PartialOrd>(binop: ast::BinOp, v: T,
                                 min: T, max: T) -> bool {
-            match binop {
+            match binop.node {
                 ast::BiLt => v >  min && v <= max,
                 ast::BiLe => v >= min && v <  max,
                 ast::BiGt => v >= min && v <  max,
@@ -283,13 +285,13 @@ impl LintPass for TypeLimits {
         }
 
         fn rev_binop(binop: ast::BinOp) -> ast::BinOp {
-            match binop {
+            codemap::respan(binop.span, match binop.node {
                 ast::BiLt => ast::BiGt,
                 ast::BiLe => ast::BiGe,
                 ast::BiGt => ast::BiLt,
                 ast::BiGe => ast::BiLe,
-                _ => binop
-            }
+                _ => return binop
+            })
         }
 
         // for int & uint, be conservative with the warnings, so that the
@@ -382,7 +384,7 @@ impl LintPass for TypeLimits {
         }
 
         fn is_comparison(binop: ast::BinOp) -> bool {
-            match binop {
+            match binop.node {
                 ast::BiEq | ast::BiLt | ast::BiLe |
                 ast::BiNe | ast::BiGe | ast::BiGt => true,
                 _ => false
@@ -1671,6 +1673,194 @@ impl LintPass for Stability {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         stability::check_expr(cx.tcx, e,
                               &mut |id, sp, stab| self.lint(cx, id, sp, stab));
+    }
+}
+
+declare_lint! {
+    pub UNCONDITIONAL_RECURSION,
+    Warn,
+    "functions that cannot return without calling themselves"
+}
+
+#[derive(Copy)]
+pub struct UnconditionalRecursion;
+
+
+impl LintPass for UnconditionalRecursion {
+    fn get_lints(&self) -> LintArray {
+        lint_array![UNCONDITIONAL_RECURSION]
+    }
+
+    fn check_fn(&mut self, cx: &Context, fn_kind: visit::FnKind, _: &ast::FnDecl,
+                blk: &ast::Block, sp: Span, id: ast::NodeId) {
+        type F = for<'tcx> fn(&ty::ctxt<'tcx>,
+                              ast::NodeId, ast::NodeId, ast::Ident, ast::NodeId) -> bool;
+
+        let (name, checker) = match fn_kind {
+            visit::FkItemFn(name, _, _, _) => (name, id_refers_to_this_fn as F),
+            visit::FkMethod(name, _, _) => (name, id_refers_to_this_method as F),
+            // closures can't recur, so they don't matter.
+            visit::FkFnBlock => return
+        };
+
+        let impl_def_id = ty::impl_of_method(cx.tcx, ast_util::local_def(id))
+            .unwrap_or(ast_util::local_def(ast::DUMMY_NODE_ID));
+        assert!(ast_util::is_local(impl_def_id));
+        let impl_node_id = impl_def_id.node;
+
+        // Walk through this function (say `f`) looking to see if
+        // every possible path references itself, i.e. the function is
+        // called recursively unconditionally. This is done by trying
+        // to find a path from the entry node to the exit node that
+        // *doesn't* call `f` by traversing from the entry while
+        // pretending that calls of `f` are sinks (i.e. ignoring any
+        // exit edges from them).
+        //
+        // NB. this has an edge case with non-returning statements,
+        // like `loop {}` or `panic!()`: control flow never reaches
+        // the exit node through these, so one can have a function
+        // that never actually calls itselfs but is still picked up by
+        // this lint:
+        //
+        //     fn f(cond: bool) {
+        //         if !cond { panic!() } // could come from `assert!(cond)`
+        //         f(false)
+        //     }
+        //
+        // In general, functions of that form may be able to call
+        // itself a finite number of times and then diverge. The lint
+        // considers this to be an error for two reasons, (a) it is
+        // easier to implement, and (b) it seems rare to actually want
+        // to have behaviour like the above, rather than
+        // e.g. accidentally recurring after an assert.
+
+        let cfg = cfg::CFG::new(cx.tcx, blk);
+
+        let mut work_queue = vec![cfg.entry];
+        let mut reached_exit_without_self_call = false;
+        let mut self_call_spans = vec![];
+        let mut visited = BitvSet::new();
+
+        while let Some(idx) = work_queue.pop() {
+            let cfg_id = idx.node_id();
+            if idx == cfg.exit {
+                // found a path!
+                reached_exit_without_self_call = true;
+                break
+            } else if visited.contains(&cfg_id) {
+                // already done
+                continue
+            }
+            visited.insert(cfg_id);
+            let node_id = cfg.graph.node_data(idx).id;
+
+            // is this a recursive call?
+            if node_id != ast::DUMMY_NODE_ID && checker(cx.tcx, impl_node_id, id, name, node_id) {
+
+                self_call_spans.push(cx.tcx.map.span(node_id));
+                // this is a self call, so we shouldn't explore past
+                // this node in the CFG.
+                continue
+            }
+            // add the successors of this node to explore the graph further.
+            cfg.graph.each_outgoing_edge(idx, |_, edge| {
+                let target_idx = edge.target();
+                let target_cfg_id = target_idx.node_id();
+                if !visited.contains(&target_cfg_id) {
+                    work_queue.push(target_idx)
+                }
+                true
+            });
+        }
+
+        // check the number of sell calls because a function that
+        // doesn't return (e.g. calls a `-> !` function or `loop { /*
+        // no break */ }`) shouldn't be linted unless it actually
+        // recurs.
+        if !reached_exit_without_self_call && self_call_spans.len() > 0 {
+            cx.span_lint(UNCONDITIONAL_RECURSION, sp,
+                         "function cannot return without recurring");
+
+            // FIXME #19668: these could be span_lint_note's instead of this manual guard.
+            if cx.current_level(UNCONDITIONAL_RECURSION) != Level::Allow {
+                let sess = cx.sess();
+                // offer some help to the programmer.
+                for call in self_call_spans.iter() {
+                    sess.span_note(*call, "recursive call site")
+                }
+                sess.span_help(sp, "a `loop` may express intention better if this is on purpose")
+            }
+        }
+
+        // all done
+        return;
+
+        // Functions for identifying if the given NodeId `id`
+        // represents a call to the function `fn_id`/method
+        // `method_id`.
+
+        fn id_refers_to_this_fn<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                      _: ast::NodeId,
+                                      fn_id: ast::NodeId,
+                                      _: ast::Ident,
+                                      id: ast::NodeId) -> bool {
+            tcx.def_map.borrow().get(&id)
+                .map_or(false, |def| {
+                    let did = def.def_id();
+                    ast_util::is_local(did) && did.node == fn_id
+                })
+        }
+
+        // check if the method call `id` refers to method `method_id`
+        // (with name `method_name` contained in impl `impl_id`).
+        fn id_refers_to_this_method<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                          impl_id: ast::NodeId,
+                                          method_id: ast::NodeId,
+                                          method_name: ast::Ident,
+                                          id: ast::NodeId) -> bool {
+            let did = match tcx.method_map.borrow().get(&ty::MethodCall::expr(id)) {
+                None => return false,
+                Some(m) => match m.origin {
+                    // There's no way to know if a method call via a
+                    // vtable is recursion, so we assume it's not.
+                    ty::MethodTraitObject(_) => return false,
+
+                    // This `did` refers directly to the method definition.
+                    ty::MethodStatic(did) | ty::MethodStaticUnboxedClosure(did) => did,
+
+                    // MethodTypeParam are methods from traits:
+
+                    // The `impl ... for ...` of this method call
+                    // isn't known, e.g. it might be a default method
+                    // in a trait, so we get the def-id of the trait
+                    // method instead.
+                    ty::MethodTypeParam(
+                        ty::MethodParam { ref trait_ref, method_num, impl_def_id: None, }) => {
+                        ty::trait_item(tcx, trait_ref.def_id, method_num).def_id()
+                    }
+
+                    // The `impl` is known, so we check that with a
+                    // special case:
+                    ty::MethodTypeParam(
+                        ty::MethodParam { impl_def_id: Some(impl_def_id), .. }) => {
+
+                        let name = match tcx.map.expect_expr(id).node {
+                            ast::ExprMethodCall(ref sp_ident, _, _) => sp_ident.node,
+                            _ => tcx.sess.span_bug(
+                                tcx.map.span(id),
+                                "non-method call expr behaving like a method call?")
+                        };
+                        // it matches if it comes from the same impl,
+                        // and has the same method name.
+                        return ast_util::is_local(impl_def_id)
+                            && impl_def_id.node == impl_id
+                            && method_name.name == name.name
+                    }
+                }
+            };
+
+            ast_util::is_local(did) && did.node == method_id
+        }
     }
 }
 

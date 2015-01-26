@@ -212,6 +212,7 @@ impl LintStore {
                      MissingCopyImplementations,
                      UnstableFeatures,
                      Stability,
+                     UnconditionalRecursion,
         );
 
         add_builtin_with_new!(sess,

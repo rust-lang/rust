@@ -48,7 +48,7 @@ macro_rules! panic {
 /// let x = true;
 /// assert!(x, "x wasn't true!");
 ///
-/// let a = 3i; let b = 27i;
+/// let a = 3; let b = 27;
 /// assert!(a + b == 30, "a = {}, b = {}", a, b);
 /// ```
 #[macro_export]
@@ -74,8 +74,8 @@ macro_rules! assert {
 /// # Example
 ///
 /// ```
-/// let a = 3i;
-/// let b = 1i + 2i;
+/// let a = 3;
+/// let b = 1 + 2;
 /// assert_eq!(a, b);
 /// ```
 #[macro_export]
@@ -141,8 +141,8 @@ macro_rules! debug_assert {
 /// # Example
 ///
 /// ```
-/// let a = 3i;
-/// let b = 1i + 2i;
+/// let a = 3;
+/// let b = 1 + 2;
 /// debug_assert_eq!(a, b);
 /// ```
 #[macro_export]
