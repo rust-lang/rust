@@ -1377,8 +1377,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     ty::BoundSync |
                     ty::BoundSend => {
-                        // sync and send are not implemented for *const, *mut
-                        Err(Unimplemented)
+                        self.tcx().sess.bug(
+                            &format!(
+                                "raw pointers should have a negative \
+                                 impl for `Send` and `Sync`")[]);
                     }
                 }
             }
