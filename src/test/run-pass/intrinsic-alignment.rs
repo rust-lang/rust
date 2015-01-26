@@ -66,7 +66,7 @@ mod m {
 #[cfg(target_os = "android")]
 mod m {
     #[main]
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     pub fn main() {
         unsafe {
             assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
