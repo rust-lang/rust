@@ -10,9 +10,8 @@
 
 #![feature(box_syntax)]
 
+#[derive(Copy)]
 struct A { a: isize, b: isize }
-
-impl Copy for A {}
 
 struct B { a: isize, b: Box<isize> }
 

@@ -11,12 +11,10 @@
 // Test a foreign function that accepts and returns a struct
 // by value.
 
-#[derive(PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 pub struct TwoU32s {
     one: u32, two: u32
 }
-
-impl Copy for TwoU32s {}
 
 #[link(name = "rust_test_helpers")]
 extern {

@@ -11,10 +11,8 @@
 
 use std::cmp;
 
-#[derive(Show)]
+#[derive(Copy, Show)]
 enum cat_type { tuxedo, tabby, tortoiseshell }
-
-impl Copy for cat_type {}
 
 impl cmp::PartialEq for cat_type {
     fn eq(&self, other: &cat_type) -> bool {

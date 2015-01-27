@@ -37,6 +37,8 @@ impl OptimizationDiagnosticKind {
     }
 }
 
+#[allow(raw_pointer_derive)]
+#[derive(Copy)]
 pub struct OptimizationDiagnostic {
     pub kind: OptimizationDiagnosticKind,
     pub pass_name: *const c_char,
@@ -44,8 +46,6 @@ pub struct OptimizationDiagnostic {
     pub debug_loc: DebugLocRef,
     pub message: TwineRef,
 }
-
-impl Copy for OptimizationDiagnostic {}
 
 impl OptimizationDiagnostic {
     unsafe fn unpack(kind: OptimizationDiagnosticKind, di: DiagnosticInfoRef)

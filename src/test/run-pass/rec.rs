@@ -8,12 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-
+#[derive(Copy)]
 struct Rect {x: int, y: int, w: int, h: int}
-
-impl Copy for Rect {}
 
 fn f(r: Rect, x: int, y: int, w: int, h: int) {
     assert_eq!(r.x, x);

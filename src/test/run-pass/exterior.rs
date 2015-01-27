@@ -11,9 +11,8 @@
 
 use std::cell::Cell;
 
+#[derive(Copy)]
 struct Point {x: int, y: int, z: int}
-
-impl Copy for Point {}
 
 fn f(p: &Cell<Point>) {
     assert!((p.get().z == 12));

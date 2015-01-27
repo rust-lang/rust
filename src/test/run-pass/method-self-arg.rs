@@ -15,9 +15,8 @@
 
 static mut COUNT: uint = 1;
 
+#[derive(Copy)]
 struct Foo;
-
-impl Copy for Foo {}
 
 impl Foo {
     fn foo(self, x: &Foo) {

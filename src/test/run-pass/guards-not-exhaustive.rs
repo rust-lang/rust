@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[derive(Copy)]
 enum Q { R(Option<uint>) }
-
-impl Copy for Q {}
 
 fn xyzzy(q: Q) -> uint {
     match q {
