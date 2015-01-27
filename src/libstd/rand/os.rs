@@ -49,7 +49,7 @@ mod imp {
         const NR_GETRANDOM: libc::c_long = 384;
 
         unsafe {
-            syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0u)
+            syscall(NR_GETRANDOM, buf.as_mut_ptr(), buf.len(), 0)
         }
     }
 
@@ -74,7 +74,7 @@ mod imp {
                     panic!("unexpected getrandom error: {}", err);
                 }
             } else {
-                read += result as uint;
+                read += result as usize;
             }
         }
     }
@@ -378,7 +378,7 @@ mod test {
     fn test_os_rng_tasks() {
 
         let mut txs = vec!();
-        for _ in range(0u, 20) {
+        for _ in range(0, 20) {
             let (tx, rx) = channel();
             txs.push(tx);
 
@@ -392,7 +392,7 @@ mod test {
                 Thread::yield_now();
                 let mut v = [0u8; 1000];
 
-                for _ in range(0u, 100) {
+                for _ in range(0, 100) {
                     r.next_u32();
                     Thread::yield_now();
                     r.next_u64();

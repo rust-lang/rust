@@ -99,10 +99,10 @@
 //!    let between = Range::new(-1f64, 1.);
 //!    let mut rng = rand::thread_rng();
 //!
-//!    let total = 1_000_000u;
-//!    let mut in_circle = 0u;
+//!    let total = 1_000_000;
+//!    let mut in_circle = 0;
 //!
-//!    for _ in range(0u, total) {
+//!    for _ in range(0, total) {
 //!        let a = between.ind_sample(&mut rng);
 //!        let b = between.ind_sample(&mut rng);
 //!        if a*a + b*b <= 1. {
@@ -176,18 +176,18 @@
 //! }
 //!
 //! fn free_doors(blocked: &[uint]) -> Vec<uint> {
-//!     range(0u, 3).filter(|x| !blocked.contains(x)).collect()
+//!     range(0, 3).filter(|x| !blocked.contains(x)).collect()
 //! }
 //!
 //! fn main() {
 //!     // The estimation will be more accurate with more simulations
-//!     let num_simulations = 10000u;
+//!     let num_simulations = 10000;
 //!
 //!     let mut rng = rand::thread_rng();
-//!     let random_door = Range::new(0u, 3);
+//!     let random_door = Range::new(0, 3);
 //!
-//!     let (mut switch_wins, mut switch_losses) = (0u, 0u);
-//!     let (mut keep_wins, mut keep_losses) = (0u, 0u);
+//!     let (mut switch_wins, mut switch_losses) = (0, 0);
+//!     let (mut keep_wins, mut keep_losses) = (0, 0);
 //!
 //!     println!("Running {} simulations...", num_simulations);
 //!     for _ in range(0, num_simulations) {
@@ -279,14 +279,14 @@ impl Rng for StdRng {
     }
 }
 
-impl<'a> SeedableRng<&'a [uint]> for StdRng {
-    fn reseed(&mut self, seed: &'a [uint]) {
+impl<'a> SeedableRng<&'a [usize]> for StdRng {
+    fn reseed(&mut self, seed: &'a [usize]) {
         // the internal RNG can just be seeded from the above
         // randomness.
         self.rng.reseed(unsafe {mem::transmute(seed)})
     }
 
-    fn from_seed(seed: &'a [uint]) -> StdRng {
+    fn from_seed(seed: &'a [usize]) -> StdRng {
         StdRng { rng: SeedableRng::from_seed(unsafe {mem::transmute(seed)}) }
     }
 }
@@ -318,7 +318,7 @@ impl reseeding::Reseeder<StdRng> for ThreadRngReseeder {
         }
     }
 }
-static THREAD_RNG_RESEED_THRESHOLD: uint = 32_768;
+static THREAD_RNG_RESEED_THRESHOLD: usize = 32_768;
 type ThreadRngInner = reseeding::ReseedingRng<StdRng, ThreadRngReseeder>;
 
 /// The thread-local RNG.
@@ -384,7 +384,7 @@ impl Rng for ThreadRng {
 /// use std::rand;
 ///
 /// let x = rand::random();
-/// println!("{}", 2u * x);
+/// println!("{}", 2u8 * x);
 ///
 /// let y = rand::random::<f64>();
 /// println!("{}", y);
@@ -432,7 +432,7 @@ pub fn random<T: Rand>() -> T {
 /// ```
 pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
                                          mut iter: I,
-                                         amount: uint) -> Vec<T> {
+                                         amount: usize) -> Vec<T> {
     let mut reservoir: Vec<T> = iter.by_ref().take(amount).collect();
     for (i, elem) in iter.enumerate() {
         let k = rng.gen_range(0, i + 1 + amount);
@@ -480,18 +480,18 @@ mod test {
     #[test]
     fn test_gen_range() {
         let mut r = thread_rng();
-        for _ in range(0u, 1000) {
+        for _ in range(0, 1000) {
             let a = r.gen_range(-3i, 42);
             assert!(a >= -3 && a < 42);
             assert_eq!(r.gen_range(0i, 1), 0);
             assert_eq!(r.gen_range(-12i, -11), -12);
         }
 
-        for _ in range(0u, 1000) {
+        for _ in range(0, 1000) {
             let a = r.gen_range(10i, 42);
             assert!(a >= 10 && a < 42);
             assert_eq!(r.gen_range(0i, 1), 0);
-            assert_eq!(r.gen_range(3_000_000u, 3_000_001), 3_000_000);
+            assert_eq!(r.gen_range(3_000_000, 3_000_001), 3_000_000);
         }
 
     }
@@ -507,7 +507,7 @@ mod test {
     #[should_fail]
     fn test_gen_range_panic_uint() {
         let mut r = thread_rng();
-        r.gen_range(5u, 2u);
+        r.gen_range(5us, 2us);
     }
 
     #[test]
@@ -521,24 +521,24 @@ mod test {
     #[test]
     fn test_gen_weighted_bool() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_weighted_bool(0u), true);
-        assert_eq!(r.gen_weighted_bool(1u), true);
+        assert_eq!(r.gen_weighted_bool(0), true);
+        assert_eq!(r.gen_weighted_bool(1), true);
     }
 
     #[test]
     fn test_gen_ascii_str() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_ascii_chars().take(0).count(), 0u);
-        assert_eq!(r.gen_ascii_chars().take(10).count(), 10u);
-        assert_eq!(r.gen_ascii_chars().take(16).count(), 16u);
+        assert_eq!(r.gen_ascii_chars().take(0).count(), 0);
+        assert_eq!(r.gen_ascii_chars().take(10).count(), 10);
+        assert_eq!(r.gen_ascii_chars().take(16).count(), 16);
     }
 
     #[test]
     fn test_gen_vec() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_iter::<u8>().take(0).count(), 0u);
-        assert_eq!(r.gen_iter::<u8>().take(10).count(), 10u);
-        assert_eq!(r.gen_iter::<f64>().take(16).count(), 16u);
+        assert_eq!(r.gen_iter::<u8>().take(0).count(), 0);
+        assert_eq!(r.gen_iter::<u8>().take(10).count(), 10);
+        assert_eq!(r.gen_iter::<f64>().take(16).count(), 16);
     }
 
     #[test]
@@ -578,7 +578,7 @@ mod test {
         r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
         assert_eq!(v, b);
-        assert_eq!(r.gen_range(0u, 1u), 0u);
+        assert_eq!(r.gen_range(0, 1), 0);
     }
 
     #[test]
