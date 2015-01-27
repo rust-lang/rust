@@ -14,11 +14,11 @@
 
 import fileinput
 
-collections = { "gram": [],
-                "keyword": [],
-                "reserved": [],
-                "binop": [],
-                "unop": [] }
+collections = {"gram": [],
+               "keyword": [],
+               "reserved": [],
+               "binop": [],
+               "unop": []}
 
 
 in_coll = False
@@ -47,66 +47,66 @@ for line in fileinput.input(openhook=fileinput.hook_encoded("utf-8")):
 # Define operator symbol-names here
 
 tokens = ["non_star", "non_slash", "non_eol",
-          "non_single_quote", "non_double_quote", "ident" ]
+          "non_single_quote", "non_double_quote", "ident"]
 
 symnames = {
-".": "dot",
-"+": "plus",
-"-": "minus",
-"/": "slash",
-"*": "star",
-"%": "percent",
+    ".": "dot",
+    "+": "plus",
+    "-": "minus",
+    "/": "slash",
+    "*": "star",
+    "%": "percent",
 
-"~": "tilde",
-"@": "at",
+    "~": "tilde",
+    "@": "at",
 
-"!": "not",
-"&": "and",
-"|": "or",
-"^": "xor",
+    "!": "not",
+    "&": "and",
+    "|": "or",
+    "^": "xor",
 
-"<<": "lsl",
-">>": "lsr",
-">>>": "asr",
+    "<<": "lsl",
+    ">>": "lsr",
+    ">>>": "asr",
 
-"&&": "andand",
-"||": "oror",
+    "&&": "andand",
+    "||": "oror",
 
-"<" : "lt",
-"<=" : "le",
-"==" : "eqeq",
-">=" : "ge",
-">" : "gt",
+    "<": "lt",
+    "<=": "le",
+    "==": "eqeq",
+    ">=": "ge",
+    ">": "gt",
 
-"=": "eq",
+    "=": "eq",
 
-"+=": "plusequal",
-"-=": "minusequal",
-"/=": "divequal",
-"*=": "starequal",
-"%=": "percentequal",
+    "+=": "plusequal",
+    "-=": "minusequal",
+    "/=": "divequal",
+    "*=": "starequal",
+    "%=": "percentequal",
 
-"&=": "andequal",
-"|=": "orequal",
-"^=": "xorequal",
+    "&=": "andequal",
+    "|=": "orequal",
+    "^=": "xorequal",
 
-">>=": "lsrequal",
-">>>=": "asrequal",
-"<<=": "lslequal",
+    ">>=": "lsrequal",
+    ">>>=": "asrequal",
+    "<<=": "lslequal",
 
-"::": "coloncolon",
+    "::": "coloncolon",
 
-"->": "rightarrow",
-"<-": "leftarrow",
-"<->": "swaparrow",
+    "->": "rightarrow",
+    "<-": "leftarrow",
+    "<->": "swaparrow",
 
-"//": "linecomment",
-"/*": "openblockcomment",
-"*/": "closeblockcomment",
-"macro_rules": "macro_rules",
-"=>" : "eg",
-".." : "dotdot",
-","  : "comma"
+    "//": "linecomment",
+    "/*": "openblockcomment",
+    "*/": "closeblockcomment",
+    "macro_rules": "macro_rules",
+    "=>": "eg",
+    "..": "dotdot",
+    ",": "comma"
 }
 
 lines = []
@@ -126,8 +126,8 @@ for line in collections["gram"]:
                                         + word)
                 if word not in tokens:
                     if (word in collections["keyword"] or
-                        word in collections["reserved"]):
-                       tokens.append(word)
+                            word in collections["reserved"]):
+                        tokens.append(word)
                     else:
                         raise Exception("unknown keyword/reserved word: "
                                         + word)
@@ -149,8 +149,8 @@ for sym in collections["unop"] + collections["binop"] + symnames.keys():
 print("%start parser, token;")
 print("%%token %s ;" % ("\n\t, ".join(tokens)))
 for coll in ["keyword", "reserved"]:
-    print("%s: %s ; " % (coll, "\n\t| ".join(collections[coll])));
+    print("%s: %s ; " % (coll, "\n\t| ".join(collections[coll])))
 for coll in ["binop", "unop"]:
     print("%s: %s ; " % (coll, "\n\t| ".join([symnames[x]
-                                              for x in collections[coll]])));
-print("\n".join(lines));
+                                              for x in collections[coll]])))
+print("\n".join(lines))
