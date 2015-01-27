@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -174,7 +174,7 @@ pub trait SliceExt {
     fn slice(&self, start: uint, end: uint) -> &[Self::Item];
 
     /// Deprecated: use `&s[start..]` notation instead.
-    #[deprecated = "use &s[start..] isntead"]
+    #[deprecated = "use &s[start..] instead"]
     fn slice_from(&self, start: uint) -> &[Self::Item];
 
     /// Deprecated: use `&s[..end]` notation instead.
@@ -188,15 +188,36 @@ pub trait SliceExt {
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
     /// Panics if `mid > len`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 50];
+    /// let (v1, v2) = v.split_at(2);
+    /// assert_eq!([10, 40], v1);
+    /// assert_eq!([30, 20, 50], v2);
+    /// ```
     #[stable]
     fn split_at(&self, mid: uint) -> (&[Self::Item], &[Self::Item]);
 
-    /// Returns an iterator over the slice
+    /// Returns an iterator over the slice.
     #[stable]
     fn iter(&self) -> Iter<Self::Item>;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`.  The matched element is not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// Print the slice split by numbers divisible by 3 (i.e. `[10, 40]`,
+    /// `[20]`, `[50]`):
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 60, 50];
+    /// for group in v.split(|num| *num % 3 == 0) {
+    ///     println!("{:?}", group);
+    /// }
+    /// ```
     #[stable]
     fn split<F>(&self, pred: F) -> Split<Self::Item, F>
                 where F: FnMut(&Self::Item) -> bool;
@@ -204,6 +225,18 @@ pub trait SliceExt {
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to splitting at most `n` times.  The matched element is
     /// not contained in the subslices.
+    ///
+    /// # Examples
+    ///
+    /// Print the slice split once by numbers divisible by 3 (i.e. `[10, 40]`,
+    /// `[20, 60, 50]`):
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 60, 50];
+    /// for group in v.splitn(1, |num| *num % 3 == 0) {
+    ///     println!("{:?}", group);
+    /// }
+    /// ```
     #[stable]
     fn splitn<F>(&self, n: uint, pred: F) -> SplitN<Self::Item, F>
                  where F: FnMut(&Self::Item) -> bool;
@@ -212,6 +245,18 @@ pub trait SliceExt {
     /// `pred` limited to splitting at most `n` times. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
+    ///
+    /// # Examples
+    ///
+    /// Print the slice split once, starting from the end, by numbers divisible
+    /// by 3 (i.e. `[50]`, `[10, 40, 30, 20]`):
+    ///
+    /// ```
+    /// let v = [10, 40, 30, 20, 60, 50];
+    /// for group in v.rsplitn(1, |num| *num % 3 == 0) {
+    ///     println!("{:?}", group);
+    /// }
+    /// ```
     #[stable]
     fn rsplitn<F>(&self, n: uint, pred: F) -> RSplitN<Self::Item, F>
                   where F: FnMut(&Self::Item) -> bool;
@@ -263,10 +308,28 @@ pub trait SliceExt {
 
     /// Returns the element of a slice at the given index, or `None` if the
     /// index is out of bounds.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert_eq!(Some(&40), v.get(1));
+    /// assert_eq!(None, v.get(3));
+    /// ```
     #[stable]
     fn get(&self, index: uint) -> Option<&Self::Item>;
 
     /// Returns the first element of a slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert_eq!(Some(&10), v.first());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(None, w.first());
+    /// ```
     #[stable]
     fn first(&self) -> Option<&Self::Item>;
 
@@ -279,6 +342,16 @@ pub trait SliceExt {
     fn init(&self) -> &[Self::Item];
 
     /// Returns the last element of a slice, or `None` if it is empty.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert_eq!(Some(&30), v.last());
+    ///
+    /// let w: &[i32] = &[];
+    /// assert_eq!(None, w.last());
+    /// ```
     #[stable]
     fn last(&self) -> Option<&Self::Item>;
 
@@ -658,15 +731,43 @@ pub trait SliceExt {
     #[unstable]
     fn rposition_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
-    /// Return true if the slice contains an element with the given value.
+    /// Returns true if the slice contains an element with the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.contains(&30));
+    /// assert!(!v.contains(&50));
+    /// ```
     #[stable]
     fn contains(&self, x: &Self::Item) -> bool where Self::Item: PartialEq;
 
     /// Returns true if `needle` is a prefix of the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.starts_with(&[10]));
+    /// assert!(v.starts_with(&[10, 40]));
+    /// assert!(!v.starts_with(&[50]));
+    /// assert!(!v.starts_with(&[10, 50]));
+    /// ```
     #[stable]
     fn starts_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     /// Returns true if `needle` is a suffix of the slice.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// let v = [10, 40, 30];
+    /// assert!(v.ends_with(&[30]));
+    /// assert!(v.ends_with(&[40, 30]));
+    /// assert!(!v.ends_with(&[50]));
+    /// assert!(!v.ends_with(&[50, 30]));
+    /// ```
     #[stable]
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
