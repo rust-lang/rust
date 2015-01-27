@@ -420,9 +420,15 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let tcx = bcx.tcx();
 
         let datum_ty = datum.ty;
-        // Arrange cleanup
-        let lval = unpack_datum!(bcx,
-                                 datum.to_lvalue_datum(bcx, "unsize_unique_vec", expr.id));
+
+        debug!("unsize_unique_vec expr.id={} datum_ty={} len={}",
+               expr.id, datum_ty.repr(tcx), len);
+
+        // We do not arrange cleanup ourselves; if we already are an
+        // L-value, then cleanup will have already been scheduled (and
+        // the `datum.store_to` call below will emit code to zero the
+        // drop flag when moving out of the L-value). If we are an R-value,
+        // then we do not need to schedule cleanup.
 
         let ll_len = C_uint(bcx.ccx(), len);
         let unit_ty = ty::sequence_element_type(tcx, ty::type_content(datum_ty));
@@ -433,7 +439,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let base = PointerCast(bcx,
                                base,
                                type_of::type_of(bcx.ccx(), datum_ty).ptr_to());
-        bcx = lval.store_to(bcx, base);
+        bcx = datum.store_to(bcx, base);
 
         Store(bcx, ll_len, get_len(bcx, scratch.val));
         DatumBlock::new(bcx, scratch.to_expr_datum())
@@ -455,13 +461,16 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         };
         let result_ty = ty::mk_uniq(tcx, ty::unsize_ty(tcx, unboxed_ty, k, expr.span));
 
-        let lval = unpack_datum!(bcx,
-                                 datum.to_lvalue_datum(bcx, "unsize_unique_expr", expr.id));
+        // We do not arrange cleanup ourselves; if we already are an
+        // L-value, then cleanup will have already been scheduled (and
+        // the `datum.store_to` call below will emit code to zero the
+        // drop flag when moving out of the L-value). If we are an R-value,
+        // then we do not need to schedule cleanup.
 
         let scratch = rvalue_scratch_datum(bcx, result_ty, "__uniq_fat_ptr");
         let llbox_ty = type_of::type_of(bcx.ccx(), datum_ty);
         let base = PointerCast(bcx, get_dataptr(bcx, scratch.val), llbox_ty.ptr_to());
-        bcx = lval.store_to(bcx, base);
+        bcx = datum.store_to(bcx, base);
 
         let info = unsized_info(bcx, k, expr.id, unboxed_ty, |t| ty::mk_uniq(tcx, t));
         Store(bcx, info, get_len(bcx, scratch.val));
