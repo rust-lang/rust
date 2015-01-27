@@ -19,9 +19,6 @@ pub const RWLOCK_INIT: RWLock = RWLock {
 
 impl RWLock {
     #[inline]
-    pub unsafe fn new() -> RWLock { RWLOCK_INIT }
-
-    #[inline]
     pub unsafe fn read(&self) {
         ffi::AcquireSRWLockShared(self.inner.get())
     }

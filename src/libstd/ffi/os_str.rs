@@ -41,9 +41,11 @@ use string::{String, CowString};
 use ops;
 use cmp;
 use hash::{Hash, Hasher, Writer};
+use path::{Path, GenericPath};
 
 use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};
+use super::AsOsStr;
 
 /// Owned, mutable OS strings.
 #[derive(Clone)]
@@ -67,6 +69,11 @@ impl OsString {
     /// Equivalent to: `OsString::from_string(String::from_str(s))`.
     pub fn from_str(s: &str) -> OsString {
         OsString { inner: Buf::from_str(s) }
+    }
+
+    /// Constructs a new empty `OsString`.
+    pub fn new() -> OsString {
+        OsString { inner: Buf::from_string(String::new()) }
     }
 
     /// Convert the `OsString` into a `String` if it contains valid Unicode data.
@@ -114,6 +121,62 @@ impl ops::Deref for OsString {
 impl Debug for OsString {
     fn fmt(&self, formatter: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         fmt::Debug::fmt(&**self, formatter)
+    }
+}
+
+impl PartialEq for OsString {
+    fn eq(&self, other: &OsString) -> bool {
+        &**self == &**other
+    }
+}
+
+impl PartialEq<str> for OsString {
+    fn eq(&self, other: &str) -> bool {
+        &**self == other
+    }
+}
+
+impl PartialEq<OsString> for str {
+    fn eq(&self, other: &OsString) -> bool {
+        &**other == self
+    }
+}
+
+impl Eq for OsString {}
+
+impl PartialOrd for OsString {
+    #[inline]
+    fn partial_cmp(&self, other: &OsString) -> Option<cmp::Ordering> {
+        (&**self).partial_cmp(&**other)
+    }
+    #[inline]
+    fn lt(&self, other: &OsString) -> bool { &**self < &**other }
+    #[inline]
+    fn le(&self, other: &OsString) -> bool { &**self <= &**other }
+    #[inline]
+    fn gt(&self, other: &OsString) -> bool { &**self > &**other }
+    #[inline]
+    fn ge(&self, other: &OsString) -> bool { &**self >= &**other }
+}
+
+impl PartialOrd<str> for OsString {
+    #[inline]
+    fn partial_cmp(&self, other: &str) -> Option<cmp::Ordering> {
+        (&**self).partial_cmp(other)
+    }
+}
+
+impl Ord for OsString {
+    #[inline]
+    fn cmp(&self, other: &OsString) -> cmp::Ordering {
+        (&**self).cmp(&**other)
+    }
+}
+
+impl<'a, S: Hasher + Writer> Hash<S> for OsString {
+    #[inline]
+    fn hash(&self, state: &mut S) {
+        (&**self).hash(state)
     }
 }
 
@@ -222,10 +285,10 @@ impl ToOwned<OsString> for OsStr {
     fn to_owned(&self) -> OsString { self.to_os_string() }
 }
 
-/// Freely convertible to an `&OsStr` slice.
-pub trait AsOsStr {
-    /// Convert to an `&OsStr` slice.
-    fn as_os_str(&self) -> &OsStr;
+impl<'a, T: AsOsStr + ?Sized> AsOsStr for &'a T {
+    fn as_os_str(&self) -> &OsStr {
+        (*self).as_os_str()
+    }
 }
 
 impl AsOsStr for OsStr {
@@ -249,6 +312,21 @@ impl AsOsStr for str {
 impl AsOsStr for String {
     fn as_os_str(&self) -> &OsStr {
         OsStr::from_str(&self[])
+    }
+}
+
+#[cfg(unix)]
+impl AsOsStr for Path {
+    fn as_os_str(&self) -> &OsStr {
+        unsafe { mem::transmute(self.as_vec()) }
+    }
+}
+
+#[cfg(windows)]
+impl AsOsStr for Path {
+    fn as_os_str(&self) -> &OsStr {
+        // currently .as_str() is actually infallible on windows
+        OsStr::from_str(self.as_str().unwrap())
     }
 }
 

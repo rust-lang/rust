@@ -26,6 +26,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(env)]
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(libc)]
@@ -74,7 +75,7 @@ use rustc::util::common::time;
 use std::cmp::Ordering::Equal;
 use std::old_io;
 use std::iter::repeat;
-use std::os;
+use std::env;
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -252,7 +253,7 @@ pub fn get_unstable_features_setting() -> UnstableFeatures {
     // subverting the unstable features lints
     let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
     // The matching key to the above, only known by the build system
-    let bootstrap_provided_key = os::getenv("RUSTC_BOOTSTRAP_KEY");
+    let bootstrap_provided_key = env::var_string("RUSTC_BOOTSTRAP_KEY").ok();
     match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
         (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
         (true, _, _) => UnstableFeatures::Disallow,
@@ -618,7 +619,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
 
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
-    if os::getenv("RUST_MIN_STACK").is_none() {
+    if env::var("RUST_MIN_STACK").is_none() {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
@@ -682,8 +683,8 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
 }
 
 pub fn main() {
-    let args = std::os::args();
-    let result = run(args);
-    std::os::set_exit_status(result);
+    let args = env::args().map(|s| s.into_string().unwrap());
+    let result = run(args.collect());
+    std::env::set_exit_status(result as i32);
 }
 

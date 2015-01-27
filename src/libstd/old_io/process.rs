@@ -231,6 +231,7 @@ impl Command {
         self
     }
     // Get a mutable borrow of the environment variable map for this `Command`.
+    #[allow(deprecated)]
     fn get_env_map<'a>(&'a mut self) -> &'a mut EnvMap {
         match self.env {
             Some(ref mut map) => map,

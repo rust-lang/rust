@@ -66,6 +66,53 @@ pub const MSG_DONTWAIT: libc::c_int = 0x40;
 
 pub const WNOHANG: libc::c_int = 1;
 
+#[cfg(target_os = "linux")]
+pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 70;
+#[cfg(any(target_os = "macos",
+          target_os = "freebsd"))]
+pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 71;
+#[cfg(target_os = "android")]
+pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 0x0048;
+
+#[repr(C)]
+#[cfg(target_os = "linux")]
+pub struct passwd {
+    pub pw_name: *mut libc::c_char,
+    pub pw_passwd: *mut libc::c_char,
+    pub pw_uid: libc::uid_t,
+    pub pw_gid: libc::gid_t,
+    pub pw_gecos: *mut libc::c_char,
+    pub pw_dir: *mut libc::c_char,
+    pub pw_shell: *mut libc::c_char,
+}
+
+#[repr(C)]
+#[cfg(any(target_os = "macos",
+          target_os = "freebsd"))]
+pub struct passwd {
+    pub pw_name: *mut libc::c_char,
+    pub pw_passwd: *mut libc::c_char,
+    pub pw_uid: libc::uid_t,
+    pub pw_gid: libc::gid_t,
+    pub pw_change: libc::time_t,
+    pub pw_class: *mut libc::c_char,
+    pub pw_gecos: *mut libc::c_char,
+    pub pw_dir: *mut libc::c_char,
+    pub pw_shell: *mut libc::c_char,
+    pub pw_expire: libc::time_t,
+}
+
+#[repr(C)]
+#[cfg(target_os = "android")]
+pub struct passwd {
+    pub pw_name: *mut libc::c_char,
+    pub pw_passwd: *mut libc::c_char,
+    pub pw_uid: libc::uid_t,
+    pub pw_gid: libc::gid_t,
+    pub pw_dir: *mut libc::c_char,
+    pub pw_shell: *mut libc::c_char,
+}
+
 extern {
     pub fn gettimeofday(timeval: *mut libc::timeval,
                         tzp: *mut libc::c_void) -> libc::c_int;
@@ -92,6 +139,12 @@ extern {
     pub fn sigaddset(set: *mut sigset_t, signum: libc::c_int) -> libc::c_int;
     pub fn sigdelset(set: *mut sigset_t, signum: libc::c_int) -> libc::c_int;
     pub fn sigemptyset(set: *mut sigset_t) -> libc::c_int;
+
+    pub fn getpwuid_r(uid: libc::uid_t,
+                      pwd: *mut passwd,
+                      buf: *mut libc::c_char,
+                      buflen: libc::size_t,
+                      result: *mut *mut passwd) -> libc::c_int;
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]

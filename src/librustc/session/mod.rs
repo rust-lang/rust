@@ -27,7 +27,7 @@ use syntax::{ast, codemap};
 
 use rustc_back::target::Target;
 
-use std::os;
+use std::env;
 use std::cell::{Cell, RefCell};
 
 pub mod config;
@@ -347,7 +347,7 @@ pub fn build_session_(sopts: config::Options,
         if path.is_absolute() {
             path.clone()
         } else {
-            os::getcwd().unwrap().join(&path)
+            env::current_dir().unwrap().join(&path)
         }
     );
 
@@ -370,7 +370,7 @@ pub fn build_session_(sopts: config::Options,
         plugin_registrar_fn: Cell::new(None),
         default_sysroot: default_sysroot,
         local_crate_source_file: local_crate_source_file,
-        working_dir: os::getcwd().unwrap(),
+        working_dir: env::current_dir().unwrap(),
         lint_store: RefCell::new(lint::LintStore::new()),
         lints: RefCell::new(NodeMap()),
         crate_types: RefCell::new(Vec::new()),

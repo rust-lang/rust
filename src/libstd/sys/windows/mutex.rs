@@ -38,8 +38,6 @@ pub unsafe fn raw(m: &Mutex) -> ffi::PSRWLOCK {
 
 impl Mutex {
     #[inline]
-    pub unsafe fn new() -> Mutex { MUTEX_INIT }
-    #[inline]
     pub unsafe fn lock(&self) {
         ffi::AcquireSRWLockExclusive(self.inner.get())
     }
