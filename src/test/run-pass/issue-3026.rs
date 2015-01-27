@@ -17,7 +17,8 @@ extern crate collections;
 use std::collections::HashMap;
 
 pub fn main() {
+    let x;
     let mut buggy_map: HashMap<uint, &uint> = HashMap::new();
-    let x = box 1;
+    x = box 1;
     buggy_map.insert(42, &*x);
 }

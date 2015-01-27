@@ -100,6 +100,7 @@ pub fn compile_input(sess: Session,
                                                                  &id[]));
 
         let mut forest = ast_map::Forest::new(expanded_crate);
+        let arenas = ty::CtxtArenas::new();
         let ast_map = assign_node_ids_and_map(&sess, &mut forest);
 
         write_out_deps(&sess, input, &outputs, &id[]);
@@ -111,7 +112,6 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map,
                                                                      &id[]));
 
-        let arenas = ty::CtxtArenas::new();
         let analysis = phase_3_run_analysis_passes(sess,
                                                    ast_map,
                                                    &arenas,
