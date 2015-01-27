@@ -15,7 +15,7 @@ use libc;
 use mem;
 use sync::{Arc, Mutex};
 use sync::atomic::{AtomicBool, Ordering};
-use io::{self, IoResult, IoError};
+use old_io::{self, IoResult, IoError};
 
 use sys::{self, timer, retry, c, set_nonblocking, wouldblock};
 use sys::fs::{fd_t, FileDesc};
@@ -41,7 +41,7 @@ fn addr_to_sockaddr_un(addr: &CString,
     let len = addr.len();
     if len > s.sun_path.len() - 1 {
         return Err(IoError {
-            kind: io::InvalidInput,
+            kind: old_io::InvalidInput,
             desc: "invalid argument: path must be smaller than SUN_LEN",
             detail: None,
         })

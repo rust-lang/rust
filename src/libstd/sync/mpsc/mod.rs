@@ -120,7 +120,7 @@
 //!
 //! ```no_run
 //! use std::sync::mpsc::channel;
-//! use std::io::timer::Timer;
+//! use std::old_io::timer::Timer;
 //! use std::time::Duration;
 //!
 //! let (tx, rx) = channel::<int>();
@@ -144,7 +144,7 @@
 //!
 //! ```no_run
 //! use std::sync::mpsc::channel;
-//! use std::io::timer::Timer;
+//! use std::old_io::timer::Timer;
 //! use std::time::Duration;
 //!
 //! let (tx, rx) = channel::<int>();

@@ -10,7 +10,7 @@
 
 //! Networking I/O
 
-use io::{IoError, IoResult, InvalidInput};
+use old_io::{IoError, IoResult, InvalidInput};
 use ops::FnMut;
 use option::Option::None;
 use result::Result::{Ok, Err};

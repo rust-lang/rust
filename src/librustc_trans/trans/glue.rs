@@ -540,11 +540,12 @@ fn make_generic_glue<'a, 'tcx, F>(ccx: &CrateContext<'a, 'tcx>,
     let glue_name = format!("glue {} {}", name, ty_to_short_str(ccx.tcx(), t));
     let _s = StatRecorder::new(ccx, glue_name);
 
-    let arena = TypedArena::new();
     let empty_param_substs = Substs::trans_empty();
-    let fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
-                          ty::FnConverging(ty::mk_nil(ccx.tcx())),
-                          &empty_param_substs, None, &arena);
+    let (arena, fcx): (TypedArena<_>, FunctionContext);
+    arena = TypedArena::new();
+    fcx = new_fn_ctxt(ccx, llfn, ast::DUMMY_NODE_ID, false,
+                      ty::FnConverging(ty::mk_nil(ccx.tcx())),
+                      &empty_param_substs, None, &arena);
 
     let bcx = init_function(&fcx, false, ty::FnConverging(ty::mk_nil(ccx.tcx())));
 

@@ -12,7 +12,7 @@
 
 use prelude::v1::*;
 use cmp;
-use io;
+use old_io;
 use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
@@ -42,9 +42,9 @@ impl<R: Reader> LimitReader<R> {
 }
 
 impl<R: Reader> Reader for LimitReader<R> {
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         if self.limit == 0 {
-            return Err(io::standard_error(io::EndOfFile));
+            return Err(old_io::standard_error(old_io::EndOfFile));
         }
 
         let len = cmp::min(self.limit, buf.len());
@@ -58,11 +58,11 @@ impl<R: Reader> Reader for LimitReader<R> {
 }
 
 impl<R: Buffer> Buffer for LimitReader<R> {
-    fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
+    fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
         let amt = try!(self.inner.fill_buf());
         let buf = &amt[..cmp::min(amt.len(), self.limit)];
         if buf.len() == 0 {
-            Err(io::standard_error(io::EndOfFile))
+            Err(old_io::standard_error(old_io::EndOfFile))
         } else {
             Ok(buf)
         }
@@ -83,7 +83,7 @@ pub struct NullWriter;
 
 impl Writer for NullWriter {
     #[inline]
-    fn write(&mut self, _buf: &[u8]) -> io::IoResult<()> { Ok(()) }
+    fn write_all(&mut self, _buf: &[u8]) -> old_io::IoResult<()> { Ok(()) }
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
@@ -92,14 +92,14 @@ pub struct ZeroReader;
 
 impl Reader for ZeroReader {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         buf.set_memory(0);
         Ok(buf.len())
     }
 }
 
 impl Buffer for ZeroReader {
-    fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
+    fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
         static DATA: [u8; 64] = [0; 64];
         Ok(DATA.as_slice())
     }
@@ -113,14 +113,14 @@ pub struct NullReader;
 
 impl Reader for NullReader {
     #[inline]
-    fn read(&mut self, _buf: &mut [u8]) -> io::IoResult<uint> {
-        Err(io::standard_error(io::EndOfFile))
+    fn read(&mut self, _buf: &mut [u8]) -> old_io::IoResult<uint> {
+        Err(old_io::standard_error(old_io::EndOfFile))
     }
 }
 
 impl Buffer for NullReader {
-    fn fill_buf<'a>(&'a mut self) -> io::IoResult<&'a [u8]> {
-        Err(io::standard_error(io::EndOfFile))
+    fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
+        Err(old_io::standard_error(old_io::EndOfFile))
     }
     fn consume(&mut self, _amt: uint) {}
 }
@@ -143,15 +143,15 @@ impl<W> MultiWriter<W> where W: Writer {
 
 impl<W> Writer for MultiWriter<W> where W: Writer {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> io::IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> old_io::IoResult<()> {
         for writer in self.writers.iter_mut() {
-            try!(writer.write(buf));
+            try!(writer.write_all(buf));
         }
         Ok(())
     }
 
     #[inline]
-    fn flush(&mut self) -> io::IoResult<()> {
+    fn flush(&mut self) -> old_io::IoResult<()> {
         for writer in self.writers.iter_mut() {
             try!(writer.flush());
         }
@@ -176,13 +176,13 @@ impl<R: Reader, I: Iterator<Item=R>> ChainedReader<I, R> {
 }
 
 impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         loop {
             let err = match self.cur_reader {
                 Some(ref mut r) => {
                     match r.read(buf) {
                         Ok(len) => return Ok(len),
-                        Err(ref e) if e.kind == io::EndOfFile => None,
+                        Err(ref e) if e.kind == old_io::EndOfFile => None,
                         Err(e) => Some(e),
                     }
                 }
@@ -194,7 +194,7 @@ impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
                 None => {}
             }
         }
-        Err(io::standard_error(io::EndOfFile))
+        Err(old_io::standard_error(old_io::EndOfFile))
     }
 }
 
@@ -221,23 +221,23 @@ impl<R: Reader, W: Writer> TeeReader<R, W> {
 }
 
 impl<R: Reader, W: Writer> Reader for TeeReader<R, W> {
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         self.reader.read(buf).and_then(|len| {
-            self.writer.write(&mut buf[..len]).map(|()| len)
+            self.writer.write_all(&mut buf[..len]).map(|()| len)
         })
     }
 }
 
 /// Copies all data from a `Reader` to a `Writer`.
-pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> io::IoResult<()> {
+pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> old_io::IoResult<()> {
     let mut buf = [0; super::DEFAULT_BUF_SIZE];
     loop {
         let len = match r.read(&mut buf) {
             Ok(len) => len,
-            Err(ref e) if e.kind == io::EndOfFile => return Ok(()),
+            Err(ref e) if e.kind == old_io::EndOfFile => return Ok(()),
             Err(e) => return Err(e),
         };
-        try!(w.write(&buf[..len]));
+        try!(w.write_all(&buf[..len]));
     }
 }
 
@@ -257,14 +257,14 @@ impl<T: Iterator<Item=u8>> IterReader<T> {
 
 impl<T: Iterator<Item=u8>> Reader for IterReader<T> {
     #[inline]
-    fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+    fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
         let mut len = 0;
         for (slot, elt) in buf.iter_mut().zip(self.iter.by_ref()) {
             *slot = elt;
             len += 1;
         }
         if len == 0 && buf.len() != 0 {
-            Err(io::standard_error(io::EndOfFile))
+            Err(old_io::standard_error(old_io::EndOfFile))
         } else {
             Ok(len)
         }
@@ -275,8 +275,8 @@ impl<T: Iterator<Item=u8>> Reader for IterReader<T> {
 mod test {
     use prelude::v1::*;
 
-    use io::{MemReader, ByRefReader};
-    use io;
+    use old_io::{MemReader, ByRefReader};
+    use old_io;
     use super::*;
 
     #[test]
@@ -321,7 +321,7 @@ mod test {
     fn test_null_writer() {
         let mut s = NullWriter;
         let buf = vec![0, 0, 0];
-        s.write(buf.as_slice()).unwrap();
+        s.write_all(buf.as_slice()).unwrap();
         s.flush().unwrap();
     }
 
@@ -347,12 +347,12 @@ mod test {
 
         struct TestWriter;
         impl Writer for TestWriter {
-            fn write(&mut self, _buf: &[u8]) -> io::IoResult<()> {
+            fn write_all(&mut self, _buf: &[u8]) -> old_io::IoResult<()> {
                 unsafe { writes += 1 }
                 Ok(())
             }
 
-            fn flush(&mut self) -> io::IoResult<()> {
+            fn flush(&mut self) -> old_io::IoResult<()> {
                 unsafe { flushes += 1 }
                 Ok(())
             }
@@ -360,7 +360,7 @@ mod test {
 
         let mut multi = MultiWriter::new(vec!(box TestWriter as Box<Writer>,
                                               box TestWriter as Box<Writer>));
-        multi.write(&[1, 2, 3]).unwrap();
+        multi.write_all(&[1, 2, 3]).unwrap();
         assert_eq!(2, unsafe { writes });
         assert_eq!(0, unsafe { flushes });
         multi.flush().unwrap();
@@ -400,7 +400,7 @@ mod test {
             let mut r = LimitReader::new(r.by_ref(), 3);
             assert_eq!(r.read_line(), Ok("012".to_string()));
             assert_eq!(r.limit(), 0);
-            assert_eq!(r.read_line().err().unwrap().kind, io::EndOfFile);
+            assert_eq!(r.read_line().err().unwrap().kind, old_io::EndOfFile);
         }
         {
             let mut r = LimitReader::new(r.by_ref(), 9);
@@ -432,7 +432,7 @@ mod test {
         assert_eq!(len, 2);
         assert!(buf == [6, 7, 5]);
 
-        assert_eq!(r.read(&mut buf).unwrap_err().kind, io::EndOfFile);
+        assert_eq!(r.read(&mut buf).unwrap_err().kind, old_io::EndOfFile);
     }
 
     #[test]

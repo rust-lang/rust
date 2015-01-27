@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::Reader;
+use std::old_io::Reader;
 
 enum Wrapper<'a> {
     WrapReader(&'a (Reader + 'a))

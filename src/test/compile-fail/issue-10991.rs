@@ -10,5 +10,5 @@
 
 fn main() {
     let nil = ();
-    let _t = nil as usize; //~ ERROR: cast from nil: `()` as `usize`
+    let _t = nil as usize; //~ ERROR: non-scalar cast: `()` as `usize`
 }

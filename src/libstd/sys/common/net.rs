@@ -14,9 +14,9 @@ use self::InAddr::*;
 
 use ffi::CString;
 use ffi;
-use io::net::addrinfo;
-use io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
-use io::{IoResult, IoError};
+use old_io::net::addrinfo;
+use old_io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
+use old_io::{IoResult, IoError};
 use libc::{self, c_char, c_int};
 use mem;
 use num::Int;
@@ -28,7 +28,7 @@ use sys::{self, retry, c, sock_t, last_error, last_net_error, last_gai_error, cl
 use sync::{Arc, Mutex, MutexGuard};
 use sys_common::{self, keep_going, short_write, timeout};
 use cmp;
-use io;
+use old_io;
 
 // FIXME: move uses of Arc and deadline tracking to std::io
 
@@ -208,7 +208,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
         }
         _ => {
             Err(IoError {
-                kind: io::InvalidInput,
+                kind: old_io::InvalidInput,
                 desc: "invalid argument",
                 detail: None,
             })
@@ -458,7 +458,7 @@ pub fn write<T, L, W>(fd: sock_t,
             // As with read(), first wait for the socket to be ready for
             // the I/O operation.
             match await(&[fd], deadline, Writable) {
-                Err(ref e) if e.kind == io::EndOfFile && written > 0 => {
+                Err(ref e) if e.kind == old_io::EndOfFile && written > 0 => {
                     assert!(deadline.is_some());
                     return Err(short_write(written, "short write"))
                 }

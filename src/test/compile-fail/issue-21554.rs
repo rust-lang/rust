@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,25 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::old_io;
-trait B {
-    fn f(&self);
-}
-
-trait T : B {
-}
-
-struct A;
-
-impl<U: T> B for U {
-    fn f(&self) { old_io::println("Hey, I'm a T!"); }
-}
-
-impl T for A {
-}
+struct Inches(i32);
 
 fn main() {
-    let a = A;
-    let br = &a as &B;
-    br.f();
+    Inches as f32; //~ ERROR illegal cast; cast through an integer first
 }

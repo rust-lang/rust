@@ -17,7 +17,7 @@
 
 use prelude::v1::*;
 
-use io::IoResult;
+use old_io::IoResult;
 use libc;
 use sync::Arc;
 
@@ -49,7 +49,7 @@ impl PipeStream {
     /// # #![allow(unused_must_use)]
     /// extern crate libc;
     ///
-    /// use std::io::pipe::PipeStream;
+    /// use std::old_io::pipe::PipeStream;
     ///
     /// fn main() {
     ///     let mut pipe = PipeStream::open(libc::STDERR_FILENO);
@@ -105,7 +105,7 @@ impl Reader for PipeStream {
 }
 
 impl Writer for PipeStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner.write(buf)
     }
 }
@@ -120,7 +120,7 @@ mod test {
     #[test]
     fn partial_read() {
         use os;
-        use io::pipe::PipeStream;
+        use old_io::pipe::PipeStream;
 
         let os::Pipe { reader, writer } = unsafe { os::pipe().unwrap() };
         let out = PipeStream::open(writer);

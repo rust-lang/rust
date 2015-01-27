@@ -13,7 +13,7 @@ fn main() {
     move|:| { x = 2; };
     //~^ ERROR: cannot assign to immutable captured outer variable
 
-    let s = std::io::stdin();
+    let s = std::old_io::stdin();
     move|:| { s.read_to_end(); };
     //~^ ERROR: cannot borrow immutable captured outer variable
 }

@@ -11,8 +11,8 @@
 use std::cell::RefCell;
 use std::sync::mpsc::channel;
 use std::dynamic_lib::DynamicLibrary;
-use std::io::{Command, TempDir};
-use std::io;
+use std::old_io::{Command, TempDir};
+use std::old_io;
 use std::os;
 use std::str;
 use std::thread::Thread;
@@ -145,20 +145,20 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     // The basic idea is to not use a default_handler() for rustc, and then also
     // not print things by default to the actual stderr.
     let (tx, rx) = channel();
-    let w1 = io::ChanWriter::new(tx);
+    let w1 = old_io::ChanWriter::new(tx);
     let w2 = w1.clone();
-    let old = io::stdio::set_stderr(box w1);
+    let old = old_io::stdio::set_stderr(box w1);
     Thread::spawn(move |:| {
-        let mut p = io::ChanReader::new(rx);
+        let mut p = old_io::ChanReader::new(rx);
         let mut err = match old {
             Some(old) => {
                 // Chop off the `Send` bound.
                 let old: Box<Writer> = old;
                 old
             }
-            None => box io::stderr() as Box<Writer>,
+            None => box old_io::stderr() as Box<Writer>,
         };
-        io::util::copy(&mut p, &mut err).unwrap();
+        old_io::util::copy(&mut p, &mut err).unwrap();
     });
     let emitter = diagnostic::EmitterWriter::new(box w2, None);
 
@@ -200,7 +200,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
 
     match cmd.output() {
         Err(e) => panic!("couldn't run the test: {}{}", e,
-                        if e.kind == io::PermissionDenied {
+                        if e.kind == old_io::PermissionDenied {
                             " - maybe your tempdir is mounted with noexec?"
                         } else { "" }),
         Ok(out) => {

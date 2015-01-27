@@ -238,7 +238,7 @@ impl<'a> Display for Arguments<'a> {
     }
 }
 
-/// Format trait for the `:?` format. Useful for debugging, most all types
+/// Format trait for the `:?` format. Useful for debugging, all types
 /// should implement this.
 #[unstable(feature = "core",
            reason = "I/O and core have yet to be reconciled")]
@@ -249,7 +249,7 @@ pub trait Show {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
-/// Format trait for the `:?` format. Useful for debugging, most all types
+/// Format trait for the `:?` format. Useful for debugging, all types
 /// should implement this.
 #[unstable(feature = "core",
            reason = "I/O and core have yet to be reconciled")]

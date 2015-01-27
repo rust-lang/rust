@@ -25,7 +25,7 @@ use visit::{self, Visitor};
 use arena::TypedArena;
 use std::cell::RefCell;
 use std::fmt;
-use std::io::IoResult;
+use std::old_io::IoResult;
 use std::iter::{self, repeat};
 use std::mem;
 use std::slice;

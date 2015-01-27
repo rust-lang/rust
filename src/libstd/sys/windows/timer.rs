@@ -26,7 +26,7 @@ use prelude::v1::*;
 use libc;
 use ptr;
 
-use io::IoResult;
+use old_io::IoResult;
 use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
 use sys::c;
 use sys::fs::FileDesc;

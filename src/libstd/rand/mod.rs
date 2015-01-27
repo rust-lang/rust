@@ -223,7 +223,7 @@
 
 use cell::RefCell;
 use clone::Clone;
-use io::IoResult;
+use old_io::IoResult;
 use iter::{Iterator, IteratorExt};
 use mem;
 use rc::Rc;

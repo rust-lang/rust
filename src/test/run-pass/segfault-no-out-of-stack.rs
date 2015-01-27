@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::process::Command;
+use std::old_io::process::Command;
 use std::os;
 
 fn main() {

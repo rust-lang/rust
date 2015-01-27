@@ -13,7 +13,7 @@
 //! ncurses-compatible compiled terminfo format parsing (term(5))
 
 use std::collections::HashMap;
-use std::io;
+use std::old_io;
 use super::super::TermInfo;
 
 // These are the orders ncurses uses in its compiled format (as of 5.9). Not sure if portable.
@@ -158,7 +158,7 @@ pub static stringnames: &'static[&'static str] = &[ "cbt", "_", "cr", "csr", "tb
     "box1"];
 
 /// Parse a compiled terminfo entry, using long capability names if `longnames` is true
-pub fn parse(file: &mut io::Reader, longnames: bool)
+pub fn parse(file: &mut old_io::Reader, longnames: bool)
              -> Result<Box<TermInfo>, String> {
     macro_rules! try { ($e:expr) => (
         match $e {
@@ -340,6 +340,6 @@ mod test {
     #[ignore(reason = "no ncurses on buildbots, needs a bundled terminfo file to test against")]
     fn test_parse() {
         // FIXME #6870: Distribute a compiled file in src/tests and test there
-        // parse(io::fs_reader(&p("/usr/share/terminfo/r/rxvt-256color")).unwrap(), false);
+        // parse(old_io::fs_reader(&p("/usr/share/terminfo/r/rxvt-256color")).unwrap(), false);
     }
 }

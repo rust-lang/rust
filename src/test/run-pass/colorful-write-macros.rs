@@ -11,7 +11,7 @@
 // no-pretty-expanded
 
 #![allow(unused_must_use, dead_code, deprecated)]
-use std::io::MemWriter;
+use std::old_io::MemWriter;
 use std::fmt;
 
 struct Foo<'a> {

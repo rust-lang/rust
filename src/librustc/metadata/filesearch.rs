@@ -13,8 +13,8 @@
 pub use self::FileMatch::*;
 
 use std::collections::HashSet;
-use std::io::fs::PathExtensions;
-use std::io::fs;
+use std::old_io::fs::PathExtensions;
+use std::old_io::fs;
 use std::os;
 
 use util::fs as myfs;

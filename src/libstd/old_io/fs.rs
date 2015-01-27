@@ -18,21 +18,21 @@
 //! At the top-level of the module are a set of freestanding functions, associated
 //! with various filesystem operations. They all operate on `Path` objects.
 //!
-//! All operations in this module, including those as part of `File` et al
-//! block the task during execution. In the event of failure, all functions/methods
+//! All operations in this module, including those as part of `File` et al block
+//! the task during execution. In the event of failure, all functions/methods
 //! will return an `IoResult` type with an `Err` value.
 //!
 //! Also included in this module is an implementation block on the `Path` object
-//! defined in `std::path::Path`. The impl adds useful methods about inspecting the
-//! metadata of a file. This includes getting the `stat` information, reading off
-//! particular bits of it, etc.
+//! defined in `std::path::Path`. The impl adds useful methods about inspecting
+//! the metadata of a file. This includes getting the `stat` information,
+//! reading off particular bits of it, etc.
 //!
 //! # Example
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
-//! use std::io::fs::PathExtensions;
-//! use std::io::{File, fs};
+//! use std::old_io::fs::PathExtensions;
+//! use std::old_io::{File, fs};
 //!
 //! let path = Path::new("foo.txt");
 //!
@@ -51,13 +51,13 @@
 //! ```
 
 use clone::Clone;
-use io::standard_error;
-use io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};
-use io::{IoResult, IoError, InvalidInput};
-use io::{FileStat, SeekStyle, Seek, Writer, Reader};
-use io::{Read, Truncate, ReadWrite, Append};
-use io::UpdateIoError;
-use io;
+use old_io::standard_error;
+use old_io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};
+use old_io::{IoResult, IoError, InvalidInput};
+use old_io::{FileStat, SeekStyle, Seek, Writer, Reader};
+use old_io::{Read, Truncate, ReadWrite, Append};
+use old_io::UpdateIoError;
+use old_io;
 use iter::{Iterator, Extend};
 use option::Option;
 use option::Option::{Some, None};
@@ -101,7 +101,7 @@ impl File {
     /// # Example
     ///
     /// ```rust,should_fail
-    /// use std::io::{File, Open, ReadWrite};
+    /// use std::old_io::{File, Open, ReadWrite};
     ///
     /// let p = Path::new("/some/file/path.txt");
     ///
@@ -170,7 +170,7 @@ impl File {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::File;
+    /// use std::old_io::File;
     ///
     /// let contents = File::open(&Path::new("foo.txt")).read_to_end();
     /// ```
@@ -188,12 +188,12 @@ impl File {
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
-    /// use std::io::File;
+    /// use std::old_io::File;
     ///
     /// let mut f = File::create(&Path::new("foo.txt"));
     /// f.write(b"This is a sample file");
     /// # drop(f);
-    /// # ::std::io::fs::unlink(&Path::new("foo.txt"));
+    /// # ::std::old_io::fs::unlink(&Path::new("foo.txt"));
     /// ```
     pub fn create(path: &Path) -> IoResult<File> {
         File::open_mode(path, Truncate, Write)
@@ -265,7 +265,7 @@ impl File {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::fs;
+/// use std::old_io::fs;
 ///
 /// let p = Path::new("/some/file/path.txt");
 /// fs::unlink(&p);
@@ -293,7 +293,7 @@ pub fn unlink(path: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// use std::io::fs;
+/// use std::old_io::fs;
 ///
 /// let p = Path::new("/some/file/path.txt");
 /// match fs::stat(&p) {
@@ -333,7 +333,7 @@ pub fn lstat(path: &Path) -> IoResult<FileStat> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::fs;
+/// use std::old_io::fs;
 ///
 /// fs::rename(&Path::new("foo"), &Path::new("bar"));
 /// ```
@@ -359,7 +359,7 @@ pub fn rename(from: &Path, to: &Path) -> IoResult<()> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::fs;
+/// use std::old_io::fs;
 ///
 /// fs::copy(&Path::new("foo.txt"), &Path::new("bar.txt"));
 /// ```
@@ -386,7 +386,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 
     if !from.is_file() {
         return update_err(Err(IoError {
-            kind: io::MismatchedFileTypeForOperation,
+            kind: old_io::MismatchedFileTypeForOperation,
             desc: "the source path is not an existing file",
             detail: None
         }), from, to)
@@ -407,13 +407,13 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io;
-/// use std::io::fs;
+/// use std::old_io;
+/// use std::old_io::fs;
 ///
-/// fs::chmod(&Path::new("file.txt"), io::USER_FILE);
-/// fs::chmod(&Path::new("file.txt"), io::USER_READ | io::USER_WRITE);
-/// fs::chmod(&Path::new("dir"),      io::USER_DIR);
-/// fs::chmod(&Path::new("file.exe"), io::USER_EXEC);
+/// fs::chmod(&Path::new("file.txt"), old_io::USER_FILE);
+/// fs::chmod(&Path::new("file.txt"), old_io::USER_READ | old_io::USER_WRITE);
+/// fs::chmod(&Path::new("dir"),      old_io::USER_DIR);
+/// fs::chmod(&Path::new("file.exe"), old_io::USER_EXEC);
 /// ```
 ///
 /// # Error
@@ -421,7 +421,7 @@ pub fn copy(from: &Path, to: &Path) -> IoResult<()> {
 /// This function will return an error if the provided `path` doesn't exist, if
 /// the process lacks permissions to change the attributes of the file, or if
 /// some other I/O error is encountered.
-pub fn chmod(path: &Path, mode: io::FilePermission) -> IoResult<()> {
+pub fn chmod(path: &Path, mode: old_io::FilePermission) -> IoResult<()> {
     fs_imp::chmod(path, mode.bits() as uint)
            .update_err("couldn't chmod path", |e|
                format!("{}; path={}; mode={:?}", e, path.display(), mode))
@@ -469,11 +469,11 @@ pub fn readlink(path: &Path) -> IoResult<Path> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io;
-/// use std::io::fs;
+/// use std::old_io;
+/// use std::old_io::fs;
 ///
 /// let p = Path::new("/some/dir");
-/// fs::mkdir(&p, io::USER_RWX);
+/// fs::mkdir(&p, old_io::USER_RWX);
 /// ```
 ///
 /// # Error
@@ -492,7 +492,7 @@ pub fn mkdir(path: &Path, mode: FilePermission) -> IoResult<()> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::fs;
+/// use std::old_io::fs;
 ///
 /// let p = Path::new("/some/dir");
 /// fs::rmdir(&p);
@@ -513,12 +513,12 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 /// # Example
 ///
 /// ```rust
-/// use std::io::fs::PathExtensions;
-/// use std::io::fs;
-/// use std::io;
+/// use std::old_io::fs::PathExtensions;
+/// use std::old_io::fs;
+/// use std::old_io;
 ///
 /// // one possible implementation of fs::walk_dir only visiting files
-/// fn visit_dirs<F>(dir: &Path, cb: &mut F) -> io::IoResult<()> where
+/// fn visit_dirs<F>(dir: &Path, cb: &mut F) -> old_io::IoResult<()> where
 ///     F: FnMut(&Path),
 /// {
 ///     if dir.is_dir() {
@@ -532,7 +532,7 @@ pub fn rmdir(path: &Path) -> IoResult<()> {
 ///         }
 ///         Ok(())
 ///     } else {
-///         Err(io::standard_error(io::InvalidInput))
+///         Err(old_io::standard_error(old_io::InvalidInput))
 ///     }
 /// }
 /// ```
@@ -664,7 +664,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
                 // (eg: deleted by someone else since readdir)
                 match update_err(unlink(&child), path) {
                     Ok(()) => (),
-                    Err(ref e) if e.kind == io::FileNotFound => (),
+                    Err(ref e) if e.kind == old_io::FileNotFound => (),
                     Err(e) => return Err(e)
                 }
             }
@@ -675,7 +675,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
             let result = update_err(rmdir(&rm_stack.pop().unwrap()), path);
             match result {
                 Ok(()) => (),
-                Err(ref e) if e.kind == io::FileNotFound => (),
+                Err(ref e) if e.kind == old_io::FileNotFound => (),
                 Err(e) => return Err(e)
             }
         }
@@ -709,7 +709,7 @@ impl Reader for File {
             Ok(read) => {
                 self.last_nread = read as int;
                 match read {
-                    0 => update_err(Err(standard_error(io::EndOfFile)), self),
+                    0 => update_err(Err(standard_error(old_io::EndOfFile)), self),
                     _ => Ok(read as uint)
                 }
             },
@@ -719,7 +719,7 @@ impl Reader for File {
 }
 
 impl Writer for File {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.fd.write(buf)
             .update_err("couldn't write to file",
                         |e| format!("{}; path={}", e, self.path.display()))
@@ -824,10 +824,10 @@ fn access_string(access: FileAccess) -> &'static str {
 #[allow(unused_mut)]
 mod test {
     use prelude::v1::*;
-    use io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};
-    use io;
+    use old_io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};
+    use old_io;
     use str;
-    use io::fs::*;
+    use old_io::fs::*;
 
     macro_rules! check { ($e:expr) => (
         match $e {
@@ -863,7 +863,7 @@ mod test {
             // Gee, seeing how we're testing the fs module I sure hope that we
             // at least implement this correctly!
             let TempDir(ref p) = *self;
-            check!(io::fs::rmdir_recursive(p));
+            check!(old_io::fs::rmdir_recursive(p));
         }
     }
 
@@ -871,7 +871,7 @@ mod test {
         use os;
         use rand;
         let ret = os::tmpdir().join(format!("rust-{}", rand::random::<u32>()));
-        check!(io::fs::mkdir(&ret, io::USER_RWX));
+        check!(old_io::fs::mkdir(&ret, old_io::USER_RWX));
         TempDir(ret)
     }
 
@@ -1055,7 +1055,7 @@ mod test {
     fn file_test_stat_is_correct_on_is_dir() {
         let tmpdir = tmpdir();
         let filename = &tmpdir.join("file_stat_correct_on_is_dir");
-        check!(mkdir(filename, io::USER_RWX));
+        check!(mkdir(filename, old_io::USER_RWX));
         let stat_res_fn = check!(stat(filename));
         assert!(stat_res_fn.kind == FileType::Directory);
         let stat_res_meth = check!(filename.stat());
@@ -1067,7 +1067,7 @@ mod test {
     fn file_test_fileinfo_false_when_checking_is_file_on_a_directory() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("fileinfo_false_on_dir");
-        check!(mkdir(dir, io::USER_RWX));
+        check!(mkdir(dir, old_io::USER_RWX));
         assert!(dir.is_file() == false);
         check!(rmdir(dir));
     }
@@ -1087,7 +1087,7 @@ mod test {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("before_and_after_dir");
         assert!(!dir.exists());
-        check!(mkdir(dir, io::USER_RWX));
+        check!(mkdir(dir, old_io::USER_RWX));
         assert!(dir.exists());
         assert!(dir.is_dir());
         check!(rmdir(dir));
@@ -1099,7 +1099,7 @@ mod test {
         use str;
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("di_readdir");
-        check!(mkdir(dir, io::USER_RWX));
+        check!(mkdir(dir, old_io::USER_RWX));
         let prefix = "foo";
         for n in range(0i,3) {
             let f = dir.join(format!("{}.txt", n));
@@ -1130,14 +1130,14 @@ mod test {
     fn file_test_walk_dir() {
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("walk_dir");
-        check!(mkdir(dir, io::USER_RWX));
+        check!(mkdir(dir, old_io::USER_RWX));
 
         let dir1 = &dir.join("01/02/03");
-        check!(mkdir_recursive(dir1, io::USER_RWX));
+        check!(mkdir_recursive(dir1, old_io::USER_RWX));
         check!(File::create(&dir1.join("04")));
 
         let dir2 = &dir.join("11/12/13");
-        check!(mkdir_recursive(dir2, io::USER_RWX));
+        check!(mkdir_recursive(dir2, old_io::USER_RWX));
         check!(File::create(&dir2.join("14")));
 
         let mut files = check!(walk_dir(dir));
@@ -1155,12 +1155,12 @@ mod test {
 
     #[test]
     fn mkdir_path_already_exists_error() {
-        use io::{IoError, PathAlreadyExists};
+        use old_io::{IoError, PathAlreadyExists};
 
         let tmpdir = tmpdir();
         let dir = &tmpdir.join("mkdir_error_twice");
-        check!(mkdir(dir, io::USER_RWX));
-        match mkdir(dir, io::USER_RWX) {
+        check!(mkdir(dir, old_io::USER_RWX));
+        match mkdir(dir, old_io::USER_RWX) {
             Err(IoError{kind:PathAlreadyExists,..}) => (),
             _ => assert!(false)
         };
@@ -1170,7 +1170,7 @@ mod test {
     fn recursive_mkdir() {
         let tmpdir = tmpdir();
         let dir = tmpdir.join("d1/d2");
-        check!(mkdir_recursive(&dir, io::USER_RWX));
+        check!(mkdir_recursive(&dir, old_io::USER_RWX));
         assert!(dir.is_dir())
     }
 
@@ -1180,10 +1180,10 @@ mod test {
         let dir = tmpdir.join("d1");
         let file = dir.join("f1");
 
-        check!(mkdir_recursive(&dir, io::USER_RWX));
+        check!(mkdir_recursive(&dir, old_io::USER_RWX));
         check!(File::create(&file));
 
-        let result = mkdir_recursive(&file, io::USER_RWX);
+        let result = mkdir_recursive(&file, old_io::USER_RWX);
 
         error!(result, "couldn't recursively mkdir");
         error!(result, "couldn't create directory");
@@ -1193,7 +1193,7 @@ mod test {
 
     #[test]
     fn recursive_mkdir_slash() {
-        check!(mkdir_recursive(&Path::new("/"), io::USER_RWX));
+        check!(mkdir_recursive(&Path::new("/"), old_io::USER_RWX));
     }
 
     // FIXME(#12795) depends on lstat to work on windows
@@ -1206,8 +1206,8 @@ mod test {
         let dtt = dt.join("t");
         let d2 = tmpdir.join("d2");
         let canary = d2.join("do_not_delete");
-        check!(mkdir_recursive(&dtt, io::USER_RWX));
-        check!(mkdir_recursive(&d2, io::USER_RWX));
+        check!(mkdir_recursive(&dtt, old_io::USER_RWX));
+        check!(mkdir_recursive(&d2, old_io::USER_RWX));
         check!(File::create(&canary).write(b"foo"));
         check!(symlink(&d2, &dt.join("d2")));
         check!(rmdir_recursive(&d1));
@@ -1225,7 +1225,7 @@ mod test {
 
         let mut dirpath = tmpdir.path().clone();
         dirpath.push(format!("test-가一ー你好"));
-        check!(mkdir(&dirpath, io::USER_RWX));
+        check!(mkdir(&dirpath, old_io::USER_RWX));
         assert!(dirpath.is_dir());
 
         let mut filepath = dirpath;
@@ -1243,7 +1243,7 @@ mod test {
         let tmpdir = tmpdir();
         let unicode = tmpdir.path();
         let unicode = unicode.join(format!("test-각丁ー再见"));
-        check!(mkdir(&unicode, io::USER_RWX));
+        check!(mkdir(&unicode, old_io::USER_RWX));
         assert!(unicode.exists());
         assert!(!Path::new("test/unicode-bogus-path-각丁ー再见").exists());
     }
@@ -1324,12 +1324,12 @@ mod test {
         let out = tmpdir.join("out.txt");
 
         check!(File::create(&input));
-        check!(chmod(&input, io::USER_READ));
+        check!(chmod(&input, old_io::USER_READ));
         check!(copy(&input, &out));
-        assert!(!check!(out.stat()).perm.intersects(io::USER_WRITE));
+        assert!(!check!(out.stat()).perm.intersects(old_io::USER_WRITE));
 
-        check!(chmod(&input, io::USER_FILE));
-        check!(chmod(&out, io::USER_FILE));
+        check!(chmod(&input, old_io::USER_FILE));
+        check!(chmod(&out, old_io::USER_FILE));
     }
 
     #[cfg(not(windows))] // FIXME(#10264) operation not permitted?
@@ -1405,16 +1405,16 @@ mod test {
         let file = tmpdir.join("in.txt");
 
         check!(File::create(&file));
-        assert!(check!(stat(&file)).perm.contains(io::USER_WRITE));
-        check!(chmod(&file, io::USER_READ));
-        assert!(!check!(stat(&file)).perm.contains(io::USER_WRITE));
+        assert!(check!(stat(&file)).perm.contains(old_io::USER_WRITE));
+        check!(chmod(&file, old_io::USER_READ));
+        assert!(!check!(stat(&file)).perm.contains(old_io::USER_WRITE));
 
-        match chmod(&tmpdir.join("foo"), io::USER_RWX) {
+        match chmod(&tmpdir.join("foo"), old_io::USER_RWX) {
             Ok(..) => panic!("wanted a panic"),
             Err(..) => {}
         }
 
-        check!(chmod(&file, io::USER_FILE));
+        check!(chmod(&file, old_io::USER_FILE));
     }
 
     #[test]
@@ -1422,7 +1422,7 @@ mod test {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");
 
-        let mut file = check!(File::open_mode(&path, io::Open, io::ReadWrite));
+        let mut file = check!(File::open_mode(&path, old_io::Open, old_io::ReadWrite));
         check!(file.fsync());
         check!(file.datasync());
         check!(file.write(b"foo"));
@@ -1436,7 +1436,7 @@ mod test {
         let tmpdir = tmpdir();
         let path = tmpdir.join("in.txt");
 
-        let mut file = check!(File::open_mode(&path, io::Open, io::ReadWrite));
+        let mut file = check!(File::open_mode(&path, old_io::Open, old_io::ReadWrite));
         check!(file.write(b"foo"));
         check!(file.fsync());
 
@@ -1467,41 +1467,41 @@ mod test {
     fn open_flavors() {
         let tmpdir = tmpdir();
 
-        match File::open_mode(&tmpdir.join("a"), io::Open, io::Read) {
+        match File::open_mode(&tmpdir.join("a"), old_io::Open, old_io::Read) {
             Ok(..) => panic!(), Err(..) => {}
         }
 
         // Perform each one twice to make sure that it succeeds the second time
         // (where the file exists)
-        check!(File::open_mode(&tmpdir.join("b"), io::Open, io::Write));
+        check!(File::open_mode(&tmpdir.join("b"), old_io::Open, old_io::Write));
         assert!(tmpdir.join("b").exists());
-        check!(File::open_mode(&tmpdir.join("b"), io::Open, io::Write));
+        check!(File::open_mode(&tmpdir.join("b"), old_io::Open, old_io::Write));
 
-        check!(File::open_mode(&tmpdir.join("c"), io::Open, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("c"), old_io::Open, old_io::ReadWrite));
         assert!(tmpdir.join("c").exists());
-        check!(File::open_mode(&tmpdir.join("c"), io::Open, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("c"), old_io::Open, old_io::ReadWrite));
 
-        check!(File::open_mode(&tmpdir.join("d"), io::Append, io::Write));
+        check!(File::open_mode(&tmpdir.join("d"), old_io::Append, old_io::Write));
         assert!(tmpdir.join("d").exists());
-        check!(File::open_mode(&tmpdir.join("d"), io::Append, io::Write));
+        check!(File::open_mode(&tmpdir.join("d"), old_io::Append, old_io::Write));
 
-        check!(File::open_mode(&tmpdir.join("e"), io::Append, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("e"), old_io::Append, old_io::ReadWrite));
         assert!(tmpdir.join("e").exists());
-        check!(File::open_mode(&tmpdir.join("e"), io::Append, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("e"), old_io::Append, old_io::ReadWrite));
 
-        check!(File::open_mode(&tmpdir.join("f"), io::Truncate, io::Write));
+        check!(File::open_mode(&tmpdir.join("f"), old_io::Truncate, old_io::Write));
         assert!(tmpdir.join("f").exists());
-        check!(File::open_mode(&tmpdir.join("f"), io::Truncate, io::Write));
+        check!(File::open_mode(&tmpdir.join("f"), old_io::Truncate, old_io::Write));
 
-        check!(File::open_mode(&tmpdir.join("g"), io::Truncate, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("g"), old_io::Truncate, old_io::ReadWrite));
         assert!(tmpdir.join("g").exists());
-        check!(File::open_mode(&tmpdir.join("g"), io::Truncate, io::ReadWrite));
+        check!(File::open_mode(&tmpdir.join("g"), old_io::Truncate, old_io::ReadWrite));
 
         check!(File::create(&tmpdir.join("h")).write("foo".as_bytes()));
-        check!(File::open_mode(&tmpdir.join("h"), io::Open, io::Read));
+        check!(File::open_mode(&tmpdir.join("h"), old_io::Open, old_io::Read));
         {
-            let mut f = check!(File::open_mode(&tmpdir.join("h"), io::Open,
-                                               io::Read));
+            let mut f = check!(File::open_mode(&tmpdir.join("h"), old_io::Open,
+                                               old_io::Read));
             match f.write("wut".as_bytes()) {
                 Ok(..) => panic!(), Err(..) => {}
             }
@@ -1509,15 +1509,15 @@ mod test {
         assert!(check!(stat(&tmpdir.join("h"))).size == 3,
                 "write/stat failed");
         {
-            let mut f = check!(File::open_mode(&tmpdir.join("h"), io::Append,
-                                               io::Write));
+            let mut f = check!(File::open_mode(&tmpdir.join("h"), old_io::Append,
+                                               old_io::Write));
             check!(f.write("bar".as_bytes()));
         }
         assert!(check!(stat(&tmpdir.join("h"))).size == 6,
                 "append didn't append");
         {
-            let mut f = check!(File::open_mode(&tmpdir.join("h"), io::Truncate,
-                                               io::Write));
+            let mut f = check!(File::open_mode(&tmpdir.join("h"), old_io::Truncate,
+                                               old_io::Write));
             check!(f.write("bar".as_bytes()));
         }
         assert!(check!(stat(&tmpdir.join("h"))).size == 3,
@@ -1529,8 +1529,9 @@ mod test {
         let tmpdir = tmpdir();
         let path = tmpdir.join("a");
         check!(File::create(&path));
-        // These numbers have to be bigger than the time in the day to account for timezones
-        // Windows in particular will fail in certain timezones with small enough values
+        // These numbers have to be bigger than the time in the day to account
+        // for timezones Windows in particular will fail in certain timezones
+        // with small enough values
         check!(change_file_times(&path, 100000, 200000));
         assert_eq!(check!(path.stat()).accessed, 100000);
         assert_eq!(check!(path.stat()).modified, 200000);
@@ -1565,7 +1566,7 @@ mod test {
         let tmpdir = tmpdir();
         let path = tmpdir.join("file");
         check!(File::create(&path));
-        check!(chmod(&path, io::USER_READ));
+        check!(chmod(&path, old_io::USER_READ));
         check!(unlink(&path));
     }
 }

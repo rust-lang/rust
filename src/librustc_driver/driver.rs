@@ -30,8 +30,8 @@ use rustc_privacy;
 
 use serialize::json;
 
-use std::io;
-use std::io::fs;
+use std::old_io;
+use std::old_io::fs;
 use std::os;
 use syntax::ast;
 use syntax::ast_map;
@@ -100,6 +100,7 @@ pub fn compile_input(sess: Session,
                                                                  &id[]));
 
         let mut forest = ast_map::Forest::new(expanded_crate);
+        let arenas = ty::CtxtArenas::new();
         let ast_map = assign_node_ids_and_map(&sess, &mut forest);
 
         write_out_deps(&sess, input, &outputs, &id[]);
@@ -111,7 +112,6 @@ pub fn compile_input(sess: Session,
                                                                      &ast_map,
                                                                      &id[]));
 
-        let arenas = ty::CtxtArenas::new();
         let analysis = phase_3_run_analysis_passes(sess,
                                                    ast_map,
                                                    &arenas,
@@ -794,14 +794,14 @@ fn write_out_deps(sess: &Session,
         _ => return,
     };
 
-    let result = (|&:| -> io::IoResult<()> {
+    let result = (|&:| -> old_io::IoResult<()> {
         // Build a list of files used to compile the output and
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
                                    .map(|fmap| escape_dep_filename(&fmap.name[]))
                                    .collect();
-        let mut file = try!(io::File::create(&deps_filename));
+        let mut file = try!(old_io::File::create(&deps_filename));
         for path in out_filenames.iter() {
             try!(write!(&mut file as &mut Writer,
                           "{}: {}\n\n", path.display(), files.connect(" ")));

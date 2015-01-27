@@ -11,7 +11,7 @@
 
 use std::collections::HashSet;
 use std::os;
-use std::io::IoError;
+use std::old_io::IoError;
 use syntax::ast;
 
 pub struct RPathConfig<F, G> where

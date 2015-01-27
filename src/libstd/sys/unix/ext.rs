@@ -18,7 +18,7 @@
 //! ```rust,ignore
 //! #![feature(globs)]
 //!
-//! use std::io::fs::File;
+//! use std::old_io::fs::File;
 //! use std::os::unix::prelude::*;
 //!
 //! fn main() {
@@ -37,7 +37,7 @@ use sys_common::{AsInner, IntoInner, FromInner};
 use ffi::{OsStr, OsString};
 use libc;
 
-use io;
+use old_io;
 
 /// Raw file descriptors.
 pub type Fd = libc::c_int;
@@ -48,55 +48,55 @@ pub trait AsRawFd {
     fn as_raw_fd(&self) -> Fd;
 }
 
-impl AsRawFd for io::fs::File {
+impl AsRawFd for old_io::fs::File {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::pipe::PipeStream {
+impl AsRawFd for old_io::pipe::PipeStream {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::net::pipe::UnixStream {
+impl AsRawFd for old_io::net::pipe::UnixStream {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::net::pipe::UnixListener {
+impl AsRawFd for old_io::net::pipe::UnixListener {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::net::pipe::UnixAcceptor {
+impl AsRawFd for old_io::net::pipe::UnixAcceptor {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::net::tcp::TcpStream {
+impl AsRawFd for old_io::net::tcp::TcpStream {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::net::tcp::TcpListener {
+impl AsRawFd for old_io::net::tcp::TcpListener {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::net::tcp::TcpAcceptor {
+impl AsRawFd for old_io::net::tcp::TcpAcceptor {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
 }
 
-impl AsRawFd for io::net::udp::UdpSocket {
+impl AsRawFd for old_io::net::udp::UdpSocket {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
