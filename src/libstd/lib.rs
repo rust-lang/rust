@@ -250,6 +250,7 @@ pub mod ffi;
 pub mod fmt;
 pub mod old_io;
 pub mod os;
+pub mod env;
 pub mod path;
 pub mod rand;
 pub mod time;

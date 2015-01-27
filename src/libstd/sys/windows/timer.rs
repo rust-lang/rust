@@ -28,8 +28,6 @@ use ptr;
 
 use old_io::IoResult;
 use sync::mpsc::{channel, Sender, Receiver, TryRecvError};
-use sys::c;
-use sys::fs::FileDesc;
 use sys_common::helper_thread::Helper;
 
 helper_init! { static HELPER: Helper<Req> }

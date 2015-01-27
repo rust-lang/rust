@@ -21,6 +21,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(env)]
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(io)]
@@ -50,6 +51,7 @@ extern crate "serialize" as rustc_serialize; // used by deriving
 
 use std::cell::RefCell;
 use std::collections::HashMap;
+use std::env;
 use std::old_io::File;
 use std::old_io;
 use std::rc::Rc;
@@ -121,9 +123,10 @@ struct Output {
 pub fn main() {
     static STACK_SIZE: uint = 32000000; // 32MB
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).scoped(move || {
-        main_args(std::os::args().as_slice())
+        let s = env::args().map(|s| s.into_string().unwrap());
+        main_args(&s.collect::<Vec<_>>())
     }).join();
-    std::os::set_exit_status(res.ok().unwrap());
+    env::set_exit_status(res.ok().unwrap() as i32);
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {

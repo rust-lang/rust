@@ -240,7 +240,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-    use os;
+    use env;
     use ptr;
 
     ////////////////////////////////////////////////////////////////////////
@@ -319,7 +319,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         if !STATE.is_null() { return STATE }
         let selfname = if cfg!(target_os = "freebsd") ||
                           cfg!(target_os = "dragonfly") {
-            os::self_exe_name()
+            env::current_exe().ok()
         } else {
             None
         };

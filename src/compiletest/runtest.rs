@@ -31,7 +31,7 @@ use std::old_io::process::ProcessExit;
 use std::old_io::process;
 use std::old_io::timer;
 use std::old_io;
-use std::os;
+use std::env;
 use std::iter::repeat;
 use std::str;
 use std::string::String;
@@ -1298,9 +1298,9 @@ fn make_lib_name(config: &Config, auxfile: &Path, testfile: &Path) -> Path {
 
 fn make_exe_name(config: &Config, testfile: &Path) -> Path {
     let mut f = output_base_name(config, testfile);
-    if !os::consts::EXE_SUFFIX.is_empty() {
+    if !env::consts::EXE_SUFFIX.is_empty() {
         let mut fname = f.filename().unwrap().to_vec();
-        fname.extend(os::consts::EXE_SUFFIX.bytes());
+        fname.extend(env::consts::EXE_SUFFIX.bytes());
         f.set_filename(fname);
     }
     f

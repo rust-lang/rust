@@ -10,13 +10,13 @@
 
 use std::old_io;
 use std::old_io::fs;
-use std::os;
+use std::env;
 
 /// Returns an absolute path in the filesystem that `path` points to. The
 /// returned path does not contain any symlinks in its hierarchy.
 pub fn realpath(original: &Path) -> old_io::IoResult<Path> {
     static MAX_LINKS_FOLLOWED: uint = 256;
-    let original = os::make_absolute(original).unwrap();
+    let original = try!(env::current_dir()).join(original);
 
     // Right now lstat on windows doesn't work quite well
     if cfg!(windows) {

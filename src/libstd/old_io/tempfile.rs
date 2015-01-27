@@ -10,13 +10,13 @@
 
 //! Temporary files and directories
 
+use env;
+use iter::{IteratorExt};
 use old_io::{fs, IoError, IoErrorKind, IoResult};
 use old_io;
-use iter::IteratorExt;
 use ops::Drop;
-use option::Option;
 use option::Option::{None, Some};
-use os;
+use option::Option;
 use path::{Path, GenericPath};
 use rand::{Rng, thread_rng};
 use result::Result::{Ok, Err};
@@ -97,8 +97,8 @@ impl TempDir {
     /// If no directory can be created, `Err` is returned.
     pub fn new_in(tmpdir: &Path, prefix: &str) -> IoResult<TempDir> {
         if !tmpdir.is_absolute() {
-            let abs_tmpdir = try!(os::make_absolute(tmpdir));
-            return TempDir::new_in(&abs_tmpdir, prefix);
+            let cur_dir = try!(env::current_dir());
+            return TempDir::new_in(&cur_dir.join(tmpdir), prefix);
         }
 
         let mut rng = thread_rng();
@@ -132,7 +132,7 @@ impl TempDir {
     ///
     /// If no directory can be created, `Err` is returned.
     pub fn new(prefix: &str) -> IoResult<TempDir> {
-        TempDir::new_in(&os::tmpdir(), prefix)
+        TempDir::new_in(&env::temp_dir(), prefix)
     }
 
     /// Unwrap the wrapped `std::path::Path` from the `TempDir` wrapper.

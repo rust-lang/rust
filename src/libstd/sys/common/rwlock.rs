@@ -21,13 +21,6 @@ pub struct RWLock(imp::RWLock);
 pub const RWLOCK_INIT: RWLock = RWLock(imp::RWLOCK_INIT);
 
 impl RWLock {
-    /// Creates a new instance of an RWLock.
-    ///
-    /// Usage of an RWLock is undefined if it is moved after its first use (any
-    /// function calls below).
-    #[inline]
-    pub unsafe fn new() -> RWLock { RWLock(imp::RWLock::new()) }
-
     /// Acquire shared access to the underlying lock, blocking the current
     /// thread to do so.
     ///

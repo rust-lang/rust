@@ -48,12 +48,12 @@ use std::simd::f64x2;
 use std::sync::Arc;
 use std::thread::Thread;
 
-const ITER: int = 50;
+const ITER: usize = 50;
 const LIMIT: f64 = 2.0;
-const WORKERS: uint = 16;
+const WORKERS: usize = 16;
 
 #[inline(always)]
-fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
+fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
     assert!(WORKERS % 2 == 0);
 
     // Ensure w and h are multiples of 8.
@@ -198,7 +198,6 @@ fn write_line(init_i: f64, vec_init_r: &[f64], res: &mut Vec<u8>) {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
     let res = if args.len() < 2 {
         println!("Test mode: do not dump the image because it's not utf8, \
                   which interferes with the test runner.");

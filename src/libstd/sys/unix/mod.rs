@@ -141,7 +141,7 @@ pub fn retry<T, F> (mut f: F) -> T where
     let one: T = Int::one();
     loop {
         let n = f();
-        if n == -one && os::errno() == libc::EINTR as int { }
+        if n == -one && os::errno() == libc::EINTR as i32 { }
         else { return n }
     }
 }
@@ -155,7 +155,7 @@ pub fn ms_to_timeval(ms: u64) -> libc::timeval {
 
 pub fn wouldblock() -> bool {
     let err = os::errno();
-    err == libc::EWOULDBLOCK as int || err == libc::EAGAIN as int
+    err == libc::EWOULDBLOCK as i32 || err == libc::EAGAIN as i32
 }
 
 pub fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
