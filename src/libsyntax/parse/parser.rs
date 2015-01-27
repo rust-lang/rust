@@ -2774,46 +2774,53 @@ impl<'a> Parser<'a> {
             ex = ExprAddrOf(m, e);
           }
           token::Ident(_, _) => {
-            if !self.token.is_keyword(keywords::Box) {
+            if !self.token.is_keyword(keywords::Box) &&
+                  !self.token.is_keyword(keywords::In) {
                 return self.parse_dot_or_call_expr();
             }
 
             let lo = self.span.lo;
 
+            let is_in = self.token.is_keyword(keywords::In);
             self.bump();
-
             // Check for a place: `box(PLACE) EXPR`.
-            if self.eat(&token::OpenDelim(token::Paren)) {
-                // Support `box() EXPR` as the default.
-                if !self.eat(&token::CloseDelim(token::Paren)) {
-                    let place = self.parse_expr();
-                    self.expect(&token::CloseDelim(token::Paren));
-                    // Give a suggestion to use `box()` when a parenthesised expression is used
-                    if !self.token.can_begin_expr() {
-                        let span = self.span;
-                        let this_token_to_string = self.this_token_to_string();
-                        self.span_err(span,
-                                      &format!("expected expression, found `{}`",
-                                              this_token_to_string)[]);
-                        let box_span = mk_sp(lo, self.last_span.hi);
-                        self.span_help(box_span,
-                                       "perhaps you meant `box() (foo)` instead?");
-                        self.abort_if_errors();
-                    }
-                    let subexpression = self.parse_prefix_expr();
-                    hi = subexpression.span.hi;
-                    ex = ExprBox(Some(place), subexpression);
-                    return self.mk_expr(lo, hi, ex);
-                }
+            if (!is_in && self.eat(&token::OpenDelim(token::Paren))) ||
+                  (is_in && { self.expect(&token::OpenDelim(token::Paren)); true }) {
+              let place = self.parse_expr();
+              self.expect(&token::CloseDelim(token::Paren));
+              // Give a suggestion to use `box` when a parenthesised expression is used
+              if !self.token.can_begin_expr() {
+                let span = self.span;
+                let this_token_to_string = self.this_token_to_string();
+                self.span_err(span,
+                              &format!("expected expression, found `{}`",
+                                       this_token_to_string)[]);
+                let box_span = mk_sp(lo, self.last_span.hi);
+                self.span_help(box_span,
+                               "perhaps you meant `box (foo)` instead?");
+                self.abort_if_errors();
+              }
+              if !is_in {
+                let box_span = mk_sp(lo, self.last_span.hi);
+                self.span_warn(
+                    box_span,
+                    "deprecated syntax; use the `in` keyword now \
+                           (e.g. change `box (<expr>) <expr>` to \
+                                        `in (<expr>) <expr>`)");
+              }
+              let subexpression = self.parse_prefix_expr();
+              hi = subexpression.span.hi;
+              ex = ExprBox(Some(place), subexpression);
+              return self.mk_expr(lo, hi, ex);
+            } else {
+                // Otherwise, we use the unique pointer default.
+                let subexpression = self.parse_prefix_expr();
+                hi = subexpression.span.hi;
+                // FIXME (pnkfelix): After working out kinks with box
+                // desugaring, should be `ExprBox(None, subexpression)`
+                // instead.
+                ex = self.mk_unary(UnUniq, subexpression);
             }
-
-            // Otherwise, we use the unique pointer default.
-            let subexpression = self.parse_prefix_expr();
-            hi = subexpression.span.hi;
-            // FIXME (pnkfelix): After working out kinks with box
-            // desugaring, should be `ExprBox(None, subexpression)`
-            // instead.
-            ex = self.mk_unary(UnUniq, subexpression);
           }
           _ => return self.parse_dot_or_call_expr()
         }
