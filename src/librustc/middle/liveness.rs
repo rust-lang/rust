@@ -118,7 +118,7 @@ use middle::ty::ClosureTyper;
 use lint;
 use util::nodemap::NodeMap;
 
-use std::{fmt, io, uint};
+use std::{fmt, old_io, uint};
 use std::rc::Rc;
 use std::iter::repeat;
 use syntax::ast::{self, NodeId, Expr};
@@ -693,10 +693,10 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     }
 
     fn write_vars<F>(&self,
-                     wr: &mut io::Writer,
+                     wr: &mut old_io::Writer,
                      ln: LiveNode,
                      mut test: F)
-                     -> io::IoResult<()> where
+                     -> old_io::IoResult<()> where
         F: FnMut(uint) -> LiveNode,
     {
         let node_base_idx = self.idx(ln, Variable(0));
@@ -740,7 +740,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn ln_str(&self, ln: LiveNode) -> String {
         let mut wr = Vec::new();
         {
-            let wr = &mut wr as &mut io::Writer;
+            let wr = &mut wr as &mut old_io::Writer;
             write!(wr, "[ln({:?}) of kind {:?} reads", ln.get(), self.ir.lnk(ln));
             self.write_vars(wr, ln, |idx| self.users[idx].reader);
             write!(wr, "  writes");

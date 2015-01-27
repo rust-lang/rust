@@ -39,7 +39,7 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::cmp::min;
-use std::io::{stdout, IoResult};
+use std::old_io::{stdout, IoResult};
 use std::iter::repeat;
 use std::os;
 use std::slice::bytes::copy_memory;

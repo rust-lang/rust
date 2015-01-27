@@ -19,7 +19,7 @@ use parse::lexer::is_block_doc_comment;
 use parse::lexer;
 use print::pprust;
 
-use std::io;
+use std::old_io;
 use std::str;
 use std::string::String;
 use std::usize;
@@ -337,7 +337,7 @@ pub struct Literal {
 // probably not a good thing.
 pub fn gather_comments_and_literals(span_diagnostic: &diagnostic::SpanHandler,
                                     path: String,
-                                    srdr: &mut io::Reader)
+                                    srdr: &mut old_io::Reader)
                                  -> (Vec<Comment>, Vec<Literal>) {
     let src = srdr.read_to_end().unwrap();
     let src = String::from_utf8(src).unwrap();

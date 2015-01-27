@@ -37,7 +37,7 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax;
 
-use std::io::Seek;
+use std::old_io::Seek;
 use std::rc::Rc;
 
 use rbml::io::SeekableMemWriter;

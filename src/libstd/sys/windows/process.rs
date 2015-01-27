@@ -14,10 +14,10 @@ use collections;
 use ffi::CString;
 use hash::Hash;
 use collections::hash_map::Hasher;
-use io::fs::PathExtensions;
-use io::process::{ProcessExit, ExitStatus, ExitSignal};
-use io::{IoResult, IoError};
-use io;
+use old_io::fs::PathExtensions;
+use old_io::process::{ProcessExit, ExitStatus, ExitSignal};
+use old_io::{IoResult, IoError};
+use old_io;
 use libc::{pid_t, c_void, c_int};
 use libc;
 use mem;
@@ -84,7 +84,7 @@ impl Process {
                     Err(super::last_error())
                 } else if status != libc::STILL_ACTIVE {
                     Err(IoError {
-                        kind: io::InvalidInput,
+                        kind: old_io::InvalidInput,
                         desc: "no process to kill",
                         detail: None,
                     })
@@ -97,7 +97,7 @@ impl Process {
                 super::mkerr_winbool(ret)
             }
             _ => Err(IoError {
-                kind: io::IoUnavailable,
+                kind: old_io::IoUnavailable,
                 desc: "unsupported signal on windows",
                 detail: None,
             })
@@ -133,7 +133,7 @@ impl Process {
 
         if cfg.gid().is_some() || cfg.uid().is_some() {
             return Err(IoError {
-                kind: io::IoUnavailable,
+                kind: old_io::IoUnavailable,
                 desc: "unsupported gid/uid requested on windows",
                 detail: None,
             })

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::println;
+use std::old_io::println;
 use std::sync::mpsc::channel;
 use std::thread::Thread;
 

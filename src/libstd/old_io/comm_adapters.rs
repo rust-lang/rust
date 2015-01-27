@@ -11,7 +11,7 @@
 use clone::Clone;
 use cmp;
 use sync::mpsc::{Sender, Receiver};
-use io;
+use old_io;
 use option::Option::{None, Some};
 use result::Result::{Ok, Err};
 use slice::{bytes, SliceExt};
@@ -24,7 +24,7 @@ use vec::Vec;
 ///
 /// ```
 /// use std::sync::mpsc::channel;
-/// use std::io::ChanReader;
+/// use std::old_io::ChanReader;
 ///
 /// let (tx, rx) = channel();
 /// # drop(tx);
@@ -70,7 +70,7 @@ impl Buffer for ChanReader {
             }
         }
         if self.closed {
-            Err(io::standard_error(io::EndOfFile))
+            Err(old_io::standard_error(old_io::EndOfFile))
         } else {
             Ok(&self.buf[self.pos..])
         }
@@ -102,7 +102,7 @@ impl Reader for ChanReader {
             }
         }
         if self.closed && num_read == 0 {
-            Err(io::standard_error(io::EndOfFile))
+            Err(old_io::standard_error(old_io::EndOfFile))
         } else {
             Ok(num_read)
         }
@@ -116,7 +116,7 @@ impl Reader for ChanReader {
 /// ```
 /// # #![allow(unused_must_use)]
 /// use std::sync::mpsc::channel;
-/// use std::io::ChanWriter;
+/// use std::old_io::ChanWriter;
 ///
 /// let (tx, rx) = channel();
 /// # drop(rx);
@@ -142,10 +142,10 @@ impl Clone for ChanWriter {
 }
 
 impl Writer for ChanWriter {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.tx.send(buf.to_vec()).map_err(|_| {
-            io::IoError {
-                kind: io::BrokenPipe,
+            old_io::IoError {
+                kind: old_io::BrokenPipe,
                 desc: "Pipe closed",
                 detail: None
             }
@@ -160,7 +160,7 @@ mod test {
 
     use sync::mpsc::channel;
     use super::*;
-    use io;
+    use old_io;
     use thread::Thread;
 
     #[test]
@@ -193,14 +193,14 @@ mod test {
 
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }
         assert_eq!(a, buf);
 
         // Ensure it continues to panic in the same way.
         match reader.read(buf.as_mut_slice()) {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }
         assert_eq!(a, buf);
     }
@@ -223,7 +223,7 @@ mod test {
         assert_eq!(Ok("how are you?".to_string()), reader.read_line());
         match reader.read_line() {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }
     }
 
@@ -242,7 +242,7 @@ mod test {
 
         match writer.write_u8(1) {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::BrokenPipe),
+            Err(e) => assert_eq!(e.kind, old_io::BrokenPipe),
         }
     }
 }

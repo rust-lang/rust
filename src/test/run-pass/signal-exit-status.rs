@@ -11,7 +11,7 @@
 // ignore-windows
 
 use std::os;
-use std::io::process::{Command, ExitSignal, ExitStatus};
+use std::old_io::process::{Command, ExitSignal, ExitStatus};
 
 pub fn main() {
     let args = os::args();

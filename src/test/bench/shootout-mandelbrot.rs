@@ -43,7 +43,7 @@
 
 // ignore-pretty very bad with line comments
 
-use std::io;
+use std::old_io;
 use std::os;
 use std::simd::f64x2;
 use std::sync::Arc;
@@ -54,7 +54,7 @@ const LIMIT: f64 = 2.0;
 const WORKERS: uint = 16;
 
 #[inline(always)]
-fn mandelbrot<W: io::Writer>(w: uint, mut out: W) -> io::IoResult<()> {
+fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
     assert!(WORKERS % 2 == 0);
 
     // Ensure w and h are multiples of 8.
@@ -203,9 +203,9 @@ fn main() {
     let res = if args.len() < 2 {
         println!("Test mode: do not dump the image because it's not utf8, \
                   which interferes with the test runner.");
-        mandelbrot(1000, io::util::NullWriter)
+        mandelbrot(1000, old_io::util::NullWriter)
     } else {
-        mandelbrot(args[1].parse().unwrap(), io::stdout())
+        mandelbrot(args[1].parse().unwrap(), old_io::stdout())
     };
     res.unwrap();
 }

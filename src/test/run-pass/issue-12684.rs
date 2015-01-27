@@ -16,7 +16,7 @@ fn main() {
 }
 
 fn customtask() {
-    let mut timer = std::io::timer::Timer::new().unwrap();
+    let mut timer = std::old_io::timer::Timer::new().unwrap();
     let periodic = timer.periodic(Duration::milliseconds(10));
     periodic.recv();
 }

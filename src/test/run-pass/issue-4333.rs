@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+use std::old_io;
 
 pub fn main() {
-    let stdout = &mut io::stdout() as &mut io::Writer;
+    let stdout = &mut old_io::stdout() as &mut old_io::Writer;
     stdout.write(b"Hello!");
 }

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::{IoError, IoResult, SeekStyle};
-use std::io;
+use std::old_io::{IoError, IoResult, SeekStyle};
+use std::old_io;
 use std::slice;
 use std::iter::repeat;
 
@@ -18,14 +18,14 @@ static BUF_CAPACITY: uint = 128;
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow
     let pos = match seek {
-        io::SeekSet => 0,
-        io::SeekEnd => end,
-        io::SeekCur => cur,
+        old_io::SeekSet => 0,
+        old_io::SeekEnd => end,
+        old_io::SeekCur => cur,
     } as i64;
 
     if offset + pos < 0 {
         Err(IoError {
-            kind: io::InvalidInput,
+            kind: old_io::InvalidInput,
             desc: "invalid seek to a negative offset",
             detail: None
         })
@@ -80,7 +80,7 @@ impl SeekableMemWriter {
 
 impl Writer for SeekableMemWriter {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.pos == self.buf.len() {
             self.buf.push_all(buf)
         } else {
@@ -132,7 +132,7 @@ impl Seek for SeekableMemWriter {
 mod tests {
     extern crate test;
     use super::SeekableMemWriter;
-    use std::io;
+    use std::old_io;
     use std::iter::repeat;
     use test::Bencher;
 
@@ -148,23 +148,23 @@ mod tests {
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
         assert_eq!(writer.get_ref(), b);
 
-        writer.seek(0, io::SeekSet).unwrap();
+        writer.seek(0, old_io::SeekSet).unwrap();
         assert_eq!(writer.tell(), Ok(0));
         writer.write(&[3, 4]).unwrap();
         let b: &[_] = &[3, 4, 2, 3, 4, 5, 6, 7];
         assert_eq!(writer.get_ref(), b);
 
-        writer.seek(1, io::SeekCur).unwrap();
+        writer.seek(1, old_io::SeekCur).unwrap();
         writer.write(&[0, 1]).unwrap();
         let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 7];
         assert_eq!(writer.get_ref(), b);
 
-        writer.seek(-1, io::SeekEnd).unwrap();
+        writer.seek(-1, old_io::SeekEnd).unwrap();
         writer.write(&[1, 2]).unwrap();
         let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 1, 2];
         assert_eq!(writer.get_ref(), b);
 
-        writer.seek(1, io::SeekEnd).unwrap();
+        writer.seek(1, old_io::SeekEnd).unwrap();
         writer.write(&[1]).unwrap();
         let b: &[_] = &[3, 4, 2, 0, 1, 5, 6, 1, 2, 0, 1];
         assert_eq!(writer.get_ref(), b);
@@ -173,14 +173,14 @@ mod tests {
     #[test]
     fn seek_past_end() {
         let mut r = SeekableMemWriter::new();
-        r.seek(10, io::SeekSet).unwrap();
+        r.seek(10, old_io::SeekSet).unwrap();
         assert!(r.write(&[3]).is_ok());
     }
 
     #[test]
     fn seek_before_0() {
         let mut r = SeekableMemWriter::new();
-        assert!(r.seek(-1, io::SeekSet).is_err());
+        assert!(r.seek(-1, old_io::SeekSet).is_err());
     }
 
     fn do_bench_seekable_mem_writer(b: &mut Bencher, times: uint, len: uint) {

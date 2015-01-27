@@ -24,7 +24,7 @@ use prelude::v1::*;
 
 use ffi::CString;
 use path::BytesContainer;
-use io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
+use old_io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
 use sys::pipe::UnixAcceptor as UnixAcceptorImp;
 use sys::pipe::UnixListener as UnixListenerImp;
 use sys::pipe::UnixStream as UnixStreamImp;
@@ -48,7 +48,7 @@ impl UnixStream {
     ///
     /// ```rust
     /// # #![allow(unused_must_use)]
-    /// use std::io::net::pipe::UnixStream;
+    /// use std::old_io::net::pipe::UnixStream;
     ///
     /// let server = Path::new("path/to/my/socket");
     /// let mut stream = UnixStream::connect(&server);
@@ -142,7 +142,7 @@ impl Reader for UnixStream {
 }
 
 impl Writer for UnixStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner.write(buf)
     }
 }
@@ -169,8 +169,8 @@ impl UnixListener {
     ///
     /// ```
     /// # fn foo() {
-    /// use std::io::net::pipe::UnixListener;
-    /// use std::io::{Listener, Acceptor};
+    /// use std::old_io::net::pipe::UnixListener;
+    /// use std::old_io::{Listener, Acceptor};
     ///
     /// let server = Path::new("/path/to/my/socket");
     /// let stream = UnixListener::bind(&server);
@@ -270,11 +270,11 @@ impl sys_common::AsInner<UnixAcceptorImp> for UnixAcceptor {
 mod tests {
     use prelude::v1::*;
 
-    use io::fs::PathExtensions;
-    use io::{EndOfFile, TimedOut, ShortWrite, IoError, ConnectionReset};
-    use io::{NotConnected, BrokenPipe, FileNotFound, InvalidInput, OtherIoError};
-    use io::{PermissionDenied, Acceptor, Listener};
-    use io::test::*;
+    use old_io::fs::PathExtensions;
+    use old_io::{EndOfFile, TimedOut, ShortWrite, IoError, ConnectionReset};
+    use old_io::{NotConnected, BrokenPipe, FileNotFound, InvalidInput, OtherIoError};
+    use old_io::{PermissionDenied, Acceptor, Listener};
+    use old_io::test::*;
     use super::*;
     use sync::mpsc::channel;
     use thread::Thread;

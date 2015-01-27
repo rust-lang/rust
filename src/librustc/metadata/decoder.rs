@@ -34,8 +34,8 @@ use middle::astencode::vtable_decoder_helpers;
 
 use std::collections::HashMap;
 use std::hash::{self, Hash, SipHasher};
-use std::io::extensions::u64_from_be_bytes;
-use std::io;
+use std::old_io::extensions::u64_from_be_bytes;
+use std::old_io;
 use std::num::FromPrimitive;
 use std::rc::Rc;
 use std::str;
@@ -1178,7 +1178,7 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
 }
 
 fn list_crate_attributes(md: rbml::Doc, hash: &Svh,
-                         out: &mut io::Writer) -> io::IoResult<()> {
+                         out: &mut old_io::Writer) -> old_io::IoResult<()> {
     try!(write!(out, "=Crate Attributes ({})=\n", *hash));
 
     let r = get_attributes(md);
@@ -1223,7 +1223,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     return deps;
 }
 
-fn list_crate_deps(data: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
+fn list_crate_deps(data: &[u8], out: &mut old_io::Writer) -> old_io::IoResult<()> {
     try!(write!(out, "=External Dependencies=\n"));
     for dep in get_crate_deps(data).iter() {
         try!(write!(out, "{} {}-{}\n", dep.cnum, dep.name, dep.hash));
@@ -1262,7 +1262,7 @@ pub fn get_crate_name(data: &[u8]) -> String {
     maybe_get_crate_name(data).expect("no crate name in crate")
 }
 
-pub fn list_crate_metadata(bytes: &[u8], out: &mut io::Writer) -> io::IoResult<()> {
+pub fn list_crate_metadata(bytes: &[u8], out: &mut old_io::Writer) -> old_io::IoResult<()> {
     let hash = get_crate_hash(bytes);
     let md = rbml::Doc::new(bytes);
     try!(list_crate_attributes(md, &hash, out));

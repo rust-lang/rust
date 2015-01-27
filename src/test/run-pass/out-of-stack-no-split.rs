@@ -16,7 +16,7 @@
 
 #![feature(asm)]
 
-use std::io::process::Command;
+use std::old_io::process::Command;
 use std::os;
 
 // lifted from the test module

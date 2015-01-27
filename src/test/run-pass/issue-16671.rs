@@ -22,7 +22,7 @@
 use std::thread::Thread;
 
 pub fn main() {
-    let mut stdin = std::io::stdin();
+    let mut stdin = std::old_io::stdin();
     Thread::spawn(move|| {
         let _ = stdin.read_to_end();
     });

@@ -15,7 +15,7 @@
 use std::raw;
 use std::mem;
 use std::slice;
-use std::io::IoResult;
+use std::old_io::IoResult;
 
 trait MyWriter {
     fn my_write(&mut self, buf: &[u8]) -> IoResult<()>;

@@ -10,7 +10,7 @@
 
 use prelude::v1::*;
 
-use io::IoResult;
+use old_io::IoResult;
 
 #[cfg(target_pointer_width = "64")]
 pub const HEX_WIDTH: uint = 18;

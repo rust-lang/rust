@@ -15,8 +15,8 @@
 // FIXME: Not sure how this should be structured
 // FIXME: Iteration should probably be considered separately
 
-use io::{IoError, IoResult, Reader};
-use io;
+use old_io::{IoError, IoResult, Reader};
+use old_io;
 use iter::Iterator;
 use num::Int;
 use ops::FnOnce;
@@ -59,7 +59,7 @@ impl<'r, R: Reader> Iterator for Bytes<'r, R> {
     fn next(&mut self) -> Option<IoResult<u8>> {
         match self.reader.read_byte() {
             Ok(x) => Some(Ok(x)),
-            Err(IoError { kind: io::EndOfFile, .. }) => None,
+            Err(IoError { kind: old_io::EndOfFile, .. }) => None,
             Err(e) => Some(Err(e))
         }
     }
@@ -178,15 +178,15 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
 #[cfg(test)]
 mod test {
     use prelude::v1::*;
-    use io;
-    use io::{MemReader, BytesReader};
+    use old_io;
+    use old_io::{MemReader, BytesReader};
 
     struct InitialZeroByteReader {
         count: int,
     }
 
     impl Reader for InitialZeroByteReader {
-        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 Ok(0)
@@ -200,16 +200,16 @@ mod test {
     struct EofReader;
 
     impl Reader for EofReader {
-        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-            Err(io::standard_error(io::EndOfFile))
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+            Err(old_io::standard_error(old_io::EndOfFile))
         }
     }
 
     struct ErroringReader;
 
     impl Reader for ErroringReader {
-        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-            Err(io::standard_error(io::InvalidInput))
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+            Err(old_io::standard_error(old_io::InvalidInput))
         }
     }
 
@@ -218,7 +218,7 @@ mod test {
     }
 
     impl Reader for PartialReader {
-        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
@@ -237,13 +237,13 @@ mod test {
     }
 
     impl Reader for ErroringLaterReader {
-        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
                 Ok(1)
             } else {
-                Err(io::standard_error(io::InvalidInput))
+                Err(old_io::standard_error(old_io::InvalidInput))
             }
         }
     }
@@ -253,7 +253,7 @@ mod test {
     }
 
     impl Reader for ThreeChunkReader {
-        fn read(&mut self, buf: &mut [u8]) -> io::IoResult<uint> {
+        fn read(&mut self, buf: &mut [u8]) -> old_io::IoResult<uint> {
             if self.count == 0 {
                 self.count = 1;
                 buf[0] = 10;
@@ -265,7 +265,7 @@ mod test {
                 buf[1] = 13;
                 Ok(2)
             } else {
-                Err(io::standard_error(io::EndOfFile))
+                Err(old_io::standard_error(old_io::EndOfFile))
             }
         }
     }

@@ -30,7 +30,7 @@ use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
 
 use std::{ascii, mem};
-use std::io::{self, IoResult};
+use std::old_io::{self, IoResult};
 use std::iter;
 
 pub enum AnnNode<'a> {
@@ -69,12 +69,12 @@ pub struct State<'a> {
     encode_idents_with_hygiene: bool,
 }
 
-pub fn rust_printer(writer: Box<io::Writer+'static>) -> State<'static> {
+pub fn rust_printer(writer: Box<old_io::Writer+'static>) -> State<'static> {
     static NO_ANN: NoAnn = NoAnn;
     rust_printer_annotated(writer, &NO_ANN)
 }
 
-pub fn rust_printer_annotated<'a>(writer: Box<io::Writer+'static>,
+pub fn rust_printer_annotated<'a>(writer: Box<old_io::Writer+'static>,
                                   ann: &'a PpAnn) -> State<'a> {
     State {
         s: pp::mk_printer(writer, default_columns),
@@ -104,8 +104,8 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                        span_diagnostic: &diagnostic::SpanHandler,
                        krate: &ast::Crate,
                        filename: String,
-                       input: &mut io::Reader,
-                       out: Box<io::Writer+'static>,
+                       input: &mut old_io::Reader,
+                       out: Box<old_io::Writer+'static>,
                        ann: &'a PpAnn,
                        is_expanded: bool) -> IoResult<()> {
     let mut s = State::new_from_input(cm,
@@ -124,8 +124,8 @@ impl<'a> State<'a> {
     pub fn new_from_input(cm: &'a CodeMap,
                           span_diagnostic: &diagnostic::SpanHandler,
                           filename: String,
-                          input: &mut io::Reader,
-                          out: Box<io::Writer+'static>,
+                          input: &mut old_io::Reader,
+                          out: Box<old_io::Writer+'static>,
                           ann: &'a PpAnn,
                           is_expanded: bool) -> State<'a> {
         let (cmnts, lits) = comments::gather_comments_and_literals(
@@ -145,7 +145,7 @@ impl<'a> State<'a> {
     }
 
     pub fn new(cm: &'a CodeMap,
-               out: Box<io::Writer+'static>,
+               out: Box<old_io::Writer+'static>,
                ann: &'a PpAnn,
                comments: Option<Vec<comments::Comment>>,
                literals: Option<Vec<comments::Literal>>) -> State<'a> {
@@ -173,7 +173,7 @@ pub fn to_string<F>(f: F) -> String where
     f(&mut s).unwrap();
     eof(&mut s.s).unwrap();
     let wr = unsafe {
-        // FIXME(pcwalton): A nasty function to extract the string from an `io::Writer`
+        // FIXME(pcwalton): A nasty function to extract the string from an `old_io::Writer`
         // that we "know" to be a `Vec<u8>` that works around the lack of checked
         // downcasts.
         let obj: &TraitObject = mem::transmute(&s.s.out);
@@ -421,7 +421,7 @@ thing_to_string_impls! { to_string }
 pub mod with_hygiene {
     use abi;
     use ast;
-    use std::io::IoResult;
+    use std::old_io::IoResult;
     use super::indent_unit;
 
     // This function is the trick that all the rest of the routines

@@ -20,7 +20,7 @@ use print::pprust;
 use ptr::P;
 use util::small_vector::SmallVector;
 
-use std::io::File;
+use std::old_io::File;
 use std::rc::Rc;
 
 // These macros all relate to the file system; they either return

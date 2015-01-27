@@ -95,7 +95,7 @@
 //! by the [`Writer`](../io/trait.Writer.html) trait:
 //!
 //! ```
-//! use std::io::IoError;
+//! use std::old_io::IoError;
 //!
 //! trait Writer {
 //!     fn write_line(&mut self, s: &str) -> Result<(), IoError>;
@@ -110,7 +110,7 @@
 //! something like this:
 //!
 //! ```{.ignore}
-//! use std::io::{File, Open, Write};
+//! use std::old_io::{File, Open, Write};
 //!
 //! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! // If `write_line` errors, then we'll never know, because the return
@@ -128,7 +128,7 @@
 //! a marginally useful message indicating why:
 //!
 //! ```{.no_run}
-//! use std::io::{File, Open, Write};
+//! use std::old_io::{File, Open, Write};
 //!
 //! let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! file.write_line("important message").ok().expect("failed to write message");
@@ -138,7 +138,7 @@
 //! You might also simply assert success:
 //!
 //! ```{.no_run}
-//! # use std::io::{File, Open, Write};
+//! # use std::old_io::{File, Open, Write};
 //!
 //! # let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //! assert!(file.write_line("important message").is_ok());
@@ -148,7 +148,7 @@
 //! Or propagate the error up the call stack with `try!`:
 //!
 //! ```
-//! # use std::io::{File, Open, Write, IoError};
+//! # use std::old_io::{File, Open, Write, IoError};
 //! fn write_message() -> Result<(), IoError> {
 //!     let mut file = File::open_mode(&Path::new("valuable_data.txt"), Open, Write);
 //!     try!(file.write_line("important message"));
@@ -167,7 +167,7 @@
 //! It replaces this:
 //!
 //! ```
-//! use std::io::{File, Open, Write, IoError};
+//! use std::old_io::{File, Open, Write, IoError};
 //!
 //! struct Info {
 //!     name: String,
@@ -191,7 +191,7 @@
 //! With this:
 //!
 //! ```
-//! use std::io::{File, Open, Write, IoError};
+//! use std::old_io::{File, Open, Write, IoError};
 //!
 //! struct Info {
 //!     name: String,
@@ -444,7 +444,7 @@ impl<T, E> Result<T, E> {
     /// ignoring I/O and parse errors:
     ///
     /// ```
-    /// use std::io::IoResult;
+    /// use std::old_io::IoResult;
     ///
     /// let mut buffer = &mut b"1\n2\n3\n4\n";
     ///

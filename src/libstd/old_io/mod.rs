@@ -18,6 +18,24 @@
 
 //! I/O, including files, networking, timers, and processes
 //!
+//! > **Warning**: This module is currently called `old_io` for a reason! The
+//! > module is currently being redesigned in a number of RFCs. For more details
+//! > follow the RFC repository in connection with [RFC 517][base] or follow
+//! > some of these sub-RFCs
+//! >
+//! > * [String handling][osstr]
+//! > * [Core I/O support][core]
+//! > * [Deadlines][deadlines]
+//! > * [std::env][env]
+//! > * [std::process][process]
+//!
+//! [base]: https://github.com/rust-lang/rfcs/blob/master/text/0517-io-os-reform.md
+//! [osstr]: https://github.com/rust-lang/rfcs/pull/575
+//! [core]: https://github.com/rust-lang/rfcs/pull/576
+//! [deadlines]: https://github.com/rust-lang/rfcs/pull/577
+//! [env]: https://github.com/rust-lang/rfcs/pull/578
+//! [process]: https://github.com/rust-lang/rfcs/pull/579
+//!
 //! `std::io` provides Rust's basic I/O types,
 //! for reading and writing to files, TCP, UDP,
 //! and other types of sockets and pipes,
@@ -30,7 +48,7 @@
 //! * Read lines from stdin
 //!
 //!     ```rust
-//!     use std::io;
+//!     use std::old_io as io;
 //!
 //!     for line in io::stdin().lock().lines() {
 //!         print!("{}", line.unwrap());
@@ -40,7 +58,7 @@
 //! * Read a complete file
 //!
 //!     ```rust
-//!     use std::io::File;
+//!     use std::old_io::File;
 //!
 //!     let contents = File::open(&Path::new("message.txt")).read_to_end();
 //!     ```
@@ -49,19 +67,19 @@
 //!
 //!     ```rust
 //!     # #![allow(unused_must_use)]
-//!     use std::io::File;
+//!     use std::old_io::File;
 //!
 //!     let mut file = File::create(&Path::new("message.txt"));
-//!     file.write(b"hello, file!\n");
+//!     file.write_all(b"hello, file!\n");
 //!     # drop(file);
-//!     # ::std::io::fs::unlink(&Path::new("message.txt"));
+//!     # ::std::old_io::fs::unlink(&Path::new("message.txt"));
 //!     ```
 //!
 //! * Iterate over the lines of a file
 //!
 //!     ```rust,no_run
-//!     use std::io::BufferedReader;
-//!     use std::io::File;
+//!     use std::old_io::BufferedReader;
+//!     use std::old_io::File;
 //!
 //!     let path = Path::new("message.txt");
 //!     let mut file = BufferedReader::new(File::open(&path));
@@ -73,8 +91,8 @@
 //! * Pull the lines of a file into a vector of strings
 //!
 //!     ```rust,no_run
-//!     use std::io::BufferedReader;
-//!     use std::io::File;
+//!     use std::old_io::BufferedReader;
+//!     use std::old_io::File;
 //!
 //!     let path = Path::new("message.txt");
 //!     let mut file = BufferedReader::new(File::open(&path));
@@ -85,14 +103,14 @@
 //!
 //!     ```rust
 //!     # #![allow(unused_must_use)]
-//!     use std::io::TcpStream;
+//!     use std::old_io::TcpStream;
 //!
 //!     # // connection doesn't fail if a server is running on 8080
 //!     # // locally, we still want to be type checking this code, so lets
 //!     # // just stop it running (#11576)
 //!     # if false {
 //!     let mut socket = TcpStream::connect("127.0.0.1:8080").unwrap();
-//!     socket.write(b"GET / HTTP/1.0\n\n");
+//!     socket.write_all(b"GET / HTTP/1.0\n\n");
 //!     let response = socket.read_to_end();
 //!     # }
 //!     ```
@@ -103,8 +121,8 @@
 //!     # fn main() { }
 //!     # fn foo() {
 //!     # #![allow(dead_code)]
-//!     use std::io::{TcpListener, TcpStream};
-//!     use std::io::{Acceptor, Listener};
+//!     use std::old_io::{TcpListener, TcpStream};
+//!     use std::old_io::{Acceptor, Listener};
 //!     use std::thread::Thread;
 //!
 //!     let listener = TcpListener::bind("127.0.0.1:80");
@@ -156,7 +174,7 @@
 //!   to be 'unwrapped' before use.
 //!
 //! These features combine in the API to allow for expressions like
-//! `File::create(&Path::new("diary.txt")).write(b"Met a girl.\n")`
+//! `File::create(&Path::new("diary.txt")).write_all(b"Met a girl.\n")`
 //! without having to worry about whether "diary.txt" exists or whether
 //! the write succeeds. As written, if either `new` or `write_line`
 //! encounters an error then the result of the entire expression will
@@ -166,14 +184,14 @@
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
-//! use std::io::File;
+//! use std::old_io::File;
 //!
-//! match File::create(&Path::new("diary.txt")).write(b"Met a girl.\n") {
+//! match File::create(&Path::new("diary.txt")).write_all(b"Met a girl.\n") {
 //!     Ok(()) => (), // succeeded
 //!     Err(e) => println!("failed to write to my diary: {}", e),
 //! }
 //!
-//! # ::std::io::fs::unlink(&Path::new("diary.txt"));
+//! # ::std::old_io::fs::unlink(&Path::new("diary.txt"));
 //! ```
 //!
 //! So what actually happens if `create` encounters an error?
@@ -199,7 +217,7 @@
 //! If you wanted to read several `u32`s from a file and return their product:
 //!
 //! ```rust
-//! use std::io::{File, IoResult};
+//! use std::old_io::{File, IoResult};
 //!
 //! fn file_product(p: &Path) -> IoResult<u32> {
 //!     let mut f = File::open(p);
@@ -925,9 +943,9 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 /// # Examples
 ///
 /// ```
-/// use std::io;
-/// use std::io::ByRefReader;
-/// use std::io::util::LimitReader;
+/// use std::old_io as io;
+/// use std::old_io::ByRefReader;
+/// use std::old_io::util::LimitReader;
 ///
 /// fn process_input<R: Reader>(r: R) {}
 ///
@@ -979,7 +997,11 @@ pub trait Writer {
     /// `Err`. Note that it is considered an error if the entire buffer could
     /// not be written, and if an error is returned then it is unknown how much
     /// data (if any) was actually written.
-    fn write(&mut self, buf: &[u8]) -> IoResult<()>;
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()>;
+
+    /// Deprecated, this method was renamed to `write_all`
+    #[deprecated = "renamed to `write_all`"]
+    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write_all(buf) }
 
     /// Flush this output stream, ensuring that all intermediately buffered
     /// contents reach their destination.
@@ -1008,7 +1030,7 @@ pub trait Writer {
 
         impl<'a, T: ?Sized + Writer> fmt::Writer for Adaptor<'a, T> {
             fn write_str(&mut self, s: &str) -> fmt::Result {
-                match self.inner.write(s.as_bytes()) {
+                match self.inner.write_all(s.as_bytes()) {
                     Ok(()) => Ok(()),
                     Err(e) => {
                         self.error = Err(e);
@@ -1034,7 +1056,7 @@ pub trait Writer {
     /// converted byte-array instead.
     #[inline]
     fn write_str(&mut self, s: &str) -> IoResult<()> {
-        self.write(s.as_bytes())
+        self.write_all(s.as_bytes())
     }
 
     /// Writes a string into this sink, and then writes a literal newline (`\n`)
@@ -1046,7 +1068,7 @@ pub trait Writer {
     /// that the `write` method is used specifically instead.
     #[inline]
     fn write_line(&mut self, s: &str) -> IoResult<()> {
-        self.write_str(s).and_then(|()| self.write(&[b'\n']))
+        self.write_str(s).and_then(|()| self.write_all(&[b'\n']))
     }
 
     /// Write a single char, encoded as UTF-8.
@@ -1054,7 +1076,7 @@ pub trait Writer {
     fn write_char(&mut self, c: char) -> IoResult<()> {
         let mut buf = [0u8; 4];
         let n = c.encode_utf8(buf.as_mut_slice()).unwrap_or(0);
-        self.write(&buf[..n])
+        self.write_all(&buf[..n])
     }
 
     /// Write the result of passing n through `int::to_str_bytes`.
@@ -1072,61 +1094,61 @@ pub trait Writer {
     /// Write a little-endian uint (number of bytes depends on system).
     #[inline]
     fn write_le_uint(&mut self, n: uint) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, uint::BYTES, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, uint::BYTES, |v| self.write_all(v))
     }
 
     /// Write a little-endian int (number of bytes depends on system).
     #[inline]
     fn write_le_int(&mut self, n: int) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, int::BYTES, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, int::BYTES, |v| self.write_all(v))
     }
 
     /// Write a big-endian uint (number of bytes depends on system).
     #[inline]
     fn write_be_uint(&mut self, n: uint) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, uint::BYTES, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, uint::BYTES, |v| self.write_all(v))
     }
 
     /// Write a big-endian int (number of bytes depends on system).
     #[inline]
     fn write_be_int(&mut self, n: int) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, int::BYTES, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, int::BYTES, |v| self.write_all(v))
     }
 
     /// Write a big-endian u64 (8 bytes).
     #[inline]
     fn write_be_u64(&mut self, n: u64) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n, 8u, |v| self.write(v))
+        extensions::u64_to_be_bytes(n, 8u, |v| self.write_all(v))
     }
 
     /// Write a big-endian u32 (4 bytes).
     #[inline]
     fn write_be_u32(&mut self, n: u32) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write_all(v))
     }
 
     /// Write a big-endian u16 (2 bytes).
     #[inline]
     fn write_be_u16(&mut self, n: u16) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write_all(v))
     }
 
     /// Write a big-endian i64 (8 bytes).
     #[inline]
     fn write_be_i64(&mut self, n: i64) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 8u, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, 8u, |v| self.write_all(v))
     }
 
     /// Write a big-endian i32 (4 bytes).
     #[inline]
     fn write_be_i32(&mut self, n: i32) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write_all(v))
     }
 
     /// Write a big-endian i16 (2 bytes).
     #[inline]
     fn write_be_i16(&mut self, n: i16) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write(v))
+        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write_all(v))
     }
 
     /// Write a big-endian IEEE754 double-precision floating-point (8 bytes).
@@ -1148,37 +1170,37 @@ pub trait Writer {
     /// Write a little-endian u64 (8 bytes).
     #[inline]
     fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n, 8u, |v| self.write(v))
+        extensions::u64_to_le_bytes(n, 8u, |v| self.write_all(v))
     }
 
     /// Write a little-endian u32 (4 bytes).
     #[inline]
     fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write_all(v))
     }
 
     /// Write a little-endian u16 (2 bytes).
     #[inline]
     fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write_all(v))
     }
 
     /// Write a little-endian i64 (8 bytes).
     #[inline]
     fn write_le_i64(&mut self, n: i64) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 8u, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, 8u, |v| self.write_all(v))
     }
 
     /// Write a little-endian i32 (4 bytes).
     #[inline]
     fn write_le_i32(&mut self, n: i32) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write_all(v))
     }
 
     /// Write a little-endian i16 (2 bytes).
     #[inline]
     fn write_le_i16(&mut self, n: i16) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write(v))
+        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write_all(v))
     }
 
     /// Write a little-endian IEEE754 double-precision floating-point
@@ -1202,13 +1224,13 @@ pub trait Writer {
     /// Write a u8 (1 byte).
     #[inline]
     fn write_u8(&mut self, n: u8) -> IoResult<()> {
-        self.write(&[n])
+        self.write_all(&[n])
     }
 
     /// Write an i8 (1 byte).
     #[inline]
     fn write_i8(&mut self, n: i8) -> IoResult<()> {
-        self.write(&[n as u8])
+        self.write_all(&[n as u8])
     }
 }
 
@@ -1230,8 +1252,8 @@ impl<T: Writer> ByRefWriter for T {
 
 impl<'a> Writer for Box<Writer+'a> {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        (&mut **self).write(buf)
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+        (&mut **self).write_all(buf)
     }
 
     #[inline]
@@ -1242,7 +1264,7 @@ impl<'a> Writer for Box<Writer+'a> {
 
 impl<'a> Writer for &'a mut (Writer+'a) {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> { (**self).write(buf) }
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> { (**self).write_all(buf) }
 
     #[inline]
     fn flush(&mut self) -> IoResult<()> { (**self).flush() }
@@ -1254,8 +1276,8 @@ impl<'a> Writer for &'a mut (Writer+'a) {
 /// # Example
 ///
 /// ```
-/// use std::io::util::TeeReader;
-/// use std::io::{stdin, ByRefWriter};
+/// use std::old_io::util::TeeReader;
+/// use std::old_io::{stdin, ByRefWriter};
 ///
 /// fn process_input<R: Reader>(r: R) {}
 ///
@@ -1277,7 +1299,7 @@ pub struct RefWriter<'a, W:'a> {
 
 impl<'a, W: Writer> Writer for RefWriter<'a, W> {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write(buf) }
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> { self.inner.write_all(buf) }
 
     #[inline]
     fn flush(&mut self) -> IoResult<()> { self.inner.flush() }
@@ -1379,7 +1401,7 @@ pub trait Buffer: Reader {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::BufReader;
+    /// use std::old_io::BufReader;
     ///
     /// let mut reader = BufReader::new(b"hello\nworld");
     /// assert_eq!("hello\n", &*reader.read_line().unwrap());
@@ -1601,7 +1623,7 @@ impl<'a, T, A: ?Sized + Acceptor<T>> Iterator for IncomingConnections<'a, A> {
 /// # Example
 ///
 /// ```
-/// use std::io;
+/// use std::old_io as io;
 ///
 /// let eof = io::standard_error(io::EndOfFile);
 /// let einval = io::standard_error(io::InvalidInput);
@@ -1691,7 +1713,7 @@ pub enum FileType {
 /// ```no_run
 /// # #![allow(unstable)]
 ///
-/// use std::io::fs::PathExtensions;
+/// use std::old_io::fs::PathExtensions;
 ///
 /// let info = match Path::new("foo.txt").stat() {
 ///     Ok(stat) => stat,

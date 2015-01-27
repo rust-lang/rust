@@ -20,7 +20,7 @@ extern crate log;
 use log::{set_logger, Logger, LogRecord};
 use std::sync::mpsc::channel;
 use std::fmt;
-use std::io::{ChanReader, ChanWriter};
+use std::old_io::{ChanReader, ChanWriter};
 use std::thread::Thread;
 
 struct MyWriter(ChanWriter);

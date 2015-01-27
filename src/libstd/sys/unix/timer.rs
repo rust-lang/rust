@@ -49,7 +49,7 @@
 use prelude::v1::*;
 use self::Req::*;
 
-use io::IoResult;
+use old_io::IoResult;
 use libc;
 use mem;
 use os;

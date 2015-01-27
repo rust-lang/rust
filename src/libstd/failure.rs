@@ -14,12 +14,12 @@ use prelude::v1::*;
 
 use any::Any;
 use cell::RefCell;
-use io::IoResult;
+use old_io::IoResult;
 use rt::{backtrace, unwind};
 use rt::util::{Stderr, Stdio};
 use thread::Thread;
 
-// Defined in this module instead of io::stdio so that the unwinding
+// Defined in this module instead of old_io::stdio so that the unwinding
 thread_local! {
     pub static LOCAL_STDERR: RefCell<Option<Box<Writer + Send>>> = {
         RefCell::new(None)
@@ -27,7 +27,7 @@ thread_local! {
 }
 
 impl Writer for Stdio {
-    fn write(&mut self, bytes: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, bytes: &[u8]) -> IoResult<()> {
         let _ = self.write_bytes(bytes);
         Ok(())
     }

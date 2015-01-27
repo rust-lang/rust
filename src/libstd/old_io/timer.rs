@@ -17,7 +17,7 @@
 
 use sync::mpsc::{Receiver, Sender, channel};
 use time::Duration;
-use io::IoResult;
+use old_io::IoResult;
 use sys::timer::Callback;
 use sys::timer::Timer as TimerImp;
 
@@ -31,7 +31,7 @@ use sys::timer::Timer as TimerImp;
 ///
 /// ```
 /// # fn foo() {
-/// use std::io::Timer;
+/// use std::old_io::Timer;
 /// use std::time::Duration;
 ///
 /// let mut timer = Timer::new().unwrap();
@@ -50,11 +50,11 @@ use sys::timer::Timer as TimerImp;
 /// ```
 ///
 /// If only sleeping is necessary, then a convenience API is provided through
-/// the `io::timer` module.
+/// the `old_io::timer` module.
 ///
 /// ```
 /// # fn foo() {
-/// use std::io::timer;
+/// use std::old_io::timer;
 /// use std::time::Duration;
 ///
 /// // Put this task to sleep for 5 seconds
@@ -115,7 +115,7 @@ impl Timer {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::Timer;
+    /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
     /// let mut timer = Timer::new().unwrap();
@@ -128,7 +128,7 @@ impl Timer {
     /// ```
     ///
     /// ```rust
-    /// use std::io::Timer;
+    /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
     /// // Incorrect, method chaining-style:
@@ -167,7 +167,7 @@ impl Timer {
     /// # Example
     ///
     /// ```rust
-    /// use std::io::Timer;
+    /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
     /// let mut timer = Timer::new().unwrap();
@@ -186,7 +186,7 @@ impl Timer {
     /// ```
     ///
     /// ```rust
-    /// use std::io::Timer;
+    /// use std::old_io::Timer;
     /// use std::time::Duration;
     ///
     /// // Incorrect, method chaining-style.

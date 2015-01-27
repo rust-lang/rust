@@ -24,8 +24,8 @@ extern crate getopts;
 extern crate log;
 
 use std::os;
-use std::io;
-use std::io::fs;
+use std::old_io;
+use std::old_io::fs;
 use std::str::FromStr;
 use std::thunk::Thunk;
 use getopts::{optopt, optflag, reqopt};
@@ -237,7 +237,7 @@ pub fn run_tests(config: &Config) {
     // sadly osx needs some file descriptor limits raised for running tests in
     // parallel (especially when we have lots and lots of child processes).
     // For context, see #8904
-    io::test::raise_fd_limit();
+    old_io::test::raise_fd_limit();
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
     os::setenv("__COMPAT_LAYER", "RunAsInvoker");

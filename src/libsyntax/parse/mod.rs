@@ -18,7 +18,7 @@ use parse::parser::Parser;
 use ptr::P;
 
 use std::cell::{Cell, RefCell};
-use std::io::File;
+use std::old_io::File;
 use std::rc::Rc;
 use std::num::Int;
 use std::str;

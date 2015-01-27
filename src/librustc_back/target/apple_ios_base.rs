@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::{Command, IoError, OtherIoError};
+use std::old_io::{Command, IoError, OtherIoError};
 use target::TargetOptions;
 
 use self::Arch::*;

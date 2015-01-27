@@ -18,11 +18,11 @@
 //! listener (socket server) implements the `Listener` and `Acceptor` traits.
 
 use clone::Clone;
-use io::IoResult;
+use old_io::IoResult;
 use result::Result::Err;
-use io::net::ip::{SocketAddr, ToSocketAddr};
-use io::{Reader, Writer, Listener, Acceptor};
-use io::{standard_error, TimedOut};
+use old_io::net::ip::{SocketAddr, ToSocketAddr};
+use old_io::{Reader, Writer, Listener, Acceptor};
+use old_io::{standard_error, TimedOut};
 use option::Option;
 use option::Option::{None, Some};
 use time::Duration;
@@ -41,7 +41,7 @@ use sys_common;
 /// # Example
 ///
 /// ```no_run
-/// use std::io::TcpStream;
+/// use std::old_io::TcpStream;
 ///
 /// {
 ///     let mut stream = TcpStream::connect("127.0.0.1:34254");
@@ -133,8 +133,8 @@ impl TcpStream {
     ///
     /// ```no_run
     /// # #![allow(unused_must_use)]
-    /// use std::io::timer;
-    /// use std::io::TcpStream;
+    /// use std::old_io::timer;
+    /// use std::old_io::TcpStream;
     /// use std::time::Duration;
     /// use std::thread::Thread;
     ///
@@ -258,7 +258,7 @@ impl Reader for TcpStream {
 }
 
 impl Writer for TcpStream {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.inner.write(buf)
     }
 }
@@ -276,8 +276,8 @@ impl sys_common::AsInner<TcpStreamImp> for TcpStream {
 ///
 /// ```
 /// # fn foo() {
-/// use std::io::{TcpListener, TcpStream};
-/// use std::io::{Acceptor, Listener};
+/// use std::old_io::{TcpListener, TcpStream};
+/// use std::old_io::{Acceptor, Listener};
 /// use std::thread::Thread;
 ///
 /// let listener = TcpListener::bind("127.0.0.1:80").unwrap();
@@ -373,8 +373,8 @@ impl TcpAcceptor {
     ///
     /// ```no_run
     /// # #![allow(unstable)]
-    /// use std::io::TcpListener;
-    /// use std::io::{Listener, Acceptor, TimedOut};
+    /// use std::old_io::TcpListener;
+    /// use std::old_io::{Listener, Acceptor, TimedOut};
     ///
     /// let mut a = TcpListener::bind("127.0.0.1:8482").listen().unwrap();
     ///
@@ -417,7 +417,7 @@ impl TcpAcceptor {
     ///
     /// ```
     /// # #![allow(unstable)]
-    /// use std::io::{TcpListener, Listener, Acceptor, EndOfFile};
+    /// use std::old_io::{TcpListener, Listener, Acceptor, EndOfFile};
     /// use std::thread::Thread;
     ///
     /// let mut a = TcpListener::bind("127.0.0.1:8482").listen().unwrap();
@@ -486,13 +486,13 @@ mod test {
 
     use sync::mpsc::channel;
     use thread::Thread;
-    use io::net::tcp::*;
-    use io::net::ip::*;
-    use io::test::*;
-    use io::{EndOfFile, TimedOut, ShortWrite, IoError};
-    use io::{ConnectionRefused, BrokenPipe, ConnectionAborted};
-    use io::{ConnectionReset, NotConnected, PermissionDenied, OtherIoError};
-    use io::{Acceptor, Listener};
+    use old_io::net::tcp::*;
+    use old_io::net::ip::*;
+    use old_io::test::*;
+    use old_io::{EndOfFile, TimedOut, ShortWrite, IoError};
+    use old_io::{ConnectionRefused, BrokenPipe, ConnectionAborted};
+    use old_io::{ConnectionReset, NotConnected, PermissionDenied, OtherIoError};
+    use old_io::{Acceptor, Listener};
 
     // FIXME #11530 this fails on android because tests are run as root
     #[cfg_attr(any(windows, target_os = "android"), ignore)]

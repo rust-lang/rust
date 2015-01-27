@@ -88,7 +88,7 @@ use prelude::v1::*;
 
 use libc;
 use ffi::CString;
-use io::{self, IoError, IoResult};
+use old_io::{self, IoError, IoResult};
 use mem;
 use ptr;
 use str;
@@ -202,7 +202,7 @@ pub fn await(handle: libc::HANDLE, deadline: u64,
 
 fn epipe() -> IoError {
     IoError {
-        kind: io::EndOfFile,
+        kind: old_io::EndOfFile,
         desc: "the pipe has ended",
         detail: None,
     }
@@ -485,7 +485,7 @@ impl UnixStream {
                         let amt = offset + bytes_written as uint;
                         return if amt > 0 {
                             Err(IoError {
-                                kind: io::ShortWrite(amt),
+                                kind: old_io::ShortWrite(amt),
                                 desc: "short write during write",
                                 detail: None,
                             })
