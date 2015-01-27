@@ -11,6 +11,8 @@
 // aux-build:macro_reexport_1.rs
 // ignore-stage1
 
+#![feature(macro_reexport)]
+
 #[macro_reexport(reexported)]
 #[no_link]
 extern crate macro_reexport_1;

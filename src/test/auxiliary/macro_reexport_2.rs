@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![crate_type = "dylib"]
+#![feature(macro_reexport)]
 
 #[macro_reexport(reexported)]
 #[macro_use] #[no_link]
