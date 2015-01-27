@@ -223,9 +223,9 @@ pub unsafe fn set_name(name: &str) {
     pthread_set_name_np(pthread_self(), cname.as_ptr());
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 pub unsafe fn set_name(name: &str) {
-    // pthread_setname_np() since OS X 10.6
+    // pthread_setname_np() since OS X 10.6 and iOS 3.2
     let cname = CString::from_slice(name.as_bytes());
     pthread_setname_np(cname.as_ptr());
 }
