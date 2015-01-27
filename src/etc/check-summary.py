@@ -15,6 +15,7 @@ import sys
 
 if __name__ == '__main__':
     summaries = []
+
     def summarise(fname):
         summary = {}
         with open(fname) as fd:
@@ -27,12 +28,14 @@ if __name__ == '__main__':
                 # track bench runs
                 if splitline[1] == 'ns/iter':
                     status = 'bench'
-                if not summary.has_key(status):
+                if status not in summary:
                     summary[status] = []
                 summary[status].append(test)
             summaries.append((fname, summary))
+
     def count(t):
         return sum(map(lambda (f, s): len(s.get(t, [])), summaries))
+
     logfiles = sys.argv[1:]
     for files in map(glob.glob, logfiles):
         map(summarise, files)
@@ -41,8 +44,9 @@ if __name__ == '__main__':
     ignored = count('ignored')
     measured = count('bench')
     print "summary of %d test runs: %d passed; %d failed; %d ignored; %d measured" % \
-            (len(logfiles), ok, failed, ignored, measured)
+          (len(logfiles), ok, failed, ignored, measured)
     print ""
+
     if failed > 0:
         print "failed tests:"
         for f, s in summaries:
