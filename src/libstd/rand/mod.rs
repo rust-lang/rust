@@ -99,10 +99,10 @@
 //!    let between = Range::new(-1f64, 1.);
 //!    let mut rng = rand::thread_rng();
 //!
-//!    let total = 1_000_000us;
-//!    let mut in_circle = 0us;
+//!    let total = 1_000_000;
+//!    let mut in_circle = 0;
 //!
-//!    for _ in range(0us, total) {
+//!    for _ in range(0, total) {
 //!        let a = between.ind_sample(&mut rng);
 //!        let b = between.ind_sample(&mut rng);
 //!        if a*a + b*b <= 1. {
@@ -176,18 +176,18 @@
 //! }
 //!
 //! fn free_doors(blocked: &[uint]) -> Vec<uint> {
-//!     range(0us, 3).filter(|x| !blocked.contains(x)).collect()
+//!     range(0, 3).filter(|x| !blocked.contains(x)).collect()
 //! }
 //!
 //! fn main() {
 //!     // The estimation will be more accurate with more simulations
-//!     let num_simulations = 10000us;
+//!     let num_simulations = 10000;
 //!
 //!     let mut rng = rand::thread_rng();
-//!     let random_door = Range::new(0us, 3);
+//!     let random_door = Range::new(0, 3);
 //!
-//!     let (mut switch_wins, mut switch_losses) = (0us, 0us);
-//!     let (mut keep_wins, mut keep_losses) = (0us, 0us);
+//!     let (mut switch_wins, mut switch_losses) = (0, 0);
+//!     let (mut keep_wins, mut keep_losses) = (0, 0);
 //!
 //!     println!("Running {} simulations...", num_simulations);
 //!     for _ in range(0, num_simulations) {
@@ -480,18 +480,18 @@ mod test {
     #[test]
     fn test_gen_range() {
         let mut r = thread_rng();
-        for _ in range(0us, 1000) {
+        for _ in range(0, 1000) {
             let a = r.gen_range(-3i, 42);
             assert!(a >= -3 && a < 42);
             assert_eq!(r.gen_range(0i, 1), 0);
             assert_eq!(r.gen_range(-12i, -11), -12);
         }
 
-        for _ in range(0us, 1000) {
+        for _ in range(0, 1000) {
             let a = r.gen_range(10i, 42);
             assert!(a >= 10 && a < 42);
             assert_eq!(r.gen_range(0i, 1), 0);
-            assert_eq!(r.gen_range(3_000_000us, 3_000_001), 3_000_000);
+            assert_eq!(r.gen_range(3_000_000, 3_000_001), 3_000_000);
         }
 
     }
@@ -521,24 +521,24 @@ mod test {
     #[test]
     fn test_gen_weighted_bool() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_weighted_bool(0us), true);
-        assert_eq!(r.gen_weighted_bool(1us), true);
+        assert_eq!(r.gen_weighted_bool(0), true);
+        assert_eq!(r.gen_weighted_bool(1), true);
     }
 
     #[test]
     fn test_gen_ascii_str() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_ascii_chars().take(0).count(), 0us);
-        assert_eq!(r.gen_ascii_chars().take(10).count(), 10us);
-        assert_eq!(r.gen_ascii_chars().take(16).count(), 16us);
+        assert_eq!(r.gen_ascii_chars().take(0).count(), 0);
+        assert_eq!(r.gen_ascii_chars().take(10).count(), 10);
+        assert_eq!(r.gen_ascii_chars().take(16).count(), 16);
     }
 
     #[test]
     fn test_gen_vec() {
         let mut r = thread_rng();
-        assert_eq!(r.gen_iter::<u8>().take(0).count(), 0us);
-        assert_eq!(r.gen_iter::<u8>().take(10).count(), 10us);
-        assert_eq!(r.gen_iter::<f64>().take(16).count(), 16us);
+        assert_eq!(r.gen_iter::<u8>().take(0).count(), 0);
+        assert_eq!(r.gen_iter::<u8>().take(10).count(), 10);
+        assert_eq!(r.gen_iter::<f64>().take(16).count(), 16);
     }
 
     #[test]
@@ -578,7 +578,7 @@ mod test {
         r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
         assert_eq!(v, b);
-        assert_eq!(r.gen_range(0us, 1us), 0us);
+        assert_eq!(r.gen_range(0, 1), 0);
     }
 
     #[test]
