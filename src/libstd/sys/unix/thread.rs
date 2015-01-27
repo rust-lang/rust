@@ -17,6 +17,7 @@ use ptr;
 use libc::consts::os::posix01::{PTHREAD_CREATE_JOINABLE, PTHREAD_STACK_MIN};
 use libc;
 use thunk::Thunk;
+use ffi::CString;
 
 use sys_common::stack::RED_ZONE;
 use sys_common::thread::*;
@@ -206,6 +207,29 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
     native
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+pub unsafe fn set_name(name: &str) {
+    // Using prctl() rather than pthread_setname_np(),
+    // because pthread_setname_np() wasn't added until glibc 2.12
+    // PR_SET_NAME since Linux 2.6.9
+    let cname = CString::from_slice(name.as_bytes());
+    prctl(15i32 /* = PR_SET_NAME */, cname.as_ptr() as u64, 0u64, 0u64, 0u64);
+}
+
+#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+pub unsafe fn set_name(name: &str) {
+    // pthread_set_name_np() since almost forever on all BSDs
+    let cname = CString::from_slice(name.as_bytes());
+    pthread_set_name_np(pthread_self(), cname.as_ptr());
+}
+
+#[cfg(target_os = "macos")]
+pub unsafe fn set_name(name: &str) {
+    // pthread_setname_np() since OS X 10.6
+    let cname = CString::from_slice(name.as_bytes());
+    pthread_setname_np(cname.as_ptr());
+}
+
 pub unsafe fn join(native: rust_thread) {
     assert_eq!(pthread_join(native, ptr::null_mut()), 0);
 }
@@ -246,6 +270,15 @@ fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
     PTHREAD_STACK_MIN
 }
 
+#[cfg(any(target_os = "linux", target_os = "android"))]
+extern {
+    fn prctl(option: libc::c_int,
+        arg2: libc::c_ulong,
+        arg3: libc::c_ulong,
+        arg4: libc::c_ulong,
+        arg5: libc::c_ulong) -> libc::c_int;
+}
+
 #[cfg(any(target_os = "linux"))]
 extern {
     pub fn pthread_self() -> libc::pthread_t;
@@ -258,11 +291,18 @@ extern {
                                  stacksize: *mut libc::size_t) -> libc::c_int;
 }
 
+#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+extern {
+    pub fn pthread_self() -> libc::pthread_t;
+    fn pthread_set_name_np(tid: libc::pthread_t, name: *const c_char);
+}
+
 #[cfg(target_os = "macos")]
 extern {
     pub fn pthread_self() -> libc::pthread_t;
     pub fn pthread_get_stackaddr_np(thread: libc::pthread_t) -> *mut libc::c_void;
     pub fn pthread_get_stacksize_np(thread: libc::pthread_t) -> libc::size_t;
+    fn pthread_setname_np(name: *const c_char) -> libc::c_int;
 }
 
 extern {
