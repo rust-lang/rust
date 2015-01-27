@@ -657,6 +657,8 @@ macro_rules! iterator {
             fn next(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
                 unsafe {
+                    ::intrinsics::assume(!self.ptr.is_null());
+                    ::intrinsics::assume(!self.end.is_null());
                     if self.ptr == self.end {
                         None
                     } else {
@@ -693,6 +695,8 @@ macro_rules! iterator {
             fn next_back(&mut self) -> Option<$elem> {
                 // could be implemented with slices, but this avoids bounds checks
                 unsafe {
+                    ::intrinsics::assume(!self.ptr.is_null());
+                    ::intrinsics::assume(!self.end.is_null());
                     if self.end == self.ptr {
                         None
                     } else {
