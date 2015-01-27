@@ -12,13 +12,14 @@ import subprocess
 import os
 import sys
 
-# msys1/msys2 automatically converts `/abs/path1:/abs/path2` into
-# `c:\real\abs\path1;c:\real\abs\path2` (semicolons) if shell thinks
-# the value is list of paths.
-# (if there is only one path, it becomes `c:/real/abs/path`.)
-# this causes great confusion and error: shell and Makefile doesn't like
-# windows paths so it is really error-prone. revert it for peace.
+
 def normalize_path(v):
+    """msys1/msys2 automatically converts `/abs/path1:/abs/path2` into
+    `c:\real\abs\path1;c:\real\abs\path2` (semicolons) if shell thinks
+    the value is list of paths.
+    (if there is only one path, it becomes `c:/real/abs/path`.)
+    this causes great confusion and error: shell and Makefile doesn't like
+    windows paths so it is really error-prone. revert it for peace."""
     v = v.replace('\\', '/')
     # c:/path -> /c/path
     if ':/' in v:
@@ -31,6 +32,7 @@ def putenv(name, value):
         value = normalize_path(value)
     os.putenv(name, value)
 
+
 def convert_path_spec(name, value):
     if os.name == 'nt' and name != 'PATH':
         value = ":".join(normalize_path(v) for v in value.split(";"))
@@ -42,14 +44,14 @@ putenv('TMPDIR', os.path.abspath(sys.argv[4]))
 putenv('CC', sys.argv[5])
 putenv('RUSTDOC', os.path.abspath(sys.argv[6]))
 filt = sys.argv[7]
-putenv('LD_LIB_PATH_ENVVAR', sys.argv[8]);
-putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[9]));
-putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[10]));
+putenv('LD_LIB_PATH_ENVVAR', sys.argv[8])
+putenv('HOST_RPATH_DIR', os.path.abspath(sys.argv[9]))
+putenv('TARGET_RPATH_DIR', os.path.abspath(sys.argv[10]))
 putenv('RUST_BUILD_STAGE', sys.argv[11])
 putenv('S', os.path.abspath(sys.argv[12]))
 putenv('PYTHON', sys.executable)
 
-if not filt in sys.argv[1]:
+if filt not in sys.argv[1]:
     sys.exit(0)
 print('maketest: ' + os.path.basename(os.path.dirname(sys.argv[1])))
 
@@ -63,19 +65,19 @@ if path[-1] == '/':
     path = path[:-1]
 
 proc = subprocess.Popen([make, '-C', path],
-                        stdout = subprocess.PIPE,
-                        stderr = subprocess.PIPE)
+                        stdout=subprocess.PIPE,
+                        stderr=subprocess.PIPE)
 out, err = proc.communicate()
 i = proc.wait()
 
 if i != 0:
-
-    print '----- ' + sys.argv[1] + """ --------------------
+    print """\
+----- %s --------------------
 ------ stdout ---------------------------------------------
-""" + out + """
+%s
 ------ stderr ---------------------------------------------
-""" + err + """
+%s
 ------        ---------------------------------------------
-"""
-    sys.exit(i)
+""" % (sys.argv[1], out, err)
 
+    sys.exit(i)
