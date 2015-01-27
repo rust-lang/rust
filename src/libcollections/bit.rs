@@ -66,7 +66,7 @@
 //! };
 //!
 //! // Simple primality tests below our max bound
-//! let print_primes = 20;
+//! let print_primes = 20u;
 //! print!("The primes below {} are: ", print_primes);
 //! for x in 0..print_primes {
 //!     if primes.contains(&x) {
@@ -2283,7 +2283,7 @@ mod tests {
 
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), bools);
 
-        let long = (0..10000).map(|i| i % 2 == 0).collect::<Vec<_>>();
+        let long = (0i32..10000).map(|i| i % 2 == 0).collect::<Vec<_>>();
         let bitv: Bitv = long.iter().map(|n| *n).collect();
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), long)
     }

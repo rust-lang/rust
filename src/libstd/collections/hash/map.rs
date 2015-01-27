@@ -2094,18 +2094,18 @@ mod test_map {
         m.insert(0u, 0u);
         m.remove(&0);
         assert!(m.capacity() >= m.len());
-        for i in 0..128 {
+        for i in 0us..128 {
             m.insert(i, i);
         }
         m.reserve(256);
 
         let usable_cap = m.capacity();
-        for i in 128..128+256 {
+        for i in 128us..128+256 {
             m.insert(i, i);
             assert_eq!(m.capacity(), usable_cap);
         }
 
-        for i in 100..128+256 {
+        for i in 100us..128+256 {
             assert_eq!(m.remove(&i), Some(i));
         }
         m.shrink_to_fit();
@@ -2114,7 +2114,7 @@ mod test_map {
         assert!(!m.is_empty());
         assert!(m.capacity() >= m.len());
 
-        for i in 0..100 {
+        for i in 0us..100 {
             assert_eq!(m.remove(&i), Some(i));
         }
         m.shrink_to_fit();
