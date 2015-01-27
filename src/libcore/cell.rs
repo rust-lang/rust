@@ -10,39 +10,30 @@
 
 //! Shareable mutable containers.
 //!
-//! Values of the `Cell` and `RefCell` types may be mutated through
-//! shared references (i.e. the common `&T` type), whereas most Rust
-//! types can only be mutated through unique (`&mut T`) references. We
-//! say that `Cell` and `RefCell` provide *interior mutability*, in
-//! contrast with typical Rust types that exhibit *inherited
-//! mutability*.
+//! Values of the `Cell<T>` and `RefCell<T>` types may be mutated through shared references (i.e.
+//! the common `&T` type), whereas most Rust types can only be mutated through unique (`&mut T`)
+//! references. We say that `Cell<T>` and `RefCell<T>` provide 'interior mutability', in contrast
+//! with typical Rust types that exhibit 'inherited mutability'.
 //!
-//! Cell types come in two flavors: `Cell` and `RefCell`. `Cell`
-//! provides `get` and `set` methods that change the
-//! interior value with a single method call. `Cell` though is only
-//! compatible with types that implement `Copy`. For other types,
-//! one must use the `RefCell` type, acquiring a write lock before
-//! mutating.
+//! Cell types come in two flavors: `Cell<T>` and `RefCell<T>`. `Cell<T>` provides `get` and `set`
+//! methods that change the interior value with a single method call. `Cell<T>` though is only
+//! compatible with types that implement `Copy`. For other types, one must use the `RefCell<T>`
+//! type, acquiring a write lock before mutating.
 //!
-//! `RefCell` uses Rust's lifetimes to implement *dynamic borrowing*,
-//! a process whereby one can claim temporary, exclusive, mutable
-//! access to the inner value. Borrows for `RefCell`s are tracked *at
-//! runtime*, unlike Rust's native reference types which are entirely
-//! tracked statically, at compile time. Because `RefCell` borrows are
-//! dynamic it is possible to attempt to borrow a value that is
-//! already mutably borrowed; when this happens it results in task
-//! panic.
+//! `RefCell<T>` uses Rust's lifetimes to implement 'dynamic borrowing', a process whereby one can
+//! claim temporary, exclusive, mutable access to the inner value. Borrows for `RefCell<T>`s are
+//! tracked 'at runtime', unlike Rust's native reference types which are entirely tracked
+//! statically, at compile time. Because `RefCell<T>` borrows are dynamic it is possible to attempt
+//! to borrow a value that is already mutably borrowed; when this happens it results in task panic.
 //!
 //! # When to choose interior mutability
 //!
-//! The more common inherited mutability, where one must have unique
-//! access to mutate a value, is one of the key language elements that
-//! enables Rust to reason strongly about pointer aliasing, statically
-//! preventing crash bugs. Because of that, inherited mutability is
-//! preferred, and interior mutability is something of a last
-//! resort. Since cell types enable mutation where it would otherwise
-//! be disallowed though, there are occasions when interior
-//! mutability might be appropriate, or even *must* be used, e.g.
+//! The more common inherited mutability, where one must have unique access to mutate a value, is
+//! one of the key language elements that enables Rust to reason strongly about pointer aliasing,
+//! statically preventing crash bugs. Because of that, inherited mutability is preferred, and
+//! interior mutability is something of a last resort. Since cell types enable mutation where it
+//! would otherwise be disallowed though, there are occasions when interior mutability might be
+//! appropriate, or even *must* be used, e.g.
 //!
 //! * Introducing inherited mutability roots to shared types.
 //! * Implementation details of logically-immutable methods.
@@ -50,15 +41,13 @@
 //!
 //! ## Introducing inherited mutability roots to shared types
 //!
-//! Shared smart pointer types, including `Rc` and `Arc`, provide
-//! containers that can be cloned and shared between multiple parties.
-//! Because the contained values may be multiply-aliased, they can
-//! only be borrowed as shared references, not mutable references.
-//! Without cells it would be impossible to mutate data inside of
-//! shared boxes at all!
+//! Shared smart pointer types, including `Rc<T>` and `Arc<T>`, provide containers that can be
+//! cloned and shared between multiple parties. Because the contained values may be
+//! multiply-aliased, they can only be borrowed as shared references, not mutable references.
+//! Without cells it would be impossible to mutate data inside of shared boxes at all!
 //!
-//! It's very common then to put a `RefCell` inside shared pointer
-//! types to reintroduce mutability:
+//! It's very common then to put a `RefCell<T>` inside shared pointer types to reintroduce
+//! mutability:
 //!
 //! ```
 //! use std::collections::HashMap;
@@ -80,12 +69,10 @@
 //!
 //! ## Implementation details of logically-immutable methods
 //!
-//! Occasionally it may be desirable not to expose in an API that
-//! there is mutation happening "under the hood". This may be because
-//! logically the operation is immutable, but e.g. caching forces the
-//! implementation to perform mutation; or because you must employ
-//! mutation to implement a trait method that was originally defined
-//! to take `&self`.
+//! Occasionally it may be desirable not to expose in an API that there is mutation happening
+//! "under the hood". This may be because logically the operation is immutable, but e.g. caching
+//! forces the implementation to perform mutation; or because you must employ mutation to implement
+//! a trait method that was originally defined to take `&self`.
 //!
 //! ```
 //! use std::cell::RefCell;
@@ -123,13 +110,11 @@
 //!
 //! ## Mutating implementations of `clone`
 //!
-//! This is simply a special - but common - case of the previous:
-//! hiding mutability for operations that appear to be immutable.
-//! The `clone` method is expected to not change the source value, and
-//! is declared to take `&self`, not `&mut self`. Therefore any
-//! mutation that happens in the `clone` method must use cell
-//! types. For example, `Rc` maintains its reference counts within a
-//! `Cell`.
+//! This is simply a special - but common - case of the previous: hiding mutability for operations
+//! that appear to be immutable. The `clone` method is expected to not change the source value, and
+//! is declared to take `&self`, not `&mut self`. Therefore any mutation that happens in the
+//! `clone` method must use cell types. For example, `Rc<T>` maintains its reference counts within a
+//! `Cell<T>`.
 //!
 //! ```
 //! use std::cell::Cell;
@@ -153,10 +138,6 @@
 //! }
 //! ```
 //!
-// FIXME: Explain difference between Cell and RefCell
-// FIXME: Downsides to interior mutability
-// FIXME: Can't be shared between threads. Dynamic borrows
-// FIXME: Relationship to Atomic types and RWLock
 
 #![stable]
 
@@ -169,6 +150,8 @@ use option::Option;
 use option::Option::{None, Some};
 
 /// A mutable memory location that admits only `Copy` data.
+///
+/// See the [module-level documentation](../index.html) for more.
 #[stable]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
@@ -176,6 +159,14 @@ pub struct Cell<T> {
 
 impl<T:Copy> Cell<T> {
     /// Creates a new `Cell` containing the given value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    /// ```
     #[stable]
     pub fn new(value: T) -> Cell<T> {
         Cell {
@@ -184,6 +175,16 @@ impl<T:Copy> Cell<T> {
     }
 
     /// Returns a copy of the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let five = c.get();
+    /// ```
     #[inline]
     #[stable]
     pub fn get(&self) -> T {
@@ -191,6 +192,16 @@ impl<T:Copy> Cell<T> {
     }
 
     /// Sets the contained value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// c.set(10);
+    /// ```
     #[inline]
     #[stable]
     pub fn set(&self, value: T) {
@@ -201,9 +212,19 @@ impl<T:Copy> Cell<T> {
 
     /// Get a reference to the underlying `UnsafeCell`.
     ///
-    /// This can be used to circumvent `Cell`'s safety checks.
+    /// # Unsafety
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::Cell;
+    ///
+    /// let c = Cell::new(5);
+    ///
+    /// let uc = unsafe { c.as_unsafe_cell() };
+    /// ```
     #[inline]
     #[unstable]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
@@ -237,6 +258,8 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 }
 
 /// A mutable memory location with dynamically checked borrow rules
+///
+/// See the [module-level documentation](../index.html) for more.
 #[stable]
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
@@ -250,7 +273,15 @@ const UNUSED: BorrowFlag = 0;
 const WRITING: BorrowFlag = -1;
 
 impl<T> RefCell<T> {
-    /// Create a new `RefCell` containing `value`
+    /// Creates a new `RefCell` containing `value`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    /// ```
     #[stable]
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
@@ -260,6 +291,16 @@ impl<T> RefCell<T> {
     }
 
     /// Consumes the `RefCell`, returning the wrapped value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// let five = c.into_inner();
+    /// ```
     #[stable]
     pub fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
@@ -285,12 +326,39 @@ impl<T> RefCell<T> {
 
     /// Immutably borrows the wrapped value.
     ///
-    /// The borrow lasts until the returned `Ref` exits scope. Multiple
-    /// immutable borrows can be taken out at the same time.
+    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
+    /// taken out at the same time.
     ///
     /// # Panics
     ///
     /// Panics if the value is currently mutably borrowed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// let borrowed_five = c.borrow();
+    /// let borrowed_five2 = c.borrow();
+    /// ```
+    ///
+    /// An example of panic:
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    /// use std::thread::Thread;
+    ///
+    /// let result = Thread::scoped(move || {
+    ///    let c = RefCell::new(5);
+    ///    let m = c.borrow_mut();
+    ///
+    ///    let b = c.borrow(); // this causes a panic
+    /// }).join();
+    ///
+    /// assert!(result.is_err());
+    /// ```
     #[stable]
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
         match self.try_borrow() {
@@ -315,12 +383,38 @@ impl<T> RefCell<T> {
 
     /// Mutably borrows the wrapped value.
     ///
-    /// The borrow lasts until the returned `RefMut` exits scope. The value
-    /// cannot be borrowed while this borrow is active.
+    /// The borrow lasts until the returned `RefMut` exits scope. The value cannot be borrowed
+    /// while this borrow is active.
     ///
     /// # Panics
     ///
     /// Panics if the value is currently borrowed.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    ///
+    /// let c = RefCell::new(5);
+    ///
+    /// let borrowed_five = c.borrow_mut();
+    /// ```
+    ///
+    /// An example of panic:
+    ///
+    /// ```
+    /// use std::cell::RefCell;
+    /// use std::thread::Thread;
+    ///
+    /// let result = Thread::scoped(move || {
+    ///    let c = RefCell::new(5);
+    ///    let m = c.borrow_mut();
+    ///
+    ///    let b = c.borrow_mut(); // this causes a panic
+    /// }).join();
+    ///
+    /// assert!(result.is_err());
+    /// ```
     #[stable]
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match self.try_borrow_mut() {
@@ -402,7 +496,9 @@ impl<'b> Clone for BorrowRef<'b> {
     }
 }
 
-/// Wraps a borrowed reference to a value in a `RefCell` box.
+/// A wrapper type for an immutably borrowed value from a `RefCell<T>`.
+///
+/// See the [module-level documentation](../index.html) for more.
 #[stable]
 pub struct Ref<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
@@ -460,7 +556,9 @@ impl<'b> BorrowRefMut<'b> {
     }
 }
 
-/// Wraps a mutable borrowed reference to a value in a `RefCell` box.
+/// A wrapper type for a mutably borrowed value from a `RefCell<T>`.
+///
+/// See the [module-level documentation](../index.html) for more.
 #[stable]
 pub struct RefMut<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
@@ -489,28 +587,25 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 
 /// The core primitive for interior mutability in Rust.
 ///
-/// `UnsafeCell` type that wraps a type T and indicates unsafe interior
-/// operations on the wrapped type. Types with an `UnsafeCell<T>` field are
-/// considered to have an *unsafe interior*. The `UnsafeCell` type is the only
-/// legal way to obtain aliasable data that is considered mutable. In general,
-/// transmuting an &T type into an &mut T is considered undefined behavior.
+/// `UnsafeCell<T>` is a type that wraps some `T` and indicates unsafe interior operations on the
+/// wrapped type. Types with an `UnsafeCell<T>` field are considered to have an 'unsafe interior'.
+/// The `UnsafeCell<T>` type is the only legal way to obtain aliasable data that is considered
+/// mutable. In general, transmuting an `&T` type into an `&mut T` is considered undefined behavior.
 ///
-/// Although it is possible to put an `UnsafeCell<T>` into static item, it is
-/// not permitted to take the address of the static item if the item is not
-/// declared as mutable. This rule exists because immutable static items are
-/// stored in read-only memory, and thus any attempt to mutate their interior
-/// can cause segfaults. Immutable static items containing `UnsafeCell<T>`
-/// instances are still useful as read-only initializers, however, so we do not
-/// forbid them altogether.
+/// Although it is possible to put an `UnsafeCell<T>` into static item, it is not permitted to take
+/// the address of the static item if the item is not declared as mutable. This rule exists because
+/// immutable static items are stored in read-only memory, and thus any attempt to mutate their
+/// interior can cause segfaults. Immutable static items containing `UnsafeCell<T>` instances are
+/// still useful as read-only initializers, however, so we do not forbid them altogether.
 ///
-/// Types like `Cell` and `RefCell` use this type to wrap their internal data.
+/// Types like `Cell<T>` and `RefCell<T>` use this type to wrap their internal data.
 ///
-/// `UnsafeCell` doesn't opt-out from any kind, instead, types with an
-/// `UnsafeCell` interior are expected to opt-out from kinds themselves.
+/// `UnsafeCell<T>` doesn't opt-out from any marker traits, instead, types with an `UnsafeCell<T>`
+/// interior are expected to opt-out from those traits themselves.
 ///
-/// # Example:
+/// # Examples
 ///
-/// ```rust
+/// ```
 /// use std::cell::UnsafeCell;
 /// use std::marker::Sync;
 ///
@@ -521,9 +616,8 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 /// unsafe impl<T> Sync for NotThreadSafe<T> {}
 /// ```
 ///
-/// **NOTE:** `UnsafeCell<T>` fields are public to allow static initializers. It
-/// is not recommended to access its fields directly, `get` should be used
-/// instead.
+/// **NOTE:** `UnsafeCell<T>`'s fields are public to allow static initializers. It is not
+/// recommended to access its fields directly, `get` should be used instead.
 #[lang="unsafe"]
 #[stable]
 pub struct UnsafeCell<T> {
@@ -539,22 +633,52 @@ impl<T> UnsafeCell<T> {
     /// Construct a new instance of `UnsafeCell` which will wrap the specified
     /// value.
     ///
-    /// All access to the inner value through methods is `unsafe`, and it is
-    /// highly discouraged to access the fields directly.
+    /// All access to the inner value through methods is `unsafe`, and it is highly discouraged to
+    /// access the fields directly.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let uc = UnsafeCell::new(5);
+    /// ```
     #[stable]
     pub fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value: value }
     }
 
     /// Gets a mutable pointer to the wrapped value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let uc = UnsafeCell::new(5);
+    ///
+    /// let five = uc.get();
+    /// ```
     #[inline]
     #[stable]
     pub fn get(&self) -> *mut T { &self.value as *const T as *mut T }
 
     /// Unwraps the value
     ///
-    /// This function is unsafe because there is no guarantee that this or other
-    /// tasks are currently inspecting the inner value.
+    /// # Unsafety
+    ///
+    /// This function is unsafe because there is no guarantee that this or other threads are
+    /// currently inspecting the inner value.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::cell::UnsafeCell;
+    ///
+    /// let uc = UnsafeCell::new(5);
+    ///
+    /// let five = unsafe { uc.into_inner() };
+    /// ```
     #[inline]
     #[stable]
     pub unsafe fn into_inner(self) -> T { self.value }
