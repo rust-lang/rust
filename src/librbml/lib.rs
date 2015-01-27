@@ -16,7 +16,8 @@
 //!     http://www.matroska.org/technical/specs/rfc/index.html
 
 #![crate_name = "rbml"]
-#![unstable]
+#![unstable(feature = "rustc_private")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -27,7 +28,10 @@
 #![allow(unknown_features)]
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(rustc_private)]
 
 extern crate serialize;
 #[macro_use] extern crate log;
@@ -853,7 +857,10 @@ pub mod writer {
 
     // Set to true to generate more debugging in EBML code.
     // Totally lame approach.
+    #[cfg(not(ndebug))]
     static DEBUG: bool = true;
+    #[cfg(ndebug)]
+    static DEBUG: bool = false;
 
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         // used internally to emit things like the vector length and so on

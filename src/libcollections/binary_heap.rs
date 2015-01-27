@@ -148,7 +148,7 @@
 //! ```
 
 #![allow(missing_docs)]
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::prelude::*;
 
@@ -164,12 +164,12 @@ use vec::{self, Vec};
 ///
 /// This will be a max-heap.
 #[derive(Clone)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct BinaryHeap<T> {
     data: Vec<T>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Default for BinaryHeap<T> {
     #[inline]
     fn default() -> BinaryHeap<T> { BinaryHeap::new() }
@@ -185,7 +185,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// let mut heap = BinaryHeap::new();
     /// heap.push(4u);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BinaryHeap<T> { BinaryHeap { data: vec![] } }
 
     /// Creates an empty `BinaryHeap` with a specific capacity.
@@ -200,7 +200,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// let mut heap = BinaryHeap::with_capacity(10);
     /// heap.push(4u);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: uint) -> BinaryHeap<T> {
         BinaryHeap { data: Vec::with_capacity(capacity) }
     }
@@ -238,7 +238,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { iter: self.data.iter() }
     }
@@ -259,7 +259,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///     println!("{}", x);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
         IntoIter { iter: self.data.into_iter() }
     }
@@ -279,7 +279,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.peek(), Some(&5));
     ///
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&self) -> Option<&T> {
         self.data.get(0)
     }
@@ -294,7 +294,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 100);
     /// heap.push(4u);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint { self.data.capacity() }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
@@ -317,7 +317,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 100);
     /// heap.push(4u);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: uint) {
         self.data.reserve_exact(additional);
     }
@@ -338,13 +338,13 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert!(heap.capacity() >= 100);
     /// heap.push(4u);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: uint) {
         self.data.reserve(additional);
     }
 
     /// Discards as much additional capacity as possible.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         self.data.shrink_to_fit();
     }
@@ -362,7 +362,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.pop(), Some(1));
     /// assert_eq!(heap.pop(), None);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {
         self.data.pop().map(|mut item| {
             if !self.is_empty() {
@@ -387,7 +387,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// assert_eq!(heap.len(), 3);
     /// assert_eq!(heap.peek(), Some(&5));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, item: T) {
         let old_len = self.len();
         self.data.push(item);
@@ -542,40 +542,41 @@ impl<T: Ord> BinaryHeap<T> {
     }
 
     /// Returns the length of the binary heap.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { self.data.len() }
 
     /// Checks if the binary heap is empty.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the binary heap, returning an iterator over the removed elements.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
         Drain { iter: self.data.drain() }
     }
 
     /// Drops all items from the binary heap.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) { self.drain(); }
 }
 
 /// `BinaryHeap` iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter <'a, T: 'a> {
     iter: slice::Iter<'a, T>,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Clone for Iter<'a, T> {
     fn clone(&self) -> Iter<'a, T> {
         Iter { iter: self.iter.clone() }
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
@@ -586,22 +587,22 @@ impl<'a, T> Iterator for Iter<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> { self.iter.next_back() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
 /// An iterator that moves out of a `BinaryHeap`.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     iter: vec::IntoIter<T>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
@@ -612,22 +613,22 @@ impl<T> Iterator for IntoIter<T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// An iterator that drains a `BinaryHeap`.
-#[unstable = "recent addition"]
+#[unstable(feature = "collections", reason = "recent addition")]
 pub struct Drain<'a, T: 'a> {
     iter: vec::Drain<'a, T>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -638,23 +639,23 @@ impl<'a, T: 'a> Iterator for Drain<'a, T> {
     fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> { self.iter.next_back() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
     fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BinaryHeap<T> {
         BinaryHeap::from_vec(iter.collect())
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
     fn extend<Iter: Iterator<Item=T>>(&mut self, mut iter: Iter) {
         let (lower, _) = iter.size_hint();

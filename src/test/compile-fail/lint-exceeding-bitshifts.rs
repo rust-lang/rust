@@ -10,8 +10,8 @@
 
 #![deny(exceeding_bitshifts)]
 #![allow(unused_variables)]
-#![allow(unstable)]
 #![allow(dead_code)]
+#![feature(core)]
 
 fn main() {
       let n = 1u8 << 7;

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 //! Threadsafe reference-counted boxes (the `Arc<T>` type).
 //!
@@ -110,7 +110,7 @@ use heap::deallocate;
 /// }
 /// ```
 #[unsafe_no_drop_flag]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Arc<T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -126,7 +126,8 @@ unsafe impl<T: Sync + Send> Sync for Arc<T> { }
 /// Weak pointers will not keep the data inside of the `Arc` alive, and can be used to break cycles
 /// between `Arc` pointers.
 #[unsafe_no_drop_flag]
-#[unstable = "Weak pointers may not belong in this module."]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
 pub struct Weak<T> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -156,7 +157,7 @@ impl<T> Arc<T> {
     /// let five = Arc::new(5i);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
@@ -179,7 +180,8 @@ impl<T> Arc<T> {
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[unstable = "Weak pointers may not belong in this module."]
+    #[unstable(feature = "alloc",
+               reason = "Weak pointers may not belong in this module.")]
     pub fn downgrade(&self) -> Weak<T> {
         // See the clone() impl for why this is relaxed
         self.inner().weak.fetch_add(1, Relaxed);
@@ -200,15 +202,15 @@ impl<T> Arc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[unstable]
+#[unstable(feature = "alloc")]
 pub fn weak_count<T>(this: &Arc<T>) -> uint { this.inner().weak.load(SeqCst) - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[unstable]
+#[unstable(feature = "alloc")]
 pub fn strong_count<T>(this: &Arc<T>) -> uint { this.inner().strong.load(SeqCst) }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Arc<T> {
     /// Makes a clone of the `Arc<T>`.
     ///
@@ -245,7 +247,7 @@ impl<T> BorrowFrom<Arc<T>> for T {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Deref for Arc<T> {
     type Target = T;
 
@@ -271,7 +273,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
     /// let mut_five = five.make_unique();
     /// ```
     #[inline]
-    #[unstable]
+    #[unstable(feature = "alloc")]
     pub fn make_unique(&mut self) -> &mut T {
         // Note that we hold a strong reference, which also counts as a weak reference, so we only
         // clone if there is an additional reference of either kind.
@@ -289,7 +291,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Sync + Send> Drop for Arc<T> {
     /// Drops the `Arc<T>`.
     ///
@@ -355,7 +357,8 @@ impl<T: Sync + Send> Drop for Arc<T> {
     }
 }
 
-#[unstable = "Weak pointers may not belong in this module."]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
 impl<T: Sync + Send> Weak<T> {
     /// Upgrades a weak reference to a strong reference.
     ///
@@ -393,7 +396,8 @@ impl<T: Sync + Send> Weak<T> {
     }
 }
 
-#[unstable = "Weak pointers may not belong in this module."]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
 impl<T: Sync + Send> Clone for Weak<T> {
     /// Makes a clone of the `Weak<T>`.
     ///
@@ -417,7 +421,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Sync + Send> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///
@@ -460,7 +464,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for Arc<T> {
     /// Equality for two `Arc<T>`s.
     ///
@@ -492,7 +496,7 @@ impl<T: PartialEq> PartialEq for Arc<T> {
     /// ```
     fn ne(&self, other: &Arc<T>) -> bool { *(*self) != *(*other) }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// Partial comparison for two `Arc<T>`s.
     ///
@@ -571,30 +575,30 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     fn ge(&self, other: &Arc<T>) -> bool { *(*self) >= *(*other) }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for Arc<T> {
     fn cmp(&self, other: &Arc<T>) -> Ordering { (**self).cmp(&**other) }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for Arc<T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display> fmt::Display for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Arc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default + Sync + Send> Default for Arc<T> {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
 
@@ -605,7 +609,6 @@ impl<H: Hasher, T: Hash<H>> Hash<H> for Arc<T> {
 }
 
 #[cfg(test)]
-#[allow(unstable)]
 mod tests {
     use std::clone::Clone;
     use std::sync::mpsc::channel;

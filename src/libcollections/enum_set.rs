@@ -82,19 +82,22 @@ fn bit<E:CLike>(e: &E) -> uint {
 
 impl<E:CLike> EnumSet<E> {
     /// Returns an empty `EnumSet`.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn new() -> EnumSet<E> {
         EnumSet {bits: 0}
     }
 
     /// Returns the number of elements in the given `EnumSet`.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn len(&self) -> uint {
         self.bits.count_ones()
     }
 
     /// Returns true if the `EnumSet` is empty.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn is_empty(&self) -> bool {
         self.bits == 0
     }
@@ -104,19 +107,22 @@ impl<E:CLike> EnumSet<E> {
     }
 
     /// Returns `false` if the `EnumSet` contains any enum of the given `EnumSet`.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn is_disjoint(&self, other: &EnumSet<E>) -> bool {
         (self.bits & other.bits) == 0
     }
 
     /// Returns `true` if a given `EnumSet` is included in this `EnumSet`.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn is_superset(&self, other: &EnumSet<E>) -> bool {
         (self.bits & other.bits) == other.bits
     }
 
     /// Returns `true` if this `EnumSet` is included in the given `EnumSet`.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn is_subset(&self, other: &EnumSet<E>) -> bool {
         other.is_superset(self)
     }
@@ -132,7 +138,8 @@ impl<E:CLike> EnumSet<E> {
     }
 
     /// Adds an enum to the `EnumSet`, and returns `true` if it wasn't there before
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn insert(&mut self, e: E) -> bool {
         let result = !self.contains(&e);
         self.bits |= bit(&e);
@@ -140,7 +147,8 @@ impl<E:CLike> EnumSet<E> {
     }
 
     /// Removes an enum from the EnumSet
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn remove(&mut self, e: &E) -> bool {
         let result = self.contains(e);
         self.bits &= !bit(e);
@@ -148,13 +156,15 @@ impl<E:CLike> EnumSet<E> {
     }
 
     /// Returns `true` if an `EnumSet` contains a given enum.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn contains(&self, e: &E) -> bool {
         (self.bits & bit(e)) != 0
     }
 
     /// Returns an iterator over an `EnumSet`.
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn iter(&self) -> Iter<E> {
         Iter::new(self.bits)
     }

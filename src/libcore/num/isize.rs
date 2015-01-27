@@ -14,7 +14,7 @@
 //! new type will gradually take place over the alpha cycle along with
 //! the development of clearer conventions around integer types.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "isize")]
 
 #[cfg(target_pointer_width = "32")]

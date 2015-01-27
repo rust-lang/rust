@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable]
+#![unstable(feature = "std_misc")]
 
 use prelude::v1::*;
 

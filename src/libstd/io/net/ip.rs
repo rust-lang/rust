@@ -38,7 +38,7 @@ pub enum IpAddr {
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for IpAddr {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -70,7 +70,7 @@ pub struct SocketAddr {
     pub port: Port,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for SocketAddr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match self.ip {

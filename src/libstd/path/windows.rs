@@ -85,7 +85,7 @@ pub struct Path {
     sepidx: Option<uint> // index of the final separator in the non-prefix portion of repr
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.display(), f)

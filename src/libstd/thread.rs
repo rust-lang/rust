@@ -144,7 +144,7 @@
 //!
 //! * It can be implemented highly efficiently on many platforms.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use any::Any;
 use boxed::Box;
@@ -166,7 +166,7 @@ use sys_common::{stack, thread_info};
 
 /// Thread configuration. Provides detailed control over the properties
 /// and behavior of new threads.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
     name: Option<String>,
@@ -181,7 +181,7 @@ pub struct Builder {
 impl Builder {
     /// Generate the base configuration for spawning a thread, from which
     /// configuration methods can be chained.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Builder {
         Builder {
             name: None,
@@ -193,28 +193,30 @@ impl Builder {
 
     /// Name the thread-to-be. Currently the name is used for identification
     /// only in panic messages.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(mut self, name: String) -> Builder {
         self.name = Some(name);
         self
     }
 
     /// Set the size of the stack for the new thread.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stack_size(mut self, size: uint) -> Builder {
         self.stack_size = Some(size);
         self
     }
 
     /// Redirect thread-local stdout.
-    #[unstable = "Will likely go away after proc removal"]
+    #[unstable(feature = "std_misc",
+               reason = "Will likely go away after proc removal")]
     pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Builder {
         self.stdout = Some(stdout);
         self
     }
 
     /// Redirect thread-local stderr.
-    #[unstable = "Will likely go away after proc removal"]
+    #[unstable(feature = "std_misc",
+               reason = "Will likely go away after proc removal")]
     pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Builder {
         self.stderr = Some(stderr);
         self
@@ -223,7 +225,8 @@ impl Builder {
     /// Spawn a new detached thread, and return a handle to it.
     ///
     /// See `Thead::spawn` and the module doc for more details.
-    #[unstable = "may change with specifics of new Send semantics"]
+    #[unstable(feature = "std_misc",
+               reason = "may change with specifics of new Send semantics")]
     pub fn spawn<F>(self, f: F) -> Thread where F: FnOnce(), F: Send + 'static {
         let (native, thread) = self.spawn_inner(Thunk::new(f), Thunk::with_arg(|_| {}));
         unsafe { imp::detach(native) };
@@ -234,7 +237,8 @@ impl Builder {
     /// scope, and return a `JoinGuard`.
     ///
     /// See `Thead::scoped` and the module doc for more details.
-    #[unstable = "may change with specifics of new Send semantics"]
+    #[unstable(feature = "std_misc",
+               reason = "may change with specifics of new Send semantics")]
     pub fn scoped<'a, T, F>(self, f: F) -> JoinGuard<'a, T> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
@@ -326,7 +330,7 @@ struct Inner {
 unsafe impl Sync for Inner {}
 
 #[derive(Clone)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 /// A handle to a thread.
 pub struct Thread {
     inner: Arc<Inner>,
@@ -350,7 +354,8 @@ impl Thread {
     /// main thread; the whole process is terminated when the main thread
     /// finishes.) The thread handle can be used for low-level
     /// synchronization. See the module documentation for additional details.
-    #[unstable = "may change with specifics of new Send semantics"]
+    #[unstable(feature = "std_misc",
+               reason = "may change with specifics of new Send semantics")]
     pub fn spawn<F>(f: F) -> Thread where F: FnOnce(), F: Send + 'static {
         Builder::new().spawn(f)
     }
@@ -363,7 +368,8 @@ impl Thread {
     /// current thread's stack (hence the "scoped" name), it cannot be detached;
     /// it *must* be joined before the relevant stack frame is popped. See the
     /// module documentation for additional details.
-    #[unstable = "may change with specifics of new Send semantics"]
+    #[unstable(feature = "std_misc",
+               reason = "may change with specifics of new Send semantics")]
     pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
@@ -371,20 +377,20 @@ impl Thread {
     }
 
     /// Gets a handle to the thread that invokes it.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn current() -> Thread {
         thread_info::current_thread()
     }
 
     /// Cooperatively give up a timeslice to the OS scheduler.
-    #[unstable = "name may change"]
+    #[unstable(feature = "std_misc", reason = "name may change")]
     pub fn yield_now() {
         unsafe { imp::yield_now() }
     }
 
     /// Determines whether the current thread is unwinding because of panic.
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn panicking() -> bool {
         unwind::panicking()
     }
@@ -398,7 +404,7 @@ impl Thread {
     // future, this will be implemented in a more efficient way, perhaps along the lines of
     //   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
     // or futuxes, and in either case may allow spurious wakeups.
-    #[unstable = "recently introduced"]
+    #[unstable(feature = "std_misc", reason = "recently introduced")]
     pub fn park() {
         let thread = Thread::current();
         let mut guard = thread.inner.lock.lock().unwrap();
@@ -411,7 +417,7 @@ impl Thread {
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// See the module doc for more detail.
-    #[unstable = "recently introduced"]
+    #[unstable(feature = "std_misc", reason = "recently introduced")]
     pub fn unpark(&self) {
         let mut guard = self.inner.lock.lock().unwrap();
         if !*guard {
@@ -421,7 +427,7 @@ impl Thread {
     }
 
     /// Get the thread's name.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
         self.inner.name.as_ref().map(|s| s.as_slice())
     }
@@ -435,7 +441,7 @@ impl thread_info::NewThread for Thread {
 /// Indicates the manner in which a thread exited.
 ///
 /// A thread that completes without panicking is considered to exit successfully.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
 
 struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
@@ -447,7 +453,8 @@ unsafe impl<T> Sync for Packet<T> {}
 ///
 /// The type `T` is the return type for the thread's main function.
 #[must_use]
-#[unstable = "may change with specifics of new Send semantics"]
+#[unstable(feature = "std_misc",
+           reason = "may change with specifics of new Send semantics")]
 pub struct JoinGuard<'a, T: 'a> {
     native: imp::rust_thread,
     thread: Thread,
@@ -455,12 +462,12 @@ pub struct JoinGuard<'a, T: 'a> {
     packet: Packet<T>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<'a, T: Send + 'a> Sync for JoinGuard<'a, T> {}
 
 impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     /// Extract a handle to the thread this guard will join on.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn thread(&self) -> &Thread {
         &self.thread
     }
@@ -470,7 +477,7 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     ///
     /// If the child thread panics, `Err` is returned with the parameter given
     /// to `panic`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(mut self) -> Result<T> {
         assert!(!self.joined);
         unsafe { imp::join(self.native) };
@@ -483,7 +490,8 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
 
 impl<T: Send> JoinGuard<'static, T> {
     /// Detaches the child thread, allowing it to outlive its parent.
-    #[unstable = "unsure whether this API imposes limitations elsewhere"]
+    #[unstable(feature = "std_misc",
+               reason = "unsure whether this API imposes limitations elsewhere")]
     pub fn detach(mut self) {
         unsafe { imp::detach(self.native) };
         self.joined = true; // avoid joining in the destructor
@@ -491,7 +499,7 @@ impl<T: Send> JoinGuard<'static, T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     fn drop(&mut self) {
         if !self.joined {

@@ -42,7 +42,8 @@
 //! is desired, `to_mut` will obtain a mutable references to an owned
 //! value, cloning if necessary.
 
-#![unstable = "recently added as part of collections reform"]
+#![unstable(feature = "core",
+            reason = "recently added as part of collections reform")]
 
 use clone::Clone;
 use cmp::{Eq, Ord, Ordering, PartialEq, PartialOrd};
@@ -141,7 +142,7 @@ pub enum Cow<'a, T, B: ?Sized + 'a> where B: ToOwned<T> {
     Owned(T)
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Clone for Cow<'a, T, B> where B: ToOwned<T> {
     fn clone(&self) -> Cow<'a, T, B> {
         match *self {
@@ -195,7 +196,7 @@ impl<'a, T, B: ?Sized> Cow<'a, T, B> where B: ToOwned<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
     type Target = B;
 
@@ -207,10 +208,10 @@ impl<'a, T, B: ?Sized> Deref for Cow<'a, T, B> where B: ToOwned<T>  {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Eq for Cow<'a, T, B> where B: Eq + ToOwned<T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     #[inline]
     fn cmp(&self, other: &Cow<'a, T, B>) -> Ordering {
@@ -218,7 +219,7 @@ impl<'a, T, B: ?Sized> Ord for Cow<'a, T, B> where B: Ord + ToOwned<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, 'b, T, U, B: ?Sized, C: ?Sized> PartialEq<Cow<'b, U, C>> for Cow<'a, T, B> where
     B: PartialEq<C> + ToOwned<T>,
     C: ToOwned<U>,
@@ -229,7 +230,7 @@ impl<'a, 'b, T, U, B: ?Sized, C: ?Sized> PartialEq<Cow<'b, U, C>> for Cow<'a, T,
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwned<T> {
     #[inline]
     fn partial_cmp(&self, other: &Cow<'a, T, B>) -> Option<Ordering> {
@@ -237,7 +238,7 @@ impl<'a, T, B: ?Sized> PartialOrd for Cow<'a, T, B> where B: PartialOrd + ToOwne
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> fmt::Debug for Cow<'a, T, B> where
     B: fmt::Debug + ToOwned<T>,
     T: fmt::Debug,
@@ -250,7 +251,7 @@ impl<'a, T, B: ?Sized> fmt::Debug for Cow<'a, T, B> where
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, B: ?Sized> fmt::Display for Cow<'a, T, B> where
     B: fmt::Display + ToOwned<T>,
     T: fmt::Display,

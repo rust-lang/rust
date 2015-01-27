@@ -59,7 +59,7 @@
 //! println!("path exists: {}", path.exists());
 //! ```
 
-#![unstable]
+#![unstable(feature = "path")]
 
 use core::marker::Sized;
 use ffi::CString;
@@ -823,14 +823,14 @@ pub struct Display<'a, P:'a> {
     filename: bool
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, P: GenericPath> fmt::Debug for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.as_cow(), f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, P: GenericPath> fmt::Display for Display<'a, P> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         self.as_cow().fmt(f)

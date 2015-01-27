@@ -57,7 +57,7 @@ pub fn is_sep(c: char) -> bool {
     c == SEP
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Path {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&self.display(), f)

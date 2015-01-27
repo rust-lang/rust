@@ -56,7 +56,8 @@
 //! assert_eq!(hash::<_, SipHasher>(&person1), hash::<_, SipHasher>(&person2));
 //! ```
 
-#![unstable = "module was recently redesigned"]
+#![unstable(feature = "hash",
+            reason = "module was recently redesigned")]
 
 use prelude::*;
 
@@ -95,7 +96,8 @@ pub trait Hasher {
 
 /// A common bound on the `Hasher` parameter to `Hash` implementations in order
 /// to generically hash an aggregate.
-#[experimental = "this trait will likely be replaced by io::Writer"]
+#[unstable(feature = "hash",
+           reason = "this trait will likely be replaced by io::Writer")]
 #[allow(missing_docs)]
 pub trait Writer {
     fn write(&mut self, bytes: &[u8]);

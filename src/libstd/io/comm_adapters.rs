@@ -134,7 +134,7 @@ impl ChanWriter {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Clone for ChanWriter {
     fn clone(&self) -> ChanWriter {
         ChanWriter { tx: self.tx.clone() }

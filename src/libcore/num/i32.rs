@@ -10,7 +10,7 @@
 
 //! Operations and constants for signed 32-bits integers (`i32` type)
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "i32")]
 
 int_module! { i32, 32 }

@@ -124,7 +124,7 @@ fn test_env<F>(source_string: &str,
         resolve::resolve_crate(&sess, &ast_map, &lang_items, krate, resolve::MakeGlobMap::No);
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
-    let stability_index = stability::Index::build(krate);
+    let stability_index = stability::Index::build(&sess, krate);
     let arenas = ty::CtxtArenas::new();
     let tcx = ty::mk_ctxt(sess,
                           &arenas,

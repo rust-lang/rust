@@ -57,4 +57,4 @@
 //! ```
 
 #![doc(primitive = "tuple")]
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]

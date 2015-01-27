@@ -14,7 +14,7 @@
 //! descriptors, and sockets, but its functionality will grow over
 //! time.
 
-#![unstable]
+#![unstable(feature = "std_misc")]
 
 pub use sys_common::wtf8::{Wtf8Buf, EncodeWide};
 

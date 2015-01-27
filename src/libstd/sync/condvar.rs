@@ -58,7 +58,7 @@ use sync::{mutex, MutexGuard};
 ///     started = cvar.wait(started).unwrap();
 /// }
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Condvar { inner: Box<StaticCondvar> }
 
 unsafe impl Send for Condvar {}
@@ -76,7 +76,8 @@ unsafe impl Sync for Condvar {}
 ///
 /// static CVAR: StaticCondvar = CONDVAR_INIT;
 /// ```
-#[unstable = "may be merged with Condvar in the future"]
+#[unstable(feature = "std_misc",
+           reason = "may be merged with Condvar in the future")]
 pub struct StaticCondvar {
     inner: sys::Condvar,
     mutex: AtomicUsize,
@@ -86,7 +87,8 @@ unsafe impl Send for StaticCondvar {}
 unsafe impl Sync for StaticCondvar {}
 
 /// Constant initializer for a statically allocated condition variable.
-#[unstable = "may be merged with Condvar in the future"]
+#[unstable(feature = "std_misc",
+           reason = "may be merged with Condvar in the future")]
 pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
     inner: sys::CONDVAR_INIT,
     mutex: ATOMIC_USIZE_INIT,
@@ -95,7 +97,7 @@ pub const CONDVAR_INIT: StaticCondvar = StaticCondvar {
 impl Condvar {
     /// Creates a new condition variable which is ready to be waited on and
     /// notified.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Condvar {
         Condvar {
             inner: box StaticCondvar {
@@ -131,7 +133,7 @@ impl Condvar {
     /// over time. Each condition variable is dynamically bound to exactly one
     /// mutex to ensure defined behavior across platforms. If this functionality
     /// is not desired, then unsafe primitives in `sys` are provided.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn wait<'a, T>(&self, guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
         unsafe {
@@ -154,7 +156,7 @@ impl Condvar {
     ///
     /// Like `wait`, the lock specified will be re-acquired when this function
     /// returns, regardless of whether the timeout elapsed or not.
-    #[unstable]
+    #[unstable(feature = "std_misc")]
     pub fn wait_timeout<'a, T>(&self, guard: MutexGuard<'a, T>, dur: Duration)
                            -> LockResult<(MutexGuard<'a, T>, bool)> {
         unsafe {
@@ -169,7 +171,7 @@ impl Condvar {
     /// The semantics of this function are equivalent to `wait_timeout` except
     /// that the implementation will repeatedly wait while the duration has not
     /// passed and the provided function returns `false`.
-    #[unstable]
+    #[unstable(feature = "std_misc")]
     pub fn wait_timeout_with<'a, T, F>(&self,
                                        guard: MutexGuard<'a, T>,
                                        dur: Duration,
@@ -189,7 +191,7 @@ impl Condvar {
     /// `notify_one` are not buffered in any way.
     ///
     /// To wake up all threads, see `notify_all()`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_one(&self) { unsafe { self.inner.inner.notify_one() } }
 
     /// Wake up all blocked threads on this condvar.
@@ -199,11 +201,11 @@ impl Condvar {
     /// way.
     ///
     /// To wake up only one thread, see `notify_one()`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn notify_all(&self) { unsafe { self.inner.inner.notify_all() } }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Drop for Condvar {
     fn drop(&mut self) {
         unsafe { self.inner.inner.destroy() }
@@ -215,7 +217,8 @@ impl StaticCondvar {
     /// notification.
     ///
     /// See `Condvar::wait`.
-    #[unstable = "may be merged with Condvar in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with Condvar in the future")]
     pub fn wait<'a, T>(&'static self, guard: MutexGuard<'a, T>)
                        -> LockResult<MutexGuard<'a, T>> {
         let poisoned = unsafe {
@@ -235,7 +238,8 @@ impl StaticCondvar {
     /// specified duration.
     ///
     /// See `Condvar::wait_timeout`.
-    #[unstable = "may be merged with Condvar in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with Condvar in the future")]
     pub fn wait_timeout<'a, T>(&'static self, guard: MutexGuard<'a, T>, dur: Duration)
                                -> LockResult<(MutexGuard<'a, T>, bool)> {
         let (poisoned, success) = unsafe {
@@ -258,7 +262,8 @@ impl StaticCondvar {
     /// passed and the function returns `false`.
     ///
     /// See `Condvar::wait_timeout_with`.
-    #[unstable = "may be merged with Condvar in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with Condvar in the future")]
     pub fn wait_timeout_with<'a, T, F>(&'static self,
                                        guard: MutexGuard<'a, T>,
                                        dur: Duration,
@@ -298,13 +303,15 @@ impl StaticCondvar {
     /// Wake up one blocked thread on this condvar.
     ///
     /// See `Condvar::notify_one`.
-    #[unstable = "may be merged with Condvar in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with Condvar in the future")]
     pub fn notify_one(&'static self) { unsafe { self.inner.notify_one() } }
 
     /// Wake up all blocked threads on this condvar.
     ///
     /// See `Condvar::notify_all`.
-    #[unstable = "may be merged with Condvar in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with Condvar in the future")]
     pub fn notify_all(&'static self) { unsafe { self.inner.notify_all() } }
 
     /// Deallocate all resources associated with this static condvar.
@@ -313,7 +320,8 @@ impl StaticCondvar {
     /// active users of the condvar, and this also doesn't prevent any future
     /// users of the condvar. This method is required to be called to not leak
     /// memory on all platforms.
-    #[unstable = "may be merged with Condvar in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with Condvar in the future")]
     pub unsafe fn destroy(&'static self) {
         self.inner.destroy()
     }

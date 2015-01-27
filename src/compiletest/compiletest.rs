@@ -13,7 +13,15 @@
 #![feature(slicing_syntax, unboxed_closures)]
 #![feature(box_syntax)]
 #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(test)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(path)]
+#![feature(io)]
+#![feature(core)]
+#![feature(collections)]
+#![feature(os)]
+#![feature(unicode)]
 
 #![deny(warnings)]
 

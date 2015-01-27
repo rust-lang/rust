@@ -45,7 +45,7 @@ pub struct ParseSess {
 
 pub fn new_parse_sess() -> ParseSess {
     ParseSess {
-        span_diagnostic: mk_span_handler(default_handler(Auto, None), CodeMap::new()),
+        span_diagnostic: mk_span_handler(default_handler(Auto, None, true), CodeMap::new()),
         included_mod_stack: RefCell::new(Vec::new()),
         node_id: Cell::new(1),
     }

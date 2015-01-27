@@ -219,7 +219,7 @@
 //! }
 //! ```
 
-#![unstable]
+#![unstable(feature = "rand")]
 
 use cell::RefCell;
 use clone::Clone;

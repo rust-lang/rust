@@ -10,7 +10,7 @@
 
 //! Operations and constants for unsigned 16-bits integers (`u16` type)
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "u16")]
 
 pub use core::u16::{BITS, BYTES, MIN, MAX};

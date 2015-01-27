@@ -163,7 +163,7 @@
 //! }
 //! ```
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 // A description of how Rust's channel implementation works
 //
@@ -338,7 +338,7 @@ mod spsc_queue;
 
 /// The receiving-half of Rust's channel type. This half can only be owned by
 /// one task
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Receiver<T> {
     inner: UnsafeCell<Flavor<T>>,
 }
@@ -350,14 +350,14 @@ unsafe impl<T:Send> Send for Receiver<T> { }
 /// An iterator over messages on a receiver, this iterator will block
 /// whenever `next` is called, waiting for a new message, and `None` will be
 /// returned when the corresponding channel has hung up.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T:'a> {
     rx: &'a Receiver<T>
 }
 
 /// The sending-half of Rust's asynchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Sender<T> {
     inner: UnsafeCell<Flavor<T>>,
 }
@@ -368,7 +368,7 @@ unsafe impl<T:Send> Send for Sender<T> { }
 
 /// The sending-half of Rust's synchronous channel type. This half can only be
 /// owned by one task, but it can be cloned to send to other tasks.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SyncSender<T> {
     inner: Arc<UnsafeCell<sync::Packet<T>>>,
 }
@@ -383,7 +383,7 @@ impl<T> !Sync for SyncSender<T> {}
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
 #[derive(PartialEq, Eq)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SendError<T>(pub T);
 
 /// An error returned from the `recv` function on a `Receiver`.
@@ -391,29 +391,29 @@ pub struct SendError<T>(pub T);
 /// The `recv` operation can only fail if the sending half of a channel is
 /// disconnected, implying that no further messages will ever be received.
 #[derive(PartialEq, Eq, Clone, Copy, Show)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
 #[derive(PartialEq, Clone, Copy, Show)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
     /// disconnected, so data may yet become available.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     Empty,
 
     /// This channel's sending half has become disconnected, and there will
     /// never be any more data received on this channel
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     Disconnected,
 }
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
 #[derive(PartialEq, Clone)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that
     /// the callee block to send the data.
@@ -421,12 +421,12 @@ pub enum TrySendError<T> {
     /// If this is a buffered channel, then the buffer is full at this time. If
     /// this is not a buffered channel, then there is no receiver available to
     /// acquire the data.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     Full(T),
 
     /// This channel's receiving half has disconnected, so the data could not be
     /// sent. The data is returned back to the callee in this case.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     Disconnected(T),
 }
 
@@ -484,7 +484,7 @@ impl<T> UnsafeFlavor<T> for Receiver<T> {
 /// // Let's see what that answer was
 /// println!("{:?}", rx.recv().unwrap());
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
     let a = Arc::new(UnsafeCell::new(oneshot::Packet::new()));
     (Sender::new(Flavor::Oneshot(a.clone())), Receiver::new(Flavor::Oneshot(a)))
@@ -524,7 +524,7 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// assert_eq!(rx.recv().unwrap(), 1i);
 /// assert_eq!(rx.recv().unwrap(), 2i);
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
     let a = Arc::new(UnsafeCell::new(sync::Packet::new(bound)));
     (SyncSender::new(a.clone()), Receiver::new(Flavor::Sync(a)))
@@ -568,7 +568,7 @@ impl<T: Send> Sender<T> {
     /// drop(rx);
     /// assert_eq!(tx.send(1i).err().unwrap().0, 1);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         let (new_inner, ret) = match *unsafe { self.inner() } {
             Flavor::Oneshot(ref p) => {
@@ -615,7 +615,7 @@ impl<T: Send> Sender<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> Clone for Sender<T> {
     fn clone(&self) -> Sender<T> {
         let (packet, sleeper, guard) = match *unsafe { self.inner() } {
@@ -661,7 +661,7 @@ impl<T: Send> Clone for Sender<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> Drop for Sender<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
@@ -696,7 +696,7 @@ impl<T: Send> SyncSender<T> {
     /// This function will never panic, but it may return `Err` if the
     /// `Receiver` has disconnected and is no longer able to receive
     /// information.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
         unsafe { (*self.inner.get()).send(t).map_err(SendError) }
     }
@@ -710,13 +710,13 @@ impl<T: Send> SyncSender<T> {
     ///
     /// See `SyncSender::send` for notes about guarantees of whether the
     /// receiver has received the data or not if this function is successful.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_send(&self, t: T) -> Result<(), TrySendError<T>> {
         unsafe { (*self.inner.get()).try_send(t) }
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> Clone for SyncSender<T> {
     fn clone(&self) -> SyncSender<T> {
         unsafe { (*self.inner.get()).clone_chan(); }
@@ -725,7 +725,7 @@ impl<T: Send> Clone for SyncSender<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> Drop for SyncSender<T> {
     fn drop(&mut self) {
         unsafe { (*self.inner.get()).drop_chan(); }
@@ -749,7 +749,7 @@ impl<T: Send> Receiver<T> {
     ///
     /// This is useful for a flavor of "optimistic check" before deciding to
     /// block on a receiver.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_recv(&self) -> Result<T, TryRecvError> {
         loop {
             let new_port = match *unsafe { self.inner() } {
@@ -810,7 +810,7 @@ impl<T: Send> Receiver<T> {
     /// If the corresponding `Sender` has disconnected, or it disconnects while
     /// this call is blocking, this call will wake up and return `Err` to
     /// indicate that no more messages can ever be received on this channel.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn recv(&self) -> Result<T, RecvError> {
         loop {
             let new_port = match *unsafe { self.inner() } {
@@ -849,7 +849,7 @@ impl<T: Send> Receiver<T> {
 
     /// Returns an iterator that will block waiting for messages, but never
     /// `panic!`. It will return `None` when the channel has hung up.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter { rx: self }
     }
@@ -941,7 +941,7 @@ impl<T: Send> select::Packet for Receiver<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Send> Iterator for Iter<'a, T> {
     type Item = T;
 
@@ -949,7 +949,7 @@ impl<'a, T: Send> Iterator for Iter<'a, T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> Drop for Receiver<T> {
     fn drop(&mut self) {
         match *unsafe { self.inner_mut() } {
@@ -961,21 +961,21 @@ impl<T: Send> Drop for Receiver<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "SendError(..)".fmt(f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Display for SendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "sending on a closed channel".fmt(f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Debug for TrySendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -985,7 +985,7 @@ impl<T> fmt::Debug for TrySendError<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> fmt::Display for TrySendError<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -999,14 +999,14 @@ impl<T> fmt::Display for TrySendError<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for RecvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         "receiving on a closed channel".fmt(f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for TryRecvError {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {

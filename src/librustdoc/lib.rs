@@ -9,7 +9,8 @@
 // except according to those terms.
 
 #![crate_name = "rustdoc"]
-#![unstable]
+#![unstable(feature = "rustdoc")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -20,7 +21,17 @@
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(libc)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(test)]
+#![feature(unicode)]
+#![feature(hash)]
 
 extern crate arena;
 extern crate getopts;
