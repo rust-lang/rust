@@ -20,7 +20,6 @@ use diagnostics;
 use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::old_io;
-use std::iter::range;
 use std::string::String;
 use term::WriterWrapper;
 use term;

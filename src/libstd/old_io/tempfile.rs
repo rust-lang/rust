@@ -12,7 +12,7 @@
 
 use old_io::{fs, IoError, IoErrorKind, IoResult};
 use old_io;
-use iter::{IteratorExt, range};
+use iter::IteratorExt;
 use ops::Drop;
 use option::Option;
 use option::Option::{None, Some};

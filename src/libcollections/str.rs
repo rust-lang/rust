@@ -59,7 +59,7 @@ use core::borrow::{BorrowFrom, ToOwned};
 use core::char::CharExt;
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
-use core::iter::{range, Iterator, IteratorExt};
+use core::iter::{Iterator, IteratorExt};
 use core::ops::{FullRange, Index};
 use core::option::Option::{self, Some, None};
 use core::slice::AsSlice;
