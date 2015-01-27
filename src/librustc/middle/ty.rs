@@ -5643,32 +5643,26 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
                             closure_expr_id: closure_id.node
                         };
 
-                        let captured_freevar_ty = match typer.upvar_capture(upvar_id) {
-                            Some(UpvarCapture::ByValue) => {
-                                freevar_ty
-                            }
+                        typer.upvar_capture(upvar_id).map(|capture| {
+                            let freevar_ref_ty = match capture {
+                                UpvarCapture::ByValue => {
+                                    freevar_ty
+                                }
+                                UpvarCapture::ByRef(borrow) => {
+                                    mk_rptr(tcx,
+                                            tcx.mk_region(borrow.region),
+                                            ty::mt {
+                                                ty: freevar_ty,
+                                                mutbl: borrow.kind.to_mutbl_lossy(),
+                                            })
+                                }
+                            };
 
-                            Some(UpvarCapture::ByRef(borrow)) => {
-                                mk_rptr(tcx,
-                                        tcx.mk_region(borrow.region),
-                                        ty::mt {
-                                            ty: freevar_ty,
-                                            mutbl: borrow.kind.to_mutbl_lossy(),
-                                        })
+                            ClosureUpvar {
+                                def: freevar.def,
+                                span: freevar.span,
+                                ty: freevar_ref_ty,
                             }
-
-                            None => {
-                                // FIXME(#16640) we should really return None here;
-                                // but that requires better inference integration,
-                                // for now gin up something.
-                                freevar_ty
-                            }
-                        };
-
-                        Some(ClosureUpvar {
-                            def: freevar.def,
-                            span: freevar.span,
-                            ty: captured_freevar_ty,
                         })
                     })
                     .collect()
