@@ -2126,7 +2126,7 @@ mod tests {
             for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in 6..9 {
+            for i in 6i..9 {
                 d.push_front(i);
             }
 
@@ -2140,7 +2140,7 @@ mod tests {
             for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in 6..9 {
+            for i in 6i..9 {
                 d.push_front(i);
             }
 
@@ -2190,7 +2190,7 @@ mod tests {
             for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in 6..9 {
+            for i in 6i..9 {
                 d.push_front(i);
             }
 
@@ -2204,7 +2204,7 @@ mod tests {
             for i in 0i..5 {
                 d.push_back(i);
             }
-            for i in 6..9 {
+            for i in 6i..9 {
                 d.push_front(i);
             }
 

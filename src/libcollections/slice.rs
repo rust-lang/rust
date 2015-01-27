@@ -1526,7 +1526,7 @@ mod tests {
     #[test]
     fn test_from_fn() {
         // Test on-stack from_fn.
-        let mut v = (0..3).map(square).collect::<Vec<_>>();
+        let mut v = (0u..3).map(square).collect::<Vec<_>>();
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 3u);
@@ -1536,7 +1536,7 @@ mod tests {
         }
 
         // Test on-heap from_fn.
-        v = (0..5).map(square).collect::<Vec<_>>();
+        v = (0u..5).map(square).collect::<Vec<_>>();
         {
             let v = v.as_slice();
             assert_eq!(v.len(), 5u);
@@ -2908,7 +2908,7 @@ mod bench {
 
     #[bench]
     fn starts_with_same_vector(b: &mut Bencher) {
-        let vec: Vec<uint> = (0..100).collect();
+        let vec: Vec<uint> = (0u..100).collect();
         b.iter(|| {
             vec.starts_with(vec.as_slice())
         })
@@ -2924,8 +2924,8 @@ mod bench {
 
     #[bench]
     fn starts_with_diff_one_element_at_end(b: &mut Bencher) {
-        let vec: Vec<uint> = (0..100).collect();
-        let mut match_vec: Vec<uint> = (0..99).collect();
+        let vec: Vec<uint> = (0u..100).collect();
+        let mut match_vec: Vec<uint> = (0u..99).collect();
         match_vec.push(0);
         b.iter(|| {
             vec.starts_with(match_vec.as_slice())
@@ -2934,7 +2934,7 @@ mod bench {
 
     #[bench]
     fn ends_with_same_vector(b: &mut Bencher) {
-        let vec: Vec<uint> = (0..100).collect();
+        let vec: Vec<uint> = (0u..100).collect();
         b.iter(|| {
             vec.ends_with(vec.as_slice())
         })
@@ -2950,8 +2950,8 @@ mod bench {
 
     #[bench]
     fn ends_with_diff_one_element_at_beginning(b: &mut Bencher) {
-        let vec: Vec<uint> = (0..100).collect();
-        let mut match_vec: Vec<uint> = (0..100).collect();
+        let vec: Vec<uint> = (0u..100).collect();
+        let mut match_vec: Vec<uint> = (0u..100).collect();
         match_vec.as_mut_slice()[0] = 200;
         b.iter(|| {
             vec.starts_with(match_vec.as_slice())
@@ -2960,7 +2960,7 @@ mod bench {
 
     #[bench]
     fn contains_last_element(b: &mut Bencher) {
-        let vec: Vec<uint> = (0..100).collect();
+        let vec: Vec<uint> = (0u..100).collect();
         b.iter(|| {
             vec.contains(&99u)
         })
