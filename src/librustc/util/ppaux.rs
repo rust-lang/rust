@@ -10,6 +10,7 @@
 
 
 use middle::def;
+use middle::region;
 use middle::subst::{VecPerParamSpace,Subst};
 use middle::subst;
 use middle::ty::{BoundRegion, BrAnon, BrNamed};
@@ -84,37 +85,41 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
                             -> (String, Option<Span>) {
     return match region {
       ReScope(scope) => {
-        match cx.map.find(scope.node_id()) {
-          Some(ast_map::NodeBlock(ref blk)) => {
-            explain_span(cx, "block", blk.span)
-          }
-          Some(ast_map::NodeExpr(expr)) => {
-            match expr.node {
-              ast::ExprCall(..) => explain_span(cx, "call", expr.span),
-              ast::ExprMethodCall(..) => {
-                explain_span(cx, "method call", expr.span)
-              },
-              ast::ExprMatch(_, _, ast::MatchSource::IfLetDesugar { .. }) =>
-                  explain_span(cx, "if let", expr.span),
-              ast::ExprMatch(_, _, ast::MatchSource::WhileLetDesugar) => {
-                  explain_span(cx, "while let", expr.span)
-              },
-              ast::ExprMatch(..) => explain_span(cx, "match", expr.span),
-              _ => explain_span(cx, "expression", expr.span)
-            }
-          }
-          Some(ast_map::NodeStmt(stmt)) => {
-              explain_span(cx, "statement", stmt.span)
-          }
-          Some(ast_map::NodeItem(it)) => {
-              let tag = item_scope_tag(&*it);
-              explain_span(cx, tag, it.span)
-          }
+        let new_string;
+        let on_unknown_scope = |&:| {
+          (format!("unknown scope: {:?}.  Please report a bug.", scope), None)
+        };
+        let span = match scope.span(&cx.map) {
+          Some(s) => s,
+          None => return on_unknown_scope(),
+        };
+        let tag = match cx.map.find(scope.node_id()) {
+          Some(ast_map::NodeBlock(_)) => "block",
+          Some(ast_map::NodeExpr(expr)) => match expr.node {
+              ast::ExprCall(..) => "call",
+              ast::ExprMethodCall(..) => "method call",
+              ast::ExprMatch(_, _, ast::MatchSource::IfLetDesugar { .. }) => "if let",
+              ast::ExprMatch(_, _, ast::MatchSource::WhileLetDesugar) =>  "while let",
+              ast::ExprMatch(..) => "match",
+              _ => "expression",
+          },
+          Some(ast_map::NodeStmt(_)) => "statement",
+          Some(ast_map::NodeItem(it)) => item_scope_tag(&*it),
           Some(_) | None => {
             // this really should not happen
-            (format!("unknown scope: {:?}.  Please report a bug.", scope), None)
+            return on_unknown_scope();
           }
-        }
+        };
+        let scope_decorated_tag = match scope {
+            region::CodeExtent::Misc(_) => tag,
+            region::CodeExtent::Remainder(r) => {
+                new_string = format!("block suffix following statement {}",
+                                     r.first_statement_index);
+                new_string.as_slice()
+            }
+        };
+        explain_span(cx, scope_decorated_tag, span)
+
       }
 
       ReFree(ref fr) => {
@@ -864,6 +869,17 @@ impl<'tcx> Repr<'tcx> for ty::FreeRegion {
         format!("ReFree({}, {})",
                 self.scope.node_id(),
                 self.bound_region.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for region::CodeExtent {
+    fn repr(&self, _tcx: &ctxt) -> String {
+        match *self {
+            region::CodeExtent::Misc(node_id) =>
+                format!("Misc({})", node_id),
+            region::CodeExtent::Remainder(rem) =>
+                format!("Remainder({}, {})", rem.block, rem.first_statement_index),
+        }
     }
 }
 

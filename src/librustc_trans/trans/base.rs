@@ -1784,15 +1784,16 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_closure(..., param_substs={})",
            param_substs.repr(ccx.tcx()));
 
-    let arena = TypedArena::new();
-    let fcx = new_fn_ctxt(ccx,
-                          llfndecl,
-                          fn_ast_id,
-                          closure_env.kind != closure::NotClosure,
-                          output_type,
-                          param_substs,
-                          Some(body.span),
-                          &arena);
+    let (arena, fcx): (TypedArena<_>, FunctionContext);
+    arena = TypedArena::new();
+    fcx = new_fn_ctxt(ccx,
+                      llfndecl,
+                      fn_ast_id,
+                      closure_env.kind != closure::NotClosure,
+                      output_type,
+                      param_substs,
+                      Some(body.span),
+                      &arena);
     let mut bcx = init_function(&fcx, false, output_type);
 
     // cleanup scope for the incoming arguments
@@ -2046,9 +2047,10 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
                     ty_to_string(ccx.tcx(), ctor_ty))[])
     };
 
-    let arena = TypedArena::new();
-    let fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
-                          param_substs, None, &arena);
+    let (arena, fcx): (TypedArena<_>, FunctionContext);
+    arena = TypedArena::new();
+    fcx = new_fn_ctxt(ccx, llfndecl, ctor_id, false, result_ty,
+                      param_substs, None, &arena);
     let bcx = init_function(&fcx, false, result_ty);
 
     assert!(!fcx.needs_ret_allocas);
