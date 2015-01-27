@@ -67,6 +67,13 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
     return ret;
 }
 
+pub unsafe fn set_name(name: &str) {
+    // Windows threads are nameless
+    // The names in MSVC debugger are obtained using a "magic" exception,
+    // which requires a use of C++ macros.
+    // See https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
+}
+
 pub unsafe fn join(native: rust_thread) {
     use libc::consts::os::extra::INFINITE;
     WaitForSingleObject(native, INFINITE);
