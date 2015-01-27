@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    box(1 + 1) //~ HELP perhaps you meant `box() (foo)` instead?
+    box(1 + 1) //~ HELP perhaps you meant `in <place> { <expr> }` instead?
     ; //~ ERROR expected expression, found `;`
 }
