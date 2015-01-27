@@ -256,26 +256,21 @@
                 only thing a backshash at end-of-line does is remove the whitespace. -->
                 <context attribute="String" lineEndContext="#stay" name="String">
                         <DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
-                        <DetectChar attribute="String" context="StringEndGuard" char="&quot;"/>
+                        <DetectChar attribute="String" context="#pop" char="&quot;"/>
                 </context>
 		<context attribute="String" lineEndContext="#stay" name="RawString">
-			<DetectChar attribute="String" context="StringEndGuard" char="&quot;"/>
+			<DetectChar attribute="String" context="#pop" char="&quot;"/>
 		</context>
                 <!-- These rules are't complete: they won't match r###"abc"### -->
                 <context attribute="String" lineEndContext="#stay" name="RawHashed1">
-                        <Detect2Chars attribute="String" context="StringEndGuard" char="&quot;" char1="#"/>
+                        <Detect2Chars attribute="String" context="#pop" char="&quot;" char1="#"/>
                 </context>
                 <context attribute="String" lineEndContext="#stay" name="RawHashed2">
-                        <StringDetect attribute="String" context="StringEndGuard" String="&quot;##"/>
-                </context>
-                <context name="StringEndGuard" attribute="Error" fallthrough="true" fallthroughContext="#pop#pop">
-                  <!-- Need a word break. This rule highlights (some) wrong characters following
-                    the end of a string. -->
-                  <RegExpr String="[#a-zA-Z0-9_&quot;&apos;]" attribute="Error"/>
+                        <StringDetect attribute="String" context="#pop" String="&quot;##"/>
                 </context>
 		<context attribute="Character" lineEndContext="#pop" name="Character">
 			<DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
-			<DetectChar attribute="Character" context="StringEndGuard" char="&apos;"/>
+			<DetectChar attribute="Character" context="#pop" char="&apos;"/>
 		</context>
 		<context attribute="CharEscape" lineEndContext="#pop" name="CharEscape">
 			<AnyChar String="nrt\&apos;&quot;" attribute="CharEscape" context="#pop"/>
