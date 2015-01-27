@@ -55,7 +55,7 @@ use io::standard_error;
 use io::{FilePermission, Write, Open, FileAccess, FileMode, FileType};
 use io::{IoResult, IoError, InvalidInput};
 use io::{FileStat, SeekStyle, Seek, Writer, Reader};
-use io::{Read, Truncate, ReadWrite, Append};
+use io::{Read, Truncate, ReadWrite, Append, Create};
 use io::UpdateIoError;
 use io;
 use iter::{Iterator, Extend};
@@ -806,7 +806,8 @@ fn mode_string(mode: FileMode) -> &'static str {
     match mode {
         super::Open => "open",
         super::Append => "append",
-        super::Truncate => "truncate"
+        super::Truncate => "truncate",
+        super::Create => "create"
     }
 }
 

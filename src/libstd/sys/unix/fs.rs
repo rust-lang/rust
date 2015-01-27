@@ -15,7 +15,7 @@ use prelude::v1::*;
 use ffi::{self, CString};
 use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
 use io::{IoResult, FileStat, SeekStyle};
-use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
+use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append, Create};
 use io;
 use libc::{self, c_int, c_void};
 use mem;
@@ -160,6 +160,7 @@ pub fn open(path: &Path, fm: FileMode, fa: FileAccess) -> IoResult<FileDesc> {
         Open => 0,
         Append => libc::O_APPEND,
         Truncate => libc::O_TRUNC,
+        Create => libc::O_CREAT | libc::O_EXCL,
     };
     // Opening with a write permission must silently create the file.
     let (flags, mode) = match fa {
