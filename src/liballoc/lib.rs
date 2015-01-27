@@ -91,8 +91,13 @@ pub mod heap;
 
 // Primitive types using the heaps above
 
+// Need to conditionally define the mod from `boxed.rs` to avoid
+// duplicating the lang-items when building in test cfg; but also need
+// to allow code to have `use boxed::HEAP;` declaration.
 #[cfg(not(test))]
 pub mod boxed;
+#[cfg(test)]
+mod boxed { pub use std::boxed::HEAP; }
 #[cfg(test)]
 mod boxed_test;
 pub mod arc;
@@ -127,5 +132,7 @@ pub fn fixme_14344_be_sure_to_link_to_collections() {}
 #[doc(hidden)]
 mod std {
     pub use core::fmt;
+    pub use core::ops;
     pub use core::option;
+    pub use core::ptr;
 }

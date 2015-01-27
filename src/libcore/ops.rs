@@ -1148,3 +1148,46 @@ impl<F,A,R> FnOnce<A,R> for F
         self.call_mut(args)
     }
 }
+
+/// Interface to user-implementations of `box (<placer_expr>) <value_expr>`.
+///
+/// `box (P) V` effectively expands into:
+/// `{ let b = P.make_place();
+///    let raw_place = b.pointer();
+///    let v = V;
+///    unsafe { ptr::write(raw_place, v); b.finalize() }
+///  }`
+///
+/// An instance of `Interim` is transient mutable value; an instance
+/// of `Placer` may *also* be some transient mutable value, but the
+/// placer could also be an immutable constant that implements `Copy`.
+pub trait Placer<Data: ?Sized> {
+    type Interim: PlacementAgent<Data>;
+    /// Allocates a place for the data to live, returning an
+    /// intermediate agent to negotiate build-up or tear-down.
+    fn make_place(self) -> Self::Interim;
+}
+
+/// Helper trait for expansion of `box (P) V`.
+///
+/// A placement agent can be thought of as a special representation
+/// for a hypothetical `&uninit` reference (which Rust cannot
+/// currently express directly). That is, it represents a pointer to
+/// uninitialized storage.
+///
+/// The client is responsible for two steps: First, initializing the
+/// payload (it can access its address via the `pointer()`
+/// method). Second, converting the agent to an instance of the owning
+/// pointer, via the `finalize()` method.
+///
+/// See also `Placer`.
+pub trait PlacementAgent<Data: ?Sized> {
+    type Owner;
+
+    /// Returns a pointer to the offset in the place where the data lives.
+    fn pointer(&mut self) -> *mut Data;
+
+    /// Converts this intermediate agent into owning pointer for the data,
+    /// forgetting self in the process.
+    unsafe fn finalize(self) -> Self::Owner;
+}

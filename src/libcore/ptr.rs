@@ -514,7 +514,7 @@ impl<T> PartialOrd for *mut T {
 /// Useful for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
 #[unstable = "recently added to this module"]
-pub struct Unique<T>(pub *mut T);
+pub struct Unique<T: ?Sized>(pub *mut T);
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
 /// reference is unaliased. Note that this aliasing invariant is

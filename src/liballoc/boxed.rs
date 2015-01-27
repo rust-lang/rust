@@ -45,6 +45,8 @@
 
 #![stable]
 
+use heap;
+
 use core::any::Any;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
@@ -53,10 +55,11 @@ use core::error::{Error, FromError};
 use core::fmt;
 use core::hash::{self, Hash};
 use core::iter::Iterator;
-use core::marker::Sized;
+use core::marker::{Copy, Sized};
 use core::mem;
-use core::ops::{Deref, DerefMut};
+use core::ops::{Deref, DerefMut, Drop, Placer, PlacementAgent};
 use core::option::Option;
+use core::ptr::PtrExt;
 use core::ptr::Unique;
 use core::raw::TraitObject;
 use core::result::Result::{Ok, Err};
@@ -78,14 +81,90 @@ use core::result::Result;
 /// ```
 #[lang = "exchange_heap"]
 #[unstable = "may be renamed; uncertain about custom allocator design"]
-pub static HEAP: () = ();
+pub const HEAP: ExchangeHeapSingleton =
+    ExchangeHeapSingleton { _force_singleton: () };
+
+/// This the singleton type used solely for `boxed::HEAP`.
+pub struct ExchangeHeapSingleton { _force_singleton: () }
+impl Copy for ExchangeHeapSingleton { }
 
 /// A pointer type for heap allocation.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
 #[stable]
-pub struct Box<T>(Unique<T>);
+pub struct Box<T: ?Sized>(Unique<T>);
+
+/// `IntermediateBox` represents uninitialized backing storage for `Box`.
+///
+/// FIXME (pnkfelix): Ideally we would just reuse `Box<T>` instead of
+/// introducing a separate `IntermediateBox<T>`; but then you hit
+/// issues when you e.g. attempt to destructure an instance of `Box`,
+/// since it is a lang item and so it gets special handling by the
+/// compiler.  Easier just to make this parallel type for now.
+///
+/// FIXME (pnkfelix): Currently the `box` protocol only supports
+/// creating instances of sized types. This IntermediateBox is
+/// designed to be forward-compatible with a future protocol that
+/// supports creating instances of unsized types; that is why the type
+/// parameter has the `?Sized` generalization marker, and is also why
+/// this carries an explicit size. However, it probably does not need
+/// to carry the explicit alignment; that is just a work-around for
+/// the fact that the `align_of` intrinsic currently requires the
+/// input type to be Sized (which I do not think is strictly
+/// necessary).
+#[experimental = "placement box design is still being worked out."]
+pub struct IntermediateBox<T: ?Sized>{
+    ptr: *mut u8,
+    size: uint,
+    align: uint,
+}
+
+impl<T: ?Sized> PlacementAgent<T> for IntermediateBox<T> {
+    type Owner = Box<T>;
+
+    fn pointer(&mut self) -> *mut T { self.ptr as *mut T }
+
+    unsafe fn finalize(self) -> Box<T> {
+        let p = self.ptr as *mut T;
+        mem::forget(self);
+        mem::transmute(p)
+    }
+}
+
+impl<T> Placer<T> for ExchangeHeapSingleton {
+    type Interim = IntermediateBox<T>;
+    
+    fn make_place(self) -> IntermediateBox<T> {
+        let size = mem::size_of::<T>();
+        let align = mem::align_of::<T>();
+
+        let p = if size == 0 {
+            heap::EMPTY as *mut u8
+        } else {
+            let p = unsafe {
+                heap::allocate(size, align)
+            };
+            if p.is_null() {
+                panic!("Box make_place allocation failure.");
+            }
+            p
+        };
+
+        IntermediateBox { ptr: p, size: size, align: align }
+    }
+}
+
+#[unsafe_destructor]
+impl<T: ?Sized> Drop for IntermediateBox<T> {
+    fn drop(&mut self) {
+        if self.size > 0 {
+            unsafe {
+                heap::deallocate(self.ptr, self.size, self.align)
+            }
+        }
+    }
+}
 
 impl<T> Box<T> {
     /// Allocates memory on the heap and then moves `x` into it.
@@ -104,13 +183,13 @@ impl<T> Box<T> {
 #[stable]
 impl<T: Default> Default for Box<T> {
     #[stable]
-    fn default() -> Box<T> { box Default::default() }
+    fn default() -> Box<T> { box (HEAP) Default::default() }
 }
 
 #[stable]
 impl<T> Default for Box<[T]> {
     #[stable]
-    fn default() -> Box<[T]> { box [] }
+    fn default() -> Box<[T]> { box (HEAP) [] }
 }
 
 #[stable]
@@ -124,8 +203,7 @@ impl<T: Clone> Clone for Box<T> {
     /// let y = x.clone();
     /// ```
     #[inline]
-    fn clone(&self) -> Box<T> { box {(**self).clone()} }
-
+    fn clone(&self) -> Box<T> { box (HEAP) {(**self).clone()} }
     /// Copies `source`'s contents into `self` without creating a new allocation.
     ///
     /// # Examples

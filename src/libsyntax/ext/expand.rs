@@ -58,6 +58,7 @@ pub fn expand_type(t: P<ast::Ty>,
 
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
     e.and_then(|ast::Expr {id, node, span}| match node {
+
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprMac(mac) => {
@@ -80,6 +81,154 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 node: e.node,
                 span: span,
             })
+        }
+
+        // FIXME (pnkfelix): The code below is designed to handle
+        // *both* `box <value>` and `box (<place>) <value>`, but for
+        // now the desugaring will only apply to the latter.
+        //
+        // The motivation is mostly to make it easier to land without
+        // having to update many tests that are not expecting to deal
+        // with the desugared form in terms of (1.) error messages and
+        // (2.) the dependencies on `::std::ops::placer`.
+        //
+        // To re-enable the more general code paths, just change the
+        // `Some(place)` in this binding to `maybe_place`, and revise
+        // the `let maybe_place = ...` to call `fld.fold_expr(place)`
+        // directly.
+
+        // Desugar ExprBox: `box (<place_expr>) <value_expr>`
+        ast::ExprBox(Some(place), value_expr) => {
+            let value_span = value_expr.span;
+            let place_span = place.span;
+
+            let maybe_place : Option<P<ast::Expr>> = Some(fld.fold_expr(place));
+            let value_expr = fld.fold_expr(value_expr);
+
+            // Desugar `box (<place_expr>) <value_expr>` to something
+            // analogous to:
+            //
+            // {
+            //     let place /* : impl Placer */ = <place_expr>;
+            //     let agent = place.make_place();
+            //     let raw_place = agent.pointer();
+            //     let value = <value_expr>
+            //     unsafe {
+            //         ptr::write(raw_place, value);
+            //         agent.finalize()
+            //     }
+            // }
+
+            let place_ident = token::gensym_ident("place");
+            let agent_ident = token::gensym_ident("agent");
+            let value_ident = token::gensym_ident("value");
+            let p_ptr_ident = token::gensym_ident("p_ptr");
+
+            let place = fld.cx.expr_ident(span, place_ident);
+            let agent = fld.cx.expr_ident(span, agent_ident);
+            let value = fld.cx.expr_ident(span, value_ident);
+            let p_ptr = fld.cx.expr_ident(span, p_ptr_ident);
+
+            fn mk_path_for_idents(span: Span,
+                                  idents: &[&'static str]) -> ast::Path {
+                let segments : Vec<ast::PathSegment> =
+                    idents.iter().map(|s| {
+                        ast::PathSegment {
+                            identifier: token::str_to_ident(*s),
+                            parameters: ast::PathParameters::none(),
+                        }
+                    }).collect();
+                ast::Path {
+                    span: span, global: true, segments: segments,
+                }
+            }
+
+            // NOTE: clients using `box <expr>` short-hand need to
+            // either use `libstd` or must make their own local
+            //
+            // ```
+            // mod std { mod boxed { pub use ... as HEAP; }
+            //           mod ops { mod placer { ... } }
+            //           mod ptr { pub use ... as write; } }
+            // ```
+            //
+            // as appropriate.
+
+            let boxed_heap = |:| -> ast::Path {
+                let idents = ["std", "boxed", "HEAP"];
+                mk_path_for_idents(place_span, &idents[])
+            };
+
+            let placer_make_place = |:| -> ast::Path {
+                let idents = ["std", "ops", "Placer", "make_place"];
+                mk_path_for_idents(place_span, &idents[])
+            };
+
+            let placer_pointer = |:| -> ast::Path {
+                let idents = ["std", "ops", "PlacementAgent", "pointer"];
+                mk_path_for_idents(place_span, &idents[])
+            };
+
+            let placer_finalize = |:| -> ast::Path {
+                let idents = ["std", "ops", "PlacementAgent", "finalize"];
+                mk_path_for_idents(place_span, &idents[])
+            };
+
+            let ptr_write = |:| -> ast::Path {
+                let idents = ["std", "ptr", "write"];
+                mk_path_for_idents(place_span, &idents[])
+            };
+
+            let make_call = |&: f: ast::Path, args: Vec<P<ast::Expr>>| -> P<ast::Expr> {
+                fld.cx.expr_call(span, fld.cx.expr_path(f), args)
+            };
+
+            let stmt_let = |&: span, bind, expr| fld.cx.stmt_let(span, false, bind, expr);
+            let stmt_let_mut = |: span, bind, expr| fld.cx.stmt_let(span, true, bind, expr);
+
+            fld.cx.expr_block(fld.cx.block_all(
+                span,
+                vec![
+                    // let place = <place_expr> ; // default of ::std::boxed::HEAP
+                    stmt_let(place_span,
+                             place_ident,
+                             match maybe_place {
+                                 Some(place_expr) => place_expr,
+                                 None => fld.cx.expr_path(boxed_heap()),
+                             }),
+
+                    // let mut agent = Placer::make_place(place);
+                    stmt_let_mut(place_span, agent_ident,
+                                 make_call(placer_make_place(), vec![place])),
+
+                    // let p_ptr = PlacementAgent::pointer(&mut agent);
+                    stmt_let(place_span,
+                             p_ptr_ident,
+                             make_call(placer_pointer(),
+                                       vec![fld.cx.expr_mut_addr_of(place_span,
+                                                                    agent.clone())])),
+
+                    // let value = <value_expr>;
+                    stmt_let(value_span, value_ident, value_expr)
+
+                    ],
+
+                // unsafe { ptr::write(p_ptr, value); PlacementAgent::finalize(agent) }
+                {
+                    let call_ptr_write =
+                        StmtSemi(make_call(ptr_write(), vec![p_ptr, value]),
+                                 ast::DUMMY_NODE_ID);
+                    let call_ptr_write =
+                        codemap::respan(value_span, call_ptr_write);
+
+                    Some(fld.cx.expr_block(P(ast::Block {
+                        stmts: vec![P(call_ptr_write)],
+                        expr: Some(make_call(placer_finalize(), vec![agent])),
+                        id: ast::DUMMY_NODE_ID,
+                        rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                        span: span,
+                    })))
+                }))
         }
 
         ast::ExprWhile(cond, body, opt_ident) => {
