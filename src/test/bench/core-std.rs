@@ -13,7 +13,7 @@
 
 #![feature(unboxed_closures)]
 
-use std::io::File;
+use std::old_io::File;
 use std::iter::repeat;
 use std::mem::swap;
 use std::os;
@@ -71,7 +71,7 @@ fn shift_push() {
 }
 
 fn read_line() {
-    use std::io::BufferedReader;
+    use std::old_io::BufferedReader;
 
     let mut path = Path::new(env!("CFG_SRC_DIR"));
     path.push("src/test/bench/shootout-k-nucleotide.data");

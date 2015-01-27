@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 use std::sync::mpsc::channel;
-use std::io::{ChanReader, ChanWriter};
+use std::old_io::{ChanReader, ChanWriter};
 use std::thread;
 
 fn main() {

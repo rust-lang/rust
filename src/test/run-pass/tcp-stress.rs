@@ -17,15 +17,15 @@ extern crate log;
 extern crate libc;
 
 use std::sync::mpsc::channel;
-use std::io::net::tcp::{TcpListener, TcpStream};
-use std::io::{Acceptor, Listener};
+use std::old_io::net::tcp::{TcpListener, TcpStream};
+use std::old_io::{Acceptor, Listener};
 use std::thread::{Builder, Thread};
 use std::time::Duration;
 
 fn main() {
     // This test has a chance to time out, try to not let it time out
     Thread::spawn(move|| -> () {
-        use std::io::timer;
+        use std::old_io::timer;
         timer::sleep(Duration::milliseconds(30 * 1000));
         println!("timed out!");
         unsafe { libc::exit(1) }

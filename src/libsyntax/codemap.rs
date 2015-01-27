@@ -364,9 +364,10 @@ impl CodeMap {
         };
 
         // Append '\n' in case it's not already there.
-        // This is a workaround to prevent CodeMap.lookup_filemap_idx from accidentally
-        // overflowing into the next filemap in case the last byte of span is also the last
-        // byte of filemap, which leads to incorrect results from CodeMap.span_to_*.
+        // This is a workaround to prevent CodeMap.lookup_filemap_idx from
+        // accidentally overflowing into the next filemap in case the last byte
+        // of span is also the last byte of filemap, which leads to incorrect
+        // results from CodeMap.span_to_*.
         if src.len() > 0 && !src.ends_with("\n") {
             src.push('\n');
         }

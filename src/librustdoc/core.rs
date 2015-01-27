@@ -126,9 +126,9 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
                     .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let mut forest = ast_map::Forest::new(krate);
+    let arenas = ty::CtxtArenas::new();
     let ast_map = driver::assign_node_ids_and_map(&sess, &mut forest);
 
-    let arenas = ty::CtxtArenas::new();
     let ty::CrateAnalysis {
         exported_items, public_items, ty_cx, ..
     } = driver::phase_3_run_analysis_passes(sess,

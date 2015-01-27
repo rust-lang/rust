@@ -33,7 +33,7 @@ use middle::def;
 use middle::ty::{self, Ty};
 
 use std::cell::Cell;
-use std::io::{self, File, fs};
+use std::old_io::{self, File, fs};
 use std::os;
 
 use syntax::ast_util::{self, PostExpansionMethod};
@@ -1532,7 +1532,7 @@ pub fn process_crate(sess: &Session,
         },
     };
 
-    match fs::mkdir_recursive(&root_path, io::USER_RWX) {
+    match fs::mkdir_recursive(&root_path, old_io::USER_RWX) {
         Err(e) => sess.err(&format!("Could not create directory {}: {}",
                            root_path.display(), e)[]),
         _ => (),

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use io::net::ip;
-use io::IoResult;
+use old_io::net::ip;
+use old_io::IoResult;
 use libc;
 use mem;
 use ptr;

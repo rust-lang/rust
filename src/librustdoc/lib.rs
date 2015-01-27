@@ -49,8 +49,8 @@ extern crate "serialize" as rustc_serialize; // used by deriving
 
 use std::cell::RefCell;
 use std::collections::HashMap;
-use std::io::File;
-use std::io;
+use std::old_io::File;
+use std::old_io;
 use std::rc::Rc;
 use externalfiles::ExternalHtml;
 use serialize::Decodable;
@@ -487,7 +487,7 @@ fn json_input(input: &str) -> Result<Output, String> {
 /// Outputs the crate/plugin json as a giant json blob at the specified
 /// destination.
 fn json_output(krate: clean::Crate, res: Vec<plugins::PluginJson> ,
-               dst: Path) -> io::IoResult<()> {
+               dst: Path) -> old_io::IoResult<()> {
     // {
     //   "schema": version,
     //   "crate": { parsed crate ... },

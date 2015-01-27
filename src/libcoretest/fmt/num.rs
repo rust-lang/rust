@@ -170,7 +170,7 @@ mod u32 {
     use test::Bencher;
     use core::fmt::radix;
     use std::rand::{weak_rng, Rng};
-    use std::io::util::NullWriter;
+    use std::old_io::util::NullWriter;
 
     #[bench]
     fn format_bin(b: &mut Bencher) {
@@ -213,7 +213,7 @@ mod i32 {
     use test::Bencher;
     use core::fmt::radix;
     use std::rand::{weak_rng, Rng};
-    use std::io::util::NullWriter;
+    use std::old_io::util::NullWriter;
 
     #[bench]
     fn format_bin(b: &mut Bencher) {

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::fs::PathExtensions;
-use std::io::{File, TempDir};
+use std::old_io::fs::PathExtensions;
+use std::old_io::{File, TempDir};
 
 pub fn main() {
     let dir = TempDir::new_in(&Path::new("."), "").unwrap();

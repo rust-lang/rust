@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+use std::old_io;
 
-fn foo(a: &mut io::Writer) {
+fn foo(a: &mut old_io::Writer) {
     a.write(&[]).unwrap();
 }
 

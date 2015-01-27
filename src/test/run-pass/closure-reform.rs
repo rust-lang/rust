@@ -14,7 +14,7 @@
 #![feature(unboxed_closures)]
 
 use std::mem;
-use std::io::stdio::println;
+use std::old_io::stdio::println;
 
 fn call_it<F>(f: F)
     where F : FnOnce(String) -> String

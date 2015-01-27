@@ -11,7 +11,7 @@
 //! Terminfo database interface.
 
 use std::collections::HashMap;
-use std::io::IoResult;
+use std::old_io::IoResult;
 use std::os;
 
 use attr;
@@ -83,7 +83,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                                .as_slice(),
                            &[Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write(s.unwrap().as_slice()));
+                try!(self.out.write_all(s.unwrap().as_slice()));
                 return Ok(true)
             }
         }
@@ -100,7 +100,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                                .as_slice(),
                            &[Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write(s.unwrap().as_slice()));
+                try!(self.out.write_all(s.unwrap().as_slice()));
                 return Ok(true)
             }
         }
@@ -119,7 +119,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                                    &[],
                                    &mut Variables::new());
                     if s.is_ok() {
-                        try!(self.out.write(s.unwrap().as_slice()));
+                        try!(self.out.write_all(s.unwrap().as_slice()));
                         return Ok(true)
                     }
                 }
@@ -154,7 +154,7 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
             expand(op.as_slice(), &[], &mut Variables::new())
         });
         if s.is_ok() {
-            return self.out.write(s.unwrap().as_slice())
+            return self.out.write_all(s.unwrap().as_slice())
         }
         Ok(())
     }
@@ -221,8 +221,8 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
 
 
 impl<T: Writer> Writer for TerminfoTerminal<T> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.out.write(buf)
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.out.write_all(buf)
     }
 
     fn flush(&mut self) -> IoResult<()> {

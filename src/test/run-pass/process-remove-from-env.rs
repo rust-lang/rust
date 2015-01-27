@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::Command;
+use std::old_io::Command;
 use std::os;
 
 #[cfg(all(unix, not(target_os="android")))]

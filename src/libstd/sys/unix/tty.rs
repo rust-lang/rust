@@ -12,7 +12,7 @@ use prelude::v1::*;
 
 use sys::fs::FileDesc;
 use libc::{self, c_int, c_ulong, funcs};
-use io::{self, IoResult, IoError};
+use old_io::{self, IoResult, IoError};
 use sys::c;
 use sys_common;
 
@@ -33,7 +33,7 @@ impl TTY {
             Ok(TTY { fd: FileDesc::new(fd, true) })
         } else {
             Err(IoError {
-                kind: io::MismatchedFileTypeForOperation,
+                kind: old_io::MismatchedFileTypeForOperation,
                 desc: "file descriptor is not a TTY",
                 detail: None,
             })
@@ -67,7 +67,7 @@ impl TTY {
             let mut size = winsize { ws_row: 0, ws_col: 0, ws_xpixel: 0, ws_ypixel: 0 };
             if c::ioctl(self.fd.fd(), TIOCGWINSZ, &mut size) == -1 {
                 Err(IoError {
-                    kind: io::OtherIoError,
+                    kind: old_io::OtherIoError,
                     desc: "Size of terminal could not be determined",
                     detail: None,
                 })

@@ -15,7 +15,7 @@
 
 use html::escape::Escape;
 
-use std::io;
+use std::old_io;
 use syntax::parse::lexer;
 use syntax::parse::token;
 use syntax::parse;
@@ -46,7 +46,7 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
 /// source.
 fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
         class: Option<&str>, id: Option<&str>,
-        out: &mut Writer) -> io::IoResult<()> {
+        out: &mut Writer) -> old_io::IoResult<()> {
     use syntax::parse::lexer::Reader;
 
     try!(write!(out, "<pre "));

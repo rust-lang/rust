@@ -14,9 +14,9 @@
 // Regression test for #20797.
 
 use std::default::Default;
-use std::io::IoResult;
-use std::io::fs;
-use std::io::fs::PathExtensions;
+use std::old_io::IoResult;
+use std::old_io::fs;
+use std::old_io::fs::PathExtensions;
 
 /// A strategy for acquiring more subpaths to walk.
 pub trait Strategy {

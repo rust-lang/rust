@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::os;
-use std::io::{File, Command};
+use std::old_io::{File, Command};
 
 // creates broken.rs, which has the Ident \x00name_0,ctxt_0\x00
 // embedded within it, and then attempts to compile broken.rs with the

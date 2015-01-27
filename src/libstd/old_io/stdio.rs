@@ -19,10 +19,10 @@
 //!
 //! ```rust
 //! # #![allow(unused_must_use)]
-//! use std::io;
+//! use std::old_io;
 //!
-//! let mut out = io::stdout();
-//! out.write(b"Hello, world!");
+//! let mut out = old_io::stdout();
+//! out.write_all(b"Hello, world!");
 //! ```
 
 use self::StdSource::*;
@@ -32,7 +32,7 @@ use cell::RefCell;
 use clone::Clone;
 use failure::LOCAL_STDERR;
 use fmt;
-use io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
+use old_io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
 use marker::{Sync, Send};
 use libc;
@@ -141,9 +141,9 @@ impl StdinReader {
     /// # Examples
     ///
     /// ```rust
-    /// use std::io;
+    /// use std::old_io;
     ///
-    /// for line in io::stdin().lock().lines() {
+    /// for line in old_io::stdin().lock().lines() {
     ///     println!("{}", line.unwrap());
     /// }
     /// ```
@@ -370,14 +370,14 @@ pub fn flush() {
 /// Prints a string to the stdout of the current process. No newline is emitted
 /// after the string is printed.
 pub fn print(s: &str) {
-    with_task_stdout(|io| io.write(s.as_bytes()))
+    with_task_stdout(|io| io.write_all(s.as_bytes()))
 }
 
 /// Prints a string to the stdout of the current process. A literal
 /// `\n` character is printed to the console after the string.
 pub fn println(s: &str) {
     with_task_stdout(|io| {
-        io.write(s.as_bytes()).and_then(|()| io.write(&[b'\n']))
+        io.write_all(s.as_bytes()).and_then(|()| io.write_all(&[b'\n']))
     })
 }
 
@@ -498,7 +498,7 @@ impl StdWriter {
 }
 
 impl Writer for StdWriter {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         // As with stdin on windows, stdout often can't handle writes of large
         // sizes. For an example, see #14940. For this reason, chunk the output
         // buffer on windows, but on unix we can just write the whole buffer all
@@ -539,7 +539,7 @@ mod tests {
 
     #[test]
     fn capture_stdout() {
-        use io::{ChanReader, ChanWriter};
+        use old_io::{ChanReader, ChanWriter};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
@@ -552,7 +552,7 @@ mod tests {
 
     #[test]
     fn capture_stderr() {
-        use io::{ChanReader, ChanWriter, Reader};
+        use old_io::{ChanReader, ChanWriter, Reader};
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));

@@ -20,8 +20,8 @@ pub use self::Flag::*;
 pub use self::Protocol::*;
 
 use iter::IteratorExt;
-use io::{IoResult};
-use io::net::ip::{SocketAddr, IpAddr};
+use old_io::{IoResult};
+use old_io::net::ip::{SocketAddr, IpAddr};
 use option::Option;
 use option::Option::{Some, None};
 use string::String;
@@ -114,7 +114,7 @@ fn lookup(hostname: Option<&str>, servname: Option<&str>, hint: Option<Hint>)
 mod test {
     use prelude::v1::*;
     use super::*;
-    use io::net::ip::*;
+    use old_io::net::ip::*;
 
     #[test]
     fn dns_smoke_test() {

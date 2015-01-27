@@ -10,7 +10,7 @@
 
 //! A wrapper around any Reader to treat it as an RNG.
 
-use io::Reader;
+use old_io::Reader;
 use rand::Rng;
 use result::Result::{Ok, Err};
 use slice::SliceExt;
@@ -26,7 +26,7 @@ use slice::SliceExt;
 ///
 /// ```rust
 /// use std::rand::{reader, Rng};
-/// use std::io::MemReader;
+/// use std::old_io::MemReader;
 ///
 /// let mut rng = reader::ReaderRng::new(MemReader::new(vec!(1,2,3,4,5,6,7,8)));
 /// println!("{:x}", rng.gen::<uint>());
@@ -77,7 +77,7 @@ mod test {
     use prelude::v1::*;
 
     use super::ReaderRng;
-    use io::MemReader;
+    use old_io::MemReader;
     use num::Int;
     use rand::Rng;
 

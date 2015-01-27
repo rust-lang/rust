@@ -12,7 +12,7 @@
 
 /// Map representation
 
-use std::io;
+use std::old_io;
 use std::fmt;
 use square::{bot, wall, rock, lambda, closed_lift, open_lift, earth, empty};
 
@@ -59,9 +59,9 @@ fn square_from_char(c: char) -> square {
     }
 }
 
-fn read_board_grid<rdr:'static + io::Reader>(mut input: rdr)
+fn read_board_grid<rdr:'static + old_io::Reader>(mut input: rdr)
                    -> Vec<Vec<square>> {
-    let mut input: &mut io::Reader = &mut input;
+    let mut input: &mut old_io::Reader = &mut input;
     let mut grid = Vec::new();
     let mut line = [0; 10];
     input.read(&mut line);

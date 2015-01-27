@@ -1482,11 +1482,11 @@ mod test {
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
-    use std::io::util;
+    use std::old_io::util;
 
     fn mk_sh() -> diagnostic::SpanHandler {
         let emitter = diagnostic::EmitterWriter::new(box util::NullWriter, None);
-        let handler = diagnostic::mk_handler(box emitter);
+        let handler = diagnostic::mk_handler(true, box emitter);
         diagnostic::mk_span_handler(handler, CodeMap::new())
     }
 

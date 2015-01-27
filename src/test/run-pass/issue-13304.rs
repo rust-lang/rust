@@ -11,7 +11,7 @@
 // ignore-fast
 
 use std::os;
-use std::io;
+use std::old_io;
 use std::str;
 
 fn main() {
@@ -27,7 +27,7 @@ fn main() {
 fn parent() {
     let args = os::args();
     let args = args.as_slice();
-    let mut p = io::process::Command::new(args[0].as_slice())
+    let mut p = old_io::process::Command::new(args[0].as_slice())
                                      .arg("child").spawn().unwrap();
     p.stdin.as_mut().unwrap().write_str("test1\ntest2\ntest3").unwrap();
     let out = p.wait_with_output().unwrap();
@@ -37,7 +37,7 @@ fn parent() {
 }
 
 fn child() {
-    for line in io::stdin().lock().lines() {
+    for line in old_io::stdin().lock().lines() {
         println!("{}", line.unwrap());
     }
 }

@@ -351,7 +351,7 @@ pub fn freq_count<T, U>(mut iter: T) -> hash_map::HashMap<U, uint>
 mod tests {
     use stats::Stats;
     use stats::Summary;
-    use std::io;
+    use std::old_io;
     use std::f64;
 
     macro_rules! assert_approx_eq {
@@ -367,7 +367,7 @@ mod tests {
 
         let summ2 = Summary::new(samples);
 
-        let mut w = io::stdout();
+        let mut w = old_io::stdout();
         let w = &mut w;
         (write!(w, "\n")).unwrap();
 

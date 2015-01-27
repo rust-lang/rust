@@ -10,7 +10,7 @@
 
 //! Basic data structures for representing a book.
 
-use std::io::BufferedReader;
+use std::old_io::BufferedReader;
 use std::iter;
 use std::iter::AdditiveIterator;
 

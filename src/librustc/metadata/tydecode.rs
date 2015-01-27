@@ -377,6 +377,14 @@ fn parse_scope(st: &mut PState) -> region::CodeExtent {
             let node_id = parse_uint(st) as ast::NodeId;
             region::CodeExtent::Misc(node_id)
         }
+        'B' => {
+            let node_id = parse_uint(st) as ast::NodeId;
+            let first_stmt_index = parse_uint(st);
+            let block_remainder = region::BlockRemainder {
+                block: node_id, first_statement_index: first_stmt_index,
+            };
+            region::CodeExtent::Remainder(block_remainder)
+        }
         _ => panic!("parse_scope: bad input")
     }
 }

@@ -49,7 +49,7 @@
 //! ## Example
 //!
 //! ```rust
-//! use std::io::fs::PathExtensions;
+//! use std::old_io::fs::PathExtensions;
 //!
 //! let mut path = Path::new("/tmp/path");
 //! println!("path: {}", path.display());

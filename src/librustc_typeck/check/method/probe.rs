@@ -1049,8 +1049,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // if there are any.
         assert_eq!(substs.types.len(subst::FnSpace), 0);
         assert_eq!(substs.regions().len(subst::FnSpace), 0);
-        let mut substs = substs;
         let placeholder;
+        let mut substs = substs;
         if
             !method.generics.types.is_empty_in(subst::FnSpace) ||
             !method.generics.regions.is_empty_in(subst::FnSpace)

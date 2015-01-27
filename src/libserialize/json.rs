@@ -201,7 +201,7 @@ use self::InternalStackElement::*;
 
 use std;
 use std::collections::{HashMap, BTreeMap};
-use std::{char, f64, fmt, io, num, str};
+use std::{char, f64, fmt, old_io, num, str};
 use std::mem::{swap};
 use std::num::{Float, Int};
 use std::num::FpCategory as Fp;
@@ -260,7 +260,7 @@ pub enum ErrorCode {
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
-    IoError(io::IoErrorKind, &'static str),
+    IoError(old_io::IoErrorKind, &'static str),
 }
 
 // Builder and Parser have the same errors.
@@ -331,7 +331,7 @@ impl fmt::Display for ErrorCode {
     }
 }
 
-fn io_error_to_error(io: io::IoError) -> ParserError {
+fn io_error_to_error(io: old_io::IoError) -> ParserError {
     IoError(io.kind, io.desc)
 }
 
@@ -2057,8 +2057,8 @@ impl<T: Iterator<Item=char>> Builder<T> {
     }
 }
 
-/// Decodes a json value from an `&mut io::Reader`
-pub fn from_reader(rdr: &mut io::Reader) -> Result<Json, BuilderError> {
+/// Decodes a json value from an `&mut old_io::Reader`
+pub fn from_reader(rdr: &mut old_io::Reader) -> Result<Json, BuilderError> {
     let contents = match rdr.read_to_end() {
         Ok(c)  => c,
         Err(e) => return Err(io_error_to_error(e))
@@ -2618,7 +2618,7 @@ mod tests {
     use super::JsonEvent::*;
     use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Decoder, Encoder, EncoderError};
-    use std::{i64, u64, f32, f64, io};
+    use std::{i64, u64, f32, f64, old_io};
     use std::collections::BTreeMap;
     use std::num::Float;
     use std::string;
@@ -3456,7 +3456,7 @@ mod tests {
     #[test]
     fn test_encode_hashmap_with_numeric_key() {
         use std::str::from_utf8;
-        use std::io::Writer;
+        use std::old_io::Writer;
         use std::collections::HashMap;
         let mut hm: HashMap<uint, bool> = HashMap::new();
         hm.insert(1, true);
@@ -3472,7 +3472,7 @@ mod tests {
     #[test]
     fn test_prettyencode_hashmap_with_numeric_key() {
         use std::str::from_utf8;
-        use std::io::Writer;
+        use std::old_io::Writer;
         use std::collections::HashMap;
         let mut hm: HashMap<uint, bool> = HashMap::new();
         hm.insert(1, true);
@@ -3929,7 +3929,7 @@ mod tests {
     #[test]
     fn test_encode_hashmap_with_arbitrary_key() {
         use std::str::from_utf8;
-        use std::io::Writer;
+        use std::old_io::Writer;
         use std::collections::HashMap;
         use std::fmt;
         #[derive(PartialEq, Eq, Hash, RustcEncodable)]

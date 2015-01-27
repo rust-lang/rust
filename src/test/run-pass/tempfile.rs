@@ -18,9 +18,9 @@
 // they're in a different location than before. Hence, these tests are all run
 // serially here.
 
-use std::io::fs::PathExtensions;
-use std::io::{fs, TempDir};
-use std::io;
+use std::old_io::fs::PathExtensions;
+use std::old_io::{fs, TempDir};
+use std::old_io;
 use std::os;
 use std::sync::mpsc::channel;
 use std::thread::Thread;
@@ -127,17 +127,17 @@ fn recursive_mkdir_rel() {
     let cwd = os::getcwd().unwrap();
     println!("recursive_mkdir_rel: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
-    fs::mkdir_recursive(&path, io::USER_RWX);
+    fs::mkdir_recursive(&path, old_io::USER_RWX);
     assert!(path.is_dir());
-    fs::mkdir_recursive(&path, io::USER_RWX);
+    fs::mkdir_recursive(&path, old_io::USER_RWX);
     assert!(path.is_dir());
 }
 
 fn recursive_mkdir_dot() {
     let dot = Path::new(".");
-    fs::mkdir_recursive(&dot, io::USER_RWX);
+    fs::mkdir_recursive(&dot, old_io::USER_RWX);
     let dotdot = Path::new("..");
-    fs::mkdir_recursive(&dotdot, io::USER_RWX);
+    fs::mkdir_recursive(&dotdot, old_io::USER_RWX);
 }
 
 fn recursive_mkdir_rel_2() {
@@ -145,20 +145,20 @@ fn recursive_mkdir_rel_2() {
     let cwd = os::getcwd().unwrap();
     println!("recursive_mkdir_rel_2: Making: {} in cwd {} [{}]", path.display(),
            cwd.display(), path.exists());
-    fs::mkdir_recursive(&path, io::USER_RWX);
+    fs::mkdir_recursive(&path, old_io::USER_RWX);
     assert!(path.is_dir());
     assert!(path.dir_path().is_dir());
     let path2 = Path::new("quux/blat");
     println!("recursive_mkdir_rel_2: Making: {} in cwd {}", path2.display(),
            cwd.display());
-    fs::mkdir_recursive(&path2, io::USER_RWX);
+    fs::mkdir_recursive(&path2, old_io::USER_RWX);
     assert!(path2.is_dir());
     assert!(path2.dir_path().is_dir());
 }
 
 // Ideally this would be in core, but needs TempFile
 pub fn test_rmdir_recursive_ok() {
-    let rwx = io::USER_RWX;
+    let rwx = old_io::USER_RWX;
 
     let tmpdir = TempDir::new("test").ok().expect("test_rmdir_recursive_ok: \
                                                    couldn't create temp dir");

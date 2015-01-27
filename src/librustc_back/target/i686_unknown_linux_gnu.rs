@@ -12,6 +12,7 @@ use target::Target;
 
 pub fn target() -> Target {
     let mut base = super::linux_base::opts();
+    base.cpu = "pentium4".to_string();
     base.pre_link_args.push("-m32".to_string());
 
     Target {
