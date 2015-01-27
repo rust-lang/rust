@@ -114,7 +114,6 @@
 #![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
 #![feature(int_uint)]
-#![feature(int_uint)]
 #![feature(core)]
 #![feature(libc)]
 #![feature(alloc)]
@@ -123,6 +122,7 @@
 #![feature(rand)]
 #![feature(hash)]
 #![cfg_attr(test, feature(test))]
+#![feature(macro_reexport)]
 
 // Don't link to std. We are std.
 #![no_std]
