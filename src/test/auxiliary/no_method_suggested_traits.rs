@@ -10,6 +10,9 @@
 
 pub use reexport::Reexported;
 
+pub struct Foo;
+pub enum Bar { X }
+
 pub mod foo {
     pub trait PubPub {
         fn method(&self) {}
