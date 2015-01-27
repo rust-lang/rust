@@ -8,36 +8,44 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import sys, fileinput, subprocess, re, os
+import sys
+import fileinput
+import subprocess
+import re
+import os
 from licenseck import *
 import snapshot
 
-err=0
-cols=100
-cr_flag="ignore-tidy-cr"
-tab_flag="ignore-tidy-tab"
-linelength_flag="ignore-tidy-linelength"
+err = 0
+cols = 100
+cr_flag = "ignore-tidy-cr"
+tab_flag = "ignore-tidy-tab"
+linelength_flag = "ignore-tidy-linelength"
 
 # Be careful to support Python 2.4, 2.6, and 3.x here!
-config_proc=subprocess.Popen([ "git", "config", "core.autocrlf" ],
-                             stdout=subprocess.PIPE)
-result=config_proc.communicate()[0]
+config_proc = subprocess.Popen(["git", "config", "core.autocrlf"],
+                               stdout=subprocess.PIPE)
+result = config_proc.communicate()[0]
 
-true="true".encode('utf8')
-autocrlf=result.strip() == true if result is not None else False
+true = "true".encode('utf8')
+autocrlf = result.strip() == true if result is not None else False
+
 
 def report_error_name_no(name, no, s):
     global err
     print("%s:%d: %s" % (name, no, s))
-    err=1
+    err = 1
+
 
 def report_err(s):
     report_error_name_no(fileinput.filename(), fileinput.filelineno(), s)
+
 
 def report_warn(s):
     print("%s:%d: %s" % (fileinput.filename(),
                          fileinput.filelineno(),
                          s))
+
 
 def do_license_check(name, contents):
     if not check_license(name, contents):
@@ -81,13 +89,13 @@ try:
                 date, rev = snapshot.curr_snapshot_rev()
                 if not hsh.startswith(rev):
                     report_err("snapshot out of date (" + date
-                      + "): " + line)
+                               + "): " + line)
             else:
                 if "SNAP" in line:
                     report_warn("unmatched SNAP line: " + line)
 
         if check_tab and ('\t' in line and
-            "Makefile" not in fileinput.filename()):
+                          "Makefile" not in fileinput.filename()):
             report_err("tab character")
         if check_cr and not autocrlf and '\r' in line:
             report_err("CR character")
