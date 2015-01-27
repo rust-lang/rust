@@ -58,8 +58,21 @@ pub fn expand_type(t: P<ast::Ty>,
     fold::noop_fold_ty(t, fld)
 }
 
+// Given suffix ["b","c","d"], returns path `::std::b::c::d` when
+// `fld.cx.use_std`, and `::core::b::c::d` otherwise.
+fn mk_core_path(fld: &mut MacroExpander,
+                span: Span,
+                suffix: &[&'static str]) -> ast::Path {
+    let mut idents = vec![fld.cx.ident_of_std("core")];
+    for s in suffix.iter() { idents.push(fld.cx.ident_of(*s)); }
+    fld.cx.path_global(span, idents)
+}
+
+
 pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
+    let expr_span = e.span;
     e.and_then(|ast::Expr {id, node, span}| match node {
+
         // expr_mac should really be expr_ext or something; it's the
         // entry-point for all syntax extensions.
         ast::ExprMac(mac) => {
@@ -82,6 +95,171 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                 node: e.node,
                 span: span,
             })
+        }
+
+        // Desugar ExprBox: `in (PLACE) EXPR`
+        ast::ExprBox(Some(placer), value_expr) => {
+            // to:
+            //
+            // let p = PLACE;
+            // let mut place = Placer::make_place(p);
+            // let raw_place = InPlace::pointer(&mut place);
+            // let value = EXPR;
+            // unsafe {
+            //     std::ptr::write(raw_place, value);
+            //     InPlace::finalize(place)
+            // }
+
+            let value_span = value_expr.span;
+            let placer_span = placer.span;
+
+            let placer_expr = fld.fold_expr(placer);
+            let value_expr = fld.fold_expr(value_expr);
+
+            let placer_ident = token::gensym_ident("placer");
+            let agent_ident = token::gensym_ident("place");
+            let value_ident = token::gensym_ident("value");
+            let p_ptr_ident = token::gensym_ident("p_ptr");
+
+            let placer = fld.cx.expr_ident(span, placer_ident);
+            let agent = fld.cx.expr_ident(span, agent_ident);
+            let value = fld.cx.expr_ident(span, value_ident);
+            let p_ptr = fld.cx.expr_ident(span, p_ptr_ident);
+
+            let make_place = ["ops", "Placer", "make_place"];
+            let place_pointer = ["ops", "Place", "pointer"];
+            let ptr_write = ["ptr", "write"];
+            let inplace_finalize = ["ops", "InPlace", "finalize"];
+
+            let make_call = |fld: &mut MacroExpander, p, args| {
+                let path = mk_core_path(fld, placer_span, p);
+                let path = fld.cx.expr_path(path);
+                fld.cx.expr_call(span, path, args)
+            };
+
+            let stmt_let = |fld: &mut MacroExpander, bind, expr| {
+                fld.cx.stmt_let(placer_span, false, bind, expr)
+            };
+            let stmt_let_mut = |fld: &mut MacroExpander, bind, expr| {
+                fld.cx.stmt_let(placer_span, true, bind, expr)
+            };
+
+            // let placer = <placer_expr> ;
+            let s1 = stmt_let(fld, placer_ident, placer_expr);
+
+            // let mut place = Placer::make_place(placer);
+            let s2 = {
+                let call = make_call(fld, &make_place, vec![placer]);
+                stmt_let_mut(fld, agent_ident, call)
+            };
+
+            // let p_ptr = Place::pointer(&mut place);
+            let s3 = {
+                let args = vec![fld.cx.expr_mut_addr_of(placer_span, agent.clone())];
+                let call = make_call(fld, &place_pointer, args);
+                stmt_let(fld, p_ptr_ident, call)
+            };
+
+            // let value = <value_expr>;
+            let s4 = fld.cx.stmt_let(value_span, false, value_ident, value_expr);
+
+            // unsafe { ptr::write(p_ptr, value); InPlace::finalize(place) }
+            let expr = {
+                let call_ptr_write = StmtSemi(make_call(
+                    fld, &ptr_write, vec![p_ptr, value]), ast::DUMMY_NODE_ID);
+                let call_ptr_write = codemap::respan(value_span, call_ptr_write);
+
+                let call = make_call(fld, &inplace_finalize, vec![agent]);
+                Some(fld.cx.expr_block(P(ast::Block {
+                    stmts: vec![P(call_ptr_write)],
+                    expr: Some(call),
+                    id: ast::DUMMY_NODE_ID,
+                    rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                    span: span,
+                })))
+            };
+
+            let block = fld.cx.block_all(span, vec![s1, s2, s3, s4], expr);
+            fld.cx.expr_block(block)
+        }
+
+        // Desugar ExprBox: `box EXPR`
+        ast::ExprBox(None, value_expr) => {
+            // to:
+            //
+            // let mut place = BoxPlace::make_place();
+            // let raw_place = Place::pointer(&mut place);
+            // let value = $value;
+            // unsafe {
+            //     ::std::ptr::write(raw_place, value);
+            //     Boxed::finalize(place)
+            // }
+
+            let value_span = value_expr.span;
+
+            let value_expr = fld.fold_expr(value_expr);
+
+            let agent_ident = token::gensym_ident("place");
+            let value_ident = token::gensym_ident("value");
+            let p_ptr_ident = token::gensym_ident("p_ptr");
+
+            let agent = fld.cx.expr_ident(span, agent_ident);
+            let value = fld.cx.expr_ident(span, value_ident);
+            let p_ptr = fld.cx.expr_ident(span, p_ptr_ident);
+
+            let boxplace_make_place = ["ops", "BoxPlace", "make_place"];
+            let place_pointer = ["ops", "Place", "pointer"];
+            let ptr_write = ["ptr", "write"];
+            let boxed_finalize = ["ops", "Boxed", "finalize"];
+
+            let make_call = |fld: &mut MacroExpander, p, args| {
+                let path = mk_core_path(fld, expr_span, p);
+                let path = fld.cx.expr_path(path);
+                fld.cx.expr_call(span, path, args)
+            };
+
+            let stmt_let = |fld: &mut MacroExpander, bind, expr| {
+                fld.cx.stmt_let(expr_span, false, bind, expr)
+            };
+            let stmt_let_mut = |fld: &mut MacroExpander, bind, expr| {
+                fld.cx.stmt_let(expr_span, true, bind, expr)
+            };
+
+            // let mut place = BoxPlace::make_place();
+            let s1 = {
+                let call = make_call(fld, &boxplace_make_place, vec![]);
+                stmt_let_mut(fld, agent_ident, call)
+            };
+
+            // let p_ptr = Place::pointer(&mut place);
+            let s2 = {
+                let args = vec![fld.cx.expr_mut_addr_of(expr_span, agent.clone())];
+                let call = make_call(fld, &place_pointer, args);
+                stmt_let(fld, p_ptr_ident, call)
+            };
+
+            // let value = <value_expr>;
+            let s3 = fld.cx.stmt_let(value_span, false, value_ident, value_expr);
+
+            // unsafe { ptr::write(p_ptr, value); Boxed::finalize(place) }
+            let expr = {
+                let call_ptr_write =
+                    StmtSemi(make_call(fld, &ptr_write, vec![p_ptr, value]),
+                             ast::DUMMY_NODE_ID);
+                let call_ptr_write = codemap::respan(value_span, call_ptr_write);
+
+                let call = make_call(fld, &boxed_finalize, vec![agent]);
+                Some(fld.cx.expr_block(P(ast::Block {
+                    stmts: vec![P(call_ptr_write)],
+                    expr: Some(call),
+                    id: ast::DUMMY_NODE_ID,
+                    rules: ast::UnsafeBlock(ast::CompilerGenerated),
+                    span: span,
+                })))
+            };
+
+            let block = fld.cx.block_all(span, vec![s1, s2, s3], expr);
+            fld.cx.expr_block(block)
         }
 
         ast::ExprWhile(cond, body, opt_ident) => {
