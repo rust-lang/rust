@@ -384,15 +384,21 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
     match &*config.target {
         "arm-linux-androideabi" | "aarch64-linux-android" => {
 
-            cmds = cmds.replace("run", "continue").to_string();
+            cmds = cmds.replace("run", "continue");
 
             // write debugger script
-            let script_str = ["set charset UTF-8".to_string(),
-                              format!("file {}", exe_file.as_str().unwrap()
-                                                         .to_string()),
-                              "target remote :5039".to_string(),
-                              cmds,
-                              "quit".to_string()].connect("\n");
+            let mut script_str = String::with_capacity(2048);
+            script_str.push_str("set charset UTF-8\n");
+            script_str.push_str(&format!("file {}\n", exe_file.as_str().unwrap()));
+            script_str.push_str("target remote :5039\n");
+            for line in breakpoint_lines.iter() {
+                script_str.push_str(&format!("break {:?}:{}\n",
+                                             testfile.filename_display(),
+                                             *line)[]);
+            }
+            script_str.push_str(&cmds);
+            script_str.push_str("quit\n");
+
             debug!("script_str = {}", script_str);
             dump_output_file(config,
                              testfile,
@@ -425,8 +431,10 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 .expect(&format!("failed to exec `{:?}`", config.adb_path));
 
             let adb_arg = format!("export LD_LIBRARY_PATH={}; \
-                                   gdbserver :5039 {}/{}",
+                                   gdbserver{} :5039 {}/{}",
                                   config.adb_test_dir.clone(),
+                                  if config.target.contains("aarch64")
+                                  {"64"} else {""},
                                   config.adb_test_dir.clone(),
                                   str::from_utf8(
                                       exe_file.filename()
@@ -496,7 +504,9 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                 stderr: err,
                 cmdline: cmdline
             };
-            process.signal_kill().unwrap();
+            if process.signal_kill().is_err() {
+                println!("Adb process is already finished.");
+            }
         }
 
         _=> {
