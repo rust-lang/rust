@@ -706,7 +706,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "might have its iterator type changed")]
-    fn match_indices<'a>(&'a self, pat: &'a str) -> MatchIndices<'a> {
+    fn match_indices<'a, 'b>(&'a self, pat: &'b str) -> MatchIndices<'a, &'b str> {
         core_str::StrExt::match_indices(&self[..], pat)
     }
 
@@ -723,7 +723,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "might get removed in the future in favor of a more generic split()")]
-    fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a> {
+    fn split_str<'a, 'b>(&'a self, pat: &'b str) -> SplitStr<'a, &'b str> {
         core_str::StrExt::split_str(&self[..], pat)
     }
 

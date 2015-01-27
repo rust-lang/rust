@@ -22,13 +22,13 @@ use option::Option;
 use slice::SliceExt;
 
 // UTF-8 ranges and tags for encoding characters
-static TAG_CONT: u8    = 0b1000_0000u8;
-static TAG_TWO_B: u8   = 0b1100_0000u8;
-static TAG_THREE_B: u8 = 0b1110_0000u8;
-static TAG_FOUR_B: u8  = 0b1111_0000u8;
-static MAX_ONE_B: u32   =     0x80u32;
-static MAX_TWO_B: u32   =    0x800u32;
-static MAX_THREE_B: u32 =  0x10000u32;
+const TAG_CONT: u8    = 0b1000_0000u8;
+const TAG_TWO_B: u8   = 0b1100_0000u8;
+const TAG_THREE_B: u8 = 0b1110_0000u8;
+const TAG_FOUR_B: u8  = 0b1111_0000u8;
+const MAX_ONE_B: u32   =     0x80u32;
+const MAX_TWO_B: u32   =    0x800u32;
+const MAX_THREE_B: u32 =  0x10000u32;
 
 /*
     Lu  Uppercase_Letter        an uppercase letter
@@ -398,11 +398,14 @@ impl CharExt for char {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> usize {
         let code = self as u32;
-        match () {
-            _ if code < MAX_ONE_B   => 1,
-            _ if code < MAX_TWO_B   => 2,
-            _ if code < MAX_THREE_B => 3,
-            _  => 4,
+        if code < MAX_ONE_B {
+            1
+        } else if code < MAX_TWO_B {
+            2
+        } else if code < MAX_THREE_B {
+            3
+        } else {
+            4
         }
     }
 

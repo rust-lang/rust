@@ -207,15 +207,15 @@ malesuada sollicitudin quam eu fermentum!");
 
     make_test!(trim_ascii_char, s, {
         use std::ascii::AsciiExt;
-        s.trim_matches(|&mut: c: char| c.is_ascii())
+        s.trim_matches(|c: char| c.is_ascii())
     });
     make_test!(trim_left_ascii_char, s, {
         use std::ascii::AsciiExt;
-        s.trim_left_matches(|&mut: c: char| c.is_ascii())
+        s.trim_left_matches(|c: char| c.is_ascii())
     });
     make_test!(trim_right_ascii_char, s, {
         use std::ascii::AsciiExt;
-        s.trim_right_matches(|&mut: c: char| c.is_ascii())
+        s.trim_right_matches(|c: char| c.is_ascii())
     });
 
     make_test!(find_underscore_char, s, s.find('_'));
