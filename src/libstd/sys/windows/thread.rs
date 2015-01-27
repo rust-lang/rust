@@ -67,10 +67,10 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
     return ret;
 }
 
-pub unsafe fn set_name(name: &str) {
+pub unsafe fn set_name(_name: &str) {
     // Windows threads are nameless
     // The names in MSVC debugger are obtained using a "magic" exception,
-    // which requires a use of C++ macros.
+    // which requires a use of MS C++ extensions.
     // See https://msdn.microsoft.com/en-us/library/xcb2z8hs.aspx
 }
 
