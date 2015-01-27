@@ -17,7 +17,10 @@
 # it sugarises all .rs/.rc files underneath the working directory
 #
 
-import sys, os, fnmatch, re
+import sys
+import os
+import fnmatch
+import re
 
 
 DOC_PATTERN = '^(?P<indent>[\\t ]*)#\\[(\\s*)doc(\\s*)=' + \
@@ -84,7 +87,6 @@ def sugarise_file(path):
 
     if s != ns:
         open(path, 'w').write(ns)
-
 
 for (dirpath, dirnames, filenames) in os.walk('.'):
     for name in fnmatch.filter(filenames, '*.r[sc]'):

@@ -118,40 +118,54 @@ entitydefs['rarrb'] = u'\u21e5'
 VOID_ELEMENTS = set(['area', 'base', 'br', 'col', 'embed', 'hr', 'img', 'input', 'keygen',
                      'link', 'menuitem', 'meta', 'param', 'source', 'track', 'wbr'])
 
-# simplified HTML parser.
-# this is possible because we are dealing with very regular HTML from rustdoc;
-# we only have to deal with i) void elements and ii) empty attributes.
+
 class CustomHTMLParser(HTMLParser):
+    """simplified HTML parser.
+
+    this is possible because we are dealing with very regular HTML from
+    rustdoc; we only have to deal with i) void elements and ii) empty
+    attributes."""
     def __init__(self, target=None):
         HTMLParser.__init__(self)
         self.__builder = target or ET.TreeBuilder()
+
     def handle_starttag(self, tag, attrs):
         attrs = dict((k, v or '') for k, v in attrs)
         self.__builder.start(tag, attrs)
-        if tag in VOID_ELEMENTS: self.__builder.end(tag)
+        if tag in VOID_ELEMENTS:
+            self.__builder.end(tag)
+
     def handle_endtag(self, tag):
         self.__builder.end(tag)
+
     def handle_startendtag(self, tag, attrs):
         attrs = dict((k, v or '') for k, v in attrs)
         self.__builder.start(tag, attrs)
         self.__builder.end(tag)
+
     def handle_data(self, data):
         self.__builder.data(data)
+
     def handle_entityref(self, name):
         self.__builder.data(entitydefs[name])
+
     def handle_charref(self, name):
         code = int(name[1:], 16) if name.startswith(('x', 'X')) else int(name, 10)
         self.__builder.data(unichr(code).encode('utf-8'))
+
     def close(self):
         HTMLParser.close(self)
         return self.__builder.close()
 
 Command = namedtuple('Command', 'negated cmd args lineno')
 
-# returns a generator out of the file object, which
-# - removes `\\` then `\n` then a shared prefix with the previous line then optional whitespace;
-# - keeps a line number (starting from 0) of the first line being concatenated.
+
 def concat_multi_lines(f):
+    """returns a generator out of the file object, which
+    - removes `\\` then `\n` then a shared prefix with the previous line then
+      optional whitespace;
+    - keeps a line number (starting from 0) of the first line being
+      concatenated."""
     lastline = None # set to the last line when the last line has a backslash
     firstlineno = None
     catenated = ''
@@ -162,7 +176,8 @@ def concat_multi_lines(f):
         if lastline is not None:
             maxprefix = 0
             for i in xrange(min(len(line), len(lastline))):
-                if line[i] != lastline[i]: break
+                if line[i] != lastline[i]:
+                    break
                 maxprefix += 1
             line = line[maxprefix:].lstrip()
 
@@ -184,11 +199,14 @@ LINE_PATTERN = re.compile(r'''
     (?P<cmd>[A-Za-z]+(?:-[A-Za-z]+)*)
     (?P<args>.*)$
 ''', re.X)
+
+
 def get_commands(template):
     with open(template, 'rUb') as f:
         for lineno, line in concat_multi_lines(f):
             m = LINE_PATTERN.search(line)
-            if not m: continue
+            if not m:
+                continue
 
             negated = (m.group('negated') == '!')
             cmd = m.group('cmd')
@@ -198,16 +216,21 @@ def get_commands(template):
             args = shlex.split(args)
             yield Command(negated=negated, cmd=cmd, args=args, lineno=lineno+1)
 
+
 def _flatten(node, acc):
-    if node.text: acc.append(node.text)
+    if node.text:
+        acc.append(node.text)
     for e in node:
         _flatten(e, acc)
-        if e.tail: acc.append(e.tail)
+        if e.tail:
+            acc.append(e.tail)
+
 
 def flatten(node):
     acc = []
     _flatten(node, acc)
     return ''.join(acc)
+
 
 def normalize_xpath(path):
     if path.startswith('//'):
@@ -217,6 +240,7 @@ def normalize_xpath(path):
     else:
         raise RuntimeError('Non-absolute XPath is not supported due to \
                             the implementation issue.')
+
 
 class CachedFiles(object):
     def __init__(self, root):
@@ -267,6 +291,7 @@ class CachedFiles(object):
                 self.trees[path] = tree
                 return self.trees[path]
 
+
 def check_string(data, pat, regexp):
     if not pat:
         return True # special case a presence testing
@@ -276,6 +301,7 @@ def check_string(data, pat, regexp):
         data = ' '.join(data.split())
         pat = ' '.join(pat.split())
         return pat in data
+
 
 def check_tree_attr(tree, path, attr, pat, regexp):
     path = normalize_xpath(path)
@@ -287,8 +313,10 @@ def check_tree_attr(tree, path, attr, pat, regexp):
             continue
         else:
             ret = check_string(value, pat, regexp)
-            if ret: break
+            if ret:
+                break
     return ret
+
 
 def check_tree_text(tree, path, pat, regexp):
     path = normalize_xpath(path)
@@ -300,8 +328,10 @@ def check_tree_text(tree, path, pat, regexp):
             continue
         else:
             ret = check_string(value, pat, regexp)
-            if ret: break
+            if ret:
+                break
     return ret
+
 
 def check(target, commands):
     cache = CachedFiles(target)
@@ -323,7 +353,8 @@ def check(target, commands):
                     ret = check_tree_attr(cache.get_tree(c.args[0]), pat, attr, c.args[2], regexp)
                 else: # normalized text
                     pat = c.args[1]
-                    if pat.endswith('/text()'): pat = pat[:-7]
+                    if pat.endswith('/text()'):
+                        pat = pat[:-7]
                     ret = check_tree_text(cache.get_tree(c.args[0]), pat, c.args[2], regexp)
             else:
                 raise RuntimeError('Invalid number of @{} arguments \
@@ -348,4 +379,3 @@ if __name__ == '__main__':
         raise SystemExit(1)
     else:
         check(sys.argv[1], get_commands(sys.argv[2]))
-
