@@ -79,16 +79,13 @@ pub struct InferCtxt<'a, 'tcx: 'a> {
     type_variables: RefCell<type_variable::TypeVariableTable<'tcx>>,
 
     // Map from integral variable to the kind of integer it represents
-    int_unification_table:
-        RefCell<UnificationTable<ty::IntVid, Option<IntVarValue>>>,
+    int_unification_table: RefCell<UnificationTable<ty::IntVid>>,
 
     // Map from floating variable to the kind of float it represents
-    float_unification_table:
-        RefCell<UnificationTable<ty::FloatVid, Option<ast::FloatTy>>>,
+    float_unification_table: RefCell<UnificationTable<ty::FloatVid>>,
 
     // For region variables.
-    region_vars:
-        RegionVarBindings<'a, 'tcx>,
+    region_vars: RegionVarBindings<'a, 'tcx>,
 }
 
 /// A map returned by `skolemize_late_bound_regions()` indicating the skolemized

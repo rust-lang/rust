@@ -29,7 +29,7 @@ fn foo(p: &Panolpy) {
     // known to be an integer, but meh.
     let x;
     22 >> x;
-    //~^ ERROR right-hand-side of a shift operation must have integral type
+    //~^ ERROR the type of this value must be known in this context
 
     22 >> 1;
     // Integer literal types are OK

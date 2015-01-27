@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Bar;
+// Regression test for issue #19499. Due to incorrect caching of trait
+// results for closures with upvars whose types were not fully
+// computed, this rather bizarre little program (along with many more
+// reasonable examples) let to ambiguity errors about not being able
+// to infer sufficient type information.
 
-impl Bar {
-    fn hash<T>(&self, _: T) {}
+fn main() {
+    let n = 0;
+    let it = Some(1_us).into_iter().inspect(|_| {n;});
 }
-
-#[derive(Hash)]
-struct Foo(Bar);
-//~^ error: the trait `core::hash::Hash<_>` is not implemented for the type `Bar`
-
-fn main() {}

@@ -394,7 +394,7 @@ fn process_predicate<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
         ty::Predicate::Projection(ref data) => {
             let project_obligation = obligation.with(data.clone());
             let result = project::poly_project_and_unify_type(selcx, &project_obligation);
-            debug!("poly_project_and_unify_type({}) = {}",
+            debug!("process_predicate: poly_project_and_unify_type({}) returned {}",
                    project_obligation.repr(tcx),
                    result.repr(tcx));
             match result {
