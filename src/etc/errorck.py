@@ -11,7 +11,9 @@
 # Digs error codes out of files named 'diagnostics.rs' across
 # the tree, and ensures thare are no duplicates.
 
-import sys, os, re
+import sys
+import os
+import re
 
 src_dir = sys.argv[1]
 errcode_map = {}

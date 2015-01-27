@@ -11,8 +11,6 @@
 import os
 import sys
 import subprocess
-import itertools
-from os import path
 
 f = open(sys.argv[1], 'wb')
 
@@ -34,6 +32,7 @@ f.write("""// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
 // WARNING: THIS IS A GENERATED FILE, DO NOT MODIFY
 //          take a look at src/etc/mklldeps.py if you're interested
 """)
+
 
 def run(args):
     proc = subprocess.Popen(args, stdout=subprocess.PIPE, stderr=subprocess.PIPE)
