@@ -10,6 +10,7 @@
 
 use std::cell::Cell;
 
+#[derive(Copy)]
 struct Foo {
     x: int
 }
@@ -23,8 +24,6 @@ impl Clone for Foo {
         panic!();
     }
 }
-
-impl Copy for Foo {}
 
 pub fn main() {
     let x = Cell::new(Foo { x: 22 });

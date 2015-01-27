@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[derive(Copy)]
 enum Foo {
     Bar,
     Baz
 }
-
-impl Copy for Foo {}
 
 impl Foo {
     fn foo(&self) {

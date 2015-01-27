@@ -11,11 +11,10 @@
 
 use std::cell::Cell;
 
+#[derive(Copy)]
 enum newtype {
     newvar(int)
 }
-
-impl Copy for newtype {}
 
 pub fn main() {
 

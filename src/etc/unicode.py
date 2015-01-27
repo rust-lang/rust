@@ -392,14 +392,12 @@ def emit_grapheme_module(f, grapheme_table, grapheme_cats):
     use core::slice;
 
     #[allow(non_camel_case_types)]
-    #[derive(Clone)]
+    #[derive(Clone, Copy)]
     pub enum GraphemeCat {
 """)
     for cat in grapheme_cats + ["Any"]:
         f.write("        GC_" + cat + ",\n")
     f.write("""    }
-
-    impl Copy for GraphemeCat {}
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
         use core::cmp::Ordering::{Equal, Less, Greater};

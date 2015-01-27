@@ -15,11 +15,10 @@ trait GetRef<'a> {
     fn get(&self) -> &'a int;
 }
 
+#[derive(Copy)]
 struct Box<'a> {
     t: &'a int
 }
-
-impl<'a> Copy for Box<'a> {}
 
 impl<'a> GetRef<'a> for Box<'a> {
     fn get(&self) -> &'a int {

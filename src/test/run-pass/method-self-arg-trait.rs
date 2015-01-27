@@ -15,9 +15,8 @@
 
 static mut COUNT: u64 = 1;
 
+#[derive(Copy)]
 struct Foo;
-
-impl Copy for Foo {}
 
 trait Bar : Sized {
     fn foo1(&self);

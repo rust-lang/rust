@@ -17,9 +17,8 @@ with the representation of [int; n] and [int] somehow, or at least
 failed to typecheck correctly.
 */
 
+#[derive(Copy)]
 struct X { vec: &'static [int] }
-
-impl Copy for X {}
 
 static V: &'static [X] = &[X { vec: &[1, 2, 3] }];
 

@@ -27,28 +27,25 @@ use std::iter::repeat;
 use std::slice;
 
 // Represents a position on a canvas.
+#[derive(Copy)]
 struct Point {
     x: int,
     y: int,
 }
 
-impl Copy for Point {}
-
 // Represents an offset on a canvas. (This has the same structure as a Point.
 // but different semantics).
+#[derive(Copy)]
 struct Size {
     width: int,
     height: int,
 }
 
-impl Copy for Size {}
-
+#[derive(Copy)]
 struct Rect {
     top_left: Point,
     size: Size,
 }
-
-impl Copy for Rect {}
 
 // Contains the information needed to do shape rendering via ASCII art.
 struct AsciiArt {

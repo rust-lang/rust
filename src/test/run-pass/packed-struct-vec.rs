@@ -13,13 +13,11 @@
 use std::mem;
 
 #[repr(packed)]
-#[derive(PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 struct Foo {
     bar: u8,
     baz: u64
 }
-
-impl Copy for Foo {}
 
 pub fn main() {
     let foos = [Foo { bar: 1, baz: 2 }; 10];

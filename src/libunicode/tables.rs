@@ -7801,13 +7801,12 @@ pub mod charwidth {
 }
 
 pub mod grapheme {
-    use core::marker::Copy;
     use core::slice::SliceExt;
     pub use self::GraphemeCat::*;
     use core::result::Result::{Ok, Err};
 
     #[allow(non_camel_case_types)]
-    #[derive(Clone)]
+    #[derive(Clone, Copy)]
     pub enum GraphemeCat {
         GC_LV,
         GC_LVT,
@@ -7820,8 +7819,6 @@ pub mod grapheme {
         GC_RegionalIndicator,
         GC_Any,
     }
-
-    impl Copy for GraphemeCat {}
 
     fn bsearch_range_value_table(c: char, r: &'static [(char, char, GraphemeCat)]) -> GraphemeCat {
         use core::cmp::Ordering::{Equal, Less, Greater};

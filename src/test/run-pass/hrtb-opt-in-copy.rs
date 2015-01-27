@@ -29,10 +29,9 @@ enum TyS<'tcx> {
     Boop(marker::InvariantLifetime<'tcx>)
 }
 
+#[derive(Copy)]
 enum Bar<'tcx> {
     Baz(Foo<Ty<'tcx>>)
 }
-
-impl<'tcx> Copy for Bar<'tcx> { }
 
 fn main() { }

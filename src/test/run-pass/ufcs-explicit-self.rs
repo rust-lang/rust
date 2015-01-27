@@ -11,11 +11,10 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
+#[derive(Copy)]
 struct Foo {
     f: int,
 }
-
-impl Copy for Foo {}
 
 impl Foo {
     fn foo(self: Foo, x: int) -> int {
@@ -29,11 +28,10 @@ impl Foo {
     }
 }
 
+#[derive(Copy)]
 struct Bar<T> {
     f: T,
 }
-
-impl<T:Copy> Copy for Bar<T> {}
 
 impl<T> Bar<T> {
     fn foo(self: Bar<T>, x: int) -> int {
