@@ -2539,7 +2539,7 @@ pub struct Range<A> {
 /// ```
 /// let array = [0, 1, 2, 3, 4];
 ///
-/// for i in 0..5 {
+/// for i in range(0, 5) {
 ///     println!("{}", i);
 ///     assert_eq!(i,  array[i]);
 /// }
