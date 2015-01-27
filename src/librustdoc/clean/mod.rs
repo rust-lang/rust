@@ -2244,7 +2244,7 @@ impl Clean<ViewListIdent> for ast::PathListItem {
                 source: resolve_def(cx, id)
             },
             ast::PathListMod { id } => ViewListIdent {
-                name: "mod".to_string(),
+                name: "self".to_string(),
                 source: resolve_def(cx, id)
             }
         }
