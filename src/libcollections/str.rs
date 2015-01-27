@@ -1401,28 +1401,28 @@ mod tests {
         assert!("banana".find_str("apple pie").is_none());
 
         let data = "abcabc";
-        assert_eq!(data.slice(0u, 6u).find_str("ab"), Some(0u));
-        assert_eq!(data.slice(2u, 6u).find_str("ab"), Some(3u - 2u));
-        assert!(data.slice(2u, 4u).find_str("ab").is_none());
+        assert_eq!(data[0u..6u].find_str("ab"), Some(0u));
+        assert_eq!(data[2u..6u].find_str("ab"), Some(3u - 2u));
+        assert!(data[2u..4u].find_str("ab").is_none());
 
         let string = "ประเทศไทย中华Việt Nam";
         let mut data = String::from_str(string);
         data.push_str(string);
         assert!(data.find_str("ไท华").is_none());
-        assert_eq!(data.slice(0u, 43u).find_str(""), Some(0u));
-        assert_eq!(data.slice(6u, 43u).find_str(""), Some(6u - 6u));
+        assert_eq!(data[0u..43u].find_str(""), Some(0u));
+        assert_eq!(data[6u..43u].find_str(""), Some(6u - 6u));
 
-        assert_eq!(data.slice(0u, 43u).find_str("ประ"), Some( 0u));
-        assert_eq!(data.slice(0u, 43u).find_str("ทศไ"), Some(12u));
-        assert_eq!(data.slice(0u, 43u).find_str("ย中"), Some(24u));
-        assert_eq!(data.slice(0u, 43u).find_str("iệt"), Some(34u));
-        assert_eq!(data.slice(0u, 43u).find_str("Nam"), Some(40u));
+        assert_eq!(data[0u..43u].find_str("ประ"), Some( 0u));
+        assert_eq!(data[0u..43u].find_str("ทศไ"), Some(12u));
+        assert_eq!(data[0u..43u].find_str("ย中"), Some(24u));
+        assert_eq!(data[0u..43u].find_str("iệt"), Some(34u));
+        assert_eq!(data[0u..43u].find_str("Nam"), Some(40u));
 
-        assert_eq!(data.slice(43u, 86u).find_str("ประ"), Some(43u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("ทศไ"), Some(55u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("ย中"), Some(67u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("iệt"), Some(77u - 43u));
-        assert_eq!(data.slice(43u, 86u).find_str("Nam"), Some(83u - 43u));
+        assert_eq!(data[43u..86u].find_str("ประ"), Some(43u - 43u));
+        assert_eq!(data[43u..86u].find_str("ทศไ"), Some(55u - 43u));
+        assert_eq!(data[43u..86u].find_str("ย中"), Some(67u - 43u));
+        assert_eq!(data[43u..86u].find_str("iệt"), Some(77u - 43u));
+        assert_eq!(data[43u..86u].find_str("Nam"), Some(83u - 43u));
     }
 
     #[test]
@@ -1908,8 +1908,8 @@ mod tests {
     #[test]
     fn test_subslice_offset() {
         let a = "kernelsprite";
-        let b = a.slice(7, a.len());
-        let c = a.slice(0, a.len() - 6);
+        let b = &a[7..a.len()];
+        let c = &a[0..a.len() - 6];
         assert_eq!(a.subslice_offset(b), 7);
         assert_eq!(a.subslice_offset(c), 0);
 

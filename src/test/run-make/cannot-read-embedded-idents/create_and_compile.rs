@@ -40,5 +40,5 @@ fn main() {
 
     // positive test so that this test will be updated when the
     // compiler changes.
-    assert!(err.as_slice().contains("unknown start of token"))
+    assert!(err.contains("unknown start of token"))
 }

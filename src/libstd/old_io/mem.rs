@@ -645,7 +645,7 @@ mod test {
         assert!(r.read_at_least(buf.len(), &mut buf).is_ok());
         let b: &[_] = &[1, 2, 3];
         assert_eq!(buf, b);
-        assert!(r.read_at_least(0, buf.slice_to_mut(0)).is_ok());
+        assert!(r.read_at_least(0, &mut buf[..0]).is_ok());
         assert_eq!(buf, b);
         assert!(r.read_at_least(buf.len(), &mut buf).is_ok());
         let b: &[_] = &[4, 5, 6];

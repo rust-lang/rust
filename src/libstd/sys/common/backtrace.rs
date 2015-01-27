@@ -94,7 +94,7 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                         ($($pat:expr, => $demangled:expr),*) => ({
                             $(if rest.starts_with($pat) {
                                 try!(writer.write_str($demangled));
-                                rest = rest.slice_from($pat.len());
+                                rest = &rest[$pat.len()..];
                               } else)*
                             {
                                 try!(writer.write_str(rest));

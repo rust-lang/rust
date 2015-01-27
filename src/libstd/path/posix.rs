@@ -109,7 +109,7 @@ impl GenericPathUnsafe for Path {
     unsafe fn new_unchecked<T: BytesContainer>(path: T) -> Path {
         let path = Path::normalize(path.container_as_bytes());
         assert!(!path.is_empty());
-        let idx = path.as_slice().rposition_elem(&SEP_BYTE);
+        let idx = path.rposition_elem(&SEP_BYTE);
         Path{ repr: path, sepidx: idx }
     }
 
@@ -290,7 +290,7 @@ impl GenericPath for Path {
                     }
                 }
             }
-            Some(Path::new(comps.as_slice().connect(&SEP_BYTE)))
+            Some(Path::new(comps.connect(&SEP_BYTE)))
         }
     }
 

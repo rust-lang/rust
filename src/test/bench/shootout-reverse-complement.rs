@@ -155,7 +155,7 @@ impl<'a> Iterator for MutDnaSeqs<'a> {
     fn next(&mut self) -> Option<&'a mut [u8]> {
         let tmp = std::mem::replace(&mut self.s, &mut []);
         let tmp = match memchr(tmp, b'\n') {
-            Some(i) => tmp.slice_from_mut(i + 1),
+            Some(i) => &mut tmp[i + 1..],
             None => return None,
         };
         let (seq, tmp) = match memchr(tmp, b'>') {

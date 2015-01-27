@@ -20,6 +20,6 @@ fn main() {
         let segfault = Command::new(args[0].as_slice()).arg("segfault").output().unwrap();
         assert!(!segfault.status.success());
         let error = String::from_utf8_lossy(segfault.error.as_slice());
-        assert!(!error.as_slice().contains("has overflowed its stack"));
+        assert!(!error.contains("has overflowed its stack"));
     }
 }
