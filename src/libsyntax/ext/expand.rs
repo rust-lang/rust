@@ -1433,15 +1433,12 @@ mod test {
     use super::{pattern_bindings, expand_crate};
     use super::{PatIdentFinder, IdentRenamer, PatIdentRenamer, ExpansionConfig};
     use ast;
-    use ast::{Attribute_, AttrOuter, MetaWord, Name};
-    use attr;
+    use ast::Name;
     use codemap;
-    use codemap::Spanned;
     use ext::mtwt;
     use fold::Folder;
     use parse;
     use parse::token;
-    use ptr::P;
     use util::parser_testing::{string_to_parser};
     use util::parser_testing::{string_to_pat, string_to_crate, strs_to_idents};
     use visit;
