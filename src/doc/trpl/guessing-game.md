@@ -75,14 +75,14 @@ Let's get to it! The first thing we need to do for our guessing game is
 allow our player to input a guess. Put this in your `src/main.rs`:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 
 fn main() {
     println!("Guess the number!");
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
 
@@ -121,7 +121,7 @@ explanatory text, and then an example. Let's try to modify our code to add in th
 `random` function and see what happens:
 
 ```{rust,ignore}
-use std::io;
+use std::old_io;
 use std::rand;
 
 fn main() {
@@ -133,7 +133,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
 
@@ -180,7 +180,7 @@ This says "please give me a random `i32` value." We can change our code to use
 this hint:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 
 fn main() {
@@ -192,7 +192,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
 
@@ -233,7 +233,7 @@ unsigned integer approach. If we want a random positive number, we should ask fo
 a random positive number. Our code looks like this now:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 
 fn main() {
@@ -245,7 +245,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
 
@@ -276,7 +276,7 @@ two numbers. Let's add that in, along with a `match` statement to compare our
 guess to the secret number:
 
 ```{rust,ignore}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -289,7 +289,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
 
@@ -331,7 +331,7 @@ but we've given it unsigned integers. In this case, the fix is easy, because
 we wrote the `cmp` function! Let's change it to take `u32`s:
 
 ```{rust,ignore}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -344,7 +344,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
 
@@ -397,7 +397,7 @@ Anyway, we have a `String`, but we need a `u32`. What to do? Well, there's
 a function for that:
 
 ```{rust,ignore}
-let input = io::stdin().read_line()
+let input = old_io::stdin().read_line()
                        .ok()
                        .expect("Failed to read line");
 let input_num: Option<u32> = input.parse();
@@ -429,7 +429,7 @@ let input_num: Option<u32> = "5".parse(); // input_num: Option<u32>
 Anyway, with us now converting our input to a number, our code looks like this:
 
 ```{rust,ignore}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -442,7 +442,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
     let input_num: Option<u32> = input.parse();
@@ -479,7 +479,7 @@ need to unwrap the Option. If you remember from before, `match` is a great way
 to do that. Try this code:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -492,7 +492,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
     let input_num: Option<u32> = input.parse();
@@ -546,7 +546,7 @@ method we can use defined on them: `trim()`. One small modification, and our
 code looks like this:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -559,7 +559,7 @@ fn main() {
 
     println!("Please input your guess.");
 
-    let input = io::stdin().read_line()
+    let input = old_io::stdin().read_line()
                            .ok()
                            .expect("Failed to read line");
     let input_num: Option<u32> = input.trim().parse();
@@ -620,7 +620,7 @@ As we already discussed, the `loop` keyword gives us an infinite loop.
 Let's add that in:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -635,7 +635,7 @@ fn main() {
 
         println!("Please input your guess.");
 
-        let input = io::stdin().read_line()
+        let input = old_io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
         let input_num: Option<u32> = input.trim().parse();
@@ -696,7 +696,7 @@ Ha! `quit` actually quits. As does any other non-number input. Well, this is
 suboptimal to say the least. First, let's actually quit when you win the game:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -711,7 +711,7 @@ fn main() {
 
         println!("Please input your guess.");
 
-        let input = io::stdin().read_line()
+        let input = old_io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
         let input_num: Option<u32> = input.trim().parse();
@@ -752,7 +752,7 @@ we don't want to quit, we just want to ignore it. Change that `return` to
 
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -767,7 +767,7 @@ fn main() {
 
         println!("Please input your guess.");
 
-        let input = io::stdin().read_line()
+        let input = old_io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
         let input_num: Option<u32> = input.trim().parse();
@@ -831,7 +831,7 @@ think of what it is? That's right, we don't want to print out the secret number.
 It was good for testing, but it kind of ruins the game. Here's our final source:
 
 ```{rust,no_run}
-use std::io;
+use std::old_io;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -844,7 +844,7 @@ fn main() {
 
         println!("Please input your guess.");
 
-        let input = io::stdin().read_line()
+        let input = old_io::stdin().read_line()
                                .ok()
                                .expect("Failed to read line");
         let input_num: Option<u32> = input.trim().parse();

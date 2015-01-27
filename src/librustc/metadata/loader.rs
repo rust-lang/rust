@@ -231,8 +231,8 @@ use rustc_back::target::Target;
 use std::ffi::CString;
 use std::cmp;
 use std::collections::HashMap;
-use std::io::fs::PathExtensions;
-use std::io;
+use std::old_io::fs::PathExtensions;
+use std::old_io;
 use std::ptr;
 use std::slice;
 use std::time::Duration;
@@ -796,7 +796,7 @@ pub fn read_meta_section_name(is_osx: bool) -> &'static str {
 
 // A diagnostic function for dumping crate metadata to an output stream
 pub fn list_file_metadata(is_osx: bool, path: &Path,
-                          out: &mut io::Writer) -> io::IoResult<()> {
+                          out: &mut old_io::Writer) -> old_io::IoResult<()> {
     match get_metadata_section(is_osx, path) {
         Ok(bytes) => decoder::list_crate_metadata(bytes.as_slice(), out),
         Err(msg) => {

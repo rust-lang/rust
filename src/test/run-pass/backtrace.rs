@@ -15,7 +15,7 @@
 #![feature(unsafe_destructor)]
 
 use std::os;
-use std::io::process::Command;
+use std::old_io::process::Command;
 use std::str;
 use std::ops::{Drop, FnMut, FnOnce};
 

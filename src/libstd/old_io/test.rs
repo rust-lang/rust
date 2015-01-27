@@ -14,7 +14,7 @@ use prelude::v1::*;
 
 use libc;
 use os;
-use std::io::net::ip::*;
+use std::old_io::net::ip::*;
 use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
 /// Get a port number, starting at 9600, for use in tests

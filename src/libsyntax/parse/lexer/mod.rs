@@ -1482,7 +1482,7 @@ mod test {
     use diagnostic;
     use parse::token;
     use parse::token::{str_to_ident};
-    use std::io::util;
+    use std::old_io::util;
 
     fn mk_sh() -> diagnostic::SpanHandler {
         let emitter = diagnostic::EmitterWriter::new(box util::NullWriter, None);

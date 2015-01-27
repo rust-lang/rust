@@ -14,8 +14,8 @@
 #![allow(unstable)]
 #![deny(non_snake_case)]
 
-use std::io::File;
-use std::io::IoError;
+use std::old_io::File;
+use std::old_io::IoError;
 
 struct Something {
     X: usize //~ ERROR structure field `X` should have a snake case name such as `x`
@@ -35,7 +35,7 @@ fn main() {
         Ok(cnt) => println!("read this many bytes: {}", cnt),
         Err(IoError{ kind: EndOfFile, .. }) => println!("Got end of file: {:?}", EndOfFile),
 //~^ ERROR variable `EndOfFile` should have a snake case name such as `end_of_file`
-//~^^ WARN `EndOfFile` is named the same as one of the variants of the type `std::io::IoErrorKind`
+//~^^ WARN `EndOfFile` is named the same as one of the variants of the type `std::old_io::IoErrorKind`
     }
 
     test(1);

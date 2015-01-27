@@ -22,7 +22,7 @@ use prelude::v1::*;
 
 use num;
 use mem;
-use io::{self, IoResult, IoError};
+use old_io::{self, IoResult, IoError};
 use sync::{Once, ONCE_INIT};
 
 macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
@@ -99,43 +99,43 @@ pub fn last_gai_error(_errno: i32) -> IoError {
 /// Convert an `errno` value into a high-level error variant and description.
 pub fn decode_error(errno: i32) -> IoError {
     let (kind, desc) = match errno {
-        libc::EOF => (io::EndOfFile, "end of file"),
-        libc::ERROR_NO_DATA => (io::BrokenPipe, "the pipe is being closed"),
-        libc::ERROR_FILE_NOT_FOUND => (io::FileNotFound, "file not found"),
-        libc::ERROR_INVALID_NAME => (io::InvalidInput, "invalid file name"),
-        libc::WSAECONNREFUSED => (io::ConnectionRefused, "connection refused"),
-        libc::WSAECONNRESET => (io::ConnectionReset, "connection reset"),
+        libc::EOF => (old_io::EndOfFile, "end of file"),
+        libc::ERROR_NO_DATA => (old_io::BrokenPipe, "the pipe is being closed"),
+        libc::ERROR_FILE_NOT_FOUND => (old_io::FileNotFound, "file not found"),
+        libc::ERROR_INVALID_NAME => (old_io::InvalidInput, "invalid file name"),
+        libc::WSAECONNREFUSED => (old_io::ConnectionRefused, "connection refused"),
+        libc::WSAECONNRESET => (old_io::ConnectionReset, "connection reset"),
         libc::ERROR_ACCESS_DENIED | libc::WSAEACCES =>
-            (io::PermissionDenied, "permission denied"),
+            (old_io::PermissionDenied, "permission denied"),
         libc::WSAEWOULDBLOCK => {
-            (io::ResourceUnavailable, "resource temporarily unavailable")
+            (old_io::ResourceUnavailable, "resource temporarily unavailable")
         }
-        libc::WSAENOTCONN => (io::NotConnected, "not connected"),
-        libc::WSAECONNABORTED => (io::ConnectionAborted, "connection aborted"),
-        libc::WSAEADDRNOTAVAIL => (io::ConnectionRefused, "address not available"),
-        libc::WSAEADDRINUSE => (io::ConnectionRefused, "address in use"),
-        libc::ERROR_BROKEN_PIPE => (io::EndOfFile, "the pipe has ended"),
+        libc::WSAENOTCONN => (old_io::NotConnected, "not connected"),
+        libc::WSAECONNABORTED => (old_io::ConnectionAborted, "connection aborted"),
+        libc::WSAEADDRNOTAVAIL => (old_io::ConnectionRefused, "address not available"),
+        libc::WSAEADDRINUSE => (old_io::ConnectionRefused, "address in use"),
+        libc::ERROR_BROKEN_PIPE => (old_io::EndOfFile, "the pipe has ended"),
         libc::ERROR_OPERATION_ABORTED =>
-            (io::TimedOut, "operation timed out"),
-        libc::WSAEINVAL => (io::InvalidInput, "invalid argument"),
+            (old_io::TimedOut, "operation timed out"),
+        libc::WSAEINVAL => (old_io::InvalidInput, "invalid argument"),
         libc::ERROR_CALL_NOT_IMPLEMENTED =>
-            (io::IoUnavailable, "function not implemented"),
+            (old_io::IoUnavailable, "function not implemented"),
         libc::ERROR_INVALID_HANDLE =>
-            (io::MismatchedFileTypeForOperation,
+            (old_io::MismatchedFileTypeForOperation,
              "invalid handle provided to function"),
         libc::ERROR_NOTHING_TO_TERMINATE =>
-            (io::InvalidInput, "no process to kill"),
+            (old_io::InvalidInput, "no process to kill"),
         libc::ERROR_ALREADY_EXISTS =>
-            (io::PathAlreadyExists, "path already exists"),
+            (old_io::PathAlreadyExists, "path already exists"),
 
         // libuv maps this error code to EISDIR. we do too. if it is found
         // to be incorrect, we can add in some more machinery to only
         // return this message when ERROR_INVALID_FUNCTION after certain
         // Windows calls.
-        libc::ERROR_INVALID_FUNCTION => (io::InvalidInput,
+        libc::ERROR_INVALID_FUNCTION => (old_io::InvalidInput,
                                          "illegal operation on a directory"),
 
-        _ => (io::OtherIoError, "unknown error")
+        _ => (old_io::OtherIoError, "unknown error")
     };
     IoError { kind: kind, desc: desc, detail: None }
 }
@@ -185,7 +185,7 @@ pub fn init_net() {
 
 pub fn unimpl() -> IoError {
     IoError {
-        kind: io::IoUnavailable,
+        kind: old_io::IoUnavailable,
         desc: "operation is not implemented",
         detail: None,
     }
@@ -199,7 +199,7 @@ pub fn to_utf16(s: Option<&str>) -> IoResult<Vec<u16>> {
             s
         }),
         None => Err(IoError {
-            kind: io::InvalidInput,
+            kind: old_io::InvalidInput,
             desc: "valid unicode input required",
             detail: None
         })

@@ -15,8 +15,8 @@
 use cmp::min;
 use option::Option::None;
 use result::Result::{Err, Ok};
-use io;
-use io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
+use old_io;
+use old_io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
 use slice::{self, AsSlice, SliceExt};
 use vec::Vec;
 
@@ -25,14 +25,14 @@ const BUF_CAPACITY: uint = 128;
 fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> {
     // compute offset as signed and clamp to prevent overflow
     let pos = match seek {
-        io::SeekSet => 0,
-        io::SeekEnd => end,
-        io::SeekCur => cur,
+        old_io::SeekSet => 0,
+        old_io::SeekEnd => end,
+        old_io::SeekCur => cur,
     } as i64;
 
     if offset + pos < 0 {
         Err(IoError {
-            kind: io::InvalidInput,
+            kind: old_io::InvalidInput,
             desc: "invalid seek to a negative offset",
             detail: None
         })
@@ -43,7 +43,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 
 impl Writer for Vec<u8> {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.push_all(buf);
         Ok(())
     }
@@ -55,7 +55,7 @@ impl Writer for Vec<u8> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::MemWriter;
+/// use std::old_io::MemWriter;
 ///
 /// let mut w = MemWriter::new();
 /// w.write(&[0, 1, 2]);
@@ -99,7 +99,7 @@ impl MemWriter {
 
 impl Writer for MemWriter {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         self.buf.push_all(buf);
         Ok(())
     }
@@ -111,7 +111,7 @@ impl Writer for MemWriter {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::MemReader;
+/// use std::old_io::MemReader;
 ///
 /// let mut r = MemReader::new(vec!(0, 1, 2));
 ///
@@ -155,7 +155,7 @@ impl MemReader {
 impl Reader for MemReader {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        if self.eof() { return Err(io::standard_error(io::EndOfFile)) }
+        if self.eof() { return Err(old_io::standard_error(old_io::EndOfFile)) }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -189,7 +189,7 @@ impl Buffer for MemReader {
         if self.pos < self.buf.len() {
             Ok(&self.buf[self.pos..])
         } else {
-            Err(io::standard_error(io::EndOfFile))
+            Err(old_io::standard_error(old_io::EndOfFile))
         }
     }
 
@@ -200,7 +200,7 @@ impl Buffer for MemReader {
 impl<'a> Reader for &'a [u8] {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        if self.is_empty() { return Err(io::standard_error(io::EndOfFile)); }
+        if self.is_empty() { return Err(old_io::standard_error(old_io::EndOfFile)); }
 
         let write_len = min(buf.len(), self.len());
         {
@@ -219,7 +219,7 @@ impl<'a> Buffer for &'a [u8] {
     #[inline]
     fn fill_buf(&mut self) -> IoResult<&[u8]> {
         if self.is_empty() {
-            Err(io::standard_error(io::EndOfFile))
+            Err(old_io::standard_error(old_io::EndOfFile))
         } else {
             Ok(*self)
         }
@@ -241,7 +241,7 @@ impl<'a> Buffer for &'a [u8] {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::BufWriter;
+/// use std::old_io::BufWriter;
 ///
 /// let mut buf = [0; 4];
 /// {
@@ -269,12 +269,12 @@ impl<'a> BufWriter<'a> {
 
 impl<'a> Writer for BufWriter<'a> {
     #[inline]
-    fn write(&mut self, src: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, src: &[u8]) -> IoResult<()> {
         let dst = &mut self.buf[self.pos..];
         let dst_len = dst.len();
 
         if dst_len == 0 {
-            return Err(io::standard_error(io::EndOfFile));
+            return Err(old_io::standard_error(old_io::EndOfFile));
         }
 
         let src_len = src.len();
@@ -290,7 +290,7 @@ impl<'a> Writer for BufWriter<'a> {
 
             self.pos += dst_len;
 
-            Err(io::standard_error(io::ShortWrite(dst_len)))
+            Err(old_io::standard_error(old_io::ShortWrite(dst_len)))
         }
     }
 }
@@ -313,7 +313,7 @@ impl<'a> Seek for BufWriter<'a> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::BufReader;
+/// use std::old_io::BufReader;
 ///
 /// let buf = [0, 1, 2, 3];
 /// let mut r = BufReader::new(&buf);
@@ -345,7 +345,7 @@ impl<'a> BufReader<'a> {
 impl<'a> Reader for BufReader<'a> {
     #[inline]
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        if self.eof() { return Err(io::standard_error(io::EndOfFile)) }
+        if self.eof() { return Err(old_io::standard_error(old_io::EndOfFile)) }
 
         let write_len = min(buf.len(), self.buf.len() - self.pos);
         {
@@ -379,7 +379,7 @@ impl<'a> Buffer for BufReader<'a> {
         if self.pos < self.buf.len() {
             Ok(&self.buf[self.pos..])
         } else {
-            Err(io::standard_error(io::EndOfFile))
+            Err(old_io::standard_error(old_io::EndOfFile))
         }
     }
 
@@ -390,10 +390,10 @@ impl<'a> Buffer for BufReader<'a> {
 #[cfg(test)]
 mod test {
     extern crate "test" as test_crate;
-    use io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
+    use old_io::{SeekSet, SeekCur, SeekEnd, Reader, Writer, Seek};
     use prelude::v1::{Ok, Err, range,  Vec, Buffer,  AsSlice, SliceExt};
     use prelude::v1::IteratorExt;
-    use io;
+    use old_io;
     use iter::repeat;
     use self::test_crate::Bencher;
     use super::*;
@@ -432,8 +432,8 @@ mod test {
             writer.write(&[]).unwrap();
             assert_eq!(writer.tell(), Ok(8));
 
-            assert_eq!(writer.write(&[8, 9]).err().unwrap().kind, io::ShortWrite(1));
-            assert_eq!(writer.write(&[10]).err().unwrap().kind, io::EndOfFile);
+            assert_eq!(writer.write(&[8, 9]).err().unwrap().kind, old_io::ShortWrite(1));
+            assert_eq!(writer.write(&[10]).err().unwrap().kind, old_io::EndOfFile);
         }
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8];
         assert_eq!(buf, b);
@@ -476,7 +476,7 @@ mod test {
 
         match writer.write(&[0, 0]) {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::ShortWrite(1)),
+            Err(e) => assert_eq!(e.kind, old_io::ShortWrite(1)),
         }
     }
 

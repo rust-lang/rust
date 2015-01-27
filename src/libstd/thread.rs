@@ -158,7 +158,7 @@ use sync::{Mutex, Condvar, Arc};
 use str::Str;
 use string::String;
 use rt::{self, unwind};
-use io::{Writer, stdio};
+use old_io::{Writer, stdio};
 use thunk::Thunk;
 
 use sys::thread as imp;
@@ -508,7 +508,7 @@ mod test {
     use sync::mpsc::{channel, Sender};
     use boxed::BoxAny;
     use result;
-    use std::io::{ChanReader, ChanWriter};
+    use std::old_io::{ChanReader, ChanWriter};
     use super::{Thread, Builder};
     use thunk::Thunk;
 

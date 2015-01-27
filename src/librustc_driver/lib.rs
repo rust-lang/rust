@@ -64,7 +64,7 @@ use rustc::metadata::creader::CrateOrString::Str;
 use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
-use std::io;
+use std::old_io;
 use std::iter::repeat;
 use std::os;
 use std::sync::mpsc::channel;
@@ -133,7 +133,7 @@ fn run_compiler(args: &[String]) {
         1u => {
             let ifile = &matches.free[0][];
             if ifile == "-" {
-                let contents = io::stdin().read_to_end().unwrap();
+                let contents = old_io::stdin().read_to_end().unwrap();
                 let src = String::from_utf8(contents).unwrap();
                 (Input::Str(src), None)
             } else {
@@ -187,7 +187,7 @@ fn run_compiler(args: &[String]) {
     if r.contains(&("ls".to_string())) {
         match input {
             Input::File(ref ifile) => {
-                let mut stdout = io::stdout();
+                let mut stdout = old_io::stdout();
                 list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
             }
             Input::Str(_) => {
@@ -590,7 +590,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 }
 
 pub fn list_metadata(sess: &Session, path: &Path,
-                     out: &mut io::Writer) -> io::IoResult<()> {
+                     out: &mut old_io::Writer) -> old_io::IoResult<()> {
     metadata::loader::list_file_metadata(sess.target.target.options.is_like_osx, path, out)
 }
 
@@ -603,8 +603,8 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
     static STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
 
     let (tx, rx) = channel();
-    let w = io::ChanWriter::new(tx);
-    let mut r = io::ChanReader::new(rx);
+    let w = old_io::ChanWriter::new(tx);
+    let mut r = old_io::ChanReader::new(rx);
 
     let mut cfg = thread::Builder::new().name("rustc".to_string());
 
@@ -614,7 +614,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.scoped(move || { std::io::stdio::set_stderr(box w); f() }).join() {
+    match cfg.scoped(move || { std::old_io::stdio::set_stderr(box w); f() }).join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
@@ -656,7 +656,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
             // Panic so the process returns a failure code, but don't pollute the
             // output with some unnecessary panic messages, we've already
             // printed everything that we needed to.
-            io::stdio::set_stderr(box io::util::NullWriter);
+            old_io::stdio::set_stderr(box old_io::util::NullWriter);
             panic!();
         }
     }

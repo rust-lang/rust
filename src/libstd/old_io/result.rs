@@ -19,9 +19,9 @@ use result::Result::{Ok, Err};
 use super::{Reader, Writer, Listener, Acceptor, Seek, SeekStyle, IoResult};
 
 impl<W: Writer> Writer for IoResult<W> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         match *self {
-            Ok(ref mut writer) => writer.write(buf),
+            Ok(ref mut writer) => writer.write_all(buf),
             Err(ref e) => Err((*e).clone())
         }
     }
@@ -80,34 +80,34 @@ impl<T, A: Acceptor<T>> Acceptor<T> for IoResult<A> {
 mod test {
     use prelude::v1::*;
     use super::super::mem::*;
-    use io;
+    use old_io;
 
     #[test]
     fn test_option_writer() {
-        let mut writer: io::IoResult<Vec<u8>> = Ok(Vec::new());
-        writer.write(&[0, 1, 2]).unwrap();
+        let mut writer: old_io::IoResult<Vec<u8>> = Ok(Vec::new());
+        writer.write_all(&[0, 1, 2]).unwrap();
         writer.flush().unwrap();
         assert_eq!(writer.unwrap(), vec!(0, 1, 2));
     }
 
     #[test]
     fn test_option_writer_error() {
-        let mut writer: io::IoResult<Vec<u8>> =
-            Err(io::standard_error(io::EndOfFile));
+        let mut writer: old_io::IoResult<Vec<u8>> =
+            Err(old_io::standard_error(old_io::EndOfFile));
 
-        match writer.write(&[0, 0, 0]) {
+        match writer.write_all(&[0, 0, 0]) {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }
         match writer.flush() {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }
     }
 
     #[test]
     fn test_option_reader() {
-        let mut reader: io::IoResult<MemReader> =
+        let mut reader: old_io::IoResult<MemReader> =
             Ok(MemReader::new(vec!(0, 1, 2, 3)));
         let mut buf = [0, 0];
         reader.read(&mut buf).unwrap();
@@ -117,13 +117,13 @@ mod test {
 
     #[test]
     fn test_option_reader_error() {
-        let mut reader: io::IoResult<MemReader> =
-            Err(io::standard_error(io::EndOfFile));
+        let mut reader: old_io::IoResult<MemReader> =
+            Err(old_io::standard_error(old_io::EndOfFile));
         let mut buf = [];
 
         match reader.read(&mut buf) {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, io::EndOfFile),
+            Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }
     }
 }

@@ -39,8 +39,8 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::cmp::min;
-use std::io::{BufferedWriter, File};
-use std::io;
+use std::old_io::{BufferedWriter, File};
+use std::old_io;
 use std::num::Float;
 use std::os;
 
@@ -86,7 +86,7 @@ impl<'a> Iterator for AAGen<'a> {
 
 fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
     wr: &mut W, header: &str, mut it: I, mut n: uint)
-    -> std::io::IoResult<()>
+    -> std::old_io::IoResult<()>
 {
     try!(wr.write(header.as_bytes()));
     let mut line = [0u8; LINE_LENGTH + 1];
@@ -102,7 +102,7 @@ fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
     Ok(())
 }
 
-fn run<W: Writer>(writer: &mut W) -> std::io::IoResult<()> {
+fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
     let args = os::args();
     let args = args.as_slice();
     let n = if os::getenv("RUST_BENCH").is_some() {
@@ -147,7 +147,7 @@ fn main() {
         let mut file = BufferedWriter::new(File::create(&Path::new("./shootout-fasta.data")));
         run(&mut file)
     } else {
-        run(&mut io::stdout())
+        run(&mut old_io::stdout())
     };
     res.unwrap()
 }

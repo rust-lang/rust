@@ -19,7 +19,7 @@ mod imp {
 
     use self::OsRngInner::*;
 
-    use io::{IoResult, File};
+    use old_io::{IoResult, File};
     use path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
@@ -187,7 +187,7 @@ mod imp {
 mod imp {
     extern crate libc;
 
-    use io::{IoResult};
+    use old_io::{IoResult};
     use marker::Sync;
     use mem;
     use os;
@@ -259,7 +259,7 @@ mod imp {
 mod imp {
     extern crate libc;
 
-    use io::{IoResult, IoError};
+    use old_io::{IoResult, IoError};
     use mem;
     use ops::Drop;
     use os;

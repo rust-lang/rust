@@ -18,16 +18,16 @@ use sys::os::fill_utf16_buf_and_decode;
 use path;
 use ptr;
 use str;
-use io;
+use old_io;
 
 use prelude::v1::*;
 use sys;
 use sys::os;
 use sys_common::{keep_going, eof, mkerr_libc};
 
-use io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
-use io::{IoResult, IoError, FileStat, SeekStyle};
-use io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
+use old_io::{FilePermission, Write, UnstableFileStat, Open, FileAccess, FileMode};
+use old_io::{IoResult, IoError, FileStat, SeekStyle};
+use old_io::{Read, Truncate, SeekCur, SeekSet, ReadWrite, SeekEnd, Append};
 
 pub type fd_t = libc::c_int;
 
@@ -130,7 +130,7 @@ impl FileDesc {
         return ret;
     }
 
-    pub fn fstat(&self) -> IoResult<io::FileStat> {
+    pub fn fstat(&self) -> IoResult<old_io::FileStat> {
         let mut stat: libc::stat = unsafe { mem::zeroed() };
         match unsafe { libc::fstat(self.fd(), &mut stat) } {
             0 => Ok(mkstat(&stat)),
@@ -268,7 +268,7 @@ pub fn readdir(p: &Path) -> IoResult<Vec<Path>> {
                         Err(..) => {
                             assert!(libc::FindClose(find_handle) != 0);
                             return Err(IoError {
-                                kind: io::InvalidInput,
+                                kind: old_io::InvalidInput,
                                 desc: "path was not valid UTF-16",
                                 detail: Some(format!("path was not valid UTF-16: {:?}", filename)),
                             })
@@ -303,14 +303,14 @@ pub fn unlink(p: &Path) -> IoResult<()> {
             // however, it cannot. To keep the two platforms in line with
             // respect to their behavior, catch this case on windows, attempt to
             // change it to read-write, and then remove the file.
-            if e.kind == io::PermissionDenied {
+            if e.kind == old_io::PermissionDenied {
                 let stat = match stat(p) {
                     Ok(stat) => stat,
                     Err(..) => return Err(e),
                 };
-                if stat.perm.intersects(io::USER_WRITE) { return Err(e) }
+                if stat.perm.intersects(old_io::USER_WRITE) { return Err(e) }
 
-                match chmod(p, (stat.perm | io::USER_WRITE).bits() as uint) {
+                match chmod(p, (stat.perm | old_io::USER_WRITE).bits() as uint) {
                     Ok(()) => do_unlink(&p_utf16),
                     Err(..) => {
                         // Try to put it back as we found it
@@ -406,12 +406,12 @@ fn mkstat(stat: &libc::stat) -> FileStat {
     FileStat {
         size: stat.st_size as u64,
         kind: match (stat.st_mode as libc::c_int) & libc::S_IFMT {
-            libc::S_IFREG => io::FileType::RegularFile,
-            libc::S_IFDIR => io::FileType::Directory,
-            libc::S_IFIFO => io::FileType::NamedPipe,
-            libc::S_IFBLK => io::FileType::BlockSpecial,
-            libc::S_IFLNK => io::FileType::Symlink,
-            _ => io::FileType::Unknown,
+            libc::S_IFREG => old_io::FileType::RegularFile,
+            libc::S_IFDIR => old_io::FileType::Directory,
+            libc::S_IFIFO => old_io::FileType::NamedPipe,
+            libc::S_IFBLK => old_io::FileType::BlockSpecial,
+            libc::S_IFLNK => old_io::FileType::Symlink,
+            _ => old_io::FileType::Unknown,
         },
         perm: FilePermission::from_bits_truncate(stat.st_mode as u32),
         created: stat.st_ctime as u64,

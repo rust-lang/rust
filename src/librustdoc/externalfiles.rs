@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{io, str};
+use std::{old_io, str};
 
 #[derive(Clone)]
 pub struct ExternalHtml{
@@ -33,8 +33,8 @@ impl ExternalHtml {
     }
 }
 
-pub fn load_string(input: &Path) -> io::IoResult<Option<String>> {
-    let mut f = try!(io::File::open(input));
+pub fn load_string(input: &Path) -> old_io::IoResult<Option<String>> {
+    let mut f = try!(old_io::File::open(input));
     let d = try!(f.read_to_end());
     Ok(str::from_utf8(d.as_slice()).map(|s| s.to_string()).ok())
 }
@@ -45,12 +45,12 @@ macro_rules! load_or_return {
             let input = Path::new($input);
             match ::externalfiles::load_string(&input) {
                 Err(e) => {
-                    let _ = writeln!(&mut io::stderr(),
+                    let _ = writeln!(&mut old_io::stderr(),
                                      "error reading `{}`: {}", input.display(), e);
                     return $cant_read;
                 }
                 Ok(None) => {
-                    let _ = writeln!(&mut io::stderr(),
+                    let _ = writeln!(&mut old_io::stderr(),
                                      "error reading `{}`: not UTF-8", input.display());
                     return $not_utf8;
                 }

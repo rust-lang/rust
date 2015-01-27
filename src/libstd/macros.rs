@@ -81,14 +81,14 @@ macro_rules! format {
 #[macro_export]
 #[stable]
 macro_rules! print {
-    ($($arg:tt)*) => ($crate::io::stdio::print_args(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::old_io::stdio::print_args(format_args!($($arg)*)))
 }
 
 /// Macro for printing to a task's stdout handle.
 ///
-/// Each task can override its stdout handle via `std::io::stdio::set_stdout`.
+/// Each task can override its stdout handle via `std::old_io::stdio::set_stdout`.
 /// The syntax of this macro is the same as that used for `format!`. For more
-/// information, see `std::fmt` and `std::io::stdio`.
+/// information, see `std::fmt` and `std::old_io::stdio`.
 ///
 /// # Example
 ///
@@ -99,7 +99,7 @@ macro_rules! print {
 #[macro_export]
 #[stable]
 macro_rules! println {
-    ($($arg:tt)*) => ($crate::io::stdio::println_args(format_args!($($arg)*)))
+    ($($arg:tt)*) => ($crate::old_io::stdio::println_args(format_args!($($arg)*)))
 }
 
 /// Helper macro for unwrapping `Result` values while returning early with an

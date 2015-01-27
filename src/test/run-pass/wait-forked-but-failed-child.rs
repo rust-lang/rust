@@ -10,7 +10,7 @@
 
 extern crate libc;
 
-use std::io::process::Command;
+use std::old_io::process::Command;
 
 use libc::funcs::posix88::unistd;
 

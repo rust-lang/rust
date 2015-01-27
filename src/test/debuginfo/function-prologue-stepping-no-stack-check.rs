@@ -249,7 +249,7 @@
 
 #[no_stack_check]
 fn immediate_args(a: int, b: bool, c: f64) {
-    ::std::io::print("");
+    ::std::old_io::print("");
 }
 
 struct BigStruct {
@@ -265,24 +265,24 @@ struct BigStruct {
 
 #[no_stack_check]
 fn non_immediate_args(a: BigStruct, b: BigStruct) {
-    ::std::io::print("");
+    ::std::old_io::print("");
 }
 
 #[no_stack_check]
 fn binding(a: i64, b: u64, c: f64) {
     let x = 0i;
-    ::std::io::print("");
+    ::std::old_io::print("");
 }
 
 #[no_stack_check]
 fn assignment(mut a: u64, b: u64, c: f64) {
     a = b;
-    ::std::io::print("");
+    ::std::old_io::print("");
 }
 
 #[no_stack_check]
 fn function_call(x: u64, y: u64, z: f64) {
-    std::io::stdio::print("Hi!")
+    std::old_io::stdio::print("Hi!")
 }
 
 #[no_stack_check]

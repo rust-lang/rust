@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use std::{char, os};
-use std::io::{File, Command};
+use std::old_io::{File, Command};
 use std::rand::{thread_rng, Rng};
 
 // creates unicode_input_multiple_files_{main,chars}.rs, where the

@@ -13,7 +13,7 @@
 use std::fmt;
 use std::fmt::{Show, Formatter};
 
-use std::io::IoError;
+use std::old_io::IoError;
 
 pub type CliError = Box<Error + 'static>;
 pub type CliResult<T> = Result<T, CliError>;

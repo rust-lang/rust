@@ -19,7 +19,7 @@ use diagnostics;
 
 use std::cell::{RefCell, Cell};
 use std::fmt;
-use std::io;
+use std::old_io;
 use std::iter::range;
 use std::string::String;
 use term::WriterWrapper;
@@ -266,7 +266,7 @@ impl Level {
 
 fn print_maybe_styled(w: &mut EmitterWriter,
                       msg: &str,
-                      color: term::attr::Attr) -> io::IoResult<()> {
+                      color: term::attr::Attr) -> old_io::IoResult<()> {
     match w.dst {
         Terminal(ref mut t) => {
             try!(t.attr(color));
@@ -300,7 +300,7 @@ fn print_maybe_styled(w: &mut EmitterWriter,
 }
 
 fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
-                    msg: &str, code: Option<&str>) -> io::IoResult<()> {
+                    msg: &str, code: Option<&str>) -> old_io::IoResult<()> {
     if !topic.is_empty() {
         try!(write!(&mut dst.dst, "{} ", topic));
     }
@@ -336,7 +336,7 @@ enum Destination {
 impl EmitterWriter {
     pub fn stderr(color_config: ColorConfig,
                   registry: Option<diagnostics::registry::Registry>) -> EmitterWriter {
-        let stderr = io::stderr();
+        let stderr = old_io::stderr();
 
         let use_color = match color_config {
             Always => true,
@@ -362,10 +362,10 @@ impl EmitterWriter {
 }
 
 impl Writer for Destination {
-    fn write(&mut self, bytes: &[u8]) -> io::IoResult<()> {
+    fn write_all(&mut self, bytes: &[u8]) -> old_io::IoResult<()> {
         match *self {
-            Terminal(ref mut t) => t.write(bytes),
-            Raw(ref mut w) => w.write(bytes),
+            Terminal(ref mut t) => t.write_all(bytes),
+            Raw(ref mut w) => w.write_all(bytes),
         }
     }
 }
@@ -398,7 +398,7 @@ impl Emitter for EmitterWriter {
 }
 
 fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
-        msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> io::IoResult<()> {
+        msg: &str, code: Option<&str>, lvl: Level, custom: bool) -> old_io::IoResult<()> {
     let sp = rsp.span();
 
     // We cannot check equality directly with COMMAND_LINE_SP
@@ -446,7 +446,7 @@ fn highlight_lines(err: &mut EmitterWriter,
                    cm: &codemap::CodeMap,
                    sp: Span,
                    lvl: Level,
-                   lines: codemap::FileLines) -> io::IoResult<()> {
+                   lines: codemap::FileLines) -> old_io::IoResult<()> {
     let fm = &*lines.file;
 
     let mut elided = false;
@@ -529,7 +529,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
                           sp: Span,
                           lvl: Level,
                           lines: codemap::FileLines)
-                          -> io::IoResult<()> {
+                          -> old_io::IoResult<()> {
     let fm = &*lines.file;
 
     let lines = &lines.lines[];
@@ -570,7 +570,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
 fn print_macro_backtrace(w: &mut EmitterWriter,
                          cm: &codemap::CodeMap,
                          sp: Span)
-                         -> io::IoResult<()> {
+                         -> old_io::IoResult<()> {
     let cs = try!(cm.with_expn_info(sp.expn_id, |expn_info| match expn_info {
         Some(ei) => {
             let ss = ei.callee.span.map_or(String::new(), |span| cm.span_to_string(span));

@@ -111,7 +111,7 @@ pub enum EbmlEncoderTag {
 pub enum Error {
     IntTooBig(uint),
     Expected(String),
-    IoError(std::io::IoError),
+    IoError(std::old_io::IoError),
     ApplicationError(String)
 }
 
@@ -127,7 +127,7 @@ pub mod reader {
     use std::char;
 
     use std::int;
-    use std::io::extensions::u64_from_be_bytes;
+    use std::old_io::extensions::u64_from_be_bytes;
     use std::mem::transmute;
     use std::num::Int;
     use std::option::Option;
@@ -685,9 +685,9 @@ pub mod reader {
 
 pub mod writer {
     use std::clone::Clone;
-    use std::io::extensions::u64_to_be_bytes;
-    use std::io::{Writer, Seek};
-    use std::io;
+    use std::old_io::extensions::u64_to_be_bytes;
+    use std::old_io::{Writer, Seek};
+    use std::old_io;
     use std::mem;
 
     use super::{ EsVec, EsMap, EsEnum, EsVecLen, EsVecElt, EsMapLen, EsMapKey,
@@ -698,7 +698,7 @@ pub mod writer {
     use serialize;
 
 
-    pub type EncodeResult = io::IoResult<()>;
+    pub type EncodeResult = old_io::IoResult<()>;
 
     // rbml writing
     pub struct Encoder<'a, W:'a> {
@@ -708,14 +708,14 @@ pub mod writer {
 
     fn write_sized_vuint<W: Writer>(w: &mut W, n: uint, size: uint) -> EncodeResult {
         match size {
-            1u => w.write(&[0x80u8 | (n as u8)]),
-            2u => w.write(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
-            3u => w.write(&[0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
+            1u => w.write_all(&[0x80u8 | (n as u8)]),
+            2u => w.write_all(&[0x40u8 | ((n >> 8_u) as u8), n as u8]),
+            3u => w.write_all(&[0x20u8 | ((n >> 16_u) as u8), (n >> 8_u) as u8,
                             n as u8]),
-            4u => w.write(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
+            4u => w.write_all(&[0x10u8 | ((n >> 24_u) as u8), (n >> 16_u) as u8,
                             (n >> 8_u) as u8, n as u8]),
-            _ => Err(io::IoError {
-                kind: io::OtherIoError,
+            _ => Err(old_io::IoError {
+                kind: old_io::OtherIoError,
                 desc: "int too big",
                 detail: Some(format!("{}", n))
             })
@@ -727,8 +727,8 @@ pub mod writer {
         if n < 0x4000_u { return write_sized_vuint(w, n, 2u); }
         if n < 0x200000_u { return write_sized_vuint(w, n, 3u); }
         if n < 0x10000000_u { return write_sized_vuint(w, n, 4u); }
-        Err(io::IoError {
-            kind: io::OtherIoError,
+        Err(old_io::IoError {
+            kind: old_io::OtherIoError,
             desc: "int too big",
             detail: Some(format!("{}", n))
         })
@@ -760,16 +760,16 @@ pub mod writer {
             // Write a placeholder four-byte size.
             self.size_positions.push(try!(self.writer.tell()) as uint);
             let zeroes: &[u8] = &[0u8, 0u8, 0u8, 0u8];
-            self.writer.write(zeroes)
+            self.writer.write_all(zeroes)
         }
 
         pub fn end_tag(&mut self) -> EncodeResult {
             let last_size_pos = self.size_positions.pop().unwrap();
             let cur_pos = try!(self.writer.tell());
-            try!(self.writer.seek(last_size_pos as i64, io::SeekSet));
+            try!(self.writer.seek(last_size_pos as i64, old_io::SeekSet));
             let size = cur_pos as uint - last_size_pos - 4;
             try!(write_sized_vuint(self.writer, size, 4u));
-            let r = try!(self.writer.seek(cur_pos as i64, io::SeekSet));
+            let r = try!(self.writer.seek(cur_pos as i64, old_io::SeekSet));
 
             debug!("End tag (size = {:?})", size);
             Ok(r)
@@ -786,7 +786,7 @@ pub mod writer {
         pub fn wr_tagged_bytes(&mut self, tag_id: uint, b: &[u8]) -> EncodeResult {
             try!(write_vuint(self.writer, tag_id));
             try!(write_vuint(self.writer, b.len()));
-            self.writer.write(b)
+            self.writer.write_all(b)
         }
 
         pub fn wr_tagged_u64(&mut self, tag_id: uint, v: u64) -> EncodeResult {
@@ -839,12 +839,12 @@ pub mod writer {
 
         pub fn wr_bytes(&mut self, b: &[u8]) -> EncodeResult {
             debug!("Write {:?} bytes", b.len());
-            self.writer.write(b)
+            self.writer.write_all(b)
         }
 
         pub fn wr_str(&mut self, s: &str) -> EncodeResult {
             debug!("Write str: {:?}", s);
-            self.writer.write(s.as_bytes())
+            self.writer.write_all(s.as_bytes())
         }
     }
 
@@ -883,7 +883,7 @@ pub mod writer {
     }
 
     impl<'a, W: Writer + Seek> serialize::Encoder for Encoder<'a, W> {
-        type Error = io::IoError;
+        type Error = old_io::IoError;
 
         fn emit_nil(&mut self) -> EncodeResult {
             Ok(())

@@ -60,9 +60,9 @@ use std::any::Any;
 use std::cmp;
 use std::collections::BTreeMap;
 use std::fmt;
-use std::io::stdio::StdWriter;
-use std::io::{File, ChanReader, ChanWriter};
-use std::io;
+use std::old_io::stdio::StdWriter;
+use std::old_io::{File, ChanReader, ChanWriter};
+use std::old_io;
 use std::iter::repeat;
 use std::num::{Float, Int};
 use std::os;
@@ -443,13 +443,13 @@ struct ConsoleTestState<T> {
 
 impl<T: Writer> ConsoleTestState<T> {
     pub fn new(opts: &TestOpts,
-               _: Option<T>) -> io::IoResult<ConsoleTestState<StdWriter>> {
+               _: Option<T>) -> old_io::IoResult<ConsoleTestState<StdWriter>> {
         let log_out = match opts.logfile {
             Some(ref path) => Some(try!(File::create(path))),
             None => None
         };
         let out = match term::stdout() {
-            None => Raw(io::stdio::stdout_raw()),
+            None => Raw(old_io::stdio::stdout_raw()),
             Some(t) => Pretty(t)
         };
 
@@ -468,64 +468,64 @@ impl<T: Writer> ConsoleTestState<T> {
         })
     }
 
-    pub fn write_ok(&mut self) -> io::IoResult<()> {
+    pub fn write_ok(&mut self) -> old_io::IoResult<()> {
         self.write_pretty("ok", term::color::GREEN)
     }
 
-    pub fn write_failed(&mut self) -> io::IoResult<()> {
+    pub fn write_failed(&mut self) -> old_io::IoResult<()> {
         self.write_pretty("FAILED", term::color::RED)
     }
 
-    pub fn write_ignored(&mut self) -> io::IoResult<()> {
+    pub fn write_ignored(&mut self) -> old_io::IoResult<()> {
         self.write_pretty("ignored", term::color::YELLOW)
     }
 
-    pub fn write_metric(&mut self) -> io::IoResult<()> {
+    pub fn write_metric(&mut self) -> old_io::IoResult<()> {
         self.write_pretty("metric", term::color::CYAN)
     }
 
-    pub fn write_bench(&mut self) -> io::IoResult<()> {
+    pub fn write_bench(&mut self) -> old_io::IoResult<()> {
         self.write_pretty("bench", term::color::CYAN)
     }
 
     pub fn write_pretty(&mut self,
                         word: &str,
-                        color: term::color::Color) -> io::IoResult<()> {
+                        color: term::color::Color) -> old_io::IoResult<()> {
         match self.out {
             Pretty(ref mut term) => {
                 if self.use_color {
                     try!(term.fg(color));
                 }
-                try!(term.write(word.as_bytes()));
+                try!(term.write_all(word.as_bytes()));
                 if self.use_color {
                     try!(term.reset());
                 }
                 Ok(())
             }
-            Raw(ref mut stdout) => stdout.write(word.as_bytes())
+            Raw(ref mut stdout) => stdout.write_all(word.as_bytes())
         }
     }
 
-    pub fn write_plain(&mut self, s: &str) -> io::IoResult<()> {
+    pub fn write_plain(&mut self, s: &str) -> old_io::IoResult<()> {
         match self.out {
-            Pretty(ref mut term) => term.write(s.as_bytes()),
-            Raw(ref mut stdout) => stdout.write(s.as_bytes())
+            Pretty(ref mut term) => term.write_all(s.as_bytes()),
+            Raw(ref mut stdout) => stdout.write_all(s.as_bytes())
         }
     }
 
-    pub fn write_run_start(&mut self, len: uint) -> io::IoResult<()> {
+    pub fn write_run_start(&mut self, len: uint) -> old_io::IoResult<()> {
         self.total = len;
         let noun = if len != 1 { "tests" } else { "test" };
         self.write_plain(format!("\nrunning {} {}\n", len, noun).as_slice())
     }
 
     pub fn write_test_start(&mut self, test: &TestDesc,
-                            align: NamePadding) -> io::IoResult<()> {
+                            align: NamePadding) -> old_io::IoResult<()> {
         let name = test.padded_name(self.max_name_len, align);
         self.write_plain(format!("test {} ... ", name).as_slice())
     }
 
-    pub fn write_result(&mut self, result: &TestResult) -> io::IoResult<()> {
+    pub fn write_result(&mut self, result: &TestResult) -> old_io::IoResult<()> {
         try!(match *result {
             TrOk => self.write_ok(),
             TrFailed => self.write_failed(),
@@ -547,7 +547,7 @@ impl<T: Writer> ConsoleTestState<T> {
     }
 
     pub fn write_log(&mut self, test: &TestDesc,
-                     result: &TestResult) -> io::IoResult<()> {
+                     result: &TestResult) -> old_io::IoResult<()> {
         match self.log_out {
             None => Ok(()),
             Some(ref mut o) => {
@@ -558,12 +558,12 @@ impl<T: Writer> ConsoleTestState<T> {
                         TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs)
                     }, test.name.as_slice());
-                o.write(s.as_bytes())
+                o.write_all(s.as_bytes())
             }
         }
     }
 
-    pub fn write_failures(&mut self) -> io::IoResult<()> {
+    pub fn write_failures(&mut self) -> old_io::IoResult<()> {
         try!(self.write_plain("\nfailures:\n"));
         let mut failures = Vec::new();
         let mut fail_out = String::new();
@@ -591,7 +591,7 @@ impl<T: Writer> ConsoleTestState<T> {
         Ok(())
     }
 
-    pub fn write_run_finish(&mut self) -> io::IoResult<bool> {
+    pub fn write_run_finish(&mut self) -> old_io::IoResult<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
         let success = self.failed == 0u;
@@ -627,9 +627,10 @@ pub fn fmt_bench_samples(bs: &BenchSamples) -> String {
 }
 
 // A simple console test runner
-pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> io::IoResult<bool> {
+pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io::IoResult<bool> {
 
-    fn callback<T: Writer>(event: &TestEvent, st: &mut ConsoleTestState<T>) -> io::IoResult<()> {
+    fn callback<T: Writer>(event: &TestEvent,
+                           st: &mut ConsoleTestState<T>) -> old_io::IoResult<()> {
         match (*event).clone() {
             TeFiltered(ref filtered_tests) => st.write_run_start(filtered_tests.len()),
             TeWait(ref test, padding) => st.write_test_start(test, padding),
@@ -727,7 +728,7 @@ fn should_sort_failures_before_printing_them() {
 
 fn use_color(opts: &TestOpts) -> bool {
     match opts.color {
-        AutoColor => get_concurrency() == 1 && io::stdout().get_ref().isatty(),
+        AutoColor => get_concurrency() == 1 && old_io::stdout().get_ref().isatty(),
         AlwaysColor => true,
         NeverColor => false,
     }
@@ -745,8 +746,8 @@ pub type MonitorMsg = (TestDesc, TestResult, Vec<u8> );
 
 fn run_tests<F>(opts: &TestOpts,
                 tests: Vec<TestDescAndFn> ,
-                mut callback: F) -> io::IoResult<()> where
-    F: FnMut(TestEvent) -> io::IoResult<()>,
+                mut callback: F) -> old_io::IoResult<()> where
+    F: FnMut(TestEvent) -> old_io::IoResult<()>,
 {
     let filtered_tests = filter_tests(opts, tests);
     let filtered_descs = filtered_tests.iter()
@@ -1119,7 +1120,7 @@ mod tests {
                TestDesc, TestDescAndFn, TestOpts, run_test,
                Metric, MetricMap,
                StaticTestName, DynTestName, DynTestFn, ShouldFail};
-    use std::io::TempDir;
+    use std::old_io::TempDir;
     use std::thunk::Thunk;
     use std::sync::mpsc::channel;
 

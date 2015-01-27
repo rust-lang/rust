@@ -61,7 +61,7 @@ pub use terminfo::TerminfoTerminal;
 #[cfg(windows)]
 pub use win::WinConsole;
 
-use std::io::IoResult;
+use std::old_io::IoResult;
 
 pub mod terminfo;
 
@@ -76,8 +76,8 @@ pub struct WriterWrapper {
 
 impl Writer for WriterWrapper {
     #[inline]
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.wrapped.write(buf)
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.wrapped.write_all(buf)
     }
 
     #[inline]
@@ -91,7 +91,7 @@ impl Writer for WriterWrapper {
 /// opened.
 pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stdout() as Box<Writer + Send>,
+        wrapped: box std::old_io::stdout() as Box<Writer + Send>,
     })
 }
 
@@ -100,14 +100,14 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 /// opened.
 pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     let ti = TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stdout() as Box<Writer + Send>,
+        wrapped: box std::old_io::stdout() as Box<Writer + Send>,
     });
 
     match ti {
         Some(t) => Some(t),
         None => {
             WinConsole::new(WriterWrapper {
-                wrapped: box std::io::stdout() as Box<Writer + Send>,
+                wrapped: box std::old_io::stdout() as Box<Writer + Send>,
             })
         }
     }
@@ -118,7 +118,7 @@ pub fn stdout() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 /// opened.
 pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stderr() as Box<Writer + Send>,
+        wrapped: box std::old_io::stderr() as Box<Writer + Send>,
     })
 }
 
@@ -127,14 +127,14 @@ pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
 /// opened.
 pub fn stderr() -> Option<Box<Terminal<WriterWrapper> + Send>> {
     let ti = TerminfoTerminal::new(WriterWrapper {
-        wrapped: box std::io::stderr() as Box<Writer + Send>,
+        wrapped: box std::old_io::stderr() as Box<Writer + Send>,
     });
 
     match ti {
         Some(t) => Some(t),
         None => {
             WinConsole::new(WriterWrapper {
-                wrapped: box std::io::stderr() as Box<Writer + Send>,
+                wrapped: box std::old_io::stderr() as Box<Writer + Send>,
             })
         }
     }

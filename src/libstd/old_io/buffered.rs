@@ -14,7 +14,7 @@
 
 use cmp;
 use fmt;
-use io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
+use old_io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::{IteratorExt, ExactSizeIterator, repeat};
 use ops::Drop;
 use option::Option;
@@ -34,7 +34,7 @@ use vec::Vec;
 /// # Example
 ///
 /// ```rust
-/// use std::io::{BufferedReader, File};
+/// use std::old_io::{BufferedReader, File};
 ///
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut reader = BufferedReader::new(file);
@@ -137,7 +137,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// # Example
 ///
 /// ```rust
-/// use std::io::{BufferedWriter, File};
+/// use std::old_io::{BufferedWriter, File};
 ///
 /// let file = File::create(&Path::new("message.txt")).unwrap();
 /// let mut writer = BufferedWriter::new(file);
@@ -184,7 +184,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.as_mut().unwrap().write(&self.buf[..self.pos]);
+            let ret = self.inner.as_mut().unwrap().write_all(&self.buf[..self.pos]);
             self.pos = 0;
             ret
         } else {
@@ -213,13 +213,13 @@ impl<W: Writer> BufferedWriter<W> {
 }
 
 impl<W: Writer> Writer for BufferedWriter<W> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         if self.pos + buf.len() > self.buf.len() {
             try!(self.flush_buf());
         }
 
         if buf.len() > self.buf.len() {
-            self.inner.as_mut().unwrap().write(buf)
+            self.inner.as_mut().unwrap().write_all(buf)
         } else {
             let dst = &mut self.buf[self.pos..];
             slice::bytes::copy_memory(dst, buf);
@@ -281,15 +281,15 @@ impl<W: Writer> LineBufferedWriter<W> {
 }
 
 impl<W: Writer> Writer for LineBufferedWriter<W> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
         match buf.iter().rposition(|&b| b == b'\n') {
             Some(i) => {
-                try!(self.inner.write(&buf[..i + 1]));
+                try!(self.inner.write_all(&buf[..i + 1]));
                 try!(self.inner.flush());
-                try!(self.inner.write(&buf[i + 1..]));
+                try!(self.inner.write_all(&buf[i + 1..]));
                 Ok(())
             }
-            None => self.inner.write(buf),
+            None => self.inner.write_all(buf),
         }
     }
 
@@ -324,12 +324,12 @@ impl<W: Reader> Reader for InternalBufferedWriter<W> {
 ///
 /// ```rust
 /// # #![allow(unused_must_use)]
-/// use std::io::{BufferedStream, File};
+/// use std::old_io::{BufferedStream, File};
 ///
 /// let file = File::open(&Path::new("message.txt"));
 /// let mut stream = BufferedStream::new(file);
 ///
-/// stream.write("hello, world".as_bytes());
+/// stream.write_all("hello, world".as_bytes());
 /// stream.flush();
 ///
 /// let mut buf = [0; 100];
@@ -412,8 +412,8 @@ impl<S: Stream> Reader for BufferedStream<S> {
 }
 
 impl<S: Stream> Writer for BufferedStream<S> {
-    fn write(&mut self, buf: &[u8]) -> IoResult<()> {
-        self.inner.inner.get_mut().write(buf)
+    fn write_all(&mut self, buf: &[u8]) -> IoResult<()> {
+        self.inner.inner.get_mut().write_all(buf)
     }
     fn flush(&mut self) -> IoResult<()> {
         self.inner.inner.get_mut().flush()
@@ -423,7 +423,7 @@ impl<S: Stream> Writer for BufferedStream<S> {
 #[cfg(test)]
 mod test {
     extern crate test;
-    use io;
+    use old_io;
     use prelude::v1::*;
     use super::*;
     use super::super::{IoResult, EndOfFile};
@@ -437,13 +437,13 @@ mod test {
     pub struct NullStream;
 
     impl Reader for NullStream {
-        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-            Err(io::standard_error(io::EndOfFile))
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+            Err(old_io::standard_error(old_io::EndOfFile))
         }
     }
 
     impl Writer for NullStream {
-        fn write(&mut self, _: &[u8]) -> io::IoResult<()> { Ok(()) }
+        fn write_all(&mut self, _: &[u8]) -> old_io::IoResult<()> { Ok(()) }
     }
 
     /// A dummy reader intended at testing short-reads propagation.
@@ -452,9 +452,9 @@ mod test {
     }
 
     impl Reader for ShortReader {
-        fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
+        fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
             if self.lengths.is_empty() {
-                Err(io::standard_error(io::EndOfFile))
+                Err(old_io::standard_error(old_io::EndOfFile))
             } else {
                 Ok(self.lengths.remove(0))
             }
@@ -503,34 +503,34 @@ mod test {
         let inner = Vec::new();
         let mut writer = BufferedWriter::with_capacity(2, inner);
 
-        writer.write(&[0, 1]).unwrap();
+        writer.write_all(&[0, 1]).unwrap();
         let b: &[_] = &[];
         assert_eq!(&writer.get_ref()[], b);
 
-        writer.write(&[2]).unwrap();
+        writer.write_all(&[2]).unwrap();
         let b: &[_] = &[0, 1];
         assert_eq!(&writer.get_ref()[], b);
 
-        writer.write(&[3]).unwrap();
+        writer.write_all(&[3]).unwrap();
         assert_eq!(&writer.get_ref()[], b);
 
         writer.flush().unwrap();
         let a: &[_] = &[0, 1, 2, 3];
         assert_eq!(a, &writer.get_ref()[]);
 
-        writer.write(&[4]).unwrap();
-        writer.write(&[5]).unwrap();
+        writer.write_all(&[4]).unwrap();
+        writer.write_all(&[5]).unwrap();
         assert_eq!(a, &writer.get_ref()[]);
 
-        writer.write(&[6]).unwrap();
+        writer.write_all(&[6]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5];
         assert_eq!(a, &writer.get_ref()[]);
 
-        writer.write(&[7, 8]).unwrap();
+        writer.write_all(&[7, 8]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6];
         assert_eq!(a, &writer.get_ref()[]);
 
-        writer.write(&[9, 10, 11]).unwrap();
+        writer.write_all(&[9, 10, 11]).unwrap();
         let a: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
         assert_eq!(a, &writer.get_ref()[]);
 
@@ -541,7 +541,7 @@ mod test {
     #[test]
     fn test_buffered_writer_inner_flushes() {
         let mut w = BufferedWriter::with_capacity(3, Vec::new());
-        w.write(&[0, 1]).unwrap();
+        w.write_all(&[0, 1]).unwrap();
         let a: &[_] = &[];
         assert_eq!(a, &w.get_ref()[]);
         let w = w.into_inner();
@@ -555,20 +555,20 @@ mod test {
     fn test_buffered_stream() {
         struct S;
 
-        impl io::Writer for S {
-            fn write(&mut self, _: &[u8]) -> io::IoResult<()> { Ok(()) }
+        impl old_io::Writer for S {
+            fn write_all(&mut self, _: &[u8]) -> old_io::IoResult<()> { Ok(()) }
         }
 
-        impl io::Reader for S {
-            fn read(&mut self, _: &mut [u8]) -> io::IoResult<uint> {
-                Err(io::standard_error(io::EndOfFile))
+        impl old_io::Reader for S {
+            fn read(&mut self, _: &mut [u8]) -> old_io::IoResult<uint> {
+                Err(old_io::standard_error(old_io::EndOfFile))
             }
         }
 
         let mut stream = BufferedStream::new(S);
         let mut buf = [];
         assert!(stream.read(&mut buf).is_err());
-        stream.write(&buf).unwrap();
+        stream.write_all(&buf).unwrap();
         stream.flush().unwrap();
     }
 
@@ -586,21 +586,21 @@ mod test {
     #[test]
     fn test_line_buffer() {
         let mut writer = LineBufferedWriter::new(Vec::new());
-        writer.write(&[0]).unwrap();
+        writer.write_all(&[0]).unwrap();
         let b: &[_] = &[];
         assert_eq!(&writer.get_ref()[], b);
-        writer.write(&[1]).unwrap();
+        writer.write_all(&[1]).unwrap();
         assert_eq!(&writer.get_ref()[], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1];
         assert_eq!(&writer.get_ref()[], b);
-        writer.write(&[0, b'\n', 1, b'\n', 2]).unwrap();
+        writer.write_all(&[0, b'\n', 1, b'\n', 2]).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n'];
         assert_eq!(&writer.get_ref()[], b);
         writer.flush().unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2];
         assert_eq!(&writer.get_ref()[], b);
-        writer.write(&[3, b'\n']).unwrap();
+        writer.write_all(&[3, b'\n']).unwrap();
         let b: &[_] = &[0, 1, 0, b'\n', 1, b'\n', 2, 3, b'\n'];
         assert_eq!(&writer.get_ref()[], b);
     }
@@ -663,8 +663,8 @@ mod test {
         struct FailFlushWriter;
 
         impl Writer for FailFlushWriter {
-            fn write(&mut self, _buf: &[u8]) -> IoResult<()> { Ok(()) }
-            fn flush(&mut self) -> IoResult<()> { Err(io::standard_error(EndOfFile)) }
+            fn write_all(&mut self, _buf: &[u8]) -> IoResult<()> { Ok(()) }
+            fn flush(&mut self) -> IoResult<()> { Err(old_io::standard_error(EndOfFile)) }
         }
 
         let writer = FailFlushWriter;

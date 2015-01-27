@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
+use std::old_io;
 use std::vec;
 
 pub struct Container<'a> {
@@ -26,7 +26,7 @@ impl<'a> Container<'a> {
 }
 
 pub fn for_stdin<'a>() -> Container<'a> {
-    let mut r = io::stdin();
+    let mut r = old_io::stdin();
     Container::wrap(&mut r as &mut Reader)
 }
 

@@ -294,10 +294,10 @@ fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
 
 fn main() {
     let input = if std::os::getenv("RUST_BENCH").is_some() {
-        let fd = std::io::File::open(&Path::new("shootout-k-nucleotide.data"));
-        get_sequence(&mut std::io::BufferedReader::new(fd), ">THREE")
+        let fd = std::old_io::File::open(&Path::new("shootout-k-nucleotide.data"));
+        get_sequence(&mut std::old_io::BufferedReader::new(fd), ">THREE")
     } else {
-        get_sequence(&mut *std::io::stdin().lock(), ">THREE")
+        get_sequence(&mut *std::old_io::stdin().lock(), ">THREE")
     };
     let input = Arc::new(input);
 

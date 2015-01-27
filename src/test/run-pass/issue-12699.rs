@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io::timer;
+use std::old_io::timer;
 use std::time::Duration;
 
 fn main() {

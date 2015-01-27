@@ -8,13 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::io;
-use std::io::fs;
+use std::old_io;
+use std::old_io::fs;
 use std::os;
 
 /// Returns an absolute path in the filesystem that `path` points to. The
 /// returned path does not contain any symlinks in its hierarchy.
-pub fn realpath(original: &Path) -> io::IoResult<Path> {
+pub fn realpath(original: &Path) -> old_io::IoResult<Path> {
     static MAX_LINKS_FOLLOWED: uint = 256;
     let original = os::make_absolute(original).unwrap();
 
@@ -32,12 +32,12 @@ pub fn realpath(original: &Path) -> io::IoResult<Path> {
 
         loop {
             if followed == MAX_LINKS_FOLLOWED {
-                return Err(io::standard_error(io::InvalidInput))
+                return Err(old_io::standard_error(old_io::InvalidInput))
             }
 
             match fs::lstat(&result) {
                 Err(..) => break,
-                Ok(ref stat) if stat.kind != io::FileType::Symlink => break,
+                Ok(ref stat) if stat.kind != old_io::FileType::Symlink => break,
                 Ok(..) => {
                     followed += 1;
                     let path = try!(fs::readlink(&result));
@@ -53,10 +53,10 @@ pub fn realpath(original: &Path) -> io::IoResult<Path> {
 
 #[cfg(all(not(windows), test))]
 mod test {
-    use std::io;
-    use std::io::fs::{File, symlink, mkdir, mkdir_recursive};
+    use std::old_io;
+    use std::old_io::fs::{File, symlink, mkdir, mkdir_recursive};
     use super::realpath;
-    use std::io::TempDir;
+    use std::old_io::TempDir;
 
     #[test]
     fn realpath_works() {
@@ -68,7 +68,7 @@ mod test {
         let linkdir = tmpdir.join("test3");
 
         File::create(&file).unwrap();
-        mkdir(&dir, io::USER_RWX).unwrap();
+        mkdir(&dir, old_io::USER_RWX).unwrap();
         symlink(&file, &link).unwrap();
         symlink(&dir, &linkdir).unwrap();
 
@@ -91,8 +91,8 @@ mod test {
         let e = d.join("e");
         let f = a.join("f");
 
-        mkdir_recursive(&b, io::USER_RWX).unwrap();
-        mkdir_recursive(&d, io::USER_RWX).unwrap();
+        mkdir_recursive(&b, old_io::USER_RWX).unwrap();
+        mkdir_recursive(&d, old_io::USER_RWX).unwrap();
         File::create(&f).unwrap();
         symlink(&Path::new("../d/e"), &c).unwrap();
         symlink(&Path::new("../f"), &e).unwrap();
