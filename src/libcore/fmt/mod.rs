@@ -231,7 +231,7 @@ impl<'a> Display for Arguments<'a> {
     }
 }
 
-/// Format trait for the `:?` format. Useful for debugging, most all types
+/// Format trait for the `:?` format. Useful for debugging, all types
 /// should implement this.
 #[deprecated = "renamed to Debug"]
 #[cfg(not(stage0))]
@@ -240,7 +240,7 @@ pub trait Show {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
-/// Format trait for the `:?` format. Useful for debugging, most all types
+/// Format trait for the `:?` format. Useful for debugging, all types
 /// should implement this.
 #[unstable = "I/O and core have yet to be reconciled"]
 #[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is defined in your \
