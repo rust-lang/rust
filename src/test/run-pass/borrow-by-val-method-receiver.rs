@@ -19,5 +19,5 @@ impl<'a> Foo for &'a [int] {
 
 pub fn main() {
     let items = vec!( 3, 5, 1, 2, 4 );
-    items.as_slice().foo();
+    items.foo();
 }

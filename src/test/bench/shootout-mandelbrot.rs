@@ -134,7 +134,7 @@ fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
                 (i + 1) * chunk_size
             };
 
-            for &init_i in vec_init_i.slice(start, end).iter() {
+            for &init_i in vec_init_i[start..end].iter() {
                 write_line(init_i, init_r_slice, &mut res);
             }
 

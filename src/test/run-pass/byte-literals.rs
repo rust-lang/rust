@@ -52,7 +52,7 @@ pub fn main() {
     }
 
     let buf = vec!(97u8, 98, 99, 100);
-    assert_eq!(match buf.slice(0, 3) {
+    assert_eq!(match &buf[0..3] {
          b"def" => 1u,
          b"abc" => 2u,
          _ => 3u

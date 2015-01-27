@@ -184,7 +184,7 @@ fn main() {
    let mut proc_mode = false;
 
    for line in rdr.lines() {
-       let line = line.unwrap().as_slice().trim().to_string();
+       let line = line.unwrap().trim().to_string();
 
        if line.len() == 0u { continue; }
 
@@ -192,7 +192,7 @@ fn main() {
 
            // start processing if this is the one
            ('>', false) => {
-               match line.as_slice().slice_from(1).find_str("THREE") {
+               match line[1..].find_str("THREE") {
                    Some(_) => { proc_mode = true; }
                    None    => { }
                }

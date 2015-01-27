@@ -29,12 +29,12 @@ pub fn main() {
     assert_eq!(y, 6);
 
     let x = vec!(1, 2, 3);
-    let y = x.as_slice().sum_();
+    let y = x.sum_();
     println!("y=={}", y);
     assert_eq!(y, 6);
 
     let x = vec!(1, 2, 3);
-    let y = x.as_slice().sum_();
+    let y = x.sum_();
     println!("y=={}", y);
     assert_eq!(y, 6);
 }

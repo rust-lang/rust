@@ -50,7 +50,7 @@ fn rotate(x: &mut [i32]) {
 
 fn next_permutation(perm: &mut [i32], count: &mut [i32]) {
     for i in range(1, perm.len()) {
-        rotate(perm.slice_to_mut(i + 1));
+        rotate(&mut perm[..i + 1]);
         let count_i = &mut count[i];
         if *count_i >= i as i32 {
             *count_i = 0;
@@ -129,7 +129,7 @@ impl Perm {
 
 
 fn reverse(tperm: &mut [i32], k: uint) {
-    tperm.slice_to_mut(k).reverse()
+    tperm[..k].reverse()
 }
 
 fn work(mut perm: Perm, n: uint, max: uint) -> (i32, i32) {

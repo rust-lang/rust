@@ -121,7 +121,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
                 })
             };
 
-            let ptr = bc_decoded.as_slice().as_ptr();
+            let ptr = bc_decoded.as_ptr();
             debug!("linking {}, part {}", name, i);
             time(sess.time_passes(),
                  &format!("ll link {}.{}", name, i)[],

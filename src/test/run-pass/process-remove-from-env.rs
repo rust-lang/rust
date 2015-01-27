@@ -48,6 +48,6 @@ fn main() {
     let result = prog.wait_with_output().unwrap();
     let output = String::from_utf8_lossy(result.output.as_slice());
 
-    assert!(!output.as_slice().contains("RUN_TEST_NEW_ENV"),
+    assert!(!output.contains("RUN_TEST_NEW_ENV"),
             "found RUN_TEST_NEW_ENV inside of:\n\n{}", output);
 }

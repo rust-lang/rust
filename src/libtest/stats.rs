@@ -942,7 +942,7 @@ mod bench {
         let v = range(0, 500).map(|i| nums[i%5]).collect::<Vec<_>>();
 
         b.iter(|| {
-            v.as_slice().sum();
+            v.sum();
         })
     }
 }

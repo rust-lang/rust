@@ -1171,11 +1171,11 @@ mod tests {
     fn test_push_str() {
         let mut s = String::new();
         s.push_str("");
-        assert_eq!(s.slice_from(0), "");
+        assert_eq!(&s[0..], "");
         s.push_str("abc");
-        assert_eq!(s.slice_from(0), "abc");
+        assert_eq!(&s[0..], "abc");
         s.push_str("ประเทศไทย中华Việt Nam");
-        assert_eq!(s.slice_from(0), "abcประเทศไทย中华Việt Nam");
+        assert_eq!(&s[0..], "abcประเทศไทย中华Việt Nam");
     }
 
     #[test]
