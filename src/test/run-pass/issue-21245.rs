@@ -45,7 +45,7 @@ fn desugared_for_loop_bad<T>(v: Vec<T>) {
 }
 
 fn desugared_for_loop_good<T>(v: Vec<T>) {
-    match v.iter().into_iter() {  // NB method call instead of UFCS
+    match v.iter().into_iter() {
         mut iter => {
             loop {
                 match ::std::iter::Iterator::next(&mut iter) {
