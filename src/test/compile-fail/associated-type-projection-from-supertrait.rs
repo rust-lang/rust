@@ -40,8 +40,8 @@ impl Car for ModelU { }
 
 fn dent<C:Car>(c: C, color: C::Color) { c.chip_paint(color) }
 fn a() { dent(ModelT, Black); }
-fn b() { dent(ModelT, Blue); } //~ ERROR type mismatch
-fn c() { dent(ModelU, Black); } //~ ERROR type mismatch
+fn b() { dent(ModelT, Blue); } //~ ERROR mismatched types
+fn c() { dent(ModelU, Black); } //~ ERROR mismatched types
 fn d() { dent(ModelU, Blue); }
 
 ///////////////////////////////////////////////////////////////////////////

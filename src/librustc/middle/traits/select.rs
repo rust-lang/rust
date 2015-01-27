@@ -526,9 +526,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // If no match, compute result and insert into cache.
         let candidate = self.candidate_from_obligation_no_cache(stack);
-        debug!("CACHE MISS: cache_fresh_trait_pred={}, candidate={}",
-               cache_fresh_trait_pred.repr(self.tcx()), candidate.repr(self.tcx()));
-        self.insert_candidate_cache(cache_fresh_trait_pred, candidate.clone());
+
+        if self.should_update_candidate_cache(&cache_fresh_trait_pred, &candidate) {
+            debug!("CACHE MISS: cache_fresh_trait_pred={}, candidate={}",
+                   cache_fresh_trait_pred.repr(self.tcx()), candidate.repr(self.tcx()));
+            self.insert_candidate_cache(cache_fresh_trait_pred, candidate.clone());
+        }
+
         candidate
     }
 
@@ -705,6 +709,47 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         hashmap.insert(cache_fresh_trait_pred.0.trait_ref.clone(), candidate);
     }
 
+    fn should_update_candidate_cache(&mut self,
+                                     cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>,
+                                     candidate: &SelectionResult<'tcx, SelectionCandidate<'tcx>>)
+                                     -> bool
+    {
+        // In general, it's a good idea to cache results, even
+        // ambigious ones, to save us some trouble later. But we have
+        // to be careful not to cache results that could be
+        // invalidated later by advances in inference. Normally, this
+        // is not an issue, because any inference variables whose
+        // types are not yet bound are "freshened" in the cache key,
+        // which means that if we later get the same request once that
+        // type variable IS bound, we'll have a different cache key.
+        // For example, if we have `Vec<_#0t> : Foo`, and `_#0t` is
+        // not yet known, we may cache the result as `None`. But if
+        // later `_#0t` is bound to `Bar`, then when we freshen we'll
+        // have `Vec<Bar> : Foo` as the cache key.
+        //
+        // HOWEVER, it CAN happen that we get an ambiguity result in
+        // one particular case around closures where the cache key
+        // would not change. That is when the precise types of the
+        // upvars that a closure references have not yet been figured
+        // out (i.e., because it is not yet known if they are captured
+        // by ref, and if by ref, what kind of ref). In these cases,
+        // when matching a builtin bound, we will yield back an
+        // ambiguous result. But the *cache key* is just the closure type,
+        // it doesn't capture the state of the upvar computation.
+        //
+        // To avoid this trap, just don't cache ambiguous results if
+        // the self-type contains no inference byproducts (that really
+        // shouldn't happen in other circumstances anyway, given
+        // coherence).
+
+        match *candidate {
+            Ok(Some(_)) | Err(_) => true,
+            Ok(None) => {
+                cache_fresh_trait_pred.0.input_types().iter().any(|&t| ty::type_has_ty_infer(t))
+            }
+        }
+    }
+
     fn assemble_candidates<'o>(&mut self,
                                stack: &TraitObligationStack<'o, 'tcx>)
                                -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>>
@@ -788,6 +833,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // FIXME(#20297) -- being strict about this can cause
                 // inference failures with BorrowFrom, which is
                 // unfortunate. Can we do better here?
+                debug!("assemble_candidates_for_projected_tys: ambiguous self-type");
                 candidates.ambiguous = true;
                 return;
             }
@@ -962,6 +1008,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let (closure_def_id, substs) = match self_ty.sty {
             ty::ty_closure(id, _, ref substs) => (id, substs.clone()),
             ty::ty_infer(ty::TyVar(_)) => {
+                debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
                 return Ok(());
             }
@@ -1000,6 +1047,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         match self_ty.sty {
             ty::ty_infer(ty::TyVar(_)) => {
+                debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // could wind up being a fn() type
             }
 
@@ -1270,7 +1318,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(())
             }
             Ok(ParameterBuiltin) => { Ok(()) }
-            Ok(AmbiguousBuiltin) => { Ok(candidates.ambiguous = true) }
+            Ok(AmbiguousBuiltin) => {
+                debug!("assemble_builtin_bound_candidates: ambiguous builtin");
+                Ok(candidates.ambiguous = true)
+            }
             Err(e) => { Err(e) }
         }
     }
@@ -1476,6 +1527,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         Ok(If(upvars.iter().map(|c| c.ty).collect()))
                     }
                     None => {
+                        debug!("assemble_builtin_bound_candidates: no upvar types available yet");
                         Ok(AmbiguousBuiltin)
                     }
                 }
@@ -1512,6 +1564,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Unbound type variable. Might or might not have
                 // applicable impls and so forth, depending on what
                 // those type variables wind up being bound to.
+                debug!("assemble_builtin_bound_candidates: ambiguous builtin");
                 Ok(AmbiguousBuiltin)
             }
 

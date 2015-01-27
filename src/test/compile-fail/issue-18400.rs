@@ -32,5 +32,8 @@ fn main() {
     let bits: &[_] = &[0, 1];
 
     0.contains(bits);
-//~^ ERROR the trait `Set<_>` is not implemented for the type `_`
+    //~^ ERROR overflow
+    //~| ERROR overflow
+    //~| ERROR overflow
+    //~| ERROR mismatched types
 }
