@@ -1827,7 +1827,7 @@ mod test {
 #[cfg(test)]
 mod bench {
     use prelude::*;
-    use std::rand::{weak_rng, Rng};
+    use std::rand::{random, XorShiftRng, Rng};
     use test::{Bencher, black_box};
 
     use super::BTreeMap;
@@ -1902,7 +1902,7 @@ mod bench {
 
     fn bench_iter(b: &mut Bencher, size: uint) {
         let mut map = BTreeMap::<uint, uint>::new();
-        let mut rng = weak_rng();
+        let mut rng: XorShiftRng = random();
 
         for _ in range(0, size) {
             map.insert(rng.gen(), rng.gen());

@@ -520,6 +520,6 @@ mod test {
     }
 
     pub fn weak_rng() -> MyRng<rand::XorShiftRng> {
-        MyRng { inner: rand::weak_rng() }
+        MyRng { inner: rand::random() }
     }
 }

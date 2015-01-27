@@ -10,7 +10,7 @@
 
 use prelude::*;
 use std::rand;
-use std::rand::Rng;
+use std::rand::{Rng, XorShiftRng};
 use test::{Bencher, black_box};
 
 pub fn insert_rand_n<M, I, R>(n: uint,
@@ -22,7 +22,7 @@ pub fn insert_rand_n<M, I, R>(n: uint,
     R: FnMut(&mut M, uint),
 {
     // setup
-    let mut rng = rand::weak_rng();
+    let mut rng: XorShiftRng = rand::random();
 
     for _ in range(0, n) {
         insert(map, rng.gen::<uint>() % n);
@@ -69,7 +69,7 @@ pub fn find_rand_n<M, T, I, F>(n: uint,
     F: FnMut(&M, uint) -> T,
 {
     // setup
-    let mut rng = rand::weak_rng();
+    let mut rng: XorShiftRng = rand::random();
     let mut keys = range(0, n).map(|_| rng.gen::<uint>() % n)
                               .collect::<Vec<_>>();
 
