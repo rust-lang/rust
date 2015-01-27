@@ -23,7 +23,6 @@ use default::Default;
 use error::Error;
 use fmt;
 use iter::ExactSizeIterator;
-use iter::range;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use marker::Sized;
 use mem;
