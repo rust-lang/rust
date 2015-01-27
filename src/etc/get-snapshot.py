@@ -10,8 +10,12 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import os, tarfile, re, shutil, sys
+import os
+import tarfile
+import shutil
+import sys
 from snapshot import *
+
 
 def unpack_snapshot(triple, dl_path):
     print("opening snapshot " + dl_path)
@@ -29,14 +33,14 @@ def unpack_snapshot(triple, dl_path):
             os.unlink(os.path.join(root, f))
 
     for p in tar.getnames():
-        name = p.replace("rust-stage0/", "", 1);
+        name = p.replace("rust-stage0/", "", 1)
 
         fp = os.path.join(stagep, name)
         print("extracting " + p)
         tar.extract(p, download_unpack_base)
         tp = os.path.join(download_unpack_base, p)
         if os.path.isdir(tp) and os.path.exists(fp):
-                continue
+            continue
         shutil.move(tp, fp)
     tar.close()
     shutil.rmtree(download_unpack_base)
