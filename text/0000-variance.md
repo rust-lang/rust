@@ -102,7 +102,7 @@ fn approx_context<'long,'short>(t: &Context<'long>, data: &'short Data)
     do_something(u, data)
 }
 
-fn do_something<'x>(t: Context<'x>, data: &'x Data) {
+fn do_something<'x>(t: &Context<'x>, data: &'x Data) {
    ...
 }
 ```
