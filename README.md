@@ -112,11 +112,11 @@ The Rust community congregates in a few places:
 
 * [StackOverflow] - Get help here.
 * [/r/rust] - General discussion.
-* [discuss.rust-lang.org] - For development of the Rust language itself.
+* [internals.rust-lang.org] - For development of the Rust language itself.
 
 [StackOverflow]: http://stackoverflow.com/questions/tagged/rust
 [/r/rust]: http://reddit.com/r/rust
-[discuss.rust-lang.org]: http://discuss.rust-lang.org/
+[internals.rust-lang.org]: http://internals.rust-lang.org/
 
 ## License
 
