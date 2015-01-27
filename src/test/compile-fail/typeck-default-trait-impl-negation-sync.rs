@@ -1,0 +1,50 @@
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
+// file at the top-level directory of this distribution and at
+// http://rust-lang.org/COPYRIGHT.
+//
+// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
+// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
+// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
+// option. This file may not be copied, modified, or distributed
+// except according to those terms.
+
+// ignore-tidy-linelength
+
+#![feature(optin_builtin_traits)]
+
+use std::marker::Managed;
+use std::cell::UnsafeCell;
+
+struct MySync {
+   t: *mut u8
+}
+
+unsafe impl Sync for MySync {}
+
+struct MyNotSync {
+   t: *mut u8
+}
+
+impl !Sync for MyNotSync {}
+
+struct MyTypeWUnsafe {
+   t: UnsafeCell<u8>
+}
+
+struct MyTypeManaged {
+   t: Managed
+}
+
+fn is_sync<T: Sync>() {}
+
+fn main() {
+    is_sync::<MySync>();
+    is_sync::<MyNotSync>();
+    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `MyNotSync`
+
+    is_sync::<MyTypeWUnsafe>();
+    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `core::cell::UnsafeCell<u8>`
+
+    is_sync::<MyTypeManaged>();
+    //~^ ERROR the trait `core::marker::Sync` is not implemented for the type `core::marker::Managed`
+}
