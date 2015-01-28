@@ -98,7 +98,10 @@ use core::iter::{range_step, MultiplicativeIterator};
 use core::marker::Sized;
 use core::mem::size_of;
 use core::mem;
+#[cfg(stage0)]
 use core::ops::{FnMut, FullRange};
+#[cfg(not(stage0))]
+use core::ops::FnMut;
 use core::option::Option::{self, Some, None};
 use core::ptr::PtrExt;
 use core::ptr;
@@ -1509,7 +1512,10 @@ mod tests {
     use core::prelude::{Some, None, range, Clone};
     use core::prelude::{Iterator, IteratorExt};
     use core::prelude::{AsSlice};
+    #[cfg(stage0)]
     use core::prelude::{Ord, FullRange};
+    #[cfg(not(stage0))]
+    use core::prelude::Ord;
     use core::default::Default;
     use core::mem;
     use std::iter::RandomAccessIterator;

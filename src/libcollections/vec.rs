@@ -1896,6 +1896,7 @@ mod tests {
     use prelude::*;
     use core::mem::size_of;
     use core::iter::repeat;
+    #[cfg(stage0)]
     use core::ops::FullRange;
     use test::Bencher;
     use super::as_vec;
