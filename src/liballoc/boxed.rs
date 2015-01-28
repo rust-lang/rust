@@ -250,8 +250,6 @@ impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
-// FIXME(#21363) remove `old_impl_check` when bug is fixed
-#[old_impl_check]
 impl<'a, T> Iterator for Box<Iterator<Item=T> + 'a> {
     type Item = T;
 
