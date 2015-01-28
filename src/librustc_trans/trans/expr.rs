@@ -475,11 +475,6 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let info = unsized_info(bcx, k, expr.id, unboxed_ty, |t| ty::mk_uniq(tcx, t));
         Store(bcx, info, get_len(bcx, scratch.val));
 
-        let scratch = unpack_datum!(bcx,
-                                    scratch.to_expr_datum().to_lvalue_datum(bcx,
-                                                                            "fresh_uniq_fat_ptr",
-                                                                            expr.id));
-
         DatumBlock::new(bcx, scratch.to_expr_datum())
     }
 }
