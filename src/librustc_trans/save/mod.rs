@@ -130,9 +130,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                      global: path.global,
                                      segments: segs};
             let qualname = if i == 0 && path.global {
-                let mut result = "::".to_string();
-                result.push_str(&path_to_string(&sub_path)[]);
-                result
+                format("::{}", path_to_string(&sub_path))
             } else {
                 path_to_string(&sub_path)
             };
@@ -143,6 +141,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         result
     }
 
+    // The global arg allows us to override the global-ness of the path (which
+    // actually means 'does the path start with `::`', rather than 'is the path
+    // semantically global). We use the override for `use` imports (etc.) where
+    // the syntax is non-global, but the semantics are global.
     fn write_sub_paths(&mut self, path: &ast::Path, global: bool) {
         let sub_paths = self.process_path_prefixes(path);
         for (i, &(ref span, ref qualname)) in sub_paths.iter().enumerate() {
@@ -159,7 +161,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     }
 
     // As write_sub_paths, but does not process the last ident in the path (assuming it
-    // will be processed elsewhere).
+    // will be processed elsewhere). See note on write_sub_paths about global.
     fn write_sub_paths_truncated(&mut self, path: &ast::Path, global: bool) {
         let sub_paths = self.process_path_prefixes(path);
         let len = sub_paths.len();
@@ -291,7 +293,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
         let mut scope_id;
         // The qualname for a method is the trait name or name of the struct in an impl in
-        // which the method is declared in followed by the method's name.
+        // which the method is declared in, followed by the method's name.
         let qualname = match ty::impl_of_method(&self.analysis.ty_cx,
                                                 ast_util::local_def(method.id)) {
             Some(impl_id) => match self.analysis.ty_cx.map.get(impl_id.node) {
@@ -311,7 +313,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                 },
                                 None => {}
                             }
-                            result.push_str(">::");
+                            result.push_str(">");
                             result
                         }
                         _ => {
@@ -336,8 +338,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     scope_id = def_id.node;
                     match self.analysis.ty_cx.map.get(def_id.node) {
                         NodeItem(_) => {
-                            let mut result = ty::item_path_str(&self.analysis.ty_cx, def_id);
-                            result.push_str("::");
+                            format!("::{}", ty::item_path_str(&self.analysis.ty_cx, def_id))
                             result
                         }
                         _ => {
@@ -355,7 +356,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             },
         };
 
-        let qualname = format!("::{}{}", qualname, get_ident(method.pe_ident()).get());
+        let qualname = format!("{}::{}", qualname, get_ident(method.pe_ident()).get());
         let qualname = &qualname[];
 
         // record the decl for this def (if it has one)
