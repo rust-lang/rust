@@ -111,8 +111,9 @@ mod std {
     pub use core::option;   // necessary for panic!()
     pub use core::clone;    // derive(Clone)
     pub use core::cmp;      // derive(Eq, Ord, etc.)
-    pub use core::marker;  // derive(Copy)
+    pub use core::marker;   // derive(Copy)
     pub use core::hash;     // derive(Hash)
+    pub use core::ops;      // RangeFull
 }
 
 #[cfg(test)]

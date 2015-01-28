@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use ::core::ops::RangeFull;
+use ::std::ops::RangeFull;
 
 fn test<T : Clone>(arg: T) -> T {
     arg.clone()

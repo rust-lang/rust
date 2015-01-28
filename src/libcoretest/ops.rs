@@ -9,7 +9,7 @@
 // except according to those terms.
 
 use test::Bencher;
-use core::ops::{Range, FullRange, RangeFrom, RangeTo};
+use core::ops::{Range, RangeFull, RangeFrom, RangeTo};
 
 // Overhead of dtors
 
@@ -64,5 +64,5 @@ fn test_range_to() {
 #[test]
 fn test_full_range() {
     // Not much to test.
-    let _ = FullRange;
+    let _ = RangeFull;
 }

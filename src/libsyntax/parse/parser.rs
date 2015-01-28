@@ -2532,7 +2532,7 @@ impl<'a> Parser<'a> {
                     // something for RangeFull.
                     hi = self.last_span.hi;
 
-                    let idents = vec![token::str_to_ident("core"),
+                    let idents = vec![token::str_to_ident("std"),
                                       token::str_to_ident("ops"),
                                       token::str_to_ident("RangeFull")];
                     let segments = idents.into_iter().map(|ident| {
