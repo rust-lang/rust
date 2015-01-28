@@ -147,6 +147,7 @@ mod array;
 mod core {
     pub use panicking;
     pub use fmt;
+    pub use ops;
 }
 
 #[doc(hidden)]
