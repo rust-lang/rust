@@ -37,14 +37,10 @@ pub trait MoveMap<T> {
 
 impl<T> MoveMap<T> for Vec<T> {
     fn move_map<F>(mut self, mut f: F) -> Vec<T> where F: FnMut(T) -> T {
-        // FIXME(#21245) use a for loop
-        {
-            let mut iter = self.iter_mut();
-            while let Some(p) = iter.next() {
-                unsafe {
-                    // FIXME(#5016) this shouldn't need to zero to be safe.
-                    ptr::write(p, f(ptr::read_and_zero(p)));
-                }
+        for p in self.iter_mut() {
+            unsafe {
+                // FIXME(#5016) this shouldn't need to zero to be safe.
+                ptr::write(p, f(ptr::read_and_zero(p)));
             }
         }
         self

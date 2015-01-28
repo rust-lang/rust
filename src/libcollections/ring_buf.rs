@@ -1793,9 +1793,7 @@ mod tests {
     fn bench_push_back_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            // FIXME(#21245) use a for loop
-            let mut iter = 0i..100;
-            while let Some(i) = iter.next() {
+            for i in 0i..100 {
                 deq.push_back(i);
             }
             deq.head = 0;
@@ -1807,9 +1805,7 @@ mod tests {
     fn bench_push_front_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            // FIXME(#21245) use a for loop
-            let mut iter = 0i..100;
-            while let Some(i) = iter.next() {
+            for i in 0i..100 {
                 deq.push_front(i);
             }
             deq.head = 0;

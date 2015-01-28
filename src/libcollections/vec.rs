@@ -1567,9 +1567,7 @@ impl<T> Drop for Vec<T> {
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         if self.cap != 0 {
             unsafe {
-                // FIXME(#21245) use a for loop
-                let mut iter = self.iter();
-                while let Some(x) = iter.next() {
+                for x in self.iter() {
                     ptr::read(x);
                 }
                 dealloc(*self.ptr, self.cap)
