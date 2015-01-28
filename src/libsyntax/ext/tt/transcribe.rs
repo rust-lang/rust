@@ -223,7 +223,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                 r.repeat_len.pop();
             }
         } else { /* repeat */
-            *r.repeat_idx.last_mut().unwrap() += 1us;
+            *r.repeat_idx.last_mut().unwrap() += 1;
             r.stack.last_mut().unwrap().idx = 0;
             match r.stack.last().unwrap().sep.clone() {
                 Some(tk) => {
