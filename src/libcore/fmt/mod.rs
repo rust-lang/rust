@@ -32,9 +32,6 @@ pub use self::num::radix;
 pub use self::num::Radix;
 pub use self::num::RadixFmt;
 
-#[cfg(stage0)] pub use self::Debug as Show;
-#[cfg(stage0)] pub use self::Display as String;
-
 mod num;
 mod float;
 pub mod rt;
@@ -243,7 +240,6 @@ impl<'a> Display for Arguments<'a> {
 #[unstable(feature = "core",
            reason = "I/O and core have yet to be reconciled")]
 #[deprecated(since = "1.0.0", reason = "renamed to Debug")]
-#[cfg(not(stage0))]
 pub trait Show {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -261,7 +257,6 @@ pub trait Debug {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
-#[cfg(not(stage0))]
 impl<T: Show + ?Sized> Debug for T {
     #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter) -> Result { Show::fmt(self, f) }
@@ -271,7 +266,6 @@ impl<T: Show + ?Sized> Debug for T {
 /// used. It corresponds to the default format, `{}`.
 #[unstable(feature = "core")]
 #[deprecated(since = "1.0.0", reason = "renamed to Display")]
-#[cfg(not(stage0))]
 pub trait String {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -288,7 +282,6 @@ pub trait Display {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
-#[cfg(not(stage0))]
 impl<T: String + ?Sized> Display for T {
     #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter) -> Result { String::fmt(self, f) }

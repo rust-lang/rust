@@ -197,11 +197,7 @@ extern "rust-intrinsic" {
     pub fn pref_align_of<T>() -> uint;
 
     /// Get a static pointer to a type descriptor.
-    #[cfg(not(stage0))]
     pub fn get_tydesc<T: ?Sized>() -> *const TyDesc;
-
-    #[cfg(stage0)]
-    pub fn get_tydesc<T>() -> *const TyDesc;
 
     /// Gets an identifier which is globally unique to the specified type. This
     /// function will return the same value for a type regardless of whichever

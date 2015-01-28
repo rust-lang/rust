@@ -12,20 +12,6 @@ pub use self::Mode::*;
 use std::fmt;
 use std::str::FromStr;
 
-#[cfg(stage0)] // NOTE: remove impl after snapshot
-#[derive(Clone, Copy, PartialEq, Show)]
-pub enum Mode {
-    CompileFail,
-    RunFail,
-    RunPass,
-    RunPassValgrind,
-    Pretty,
-    DebugInfoGdb,
-    DebugInfoLldb,
-    Codegen
-}
-
-#[cfg(not(stage0))] // NOTE: remove cfg after snapshot
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
