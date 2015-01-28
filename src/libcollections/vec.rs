@@ -1317,11 +1317,21 @@ impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::FullRange> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &[T] {
+        self.as_slice()
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> ops::Index<ops::RangeFull> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, _index: &ops::RangeFull) -> &[T] {
         self.as_slice()
     }
 }
@@ -1350,11 +1360,21 @@ impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
+        self.as_mut_slice()
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
+    type Output = [T];
+    #[inline]
+    fn index_mut(&mut self, _index: &ops::RangeFull) -> &mut [T] {
         self.as_mut_slice()
     }
 }

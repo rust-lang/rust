@@ -68,6 +68,7 @@ use fmt;
 use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
+#[cfg(stage0)]
 use ops::FullRange;
 use str;
 use str::StrExt;

@@ -269,7 +269,7 @@ lets_do_this! {
     RangeStructLangItem,             "range",                   range_struct;
     RangeFromStructLangItem,         "range_from",              range_from_struct;
     RangeToStructLangItem,           "range_to",                range_to_struct;
-    FullRangeStructLangItem,         "full_range",              full_range_struct;
+    RangeFullStructLangItem,         "range_full",              range_full_struct;
 
     UnsafeTypeLangItem,              "unsafe",                  unsafe_type;
 

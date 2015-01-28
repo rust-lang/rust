@@ -877,11 +877,21 @@ impl ops::Index<ops::RangeFrom<uint>> for String {
         &self[][*index]
     }
 }
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::FullRange> for String {
     type Output = str;
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &str {
+        unsafe { mem::transmute(self.vec.as_slice()) }
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl ops::Index<ops::RangeFull> for String {
+    type Output = str;
+    #[inline]
+    fn index(&self, _index: &ops::RangeFull) -> &str {
         unsafe { mem::transmute(self.vec.as_slice()) }
     }
 }
