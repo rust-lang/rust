@@ -995,6 +995,7 @@ mod tests {
     use str::Utf8Error;
     use core::iter::repeat;
     use super::{as_string, CowString};
+    #[cfg(stage0)]
     use core::ops::FullRange;
 
     #[test]
