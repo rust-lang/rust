@@ -1249,11 +1249,21 @@ mod traits {
         }
     }
 
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::FullRange> for str {
         type Output = str;
         #[inline]
         fn index(&self, _index: &ops::FullRange) -> &str {
+            self
+        }
+    }
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    impl ops::Index<ops::RangeFull> for str {
+        type Output = str;
+        #[inline]
+        fn index(&self, _index: &ops::RangeFull) -> &str {
             self
         }
     }

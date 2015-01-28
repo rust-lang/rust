@@ -44,6 +44,10 @@ use iter::*;
 use marker::Copy;
 use num::Int;
 use ops::{FnMut, self, Index};
+#[cfg(stage0)]
+use ops::FullRange as RangeFull;
+#[cfg(not(stage0))]
+use ops::RangeFull;
 use option::Option;
 use option::Option::{None, Some};
 use result::Result;
@@ -543,10 +547,10 @@ impl<T> ops::Index<ops::RangeFrom<uint>> for [T] {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Index<ops::FullRange> for [T] {
+impl<T> ops::Index<RangeFull> for [T] {
     type Output = [T];
     #[inline]
-    fn index(&self, _index: &ops::FullRange) -> &[T] {
+    fn index(&self, _index: &RangeFull) -> &[T] {
         self
     }
 }
@@ -584,10 +588,10 @@ impl<T> ops::IndexMut<ops::RangeFrom<uint>> for [T] {
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::IndexMut<ops::FullRange> for [T] {
+impl<T> ops::IndexMut<RangeFull> for [T] {
     type Output = [T];
     #[inline]
-    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
+    fn index_mut(&mut self, _index: &RangeFull) -> &mut [T] {
         self
     }
 }
@@ -750,11 +754,21 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     }
 }
 
+#[cfg(stage0)]
 #[unstable(feature = "core")]
 impl<'a, T> ops::Index<ops::FullRange> for Iter<'a, T> {
     type Output = [T];
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &[T] {
+        self.as_slice()
+    }
+}
+#[cfg(not(stage0))]
+#[unstable(feature = "core")]
+impl<'a, T> ops::Index<RangeFull> for Iter<'a, T> {
+    type Output = [T];
+    #[inline]
+    fn index(&self, _index: &RangeFull) -> &[T] {
         self.as_slice()
     }
 }
@@ -821,7 +835,7 @@ impl<'a, T> ops::Index<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &[T] {
-        self.index(&ops::FullRange).index(index)
+        self.index(&RangeFull).index(index)
     }
 }
 #[unstable(feature = "core")]
@@ -829,7 +843,7 @@ impl<'a, T> ops::Index<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
-        self.index(&ops::FullRange).index(index)
+        self.index(&RangeFull).index(index)
     }
 }
 #[unstable(feature = "core")]
@@ -837,14 +851,14 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
-        self.index(&ops::FullRange).index(index)
+        self.index(&RangeFull).index(index)
     }
 }
 #[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::FullRange> for IterMut<'a, T> {
+impl<'a, T> ops::Index<RangeFull> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
-    fn index(&self, _index: &ops::FullRange) -> &[T] {
+    fn index(&self, _index: &RangeFull) -> &[T] {
         make_slice!(T => &[T]: self.ptr, self.end)
     }
 }
@@ -854,7 +868,7 @@ impl<'a, T> ops::IndexMut<ops::Range<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
-        self.index_mut(&ops::FullRange).index_mut(index)
+        self.index_mut(&RangeFull).index_mut(index)
     }
 }
 #[unstable(feature = "core")]
@@ -862,7 +876,7 @@ impl<'a, T> ops::IndexMut<ops::RangeTo<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
-        self.index_mut(&ops::FullRange).index_mut(index)
+        self.index_mut(&RangeFull).index_mut(index)
     }
 }
 #[unstable(feature = "core")]
@@ -870,14 +884,14 @@ impl<'a, T> ops::IndexMut<ops::RangeFrom<uint>> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
-        self.index_mut(&ops::FullRange).index_mut(index)
+        self.index_mut(&RangeFull).index_mut(index)
     }
 }
 #[unstable(feature = "core")]
-impl<'a, T> ops::IndexMut<ops::FullRange> for IterMut<'a, T> {
+impl<'a, T> ops::IndexMut<RangeFull> for IterMut<'a, T> {
     type Output = [T];
     #[inline]
-    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
+    fn index_mut(&mut self, _index: &RangeFull) -> &mut [T] {
         make_slice!(T => &mut [T]: self.ptr, self.end)
     }
 }

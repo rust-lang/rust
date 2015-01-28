@@ -2527,14 +2527,14 @@ impl<'a> Parser<'a> {
                 }
 
                 if found_dotdot || self.eat(&token::CloseDelim(token::Bracket)) {
-                    // No expression, expand to a FullRange
+                    // No expression, expand to a RangeFull
                     // FIXME(#20516) It would be better to use a lang item or
-                    // something for FullRange.
+                    // something for RangeFull.
                     hi = self.last_span.hi;
 
                     let idents = vec![token::str_to_ident("core"),
                                       token::str_to_ident("ops"),
-                                      token::str_to_ident("FullRange")];
+                                      token::str_to_ident("RangeFull")];
                     let segments = idents.into_iter().map(|ident| {
                         ast::PathSegment {
                             identifier: ident,

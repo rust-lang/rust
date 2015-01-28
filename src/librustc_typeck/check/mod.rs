@@ -4095,8 +4095,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 }
             }
             None => {
-                // Neither start nor end => FullRange
-                if let Some(did) = tcx.lang_items.full_range_struct() {
+                // Neither start nor end => RangeFull
+                if let Some(did) = tcx.lang_items.range_full_struct() {
                     let substs = Substs::new_type(vec![], vec![]);
                     ty::mk_struct(tcx, did, tcx.mk_substs(substs))
                 } else {

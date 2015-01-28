@@ -13,7 +13,7 @@
 #![feature(associated_types)]
 
 extern crate core;
-use core::ops::{Index, IndexMut, Range, RangeTo, RangeFrom, FullRange};
+use core::ops::{Index, IndexMut, Range, RangeTo, RangeFrom, RangeFull};
 
 static mut COUNT: uint = 0;
 
@@ -40,9 +40,9 @@ impl Index<RangeFrom<Foo>> for Foo {
         self
     }
 }
-impl Index<FullRange> for Foo {
+impl Index<RangeFull> for Foo {
     type Output = Foo;
-    fn index(&self, _index: &FullRange) -> &Foo {
+    fn index(&self, _index: &RangeFull) -> &Foo {
         unsafe { COUNT += 1; }
         self
     }
@@ -69,9 +69,9 @@ impl IndexMut<RangeFrom<Foo>> for Foo {
         self
     }
 }
-impl IndexMut<FullRange> for Foo {
+impl IndexMut<RangeFull> for Foo {
     type Output = Foo;
-    fn index_mut(&mut self, _index: &FullRange) -> &mut Foo {
+    fn index_mut(&mut self, _index: &RangeFull) -> &mut Foo {
         unsafe { COUNT += 1; }
         self
     }

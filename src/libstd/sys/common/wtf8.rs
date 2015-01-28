@@ -680,11 +680,22 @@ impl ops::Index<ops::RangeTo<usize>> for Wtf8 {
     }
 }
 
+#[cfg(stage0)]
 impl ops::Index<ops::FullRange> for Wtf8 {
     type Output = Wtf8;
 
     #[inline]
     fn index(&self, _range: &ops::FullRange) -> &Wtf8 {
+        self
+    }
+}
+
+#[cfg(not(stage0))]
+impl ops::Index<ops::RangeFull> for Wtf8 {
+    type Output = Wtf8;
+
+    #[inline]
+    fn index(&self, _range: &ops::RangeFull) -> &Wtf8 {
         self
     }
 }
