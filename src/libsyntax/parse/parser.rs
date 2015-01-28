@@ -1796,6 +1796,8 @@ impl<'a> Parser<'a> {
                     bindings: OwnedSlice::from_vec(bindings),
                 })
             } else if self.eat(&token::OpenDelim(token::Paren)) {
+                let lo = self.last_span.lo;
+
                 let inputs = self.parse_seq_to_end(
                     &token::CloseDelim(token::Paren),
                     seq_sep_trailing_allowed(token::Comma),
@@ -1807,9 +1809,12 @@ impl<'a> Parser<'a> {
                     None
                 };
 
+                let hi = self.last_span.hi;
+
                 ast::ParenthesizedParameters(ast::ParenthesizedParameterData {
+                    span: mk_sp(lo, hi),
                     inputs: inputs,
-                    output: output_ty
+                    output: output_ty,
                 })
             } else {
                 ast::PathParameters::none()

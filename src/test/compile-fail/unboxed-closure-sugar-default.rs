@@ -14,8 +14,9 @@
 #![feature(unboxed_closures)]
 #![allow(dead_code)]
 
-trait Foo<T,U,V=T> {
-    fn dummy(&self, t: T, u: U, v: V);
+trait Foo<T,V=T> {
+    type Output;
+    fn dummy(&self, t: T, v: V);
 }
 
 trait Eq<X: ?Sized> { }
@@ -24,14 +25,14 @@ fn eq<A: ?Sized,B: ?Sized>() where A : Eq<B> { }
 
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.
-    eq::< Foo<(isize,),()>,               Foo(isize)                      >();
+    eq::< Foo<(isize,),Output=()>,                   Foo(isize)                      >();
 
     // In angle version, we supply something other than the default
-    eq::< Foo<(isize,),(),isize>,           Foo(isize)                      >();
+    eq::< Foo<(isize,),isize,Output=()>,      Foo(isize)                      >();
     //~^ ERROR not implemented
 
     // Supply default explicitly.
-    eq::< Foo<(isize,),(),(isize,)>,        Foo(isize)                      >();
+    eq::< Foo<(isize,),(isize,),Output=()>,   Foo(isize)                      >();
 }
 
 fn main() { }

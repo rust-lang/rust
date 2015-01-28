@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unboxed_closures)]
+// Test that Cell is considered invariant with respect to its
+// type.
 
-use std::ops::FnMut;
+use std::cell::Cell;
 
-fn call_it<F:FnMut(i32,i32)->i32>(y: i32, mut f: F) -> i32 {
-    f(2, y)
+// For better or worse, associated types are invariant, and hence we
+// get an invariant result for `'a`.
+#[rustc_variance]
+struct Foo<'a> { //~ ERROR regions=[[o];[];[]]
+    x: Box<Fn(i32) -> &'a i32 + 'static>
 }
 
-pub fn main() {
-    let f = |&mut: x: i32, y: i32| -> i32 { x + y };
-    let z = call_it(3, f);
-    println!("{}", z);
-    assert_eq!(z, 5);
+fn main() {
 }
-
