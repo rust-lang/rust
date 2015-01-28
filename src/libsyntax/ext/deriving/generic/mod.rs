@@ -1154,7 +1154,7 @@ impl<'a> MethodDef<'a> {
             // to an uninhabited type (e.g. a zero-variant enum or a
             // type holding such an enum), but do not feature-gate
             // zero-variant enums themselves, then attempting to
-            // derive Show on such a type could here generate code
+            // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
             return cx.expr_unreachable(sp);

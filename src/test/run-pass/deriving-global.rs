@@ -20,21 +20,21 @@ mod submod {
     #[derive(PartialEq, PartialOrd, Eq, Ord,
                Hash,
                Clone,
-               Show, Rand,
+               Debug, Rand,
                Encodable, Decodable)]
     enum A { A1(uint), A2(int) }
 
     #[derive(PartialEq, PartialOrd, Eq, Ord,
                Hash,
                Clone,
-               Show, Rand,
+               Debug, Rand,
                Encodable, Decodable)]
     struct B { x: uint, y: int }
 
     #[derive(PartialEq, PartialOrd, Eq, Ord,
                Hash,
                Clone,
-               Show, Rand,
+               Debug, Rand,
                Encodable, Decodable)]
     struct C(uint, int);
 

@@ -73,7 +73,7 @@ impl<F> ItemModifier for F
     }
 }
 
-#[derive(Show,Clone)]
+#[derive(Debug,Clone)]
 pub enum Annotatable {
     Item(P<ast::Item>),
     TraitItem(ast::TraitItem),

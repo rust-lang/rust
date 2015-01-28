@@ -166,7 +166,7 @@ impl Any {
 ///
 /// A `TypeId` is currently only available for types which ascribe to `'static`,
 /// but this limitation may be removed in the future.
-#[derive(Clone, Copy, PartialEq, Eq, Show, Hash)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,

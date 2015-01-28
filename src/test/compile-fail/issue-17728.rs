@@ -30,7 +30,7 @@ trait TraversesWorld {
 }
 
 
-#[derive(Show, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 enum RoomDirection {
     West,
     East,
@@ -97,7 +97,7 @@ impl Player {
 impl TraversesWorld for Player {
 }
 
-impl Show for Player {
+impl Debug for Player {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
         formatter.write_str("Player{ name:");
         formatter.write_str(self.name.as_slice());

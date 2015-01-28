@@ -278,7 +278,7 @@ impl<'tcx> Loan<'tcx> {
     }
 }
 
-#[derive(Eq, Hash, Show)]
+#[derive(Eq, Hash, Debug)]
 pub struct LoanPath<'tcx> {
     kind: LoanPathKind<'tcx>,
     ty: ty::Ty<'tcx>,
@@ -293,7 +293,7 @@ impl<'tcx> PartialEq for LoanPath<'tcx> {
     }
 }
 
-#[derive(PartialEq, Eq, Hash, Show)]
+#[derive(PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathKind<'tcx> {
     LpVar(ast::NodeId),                         // `x` in doc.rs
     LpUpvar(ty::UpvarId),                       // `x` captured by-value into closure
@@ -314,7 +314,7 @@ impl<'tcx> LoanPath<'tcx> {
 //     b2b39e8700e37ad32b486b9a8409b50a8a53aa51#commitcomment-7892003
 static DOWNCAST_PRINTED_OPERATOR : &'static str = " as ";
 
-#[derive(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
     LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
@@ -487,7 +487,7 @@ pub enum AliasableViolationKind {
     BorrowViolation(euv::LoanCause)
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum MovedValueUseKind {
     MovedInUse,
     MovedInCapture,

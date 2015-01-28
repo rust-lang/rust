@@ -48,7 +48,7 @@ impl<T> DerefMut for DerefCounter<T> {
     }
 }
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 struct Point {
     x: int,
     y: int

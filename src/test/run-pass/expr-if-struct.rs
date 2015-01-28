@@ -22,7 +22,7 @@ fn test_rec() {
     assert_eq!(rs.i, 100);
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 enum mood { happy, sad, }
 
 impl PartialEq for mood {

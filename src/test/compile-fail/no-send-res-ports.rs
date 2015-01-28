@@ -13,11 +13,11 @@
 use std::thread::Thread;
 use std::rc::Rc;
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Port<T>(Rc<T>);
 
 fn main() {
-    #[derive(Show)]
+    #[derive(Debug)]
     struct foo {
       _x: Port<()>,
     }

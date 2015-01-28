@@ -15,7 +15,7 @@ extern crate serialize;
 use serialize::{Encodable, Decodable};
 use serialize::json;
 
-#[derive(Encodable, Decodable, PartialEq, Show)]
+#[derive(Encodable, Decodable, PartialEq, Debug)]
 struct UnitLikeStruct;
 
 pub fn main() {

@@ -11,7 +11,7 @@
 use std::cmp;
 use std::ops;
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 struct Point {
     x: int,
     y: int

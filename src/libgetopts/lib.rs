@@ -111,7 +111,7 @@ use std::iter::repeat;
 use std::result;
 
 /// Name of an option. Either a string or a single char.
-#[derive(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Name {
     /// A string representing the long name of an option.
     /// For example: "help"
@@ -122,7 +122,7 @@ pub enum Name {
 }
 
 /// Describes whether an option has an argument.
-#[derive(Clone, Copy, PartialEq, Eq, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum HasArg {
     /// The option requires an argument.
     Yes,
@@ -133,7 +133,7 @@ pub enum HasArg {
 }
 
 /// Describes how often an option may occur.
-#[derive(Clone, Copy, PartialEq, Eq, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum Occur {
     /// The option occurs once.
     Req,
@@ -144,7 +144,7 @@ pub enum Occur {
 }
 
 /// A description of a possible option.
-#[derive(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Opt {
     /// Name of the option
     pub name: Name,
@@ -158,7 +158,7 @@ pub struct Opt {
 
 /// One group of options, e.g., both `-h` and `--help`, along with
 /// their shared description and properties.
-#[derive(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct OptGroup {
     /// Short name of the option, e.g. `h` for a `-h` option
     pub short_name: String,
@@ -175,7 +175,7 @@ pub struct OptGroup {
 }
 
 /// Describes whether an option is given at all or has a value.
-#[derive(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 enum Optval {
     Val(String),
     Given,
@@ -183,7 +183,7 @@ enum Optval {
 
 /// The result of checking command line arguments. Contains a vector
 /// of matches and a vector of free strings.
-#[derive(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub struct Matches {
     /// Options that matched
     opts: Vec<Opt>,
@@ -196,7 +196,7 @@ pub struct Matches {
 /// The type returned when the command line does not conform to the
 /// expected format. Use the `Show` implementation to output detailed
 /// information.
-#[derive(Clone, PartialEq, Eq, Show)]
+#[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Fail {
     /// The option requires an argument but none was passed.
     ArgumentMissing(String),
@@ -211,7 +211,7 @@ pub enum Fail {
 }
 
 /// The type of failure that occurred.
-#[derive(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Debug)]
 #[allow(missing_docs)]
 pub enum FailType {
     ArgumentMissing_,

@@ -48,7 +48,7 @@ pub type Result = result::Result<(), Error>;
 /// some other means.
 #[unstable(feature = "core",
            reason = "core and I/O reconciliation may alter this definition")]
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct Error;
 
 /// A collection of methods that are required to format a message into a stream.

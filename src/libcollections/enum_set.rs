@@ -272,7 +272,7 @@ mod test {
 
     use super::{EnumSet, CLike};
 
-    #[derive(Copy, PartialEq, Show)]
+    #[derive(Copy, PartialEq, Debug)]
     #[repr(uint)]
     enum Foo {
         A, B, C

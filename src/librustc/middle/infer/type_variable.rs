@@ -46,7 +46,7 @@ struct Delegate<'tcx>;
 
 type Relation = (RelationDir, ty::TyVid);
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum RelationDir {
     SubtypeOf, SupertypeOf, EqTo
 }

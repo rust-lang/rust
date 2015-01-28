@@ -77,7 +77,7 @@ pub struct TaggedDoc<'a> {
     pub doc: Doc<'a>,
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum EbmlEncoderTag {
     EsUint,     // 0
     EsU64,      // 1
@@ -111,7 +111,7 @@ pub enum EbmlEncoderTag {
     EsLabel, // Used only when debugging
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum Error {
     IntTooBig(uint),
     Expected(String),

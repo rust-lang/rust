@@ -105,7 +105,7 @@ struct Buffer<T> {
     size: uint,
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum Failure {
     Empty,
     Disconnected,

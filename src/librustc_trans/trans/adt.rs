@@ -72,7 +72,7 @@ use util::ppaux::ty_to_string;
 type Hint = attr::ReprAttr;
 
 /// Representations.
-#[derive(Eq, PartialEq, Show)]
+#[derive(Eq, PartialEq, Debug)]
 pub enum Repr<'tcx> {
     /// C-like enums; basically an int.
     CEnum(IntType, Disr, Disr), // discriminant range (signedness based on the IntType)
@@ -117,7 +117,7 @@ pub enum Repr<'tcx> {
 }
 
 /// For structs, and struct-like parts of anything fancier.
-#[derive(Eq, PartialEq, Show)]
+#[derive(Eq, PartialEq, Debug)]
 pub struct Struct<'tcx> {
     // If the struct is DST, then the size and alignment do not take into
     // account the unsized fields of the struct.
@@ -465,7 +465,7 @@ fn mk_struct<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 struct IntBounds {
     slo: i64,
     shi: i64,

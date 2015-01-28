@@ -857,7 +857,7 @@ pub enum MapOption {
 }
 
 /// Possible errors when creating a map.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum MapError {
     /// # The following are POSIX-specific
     ///

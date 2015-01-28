@@ -61,7 +61,7 @@ pub trait FromHex {
 }
 
 /// Errors that can occur when decoding a hex encoded string
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, uint),

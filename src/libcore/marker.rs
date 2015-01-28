@@ -50,7 +50,7 @@ pub trait Sized {
 /// words:
 ///
 /// ```
-/// #[derive(Show)]
+/// #[derive(Debug)]
 /// struct Foo;
 ///
 /// let x = Foo;
@@ -66,7 +66,7 @@ pub trait Sized {
 ///
 /// ```
 /// // we can just derive a `Copy` implementation
-/// #[derive(Show, Copy)]
+/// #[derive(Debug, Copy)]
 /// struct Foo;
 ///
 /// let x = Foo;

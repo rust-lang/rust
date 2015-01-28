@@ -42,7 +42,7 @@ mod doc;
 mod graphviz;
 
 // A constraint that influences the inference process.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum Constraint {
     // One region variable is subregion of another
     ConstrainVarSubVar(RegionVid, RegionVid),
@@ -69,7 +69,7 @@ pub enum Verify<'tcx> {
     VerifyGenericBound(GenericKind<'tcx>, SubregionOrigin<'tcx>, Region, Vec<Region>),
 }
 
-#[derive(Clone, Show, PartialEq, Eq)]
+#[derive(Clone, Debug, PartialEq, Eq)]
 pub enum GenericKind<'tcx> {
     Param(ty::ParamTy),
     Projection(ty::ProjectionTy<'tcx>),
@@ -97,7 +97,7 @@ pub enum CombineMapType {
     Lub, Glb
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub enum RegionResolutionError<'tcx> {
     /// `ConcreteFailure(o, a, b)`:
     ///
@@ -149,7 +149,7 @@ pub enum RegionResolutionError<'tcx> {
 /// ```
 /// would report an error because we expect 'a and 'b to match, and so we group
 /// 'a and 'b together inside a SameRegions struct
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct SameRegions {
     pub scope_id: ast::NodeId,
     pub regions: Vec<BoundRegion>
@@ -223,7 +223,7 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
     values: RefCell<Option<Vec<VarValue>>>,
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 #[allow(missing_copy_implementations)]
 pub struct RegionSnapshot {
     length: uint,
@@ -943,7 +943,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
 
 // ______________________________________________________________________
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 enum Classification { Expanding, Contracting }
 
 #[derive(Copy)]

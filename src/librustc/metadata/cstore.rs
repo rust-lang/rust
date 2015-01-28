@@ -49,7 +49,7 @@ pub struct crate_metadata {
     pub span: Span,
 }
 
-#[derive(Copy, Show, PartialEq, Clone)]
+#[derive(Copy, Debug, PartialEq, Clone)]
 pub enum LinkagePreference {
     RequireDynamic,
     RequireStatic,
