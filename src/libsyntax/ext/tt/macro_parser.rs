@@ -83,7 +83,7 @@ use self::TokenTreeOrTokenTreeVec::*;
 use ast;
 use ast::{TokenTree, Ident};
 use ast::{TtDelimited, TtSequence, TtToken};
-use codemap::{BytePos, mk_sp};
+use codemap::{BytePos, mk_sp, Span};
 use codemap;
 use parse::lexer::*; //resolve bug?
 use parse::ParseSess;
@@ -483,11 +483,11 @@ pub fn parse(sess: &ParseSess,
 
                 let mut ei = bb_eis.pop().unwrap();
                 match ei.top_elts.get_tt(ei.idx) {
-                  TtToken(_, MatchNt(_, name, _, _)) => {
+                  TtToken(span, MatchNt(_, name, _, _)) => {
                     let name_string = token::get_ident(name);
                     let match_cur = ei.match_cur;
                     (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
-                        parse_nt(&mut rust_parser, name_string.get()))));
+                        parse_nt(&mut rust_parser, span, name_string.get()))));
                     ei.idx += 1us;
                     ei.match_cur += 1;
                   }
@@ -505,7 +505,7 @@ pub fn parse(sess: &ParseSess,
     }
 }
 
-pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
+pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
     match name {
         "tt" => {
             p.quote_depth += 1us; //but in theory, non-quoted tts might be useful
@@ -541,7 +541,11 @@ pub fn parse_nt(p: &mut Parser, name: &str) -> Nonterminal {
       }
       "meta" => token::NtMeta(p.parse_meta_item()),
       _ => {
-          p.fatal(&format!("unsupported builtin nonterminal parser: {}", name)[])
+          p.span_fatal_help(sp,
+                            &format!("invalid fragment specifier `{}`", name)[],
+                            "valid fragment specifiers are `ident`, `block`, \
+                             `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
+                             and `item`")
       }
     }
 }
