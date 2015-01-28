@@ -254,7 +254,7 @@ impl LintPass for TypeLimits {
                         let lit_val: f64 = match lit.node {
                             ast::LitFloat(ref v, _) |
                             ast::LitFloatUnsuffixed(ref v) => {
-                                match v.parse() {
+                                match v.parse().ok() {
                                     Some(f) => f,
                                     None => return
                                 }
