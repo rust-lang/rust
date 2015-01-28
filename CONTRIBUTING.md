@@ -50,11 +50,11 @@ example, if it's 2014, and you change a Rust file that was created in
 # Coordination and communication
 
 Get feedback from other developers on
-[discuss.rust-lang.org][discuss], and
+[internals.rust-lang.org][internals], and
 [#rust-internals][pound-rust-internals].
 
 [pound-rust-internals]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
-[discuss]: http://discuss.rust-lang.org
+[internals]: http://internals.rust-lang.org
 
 For more details, please refer to
 [Note-development-policy](https://github.com/rust-lang/rust/wiki/Note-development-policy).
