@@ -399,11 +399,24 @@ pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvi
     match normalize_param_env(&unnormalized_env, cause) {
         Ok(p) => p,
         Err(errors) => {
-            // this isn't really the ideal place to report errors, but it seems ok
+            // I'm not wild about reporting errors here; I'd prefer to
+            // have the errors get reported at a defined place (e.g.,
+            // during typeck). Instead I have all parameter
+            // environments, in effect, going through this function
+            // and hence potentially reporting errors. This ensurse of
+            // course that we never forget to normalize (the
+            // alternative seemed like it would involve a lot of
+            // manual invocations of this fn -- and then we'd have to
+            // deal with the errors at each of those sites).
+            //
+            // In any case, in practice, typeck constructs all the
+            // parameter environments once for every fn as it goes,
+            // and errors will get reported then; so after typeck we
+            // can be sure that no errors should occur.
             let infcx = infer::new_infer_ctxt(unnormalized_env.tcx);
             report_fulfillment_errors(&infcx, &errors);
 
-            // normalized failed? use what they gave us, it's better than nothing
+            // Normalized failed? use what they gave us, it's better than nothing.
             unnormalized_env
         }
     }
