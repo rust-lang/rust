@@ -8,6 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Issue #2005: Check that boxed fixed-size arrays are properly
+// accounted for (namely, only deallocated if they were actually
+// created) when they appear as temporaries in unused arms of a match
+// expression.
+
 pub fn foo(box_1: fn () -> Box<[i8; 1]>,
            box_2: fn () -> Box<[i8; 20]>,
            box_3: fn () -> Box<[i8; 300]>,
