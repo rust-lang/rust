@@ -209,11 +209,19 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub unsafe fn set_name(name: &str) {
-    // Using prctl() rather than pthread_setname_np(),
-    // because pthread_setname_np() wasn't added until glibc 2.12
-    // PR_SET_NAME since Linux 2.6.9
+    // pthread_setname_np() since glibc 2.12
+    // availability autodetected via weak linkage
     let cname = CString::from_slice(name.as_bytes());
-    prctl(15i32 /* = PR_SET_NAME */, cname.as_ptr() as u64, 0u64, 0u64, 0u64);
+    type F = unsafe extern "C" fn(libc::pthread_t, *const libc::c_char) -> libc::c_int;
+    extern {
+        #[linkage = "extern_weak"]
+        static pthread_setname_np: *const ();
+    }
+    if !pthread_setname_np.is_null() {
+        unsafe {
+            mem::transmute::<*const (), F>(pthread_setname_np)(pthread_self(), cname.as_ptr());
+        }
+    }
 }
 
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
@@ -270,15 +278,6 @@ fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
     PTHREAD_STACK_MIN
 }
 
-#[cfg(any(target_os = "linux", target_os = "android"))]
-extern {
-    fn prctl(option: libc::c_int,
-        arg2: libc::c_ulong,
-        arg3: libc::c_ulong,
-        arg4: libc::c_ulong,
-        arg5: libc::c_ulong) -> libc::c_int;
-}
-
 #[cfg(any(target_os = "linux"))]
 extern {
     pub fn pthread_self() -> libc::pthread_t;
@@ -294,7 +293,7 @@ extern {
 #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
 extern {
     pub fn pthread_self() -> libc::pthread_t;
-    fn pthread_set_name_np(tid: libc::pthread_t, name: *const c_char);
+    fn pthread_set_name_np(tid: libc::pthread_t, name: *const libc::c_char);
 }
 
 #[cfg(target_os = "macos")]
@@ -302,7 +301,7 @@ extern {
     pub fn pthread_self() -> libc::pthread_t;
     pub fn pthread_get_stackaddr_np(thread: libc::pthread_t) -> *mut libc::c_void;
     pub fn pthread_get_stacksize_np(thread: libc::pthread_t) -> libc::size_t;
-    fn pthread_setname_np(name: *const c_char) -> libc::c_int;
+    fn pthread_setname_np(name: *const libc::c_char) -> libc::c_int;
 }
 
 extern {

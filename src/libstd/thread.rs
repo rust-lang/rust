@@ -275,10 +275,6 @@ impl Builder {
             unsafe {
                 stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
             }
-            match their_thread.name() {
-                Some(thename) => unsafe { imp::set_name(thename.as_slice()); },
-                None => {}
-            }
             thread_info::set(
                 (my_stack_bottom, my_stack_top),
                 unsafe { imp::guard::current() },
