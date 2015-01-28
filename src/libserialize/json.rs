@@ -2618,7 +2618,7 @@ mod tests {
     use super::JsonEvent::*;
     use super::{Json, from_str, DecodeResult, DecoderError, JsonEvent, Parser,
                 StackElement, Stack, Decoder, Encoder, EncoderError};
-    use std::{i64, u64, f32, f64, old_io};
+    use std::{i64, u64, f32, f64};
     use std::collections::BTreeMap;
     use std::num::Float;
     use std::string;
@@ -3928,7 +3928,6 @@ mod tests {
 
     #[test]
     fn test_encode_hashmap_with_arbitrary_key() {
-        use std::str::from_utf8;
         use std::old_io::Writer;
         use std::collections::HashMap;
         use std::fmt;

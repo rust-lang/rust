@@ -447,7 +447,7 @@ mod tests {
     use super::*;
 
     fn same(fmt: &'static str, p: &[Piece<'static>]) {
-        let mut parser = Parser::new(fmt);
+        let parser = Parser::new(fmt);
         assert!(p == parser.collect::<Vec<Piece<'static>>>());
     }
 

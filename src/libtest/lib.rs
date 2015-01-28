@@ -1126,9 +1126,8 @@ pub mod bench {
 mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
                TestDesc, TestDescAndFn, TestOpts, run_test,
-               Metric, MetricMap,
+               MetricMap,
                StaticTestName, DynTestName, DynTestFn, ShouldFail};
-    use std::old_io::TempDir;
     use std::thunk::Thunk;
     use std::sync::mpsc::channel;
 
