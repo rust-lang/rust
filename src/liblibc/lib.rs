@@ -273,6 +273,7 @@ pub use funcs::bsd43::{shutdown};
 #[cfg(windows)] pub use funcs::extra::kernel32::{GetOverlappedResult, ConnectNamedPipe};
 #[cfg(windows)] pub use funcs::extra::kernel32::{DisconnectNamedPipe, OpenProcess};
 #[cfg(windows)] pub use funcs::extra::kernel32::{MoveFileExW, VirtualProtect};
+#[cfg(windows)] pub use funcs::extra::kernel32::{RemoveDirectoryW};
 #[cfg(windows)] pub use funcs::extra::msvcrt::{get_osfhandle, open_osfhandle};
 #[cfg(windows)] pub use funcs::extra::winsock::{ioctlsocket};
 
