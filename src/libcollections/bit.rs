@@ -104,9 +104,7 @@ type MatchWords<'a> = Chain<Enumerate<Blocks<'a>>, Skip<Take<Enumerate<Repeat<u3
 
 fn reverse_bits(byte: u8) -> u8 {
     let mut result = 0;
-    // FIXME(#21245) use a for loop
-    let mut iter = 0..u8::BITS;
-    while let Some(i) = iter.next() {
+    for i in 0..u8::BITS {
         result |= ((byte >> i) & 1) << (u8::BITS - 1 - i);
     }
     result

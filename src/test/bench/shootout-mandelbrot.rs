@@ -133,9 +133,7 @@ fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
                 (i + 1) * chunk_size
             };
 
-            // FIXME(#21245) use a for loop
-            let mut iter = vec_init_i[start..end].iter();
-            while let Some(&init_i) = iter.next() {
+            for &init_i in vec_init_i[start..end].iter() {
                 write_line(init_i, init_r_slice, &mut res);
             }
 
@@ -144,9 +142,7 @@ fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
     }).collect::<Vec<_>>();
 
     try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
-    // FIXME(#21245) use a for loop
-    let mut iter = data.into_iter();
-    while let Some(res) = iter.next() {
+    for res in data.into_iter() {
         try!(out.write(res.join().ok().unwrap().as_slice()));
     }
     out.flush()

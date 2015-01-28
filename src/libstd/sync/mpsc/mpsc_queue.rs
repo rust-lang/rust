@@ -185,9 +185,7 @@ mod tests {
             let tx = tx.clone();
             let q = q.clone();
             Thread::spawn(move|| {
-                // FIXME(#21245) use a for loop
-                let mut iter = 0..nmsgs;
-                while let Some(i) = iter.next() {
+                for i in 0..nmsgs {
                     q.push(i);
                 }
                 tx.send(()).unwrap();
