@@ -81,7 +81,7 @@
 //! }
 //! ```
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 /// A trait that types which have a useful default value should implement.
 ///
@@ -97,7 +97,7 @@
 ///     bar: f32,
 /// }
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Default {
     /// Returns the "default value" for a type.
     ///
@@ -131,16 +131,16 @@ pub trait Default {
     ///     fn default() -> Kind { Kind::A }
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Self;
 }
 
 macro_rules! default_impl {
     ($t:ty, $v:expr) => {
-        #[stable]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Default for $t {
             #[inline]
-            #[stable]
+            #[stable(feature = "rust1", since = "1.0.0")]
             fn default() -> $t { $v }
         }
     }

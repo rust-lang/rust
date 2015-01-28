@@ -10,8 +10,8 @@
 
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]
-#![allow(unstable)]
 #![deny(dead_code)]
+#![feature(libc)]
 
 #![crate_type="lib"]
 

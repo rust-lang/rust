@@ -38,8 +38,9 @@
 //! });
 //! ```
 
-#![unstable = "scoped TLS has yet to have wide enough use to fully consider \
-               stabilizing its interface"]
+#![unstable(feature = "std_misc",
+            reason = "scoped TLS has yet to have wide enough use to fully consider \
+                      stabilizing its interface")]
 
 use prelude::v1::*;
 

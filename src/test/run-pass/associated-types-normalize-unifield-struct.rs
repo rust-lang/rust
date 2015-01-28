@@ -11,7 +11,6 @@
 // Regression test for issue #21010: Normalize associated types in
 // various special paths in the `type_is_immediate` function.
 
-#![allow(unstable)]
 
 pub trait OffsetState: Sized {}
 pub trait Offset { type State: OffsetState; }

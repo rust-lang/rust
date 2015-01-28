@@ -141,9 +141,9 @@ impl<R: Rng + Default> Reseeder<R> for ReseedWithDefault {
         *rng = Default::default();
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for ReseedWithDefault {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> ReseedWithDefault { ReseedWithDefault }
 }
 

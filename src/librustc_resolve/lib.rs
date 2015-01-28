@@ -9,7 +9,8 @@
 // except according to those terms.
 
 #![crate_name = "rustc_resolve"]
-#![unstable]
+#![unstable(feature = "rustc_private")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -20,7 +21,12 @@
 #![feature(slicing_syntax)]
 #![feature(rustc_diagnostic_macros)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(alloc)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(hash)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

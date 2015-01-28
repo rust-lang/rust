@@ -142,7 +142,7 @@
 //! }
 //! ```
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::borrow::BorrowFrom;
 use core::cell::Cell;
@@ -173,7 +173,7 @@ struct RcBox<T> {
 ///
 /// See the [module level documentation](../index.html) for more details.
 #[unsafe_no_drop_flag]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T> {
     // FIXME #12808: strange names to try to avoid interfering with field accesses of the contained
     // type via Deref
@@ -185,7 +185,6 @@ impl<T> !marker::Send for Rc<T> {}
 impl<T> !marker::Sync for Rc<T> {}
 
 impl<T> Rc<T> {
-
     /// Constructs a new `Rc<T>`.
     ///
     /// # Examples
@@ -195,7 +194,7 @@ impl<T> Rc<T> {
     ///
     /// let five = Rc::new(5i);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Rc<T> {
         unsafe {
             Rc {
@@ -222,7 +221,8 @@ impl<T> Rc<T> {
     ///
     /// let weak_five = five.downgrade();
     /// ```
-    #[unstable = "Weak pointers may not belong in this module"]
+    #[unstable(feature = "alloc",
+               reason = "Weak pointers may not belong in this module")]
     pub fn downgrade(&self) -> Weak<T> {
         self.inc_weak();
         Weak { _ptr: self._ptr }
@@ -231,12 +231,12 @@ impl<T> Rc<T> {
 
 /// Get the number of weak references to this value.
 #[inline]
-#[unstable]
+#[unstable(feature = "alloc")]
 pub fn weak_count<T>(this: &Rc<T>) -> uint { this.weak() - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
-#[unstable]
+#[unstable(feature = "alloc")]
 pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the same inner value.
@@ -252,7 +252,7 @@ pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
 /// rc::is_unique(&five);
 /// ```
 #[inline]
-#[unstable]
+#[unstable(feature = "alloc")]
 pub fn is_unique<T>(rc: &Rc<T>) -> bool {
     weak_count(rc) == 0 && strong_count(rc) == 1
 }
@@ -274,7 +274,7 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4u)));
 /// ```
 #[inline]
-#[unstable]
+#[unstable(feature = "alloc")]
 pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
     if is_unique(&rc) {
         unsafe {
@@ -308,7 +308,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// assert!(rc::get_mut(&mut x).is_none());
 /// ```
 #[inline]
-#[unstable]
+#[unstable(feature = "alloc")]
 pub fn get_mut<'a, T>(rc: &'a mut Rc<T>) -> Option<&'a mut T> {
     if is_unique(rc) {
         let inner = unsafe { &mut **rc._ptr };
@@ -334,7 +334,7 @@ impl<T: Clone> Rc<T> {
     /// let mut_five = five.make_unique();
     /// ```
     #[inline]
-    #[unstable]
+    #[unstable(feature = "alloc")]
     pub fn make_unique(&mut self) -> &mut T {
         if !is_unique(self) {
             *self = Rc::new((**self).clone())
@@ -354,7 +354,7 @@ impl<T> BorrowFrom<Rc<T>> for T {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Deref for Rc<T> {
     type Target = T;
 
@@ -365,7 +365,7 @@ impl<T> Deref for Rc<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Rc<T> {
     /// Drops the `Rc<T>`.
     ///
@@ -413,7 +413,7 @@ impl<T> Drop for Rc<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Rc<T> {
 
     /// Makes a clone of the `Rc<T>`.
@@ -436,7 +436,7 @@ impl<T> Clone for Rc<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Rc<T> {
     /// Creates a new `Rc<T>`, with the `Default` value for `T`.
     ///
@@ -449,13 +449,13 @@ impl<T: Default> Default for Rc<T> {
     /// let x: Rc<int> = Default::default();
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Rc<T> {
         Rc::new(Default::default())
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for Rc<T> {
     /// Equality for two `Rc<T>`s.
     ///
@@ -490,10 +490,10 @@ impl<T: PartialEq> PartialEq for Rc<T> {
     fn ne(&self, other: &Rc<T>) -> bool { **self != **other }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for Rc<T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for Rc<T> {
     /// Partial comparison for two `Rc<T>`s.
     ///
@@ -578,7 +578,7 @@ impl<T: PartialOrd> PartialOrd for Rc<T> {
     fn ge(&self, other: &Rc<T>) -> bool { **self >= **other }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for Rc<T> {
     /// Comparison for two `Rc<T>`s.
     ///
@@ -605,14 +605,14 @@ impl<S: hash::Hasher, T: Hash<S>> Hash<S> for Rc<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display> fmt::Display for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Rc<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
@@ -625,21 +625,21 @@ impl<T: fmt::Debug> fmt::Debug for Rc<T> {
 ///
 /// See the [module level documentation](../index.html) for more.
 #[unsafe_no_drop_flag]
-#[unstable = "Weak pointers may not belong in this module."]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
 pub struct Weak<T> {
     // FIXME #12808: strange names to try to avoid interfering with
     // field accesses of the contained type via Deref
     _ptr: NonZero<*mut RcBox<T>>,
 }
 
-#[allow(unstable)]
 impl<T> !marker::Send for Weak<T> {}
 
-#[allow(unstable)]
 impl<T> !marker::Sync for Weak<T> {}
 
 
-#[unstable = "Weak pointers may not belong in this module."]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
 impl<T> Weak<T> {
 
     /// Upgrades a weak reference to a strong reference.
@@ -670,7 +670,7 @@ impl<T> Weak<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Weak<T> {
     /// Drops the `Weak<T>`.
     ///
@@ -713,7 +713,8 @@ impl<T> Drop for Weak<T> {
     }
 }
 
-#[unstable = "Weak pointers may not belong in this module."]
+#[unstable(feature = "alloc",
+           reason = "Weak pointers may not belong in this module.")]
 impl<T> Clone for Weak<T> {
 
     /// Makes a clone of the `Weak<T>`.
@@ -736,7 +737,7 @@ impl<T> Clone for Weak<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Weak<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "(Weak)")
@@ -777,7 +778,6 @@ impl<T> RcBoxPtr<T> for Weak<T> {
 }
 
 #[cfg(test)]
-#[allow(unstable)]
 mod tests {
     use super::{Rc, Weak, weak_count, strong_count};
     use std::cell::RefCell;

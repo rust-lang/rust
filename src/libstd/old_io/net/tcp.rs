@@ -85,7 +85,8 @@ impl TcpStream {
     ///
     /// If a `timeout` with zero or negative duration is specified then
     /// the function returns `Err`, with the error kind set to `TimedOut`.
-    #[unstable = "the timeout argument may eventually change types"]
+    #[unstable(feature = "io",
+               reason = "the timeout argument may eventually change types")]
     pub fn connect_timeout<A: ToSocketAddr>(addr: A,
                                             timeout: Duration) -> IoResult<TcpStream> {
         if timeout <= Duration::milliseconds(0) {
@@ -109,7 +110,7 @@ impl TcpStream {
     }
 
     /// Sets the nodelay flag on this connection to the boolean specified
-    #[unstable]
+    #[unstable(feature = "io")]
     pub fn set_nodelay(&mut self, nodelay: bool) -> IoResult<()> {
         self.inner.set_nodelay(nodelay)
     }
@@ -119,7 +120,7 @@ impl TcpStream {
     /// If the value specified is `None`, then the keepalive flag is cleared on
     /// this connection. Otherwise, the keepalive timeout will be set to the
     /// specified time, in seconds.
-    #[unstable]
+    #[unstable(feature = "io")]
     pub fn set_keepalive(&mut self, delay_in_seconds: Option<uint>) -> IoResult<()> {
         self.inner.set_keepalive(delay_in_seconds)
     }
@@ -187,7 +188,8 @@ impl TcpStream {
     ///
     /// For clarification on the semantics of interrupting a read and a write,
     /// take a look at `set_read_timeout` and `set_write_timeout`.
-    #[unstable = "the timeout argument may change in type and value"]
+    #[unstable(feature = "io",
+               reason = "the timeout argument may change in type and value")]
     pub fn set_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_timeout(timeout_ms)
     }
@@ -204,7 +206,8 @@ impl TcpStream {
     /// action is taken. Otherwise, the read operation will be scheduled to
     /// promptly return. If a timeout error is returned, then no data was read
     /// during the timeout period.
-    #[unstable = "the timeout argument may change in type and value"]
+    #[unstable(feature = "io",
+               reason = "the timeout argument may change in type and value")]
     pub fn set_read_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_read_timeout(timeout_ms)
     }
@@ -231,7 +234,8 @@ impl TcpStream {
     /// does not know how many bytes were written as part of the timeout
     /// operation. It may be the case that bytes continue to be written in an
     /// asynchronous fashion after the call to write returns.
-    #[unstable = "the timeout argument may change in type and value"]
+    #[unstable(feature = "io",
+               reason = "the timeout argument may change in type and value")]
     pub fn set_write_timeout(&mut self, timeout_ms: Option<u64>) {
         self.inner.set_write_timeout(timeout_ms)
     }
@@ -372,7 +376,6 @@ impl TcpAcceptor {
     /// # Example
     ///
     /// ```no_run
-    /// # #![allow(unstable)]
     /// use std::old_io::TcpListener;
     /// use std::old_io::{Listener, Acceptor, TimedOut};
     ///
@@ -395,8 +398,9 @@ impl TcpAcceptor {
     /// a.set_timeout(None);
     /// let socket = a.accept();
     /// ```
-    #[unstable = "the type of the argument and name of this function are \
-                      subject to change"]
+    #[unstable(feature = "io",
+               reason = "the type of the argument and name of this function are \
+                         subject to change")]
     pub fn set_timeout(&mut self, ms: Option<u64>) { self.inner.set_timeout(ms); }
 
     /// Closes the accepting capabilities of this acceptor.
@@ -416,7 +420,6 @@ impl TcpAcceptor {
     /// # Example
     ///
     /// ```
-    /// # #![allow(unstable)]
     /// use std::old_io::{TcpListener, Listener, Acceptor, EndOfFile};
     /// use std::thread::Thread;
     ///
@@ -442,7 +445,7 @@ impl TcpAcceptor {
     /// // Signal our accept loop to exit
     /// assert!(a.close_accept().is_ok());
     /// ```
-    #[unstable]
+    #[unstable(feature = "io")]
     pub fn close_accept(&mut self) -> IoResult<()> {
         self.inner.close_accept()
     }
@@ -480,7 +483,6 @@ impl sys_common::AsInner<TcpAcceptorImp> for TcpAcceptor {
 }
 
 #[cfg(test)]
-#[allow(unstable)]
 mod test {
     use prelude::v1::*;
 

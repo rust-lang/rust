@@ -305,9 +305,19 @@ pub fn build_session(sopts: config::Options,
                      local_crate_source_file: Option<Path>,
                      registry: diagnostics::registry::Registry)
                      -> Session {
+    // FIXME: This is not general enough to make the warning lint completely override
+    // normal diagnostic warnings, since the warning lint can also be denied and changed
+    // later via the source code.
+    let can_print_warnings = sopts.lint_opts
+        .iter()
+        .filter(|&&(ref key, _)| *key == "warnings")
+        .map(|&(_, ref level)| *level != lint::Allow)
+        .last()
+        .unwrap_or(true);
+
     let codemap = codemap::CodeMap::new();
     let diagnostic_handler =
-        diagnostic::default_handler(sopts.color, Some(registry));
+        diagnostic::default_handler(sopts.color, Some(registry), can_print_warnings);
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 

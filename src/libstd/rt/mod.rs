@@ -16,7 +16,7 @@
 //! and should be considered as private implementation details for the
 //! time being.
 
-#![unstable]
+#![unstable(feature = "std_misc")]
 
 // FIXME: this should not be here.
 #![allow(missing_docs)]

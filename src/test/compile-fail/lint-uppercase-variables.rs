@@ -11,8 +11,9 @@
 // ignore-tidy-linelength
 
 #![allow(dead_code)]
-#![allow(unstable)]
 #![deny(non_snake_case)]
+#![feature(path)]
+#![feature(io)]
 
 use std::old_io::File;
 use std::old_io::IoError;

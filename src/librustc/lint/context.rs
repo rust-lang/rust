@@ -211,6 +211,7 @@ impl LintStore {
                      UnusedAllocation,
                      MissingCopyImplementations,
                      UnstableFeatures,
+                     Stability,
                      UnconditionalRecursion,
         );
 
@@ -218,7 +219,6 @@ impl LintStore {
                               TypeLimits,
                               RawPointerDerive,
                               MissingDoc,
-                              Stability,
                               MissingDebugImplementations,
         );
 
@@ -236,6 +236,7 @@ impl LintStore {
         // Insert temporary renamings for a one-time deprecation
         self.register_renamed("raw_pointer_deriving", "raw_pointer_derive");
 
+        self.register_renamed("unknown_features", "unused_features");
     }
 
     #[allow(unused_variables)]
@@ -287,15 +288,6 @@ impl LintStore {
             UnstableFeatures::Cheat => Allow
         };
         match self.by_name.get("unstable_features") {
-            Some(&Id(lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
-                self.set_level(lint_id, (lvl, ReleaseChannel))
-            },
-            Some(&Renamed(_, lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
-                self.set_level(lint_id, (lvl, ReleaseChannel))
-            },
-            None => unreachable!()
-        }
-        match self.by_name.get("unstable") {
             Some(&Id(lint_id)) => if self.get_level_source(lint_id).0 != Forbid {
                 self.set_level(lint_id, (lvl, ReleaseChannel))
             },
@@ -809,6 +801,5 @@ pub fn check_crate(tcx: &ty::ctxt,
         }
     }
 
-    tcx.sess.abort_if_errors();
     *tcx.node_lint_levels.borrow_mut() = cx.node_levels.into_inner();
 }

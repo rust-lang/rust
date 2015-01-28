@@ -139,7 +139,7 @@
 //! ```
 //!
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use clone::Clone;
 use cmp::PartialEq;
@@ -152,7 +152,7 @@ use option::Option::{None, Some};
 /// A mutable memory location that admits only `Copy` data.
 ///
 /// See the [module-level documentation](../index.html) for more.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
 }
@@ -167,7 +167,7 @@ impl<T:Copy> Cell<T> {
     ///
     /// let c = Cell::new(5);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> Cell<T> {
         Cell {
             value: UnsafeCell::new(value),
@@ -186,7 +186,7 @@ impl<T:Copy> Cell<T> {
     /// let five = c.get();
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> T {
         unsafe{ *self.value.get() }
     }
@@ -203,7 +203,7 @@ impl<T:Copy> Cell<T> {
     /// c.set(10);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set(&self, value: T) {
         unsafe {
             *self.value.get() = value;
@@ -226,31 +226,31 @@ impl<T:Copy> Cell<T> {
     /// let uc = unsafe { c.as_unsafe_cell() };
     /// ```
     #[inline]
-    #[unstable]
+    #[unstable(feature = "core")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Send for Cell<T> where T: Send {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Copy> Clone for Cell<T> {
     fn clone(&self) -> Cell<T> {
         Cell::new(self.get())
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default + Copy> Default for Cell<T> {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Cell<T> {
         Cell::new(Default::default())
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T:PartialEq + Copy> PartialEq for Cell<T> {
     fn eq(&self, other: &Cell<T>) -> bool {
         self.get() == other.get()
@@ -260,7 +260,7 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 /// A mutable memory location with dynamically checked borrow rules
 ///
 /// See the [module-level documentation](../index.html) for more.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
     borrow: Cell<BorrowFlag>,
@@ -282,7 +282,7 @@ impl<T> RefCell<T> {
     ///
     /// let c = RefCell::new(5);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> RefCell<T> {
         RefCell {
             value: UnsafeCell::new(value),
@@ -301,7 +301,7 @@ impl<T> RefCell<T> {
     ///
     /// let five = c.into_inner();
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_inner(self) -> T {
         // Since this function takes `self` (the `RefCell`) by value, the
         // compiler statically verifies that it is not currently borrowed.
@@ -316,7 +316,7 @@ impl<T> RefCell<T> {
     /// immutable borrows can be taken out at the same time.
     ///
     /// Returns `None` if the value is currently mutably borrowed.
-    #[unstable = "may be renamed or removed"]
+    #[unstable(feature = "core", reason = "may be renamed or removed")]
     pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Some(Ref { _value: unsafe { &*self.value.get() }, _borrow: b }),
@@ -359,7 +359,7 @@ impl<T> RefCell<T> {
     ///
     /// assert!(result.is_err());
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
         match self.try_borrow() {
             Some(ptr) => ptr,
@@ -373,7 +373,7 @@ impl<T> RefCell<T> {
     /// cannot be borrowed while this borrow is active.
     ///
     /// Returns `None` if the value is currently borrowed.
-    #[unstable = "may be renamed or removed"]
+    #[unstable(feature = "core", reason = "may be renamed or removed")]
     pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Some(RefMut { _value: unsafe { &mut *self.value.get() }, _borrow: b }),
@@ -415,7 +415,7 @@ impl<T> RefCell<T> {
     ///
     /// assert!(result.is_err());
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
         match self.try_borrow_mut() {
             Some(ptr) => ptr,
@@ -429,31 +429,31 @@ impl<T> RefCell<T> {
     ///
     /// This function is `unsafe` because `UnsafeCell`'s field is public.
     #[inline]
-    #[unstable]
+    #[unstable(feature = "core")]
     pub unsafe fn as_unsafe_cell<'a>(&'a self) -> &'a UnsafeCell<T> {
         &self.value
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T> Send for RefCell<T> where T: Send {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for RefCell<T> {
     fn clone(&self) -> RefCell<T> {
         RefCell::new(self.borrow().clone())
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T:Default> Default for RefCell<T> {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> RefCell<T> {
         RefCell::new(Default::default())
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialEq> PartialEq for RefCell<T> {
     fn eq(&self, other: &RefCell<T>) -> bool {
         *self.borrow() == *other.borrow()
@@ -496,10 +496,11 @@ impl<'b> Clone for BorrowRef<'b> {
     }
 }
 
+/// Wraps a borrowed reference to a value in a `RefCell` box.
 /// A wrapper type for an immutably borrowed value from a `RefCell<T>`.
 ///
 /// See the [module-level documentation](../index.html) for more.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ref<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -507,7 +508,7 @@ pub struct Ref<'b, T:'b> {
     _borrow: BorrowRef<'b>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'b, T> Deref for Ref<'b, T> {
     type Target = T;
 
@@ -523,7 +524,8 @@ impl<'b, T> Deref for Ref<'b, T> {
 ///
 /// A `Clone` implementation would interfere with the widespread
 /// use of `r.borrow().clone()` to clone the contents of a `RefCell`.
-#[unstable = "likely to be moved to a method, pending language changes"]
+#[unstable(feature = "core",
+           reason = "likely to be moved to a method, pending language changes")]
 pub fn clone_ref<'b, T:Clone>(orig: &Ref<'b, T>) -> Ref<'b, T> {
     Ref {
         _value: orig._value,
@@ -559,7 +561,7 @@ impl<'b> BorrowRefMut<'b> {
 /// A wrapper type for a mutably borrowed value from a `RefCell<T>`.
 ///
 /// See the [module-level documentation](../index.html) for more.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefMut<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
     // field accesses of the contained type via Deref
@@ -567,7 +569,7 @@ pub struct RefMut<'b, T:'b> {
     _borrow: BorrowRefMut<'b>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'b, T> Deref for RefMut<'b, T> {
     type Target = T;
 
@@ -577,7 +579,7 @@ impl<'b, T> Deref for RefMut<'b, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'b, T> DerefMut for RefMut<'b, T> {
     #[inline]
     fn deref_mut<'a>(&'a mut self) -> &'a mut T {
@@ -619,13 +621,13 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 /// **NOTE:** `UnsafeCell<T>`'s fields are public to allow static initializers. It is not
 /// recommended to access its fields directly, `get` should be used instead.
 #[lang="unsafe"]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct UnsafeCell<T> {
     /// Wrapped value
     ///
     /// This field should not be accessed directly, it is made public for static
     /// initializers.
-    #[unstable]
+    #[unstable(feature = "core")]
     pub value: T,
 }
 
@@ -643,7 +645,7 @@ impl<T> UnsafeCell<T> {
     ///
     /// let uc = UnsafeCell::new(5);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(value: T) -> UnsafeCell<T> {
         UnsafeCell { value: value }
     }
@@ -660,7 +662,7 @@ impl<T> UnsafeCell<T> {
     /// let five = uc.get();
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> *mut T { &self.value as *const T as *mut T }
 
     /// Unwraps the value
@@ -680,6 +682,6 @@ impl<T> UnsafeCell<T> {
     /// let five = unsafe { uc.into_inner() };
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn into_inner(self) -> T { self.value }
 }

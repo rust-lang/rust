@@ -22,7 +22,8 @@
 //! build speedups.
 
 #![crate_name = "rustc_back"]
-#![unstable]
+#![unstable(feature = "rustc_private")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -32,7 +33,13 @@
 #![allow(unknown_features)]
 #![feature(slicing_syntax, box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(hash)]
+#![feature(io)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
 
 extern crate syntax;
 extern crate serialize;
