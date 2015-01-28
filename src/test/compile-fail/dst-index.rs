@@ -14,9 +14,8 @@
 use std::ops::Index;
 use std::fmt::Debug;
 
+#[derive(Copy)]
 struct S;
-
-impl Copy for S {}
 
 impl Index<usize> for S {
     type Output = str;
@@ -26,9 +25,8 @@ impl Index<usize> for S {
     }
 }
 
+#[derive(Copy)]
 struct T;
-
-impl Copy for T {}
 
 impl Index<usize> for T {
     type Output = Debug + 'static;

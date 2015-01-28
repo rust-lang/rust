@@ -8,16 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[derive(Copy)]
 struct mytype(Mytype);
 
-impl Copy for mytype {}
-
+#[derive(Copy)]
 struct Mytype {
     compute: fn(mytype) -> int,
     val: int,
 }
-
-impl Copy for Mytype {}
 
 fn compute(i: mytype) -> int {
     let mytype(m) = i;

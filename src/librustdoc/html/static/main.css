@@ -64,7 +64,6 @@
 
 body {
     color: #333;
-    min-width: 500px;
     font: 16px/1.4 "Source Serif Pro", "Helvetica Neue", Helvetica, Arial, sans-serif;
     margin: 0;
     position: relative;
@@ -590,6 +589,14 @@ pre.rust { position: relative; }
 
     .content {
         margin-left: 0px;
+    }
+
+    .content .in-band {
+        width: 100%;
+    }
+
+    .content .out-of-band {
+        display: none;
     }
 
     .toggle-wrapper > .collapse-toggle {

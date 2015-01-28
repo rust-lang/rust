@@ -10,7 +10,8 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import os, tarfile, hashlib, re, shutil, sys
+import os
+import re
 from snapshot import *
 
 f = open(snapshotfile)
@@ -26,7 +27,8 @@ newestSet = {}
 for line in f.readlines():
     i += 1
     parsed = parse_line(i, line)
-    if (not parsed): continue
+    if not parsed:
+        continue
 
     if parsed["type"] == "snapshot":
         if (len(newestSet) == 0 or parsed["date"] > newestSet["date"]):
@@ -37,16 +39,16 @@ for line in f.readlines():
         else:
             addingMode = False
 
-    elif addingMode == True and parsed["type"] == "file":
+    elif addingMode is True and parsed["type"] == "file":
         tux = re.compile("linux", re.IGNORECASE)
-        if (tux.match(parsed["platform"]) != None):
-           ff = {}
-           ff["platform"] = parsed["platform"]
-           ff["hash"] = parsed["hash"]
-           newestSet["files"] += [ff]
+        if (tux.match(parsed["platform"]) is not None):
+            ff = {}
+            ff["platform"] = parsed["platform"]
+            ff["hash"] = parsed["hash"]
+            newestSet["files"] += [ff]
 
 
-def download_new_file (date, rev, platform, hsh):
+def download_new_file(date, rev, platform, hsh):
         snap = full_snapshot_name(date, rev, platform, hsh)
         dl = os.path.join(download_dir_base, snap)
         url = download_url_base + "/" + snap
@@ -59,5 +61,5 @@ def download_new_file (date, rev, platform, hsh):
             raise Exception("bad hash on download")
 
 for ff in newestSet["files"]:
-   download_new_file (newestSet["date"], newestSet["rev"],
+    download_new_file(newestSet["date"], newestSet["rev"],
                       ff["platform"], ff["hash"])

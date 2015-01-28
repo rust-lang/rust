@@ -12,9 +12,8 @@
 
 fn id<T>(x: T) -> T { return x; }
 
+#[derive(Copy)]
 struct Triple {x: int, y: int, z: int}
-
-impl Copy for Triple {}
 
 pub fn main() {
     let mut x = 62;

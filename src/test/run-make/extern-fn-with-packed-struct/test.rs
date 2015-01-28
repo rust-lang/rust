@@ -9,14 +9,12 @@
 // except according to those terms.
 
 #[repr(packed)]
-#[derive(PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 struct Foo {
     a: i8,
     b: i16,
     c: i8
 }
-
-impl Copy for Foo {}
 
 #[link(name = "test", kind = "static")]
 extern {

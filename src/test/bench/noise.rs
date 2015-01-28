@@ -16,12 +16,11 @@ use std::f32::consts::PI;
 use std::num::Float;
 use std::rand::{Rng, StdRng};
 
+#[derive(Copy)]
 struct Vec2 {
     x: f32,
     y: f32,
 }
-
-impl Copy for Vec2 {}
 
 fn lerp(a: f32, b: f32, v: f32) -> f32 { a * (1.0 - v) + b * v }
 

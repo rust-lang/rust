@@ -15,11 +15,10 @@ trait Get<T> {
     fn get(&self) -> T;
 }
 
+#[derive(Copy)]
 struct Box<T> {
     t: T
 }
-
-impl<T:Copy> Copy for Box<T> {}
 
 impl<T:Clone> Get<T> for Box<T> {
     fn get(&self) -> T {

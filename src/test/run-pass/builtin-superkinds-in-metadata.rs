@@ -17,9 +17,8 @@ extern crate trait_superkinds_in_metadata;
 use trait_superkinds_in_metadata::{RequiresRequiresShareAndSend, RequiresShare};
 use trait_superkinds_in_metadata::{RequiresCopy};
 
+#[derive(Copy)]
 struct X<T>(T);
-
-impl<T:Copy> Copy for X<T> {}
 
 impl<T:Sync> RequiresShare for X<T> { }
 

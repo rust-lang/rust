@@ -11,9 +11,8 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
+#[derive(Copy)]
 struct LM { resize_at: uint, size: uint }
-
-impl Copy for LM {}
 
 enum HashMap<K,V> {
     HashMap_(LM)

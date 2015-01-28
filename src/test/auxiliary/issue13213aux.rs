@@ -13,19 +13,18 @@
 
 pub use private::P;
 
+#[derive(Copy)]
 pub struct S {
     p: P,
 }
 
 mod private {
+    #[derive(Copy)]
     pub struct P {
         p: i32,
     }
     pub const THREE: P = P { p: 3 };
-    impl Copy for P {}
 }
 
 pub static A: S = S { p: private::THREE };
-
-impl Copy for S {}
 

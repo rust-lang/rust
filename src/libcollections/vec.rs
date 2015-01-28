@@ -993,6 +993,43 @@ impl<T> Vec<T> {
             result
         }
     }
+
+    /// Splits the collection into two at the given index.
+    ///
+    /// Returns a newly allocated `Self`. `self` contains elements `[0, at)`,
+    /// and the returned `Self` contains elements `[at, len)`.
+    ///
+    /// Note that the capacity of `self` does not change.
+    ///
+    /// # Examples
+    /// ```rust
+    /// let mut vec = vec![1,2,3];
+    /// let vec2 = vec.split_off(1);
+    /// assert_eq!(vec, vec![1]);
+    /// assert_eq!(vec2, vec![2, 3]);
+    /// ```
+    #[inline]
+    #[unstable(feature = "collections",
+               reason = "new API, waiting for dust to settle")]
+    pub fn split_off(&mut self, at: usize) -> Self {
+        assert!(at < self.len(), "`at` out of bounds");
+
+        let other_len = self.len - at;
+        let mut other = Vec::with_capacity(other_len);
+
+        // Unsafely `set_len` and copy items to `other`.
+        unsafe {
+            self.set_len(at);
+            other.set_len(other_len);
+
+            ptr::copy_nonoverlapping_memory(
+                other.as_mut_ptr(),
+                self.as_ptr().offset(at as isize),
+                other.len());
+        }
+        other
+    }
+
 }
 
 impl<T: Clone> Vec<T> {
@@ -1966,7 +2003,7 @@ mod tests {
     fn test_slice_from_mut() {
         let mut values = vec![1u8,2,3,4,5];
         {
-            let slice = values.slice_from_mut(2);
+            let slice = &mut values[2 ..];
             assert!(slice == [3, 4, 5]);
             for p in slice.iter_mut() {
                 *p += 2;
@@ -1980,7 +2017,7 @@ mod tests {
     fn test_slice_to_mut() {
         let mut values = vec![1u8,2,3,4,5];
         {
-            let slice = values.slice_to_mut(2);
+            let slice = &mut values[.. 2];
             assert!(slice == [1, 2]);
             for p in slice.iter_mut() {
                 *p += 1;
@@ -2352,6 +2389,14 @@ mod tests {
         vec.append(&mut vec2);
         assert_eq!(vec, vec![1, 2, 3, 4, 5, 6]);
         assert_eq!(vec2, vec![]);
+    }
+
+    #[test]
+    fn test_split_off() {
+        let mut vec = vec![1, 2, 3, 4, 5, 6];
+        let vec2 = vec.split_off(4);
+        assert_eq!(vec, vec![1, 2, 3, 4]);
+        assert_eq!(vec2, vec![5, 6]);
     }
 
     #[bench]

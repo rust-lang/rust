@@ -11,12 +11,11 @@
 use std::rc::Rc;
 use std::ops::Deref;
 
+#[derive(Copy)]
 struct DerefWrapper<X, Y> {
     x: X,
     y: Y
 }
-
-impl<X:Copy,Y:Copy> Copy for DerefWrapper<X,Y> {}
 
 impl<X, Y> DerefWrapper<X, Y> {
     fn get_x(self) -> X {
@@ -35,12 +34,11 @@ impl<X, Y> Deref for DerefWrapper<X, Y> {
 mod priv_test {
     use std::ops::Deref;
 
+    #[derive(Copy)]
     pub struct DerefWrapperHideX<X, Y> {
         x: X,
         pub y: Y
     }
-
-    impl<X:Copy,Y:Copy> Copy for DerefWrapperHideX<X,Y> {}
 
     impl<X, Y> DerefWrapperHideX<X, Y> {
         pub fn new(x: X, y: Y) -> DerefWrapperHideX<X, Y> {

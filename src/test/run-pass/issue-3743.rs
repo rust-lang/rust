@@ -14,12 +14,11 @@
 
 use std::ops::Mul;
 
+#[derive(Copy)]
 struct Vec2 {
     x: f64,
     y: f64
 }
-
-impl Copy for Vec2 {}
 
 // methods we want to export as methods as well as operators
 impl Vec2 {

@@ -56,4 +56,4 @@ for kw in sys.argv[1:]:
         f.write(template % (datetime.datetime.now().year, kw, kw))
 
     # mark file read-only
-    os.chmod(test_file, stat.S_IRUSR|stat.S_IRGRP|stat.S_IROTH)
+    os.chmod(test_file, stat.S_IRUSR | stat.S_IRGRP | stat.S_IROTH)

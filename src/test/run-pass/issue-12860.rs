@@ -13,14 +13,12 @@ extern crate collections;
 
 use std::collections::HashSet;
 
-#[derive(PartialEq, Eq, Hash)]
+#[derive(Copy, PartialEq, Eq, Hash)]
 struct XYZ {
     x: int,
     y: int,
     z: int
 }
-
-impl Copy for XYZ {}
 
 fn main() {
     let mut connected = HashSet::new();

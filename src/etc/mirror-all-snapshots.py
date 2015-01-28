@@ -10,7 +10,7 @@
 # option. This file may not be copied, modified, or distributed
 # except according to those terms.
 
-import os, tarfile, hashlib, re, shutil
+import os
 from snapshot import *
 
 f = open(snapshotfile)
@@ -23,13 +23,14 @@ i = 0
 for line in f.readlines():
     i += 1
     parsed = parse_line(i, line)
-    if (not parsed): continue
+    if not parsed:
+        continue
 
     if parsed["type"] == "snapshot":
         date = parsed["date"]
         rev = parsed["rev"]
 
-    elif rev != None and parsed["type"] == "file":
+    elif rev is not None and parsed["type"] == "file":
         platform = parsed["platform"]
         hsh = parsed["hash"]
         snap = full_snapshot_name(date, rev, platform, hsh)

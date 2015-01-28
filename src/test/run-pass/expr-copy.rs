@@ -13,9 +13,8 @@ fn f(arg: &mut A) {
     arg.a = 100;
 }
 
+#[derive(Copy)]
 struct A { a: int }
-
-impl Copy for A {}
 
 pub fn main() {
     let mut x = A {a: 10};

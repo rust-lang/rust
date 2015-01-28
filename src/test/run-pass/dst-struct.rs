@@ -49,10 +49,8 @@ fn foo3(x: &Fat<Fat<[int]>>) {
 }
 
 
-#[derive(PartialEq,Eq)]
+#[derive(Copy, PartialEq, Eq)]
 struct Bar;
-
-impl Copy for Bar {}
 
 trait ToBar {
     fn to_bar(&self) -> Bar;
