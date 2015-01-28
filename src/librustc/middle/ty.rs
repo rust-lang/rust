@@ -5264,7 +5264,7 @@ pub fn with_path<T, F>(cx: &ctxt, id: ast::DefId, f: F) -> T where
     if id.krate == ast::LOCAL_CRATE {
         cx.map.with_path(id.node, f)
     } else {
-        f(ast_map::Values(csearch::get_item_path(cx, id).iter()).chain(None))
+        f(csearch::get_item_path(cx, id).iter().cloned().chain(None))
     }
 }
 

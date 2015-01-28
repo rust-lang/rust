@@ -670,20 +670,13 @@ pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
 
 // are two arrays of segments equal when compared unhygienically?
 pub fn segments_name_eq(a : &[ast::PathSegment], b : &[ast::PathSegment]) -> bool {
-    if a.len() != b.len() {
-        false
-    } else {
-        for (idx,seg) in a.iter().enumerate() {
-            if seg.identifier.name != b[idx].identifier.name
-                // FIXME #7743: ident -> name problems in lifetime comparison?
-                // can types contain idents?
-                || seg.parameters != b[idx].parameters
-            {
-                return false;
-            }
-        }
-        true
-    }
+    a.len() == b.len() &&
+    a.iter().zip(b.iter()).all(|(s, t)| {
+        s.identifier.name == t.identifier.name &&
+        // FIXME #7743: ident -> name problems in lifetime comparison?
+        // can types contain idents?
+        s.parameters == t.parameters
+    })
 }
 
 /// Returns true if this literal is a string and false otherwise.
