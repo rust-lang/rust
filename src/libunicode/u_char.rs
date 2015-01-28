@@ -19,7 +19,7 @@ use core::option::Option;
 use tables::{derived_property, property, general_category, conversions, charwidth};
 
 /// Functionality for manipulating `char`.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait CharExt {
     /// Checks if a `char` parses as a numeric digit in the given radix.
     ///
@@ -34,7 +34,8 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix > 36.
-    #[unstable = "pending integer conventions"]
+    #[unstable(feature = "unicode",
+               reason = "pending integer conventions")]
     fn is_digit(self, radix: uint) -> bool;
 
     /// Converts a character to the corresponding digit.
@@ -48,7 +49,8 @@ pub trait CharExt {
     /// # Panics
     ///
     /// Panics if given a radix outside the range [0..36].
-    #[unstable = "pending integer conventions"]
+    #[unstable(feature = "unicode",
+               reason = "pending integer conventions")]
     fn to_digit(self, radix: uint) -> Option<uint>;
 
     /// Returns an iterator that yields the hexadecimal Unicode escape
@@ -57,7 +59,7 @@ pub trait CharExt {
     /// All characters are escaped with Rust syntax of the form `\\u{NNNN}`
     /// where `NNNN` is the shortest hexadecimal representation of the code
     /// point.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_unicode(self) -> char::EscapeUnicode;
 
     /// Returns an iterator that yields the 'default' ASCII and
@@ -72,17 +74,17 @@ pub trait CharExt {
     ///   escaped.
     /// * Any other chars in the range [0x20,0x7e] are not escaped.
     /// * Any other chars are given hex Unicode escapes; see `escape_unicode`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> char::EscapeDefault;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> uint;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-16.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> uint;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
@@ -90,7 +92,8 @@ pub trait CharExt {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    #[unstable(feature = "unicode",
+               reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
@@ -98,12 +101,13 @@ pub trait CharExt {
     ///
     /// If the buffer is not large enough, nothing will be written into it
     /// and a `None` will be returned.
-    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    #[unstable(feature = "unicode",
+               reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
 
     /// Returns whether the specified character is considered a Unicode
     /// alphabetic code point.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphabetic(self) -> bool;
 
     /// Returns whether the specified character satisfies the 'XID_Start'
@@ -112,7 +116,8 @@ pub trait CharExt {
     /// 'XID_Start' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to ID_Start but modified for closure under NFKx.
-    #[unstable = "mainly needed for compiler internals"]
+    #[unstable(feature = "unicode",
+               reason = "mainly needed for compiler internals")]
     fn is_xid_start(self) -> bool;
 
     /// Returns whether the specified `char` satisfies the 'XID_Continue'
@@ -121,45 +126,46 @@ pub trait CharExt {
     /// 'XID_Continue' is a Unicode Derived Property specified in
     /// [UAX #31](http://unicode.org/reports/tr31/#NFKC_Modifications),
     /// mostly similar to 'ID_Continue' but modified for closure under NFKx.
-    #[unstable = "mainly needed for compiler internals"]
+    #[unstable(feature = "unicode",
+               reason = "mainly needed for compiler internals")]
     fn is_xid_continue(self) -> bool;
 
     /// Indicates whether a character is in lowercase.
     ///
     /// This is defined according to the terms of the Unicode Derived Core
     /// Property `Lowercase`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_lowercase(self) -> bool;
 
     /// Indicates whether a character is in uppercase.
     ///
     /// This is defined according to the terms of the Unicode Derived Core
     /// Property `Uppercase`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_uppercase(self) -> bool;
 
     /// Indicates whether a character is whitespace.
     ///
     /// Whitespace is defined in terms of the Unicode Property `White_Space`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_whitespace(self) -> bool;
 
     /// Indicates whether a character is alphanumeric.
     ///
     /// Alphanumericness is defined in terms of the Unicode General Categories
     /// 'Nd', 'Nl', 'No' and the Derived Core Property 'Alphabetic'.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphanumeric(self) -> bool;
 
     /// Indicates whether a character is a control code point.
     ///
     /// Control code points are defined in terms of the Unicode General
     /// Category `Cc`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_control(self) -> bool;
 
     /// Indicates whether the character is numeric (Nd, Nl, or No).
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_numeric(self) -> bool;
 
     /// Converts a character to its lowercase equivalent.
@@ -171,7 +177,8 @@ pub trait CharExt {
     ///
     /// Returns the lowercase equivalent of the character, or the character
     /// itself if no conversion is possible.
-    #[unstable = "pending case transformation decisions"]
+    #[unstable(feature = "unicode",
+               reason = "pending case transformation decisions")]
     fn to_lowercase(self) -> char;
 
     /// Converts a character to its uppercase equivalent.
@@ -194,7 +201,8 @@ pub trait CharExt {
     /// [`SpecialCasing`.txt`]: ftp://ftp.unicode.org/Public/UNIDATA/SpecialCasing.txt
     ///
     /// [2]: http://www.unicode.org/versions/Unicode4.0.0/ch03.pdf#G33992
-    #[unstable = "pending case transformation decisions"]
+    #[unstable(feature = "unicode",
+               reason = "pending case transformation decisions")]
     fn to_uppercase(self) -> char;
 
     /// Returns this character's displayed width in columns, or `None` if it is a
@@ -206,30 +214,35 @@ pub trait CharExt {
     /// [Unicode Standard Annex #11](http://www.unicode.org/reports/tr11/)
     /// recommends that these characters be treated as 1 column (i.e.,
     /// `is_cjk` = `false`) if the context cannot be reliably determined.
-    #[unstable = "needs expert opinion. is_cjk flag stands out as ugly"]
+    #[unstable(feature = "unicode",
+               reason = "needs expert opinion. is_cjk flag stands out as ugly")]
     fn width(self, is_cjk: bool) -> Option<uint>;
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl CharExt for char {
-    #[unstable = "pending integer conventions"]
+    #[unstable(feature = "unicode",
+               reason = "pending integer conventions")]
     fn is_digit(self, radix: uint) -> bool { C::is_digit(self, radix) }
-    #[unstable = "pending integer conventions"]
+    #[unstable(feature = "unicode",
+               reason = "pending integer conventions")]
     fn to_digit(self, radix: uint) -> Option<uint> { C::to_digit(self, radix) }
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_unicode(self) -> char::EscapeUnicode { C::escape_unicode(self) }
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> char::EscapeDefault { C::escape_default(self) }
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> uint { C::len_utf8(self) }
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf16(self) -> uint { C::len_utf16(self) }
-    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    #[unstable(feature = "unicode",
+               reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> { C::encode_utf8(self, dst) }
-    #[unstable = "pending decision about Iterator/Writer/Reader"]
+    #[unstable(feature = "unicode",
+               reason = "pending decision about Iterator/Writer/Reader")]
     fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> { C::encode_utf16(self, dst) }
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphabetic(self) -> bool {
         match self {
             'a' ... 'z' | 'A' ... 'Z' => true,
@@ -238,13 +251,15 @@ impl CharExt for char {
         }
     }
 
-    #[unstable = "mainly needed for compiler internals"]
+    #[unstable(feature = "unicode",
+               reason = "mainly needed for compiler internals")]
     fn is_xid_start(self) -> bool { derived_property::XID_Start(self) }
 
-    #[unstable = "mainly needed for compiler internals"]
+    #[unstable(feature = "unicode",
+               reason = "mainly needed for compiler internals")]
     fn is_xid_continue(self) -> bool { derived_property::XID_Continue(self) }
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_lowercase(self) -> bool {
         match self {
             'a' ... 'z' => true,
@@ -253,7 +268,7 @@ impl CharExt for char {
         }
     }
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_uppercase(self) -> bool {
         match self {
             'A' ... 'Z' => true,
@@ -262,7 +277,7 @@ impl CharExt for char {
         }
     }
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_whitespace(self) -> bool {
         match self {
             ' ' | '\x09' ... '\x0d' => true,
@@ -271,15 +286,15 @@ impl CharExt for char {
         }
     }
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphanumeric(self) -> bool {
         self.is_alphabetic() || self.is_numeric()
     }
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_control(self) -> bool { general_category::Cc(self) }
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_numeric(self) -> bool {
         match self {
             '0' ... '9' => true,
@@ -288,12 +303,15 @@ impl CharExt for char {
         }
     }
 
-    #[unstable = "pending case transformation decisions"]
+    #[unstable(feature = "unicode",
+               reason = "pending case transformation decisions")]
     fn to_lowercase(self) -> char { conversions::to_lower(self) }
 
-    #[unstable = "pending case transformation decisions"]
+    #[unstable(feature = "unicode",
+               reason = "pending case transformation decisions")]
     fn to_uppercase(self) -> char { conversions::to_upper(self) }
 
-    #[unstable = "needs expert opinion. is_cjk flag stands out as ugly"]
+    #[unstable(feature = "unicode",
+               reason = "needs expert opinion. is_cjk flag stands out as ugly")]
     fn width(self, is_cjk: bool) -> Option<uint> { charwidth::width(self, is_cjk) }
 }

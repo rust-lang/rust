@@ -60,7 +60,8 @@ pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
     debug!("demand::coerce(expected = {}, expr_ty = {})",
            expected.repr(fcx.ccx.tcx),
            expr_ty.repr(fcx.ccx.tcx));
-    let expected = fcx.infcx().resolve_type_vars_if_possible(&expected);
+    let expr_ty = fcx.resolve_type_vars_if_possible(expr_ty);
+    let expected = fcx.resolve_type_vars_if_possible(expected);
     match fcx.mk_assignty(expr, expr_ty, expected) {
       Ok(()) => { /* ok */ }
       Err(ref err) => {

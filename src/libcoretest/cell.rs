@@ -114,7 +114,6 @@ fn discard_doesnt_unborrow() {
 }
 
 #[test]
-#[allow(unstable)]
 fn clone_ref_updates_flag() {
     let x = RefCell::new(0i);
     {

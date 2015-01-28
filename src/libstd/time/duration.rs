@@ -10,7 +10,7 @@
 
 //! Temporal quantification
 
-#![unstable]
+#![unstable(feature = "std_misc")]
 
 use {fmt, i64};
 use ops::{Add, Sub, Mul, Div, Neg, FnOnce};
@@ -334,7 +334,7 @@ impl Div<i32> for Duration {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for Duration {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         // technically speaking, negative duration is not valid ISO 8601,

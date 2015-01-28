@@ -57,7 +57,8 @@
 //! default global allocator. It is not compatible with the libc allocator API.
 
 #![crate_name = "alloc"]
-#![unstable]
+#![unstable(feature = "alloc")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -66,13 +67,15 @@
 
 #![no_std]
 #![allow(unknown_features)]
-#![allow(unstable)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
 // FIXME(#21363) remove `old_impl_check` when bug is fixed
 #![feature(old_impl_check)]
 #![allow(unknown_features)] #![feature(int_uint)]
+#![feature(core)]
+#![feature(hash)]
+#![feature(libc)]
 
 #[macro_use]
 extern crate core;

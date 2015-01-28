@@ -10,10 +10,11 @@
 
 //! Abstraction of a thread pool for basic parallelism.
 
-#![unstable = "the semantics of a failing task and whether a thread is \
-               re-attached to a thread pool are somewhat unclear, and the \
-               utility of this type in `std::sync` is questionable with \
-               respect to the jobs of other primitives"]
+#![unstable(feature = "std_misc",
+            reason = "the semantics of a failing task and whether a thread is \
+                      re-attached to a thread pool are somewhat unclear, and the \
+                      utility of this type in `std::sync` is questionable with \
+                      respect to the jobs of other primitives")]
 
 use core::prelude::*;
 

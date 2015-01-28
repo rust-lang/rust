@@ -12,7 +12,7 @@
 //! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
 //! not required to be copyable, and the queue will be sendable if the contained type is sendable.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::prelude::*;
 
@@ -36,7 +36,7 @@ static INITIAL_CAPACITY: uint = 7u; // 2^3 - 1
 static MINIMUM_CAPACITY: uint = 1u; // 2 - 1
 
 /// `RingBuf` is a circular buffer, which can be used as a double-ended queue efficiently.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RingBuf<T> {
     // tail and head are pointers into the buffer. Tail always points
     // to the first element that could be read, Head always points
@@ -50,13 +50,13 @@ pub struct RingBuf<T> {
     ptr: *mut T
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Send> Send for RingBuf<T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<T: Sync> Sync for RingBuf<T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for RingBuf<T> {
     fn clone(&self) -> RingBuf<T> {
         self.iter().map(|t| t.clone()).collect()
@@ -64,7 +64,7 @@ impl<T: Clone> Clone for RingBuf<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for RingBuf<T> {
     fn drop(&mut self) {
         self.clear();
@@ -78,7 +78,7 @@ impl<T> Drop for RingBuf<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for RingBuf<T> {
     #[inline]
     fn default() -> RingBuf<T> { RingBuf::new() }
@@ -146,13 +146,13 @@ impl<T> RingBuf<T> {
 
 impl<T> RingBuf<T> {
     /// Creates an empty `RingBuf`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> RingBuf<T> {
         RingBuf::with_capacity(INITIAL_CAPACITY)
     }
 
     /// Creates an empty `RingBuf` with space for at least `n` elements.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(n: uint) -> RingBuf<T> {
         // +1 since the ringbuffer always leaves one space empty
         let cap = cmp::max(n + 1, MINIMUM_CAPACITY + 1).next_power_of_two();
@@ -191,7 +191,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(5);
     /// assert_eq!(buf.get(1).unwrap(), &4);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self, i: uint) -> Option<&T> {
         if i < self.len() {
             let idx = self.wrap_index(self.tail + i);
@@ -221,7 +221,7 @@ impl<T> RingBuf<T> {
     ///
     /// assert_eq!(buf[1], 7);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self, i: uint) -> Option<&mut T> {
         if i < self.len() {
             let idx = self.wrap_index(self.tail + i);
@@ -250,7 +250,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf[0], 5);
     /// assert_eq!(buf[2], 3);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&mut self, i: uint, j: uint) {
         assert!(i < self.len());
         assert!(j < self.len());
@@ -273,7 +273,7 @@ impl<T> RingBuf<T> {
     /// assert!(buf.capacity() >= 10);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint { self.cap - 1 }
 
     /// Reserves the minimum capacity for exactly `additional` more elements to be inserted in the
@@ -296,7 +296,7 @@ impl<T> RingBuf<T> {
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: uint) {
         self.reserve(additional);
     }
@@ -317,7 +317,7 @@ impl<T> RingBuf<T> {
     /// buf.reserve(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: uint) {
         let new_len = self.len() + additional;
         assert!(new_len + 1 > self.len(), "capacity overflow");
@@ -480,7 +480,8 @@ impl<T> RingBuf<T> {
     /// assert_eq!(buf.len(), 1);
     /// assert_eq!(Some(&5), buf.get(0));
     /// ```
-    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification; waiting on panic semantics")]
     pub fn truncate(&mut self, len: uint) {
         for _ in range(len, self.len()) {
             self.pop_back();
@@ -501,7 +502,7 @@ impl<T> RingBuf<T> {
     /// let b: &[_] = &[&5, &3, &4];
     /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
         Iter {
             tail: self.tail,
@@ -527,7 +528,7 @@ impl<T> RingBuf<T> {
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
     /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut int>>()[], b);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
         IterMut {
             tail: self.tail,
@@ -539,7 +540,7 @@ impl<T> RingBuf<T> {
     }
 
     /// Consumes the list into an iterator yielding elements by value.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
         IntoIter {
             inner: self,
@@ -549,7 +550,8 @@ impl<T> RingBuf<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `RingBuf`.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn as_slices<'a>(&'a self) -> (&'a [T], &'a [T]) {
         unsafe {
             let contiguous = self.is_contiguous();
@@ -568,7 +570,8 @@ impl<T> RingBuf<T> {
     /// Returns a pair of slices which contain, in order, the contents of the
     /// `RingBuf`.
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn as_mut_slices<'a>(&'a mut self) -> (&'a mut [T], &'a mut [T]) {
         unsafe {
             let contiguous = self.is_contiguous();
@@ -600,7 +603,7 @@ impl<T> RingBuf<T> {
     /// v.push_back(1i);
     /// assert_eq!(v.len(), 1);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { count(self.tail, self.head, self.cap) }
 
     /// Returns true if the buffer contains no elements
@@ -615,7 +618,7 @@ impl<T> RingBuf<T> {
     /// v.push_front(1i);
     /// assert!(!v.is_empty());
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Creates a draining iterator that clears the `RingBuf` and iterates over
@@ -632,7 +635,8 @@ impl<T> RingBuf<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
         Drain {
             inner: self,
@@ -651,7 +655,7 @@ impl<T> RingBuf<T> {
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn clear(&mut self) {
         self.drain();
@@ -672,7 +676,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.front(), Some(&1i));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[0]) } else { None }
     }
@@ -696,7 +700,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.front(), Some(&9i));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
         if !self.is_empty() { Some(&mut self[0]) } else { None }
     }
@@ -716,7 +720,7 @@ impl<T> RingBuf<T> {
     /// d.push_back(2i);
     /// assert_eq!(d.back(), Some(&2i));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
         if !self.is_empty() { Some(&self[self.len() - 1]) } else { None }
     }
@@ -740,7 +744,7 @@ impl<T> RingBuf<T> {
     /// }
     /// assert_eq!(d.back(), Some(&9i));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
         let len = self.len();
         if !self.is_empty() { Some(&mut self[len - 1]) } else { None }
@@ -762,7 +766,7 @@ impl<T> RingBuf<T> {
     /// assert_eq!(d.pop_front(), Some(2i));
     /// assert_eq!(d.pop_front(), None);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_front(&mut self) -> Option<T> {
         if self.is_empty() {
             None
@@ -785,7 +789,7 @@ impl<T> RingBuf<T> {
     /// d.push_front(2i);
     /// assert_eq!(d.front(), Some(&2i));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, t: T) {
         if self.is_full() {
             self.reserve(1);
@@ -809,7 +813,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(3);
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_back(&mut self, t: T) {
         if self.is_full() {
             self.reserve(1);
@@ -835,7 +839,7 @@ impl<T> RingBuf<T> {
     /// buf.push_back(3);
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop_back(&mut self) -> Option<T> {
         if self.is_empty() {
             None
@@ -872,7 +876,8 @@ impl<T> RingBuf<T> {
     /// buf.push_back(10);
     /// assert_eq!(buf.swap_back_remove(1), Some(99));
     /// ```
-    #[unstable = "the naming of this function may be altered"]
+    #[unstable(feature = "collections",
+               reason = "the naming of this function may be altered")]
     pub fn swap_back_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length - 1 {
@@ -904,7 +909,8 @@ impl<T> RingBuf<T> {
     /// buf.push_back(20i);
     /// assert_eq!(buf.swap_front_remove(3), Some(99));
     /// ```
-    #[unstable = "the naming of this function may be altered"]
+    #[unstable(feature = "collections",
+               reason = "the naming of this function may be altered")]
     pub fn swap_front_remove(&mut self, index: uint) -> Option<T> {
         let length = self.len();
         if length > 0 && index < length && index != 0 {
@@ -1137,7 +1143,7 @@ impl<T> RingBuf<T> {
     /// buf.remove(2);
     /// assert_eq!(Some(&15), buf.get(2));
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, i: uint) -> Option<T> {
         if self.is_empty() || self.len() <= i {
             return None;
@@ -1304,7 +1310,8 @@ impl<T: Clone> RingBuf<T> {
     ///     assert_eq!(a, b);
     /// }
     /// ```
-    #[unstable = "matches collection reform specification; waiting on panic semantics"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification; waiting on panic semantics")]
     pub fn resize(&mut self, new_len: uint, value: T) {
         let len = self.len();
 
@@ -1331,7 +1338,7 @@ fn count(tail: uint, head: uint, size: uint) -> uint {
 }
 
 /// `RingBuf` iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T:'a> {
     ring: &'a [T],
     tail: uint,
@@ -1349,7 +1356,7 @@ impl<'a, T> Clone for Iter<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
@@ -1370,7 +1377,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a T> {
@@ -1382,10 +1389,10 @@ impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Iter<'a, T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> RandomAccessIterator for Iter<'a, T> {
     #[inline]
     fn indexable(&self) -> uint {
@@ -1408,7 +1415,7 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
 //       with returning the mutable reference. I couldn't find a way to
 //       make the lifetime checker happy so, but there should be a way.
 /// `RingBuf` mutable iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T:'a> {
     ptr: *mut T,
     tail: uint,
@@ -1417,7 +1424,7 @@ pub struct IterMut<'a, T:'a> {
     marker: marker::ContravariantLifetime<'a>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for IterMut<'a, T> {
     type Item = &'a mut T;
 
@@ -1441,7 +1448,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a mut T> {
@@ -1456,16 +1463,16 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for IterMut<'a, T> {}
 
 /// A by-value RingBuf iterator
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     inner: RingBuf<T>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
@@ -1481,7 +1488,7 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1489,17 +1496,18 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 /// A draining RingBuf iterator
-#[unstable = "matches collection reform specification, waiting for dust to settle"]
+#[unstable(feature = "collections",
+           reason = "matches collection reform specification, waiting for dust to settle")]
 pub struct Drain<'a, T: 'a> {
     inner: &'a mut RingBuf<T>,
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         for _ in *self {}
@@ -1508,7 +1516,7 @@ impl<'a, T: 'a> Drop for Drain<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -1524,7 +1532,7 @@ impl<'a, T: 'a> Iterator for Drain<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1532,10 +1540,10 @@ impl<'a, T: 'a> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialEq> PartialEq for RingBuf<A> {
     fn eq(&self, other: &RingBuf<A>) -> bool {
         self.len() == other.len() &&
@@ -1543,17 +1551,17 @@ impl<A: PartialEq> PartialEq for RingBuf<A> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Eq> Eq for RingBuf<A> {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A: PartialOrd> PartialOrd for RingBuf<A> {
     fn partial_cmp(&self, other: &RingBuf<A>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Ord> Ord for RingBuf<A> {
     #[inline]
     fn cmp(&self, other: &RingBuf<A>) -> Ordering {
@@ -1561,7 +1569,7 @@ impl<A: Ord> Ord for RingBuf<A> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
@@ -1571,7 +1579,7 @@ impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for RingBuf<A> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Index<uint> for RingBuf<A> {
     type Output = A;
 
@@ -1581,7 +1589,7 @@ impl<A> Index<uint> for RingBuf<A> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A> IndexMut<uint> for RingBuf<A> {
     type Output = A;
 
@@ -1591,7 +1599,7 @@ impl<A> IndexMut<uint> for RingBuf<A> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for RingBuf<A> {
     fn from_iter<T: Iterator<Item=A>>(iterator: T) -> RingBuf<A> {
         let (lower, _) = iterator.size_hint();
@@ -1601,7 +1609,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for RingBuf<A> {
     fn extend<T: Iterator<Item=A>>(&mut self, mut iterator: T) {
         for elt in iterator {
@@ -1610,7 +1618,7 @@ impl<A> Extend<A> for RingBuf<A> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for RingBuf<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "RingBuf ["));

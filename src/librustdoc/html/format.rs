@@ -714,7 +714,7 @@ impl<'a> fmt::Display for Stability<'a> {
             Some(ref stability) => {
                 write!(f, "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
                        lvl = stability.level,
-                       reason = stability.text)
+                       reason = stability.reason)
             }
             None => Ok(())
         }
@@ -728,8 +728,8 @@ impl<'a> fmt::Display for ConciseStability<'a> {
             Some(ref stability) => {
                 write!(f, "<a class='stability {lvl}' title='{lvl}{colon}{reason}'></a>",
                        lvl = stability.level,
-                       colon = if stability.text.len() > 0 { ": " } else { "" },
-                       reason = stability.text)
+                       colon = if stability.reason.len() > 0 { ": " } else { "" },
+                       reason = stability.reason)
             }
             None => {
                 write!(f, "<a class='stability Unmarked' title='No stability level'></a>")
@@ -765,12 +765,6 @@ impl fmt::Display for ModuleSummary {
             try!(write!(f, "<span class='summary Unstable' \
                             style='width: {:.4}%; display: inline-block'>&nbsp</span>",
                         (100 * cnt.unstable) as f64/tot as f64));
-            try!(write!(f, "<span class='summary Experimental' \
-                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
-                        (100 * cnt.experimental) as f64/tot as f64));
-            try!(write!(f, "<span class='summary Deprecated' \
-                            style='width: {:.4}%; display: inline-block'>&nbsp</span>",
-                        (100 * cnt.deprecated) as f64/tot as f64));
             try!(write!(f, "<span class='summary Unmarked' \
                             style='width: {:.4}%; display: inline-block'>&nbsp</span>",
                         (100 * cnt.unmarked) as f64/tot as f64));
@@ -786,13 +780,11 @@ impl fmt::Display for ModuleSummary {
         let mut context = Vec::new();
 
         let tot = self.counts.total();
-        let (stable, unstable, experimental, deprecated, unmarked) = if tot == 0 {
-            (0, 0, 0, 0, 0)
+        let (stable, unstable, unmarked) = if tot == 0 {
+            (0, 0, 0)
         } else {
             ((100 * self.counts.stable)/tot,
              (100 * self.counts.unstable)/tot,
-             (100 * self.counts.experimental)/tot,
-             (100 * self.counts.deprecated)/tot,
              (100 * self.counts.unmarked)/tot)
         };
 
@@ -804,13 +796,11 @@ its children (percentages total for {name}):
 <blockquote>
 <a class='stability Stable'></a> stable ({}%),<br/>
 <a class='stability Unstable'></a> unstable ({}%),<br/>
-<a class='stability Experimental'></a> experimental ({}%),<br/>
-<a class='stability Deprecated'></a> deprecated ({}%),<br/>
 <a class='stability Unmarked'></a> unmarked ({}%)
 </blockquote>
 The counts do not include methods or trait
 implementations that are visible only through a re-exported type.",
-stable, unstable, experimental, deprecated, unmarked,
+stable, unstable, unmarked,
 name=self.name));
         try!(write!(f, "<table>"));
         try!(fmt_inner(f, &mut context, self));

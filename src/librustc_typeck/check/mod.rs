@@ -467,7 +467,8 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            body: &ast::Block,
                            id: ast::NodeId,
                            raw_fty: Ty<'tcx>,
-                           param_env: ty::ParameterEnvironment<'a, 'tcx>) {
+                           param_env: ty::ParameterEnvironment<'a, 'tcx>)
+{
     match raw_fty.sty {
         ty::ty_bare_fn(_, ref fn_ty) => {
             let inh = Inherited::new(ccx.tcx, param_env);
@@ -1240,6 +1241,36 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
     pub fn err_count_since_creation(&self) -> uint {
         self.ccx.tcx.sess.err_count() - self.err_count_on_creation
+    }
+
+    /// Resolves type variables in `ty` if possible. Unlike the infcx
+    /// version, this version will also select obligations if it seems
+    /// useful, in an effort to get more type information.
+    fn resolve_type_vars_if_possible(&self, mut ty: Ty<'tcx>) -> Ty<'tcx> {
+        // No ty::infer()? Nothing needs doing.
+        if !ty::type_has_ty_infer(ty) {
+            return ty;
+        }
+
+        // If `ty` is a type variable, see whether we already know what it is.
+        ty = self.infcx().resolve_type_vars_if_possible(&ty);
+        if !ty::type_has_ty_infer(ty) {
+            return ty;
+        }
+
+        // If not, try resolving any new fcx obligations that have cropped up.
+        vtable::select_new_fcx_obligations(self);
+        ty = self.infcx().resolve_type_vars_if_possible(&ty);
+        if !ty::type_has_ty_infer(ty) {
+            return ty;
+        }
+
+        // If not, try resolving *all* pending obligations as much as
+        // possible. This can help substantially when there are
+        // indirect dependencies that don't seem worth tracking
+        // precisely.
+        vtable::select_fcx_obligations_where_possible(self);
+        self.infcx().resolve_type_vars_if_possible(&ty)
     }
 
     /// Resolves all type variables in `t` and then, if any were left
@@ -2333,9 +2364,9 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let check_blocks = *check_blocks;
         debug!("check_blocks={}", check_blocks);
 
-        // More awful hacks: before we check the blocks, try to do
-        // an "opportunistic" vtable resolution of any trait
-        // bounds on the call.
+        // More awful hacks: before we check argument types, try to do
+        // an "opportunistic" vtable resolution of any trait bounds on
+        // the call. This helps coercions.
         if check_blocks {
             vtable::select_new_fcx_obligations(fcx);
         }
@@ -2875,7 +2906,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             // Shift is a special case: rhs must be uint, no matter what lhs is
             check_expr(fcx, &**rhs);
             let rhs_ty = fcx.expr_ty(&**rhs);
-            let rhs_ty = fcx.infcx().resolve_type_vars_if_possible(&rhs_ty);
+            let rhs_ty = structurally_resolved_type(fcx, rhs.span, rhs_ty);
             if ty::type_is_integral(rhs_ty) {
                 fcx.write_ty(expr.id, lhs_t);
             } else {
@@ -5127,21 +5158,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
-pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
-                                            mut ty: Ty<'tcx>) -> Ty<'tcx> {
-    // If `ty` is a type variable, see whether we already know what it is.
-    ty = fcx.infcx().shallow_resolve(ty);
-
-    // If not, try resolve pending fcx obligations. Those can shed light.
-    //
-    // FIXME(#18391) -- This current strategy can lead to bad performance in
-    // extreme cases.  We probably ought to smarter in general about
-    // only resolving when we need help and only resolving obligations
-    // will actually help.
-    if ty::type_is_ty_var(ty) {
-        vtable::select_fcx_obligations_where_possible(fcx);
-        ty = fcx.infcx().shallow_resolve(ty);
-    }
+pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                            sp: Span,
+                                            ty: Ty<'tcx>)
+                                            -> Ty<'tcx>
+{
+    let mut ty = fcx.resolve_type_vars_if_possible(ty);
 
     // If not, error.
     if ty::type_is_ty_var(ty) {

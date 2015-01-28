@@ -19,15 +19,15 @@
 //! explicitly, by convention implementing the `Clone` trait and calling
 //! the `clone` method.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use marker::Sized;
 
 /// A common trait for cloning an object.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Clone : Sized {
     /// Returns a copy of the value.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn clone(&self) -> Self;
 
     /// Perform copy-assignment from `source`.
@@ -36,13 +36,14 @@ pub trait Clone : Sized {
     /// but can be overridden to reuse the resources of `a` to avoid unnecessary
     /// allocations.
     #[inline(always)]
-    #[unstable = "this function is rarely used"]
+    #[unstable(feature = "core",
+               reason = "this function is rarely used")]
     fn clone_from(&mut self, source: &Self) {
         *self = source.clone()
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: ?Sized> Clone for &'a T {
     /// Return a shallow copy of the reference.
     #[inline]
@@ -51,7 +52,7 @@ impl<'a, T: ?Sized> Clone for &'a T {
 
 macro_rules! clone_impl {
     ($t:ty) => {
-        #[stable]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl Clone for $t {
             /// Return a deep copy of the value.
             #[inline]
@@ -81,7 +82,8 @@ clone_impl! { char }
 
 macro_rules! extern_fn_clone {
     ($($A:ident),*) => (
-        #[unstable = "this may not be sufficient for fns with region parameters"]
+        #[unstable(feature = "core",
+                   reason = "this may not be sufficient for fns with region parameters")]
         impl<$($A,)* ReturnType> Clone for extern "Rust" fn($($A),*) -> ReturnType {
             /// Return a copy of a function pointer
             #[inline]

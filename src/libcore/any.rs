@@ -69,7 +69,7 @@
 //! }
 //! ```
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use mem::transmute;
 use option::Option::{self, Some, None};
@@ -86,10 +86,11 @@ use marker::Sized;
 ///
 /// Every type with no non-`'static` references implements `Any`, so `Any` can
 /// be used as a trait object to emulate the effects dynamic typing.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait Any: 'static {
     /// Get the `TypeId` of `self`
-    #[unstable = "this method will likely be replaced by an associated static"]
+    #[unstable(feature = "core",
+               reason = "this method will likely be replaced by an associated static")]
     fn get_type_id(&self) -> TypeId;
 }
 
@@ -103,7 +104,7 @@ impl<T: 'static> Any for T {
 
 impl Any {
     /// Returns true if the boxed type is the same as `T`
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn is<T: 'static>(&self) -> bool {
         // Get TypeId of the type this function is instantiated with
@@ -118,7 +119,7 @@ impl Any {
 
     /// Returns some reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_ref<T: 'static>(&self) -> Option<&T> {
         if self.is::<T>() {
@@ -136,7 +137,7 @@ impl Any {
 
     /// Returns some mutable reference to the boxed value if it is of type `T`, or
     /// `None` if it isn't.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn downcast_mut<T: 'static>(&mut self) -> Option<&mut T> {
         if self.is::<T>() {
@@ -167,7 +168,7 @@ impl Any {
 /// but this limitation may be removed in the future.
 #[cfg_attr(stage0, lang = "type_id")]
 #[derive(Clone, Copy, PartialEq, Eq, Show, Hash)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct TypeId {
     t: u64,
 }
@@ -175,7 +176,8 @@ pub struct TypeId {
 impl TypeId {
     /// Returns the `TypeId` of the type this generic function has been
     /// instantiated with
-    #[unstable = "may grow a `Reflect` bound soon via marker traits"]
+    #[unstable(feature = "core",
+               reason = "may grow a `Reflect` bound soon via marker traits")]
     pub fn of<T: ?Sized + 'static>() -> TypeId {
         TypeId {
             t: unsafe { intrinsics::type_id::<T>() },

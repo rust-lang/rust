@@ -26,7 +26,7 @@ where T : Convert<U>
 }
 
 fn a() {
-    test(22is, 44is); //~ ERROR not implemented
+    test(22is, 44is); //~ ERROR mismatched types
 }
 
 fn main() {}

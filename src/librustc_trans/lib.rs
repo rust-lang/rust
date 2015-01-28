@@ -15,7 +15,8 @@
 //! This API is completely unstable and subject to change.
 
 #![crate_name = "rustc_trans"]
-#![unstable]
+#![unstable(feature = "rustc_private")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -29,7 +30,17 @@
 #![feature(box_syntax)]
 #![feature(rustc_diagnostic_macros)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(alloc)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(libc)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(unicode)]
+#![feature(hash)]
 
 extern crate arena;
 extern crate flate;

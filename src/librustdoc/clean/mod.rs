@@ -32,6 +32,7 @@ use syntax::ast_util;
 use syntax::ast_util::PostExpansionMethod;
 use syntax::attr;
 use syntax::attr::{AttributeMethods, AttrMetaMethods};
+use syntax::codemap;
 use syntax::codemap::{DUMMY_SP, Pos, Spanned};
 use syntax::parse::token::{self, InternedString, special_idents};
 use syntax::ptr::P;
@@ -446,11 +447,13 @@ impl attr::AttrMetaMethods for Attribute {
         }
     }
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<ast::MetaItem>]> { None }
+    fn span(&self) -> codemap::Span { unimplemented!() }
 }
 impl<'a> attr::AttrMetaMethods for &'a Attribute {
     fn name(&self) -> InternedString { (**self).name() }
     fn value_str(&self) -> Option<InternedString> { (**self).value_str() }
     fn meta_item_list(&self) -> Option<&[P<ast::MetaItem>]> { None }
+    fn span(&self) -> codemap::Span { unimplemented!() }
 }
 
 #[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show)]
@@ -533,7 +536,7 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
     match (trait_did, cx.tcx_opt()) {
         // Attempt to sugar an external path like Fn<(A, B,), C> to Fn(A, B) -> C
         (Some(did), Some(ref tcx)) if tcx.lang_items.fn_trait_kind(did).is_some() => {
-            assert_eq!(types.len(), 2);
+            assert_eq!(types.len(), 1);
             let inputs = match types[0].sty {
                 sty::ty_tup(ref tys) => tys.iter().map(|t| t.clean(cx)).collect(),
                 _ => {
@@ -544,10 +547,12 @@ fn external_path_params(cx: &DocContext, trait_did: Option<ast::DefId>,
                     }
                 }
             };
-            let output = match types[1].sty {
-                sty::ty_tup(ref v) if v.is_empty() => None, // -> ()
-                _ => Some(types[1].clean(cx))
-            };
+            let output = None;
+            // FIXME(#20299) return type comes from a projection now
+            // match types[1].sty {
+            //     sty::ty_tup(ref v) if v.is_empty() => None, // -> ()
+            //     _ => Some(types[1].clean(cx))
+            // };
             PathParameters::Parenthesized {
                 inputs: inputs,
                 output: output
@@ -2473,15 +2478,20 @@ impl Clean<Item> for doctree::Macro {
 #[derive(Clone, RustcEncodable, RustcDecodable, Show)]
 pub struct Stability {
     pub level: attr::StabilityLevel,
-    pub text: String
+    pub feature: String,
+    pub since: String,
+    pub reason: String
 }
 
 impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
             level: self.level,
-            text: self.text.as_ref().map_or("".to_string(),
-                                            |interned| interned.get().to_string()),
+            feature: self.feature.get().to_string(),
+            since: self.since.as_ref().map_or("".to_string(),
+                                              |interned| interned.get().to_string()),
+            reason: self.reason.as_ref().map_or("".to_string(),
+                                                |interned| interned.get().to_string()),
         }
     }
 }

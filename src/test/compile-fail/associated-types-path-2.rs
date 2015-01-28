@@ -25,7 +25,7 @@ pub fn f2<T: Foo>(a: T) -> T::A {
 
 pub fn f1_int_int() {
     f1(2is, 4is);
-    //~^ ERROR type mismatch resolving
+    //~^ ERROR mismatched types
     //~| expected usize
     //~| found isize
 }
@@ -51,8 +51,6 @@ pub fn f2_int() {
     //~^ ERROR mismatched types
     //~| expected `isize`
     //~| found `usize`
-    //~| expected isize
-    //~| found usize
 }
 
 pub fn main() { }

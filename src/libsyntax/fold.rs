@@ -536,9 +536,10 @@ pub fn noop_fold_parenthesized_parameter_data<T: Folder>(data: ParenthesizedPara
                                                          fld: &mut T)
                                                          -> ParenthesizedParameterData
 {
-    let ParenthesizedParameterData { inputs, output } = data;
+    let ParenthesizedParameterData { inputs, output, span } = data;
     ParenthesizedParameterData { inputs: inputs.move_map(|ty| fld.fold_ty(ty)),
-                                 output: output.map(|ty| fld.fold_ty(ty)) }
+                                 output: output.map(|ty| fld.fold_ty(ty)),
+                                 span: fld.new_span(span) }
 }
 
 pub fn noop_fold_local<T: Folder>(l: P<Local>, fld: &mut T) -> P<Local> {

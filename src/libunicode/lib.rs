@@ -21,7 +21,8 @@
 //! (yet) aim to provide a full set of Unicode tables.
 
 #![crate_name = "unicode"]
-#![unstable]
+#![unstable(feature = "unicode")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -31,7 +32,7 @@
 #![no_std]
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(core)]
 
 extern crate core;
 
@@ -59,7 +60,7 @@ mod u_str;
 /// (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
 /// however the converse is not always true due to the above range limits
 /// and, as such, should be performed via the `from_u32` function..
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod char {
     pub use core::char::{MAX, from_u32, from_digit};
 

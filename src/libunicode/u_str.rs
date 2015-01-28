@@ -30,7 +30,7 @@ use u_char::CharExt as UCharExt; // conflicts with core::prelude::CharExt
 use tables::grapheme::GraphemeCat;
 
 /// An iterator over the words of a string, separated by a sequence of whitespace
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Words<'a> {
     inner: Filter<&'a str, Split<'a, fn(char) -> bool>, fn(&&str) -> bool>,
 }

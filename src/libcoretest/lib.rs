@@ -12,7 +12,6 @@
 #![feature(unboxed_closures)]
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 
 extern crate core;
 extern crate test;

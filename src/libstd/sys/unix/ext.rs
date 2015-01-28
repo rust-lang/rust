@@ -29,7 +29,7 @@
 //! }
 //! ```
 
-#![unstable]
+#![unstable(feature = "std_misc")]
 
 use vec::Vec;
 use sys::os_str::Buf;

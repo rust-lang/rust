@@ -22,7 +22,9 @@ fn call_it_mut<F:FnMut(&isize)->isize>(_: &mut F, _: isize) -> isize { 0 }
 fn call_it_once<F:FnOnce(&isize)->isize>(_: F, _: isize) -> isize { 0 }
 
 fn a() {
-    let x = call_it(&square, 22); //~ ERROR not implemented
+    let x = call_it(&square, 22);
+    //~^ ERROR not implemented
+    //~| ERROR not implemented
 }
 
 fn b() {

@@ -10,7 +10,7 @@
 
 //! Operations and constants for signed 8-bits integers (`i8` type)
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "i8")]
 
 pub use core::i8::{BITS, BYTES, MIN, MAX};

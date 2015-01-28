@@ -10,7 +10,7 @@
 
 //! Operations and constants for signed 16-bits integers (`i16` type)
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "i16")]
 
 pub use core::i16::{BITS, BYTES, MIN, MAX};

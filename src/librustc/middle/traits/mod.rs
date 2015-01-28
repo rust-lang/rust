@@ -18,7 +18,7 @@ pub use self::ObligationCauseCode::*;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::ty::{self, Ty};
-use middle::infer::InferCtxt;
+use middle::infer::{self, InferCtxt};
 use std::slice::Iter;
 use std::rc::Rc;
 use syntax::ast;
@@ -390,6 +390,65 @@ pub fn type_known_to_meet_builtin_bound<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
             false
         }
     }
+}
+
+pub fn normalize_param_env_or_error<'a,'tcx>(unnormalized_env: ty::ParameterEnvironment<'a,'tcx>,
+                                             cause: ObligationCause<'tcx>)
+                                             -> ty::ParameterEnvironment<'a,'tcx>
+{
+    match normalize_param_env(&unnormalized_env, cause) {
+        Ok(p) => p,
+        Err(errors) => {
+            // I'm not wild about reporting errors here; I'd prefer to
+            // have the errors get reported at a defined place (e.g.,
+            // during typeck). Instead I have all parameter
+            // environments, in effect, going through this function
+            // and hence potentially reporting errors. This ensurse of
+            // course that we never forget to normalize (the
+            // alternative seemed like it would involve a lot of
+            // manual invocations of this fn -- and then we'd have to
+            // deal with the errors at each of those sites).
+            //
+            // In any case, in practice, typeck constructs all the
+            // parameter environments once for every fn as it goes,
+            // and errors will get reported then; so after typeck we
+            // can be sure that no errors should occur.
+            let infcx = infer::new_infer_ctxt(unnormalized_env.tcx);
+            report_fulfillment_errors(&infcx, &errors);
+
+            // Normalized failed? use what they gave us, it's better than nothing.
+            unnormalized_env
+        }
+    }
+}
+
+pub fn normalize_param_env<'a,'tcx>(param_env: &ty::ParameterEnvironment<'a,'tcx>,
+                                    cause: ObligationCause<'tcx>)
+                                    -> Result<ty::ParameterEnvironment<'a,'tcx>,
+                                              Vec<FulfillmentError<'tcx>>>
+{
+    let tcx = param_env.tcx;
+
+    debug!("normalize_param_env(param_env={})",
+           param_env.repr(tcx));
+
+    let predicates: Vec<ty::Predicate<'tcx>> = {
+        let infcx = infer::new_infer_ctxt(tcx);
+        let mut selcx = &mut SelectionContext::new(&infcx, param_env);
+        let mut fulfill_cx = FulfillmentContext::new();
+        let Normalized { value: predicates, obligations } =
+            project::normalize(selcx, cause, &param_env.caller_bounds);
+        for obligation in obligations.into_iter() {
+            fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
+        }
+        try!(fulfill_cx.select_all_or_error(selcx.infcx(), param_env));
+        predicates.iter().map(|p| infcx.resolve_type_vars_if_possible(p)).collect()
+    };
+
+    debug!("normalize_param_env: predicates={}",
+           predicates.repr(tcx));
+
+    Ok(param_env.with_caller_bounds(predicates))
 }
 
 impl<'tcx,O> Obligation<'tcx,O> {

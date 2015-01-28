@@ -58,7 +58,7 @@ use sys_common::rwlock as sys;
 ///     assert_eq!(*w, 6);
 /// } // write lock is dropped here
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLock<T> {
     inner: Box<StaticRwLock>,
     data: UnsafeCell<T>,
@@ -90,7 +90,8 @@ unsafe impl<T> Sync for RwLock<T> {}
 /// }
 /// unsafe { LOCK.destroy() } // free all resources
 /// ```
-#[unstable = "may be merged with RwLock in the future"]
+#[unstable(feature = "std_misc",
+           reason = "may be merged with RwLock in the future")]
 pub struct StaticRwLock {
     lock: sys::RWLock,
     poison: poison::Flag,
@@ -100,7 +101,8 @@ unsafe impl Send for StaticRwLock {}
 unsafe impl Sync for StaticRwLock {}
 
 /// Constant initialization for a statically-initialized rwlock.
-#[unstable = "may be merged with RwLock in the future"]
+#[unstable(feature = "std_misc",
+           reason = "may be merged with RwLock in the future")]
 pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
     lock: sys::RWLOCK_INIT,
     poison: poison::FLAG_INIT,
@@ -109,7 +111,7 @@ pub const RW_LOCK_INIT: StaticRwLock = StaticRwLock {
 /// RAII structure used to release the shared read access of a lock when
 /// dropped.
 #[must_use]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockReadGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
@@ -120,7 +122,7 @@ impl<'a, T> !marker::Send for RwLockReadGuard<'a, T> {}
 /// RAII structure used to release the exclusive write access of a lock when
 /// dropped.
 #[must_use]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct RwLockWriteGuard<'a, T: 'a> {
     __lock: &'a StaticRwLock,
     __data: &'a UnsafeCell<T>,
@@ -139,7 +141,7 @@ impl<T: Send + Sync> RwLock<T> {
     ///
     /// let lock = RwLock::new(5);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> RwLock<T> {
         RwLock { inner: box RW_LOCK_INIT, data: UnsafeCell::new(t) }
     }
@@ -162,7 +164,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock.
     /// The failure will occur immediately after the lock has been acquired.
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn read(&self) -> LockResult<RwLockReadGuard<T>> {
         unsafe { self.inner.lock.read() }
         RwLockReadGuard::new(&*self.inner, &self.data)
@@ -184,7 +186,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_read(&self) -> TryLockResult<RwLockReadGuard<T>> {
         if unsafe { self.inner.lock.try_read() } {
             Ok(try!(RwLockReadGuard::new(&*self.inner, &self.data)))
@@ -208,7 +210,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// is poisoned whenever a writer panics while holding an exclusive lock.
     /// An error will be returned when the lock is acquired.
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn write(&self) -> LockResult<RwLockWriteGuard<T>> {
         unsafe { self.inner.lock.write() }
         RwLockWriteGuard::new(&*self.inner, &self.data)
@@ -227,7 +229,7 @@ impl<T: Send + Sync> RwLock<T> {
     /// error will only be returned if the lock would have otherwise been
     /// acquired.
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn try_write(&self) -> TryLockResult<RwLockWriteGuard<T>> {
         if unsafe { self.inner.lock.try_read() } {
             Ok(try!(RwLockWriteGuard::new(&*self.inner, &self.data)))
@@ -238,7 +240,7 @@ impl<T: Send + Sync> RwLock<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for RwLock<T> {
     fn drop(&mut self) {
         unsafe { self.inner.lock.destroy() }
@@ -255,7 +257,8 @@ impl StaticRwLock {
     ///
     /// See `RwLock::read`.
     #[inline]
-    #[unstable = "may be merged with RwLock in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with RwLock in the future")]
     pub fn read(&'static self) -> LockResult<RwLockReadGuard<'static, ()>> {
         unsafe { self.lock.read() }
         RwLockReadGuard::new(self, &DUMMY.0)
@@ -265,7 +268,8 @@ impl StaticRwLock {
     ///
     /// See `RwLock::try_read`.
     #[inline]
-    #[unstable = "may be merged with RwLock in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with RwLock in the future")]
     pub fn try_read(&'static self)
                     -> TryLockResult<RwLockReadGuard<'static, ()>> {
         if unsafe { self.lock.try_read() } {
@@ -280,7 +284,8 @@ impl StaticRwLock {
     ///
     /// See `RwLock::write`.
     #[inline]
-    #[unstable = "may be merged with RwLock in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with RwLock in the future")]
     pub fn write(&'static self) -> LockResult<RwLockWriteGuard<'static, ()>> {
         unsafe { self.lock.write() }
         RwLockWriteGuard::new(self, &DUMMY.0)
@@ -290,7 +295,8 @@ impl StaticRwLock {
     ///
     /// See `RwLock::try_write`.
     #[inline]
-    #[unstable = "may be merged with RwLock in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with RwLock in the future")]
     pub fn try_write(&'static self)
                      -> TryLockResult<RwLockWriteGuard<'static, ()>> {
         if unsafe { self.lock.try_write() } {
@@ -306,7 +312,8 @@ impl StaticRwLock {
     /// active users of the lock, and this also doesn't prevent any future users
     /// of this lock. This method is required to be called to not leak memory on
     /// all platforms.
-    #[unstable = "may be merged with RwLock in the future"]
+    #[unstable(feature = "std_misc",
+               reason = "may be merged with RwLock in the future")]
     pub unsafe fn destroy(&'static self) {
         self.lock.destroy()
     }
@@ -338,19 +345,19 @@ impl<'rwlock, T> RwLockWriteGuard<'rwlock, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T> Deref for RwLockReadGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T> Deref for RwLockWriteGuard<'rwlock, T> {
     type Target = T;
 
     fn deref(&self) -> &T { unsafe { &*self.__data.get() } }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'rwlock, T> DerefMut for RwLockWriteGuard<'rwlock, T> {
     fn deref_mut(&mut self) -> &mut T {
         unsafe { &mut *self.__data.get() }
@@ -358,7 +365,7 @@ impl<'rwlock, T> DerefMut for RwLockWriteGuard<'rwlock, T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for RwLockReadGuard<'a, T> {
     fn drop(&mut self) {
         unsafe { self.__lock.lock.read_unlock(); }
@@ -366,7 +373,7 @@ impl<'a, T> Drop for RwLockReadGuard<'a, T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
     fn drop(&mut self) {
         self.__lock.poison.done(&self.__poison);

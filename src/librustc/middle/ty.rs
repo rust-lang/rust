@@ -452,7 +452,10 @@ pub struct MethodParam<'tcx> {
     // never contains bound regions; those regions should have been
     // instantiated with fresh variables at this point.
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
-    // index of uint in the list of methods for the trait
+
+    // index of uint in the list of trait items. Note that this is NOT
+    // the index into the vtable, because the list of trait items
+    // includes associated types.
     pub method_num: uint,
 
     /// The impl for the trait from which the method comes. This
@@ -471,14 +474,14 @@ pub struct MethodObject<'tcx> {
     // the actual base trait id of the object
     pub object_trait_id: ast::DefId,
 
-    // index of the method to be invoked amongst the trait's methods
+    // index of the method to be invoked amongst the trait's items
     pub method_num: uint,
 
     // index into the actual runtime vtable.
     // the vtable is formed by concatenating together the method lists of
-    // the base object trait and all supertraits;  this is the index into
+    // the base object trait and all supertraits; this is the index into
     // that vtable
-    pub real_index: uint,
+    pub vtable_index: uint,
 }
 
 #[derive(Clone)]
@@ -2084,11 +2087,7 @@ impl<'tcx> TraitRef<'tcx> {
 pub struct ParameterEnvironment<'a, 'tcx:'a> {
     pub tcx: &'a ctxt<'tcx>,
 
-    /// A substitution that can be applied to move from
-    /// the "outer" view of a type or method to the "inner" view.
-    /// In general, this means converting from bound parameters to
-    /// free parameters. Since we currently represent bound/free type
-    /// parameters in the same way, this only has an effect on regions.
+    /// See `construct_free_substs` for details.
     pub free_substs: Substs<'tcx>,
 
     /// Each type parameter has an implicit region bound that
@@ -2100,7 +2099,7 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
     /// Obligations that the caller must satisfy. This is basically
     /// the set of bounds on the in-scope type parameters, translated
     /// into Obligations.
-    pub caller_bounds: ty::GenericBounds<'tcx>,
+    pub caller_bounds: Vec<ty::Predicate<'tcx>>,
 
     /// Caches the results of trait selection. This cache is used
     /// for things that have to do with the parameters in scope.
@@ -2108,6 +2107,19 @@ pub struct ParameterEnvironment<'a, 'tcx:'a> {
 }
 
 impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
+    pub fn with_caller_bounds(&self,
+                              caller_bounds: Vec<ty::Predicate<'tcx>>)
+                              -> ParameterEnvironment<'a,'tcx>
+    {
+        ParameterEnvironment {
+            tcx: self.tcx,
+            free_substs: self.free_substs.clone(),
+            implicit_region_bound: self.implicit_region_bound,
+            caller_bounds: caller_bounds,
+            selection_cache: traits::SelectionCache::new(),
+        }
+    }
+
     pub fn for_item(cx: &'a ctxt<'tcx>, id: NodeId) -> ParameterEnvironment<'a, 'tcx> {
         match cx.map.find(id) {
             Some(ast_map::NodeImplItem(ref impl_item)) => {
@@ -2119,6 +2131,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                 let method_generics = &method_ty.generics;
                                 construct_parameter_environment(
                                     cx,
+                                    method.span,
                                     method_generics,
                                     method.pe_body().id)
                             }
@@ -2153,6 +2166,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                                 let method_generics = &method_ty.generics;
                                 construct_parameter_environment(
                                     cx,
+                                    method.span,
                                     method_generics,
                                     method.pe_body().id)
                             }
@@ -2179,6 +2193,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         let fn_pty = ty::lookup_item_type(cx, fn_def_id);
 
                         construct_parameter_environment(cx,
+                                                        item.span,
                                                         &fn_pty.generics,
                                                         body.id)
                     }
@@ -2189,7 +2204,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     ast::ItemStatic(..) => {
                         let def_id = ast_util::local_def(id);
                         let pty = ty::lookup_item_type(cx, def_id);
-                        construct_parameter_environment(cx, &pty.generics, id)
+                        construct_parameter_environment(cx, item.span, &pty.generics, id)
                     }
                     _ => {
                         cx.sess.span_bug(item.span,
@@ -6258,23 +6273,22 @@ impl Variance {
 pub fn empty_parameter_environment<'a,'tcx>(cx: &'a ctxt<'tcx>) -> ParameterEnvironment<'a,'tcx> {
     ty::ParameterEnvironment { tcx: cx,
                                free_substs: Substs::empty(),
-                               caller_bounds: GenericBounds::empty(),
+                               caller_bounds: Vec::new(),
                                implicit_region_bound: ty::ReEmpty,
                                selection_cache: traits::SelectionCache::new(), }
 }
 
-/// See `ParameterEnvironment` struct def'n for details
-pub fn construct_parameter_environment<'a,'tcx>(
+/// Constructs and returns a substitution that can be applied to move from
+/// the "outer" view of a type or method to the "inner" view.
+/// In general, this means converting from bound parameters to
+/// free parameters. Since we currently represent bound/free type
+/// parameters in the same way, this only has an effect on regions.
+pub fn construct_free_substs<'a,'tcx>(
     tcx: &'a ctxt<'tcx>,
     generics: &ty::Generics<'tcx>,
     free_id: ast::NodeId)
-    -> ParameterEnvironment<'a, 'tcx>
+    -> Substs<'tcx>
 {
-
-    //
-    // Construct the free substs.
-    //
-
     // map T => T
     let mut types = VecPerParamSpace::empty();
     push_types_from_defs(tcx, &mut types, generics.types.as_slice());
@@ -6283,39 +6297,9 @@ pub fn construct_parameter_environment<'a,'tcx>(
     let mut regions = VecPerParamSpace::empty();
     push_region_params(&mut regions, free_id, generics.regions.as_slice());
 
-    let free_substs = Substs {
+    return Substs {
         types: types,
         regions: subst::NonerasedRegions(regions)
-    };
-
-    let free_id_scope = region::CodeExtent::from_node_id(free_id);
-
-    //
-    // Compute the bounds on Self and the type parameters.
-    //
-
-    let bounds = generics.to_bounds(tcx, &free_substs);
-    let bounds = liberate_late_bound_regions(tcx, free_id_scope, &ty::Binder(bounds));
-
-    //
-    // Compute region bounds. For now, these relations are stored in a
-    // global table on the tcx, so just enter them there. I'm not
-    // crazy about this scheme, but it's convenient, at least.
-    //
-
-    record_region_bounds(tcx, &bounds);
-
-    debug!("construct_parameter_environment: free_id={:?} free_subst={:?} bounds={:?}",
-           free_id,
-           free_substs.repr(tcx),
-           bounds.repr(tcx));
-
-    return ty::ParameterEnvironment {
-        tcx: tcx,
-        free_substs: free_substs,
-        implicit_region_bound: ty::ReScope(free_id_scope),
-        caller_bounds: bounds,
-        selection_cache: traits::SelectionCache::new(),
     };
 
     fn push_region_params(regions: &mut VecPerParamSpace<ty::Region>,
@@ -6337,11 +6321,73 @@ pub fn construct_parameter_environment<'a,'tcx>(
             types.push(def.space, ty);
        }
     }
+}
 
-    fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>, bounds: &GenericBounds<'tcx>) {
-        debug!("record_region_bounds(bounds={:?})", bounds.repr(tcx));
+/// See `ParameterEnvironment` struct def'n for details
+pub fn construct_parameter_environment<'a,'tcx>(
+    tcx: &'a ctxt<'tcx>,
+    span: Span,
+    generics: &ty::Generics<'tcx>,
+    free_id: ast::NodeId)
+    -> ParameterEnvironment<'a, 'tcx>
+{
+    //
+    // Construct the free substs.
+    //
 
-        for predicate in bounds.predicates.iter() {
+    let free_substs = construct_free_substs(tcx, generics, free_id);
+    let free_id_scope = region::CodeExtent::from_node_id(free_id);
+
+    //
+    // Compute the bounds on Self and the type parameters.
+    //
+
+    let bounds = generics.to_bounds(tcx, &free_substs);
+    let bounds = liberate_late_bound_regions(tcx, free_id_scope, &ty::Binder(bounds));
+    let predicates = bounds.predicates.into_vec();
+
+    //
+    // Compute region bounds. For now, these relations are stored in a
+    // global table on the tcx, so just enter them there. I'm not
+    // crazy about this scheme, but it's convenient, at least.
+    //
+
+    record_region_bounds(tcx, &*predicates);
+
+    debug!("construct_parameter_environment: free_id={:?} free_subst={:?} predicates={:?}",
+           free_id,
+           free_substs.repr(tcx),
+           predicates.repr(tcx));
+
+    //
+    // Finally, we have to normalize the bounds in the environment, in
+    // case they contain any associated type projections. This process
+    // can yield errors if the put in illegal associated types, like
+    // `<i32 as Foo>::Bar` where `i32` does not implement `Foo`. We
+    // report these errors right here; this doesn't actually feel
+    // right to me, because constructing the environment feels like a
+    // kind of a "idempotent" action, but I'm not sure where would be
+    // a better place. In practice, we construct environments for
+    // every fn once during type checking, and we'll abort if there
+    // are any errors at that point, so after type checking you can be
+    // sure that this will succeed without errors anyway.
+    //
+
+    let unnormalized_env = ty::ParameterEnvironment {
+        tcx: tcx,
+        free_substs: free_substs,
+        implicit_region_bound: ty::ReScope(free_id_scope),
+        caller_bounds: predicates,
+        selection_cache: traits::SelectionCache::new(),
+    };
+
+    let cause = traits::ObligationCause::misc(span, free_id);
+    return traits::normalize_param_env_or_error(unnormalized_env, cause);
+
+    fn record_region_bounds<'tcx>(tcx: &ty::ctxt<'tcx>, predicates: &[ty::Predicate<'tcx>]) {
+        debug!("record_region_bounds(predicates={:?})", predicates.repr(tcx));
+
+        for predicate in predicates.iter() {
             match *predicate {
                 Predicate::Projection(..) |
                 Predicate::Trait(..) |

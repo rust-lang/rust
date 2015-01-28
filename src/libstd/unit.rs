@@ -9,7 +9,7 @@
 // except according to those terms.
 
 #![doc(primitive = "unit")]
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 //! The `()` type, sometimes called "unit" or "nil".
 //!
