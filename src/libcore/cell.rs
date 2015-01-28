@@ -594,12 +594,6 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 /// The `UnsafeCell<T>` type is the only legal way to obtain aliasable data that is considered
 /// mutable. In general, transmuting an `&T` type into an `&mut T` is considered undefined behavior.
 ///
-/// Although it is possible to put an `UnsafeCell<T>` into static item, it is not permitted to take
-/// the address of the static item if the item is not declared as mutable. This rule exists because
-/// immutable static items are stored in read-only memory, and thus any attempt to mutate their
-/// interior can cause segfaults. Immutable static items containing `UnsafeCell<T>` instances are
-/// still useful as read-only initializers, however, so we do not forbid them altogether.
-///
 /// Types like `Cell<T>` and `RefCell<T>` use this type to wrap their internal data.
 ///
 /// `UnsafeCell<T>` doesn't opt-out from any marker traits, instead, types with an `UnsafeCell<T>`
