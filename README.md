@@ -30,9 +30,9 @@ documentation.
 
     To build from the [tarball] do:
 
-        $ curl -O https://static.rust-lang.org/dist/rust-nightly.tar.gz
-        $ tar -xzf rust-nightly.tar.gz
-        $ cd rust-nightly
+        $ curl -O https://static.rust-lang.org/dist/rustc-nightly-src.tar.gz
+        $ tar -xzf rustc-nightly-src.tar.gz
+        $ cd rustc-nightly
 
     Or to build from the [repo] do:
 
@@ -80,7 +80,7 @@ $ pacman -S base-devel
         $ make && make install
 
 [repo]: https://github.com/rust-lang/rust
-[tarball]: https://static.rust-lang.org/dist/rust-nightly.tar.gz
+[tarball]: https://static.rust-lang.org/dist/rustc-nightly-src.tar.gz
 [trpl]: http://doc.rust-lang.org/book/index.html
 
 ## Notes
