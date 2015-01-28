@@ -296,7 +296,7 @@ extern {
     fn pthread_set_name_np(tid: libc::pthread_t, name: *const libc::c_char);
 }
 
-#[cfg(target_os = "macos")]
+#[cfg(any(target_os = "macos", target_os = "ios"))]
 extern {
     pub fn pthread_self() -> libc::pthread_t;
     pub fn pthread_get_stackaddr_np(thread: libc::pthread_t) -> *mut libc::c_void;
