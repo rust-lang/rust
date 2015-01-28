@@ -278,7 +278,7 @@ fn min_stack_size(_: *const libc::pthread_attr_t) -> libc::size_t {
     PTHREAD_STACK_MIN
 }
 
-#[cfg(any(target_os = "linux"))]
+#[cfg(any(target_os = "linux", target_os = "android"))]
 extern {
     pub fn pthread_self() -> libc::pthread_t;
     pub fn pthread_getattr_np(native: libc::pthread_t,
