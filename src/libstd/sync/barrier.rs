@@ -29,7 +29,7 @@ use sync::{Mutex, Condvar};
 ///     });
 /// }
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Barrier {
     lock: Mutex<BarrierState>,
     cvar: Condvar,
@@ -54,7 +54,7 @@ impl Barrier {
     ///
     /// A barrier will block `n`-1 threads which call `wait` and then wake up
     /// all threads at once when the `n`th thread calls `wait`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(n: uint) -> Barrier {
         Barrier {
             lock: Mutex::new(BarrierState {
@@ -75,7 +75,7 @@ impl Barrier {
     /// returns `true` from `is_leader` when returning from this function, and
     /// all other threads will receive a result that will return `false` from
     /// `is_leader`
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn wait(&self) -> BarrierWaitResult {
         let mut lock = self.lock.lock().unwrap();
         let local_gen = lock.generation_id;
@@ -102,7 +102,7 @@ impl BarrierWaitResult {
     ///
     /// Only one thread will have `true` returned from their result, all other
     /// threads will have `false` returned.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_leader(&self) -> bool { self.0 }
 }
 

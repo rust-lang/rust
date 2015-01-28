@@ -408,7 +408,7 @@ fn note_obligation_cause_code<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
         }
         ObligationCauseCode::CompareImplMethodObligation => {
             span_note!(tcx.sess, cause_span,
-                      "the requirement `{}` appears on the impl method\
+                      "the requirement `{}` appears on the impl method \
                       but not on the corresponding trait method",
                       predicate.user_string(infcx.tcx));
         }

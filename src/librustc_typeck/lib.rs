@@ -64,7 +64,8 @@ This API is completely unstable and subject to change.
 */
 
 #![crate_name = "rustc_typeck"]
-#![unstable]
+#![unstable(feature = "rustc_private")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -79,7 +80,10 @@ This API is completely unstable and subject to change.
 #![feature(rustc_diagnostic_macros)]
 #![allow(unknown_features)] #![feature(int_uint)]
 #![allow(non_camel_case_types)]
-#![allow(unstable)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

@@ -43,7 +43,7 @@
 //!
 //! This will print `Cons(1i32, Box(Cons(2i32, Box(Nil))))`.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::any::Any;
 use core::clone::Clone;
@@ -77,14 +77,15 @@ use core::result::Result;
 /// }
 /// ```
 #[lang = "exchange_heap"]
-#[unstable = "may be renamed; uncertain about custom allocator design"]
+#[unstable(feature = "alloc",
+           reason = "may be renamed; uncertain about custom allocator design")]
 pub static HEAP: () = ();
 
 /// A pointer type for heap allocation.
 ///
 /// See the [module-level documentation](../../std/boxed/index.html) for more.
 #[lang = "owned_box"]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Box<T>(Unique<T>);
 
 impl<T> Box<T> {
@@ -95,25 +96,25 @@ impl<T> Box<T> {
     /// ```
     /// let x = Box::new(5);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(x: T) -> Box<T> {
         box x
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Box<T> { box Default::default() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Box<[T]> {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Box<[T]> { box [] }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Clone> Clone for Box<T> {
     /// Returns a new box with a `clone()` of this box's contents.
     ///
@@ -144,14 +145,14 @@ impl<T: Clone> Clone for Box<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialEq> PartialEq for Box<T> {
     #[inline]
     fn eq(&self, other: &Box<T>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
     fn ne(&self, other: &Box<T>) -> bool { PartialEq::ne(&**self, &**other) }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn partial_cmp(&self, other: &Box<T>) -> Option<Ordering> {
@@ -166,14 +167,14 @@ impl<T: ?Sized + PartialOrd> PartialOrd for Box<T> {
     #[inline]
     fn gt(&self, other: &Box<T>) -> bool { PartialOrd::gt(&**self, &**other) }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Ord> Ord for Box<T> {
     #[inline]
     fn cmp(&self, other: &Box<T>) -> Ordering {
         Ord::cmp(&**self, &**other)
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> Eq for Box<T> {}
 
 impl<S: hash::Hasher, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
@@ -184,19 +185,20 @@ impl<S: hash::Hasher, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
 }
 
 /// Extension methods for an owning `Any` trait object.
-#[unstable = "this trait will likely disappear once compiler bugs blocking \
-              a direct impl on `Box<Any>` have been fixed "]
+#[unstable(feature = "alloc",
+           reason = "this trait will likely disappear once compiler bugs blocking \
+                     a direct impl on `Box<Any>` have been fixed ")]
 // FIXME(#18737): this should be a direct impl on `Box<Any>`. If you're
 //                removing this please make sure that you can downcase on
 //                `Box<Any + Send>` as well as `Box<Any>`
 pub trait BoxAny {
     /// Returns the boxed value if it is of type `T`, or
     /// `Err(Self)` if it isn't.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Self>;
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl BoxAny for Box<Any> {
     #[inline]
     fn downcast<T: 'static>(self) -> Result<Box<T>, Box<Any>> {
@@ -215,35 +217,35 @@ impl BoxAny for Box<Any> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Display + ?Sized> fmt::Display for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(&**self, f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug + ?Sized> fmt::Debug for Box<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(&**self, f)
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Box<Any> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         f.pad("Box<Any>")
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> Deref for Box<T> {
     type Target = T;
 
     fn deref(&self) -> &T { &**self }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }

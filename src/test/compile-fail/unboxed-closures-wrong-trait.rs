@@ -18,5 +18,6 @@ fn main() {
     let z: isize = 7;
     assert_eq!(c(|&mut: x: isize, y| x + y + z), 10);
     //~^ ERROR not implemented
+    //~| ERROR not implemented
 }
 

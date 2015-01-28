@@ -143,6 +143,7 @@ impl SpanHandler {
 pub struct Handler {
     err_count: Cell<usize>,
     emit: RefCell<Box<Emitter + Send>>,
+    pub can_emit_warnings: bool
 }
 
 impl Handler {
@@ -195,6 +196,7 @@ impl Handler {
                 cmsp: Option<(&codemap::CodeMap, Span)>,
                 msg: &str,
                 lvl: Level) {
+        if lvl == Warning && !self.can_emit_warnings { return }
         self.emit.borrow_mut().emit(cmsp, msg, None, lvl);
     }
     pub fn emit_with_code(&self,
@@ -202,10 +204,12 @@ impl Handler {
                           msg: &str,
                           code: &str,
                           lvl: Level) {
+        if lvl == Warning && !self.can_emit_warnings { return }
         self.emit.borrow_mut().emit(cmsp, msg, Some(code), lvl);
     }
     pub fn custom_emit(&self, cm: &codemap::CodeMap,
                        sp: RenderSpan, msg: &str, lvl: Level) {
+        if lvl == Warning && !self.can_emit_warnings { return }
         self.emit.borrow_mut().custom_emit(cm, sp, msg, lvl);
     }
 }
@@ -218,14 +222,16 @@ pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
 }
 
 pub fn default_handler(color_config: ColorConfig,
-                       registry: Option<diagnostics::registry::Registry>) -> Handler {
-    mk_handler(box EmitterWriter::stderr(color_config, registry))
+                       registry: Option<diagnostics::registry::Registry>,
+                       can_emit_warnings: bool) -> Handler {
+    mk_handler(can_emit_warnings, box EmitterWriter::stderr(color_config, registry))
 }
 
-pub fn mk_handler(e: Box<Emitter + Send>) -> Handler {
+pub fn mk_handler(can_emit_warnings: bool, e: Box<Emitter + Send>) -> Handler {
     Handler {
         err_count: Cell::new(0),
         emit: RefCell::new(e),
+        can_emit_warnings: can_emit_warnings
     }
 }
 

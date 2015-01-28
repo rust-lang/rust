@@ -214,6 +214,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.closure_typer.param_env()
     }
 
+    pub fn closure_typer(&self) -> &'cx (ty::ClosureTyper<'tcx>+'cx) {
+        self.closure_typer
+    }
+
     ///////////////////////////////////////////////////////////////////////////
     // Selection
     //
@@ -526,9 +530,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         // If no match, compute result and insert into cache.
         let candidate = self.candidate_from_obligation_no_cache(stack);
-        debug!("CACHE MISS: cache_fresh_trait_pred={}, candidate={}",
-               cache_fresh_trait_pred.repr(self.tcx()), candidate.repr(self.tcx()));
-        self.insert_candidate_cache(cache_fresh_trait_pred, candidate.clone());
+
+        if self.should_update_candidate_cache(&cache_fresh_trait_pred, &candidate) {
+            debug!("CACHE MISS: cache_fresh_trait_pred={}, candidate={}",
+                   cache_fresh_trait_pred.repr(self.tcx()), candidate.repr(self.tcx()));
+            self.insert_candidate_cache(cache_fresh_trait_pred, candidate.clone());
+        }
+
         candidate
     }
 
@@ -705,6 +713,47 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         hashmap.insert(cache_fresh_trait_pred.0.trait_ref.clone(), candidate);
     }
 
+    fn should_update_candidate_cache(&mut self,
+                                     cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>,
+                                     candidate: &SelectionResult<'tcx, SelectionCandidate<'tcx>>)
+                                     -> bool
+    {
+        // In general, it's a good idea to cache results, even
+        // ambigious ones, to save us some trouble later. But we have
+        // to be careful not to cache results that could be
+        // invalidated later by advances in inference. Normally, this
+        // is not an issue, because any inference variables whose
+        // types are not yet bound are "freshened" in the cache key,
+        // which means that if we later get the same request once that
+        // type variable IS bound, we'll have a different cache key.
+        // For example, if we have `Vec<_#0t> : Foo`, and `_#0t` is
+        // not yet known, we may cache the result as `None`. But if
+        // later `_#0t` is bound to `Bar`, then when we freshen we'll
+        // have `Vec<Bar> : Foo` as the cache key.
+        //
+        // HOWEVER, it CAN happen that we get an ambiguity result in
+        // one particular case around closures where the cache key
+        // would not change. That is when the precise types of the
+        // upvars that a closure references have not yet been figured
+        // out (i.e., because it is not yet known if they are captured
+        // by ref, and if by ref, what kind of ref). In these cases,
+        // when matching a builtin bound, we will yield back an
+        // ambiguous result. But the *cache key* is just the closure type,
+        // it doesn't capture the state of the upvar computation.
+        //
+        // To avoid this trap, just don't cache ambiguous results if
+        // the self-type contains no inference byproducts (that really
+        // shouldn't happen in other circumstances anyway, given
+        // coherence).
+
+        match *candidate {
+            Ok(Some(_)) | Err(_) => true,
+            Ok(None) => {
+                cache_fresh_trait_pred.0.input_types().iter().any(|&t| ty::type_has_ty_infer(t))
+            }
+        }
+    }
+
     fn assemble_candidates<'o>(&mut self,
                                stack: &TraitObligationStack<'o, 'tcx>)
                                -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>>
@@ -788,6 +837,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // FIXME(#20297) -- being strict about this can cause
                 // inference failures with BorrowFrom, which is
                 // unfortunate. Can we do better here?
+                debug!("assemble_candidates_for_projected_tys: ambiguous self-type");
                 candidates.ambiguous = true;
                 return;
             }
@@ -905,7 +955,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                stack.obligation.repr(self.tcx()));
 
         let caller_trait_refs: Vec<_> =
-            self.param_env().caller_bounds.predicates.iter()
+            self.param_env().caller_bounds.iter()
             .filter_map(|o| o.to_opt_poly_trait_ref())
             .collect();
 
@@ -962,6 +1012,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let (closure_def_id, substs) = match self_ty.sty {
             ty::ty_closure(id, _, ref substs) => (id, substs.clone()),
             ty::ty_infer(ty::TyVar(_)) => {
+                debug!("assemble_unboxed_closure_candidates: ambiguous self-type");
                 candidates.ambiguous = true;
                 return Ok(());
             }
@@ -1000,6 +1051,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
         match self_ty.sty {
             ty::ty_infer(ty::TyVar(_)) => {
+                debug!("assemble_fn_pointer_candidates: ambiguous self-type");
                 candidates.ambiguous = true; // could wind up being a fn() type
             }
 
@@ -1270,7 +1322,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(())
             }
             Ok(ParameterBuiltin) => { Ok(()) }
-            Ok(AmbiguousBuiltin) => { Ok(candidates.ambiguous = true) }
+            Ok(AmbiguousBuiltin) => {
+                debug!("assemble_builtin_bound_candidates: ambiguous builtin");
+                Ok(candidates.ambiguous = true)
+            }
             Err(e) => { Err(e) }
         }
     }
@@ -1476,6 +1531,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         Ok(If(upvars.iter().map(|c| c.ty).collect()))
                     }
                     None => {
+                        debug!("assemble_builtin_bound_candidates: no upvar types available yet");
                         Ok(AmbiguousBuiltin)
                     }
                 }
@@ -1512,6 +1568,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // Unbound type variable. Might or might not have
                 // applicable impls and so forth, depending on what
                 // those type variables wind up being bound to.
+                debug!("assemble_builtin_bound_candidates: ambiguous builtin");
                 Ok(AmbiguousBuiltin)
             }
 
@@ -1860,33 +1917,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                obligation.repr(self.tcx()));
 
         let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
-        let sig = match self_ty.sty {
-            ty::ty_bare_fn(_, &ty::BareFnTy {
-                unsafety: ast::Unsafety::Normal,
-                abi: abi::Rust,
-                ref sig
-            }) => {
-                sig
-            }
-            _ => {
-                self.tcx().sess.span_bug(
-                    obligation.cause.span,
-                    &format!("Fn pointer candidate for inappropriate self type: {}",
-                            self_ty.repr(self.tcx()))[]);
-            }
-        };
-
-        let arguments_tuple = ty::mk_tup(self.tcx(), sig.0.inputs.to_vec());
-        let output_type = sig.0.output.unwrap();
-        let substs =
-            Substs::new_trait(
-                vec![arguments_tuple, output_type],
-                vec![],
-                self_ty);
-        let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
-            def_id: obligation.predicate.def_id(),
-            substs: self.tcx().mk_substs(substs),
-        }));
+        let sig = ty::ty_fn_sig(self_ty);
+        let ty::Binder((trait_ref, _)) =
+            util::closure_trait_ref_and_return_type(self.tcx(),
+                                                    obligation.predicate.def_id(),
+                                                    self_ty,
+                                                    sig,
+                                                    util::TupleArgumentsFlag::Yes);
+        let trait_ref = ty::Binder(trait_ref);
 
         try!(self.confirm_poly_trait_refs(obligation.cause.clone(),
                                           obligation.predicate.to_poly_trait_ref(),
@@ -1905,23 +1943,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                closure_def_id.repr(self.tcx()),
                substs.repr(self.tcx()));
 
-        let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
-
-        debug!("confirm_closure_candidate: closure_def_id={} closure_type={}",
-               closure_def_id.repr(self.tcx()),
-               closure_type.repr(self.tcx()));
-
-        let closure_sig = &closure_type.sig;
-        let arguments_tuple = closure_sig.0.inputs[0];
-        let trait_substs =
-            Substs::new_trait(
-                vec![arguments_tuple, closure_sig.0.output.unwrap()],
-                vec![],
-                obligation.self_ty());
-        let trait_ref = ty::Binder(Rc::new(ty::TraitRef {
-            def_id: obligation.predicate.def_id(),
-            substs: self.tcx().mk_substs(trait_substs),
-        }));
+        let trait_ref = self.closure_trait_ref(obligation,
+                                               closure_def_id,
+                                               substs);
 
         debug!("confirm_closure_candidate(closure_def_id={}, trait_ref={})",
                closure_def_id.repr(self.tcx()),
@@ -2104,16 +2128,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                     where_clause_trait_ref: ty::PolyTraitRef<'tcx>)
                                     -> Result<Vec<PredicateObligation<'tcx>>,()>
     {
-        let where_clause_trait_ref =
-            project::normalize_with_depth(self,
-                                          obligation.cause.clone(),
-                                          obligation.recursion_depth+1,
-                                          &where_clause_trait_ref);
-
         let () =
-            try!(self.match_poly_trait_ref(obligation, where_clause_trait_ref.value.clone()));
+            try!(self.match_poly_trait_ref(obligation, where_clause_trait_ref));
 
-        Ok(where_clause_trait_ref.obligations)
+        Ok(Vec::new())
     }
 
     /// Returns `Ok` if `poly_trait_ref` being true implies that the
@@ -2231,6 +2249,29 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             None => Vec::new(),
             Some(impls) => impls.borrow().clone()
         }
+    }
+
+    fn closure_trait_ref(&self,
+                         obligation: &TraitObligation<'tcx>,
+                         closure_def_id: ast::DefId,
+                         substs: &Substs<'tcx>)
+                         -> ty::PolyTraitRef<'tcx>
+    {
+        let closure_type = self.closure_typer.closure_type(closure_def_id, substs);
+        let ty::Binder((trait_ref, _)) =
+            util::closure_trait_ref_and_return_type(self.tcx(),
+                                                    obligation.predicate.def_id(),
+                                                    obligation.predicate.0.self_ty(), // (1)
+                                                    &closure_type.sig,
+                                                    util::TupleArgumentsFlag::No);
+
+        // (1) Feels icky to skip the binder here, but OTOH we know
+        // that the self-type is an unboxed closure type and hence is
+        // in fact unparameterized (or at least does not reference any
+        // regions bound in the obligation). Still probably some
+        // refactoring could make this nicer.
+
+        ty::Binder(trait_ref)
     }
 
     fn impl_obligations(&mut self,

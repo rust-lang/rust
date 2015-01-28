@@ -15,7 +15,7 @@
 //! and/or blocking at all, but rather provide the necessary tools to build
 //! other types of concurrent primitives.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 pub use alloc::arc::{Arc, Weak};
 pub use core::atomic;

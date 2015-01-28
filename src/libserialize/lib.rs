@@ -15,7 +15,9 @@ Core encoding and decoding interfaces.
 */
 
 #![crate_name = "serialize"]
-#![unstable = "deprecated in favor of rustc-serialize on crates.io"]
+#![unstable(feature = "rustc_private",
+            reason = "deprecated in favor of rustc-serialize on crates.io")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -28,7 +30,14 @@ Core encoding and decoding interfaces.
 #![feature(old_impl_check)]
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(unicode)]
+#![cfg_attr(test, feature(test))]
 
 // test harness access
 #[cfg(test)] extern crate test;

@@ -112,7 +112,8 @@ impl<T> SmallVector<T> {
     }
 
     /// Deprecated: use `into_iter`.
-    #[deprecated = "use into_iter"]
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0", reason = "use into_iter")]
     pub fn move_iter(self) -> IntoIter<T> {
         self.into_iter()
     }

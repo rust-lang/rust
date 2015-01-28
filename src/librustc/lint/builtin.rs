@@ -46,7 +46,7 @@ use std::{i8, i16, i32, i64, u8, u16, u32, u64, f32, f64};
 use syntax::{abi, ast, ast_map};
 use syntax::ast_util::is_shift_binop;
 use syntax::attr::{self, AttrMetaMethods};
-use syntax::codemap::{self, Span, DUMMY_SP};
+use syntax::codemap::{self, Span};
 use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ast_util;
@@ -662,9 +662,6 @@ impl LintPass for UnusedAttributes {
             // FIXME: #14407 these are only looked at on-demand so we can't
             // guarantee they'll have already been checked
             "deprecated",
-            "experimental",
-            "frozen",
-            "locked",
             "must_use",
             "stable",
             "unstable",
@@ -1696,37 +1693,16 @@ declare_lint! {
     "detects use of #[deprecated] items"
 }
 
-declare_lint! {
-    UNSTABLE,
-    Warn,
-    "detects use of #[unstable] items (incl. items with no stability attribute)"
-}
-
-/// Checks for use of items with `#[deprecated]`, `#[unstable]` and
-/// `#[unstable]` attributes, or no stability attribute.
+/// Checks for use of items with `#[deprecated]` attributes
 #[derive(Copy)]
-pub struct Stability { this_crate_staged: bool }
+pub struct Stability;
 
 impl Stability {
-    pub fn new() -> Stability { Stability { this_crate_staged: false } }
+    fn lint(&self, cx: &Context, _id: ast::DefId, span: Span, stability: &Option<attr::Stability>) {
 
-    fn lint(&self, cx: &Context, id: ast::DefId, span: Span) {
-
-        let ref stability = stability::lookup(cx.tcx, id);
-        let cross_crate = !ast_util::is_local(id);
-        let staged = (!cross_crate && self.this_crate_staged)
-            || (cross_crate && stability::is_staged_api(cx.tcx, id));
-
-        if !staged { return }
-
-        // stability attributes are promises made across crates; only
-        // check DEPRECATED for crate-local usage.
+        // deprecated attributes apply in-crate and cross-crate
         let (lint, label) = match *stability {
-            // no stability attributes == Unstable
-            None if cross_crate => (UNSTABLE, "unmarked"),
-            Some(attr::Stability { level: attr::Unstable, .. }) if cross_crate =>
-                (UNSTABLE, "unstable"),
-            Some(attr::Stability { level: attr::Deprecated, .. }) =>
+            Some(attr::Stability { deprecated_since: Some(_), .. }) =>
                 (DEPRECATED, "deprecated"),
             _ => return
         };
@@ -1736,7 +1712,7 @@ impl Stability {
         fn output(cx: &Context, span: Span, stability: &Option<attr::Stability>,
                   lint: &'static Lint, label: &'static str) {
             let msg = match *stability {
-                Some(attr::Stability { text: Some(ref s), .. }) => {
+                Some(attr::Stability { reason: Some(ref s), .. }) => {
                     format!("use of {} item: {}", label, *s)
                 }
                 _ => format!("use of {} item", label)
@@ -1745,111 +1721,21 @@ impl Stability {
             cx.span_lint(lint, span, &msg[]);
         }
     }
-
-
-    fn is_internal(&self, cx: &Context, span: Span) -> bool {
-        cx.tcx.sess.codemap().span_is_internal(span)
-    }
-
 }
 
 impl LintPass for Stability {
     fn get_lints(&self) -> LintArray {
-        lint_array!(DEPRECATED, UNSTABLE)
-    }
-
-    fn check_crate(&mut self, _: &Context, c: &ast::Crate) {
-        // Just mark the #[staged_api] attribute used, though nothing else is done
-        // with it during this pass over the source.
-        for attr in c.attrs.iter() {
-            if attr.name().get() == "staged_api" {
-                match attr.node.value.node {
-                    ast::MetaWord(_) => {
-                        attr::mark_used(attr);
-                        self.this_crate_staged = true;
-                    }
-                    _ => (/*pass*/)
-                }
-            }
-        }
-    }
-
-    fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
-        if self.is_internal(cx, e.span) { return; }
-
-        let mut span = e.span;
-
-        let id = match e.node {
-            ast::ExprPath(..) | ast::ExprQPath(..) | ast::ExprStruct(..) => {
-                match cx.tcx.def_map.borrow().get(&e.id) {
-                    Some(&def) => def.def_id(),
-                    None => return
-                }
-            }
-            ast::ExprMethodCall(i, _, _) => {
-                span = i.span;
-                let method_call = ty::MethodCall::expr(e.id);
-                match cx.tcx.method_map.borrow().get(&method_call) {
-                    Some(method) => {
-                        match method.origin {
-                            ty::MethodStatic(def_id) => {
-                                def_id
-                            }
-                            ty::MethodStaticClosure(def_id) => {
-                                def_id
-                            }
-                            ty::MethodTypeParam(ty::MethodParam {
-                                ref trait_ref,
-                                method_num: index,
-                                ..
-                            }) |
-                            ty::MethodTraitObject(ty::MethodObject {
-                                ref trait_ref,
-                                method_num: index,
-                                ..
-                            }) => {
-                                ty::trait_item(cx.tcx, trait_ref.def_id, index).def_id()
-                            }
-                        }
-                    }
-                    None => return
-                }
-            }
-            _ => return
-        };
-
-        self.lint(cx, id, span);
+        lint_array!(DEPRECATED)
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        if self.is_internal(cx, item.span) { return }
+        stability::check_item(cx.tcx, item,
+                              &mut |id, sp, stab| self.lint(cx, id, sp, stab));
+    }
 
-        match item.node {
-            ast::ItemExternCrate(_) => {
-                // compiler-generated `extern crate` items have a dummy span.
-                if item.span == DUMMY_SP { return }
-
-                let cnum = match cx.tcx.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
-                    Some(cnum) => cnum,
-                    None => return,
-                };
-                let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
-                self.lint(cx, id, item.span);
-            }
-            ast::ItemTrait(_, _, ref supertraits, _) => {
-                for t in supertraits.iter() {
-                    if let ast::TraitTyParamBound(ref t, _) = *t {
-                        let id = ty::trait_ref_to_def_id(cx.tcx, &t.trait_ref);
-                        self.lint(cx, id, t.trait_ref.path.span);
-                    }
-                }
-            }
-            ast::ItemImpl(_, _, _, Some(ref t), _, _) => {
-                let id = ty::trait_ref_to_def_id(cx.tcx, t);
-                self.lint(cx, id, t.path.span);
-            }
-            _ => (/* pass */)
-        }
+    fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
+        stability::check_expr(cx.tcx, e,
+                              &mut |id, sp, stab| self.lint(cx, id, sp, stab));
     }
 }
 
@@ -2096,9 +1982,9 @@ declare_lint! {
 }
 
 declare_lint! {
-    pub UNKNOWN_FEATURES,
+    pub UNUSED_FEATURES,
     Deny,
-    "unknown features found in crate-level #[feature] directives"
+    "unused or unknown features found in crate-level #[feature] directives"
 }
 
 declare_lint! {
@@ -2142,7 +2028,7 @@ impl LintPass for HardwiredLints {
             DEAD_CODE,
             UNREACHABLE_CODE,
             WARNINGS,
-            UNKNOWN_FEATURES,
+            UNUSED_FEATURES,
             UNKNOWN_CRATE_TYPES,
             VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES

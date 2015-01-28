@@ -19,7 +19,7 @@ use std::u32;
 use util::snapshot_vec as sv;
 
 pub struct TypeVariableTable<'tcx> {
-    values: sv::SnapshotVec<TypeVariableData<'tcx>,UndoEntry,Delegate>,
+    values: sv::SnapshotVec<Delegate<'tcx>>,
 }
 
 struct TypeVariableData<'tcx> {
@@ -42,7 +42,7 @@ enum UndoEntry {
     Relate(ty::TyVid, ty::TyVid),
 }
 
-struct Delegate;
+struct Delegate<'tcx>;
 
 type Relation = (RelationDir, ty::TyVid);
 
@@ -195,9 +195,12 @@ impl<'tcx> TypeVariableTable<'tcx> {
     }
 }
 
-impl<'tcx> sv::SnapshotVecDelegate<TypeVariableData<'tcx>,UndoEntry> for Delegate {
+impl<'tcx> sv::SnapshotVecDelegate for Delegate<'tcx> {
+    type Value = TypeVariableData<'tcx>;
+    type Undo = UndoEntry;
+
     fn reverse(&mut self,
-               values: &mut Vec<TypeVariableData>,
+               values: &mut Vec<TypeVariableData<'tcx>>,
                action: UndoEntry) {
         match action {
             SpecifyVar(vid, relations) => {

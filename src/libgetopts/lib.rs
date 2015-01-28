@@ -78,7 +78,9 @@
 //! ```
 
 #![crate_name = "getopts"]
-#![unstable = "use the crates.io `getopts` library instead"]
+#![unstable(feature = "rustc_private",
+            reason = "use the crates.io `getopts` library instead")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -88,8 +90,10 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(slicing_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![deny(missing_docs)]
+#![feature(collections)]
+#![feature(core)]
+#![cfg_attr(test, feature(rustc_private))]
 
 #[cfg(test)] #[macro_use] extern crate log;
 
@@ -538,7 +542,9 @@ pub fn opt(short_name: &str,
 
 impl Fail {
     /// Convert a `Fail` enum into an error string.
-    #[deprecated="use `fmt::String` (`{}` format specifier)"]
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0",
+                 reason = "use `fmt::String` (`{}` format specifier)")]
     pub fn to_err_msg(self) -> String {
         self.to_string()
     }

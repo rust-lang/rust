@@ -9,7 +9,6 @@
 // except according to those terms.
 
 
-#![allow(unstable)]
 #![feature(simd)]
 
 pub fn main() {

@@ -16,7 +16,7 @@
 use std::cmp::Ordering;
 use std::ops::Add;
 
-use syntax::attr::{Deprecated, Experimental, Unstable, Stable, Frozen, Locked};
+use syntax::attr::{Unstable, Stable};
 use syntax::ast::Public;
 
 use clean::{Crate, Item, ModuleItem, Module, EnumItem, Enum};
@@ -29,12 +29,8 @@ use html::render::cache;
 /// The counts for each stability level.
 #[derive(Copy)]
 pub struct Counts {
-    pub deprecated: uint,
-    pub experimental: uint,
     pub unstable: uint,
     pub stable: uint,
-    pub frozen: uint,
-    pub locked: uint,
 
     /// No stability level, inherited or otherwise.
     pub unmarked: uint,
@@ -45,12 +41,8 @@ impl Add for Counts {
 
     fn add(self, other: Counts) -> Counts {
         Counts {
-            deprecated:   self.deprecated   + other.deprecated,
-            experimental: self.experimental + other.experimental,
             unstable:     self.unstable     + other.unstable,
             stable:       self.stable       + other.stable,
-            frozen:       self.frozen       + other.frozen,
-            locked:       self.locked       + other.locked,
             unmarked:     self.unmarked     + other.unmarked,
         }
     }
@@ -59,19 +51,14 @@ impl Add for Counts {
 impl Counts {
     fn zero() -> Counts {
         Counts {
-            deprecated:   0,
-            experimental: 0,
             unstable:     0,
             stable:       0,
-            frozen:       0,
-            locked:       0,
             unmarked:     0,
         }
     }
 
     pub fn total(&self) -> uint {
-        self.deprecated + self.experimental + self.unstable + self.stable +
-            self.frozen + self.locked + self.unmarked
+        self.unstable + self.stable + self.unmarked
     }
 }
 
@@ -106,14 +93,10 @@ fn visible(item: &Item) -> bool {
 
 fn count_stability(stab: Option<&Stability>) -> Counts {
     match stab {
-        None             => Counts { unmarked: 1,     .. Counts::zero() },
+        None            => Counts { unmarked: 1,     .. Counts::zero() },
         Some(ref stab) => match stab.level {
-            Deprecated   => Counts { deprecated: 1,   .. Counts::zero() },
-            Experimental => Counts { experimental: 1, .. Counts::zero() },
-            Unstable     => Counts { unstable: 1,     .. Counts::zero() },
-            Stable       => Counts { stable: 1,       .. Counts::zero() },
-            Frozen       => Counts { frozen: 1,       .. Counts::zero() },
-            Locked       => Counts { locked: 1,       .. Counts::zero() },
+            Unstable    => Counts { unstable: 1,     .. Counts::zero() },
+            Stable      => Counts { stable: 1,       .. Counts::zero() },
         }
     }
 }

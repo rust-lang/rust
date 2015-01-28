@@ -79,13 +79,14 @@
 //! }
 //! ```
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::*;
 use fmt::Display;
 
 /// Base functionality for all errors in Rust.
-#[unstable = "the exact API of this trait may change"]
+#[unstable(feature = "core",
+           reason = "the exact API of this trait may change")]
 pub trait Error: Display {
     /// A short description of the error; usually a static string.
     fn description(&self) -> &str;
@@ -95,14 +96,15 @@ pub trait Error: Display {
 }
 
 /// A trait for types that can be converted from a given error type `E`.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromError<E> {
     /// Perform the conversion.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn from_error(err: E) -> Self;
 }
 
 // Any type is convertable from itself
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<E> FromError<E> for E {
     fn from_error(err: E) -> E {
         err

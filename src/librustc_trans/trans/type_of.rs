@@ -103,6 +103,10 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                  abi: abi::Abi)
                                  -> Type
 {
+    debug!("type_of_rust_fn(sig={},abi={:?})",
+           sig.repr(cx.tcx()),
+           abi);
+
     let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
     assert!(!sig.variadic); // rust fns are never variadic
 

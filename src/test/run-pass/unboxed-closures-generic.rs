@@ -12,12 +12,12 @@
 
 use std::ops::FnMut;
 
-fn call_it<F:FnMut<(int,int),int>>(y: int, mut f: F) -> int {
+fn call_it<F:FnMut(i32,i32)->i32>(y: i32, mut f: F) -> i32 {
     f(2, y)
 }
 
 pub fn main() {
-    let f = |&mut: x: int, y: int| -> int { x + y };
+    let f = |&mut: x: i32, y: i32| -> i32 { x + y };
     let z = call_it(3, f);
     println!("{}", z);
     assert_eq!(z, 5);

@@ -14,7 +14,7 @@
 // FIXME: MIN_VALUE and MAX_VALUE literals are parsed as -inf and inf #14353
 #![allow(overflowing_literals)]
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use intrinsics;
 use mem;
@@ -26,45 +26,46 @@ use option::Option;
 // constants are implemented in favour of referencing the respective
 // members of `Bounded` and `Float`.
 
-#[unstable = "pending integer conventions"]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const RADIX: uint = 2;
 
 pub const MANTISSA_DIGITS: uint = 53;
-#[unstable = "pending integer conventions"]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const DIGITS: uint = 15;
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
 /// Smallest finite f64 value
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_VALUE: f64 = -1.7976931348623157e+308_f64;
 /// Smallest positive, normalized f64 value
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
 /// Largest finite f64 value
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
 
-#[unstable = "pending integer conventions"]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MIN_EXP: int = -1021;
-#[unstable = "pending integer conventions"]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MAX_EXP: int = 1024;
 
-#[unstable = "pending integer conventions"]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MIN_10_EXP: int = -307;
-#[unstable = "pending integer conventions"]
+#[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MAX_10_EXP: int = 308;
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const NAN: f64 = 0.0_f64/0.0_f64;
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const INFINITY: f64 = 1.0_f64/0.0_f64;
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const NEG_INFINITY: f64 = -1.0_f64/0.0_f64;
 
 /// Various useful constants.
-#[unstable = "naming scheme needs to be revisited"]
+#[unstable(feature = "core",
+           reason = "naming scheme needs to be revisited")]
 pub mod consts {
     // FIXME: replace with mathematical constants from cmath.
 
@@ -124,7 +125,7 @@ pub mod consts {
     pub const LN_10: f64 = 2.30258509299404568401799145468436421_f64;
 }
 
-#[unstable = "trait is unstable"]
+#[unstable(feature = "core", reason = "trait is unstable")]
 impl Float for f64 {
     #[inline]
     fn nan() -> f64 { NAN }
@@ -184,43 +185,53 @@ impl Float for f64 {
     }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn mantissa_digits(_: Option<f64>) -> uint { MANTISSA_DIGITS }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn digits(_: Option<f64>) -> uint { DIGITS }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn epsilon() -> f64 { EPSILON }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_exp(_: Option<f64>) -> int { MIN_EXP }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn max_exp(_: Option<f64>) -> int { MAX_EXP }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_10_exp(_: Option<f64>) -> int { MIN_10_EXP }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn max_10_exp(_: Option<f64>) -> int { MAX_10_EXP }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_value() -> f64 { MIN_VALUE }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn min_pos_value(_: Option<f64>) -> f64 { MIN_POS_VALUE }
 
     #[inline]
-    #[deprecated]
+    #[unstable(feature = "core")]
+    #[deprecated(since = "1.0.0")]
     fn max_value() -> f64 { MAX_VALUE }
 
     /// Returns the mantissa, exponent and sign as integers.

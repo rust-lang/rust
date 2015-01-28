@@ -1482,7 +1482,7 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     let mut param_bounds =
         ty::required_region_bounds(rcx.tcx(),
                                    generic.to_ty(rcx.tcx()),
-                                   param_env.caller_bounds.predicates.as_slice().to_vec());
+                                   param_env.caller_bounds.clone());
 
     // In the case of a projection T::Foo, we may be able to extract bounds from the trait def:
     match *generic {

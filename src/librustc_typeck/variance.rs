@@ -818,6 +818,12 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     trait_def.generics.regions.get_slice(subst::TypeSpace),
                     trait_ref.substs(),
                     variance);
+
+                let projections = data.projection_bounds_with_self_ty(self.tcx(),
+                                                                      self.tcx().types.err);
+                for projection in projections.iter() {
+                    self.add_constraints_from_ty(generics, projection.0.ty, self.invariant);
+                }
             }
 
             ty::ty_param(ref data) => {

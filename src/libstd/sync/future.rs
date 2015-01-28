@@ -27,9 +27,10 @@
 //! ```
 
 #![allow(missing_docs)]
-#![unstable = "futures as-is have yet to be deeply reevaluated with recent \
-               core changes to Rust's synchronization story, and will likely \
-               become stable in the future but are unstable until that time"]
+#![unstable(feature = "std_misc",
+            reason = "futures as-is have yet to be deeply reevaluated with recent \
+                      core changes to Rust's synchronization story, and will likely \
+                      become stable in the future but are unstable until that time")]
 
 use core::prelude::*;
 use core::mem::replace;

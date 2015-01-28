@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![forbid(unstable)]
+#![forbid(deprecated)]
 
-#[allow(unstable)] //~ ERROR allow(unstable) overruled by outer forbid(unstable)
+#[allow(deprecated)] //~ ERROR allow(deprecated) overruled by outer forbid(deprecated)
 fn main() {
 }

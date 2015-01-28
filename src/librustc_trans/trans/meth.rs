@@ -13,7 +13,7 @@ use back::abi;
 use back::link;
 use llvm::{self, ValueRef, get_param};
 use metadata::csearch;
-use middle::subst::{Subst, Substs};
+use middle::subst::Substs;
 use middle::subst::VecPerParamSpace;
 use middle::subst;
 use middle::traits;
@@ -29,6 +29,7 @@ use trans::expr::{SaveIn, Ignore};
 use trans::expr;
 use trans::glue;
 use trans::machine;
+use trans::monomorphize;
 use trans::type_::Type;
 use trans::type_of::*;
 use middle::ty::{self, Ty};
@@ -162,7 +163,7 @@ pub fn trans_method_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
             trans_trait_callee(bcx,
                                monomorphize_type(bcx, method_ty),
-                               mt.real_index,
+                               mt.vtable_index,
                                self_expr,
                                arg_cleanup_scope)
         }
@@ -439,7 +440,7 @@ fn combine_impl_and_methods_tps<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// extract the self data and vtable out of the pair.
 fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   method_ty: Ty<'tcx>,
-                                  n_method: uint,
+                                  vtable_index: uint,
                                   self_expr: &ast::Expr,
                                   arg_cleanup_scope: cleanup::ScopeId)
                                   -> Callee<'blk, 'tcx> {
@@ -469,27 +470,27 @@ fn trans_trait_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         self_datum.val
     };
 
-    trans_trait_callee_from_llval(bcx, method_ty, n_method, llval)
+    trans_trait_callee_from_llval(bcx, method_ty, vtable_index, llval)
 }
 
 /// Same as `trans_trait_callee()` above, except that it is given a by-ref pointer to the object
 /// pair.
 pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                  callee_ty: Ty<'tcx>,
-                                                 n_method: uint,
+                                                 vtable_index: uint,
                                                  llpair: ValueRef)
                                                  -> Callee<'blk, 'tcx> {
     let _icx = push_ctxt("meth::trans_trait_callee");
     let ccx = bcx.ccx();
 
     // Load the data pointer from the object.
-    debug!("(translating trait callee) loading second index from pair");
+    debug!("trans_trait_callee_from_llval(callee_ty={}, vtable_index={}, llpair={})",
+           callee_ty.repr(ccx.tcx()),
+           vtable_index,
+           bcx.val_to_string(llpair));
     let llboxptr = GEPi(bcx, llpair, &[0u, abi::FAT_PTR_ADDR]);
     let llbox = Load(bcx, llboxptr);
     let llself = PointerCast(bcx, llbox, Type::i8p(ccx));
-
-    // Load the function from the vtable and cast it to the expected type.
-    debug!("(translating trait callee) loading method");
 
     // Replace the self type (&Self or Box<Self>) with an opaque pointer.
     let llcallee_ty = match callee_ty.sty {
@@ -500,10 +501,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     output: f.sig.0.output,
                     variadic: f.sig.0.variadic,
                 });
-            type_of_rust_fn(ccx,
-                            Some(Type::i8p(ccx)),
-                            &fake_sig,
-                            f.abi)
+            type_of_rust_fn(ccx, Some(Type::i8p(ccx)), &fake_sig, f.abi)
         }
         _ => {
             ccx.sess().bug("meth::trans_trait_callee given non-bare-rust-fn");
@@ -514,7 +512,7 @@ pub fn trans_trait_callee_from_llval<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     GEPi(bcx, llpair,
                                          &[0u, abi::FAT_PTR_EXTRA]),
                                     Type::vtable(ccx).ptr_to().ptr_to()));
-    let mptr = Load(bcx, GEPi(bcx, llvtable, &[0u, n_method + VTABLE_OFFSET]));
+    let mptr = Load(bcx, GEPi(bcx, llvtable, &[0u, vtable_index + VTABLE_OFFSET]));
     let mptr = PointerCast(bcx, mptr, llcallee_ty.ptr_to());
 
     return Callee {
@@ -558,7 +556,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     let _icx = push_ctxt("trans_object_shim");
     let tcx = ccx.tcx();
 
-    debug!("trans_object_shim(object_ty={}, trait_id={}, n_method={})",
+    debug!("trans_object_shim(object_ty={}, trait_id={}, method_offset_in_trait={})",
            object_ty.repr(tcx),
            trait_id.repr(tcx),
            method_offset_in_trait);
@@ -587,7 +585,7 @@ pub fn trans_object_shim<'a, 'tcx>(
             tcx.sess.bug("can't create a method shim for an associated type")
         }
     };
-    let fty = method_ty.fty.subst(tcx, &object_substs);
+    let fty = monomorphize::apply_param_substs(tcx, &object_substs, &method_ty.fty);
     let fty = tcx.mk_bare_fn(fty);
     debug!("trans_object_shim: fty={}", fty.repr(tcx));
 

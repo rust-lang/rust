@@ -24,7 +24,8 @@
 // build off of.
 
 #![crate_name = "test"]
-#![unstable]
+#![unstable(feature = "test")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -35,7 +36,14 @@
 #![feature(asm, slicing_syntax)]
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(hash)]
 
 extern crate getopts;
 extern crate serialize;

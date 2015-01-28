@@ -10,15 +10,18 @@
 
 #![crate_name = "libc"]
 #![crate_type = "rlib"]
-#![cfg_attr(not(feature = "cargo-build"), unstable)]
+#![cfg_attr(not(feature = "cargo-build"),
+            unstable(feature = "libc"))]
+#![cfg_attr(not(feature = "cargo-build"), feature(staged_api))]
 #![cfg_attr(not(feature = "cargo-build"), staged_api)]
+#![cfg_attr(not(feature = "cargo-build"), feature(core))]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![no_std]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![cfg_attr(test, feature(test))]
 
 //! Bindings for the C standard library and other platform libraries
 //!
@@ -73,7 +76,6 @@
 //! one from Berkeley after the lawsuits died down and the CSRG dissolved.
 
 #![allow(bad_style, raw_pointer_derive)]
-
 #[cfg(feature = "cargo-build")] extern crate "std" as core;
 #[cfg(not(feature = "cargo-build"))] extern crate core;
 

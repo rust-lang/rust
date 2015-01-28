@@ -36,7 +36,7 @@ use sync::{StaticMutex, MUTEX_INIT};
 ///     // run initialization here
 /// });
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Once {
     mutex: StaticMutex,
     cnt: AtomicIsize,
@@ -46,7 +46,7 @@ pub struct Once {
 unsafe impl Sync for Once {}
 
 /// Initialization value for static `Once` values.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const ONCE_INIT: Once = Once {
     mutex: MUTEX_INIT,
     cnt: ATOMIC_ISIZE_INIT,
@@ -63,7 +63,7 @@ impl Once {
     ///
     /// When this function returns, it is guaranteed that some initialization
     /// has run and completed (it may not be the closure specified).
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn call_once<F>(&'static self, f: F) where F: FnOnce() {
         // Optimize common path: load is much cheaper than fetch_add.
         if self.cnt.load(Ordering::SeqCst) < 0 {

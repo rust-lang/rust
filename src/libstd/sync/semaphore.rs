@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![unstable = "the interaction between semaphores and the acquisition/release \
-               of resources is currently unclear"]
+#![unstable(feature = "std_misc",
+            reason = "the interaction between semaphores and the acquisition/release \
+                      of resources is currently unclear")]
 
 use ops::Drop;
 use sync::{Mutex, Condvar};
@@ -99,7 +100,7 @@ impl Semaphore {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Drop for SemaphoreGuard<'a> {
     fn drop(&mut self) {
         self.sem.release();

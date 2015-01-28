@@ -10,7 +10,7 @@
 
 //! Operations and constants for signed 64-bits integers (`i64` type)
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![doc(primitive = "i64")]
 
 pub use core::i64::{BITS, BYTES, MIN, MAX};

@@ -34,7 +34,7 @@
 //! will want to make use of some form of **interior mutability** through the
 //! `Cell` or `RefCell` types.
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use prelude::v1::*;
 
@@ -93,7 +93,7 @@ pub mod __impl {
 ///     assert_eq!(*f.borrow(), 2);
 /// });
 /// ```
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Key<T> {
     // The key itself may be tagged with #[thread_local], and this `Key` is
     // stored as a `static`, and it's not valid for a static to reference the
@@ -113,7 +113,7 @@ pub struct Key<T> {
 
 /// Declare a new thread local storage key of type `std::thread_local::Key`.
 #[macro_export]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! thread_local {
     (static $name:ident: $t:ty = $init:expr) => (
         static $name: ::std::thread_local::Key<$t> = {
@@ -218,7 +218,8 @@ macro_rules! __thread_local_inner {
 }
 
 /// Indicator of the state of a thread local storage key.
-#[unstable = "state querying was recently added"]
+#[unstable(feature = "std_misc",
+           reason = "state querying was recently added")]
 #[derive(Eq, PartialEq, Copy)]
 pub enum State {
     /// All keys are in this state whenever a thread starts. Keys will
@@ -258,7 +259,7 @@ impl<T: 'static> Key<T> {
     /// This function will `panic!()` if the key currently has its
     /// destructor running, and it **may** panic if the destructor has
     /// previously been run for this thread.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with<F, R>(&'static self, f: F) -> R
                       where F: FnOnce(&T) -> R {
         let slot = (self.inner)();
@@ -301,7 +302,8 @@ impl<T: 'static> Key<T> {
     /// initialization does not panic. Keys in the `Valid` state are guaranteed
     /// to be able to be accessed. Keys in the `Destroyed` state will panic on
     /// any call to `with`.
-    #[unstable = "state querying was recently added"]
+    #[unstable(feature = "std_misc",
+               reason = "state querying was recently added")]
     pub fn state(&'static self) -> State {
         unsafe {
             match (self.inner)().get() {
@@ -317,7 +319,9 @@ impl<T: 'static> Key<T> {
     }
 
     /// Deprecated
-    #[deprecated = "function renamed to state() and returns more info"]
+    #[unstable(feature = "std_misc")]
+    #[deprecated(since = "1.0.0",
+                 reason = "function renamed to state() and returns more info")]
     pub fn destroyed(&'static self) -> bool { self.state() == State::Destroyed }
 }
 

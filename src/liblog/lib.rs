@@ -156,7 +156,9 @@
 //! if logging is disabled, none of the components of the log will be executed.
 
 #![crate_name = "log"]
-#![unstable = "use the crates.io `log` library instead"]
+#![unstable(feature = "rustc_private",
+            reason = "use the crates.io `log` library instead")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -169,8 +171,13 @@
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![deny(missing_docs)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(os)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
 
 use std::cell::RefCell;
 use std::fmt;

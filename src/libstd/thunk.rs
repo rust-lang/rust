@@ -10,6 +10,7 @@
 
 // Because this module is temporary...
 #![allow(missing_docs)]
+#![unstable(feature = "std_misc")]
 
 use alloc::boxed::Box;
 use core::marker::Send;

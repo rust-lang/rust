@@ -24,7 +24,7 @@
 //! which OS the user is on -- they should be given the opportunity to write
 //! OS-ignorant code by default.
 
-#![unstable]
+#![unstable(feature = "os")]
 
 #![allow(missing_docs)]
 #![allow(non_snake_case)]
@@ -902,7 +902,7 @@ pub enum MapError {
     ErrMapViewOfFile(uint)
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for MapError {
     fn fmt(&self, out: &mut fmt::Formatter) -> fmt::Result {
         let str = match *self {
