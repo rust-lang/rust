@@ -12,13 +12,12 @@ macro_rules! check {
     ($m:ident, $t:ty, $v:expr) => {{
         mod $m {
             use std::mem::size_of;
-            #[derive(Show)]
+            #[derive(Copy, Show)]
             enum E {
                 V = $v,
                 A = 0
             }
             static C: E = E::V;
-            impl Copy for E {}
             pub fn check() {
                 assert_eq!(size_of::<E>(), size_of::<$t>());
                 assert_eq!(E::V as $t, $v as $t);

@@ -14,7 +14,11 @@
 #     argv[3] = target triple
 # The first two correspond to the two installable components defined in the setup script.
 
-import sys, os, shutil, subprocess
+import sys
+import os
+import shutil
+import subprocess
+
 
 def find_files(files, path):
     found = []
@@ -27,6 +31,7 @@ def find_files(files, path):
         else:
             raise Exception("Could not find '%s' in %s" % (fname, path))
     return found
+
 
 def make_win_dist(rust_root, gcc_root, target_triple):
     # Ask gcc where it keeps its stuff
@@ -114,5 +119,5 @@ def make_win_dist(rust_root, gcc_root, target_triple):
     for src in target_libs:
         shutil.copy(src, target_lib_dir)
 
-if __name__=="__main__":
+if __name__ == "__main__":
     make_win_dist(sys.argv[1], sys.argv[2], sys.argv[3])

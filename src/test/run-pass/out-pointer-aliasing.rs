@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#[derive(Copy)]
 pub struct Foo {
     f1: int,
     _f2: int,
 }
-
-impl Copy for Foo {}
 
 #[inline(never)]
 pub fn foo(f: &mut Foo) -> Foo {

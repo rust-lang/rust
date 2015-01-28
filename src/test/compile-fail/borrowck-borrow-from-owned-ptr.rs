@@ -9,19 +9,17 @@
 // except according to those terms.
 
 
+#[derive(Copy)]
 struct Foo {
   bar1: Bar,
   bar2: Bar
 }
 
-impl Copy for Foo {}
-
+#[derive(Copy)]
 struct Bar {
   int1: isize,
   int2: isize,
 }
-
-impl Copy for Bar {}
 
 fn make_foo() -> Box<Foo> { panic!() }
 

@@ -17,12 +17,11 @@ trait Trait {
     fn f(&self);
 }
 
+#[derive(Copy)]
 struct Struct {
     x: int,
     y: int,
 }
-
-impl Copy for Struct {}
 
 impl Trait for Struct {
     fn f(&self) {

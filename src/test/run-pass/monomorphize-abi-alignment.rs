@@ -18,9 +18,8 @@
  * and apply the wrong instance of the method `unwrap`.
  */
 
+#[derive(Copy)]
 struct S<T> { i:u8, t:T }
-
-impl<T:Copy> Copy for S<T> {}
 
 impl<T> S<T> {
     fn unwrap(self) -> T {
@@ -28,15 +27,11 @@ impl<T> S<T> {
     }
 }
 
-#[derive(PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 struct A((u32, u32));
 
-impl Copy for A {}
-
-#[derive(PartialEq, Show)]
+#[derive(Copy, PartialEq, Show)]
 struct B(u64);
-
-impl Copy for B {}
 
 pub fn main() {
     static Ca: S<A> = S { i: 0, t: A((13, 104)) };

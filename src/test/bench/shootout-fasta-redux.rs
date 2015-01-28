@@ -103,12 +103,11 @@ fn sum_and_scale(a: &'static [AminoAcid]) -> Vec<AminoAcid> {
     result
 }
 
+#[derive(Copy)]
 struct AminoAcid {
     c: u8,
     p: f32,
 }
-
-impl Copy for AminoAcid {}
 
 struct RepeatFasta<'a, W:'a> {
     alu: &'static str,
