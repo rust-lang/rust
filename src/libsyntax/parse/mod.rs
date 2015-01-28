@@ -181,7 +181,7 @@ pub fn parse_tts_from_source_str(name: String,
         name,
         source
     );
-    p.quote_depth += 1us;
+    p.quote_depth += 1;
     // right now this is re-creating the token trees from ... token trees.
     maybe_aborted(p.parse_all_token_trees(),p)
 }
@@ -324,7 +324,7 @@ pub mod with_hygiene {
             name,
             source
         );
-        p.quote_depth += 1us;
+        p.quote_depth += 1;
         // right now this is re-creating the token trees from ... token trees.
         maybe_aborted(p.parse_all_token_trees(),p)
     }
@@ -683,9 +683,9 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     match suffix {
         Some(suf) if looks_like_width_suffix(&['f'], suf) => {
             match base {
-                16us => sd.span_err(sp, "hexadecimal float literal is not supported"),
-                8us => sd.span_err(sp, "octal float literal is not supported"),
-                2us => sd.span_err(sp, "binary float literal is not supported"),
+                16 => sd.span_err(sp, "hexadecimal float literal is not supported"),
+                8 => sd.span_err(sp, "octal float literal is not supported"),
+                2 => sd.span_err(sp, "binary float literal is not supported"),
                 _ => ()
             }
             let ident = token::intern_and_get_ident(&*s);

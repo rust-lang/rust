@@ -322,21 +322,21 @@ pub fn struct_field_visibility(field: ast::StructField) -> Visibility {
 pub fn operator_prec(op: ast::BinOp_) -> usize {
   match op {
       // 'as' sits here with 12
-      BiMul | BiDiv | BiRem     => 11us,
-      BiAdd | BiSub             => 10us,
-      BiShl | BiShr             =>  9us,
-      BiBitAnd                  =>  8us,
-      BiBitXor                  =>  7us,
-      BiBitOr                   =>  6us,
-      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3us,
-      BiAnd                     =>  2us,
-      BiOr                      =>  1us
+      BiMul | BiDiv | BiRem     => 11,
+      BiAdd | BiSub             => 10,
+      BiShl | BiShr             =>  9,
+      BiBitAnd                  =>  8,
+      BiBitXor                  =>  7,
+      BiBitOr                   =>  6,
+      BiLt | BiLe | BiGe | BiGt | BiEq | BiNe => 3,
+      BiAnd                     =>  2,
+      BiOr                      =>  1
   }
 }
 
 /// Precedence of the `as` operator, which is a binary operator
 /// not appearing in the prior table.
-pub const AS_PREC: usize = 12us;
+pub const AS_PREC: usize = 12;
 
 pub fn empty_generics() -> Generics {
     Generics {

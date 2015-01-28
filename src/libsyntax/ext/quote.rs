@@ -709,7 +709,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // try removing it when enough of them are gone.
 
     let mut p = cx.new_parser_from_tts(tts);
-    p.quote_depth += 1us;
+    p.quote_depth += 1;
 
     let cx_expr = p.parse_expr();
     if !p.eat(&token::Comma) {
