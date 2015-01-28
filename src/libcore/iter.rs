@@ -101,8 +101,6 @@ pub trait Iterator {
     fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
 }
 
-// FIXME(#21363) remove `old_impl_check` when bug is fixed
-#[old_impl_check]
 impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {
     type Item = T;
 
