@@ -2975,7 +2975,6 @@ mod test {
     use ast_util;
     use codemap;
     use parse::token;
-    use ptr::P;
 
     #[test]
     fn test_fun_to_string() {
