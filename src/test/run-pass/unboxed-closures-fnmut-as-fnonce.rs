@@ -18,17 +18,19 @@ use std::ops::{FnMut,FnOnce};
 
 struct S;
 
-impl FnMut<(int,),int> for S {
-    extern "rust-call" fn call_mut(&mut self, (x,): (int,)) -> int {
+impl FnMut<(i32,)> for S {
+    type Output = i32;
+
+    extern "rust-call" fn call_mut(&mut self, (x,): (i32,)) -> i32 {
         x * x
     }
 }
 
-fn call_it_mut<F:FnMut(int)->int>(f: &mut F, x: int) -> int {
+fn call_it_mut<F:FnMut(i32)->i32>(f: &mut F, x: i32) -> i32 {
     f(x)
 }
 
-fn call_it_once<F:FnOnce(int)->int>(f: F, x: int) -> int {
+fn call_it_once<F:FnOnce(i32)->i32>(f: F, x: i32) -> i32 {
     f(x)
 }
 

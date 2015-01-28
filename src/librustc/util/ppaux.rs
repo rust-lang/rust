@@ -298,17 +298,9 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
 
     fn closure_to_string<'tcx>(cx: &ctxt<'tcx>, cty: &ty::ClosureTy<'tcx>) -> String {
         let mut s = String::new();
-
-        match cty.unsafety {
-            ast::Unsafety::Normal => {}
-            ast::Unsafety::Unsafe => {
-                s.push_str(cty.unsafety.to_string().as_slice());
-                s.push(' ');
-            }
-        };
-
-        push_sig_to_string(cx, &mut s, '|', '|', &cty.sig);
-
+        s.push_str("[closure");
+        push_sig_to_string(cx, &mut s, '(', ')', &cty.sig);
+        s.push(']');
         s
     }
 
@@ -399,18 +391,10 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_enum(did, substs) | ty_struct(did, substs) => {
             let base = ty::item_path_str(cx, did);
             let generics = ty::lookup_item_type(cx, did).generics;
-            parameterized(cx, base.as_slice(), substs, &generics, did)
+            parameterized(cx, base.as_slice(), substs, &generics, did, &[])
         }
-        ty_trait(box ty::TyTrait {
-            ref principal, ref bounds
-        }) => {
-            let principal = principal.user_string(cx);
-            let bound_str = bounds.user_string(cx);
-            let bound_sep = if bound_str.is_empty() { "" } else { " + " };
-            format!("{}{}{}",
-                    principal,
-                    bound_sep,
-                    bound_str)
+        ty_trait(ref data) => {
+            data.user_string(cx)
         }
         ty::ty_projection(ref data) => {
             format!("<{} as {}>::{}",
@@ -420,14 +404,15 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         }
         ty_str => "str".to_string(),
         ty_closure(ref did, _, substs) => {
-            cx.closures.borrow().get(did).map(|cl| {
+            let closures = cx.closures.borrow();
+            closures.get(did).map(|cl| {
                 closure_to_string(cx, &cl.closure_type.subst(cx, substs))
             }).unwrap_or_else(|| {
                 if did.krate == ast::LOCAL_CRATE {
                     let span = cx.map.span(did.node);
-                    format!("closure[{}]", span.repr(cx))
+                    format!("[closure {}]", span.repr(cx))
                 } else {
-                    format!("closure")
+                    format!("[closure]")
                 }
             })
         }
@@ -458,7 +443,8 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
                            base: &str,
                            substs: &subst::Substs<'tcx>,
                            generics: &ty::Generics<'tcx>,
-                           did: ast::DefId)
+                           did: ast::DefId,
+                           projections: &[ty::ProjectionPredicate<'tcx>])
                            -> String
 {
     if cx.sess.verbose() {
@@ -511,7 +497,20 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
         strs.push(ty_to_string(cx, *t))
     }
 
-    if cx.lang_items.fn_trait_kind(did).is_some() {
+    for projection in projections.iter() {
+        strs.push(format!("{}={}",
+                          projection.projection_ty.item_name.user_string(cx),
+                          projection.ty.user_string(cx)));
+    }
+
+    if cx.lang_items.fn_trait_kind(did).is_some() && projections.len() == 1 {
+        let projection_ty = projections[0].ty;
+        let tail =
+            if ty::type_is_nil(projection_ty) {
+                format!("")
+            } else {
+                format!(" -> {}", projection_ty.user_string(cx))
+            };
         format!("{}({}){}",
                 base,
                 if strs[0].starts_with("(") && strs[0].ends_with(",)") {
@@ -521,7 +520,7 @@ pub fn parameterized<'tcx>(cx: &ctxt<'tcx>,
                 } else {
                     &strs[0][]
                 },
-                if &*strs[1] == "()" { String::new() } else { format!(" -> {}", strs[1]) })
+                tail)
     } else if strs.len() > 0 {
         format!("{}<{}>", base, strs.connect(", "))
     } else {
@@ -623,6 +622,65 @@ impl<'tcx> Repr<'tcx> for def::Def {
     }
 }
 
+/// This curious type is here to help pretty-print trait objects. In
+/// a trait object, the projections are stored separately from the
+/// main trait bound, but in fact we want to package them together
+/// when printing out; they also have separate binders, but we want
+/// them to share a binder when we print them out. (And the binder
+/// pretty-printing logic is kind of clever and we don't want to
+/// reproduce it.) So we just repackage up the structure somewhat.
+///
+/// Right now there is only one trait in an object that can have
+/// projection bounds, so we just stuff them altogether. But in
+/// reality we should eventually sort things out better.
+type TraitAndProjections<'tcx> =
+    (Rc<ty::TraitRef<'tcx>>, Vec<ty::ProjectionPredicate<'tcx>>);
+
+impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        let &(ref trait_ref, ref projection_bounds) = self;
+        let base = ty::item_path_str(tcx, trait_ref.def_id);
+        let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
+        parameterized(tcx,
+                      base.as_slice(),
+                      trait_ref.substs,
+                      &trait_def.generics,
+                      trait_ref.def_id,
+                      &projection_bounds[])
+    }
+}
+
+impl<'tcx> UserString<'tcx> for ty::TyTrait<'tcx> {
+    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
+        let &ty::TyTrait { ref principal, ref bounds } = self;
+
+        let mut components = vec![];
+
+        let tap: ty::Binder<TraitAndProjections<'tcx>> =
+            ty::Binder((principal.0.clone(),
+                        bounds.projection_bounds.iter().map(|x| x.0.clone()).collect()));
+
+        // Generate the main trait ref, including associated types.
+        components.push(tap.user_string(tcx));
+
+        // Builtin bounds.
+        for bound in bounds.builtin_bounds.iter() {
+            components.push(bound.user_string(tcx));
+        }
+
+        // Region, if not obviously implied by builtin bounds.
+        if bounds.region_bound != ty::ReStatic ||
+            !bounds.builtin_bounds.contains(&ty::BoundSend)
+        { // Region bound is implied by builtin bounds:
+            components.push(bounds.region_bound.user_string(tcx));
+        }
+
+        components.retain(|s| !s.is_empty());
+
+        components.connect(" + ")
+    }
+}
+
 impl<'tcx> Repr<'tcx> for ty::TypeParameterDef<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("TypeParameterDef({:?}, {}, {:?}/{})",
@@ -701,12 +759,6 @@ impl<'tcx> Repr<'tcx> for ty::BuiltinBounds {
     }
 }
 
-impl<'tcx> Repr<'tcx> for ty::ExistentialBounds<'tcx> {
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        self.user_string(tcx)
-    }
-}
-
 impl<'tcx> Repr<'tcx> for ty::ParamBounds<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         let mut res = Vec::new();
@@ -727,7 +779,8 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         format!("TraitRef({}, {})",
                 self.substs.self_ty().repr(tcx),
-                parameterized(tcx, base.as_slice(), self.substs, &trait_def.generics, self.def_id))
+                parameterized(tcx, base.as_slice(), self.substs,
+                              &trait_def.generics, self.def_id, &[]))
     }
 }
 
@@ -1062,7 +1115,7 @@ impl<'tcx> Repr<'tcx> for ty::MethodObject<'tcx> {
         format!("MethodObject({},{},{})",
                 self.trait_ref.repr(tcx),
                 self.method_num,
-                self.real_index)
+                self.vtable_index)
     }
 }
 
@@ -1110,14 +1163,8 @@ impl<'tcx> UserString<'tcx> for ty::ParamBounds<'tcx> {
     }
 }
 
-impl<'tcx> UserString<'tcx> for ty::ExistentialBounds<'tcx> {
-    fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
-        if self.builtin_bounds.contains(&ty::BoundSend) &&
-            self.region_bound == ty::ReStatic
-        { // Region bound is implied by builtin bounds:
-            return self.builtin_bounds.repr(tcx);
-        }
-
+impl<'tcx> Repr<'tcx> for ty::ExistentialBounds<'tcx> {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         let mut res = Vec::new();
 
         let region_str = self.region_bound.user_string(tcx);
@@ -1127,6 +1174,10 @@ impl<'tcx> UserString<'tcx> for ty::ExistentialBounds<'tcx> {
 
         for bound in self.builtin_bounds.iter() {
             res.push(bound.user_string(tcx));
+        }
+
+        for projection_bound in self.projection_bounds.iter() {
+            res.push(projection_bound.user_string(tcx));
         }
 
         res.connect("+")
@@ -1184,7 +1235,7 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
         let path_str = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         parameterized(tcx, path_str.as_slice(), self.substs,
-                      &trait_def.generics, self.def_id)
+                      &trait_def.generics, self.def_id, &[])
     }
 }
 

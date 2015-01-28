@@ -15,27 +15,30 @@
 // Test that unboxing shim for calling rust-call ABI methods through a
 // trait box works and does not cause an ICE.
 
-struct Foo { foo: uint }
+struct Foo { foo: u32 }
 
-impl FnMut<(), uint> for Foo {
-    extern "rust-call" fn call_mut(&mut self, _: ()) -> uint { self.foo }
+impl FnMut<()> for Foo {
+    type Output = u32;
+    extern "rust-call" fn call_mut(&mut self, _: ()) -> u32 { self.foo }
 }
 
-impl FnMut<(uint,), uint> for Foo {
-    extern "rust-call" fn call_mut(&mut self, (x,): (uint,)) -> uint { self.foo + x }
+impl FnMut<(u32,)> for Foo {
+    type Output = u32;
+    extern "rust-call" fn call_mut(&mut self, (x,): (u32,)) -> u32 { self.foo + x }
 }
 
-impl FnMut<(uint, uint), uint> for Foo {
-    extern "rust-call" fn call_mut(&mut self, (x, y): (uint, uint)) -> uint { self.foo + x + y }
+impl FnMut<(u32,u32)> for Foo {
+    type Output = u32;
+    extern "rust-call" fn call_mut(&mut self, (x, y): (u32, u32)) -> u32 { self.foo + x + y }
 }
 
 fn main() {
-    let mut f = box Foo { foo: 42 } as Box<FnMut<(), uint>>;
+    let mut f = box Foo { foo: 42 } as Box<FnMut() -> u32>;
     assert_eq!(f.call_mut(()), 42);
 
-    let mut f = box Foo { foo: 40 } as Box<FnMut<(uint,), uint>>;
+    let mut f = box Foo { foo: 40 } as Box<FnMut(u32) -> u32>;
     assert_eq!(f.call_mut((2,)), 42);
 
-    let mut f = box Foo { foo: 40 } as Box<FnMut<(uint, uint), uint>>;
+    let mut f = box Foo { foo: 40 } as Box<FnMut(u32, u32) -> u32>;
     assert_eq!(f.call_mut((1, 1)), 42);
 }

@@ -13,12 +13,13 @@
 use std::ops::{FnMut};
 
 struct S {
-    x: int,
-    y: int,
+    x: i32,
+    y: i32,
 }
 
-impl FnMut<(),int> for S {
-    extern "rust-call" fn call_mut(&mut self, (): ()) -> int {
+impl FnMut<()> for S {
+    type Output = i32;
+    extern "rust-call" fn call_mut(&mut self, (): ()) -> i32 {
         self.x * self.y
     }
 }

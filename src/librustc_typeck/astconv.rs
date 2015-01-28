@@ -57,7 +57,7 @@ use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use rscope::{self, UnelidableRscope, RegionScope, SpecificRscope,
              ShiftedRscope, BindingRscope};
 use TypeAndSubsts;
-use util::common::ErrorReported;
+use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::DefIdMap;
 use util::ppaux::{self, Repr, UserString};
 
@@ -268,7 +268,7 @@ pub fn ast_path_substs_for_ty<'tcx>(
         ast::ParenthesizedParameters(ref data) => {
             span_err!(tcx.sess, path.span, E0214,
                 "parenthesized parameters may only be used with a trait");
-            (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
+            convert_parenthesized_parameters(this, data)
         }
     };
 
@@ -479,7 +479,9 @@ fn convert_ty_with_lifetime_elision<'tcx>(this: &AstConv<'tcx>,
 
 fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
                                           data: &ast::ParenthesizedParameterData)
-                                          -> Vec<Ty<'tcx>>
+                                          -> (Vec<ty::Region>,
+                                              Vec<Ty<'tcx>>,
+                                              Vec<ConvertedBinding<'tcx>>)
 {
     let binding_rscope = BindingRscope::new();
     let inputs = data.inputs.iter()
@@ -492,15 +494,26 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
 
     let input_ty = ty::mk_tup(this.tcx(), inputs);
 
-    let output = match data.output {
-        Some(ref output_ty) => convert_ty_with_lifetime_elision(this,
-                                                                implied_output_region,
-                                                                params_lifetimes,
-                                                                &**output_ty),
-        None => ty::mk_nil(this.tcx()),
+    let (output, output_span) = match data.output {
+        Some(ref output_ty) => {
+            (convert_ty_with_lifetime_elision(this,
+                                              implied_output_region,
+                                              params_lifetimes,
+                                              &**output_ty),
+             output_ty.span)
+        }
+        None => {
+            (ty::mk_nil(this.tcx()), data.span)
+        }
     };
 
-    vec![input_ty, output]
+    let output_binding = ConvertedBinding {
+        item_name: token::intern(FN_OUTPUT_NAME),
+        ty: output,
+        span: output_span
+    };
+
+    (vec![], vec![input_ty], vec![output_binding])
 }
 
 pub fn instantiate_poly_trait_ref<'tcx>(
@@ -630,7 +643,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
                             the crate attributes to enable");
             }
 
-            (Vec::new(), convert_parenthesized_parameters(this, data), Vec::new())
+            convert_parenthesized_parameters(this, data)
         }
     };
 

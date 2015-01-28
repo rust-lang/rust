@@ -17,8 +17,9 @@
 
 use std::marker;
 
-trait Foo<'a,T,U> {
-    fn dummy(&'a self) -> &'a (T,U);
+trait Foo<'a,T> {
+    type Output;
+    fn dummy(&'a self) -> &'a (T,Self::Output);
 }
 
 trait Eq<X: ?Sized> { }
@@ -29,16 +30,17 @@ fn same_type<A,B:Eq<A>>(a: A, b: B) { }
 
 fn test<'a,'b>() {
     // Parens are equivalent to omitting default in angle.
-    eq::< Foo<(isize,),()>,               Foo(isize)                      >();
+    eq::< Foo<(isize,),Output=()>,               Foo(isize)                      >();
 
     // Here we specify 'static explicitly in angle-bracket version.
     // Parenthesized winds up getting inferred.
-    eq::< Foo<'static, (isize,),()>,      Foo(isize)                      >();
+    eq::< Foo<'static, (isize,),Output=()>,      Foo(isize)                      >();
 }
 
-fn test2(x: &Foo<(isize,),()>, y: &Foo(isize)) {
+fn test2(x: &Foo<(isize,),Output=()>, y: &Foo(isize)) {
     // Here, the omitted lifetimes are expanded to distinct things.
     same_type(x, y) //~ ERROR cannot infer
+                    //~^ ERROR cannot infer
 }
 
 fn main() { }

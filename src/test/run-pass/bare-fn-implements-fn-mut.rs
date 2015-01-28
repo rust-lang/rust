@@ -12,7 +12,7 @@
 
 use std::ops::FnMut;
 
-fn call_f<F:FnMut<(),()>>(mut f: F) {
+fn call_f<F:FnMut()>(mut f: F) {
     f();
 }
 
@@ -20,7 +20,7 @@ fn f() {
     println!("hello");
 }
 
-fn call_g<G:FnMut<(String,String),String>>(mut g: G, x: String, y: String)
+fn call_g<G:FnMut(String,String) -> String>(mut g: G, x: String, y: String)
           -> String {
     g(x, y)
 }

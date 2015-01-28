@@ -347,6 +347,9 @@ impl AngleBracketedParameterData {
 /// A path like `Foo(A,B) -> C`
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Show)]
 pub struct ParenthesizedParameterData {
+    /// Overall span
+    pub span: Span,
+
     /// `(A,B)`
     pub inputs: Vec<P<Ty>>,
 

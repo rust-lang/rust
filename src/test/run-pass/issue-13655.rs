@@ -13,7 +13,8 @@ use std::ops::Fn;
 
 struct Foo<T>(T);
 
-impl<T: Copy> Fn<(), T> for Foo<T> {
+impl<T: Copy> Fn<()> for Foo<T> {
+    type Output = T;
     extern "rust-call" fn call(&self, _: ()) -> T {
       match *self {
         Foo(t) => t
