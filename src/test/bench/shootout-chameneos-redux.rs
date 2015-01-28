@@ -61,7 +61,7 @@ enum Color {
     Blue,
 }
 
-impl fmt::Show for Color {
+impl fmt::Debug for Color {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let str = match *self {
             Red => "red",
@@ -104,7 +104,7 @@ fn show_digit(nn: uint) -> &'static str {
 }
 
 struct Number(uint);
-impl fmt::Show for Number {
+impl fmt::Debug for Number {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         let mut out = vec![];
         let Number(mut num) = *self;

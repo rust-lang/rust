@@ -11,7 +11,7 @@
 use std::ascii::AsciiExt;
 use std::cmp;
 
-#[derive(Show, Clone)]
+#[derive(Debug, Clone)]
 pub struct LogDirective {
     pub name: Option<String>,
     pub level: u32,

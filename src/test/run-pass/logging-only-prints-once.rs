@@ -17,7 +17,7 @@ use std::thread::Thread;
 
 struct Foo(Cell<int>);
 
-impl fmt::Show for Foo {
+impl fmt::Debug for Foo {
     fn fmt(&self, _fmt: &mut fmt::Formatter) -> fmt::Result {
         let Foo(ref f) = *self;
         assert!(f.get() == 0);

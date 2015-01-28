@@ -263,7 +263,7 @@ mod tests {
     use {Rng, Rand};
     use super::{RandSample, WeightedChoice, Weighted, Sample, IndependentSample};
 
-    #[derive(PartialEq, Show)]
+    #[derive(PartialEq, Debug)]
     struct ConstRand(uint);
     impl Rand for ConstRand {
         fn rand<R: Rng>(_: &mut R) -> ConstRand {

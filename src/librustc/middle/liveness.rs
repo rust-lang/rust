@@ -159,7 +159,7 @@ impl Clone for LiveNode {
     }
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
@@ -245,13 +245,13 @@ struct CaptureInfo {
     var_nid: NodeId
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 struct LocalInfo {
     id: NodeId,
     ident: ast::Ident
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 enum VarKind {
     Arg(NodeId, ast::Ident),
     Local(LocalInfo),

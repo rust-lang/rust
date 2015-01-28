@@ -1924,7 +1924,7 @@ fn float_cast(bcx: Block,
     } else { llsrc };
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum cast_kind {
     cast_pointer,
     cast_integral,

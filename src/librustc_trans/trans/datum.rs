@@ -52,7 +52,7 @@ pub struct DatumBlock<'blk, 'tcx: 'blk, K> {
     pub datum: Datum<'tcx, K>,
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum Expr {
     /// a fresh value that was produced and which has no cleanup yet
     /// because it has not yet "landed" into its permanent home
@@ -64,10 +64,10 @@ pub enum Expr {
     LvalueExpr,
 }
 
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub struct Lvalue;
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct Rvalue {
     pub mode: RvalueMode
 }
@@ -83,7 +83,7 @@ impl Drop for Rvalue {
     fn drop(&mut self) { }
 }
 
-#[derive(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Debug)]
 pub enum RvalueMode {
     /// `val` is a pointer to the actual value (and thus has type *T)
     ByRef,

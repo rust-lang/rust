@@ -163,7 +163,7 @@ use slice;
 // which basically means it must be `Option`.
 
 /// The `Option` type.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {
     /// No value

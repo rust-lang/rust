@@ -147,7 +147,7 @@ pub type TraitObligations<'tcx> = subst::VecPerParamSpace<TraitObligation<'tcx>>
 
 pub type Selection<'tcx> = Vtable<'tcx, PredicateObligation<'tcx>>;
 
-#[derive(Clone,Show)]
+#[derive(Clone,Debug)]
 pub enum SelectionError<'tcx> {
     Unimplemented,
     Overflow,
@@ -215,7 +215,7 @@ pub type SelectionResult<'tcx, T> = Result<Option<T>, SelectionError<'tcx>>;
 /// ### The type parameter `N`
 ///
 /// See explanation on `VtableImplData`.
-#[derive(Show,Clone)]
+#[derive(Debug,Clone)]
 pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
@@ -258,7 +258,7 @@ pub struct VtableImplData<'tcx, N> {
     pub nested: subst::VecPerParamSpace<N>
 }
 
-#[derive(Show,Clone)]
+#[derive(Debug,Clone)]
 pub struct VtableBuiltinData<N> {
     pub nested: subst::VecPerParamSpace<N>
 }

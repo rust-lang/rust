@@ -214,7 +214,7 @@ use unicode::str::Utf16Item;
 use Encodable;
 
 /// Represents a json value
-#[derive(Clone, PartialEq, PartialOrd, Show)]
+#[derive(Clone, PartialEq, PartialOrd, Debug)]
 pub enum Json {
     I64(i64),
     U64(u64),
@@ -235,7 +235,7 @@ pub struct AsJson<'a, T: 'a> { inner: &'a T }
 pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<uint> }
 
 /// The errors that can arise while parsing a JSON stream.
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ErrorCode {
     InvalidSyntax,
     InvalidNumber,
@@ -256,7 +256,7 @@ pub enum ErrorCode {
     NotUtf8,
 }
 
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
@@ -266,7 +266,7 @@ pub enum ParserError {
 // Builder and Parser have the same errors.
 pub type BuilderError = ParserError;
 
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum DecoderError {
     ParseError(ParserError),
     ExpectedError(string::String, string::String),
@@ -275,7 +275,7 @@ pub enum DecoderError {
     ApplicationError(string::String)
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum EncoderError {
     FmtError(fmt::Error),
     BadHashmapKey,
@@ -1239,7 +1239,7 @@ impl Index<uint> for Json {
 }
 
 /// The output of the streaming parser.
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum JsonEvent {
     ObjectStart,
     ObjectEnd,
@@ -1254,7 +1254,7 @@ pub enum JsonEvent {
     Error(ParserError),
 }
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 enum ParserState {
     // Parse a value in an array, true means first element.
     ParseArray(bool),
@@ -1284,7 +1284,7 @@ pub struct Stack {
 /// For example, StackElement::Key("foo"), StackElement::Key("bar"),
 /// StackElement::Index(3) and StackElement::Key("x") are the
 /// StackElements compositing the stack that represents foo.bar[3].x
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum StackElement<'l> {
     Index(u32),
     Key(&'l str),
@@ -1292,7 +1292,7 @@ pub enum StackElement<'l> {
 
 // Internally, Key elements are stored as indices in a buffer to avoid
 // allocating a string for every member of an object.
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 enum InternalStackElement {
     InternalIndex(u32),
     InternalKey(u16, u16), // start, size
@@ -2623,7 +2623,7 @@ mod tests {
     use std::num::Float;
     use std::string;
 
-    #[derive(RustcDecodable, Eq, PartialEq, Show)]
+    #[derive(RustcDecodable, Eq, PartialEq, Debug)]
     struct OptionData {
         opt: Option<uint>,
     }
@@ -2650,20 +2650,20 @@ mod tests {
                                 ExpectedError("Number".to_string(), "false".to_string()));
     }
 
-    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     enum Animal {
         Dog,
         Frog(string::String, int)
     }
 
-    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     struct Inner {
         a: (),
         b: uint,
         c: Vec<string::String>,
     }
 
-    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     struct Outer {
         inner: Vec<Inner>,
     }

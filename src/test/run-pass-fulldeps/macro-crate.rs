@@ -17,11 +17,11 @@
 extern crate macro_crate_test;
 
 #[into_foo]
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 fn foo() -> AFakeTypeThatHadBetterGoAway {}
 
 #[into_multi_foo]
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 fn foo() -> AnotherFakeTypeThatHadBetterGoAway {}
 
 trait Qux {

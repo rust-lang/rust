@@ -227,7 +227,7 @@ use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
@@ -242,7 +242,7 @@ impl<'a> ConstantExpr<'a> {
 }
 
 // An option identifying a branch (either a literal, an enum variant or a range)
-#[derive(Show)]
+#[derive(Debug)]
 enum Opt<'a, 'tcx> {
     ConstantValue(ConstantExpr<'a>),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>),

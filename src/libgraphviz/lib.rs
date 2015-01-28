@@ -523,7 +523,7 @@ pub trait GraphWalk<'a, N, E> {
     fn target(&'a self, edge: &E) -> N;
 }
 
-#[derive(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Debug)]
 pub enum RenderOption {
     NoEdgeLabels,
     NoNodeLabels,

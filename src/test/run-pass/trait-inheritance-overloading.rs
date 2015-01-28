@@ -13,7 +13,7 @@ use std::ops::{Add, Sub, Mul};
 
 trait MyNum : Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + PartialEq + Clone { }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 struct MyInt { val: int }
 
 impl Add for MyInt {

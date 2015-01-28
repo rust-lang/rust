@@ -33,7 +33,7 @@ use syntax::visit;
 use syntax::visit::Visitor;
 use util::nodemap::NodeMap;
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug)]
 pub enum DefRegion {
     DefStaticRegion,
     DefEarlyBoundRegion(/* space */ subst::ParamSpace,

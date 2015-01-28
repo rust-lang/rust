@@ -144,7 +144,7 @@ Section: Creating a string
 */
 
 /// Errors which can occur when attempting to interpret a byte slice as a `str`.
-#[derive(Copy, Eq, PartialEq, Clone, Show)]
+#[derive(Copy, Eq, PartialEq, Clone, Debug)]
 #[unstable(feature = "core",
            reason = "error enumeration recently added and definitions may be refined")]
 pub enum Utf8Error {

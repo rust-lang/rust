@@ -30,7 +30,7 @@
 //! defined and used like so:
 //!
 //! ```
-//! #[derive(Show)]
+//! #[derive(Debug)]
 //! enum Version { Version1, Version2 }
 //!
 //! fn parse_version(header: &[u8]) -> Result<Version, &'static str> {
@@ -239,7 +239,7 @@ use slice;
 /// `Result` is a type that represents either success (`Ok`) or failure (`Err`).
 ///
 /// See the [`std::result`](index.html) module documentation for details.
-#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Show, Hash)]
+#[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Result<T, E> {

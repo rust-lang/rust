@@ -1852,21 +1852,21 @@ mod tests {
         })
     }
 
-    #[derive(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Debug)]
     enum Taggy {
         One(int),
         Two(int, int),
         Three(int, int, int),
     }
 
-    #[derive(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Debug)]
     enum Taggypar<T> {
         Onepar(int),
         Twopar(int, int),
         Threepar(int, int, int),
     }
 
-    #[derive(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Debug)]
     struct RecCy {
         x: int,
         y: int,

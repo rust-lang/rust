@@ -29,7 +29,7 @@
 //! Creating a recursive data structure:
 //!
 //! ```
-//! #[derive(Show)]
+//! #[derive(Debug)]
 //! enum List<T> {
 //!     Cons(T, Box<List<T>>),
 //!     Nil,

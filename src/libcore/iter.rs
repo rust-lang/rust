@@ -1224,7 +1224,7 @@ impl_multiplicative! { f32,  1.0 }
 impl_multiplicative! { f64,  1.0 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `IteratorOrdExt::min_max` for more detail.
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 #[unstable(feature = "core",
            reason = "unclear whether such a fine-grained result is widely useful")]
 pub enum MinMaxResult<T> {

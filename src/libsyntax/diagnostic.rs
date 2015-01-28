@@ -234,7 +234,7 @@ pub fn mk_handler(can_emit_warnings: bool, e: Box<Emitter + Send>) -> Handler {
     }
 }
 
-#[derive(Copy, PartialEq, Clone, Show)]
+#[derive(Copy, PartialEq, Clone, Debug)]
 pub enum Level {
     Bug,
     Fatal,

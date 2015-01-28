@@ -320,7 +320,7 @@ pub type IoResult<T> = Result<T, IoError>;
 /// # FIXME
 ///
 /// Is something like this sufficient? It's kind of archaic
-#[derive(PartialEq, Eq, Clone, Show)]
+#[derive(PartialEq, Eq, Clone, Debug)]
 pub struct IoError {
     /// An enumeration which can be matched against for determining the flavor
     /// of error.
@@ -376,7 +376,7 @@ impl Error for IoError {
 }
 
 /// A list specifying general categories of I/O error.
-#[derive(Copy, PartialEq, Eq, Clone, Show)]
+#[derive(Copy, PartialEq, Eq, Clone, Debug)]
 pub enum IoErrorKind {
     /// Any I/O error not part of this list.
     OtherIoError,
@@ -1662,7 +1662,7 @@ pub fn standard_error(kind: IoErrorKind) -> IoError {
 /// A mode specifies how a file should be opened or created. These modes are
 /// passed to `File::open_mode` and are used to control where the file is
 /// positioned when it is initially opened.
-#[derive(Copy, Clone, PartialEq, Eq, Show)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum FileMode {
     /// Opens a file positioned at the beginning.
     Open,
@@ -1674,7 +1674,7 @@ pub enum FileMode {
 
 /// Access permissions with which the file should be opened. `File`s
 /// opened with `Read` will return an error if written to.
-#[derive(Copy, Clone, PartialEq, Eq, Show)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum FileAccess {
     /// Read-only access, requests to write will result in an error
     Read,
@@ -1685,7 +1685,7 @@ pub enum FileAccess {
 }
 
 /// Different kinds of files which can be identified by a call to stat
-#[derive(Copy, PartialEq, Show, Hash, Clone)]
+#[derive(Copy, PartialEq, Debug, Hash, Clone)]
 pub enum FileType {
     /// This is a normal file, corresponding to `S_IFREG`
     RegularFile,
@@ -1789,7 +1789,7 @@ pub struct UnstableFileStat {
 bitflags! {
     /// A set of permissions for a file or directory is represented by a set of
     /// flags which are or'd together.
-    #[derive(Show)]
+    #[derive(Debug)]
     flags FilePermission: u32 {
         const USER_READ     = 0o400,
         const USER_WRITE    = 0o200,
@@ -1845,7 +1845,7 @@ mod tests {
     use prelude::v1::{Ok, Vec, Buffer, SliceExt};
     use uint;
 
-    #[derive(Clone, PartialEq, Show)]
+    #[derive(Clone, PartialEq, Debug)]
     enum BadReaderBehavior {
         GoodBehavior(uint),
         BadBehavior(uint)

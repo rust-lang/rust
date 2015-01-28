@@ -28,7 +28,7 @@ use syntax::visit;
 use syntax::print::{pp, pprust};
 use util::nodemap::NodeMap;
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum EntryOrExit {
     Entry,
     Exit,
