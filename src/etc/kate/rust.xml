@@ -69,8 +69,10 @@
 		<item> CharExt </item>
 		<item> Clone </item>
 		<item> Copy </item>
+		<item> Debug </item>
 		<item> Decodable </item>
 		<item> Default </item>
+		<item> Display </item>
 		<item> DoubleEndedIterator </item>
 		<item> Drop </item>
 		<item> Encodable </item>
