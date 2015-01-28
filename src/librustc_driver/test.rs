@@ -103,7 +103,7 @@ fn test_env<F>(source_string: &str,
     let codemap =
         CodeMap::new();
     let diagnostic_handler =
-        diagnostic::mk_handler(emitter);
+        diagnostic::mk_handler(true, emitter);
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
@@ -125,7 +125,7 @@ fn test_env<F>(source_string: &str,
         resolve::resolve_crate(&sess, &ast_map, &lang_items, krate, resolve::MakeGlobMap::No);
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
-    let stability_index = stability::Index::build(krate);
+    let stability_index = stability::Index::build(&sess, krate);
     let tcx = ty::mk_ctxt(sess,
                           &arenas,
                           def_map,

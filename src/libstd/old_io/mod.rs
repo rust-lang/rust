@@ -237,7 +237,7 @@
 //! concerned with error handling; instead its caller is responsible for
 //! responding to errors that may occur while attempting to read the numbers.
 
-#![unstable]
+#![unstable(feature = "io")]
 #![deny(unused_must_use)]
 
 pub use self::SeekStyle::*;
@@ -357,7 +357,7 @@ impl IoError {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for IoError {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         match *self {
@@ -1000,7 +1000,8 @@ pub trait Writer {
     fn write_all(&mut self, buf: &[u8]) -> IoResult<()>;
 
     /// Deprecated, this method was renamed to `write_all`
-    #[deprecated = "renamed to `write_all`"]
+    #[unstable(feature = "io")]
+    #[deprecated(since = "1.0.0", reason = "renamed to `write_all`")]
     fn write(&mut self, buf: &[u8]) -> IoResult<()> { self.write_all(buf) }
 
     /// Flush this output stream, ensuring that all intermediately buffered
@@ -1711,7 +1712,6 @@ pub enum FileType {
 /// # Examples
 ///
 /// ```no_run
-/// # #![allow(unstable)]
 ///
 /// use std::old_io::fs::PathExtensions;
 ///
@@ -1752,7 +1752,7 @@ pub struct FileStat {
     ///
     /// Usage of this field is discouraged, but if access is desired then the
     /// fields are located here.
-    #[unstable]
+    #[unstable(feature = "io")]
     pub unstable: UnstableFileStat,
 }
 
@@ -1760,7 +1760,7 @@ pub struct FileStat {
 /// returned from a `stat` syscall which is not contained in the `FileStat`
 /// structure. This information is not necessarily platform independent, and may
 /// have different meanings or no meaning at all on some platforms.
-#[unstable]
+#[unstable(feature = "io")]
 #[derive(Copy, Hash)]
 pub struct UnstableFileStat {
     /// The ID of the device containing the file.
@@ -1824,14 +1824,14 @@ bitflags! {
 }
 
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Default for FilePermission {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn default() -> FilePermission { FilePermission::empty() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Display for FilePermission {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{:04o}", self.bits)

@@ -296,7 +296,7 @@ fn test_resize_policy() {
 /// }
 /// ```
 #[derive(Clone)]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct HashMap<K, V, S = RandomState> {
     // All hashes are keyed on these values, to prevent hash collision attacks.
     hash_state: S,
@@ -499,7 +499,7 @@ impl<K: Hash<Hasher> + Eq, V> HashMap<K, V, RandomState> {
     /// let mut map: HashMap<&str, int> = HashMap::new();
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> HashMap<K, V, RandomState> {
         Default::default()
     }
@@ -513,7 +513,7 @@ impl<K: Hash<Hasher> + Eq, V> HashMap<K, V, RandomState> {
     /// let mut map: HashMap<&str, int> = HashMap::with_capacity(10);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: uint) -> HashMap<K, V, RandomState> {
         HashMap::with_capacity_and_hash_state(capacity, Default::default())
     }
@@ -539,7 +539,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// map.insert(1i, 2u);
     /// ```
     #[inline]
-    #[unstable = "hasher stuff is unclear"]
+    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
     pub fn with_hash_state(hash_state: S) -> HashMap<K, V, S> {
         HashMap {
             hash_state:    hash_state,
@@ -567,7 +567,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// map.insert(1i, 2u);
     /// ```
     #[inline]
-    #[unstable = "hasher stuff is unclear"]
+    #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
     pub fn with_capacity_and_hash_state(capacity: uint, hash_state: S)
                                         -> HashMap<K, V, S> {
         let resize_policy = DefaultResizePolicy::new();
@@ -591,7 +591,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert!(map.capacity() >= 100);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint {
         self.resize_policy.usable_capacity(self.table.capacity())
     }
@@ -611,7 +611,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// let mut map: HashMap<&str, int> = HashMap::new();
     /// map.reserve(10);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: uint) {
         let new_size = self.len().checked_add(additional).expect("capacity overflow");
         let min_cap = self.resize_policy.min_capacity(new_size);
@@ -723,7 +723,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// map.shrink_to_fit();
     /// assert!(map.capacity() >= 2);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         let min_capacity = self.resize_policy.min_capacity(self.len());
         let min_capacity = max(min_capacity.next_power_of_two(), INITIAL_CAPACITY);
@@ -817,7 +817,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///     println!("{}", key);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
         fn first<A, B>((a, _): (A, B)) -> A { a }
         let first: fn((&'a K,&'a V)) -> &'a K = first; // coerce to fn ptr
@@ -842,7 +842,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///     println!("{}", val);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
         fn second<A, B>((_, b): (A, B)) -> B { b }
         let second: fn((&'a K,&'a V)) -> &'a V = second; // coerce to fn ptr
@@ -867,7 +867,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<K, V> {
         Iter { inner: self.table.iter() }
     }
@@ -895,7 +895,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///     println!("key: {} val: {}", key, val);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<K, V> {
         IterMut { inner: self.table.iter_mut() }
     }
@@ -917,7 +917,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// // Not possible with .iter()
     /// let vec: Vec<(&str, int)> = map.into_iter().collect();
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
         let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two;
@@ -928,7 +928,8 @@ impl<K, V, S, H> HashMap<K, V, S>
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    #[unstable = "precise API still being fleshed out"]
+    #[unstable(feature = "std_misc",
+               reason = "precise API still being fleshed out")]
     pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V>
     {
         // Gotta resize now.
@@ -950,7 +951,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// a.insert(1u, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { self.table.size() }
 
     /// Returns true if the map contains no elements.
@@ -966,7 +967,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert!(!a.is_empty());
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Clears the map, returning all key-value pairs as an iterator. Keeps the
@@ -989,7 +990,8 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert!(a.is_empty());
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "std_misc",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<K, V> {
         fn last_two<A, B, C>((_, b, c): (A, B, C)) -> (B, C) { (b, c) }
         let last_two: fn((SafeHash, K, V)) -> (K, V) = last_two; // coerce to fn pointer
@@ -1012,7 +1014,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     pub fn clear(&mut self) {
         self.drain();
@@ -1034,7 +1036,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert_eq!(map.get(&1), Some(&"a"));
     /// assert_eq!(map.get(&2), None);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
         where Q: Hash<H> + Eq + BorrowFrom<K>
     {
@@ -1057,7 +1059,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
         where Q: Hash<H> + Eq + BorrowFrom<K>
     {
@@ -1083,7 +1085,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// }
     /// assert_eq!(map[1], "b");
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
         where Q: Hash<H> + Eq + BorrowFrom<K>
     {
@@ -1106,7 +1108,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert_eq!(map.insert(37, "c"), Some("b"));
     /// assert_eq!(map[37], "c");
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, k: K, v: V) -> Option<V> {
         let hash = self.make_hash(&k);
         self.reserve(1);
@@ -1135,7 +1137,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
         where Q: Hash<H> + Eq + BorrowFrom<K>
     {
@@ -1208,14 +1210,14 @@ impl<K, V, S, H> PartialEq for HashMap<K, V, S>
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H> Eq for HashMap<K, V, S>
     where K: Eq + Hash<H>, V: Eq,
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H> Debug for HashMap<K, V, S>
     where K: Eq + Hash<H> + Debug, V: Debug,
           S: HashState<Hasher=H>,
@@ -1233,7 +1235,7 @@ impl<K, V, S, H> Debug for HashMap<K, V, S>
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H> Default for HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H> + Default,
@@ -1244,7 +1246,7 @@ impl<K, V, S, H> Default for HashMap<K, V, S>
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, Q: ?Sized, V, S, H> Index<Q> for HashMap<K, V, S>
     where K: Eq + Hash<H>,
           Q: Eq + Hash<H> + BorrowFrom<K>,
@@ -1259,7 +1261,7 @@ impl<K, Q: ?Sized, V, S, H> Index<Q> for HashMap<K, V, S>
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H, Q: ?Sized> IndexMut<Q> for HashMap<K, V, S>
     where K: Eq + Hash<H>,
           Q: Eq + Hash<H> + BorrowFrom<K>,
@@ -1275,7 +1277,7 @@ impl<K, V, S, H, Q: ?Sized> IndexMut<Q> for HashMap<K, V, S>
 }
 
 /// HashMap iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, K: 'a, V: 'a> {
     inner: table::Iter<'a, K, V>
 }
@@ -1290,13 +1292,13 @@ impl<'a, K, V> Clone for Iter<'a, K, V> {
 }
 
 /// HashMap mutable values iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, K: 'a, V: 'a> {
     inner: table::IterMut<'a, K, V>
 }
 
 /// HashMap move iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
     inner: iter::Map<
         (SafeHash, K, V),
@@ -1307,7 +1309,7 @@ pub struct IntoIter<K, V> {
 }
 
 /// HashMap keys iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
@@ -1322,7 +1324,7 @@ impl<'a, K, V> Clone for Keys<'a, K, V> {
 }
 
 /// HashMap values iterator.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
     inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
@@ -1337,7 +1339,8 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
 }
 
 /// HashMap drain iterator.
-#[unstable = "matches collection reform specification, waiting for dust to settle"]
+#[unstable(feature = "std_misc",
+           reason = "matches collection reform specification, waiting for dust to settle")]
 pub struct Drain<'a, K: 'a, V: 'a> {
     inner: iter::Map<
         (SafeHash, K, V),
@@ -1348,13 +1351,15 @@ pub struct Drain<'a, K: 'a, V: 'a> {
 }
 
 /// A view into a single occupied location in a HashMap.
-#[unstable = "precise API still being fleshed out"]
+#[unstable(feature = "std_misc",
+           reason = "precise API still being fleshed out")]
 pub struct OccupiedEntry<'a, K: 'a, V: 'a> {
     elem: FullBucket<K, V, &'a mut RawTable<K, V>>,
 }
 
 /// A view into a single empty location in a HashMap.
-#[unstable = "precise API still being fleshed out"]
+#[unstable(feature = "std_misc",
+           reason = "precise API still being fleshed out")]
 pub struct VacantEntry<'a, K: 'a, V: 'a> {
     hash: SafeHash,
     key: K,
@@ -1362,7 +1367,8 @@ pub struct VacantEntry<'a, K: 'a, V: 'a> {
 }
 
 /// A view into a single location in a map, which may be vacant or occupied.
-#[unstable = "precise API still being fleshed out"]
+#[unstable(feature = "std_misc",
+           reason = "precise API still being fleshed out")]
 pub enum Entry<'a, K: 'a, V: 'a> {
     /// An occupied Entry.
     Occupied(OccupiedEntry<'a, K, V>),
@@ -1379,79 +1385,80 @@ enum VacantEntryState<K, V, M> {
     NoElem(EmptyBucket<K, V, M>),
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     #[inline] fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Iter<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     #[inline] fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for IterMut<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
     #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> ExactSizeIterator for IntoIter<K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
     #[inline] fn next(&mut self) -> Option<(&'a K)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Keys<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
     #[inline] fn next(&mut self) -> Option<(&'a V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Values<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Drain<'a, K, V> {
     type Item = (K, V);
 
     #[inline] fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
     #[inline] fn len(&self) -> usize { self.inner.len() }
 }
 
-#[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
+#[unstable(feature = "std_misc",
+           reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K, V> Entry<'a, K, V> {
     /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant.
     pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, K, V>> {
@@ -1462,7 +1469,8 @@ impl<'a, K, V> Entry<'a, K, V> {
     }
 }
 
-#[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
+#[unstable(feature = "std_misc",
+           reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the value in the entry.
     pub fn get(&self) -> &V {
@@ -1493,7 +1501,8 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     }
 }
 
-#[unstable = "matches collection reform v2 specification, waiting for dust to settle"]
+#[unstable(feature = "std_misc",
+           reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it
@@ -1509,7 +1518,7 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H> FromIterator<(K, V)> for HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H> + Default,
@@ -1524,7 +1533,7 @@ impl<K, V, S, H> FromIterator<(K, V)> for HashMap<K, V, S>
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H>,
@@ -1545,13 +1554,15 @@ impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
 /// instances are unlikely to produce the same result for the same values.
 #[derive(Clone)]
 #[allow(missing_copy_implementations)]
-#[unstable = "hashing an hash maps may be altered"]
+#[unstable(feature = "std_misc",
+           reason = "hashing an hash maps may be altered")]
 pub struct RandomState {
     k0: u64,
     k1: u64,
 }
 
-#[unstable = "hashing an hash maps may be altered"]
+#[unstable(feature = "std_misc",
+           reason = "hashing an hash maps may be altered")]
 impl RandomState {
     /// Construct a new `RandomState` that is initialized with random keys.
     #[inline]
@@ -1561,7 +1572,8 @@ impl RandomState {
     }
 }
 
-#[unstable = "hashing an hash maps may be altered"]
+#[unstable(feature = "std_misc",
+           reason = "hashing an hash maps may be altered")]
 impl HashState for RandomState {
     type Hasher = Hasher;
     fn hasher(&self) -> Hasher {
@@ -1569,7 +1581,8 @@ impl HashState for RandomState {
     }
 }
 
-#[unstable = "hashing an hash maps may be altered"]
+#[unstable(feature = "std_misc",
+           reason = "hashing an hash maps may be altered")]
 impl Default for RandomState {
     #[inline]
     fn default() -> RandomState {

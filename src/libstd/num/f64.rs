@@ -10,7 +10,7 @@
 
 //! Operations and constants for 64-bits floats (`f64` type)
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 #![allow(missing_docs)]
 #![doc(primitive = "f64")]
 
@@ -81,7 +81,7 @@ mod cmath {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Float for f64 {
     // inlined methods from `num::Float`
     #[inline]
@@ -375,7 +375,7 @@ impl Float for f64 {
 ///
 /// * num - The float value
 #[inline]
-#[unstable = "may be removed or relocated"]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_string(num: f64) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, SignNeg, DigAll, ExpNone, false);
@@ -388,7 +388,7 @@ pub fn to_string(num: f64) -> String {
 ///
 /// * num - The float value
 #[inline]
-#[unstable = "may be removed or relocated"]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_hex(num: f64) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 16u, true, SignNeg, DigAll, ExpNone, false);
@@ -403,7 +403,7 @@ pub fn to_str_hex(num: f64) -> String {
 /// * num - The float value
 /// * radix - The base to use
 #[inline]
-#[unstable = "may be removed or relocated"]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_radix_special(num: f64, rdx: uint) -> (String, bool) {
     strconv::float_to_str_common(num, rdx, true, SignNeg, DigAll, ExpNone, false)
 }
@@ -416,7 +416,7 @@ pub fn to_str_radix_special(num: f64, rdx: uint) -> (String, bool) {
 /// * num - The float value
 /// * digits - The number of significant digits
 #[inline]
-#[unstable = "may be removed or relocated"]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_exact(num: f64, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, SignNeg, DigExact(dig), ExpNone, false);
@@ -431,7 +431,7 @@ pub fn to_str_exact(num: f64, dig: uint) -> String {
 /// * num - The float value
 /// * digits - The number of significant digits
 #[inline]
-#[unstable = "may be removed or relocated"]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_digits(num: f64, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, SignNeg, DigMax(dig), ExpNone, false);
@@ -447,7 +447,7 @@ pub fn to_str_digits(num: f64, dig: uint) -> String {
 /// * digits - The number of digits after the decimal point
 /// * upper - Use `E` instead of `e` for the exponent sign
 #[inline]
-#[unstable = "may be removed or relocated"]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_exp_exact(num: f64, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, SignNeg, DigExact(dig), ExpDec, upper);
@@ -463,7 +463,7 @@ pub fn to_str_exp_exact(num: f64, dig: uint, upper: bool) -> String {
 /// * digits - The number of digits after the decimal point
 /// * upper - Use `E` instead of `e` for the exponent sign
 #[inline]
-#[unstable = "may be removed or relocated"]
+#[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_exp_digits(num: f64, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
         num, 10u, true, SignNeg, DigMax(dig), ExpDec, upper);

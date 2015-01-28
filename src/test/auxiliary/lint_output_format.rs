@@ -10,19 +10,22 @@
 
 #![crate_name="lint_output_format"]
 #![crate_type = "lib"]
+#![feature(staged_api)]
 #![staged_api]
+#![unstable(feature = "test_feature")]
 
-#[deprecated]
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[deprecated(since = "1.0.0")]
 pub fn foo() -> uint {
     20
 }
 
-#[unstable]
+#[unstable(feature = "test_feature")]
 pub fn bar() -> uint {
     40
 }
 
-#[unstable]
+#[unstable(feature = "test_feature")]
 pub fn baz() -> uint {
     30
 }

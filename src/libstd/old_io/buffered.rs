@@ -52,7 +52,7 @@ pub struct BufferedReader<R> {
     cap: uint,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<R> fmt::Debug for BufferedReader<R> where R: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "BufferedReader {{ reader: {:?}, buffer: {}/{} }}",
@@ -151,7 +151,7 @@ pub struct BufferedWriter<W> {
     pos: uint
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W> fmt::Debug for BufferedWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "BufferedWriter {{ writer: {:?}, buffer: {}/{} }}",
@@ -251,7 +251,7 @@ pub struct LineBufferedWriter<W> {
     inner: BufferedWriter<W>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<W> fmt::Debug for LineBufferedWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "LineBufferedWriter {{ writer: {:?}, buffer: {}/{} }}",
@@ -342,7 +342,7 @@ pub struct BufferedStream<S> {
     inner: BufferedReader<InternalBufferedWriter<S>>
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<S> fmt::Debug for BufferedStream<S> where S: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let reader = &self.inner;

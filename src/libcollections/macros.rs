@@ -10,7 +10,7 @@
 
 /// Creates a `Vec` containing the arguments.
 #[macro_export]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! vec {
     ($x:expr; $y:expr) => (
         <[_] as $crate::slice::SliceExt>::into_vec(

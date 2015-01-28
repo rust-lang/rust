@@ -29,7 +29,8 @@
 //! for conversion to/from various other string types. Eventually these types
 //! will offer a full-fledged string API.
 
-#![unstable = "recently added as part of path/io reform"]
+#![unstable(feature = "os",
+            reason = "recently added as part of path/io reform")]
 
 use core::prelude::*;
 

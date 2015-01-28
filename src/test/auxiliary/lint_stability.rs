@@ -9,64 +9,63 @@
 // except according to those terms.
 #![crate_name="lint_stability"]
 #![crate_type = "lib"]
+#![feature(staged_api)]
 #![staged_api]
 
-#[deprecated]
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[deprecated(since = "1.0.0")]
 pub fn deprecated() {}
-#[deprecated="text"]
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "text")]
 pub fn deprecated_text() {}
 
-#[unstable]
-pub fn experimental() {}
-#[unstable="text"]
-pub fn experimental_text() {}
+#[unstable(feature = "test_feature")]
+#[deprecated(since = "1.0.0")]
+pub fn deprecated_unstable() {}
+#[unstable(feature = "test_feature")]
+#[deprecated(since = "1.0.0", reason = "text")]
+pub fn deprecated_unstable_text() {}
 
-#[unstable]
+#[unstable(feature = "test_feature")]
 pub fn unstable() {}
-#[unstable="text"]
+#[unstable(feature = "test_feature", reason = "text")]
 pub fn unstable_text() {}
 
 pub fn unmarked() {}
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn stable() {}
-#[stable="text"]
+#[stable(feature = "rust1", since = "1.0.0", reason = "text")]
 pub fn stable_text() {}
 
-#[locked]
-pub fn locked() {}
-#[locked="text"]
-pub fn locked_text() {}
-
-#[frozen]
-pub fn frozen() {}
-#[frozen="text"]
-pub fn frozen_text() {}
-
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct MethodTester;
 
 impl MethodTester {
-    #[deprecated]
+    #[stable(feature = "test_feature", since = "1.0.0")]
+    #[deprecated(since = "1.0.0")]
     pub fn method_deprecated(&self) {}
-    #[deprecated="text"]
+    #[stable(feature = "test_feature", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", reason = "text")]
     pub fn method_deprecated_text(&self) {}
 
-    #[unstable]
-    pub fn method_experimental(&self) {}
-    #[unstable="text"]
-    pub fn method_experimental_text(&self) {}
+    #[unstable(feature = "test_feature")]
+    #[deprecated(since = "1.0.0")]
+    pub fn method_deprecated_unstable(&self) {}
+    #[unstable(feature = "test_feature")]
+    #[deprecated(since = "1.0.0", reason = "text")]
+    pub fn method_deprecated_unstable_text(&self) {}
 
-    #[unstable]
+    #[unstable(feature = "test_feature")]
     pub fn method_unstable(&self) {}
-    #[unstable="text"]
+    #[unstable(feature = "test_feature", reason = "text")]
     pub fn method_unstable_text(&self) {}
 
     pub fn method_unmarked(&self) {}
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn method_stable(&self) {}
-    #[stable="text"]
+    #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
     pub fn method_stable_text(&self) {}
 
     #[locked]
@@ -81,26 +80,30 @@ impl MethodTester {
 }
 
 pub trait Trait {
-    #[deprecated]
+    #[stable(feature = "test_feature", since = "1.0.0")]
+    #[deprecated(since = "1.0.0")]
     fn trait_deprecated(&self) {}
-    #[deprecated="text"]
+    #[stable(feature = "test_feature", since = "1.0.0")]
+    #[deprecated(since = "1.0.0", reason = "text")]
     fn trait_deprecated_text(&self) {}
 
-    #[unstable]
-    fn trait_experimental(&self) {}
-    #[unstable="text"]
-    fn trait_experimental_text(&self) {}
+    #[unstable(feature = "test_feature")]
+    #[deprecated(since = "1.0.0")]
+    fn trait_deprecated_unstable(&self) {}
+    #[unstable(feature = "test_feature")]
+    #[deprecated(since = "1.0.0", reason = "text")]
+    fn trait_deprecated_unstable_text(&self) {}
 
-    #[unstable]
+    #[unstable(feature = "test_feature")]
     fn trait_unstable(&self) {}
-    #[unstable="text"]
+    #[unstable(feature = "test_feature", reason = "text")]
     fn trait_unstable_text(&self) {}
 
     fn trait_unmarked(&self) {}
 
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn trait_stable(&self) {}
-    #[stable="text"]
+    #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
     fn trait_stable_text(&self) {}
 
     #[locked]
@@ -116,67 +119,59 @@ pub trait Trait {
 
 impl Trait for MethodTester {}
 
-#[unstable]
-pub trait ExperimentalTrait {}
+#[unstable(feature = "test_feature")]
+pub trait UnstableTrait {}
 
-#[deprecated]
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[deprecated(since = "1.0.0")]
 pub struct DeprecatedStruct { pub i: int }
-#[unstable]
-pub struct ExperimentalStruct { pub i: int }
-#[unstable]
+#[unstable(feature = "test_feature")]
+#[deprecated(since = "1.0.0")]
+pub struct DeprecatedUnstableStruct { pub i: int }
+#[unstable(feature = "test_feature")]
 pub struct UnstableStruct { pub i: int }
 pub struct UnmarkedStruct { pub i: int }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableStruct { pub i: int }
-#[frozen]
-pub struct FrozenStruct { pub i: int }
-#[locked]
-pub struct LockedStruct { pub i: int }
 
-#[deprecated]
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[deprecated(since = "1.0.0")]
 pub struct DeprecatedUnitStruct;
-#[unstable]
-pub struct ExperimentalUnitStruct;
-#[unstable]
+#[unstable(feature = "test_feature")]
+#[deprecated(since = "1.0.0")]
+pub struct DeprecatedUnstableUnitStruct;
+#[unstable(feature = "test_feature")]
 pub struct UnstableUnitStruct;
 pub struct UnmarkedUnitStruct;
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableUnitStruct;
-#[frozen]
-pub struct FrozenUnitStruct;
-#[locked]
-pub struct LockedUnitStruct;
 
 pub enum Enum {
-    #[deprecated]
+    #[stable(feature = "test_feature", since = "1.0.0")]
+    #[deprecated(since = "1.0.0")]
     DeprecatedVariant,
-    #[unstable]
-    ExperimentalVariant,
-    #[unstable]
+    #[unstable(feature = "test_feature")]
+    #[deprecated(since = "1.0.0")]
+    DeprecatedUnstableVariant,
+    #[unstable(feature = "test_feature")]
     UnstableVariant,
 
     UnmarkedVariant,
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     StableVariant,
-    #[frozen]
-    FrozenVariant,
-    #[locked]
-    LockedVariant,
 }
 
-#[deprecated]
+#[stable(feature = "test_feature", since = "1.0.0")]
+#[deprecated(since = "1.0.0")]
 pub struct DeprecatedTupleStruct(pub int);
-#[unstable]
-pub struct ExperimentalTupleStruct(pub int);
-#[unstable]
+#[unstable(feature = "test_feature")]
+#[deprecated(since = "1.0.0")]
+pub struct DeprecatedUnstableTupleStruct(pub int);
+#[unstable(feature = "test_feature")]
 pub struct UnstableTupleStruct(pub int);
 pub struct UnmarkedTupleStruct(pub int);
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct StableTupleStruct(pub int);
-#[frozen]
-pub struct FrozenTupleStruct(pub int);
-#[locked]
-pub struct LockedTupleStruct(pub int);
 
 #[macro_export]
 macro_rules! macro_test {

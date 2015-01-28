@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deprecated = "use std::vec::CowVec"]
+#![unstable(feature = "rustc_private")]
+#![deprecated(since = "1.0.0", reason = "use std::vec::CowVec")]
 
 pub use self::MaybeOwnedVector::*;
 

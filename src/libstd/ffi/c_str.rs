@@ -119,7 +119,7 @@ impl Deref for CString {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for CString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         String::from_utf8_lossy(self.as_bytes()).fmt(f)

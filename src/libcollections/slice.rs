@@ -86,7 +86,7 @@
 //! * Further iterators exist that split, chunk or permute the slice.
 
 #![doc(primitive = "slice")]
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use alloc::boxed::Box;
 use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
@@ -120,9 +120,9 @@ pub use core::slice::{from_raw_buf, from_raw_mut_buf};
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Allocating extension methods for slices.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait SliceExt {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
     /// Sorts the slice, in place, using `compare` to compare
@@ -142,7 +142,7 @@ pub trait SliceExt {
     /// v.sort_by(|a, b| b.cmp(a));
     /// assert!(v == [5, 4, 3, 2, 1]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn sort_by<F>(&mut self, compare: F) where F: FnMut(&Self::Item, &Self::Item) -> Ordering;
 
     /// Consumes `src` and moves as many elements as it can into `self`
@@ -166,19 +166,26 @@ pub trait SliceExt {
     /// assert_eq!(num_moved, 3);
     /// assert!(a == [6i, 7, 8, 4, 5]);
     /// ```
-    #[unstable = "uncertain about this API approach"]
+    #[unstable(feature = "collections",
+               reason = "uncertain about this API approach")]
     fn move_from(&mut self, src: Vec<Self::Item>, start: uint, end: uint) -> uint;
 
     /// Deprecated: use `&s[start .. end]` notation instead.
-    #[deprecated = "use &s[start .. end] instead"]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &s[start .. end] instead")]
     fn slice(&self, start: uint, end: uint) -> &[Self::Item];
 
     /// Deprecated: use `&s[start..]` notation instead.
-    #[deprecated = "use &s[start..] isntead"]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &s[start..] isntead")]
     fn slice_from(&self, start: uint) -> &[Self::Item];
 
     /// Deprecated: use `&s[..end]` notation instead.
-    #[deprecated = "use &s[..end] instead"]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &s[..end] instead")]
     fn slice_to(&self, end: uint) -> &[Self::Item];
 
     /// Divides one slice into two at an index.
@@ -188,23 +195,23 @@ pub trait SliceExt {
     /// indices from `[mid, len)` (excluding the index `len` itself).
     ///
     /// Panics if `mid > len`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn split_at(&self, mid: uint) -> (&[Self::Item], &[Self::Item]);
 
     /// Returns an iterator over the slice
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn iter(&self) -> Iter<Self::Item>;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`.  The matched element is not contained in the subslices.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn split<F>(&self, pred: F) -> Split<Self::Item, F>
                 where F: FnMut(&Self::Item) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to splitting at most `n` times.  The matched element is
     /// not contained in the subslices.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn splitn<F>(&self, n: uint, pred: F) -> SplitN<Self::Item, F>
                  where F: FnMut(&Self::Item) -> bool;
 
@@ -212,7 +219,7 @@ pub trait SliceExt {
     /// `pred` limited to splitting at most `n` times. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn rsplitn<F>(&self, n: uint, pred: F) -> RSplitN<Self::Item, F>
                   where F: FnMut(&Self::Item) -> bool;
 
@@ -235,7 +242,7 @@ pub trait SliceExt {
     ///     println!("{:?}", win);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn windows(&self, size: uint) -> Windows<Self::Item>;
 
     /// Returns an iterator over `size` elements of the slice at a
@@ -258,33 +265,33 @@ pub trait SliceExt {
     ///     println!("{:?}", win);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn chunks(&self, size: uint) -> Chunks<Self::Item>;
 
     /// Returns the element of a slice at the given index, or `None` if the
     /// index is out of bounds.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn get(&self, index: uint) -> Option<&Self::Item>;
 
     /// Returns the first element of a slice, or `None` if it is empty.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn first(&self) -> Option<&Self::Item>;
 
     /// Returns all but the first element of a slice.
-    #[unstable = "likely to be renamed"]
+    #[unstable(feature = "collections", reason = "likely to be renamed")]
     fn tail(&self) -> &[Self::Item];
 
     /// Returns all but the last element of a slice.
-    #[unstable = "likely to be renamed"]
+    #[unstable(feature = "collections", reason = "likely to be renamed")]
     fn init(&self) -> &[Self::Item];
 
     /// Returns the last element of a slice, or `None` if it is empty.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn last(&self) -> Option<&Self::Item>;
 
     /// Returns a pointer to the element at the given index, without doing
     /// bounds checking.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe fn get_unchecked(&self, index: uint) -> &Self::Item;
 
     /// Returns an unsafe pointer to the slice's buffer
@@ -294,7 +301,7 @@ pub trait SliceExt {
     ///
     /// Modifying the slice may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_ptr(&self) -> *const Self::Item;
 
     /// Binary search a sorted slice with a comparator function.
@@ -329,7 +336,7 @@ pub trait SliceExt {
     /// let r = s.binary_search_by(|probe| probe.cmp(&seek));
     /// assert!(match r { Ok(1...4) => true, _ => false, });
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn binary_search_by<F>(&self, f: F) -> Result<uint, uint> where
         F: FnMut(&Self::Item) -> Ordering;
 
@@ -341,7 +348,7 @@ pub trait SliceExt {
     /// let a = [1i, 2, 3];
     /// assert_eq!(a.len(), 3);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn len(&self) -> uint;
 
     /// Returns true if the slice has a length of 0
@@ -353,60 +360,68 @@ pub trait SliceExt {
     /// assert!(!a.is_empty());
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_empty(&self) -> bool { self.len() == 0 }
     /// Returns a mutable reference to the element at the given index,
     /// or `None` if the index is out of bounds
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn get_mut(&mut self, index: uint) -> Option<&mut Self::Item>;
 
     /// Work with `self` as a mut slice.
     /// Primarily intended for getting a &mut [T] from a [T; N].
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut_slice(&mut self) -> &mut [Self::Item];
 
     /// Deprecated: use `&mut s[start .. end]` instead.
-    #[deprecated = "use &mut s[start .. end] instead"]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[start .. end] instead")]
     fn slice_mut(&mut self, start: uint, end: uint) -> &mut [Self::Item];
 
     /// Deprecated: use `&mut s[start ..]` instead.
-    #[deprecated = "use &mut s[start ..] instead"]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[start ..] instead")]
     fn slice_from_mut(&mut self, start: uint) -> &mut [Self::Item];
 
     /// Deprecated: use `&mut s[.. end]` instead.
-    #[deprecated = "use &mut s[.. end] instead"]
+    #[unstable(feature = "collections",
+               reason = "will be replaced by slice syntax")]
+    #[deprecated(since = "1.0.0", reason = "use &mut s[.. end] instead")]
     fn slice_to_mut(&mut self, end: uint) -> &mut [Self::Item];
 
     /// Returns an iterator that allows modifying each value
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn iter_mut(&mut self) -> IterMut<Self::Item>;
 
     /// Returns a mutable pointer to the first element of a slice, or `None` if it is empty
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn first_mut(&mut self) -> Option<&mut Self::Item>;
 
     /// Returns all but the first element of a mutable slice
-    #[unstable = "likely to be renamed or removed"]
+    #[unstable(feature = "collections",
+               reason = "likely to be renamed or removed")]
     fn tail_mut(&mut self) -> &mut [Self::Item];
 
     /// Returns all but the last element of a mutable slice
-    #[unstable = "likely to be renamed or removed"]
+    #[unstable(feature = "collections",
+               reason = "likely to be renamed or removed")]
     fn init_mut(&mut self) -> &mut [Self::Item];
 
     /// Returns a mutable pointer to the last item in the slice.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn last_mut(&mut self) -> Option<&mut Self::Item>;
 
     /// Returns an iterator over mutable subslices separated by elements that
     /// match `pred`.  The matched element is not contained in the subslices.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn split_mut<F>(&mut self, pred: F) -> SplitMut<Self::Item, F>
                     where F: FnMut(&Self::Item) -> bool;
 
     /// Returns an iterator over subslices separated by elements that match
     /// `pred`, limited to splitting at most `n` times.  The matched element is
     /// not contained in the subslices.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn splitn_mut<F>(&mut self, n: uint, pred: F) -> SplitNMut<Self::Item, F>
                      where F: FnMut(&Self::Item) -> bool;
 
@@ -414,7 +429,7 @@ pub trait SliceExt {
     /// `pred` limited to splitting at most `n` times. This starts at the end of
     /// the slice and works backwards.  The matched element is not contained in
     /// the subslices.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn rsplitn_mut<F>(&mut self,  n: uint, pred: F) -> RSplitNMut<Self::Item, F>
                       where F: FnMut(&Self::Item) -> bool;
 
@@ -426,7 +441,7 @@ pub trait SliceExt {
     /// # Panics
     ///
     /// Panics if `chunk_size` is 0.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn chunks_mut(&mut self, chunk_size: uint) -> ChunksMut<Self::Item>;
 
     /// Swaps two elements in a slice.
@@ -447,7 +462,7 @@ pub trait SliceExt {
     /// v.swap(1, 3);
     /// assert!(v == ["a", "d", "c", "b"]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn swap(&mut self, a: uint, b: uint);
 
     /// Divides one `&mut` into two at an index.
@@ -484,7 +499,7 @@ pub trait SliceExt {
     ///     assert!(right == []);
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn split_at_mut(&mut self, mid: uint) -> (&mut [Self::Item], &mut [Self::Item]);
 
     /// Reverse the order of elements in a slice, in place.
@@ -496,11 +511,11 @@ pub trait SliceExt {
     /// v.reverse();
     /// assert!(v == [3i, 2, 1]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn reverse(&mut self);
 
     /// Returns an unsafe mutable pointer to the element in index
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     unsafe fn get_unchecked_mut(&mut self, index: uint) -> &mut Self::Item;
 
     /// Return an unsafe mutable pointer to the slice's buffer.
@@ -511,11 +526,11 @@ pub trait SliceExt {
     /// Modifying the slice may cause its buffer to be reallocated, which
     /// would also make any pointers to it invalid.
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_mut_ptr(&mut self) -> *mut Self::Item;
 
     /// Copies `self` into a new `Vec`.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn to_vec(&self) -> Vec<Self::Item> where Self::Item: Clone;
 
     /// Creates an iterator that yields every possible permutation of the
@@ -542,7 +557,7 @@ pub trait SliceExt {
     /// assert_eq!(Some(vec![1i, 3, 2]), perms.next());
     /// assert_eq!(Some(vec![3i, 1, 2]), perms.next());
     /// ```
-    #[unstable]
+    #[unstable(feature = "collections")]
     fn permutations(&self) -> Permutations<Self::Item> where Self::Item: Clone;
 
     /// Copies as many elements from `src` as it can into `self` (the
@@ -562,7 +577,7 @@ pub trait SliceExt {
     /// assert!(dst.clone_from_slice(&src2) == 3);
     /// assert!(dst == [3i, 4, 5]);
     /// ```
-    #[unstable]
+    #[unstable(feature = "collections")]
     fn clone_from_slice(&mut self, &[Self::Item]) -> uint where Self::Item: Clone;
 
     /// Sorts the slice, in place.
@@ -577,7 +592,7 @@ pub trait SliceExt {
     /// v.sort();
     /// assert!(v == [-5i, -3, 1, 2, 4]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn sort(&mut self) where Self::Item: Ord;
 
     /// Binary search a sorted slice for a given element.
@@ -603,11 +618,12 @@ pub trait SliceExt {
     /// let r = s.binary_search(&1);
     /// assert!(match r { Ok(1...4) => true, _ => false, });
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn binary_search(&self, x: &Self::Item) -> Result<uint, uint> where Self::Item: Ord;
 
     /// Deprecated: use `binary_search` instead.
-    #[deprecated = "use binary_search instead"]
+    #[unstable(feature = "collections")]
+    #[deprecated(since = "1.0.0", reason = "use binary_search instead")]
     fn binary_search_elem(&self, x: &Self::Item) -> Result<uint, uint> where Self::Item: Ord {
         self.binary_search(x)
     }
@@ -628,7 +644,8 @@ pub trait SliceExt {
     /// let b: &mut [_] = &mut [1i, 0, 2];
     /// assert!(v == b);
     /// ```
-    #[unstable = "uncertain if this merits inclusion in std"]
+    #[unstable(feature = "collections",
+               reason = "uncertain if this merits inclusion in std")]
     fn next_permutation(&mut self) -> bool where Self::Item: Ord;
 
     /// Mutates the slice to the previous lexicographic permutation.
@@ -647,35 +664,36 @@ pub trait SliceExt {
     /// let b: &mut [_] = &mut [0i, 1, 2];
     /// assert!(v == b);
     /// ```
-    #[unstable = "uncertain if this merits inclusion in std"]
+    #[unstable(feature = "collections",
+               reason = "uncertain if this merits inclusion in std")]
     fn prev_permutation(&mut self) -> bool where Self::Item: Ord;
 
     /// Find the first index containing a matching value.
-    #[unstable]
+    #[unstable(feature = "collections")]
     fn position_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Find the last index containing a matching value.
-    #[unstable]
+    #[unstable(feature = "collections")]
     fn rposition_elem(&self, t: &Self::Item) -> Option<uint> where Self::Item: PartialEq;
 
     /// Return true if the slice contains an element with the given value.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn contains(&self, x: &Self::Item) -> bool where Self::Item: PartialEq;
 
     /// Returns true if `needle` is a prefix of the slice.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn starts_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     /// Returns true if `needle` is a suffix of the slice.
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     /// Convert `self` into a vector without clones or allocation.
-    #[unstable]
+    #[unstable(feature = "collections")]
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> SliceExt for [T] {
     type Item = T;
 
@@ -963,7 +981,7 @@ impl<T> SliceExt for [T] {
 ////////////////////////////////////////////////////////////////////////////////
 // Extension traits for slices over specific kinds of data
 ////////////////////////////////////////////////////////////////////////////////
-#[unstable = "U should be an associated type"]
+#[unstable(feature = "collections", reason = "U should be an associated type")]
 /// An extension trait for concatenating slices
 pub trait SliceConcatExt<T: ?Sized, U> {
     /// Flattens a slice of `T` into a single value `U`.
@@ -977,7 +995,7 @@ pub trait SliceConcatExt<T: ?Sized, U> {
     ///
     /// println!("{}", s); // prints "helloworld"
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn concat(&self) -> U;
 
     /// Flattens a slice of `T` into a single value `U`, placing a given separator between each.
@@ -991,7 +1009,7 @@ pub trait SliceConcatExt<T: ?Sized, U> {
     ///
     /// println!("{}", s); // prints "hello world"
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn connect(&self, sep: &T) -> U;
 }
 
@@ -1027,7 +1045,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
 ///
 /// The last generated swap is always (0, 1), and it returns the
 /// sequence to its initial order.
-#[unstable]
+#[unstable(feature = "collections")]
 #[derive(Clone)]
 pub struct ElementSwaps {
     sdir: Vec<SizeDirection>,
@@ -1039,7 +1057,7 @@ pub struct ElementSwaps {
 
 impl ElementSwaps {
     /// Creates an `ElementSwaps` iterator for a sequence of `length` elements.
-    #[unstable]
+    #[unstable(feature = "collections")]
     pub fn new(length: uint) -> ElementSwaps {
         // Initialize `sdir` with a direction that position should move in
         // (all negative at the beginning) and the `size` of the
@@ -1056,17 +1074,17 @@ impl ElementSwaps {
 // Standard trait implementations for slices
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable = "trait is unstable"]
+#[unstable(feature = "collections", reason = "trait is unstable")]
 impl<T> BorrowFrom<Vec<T>> for [T] {
     fn borrow_from(owned: &Vec<T>) -> &[T] { &owned[] }
 }
 
-#[unstable = "trait is unstable"]
+#[unstable(feature = "collections", reason = "trait is unstable")]
 impl<T> BorrowFromMut<Vec<T>> for [T] {
     fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { &mut owned[] }
 }
 
-#[unstable = "trait is unstable"]
+#[unstable(feature = "collections", reason = "trait is unstable")]
 impl<T: Clone> ToOwned<Vec<T>> for [T] {
     fn to_owned(&self) -> Vec<T> { self.to_vec() }
 }
@@ -1085,7 +1103,7 @@ struct SizeDirection {
     dir: Direction,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl Iterator for ElementSwaps {
     type Item = (uint, uint);
 
@@ -1148,13 +1166,13 @@ impl Iterator for ElementSwaps {
 /// swap applied.
 ///
 /// Generates even and odd permutations alternately.
-#[unstable]
+#[unstable(feature = "collections")]
 pub struct Permutations<T> {
     swaps: ElementSwaps,
     v: Vec<T>,
 }
 
-#[unstable = "trait is unstable"]
+#[unstable(feature = "collections", reason = "trait is unstable")]
 impl<T: Clone> Iterator for Permutations<T> {
     type Item = Vec<T>;
 

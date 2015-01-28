@@ -9,7 +9,12 @@
 // except according to those terms.
 
 #![feature(slicing_syntax, box_syntax)]
-#![allow(unstable)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustdoc)]
 
 extern crate rustdoc;
 

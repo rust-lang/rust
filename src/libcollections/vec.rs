@@ -44,7 +44,7 @@
 //! let two = xs.pop();
 //! ```
 
-#![stable]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 use core::prelude::*;
 
@@ -134,7 +134,7 @@ use core::uint;
 /// to reallocate, which can be slow. For this reason, it is recommended to use
 /// `Vec::with_capacity` whenever possible to specify how big the vector is expected to get.
 #[unsafe_no_drop_flag]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     ptr: NonZero<*mut T>,
     len: uint,
@@ -159,7 +159,7 @@ impl<T> Vec<T> {
     /// let mut vec: Vec<int> = Vec::new();
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> Vec<T> {
         // We want ptr to never be NULL so instead we set it to some arbitrary
         // non-null value which is fine since we never call deallocate on the ptr
@@ -194,7 +194,7 @@ impl<T> Vec<T> {
     /// vec.push(11);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: uint) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
             Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: uint::MAX }
@@ -243,7 +243,7 @@ impl<T> Vec<T> {
     ///     }
     /// }
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: uint,
                                  capacity: uint) -> Vec<T> {
         Vec { ptr: NonZero::new(ptr), len: length, cap: capacity }
@@ -255,7 +255,8 @@ impl<T> Vec<T> {
     /// owned by the returned `Vec<T>`. The elements of the buffer are copied into the vector
     /// without cloning, as if `ptr::read()` were called on them.
     #[inline]
-    #[unstable = "may be better expressed via composition"]
+    #[unstable(feature = "collections",
+               reason = "may be better expressed via composition")]
     pub unsafe fn from_raw_buf(ptr: *const T, elts: uint) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
@@ -273,7 +274,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> uint {
         self.cap
     }
@@ -292,7 +293,7 @@ impl<T> Vec<T> {
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: uint) {
         if self.cap - self.len < additional {
             let err_msg = "Vec::reserve: `uint` overflow";
@@ -321,7 +322,7 @@ impl<T> Vec<T> {
     /// vec.reserve_exact(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: uint) {
         if self.cap - self.len < additional {
             match self.len.checked_add(additional) {
@@ -345,7 +346,7 @@ impl<T> Vec<T> {
     /// vec.shrink_to_fit();
     /// assert!(vec.capacity() >= 3);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn shrink_to_fit(&mut self) {
         if mem::size_of::<T>() == 0 { return }
 
@@ -376,7 +377,7 @@ impl<T> Vec<T> {
     /// Note that this will drop any excess capacity. Calling this and
     /// converting back to a vector with `into_vec()` is equivalent to calling
     /// `shrink_to_fit()`.
-    #[unstable]
+    #[unstable(feature = "collections")]
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         self.shrink_to_fit();
         unsafe {
@@ -398,7 +399,7 @@ impl<T> Vec<T> {
     /// vec.truncate(2);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn truncate(&mut self, len: uint) {
         unsafe {
             // drop any extra elements
@@ -422,7 +423,7 @@ impl<T> Vec<T> {
     /// foo(vec.as_mut_slice());
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
         unsafe {
             mem::transmute(RawSlice {
@@ -446,7 +447,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
         unsafe {
             let ptr = *self.ptr;
@@ -477,7 +478,7 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn set_len(&mut self, len: uint) {
         self.len = len;
     }
@@ -503,7 +504,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v, vec!["baz", "qux"]);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap_remove(&mut self, index: uint) -> T {
         let length = self.len();
         self.swap(index, length - 1);
@@ -527,7 +528,7 @@ impl<T> Vec<T> {
     /// vec.insert(4, 5);
     /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, index: uint, element: T) {
         let len = self.len();
         assert!(index <= len);
@@ -563,7 +564,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v.remove(1), 2);
     /// assert_eq!(v, vec![1, 3]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(&mut self, index: uint) -> T {
         let len = self.len();
         assert!(index < len);
@@ -597,7 +598,7 @@ impl<T> Vec<T> {
     /// vec.retain(|&x| x%2 == 0);
     /// assert_eq!(vec, vec![2, 4]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
         let len = self.len();
         let mut del = 0u;
@@ -631,7 +632,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec!(1, 2, 3));
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push(&mut self, value: T) {
         if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the
@@ -669,7 +670,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn pop(&mut self) -> Option<T> {
         if self.len == 0 {
             None
@@ -696,7 +697,8 @@ impl<T> Vec<T> {
     /// assert_eq!(vec2, vec![]);
     /// ```
     #[inline]
-    #[unstable = "new API, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "new API, waiting for dust to settle")]
     pub fn append(&mut self, other: &mut Self) {
         if mem::size_of::<T>() == 0 {
             // zero-size types consume no memory, so we can't rely on the
@@ -732,7 +734,8 @@ impl<T> Vec<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[unstable = "matches collection reform specification, waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
         unsafe {
             let begin = *self.ptr as *const T;
@@ -762,7 +765,7 @@ impl<T> Vec<T> {
     /// assert!(v.is_empty());
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
         self.truncate(0)
     }
@@ -776,7 +779,7 @@ impl<T> Vec<T> {
     /// assert_eq!(a.len(), 3);
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn len(&self) -> uint { self.len }
 
     /// Returns `true` if the vector contains no elements.
@@ -790,7 +793,7 @@ impl<T> Vec<T> {
     /// v.push(1i);
     /// assert!(!v.is_empty());
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn is_empty(&self) -> bool { self.len() == 0 }
 
     /// Converts a `Vec<T>` to a `Vec<U>` where `T` and `U` have the same
@@ -814,7 +817,8 @@ impl<T> Vec<T> {
     /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
     /// assert_eq!(newtyped_bytes.as_slice(), [Newtype(0x11), Newtype(0x22)].as_slice());
     /// ```
-    #[unstable = "API may change to provide stronger guarantees"]
+    #[unstable(feature = "collections",
+               reason = "API may change to provide stronger guarantees")]
     pub fn map_in_place<U, F>(self, mut f: F) -> Vec<U> where F: FnMut(T) -> U {
         // FIXME: Assert statically that the types `T` and `U` have the same
         // size.
@@ -1008,7 +1012,8 @@ impl<T: Clone> Vec<T> {
     /// vec.resize(2, 0);
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
-    #[unstable = "matches collection reform specification; waiting for dust to settle"]
+    #[unstable(feature = "collections",
+               reason = "matches collection reform specification; waiting for dust to settle")]
     pub fn resize(&mut self, new_len: uint, value: T) {
         let len = self.len();
 
@@ -1032,7 +1037,8 @@ impl<T: Clone> Vec<T> {
     /// assert_eq!(vec, vec![1, 2, 3, 4]);
     /// ```
     #[inline]
-    #[unstable = "likely to be replaced by a more optimized extend"]
+    #[unstable(feature = "collections",
+               reason = "likely to be replaced by a more optimized extend")]
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve(other.len());
 
@@ -1066,7 +1072,7 @@ impl<T: PartialEq> Vec<T> {
     ///
     /// assert_eq!(vec, vec![1i, 2, 3, 2]);
     /// ```
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn dedup(&mut self) {
         unsafe {
             // Although we have a mutable reference to `self`, we cannot make
@@ -1200,7 +1206,7 @@ unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable]
+#[unstable(feature = "collections")]
 impl<T:Clone> Clone for Vec<T> {
     fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(self.as_slice()) }
 
@@ -1229,7 +1235,7 @@ impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Index<uint> for Vec<T> {
     type Output = T;
 
@@ -1239,7 +1245,7 @@ impl<T> Index<uint> for Vec<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IndexMut<uint> for Vec<T> {
     type Output = T;
 
@@ -1250,7 +1256,7 @@ impl<T> IndexMut<uint> for Vec<T> {
 }
 
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1258,7 +1264,7 @@ impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1266,7 +1272,7 @@ impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1274,7 +1280,7 @@ impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::FullRange> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1283,7 +1289,7 @@ impl<T> ops::Index<ops::FullRange> for Vec<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1291,7 +1297,7 @@ impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1299,7 +1305,7 @@ impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1307,7 +1313,7 @@ impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
     type Output = [T];
     #[inline]
@@ -1316,19 +1322,19 @@ impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
     fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::DerefMut for Vec<T> {
     fn deref_mut<'a>(&'a mut self) -> &'a mut [T] { self.as_mut_slice() }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
@@ -1341,7 +1347,7 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
-#[unstable = "waiting on Extend stability"]
+#[unstable(feature = "collections", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
     fn extend<I: Iterator<Item=T>>(&mut self, mut iterator: I) {
@@ -1416,7 +1422,8 @@ macro_rules! impl_eq_for_cowvec {
 impl_eq_for_cowvec! { &'b [B] }
 impl_eq_for_cowvec! { &'b mut [B] }
 
-#[unstable = "waiting on PartialOrd stability"]
+#[unstable(feature = "collections",
+           reason = "waiting on PartialOrd stability")]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
     fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
@@ -1424,10 +1431,10 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
     }
 }
 
-#[unstable = "waiting on Eq stability"]
+#[unstable(feature = "collections", reason = "waiting on Eq stability")]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[unstable = "waiting on Ord stability"]
+#[unstable(feature = "collections", reason = "waiting on Ord stability")]
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
@@ -1447,7 +1454,7 @@ impl<T> AsSlice<T> for Vec<T> {
     /// foo(vec.as_slice());
     /// ```
     #[inline]
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice<'a>(&'a self) -> &'a [T] {
         unsafe {
             mem::transmute(RawSlice {
@@ -1458,7 +1465,8 @@ impl<T> AsSlice<T> for Vec<T> {
     }
 }
 
-#[unstable = "recent addition, needs more experience"]
+#[unstable(feature = "collections",
+           reason = "recent addition, needs more experience")]
 impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
     type Output = Vec<T>;
 
@@ -1470,7 +1478,7 @@ impl<'a, T: Clone> Add<&'a [T]> for Vec<T> {
 }
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         // This is (and should always remain) a no-op if the fields are
@@ -1486,15 +1494,15 @@ impl<T> Drop for Vec<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Default for Vec<T> {
-    #[stable]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> Vec<T> {
         Vec::new()
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Debug::fmt(self.as_slice(), f)
@@ -1512,11 +1520,12 @@ impl<'a> fmt::Writer for Vec<u8> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable = "unclear how valuable this alias is"]
+#[unstable(feature = "collections",
+           reason = "unclear how valuable this alias is")]
 /// A clone-on-write vector
 pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
 
-#[unstable]
+#[unstable(feature = "collections")]
 impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
     fn from_iter<I: Iterator<Item=T>>(it: I) -> CowVec<'a, T> {
         Cow::Owned(FromIterator::from_iter(it))
@@ -1540,7 +1549,7 @@ impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// An iterator that moves out of a vector.
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     allocation: *mut T, // the block of memory allocated for the vector
     cap: uint, // the capacity of the vector
@@ -1554,7 +1563,7 @@ unsafe impl<T: Sync> Sync for IntoIter<T> { }
 impl<T> IntoIter<T> {
     #[inline]
     /// Drops all items that have not yet been moved and returns the empty vector.
-    #[unstable]
+    #[unstable(feature = "collections")]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
             for _x in self { }
@@ -1565,7 +1574,7 @@ impl<T> IntoIter<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
@@ -1602,7 +1611,7 @@ impl<T> Iterator for IntoIter<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
     fn next_back<'a>(&'a mut self) -> Option<T> {
@@ -1626,11 +1635,11 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ExactSizeIterator for IntoIter<T> {}
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
@@ -1645,14 +1654,15 @@ impl<T> Drop for IntoIter<T> {
 
 /// An iterator that drains a vector.
 #[unsafe_no_drop_flag]
-#[unstable = "recently added as part of collections reform 2"]
+#[unstable(feature = "collections",
+           reason = "recently added as part of collections reform 2")]
 pub struct Drain<'a, T> {
     ptr: *const T,
     end: *const T,
     marker: ContravariantLifetime<'a>,
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Drain<'a, T> {
     type Item = T;
 
@@ -1689,7 +1699,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     #[inline]
     fn next_back(&mut self) -> Option<T> {
@@ -1713,11 +1723,11 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
     }
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
         // self.ptr == self.end == null if drop has already been called,
@@ -1733,13 +1743,13 @@ impl<'a, T> Drop for Drain<'a, T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 /// Wrapper type providing a `&Vec<T>` reference via `Deref`.
-#[unstable]
+#[unstable(feature = "collections")]
 pub struct DerefVec<'a, T> {
     x: Vec<T>,
     l: ContravariantLifetime<'a>
 }
 
-#[unstable]
+#[unstable(feature = "collections")]
 impl<'a, T> Deref for DerefVec<'a, T> {
     type Target = Vec<T>;
 
@@ -1750,7 +1760,7 @@ impl<'a, T> Deref for DerefVec<'a, T> {
 
 // Prevent the inner `Vec<T>` from attempting to deallocate memory.
 #[unsafe_destructor]
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for DerefVec<'a, T> {
     fn drop(&mut self) {
         self.x.len = 0;
@@ -1759,7 +1769,7 @@ impl<'a, T> Drop for DerefVec<'a, T> {
 }
 
 /// Convert a slice to a wrapper type providing a `&Vec<T>` reference.
-#[unstable]
+#[unstable(feature = "collections")]
 pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
         DerefVec {

@@ -14,7 +14,8 @@
 
 
 #![crate_name = "collections"]
-#![unstable]
+#![unstable(feature = "collections")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -27,8 +28,12 @@
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![no_std]
+#![feature(core)]
+#![feature(alloc)]
+#![feature(unicode)]
+#![feature(hash)]
+#![cfg_attr(test, feature(test))]
 
 #[macro_use]
 extern crate core;
@@ -70,23 +75,25 @@ pub mod string;
 pub mod vec;
 pub mod vec_map;
 
-#[unstable = "RFC 509"]
+#[unstable(feature = "collections",
+           reason = "RFC 509")]
 pub mod bitv {
     pub use bit::{Bitv, Iter};
 }
 
-#[unstable = "RFC 509"]
+#[unstable(feature = "collections",
+           reason = "RFC 509")]
 pub mod bitv_set {
     pub use bit::{BitvSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_map {
     pub use btree::map::*;
 }
 
-#[stable]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod btree_set {
     pub use btree::set::*;
 }

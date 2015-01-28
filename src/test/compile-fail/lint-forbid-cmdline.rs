@@ -8,9 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags: -F unstable
+// compile-flags: -F deprecated
 
+#![feature(staged_api)]
 #![staged_api]
-#[allow(unstable)] //~ ERROR allow(unstable) overruled by outer forbid(unstable)
+#[allow(deprecated)] //~ ERROR allow(deprecated) overruled by outer forbid(deprecated)
 fn main() {
 }

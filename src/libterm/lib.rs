@@ -39,7 +39,9 @@
 //! [ti]: https://en.wikipedia.org/wiki/Terminfo
 
 #![crate_name = "term"]
-#![unstable = "use the crates.io `term` library instead"]
+#![unstable(feature = "rustc_private",
+            reason = "use the crates.io `term` library instead")]
+#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -52,8 +54,15 @@
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![allow(unknown_features)] #![feature(int_uint)]
-#![allow(unstable)]
 #![deny(missing_docs)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(io)]
+#![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(std_misc)]
+#![feature(unicode)]
 
 #[macro_use] extern crate log;
 
