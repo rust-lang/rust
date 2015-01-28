@@ -123,7 +123,6 @@ pub trait FromIterator<A> {
 }
 
 /// Conversion into an `Iterator`
-#[unstable]
 pub trait IntoIterator {
     type Iter: Iterator;
 

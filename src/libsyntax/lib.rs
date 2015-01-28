@@ -39,7 +39,6 @@
 #![feature(rustc_private)]
 #![feature(std_misc)]
 #![feature(unicode)]
-#![allow(unstable)]
 // NOTE(stage0) remove cfg_attr after a snapshot
 #![cfg_attr(not(stage0), allow(unused_mut))]
 
