@@ -10,6 +10,7 @@
 
 #![deny(non_snake_case)]
 #![allow(dead_code)]
+#![feature(non_ascii_idents)]
 
 struct Foo;
 
@@ -26,6 +27,9 @@ impl Foo {
 
     fn render_HTML() {}
     //~^ ERROR method `render_HTML` should have a snake case name such as `render_html`
+
+    fn を() {}
+    //~^ ERROR method `を` should have a snake case name
 }
 
 trait X {
@@ -37,6 +41,9 @@ trait X {
 
     fn something__else(&mut self);
     //~^ ERROR trait method `something__else` should have a snake case name such as `something_else`
+
+    fn あ() {}
+    //~^ ERROR method `あ` should have a snake case name
 }
 
 impl X for Foo {
@@ -50,5 +57,8 @@ fn Cookie() {}
 
 pub fn bi_S_Cuit() {}
 //~^ ERROR function `bi_S_Cuit` should have a snake case name such as `bi_s_cuit`
+
+pub fn お() {}
+//~^ ERROR function `お` should have a snake case name
 
 fn main() { }
