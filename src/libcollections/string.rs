@@ -41,7 +41,7 @@ pub struct String {
 
 /// A possible error value from the `String::from_utf8` function.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[derive(Show)]
+#[derive(Debug)]
 pub struct FromUtf8Error {
     bytes: Vec<u8>,
     error: Utf8Error,
@@ -50,7 +50,7 @@ pub struct FromUtf8Error {
 /// A possible error value from the `String::from_utf16` function.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[allow(missing_copy_implementations)]
-#[derive(Show)]
+#[derive(Debug)]
 pub struct FromUtf16Error(());
 
 impl String {
@@ -1354,7 +1354,7 @@ mod tests {
         b.bytes = REPETITIONS;
         b.iter(|| {
             let mut r = String::new();
-            for _ in range(0, REPETITIONS) {
+            for _ in 0..REPETITIONS {
                 r.push_str("a")
             }
         });
@@ -1365,7 +1365,7 @@ mod tests {
         b.bytes = REPETITIONS;
         b.iter(|| {
             let mut r = String::new();
-            for _ in range(0, REPETITIONS) {
+            for _ in 0..REPETITIONS {
                 r.push('a')
             }
         });
@@ -1376,7 +1376,7 @@ mod tests {
         b.bytes = REPETITIONS * 2;
         b.iter(|| {
             let mut r = String::new();
-            for _ in range(0, REPETITIONS) {
+            for _ in 0..REPETITIONS {
                 r.push('â')
             }
         });

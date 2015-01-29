@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-#[derive(Show)]
+#[derive(Debug)]
 struct r {
   b: bool,
 }

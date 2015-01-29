@@ -22,7 +22,7 @@ fn main() {
 
     let n = args[1].parse().unwrap();
 
-    for i in range(0u, n) {
+    for i in 0u..n {
         let x = i.to_string();
         println!("{}", x);
     }

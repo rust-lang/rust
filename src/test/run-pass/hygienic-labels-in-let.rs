@@ -27,7 +27,7 @@ macro_rules! while_true {
 macro_rules! run_once {
     ($e: expr) => {
         // ditto
-        'x: for _ in range(0i, 1) { $e }
+        'x: for _ in 0i..1 { $e }
     }
 }
 
@@ -45,7 +45,7 @@ pub fn main() {
     assert_eq!(j, 1i);
 
     let k: int = {
-        'x: for _ in range(0i, 1) {
+        'x: for _ in 0i..1 {
             // ditto
             loop_x!(break 'x);
             i += 1;
@@ -55,7 +55,7 @@ pub fn main() {
     assert_eq!(k, 1i);
 
     let l: int = {
-        'x: for _ in range(0i, 1) {
+        'x: for _ in 0i..1 {
             // ditto
             while_true!(break 'x);
             i += 1;
@@ -65,7 +65,7 @@ pub fn main() {
     assert_eq!(l, 1i);
 
     let n: int = {
-        'x: for _ in range(0i, 1) {
+        'x: for _ in 0i..1 {
             // ditto
             run_once!(continue 'x);
             i += 1;

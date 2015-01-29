@@ -1601,39 +1601,39 @@ mod test {
         let size = 10000u;
         assert_eq!(map.len(), 0);
 
-        for i in range(0, size) {
+        for i in 0..size {
             assert_eq!(map.insert(i, 10*i), None);
             assert_eq!(map.len(), i + 1);
         }
 
-        for i in range(0, size) {
+        for i in 0..size {
             assert_eq!(map.get(&i).unwrap(), &(i*10));
         }
 
-        for i in range(size, size*2) {
+        for i in size..size*2 {
             assert_eq!(map.get(&i), None);
         }
 
-        for i in range(0, size) {
+        for i in 0..size {
             assert_eq!(map.insert(i, 100*i), Some(10*i));
             assert_eq!(map.len(), size);
         }
 
-        for i in range(0, size) {
+        for i in 0..size {
             assert_eq!(map.get(&i).unwrap(), &(i*100));
         }
 
-        for i in range(0, size/2) {
+        for i in 0..size/2 {
             assert_eq!(map.remove(&(i*2)), Some(i*200));
             assert_eq!(map.len(), size - i - 1);
         }
 
-        for i in range(0, size/2) {
+        for i in 0..size/2 {
             assert_eq!(map.get(&(2*i)), None);
             assert_eq!(map.get(&(2*i+1)).unwrap(), &(i*200 + 100));
         }
 
-        for i in range(0, size/2) {
+        for i in 0..size/2 {
             assert_eq!(map.remove(&(2*i)), None);
             assert_eq!(map.remove(&(2*i+1)), Some(i*200 + 100));
             assert_eq!(map.len(), size/2 - i - 1);
@@ -1661,10 +1661,10 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
-            for i in range(0, size) {
+            for i in 0..size {
                 assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
                 assert_eq!(iter.next().unwrap(), (i, i));
             }
@@ -1681,10 +1681,10 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
-            for i in range(0, size) {
+            for i in 0..size {
                 assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
                 assert_eq!(iter.next().unwrap(), (size - i - 1, size - i - 1));
             }
@@ -1701,16 +1701,16 @@ mod test {
         let size = 10000u;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test<T>(size: uint, mut iter: T)
                 where T: Iterator<Item=(uint, uint)> + DoubleEndedIterator {
-            for i in range(0, size / 4) {
+            for i in 0..size / 4 {
                 assert_eq!(iter.size_hint(), (size - i * 2, Some(size - i * 2)));
                 assert_eq!(iter.next().unwrap(), (i, i));
                 assert_eq!(iter.next_back().unwrap(), (size - i - 1, size - i - 1));
             }
-            for i in range(size / 4, size * 3 / 4) {
+            for i in size / 4..size * 3 / 4 {
                 assert_eq!(iter.size_hint(), (size * 3 / 4 - i, Some(size * 3 / 4 - i)));
                 assert_eq!(iter.next().unwrap(), (i, i));
             }
@@ -1727,10 +1727,10 @@ mod test {
         let size = 5u;
 
         // Forwards
-        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         let mut j = 0u;
-        for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(range(2u, size)) {
+        for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(2u..size) {
             assert_eq!(k, i);
             assert_eq!(v, i);
             j += 1;
@@ -1741,11 +1741,11 @@ mod test {
     #[test]
     fn test_range_1000() {
         let size = 1000u;
-        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
         fn test(map: &BTreeMap<uint, uint>, size: uint, min: Bound<&uint>, max: Bound<&uint>) {
             let mut kvs = map.range(min, max).map(|(&k, &v)| (k, v));
-            let mut pairs = range(0, size).map(|i| (i, i));
+            let mut pairs = (0..size).map(|i| (i, i));
 
             for (kv, pair) in kvs.by_ref().zip(pairs.by_ref()) {
                 assert_eq!(kv, pair);
@@ -1764,10 +1764,10 @@ mod test {
     #[test]
     fn test_range() {
         let size = 200u;
-        let map: BTreeMap<uint, uint> = range(0, size).map(|i| (i, i)).collect();
+        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
 
-        for i in range(0, size) {
-            for j in range(i, size) {
+        for i in 0..size {
+            for j in i..size {
                 let mut kvs = map.range(Included(&i), Included(&j)).map(|(&k, &v)| (k, v));
                 let mut pairs = range_inclusive(i, j).map(|i| (i, i));
 
@@ -1917,7 +1917,7 @@ mod bench {
         let mut map = BTreeMap::<uint, uint>::new();
         let mut rng = weak_rng();
 
-        for _ in range(0, size) {
+        for _ in 0..size {
             map.insert(rng.gen(), rng.gen());
         }
 

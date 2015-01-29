@@ -105,7 +105,7 @@ pub trait Eq: PartialEq<Self> {
 }
 
 /// An ordering is, e.g, a result of a comparison between two values.
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Ordering {
     /// An ordering where a compared value is less [than another].

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    #[derive(Show)]
+    #[derive(Debug)]
     struct Foo {
         foo: int,
     }

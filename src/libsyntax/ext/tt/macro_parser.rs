@@ -166,7 +166,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
 pub fn initial_matcher_pos(ms: Rc<Vec<TokenTree>>, sep: Option<Token>, lo: BytePos)
                            -> Box<MatcherPos> {
     let match_idx_hi = count_names(&ms[]);
-    let matches: Vec<_> = range(0, match_idx_hi).map(|_| Vec::new()).collect();
+    let matches: Vec<_> = (0..match_idx_hi).map(|_| Vec::new()).collect();
     box MatcherPos {
         stack: vec![],
         top_elts: TtSeq(ms),
@@ -339,7 +339,7 @@ pub fn parse(sess: &ParseSess,
                         // most of the time.
 
                         // Only touch the binders we have actually bound
-                        for idx in range(ei.match_lo, ei.match_hi) {
+                        for idx in ei.match_lo..ei.match_hi {
                             let sub = (ei.matches[idx]).clone();
                             (&mut new_pos.matches[idx])
                                    .push(Rc::new(MatchedSeq(sub, mk_sp(ei.sp_lo,
@@ -385,14 +385,14 @@ pub fn parse(sess: &ParseSess,
                             new_ei.match_cur += seq.num_captures;
                             new_ei.idx += 1us;
                             //we specifically matched zero repeats.
-                            for idx in range(ei.match_cur, ei.match_cur + seq.num_captures) {
+                            for idx in ei.match_cur..ei.match_cur + seq.num_captures {
                                 (&mut new_ei.matches[idx]).push(Rc::new(MatchedSeq(vec![], sp)));
                             }
 
                             cur_eis.push(new_ei);
                         }
 
-                        let matches: Vec<_> = range(0, ei.matches.len())
+                        let matches: Vec<_> = (0..ei.matches.len())
                             .map(|_| Vec::new()).collect();
                         let ei_t = ei;
                         cur_eis.push(box MatcherPos {
@@ -495,7 +495,7 @@ pub fn parse(sess: &ParseSess,
                 }
                 cur_eis.push(ei);
 
-                for _ in range(0, rust_parser.tokens_consumed) {
+                for _ in 0..rust_parser.tokens_consumed {
                     let _ = rdr.next_token();
                 }
             }

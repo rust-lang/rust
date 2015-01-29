@@ -158,7 +158,7 @@ fn main() {
 
     // initialize each sequence sorter
     let sizes = vec!(1u,2,3,4,6,12,18);
-    let mut streams = range(0, sizes.len()).map(|_| {
+    let mut streams = (0..sizes.len()).map(|_| {
         Some(channel::<String>())
     }).collect::<Vec<_>>();
     let mut from_child = Vec::new();

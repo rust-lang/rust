@@ -13,7 +13,7 @@
 
 use std::mem::swap;
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Ints {sum: Box<int>, values: Vec<int> }
 
 fn add_int(x: &mut Ints, v: int) {
@@ -26,7 +26,7 @@ fn add_int(x: &mut Ints, v: int) {
 
 fn iter_ints<F>(x: &Ints, mut f: F) -> bool where F: FnMut(&int) -> bool {
     let l = x.values.len();
-    range(0u, l).all(|i| f(&x.values[i]))
+    (0u..l).all(|i| f(&x.values[i]))
 }
 
 pub fn main() {

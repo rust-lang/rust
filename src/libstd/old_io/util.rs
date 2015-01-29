@@ -16,7 +16,7 @@ use old_io;
 use slice::bytes::MutableByteVector;
 
 /// Wraps a `Reader`, limiting the number of bytes that can be read from it.
-#[derive(Show)]
+#[derive(Debug)]
 pub struct LimitReader<R> {
     limit: uint,
     inner: R
@@ -78,7 +78,7 @@ impl<R: Buffer> Buffer for LimitReader<R> {
 }
 
 /// A `Writer` which ignores bytes written to it, like /dev/null.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct NullWriter;
 
 impl Writer for NullWriter {
@@ -87,7 +87,7 @@ impl Writer for NullWriter {
 }
 
 /// A `Reader` which returns an infinite stream of 0 bytes, like /dev/zero.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct ZeroReader;
 
 impl Reader for ZeroReader {
@@ -108,7 +108,7 @@ impl Buffer for ZeroReader {
 }
 
 /// A `Reader` which is always at EOF, like /dev/null.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct NullReader;
 
 impl Reader for NullReader {
@@ -129,7 +129,7 @@ impl Buffer for NullReader {
 ///
 /// The `Writer`s are delegated to in order. If any `Writer` returns an error,
 /// that error is returned immediately and remaining `Writer`s are not called.
-#[derive(Show)]
+#[derive(Debug)]
 pub struct MultiWriter<W> {
     writers: Vec<W>
 }
@@ -161,7 +161,7 @@ impl<W> Writer for MultiWriter<W> where W: Writer {
 
 /// A `Reader` which chains input from multiple `Reader`s, reading each to
 /// completion before moving onto the next.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct ChainedReader<I, R> {
     readers: I,
     cur_reader: Option<R>,
@@ -200,7 +200,7 @@ impl<R: Reader, I: Iterator<Item=R>> Reader for ChainedReader<I, R> {
 
 /// A `Reader` which forwards input from another `Reader`, passing it along to
 /// a `Writer` as well. Similar to the `tee(1)` command.
-#[derive(Show)]
+#[derive(Debug)]
 pub struct TeeReader<R, W> {
     reader: R,
     writer: W,
@@ -242,7 +242,7 @@ pub fn copy<R: Reader, W: Writer>(r: &mut R, w: &mut W) -> old_io::IoResult<()> 
 }
 
 /// An adaptor converting an `Iterator<u8>` to a `Reader`.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct IterReader<T> {
     iter: T,
 }
@@ -418,7 +418,7 @@ mod test {
 
     #[test]
     fn test_iter_reader() {
-        let mut r = IterReader::new(range(0u8, 8));
+        let mut r = IterReader::new(0u8..8);
         let mut buf = [0, 0, 0];
         let len = r.read(&mut buf).unwrap();
         assert_eq!(len, 3);
@@ -437,7 +437,7 @@ mod test {
 
     #[test]
     fn iter_reader_zero_length() {
-        let mut r = IterReader::new(range(0u8, 8));
+        let mut r = IterReader::new(0u8..8);
         let mut buf = [];
         assert_eq!(Ok(0), r.read(&mut buf));
     }

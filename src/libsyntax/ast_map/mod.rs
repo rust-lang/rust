@@ -32,7 +32,7 @@ use std::slice;
 
 pub mod blocks;
 
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum PathElem {
     PathMod(Name),
     PathName(Name)
@@ -91,7 +91,7 @@ pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
     })
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum Node<'ast> {
     NodeItem(&'ast Item),
     NodeForeignItem(&'ast ForeignItem),
@@ -113,7 +113,7 @@ pub enum Node<'ast> {
 
 /// Represents an entry and its parent Node ID
 /// The odd layout is to bring down the total size.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 enum MapEntry<'ast> {
     /// Placeholder for holes in the map.
     NotPresent,
@@ -144,7 +144,7 @@ impl<'ast> Clone for MapEntry<'ast> {
     }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 struct InlinedParent {
     path: Vec<PathElem>,
     ii: InlinedItem

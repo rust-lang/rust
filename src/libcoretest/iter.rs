@@ -305,7 +305,7 @@ fn test_cycle() {
 #[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0i, 1, 2, 3, 4];
-    for i in range(0u, v.len()) {
+    for i in 0u..v.len() {
         assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
     }
     assert_eq!(v.iter().nth(v.len()), None);
@@ -458,7 +458,7 @@ fn test_min_by() {
 
 #[test]
 fn test_by_ref() {
-    let mut xs = range(0i, 10);
+    let mut xs = 0i..10;
     // sum the first five values
     let partial_sum = xs.by_ref().take(5).fold(0, |a, b| a + b);
     assert_eq!(partial_sum, 10);
@@ -730,32 +730,32 @@ fn test_random_access_cycle() {
 
 #[test]
 fn test_double_ended_range() {
-    assert!(range(11i, 14).rev().collect::<Vec<int>>() == vec![13i, 12, 11]);
-    for _ in range(10i, 0).rev() {
+    assert!((11i..14).rev().collect::<Vec<int>>() == vec![13i, 12, 11]);
+    for _ in (10i..0).rev() {
         panic!("unreachable");
     }
 
-    assert!(range(11u, 14).rev().collect::<Vec<uint>>() == vec![13u, 12, 11]);
-    for _ in range(10u, 0).rev() {
+    assert!((11u..14).rev().collect::<Vec<uint>>() == vec![13u, 12, 11]);
+    for _ in (10u..0).rev() {
         panic!("unreachable");
     }
 }
 
 #[test]
 fn test_range() {
-    assert!(range(0i, 5).collect::<Vec<int>>() == vec![0i, 1, 2, 3, 4]);
-    assert!(range(-10i, -1).collect::<Vec<int>>() ==
+    assert!((0i..5).collect::<Vec<int>>() == vec![0i, 1, 2, 3, 4]);
+    assert!((-10i..-1).collect::<Vec<int>>() ==
                vec![-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-    assert!(range(0i, 5).rev().collect::<Vec<int>>() == vec![4, 3, 2, 1, 0]);
-    assert_eq!(range(200i, -5).count(), 0);
-    assert_eq!(range(200i, -5).rev().count(), 0);
-    assert_eq!(range(200i, 200).count(), 0);
-    assert_eq!(range(200i, 200).rev().count(), 0);
+    assert!((0i..5).rev().collect::<Vec<int>>() == vec![4, 3, 2, 1, 0]);
+    assert_eq!((200i..-5).count(), 0);
+    assert_eq!((200i..-5).rev().count(), 0);
+    assert_eq!((200i..200).count(), 0);
+    assert_eq!((200i..200).rev().count(), 0);
 
-    assert_eq!(range(0i, 100).size_hint(), (100, Some(100)));
+    assert_eq!((0i..100).size_hint(), (100, Some(100)));
     // this test is only meaningful when sizeof uint < sizeof u64
-    assert_eq!(range(uint::MAX - 1, uint::MAX).size_hint(), (1, Some(1)));
-    assert_eq!(range(-10i, -1).size_hint(), (9, Some(9)));
+    assert_eq!((uint::MAX - 1..uint::MAX).size_hint(), (1, Some(1)));
+    assert_eq!((-10i..-1).size_hint(), (9, Some(9)));
 }
 
 #[test]
@@ -883,7 +883,7 @@ fn test_fuse() {
 
 #[bench]
 fn bench_rposition(b: &mut Bencher) {
-    let it: Vec<uint> = range(0u, 300).collect();
+    let it: Vec<uint> = (0u..300).collect();
     b.iter(|| {
         it.iter().rposition(|&x| x <= 150);
     });
@@ -892,7 +892,7 @@ fn bench_rposition(b: &mut Bencher) {
 #[bench]
 fn bench_skip_while(b: &mut Bencher) {
     b.iter(|| {
-        let it = range(0u, 100);
+        let it = 0u..100;
         let mut sum = 0;
         it.skip_while(|&x| { sum += x; sum < 4000 }).all(|_| true);
     });
@@ -900,10 +900,10 @@ fn bench_skip_while(b: &mut Bencher) {
 
 #[bench]
 fn bench_multiple_take(b: &mut Bencher) {
-    let mut it = range(0u, 42).cycle();
+    let mut it = (0u..42).cycle();
     b.iter(|| {
         let n = it.next().unwrap();
-        for _ in range(0u, n) {
+        for _ in 0u..n {
             it.take(it.next().unwrap()).all(|_| true);
         }
     });

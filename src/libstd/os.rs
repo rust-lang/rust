@@ -617,7 +617,7 @@ unsafe fn load_argc_and_argv(argc: int,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
     use iter::range;
 
-    range(0, argc as uint).map(|i| {
+    (0..argc as uint).map(|i| {
         ffi::c_str_to_bytes(&*argv.offset(i as int)).to_vec()
     }).collect()
 }
@@ -643,7 +643,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 // In general it looks like:
 // res = Vec::new()
 // let args = [[NSProcessInfo processInfo] arguments]
-// for i in range(0, [args count])
+// for i in 0..[args count]
 //      res.push([args objectAtIndex:i])
 // res
 #[cfg(target_os = "ios")]
@@ -679,7 +679,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
         let args = objc_msgSend(info, argumentsSel);
 
         let cnt: int = mem::transmute(objc_msgSend(args, countSel));
-        for i in range(0, cnt) {
+        for i in 0..cnt {
             let tmp = objc_msgSend(args, objectAtSel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8Sel));
@@ -717,7 +717,7 @@ fn real_args() -> Vec<String> {
     let lpCmdLine = unsafe { GetCommandLineW() };
     let szArgList = unsafe { CommandLineToArgvW(lpCmdLine, lpArgCount) };
 
-    let args: Vec<_> = range(0, nArgs as uint).map(|i| unsafe {
+    let args: Vec<_> = (0..nArgs as uint).map(|i| unsafe {
         // Determine the length of this argument.
         let ptr = *szArgList.offset(i as int);
         let mut len = 0;
@@ -857,7 +857,7 @@ pub enum MapOption {
 }
 
 /// Possible errors when creating a map.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum MapError {
     /// # The following are POSIX-specific
     ///

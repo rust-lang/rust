@@ -482,7 +482,7 @@ impl<T> SliceExt for [T] {
         let min = cmp::min(self.len(), src.len());
         let dst = &mut self[.. min];
         let src = &src[.. min];
-        for i in range(0, min) {
+        for i in 0..min {
             dst[i].clone_from(&src[i]);
         }
         min

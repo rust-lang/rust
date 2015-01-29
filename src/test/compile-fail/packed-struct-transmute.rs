@@ -23,7 +23,7 @@ struct Foo {
     baz: usize
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 struct Oof {
     rab: u8,
     zab: usize

@@ -21,7 +21,7 @@ use syntax::codemap::Span;
 
 use std::rc::Rc;
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum RestrictionResult<'tcx> {
     Safe,
     SafeIf(Rc<LoanPath<'tcx>>, Vec<Rc<LoanPath<'tcx>>>)

@@ -115,7 +115,7 @@ pub enum Linkage {
 }
 
 #[repr(C)]
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum DiagnosticSeverity {
     Error,
     Warning,
@@ -312,7 +312,7 @@ pub enum RealPredicate {
 
 // The LLVM TypeKind type - must stay in sync with the def of
 // LLVMTypeKind in llvm/include/llvm-c/Core.h
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 #[repr(C)]
 pub enum TypeKind {
     Void      = 0,

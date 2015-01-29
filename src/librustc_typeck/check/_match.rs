@@ -167,7 +167,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         }
         ast::PatTup(ref elements) => {
             let element_tys: Vec<_> =
-                range(0, elements.len()).map(|_| fcx.infcx().next_ty_var())
+                (0..elements.len()).map(|_| fcx.infcx().next_ty_var())
                                         .collect();
             let pat_ty = ty::mk_tup(tcx, element_tys.clone());
             fcx.write_ty(pat.id, pat_ty);

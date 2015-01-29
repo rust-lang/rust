@@ -74,14 +74,14 @@
 //! // where tx is the sending half (tx for transmission), and rx is the receiving
 //! // half (rx for receiving).
 //! let (tx, rx) = channel();
-//! for i in range(0i, 10i) {
+//! for i in 0i..10i {
 //!     let tx = tx.clone();
 //!     Thread::spawn(move|| {
 //!         tx.send(i).unwrap();
 //!     });
 //! }
 //!
-//! for _ in range(0i, 10i) {
+//! for _ in 0i..10i {
 //!     let j = rx.recv().unwrap();
 //!     assert!(0 <= j && j < 10);
 //! }
@@ -390,13 +390,13 @@ pub struct SendError<T>(pub T);
 ///
 /// The `recv` operation can only fail if the sending half of a channel is
 /// disconnected, implying that no further messages will ever be received.
-#[derive(PartialEq, Eq, Clone, Copy, Show)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[derive(PartialEq, Clone, Copy, Show)]
+#[derive(PartialEq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
@@ -1147,9 +1147,9 @@ mod test {
     fn stress() {
         let (tx, rx) = channel::<int>();
         let t = Thread::scoped(move|| {
-            for _ in range(0u, 10000) { tx.send(1i).unwrap(); }
+            for _ in 0u..10000 { tx.send(1i).unwrap(); }
         });
-        for _ in range(0u, 10000) {
+        for _ in 0u..10000 {
             assert_eq!(rx.recv().unwrap(), 1);
         }
         t.join().ok().unwrap();
@@ -1162,7 +1162,7 @@ mod test {
         let (tx, rx) = channel::<int>();
 
         let t = Thread::scoped(move|| {
-            for _ in range(0, AMT * NTHREADS) {
+            for _ in 0..AMT * NTHREADS {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
             match rx.try_recv() {
@@ -1171,10 +1171,10 @@ mod test {
             }
         });
 
-        for _ in range(0, NTHREADS) {
+        for _ in 0..NTHREADS {
             let tx = tx.clone();
             Thread::spawn(move|| {
-                for _ in range(0, AMT) { tx.send(1).unwrap(); }
+                for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
         drop(tx);
@@ -1187,13 +1187,13 @@ mod test {
         let (tx2, rx2) = channel::<int>();
         let t1 = Thread::scoped(move|| {
             tx1.send(()).unwrap();
-            for _ in range(0i, 40) {
+            for _ in 0i..40 {
                 assert_eq!(rx2.recv().unwrap(), 1);
             }
         });
         rx1.recv().unwrap();
         let t2 = Thread::scoped(move|| {
-            for _ in range(0i, 40) {
+            for _ in 0i..40 {
                 tx2.send(1).unwrap();
             }
         });
@@ -1205,11 +1205,11 @@ mod test {
     fn recv_from_outside_runtime() {
         let (tx, rx) = channel::<int>();
         let t = Thread::scoped(move|| {
-            for _ in range(0i, 40) {
+            for _ in 0i..40 {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
         });
-        for _ in range(0u, 40) {
+        for _ in 0u..40 {
             tx.send(1).unwrap();
         }
         t.join().ok().unwrap();
@@ -1346,7 +1346,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel::<int>();
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1357,7 +1357,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel::<int>();
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1370,7 +1370,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_recv_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel::<int>();
             Thread::spawn(move|| {
                 let res = Thread::scoped(move|| {
@@ -1388,7 +1388,7 @@ mod test {
 
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel();
             let _t = Thread::spawn(move|| {
                 tx.send(box 10i).unwrap();
@@ -1399,7 +1399,7 @@ mod test {
 
     #[test]
     fn stream_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = channel();
 
             send(tx, 0);
@@ -1429,22 +1429,22 @@ mod test {
     fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (tx, rx) = channel();
-        for _ in range(0i, 10000) { tx.send(()).unwrap(); }
-        for _ in range(0i, 10000) { rx.recv().unwrap(); }
+        for _ in 0i..10000 { tx.send(()).unwrap(); }
+        for _ in 0i..10000 { rx.recv().unwrap(); }
     }
 
     #[test]
     fn shared_chan_stress() {
         let (tx, rx) = channel();
         let total = stress_factor() + 100;
-        for _ in range(0, total) {
+        for _ in 0..total {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }
 
-        for _ in range(0, total) {
+        for _ in 0..total {
             rx.recv().unwrap();
         }
     }
@@ -1530,7 +1530,7 @@ mod test {
             tx2.send(()).unwrap();
         });
         // make sure the other task has gone to sleep
-        for _ in range(0u, 5000) { Thread::yield_now(); }
+        for _ in 0u..5000 { Thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1654,9 +1654,9 @@ mod sync_tests {
     fn stress() {
         let (tx, rx) = sync_channel::<int>(0);
         Thread::spawn(move|| {
-            for _ in range(0u, 10000) { tx.send(1).unwrap(); }
+            for _ in 0u..10000 { tx.send(1).unwrap(); }
         });
-        for _ in range(0u, 10000) {
+        for _ in 0u..10000 {
             assert_eq!(rx.recv().unwrap(), 1);
         }
     }
@@ -1669,7 +1669,7 @@ mod sync_tests {
         let (dtx, drx) = sync_channel::<()>(0);
 
         Thread::spawn(move|| {
-            for _ in range(0, AMT * NTHREADS) {
+            for _ in 0..AMT * NTHREADS {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
             match rx.try_recv() {
@@ -1679,10 +1679,10 @@ mod sync_tests {
             dtx.send(()).unwrap();
         });
 
-        for _ in range(0, NTHREADS) {
+        for _ in 0..NTHREADS {
             let tx = tx.clone();
             Thread::spawn(move|| {
-                for _ in range(0, AMT) { tx.send(1).unwrap(); }
+                for _ in 0..AMT { tx.send(1).unwrap(); }
             });
         }
         drop(tx);
@@ -1810,7 +1810,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<int>(0);
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1821,7 +1821,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_send_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<int>(0);
             let _t = Thread::spawn(move|| {
                 drop(rx);
@@ -1834,7 +1834,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_recv_close_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<int>(0);
             let _t = Thread::spawn(move|| {
                 let res = Thread::scoped(move|| {
@@ -1852,7 +1852,7 @@ mod sync_tests {
 
     #[test]
     fn oneshot_multi_thread_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<Box<int>>(0);
             let _t = Thread::spawn(move|| {
                 tx.send(box 10i).unwrap();
@@ -1863,7 +1863,7 @@ mod sync_tests {
 
     #[test]
     fn stream_send_recv_stress() {
-        for _ in range(0, stress_factor()) {
+        for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<Box<int>>(0);
 
             send(tx, 0);
@@ -1893,22 +1893,22 @@ mod sync_tests {
     fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (tx, rx) = sync_channel(10000);
-        for _ in range(0u, 10000) { tx.send(()).unwrap(); }
-        for _ in range(0u, 10000) { rx.recv().unwrap(); }
+        for _ in 0u..10000 { tx.send(()).unwrap(); }
+        for _ in 0u..10000 { rx.recv().unwrap(); }
     }
 
     #[test]
     fn shared_chan_stress() {
         let (tx, rx) = sync_channel(0);
         let total = stress_factor() + 100;
-        for _ in range(0, total) {
+        for _ in 0..total {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         }
 
-        for _ in range(0, total) {
+        for _ in 0..total {
             rx.recv().unwrap();
         }
     }
@@ -1994,7 +1994,7 @@ mod sync_tests {
             tx2.send(()).unwrap();
         });
         // make sure the other task has gone to sleep
-        for _ in range(0u, 5000) { Thread::yield_now(); }
+        for _ in 0u..5000 { Thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -2082,7 +2082,7 @@ mod sync_tests {
             rx2.recv().unwrap();
         }
 
-        for _ in range(0u, 100) {
+        for _ in 0u..100 {
             repro()
         }
     }

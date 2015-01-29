@@ -61,10 +61,10 @@ fn run(args: &[String]) {
     let dur = Duration::span(|| {
         let (to_child, to_parent, from_parent) = p.take().unwrap();
         let mut worker_results = Vec::new();
-        for _ in range(0u, workers) {
+        for _ in 0u..workers {
             let to_child = to_child.clone();
             worker_results.push(Thread::scoped(move|| {
-                for _ in range(0u, size / workers) {
+                for _ in 0u..size / workers {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
                     to_child.send(request::bytes(num_bytes)).unwrap();
                 }

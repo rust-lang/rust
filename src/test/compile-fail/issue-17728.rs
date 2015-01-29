@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::{Show, Formatter, Error};
+use std::fmt::{Debug, Formatter, Error};
 use std::collections::HashMap;
 
 trait HasInventory {
@@ -30,7 +30,7 @@ trait TraversesWorld {
 }
 
 
-#[derive(Show, Eq, PartialEq, Hash)]
+#[derive(Debug, Eq, PartialEq, Hash)]
 enum RoomDirection {
     West,
     East,
@@ -97,7 +97,7 @@ impl Player {
 impl TraversesWorld for Player {
 }
 
-impl Show for Player {
+impl Debug for Player {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
         formatter.write_str("Player{ name:");
         formatter.write_str(self.name.as_slice());

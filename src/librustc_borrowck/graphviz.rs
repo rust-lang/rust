@@ -26,7 +26,7 @@ use rustc::middle::dataflow;
 use std::rc::Rc;
 use std::borrow::IntoCow;
 
-#[derive(Show, Copy)]
+#[derive(Debug, Copy)]
 pub enum Variant {
     Loans,
     Moves,

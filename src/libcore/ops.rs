@@ -35,7 +35,7 @@
 //! ```rust
 //! use std::ops::{Add, Sub};
 //!
-//! #[derive(Show)]
+//! #[derive(Debug)]
 //! struct Point {
 //!     x: int,
 //!     y: int

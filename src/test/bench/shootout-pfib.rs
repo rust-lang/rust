@@ -77,7 +77,7 @@ fn stress_task(id: int) {
 
 fn stress(num_tasks: int) {
     let mut results = Vec::new();
-    for i in range(0, num_tasks) {
+    for i in 0..num_tasks {
         results.push(Thread::scoped(move|| {
             stress_task(i);
         }));
@@ -106,8 +106,8 @@ fn main() {
 
         let num_trials = 10;
 
-        for n in range(1, max + 1) {
-            for _ in range(0u, num_trials) {
+        for n in 1..max + 1 {
+            for _ in 0u..num_trials {
                 let mut fibn = None;
                 let dur = Duration::span(|| fibn = Some(fib(n)));
                 let fibn = fibn.unwrap();

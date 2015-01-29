@@ -227,7 +227,7 @@ use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
@@ -242,7 +242,7 @@ impl<'a> ConstantExpr<'a> {
 }
 
 // An option identifying a branch (either a literal, an enum variant or a range)
-#[derive(Show)]
+#[derive(Debug)]
 enum Opt<'a, 'tcx> {
     ConstantValue(ConstantExpr<'a>),
     ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>),
@@ -606,7 +606,7 @@ fn extract_variant_args<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                     val: ValueRef)
                                     -> ExtractedBlock<'blk, 'tcx> {
     let _icx = push_ctxt("match::extract_variant_args");
-    let args = range(0, adt::num_args(repr, disr_val)).map(|i| {
+    let args = (0..adt::num_args(repr, disr_val)).map(|i| {
         adt::trans_field_ptr(bcx, repr, val, disr_val, i)
     }).collect();
 
@@ -653,8 +653,8 @@ fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vec_datum = match_datum(val, left_ty);
     let (base, len) = vec_datum.get_vec_base_and_len(bcx);
     let mut elems = vec![];
-    elems.extend(range(0, before).map(|i| GEPi(bcx, base, &[i])));
-    elems.extend(range(0, after).rev().map(|i| {
+    elems.extend((0..before).map(|i| GEPi(bcx, base, &[i])));
+    elems.extend((0..after).rev().map(|i| {
         InBoundsGEP(bcx, base, &[
             Sub(bcx, len, C_uint(bcx.ccx(), i + 1), DebugLoc::None)
         ])
@@ -768,7 +768,7 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
         })
     };
 
-    range(0, m[0].pats.len())
+    (0..m[0].pats.len())
         .filter(column_contains_any_nonwild_patterns)
         .map(|col| (col, column_score(m, col)))
         .max_by(|&(_, score)| score)
@@ -1005,7 +1005,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let adt_vals = if any_irrefutable_adt_pat(bcx.tcx(), m, col) {
         let repr = adt::represent_type(bcx.ccx(), left_ty);
         let arg_count = adt::num_args(&*repr, 0);
-        let field_vals: Vec<ValueRef> = std::iter::range(0, arg_count).map(|ix|
+        let field_vals: Vec<ValueRef> = (0..arg_count).map(|ix|
             adt::trans_field_ptr(bcx, &*repr, val, 0, ix)
         ).collect();
         Some(field_vals)

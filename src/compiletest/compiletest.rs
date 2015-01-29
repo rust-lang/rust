@@ -23,6 +23,7 @@
 #![feature(os)]
 #![feature(unicode)]
 
+#![allow(unstable)]
 #![deny(warnings)]
 
 extern crate test;

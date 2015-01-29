@@ -43,7 +43,7 @@ use syntax::parse::token;
 // def-id will depend on where it originated from.  Therefore, the conversion
 // function is given an indicator of the source of the def-id.  See
 // astencode.rs for more information.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum DefIdSource {
     // Identifies a struct, trait, enum, etc.
     NominalType,
@@ -132,7 +132,7 @@ pub fn parse_state_from_data<'a, 'tcx>(data: &'a [u8], crate_num: ast::CrateNum,
 fn data_log_string(data: &[u8], pos: uint) -> String {
     let mut buf = String::new();
     buf.push_str("<<");
-    for i in range(pos, data.len()) {
+    for i in pos..data.len() {
         let c = data[i];
         if c > 0x20 && c <= 0x7F {
             buf.push(c as char);

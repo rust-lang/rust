@@ -76,7 +76,7 @@ fn read_line() {
     let mut path = Path::new(env!("CFG_SRC_DIR"));
     path.push("src/test/bench/shootout-k-nucleotide.data");
 
-    for _ in range(0u, 3) {
+    for _ in 0u..3 {
         let mut reader = BufferedReader::new(File::open(&path).unwrap());
         for _line in reader.lines() {
         }
@@ -126,7 +126,7 @@ fn vec_push_all() {
     let mut r = rand::thread_rng();
 
     let mut v = Vec::new();
-    for i in range(0u, 1500) {
+    for i in 0u..1500 {
         let mut rv = repeat(i).take(r.gen_range(0u, i + 1)).collect::<Vec<_>>();
         if r.gen() {
             v.push_all(rv.as_slice());
@@ -140,7 +140,7 @@ fn vec_push_all() {
 
 fn is_utf8_ascii() {
     let mut v : Vec<u8> = Vec::new();
-    for _ in range(0u, 20000) {
+    for _ in 0u..20000 {
         v.push('b' as u8);
         if str::from_utf8(v.as_slice()).is_err() {
             panic!("from_utf8 panicked");
@@ -151,7 +151,7 @@ fn is_utf8_ascii() {
 fn is_utf8_multibyte() {
     let s = "b¢€𤭢";
     let mut v : Vec<u8> = Vec::new();
-    for _ in range(0u, 5000) {
+    for _ in 0u..5000 {
         v.push_all(s.as_bytes());
         if str::from_utf8(v.as_slice()).is_err() {
             panic!("from_utf8 panicked");

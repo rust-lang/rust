@@ -13,7 +13,7 @@
 use std::mem;
 
 #[repr(packed)]
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 struct Foo {
     bar: u8,
     baz: u64
@@ -24,7 +24,7 @@ pub fn main() {
 
     assert_eq!(mem::size_of::<[Foo; 10]>(), 90);
 
-    for i in range(0u, 10) {
+    for i in 0u..10 {
         assert_eq!(foos[i], Foo { bar: 1, baz: 2});
     }
 

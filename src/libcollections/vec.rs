@@ -186,7 +186,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec.len(), 0);
     ///
     /// // These are all done without reallocating...
-    /// for i in range(0i, 10) {
+    /// for i in 0i..10 {
     ///     vec.push(i);
     /// }
     ///
@@ -233,7 +233,7 @@ impl<T> Vec<T> {
     ///         mem::forget(v);
     ///
     ///         // Overwrite memory with 4, 5, 6
-    ///         for i in range(0, len as int) {
+    ///         for i in 0..len as int {
     ///             ptr::write(p.offset(i), 4 + i);
     ///         }
     ///
@@ -605,7 +605,7 @@ impl<T> Vec<T> {
         {
             let v = self.as_mut_slice();
 
-            for i in range(0u, len) {
+            for i in 0u..len {
                 if !f(&v[i]) {
                     del += 1;
                 } else if del > 0 {
@@ -811,7 +811,7 @@ impl<T> Vec<T> {
     /// let w = v.map_in_place(|i| i + 3);
     /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
     ///
-    /// #[derive(PartialEq, Show)]
+    /// #[derive(PartialEq, Debug)]
     /// struct Newtype(u8);
     /// let bytes = vec![0x11, 0x22];
     /// let newtyped_bytes = bytes.map_in_place(|x| Newtype(x));
@@ -1079,7 +1079,7 @@ impl<T: Clone> Vec<T> {
     pub fn push_all(&mut self, other: &[T]) {
         self.reserve(other.len());
 
-        for i in range(0, other.len()) {
+        for i in 0..other.len() {
             let len = self.len();
 
             // Unsafe code so this can be optimised to a memcpy (or something similarly
@@ -1969,7 +1969,7 @@ mod tests {
         v.reserve(2);
         assert!(v.capacity() >= 2);
 
-        for i in range(0i, 16) {
+        for i in 0i..16 {
             v.push(i);
         }
 
@@ -1988,13 +1988,13 @@ mod tests {
         let mut v = Vec::new();
         let mut w = Vec::new();
 
-        v.extend(range(0i, 3));
-        for i in range(0i, 3) { w.push(i) }
+        v.extend(0i..3);
+        for i in 0i..3 { w.push(i) }
 
         assert_eq!(v, w);
 
-        v.extend(range(3i, 10));
-        for i in range(3i, 10) { w.push(i) }
+        v.extend(3i..10);
+        for i in 3i..10 { w.push(i) }
 
         assert_eq!(v, w);
     }
@@ -2279,7 +2279,7 @@ mod tests {
     #[test]
     fn test_map_in_place_zero_sized() {
         let v = vec![(), ()];
-        #[derive(PartialEq, Show)]
+        #[derive(PartialEq, Debug)]
         struct ZeroSized;
         assert_eq!(v.map_in_place(|_| ZeroSized), [ZeroSized, ZeroSized]);
     }
@@ -2288,11 +2288,11 @@ mod tests {
     fn test_map_in_place_zero_drop_count() {
         use std::sync::atomic::{AtomicUsize, Ordering, ATOMIC_USIZE_INIT};
 
-        #[derive(Clone, PartialEq, Show)]
+        #[derive(Clone, PartialEq, Debug)]
         struct Nothing;
         impl Drop for Nothing { fn drop(&mut self) { } }
 
-        #[derive(Clone, PartialEq, Show)]
+        #[derive(Clone, PartialEq, Debug)]
         struct ZeroSized;
         impl Drop for ZeroSized {
             fn drop(&mut self) {
@@ -2442,7 +2442,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst = range(0, src_len).collect::<Vec<_>>();
+            let dst = (0..src_len).collect::<Vec<_>>();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         })
@@ -2499,7 +2499,7 @@ mod tests {
     }
 
     fn do_bench_from_slice(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(range(0, src_len));
+        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2531,7 +2531,7 @@ mod tests {
     }
 
     fn do_bench_from_iter(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(range(0, src_len));
+        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2563,8 +2563,8 @@ mod tests {
     }
 
     fn do_bench_extend(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0, dst_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0..dst_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2612,8 +2612,8 @@ mod tests {
     }
 
     fn do_bench_push_all(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0, dst_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0..dst_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2661,8 +2661,8 @@ mod tests {
     }
 
     fn do_bench_push_all_move(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0u, dst_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0u..dst_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2710,7 +2710,7 @@ mod tests {
     }
 
     fn do_bench_clone(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(range(0, src_len));
+        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2742,15 +2742,15 @@ mod tests {
     }
 
     fn do_bench_clone_from(b: &mut Bencher, times: uint, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(range(0, src_len));
-        let src: Vec<uint> = FromIterator::from_iter(range(dst_len, dst_len + src_len));
+        let dst: Vec<uint> = FromIterator::from_iter(0..src_len);
+        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = (times * src_len) as u64;
 
         b.iter(|| {
             let mut dst = dst.clone();
 
-            for _ in range(0, times) {
+            for _ in 0..times {
                 dst.clone_from(&src);
 
                 assert_eq!(dst.len(), src_len);

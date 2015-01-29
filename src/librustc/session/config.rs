@@ -249,7 +249,7 @@ pub enum EntryFnType {
     EntryNone,
 }
 
-#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, PartialOrd, Clone, Ord, Eq, Hash, Debug)]
 pub enum CrateType {
     CrateTypeExecutable,
     CrateTypeDylib,
@@ -672,7 +672,7 @@ pub fn optgroups() -> Vec<getopts::OptGroup> {
         .collect()
 }
 
-#[derive(Copy, Clone, PartialEq, Eq, Show)]
+#[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OptionStability { Stable, Unstable }
 
 #[derive(Clone, PartialEq, Eq)]

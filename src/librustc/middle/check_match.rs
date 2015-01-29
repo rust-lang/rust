@@ -70,7 +70,7 @@ impl<'a> fmt::Debug for Matrix<'a> {
 
         let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0u);
         assert!(m.iter().all(|row| row.len() == column_count));
-        let column_widths: Vec<uint> = range(0, column_count).map(|col| {
+        let column_widths: Vec<uint> = (0..column_count).map(|col| {
             pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0u)
         }).collect();
 
@@ -609,7 +609,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
                                 let pat_slice = &pats[];
-                                let subpats: Vec<_> = range(0, arity).map(|i| {
+                                let subpats: Vec<_> = (0..arity).map(|i| {
                                     pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
                                 }).collect();
                                 vec![construct_witness(cx, &c, subpats, left_ty)]

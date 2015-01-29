@@ -176,7 +176,7 @@
 //! }
 //!
 //! impl<'a> dot::GraphWalk<'a, Nd, Ed<'a>> for Graph {
-//!     fn nodes(&self) -> dot::Nodes<'a,Nd> { range(0,self.nodes.len()).collect() }
+//!     fn nodes(&self) -> dot::Nodes<'a,Nd> { (0..self.nodes.len()).collect() }
 //!     fn edges(&'a self) -> dot::Edges<'a,Ed<'a>> { self.edges.iter().collect() }
 //!     fn source(&self, e: &Ed) -> Nd { let & &(s,_) = e; s }
 //!     fn target(&self, e: &Ed) -> Nd { let & &(_,t) = e; t }
@@ -523,7 +523,7 @@ pub trait GraphWalk<'a, N, E> {
     fn target(&'a self, edge: &E) -> N;
 }
 
-#[derive(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Debug)]
 pub enum RenderOption {
     NoEdgeLabels,
     NoNodeLabels,
@@ -715,7 +715,7 @@ mod tests {
 
     impl<'a> GraphWalk<'a, Node, &'a Edge> for LabelledGraph {
         fn nodes(&'a self) -> Nodes<'a,Node> {
-            range(0u, self.node_labels.len()).collect()
+            (0u..self.node_labels.len()).collect()
         }
         fn edges(&'a self) -> Edges<'a,&'a Edge> {
             self.edges.iter().collect()

@@ -95,7 +95,7 @@ pub trait Delegate<'tcx> {
               mode: MutateMode);
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum LoanCause {
     ClosureCapture(Span),
     AddrOf,
@@ -107,20 +107,20 @@ pub enum LoanCause {
     MatchDiscriminant
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum ConsumeMode {
     Copy,                // reference to x where x has a type that copies
     Move(MoveReason),    // reference to x where x has a type that moves
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum MoveReason {
     DirectRefMove,
     PatBindingMove,
     CaptureMove,
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum MatchMode {
     NonBindingMatch,
     BorrowingMatch,
@@ -128,7 +128,7 @@ pub enum MatchMode {
     MovingMatch,
 }
 
-#[derive(PartialEq,Show)]
+#[derive(PartialEq,Debug)]
 enum TrackMatchMode<T> {
     Unknown,
     Definite(MatchMode),
@@ -197,7 +197,7 @@ impl<T> TrackMatchMode<T> {
     }
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum MutateMode {
     Init,
     JustWrite,    // x = y
@@ -842,7 +842,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                        autoderefs: uint) {
         debug!("walk_autoderefs expr={} autoderefs={}", expr.repr(self.tcx()), autoderefs);
 
-        for i in range(0, autoderefs) {
+        for i in 0..autoderefs {
             let deref_id = ty::MethodCall::autoderef(expr.id, i);
             match self.typer.node_method_ty(deref_id) {
                 None => {}

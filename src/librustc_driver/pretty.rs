@@ -42,7 +42,7 @@ use std::old_io::{self, MemReader};
 use std::option;
 use std::str::FromStr;
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum PpSourceMode {
     PpmNormal,
     PpmEveryBodyLoops,
@@ -54,7 +54,7 @@ pub enum PpSourceMode {
 }
 
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum PpFlowGraphMode {
     Default,
     /// Drops the labels from the edges in the flowgraph output. This
@@ -63,7 +63,7 @@ pub enum PpFlowGraphMode {
     /// have become a pain to maintain.
     UnlabelledEdges,
 }
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum PpMode {
     PpmSource(PpSourceMode),
     PpmFlowGraph(PpFlowGraphMode),
@@ -338,7 +338,7 @@ fn gather_flowgraph_variants(sess: &Session) -> Vec<borrowck_dot::Variant> {
     variants
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub enum UserIdentifiedItem {
     ItemViaNode(ast::NodeId),
     ItemViaPath(Vec<String>),

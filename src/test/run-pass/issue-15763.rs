@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 struct Bar {
     x: int
 }
@@ -21,7 +21,7 @@ impl Drop for Bar {
     }
 }
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 struct Foo {
     x: Bar,
     a: int

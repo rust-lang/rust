@@ -29,7 +29,7 @@ use std::path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum BinOpToken {
     Plus,
     Minus,
@@ -44,7 +44,7 @@ pub enum BinOpToken {
 }
 
 /// A delimiter token
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum DelimToken {
     /// A round parenthesis: `(` or `)`
     Paren,
@@ -54,14 +54,14 @@ pub enum DelimToken {
     Brace,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum IdentStyle {
     /// `::` follows the identifier with no whitespace in-between.
     ModName,
     Plain,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum SpecialMacroVar {
     /// `$crate` will be filled in with the name of the crate a macro was
     /// imported from, if any.
@@ -76,7 +76,7 @@ impl SpecialMacroVar {
     }
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum Lit {
     Byte(ast::Name),
     Char(ast::Name),
@@ -102,7 +102,7 @@ impl Lit {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug)]
 pub enum Token {
     /* Expression-operator symbols. */
     Eq,

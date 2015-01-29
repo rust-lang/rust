@@ -17,7 +17,7 @@ pub struct ExpectedError {
     pub msg: String,
 }
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 enum WhichLine { ThisLine, FollowPrevious(uint), AdjustBackward(uint) }
 
 /// Looks for either "//~| KIND MESSAGE" or "//~^^... KIND MESSAGE"

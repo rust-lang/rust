@@ -44,7 +44,7 @@ priv fn parse_data(len: uint, io: @io::Reader) -> Result {
 
 priv fn parse_list(len: uint, io: @io::Reader) -> Result {
     let mut list: ~[Result] = ~[];
-    for _ in range(0, len) {
+    for _ in 0..len {
         let v = match io.read_char() {
             '$' => parse_bulk(io),
             ':' => parse_int(io),

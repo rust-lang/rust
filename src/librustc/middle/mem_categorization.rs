@@ -87,7 +87,7 @@ use syntax::parse::token;
 use std::cell::RefCell;
 use std::rc::Rc;
 
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum categorization<'tcx> {
     cat_rvalue(ty::Region),                    // temporary val, argument is its scope
     cat_static_item,
@@ -101,14 +101,14 @@ pub enum categorization<'tcx> {
 }
 
 // Represents any kind of upvar
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub struct Upvar {
     pub id: ty::UpvarId,
     pub kind: ty::ClosureKind
 }
 
 // different kinds of pointers:
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum PointerKind {
     /// `Box<T>`
     Unique,
@@ -125,25 +125,25 @@ pub enum PointerKind {
 
 // We use the term "interior" to mean "something reachable from the
 // base without a pointer dereference", e.g. a field
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum InteriorKind {
     InteriorField(FieldName),
     InteriorElement(ElementKind),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum FieldName {
     NamedField(ast::Name),
     PositionalField(uint)
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum ElementKind {
     VecElement,
     OtherElement,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum MutabilityCategory {
     McImmutable, // Immutable.
     McDeclared,  // Directly declared as mutable.
@@ -155,7 +155,7 @@ pub enum MutabilityCategory {
 // Upvar categorization can generate a variable number of nested
 // derefs.  The note allows detecting them without deep pattern
 // matching on the categorization.
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Note {
     NoteClosureEnv(ty::UpvarId), // Deref through closure env
     NoteUpvarRef(ty::UpvarId),   // Deref through by-ref upvar
@@ -176,7 +176,7 @@ pub enum Note {
 // dereference, but its type is the type *before* the dereference
 // (`@T`). So use `cmt.ty` to find the type of the value in a consistent
 // fashion. For more details, see the method `cat_pattern`
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct cmt_<'tcx> {
     pub id: ast::NodeId,           // id of expr/pat producing this value
     pub span: Span,                // span of same expr/pat
@@ -456,7 +456,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         debug!("cat_expr_autoderefd: autoderefs={}, cmt={}",
                autoderefs,
                cmt.repr(self.tcx()));
-        for deref in range(1u, autoderefs + 1) {
+        for deref in 1u..autoderefs + 1 {
             cmt = try!(self.cat_deref(expr, cmt, deref));
         }
         return Ok(cmt);

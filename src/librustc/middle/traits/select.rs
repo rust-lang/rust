@@ -96,7 +96,7 @@ pub enum MethodMatchResult {
     MethodDidNotMatch,
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum MethodMatchedData {
     // In the case of a precise match, we don't really need to store
     // how the match was found. So don't.
@@ -131,7 +131,7 @@ pub enum MethodMatchedData {
 /// matching where clause. Part of the reason for this is that where
 /// clauses can give additional information (like, the types of output
 /// parameters) that would have to be inferred from the impl.
-#[derive(PartialEq,Eq,Show,Clone)]
+#[derive(PartialEq,Eq,Debug,Clone)]
 enum SelectionCandidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(ty::PolyTraitRef<'tcx>),
@@ -172,7 +172,7 @@ enum BuiltinBoundConditions<'tcx> {
     AmbiguousBuiltin
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 enum EvaluationResult<'tcx> {
     EvaluatedToOk,
     EvaluatedToAmbig,
@@ -595,7 +595,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             let mut i = 0;
             while i < candidates.len() {
                 let is_dup =
-                    range(0, candidates.len())
+                    (0..candidates.len())
                     .filter(|&j| i != j)
                     .any(|j| self.candidate_should_be_dropped_in_favor_of(stack,
                                                                           &candidates[i],

@@ -263,7 +263,7 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
                     }
 
                     ty::AdjustDerefRef(adj) => {
-                        for autoderef in range(0, adj.autoderefs) {
+                        for autoderef in 0..adj.autoderefs {
                             let method_call = MethodCall::autoderef(id, autoderef);
                             self.visit_method_map_entry(reason, method_call);
                         }

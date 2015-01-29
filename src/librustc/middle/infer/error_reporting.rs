@@ -1229,8 +1229,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             let mut insert = Vec::new();
                             if lifetimes.len() == 0 {
                                 let anon = self.cur_anon.get();
-                                for (i, a) in range(anon,
-                                                    anon+expected).enumerate() {
+                                for (i, a) in (anon..anon+expected).enumerate() {
                                     if anon_nums.contains(&a) {
                                         insert.push(i as u32);
                                     }
@@ -1343,11 +1342,11 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 let mut new_lts = Vec::new();
                 if data.lifetimes.len() == 0 {
                     // traverse once to see if there's a need to insert lifetime
-                    let need_insert = range(0, expected).any(|i| {
+                    let need_insert = (0..expected).any(|i| {
                         indexes.contains(&i)
                     });
                     if need_insert {
-                        for i in range(0, expected) {
+                        for i in 0..expected {
                             if indexes.contains(&i) {
                                 new_lts.push(lifetime);
                             } else {
@@ -1767,7 +1766,7 @@ impl LifeGiver {
             let mut s = String::new();
             let (n, r) = (counter/26 + 1, counter % 26);
             let letter: char = from_u32((r+97) as u32).unwrap();
-            for _ in range(0, n) {
+            for _ in 0..n {
                 s.push(letter);
             }
             s

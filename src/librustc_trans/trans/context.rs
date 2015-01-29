@@ -274,7 +274,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             available_drop_glues: RefCell::new(FnvHashMap()),
         };
 
-        for i in range(0, local_count) {
+        for i in 0..local_count {
             // Append ".rs" to crate name as LLVM module identifier.
             //
             // LLVM code generator emits a ".file filename" directive
@@ -310,7 +310,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
         let (local_ccx, index) =
             self.local_ccxs
                 .iter()
-                .zip(range(0, self.local_ccxs.len()))
+                .zip(0..self.local_ccxs.len())
                 .min_by(|&(local_ccx, _idx)| local_ccx.n_llvm_insns.get())
                 .unwrap();
         CrateContext {

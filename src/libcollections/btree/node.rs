@@ -501,7 +501,7 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 ///     let mut small_node = Node::make_leaf_root(3);
 ///     let mut large_node = Node::make_leaf_root(100);
 ///
-///     for i in range(0, 100) {
+///     for i in 0..100 {
 ///         // Insert to the end
 ///         large_node.edge_handle(i).insert_as_leaf(i, i);
 ///     }

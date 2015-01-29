@@ -12,7 +12,7 @@ use std::cmp::PartialEq;
 
 trait MyNum : PartialEq { }
 
-#[derive(Show)]
+#[derive(Debug)]
 struct MyInt { val: int }
 
 impl PartialEq for MyInt {

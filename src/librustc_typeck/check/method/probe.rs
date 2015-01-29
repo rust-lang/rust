@@ -73,7 +73,7 @@ pub struct Pick<'tcx> {
     pub kind: PickKind<'tcx>,
 }
 
-#[derive(Clone,Show)]
+#[derive(Clone,Debug)]
 pub enum PickKind<'tcx> {
     InherentImplPick(/* Impl */ ast::DefId),
     ObjectPick(/* Trait */ ast::DefId, /* method_num */ uint, /* real_index */ uint),
@@ -88,7 +88,7 @@ pub type PickResult<'tcx> = Result<Pick<'tcx>, MethodError>;
 // difference is that it doesn't embed any regions or other
 // specifics. The "confirmation" step recreates those details as
 // needed.
-#[derive(Clone,Show)]
+#[derive(Clone,Debug)]
 pub enum PickAdjustment {
     // Indicates that the source expression should be autoderef'd N times
     //

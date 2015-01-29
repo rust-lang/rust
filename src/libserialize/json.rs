@@ -214,7 +214,7 @@ use unicode::str::Utf16Item;
 use Encodable;
 
 /// Represents a json value
-#[derive(Clone, PartialEq, PartialOrd, Show)]
+#[derive(Clone, PartialEq, PartialOrd, Debug)]
 pub enum Json {
     I64(i64),
     U64(u64),
@@ -235,7 +235,7 @@ pub struct AsJson<'a, T: 'a> { inner: &'a T }
 pub struct AsPrettyJson<'a, T: 'a> { inner: &'a T, indent: Option<uint> }
 
 /// The errors that can arise while parsing a JSON stream.
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ErrorCode {
     InvalidSyntax,
     InvalidNumber,
@@ -256,7 +256,7 @@ pub enum ErrorCode {
     NotUtf8,
 }
 
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 pub enum ParserError {
     /// msg, line, col
     SyntaxError(ErrorCode, uint, uint),
@@ -266,7 +266,7 @@ pub enum ParserError {
 // Builder and Parser have the same errors.
 pub type BuilderError = ParserError;
 
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum DecoderError {
     ParseError(ParserError),
     ExpectedError(string::String, string::String),
@@ -275,7 +275,7 @@ pub enum DecoderError {
     ApplicationError(string::String)
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum EncoderError {
     FmtError(fmt::Error),
     BadHashmapKey,
@@ -1237,7 +1237,7 @@ impl Index<uint> for Json {
 }
 
 /// The output of the streaming parser.
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum JsonEvent {
     ObjectStart,
     ObjectEnd,
@@ -1252,7 +1252,7 @@ pub enum JsonEvent {
     Error(ParserError),
 }
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 enum ParserState {
     // Parse a value in an array, true means first element.
     ParseArray(bool),
@@ -1282,7 +1282,7 @@ pub struct Stack {
 /// For example, StackElement::Key("foo"), StackElement::Key("bar"),
 /// StackElement::Index(3) and StackElement::Key("x") are the
 /// StackElements compositing the stack that represents foo.bar[3].x
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 pub enum StackElement<'l> {
     Index(u32),
     Key(&'l str),
@@ -1290,7 +1290,7 @@ pub enum StackElement<'l> {
 
 // Internally, Key elements are stored as indices in a buffer to avoid
 // allocating a string for every member of an object.
-#[derive(PartialEq, Clone, Show)]
+#[derive(PartialEq, Clone, Debug)]
 enum InternalStackElement {
     InternalIndex(u32),
     InternalKey(u16, u16), // start, size
@@ -1324,7 +1324,7 @@ impl Stack {
     /// Compares this stack with an array of StackElements.
     pub fn is_equal_to(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() != rhs.len() { return false; }
-        for i in range(0, rhs.len()) {
+        for i in 0..rhs.len() {
             if self.get(i) != rhs[i] { return false; }
         }
         return true;
@@ -1334,7 +1334,7 @@ impl Stack {
     /// the ones passed as parameter.
     pub fn starts_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
-        for i in range(0, rhs.len()) {
+        for i in 0..rhs.len() {
             if self.get(i) != rhs[i] { return false; }
         }
         return true;
@@ -1345,7 +1345,7 @@ impl Stack {
     pub fn ends_with(&self, rhs: &[StackElement]) -> bool {
         if self.stack.len() < rhs.len() { return false; }
         let offset = self.stack.len() - rhs.len();
-        for i in range(0, rhs.len()) {
+        for i in 0..rhs.len() {
             if self.get(i + offset) != rhs[i] { return false; }
         }
         return true;
@@ -2621,7 +2621,7 @@ mod tests {
     use std::num::Float;
     use std::string;
 
-    #[derive(RustcDecodable, Eq, PartialEq, Show)]
+    #[derive(RustcDecodable, Eq, PartialEq, Debug)]
     struct OptionData {
         opt: Option<uint>,
     }
@@ -2648,20 +2648,20 @@ mod tests {
                                 ExpectedError("Number".to_string(), "false".to_string()));
     }
 
-    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     enum Animal {
         Dog,
         Frog(string::String, int)
     }
 
-    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     struct Inner {
         a: (),
         b: uint,
         c: Vec<string::String>,
     }
 
-    #[derive(PartialEq, RustcEncodable, RustcDecodable, Show)]
+    #[derive(PartialEq, RustcEncodable, RustcDecodable, Debug)]
     struct Outer {
         inner: Vec<Inner>,
     }
@@ -3511,7 +3511,7 @@ mod tests {
         }
 
         // Test up to 4 spaces of indents (more?)
-        for i in range(0, 4u) {
+        for i in 0..4u {
             let mut writer = Vec::new();
             write!(&mut writer, "{}",
                    super::as_pretty_json(&json).indent(i)).unwrap();
@@ -3997,7 +3997,7 @@ mod tests {
 
     fn big_json() -> string::String {
         let mut src = "[\n".to_string();
-        for _ in range(0i, 500) {
+        for _ in 0i..500 {
             src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
                             [1,2,3]},"#);
         }

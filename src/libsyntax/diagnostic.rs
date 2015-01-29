@@ -20,7 +20,6 @@ use diagnostics;
 use std::cell::{RefCell, Cell};
 use std::fmt;
 use std::old_io;
-use std::iter::range;
 use std::string::String;
 use term::WriterWrapper;
 use term;
@@ -235,7 +234,7 @@ pub fn mk_handler(can_emit_warnings: bool, e: Box<Emitter + Send>) -> Handler {
     }
 }
 
-#[derive(Copy, PartialEq, Clone, Show)]
+#[derive(Copy, PartialEq, Clone, Debug)]
 pub enum Level {
     Bug,
     Fatal,
@@ -490,11 +489,11 @@ fn highlight_lines(err: &mut EmitterWriter,
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
         let skip = fm.name.len() + digits + 3us;
-        for _ in range(0, skip) {
+        for _ in 0..skip {
             s.push(' ');
         }
         if let Some(orig) = fm.get_line(lines.lines[0]) {
-            for pos in range(0us, left - skip) {
+            for pos in 0us..left - skip {
                 let cur_char = orig.as_bytes()[pos] as char;
                 // Whenever a tab occurs on the previous line, we insert one on
                 // the error-point-squiggly-line as well (instead of a space).
@@ -513,7 +512,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         if hi.col != lo.col {
             // the ^ already takes up one space
             let num_squigglies = hi.col.to_usize() - lo.col.to_usize() - 1us;
-            for _ in range(0, num_squigglies) {
+            for _ in 0..num_squigglies {
                 s.push('~');
             }
         }
@@ -563,7 +562,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     // Span seems to use half-opened interval, so subtract 1
     let skip = last_line_start.len() + hi.col.to_usize() - 1;
     let mut s = String::new();
-    for _ in range(0, skip) {
+    for _ in 0..skip {
         s.push(' ');
     }
     s.push('^');

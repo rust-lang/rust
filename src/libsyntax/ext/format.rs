@@ -661,7 +661,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     name_ordering: Vec<String>,
                                     names: HashMap<String, P<ast::Expr>>)
                                     -> P<ast::Expr> {
-    let arg_types: Vec<_> = range(0, args.len()).map(|_| None).collect();
+    let arg_types: Vec<_> = (0..args.len()).map(|_| None).collect();
     let mut cx = Context {
         ecx: ecx,
         args: args,

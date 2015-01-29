@@ -159,7 +159,7 @@ impl Clone for LiveNode {
     }
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 enum LiveNodeKind {
     FreeVarNode(Span),
     ExprNode(Span),
@@ -245,13 +245,13 @@ struct CaptureInfo {
     var_nid: NodeId
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 struct LocalInfo {
     id: NodeId,
     ident: ast::Ident
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 enum VarKind {
     Arg(NodeId, ast::Ident),
     Local(LocalInfo),
@@ -687,7 +687,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     {
         let node_base_idx = self.idx(ln, Variable(0u));
         let succ_base_idx = self.idx(succ_ln, Variable(0u));
-        for var_idx in range(0u, self.ir.num_vars) {
+        for var_idx in 0u..self.ir.num_vars {
             op(self, node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
@@ -700,7 +700,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         F: FnMut(uint) -> LiveNode,
     {
         let node_base_idx = self.idx(ln, Variable(0));
-        for var_idx in range(0u, self.ir.num_vars) {
+        for var_idx in 0u..self.ir.num_vars {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 try!(write!(wr, " {:?}", Variable(var_idx)));
@@ -860,7 +860,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // hack to skip the loop unless debug! is enabled:
         debug!("^^ liveness computation results for body {} (entry={:?})",
                {
-                   for ln_idx in range(0u, self.ir.num_live_nodes) {
+                   for ln_idx in 0u..self.ir.num_live_nodes {
                        debug!("{:?}", self.ln_str(LiveNode(ln_idx)));
                    }
                    body.id

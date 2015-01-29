@@ -84,7 +84,7 @@ mod x86_64_unknown_linux_gnu;
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
 /// Every field here must be specified, and has no default value.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Target {
     /// [Data layout](http://llvm.org/docs/LangRef.html#data-layout) to pass to LLVM.
     pub data_layout: String,
@@ -107,7 +107,7 @@ pub struct Target {
 ///
 /// This has an implementation of `Default`, see each field for what the default is. In general,
 /// these try to take "minimal defaults" that don't assume anything about the runtime they run in.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct TargetOptions {
     /// Linker to invoke. Defaults to "cc".
     pub linker: String,

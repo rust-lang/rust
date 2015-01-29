@@ -97,7 +97,7 @@ pub struct Weighted<T> {
 ///                      Weighted { weight: 1, item: 'c' });
 /// let wc = WeightedChoice::new(items.as_mut_slice());
 /// let mut rng = rand::thread_rng();
-/// for _ in range(0u, 16) {
+/// for _ in 0u..16 {
 ///      // on average prints 'a' 4 times, 'b' 8 and 'c' twice.
 ///      println!("{}", wc.ind_sample(&mut rng));
 /// }
@@ -263,7 +263,7 @@ mod tests {
     use {Rng, Rand};
     use super::{RandSample, WeightedChoice, Weighted, Sample, IndependentSample};
 
-    #[derive(PartialEq, Show)]
+    #[derive(PartialEq, Debug)]
     struct ConstRand(uint);
     impl Rand for ConstRand {
         fn rand<R: Rng>(_: &mut R) -> ConstRand {

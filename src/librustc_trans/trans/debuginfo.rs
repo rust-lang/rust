@@ -249,7 +249,7 @@ const FLAGS_NONE: c_uint = 0;
 //  Public Interface of debuginfo module
 //=-----------------------------------------------------------------------------
 
-#[derive(Copy, Show, Hash, Eq, PartialEq, Clone)]
+#[derive(Copy, Debug, Hash, Eq, PartialEq, Clone)]
 struct UniqueTypeId(ast::Name);
 
 // The TypeMap is where the CrateDebugContext holds the type metadata nodes

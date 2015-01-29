@@ -15,7 +15,7 @@ trait T {
     fn print(&self);
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 struct S {
     s: int,
 }

@@ -395,7 +395,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
     }
 }
 
-#[derive(Eq, PartialEq, Clone, Show)]
+#[derive(Eq, PartialEq, Clone, Debug)]
 struct LangString {
     should_fail: bool,
     no_run: bool,

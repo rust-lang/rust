@@ -37,7 +37,7 @@ use syntax::visit::{Visitor, FnKind};
 /// actually attach a more meaningful ordering to scopes than the one
 /// generated via deriving here.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-           RustcDecodable, Show, Copy)]
+           RustcDecodable, Debug, Copy)]
 pub enum CodeExtent {
     Misc(ast::NodeId),
     Remainder(BlockRemainder),
@@ -61,7 +61,7 @@ pub enum CodeExtent {
 /// * the subscope with `first_statement_index == 1` is scope of `c`,
 ///   and thus does not include EXPR_2, but covers the `...`.
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash, RustcEncodable,
-         RustcDecodable, Show, Copy)]
+         RustcDecodable, Debug, Copy)]
 pub struct BlockRemainder {
     pub block: ast::NodeId,
     pub first_statement_index: uint,
@@ -179,7 +179,7 @@ pub struct RegionMaps {
 /// Carries the node id for the innermost block or match expression,
 /// for building up the `var_map` which maps ids to the blocks in
 /// which they were declared.
-#[derive(PartialEq, Eq, Show, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy)]
 enum InnermostDeclaringBlock {
     None,
     Block(ast::NodeId),
@@ -204,7 +204,7 @@ impl InnermostDeclaringBlock {
 /// Contextual information for declarations introduced by a statement
 /// (i.e. `let`). It carries node-id's for statement and enclosing
 /// block both, as well as the statement's index within the block.
-#[derive(PartialEq, Eq, Show, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy)]
 struct DeclaringStatementContext {
     stmt_id: ast::NodeId,
     block_id: ast::NodeId,
@@ -220,7 +220,7 @@ impl DeclaringStatementContext {
     }
 }
 
-#[derive(PartialEq, Eq, Show, Copy)]
+#[derive(PartialEq, Eq, Debug, Copy)]
 enum InnermostEnclosingExpr {
     None,
     Some(ast::NodeId),
@@ -242,7 +242,7 @@ impl InnermostEnclosingExpr {
     }
 }
 
-#[derive(Show, Copy)]
+#[derive(Debug, Copy)]
 pub struct Context {
     var_parent: InnermostDeclaringBlock,
 

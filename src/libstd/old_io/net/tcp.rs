@@ -748,7 +748,7 @@ mod test {
         let mut acceptor = TcpListener::bind(addr).listen();
 
         let _t = Thread::spawn(move|| {
-            for _ in range(0, max) {
+            for _ in 0..max {
                 let mut stream = TcpStream::connect(addr);
                 stream.write(&[99]).unwrap();
             }
@@ -768,7 +768,7 @@ mod test {
         let mut acceptor = TcpListener::bind(addr).listen();
 
         let _t = Thread::spawn(move|| {
-            for _ in range(0, max) {
+            for _ in 0..max {
                 let mut stream = TcpStream::connect(addr);
                 stream.write(&[99]).unwrap();
             }
@@ -1160,7 +1160,7 @@ mod test {
                 tx.send(TcpStream::connect(addr).unwrap()).unwrap();
             });
             let _l = rx.recv().unwrap();
-            for i in range(0i, 1001) {
+            for i in 0i..1001 {
                 match a.accept() {
                     Ok(..) => break,
                     Err(ref e) if e.kind == TimedOut => {}
@@ -1260,7 +1260,7 @@ mod test {
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
         s.set_timeout(Some(20));
-        for i in range(0i, 1001) {
+        for i in 0i..1001 {
             match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
@@ -1299,7 +1299,7 @@ mod test {
         assert_eq!(s.read(&mut [0]).err().unwrap().kind, TimedOut);
 
         tx.send(()).unwrap();
-        for _ in range(0i, 100) {
+        for _ in 0i..100 {
             assert!(s.write(&[0;128 * 1024]).is_ok());
         }
     }
@@ -1318,7 +1318,7 @@ mod test {
 
         let mut s = a.accept().unwrap();
         s.set_write_timeout(Some(20));
-        for i in range(0i, 1001) {
+        for i in 0i..1001 {
             match s.write(&[0; 128 * 1024]) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,
@@ -1388,7 +1388,7 @@ mod test {
         });
 
         // Try to ensure that the reading clone is indeed reading
-        for _ in range(0i, 50) {
+        for _ in 0i..50 {
             ::thread::Thread::yield_now();
         }
 

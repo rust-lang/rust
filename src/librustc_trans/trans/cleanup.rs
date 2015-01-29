@@ -50,7 +50,7 @@ pub struct CleanupScope<'blk, 'tcx: 'blk> {
     cached_landing_pad: Option<BasicBlockRef>,
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct CustomScopeIndex {
     index: uint
 }
@@ -81,7 +81,7 @@ impl<'blk, 'tcx: 'blk> fmt::Debug for CleanupScopeKind<'blk, 'tcx> {
     }
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum EarlyExitLabel {
     UnwindExit,
     ReturnExit,
@@ -106,7 +106,7 @@ pub trait Cleanup<'tcx> {
 
 pub type CleanupObj<'tcx> = Box<Cleanup<'tcx>+'tcx>;
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum ScopeId {
     AstScope(ast::NodeId),
     CustomScope(CustomScopeIndex)
@@ -911,7 +911,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
     }
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum Heap {
     HeapExchange
 }

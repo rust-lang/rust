@@ -18,7 +18,7 @@ fn main() {
     let n = 1000000u;
     let mut sieve = Bitv::from_elem(n+1, true);
     let limit: uint = (n as f32).sqrt() as uint;
-    for i in range(2, limit+1) {
+    for i in 2..limit+1 {
         if sieve[i] {
             let mut j = 0;
             while i*i + j*i <= n {
@@ -27,7 +27,7 @@ fn main() {
             }
         }
     }
-    for i in range(2, n+1) {
+    for i in 2..n+1 {
         if sieve[i] {
         }
     }

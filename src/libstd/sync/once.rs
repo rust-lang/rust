@@ -147,10 +147,10 @@ mod test {
         static mut run: bool = false;
 
         let (tx, rx) = channel();
-        for _ in range(0u, 10) {
+        for _ in 0u..10 {
             let tx = tx.clone();
             Thread::spawn(move|| {
-                for _ in range(0u, 4) { Thread::yield_now() }
+                for _ in 0u..4 { Thread::yield_now() }
                 unsafe {
                     O.call_once(|| {
                         assert!(!run);
@@ -170,7 +170,7 @@ mod test {
             assert!(run);
         }
 
-        for _ in range(0u, 10) {
+        for _ in 0u..10 {
             rx.recv().unwrap();
         }
     }

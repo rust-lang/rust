@@ -59,7 +59,7 @@ fn test_ptr() {
     }
 }
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 struct p {
   x: int,
   y: int,

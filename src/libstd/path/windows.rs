@@ -959,7 +959,7 @@ pub fn is_sep_byte_verbatim(u: &u8) -> bool {
 }
 
 /// Prefix types for Path
-#[derive(Copy, PartialEq, Clone, Show)]
+#[derive(Copy, PartialEq, Clone, Debug)]
 pub enum PathPrefix {
     /// Prefix `\\?\`, uint is the length of the following component
     VerbatimPrefix(uint),
