@@ -111,7 +111,7 @@ impl<R: Reader> Buffer for BufferedReader<R> {
 
 impl<R: Reader> Reader for BufferedReader<R> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        if self.pos == self.cap && buf.len() >= self.buf.capacity() {
+        if self.pos == self.cap && buf.len() >= self.buf.len() {
             return self.inner.read(buf);
         }
         let nread = {
