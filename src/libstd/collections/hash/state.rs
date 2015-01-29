@@ -24,6 +24,7 @@ use hash;
 /// algorithm can implement the `Default` trait and create hash maps with the
 /// `DefaultState` structure. This state is 0-sized and will simply delegate
 /// to `Default` when asked to create a hasher.
+#[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
 pub trait HashState {
     type Hasher: hash::Hasher;
 
@@ -35,6 +36,7 @@ pub trait HashState {
 /// default trait.
 ///
 /// This struct has is 0-sized and does not need construction.
+#[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
 pub struct DefaultState<H>;
 
 impl<H: Default + hash::Hasher> HashState for DefaultState<H> {

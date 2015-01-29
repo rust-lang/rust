@@ -46,6 +46,7 @@ use super::table::BucketState::{
 use super::state::HashState;
 
 const INITIAL_LOG2_CAP: uint = 5;
+#[unstable(feature = "std_misc")]
 pub const INITIAL_CAPACITY: uint = 1 << INITIAL_LOG2_CAP; // 2^5
 
 /// The default behavior of HashMap implements a load factor of 90.9%.
@@ -1596,6 +1597,8 @@ impl Default for RandomState {
 /// typically declare an ability to explicitly hash into this particular type,
 /// but rather in a `H: hash::Writer` type parameter.
 #[allow(missing_copy_implementations)]
+#[unstable(feature = "std_misc",
+           reason = "hashing an hash maps may be altered")]
 pub struct Hasher { inner: SipHasher }
 
 impl hash::Writer for Hasher {
