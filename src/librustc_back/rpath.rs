@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -214,7 +214,9 @@ mod test {
     }
 
     #[test]
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+    #[cfg(any(target_os = "freebsd",
+              target_os = "dragonfly",
+              target_os = "openbsd"))]
     fn test_rpath_relative() {
         let config = &mut RPathConfig {
             used_crates: Vec::new(),

@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -694,10 +694,16 @@ impl TcpStream {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
                    seconds as libc::c_int)
     }
+    #[cfg(target_os = "openbsd")]
+    fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
+        setsockopt(self.fd(), libc::IPPROTO_TCP, libc::SO_KEEPALIVE,
+                   seconds as libc::c_int)
+    }
     #[cfg(not(any(target_os = "macos",
                   target_os = "ios",
                   target_os = "freebsd",
-                  target_os = "dragonfly")))]
+                  target_os = "dragonfly",
+                  target_os = "openbsd")))]
     fn set_tcp_keepalive(&mut self, _seconds: uint) -> IoResult<()> {
         Ok(())
     }

@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,6 +10,7 @@
 
 // ignore-linux see joyent/libuv#1189
 // ignore-android needs extra network permissions
+// ignore-openbsd system ulimit (Too many open files)
 // exec-env:RUST_LOG=debug
 
 #[macro_use]

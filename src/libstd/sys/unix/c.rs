@@ -23,7 +23,8 @@ use libc;
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 pub const FIONBIO: libc::c_ulong = 0x8004667e;
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
@@ -41,7 +42,8 @@ pub const FIONBIO: libc::c_ulong = 0x667e;
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 pub const FIOCLEX: libc::c_ulong = 0x20006601;
 #[cfg(any(all(target_os = "linux",
               any(target_arch = "x86",
@@ -59,7 +61,8 @@ pub const FIOCLEX: libc::c_ulong = 0x6601;
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 pub const MSG_DONTWAIT: libc::c_int = 0x80;
 #[cfg(any(target_os = "linux", target_os = "android"))]
 pub const MSG_DONTWAIT: libc::c_int = 0x40;
@@ -111,6 +114,7 @@ mod select {
 #[cfg(any(target_os = "android",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "openbsd",
           target_os = "linux"))]
 mod select {
     use uint;
@@ -235,7 +239,8 @@ mod signal {
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 mod signal {
     use libc;
 
@@ -248,7 +253,9 @@ mod signal {
     pub const SA_SIGINFO: libc::c_int = 0x0040;
     pub const SIGCHLD: libc::c_int = 20;
 
-    #[cfg(any(target_os = "macos", target_os = "ios"))]
+    #[cfg(any(target_os = "macos",
+              target_os = "ios",
+              target_os = "openbsd"))]
     pub type sigset_t = u32;
     #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     #[repr(C)]
