@@ -19,7 +19,7 @@ fn check_contains_all_substrings(s: &str) {
     assert!(s.contains(""));
     for i in range(0, s.len()) {
         for j in range(i+1, s.len() + 1) {
-            assert!(s.contains(s.slice(i, j)));
+            assert!(s.contains(&s[i..j]));
         }
     }
 }

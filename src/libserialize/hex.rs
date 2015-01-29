@@ -107,7 +107,7 @@ impl FromHex for str {
     /// fn main () {
     ///     let hello_str = "Hello, World".as_bytes().to_hex();
     ///     println!("{}", hello_str);
-    ///     let bytes = hello_str.as_slice().from_hex().unwrap();
+    ///     let bytes = hello_str.from_hex().unwrap();
     ///     println!("{:?}", bytes);
     ///     let result_str = String::from_utf8(bytes).unwrap();
     ///     println!("{}", result_str);

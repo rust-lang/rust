@@ -44,6 +44,6 @@ fn main() {
         let error = String::from_utf8_lossy(recurse.error.as_slice());
         println!("wut");
         println!("`{}`", error);
-        assert!(error.as_slice().contains("has overflowed its stack"));
+        assert!(error.contains("has overflowed its stack"));
     }
 }

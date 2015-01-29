@@ -753,7 +753,7 @@ impl fmt::Display for ModuleSummary {
 
             try!(write!(f, "<tr>"));
             try!(write!(f, "<td><a href='{}'>{}</a></td>", {
-                            let mut url = context.slice_from(1).to_vec();
+                            let mut url = context[1..].to_vec();
                             url.push("index.html");
                             url.connect("/")
                         },
