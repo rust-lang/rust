@@ -41,7 +41,7 @@ problem might reveal someone who has asked it before!
 There is an active [subreddit](http://reddit.com/r/rust) with lots of
 discussion about Rust.
 
-There is also a [developer forum](http://discuss.rust-lang.org/), where the
+There is also a [developer forum](http://internals.rust-lang.org/), where the
 development of Rust itself is discussed.
 
 # Specification

@@ -133,7 +133,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
         }
         let expr_id = match csearch::maybe_get_item_ast(tcx, enum_def,
             box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
-            csearch::found(&ast::IIItem(ref item)) => match item.node {
+            csearch::FoundAst::Found(&ast::IIItem(ref item)) => match item.node {
                 ast::ItemEnum(ast::EnumDef { ref variants }, _) => {
                     // NOTE this doesn't do the right thing, it compares inlined
                     // NodeId's to the original variant_def's NodeId, but they
@@ -173,7 +173,7 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
         }
         let expr_id = match csearch::maybe_get_item_ast(tcx, def_id,
             box |a, b, c, d| astencode::decode_inlined_item(a, b, c, d)) {
-            csearch::found(&ast::IIItem(ref item)) => match item.node {
+            csearch::FoundAst::Found(&ast::IIItem(ref item)) => match item.node {
                 ast::ItemConst(_, ref const_expr) => Some(const_expr.id),
                 _ => None
             },

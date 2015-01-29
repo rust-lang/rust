@@ -21,19 +21,16 @@ case $OS in
     ("Linux"|"FreeBSD"|"DragonFly")
     BIN_SUF=
     LIB_SUF=.so
-    break
     ;;
     ("Darwin")
     BIN_SUF=
     LIB_SUF=.dylib
-    break
     ;;
     (*)
     BIN_SUF=.exe
     LIB_SUF=.dll
     LIB_DIR=bin
     LIB_PREFIX=
-    break
     ;;
 esac
 

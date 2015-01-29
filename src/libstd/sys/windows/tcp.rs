@@ -116,9 +116,6 @@ pub struct TcpAcceptor {
     deadline: u64,
 }
 
-unsafe impl Send for TcpAcceptor {}
-unsafe impl Sync for TcpAcceptor {}
-
 struct AcceptorInner {
     listener: TcpListener,
     abort: Event,
@@ -126,7 +123,6 @@ struct AcceptorInner {
     closed: AtomicBool,
 }
 
-unsafe impl Send for AcceptorInner {}
 unsafe impl Sync for AcceptorInner {}
 
 impl TcpAcceptor {

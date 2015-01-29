@@ -75,21 +75,8 @@ impl<'a> Iterator for LinkedPath<'a> {
     }
 }
 
-// HACK(eddyb) move this into libstd (value wrapper for slice::Iter).
-#[derive(Clone)]
-pub struct Values<'a, T:'a>(pub slice::Iter<'a, T>);
-
-impl<'a, T: Copy> Iterator for Values<'a, T> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        let &mut Values(ref mut items) = self;
-        items.next().map(|&x| x)
-    }
-}
-
 /// The type of the iterator used by with_path.
-pub type PathElems<'a, 'b> = iter::Chain<Values<'a, PathElem>, LinkedPath<'b>>;
+pub type PathElems<'a, 'b> = iter::Chain<iter::Cloned<slice::Iter<'a, PathElem>>, LinkedPath<'b>>;
 
 pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
     let itr = token::get_ident_interner();
@@ -101,7 +88,7 @@ pub fn path_to_string<PI: Iterator<Item=PathElem>>(path: PI) -> String {
         }
         s.push_str(&e[]);
         s
-    }).to_string()
+    })
 }
 
 #[derive(Copy, Show)]
@@ -458,9 +445,9 @@ impl<'ast> Map<'ast> {
         if parent == id {
             match self.find_entry(id) {
                 Some(RootInlinedParent(data)) => {
-                    f(Values(data.path.iter()).chain(next))
+                    f(data.path.iter().cloned().chain(next))
                 }
-                _ => f(Values([].iter()).chain(next))
+                _ => f([].iter().cloned().chain(next))
             }
         } else {
             self.with_path_next(parent, Some(&LinkedPathNode {

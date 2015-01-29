@@ -342,7 +342,7 @@ pub fn chmod(p: &Path, mode: uint) -> IoResult<()> {
 
 pub fn rmdir(p: &Path) -> IoResult<()> {
     let p = try!(to_utf16(p));
-    mkerr_libc(unsafe { libc::wrmdir(p.as_ptr()) })
+    super::mkerr_winbool(unsafe { libc::RemoveDirectoryW(p.as_ptr()) })
 }
 
 pub fn chown(_p: &Path, _uid: int, _gid: int) -> IoResult<()> {
