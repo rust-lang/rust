@@ -1865,6 +1865,17 @@ pub enum LvaluePreference {
     NoPreference
 }
 
+/// Whether `autoderef` requires types to resolve.
+#[derive(Copy, Show, PartialEq, Eq)]
+pub enum UnresolvedTypeAction {
+    /// Produce an error and return `ty_err` whenever a type cannot
+    /// be resolved (i.e. it is `ty_infer`).
+    Error,
+    /// Go on without emitting any errors, and return the unresolved
+    /// type. Useful for probing, e.g. in coercions.
+    Ignore
+}
+
 /// Executes an autoderef loop for the type `t`. At each step, invokes `should_stop` to decide
 /// whether to terminate the loop. Returns the final type and number of derefs that it performed.
 ///
@@ -1874,6 +1885,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  sp: Span,
                                  base_ty: Ty<'tcx>,
                                  opt_expr: Option<&ast::Expr>,
+                                 unresolved_type_action: UnresolvedTypeAction,
                                  mut lvalue_pref: LvaluePreference,
                                  mut should_stop: F)
                                  -> (Ty<'tcx>, uint, Option<T>)
@@ -1886,11 +1898,22 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
 
     let mut t = base_ty;
     for autoderefs in 0..fcx.tcx().sess.recursion_limit.get() {
-        let resolved_t = structurally_resolved_type(fcx, sp, t);
-
-        if ty::type_is_error(resolved_t) {
-            return (resolved_t, autoderefs, None);
-        }
+        let resolved_t = match unresolved_type_action {
+            UnresolvedTypeAction::Error => {
+                let resolved_t = structurally_resolved_type(fcx, sp, t);
+                if ty::type_is_error(resolved_t) {
+                    return (resolved_t, autoderefs, None);
+                }
+                resolved_t
+            }
+            UnresolvedTypeAction::Ignore => {
+                // We can continue even when the type cannot be resolved
+                // (i.e. it is an inference variable) because `ty::deref`
+                // and `try_overloaded_deref` both simply return `None`
+                // in such a case without producing spurious errors.
+                fcx.resolve_type_vars_if_possible(t)
+            }
+        };
 
         match should_stop(resolved_t, autoderefs) {
             Some(x) => return (resolved_t, autoderefs, Some(x)),
@@ -2011,8 +2034,13 @@ fn autoderef_for_index<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
     // autoderef that normal method probing does. They could likely be
     // consolidated.
 
-    let (ty, autoderefs, final_mt) =
-        autoderef(fcx, base_expr.span, base_ty, Some(base_expr), lvalue_pref, |adj_ty, idx| {
+    let (ty, autoderefs, final_mt) = autoderef(fcx,
+                                               base_expr.span,
+                                               base_ty,
+                                               Some(base_expr),
+                                               UnresolvedTypeAction::Error,
+                                               lvalue_pref,
+                                               |adj_ty, idx| {
             let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };
             step(adj_ty, autoderefref)
         });
@@ -3053,8 +3081,13 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         let expr_t = structurally_resolved_type(fcx, expr.span,
                                                 fcx.expr_ty(base));
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
-        let (_, autoderefs, field_ty) =
-            autoderef(fcx, expr.span, expr_t, Some(base), lvalue_pref, |base_t, _| {
+        let (_, autoderefs, field_ty) = autoderef(fcx,
+                                                  expr.span,
+                                                  expr_t,
+                                                  Some(base),
+                                                  UnresolvedTypeAction::Error,
+                                                  lvalue_pref,
+                                                  |base_t, _| {
                 match base_t.sty {
                     ty::ty_struct(base_id, substs) => {
                         debug!("struct named {}", ppaux::ty_to_string(tcx, base_t));
@@ -3146,8 +3179,13 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                 fcx.expr_ty(base));
         let mut tuple_like = false;
         // FIXME(eddyb) #12808 Integrate privacy into this auto-deref loop.
-        let (_, autoderefs, field_ty) =
-            autoderef(fcx, expr.span, expr_t, Some(base), lvalue_pref, |base_t, _| {
+        let (_, autoderefs, field_ty) = autoderef(fcx,
+                                                  expr.span,
+                                                  expr_t,
+                                                  Some(base),
+                                                  UnresolvedTypeAction::Error,
+                                                  lvalue_pref,
+                                                  |base_t, _| {
                 match base_t.sty {
                     ty::ty_struct(base_id, substs) => {
                         tuple_like = ty::is_tuple_struct(tcx, base_id);
