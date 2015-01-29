@@ -49,7 +49,7 @@ use rustc::middle::stability;
 use std::rc::Rc;
 use std::u32;
 use std::str::Str as StrTrait; // Conflicts with Str variant
-use std::path::Path as FsPath; // Conflicts with Path struct
+use std::old_path::Path as FsPath; // Conflicts with Path struct
 
 use core::DocContext;
 use doctree;

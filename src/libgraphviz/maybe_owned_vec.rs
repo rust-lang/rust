@@ -17,7 +17,7 @@ use std::cmp::Ordering;
 use std::default::Default;
 use std::fmt;
 use std::iter::FromIterator;
-use std::path::BytesContainer;
+use std::old_path::BytesContainer;
 use std::slice;
 
 // Note 1: It is not clear whether the flexibility of providing both
