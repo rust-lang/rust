@@ -61,20 +61,25 @@ For any given type, `discriminant_value` will return a `u64` value. The values r
 specified:
 
 * **Non-Enum Type**: Always 0
-* **Enum Type**: A value that uniquely identifies that variant within its type. I.E. for a given
-  enum typem `E`, and two values of type `E`, `a` and `b`, the expression `discriminant_value(a) ==
-  discriminant_value(b)` is true iff `a` and `b` are the same variant. Two values of different types
-  may return the same discriminant value.
+* **C-Like Enum Type**: If no variants have fields, then the enum is considered "C-Like". The user
+  is able to specify discriminant values in this case, and the return value would be equivalent to
+  the result of casting the variant to a `u64`.
+* **ADT Enum Type**: If any variant has a field, then the enum is conidered to be an "ADT" enum. The
+  user is not able to specify the discriminant value in this case. The precise values are
+  unspecified, but have the following characteristics:
 
-The reason for this specification is to allow flexibilty in usage of the intrinsic without
-compromising our ability to change the representation at will.
+  * The value returned for the same variant of the same enum type will compare as
+    equal. I.E. `discriminant_value(v) == discriminant_value(v)`.
+  * Two values returned for different variants will compare as unequal relative to their respective
+    listed positions. That means that if variant `A` is listed before variant `B`, then
+    `discriminant_value(A) < discriminant_value(B)`.
+
+Note the returned values for two differently-typed variants may compare in any way.
 
 # Drawbacks
 
 * Potentially exposes implementation details. However, relying the specific values returned from
 `discriminant_value` should be considered bad practice, as the intrinsic provides no such guarantee.
-
-* Does not allow for the value to be used as part of ordering.
 
 * Allows non-enum types to be provided. This may be unexpected by some users.
 
