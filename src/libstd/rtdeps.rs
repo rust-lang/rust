@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -39,7 +39,7 @@ extern {}
 #[link(name = "pthread")]
 extern {}
 
-#[cfg(target_os = "dragonfly")]
+#[cfg(any(target_os = "dragonfly", target_os = "openbsd"))]
 #[link(name = "pthread")]
 extern {}
 

@@ -101,7 +101,7 @@ pub type _Unwind_Exception_Cleanup_Fn =
 #[link(name = "gcc_s")]
 extern {}
 
-#[cfg(target_os = "android")]
+#[cfg(any(target_os = "android", target_os = "openbsd"))]
 #[link(name = "gcc")]
 extern {}
 

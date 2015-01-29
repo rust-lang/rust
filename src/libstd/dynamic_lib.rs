@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -173,7 +173,8 @@ mod test {
     #[cfg(any(target_os = "linux",
               target_os = "macos",
               target_os = "freebsd",
-              target_os = "dragonfly"))]
+              target_os = "dragonfly",
+              target_os = "openbsd"))]
     fn test_errors_do_not_crash() {
         // Open /dev/null as a library to get an error, and make sure
         // that only causes an error, and not a crash.
@@ -190,7 +191,8 @@ mod test {
           target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 mod dl {
     use prelude::v1::*;
 
@@ -254,7 +256,18 @@ mod dl {
         dlclose(handle as *mut libc::c_void); ()
     }
 
+    #[cfg(not(target_os = "openbsd"))]
     #[link_name = "dl"]
+    extern {
+        fn dlopen(filename: *const libc::c_char,
+                  flag: libc::c_int) -> *mut libc::c_void;
+        fn dlerror() -> *mut libc::c_char;
+        fn dlsym(handle: *mut libc::c_void,
+                 symbol: *const libc::c_char) -> *mut libc::c_void;
+        fn dlclose(handle: *mut libc::c_void) -> libc::c_int;
+    }
+
+    #[cfg(target_os = "openbsd")]
     extern {
         fn dlopen(filename: *const libc::c_char,
                   flag: libc::c_int) -> *mut libc::c_void;

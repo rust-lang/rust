@@ -80,7 +80,8 @@ mod inner {
     }
 
     // Apparently android provides this in some other library?
-    #[cfg(not(target_os = "android"))]
+    // OpenBSD provide it via libc
+    #[cfg(not(any(target_os = "android", target_os = "openbsd")))]
     #[link(name = "rt")]
     extern {}
 

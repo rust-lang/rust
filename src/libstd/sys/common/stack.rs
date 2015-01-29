@@ -241,6 +241,11 @@ pub unsafe fn record_sp_limit(limit: uint) {
     #[cfg(all(target_arch = "arm", target_os = "ios"))] #[inline(always)]
     unsafe fn target_record_sp_limit(_: uint) {
     }
+
+    #[cfg(target_os = "openbsd")] #[inline(always)]
+    unsafe fn target_record_sp_limit(_: uint) {
+        // segmented stack is disabled
+    }
 }
 
 /// The counterpart of the function above, this function will fetch the current
@@ -343,6 +348,12 @@ pub unsafe fn get_sp_limit() -> uint {
     // unreachable, let's return a fixed constant.
     #[cfg(all(target_arch = "arm", target_os = "ios"))] #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
+        1024
+    }
+
+    #[cfg(target_os = "openbsd")] #[inline(always)]
+    unsafe fn target_get_sp_limit() -> uint {
+        // segmented stack is disabled
         1024
     }
 }
