@@ -454,13 +454,40 @@ fn highlight_lines(err: &mut EmitterWriter,
                    lvl: Level,
                    lines: codemap::FileLines) -> old_io::IoResult<()> {
     let fm = &*lines.file;
+    let display_lines = &lines.lines[];
 
-    let mut elided = false;
-    let mut display_lines = &lines.lines[];
-    if display_lines.len() > MAX_LINES {
-        display_lines = &display_lines[0us..MAX_LINES];
-        elided = true;
+    // When there is one line put the highlighting underneath it,
+    // like `^~~~~~~~, when there are multiple lines, put the highlight
+    // above, like `.~~~~~~`.
+    // FIXME (#3260) Combining characters not handled correctly
+    let (squiggle_before_lines, lo_char_col, hi_char_col) = if display_lines.len() <= 1 {
+        // One line case is easy, hi col is the span hi_char_col
+        let lo_char_col = cm.lookup_char_pos(sp.lo).col;
+        let hi_char_col = cm.lookup_char_pos(sp.hi).col;
+        (false, lo_char_col, hi_char_col)
+    } else {
+        // In the multiline case we're highlighting only the first
+        // line (from above), so instead extend for the length
+        // of the first line.
+        let lo_char_col = cm.lookup_char_pos(sp.lo).col;
+        let hi_char_col = match fm.get_line(display_lines[0]) {
+            Some(line_str) => codemap::CharPos(line_str.chars().count()),
+            None => codemap::CharPos(0)
+        };
+        (true, lo_char_col, hi_char_col)
+    };
+
+    if squiggle_before_lines {
+        try!(write_span_squiggle(err, (lo_char_col, hi_char_col), lvl, &lines, ','));
     }
+
+    // Elide some of the lines if there are too many
+    let (display_lines, elided) = if display_lines.len() <= MAX_LINES {
+        (display_lines, false)
+    } else {
+        (&display_lines[0us..MAX_LINES], true)
+    };
+
     // Print the offending lines
     for &line_number in display_lines.iter() {
         if let Some(line) = fm.get_line(line_number) {
@@ -474,53 +501,61 @@ fn highlight_lines(err: &mut EmitterWriter,
         try!(write!(&mut err.dst, "{0:1$}...\n", "", s.len()));
     }
 
-    // FIXME (#3260)
-    // If there's one line at fault we can easily point to the problem
-    if lines.lines.len() == 1us {
-        let lo = cm.lookup_char_pos(sp.lo);
-        let mut digits = 0us;
-        let mut num = (lines.lines[0] + 1us) / 10us;
-
-        // how many digits must be indent past?
-        while num > 0us { num /= 10us; digits += 1us; }
-
-        // indent past |name:## | and the 0-offset column location
-        let left = fm.name.len() + digits + lo.col.to_usize() + 3us;
-        let mut s = String::new();
-        // Skip is the number of characters we need to skip because they are
-        // part of the 'filename:line ' part of the previous line.
-        let skip = fm.name.len() + digits + 3us;
-        for _ in range(0, skip) {
-            s.push(' ');
-        }
-        if let Some(orig) = fm.get_line(lines.lines[0]) {
-            for pos in range(0us, left - skip) {
-                let cur_char = orig.as_bytes()[pos] as char;
-                // Whenever a tab occurs on the previous line, we insert one on
-                // the error-point-squiggly-line as well (instead of a space).
-                // That way the squiggly line will usually appear in the correct
-                // position.
-                match cur_char {
-                    '\t' => s.push('\t'),
-                    _ => s.push(' '),
-                };
-            }
-        }
-
-        try!(write!(&mut err.dst, "{}", s));
-        let mut s = String::from_str("^");
-        let hi = cm.lookup_char_pos(sp.hi);
-        if hi.col != lo.col {
-            // the ^ already takes up one space
-            let num_squigglies = hi.col.to_usize() - lo.col.to_usize() - 1us;
-            for _ in range(0, num_squigglies) {
-                s.push('~');
-            }
-        }
-        try!(print_maybe_styled(err,
-                                &format!("{}\n", s)[],
-                                term::attr::ForegroundColor(lvl.color())));
+     if !squiggle_before_lines {
+        try!(write_span_squiggle(err, (lo_char_col, hi_char_col), lvl, &lines, '^'));
     }
+
+    Ok(())
+}
+
+fn write_span_squiggle(err: &mut EmitterWriter,
+                       (lo_char_col, hi_char_col): (codemap::CharPos, codemap::CharPos),
+                       lvl: Level,
+                       lines: &codemap::FileLines,
+                       arrow_char: char) -> io::IoResult<()> {
+    let fm = &*lines.file;
+
+    let mut digits = 0us;
+    let mut num = (lines.lines[0] + 1us) / 10us;
+
+    // how many digits must be indent past?
+    while num > 0us { num /= 10us; digits += 1us; }
+
+    // indent past |name:## | and the 0-offset column location
+    let left = fm.name.len() + digits + lo_char_col.to_usize() + 3us;
+    let mut s = String::new();
+    // Skip is the number of characters we need to skip because they are
+    // part of the 'filename:line ' part of the previous line.
+    let skip = fm.name.len() + digits + 3us;
+    for _ in range(0, skip) {
+        s.push(' ');
+    }
+    if let Some(orig) = fm.get_line(lines.lines[0]) {
+        for pos in range(0us, left - skip) {
+            let cur_char = orig.as_bytes()[pos] as char;
+            // Whenever a tab occurs on the previous line, we insert one on
+            // the error-point-squiggly-line as well (instead of a space).
+            // That way the squiggly line will usually appear in the correct
+            // position.
+            match cur_char {
+                '\t' => s.push('\t'),
+                _ => s.push(' '),
+            };
+        }
+    }
+
+    try!(write!(&mut err.dst, "{}", s));
+    let mut s = arrow_char.to_string();
+    if hi_char_col > lo_char_col {
+        // the ^ already takes up one space
+        let num_squigglies = hi_char_col.to_usize() - lo_char_col.to_usize() - 1us;
+        for _ in range(0, num_squigglies) {
+            s.push('~');
+        }
+    }
+    try!(print_maybe_styled(err,
+                            &format!("{}\n", s)[],
+                            term::attr::ForegroundColor(lvl.color())));
     Ok(())
 }
 
