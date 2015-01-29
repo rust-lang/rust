@@ -168,7 +168,8 @@ pub fn opts() -> Vec<getopts::OptGroup> {
                  "FILES"),
         optopt("", "markdown-playground-url",
                "URL to send code snippets to", "URL"),
-        optflag("", "markdown-no-toc", "don't include table of contents")
+        optflag("", "markdown-no-toc", "don't include table of contents"),
+        optflag("", "deny-doctest-warnings", "fail to compile on warnings in doc tests")
     )
 }
 
@@ -247,13 +248,14 @@ pub fn main_args(args: &[String]) -> int {
         None => return 3
     };
     let crate_name = matches.opt_str("crate-name");
+    let deny_warnings = matches.opt_present("deny-doctest-warnings");
 
     match (should_test, markdown_input) {
         (true, true) => {
             return markdown::test(input, libs, externs, test_args)
         }
         (true, false) => {
-            return test::run(input, cfgs, libs, externs, test_args, crate_name)
+            return test::run(input, cfgs, libs, externs, test_args, crate_name, deny_warnings)
         }
         (false, true) => return markdown::render(input, output.unwrap_or(Path::new("doc")),
                                                  &matches, &external_html,

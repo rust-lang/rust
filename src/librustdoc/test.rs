@@ -43,7 +43,8 @@ pub fn run(input: &str,
            libs: SearchPaths,
            externs: core::Externs,
            mut test_args: Vec<String>,
-           crate_name: Option<String>)
+           crate_name: Option<String>,
+           deny_warnings: bool)
            -> int {
     let input_path = Path::new(input);
     let input = config::Input::File(input_path.clone());
@@ -101,6 +102,7 @@ pub fn run(input: &str,
                                        libs,
                                        externs,
                                        false);
+    collector.deny_warnings = deny_warnings;
     collector.fold_crate(krate);
 
     test_args.insert(0, "rustdoctest".to_string());
@@ -112,10 +114,10 @@ pub fn run(input: &str,
 
 fn runtest(test: &str, cratename: &str, libs: SearchPaths,
            externs: core::Externs,
-           should_fail: bool, no_run: bool, as_test_harness: bool) {
+           should_fail: bool, no_run: bool, as_test_harness: bool, deny_warnings: bool) {
     // the test harness wants its own `main` & top level functions, so
     // never wrap the test in `fn main() { ... }`
-    let test = maketest(test, Some(cratename), true, as_test_harness);
+    let test = maketest(test, Some(cratename), true, as_test_harness, deny_warnings);
     let input = config::Input::Str(test.to_string());
 
     let sessopts = config::Options {
@@ -214,12 +216,16 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     }
 }
 
-pub fn maketest(s: &str, cratename: Option<&str>, lints: bool, dont_insert_main: bool) -> String {
+pub fn maketest(s: &str, cratename: Option<&str>,
+                lints: bool, dont_insert_main: bool, deny_warnings: bool) -> String {
     let mut prog = String::new();
     if lints {
         prog.push_str(r"
 #![allow(unused_variables, unused_assignments, unused_mut, unused_attributes, dead_code)]
 ");
+    }
+    if deny_warnings {
+        prog.push_str("#![deny(warnings)]\n");
     }
 
     // Don't inject `extern crate std` because it's already injected by the
@@ -255,6 +261,7 @@ pub struct Collector {
     use_headers: bool,
     current_header: Option<String>,
     cratename: String,
+    deny_warnings: bool,
 }
 
 impl Collector {
@@ -269,6 +276,7 @@ impl Collector {
             use_headers: use_headers,
             current_header: None,
             cratename: cratename,
+            deny_warnings: false,
         }
     }
 
@@ -284,6 +292,7 @@ impl Collector {
         let libs = self.libs.clone();
         let externs = self.externs.clone();
         let cratename = self.cratename.to_string();
+        let deny_warnings = self.deny_warnings;
         debug!("Creating test {}: {}", name, test);
         self.tests.push(testing::TestDescAndFn {
             desc: testing::TestDesc {
@@ -298,7 +307,8 @@ impl Collector {
                         externs,
                         should_fail,
                         no_run,
-                        as_test_harness);
+                        as_test_harness,
+                        deny_warnings);
             }))
         });
     }

@@ -817,7 +817,7 @@ endif
 ifeq ($(2),$$(CFG_BUILD))
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)): $$(DOCTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, run doc-$(4) [$(2)])
-	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --cfg dox --test $$< \
+	$$(Q)$$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --cfg dox --test --deny-doctest-warnings $$< \
 		--test-args "$$(TESTARGS)" && touch $$@
 else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-$(4)):
@@ -854,7 +854,7 @@ ifeq ($(2),$$(CFG_BUILD))
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)): $$(CRATEDOCTESTDEP_$(1)_$(2)_$(3)_$(4))
 	@$$(call E, run doc-crate-$(4) [$(2)])
 	$$(Q)CFG_LLVM_LINKAGE_FILE=$$(LLVM_LINKAGE_PATH_$(3)) \
-	    $$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test --cfg dox \
+	    $$(RUSTDOC_$(1)_T_$(2)_H_$(3)) --test --deny-doctest-warnings --cfg dox \
 	    	$$(CRATEFILE_$(4)) --test-args "$$(TESTARGS)" && touch $$@
 else
 $$(call TEST_OK_FILE,$(1),$(2),$(3),doc-crate-$(4)):

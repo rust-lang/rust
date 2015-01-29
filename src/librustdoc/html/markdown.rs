@@ -225,7 +225,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                         stripped_filtered_line(l).unwrap_or(l)
                     }).collect::<Vec<&str>>().connect("\n");
                     let krate = krate.as_ref().map(|s| s.as_slice());
-                    let test = test::maketest(test.as_slice(), krate, false, false);
+                    let test = test::maketest(test.as_slice(), krate, false, false, false);
                     s.push_str(format!("<span class='rusttest'>{}</span>",
                                          Escape(test.as_slice())).as_slice());
                 });
