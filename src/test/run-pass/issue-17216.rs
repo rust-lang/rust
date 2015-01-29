@@ -25,7 +25,9 @@ fn main() {
     let mut dropped = false;
     {
         let leak = Leak { dropped: &mut dropped };
-        for ((), leaked) in Some(((),leak)).into_iter() {}
+        // FIXME(#21721) "hack" used to be () but that can cause
+        // certain LLVM versions to abort during optimizations.
+        for (_, leaked) in Some(("hack", leak)).into_iter() {}
     }
 
     assert!(dropped);

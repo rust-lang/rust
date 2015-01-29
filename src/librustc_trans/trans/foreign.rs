@@ -557,7 +557,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 body: &ast::Block,
                                                 attrs: &[ast::Attribute],
                                                 llwrapfn: ValueRef,
-                                                param_substs: &Substs<'tcx>,
+                                                param_substs: &'tcx Substs<'tcx>,
                                                 id: ast::NodeId,
                                                 hash: Option<&str>) {
     let _icx = push_ctxt("foreign::build_foreign_fn");
@@ -577,7 +577,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     fn build_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                decl: &ast::FnDecl,
                                body: &ast::Block,
-                               param_substs: &Substs<'tcx>,
+                               param_substs: &'tcx Substs<'tcx>,
                                attrs: &[ast::Attribute],
                                id: ast::NodeId,
                                hash: Option<&str>)

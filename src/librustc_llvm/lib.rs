@@ -881,6 +881,7 @@ extern {
 
 
     /* Operations on global variables */
+    pub fn LLVMIsAGlobalVariable(GlobalVar: ValueRef) -> ValueRef;
     pub fn LLVMAddGlobal(M: ModuleRef, Ty: TypeRef, Name: *const c_char)
                          -> ValueRef;
     pub fn LLVMAddGlobalInAddressSpace(M: ModuleRef,
