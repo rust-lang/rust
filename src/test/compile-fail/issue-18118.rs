@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    static z: &'static isize = {
+    const z: &'static isize = {
         let p = 3;
         //~^ ERROR blocks in constants are limited to items and tail expressions
         &p
