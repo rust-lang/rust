@@ -110,12 +110,14 @@ There is a lot more documentation in the [wiki].
 
 The Rust community congregates in a few places:
 
-* [StackOverflow] - Get help here.
-* [/r/rust] - General discussion.
+* [StackOverflow] - Direct questions about using the language here.
+* [users.rust-lang.org] - General discussion, broader questions.
 * [internals.rust-lang.org] - For development of the Rust language itself.
+* [/r/rust] - News and general discussion.
 
 [StackOverflow]: http://stackoverflow.com/questions/tagged/rust
 [/r/rust]: http://reddit.com/r/rust
+[users.rust-lang.org]: http://users.rust-lang.org/
 [internals.rust-lang.org]: http://internals.rust-lang.org/
 
 ## License
