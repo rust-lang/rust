@@ -229,6 +229,9 @@
 			<RegExpr String="&apos;&rustIdent;(?!&apos;)" attribute="Lifetime"/>
 			<DetectChar char="{" attribute="Symbol" context="#stay" beginRegion="Brace" />
 			<DetectChar char="}" attribute="Symbol" context="#stay" endRegion="Brace" />
+                        <Detect2Chars char="r" char1="&quot;" attribute="String" context="RawString"/>
+                        <StringDetect String="r##&quot;" attribute="String" context="RawHashed2"/>
+                        <StringDetect String="r#&quot;" attribute="String" context="RawHashed1"/>
 			<DetectChar char="&quot;" attribute="String" context="String"/>
 			<DetectChar char="&apos;" attribute="Character" context="Character"/>
 			<DetectChar char="[" attribute="Symbol" context="#stay" beginRegion="Bracket" />
@@ -249,11 +252,22 @@
 			<DetectChar char="=" attribute="Normal Text" context="#pop"/>
 			<DetectChar char="&lt;" attribute="Normal Text" context="#pop"/>
 		</context>
-		<context attribute="String" lineEndContext="#pop" name="String">
-			<LineContinue attribute="String" context="#stay"/>
-			<DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
+                <!-- Rustc allows strings to extend over multiple lines, and the
+                only thing a backshash at end-of-line does is remove the whitespace. -->
+                <context attribute="String" lineEndContext="#stay" name="String">
+                        <DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
+                        <DetectChar attribute="String" context="#pop" char="&quot;"/>
+                </context>
+		<context attribute="String" lineEndContext="#stay" name="RawString">
 			<DetectChar attribute="String" context="#pop" char="&quot;"/>
 		</context>
+                <!-- These rules are't complete: they won't match r###"abc"### -->
+                <context attribute="String" lineEndContext="#stay" name="RawHashed1">
+                        <Detect2Chars attribute="String" context="#pop" char="&quot;" char1="#"/>
+                </context>
+                <context attribute="String" lineEndContext="#stay" name="RawHashed2">
+                        <StringDetect attribute="String" context="#pop" String="&quot;##"/>
+                </context>
 		<context attribute="Character" lineEndContext="#pop" name="Character">
 			<DetectChar char="\" attribute="CharEscape" context="CharEscape"/>
 			<DetectChar attribute="Character" context="#pop" char="&apos;"/>
