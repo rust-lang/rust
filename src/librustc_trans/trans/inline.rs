@@ -159,13 +159,14 @@ fn instantiate_inline(ccx: &CrateContext, fn_id: ast::DefId)
                     let unparameterized = impl_tpt.generics.types.is_empty() &&
                             mth.pe_generics().ty_params.is_empty();
 
+                    let empty_substs = ccx.tcx().mk_substs(Substs::trans_empty());
                     if unparameterized {
                         let llfn = get_item_val(ccx, mth.id);
                         trans_fn(ccx,
                                  &*mth.pe_fn_decl(),
                                  &*mth.pe_body(),
                                  llfn,
-                                 &Substs::trans_empty(),
+                                 empty_substs,
                                  mth.id,
                                  &[]);
                         // Use InternalLinkage so LLVM can optimize more

@@ -36,7 +36,7 @@ use std::hash::{Hasher, Hash, SipHasher};
 
 pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                 fn_id: ast::DefId,
-                                psubsts: &subst::Substs<'tcx>,
+                                psubsts: &'tcx subst::Substs<'tcx>,
                                 ref_id: Option<ast::NodeId>)
     -> (ValueRef, Ty<'tcx>, bool) {
     debug!("monomorphic_fn(\
@@ -55,7 +55,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let hash_id = MonoId {
         def: fn_id,
-        params: psubsts.types.clone()
+        params: &psubsts.types
     };
 
     let item_ty = ty::lookup_item_type(ccx.tcx(), fn_id).ty;
@@ -289,7 +289,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub struct MonoId<'tcx> {
     pub def: ast::DefId,
-    pub params: subst::VecPerParamSpace<Ty<'tcx>>
+    pub params: &'tcx subst::VecPerParamSpace<Ty<'tcx>>
 }
 
 /// Monomorphizes a type from the AST by first applying the in-scope

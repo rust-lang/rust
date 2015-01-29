@@ -22,6 +22,7 @@ use trans::common::{ExternMap,tydesc_info,BuilderRef_res};
 use trans::debuginfo;
 use trans::monomorphize::MonoId;
 use trans::type_::{Type, TypeNames};
+use middle::subst::Substs;
 use middle::ty::{self, Ty};
 use session::config::NoDebugInfo;
 use session::Session;
@@ -105,17 +106,20 @@ pub struct LocalCrateContext<'tcx> {
     const_cstr_cache: RefCell<FnvHashMap<InternedString, ValueRef>>,
 
     /// Reverse-direction for const ptrs cast from globals.
-    /// Key is an int, cast from a ValueRef holding a *T,
+    /// Key is a ValueRef holding a *T,
     /// Val is a ValueRef holding a *[T].
     ///
     /// Needed because LLVM loses pointer->pointee association
     /// when we ptrcast, and we have to ptrcast during translation
-    /// of a [T] const because we form a slice, a [*T,int] pair, not
-    /// a pointer to an LLVM array type.
-    const_globals: RefCell<FnvHashMap<int, ValueRef>>,
+    /// of a [T] const because we form a slice, a (*T,usize) pair, not
+    /// a pointer to an LLVM array type. Similar for trait objects.
+    const_unsized: RefCell<FnvHashMap<ValueRef, ValueRef>>,
+
+    /// Cache of emitted const globals (value -> global)
+    const_globals: RefCell<FnvHashMap<ValueRef, ValueRef>>,
 
     /// Cache of emitted const values
-    const_values: RefCell<NodeMap<ValueRef>>,
+    const_values: RefCell<FnvHashMap<(ast::NodeId, &'tcx Substs<'tcx>), ValueRef>>,
 
     /// Cache of emitted static values
     static_values: RefCell<NodeMap<ValueRef>>,
@@ -400,8 +404,9 @@ impl<'tcx> LocalCrateContext<'tcx> {
                 monomorphizing: RefCell::new(DefIdMap()),
                 vtables: RefCell::new(FnvHashMap()),
                 const_cstr_cache: RefCell::new(FnvHashMap()),
+                const_unsized: RefCell::new(FnvHashMap()),
                 const_globals: RefCell::new(FnvHashMap()),
-                const_values: RefCell::new(NodeMap()),
+                const_values: RefCell::new(FnvHashMap()),
                 static_values: RefCell::new(NodeMap()),
                 extern_const_values: RefCell::new(DefIdMap()),
                 impl_method_cache: RefCell::new(FnvHashMap()),
@@ -615,11 +620,16 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
         &self.local.const_cstr_cache
     }
 
-    pub fn const_globals<'a>(&'a self) -> &'a RefCell<FnvHashMap<int, ValueRef>> {
+    pub fn const_unsized<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, ValueRef>> {
+        &self.local.const_unsized
+    }
+
+    pub fn const_globals<'a>(&'a self) -> &'a RefCell<FnvHashMap<ValueRef, ValueRef>> {
         &self.local.const_globals
     }
 
-    pub fn const_values<'a>(&'a self) -> &'a RefCell<NodeMap<ValueRef>> {
+    pub fn const_values<'a>(&'a self) -> &'a RefCell<FnvHashMap<(ast::NodeId, &'tcx Substs<'tcx>),
+                                                                ValueRef>> {
         &self.local.const_values
     }
 
