@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use middle::const_eval;
 use middle::def;
 use middle::infer;
 use middle::pat_util::{PatIdMap, pat_id_map, pat_is_binding, pat_is_const};
@@ -15,12 +16,12 @@ use middle::subst::{Substs};
 use middle::ty::{self, Ty};
 use check::{check_expr, check_expr_has_type, check_expr_with_expectation};
 use check::{check_expr_coercable_to_type, demand, FnCtxt, Expectation};
-use check::{instantiate_path, structurally_resolved_type, valid_range_bounds};
+use check::{instantiate_path, structurally_resolved_type};
 use require_same_types;
 use util::nodemap::FnvHashMap;
 use util::ppaux::Repr;
 
-use std::cmp;
+use std::cmp::{self, Ordering};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use syntax::ast;
 use syntax::ast_util;
@@ -79,16 +80,17 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 lhs_eq_rhs && (ty::type_is_numeric(lhs_ty) || ty::type_is_char(lhs_ty));
 
             if numeric_or_char {
-                match valid_range_bounds(fcx.ccx, &**begin, &**end) {
-                    Some(false) => {
+                match const_eval::compare_lit_exprs(tcx, &**begin, &**end, Some(lhs_ty)) {
+                    Some(Ordering::Less) |
+                    Some(Ordering::Equal) => {}
+                    Some(Ordering::Greater) => {
                         span_err!(tcx.sess, begin.span, E0030,
                             "lower range bound must be less than upper");
-                    },
+                    }
                     None => {
                         span_err!(tcx.sess, begin.span, E0031,
                             "mismatched types in range");
-                    },
-                    Some(true) => {}
+                    }
                 }
             } else {
                 span_err!(tcx.sess, begin.span, E0029,
