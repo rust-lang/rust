@@ -1,4 +1,3 @@
-
 // Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
@@ -15,8 +14,8 @@
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
-use std::path::{Path};
-use std::path;
+use std::old_path::{Path};
+use std::old_path;
 use std::result;
 use std::thunk::Thunk;
 
@@ -28,7 +27,7 @@ fn tester()
         result::Result::Ok("more blah".to_string())
     };
 
-    let path = path::Path::new("blah");
+    let path = old_path::Path::new("blah");
     assert!(loader(&path).is_ok());
 }
 
