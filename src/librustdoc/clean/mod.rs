@@ -1496,8 +1496,8 @@ impl Clean<Type> for ast::Ty {
             TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),
                                                            e.span.to_src(cx)),
             TyTup(ref tys) => Tuple(tys.clean(cx)),
-            TyPath(ref p, id) => {
-                resolve_type(cx, p.clean(cx), id)
+            TyPath(ref p) => {
+                resolve_type(cx, p.clean(cx), self.id)
             }
             TyObjectSum(ref lhs, ref bounds) => {
                 let lhs_ty = lhs.clean(cx);

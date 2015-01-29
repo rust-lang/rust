@@ -729,7 +729,7 @@ impl<'a> State<'a> {
                                       &generics,
                                       None));
             }
-            ast::TyPath(ref path, _) => {
+            ast::TyPath(ref path) => {
                 try!(self.print_path(path, false));
             }
             ast::TyObjectSum(ref ty, ref bounds) => {

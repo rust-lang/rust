@@ -523,14 +523,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 // within this module.
 
                 let mod_name = match ty.node {
-                    TyPath(ref path, _) if path.segments.len() == 1 => {
+                    TyPath(ref path) if path.segments.len() == 1 => {
                         // FIXME(18446) we should distinguish between the name of
                         // a trait and the name of an impl of that trait.
                         Some(path.segments.last().unwrap().identifier.name)
                     }
                     TyObjectSum(ref lhs_ty, _) => {
                         match lhs_ty.node {
-                            TyPath(ref path, _) if path.segments.len() == 1 => {
+                            TyPath(ref path) if path.segments.len() == 1 => {
                                 Some(path.segments.last().unwrap().identifier.name)
                             }
                             _ => {

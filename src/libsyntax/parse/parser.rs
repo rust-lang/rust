@@ -1076,8 +1076,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ty_path(&mut self) -> Ty_ {
-        let path = self.parse_path(LifetimeAndTypesWithoutColons);
-        TyPath(path, ast::DUMMY_NODE_ID)
+        TyPath(self.parse_path(LifetimeAndTypesWithoutColons))
     }
 
     /// parse a TyBareFn type:
@@ -4815,10 +4814,10 @@ impl<'a> Parser<'a> {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             match ty.node {
-                TyPath(ref path, node_id) => {
+                TyPath(ref path) => {
                     Some(TraitRef {
                         path: (*path).clone(),
-                        ref_id: node_id,
+                        ref_id: ty.id,
                     })
                 }
                 _ => {

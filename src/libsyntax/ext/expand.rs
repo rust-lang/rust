@@ -41,7 +41,7 @@ pub fn expand_type(t: P<ast::Ty>,
     debug!("expanding type {:?} with impl_ty {:?}", t, impl_ty);
     let t = match (t.node.clone(), impl_ty) {
         // Expand uses of `Self` in impls to the concrete type.
-        (ast::Ty_::TyPath(ref path, _), Some(ref impl_ty)) => {
+        (ast::Ty_::TyPath(ref path), Some(ref impl_ty)) => {
             let path_as_ident = path_to_ident(path);
             // Note unhygenic comparison here. I think this is correct, since
             // even though `Self` is almost just a type parameter, the treatment

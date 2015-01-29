@@ -398,7 +398,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
-        self.ty(path.span, ast::TyPath(path, ast::DUMMY_NODE_ID))
+        self.ty(path.span, ast::TyPath(path))
     }
 
     fn ty_sum(&self, path: ast::Path, bounds: OwnedSlice<ast::TyParamBound>) -> P<ast::Ty> {

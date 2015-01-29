@@ -488,9 +488,6 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
 
     fn visit_ty(&mut self, typ: &Ty) {
         self.operation.visit_id(typ.id);
-        if let TyPath(_, id) = typ.node {
-            self.operation.visit_id(id);
-        }
         visit::walk_ty(self, typ)
     }
 

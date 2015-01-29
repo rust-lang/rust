@@ -852,8 +852,8 @@ pub fn ast_ty_to_builtin_ty<'tcx>(
     }
 
     match ast_ty.node {
-        ast::TyPath(ref path, id) => {
-            let a_def = match this.tcx().def_map.borrow().get(&id) {
+        ast::TyPath(ref path) => {
+            let a_def = match this.tcx().def_map.borrow().get(&ast_ty.id) {
                 None => {
                     this.tcx()
                         .sess
@@ -912,8 +912,8 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
      */
 
     match ty.node {
-        ast::TyPath(ref path, id) => {
-            match this.tcx().def_map.borrow().get(&id) {
+        ast::TyPath(ref path) => {
+            match this.tcx().def_map.borrow().get(&ty.id) {
                 Some(&def::DefTrait(trait_def_id)) => {
                     let mut projection_bounds = Vec::new();
                     let trait_ref = object_path_to_poly_trait_ref(this,
@@ -1183,8 +1183,8 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             ast::TyPolyTraitRef(ref bounds) => {
                 conv_ty_poly_trait_ref(this, rscope, ast_ty.span, &bounds[..])
             }
-            ast::TyPath(ref path, id) => {
-                let a_def = match tcx.def_map.borrow().get(&id) {
+            ast::TyPath(ref path) => {
+                let a_def = match tcx.def_map.borrow().get(&ast_ty.id) {
                     None => {
                         tcx.sess
                            .span_bug(ast_ty.span,

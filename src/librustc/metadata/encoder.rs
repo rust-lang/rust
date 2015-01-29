@@ -1221,7 +1221,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_unsafety(rbml_w, unsafety);
         encode_polarity(rbml_w, polarity);
         match ty.node {
-            ast::TyPath(ref path, _) if path.segments.len() == 1 => {
+            ast::TyPath(ref path) if path.segments.len() == 1 => {
                 let ident = path.segments.last().unwrap().identifier;
                 encode_impl_type_basename(rbml_w, ident);
             }
