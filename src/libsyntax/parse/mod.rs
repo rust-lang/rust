@@ -1051,7 +1051,7 @@ mod test {
                                                 parameters: ast::PathParameters::none(),
                                             }
                                         ),
-                                        }, ast::DUMMY_NODE_ID),
+                                        }),
                                         span:sp(10,13)
                                     }),
                                     pat: P(ast::Pat {

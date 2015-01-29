@@ -3387,8 +3387,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // type, the result will be that the type name resolves to a module but not
                 // a type (shadowing any imported modules or types with this name), leading
                 // to weird user-visible bugs. So we ward this off here. See #15060.
-                TyPath(ref path, path_id) => {
-                    match self.def_map.borrow().get(&path_id) {
+                TyPath(ref path) => {
+                    match self.def_map.borrow().get(&self_type.id) {
                         // FIXME: should we catch other options and give more precise errors?
                         Some(&DefMod(_)) => {
                             self.resolve_error(path.span, "inherent implementations are not \
@@ -3576,7 +3576,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
 
-            TyPath(ref path, path_id) => {
+            TyPath(ref path) => {
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
                 let mut result_def = None;
@@ -3617,8 +3617,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         debug!("(resolving type) writing resolution for `{}` \
                                 (id {}) = {:?}",
                                self.path_names_to_string(path),
-                               path_id, def);
-                        self.record_def(path_id, def);
+                               ty.id, def);
+                        self.record_def(ty.id, def);
                     }
                     None => {
                         let msg = format!("use of undeclared type name `{}`",
@@ -4281,7 +4281,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         fn extract_path_and_node_id(t: &Ty, allow: FallbackChecks)
                                                     -> Option<(Path, NodeId, FallbackChecks)> {
             match t.node {
-                TyPath(ref path, node_id) => Some((path.clone(), node_id, allow)),
+                TyPath(ref path) => Some((path.clone(), t.id, allow)),
                 TyPtr(ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
                 TyRptr(_, ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, allow),
                 // This doesn't handle the remaining `Ty` variants as they are not

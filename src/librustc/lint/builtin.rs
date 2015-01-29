@@ -405,8 +405,8 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn check_def(&mut self, sp: Span, ty_id: ast::NodeId, path_id: ast::NodeId) {
-        match self.cx.tcx.def_map.borrow()[path_id].clone() {
+    fn check_def(&mut self, sp: Span, id: ast::NodeId) {
+        match self.cx.tcx.def_map.borrow()[id].clone() {
             def::DefPrimTy(ast::TyInt(ast::TyIs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `isize` in foreign module, while \
@@ -418,7 +418,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                    libc::c_uint or libc::c_ulong should be used");
             }
             def::DefTy(..) => {
-                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&ty_id) {
+                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
                     Some(&ty::atttce_resolved(t)) => t,
                     _ => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
                 };
@@ -437,9 +437,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        match ty.node {
-            ast::TyPath(_, id) => self.check_def(ty.span, ty.id, id),
-            _ => (),
+        if let ast::TyPath(_) = ty.node {
+            self.check_def(ty.span, ty.id);
         }
         visit::walk_ty(self, ty);
     }

@@ -43,8 +43,8 @@ pub fn check_path_args(tcx: &ty::ctxt,
 pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
                                -> Option<Ty<'tcx>> {
     match ast_ty.node {
-        ast::TyPath(ref path, id) => {
-            let a_def = match tcx.def_map.borrow().get(&id) {
+        ast::TyPath(ref path) => {
+            let a_def = match tcx.def_map.borrow().get(&ast_ty.id) {
                 None => {
                     tcx.sess.span_bug(ast_ty.span,
                                       &format!("unbound path {}",

@@ -1257,7 +1257,7 @@ pub enum Ty_ {
     /// A path (`module::module::...::Type`) or primitive
     ///
     /// Type parameters are stored in the Path itself
-    TyPath(Path, NodeId),
+    TyPath(Path),
     /// Something like `A+B`. Note that `B` must always be a path.
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`

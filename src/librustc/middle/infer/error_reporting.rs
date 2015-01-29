@@ -1233,8 +1233,8 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                     }
                     ty_queue.push(&*mut_ty.ty);
                 }
-                ast::TyPath(ref path, id) => {
-                    let a_def = match self.tcx.def_map.borrow().get(&id) {
+                ast::TyPath(ref path) => {
+                    let a_def = match self.tcx.def_map.borrow().get(&cur_ty.id) {
                         None => {
                             self.tcx
                                 .sess
@@ -1279,7 +1279,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                             let new_path = self.rebuild_path(rebuild_info, lifetime);
                             let to = ast::Ty {
                                 id: cur_ty.id,
-                                node: ast::TyPath(new_path, id),
+                                node: ast::TyPath(new_path),
                                 span: cur_ty.span
                             };
                             new_ty = self.rebuild_ty(new_ty, P(to));

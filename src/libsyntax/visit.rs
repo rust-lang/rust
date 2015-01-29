@@ -399,8 +399,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_fn_ret_ty(visitor, &function_declaration.decl.output);
             walk_lifetime_decls_helper(visitor, &function_declaration.lifetimes);
         }
-        TyPath(ref path, id) => {
-            visitor.visit_path(path, id);
+        TyPath(ref path) => {
+            visitor.visit_path(path, typ.id);
         }
         TyObjectSum(ref ty, ref bounds) => {
             visitor.visit_ty(&**ty);
