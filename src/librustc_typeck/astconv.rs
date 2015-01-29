@@ -1183,7 +1183,7 @@ pub fn ast_ty_to_ty<'tcx>(
                 qpath_to_ty(this, rscope, ast_ty, &**qpath)
             }
             ast::TyFixedLengthVec(ref ty, ref e) => {
-                match const_eval::eval_const_expr_partial(tcx, &**e) {
+                match const_eval::eval_const_expr_partial(tcx, &**e, Some(tcx.types.uint)) {
                     Ok(ref r) => {
                         match *r {
                             const_eval::const_int(i) =>

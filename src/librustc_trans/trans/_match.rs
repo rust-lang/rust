@@ -219,6 +219,7 @@ use util::nodemap::FnvHashMap;
 use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
+use std::cmp::Ordering;
 use std::iter::AdditiveIterator;
 use std::rc::Rc;
 use syntax::ast;
@@ -232,10 +233,8 @@ struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
     fn eq(self, other: ConstantExpr<'a>, tcx: &ty::ctxt) -> bool {
-        let ConstantExpr(expr) = self;
-        let ConstantExpr(other_expr) = other;
-        match const_eval::compare_lit_exprs(tcx, expr, other_expr) {
-            Some(val1) => val1 == 0,
+        match const_eval::compare_lit_exprs(tcx, self.0, other.0, None) {
+            Some(result) => result == Ordering::Equal,
             None => panic!("compare_list_exprs: type mismatch"),
         }
     }

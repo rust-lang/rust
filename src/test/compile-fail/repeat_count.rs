@@ -41,8 +41,18 @@ fn main() {
     //~| expected usize
     //~| found &-ptr
     //~| ERROR expected positive integer for repeat count, found string
-    let f = [0; -4];
-    //~^ ERROR expected positive integer for repeat count, found negative integer
-    let f = [0us; -1];
-    //~^ ERROR expected positive integer for repeat count, found negative integer
+    let f = [0; -4is];
+    //~^ ERROR mismatched types
+    //~| expected `usize`
+    //~| found `isize`
+    //~| expected usize
+    //~| found isize
+    //~| ERROR expected positive integer for repeat count, found negative integer
+    let f = [0us; -1is];
+    //~^ ERROR mismatched types
+    //~| expected `usize`
+    //~| found `isize`
+    //~| expected usize
+    //~| found isize
+    //~| ERROR expected positive integer for repeat count, found negative integer
 }

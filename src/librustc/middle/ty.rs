@@ -5350,26 +5350,25 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                     None => INITIAL_DISCRIMINANT_VALUE
                                 };
 
-                                match variant.node.disr_expr {
-                                    Some(ref e) =>
-                                        match const_eval::eval_const_expr_partial(cx, &**e) {
-                                            Ok(const_eval::const_int(val)) => {
-                                                discriminant = val as Disr
-                                            }
-                                            Ok(const_eval::const_uint(val)) => {
-                                                discriminant = val as Disr
-                                            }
-                                            Ok(_) => {
-                                                span_err!(cx.sess, e.span, E0304,
-                                                            "expected signed integer constant");
-                                            }
-                                            Err(ref err) => {
-                                                span_err!(cx.sess, e.span, E0305,
-                                                            "expected constant: {}",
-                                                                    *err);
-                                            }
-                                        },
-                                    None => {}
+                                if let Some(ref e) = variant.node.disr_expr {
+                                    // Preserve all values, and prefer signed.
+                                    let ty = Some(cx.types.i64);
+                                    match const_eval::eval_const_expr_partial(cx, &**e, ty) {
+                                        Ok(const_eval::const_int(val)) => {
+                                            discriminant = val as Disr;
+                                        }
+                                        Ok(const_eval::const_uint(val)) => {
+                                            discriminant = val as Disr;
+                                        }
+                                        Ok(_) => {
+                                            span_err!(cx.sess, e.span, E0304,
+                                                      "expected signed integer constant");
+                                        }
+                                        Err(err) => {
+                                            span_err!(cx.sess, e.span, E0305,
+                                                      "expected constant: {}", err);
+                                        }
+                                    }
                                 };
 
                                 last_discriminant = Some(discriminant);
@@ -5822,7 +5821,7 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
 
 // Returns the repeat count for a repeating vector expression.
 pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
-    match const_eval::eval_const_expr_partial(tcx, count_expr) {
+    match const_eval::eval_const_expr_partial(tcx, count_expr, Some(tcx.types.uint)) {
         Ok(val) => {
             let found = match val {
                 const_eval::const_uint(count) => return count as uint,
