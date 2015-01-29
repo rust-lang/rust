@@ -107,7 +107,7 @@ mod test {
         let v = [1u8, 2, 3, 4, 5, 6, 7, 8];
         let mut w = [0u8; 8];
 
-        let mut rng = ReaderRng::new(MemReader::new(v.as_slice().to_vec()));
+        let mut rng = ReaderRng::new(MemReader::new(v.to_vec()));
         rng.fill_bytes(&mut w);
 
         assert!(v == w);

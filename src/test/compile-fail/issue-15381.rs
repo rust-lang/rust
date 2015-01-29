@@ -14,7 +14,7 @@ fn main() {
     for
         [x,y,z]
 //~^ ERROR refutable pattern in `for` loop binding: `[]` not covered
-        in values.as_slice().chunks(3).filter(|&xs| xs.len() == 3) {
+        in values.chunks(3).filter(|&xs| xs.len() == 3) {
         println!("y={}", y);
     }
 }

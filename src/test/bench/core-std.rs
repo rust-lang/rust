@@ -25,7 +25,7 @@ use std::vec;
 
 fn main() {
     let argv = os::args();
-    let _tests = argv.slice(1, argv.len());
+    let _tests = &argv[1..argv.len()];
 
     macro_rules! bench {
         ($id:ident) =>

@@ -44,7 +44,7 @@ pub fn main() {
 
     fn check_str_eq(a: String, b: String) {
         let mut i: int = 0;
-        for ab in a.as_slice().bytes() {
+        for ab in a.bytes() {
             println!("{}", i);
             println!("{}", ab);
             let bb: u8 = b.as_bytes()[i as uint];

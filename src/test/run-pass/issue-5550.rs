@@ -13,5 +13,5 @@
 pub fn main() {
     let s: String = "foobar".to_string();
     let mut t: &str = s.as_slice();
-    t = t.slice(0, 3); // for master: str::view(t, 0, 3) maybe
+    t = &t[0..3]; // for master: str::view(t, 0, 3) maybe
 }

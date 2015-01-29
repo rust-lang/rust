@@ -229,7 +229,7 @@ pub fn main_args(args: &[String]) -> int {
 
     let test_args = matches.opt_strs("test-args");
     let test_args: Vec<String> = test_args.iter()
-                                          .flat_map(|s| s.as_slice().words())
+                                          .flat_map(|s| s.words())
                                           .map(|s| s.to_string())
                                           .collect();
 

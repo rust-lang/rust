@@ -26,5 +26,5 @@ fn main() {
     assert!(res.is_err());
 
     let output = reader.read_to_string().unwrap();
-    assert!(output.as_slice().contains("Hello, world!"));
+    assert!(output.contains("Hello, world!"));
 }

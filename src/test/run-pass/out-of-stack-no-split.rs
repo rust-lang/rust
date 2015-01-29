@@ -42,6 +42,6 @@ fn main() {
         let recurse = Command::new(args[0].as_slice()).arg("recurse").output().unwrap();
         assert!(!recurse.status.success());
         let error = String::from_utf8_lossy(recurse.error.as_slice());
-        assert!(error.as_slice().contains("has overflowed its stack"));
+        assert!(error.contains("has overflowed its stack"));
     }
 }

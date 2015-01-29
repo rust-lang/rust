@@ -63,6 +63,6 @@ fn main() {
         // the span should end the line (e.g no extra ~'s)
         let expected_span = format!("^{}\n", repeat("~").take(n - 1)
                                                         .collect::<String>());
-        assert!(err.as_slice().contains(expected_span.as_slice()));
+        assert!(err.contains(expected_span.as_slice()));
     }
 }

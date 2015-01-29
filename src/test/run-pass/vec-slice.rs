@@ -10,7 +10,7 @@
 
 pub fn main() {
     let  v = vec!(1i,2,3,4,5);
-    let v2 = v.slice(1, 3);
+    let v2 = &v[1..3];
     assert_eq!(v2[0], 2);
     assert_eq!(v2[1], 3);
 }

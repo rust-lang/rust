@@ -1594,21 +1594,21 @@ mod tests {
     #[test]
     fn test_get() {
         let mut a = vec![11i];
-        assert_eq!(a.as_slice().get(1), None);
+        assert_eq!(a.get(1), None);
         a = vec![11i, 12];
-        assert_eq!(a.as_slice().get(1).unwrap(), &12);
+        assert_eq!(a.get(1).unwrap(), &12);
         a = vec![11i, 12, 13];
-        assert_eq!(a.as_slice().get(1).unwrap(), &12);
+        assert_eq!(a.get(1).unwrap(), &12);
     }
 
     #[test]
     fn test_first() {
         let mut a = vec![];
-        assert_eq!(a.as_slice().first(), None);
+        assert_eq!(a.first(), None);
         a = vec![11i];
-        assert_eq!(a.as_slice().first().unwrap(), &11);
+        assert_eq!(a.first().unwrap(), &11);
         a = vec![11i, 12];
-        assert_eq!(a.as_slice().first().unwrap(), &11);
+        assert_eq!(a.first().unwrap(), &11);
     }
 
     #[test]
@@ -1692,11 +1692,11 @@ mod tests {
     #[test]
     fn test_last() {
         let mut a = vec![];
-        assert_eq!(a.as_slice().last(), None);
+        assert_eq!(a.last(), None);
         a = vec![11i];
-        assert_eq!(a.as_slice().last().unwrap(), &11);
+        assert_eq!(a.last().unwrap(), &11);
         a = vec![11i, 12];
-        assert_eq!(a.as_slice().last().unwrap(), &12);
+        assert_eq!(a.last().unwrap(), &12);
     }
 
     #[test]
@@ -1917,7 +1917,7 @@ mod tests {
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
             assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(v.as_slice().to_vec()));
+            assert_eq!(it.next(), Some(v.to_vec()));
             assert_eq!(it.next(), None);
         }
         {
@@ -1926,7 +1926,7 @@ mod tests {
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);
             assert_eq!(max_opt.unwrap(), 1);
-            assert_eq!(it.next(), Some(v.as_slice().to_vec()));
+            assert_eq!(it.next(), Some(v.to_vec()));
             assert_eq!(it.next(), None);
         }
         {
@@ -2030,10 +2030,10 @@ mod tests {
         assert!([].position_elem(&1i).is_none());
 
         let v1 = vec![1i, 2, 3, 3, 2, 5];
-        assert_eq!(v1.as_slice().position_elem(&1), Some(0u));
-        assert_eq!(v1.as_slice().position_elem(&2), Some(1u));
-        assert_eq!(v1.as_slice().position_elem(&5), Some(5u));
-        assert!(v1.as_slice().position_elem(&4).is_none());
+        assert_eq!(v1.position_elem(&1), Some(0u));
+        assert_eq!(v1.position_elem(&2), Some(1u));
+        assert_eq!(v1.position_elem(&5), Some(5u));
+        assert!(v1.position_elem(&4).is_none());
     }
 
     #[test]
@@ -2104,13 +2104,13 @@ mod tests {
                 let mut v1 = v.clone();
 
                 v.sort();
-                assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
+                assert!(v.windows(2).all(|w| w[0] <= w[1]));
 
                 v1.sort_by(|a, b| a.cmp(b));
-                assert!(v1.as_slice().windows(2).all(|w| w[0] <= w[1]));
+                assert!(v1.windows(2).all(|w| w[0] <= w[1]));
 
                 v1.sort_by(|a, b| b.cmp(a));
-                assert!(v1.as_slice().windows(2).all(|w| w[0] >= w[1]));
+                assert!(v1.windows(2).all(|w| w[0] >= w[1]));
             }
         }
 
@@ -2149,7 +2149,7 @@ mod tests {
                 // will need to be ordered with increasing
                 // counts... i.e. exactly asserting that this sort is
                 // stable.
-                assert!(v.as_slice().windows(2).all(|w| w[0] <= w[1]));
+                assert!(v.windows(2).all(|w| w[0] <= w[1]));
             }
         }
     }
@@ -2570,14 +2570,14 @@ mod tests {
         assert!(a == [7i,2,3,4]);
         let mut a = [1i,2,3,4,5];
         let b = vec![5i,6,7,8,9,0];
-        assert_eq!(a.slice_mut(2, 4).move_from(b,1,6), 2);
+        assert_eq!(a[2..4].move_from(b,1,6), 2);
         assert!(a == [1i,2,6,7,5]);
     }
 
     #[test]
     fn test_reverse_part() {
         let mut values = [1i,2,3,4,5];
-        values.slice_mut(1, 4).reverse();
+        values[1..4].reverse();
         assert!(values == [1,4,3,2,5]);
     }
 
@@ -2624,9 +2624,9 @@ mod tests {
     fn test_bytes_set_memory() {
         use slice::bytes::MutableByteVector;
         let mut values = [1u8,2,3,4,5];
-        values.slice_mut(0, 5).set_memory(0xAB);
+        values[0..5].set_memory(0xAB);
         assert!(values == [0xAB, 0xAB, 0xAB, 0xAB, 0xAB]);
-        values.slice_mut(2, 4).set_memory(0xFF);
+        values[2..4].set_memory(0xFF);
         assert!(values == [0xAB, 0xAB, 0xFF, 0xFF, 0xAB]);
     }
 
@@ -2884,7 +2884,7 @@ mod bench {
         let xss: Vec<Vec<uint>> =
             range(0, 100u).map(|i| range(0, i).collect()).collect();
         b.iter(|| {
-            xss.as_slice().concat();
+            xss.concat();
         });
     }
 
@@ -2893,7 +2893,7 @@ mod bench {
         let xss: Vec<Vec<uint>> =
             range(0, 100u).map(|i| range(0, i).collect()).collect();
         b.iter(|| {
-            xss.as_slice().connect(&0)
+            xss.connect(&0)
         });
     }
 
@@ -2910,7 +2910,7 @@ mod bench {
     fn starts_with_same_vector(b: &mut Bencher) {
         let vec: Vec<uint> = range(0, 100).collect();
         b.iter(|| {
-            vec.as_slice().starts_with(vec.as_slice())
+            vec.starts_with(vec.as_slice())
         })
     }
 
@@ -2918,7 +2918,7 @@ mod bench {
     fn starts_with_single_element(b: &mut Bencher) {
         let vec: Vec<uint> = vec![0];
         b.iter(|| {
-            vec.as_slice().starts_with(vec.as_slice())
+            vec.starts_with(vec.as_slice())
         })
     }
 
@@ -2928,7 +2928,7 @@ mod bench {
         let mut match_vec: Vec<uint> = range(0, 99).collect();
         match_vec.push(0);
         b.iter(|| {
-            vec.as_slice().starts_with(match_vec.as_slice())
+            vec.starts_with(match_vec.as_slice())
         })
     }
 
@@ -2936,7 +2936,7 @@ mod bench {
     fn ends_with_same_vector(b: &mut Bencher) {
         let vec: Vec<uint> = range(0, 100).collect();
         b.iter(|| {
-            vec.as_slice().ends_with(vec.as_slice())
+            vec.ends_with(vec.as_slice())
         })
     }
 
@@ -2944,7 +2944,7 @@ mod bench {
     fn ends_with_single_element(b: &mut Bencher) {
         let vec: Vec<uint> = vec![0];
         b.iter(|| {
-            vec.as_slice().ends_with(vec.as_slice())
+            vec.ends_with(vec.as_slice())
         })
     }
 
@@ -2954,7 +2954,7 @@ mod bench {
         let mut match_vec: Vec<uint> = range(0, 100).collect();
         match_vec.as_mut_slice()[0] = 200;
         b.iter(|| {
-            vec.as_slice().starts_with(match_vec.as_slice())
+            vec.starts_with(match_vec.as_slice())
         })
     }
 

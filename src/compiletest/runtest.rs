@@ -777,7 +777,7 @@ fn parse_debugger_commands(file_path: &Path, debugger_prefix: &str)
     for line in reader.lines() {
         match line {
             Ok(line) => {
-                if line.as_slice().contains("#break") {
+                if line.contains("#break") {
                     breakpoint_lines.push(counter);
                 }
 
@@ -843,7 +843,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
         // check if each line in props.check_lines appears in the
         // output (in order)
         let mut i = 0u;
-        for line in debugger_run_result.stdout.as_slice().lines() {
+        for line in debugger_run_result.stdout.lines() {
             let mut rest = line.trim();
             let mut first = true;
             let mut failed = false;
@@ -895,7 +895,7 @@ fn check_error_patterns(props: &TestProps,
     let mut next_err_idx = 0u;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
-    for line in output_to_check.as_slice().lines() {
+    for line in output_to_check.lines() {
         if line.contains(next_err_pat.as_slice()) {
             debug!("found error pattern {}", next_err_pat);
             next_err_idx += 1u;
@@ -924,7 +924,7 @@ fn check_error_patterns(props: &TestProps,
 }
 
 fn check_no_compiler_crash(proc_res: &ProcRes) {
-    for line in proc_res.stderr.as_slice().lines() {
+    for line in proc_res.stderr.lines() {
         if line.starts_with("error: internal compiler error:") {
             fatal_proc_rec("compiler encountered internal error",
                           proc_res);
@@ -983,7 +983,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
     //    filename:line1:col1: line2:col2: *warning:* msg
     // where line1:col1: is the starting point, line2:col2:
     // is the ending point, and * represents ANSI color codes.
-    for line in proc_res.stderr.as_slice().lines() {
+    for line in proc_res.stderr.lines() {
         let mut was_expected = false;
         for (i, ee) in expected_errors.iter().enumerate() {
             if !found_flags[i] {
@@ -1536,7 +1536,7 @@ fn _arm_exec_compiled_test(config: &Config,
         .expect(format!("failed to exec `{}`", config.adb_path).as_slice());
 
     let mut exitcode: int = 0;
-    for c in exitcode_out.as_slice().chars() {
+    for c in exitcode_out.chars() {
         if !c.is_numeric() { break; }
         exitcode = exitcode * 10 + match c {
             '0' ... '9' => c as int - ('0' as int),
