@@ -38,6 +38,7 @@ use syntax::ptr::P;
 use syntax;
 
 use std::old_io::Seek;
+use std::num::FromPrimitive;
 use std::rc::Rc;
 
 use rbml::io::SeekableMemWriter;
@@ -1836,8 +1837,8 @@ fn decode_side_tables(dcx: &DecodeContext,
         debug!(">> Side table document with tag 0x{:x} \
                 found for id {} (orig {})",
                tag, id, id0);
-
-        match c::astencode_tag::from_uint(tag) {
+        let decoded_tag: Option<c::astencode_tag> = FromPrimitive::from_uint(tag);
+        match decoded_tag {
             None => {
                 dcx.tcx.sess.bug(
                     &format!("unknown tag found in side tables: {:x}",
