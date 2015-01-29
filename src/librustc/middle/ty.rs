@@ -44,6 +44,7 @@ use session::Session;
 use lint;
 use metadata::csearch;
 use middle;
+use middle::check_const;
 use middle::const_eval;
 use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
@@ -838,6 +839,9 @@ pub struct ctxt<'tcx> {
 
     /// Caches whether traits are object safe
     pub object_safety_cache: RefCell<DefIdMap<bool>>,
+
+    /// Maps Expr NodeId's to their constant qualification.
+    pub const_qualif_map: RefCell<NodeMap<check_const::ConstQualif>>,
 }
 
 // Flags that we track on types. These flags are propagated upwards
@@ -2472,6 +2476,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         type_impls_copy_cache: RefCell::new(HashMap::new()),
         type_impls_sized_cache: RefCell::new(HashMap::new()),
         object_safety_cache: RefCell::new(DefIdMap()),
+        const_qualif_map: RefCell::new(NodeMap()),
    }
 }
 

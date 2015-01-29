@@ -23,6 +23,7 @@ use metadata::tydecode;
 use metadata::tydecode::{DefIdSource, NominalType, TypeWithId, TypeParameter};
 use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
+use middle::check_const::ConstQualif;
 use middle::mem_categorization::Typer;
 use middle::subst;
 use middle::subst::VecPerParamSpace;
@@ -1306,6 +1307,15 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             })
         })
     }
+
+    for &qualif in tcx.const_qualif_map.borrow().get(&id).iter() {
+        rbml_w.tag(c::tag_table_const_qualif, |rbml_w| {
+            rbml_w.id(id);
+            rbml_w.tag(c::tag_table_val, |rbml_w| {
+                qualif.encode(rbml_w).unwrap()
+            })
+        })
+    }
 }
 
 trait doc_decoder_helpers {
@@ -1919,6 +1929,10 @@ fn decode_side_tables(dcx: &DecodeContext,
                             val_dsr.read_closure_kind(dcx);
                         dcx.tcx.closure_kinds.borrow_mut().insert(ast_util::local_def(id),
                                                                   closure_kind);
+                    }
+                    c::tag_table_const_qualif => {
+                        let qualif: ConstQualif = Decodable::decode(val_dsr).unwrap();
+                        dcx.tcx.const_qualif_map.borrow_mut().insert(id, qualif);
                     }
                     _ => {
                         dcx.tcx.sess.bug(
