@@ -24,6 +24,7 @@ pub use self::os_str::OsStr;
 mod c_str;
 mod os_str;
 
+// FIXME (#21670): these should be defined in the os_str module
 /// Freely convertible to an `&OsStr` slice.
 pub trait AsOsStr {
     /// Convert to an `&OsStr` slice.

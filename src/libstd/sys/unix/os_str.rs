@@ -20,7 +20,7 @@ use str;
 use string::{String, CowString};
 use mem;
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct Buf {
     pub inner: Vec<u8>
 }
