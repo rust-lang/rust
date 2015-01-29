@@ -4195,8 +4195,10 @@ pub mod consts {
             pub const IP_HDRINCL: c_int = 2;
             pub const IP_ADD_MEMBERSHIP: c_int = 12;
             pub const IP_DROP_MEMBERSHIP: c_int = 13;
-            pub const IPV6_ADD_MEMBERSHIP: c_int = 12; // don't exist, keep same as IP_ADD_MEMBERSHIP
-            pub const IPV6_DROP_MEMBERSHIP: c_int = 13; // don't exist, keep same as IP_DROP_MEMBERSHIP
+            // don't exist, keep same as IP_ADD_MEMBERSHIP
+            pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
+            // don't exist, keep same as IP_DROP_MEMBERSHIP
+            pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
 
             pub const TCP_NODELAY: c_int = 1;
             //pub const TCP_KEEPIDLE: c_int = ;
