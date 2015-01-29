@@ -20,7 +20,7 @@ mod imp {
     use self::OsRngInner::*;
 
     use old_io::{IoResult, File};
-    use path::Path;
+    use old_path::Path;
     use rand::Rng;
     use rand::reader::ReaderRng;
     use result::Result::Ok;

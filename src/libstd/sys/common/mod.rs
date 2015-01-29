@@ -16,7 +16,7 @@ use prelude::v1::*;
 use sys::{last_error, retry};
 use ffi::CString;
 use num::Int;
-use path::BytesContainer;
+use old_path::BytesContainer;
 use collections;
 
 pub mod backtrace;

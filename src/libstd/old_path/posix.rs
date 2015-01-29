@@ -445,7 +445,7 @@ mod tests {
     use clone::Clone;
     use iter::IteratorExt;
     use option::Option::{self, Some, None};
-    use path::GenericPath;
+    use old_path::GenericPath;
     use slice::{AsSlice, SliceExt};
     use str::{self, Str, StrExt};
     use string::ToString;

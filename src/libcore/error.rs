@@ -51,7 +51,7 @@
 //! use std::error::FromError;
 //! use std::old_io::{File, IoError};
 //! use std::os::{MemoryMap, MapError};
-//! use std::path::Path;
+//! use std::old_path::Path;
 //!
 //! enum MyError {
 //!     Io(IoError),

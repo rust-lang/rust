@@ -251,6 +251,7 @@ pub mod old_io;
 pub mod os;
 pub mod env;
 pub mod path;
+pub mod old_path;
 pub mod rand;
 pub mod time;
 

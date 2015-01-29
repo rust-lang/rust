@@ -23,7 +23,7 @@
 use prelude::v1::*;
 
 use ffi::CString;
-use path::BytesContainer;
+use old_path::BytesContainer;
 use old_io::{Listener, Acceptor, IoResult, TimedOut, standard_error};
 use sys::pipe::UnixAcceptor as UnixAcceptorImp;
 use sys::pipe::UnixListener as UnixListenerImp;
