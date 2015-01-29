@@ -10,6 +10,8 @@
 
 //! Temporal quantification.
 
+#![unstable(feature = "std_misc")]
+
 use sys::time::SteadyTime;
 
 pub use self::duration::Duration;
