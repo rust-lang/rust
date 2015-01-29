@@ -130,7 +130,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
         debug!("> Decoding inlined fn: {:?}::?",
         {
             // Do an Option dance to use the path after it is moved below.
-            let s = ast_map::path_to_string(ast_map::Values(path.iter()));
+            let s = ast_map::path_to_string(path.iter().cloned());
             path_as_str = Some(s);
             path_as_str.as_ref().map(|x| &x[])
         });

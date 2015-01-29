@@ -516,7 +516,7 @@ Olivier Saut <osaut@airpost.net>
 Olle Jonsson <olle.jonsson@gmail.com>
 Or Brostovski <tohava@gmail.com>
 Oren Hazi <oren.hazi@gmail.com>
-Orphée Lafond-Lummis <o@orftz.com>
+Orpheus Lummis <o@orpheuslummis.com>
 P1start <rewi-github@whanau.org>
 Pablo Brasero <pablo@pablobm.com>
 Palmer Cox <p@lmercox.com>
