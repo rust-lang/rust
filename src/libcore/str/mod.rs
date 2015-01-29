@@ -460,15 +460,6 @@ delegate_iter!{exact u8 : Bytes<'a>}
 #[derive(Copy, Clone)]
 struct BytesDeref;
 
-#[cfg(stage0)]
-impl<'a> Fn(&'a u8) -> u8 for BytesDeref {
-    #[inline]
-    extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
-        *ptr
-    }
-}
-
-#[cfg(not(stage0))]
 impl<'a> Fn<(&'a u8,)> for BytesDeref {
     type Output = u8;
 
