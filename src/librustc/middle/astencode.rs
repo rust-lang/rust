@@ -1293,7 +1293,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             }
             ty::AdjustDerefRef(ref adj) => {
                 assert!(!ty::adjust_is_object(adjustment));
-                for autoderef in range(0, adj.autoderefs) {
+                for autoderef in 0..adj.autoderefs {
                     let method_call = MethodCall::autoderef(id, autoderef);
                     for &method in tcx.method_map.borrow().get(&method_call).iter() {
                         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
@@ -1529,7 +1529,7 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
 
         fn type_string(doc: rbml::Doc) -> String {
             let mut str = String::new();
-            for i in range(doc.start, doc.end) {
+            for i in doc.start..doc.end {
                 str.push(doc.data[i] as char);
             }
             str

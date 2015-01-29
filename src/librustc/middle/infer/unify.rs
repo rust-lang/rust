@@ -63,7 +63,7 @@ pub trait UnifyValue : Clone + PartialEq + Debug {
 /// to keep the DAG relatively balanced, which helps keep the running
 /// time of the algorithm under control. For more information, see
 /// <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
-#[derive(PartialEq,Clone,Show)]
+#[derive(PartialEq,Clone,Debug)]
 pub enum VarValue<K:UnifyKey> {
     Redirect(K),
     Root(K::Value, uint),

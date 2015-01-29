@@ -60,7 +60,7 @@ use sys_common::mutex as sys;
 /// let data = Arc::new(Mutex::new(0));
 ///
 /// let (tx, rx) = channel();
-/// for _ in range(0u, 10) {
+/// for _ in 0u..10 {
 ///     let (data, tx) = (data.clone(), tx.clone());
 ///     Thread::spawn(move || {
 ///         // The shared static can only be accessed once the lock is held.
@@ -371,7 +371,7 @@ mod test {
         static K: uint = 3;
 
         fn inc() {
-            for _ in range(0, J) {
+            for _ in 0..J {
                 unsafe {
                     let _g = M.lock().unwrap();
                     CNT += 1;
@@ -380,7 +380,7 @@ mod test {
         }
 
         let (tx, rx) = channel();
-        for _ in range(0, K) {
+        for _ in 0..K {
             let tx2 = tx.clone();
             Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
             let tx2 = tx.clone();
@@ -388,7 +388,7 @@ mod test {
         }
 
         drop(tx);
-        for _ in range(0, 2 * K) {
+        for _ in 0..2 * K {
             rx.recv().unwrap();
         }
         assert_eq!(unsafe {CNT}, J * K * 2);

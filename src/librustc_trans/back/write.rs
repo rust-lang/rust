@@ -714,7 +714,7 @@ pub fn run_passes(sess: &Session,
         cmd.args(&sess.target.target.options.pre_link_args[]);
         cmd.arg("-nostdlib");
 
-        for index in range(0, trans.modules.len()) {
+        for index in 0..trans.modules.len() {
             cmd.arg(crate_output.with_extension(&format!("{}.o", index)[]));
         }
 
@@ -824,7 +824,7 @@ pub fn run_passes(sess: &Session,
         let keep_numbered_bitcode = needs_crate_bitcode ||
                 (user_wants_bitcode && sess.opts.cg.codegen_units > 1);
 
-        for i in range(0, trans.modules.len()) {
+        for i in 0..trans.modules.len() {
             if modules_config.emit_obj {
                 let ext = format!("{}.o", i);
                 remove(sess, &crate_output.with_extension(&ext[]));
@@ -901,7 +901,7 @@ fn run_work_multithreaded(sess: &Session,
     let mut diag_emitter = SharedEmitter::new();
     let mut futures = Vec::with_capacity(num_workers);
 
-    for i in range(0, num_workers) {
+    for i in 0..num_workers {
         let work_items_arc = work_items_arc.clone();
         let diag_emitter = diag_emitter.clone();
         let remark = sess.opts.cg.remark.clone();

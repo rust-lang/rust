@@ -951,7 +951,7 @@ mod tests {
     test_checked_next_power_of_two! { test_checked_next_power_of_two_u64, u64 }
     test_checked_next_power_of_two! { test_checked_next_power_of_two_uint, uint }
 
-    #[derive(PartialEq, Show)]
+    #[derive(PartialEq, Debug)]
     struct Value { x: int }
 
     impl ToPrimitive for Value {
@@ -1001,7 +1001,7 @@ mod tests {
     fn test_pow() {
         fn naive_pow<T: Int>(base: T, exp: uint) -> T {
             let one: T = Int::one();
-            range(0, exp).fold(one, |acc, _| acc * base)
+            (0..exp).fold(one, |acc, _| acc * base)
         }
         macro_rules! assert_pow {
             (($num:expr, $exp:expr) => $expected:expr) => {{
@@ -1028,7 +1028,7 @@ mod bench {
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
-        let v = range(0, 1024u).collect::<Vec<_>>();
+        let v = (0..1024u).collect::<Vec<_>>();
         b.iter(|| {v.iter().fold(0u, |old, new| old.pow(*new));});
     }
 }

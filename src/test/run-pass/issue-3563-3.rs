@@ -69,7 +69,7 @@ fn AsciiArt(width: uint, height: uint, fill: char) -> AsciiArt {
     // Use an anonymous function to build a vector of vectors containing
     // blank characters for each position in our canvas.
     let mut lines = Vec::new();
-    for _ in range(0, height) {
+    for _ in 0..height {
         lines.push(repeat('.').take(width).collect::<Vec<_>>());
     }
 
@@ -136,13 +136,13 @@ impl Canvas for AsciiArt {
 
     fn add_rect(&mut self, shape: Rect) {
         // Add the top and bottom lines.
-        for x in range(shape.top_left.x, shape.top_left.x + shape.size.width) {
+        for x in shape.top_left.x..shape.top_left.x + shape.size.width {
             self.add_pt(x, shape.top_left.y);
             self.add_pt(x, shape.top_left.y + shape.size.height - 1);
         }
 
         // Add the left and right lines.
-        for y in range(shape.top_left.y, shape.top_left.y + shape.size.height) {
+        for y in shape.top_left.y..shape.top_left.y + shape.size.height {
             self.add_pt(shape.top_left.x, y);
             self.add_pt(shape.top_left.x + shape.size.width - 1, y);
         }

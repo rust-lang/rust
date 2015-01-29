@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 struct Point { x : int }
 
 pub fn main() {

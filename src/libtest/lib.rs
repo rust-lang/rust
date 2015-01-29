@@ -97,7 +97,7 @@ pub mod stats;
 // colons. This way if some test runner wants to arrange the tests
 // hierarchically it may.
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum TestName {
     StaticTestName(&'static str),
     DynTestName(String)
@@ -198,7 +198,7 @@ pub struct Bencher {
     pub bytes: u64,
 }
 
-#[derive(Copy, Clone, Show, PartialEq, Eq, Hash)]
+#[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
 pub enum ShouldFail {
     No,
     Yes(Option<&'static str>)
@@ -206,7 +206,7 @@ pub enum ShouldFail {
 
 // The definition of a single test. A test runner will run a list of
 // these.
-#[derive(Clone, Show, PartialEq, Eq, Hash)]
+#[derive(Clone, Debug, PartialEq, Eq, Hash)]
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
@@ -215,13 +215,13 @@ pub struct TestDesc {
 
 unsafe impl Send for TestDesc {}
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct TestDescAndFn {
     pub desc: TestDesc,
     pub testfn: TestFn,
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Debug, Copy)]
 pub struct Metric {
     value: f64,
     noise: f64
@@ -1008,7 +1008,7 @@ impl Bencher {
     pub fn iter<T, F>(&mut self, mut inner: F) where F: FnMut() -> T {
         self.dur = Duration::span(|| {
             let k = self.iterations;
-            for _ in range(0u64, k) {
+            for _ in 0u64..k {
                 black_box(inner());
             }
         });

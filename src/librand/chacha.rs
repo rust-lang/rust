@@ -69,11 +69,11 @@ macro_rules! double_round{
 fn core(output: &mut [u32; STATE_WORDS], input: &[u32; STATE_WORDS]) {
     *output = *input;
 
-    for _ in range(0, CHACHA_ROUNDS / 2) {
+    for _ in 0..CHACHA_ROUNDS / 2 {
         double_round!(output);
     }
 
-    for i in range(0, STATE_WORDS) {
+    for i in 0..STATE_WORDS {
         output[i] += input[i];
     }
 }
@@ -128,7 +128,7 @@ impl ChaChaRng {
         self.state[2] = 0x79622D32;
         self.state[3] = 0x6B206574;
 
-        for i in range(0, KEY_WORDS) {
+        for i in 0..KEY_WORDS {
             self.state[4+i] = key[i];
         }
 
@@ -247,14 +247,14 @@ mod test {
         let seed : &[_] = &[0u32; 8];
         let mut ra: ChaChaRng = SeedableRng::from_seed(seed);
 
-        let v = range(0, 16).map(|_| ra.next_u32()).collect::<Vec<_>>();
+        let v = (0..16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(0xade0b876, 0x903df1a0, 0xe56a5d40, 0x28bd8653,
                         0xb819d2bd, 0x1aed8da0, 0xccef36a8, 0xc70d778b,
                         0x7c5941da, 0x8d485751, 0x3fe02477, 0x374ad8b8,
                         0xf4b8436a, 0x1ca11815, 0x69b687c3, 0x8665eeb2));
 
-        let v = range(0, 16).map(|_| ra.next_u32()).collect::<Vec<_>>();
+        let v = (0..16).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(0xbee7079f, 0x7a385155, 0x7c97ba98, 0x0d082d73,
                         0xa0290fcb, 0x6965e348, 0x3e53c612, 0xed7aee32,
@@ -268,9 +268,9 @@ mod test {
         // Store the 17*i-th 32-bit word,
         // i.e., the i-th word of the i-th 16-word block
         let mut v : Vec<u32> = Vec::new();
-        for _ in range(0u, 16) {
+        for _ in 0u..16 {
             v.push(ra.next_u32());
-            for _ in range(0u, 16) {
+            for _ in 0u..16 {
                 ra.next_u32();
             }
         }
@@ -287,7 +287,7 @@ mod test {
         let seed : &[_] = &[0u32; 8];
         let mut rng: ChaChaRng = SeedableRng::from_seed(seed);
         let mut clone = rng.clone();
-        for _ in range(0u, 16) {
+        for _ in 0u..16 {
             assert_eq!(rng.next_u64(), clone.next_u64());
         }
     }

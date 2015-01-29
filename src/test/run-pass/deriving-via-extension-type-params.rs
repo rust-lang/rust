@@ -9,7 +9,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[derive(PartialEq, Hash, Show)]
+#[derive(PartialEq, Hash, Debug)]
 struct Foo<T> {
     x: int,
     y: T,

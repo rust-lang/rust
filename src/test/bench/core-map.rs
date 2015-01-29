@@ -40,19 +40,19 @@ fn ascending<M: MutableMap>(map: &mut M, n_keys: uint) {
     println!(" Ascending integers:");
 
     timed("insert", || {
-        for i in range(0u, n_keys) {
+        for i in 0u..n_keys {
             map.insert(i, i + 1);
         }
     });
 
     timed("search", || {
-        for i in range(0u, n_keys) {
+        for i in 0u..n_keys {
             assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     });
 
     timed("remove", || {
-        for i in range(0, n_keys) {
+        for i in 0..n_keys {
             assert!(map.remove(&i));
         }
     });
@@ -62,19 +62,19 @@ fn descending<M: MutableMap>(map: &mut M, n_keys: uint) {
     println!(" Descending integers:");
 
     timed("insert", || {
-        for i in range(0, n_keys).rev() {
+        for i in (0..n_keys).rev() {
             map.insert(i, i + 1);
         }
     });
 
     timed("search", || {
-        for i in range(0, n_keys).rev() {
+        for i in (0..n_keys).rev() {
             assert_eq!(map.find(&i).unwrap(), &(i + 1));
         }
     });
 
     timed("remove", || {
-        for i in range(0, n_keys) {
+        for i in 0..n_keys {
             assert!(map.remove(&i));
         }
     });
@@ -82,19 +82,19 @@ fn descending<M: MutableMap>(map: &mut M, n_keys: uint) {
 
 fn vector<M: MutableMap>(map: &mut M, n_keys: uint, dist: &[uint]) {
     timed("insert", || {
-        for i in range(0u, n_keys) {
+        for i in 0u..n_keys {
             map.insert(dist[i], i + 1);
         }
     });
 
     timed("search", || {
-        for i in range(0u, n_keys) {
+        for i in 0u..n_keys {
             assert_eq!(map.find(&dist[i]).unwrap(), &(i + 1));
         }
     });
 
     timed("remove", || {
-        for i in range(0u, n_keys) {
+        for i in 0u..n_keys {
             assert!(map.remove(&dist[i]));
         }
     });

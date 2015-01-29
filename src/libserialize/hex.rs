@@ -61,7 +61,7 @@ pub trait FromHex {
 }
 
 /// Errors that can occur when decoding a hex encoded string
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum FromHexError {
     /// The input contained a character not part of the hex format
     InvalidHexCharacter(char, uint),
@@ -185,14 +185,14 @@ mod tests {
 
     #[test]
     pub fn test_to_hex_all_bytes() {
-        for i in range(0u, 256) {
+        for i in 0u..256 {
             assert_eq!([i as u8].to_hex(), format!("{:02x}", i as uint));
         }
     }
 
     #[test]
     pub fn test_from_hex_all_bytes() {
-        for i in range(0u, 256) {
+        for i in 0u..256 {
             let ii: &[u8] = &[i as u8];
             assert_eq!(format!("{:02x}", i as uint).from_hex()
                                                    .unwrap(),

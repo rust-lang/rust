@@ -49,8 +49,8 @@ impl Sudoku {
     }
 
     pub fn from_vec(vec: &[[u8;9];9]) -> Sudoku {
-        let g = range(0, 9u).map(|i| {
-            range(0, 9u).map(|j| { vec[i][j] }).collect()
+        let g = (0..9u).map(|i| {
+            (0..9u).map(|j| { vec[i][j] }).collect()
         }).collect();
         return Sudoku::new(g)
     }
@@ -81,9 +81,9 @@ impl Sudoku {
     }
 
     pub fn write(&self, writer: &mut old_io::Writer) {
-        for row in range(0u8, 9u8) {
+        for row in 0u8..9u8 {
             write!(writer, "{}", self.grid[row as uint][0]);
-            for col in range(1u8, 9u8) {
+            for col in 1u8..9u8 {
                 write!(writer, " {}", self.grid[row as uint][col as uint]);
             }
             write!(writer, "\n");
@@ -93,8 +93,8 @@ impl Sudoku {
     // solve sudoku grid
     pub fn solve(&mut self) {
         let mut work: Vec<(u8, u8)> = Vec::new(); /* queue of uncolored fields */
-        for row in range(0u8, 9u8) {
-            for col in range(0u8, 9u8) {
+        for row in 0u8..9u8 {
+            for col in 0u8..9u8 {
                 let color = self.grid[row as uint][col as uint];
                 if color == 0u8 {
                     work.push((row, col));
@@ -139,7 +139,7 @@ impl Sudoku {
 
     // find colors available in neighbourhood of (row, col)
     fn drop_colors(&mut self, avail: &mut Colors, row: u8, col: u8) {
-        for idx in range(0u8, 9u8) {
+        for idx in 0u8..9u8 {
             /* check same column fields */
             avail.remove(self.grid[idx as uint][col as uint]);
             /* check same row fields */
@@ -149,8 +149,8 @@ impl Sudoku {
         // check same block fields
         let row0 = (row / 3u8) * 3u8;
         let col0 = (col / 3u8) * 3u8;
-        for alt_row in range(row0, row0 + 3u8) {
-            for alt_col in range(col0, col0 + 3u8) {
+        for alt_row in row0..row0 + 3u8 {
+            for alt_col in col0..col0 + 3u8 {
                 avail.remove(self.grid[alt_row as uint][alt_col as uint]);
             }
         }

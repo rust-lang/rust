@@ -193,14 +193,14 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
         let chars_left = n % LINE_LEN;
         let mut buf = [0;LINE_LEN + 1];
 
-        for _ in range(0, lines) {
-            for i in range(0u, LINE_LEN) {
+        for _ in 0..lines {
+            for i in 0u..LINE_LEN {
                 buf[i] = self.nextc();
             }
             buf[LINE_LEN] = '\n' as u8;
             try!(self.out.write(&buf));
         }
-        for i in range(0u, chars_left) {
+        for i in 0u..chars_left {
             buf[i] = self.nextc();
         }
         self.out.write(&buf[..chars_left])

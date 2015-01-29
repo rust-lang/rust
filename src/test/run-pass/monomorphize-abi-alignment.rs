@@ -27,10 +27,10 @@ impl<T> S<T> {
     }
 }
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 struct A((u32, u32));
 
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 struct B(u64);
 
 pub fn main() {

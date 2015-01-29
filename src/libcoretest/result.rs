@@ -68,13 +68,13 @@ pub fn test_impl_map_err() {
 /* FIXME(#20575)
 #[test]
 fn test_collect() {
-    let v: Result<Vec<int>, ()> = range(0i, 0).map(|_| Ok::<int, ()>(0)).collect();
+    let v: Result<Vec<int>, ()> = (0i..0).map(|_| Ok::<int, ()>(0)).collect();
     assert!(v == Ok(vec![]));
 
-    let v: Result<Vec<int>, ()> = range(0i, 3).map(|x| Ok::<int, ()>(x)).collect();
+    let v: Result<Vec<int>, ()> = (0i..3).map(|x| Ok::<int, ()>(x)).collect();
     assert!(v == Ok(vec![0, 1, 2]));
 
-    let v: Result<Vec<int>, int> = range(0i, 3).map(|x| {
+    let v: Result<Vec<int>, int> = (0i..3).map(|x| {
         if x > 1 { Err(x) } else { Ok(x) }
     }).collect();
     assert!(v == Err(2));

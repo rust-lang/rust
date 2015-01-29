@@ -34,7 +34,7 @@ fn test() {
 
     let (srv_tx, srv_rx) = channel();
     let (cli_tx, cli_rx) = channel();
-    let _t = range(0, N).map(|_| {
+    let _t = (0..N).map(|_| {
         let a = a.clone();
         let cnt = cnt.clone();
         let srv_tx = srv_tx.clone();
@@ -55,10 +55,10 @@ fn test() {
         })
     }).collect::<Vec<_>>();
 
-    let _t = range(0, N).map(|_| {
+    let _t = (0..N).map(|_| {
         let cli_tx = cli_tx.clone();
         Thread::scoped(move|| {
-            for _ in range(0, M) {
+            for _ in 0..M {
                 let _s = TcpStream::connect(addr).unwrap();
             }
             cli_tx.send(());

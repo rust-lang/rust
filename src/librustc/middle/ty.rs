@@ -112,7 +112,7 @@ pub struct field<'tcx> {
     pub mt: mt<'tcx>
 }
 
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub enum ImplOrTraitItemContainer {
     TraitContainer(ast::DefId),
     ImplContainer(ast::DefId),
@@ -127,7 +127,7 @@ impl ImplOrTraitItemContainer {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub enum ImplOrTraitItem<'tcx> {
     MethodTraitItem(Rc<Method<'tcx>>),
     TypeTraitItem(Rc<AssociatedType>),
@@ -172,7 +172,7 @@ impl<'tcx> ImplOrTraitItem<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub enum ImplOrTraitItemId {
     MethodTraitItemId(ast::DefId),
     TypeTraitItemId(ast::DefId),
@@ -187,7 +187,7 @@ impl ImplOrTraitItemId {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Method<'tcx> {
     pub name: ast::Name,
     pub generics: ty::Generics<'tcx>,
@@ -231,7 +231,7 @@ impl<'tcx> Method<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub struct AssociatedType {
     pub name: ast::Name,
     pub vis: ast::Visibility,
@@ -239,13 +239,13 @@ pub struct AssociatedType {
     pub container: ImplOrTraitItemContainer,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct mt<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
 }
 
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub struct field_ty {
     pub name: Name,
     pub id: DefId,
@@ -274,7 +274,7 @@ pub struct ItemVariances {
     pub regions: VecPerParamSpace<Variance>,
 }
 
-#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Show, Copy)]
+#[derive(Clone, PartialEq, RustcDecodable, RustcEncodable, Debug, Copy)]
 pub enum Variance {
     Covariant,      // T<A> <: T<B> iff A <: B -- e.g., function return type
     Invariant,      // T<A> <: T<B> iff B == A -- e.g., type of mutable cell
@@ -282,13 +282,13 @@ pub enum Variance {
     Bivariant,      // T<A> <: T<B>            -- e.g., unused type parameter
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub enum AutoAdjustment<'tcx> {
     AdjustReifyFnPointer(ast::DefId), // go from a fn-item type to a fn-pointer type
     AdjustDerefRef(AutoDerefRef<'tcx>)
 }
 
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum UnsizeKind<'tcx> {
     // [T, ..n] -> [T], the uint field is n.
     UnsizeLength(uint),
@@ -298,13 +298,13 @@ pub enum UnsizeKind<'tcx> {
     UnsizeVtable(TyTrait<'tcx>, /* the self type of the trait */ Ty<'tcx>)
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct AutoDerefRef<'tcx> {
     pub autoderefs: uint,
     pub autoref: Option<AutoRef<'tcx>>
 }
 
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub enum AutoRef<'tcx> {
     /// Convert from T to &T
     /// The third field allows us to wrap other AutoRef adjustments.
@@ -421,13 +421,13 @@ pub fn type_of_adjust<'tcx>(cx: &ctxt<'tcx>, adj: &AutoAdjustment<'tcx>) -> Opti
     }
 }
 
-#[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Show)]
+#[derive(Clone, Copy, RustcEncodable, RustcDecodable, PartialEq, PartialOrd, Debug)]
 pub struct param_index {
     pub space: subst::ParamSpace,
     pub index: uint
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub enum MethodOrigin<'tcx> {
     // fully statically resolved method
     MethodStatic(ast::DefId),
@@ -445,7 +445,7 @@ pub enum MethodOrigin<'tcx> {
 
 // details for a method invoked with a receiver whose type is a type parameter
 // with a bounded trait.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct MethodParam<'tcx> {
     // the precise trait reference that occurs as a bound -- this may
     // be a supertrait of what the user actually typed. Note that it
@@ -466,7 +466,7 @@ pub struct MethodParam<'tcx> {
 }
 
 // details for a method invoked with a receiver whose type is an object
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct MethodObject<'tcx> {
     // the (super)trait containing the method to be invoked
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
@@ -503,13 +503,13 @@ pub struct MethodCallee<'tcx> {
 /// needed to add to the side tables. Thus to disambiguate
 /// we also keep track of whether there's an adjustment in
 /// our key.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct MethodCall {
     pub expr_id: ast::NodeId,
     pub adjustment: ExprAdjustment
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
 pub enum ExprAdjustment {
     NoAdjustment,
     AutoDeref(uint),
@@ -923,7 +923,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct TyS<'tcx> {
     pub sty: sty<'tcx>,
     pub flags: TypeFlags,
@@ -1029,21 +1029,21 @@ pub fn type_escapes_depth(ty: Ty, depth: u32) -> bool {
     ty.region_depth > depth
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct BareFnTy<'tcx> {
     pub unsafety: ast::Unsafety,
     pub abi: abi::Abi,
     pub sig: PolyFnSig<'tcx>,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ClosureTy<'tcx> {
     pub unsafety: ast::Unsafety,
     pub abi: abi::Abi,
     pub sig: PolyFnSig<'tcx>,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub enum FnOutput<'tcx> {
     FnConverging(Ty<'tcx>),
     FnDiverging
@@ -1100,7 +1100,7 @@ impl<'tcx> PolyFnSig<'tcx> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct ParamTy {
     pub space: subst::ParamSpace,
     pub idx: u32,
@@ -1146,7 +1146,7 @@ pub struct ParamTy {
 /// is the outer fn.
 ///
 /// [dbi]: http://en.wikipedia.org/wiki/De_Bruijn_index
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub struct DebruijnIndex {
     // We maintain the invariant that this is never 0. So 1 indicates
     // the innermost binder. To ensure this, create with `DebruijnIndex::new`.
@@ -1154,7 +1154,7 @@ pub struct DebruijnIndex {
 }
 
 /// Representation of regions:
-#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Show, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum Region {
     // Region bound in a type or fn declaration which will be
     // substituted 'early' -- that is, at the same time when type
@@ -1195,13 +1195,13 @@ pub enum Region {
 /// Upvars do not get their own node-id. Instead, we use the pair of
 /// the original var id (that is, the root variable that is referenced
 /// by the upvar) and the id of the closure expression.
-#[derive(Clone, Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
 pub struct UpvarId {
     pub var_id: ast::NodeId,
     pub closure_expr_id: ast::NodeId,
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug, RustcEncodable, RustcDecodable, Copy)]
 pub enum BorrowKind {
     /// Data must be immutable and is aliasable.
     ImmBorrow,
@@ -1294,7 +1294,7 @@ pub enum BorrowKind {
 /// - Through mutation, the borrowed upvars can actually escape
 ///   the closure, so sometimes it is necessary for them to be larger
 ///   than the closure lifetime itself.
-#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Show, Copy)]
+#[derive(PartialEq, Clone, RustcEncodable, RustcDecodable, Debug, Copy)]
 pub struct UpvarBorrow {
     pub kind: BorrowKind,
     pub region: ty::Region,
@@ -1320,7 +1320,7 @@ impl Region {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-           RustcEncodable, RustcDecodable, Show, Copy)]
+           RustcEncodable, RustcDecodable, Debug, Copy)]
 /// A "free" region `fr` can be interpreted as "some region
 /// at least as big as the scope `fr.scope`".
 pub struct FreeRegion {
@@ -1329,7 +1329,7 @@ pub struct FreeRegion {
 }
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord, Hash,
-           RustcEncodable, RustcDecodable, Show, Copy)]
+           RustcEncodable, RustcDecodable, Debug, Copy)]
 pub enum BoundRegion {
     /// An anonymous region parameter for a given fn (&T)
     BrAnon(u32),
@@ -1350,7 +1350,7 @@ pub enum BoundRegion {
 
 // NB: If you change this, you'll probably want to change the corresponding
 // AST structure in libsyntax/ast.rs as well.
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum sty<'tcx> {
     ty_bool,
     ty_char,
@@ -1397,7 +1397,7 @@ pub enum sty<'tcx> {
             // on non-useful type error messages)
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TyTrait<'tcx> {
     pub principal: ty::PolyTraitRef<'tcx>,
     pub bounds: ExistentialBounds<'tcx>,
@@ -1469,7 +1469,7 @@ impl<'tcx> TyTrait<'tcx> {
 /// Note that a `TraitRef` introduces a level of region binding, to
 /// account for higher-ranked trait bounds like `T : for<'a> Foo<&'a
 /// U>` or higher-ranked object types.
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TraitRef<'tcx> {
     pub def_id: DefId,
     pub substs: &'tcx Substs<'tcx>,
@@ -1509,7 +1509,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 /// erase, or otherwise "discharge" these bound reons, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct Binder<T>(pub T);
 
 #[derive(Clone, Copy, PartialEq)]
@@ -1518,7 +1518,7 @@ pub enum IntVarValue {
     UintType(ast::UintTy),
 }
 
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub enum terr_vstore_kind {
     terr_vec,
     terr_str,
@@ -1526,14 +1526,14 @@ pub enum terr_vstore_kind {
     terr_trait
 }
 
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub struct expected_found<T> {
     pub expected: T,
     pub found: T
 }
 
 // Data structures used in type unification
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 pub enum type_err<'tcx> {
     terr_mismatch,
     terr_unsafety_mismatch(expected_found<ast::Unsafety>),
@@ -1567,7 +1567,7 @@ pub enum type_err<'tcx> {
 
 /// Bounds suitable for a named type parameter like `A` in `fn foo<A>`
 /// as well as the existential type parameter in an object type.
-#[derive(PartialEq, Eq, Hash, Clone, Show)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct ParamBounds<'tcx> {
     pub region_bounds: Vec<ty::Region>,
     pub builtin_bounds: BuiltinBounds,
@@ -1580,7 +1580,7 @@ pub struct ParamBounds<'tcx> {
 /// major difference between this case and `ParamBounds` is that
 /// general purpose trait bounds are omitted and there must be
 /// *exactly one* region.
-#[derive(PartialEq, Eq, Hash, Clone, Show)]
+#[derive(PartialEq, Eq, Hash, Clone, Debug)]
 pub struct ExistentialBounds<'tcx> {
     pub region_bound: ty::Region,
     pub builtin_bounds: BuiltinBounds,
@@ -1590,7 +1590,7 @@ pub struct ExistentialBounds<'tcx> {
 pub type BuiltinBounds = EnumSet<BuiltinBound>;
 
 #[derive(Clone, RustcEncodable, PartialEq, Eq, RustcDecodable, Hash,
-           Show, Copy)]
+           Debug, Copy)]
 #[repr(uint)]
 pub enum BuiltinBound {
     BoundSend,
@@ -1664,7 +1664,7 @@ pub enum InferTy {
     FreshIntTy(u32),
 }
 
-#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, PartialEq, Eq, Hash, Debug, Copy)]
 pub enum UnconstrainedNumeric {
     UnconstrainedFloat,
     UnconstrainedInt,
@@ -1672,7 +1672,7 @@ pub enum UnconstrainedNumeric {
 }
 
 
-#[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Show, Copy)]
+#[derive(Clone, RustcEncodable, RustcDecodable, Eq, Hash, Debug, Copy)]
 pub enum InferRegion {
     ReVar(RegionVid),
     ReSkolemized(u32, BoundRegion)
@@ -1746,7 +1746,7 @@ impl fmt::Debug for IntVarValue {
     }
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct TypeParameterDef<'tcx> {
     pub name: ast::Name,
     pub def_id: ast::DefId,
@@ -1756,7 +1756,7 @@ pub struct TypeParameterDef<'tcx> {
     pub default: Option<Ty<'tcx>>,
 }
 
-#[derive(RustcEncodable, RustcDecodable, Clone, Show)]
+#[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
 pub struct RegionParameterDef {
     pub name: ast::Name,
     pub def_id: ast::DefId,
@@ -1773,7 +1773,7 @@ impl RegionParameterDef {
 
 /// Information about the formal type/lifetime parameters associated
 /// with an item or method. Analogous to ast::Generics.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct Generics<'tcx> {
     pub types: VecPerParamSpace<TypeParameterDef<'tcx>>,
     pub regions: VecPerParamSpace<RegionParameterDef>,
@@ -1809,7 +1809,7 @@ impl<'tcx> Generics<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub enum Predicate<'tcx> {
     /// Corresponds to `where Foo : Bar<A,B,C>`. `Foo` here would be
     /// the `Self` type of the trait reference and `A`, `B`, and `C`
@@ -1830,7 +1830,7 @@ pub enum Predicate<'tcx> {
     Projection(PolyProjectionPredicate<'tcx>),
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct TraitPredicate<'tcx> {
     pub trait_ref: Rc<TraitRef<'tcx>>
 }
@@ -1856,11 +1856,11 @@ impl<'tcx> PolyTraitPredicate<'tcx> {
     }
 }
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct EquatePredicate<'tcx>(pub Ty<'tcx>, pub Ty<'tcx>); // `0 == 1`
 pub type PolyEquatePredicate<'tcx> = ty::Binder<EquatePredicate<'tcx>>;
 
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct OutlivesPredicate<A,B>(pub A, pub B); // `A : B`
 pub type PolyOutlivesPredicate<A,B> = ty::Binder<OutlivesPredicate<A,B>>;
 pub type PolyRegionOutlivesPredicate = PolyOutlivesPredicate<ty::Region, ty::Region>;
@@ -1878,7 +1878,7 @@ pub type PolyTypeOutlivesPredicate<'tcx> = PolyOutlivesPredicate<Ty<'tcx>, ty::R
 /// equality between arbitrary types. Processing an instance of Form
 /// #2 eventually yields one of these `ProjectionPredicate`
 /// instances to normalize the LHS.
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProjectionPredicate<'tcx> {
     pub projection_ty: ProjectionTy<'tcx>,
     pub ty: Ty<'tcx>,
@@ -1898,7 +1898,7 @@ impl<'tcx> PolyProjectionPredicate<'tcx> {
 
 /// Represents the projection of an associated type. In explicit UFCS
 /// form this would be written `<T as Trait<..>>::N`.
-#[derive(Clone, PartialEq, Eq, Hash, Show)]
+#[derive(Clone, PartialEq, Eq, Hash, Debug)]
 pub struct ProjectionTy<'tcx> {
     /// The trait reference `T as Trait<..>`.
     pub trait_ref: Rc<ty::TraitRef<'tcx>>,
@@ -2034,7 +2034,7 @@ impl<'tcx> Predicate<'tcx> {
 /// `[[], [U:Bar<T>]]`.  Now if there were some particular reference
 /// like `Foo<int,uint>`, then the `GenericBounds` would be `[[],
 /// [uint:Bar<int>]]`.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct GenericBounds<'tcx> {
     pub predicates: VecPerParamSpace<Predicate<'tcx>>,
 }
@@ -2243,7 +2243,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
 /// stray references in a comment or something). We try to reserve the
 /// "poly" prefix to refer to higher-ranked things, as in
 /// `PolyTraitRef`.
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct TypeScheme<'tcx> {
     pub generics: Generics<'tcx>,
     pub ty: Ty<'tcx>
@@ -2286,7 +2286,7 @@ pub struct Closure<'tcx> {
     pub kind: ClosureKind,
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, Show)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug)]
 pub enum ClosureKind {
     FnClosureKind,
     FnMutClosureKind,
@@ -3745,7 +3745,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
 ///
 /// The ordering of the cases is significant. They are sorted so that cmp::max
 /// will keep the "more erroneous" of two values.
-#[derive(Copy, PartialOrd, Ord, Eq, PartialEq, Show)]
+#[derive(Copy, PartialOrd, Ord, Eq, PartialEq, Debug)]
 pub enum Representability {
     Representable,
     ContainsRecursive,
@@ -4344,7 +4344,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                     let mut adjusted_ty = unadjusted_ty;
 
                     if !ty::type_is_error(adjusted_ty) {
-                        for i in range(0, adj.autoderefs) {
+                        for i in 0..adj.autoderefs {
                             let method_call = MethodCall::autoderef(expr_id, i);
                             match method_type(method_call) {
                                 Some(method_ty) => {
@@ -6536,7 +6536,7 @@ impl<'a,'tcx> ClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
 
 
 /// The category of explicit self.
-#[derive(Clone, Copy, Eq, PartialEq, Show)]
+#[derive(Clone, Copy, Eq, PartialEq, Debug)]
 pub enum ExplicitSelfCategory {
     StaticExplicitSelfCategory,
     ByValueExplicitSelfCategory,

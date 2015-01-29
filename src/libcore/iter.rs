@@ -101,8 +101,6 @@ pub trait Iterator {
     fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
 }
 
-// FIXME(#21363) remove `old_impl_check` when bug is fixed
-#[old_impl_check]
 impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {
     type Item = T;
 
@@ -717,7 +715,7 @@ pub trait IteratorExt: Iterator + Sized {
         Self: ExactSizeIterator + DoubleEndedIterator
     {
         let len = self.len();
-        for i in range(0, len).rev() {
+        for i in (0..len).rev() {
             if predicate(self.next_back().expect("rposition: incorrect ExactSizeIterator")) {
                 return Some(i);
             }
@@ -1226,7 +1224,7 @@ impl_multiplicative! { f32,  1.0 }
 impl_multiplicative! { f64,  1.0 }
 
 /// `MinMaxResult` is an enum returned by `min_max`. See `IteratorOrdExt::min_max` for more detail.
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 #[unstable(feature = "core",
            reason = "unclear whether such a fine-grained result is widely useful")]
 pub enum MinMaxResult<T> {
@@ -1509,9 +1507,9 @@ impl<T, U, A, B> DoubleEndedIterator for Zip<A, B> where
         if a_sz != b_sz {
             // Adjust a, b to equal length
             if a_sz > b_sz {
-                for _ in range(0, a_sz - b_sz) { self.a.next_back(); }
+                for _ in 0..a_sz - b_sz { self.a.next_back(); }
             } else {
-                for _ in range(0, b_sz - a_sz) { self.b.next_back(); }
+                for _ in 0..b_sz - a_sz { self.b.next_back(); }
             }
         }
         match (self.a.next_back(), self.b.next_back()) {

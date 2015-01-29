@@ -32,7 +32,7 @@ use vec::Vec;
 
 pub type Port = u16;
 
-#[derive(Copy, PartialEq, Eq, Clone, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 pub enum IpAddr {
     Ipv4Addr(u8, u8, u8, u8),
     Ipv6Addr(u16, u16, u16, u16, u16, u16, u16, u16)
@@ -64,7 +64,7 @@ impl fmt::Display for IpAddr {
     }
 }
 
-#[derive(Copy, PartialEq, Eq, Clone, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Clone, Hash, Debug)]
 pub struct SocketAddr {
     pub ip: IpAddr,
     pub port: Port,

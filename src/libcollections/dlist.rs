@@ -592,14 +592,14 @@ impl<T> DList<T> {
             // instead of skipping using .skip() (which creates a new struct),
             // we skip manually so we can access the head field without
             // depending on implementation details of Skip
-            for _ in range(0, at - 1) {
+            for _ in 0..at - 1 {
                 iter.next();
             }
             iter.head
         }  else {
             // better off starting from the end
             let mut iter = self.iter_mut();
-            for _ in range(0, len - 1 - (at - 1)) {
+            for _ in 0..len - 1 - (at - 1) {
                 iter.next_back();
             }
             iter.tail
@@ -1070,10 +1070,10 @@ mod tests {
             let mut n = m.split_off(2);
             assert_eq!(m.len(), 2);
             assert_eq!(n.len(), 3);
-            for elt in range(1i, 3) {
+            for elt in 1i..3 {
                 assert_eq!(m.pop_front(), Some(elt));
             }
-            for elt in range(3i, 6) {
+            for elt in 3i..6 {
                 assert_eq!(n.pop_front(), Some(elt));
             }
         }
@@ -1084,10 +1084,10 @@ mod tests {
             let mut n = m.split_off(4);
             assert_eq!(m.len(), 4);
             assert_eq!(n.len(), 1);
-            for elt in range(1i, 5) {
+            for elt in 1i..5 {
                 assert_eq!(m.pop_front(), Some(elt));
             }
-            for elt in range(5i, 6) {
+            for elt in 5i..6 {
                 assert_eq!(n.pop_front(), Some(elt));
             }
         }
@@ -1325,7 +1325,7 @@ mod tests {
 
     #[test]
     fn test_fuzz() {
-        for _ in range(0u, 25) {
+        for _ in 0u..25 {
             fuzz_test(3);
             fuzz_test(16);
             fuzz_test(189);
@@ -1334,7 +1334,7 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let list: DList<int> = range(0i, 10).collect();
+        let list: DList<int> = (0i..10).collect();
         assert_eq!(format!("{:?}", list), "DList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
@@ -1347,7 +1347,7 @@ mod tests {
     fn fuzz_test(sz: int) {
         let mut m: DList<int> = DList::new();
         let mut v = vec![];
-        for i in range(0, sz) {
+        for i in 0..sz {
             check_links(&m);
             let r: u8 = rand::random();
             match r % 6 {

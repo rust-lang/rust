@@ -169,7 +169,7 @@ fn make_masks() -> Vec<Vec<Vec<u64> > > {
         .map(|(id, p)| transform(p, id != 3))
         .collect();
 
-    range(0i, 50).map(|yx| {
+    (0i..50).map(|yx| {
         transforms.iter().enumerate().map(|(id, t)| {
             t.iter().filter_map(|p| mask(yx / 5, yx % 5, id, p)).collect()
         }).collect()
@@ -199,8 +199,8 @@ fn is_board_unfeasible(board: u64, masks: &Vec<Vec<Vec<u64>>>) -> bool {
 
 // Filter the masks that we can prove to result to unfeasible board.
 fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
-    for i in range(0, masks.len()) {
-        for j in range(0, (*masks)[i].len()) {
+    for i in 0..masks.len() {
+        for j in 0..(*masks)[i].len() {
             masks[i][j] =
                 (*masks)[i][j].iter().map(|&m| m)
                 .filter(|&m| !is_board_unfeasible(m, masks))
@@ -211,7 +211,7 @@ fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
 
 // Gets the identifier of a mask.
 fn get_id(m: u64) -> u8 {
-    for id in range(0u8, 10) {
+    for id in 0u8..10 {
         if m & (1 << (id + 50) as uint) != 0 {return id;}
     }
     panic!("{:016x} does not have a valid identifier", m);
@@ -222,7 +222,7 @@ fn to_vec(raw_sol: &List<u64>) -> Vec<u8> {
     let mut sol = repeat('.' as u8).take(50).collect::<Vec<_>>();
     for &m in raw_sol.iter() {
         let id = '0' as u8 + get_id(m);
-        for i in range(0u, 50) {
+        for i in 0u..50 {
             if m & 1 << i != 0 {
                 sol[i] = id;
             }
@@ -297,7 +297,7 @@ fn search(
     let masks_at = &masks[i];
 
     // for every unused piece
-    for id in range(0u, 10).filter(|&id| board & (1 << (id + 50)) == 0) {
+    for id in (0u..10).filter(|&id| board & (1 << (id + 50)) == 0) {
         // for each mask that fits on the board
         for m in masks_at[id].iter().filter(|&m| board & *m == 0) {
             // This check is too costly.

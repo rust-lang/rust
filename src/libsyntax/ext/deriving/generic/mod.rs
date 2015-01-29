@@ -770,7 +770,7 @@ impl<'a> MethodDef<'a> {
         let mut raw_fields = Vec::new(); // ~[[fields of self],
                                  // [fields of next Self arg], [etc]]
         let mut patterns = Vec::new();
-        for i in range(0us, self_args.len()) {
+        for i in 0us..self_args.len() {
             let struct_path= cx.path(DUMMY_SP, vec!( type_ident ));
             let (pat, ident_expr) =
                 trait_.create_struct_pattern(cx,
@@ -1154,7 +1154,7 @@ impl<'a> MethodDef<'a> {
             // to an uninhabited type (e.g. a zero-variant enum or a
             // type holding such an enum), but do not feature-gate
             // zero-variant enums themselves, then attempting to
-            // derive Show on such a type could here generate code
+            // derive Debug on such a type could here generate code
             // that needs the feature gate enabled.)
 
             return cx.expr_unreachable(sp);

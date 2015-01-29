@@ -96,12 +96,12 @@ pub struct Process {
 /// A representation of environment variable name
 /// It compares case-insensitive on Windows and case-sensitive everywhere else.
 #[cfg(not(windows))]
-#[derive(Hash, PartialEq, Eq, Clone, Show)]
+#[derive(Hash, PartialEq, Eq, Clone, Debug)]
 struct EnvKey(CString);
 
 #[doc(hidden)]
 #[cfg(windows)]
-#[derive(Eq, Clone, Show)]
+#[derive(Eq, Clone, Debug)]
 struct EnvKey(CString);
 
 #[cfg(windows)]
@@ -492,7 +492,7 @@ pub enum StdioContainer {
 
 /// Describes the result of a process after it has terminated.
 /// Note that Windows have no signals, so the result is usually ExitStatus.
-#[derive(PartialEq, Eq, Clone, Copy, Show)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 pub enum ProcessExit {
     /// Normal termination with an exit status.
     ExitStatus(int),
@@ -1142,7 +1142,7 @@ mod tests {
     fn test_zero() {
         let mut p = sleeper();
         p.signal_kill().unwrap();
-        for _ in range(0i, 20) {
+        for _ in 0i..20 {
             if p.signal(0).is_err() {
                 assert!(!p.wait().unwrap().success());
                 return

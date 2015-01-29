@@ -15,7 +15,7 @@ extern crate rand;
 
 struct Error;
 
-#[derive(Show)]
+#[derive(Debug)]
 enum Enum {
    A {
      x: Error //~ ERROR

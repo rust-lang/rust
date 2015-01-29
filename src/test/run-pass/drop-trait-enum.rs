@@ -14,7 +14,7 @@
 use std::thread::Thread;
 use std::sync::mpsc::{channel, Sender};
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 enum Message {
     Dropped,
     DestructorRan

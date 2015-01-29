@@ -905,7 +905,7 @@ fn trans_args_under_call_abi<'blk, 'tcx>(
                                                           tuple_expr.id));
             let repr = adt::represent_type(bcx.ccx(), tuple_type);
             let repr_ptr = &*repr;
-            for i in range(0, field_types.len()) {
+            for i in 0..field_types.len() {
                 let arg_datum = tuple_lvalue_datum.get_element(
                     bcx,
                     field_types[i],

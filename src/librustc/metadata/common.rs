@@ -219,7 +219,7 @@ pub const tag_items_data_item_stability: uint = 0x92;
 
 pub const tag_items_data_item_repr: uint = 0x93;
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct LinkMeta {
     pub crate_name: String,
     pub crate_hash: Svh,

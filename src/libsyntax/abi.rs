@@ -15,7 +15,7 @@ pub use self::AbiArchitecture::*;
 
 use std::fmt;
 
-#[derive(Copy, PartialEq, Eq, Show)]
+#[derive(Copy, PartialEq, Eq, Debug)]
 pub enum Os {
     OsWindows,
     OsMacos,
@@ -26,7 +26,7 @@ pub enum Os {
     OsDragonfly,
 }
 
-#[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Show)]
+#[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
 pub enum Abi {
     // NB: This ordering MUST match the AbiDatas array below.
     // (This is ensured by the test indices_are_correct().)
@@ -47,7 +47,7 @@ pub enum Abi {
 }
 
 #[allow(non_camel_case_types)]
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 pub enum Architecture {
     X86,
     X86_64,

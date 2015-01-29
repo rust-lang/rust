@@ -18,7 +18,7 @@
 macro_rules! f { () => (n) }
 
 fn main() -> (){
-    for n in range(0is, 1) {
+    for n in 0is..1 {
         println!("{}", f!()); //~ ERROR unresolved name `n`
     }
 }

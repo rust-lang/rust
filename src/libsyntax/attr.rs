@@ -346,7 +346,7 @@ pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::Me
 }
 
 /// Represents the #[deprecated] and friends attributes.
-#[derive(RustcEncodable,RustcDecodable,Clone,Show)]
+#[derive(RustcEncodable,RustcDecodable,Clone,Debug)]
 pub struct Stability {
     pub level: StabilityLevel,
     pub feature: InternedString,
@@ -358,7 +358,7 @@ pub struct Stability {
 }
 
 /// The available stability levels.
-#[derive(RustcEncodable,RustcDecodable,PartialEq,PartialOrd,Clone,Show,Copy)]
+#[derive(RustcEncodable,RustcDecodable,PartialEq,PartialOrd,Clone,Debug,Copy)]
 pub enum StabilityLevel {
     Unstable,
     Stable,
@@ -570,7 +570,7 @@ fn int_type_of_word(s: &str) -> Option<IntType> {
     }
 }
 
-#[derive(PartialEq, Show, RustcEncodable, RustcDecodable, Copy)]
+#[derive(PartialEq, Debug, RustcEncodable, RustcDecodable, Copy)]
 pub enum ReprAttr {
     ReprAny,
     ReprInt(Span, IntType),
@@ -589,7 +589,7 @@ impl ReprAttr {
     }
 }
 
-#[derive(Eq, Hash, PartialEq, Show, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Eq, Hash, PartialEq, Debug, RustcEncodable, RustcDecodable, Copy)]
 pub enum IntType {
     SignedInt(ast::IntTy),
     UnsignedInt(ast::UintTy)

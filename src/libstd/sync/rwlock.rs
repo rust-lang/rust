@@ -416,11 +416,11 @@ mod tests {
         static M: uint = 1000;
 
         let (tx, rx) = channel::<()>();
-        for _ in range(0, N) {
+        for _ in 0..N {
             let tx = tx.clone();
             Thread::spawn(move|| {
                 let mut rng = rand::thread_rng();
-                for _ in range(0, M) {
+                for _ in 0..M {
                     if rng.gen_weighted_bool(N) {
                         drop(R.write().unwrap());
                     } else {
@@ -488,7 +488,7 @@ mod tests {
 
         Thread::spawn(move|| {
             let mut lock = arc2.write().unwrap();
-            for _ in range(0u, 10) {
+            for _ in 0u..10 {
                 let tmp = *lock;
                 *lock = -1;
                 Thread::yield_now();
@@ -499,7 +499,7 @@ mod tests {
 
         // Readers try to catch the writer in the act
         let mut children = Vec::new();
-        for _ in range(0u, 5) {
+        for _ in 0u..5 {
             let arc3 = arc.clone();
             children.push(Thread::scoped(move|| {
                 let lock = arc3.read().unwrap();

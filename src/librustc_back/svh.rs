@@ -52,7 +52,7 @@ use std::iter::range_step;
 use syntax::ast;
 use syntax::visit;
 
-#[derive(Clone, PartialEq, Show)]
+#[derive(Clone, PartialEq, Debug)]
 pub struct Svh {
     hash: String,
 }

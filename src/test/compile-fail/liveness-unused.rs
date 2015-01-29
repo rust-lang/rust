@@ -11,7 +11,6 @@
 #![deny(unused_variables)]
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types)]
-#![feature(core)]
 #![feature(os)]
 
 fn f1(x: isize) {
@@ -85,7 +84,7 @@ fn f4b() -> isize {
 }
 
 fn f5a() {
-    for x in range(1is, 10) { }
+    for x in 1is..10 { }
     //~^ ERROR unused variable: `x`
 }
 

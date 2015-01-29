@@ -716,7 +716,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Build up the arguments to the call to the rust function.
         // Careful to adapt for cases where the native convention uses
         // a pointer and Rust does not or vice versa.
-        for i in range(0, tys.fn_sig.inputs.len()) {
+        for i in 0..tys.fn_sig.inputs.len() {
             let rust_ty = tys.fn_sig.inputs[i];
             let llrust_ty = tys.llsig.llarg_tys[i];
             let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);

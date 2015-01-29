@@ -22,7 +22,7 @@ pub fn main() {
     let (tx, rx) = channel();
     let n = 100u;
     let mut expected = 0u;
-    let _t = range(0u, n).map(|i| {
+    let _t = (0u..n).map(|i| {
         expected += i;
         let tx = tx.clone();
         Thread::scoped(move|| {
@@ -31,7 +31,7 @@ pub fn main() {
     }).collect::<Vec<_>>();
 
     let mut actual = 0u;
-    for _ in range(0u, n) {
+    for _ in 0u..n {
         let j = rx.recv().unwrap();
         actual += *j;
     }

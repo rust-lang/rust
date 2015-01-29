@@ -102,7 +102,7 @@
 //!    let total = 1_000_000;
 //!    let mut in_circle = 0;
 //!
-//!    for _ in range(0, total) {
+//!    for _ in 0u..total {
 //!        let a = between.ind_sample(&mut rng);
 //!        let b = between.ind_sample(&mut rng);
 //!        if a*a + b*b <= 1. {
@@ -176,7 +176,7 @@
 //! }
 //!
 //! fn free_doors(blocked: &[uint]) -> Vec<uint> {
-//!     range(0, 3).filter(|x| !blocked.contains(x)).collect()
+//!     (0u..3).filter(|x| !blocked.contains(x)).collect()
 //! }
 //!
 //! fn main() {
@@ -190,7 +190,7 @@
 //!     let (mut keep_wins, mut keep_losses) = (0, 0);
 //!
 //!     println!("Running {} simulations...", num_simulations);
-//!     for _ in range(0, num_simulations) {
+//!     for _ in 0..num_simulations {
 //!         let result = simulate(&random_door, &mut rng);
 //!
 //!         match (result.win, result.switch) {
@@ -427,7 +427,7 @@ pub fn random<T: Rand>() -> T {
 /// use std::rand::{thread_rng, sample};
 ///
 /// let mut rng = thread_rng();
-/// let sample = sample(&mut rng, range(1i, 100), 5);
+/// let sample = sample(&mut rng, 1i..100, 5);
 /// println!("{:?}", sample);
 /// ```
 pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
@@ -480,14 +480,14 @@ mod test {
     #[test]
     fn test_gen_range() {
         let mut r = thread_rng();
-        for _ in range(0, 1000) {
+        for _ in 0u..1000 {
             let a = r.gen_range(-3i, 42);
             assert!(a >= -3 && a < 42);
             assert_eq!(r.gen_range(0i, 1), 0);
             assert_eq!(r.gen_range(-12i, -11), -12);
         }
 
-        for _ in range(0, 1000) {
+        for _ in 0u..1000 {
             let a = r.gen_range(10i, 42);
             assert!(a >= 10 && a < 42);
             assert_eq!(r.gen_range(0i, 1), 0);
@@ -601,7 +601,7 @@ mod test {
         let max_val = 100i;
 
         let mut r = thread_rng();
-        let vals = range(min_val, max_val).collect::<Vec<int>>();
+        let vals = (min_val..max_val).collect::<Vec<int>>();
         let small_sample = sample(&mut r, vals.iter(), 5);
         let large_sample = sample(&mut r, vals.iter(), vals.len() + 5);
 
@@ -652,7 +652,7 @@ mod bench {
     fn rand_xorshift(b: &mut Bencher) {
         let mut rng: XorShiftRng = OsRng::new().unwrap().gen();
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in 0..RAND_BENCH_N {
                 rng.gen::<uint>();
             }
         });
@@ -663,7 +663,7 @@ mod bench {
     fn rand_isaac(b: &mut Bencher) {
         let mut rng: IsaacRng = OsRng::new().unwrap().gen();
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in 0..RAND_BENCH_N {
                 rng.gen::<uint>();
             }
         });
@@ -674,7 +674,7 @@ mod bench {
     fn rand_isaac64(b: &mut Bencher) {
         let mut rng: Isaac64Rng = OsRng::new().unwrap().gen();
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in 0..RAND_BENCH_N {
                 rng.gen::<uint>();
             }
         });
@@ -685,7 +685,7 @@ mod bench {
     fn rand_std(b: &mut Bencher) {
         let mut rng = StdRng::new().unwrap();
         b.iter(|| {
-            for _ in range(0, RAND_BENCH_N) {
+            for _ in 0..RAND_BENCH_N {
                 rng.gen::<uint>();
             }
         });

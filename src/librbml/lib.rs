@@ -77,7 +77,7 @@ pub struct TaggedDoc<'a> {
     pub doc: Doc<'a>,
 }
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum EbmlEncoderTag {
     EsUint,     // 0
     EsU64,      // 1
@@ -111,7 +111,7 @@ pub enum EbmlEncoderTag {
     EsLabel, // Used only when debugging
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum Error {
     IntTooBig(uint),
     Expected(String),
@@ -1184,7 +1184,7 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_aligned(b: &mut Bencher) {
-        let data = range(0, 4*100).map(|i| {
+        let data = (0i32..4*100).map(|i| {
             match i % 2 {
               0 => 0x80u8,
               _ => i as u8,
@@ -1202,7 +1202,7 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_A_unaligned(b: &mut Bencher) {
-        let data = range(0, 4*100+1).map(|i| {
+        let data = (0i32..4*100+1).map(|i| {
             match i % 2 {
               1 => 0x80u8,
               _ => i as u8
@@ -1220,7 +1220,7 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_aligned(b: &mut Bencher) {
-        let data = range(0, 4*100).map(|i| {
+        let data = (0i32..4*100).map(|i| {
             match i % 4 {
               0 => 0x10u8,
               3 => i as u8,
@@ -1239,7 +1239,7 @@ mod bench {
 
     #[bench]
     pub fn vuint_at_D_unaligned(b: &mut Bencher) {
-        let data = range(0, 4*100+1).map(|i| {
+        let data = (0i32..4*100+1).map(|i| {
             match i % 4 {
               1 => 0x10u8,
               0 => i as u8,

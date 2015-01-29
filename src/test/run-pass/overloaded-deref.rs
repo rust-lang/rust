@@ -15,7 +15,7 @@ use std::cell::RefCell;
 use std::rc::Rc;
 use std::string::String;
 
-#[derive(PartialEq, Show)]
+#[derive(PartialEq, Debug)]
 struct Point {
     x: int,
     y: int

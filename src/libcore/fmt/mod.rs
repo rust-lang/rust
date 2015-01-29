@@ -16,7 +16,7 @@
 use any;
 use cell::{Cell, RefCell, Ref, RefMut};
 use char::CharExt;
-use iter::{Iterator, IteratorExt, range};
+use iter::{Iterator, IteratorExt};
 use marker::{Copy, Sized};
 use mem;
 use option::Option;
@@ -31,9 +31,6 @@ use str::{self, StrExt};
 pub use self::num::radix;
 pub use self::num::Radix;
 pub use self::num::RadixFmt;
-
-#[cfg(stage0)] pub use self::Debug as Show;
-#[cfg(stage0)] pub use self::Display as String;
 
 mod num;
 mod float;
@@ -51,7 +48,7 @@ pub type Result = result::Result<(), Error>;
 /// some other means.
 #[unstable(feature = "core",
            reason = "core and I/O reconciliation may alter this definition")]
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub struct Error;
 
 /// A collection of methods that are required to format a message into a stream.
@@ -243,7 +240,6 @@ impl<'a> Display for Arguments<'a> {
 #[unstable(feature = "core",
            reason = "I/O and core have yet to be reconciled")]
 #[deprecated(since = "1.0.0", reason = "renamed to Debug")]
-#[cfg(not(stage0))]
 pub trait Show {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -261,7 +257,6 @@ pub trait Debug {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
-#[cfg(not(stage0))]
 impl<T: Show + ?Sized> Debug for T {
     #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter) -> Result { Show::fmt(self, f) }
@@ -271,7 +266,6 @@ impl<T: Show + ?Sized> Debug for T {
 /// used. It corresponds to the default format, `{}`.
 #[unstable(feature = "core")]
 #[deprecated(since = "1.0.0", reason = "renamed to Display")]
-#[cfg(not(stage0))]
 pub trait String {
     /// Formats the value using the given formatter.
     fn fmt(&self, &mut Formatter) -> Result;
@@ -288,7 +282,6 @@ pub trait Display {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
-#[cfg(not(stage0))]
 impl<T: String + ?Sized> Display for T {
     #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter) -> Result { String::fmt(self, f) }
@@ -596,13 +589,13 @@ impl<'a> Formatter<'a> {
         let len = self.fill.encode_utf8(&mut fill).unwrap_or(0);
         let fill = unsafe { str::from_utf8_unchecked(&fill[..len]) };
 
-        for _ in range(0, pre_pad) {
+        for _ in 0..pre_pad {
             try!(self.buf.write_str(fill));
         }
 
         try!(f(self));
 
-        for _ in range(0, post_pad) {
+        for _ in 0..post_pad {
             try!(self.buf.write_str(fill));
         }
 

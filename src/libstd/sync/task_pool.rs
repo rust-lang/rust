@@ -66,7 +66,7 @@ impl<'a> Drop for Sentinel<'a> {
 /// let pool = TaskPool::new(4u);
 ///
 /// let (tx, rx) = channel();
-/// for _ in range(0, 8u) {
+/// for _ in 0..8u {
 ///     let tx = tx.clone();
 ///     pool.execute(move|| {
 ///         tx.send(1u).unwrap();
@@ -96,7 +96,7 @@ impl TaskPool {
         let rx = Arc::new(Mutex::new(rx));
 
         // Threadpool threads
-        for _ in range(0, threads) {
+        for _ in 0..threads {
             spawn_in_pool(rx.clone());
         }
 
@@ -151,7 +151,7 @@ mod test {
         let pool = TaskPool::new(TEST_TASKS);
 
         let (tx, rx) = channel();
-        for _ in range(0, TEST_TASKS) {
+        for _ in 0..TEST_TASKS {
             let tx = tx.clone();
             pool.execute(move|| {
                 tx.send(1u).unwrap();
@@ -174,13 +174,13 @@ mod test {
         let pool = TaskPool::new(TEST_TASKS);
 
         // Panic all the existing threads.
-        for _ in range(0, TEST_TASKS) {
+        for _ in 0..TEST_TASKS {
             pool.execute(move|| -> () { panic!() });
         }
 
         // Ensure new threads were spawned to compensate.
         let (tx, rx) = channel();
-        for _ in range(0, TEST_TASKS) {
+        for _ in 0..TEST_TASKS {
             let tx = tx.clone();
             pool.execute(move|| {
                 tx.send(1u).unwrap();
@@ -198,7 +198,7 @@ mod test {
         let waiter = Arc::new(Barrier::new(TEST_TASKS + 1));
 
         // Panic all the existing threads in a bit.
-        for _ in range(0, TEST_TASKS) {
+        for _ in 0..TEST_TASKS {
             let waiter = waiter.clone();
             pool.execute(move|| {
                 waiter.wait();

@@ -105,7 +105,7 @@ struct Buffer<T> {
     size: uint,
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub enum Failure {
     Empty,
     Disconnected,
@@ -150,7 +150,7 @@ impl<T: Send> Packet<T> {
                     tail: ptr::null_mut(),
                 },
                 buf: Buffer {
-                    buf: range(0, cap + if cap == 0 {1} else {0}).map(|_| None).collect(),
+                    buf: (0..cap + if cap == 0 {1} else {0}).map(|_| None).collect(),
                     start: 0,
                     size: 0,
                 },

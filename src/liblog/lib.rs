@@ -243,7 +243,7 @@ struct DefaultLogger {
 }
 
 /// Wraps the log level with fmt implementations.
-#[derive(Copy, PartialEq, PartialOrd, Show)]
+#[derive(Copy, PartialEq, PartialOrd, Debug)]
 pub struct LogLevel(pub u32);
 
 impl fmt::Display for LogLevel {
@@ -330,7 +330,7 @@ pub fn set_logger(logger: Box<Logger + Send>) -> Option<Box<Logger + Send>> {
 
 /// A LogRecord is created by the logging macros, and passed as the only
 /// argument to Loggers.
-#[derive(Show)]
+#[derive(Debug)]
 pub struct LogRecord<'a> {
 
     /// The module path of where the LogRecord originated.

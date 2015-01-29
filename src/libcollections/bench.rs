@@ -24,7 +24,7 @@ pub fn insert_rand_n<M, I, R>(n: uint,
     // setup
     let mut rng = rand::weak_rng();
 
-    for _ in range(0, n) {
+    for _ in 0..n {
         insert(map, rng.gen::<uint>() % n);
     }
 
@@ -46,7 +46,7 @@ pub fn insert_seq_n<M, I, R>(n: uint,
     R: FnMut(&mut M, uint),
 {
     // setup
-    for i in range(0u, n) {
+    for i in 0u..n {
         insert(map, i * 2);
     }
 
@@ -70,7 +70,7 @@ pub fn find_rand_n<M, T, I, F>(n: uint,
 {
     // setup
     let mut rng = rand::weak_rng();
-    let mut keys = range(0, n).map(|_| rng.gen::<uint>() % n)
+    let mut keys = (0..n).map(|_| rng.gen::<uint>() % n)
                               .collect::<Vec<_>>();
 
     for k in keys.iter() {
@@ -97,7 +97,7 @@ pub fn find_seq_n<M, T, I, F>(n: uint,
     F: FnMut(&M, uint) -> T,
 {
     // setup
-    for i in range(0u, n) {
+    for i in 0u..n {
         insert(map, i);
     }
 

@@ -9,4 +9,4 @@
 // except according to those terms.
 
 /// hi
-#[derive(Show)] //~ERROR expected item after attributes
+#[derive(Debug)] //~ERROR expected item after attributes

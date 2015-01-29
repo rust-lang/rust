@@ -28,7 +28,7 @@ use syntax::visit;
 use syntax::print::{pp, pprust};
 use util::nodemap::NodeMap;
 
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 pub enum EntryOrExit {
     Entry,
     Exit,
@@ -352,7 +352,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
                 let base_index = word_index * uint::BITS;
-                for offset in range(0u, uint::BITS) {
+                for offset in 0u..uint::BITS {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits
@@ -552,7 +552,7 @@ fn bits_to_string(words: &[uint]) -> String {
 
     for &word in words.iter() {
         let mut v = word;
-        for _ in range(0u, uint::BYTES) {
+        for _ in 0u..uint::BYTES {
             result.push(sep);
             result.push_str(&format!("{:02x}", v & 0xFF)[]);
             v >>= 8;

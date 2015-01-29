@@ -33,7 +33,7 @@ pub mod pipes {
         payload: Option<T>
     }
 
-    #[derive(PartialEq, Show)]
+    #[derive(PartialEq, Debug)]
     #[repr(int)]
     pub enum state {
         empty,

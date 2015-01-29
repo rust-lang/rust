@@ -948,7 +948,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            derefd_ty.repr(rcx.tcx()));
 
     let r_deref_expr = ty::ReScope(CodeExtent::from_node_id(deref_expr.id));
-    for i in range(0u, derefs) {
+    for i in 0u..derefs {
         let method_call = MethodCall::autoderef(deref_expr.id, i);
         debug!("constrain_autoderefs: method_call={:?} (of {:?} total)", method_call, derefs);
 

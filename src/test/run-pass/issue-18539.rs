@@ -19,5 +19,5 @@ fn uint_to_foo(_: uint) -> Foo {
 
 #[allow(unused_must_use)]
 fn main() {
-    range(0u, 10).map(uint_to_foo);
+    (0u..10).map(uint_to_foo);
 }

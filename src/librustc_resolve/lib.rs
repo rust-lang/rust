@@ -127,7 +127,7 @@ enum PatternBindingMode {
     ArgumentIrrefutableMode,
 }
 
-#[derive(Copy, PartialEq, Eq, Hash, Show)]
+#[derive(Copy, PartialEq, Eq, Hash, Debug)]
 enum Namespace {
     TypeNS,
     ValueNS
@@ -193,7 +193,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Resolver<'a, 'tcx> {
 }
 
 /// Contains data for specific types of import directives.
-#[derive(Copy,Show)]
+#[derive(Copy,Debug)]
 enum ImportDirectiveSubclass {
     SingleImport(Name /* target */, Name /* source */),
     GlobImport
@@ -242,7 +242,7 @@ enum TypeParameters<'a> {
 
 // The rib kind controls the translation of local
 // definitions (`DefLocal`) to upvars (`DefUpvar`).
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 enum RibKind {
     // No translation needs to be applied.
     NormalRibKind,
@@ -266,7 +266,7 @@ enum RibKind {
 }
 
 // Methods can be required or provided. RequiredMethod methods only occur in traits.
-#[derive(Copy, Show)]
+#[derive(Copy, Debug)]
 enum MethodSort {
     RequiredMethod,
     ProvidedMethod(NodeId)
@@ -301,7 +301,7 @@ enum BareIdentifierPatternResolution {
 }
 
 /// One local scope.
-#[derive(Show)]
+#[derive(Debug)]
 struct Rib {
     bindings: HashMap<Name, DefLike>,
     kind: RibKind,
@@ -317,14 +317,14 @@ impl Rib {
 }
 
 /// Whether an import can be shadowed by another import.
-#[derive(Show,PartialEq,Clone,Copy)]
+#[derive(Debug,PartialEq,Clone,Copy)]
 enum Shadowable {
     Always,
     Never
 }
 
 /// One import directive.
-#[derive(Show)]
+#[derive(Debug)]
 struct ImportDirective {
     module_path: Vec<Name>,
     subclass: ImportDirectiveSubclass,
@@ -354,7 +354,7 @@ impl ImportDirective {
 }
 
 /// The item that an import resolves to.
-#[derive(Clone,Show)]
+#[derive(Clone,Debug)]
 struct Target {
     target_module: Rc<Module>,
     bindings: Rc<NameBindings>,
@@ -375,7 +375,7 @@ impl Target {
 }
 
 /// An ImportResolution represents a particular `use` directive.
-#[derive(Show)]
+#[derive(Debug)]
 struct ImportResolution {
     /// Whether this resolution came from a `use` or a `pub use`. Note that this
     /// should *not* be used whenever resolution is being performed, this is
@@ -455,7 +455,7 @@ impl ImportResolution {
 }
 
 /// The link from a module up to its nearest parent node.
-#[derive(Clone,Show)]
+#[derive(Clone,Debug)]
 enum ParentLink {
     NoParentLink,
     ModuleParentLink(Weak<Module>, Name),
@@ -463,7 +463,7 @@ enum ParentLink {
 }
 
 /// The type of module this is.
-#[derive(Copy, PartialEq, Show)]
+#[derive(Copy, PartialEq, Debug)]
 enum ModuleKind {
     NormalModuleKind,
     TraitModuleKind,
@@ -556,7 +556,7 @@ impl fmt::Debug for Module {
 }
 
 bitflags! {
-    #[derive(Show)]
+    #[derive(Debug)]
     flags DefModifiers: u8 {
         const PUBLIC            = 0b0000_0001,
         const IMPORTABLE        = 0b0000_0010,
@@ -564,7 +564,7 @@ bitflags! {
 }
 
 // Records a possibly-private type definition.
-#[derive(Clone,Show)]
+#[derive(Clone,Debug)]
 struct TypeNsDef {
     modifiers: DefModifiers, // see note in ImportResolution about how to use this
     module_def: Option<Rc<Module>>,
@@ -573,7 +573,7 @@ struct TypeNsDef {
 }
 
 // Records a possibly-private value definition.
-#[derive(Clone, Copy, Show)]
+#[derive(Clone, Copy, Debug)]
 struct ValueNsDef {
     modifiers: DefModifiers, // see note in ImportResolution about how to use this
     def: Def,
@@ -582,7 +582,7 @@ struct ValueNsDef {
 
 // Records the definitions (at most one for each namespace) that a name is
 // bound to.
-#[derive(Show)]
+#[derive(Debug)]
 struct NameBindings {
     type_def: RefCell<Option<TypeNsDef>>,   //< Meaning in type namespace.
     value_def: RefCell<Option<ValueNsDef>>, //< Meaning in value namespace.

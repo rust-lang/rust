@@ -235,7 +235,7 @@ unsafe extern "system" fn on_tls_callback(h: LPVOID,
 
 unsafe fn run_dtors() {
     let mut any_run = true;
-    for _ in range(0, 5i) {
+    for _ in 0..5i {
         if !any_run { break }
         any_run = false;
         let dtors = {

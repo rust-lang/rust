@@ -195,7 +195,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                     let mut ty = ety;
                     // Save the last autoderef in case we can avoid it.
                     if adj.autoderefs > 0 {
-                        for _ in range(0, adj.autoderefs-1) {
+                        for _ in 0..adj.autoderefs-1 {
                             let (dv, dt) = const_deref(cx, llconst, ty, false);
                             llconst = dv;
                             ty = dt;

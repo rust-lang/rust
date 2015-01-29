@@ -125,7 +125,7 @@ impl<T> ToOwned<T> for T where T: Clone {
 /// use std::borrow::Cow;
 ///
 /// fn abs_all(input: &mut Cow<Vec<int>, [int]>) {
-///     for i in range(0, input.len()) {
+///     for i in 0..input.len() {
 ///         let v = input[i];
 ///         if v < 0 {
 ///             // clones into a vector the first time (if not already owned)

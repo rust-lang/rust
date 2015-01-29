@@ -89,7 +89,7 @@ impl DefaultResizePolicy {
 fn test_resize_policy() {
     use prelude::v1::*;
     let rp = DefaultResizePolicy;
-    for n in range(0u, 1000) {
+    for n in 0u..1000 {
         assert!(rp.min_capacity(rp.usable_capacity(n)) <= n);
         assert!(rp.usable_capacity(rp.min_capacity(n)) <= n);
     }
@@ -1681,24 +1681,24 @@ mod test_map {
             let mut m = HashMap::new();
 
             DROP_VECTOR.with(|v| {
-                for i in range(0u, 200) {
+                for i in 0u..200 {
                     assert_eq!(v.borrow()[i], 0);
                 }
             });
 
-            for i in range(0u, 100) {
+            for i in 0u..100 {
                 let d1 = Dropable::new(i);
                 let d2 = Dropable::new(i+100);
                 m.insert(d1, d2);
             }
 
             DROP_VECTOR.with(|v| {
-                for i in range(0u, 200) {
+                for i in 0u..200 {
                     assert_eq!(v.borrow()[i], 1);
                 }
             });
 
-            for i in range(0u, 50) {
+            for i in 0u..50 {
                 let k = Dropable::new(i);
                 let v = m.remove(&k);
 
@@ -1711,12 +1711,12 @@ mod test_map {
             }
 
             DROP_VECTOR.with(|v| {
-                for i in range(0u, 50) {
+                for i in 0u..50 {
                     assert_eq!(v.borrow()[i], 0);
                     assert_eq!(v.borrow()[i+100], 0);
                 }
 
-                for i in range(50u, 100) {
+                for i in 50u..100 {
                     assert_eq!(v.borrow()[i], 1);
                     assert_eq!(v.borrow()[i+100], 1);
                 }
@@ -1724,7 +1724,7 @@ mod test_map {
         }
 
         DROP_VECTOR.with(|v| {
-            for i in range(0u, 200) {
+            for i in 0u..200 {
                 assert_eq!(v.borrow()[i], 0);
             }
         });
@@ -1740,19 +1740,19 @@ mod test_map {
             let mut hm = HashMap::new();
 
             DROP_VECTOR.with(|v| {
-                for i in range(0u, 200) {
+                for i in 0u..200 {
                     assert_eq!(v.borrow()[i], 0);
                 }
             });
 
-            for i in range(0u, 100) {
+            for i in 0u..100 {
                 let d1 = Dropable::new(i);
                 let d2 = Dropable::new(i+100);
                 hm.insert(d1, d2);
             }
 
             DROP_VECTOR.with(|v| {
-                for i in range(0u, 200) {
+                for i in 0u..200 {
                     assert_eq!(v.borrow()[i], 1);
                 }
             });
@@ -1767,7 +1767,7 @@ mod test_map {
             let mut half = hm.into_iter().take(50);
 
             DROP_VECTOR.with(|v| {
-                for i in range(0u, 200) {
+                for i in 0u..200 {
                     assert_eq!(v.borrow()[i], 1);
                 }
             });
@@ -1775,11 +1775,11 @@ mod test_map {
             for _ in half {}
 
             DROP_VECTOR.with(|v| {
-                let nk = range(0u, 100).filter(|&i| {
+                let nk = (0u..100).filter(|&i| {
                     v.borrow()[i] == 1
                 }).count();
 
-                let nv = range(0u, 100).filter(|&i| {
+                let nv = (0u..100).filter(|&i| {
                     v.borrow()[i+100] == 1
                 }).count();
 
@@ -1789,7 +1789,7 @@ mod test_map {
         };
 
         DROP_VECTOR.with(|v| {
-            for i in range(0u, 200) {
+            for i in 0u..200 {
                 assert_eq!(v.borrow()[i], 0);
             }
         });
@@ -1807,7 +1807,7 @@ mod test_map {
 
         // Try this a few times to make sure we never screw up the hashmap's
         // internal state.
-        for _ in range(0i, 10) {
+        for _ in 0i..10 {
             assert!(m.is_empty());
 
             for i in range_inclusive(1i, 1000) {
@@ -1934,7 +1934,7 @@ mod test_map {
     #[test]
     fn test_iterate() {
         let mut m = HashMap::with_capacity(4);
-        for i in range(0u, 32) {
+        for i in 0u..32 {
             assert!(m.insert(i, i*2).is_none());
         }
         assert_eq!(m.len(), 32);
@@ -2050,7 +2050,7 @@ mod test_map {
         assert_eq!(cap, initial_cap * 2);
 
         let mut i = 0u;
-        for _ in range(0, cap * 3 / 4) {
+        for _ in 0..cap * 3 / 4 {
             m.insert(i, i);
             i += 1;
         }
@@ -2059,7 +2059,7 @@ mod test_map {
         assert_eq!(m.len(), i);
         assert_eq!(m.table.capacity(), cap);
 
-        for _ in range(0, cap / 4) {
+        for _ in 0..cap / 4 {
             m.insert(i, i);
             i += 1;
         }
@@ -2068,7 +2068,7 @@ mod test_map {
         let new_cap = m.table.capacity();
         assert_eq!(new_cap, cap * 2);
 
-        for _ in range(0, cap / 2 - 1) {
+        for _ in 0..cap / 2 - 1 {
             i -= 1;
             m.remove(&i);
             assert_eq!(m.table.capacity(), new_cap);
@@ -2077,7 +2077,7 @@ mod test_map {
         m.shrink_to_fit();
         assert_eq!(m.table.capacity(), cap);
         // again, a little more than half full
-        for _ in range(0, cap / 2 - 1) {
+        for _ in 0..cap / 2 - 1 {
             i -= 1;
             m.remove(&i);
         }
@@ -2094,18 +2094,18 @@ mod test_map {
         m.insert(0u, 0u);
         m.remove(&0);
         assert!(m.capacity() >= m.len());
-        for i in range(0, 128) {
+        for i in 0us..128 {
             m.insert(i, i);
         }
         m.reserve(256);
 
         let usable_cap = m.capacity();
-        for i in range(128, 128+256) {
+        for i in 128us..128+256 {
             m.insert(i, i);
             assert_eq!(m.capacity(), usable_cap);
         }
 
-        for i in range(100, 128+256) {
+        for i in 100us..128+256 {
             assert_eq!(m.remove(&i), Some(i));
         }
         m.shrink_to_fit();
@@ -2114,7 +2114,7 @@ mod test_map {
         assert!(!m.is_empty());
         assert!(m.capacity() >= m.len());
 
-        for i in range(0, 100) {
+        for i in 0us..100 {
             assert_eq!(m.remove(&i), Some(i));
         }
         m.shrink_to_fit();
@@ -2277,12 +2277,12 @@ mod test_map {
         let mut rng = weak_rng();
 
         // Populate the map with some items.
-        for _ in range(0u, 50) {
+        for _ in 0u..50 {
             let x = rng.gen_range(-10, 10);
             m.insert(x, ());
         }
 
-        for i in range(0u, 1000) {
+        for i in 0u..1000 {
             let x = rng.gen_range(-10, 10);
             match m.entry(x) {
                 Vacant(_) => {},

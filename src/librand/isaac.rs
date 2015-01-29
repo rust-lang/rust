@@ -82,7 +82,7 @@ impl IsaacRng {
             }}
         }
 
-        for _ in range(0u, 4) {
+        for _ in 0u..4 {
             mix!();
         }
 
@@ -323,14 +323,14 @@ impl Isaac64Rng {
             }}
         }
 
-        for _ in range(0u, 4) {
+        for _ in 0u..4 {
             mix!();
         }
 
         if use_rsl {
             macro_rules! memloop {
                 ($arr:expr) => {{
-                    for i in range(0, RAND_SIZE_64 / 8).map(|i| i * 8) {
+                    for i in (0..RAND_SIZE_64 / 8).map(|i| i * 8) {
                         a+=$arr[i  ]; b+=$arr[i+1];
                         c+=$arr[i+2]; d+=$arr[i+3];
                         e+=$arr[i+4]; f+=$arr[i+5];
@@ -347,7 +347,7 @@ impl Isaac64Rng {
             memloop!(self.rsl);
             memloop!(self.mem);
         } else {
-            for i in range(0, RAND_SIZE_64 / 8).map(|i| i * 8) {
+            for i in (0..RAND_SIZE_64 / 8).map(|i| i * 8) {
                 mix!();
                 self.mem[i  ]=a; self.mem[i+1]=b;
                 self.mem[i+2]=c; self.mem[i+3]=d;
@@ -374,7 +374,7 @@ impl Isaac64Rng {
         }
 
         for &(mr_offset, m2_offset) in MP_VEC.iter() {
-            for base in range(0, MIDPOINT / 4).map(|i| i * 4) {
+            for base in (0..MIDPOINT / 4).map(|i| i * 4) {
 
                 macro_rules! rngstepp {
                     ($j:expr, $shift:expr) => {{
@@ -573,7 +573,7 @@ mod test {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: IsaacRng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = range(0, 10).map(|_| ra.next_u32()).collect::<Vec<_>>();
+        let v = (0..10).map(|_| ra.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(2558573138, 873787463, 263499565, 2103644246, 3595684709,
                         4203127393, 264982119, 2765226902, 2737944514, 3900253796));
@@ -581,9 +581,9 @@ mod test {
         let seed: &[_] = &[12345, 67890, 54321, 9876];
         let mut rb: IsaacRng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0u, 10000) { rb.next_u32(); }
+        for _ in 0u..10000 { rb.next_u32(); }
 
-        let v = range(0, 10).map(|_| rb.next_u32()).collect::<Vec<_>>();
+        let v = (0..10).map(|_| rb.next_u32()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(3676831399, 3183332890, 2834741178, 3854698763, 2717568474,
                         1576568959, 3507990155, 179069555, 141456972, 2478885421));
@@ -593,7 +593,7 @@ mod test {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut ra: Isaac64Rng = SeedableRng::from_seed(seed);
         // Regression test that isaac is actually using the above vector
-        let v = range(0, 10).map(|_| ra.next_u64()).collect::<Vec<_>>();
+        let v = (0..10).map(|_| ra.next_u64()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(547121783600835980, 14377643087320773276, 17351601304698403469,
                         1238879483818134882, 11952566807690396487, 13970131091560099343,
@@ -603,9 +603,9 @@ mod test {
         let seed: &[_] = &[12345, 67890, 54321, 9876];
         let mut rb: Isaac64Rng = SeedableRng::from_seed(seed);
         // skip forward to the 10000th number
-        for _ in range(0u, 10000) { rb.next_u64(); }
+        for _ in 0u..10000 { rb.next_u64(); }
 
-        let v = range(0, 10).map(|_| rb.next_u64()).collect::<Vec<_>>();
+        let v = (0..10).map(|_| rb.next_u64()).collect::<Vec<_>>();
         assert_eq!(v,
                    vec!(18143823860592706164, 8491801882678285927, 2699425367717515619,
                         17196852593171130876, 2606123525235546165, 15790932315217671084,
@@ -618,7 +618,7 @@ mod test {
         let seed: &[_] = &[1, 23, 456, 7890, 12345];
         let mut rng: Isaac64Rng = SeedableRng::from_seed(seed);
         let mut clone = rng.clone();
-        for _ in range(0u, 16) {
+        for _ in 0u..16 {
             assert_eq!(rng.next_u64(), clone.next_u64());
         }
     }

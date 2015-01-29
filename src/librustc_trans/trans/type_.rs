@@ -27,7 +27,7 @@ use std::iter::repeat;
 
 use libc::c_uint;
 
-#[derive(Clone, Copy, PartialEq, Show)]
+#[derive(Clone, Copy, PartialEq, Debug)]
 #[repr(C)]
 pub struct Type {
     rf: TypeRef

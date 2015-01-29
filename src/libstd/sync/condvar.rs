@@ -392,7 +392,7 @@ mod tests {
 
         let data = Arc::new((Mutex::new(0), Condvar::new()));
         let (tx, rx) = channel();
-        for _ in range(0, N) {
+        for _ in 0..N {
             let data = data.clone();
             let tx = tx.clone();
             Thread::spawn(move|| {
@@ -417,7 +417,7 @@ mod tests {
         cond.notify_all();
         drop(cnt);
 
-        for _ in range(0, N) {
+        for _ in 0..N {
             rx.recv().unwrap();
         }
     }

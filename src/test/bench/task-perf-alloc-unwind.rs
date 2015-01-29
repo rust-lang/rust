@@ -30,7 +30,7 @@ fn main() {
 }
 
 fn run(repeat: int, depth: int) {
-    for _ in range(0, repeat) {
+    for _ in 0..repeat {
         let dur = Duration::span(|| {
             let _ = Thread::scoped(move|| {
                 recurse_or_panic(depth, None)

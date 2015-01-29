@@ -1500,7 +1500,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
                item: &clean::Item, items: &[clean::Item]) -> fmt::Result {
     try!(document(w, item));
 
-    let mut indices = range(0, items.len()).filter(|i| {
+    let mut indices = (0..items.len()).filter(|i| {
         !cx.ignore_private_item(&items[*i])
     }).collect::<Vec<uint>>();
 
@@ -2251,7 +2251,7 @@ impl<'a> fmt::Display for Source<'a> {
             tmp /= 10;
         }
         try!(write!(fmt, "<pre class=\"line-numbers\">"));
-        for i in range(1, lines + 1) {
+        for i in 1..lines + 1 {
             try!(write!(fmt, "<span id=\"{0}\">{0:1$}</span>\n", i, cols));
         }
         try!(write!(fmt, "</pre>"));

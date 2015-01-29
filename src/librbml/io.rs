@@ -189,7 +189,7 @@ mod tests {
         b.bytes = (times * len) as u64;
         b.iter(|| {
             let mut wr = SeekableMemWriter::new();
-            for _ in range(0, times) {
+            for _ in 0..times {
                 wr.write(src.as_slice()).unwrap();
             }
 

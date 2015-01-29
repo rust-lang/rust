@@ -72,7 +72,7 @@ impl Module {
     }
 }
 
-#[derive(Show, Clone, RustcEncodable, RustcDecodable, Copy)]
+#[derive(Debug, Clone, RustcEncodable, RustcDecodable, Copy)]
 pub enum StructType {
     /// A normal struct
     Plain,
@@ -145,7 +145,7 @@ pub struct Typedef {
     pub stab: Option<attr::Stability>,
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct Static {
     pub type_: P<ast::Ty>,
     pub mutability: ast::Mutability,

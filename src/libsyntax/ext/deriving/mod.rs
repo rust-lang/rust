@@ -107,8 +107,14 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
 
                             "Rand" => expand!(rand::expand_deriving_rand),
 
-                            // NOTE(stage0): remove "Show"
-                            "Show" => expand!(show::expand_deriving_show),
+                            "Show" => {
+                                cx.span_warn(titem.span,
+                                             "derive(Show) is deprecated \
+                                              in favor of derive(Debug)");
+
+                                expand!(show::expand_deriving_show)
+                            },
+
                             "Debug" => expand!(show::expand_deriving_show),
 
                             "Default" => expand!(default::expand_deriving_default),

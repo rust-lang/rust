@@ -461,7 +461,7 @@ impl<T:Decodable> Decodable for Vec<T> {
     fn decode<D: Decoder>(d: &mut D) -> Result<Vec<T>, D::Error> {
         d.read_seq(|d, len| {
             let mut v = Vec::with_capacity(len);
-            for i in range(0, len) {
+            for i in 0..len {
                 v.push(try!(d.read_seq_elt(i, |d| Decodable::decode(d))));
             }
             Ok(v)
@@ -641,7 +641,7 @@ impl<D: Decoder> DecoderHelpers for D {
     {
         self.read_seq(|this, len| {
             let mut v = Vec::with_capacity(len);
-            for i in range(0, len) {
+            for i in 0..len {
                 v.push(try!(this.read_seq_elt(i, |this| f(this))));
             }
             Ok(v)

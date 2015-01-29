@@ -63,7 +63,7 @@ macro_rules! svec {
     })
 }
 
-#[derive(Copy,Show)]
+#[derive(Copy,Debug)]
 pub enum Row {
     Variable,
     Enum,

@@ -62,7 +62,7 @@ fn after_break() {
 }
 
 fn after_continue() {
-    for _ in range(0, 10i32) {
+    for _ in 0..10i32 {
         break;
         let x = "0";
         let (ref y,z) = (1i32, 2u32);

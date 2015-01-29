@@ -36,7 +36,7 @@ pub enum ObjectSafetyViolation<'tcx> {
 }
 
 /// Reasons a method might not be object-safe.
-#[derive(Copy,Clone,Show)]
+#[derive(Copy,Clone,Debug)]
 pub enum MethodViolationCode {
     /// e.g., `fn(self)`
     ByValueSelf,

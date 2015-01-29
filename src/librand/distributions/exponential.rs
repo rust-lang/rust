@@ -103,7 +103,7 @@ mod test {
     fn test_exp() {
         let mut exp = Exp::new(10.0);
         let mut rng = ::test::rng();
-        for _ in range(0u, 1000) {
+        for _ in 0u..1000 {
             assert!(exp.sample(&mut rng) >= 0.0);
             assert!(exp.ind_sample(&mut rng) >= 0.0);
         }
@@ -137,7 +137,7 @@ mod bench {
         let mut exp = Exp::new(2.71828 * 3.14159);
 
         b.iter(|| {
-            for _ in range(0, ::RAND_BENCH_N) {
+            for _ in 0..::RAND_BENCH_N {
                 exp.sample(&mut rng);
             }
         });

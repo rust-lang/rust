@@ -1871,13 +1871,13 @@ impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
 
     fn anon_regions(&self, span: Span, count: uint)
                     -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>> {
-        Ok(range(0, count).map(|_| {
+        Ok((0..count).map(|_| {
             self.infcx().next_region_var(infer::MiscVariable(span))
         }).collect())
     }
 }
 
-#[derive(Copy, Show, PartialEq, Eq)]
+#[derive(Copy, Debug, PartialEq, Eq)]
 pub enum LvaluePreference {
     PreferMutLvalue,
     NoPreference
@@ -1903,7 +1903,7 @@ pub fn autoderef<'a, 'tcx, T, F>(fcx: &FnCtxt<'a, 'tcx>,
            lvalue_pref);
 
     let mut t = base_ty;
-    for autoderefs in range(0, fcx.tcx().sess.recursion_limit.get()) {
+    for autoderefs in 0..fcx.tcx().sess.recursion_limit.get() {
         let resolved_t = structurally_resolved_type(fcx, sp, t);
 
         if ty::type_is_error(resolved_t) {
@@ -2473,7 +2473,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 // FIXME(#17596) Ty<'tcx> is incorrectly invariant w.r.t 'tcx.
 fn err_args<'tcx>(tcx: &ty::ctxt<'tcx>, len: uint) -> Vec<Ty<'tcx>> {
-    range(0, len).map(|_| tcx.types.err).collect()
+    (0..len).map(|_| tcx.types.err).collect()
 }
 
 fn write_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -5107,7 +5107,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // that the *default* type are expressed in terms of all prior
         // parameters, so we have to substitute as we go with the
         // partial substitution that we have built up.
-        for i in range(provided_len, desired.len()) {
+        for i in provided_len..desired.len() {
             let default = desired[i].default.unwrap();
             let default = default.subst_spanned(fcx.tcx(), substs, Some(span));
             substs.types.push(space, default);

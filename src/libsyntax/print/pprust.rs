@@ -2457,7 +2457,7 @@ impl<'a> State<'a> {
         try!(word(&mut self.s, "<"));
 
         let mut ints = Vec::new();
-        for i in range(0us, total) {
+        for i in 0us..total {
             ints.push(i);
         }
 

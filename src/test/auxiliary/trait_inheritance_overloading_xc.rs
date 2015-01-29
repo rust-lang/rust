@@ -14,7 +14,7 @@ use std::ops::{Add, Sub, Mul};
 pub trait MyNum : Add<Output=Self> + Sub<Output=Self> + Mul<Output=Self> + PartialEq + Clone {
 }
 
-#[derive(Clone, Show)]
+#[derive(Clone, Debug)]
 pub struct MyInt {
     pub val: int
 }

@@ -73,7 +73,7 @@
 ///     }
 /// }
 ///
-/// impl fmt::Show for Flags {
+/// impl fmt::Debug for Flags {
 ///     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 ///         write!(f, "hi!")
 ///     }
