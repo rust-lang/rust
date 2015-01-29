@@ -27,6 +27,7 @@ use syntax::{ast_map, ast_util, codemap};
 
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
+use std::{i8, i16, i32, i64};
 use std::rc::Rc;
 
 fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
@@ -263,19 +264,46 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
+            let is_a_min_value = |&:| {
+                let int_ty = match ty::expr_ty_opt(tcx, e).map(|ty| &ty.sty) {
+                    Some(&ty::ty_int(int_ty)) => int_ty,
+                    _ => return false
+                };
+                let int_ty = if let ast::TyIs(_) = int_ty {
+                    tcx.sess.target.int_type
+                } else {
+                    int_ty
+                };
+                match int_ty {
+                    ast::TyI8 => (a as i8) == i8::MIN,
+                    ast::TyI16 =>  (a as i16) == i16::MIN,
+                    ast::TyI32 =>  (a as i32) == i32::MIN,
+                    ast::TyI64 =>  (a as i64) == i64::MIN,
+                    ast::TyIs(_) => unreachable!()
+                }
+            };
             match op.node {
               ast::BiAdd => Ok(const_int(a + b)),
               ast::BiSub => Ok(const_int(a - b)),
               ast::BiMul => Ok(const_int(a * b)),
-              ast::BiDiv if b == 0 => {
-                  Err("attempted to divide by zero".to_string())
+              ast::BiDiv => {
+                  if b == 0 {
+                      Err("attempted to divide by zero".to_string())
+                  } else if b == -1 && is_a_min_value() {
+                      Err("attempted to divide with overflow".to_string())
+                  } else {
+                      Ok(const_int(a / b))
+                  }
               }
-              ast::BiDiv => Ok(const_int(a / b)),
-              ast::BiRem if b == 0 => {
-                  Err("attempted remainder with a divisor of \
-                       zero".to_string())
+              ast::BiRem => {
+                  if b == 0 {
+                      Err("attempted remainder with a divisor of zero".to_string())
+                  } else if b == -1 && is_a_min_value() {
+                      Err("attempted remainder with overflow".to_string())
+                  } else {
+                      Ok(const_int(a % b))
+                  }
               }
-              ast::BiRem => Ok(const_int(a % b)),
               ast::BiAnd | ast::BiBitAnd => Ok(const_int(a & b)),
               ast::BiOr | ast::BiBitOr => Ok(const_int(a | b)),
               ast::BiBitXor => Ok(const_int(a ^ b)),
