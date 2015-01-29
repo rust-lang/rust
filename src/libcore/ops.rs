@@ -1134,55 +1134,6 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[lang="fn"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
-#[cfg(stage0)]
-pub trait Fn<Args,Output> {
-    /// This is called when the call operator is used.
-    extern "rust-call" fn call(&self, args: Args) -> Output;
-}
-
-/// A version of the call operator that takes a mutable receiver.
-#[lang="fn_mut"]
-#[unstable(feature = "core",
-           reason = "uncertain about variadic generics, input versus associated types")]
-#[cfg(stage0)]
-pub trait FnMut<Args,Output> {
-    /// This is called when the call operator is used.
-    extern "rust-call" fn call_mut(&mut self, args: Args) -> Output;
-}
-
-/// A version of the call operator that takes a by-value receiver.
-#[lang="fn_once"]
-#[unstable(feature = "core",
-           reason = "uncertain about variadic generics, input versus associated types")]
-#[cfg(stage0)]
-pub trait FnOnce<Args,Output> {
-    /// This is called when the call operator is used.
-    extern "rust-call" fn call_once(self, args: Args) -> Output;
-}
-
-#[cfg(stage0)]
-impl<F: ?Sized, A, R> FnMut<A, R> for F
-    where F : Fn<A, R>
-{
-    extern "rust-call" fn call_mut(&mut self, args: A) -> R {
-        self.call(args)
-    }
-}
-
-#[cfg(stage0)]
-impl<F,A,R> FnOnce<A,R> for F
-    where F : FnMut<A,R>
-{
-    extern "rust-call" fn call_once(mut self, args: A) -> R {
-        self.call_mut(args)
-    }
-}
-
-/// A version of the call operator that takes an immutable receiver.
-#[lang="fn"]
-#[unstable(feature = "core",
-           reason = "uncertain about variadic generics, input versus associated types")]
-#[cfg(not(stage0))]
 #[rustc_paren_sugar]
 pub trait Fn<Args> {
     type Output;
@@ -1195,7 +1146,6 @@ pub trait Fn<Args> {
 #[lang="fn_mut"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
-#[cfg(not(stage0))]
 #[rustc_paren_sugar]
 pub trait FnMut<Args> {
     type Output;
@@ -1208,7 +1158,6 @@ pub trait FnMut<Args> {
 #[lang="fn_once"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
-#[cfg(not(stage0))]
 #[rustc_paren_sugar]
 pub trait FnOnce<Args> {
     type Output;
@@ -1217,7 +1166,6 @@ pub trait FnOnce<Args> {
     extern "rust-call" fn call_once(self, args: Args) -> Self::Output;
 }
 
-#[cfg(not(stage0))]
 impl<F: ?Sized, A> FnMut<A> for F
     where F : Fn<A>
 {
@@ -1228,7 +1176,6 @@ impl<F: ?Sized, A> FnMut<A> for F
     }
 }
 
-#[cfg(not(stage0))]
 impl<F,A> FnOnce<A> for F
     where F : FnMut<A>
 {
