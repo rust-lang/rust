@@ -60,7 +60,7 @@
 //! sort of a minor point so I've opted to leave it for later---after all
 //! we may want to adjust precisely when coercions occur.
 
-use check::FnCtxt;
+use check::{autoderef, FnCtxt, NoPreference, PreferMutLvalue, UnresolvedTypeAction};
 
 use middle::infer::{self, cres, Coercion, TypeTrace};
 use middle::infer::combine::Combine;
@@ -98,7 +98,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         f(self.fcx.infcx().shallow_resolve(a))
     }
 
-    fn coerce(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> CoerceResult<'tcx> {
+    fn coerce(&self,
+              expr_a: &ast::Expr,
+              a: Ty<'tcx>,
+              b: Ty<'tcx>)
+              -> CoerceResult<'tcx> {
         debug!("Coerce.tys({} => {})",
                a.repr(self.tcx()),
                b.repr(self.tcx()));
@@ -124,7 +128,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
 
             ty::ty_rptr(_, mt_b) => {
                 return self.unpack_actual_value(a, |a| {
-                    self.coerce_borrowed_pointer(a, b, mt_b.mutbl)
+                    self.coerce_borrowed_pointer(expr_a, a, b, mt_b.mutbl)
                 });
             }
 
@@ -147,8 +151,11 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         })
     }
 
-    // ~T -> &T or &mut T -> &T (including where T = [U] or str)
+    /// Reborrows `&mut A` to `&mut B` and `&(mut) A` to `&B`.
+    /// To match `A` with `B`, autoderef will be performed,
+    /// calling `deref`/`deref_mut` where necessary.
     fn coerce_borrowed_pointer(&self,
+                               expr_a: &ast::Expr,
                                a: Ty<'tcx>,
                                b: Ty<'tcx>,
                                mutbl_b: ast::Mutability)
@@ -163,29 +170,62 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
         // to type check, we will construct the type that `&M*expr` would
         // yield.
 
-        let coercion = Coercion(self.trace.clone());
-        let r_borrow = self.fcx.infcx().next_region_var(coercion);
-
-        let inner_ty = match a.sty {
+        match a.sty {
             ty::ty_rptr(_, mt_a) => {
                 if !can_coerce_mutbls(mt_a.mutbl, mutbl_b) {
                     return Err(ty::terr_mutability);
                 }
-                mt_a.ty
             }
             _ => return self.subtype(a, b)
+        }
+
+        let coercion = Coercion(self.trace.clone());
+        let r_borrow = self.fcx.infcx().next_region_var(coercion);
+        let autoref = Some(AutoPtr(r_borrow, mutbl_b, None));
+
+        let r_borrow = self.tcx().mk_region(r_borrow);
+        let lvalue_pref = match mutbl_b {
+            ast::MutMutable => PreferMutLvalue,
+            ast::MutImmutable => NoPreference
         };
+        let mut first_error = None;
+        let (_, autoderefs, success) = autoderef(self.fcx,
+                                                 expr_a.span,
+                                                 a,
+                                                 Some(expr_a),
+                                                 UnresolvedTypeAction::Ignore,
+                                                 lvalue_pref,
+                                                 |inner_ty, autoderef| {
+            if autoderef == 0 {
+                // Don't let this pass, otherwise it would cause
+                // &T to autoref to &&T.
+                return None;
+            }
+            let ty = ty::mk_rptr(self.tcx(), r_borrow,
+                                 mt {ty: inner_ty, mutbl: mutbl_b});
+            if let Err(err) = self.fcx.infcx().try(|_| self.subtype(ty, b)) {
+                if first_error.is_none() {
+                    first_error = Some(err);
+                }
+                None
+            } else {
+                Some(())
+            }
+        });
 
-        let a_borrowed = ty::mk_rptr(self.tcx(),
-                                     self.tcx().mk_region(r_borrow),
-                                     mt {ty: inner_ty, mutbl: mutbl_b});
-        try!(self.subtype(a_borrowed, b));
-        if let Err(original_err) = self.subtype(a_borrowed, b) {
-
-        Ok(Some(AdjustDerefRef(AutoDerefRef {
-            autoderefs: 1,
-            autoref: Some(AutoPtr(r_borrow, mutbl_b, None))
-        })))
+        match success {
+            Some(_) => {
+                Ok(Some(AdjustDerefRef(AutoDerefRef {
+                    autoderefs: autoderefs,
+                    autoref: autoref
+                })))
+            }
+            None => {
+                // Return original error as if overloaded deref was never
+                // attempted, to avoid irrelevant/confusing error messages.
+                Err(first_error.expect("coerce_borrowed_pointer failed with no error?"))
+            }
+        }
     }
 
 
@@ -426,7 +466,7 @@ pub fn mk_assignty<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             Coerce {
                 fcx: fcx,
                 trace: infer::TypeTrace::types(origin, false, a, b)
-            }.coerce(a, b)
+            }.coerce(expr, a, b)
         })
     }));
     if let Some(adjustment) = adjustment {
