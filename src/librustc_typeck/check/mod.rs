@@ -3586,24 +3586,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             // Finally, borrowck is charged with guaranteeing that the
             // value whose address was taken can actually be made to live
             // as long as it needs to live.
-            match oprnd.node {
-                // String literals are already, implicitly converted to slices.
-                //ast::ExprLit(lit) if ast_util::lit_is_str(lit) => fcx.expr_ty(oprnd),
-                // Empty slices live in static memory.
-                ast::ExprVec(ref elements) if elements.len() == 0 => {
-                    // Note: we do not assign a lifetime of
-                    // static. This is because the resulting type
-                    // `&'static [T]` would require that T outlives
-                    // `'static`!
-                    let region = fcx.infcx().next_region_var(
-                        infer::AddrOfSlice(expr.span));
-                    ty::mk_rptr(tcx, tcx.mk_region(region), tm)
-                }
-                _ => {
-                    let region = fcx.infcx().next_region_var(infer::AddrOfRegion(expr.span));
-                    ty::mk_rptr(tcx, tcx.mk_region(region), tm)
-                }
-            }
+            let region = fcx.infcx().next_region_var(infer::AddrOfRegion(expr.span));
+            ty::mk_rptr(tcx, tcx.mk_region(region), tm)
         };
         fcx.write_ty(id, oprnd_t);
       }
