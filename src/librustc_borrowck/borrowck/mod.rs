@@ -770,16 +770,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             MutabilityViolation => {
                 "cannot assign to data"
             }
-            BorrowViolation(euv::ClosureCapture(_)) => {
-                // I don't think we can get aliasability violations
-                // with closure captures, so no need to come up with a
-                // good error message. The reason this cannot happen
-                // is because we only capture local variables in
-                // closures, and those are never aliasable.
-                self.tcx.sess.span_bug(
-                    span,
-                    "aliasability violation with closure");
-            }
+            BorrowViolation(euv::ClosureCapture(_)) |
             BorrowViolation(euv::OverloadedOperator) |
             BorrowViolation(euv::AddrOf) |
             BorrowViolation(euv::AutoRef) |
@@ -809,8 +800,17 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 self.tcx.sess.span_err(span,
                                        format!("{} in a captured outer \
                                                variable in an `Fn` closure", prefix).as_slice());
-                span_help!(self.tcx.sess, self.tcx.map.span(id),
+                if let BorrowViolation(euv::ClosureCapture(_)) = kind {
+                    // The aliasability violation with closure captures can
+                    // happen for nested closures, so we know the enclosing
+                    // closure incorrectly accepts an `Fn` while it needs to
+                    // be `FnMut`.
+                    span_help!(self.tcx.sess, self.tcx.map.span(id),
+                           "consider changing this to accept closures that implement `FnMut`");
+                } else {
+                    span_help!(self.tcx.sess, self.tcx.map.span(id),
                            "consider changing this closure to take self by mutable reference");
+                }
             }
             mc::AliasableStatic(..) |
             mc::AliasableStaticMut(..) => {
