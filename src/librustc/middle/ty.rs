@@ -709,7 +709,7 @@ pub struct ctxt<'tcx> {
 
     pub impl_trait_cache: RefCell<DefIdMap<Option<Rc<ty::TraitRef<'tcx>>>>>,
 
-    pub trait_refs: RefCell<NodeMap<Rc<TraitRef<'tcx>>>>,
+    pub impl_trait_refs: RefCell<NodeMap<Rc<TraitRef<'tcx>>>>,
     pub trait_defs: RefCell<DefIdMap<Rc<TraitDef<'tcx>>>>,
 
     /// Maps from the def-id of an item (trait/struct/enum/fn) to its
@@ -2449,7 +2449,7 @@ pub fn mk_ctxt<'tcx>(s: Session,
         region_maps: region_maps,
         node_types: RefCell::new(FnvHashMap()),
         item_substs: RefCell::new(NodeMap()),
-        trait_refs: RefCell::new(NodeMap()),
+        impl_trait_refs: RefCell::new(NodeMap()),
         trait_defs: RefCell::new(DefIdMap()),
         predicates: RefCell::new(DefIdMap()),
         object_cast_map: RefCell::new(NodeMap()),
@@ -4174,12 +4174,12 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
     }
 }
 
-pub fn node_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
+pub fn impl_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
                                   -> Rc<ty::TraitRef<'tcx>> {
-    match cx.trait_refs.borrow().get(&id) {
+    match cx.impl_trait_refs.borrow().get(&id) {
         Some(ty) => ty.clone(),
         None => cx.sess.bug(
-            &format!("node_id_to_trait_ref: no trait ref for node `{}`",
+            &format!("impl_id_to_trait_ref: no trait ref for impl `{}`",
                     cx.map.node_to_string(id)))
     }
 }
@@ -5116,25 +5116,19 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
     memoized(&cx.impl_trait_cache, id, |id: ast::DefId| {
         if id.krate == ast::LOCAL_CRATE {
             debug!("(impl_trait_ref) searching for trait impl {:?}", id);
-            match cx.map.find(id.node) {
-                Some(ast_map::NodeItem(item)) => {
-                    match item.node {
-                        ast::ItemImpl(_, _, _, ref opt_trait, _, _) => {
-                            match opt_trait {
-                                &Some(ref t) => {
-                                    let trait_ref = ty::node_id_to_trait_ref(cx, t.ref_id);
-                                    Some(trait_ref)
-                                }
-                                &None => None
-                            }
-                        }
+            if let Some(ast_map::NodeItem(item)) = cx.map.find(id.node) {
+                if let ast::ItemImpl(_, _, _, ref opt_trait, _, _) = item.node {
+                    opt_trait.as_ref().map(|_| {
+                        ty::impl_id_to_trait_ref(cx, id.node)
+                    })
+                } else {
+                    None
                         ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
                             Some(ty::node_id_to_trait_ref(cx, ast_trait_ref.ref_id))
                         }
-                        _ => None
-                    }
                 }
-                _ => None
+            } else {
+                None
             }
         } else {
             csearch::get_impl_trait(cx, id)

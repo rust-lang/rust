@@ -782,11 +782,11 @@ pub enum Expr_ {
 ///
 ///     <Vec<T> as SomeTrait>::SomeAssociatedItem
 ///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
-///      self_type  trait_name  item_path
+///      self_type  trait_path  item_path
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct QPath {
     pub self_type: P<Ty>,
-    pub trait_ref: P<TraitRef>,
+    pub trait_path: Path,
     pub item_path: PathSegment,
 }
 
@@ -1258,12 +1258,12 @@ pub enum Ty_ {
     ///
     /// Type parameters are stored in the Path itself
     TyPath(Path),
+    /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
+    TyQPath(P<QPath>),
     /// Something like `A+B`. Note that `B` must always be a path.
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
     TyPolyTraitRef(TyParamBounds),
-    /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
-    TyQPath(P<QPath>),
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
     /// Unused for now

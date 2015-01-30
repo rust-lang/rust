@@ -1241,9 +1241,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
             }
             rbml_w.end_tag();
         }
-        if let Some(ref ast_trait_ref) = *opt_trait {
-            let trait_ref = ty::node_id_to_trait_ref(
-                tcx, ast_trait_ref.ref_id);
+        if opt_trait.is_some() {
+            let trait_ref = ty::impl_id_to_trait_ref(tcx, item.id);
             encode_trait_ref(rbml_w, ecx, &*trait_ref, tag_item_trait_ref);
         }
         encode_path(rbml_w, path.clone());

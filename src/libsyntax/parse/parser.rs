@@ -1525,13 +1525,13 @@ impl<'a> Parser<'a> {
             // QUALIFIED PATH `<TYPE as TRAIT_REF>::item`
             let self_type = self.parse_ty_sum();
             self.expect_keyword(keywords::As);
-            let trait_ref = self.parse_trait_ref();
+            let trait_path = self.parse_path(LifetimeAndTypesWithoutColons);
             self.expect(&token::Gt);
             self.expect(&token::ModSep);
             let item_name = self.parse_ident();
             TyQPath(P(QPath {
                 self_type: self_type,
-                trait_ref: P(trait_ref),
+                trait_path: trait_path,
                 item_path: ast::PathSegment {
                     identifier: item_name,
                     parameters: ast::PathParameters::none()
@@ -2220,7 +2220,7 @@ impl<'a> Parser<'a> {
                     // QUALIFIED PATH `<TYPE as TRAIT_REF>::item::<'a, T>`
                     let self_type = self.parse_ty_sum();
                     self.expect_keyword(keywords::As);
-                    let trait_ref = self.parse_trait_ref();
+                    let trait_path = self.parse_path(LifetimeAndTypesWithoutColons);
                     self.expect(&token::Gt);
                     self.expect(&token::ModSep);
                     let item_name = self.parse_ident();
@@ -2240,7 +2240,7 @@ impl<'a> Parser<'a> {
                     let hi = self.span.hi;
                     return self.mk_expr(lo, hi, ExprQPath(P(QPath {
                         self_type: self_type,
-                        trait_ref: P(trait_ref),
+                        trait_path: trait_path,
                         item_path: ast::PathSegment {
                             identifier: item_name,
                             parameters: parameters

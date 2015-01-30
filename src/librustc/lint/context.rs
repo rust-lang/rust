@@ -717,6 +717,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
         visit::walk_path(self, p);
     }
 
+    fn visit_qpath(&mut self, p: &ast::QPath, id: ast::NodeId) {
+        run_lints!(self, check_qpath, p, id);
+        visit::walk_qpath(self, p);
+    }
+
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
         run_lints!(self, check_attribute, attr);
     }

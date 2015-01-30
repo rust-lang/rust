@@ -2047,7 +2047,7 @@ impl<'a> State<'a> {
         try!(self.print_type(&*qpath.self_type));
         try!(space(&mut self.s));
         try!(self.word_space("as"));
-        try!(self.print_trait_ref(&*qpath.trait_ref));
+        try!(self.print_path(&qpath.trait_path, false));
         try!(word(&mut self.s, ">"));
         try!(word(&mut self.s, "::"));
         try!(self.print_ident(qpath.item_path.identifier));

@@ -28,8 +28,8 @@ struct ImplsChecker<'cx, 'tcx:'cx> {
 impl<'cx, 'tcx,'v> visit::Visitor<'v> for ImplsChecker<'cx, 'tcx> {
     fn visit_item(&mut self, item: &'v ast::Item) {
         match item.node {
-            ast::ItemImpl(_, _, _, Some(ref opt_trait), _, _) => {
-                let trait_ref = ty::node_id_to_trait_ref(self.tcx, opt_trait.ref_id);
+            ast::ItemImpl(_, _, _, Some(_), _, _) => {
+                let trait_ref = ty::impl_id_to_trait_ref(self.tcx, item.id);
                 if let Some(_) = self.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
                     match trait_ref.self_ty().sty {
                         ty::ty_struct(..) | ty::ty_enum(..) => {}

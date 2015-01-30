@@ -574,9 +574,10 @@ pub fn instantiate_poly_trait_ref<'tcx>(
     // lifetimes. Oh well, not there yet.
     let shifted_rscope = ShiftedRscope::new(rscope);
 
-    let trait_ref =
-        instantiate_trait_ref(this, &shifted_rscope, &ast_trait_ref.trait_ref,
-                              self_ty, Some(&mut projections));
+    let trait_ref = instantiate_trait_ref(this, &shifted_rscope,
+                                          &ast_trait_ref.trait_ref.path,
+                                          ast_trait_ref.trait_ref.ref_id,
+                                          None, self_ty, Some(&mut projections));
 
     for projection in projections {
         poly_projections.push(ty::Binder(projection));
@@ -594,26 +595,29 @@ pub fn instantiate_poly_trait_ref<'tcx>(
 pub fn instantiate_trait_ref<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
-    ast_trait_ref: &ast::TraitRef,
+    path: &ast::Path,
+    path_id: ast::NodeId,
+    impl_id: Option<ast::NodeId>,
     self_ty: Option<Ty<'tcx>>,
     projections: Option<&mut Vec<ty::ProjectionPredicate<'tcx>>>)
     -> Rc<ty::TraitRef<'tcx>>
 {
-    match ::lookup_def_tcx(this.tcx(), ast_trait_ref.path.span, ast_trait_ref.ref_id) {
+    match ::lookup_def_tcx(this.tcx(), path.span, path_id) {
         def::DefTrait(trait_def_id) => {
             let trait_ref = ast_path_to_trait_ref(this,
                                                   rscope,
                                                   trait_def_id,
                                                   self_ty,
-                                                  &ast_trait_ref.path,
+                                                  path,
                                                   projections);
-            this.tcx().trait_refs.borrow_mut().insert(ast_trait_ref.ref_id, trait_ref.clone());
+            if let Some(id) = impl_id {
+                this.tcx().impl_trait_refs.borrow_mut().insert(id, trait_ref.clone());
+            }
             trait_ref
         }
         _ => {
-            span_fatal!(this.tcx().sess, ast_trait_ref.path.span, E0245,
-                "`{}` is not a trait",
-                        ast_trait_ref.path.user_string(this.tcx()));
+            span_fatal!(this.tcx().sess, path.span, E0245, "`{}` is not a trait",
+                        path.user_string(this.tcx()));
         }
     }
 }
@@ -1056,7 +1060,9 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     let trait_ref = instantiate_trait_ref(this,
                                           rscope,
-                                          &*qpath.trait_ref,
+                                          &qpath.trait_path,
+                                          ast_ty.id,
+                                          None,
                                           Some(self_type),
                                           None);
 
