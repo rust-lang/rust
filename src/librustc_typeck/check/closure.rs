@@ -129,12 +129,8 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            fn_ty.sig.repr(fcx.tcx()),
            kind);
 
-    let closure = ty::Closure {
-        closure_type: fn_ty,
-        kind: kind,
-    };
-
-    fcx.inh.closures.borrow_mut().insert(expr_def_id, closure);
+    fcx.inh.closure_tys.borrow_mut().insert(expr_def_id, fn_ty);
+    fcx.inh.closure_kinds.borrow_mut().insert(expr_def_id, kind);
 }
 
 fn deduce_expectations_from_expected_type<'a,'tcx>(

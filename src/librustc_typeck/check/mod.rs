@@ -160,7 +160,8 @@ pub struct Inherited<'a, 'tcx: 'a> {
     adjustments: RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>,
     method_map: MethodMap<'tcx>,
     upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
-    closures: RefCell<DefIdMap<ty::Closure<'tcx>>>,
+    closure_tys: RefCell<DefIdMap<ty::ClosureTy<'tcx>>>,
+    closure_kinds: RefCell<DefIdMap<ty::ClosureKind>>,
     object_cast_map: ObjectCastMap<'tcx>,
 
     // A mapping from each fn's id to its signature, with all bound
@@ -352,7 +353,7 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
                     def_id: ast::DefId)
                     -> Option<ty::ClosureKind>
     {
-        Some(self.inh.closures.borrow()[def_id].kind)
+        self.inh.closure_kinds.borrow().get(&def_id).cloned()
     }
 
     fn closure_type(&self,
@@ -360,7 +361,7 @@ impl<'a, 'tcx> ty::ClosureTyper<'tcx> for FnCtxt<'a, 'tcx> {
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>
     {
-        self.inh.closures.borrow()[def_id].closure_type.subst(self.tcx(), substs)
+        self.inh.closure_tys.borrow()[def_id].subst(self.tcx(), substs)
     }
 
     fn closure_upvars(&self,
@@ -386,7 +387,8 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             method_map: RefCell::new(FnvHashMap()),
             object_cast_map: RefCell::new(NodeMap()),
             upvar_capture_map: RefCell::new(FnvHashMap()),
-            closures: RefCell::new(DefIdMap()),
+            closure_tys: RefCell::new(DefIdMap()),
+            closure_kinds: RefCell::new(DefIdMap()),
             fn_sig_map: RefCell::new(NodeMap()),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
             deferred_resolutions: RefCell::new(Vec::new()),

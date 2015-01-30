@@ -260,12 +260,10 @@ impl OverloadedCallType {
     fn from_closure(tcx: &ty::ctxt, closure_did: ast::DefId)
                     -> OverloadedCallType {
         let trait_did =
-            tcx.closures
+            tcx.closure_kinds
                .borrow()
                .get(&closure_did)
-               .expect("OverloadedCallType::from_closure: didn't \
-                        find closure id")
-               .kind
+               .expect("OverloadedCallType::from_closure: didn't find closure id")
                .trait_did(tcx);
         OverloadedCallType::from_trait_id(tcx, trait_did)
     }

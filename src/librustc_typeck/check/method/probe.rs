@@ -598,9 +598,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 _ => continue,
             };
 
-            let closures = self.fcx.inh.closures.borrow();
-            let closure_data = match closures.get(&closure_def_id) {
-                Some(data) => data,
+            let closure_kinds = self.fcx.inh.closure_kinds.borrow();
+            let closure_kind = match closure_kinds.get(&closure_def_id) {
+                Some(&k) => k,
                 None => {
                     self.tcx().sess.span_bug(
                         self.span,
@@ -610,7 +610,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             };
 
             // this closure doesn't implement the right kind of `Fn` trait
-            if closure_data.kind != kind {
+            if closure_kind != kind {
                 continue;
             }
 

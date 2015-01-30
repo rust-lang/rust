@@ -790,7 +790,11 @@ pub struct ctxt<'tcx> {
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    pub closures: RefCell<DefIdMap<Closure<'tcx>>>,
+    pub closure_kinds: RefCell<DefIdMap<ClosureKind>>,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_tys: RefCell<DefIdMap<ClosureTy<'tcx>>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(ast::NodeId, lint::LintId),
                                               lint::LevelSource>>,
@@ -2251,16 +2255,7 @@ pub struct ItemSubsts<'tcx> {
     pub substs: Substs<'tcx>,
 }
 
-/// Records information about each closure.
-#[derive(Clone)]
-pub struct Closure<'tcx> {
-    /// The type of the closure.
-    pub closure_type: ClosureTy<'tcx>,
-    /// The kind of closure this is.
-    pub kind: ClosureKind,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
     FnClosureKind,
     FnMutClosureKind,
@@ -2399,7 +2394,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         extern_const_variants: RefCell::new(DefIdMap()),
         method_map: RefCell::new(FnvHashMap()),
         dependency_formats: RefCell::new(FnvHashMap()),
-        closures: RefCell::new(DefIdMap()),
+        closure_kinds: RefCell::new(DefIdMap()),
+        closure_tys: RefCell::new(DefIdMap()),
         node_lint_levels: RefCell::new(FnvHashMap()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
@@ -2446,7 +2442,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
-        self.closures.borrow()[def_id].kind
+        self.closure_kinds.borrow()[def_id]
     }
 
     pub fn closure_type(&self,
@@ -2454,7 +2450,7 @@ impl<'tcx> ctxt<'tcx> {
                         substs: &subst::Substs<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        self.closures.borrow()[def_id].closure_type.subst(self, substs)
+        self.closure_tys.borrow()[def_id].subst(self, substs)
     }
 }
 

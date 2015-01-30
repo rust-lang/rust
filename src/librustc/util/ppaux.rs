@@ -405,9 +405,9 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         }
         ty_str => "str".to_string(),
         ty_closure(ref did, _, substs) => {
-            let closures = cx.closures.borrow();
-            closures.get(did).map(|cl| {
-                closure_to_string(cx, &cl.closure_type.subst(cx, substs))
+            let closure_tys = cx.closure_tys.borrow();
+            closure_tys.get(did).map(|closure_type| {
+                closure_to_string(cx, &closure_type.subst(cx, substs))
             }).unwrap_or_else(|| {
                 if did.krate == ast::LOCAL_CRATE {
                     let span = cx.map.span(did.node);
