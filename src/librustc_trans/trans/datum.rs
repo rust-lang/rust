@@ -199,6 +199,9 @@ impl KindOps for Rvalue {
                               -> Block<'blk, 'tcx> {
         // No cleanup is scheduled for an rvalue, so we don't have
         // to do anything after a move to cancel or duplicate it.
+        if self.is_by_ref() {
+            call_lifetime_end(bcx, _val);
+        }
         bcx
     }
 
@@ -320,6 +323,7 @@ impl<'tcx> Datum<'tcx, Rvalue> {
                     ByValue => DatumBlock::new(bcx, self),
                     ByRef => {
                         let llval = load_ty(bcx, self.val, self.ty);
+                        call_lifetime_end(bcx, self.val);
                         DatumBlock::new(bcx, Datum::new(llval, self.ty, Rvalue::new(ByValue)))
                     }
                 }
