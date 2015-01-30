@@ -638,8 +638,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                     &new_parent,
                                     ForbidDuplicateTypesAndModules,
                                     typedef.span);
-                            let def = DefAssociatedTy(local_def(
-                                typedef.id));
+                            let def = DefAssociatedTy(local_def(item.id),
+                                                      local_def(typedef.id));
                             // NB: not IMPORTABLE
                             let modifiers = if typedef.vis == ast::Public {
                                 PUBLIC
@@ -716,8 +716,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             (name, static_flag)
                         }
                         ast::TypeTraitItem(ref associated_type) => {
-                            let def = DefAssociatedTy(local_def(
-                                    associated_type.ty_param.id));
+                            let def = DefAssociatedTy(local_def(item.id),
+                                                      local_def(associated_type.ty_param.id));
 
                             let name_bindings =
                                 self.add_child(associated_type.ty_param.ident.name,

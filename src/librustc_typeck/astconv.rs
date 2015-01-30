@@ -1236,9 +1236,8 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                     def::DefPrimTy(_) => {
                         panic!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
                     }
-                    def::DefAssociatedTy(trait_type_id) => {
-                        let path_str = tcx.map.path_to_string(
-                            tcx.map.get_parent(trait_type_id.node));
+                    def::DefAssociatedTy(trait_id, _) => {
+                        let path_str = ty::item_path_str(tcx, trait_id);
                         span_err!(tcx.sess, ast_ty.span, E0223,
                                           "ambiguous associated \
                                                    type; specify the type \

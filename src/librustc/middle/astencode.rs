@@ -442,7 +442,8 @@ impl tr for def::Def {
           },
           def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
           def::DefTy(did, is_enum) => def::DefTy(did.tr(dcx), is_enum),
-          def::DefAssociatedTy(did) => def::DefAssociatedTy(did.tr(dcx)),
+          def::DefAssociatedTy(trait_did, did) =>
+              def::DefAssociatedTy(trait_did.tr(dcx), did.tr(dcx)),
           def::DefAssociatedPath(def::TyParamProvenance::FromSelf(did), ident) =>
               def::DefAssociatedPath(def::TyParamProvenance::FromSelf(did.tr(dcx)), ident),
           def::DefAssociatedPath(def::TyParamProvenance::FromParam(did), ident) =>

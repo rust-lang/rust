@@ -32,7 +32,7 @@ pub enum Def {
     DefLocal(ast::NodeId),
     DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
     DefTy(ast::DefId, bool /* is_enum */),
-    DefAssociatedTy(ast::DefId),
+    DefAssociatedTy(ast::DefId /* trait */, ast::DefId),
     // A partially resolved path to an associated type `T::U` where `T` is a concrete
     // type (indicated by the DefId) which implements a trait which has an associated
     // type `U` (indicated by the Ident).
@@ -134,7 +134,7 @@ impl Def {
         match *self {
             DefFn(id, _) | DefStaticMethod(id, _) | DefMod(id) |
             DefForeignMod(id) | DefStatic(id, _) |
-            DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(id) |
+            DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
             DefMethod(id, _, _) | DefConst(id) |
             DefAssociatedPath(TyParamProvenance::FromSelf(id), _) |
