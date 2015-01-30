@@ -2012,7 +2012,9 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let bcx = match dest {
         expr::SaveIn(_) => bcx,
         expr::Ignore => {
-            glue::drop_ty(bcx, llresult, result_ty, debug_loc)
+            let bcx = glue::drop_ty(bcx, llresult, result_ty, debug_loc);
+            call_lifetime_end(bcx, llresult);
+            bcx
         }
     };
 

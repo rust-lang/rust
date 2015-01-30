@@ -1843,7 +1843,7 @@ extern {
                                              Decl: ValueRef)
                                              -> DIGlobalVariable;
 
-    pub fn LLVMDIBuilderCreateLocalVariable(Builder: DIBuilderRef,
+    pub fn LLVMDIBuilderCreateVariable(Builder: DIBuilderRef,
                                             Tag: c_uint,
                                             Scope: DIDescriptor,
                                             Name: *const c_char,
@@ -1852,6 +1852,8 @@ extern {
                                             Ty: DIType,
                                             AlwaysPreserve: bool,
                                             Flags: c_uint,
+                                            AddrOps: *const ValueRef,
+                                            AddrOpsCount: c_uint,
                                             ArgNo: c_uint)
                                             -> DIVariable;
 
@@ -1882,12 +1884,16 @@ extern {
     pub fn LLVMDIBuilderInsertDeclareAtEnd(Builder: DIBuilderRef,
                                            Val: ValueRef,
                                            VarInfo: DIVariable,
+                                           AddrOps: *const ValueRef,
+                                           AddrOpsCount: c_uint,
                                            InsertAtEnd: BasicBlockRef)
                                            -> ValueRef;
 
     pub fn LLVMDIBuilderInsertDeclareBefore(Builder: DIBuilderRef,
                                             Val: ValueRef,
                                             VarInfo: DIVariable,
+                                            AddrOps: *const ValueRef,
+                                            AddrOpsCount: c_uint,
                                             InsertBefore: ValueRef)
                                             -> ValueRef;
 
@@ -1935,18 +1941,6 @@ extern {
 
     pub fn LLVMDIBuilderCreateOpPlus(IntType: TypeRef) -> ValueRef;
 
-    pub fn LLVMDIBuilderCreateComplexVariable(Builder: DIBuilderRef,
-                                              Tag: c_uint,
-                                              Scope: ValueRef,
-                                              Name: *const c_char,
-                                              File: ValueRef,
-                                              LineNo: c_uint,
-                                              Ty: ValueRef,
-                                              AddrOps: *const ValueRef,
-                                              AddrOpsCount: c_uint,
-                                              ArgNo: c_uint)
-                                              -> ValueRef;
-
     pub fn LLVMDIBuilderCreateNameSpace(Builder: DIBuilderRef,
                                         Scope: ValueRef,
                                         Name: *const c_char,
@@ -1954,7 +1948,9 @@ extern {
                                         LineNo: c_uint)
                                         -> ValueRef;
 
-    pub fn LLVMDICompositeTypeSetTypeArray(CompositeType: ValueRef, TypeArray: ValueRef);
+    pub fn LLVMDICompositeTypeSetTypeArray(Builder: DIBuilderRef,
+                                           CompositeType: ValueRef,
+                                           TypeArray: ValueRef);
     pub fn LLVMWriteTypeToString(Type: TypeRef, s: RustStringRef);
     pub fn LLVMWriteValueToString(value_ref: ValueRef, s: RustStringRef);
 

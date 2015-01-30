@@ -1699,11 +1699,11 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     let name = CString::from_slice(name.get().as_bytes());
-    let (var_alloca, var_metadata) = match variable_access {
-        DirectVariable { alloca } => (
-            alloca,
-            unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(
+    match (variable_access, [].as_slice()) {
+        (DirectVariable { alloca }, address_operations) |
+        (IndirectVariable {alloca, address_operations}, _) => {
+            let metadata = unsafe {
+                llvm::LLVMDIBuilderCreateVariable(
                     DIB(cx),
                     dwarf_tag,
                     scope_metadata,
@@ -1713,38 +1713,25 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     type_metadata,
                     cx.sess().opts.optimize != config::No,
                     0,
-                    argument_index)
-            }
-        ),
-        IndirectVariable { alloca, address_operations } => (
-            alloca,
-            unsafe {
-                llvm::LLVMDIBuilderCreateComplexVariable(
-                    DIB(cx),
-                    dwarf_tag,
-                    scope_metadata,
-                    name.as_ptr(),
-                    file_metadata,
-                    loc.line as c_uint,
-                    type_metadata,
                     address_operations.as_ptr(),
                     address_operations.len() as c_uint,
                     argument_index)
-            }
-        )
-    };
-
-    set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
+            };
+            set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
                                                       loc.line,
                                                       loc.col.to_usize()));
-    unsafe {
-        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-            DIB(cx),
-            var_alloca,
-            var_metadata,
-            bcx.llbb);
+            unsafe {
+                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+                    DIB(cx),
+                    alloca,
+                    metadata,
+                    address_operations.as_ptr(),
+                    address_operations.len() as c_uint,
+                    bcx.llbb);
 
-        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+            }
+        }
     }
 
     match variable_kind {
@@ -2716,7 +2703,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
 
     unsafe {
         let type_array = create_DIArray(DIB(cx), &member_metadata[]);
-        llvm::LLVMDICompositeTypeSetTypeArray(composite_type_metadata, type_array);
+        llvm::LLVMDICompositeTypeSetTypeArray(DIB(cx), composite_type_metadata, type_array);
     }
 }
 
