@@ -1738,6 +1738,7 @@ impl BitvSet {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "BitvSet {{"));
