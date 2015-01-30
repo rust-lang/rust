@@ -4,18 +4,18 @@
 
 # Summary
 
-Add the syntax `..` for `std::ops::FullRange`.
+Add the syntax `..` for `std::ops::RangeFull`.
 
 # Motivation
 
 Range expressions `a..b`, `a..` and `..b` all have dedicated syntax and
 produce first-class values. This means that they will be usable and
 useful in custom APIs, so for consistency, the fourth slicing range,
-`FullRange`, could have its own syntax `..`
+`RangeFull`, could have its own syntax `..`
 
 # Detailed design
 
-`..` will produce a `std::ops::FullRange` value when it is used in an
+`..` will produce a `std::ops::RangeFull` value when it is used in an
 expression. This means that slicing the whole range of a sliceable
 container is written `&foo[..]`.
 
