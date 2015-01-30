@@ -39,10 +39,12 @@ Overflow](http://stackoverflow.com/questions/tagged/rust). Searching for your
 problem might reveal someone who has asked it before!
 
 There is an active [subreddit](http://reddit.com/r/rust) with lots of
-discussion about Rust.
+discussion and news about Rust.
 
-There is also a [developer forum](http://internals.rust-lang.org/), where the
-development of Rust itself is discussed.
+There is also a [user forum](http://users.rust-lang.org), for all
+user-oriented discussion, and a [developer
+forum](http://internals.rust-lang.org/), where the development of Rust
+itself is discussed.
 
 # Specification
 
