@@ -709,18 +709,23 @@ and the signatures will be updated to follow this RFC's
 
 **Arguments**:
 
-* `args`: change to yield an iterator rather than vector if possible; in any case, it should produce an `OsStrBuf`.
+* `args`: change to yield an iterator rather than vector if possible; in any
+  case, it should produce an `OsString`.
 
 **Environment variables**:
 
-* `vars` (renamed from `env`): yields a vector of `(OsStrBuf, OsStrBuf)` pairs.
-* `var` (renamed from `getenv`): take a value bounded by `IntoOsStrBuf`,
-  allowing Rust strings and slices to be ergonomically passed in. Yields an `Option<OsStrBuf>`.
-* `set_var` (renamed from `setenv`): takes two `IntoOsStrBuf`-bounded values.
-* `remove_var` (renamed from `unsetenv`): takes a `IntoOsStrBuf`-bounded value.
+* `vars` (renamed from `env`): yields a vector of `(OsString, OsString)` pairs.
+* `var` (renamed from `getenv`): take a value bounded by `AsOsStr`,
+  allowing Rust strings and slices to be ergonomically passed in. Yields an `Option<OsString>`.
+* `var_string`: take a value bounded by `AsOsStr`, returning `Result<String,
+  VarError>` where `VarError` represents a non-unicode `OsString` or a "not
+  present" value.
+* `set_var` (renamed from `setenv`): takes two `AsOsStr`-bounded values.
+* `remove_var` (renamed from `unsetenv`): takes a `AsOsStr`-bounded value.
 
-* `join_paths`: take an `IntoIterator<T>` where `T: IntoOsStrBuf`, yield a `Result<OsStrBuf, JoinPathsError>`.
-* `split_paths` take a `IntoOsStrBuf`, yield an `Iterator<Path>`.
+* `join_paths`: take an `IntoIterator<T>` where `T: AsOsStr`, yield a
+  `Result<OsString, JoinPathsError>`.
+* `split_paths` take a `AsOsStr`, yield an `Iterator<Path>`.
 
 **Working directory**:
 
@@ -732,21 +737,25 @@ and the signatures will be updated to follow this RFC's
 * `home_dir` (renamed from `homedir`): returns home directory as a `PathBuf`
 * `temp_dir` (renamed from `tmpdir`): returns a temporary directly as a `PathBuf`
 * `current_exe` (renamed from `self_exe_name`): returns the full path
-  to the current binary as a `PathBuf`.
+  to the current binary as a `PathBuf` in an `io::Result` instead of an
+  `Option`.
 
 **Exit status**:
 
 * `get_exit_status` and `set_exit_status` stay as they are, but with
   updated docs that reflect that these only affect the return value of
-  `std::rt::start`.
+  `std::rt::start`. These will remain `#[unstable]` for now and a future RFC
+  will determine their stability.
 
 **Architecture information**:
 
-* `num_cpus`, `page_size`: stay as they are
+* `num_cpus`, `page_size`: stay as they are, but remain `#[unstable]`. A future
+  RFC will determine their stability and semantics.
 
 **Constants**:
 
-* Stabilize `ARCH`, `DLL_PREFIX`, `DLL_EXTENSION`, `DLL_SUFFIX`, `EXE_EXTENSION`, `EXE_SUFFIX`, `FAMILY` as they are.
+* Stabilize `ARCH`, `DLL_PREFIX`, `DLL_EXTENSION`, `DLL_SUFFIX`,
+  `EXE_EXTENSION`, `EXE_SUFFIX`, `FAMILY` as they are.
 * Rename `SYSNAME` to `OS`.
 * Remove `TMPBUF_SZ`.
 
@@ -768,7 +777,7 @@ This brings the constants into line with our naming conventions elsewhere.
 * `_NSGetArgc`, `_NSGetArgv`: these should never have been public.
 * `self_exe_path`: deprecated in favor of `current_exe` plus path operations.
 * `make_absolute`: deprecated in favor of explicitly joining with the working directory.
-* all `_as_bytes` variants: deprecated in favor of yielding `OsStrBuf` values
+* all `_as_bytes` variants: deprecated in favor of yielding `OsString` values
 
 ### `std::fs`
 [std::fs]: #stdfs
