@@ -10,6 +10,7 @@
 
 use std::collections::HashMap;
 
+#[derive(Clone)]
 pub struct Registry {
     descriptions: HashMap<&'static str, &'static str>
 }

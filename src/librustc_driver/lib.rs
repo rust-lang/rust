@@ -60,12 +60,13 @@ extern crate "rustc_llvm" as llvm;
 pub use syntax::diagnostic;
 
 use driver::CompileController;
+use pretty::{PpMode, UserIdentifiedItem};
 
 use rustc_resolve as resolve;
 use rustc_trans::back::link;
 use rustc_trans::save;
 use rustc::session::{config, Session, build_session};
-use rustc::session::config::{Input, PrintRequest, UnstableFeatures};
+use rustc::session::config::{Input, PrintRequest};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
@@ -92,95 +93,58 @@ pub mod test;
 pub mod driver;
 pub mod pretty;
 
-pub fn run(args: Vec<String>) -> int {
-    monitor(move || run_compiler(&args));
-    0
-}
 
 static BUG_REPORT_URL: &'static str =
     "http://doc.rust-lang.org/complement-bugreport.html";
 
-fn run_compiler(args: &[String]) {
+
+pub fn run(args: Vec<String>) -> int {
+    monitor(move || run_compiler(&args, &mut RustcDefaultCalls));
+    0
+}
+
+// Parse args and run the compiler. This is the primary entry point for rustc.
+// See comments on CompilerCalls below for details about the callbacks argument.
+pub fn run_compiler<'a>(args: &[String],
+                        callbacks: &mut CompilerCalls<'a>) {
+    macro_rules! do_or_return {($expr: expr) => {
+        if $expr {
+            return;
+        }
+    }}
+
     let matches = match handle_options(args.to_vec()) {
         Some(matches) => matches,
         None => return
     };
 
     let descriptions = diagnostics_registry();
-    match matches.opt_str("explain") {
-        Some(ref code) => {
-            match descriptions.find_description(&code[]) {
-                Some(ref description) => {
-                    println!("{}", description);
-                }
-                None => {
-                    early_error(&format!("no extended information for {}", code)[]);
-                }
-            }
-            return;
-        },
-        None => ()
-    }
+
+    do_or_return!(callbacks.early_callback(&matches, &descriptions));
 
     let sopts = config::build_session_options(&matches);
-    let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
-    let ofile = matches.opt_str("o").map(|o| Path::new(o));
-    let (input, input_file_path) = match matches.free.len() {
-        0 => {
-            if sopts.describe_lints {
-                let mut ls = lint::LintStore::new();
-                ls.register_builtin(None);
-                describe_lints(&ls, false);
-                return;
-            }
-            let sess = build_session(sopts, None, descriptions);
-            if print_crate_info(&sess, None, &odir, &ofile) {
-                return;
-            }
-            early_error("no input filename given");
-        }
-        1 => {
-            let ifile = &matches.free[0][];
-            if ifile == "-" {
-                let contents = old_io::stdin().read_to_end().unwrap();
-                let src = String::from_utf8(contents).unwrap();
-                (Input::Str(src), None)
-            } else {
-                (Input::File(Path::new(ifile)), Some(Path::new(ifile)))
-            }
-        }
-        _ => early_error("multiple input filenames provided")
-    };
 
-    let mut sopts = sopts;
-    sopts.unstable_features = get_unstable_features_setting();
+    let (odir, ofile) = make_output(&matches);
+    let (input, input_file_path) = match make_input(&matches.free[]) {
+        Some((input, input_file_path)) => callbacks.some_input(input, input_file_path),
+        None => match callbacks.no_input(&matches, &sopts, &odir, &ofile, &descriptions) {
+            Some((input, input_file_path)) => (input, input_file_path),
+            None => return
+        }
+    };
 
     let mut sess = build_session(sopts, input_file_path, descriptions);
-
-    let cfg = config::build_configuration(&sess);
-    if print_crate_info(&sess, Some(&input), &odir, &ofile) {
-        return
+    if sess.unstable_options() {
+        sess.opts.show_span = matches.opt_str("show-span");
     }
+    let cfg = config::build_configuration(&sess);
 
-    let pretty = if sess.opts.debugging_opts.unstable_options {
-        matches.opt_default("pretty", "normal").map(|a| {
-            // stable pretty-print variants only
-            pretty::parse_pretty(&sess, &a, false)
-        })
-    } else {
-        None
-    };
-    let pretty = if pretty.is_none() &&
-        sess.unstable_options() {
-            matches.opt_str("xpretty").map(|a| {
-                // extended with unstable pretty-print variants
-                pretty::parse_pretty(&sess, &a, true)
-            })
-        } else {
-            pretty
-        };
+    do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile));
 
-    match pretty.into_iter().next() {
+    // It is somewhat unfortunate that this is hardwired in - this is forced by
+    // the fact that pretty_print_input requires the session by value.
+    let pretty = callbacks.parse_pretty(&sess, &matches);
+        match pretty.into_iter().next() {
         Some((ppm, opt_uii)) => {
             pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
             return;
@@ -188,76 +152,295 @@ fn run_compiler(args: &[String]) {
         None => {/* continue */ }
     }
 
-    if sess.unstable_options() {
-        sess.opts.show_span = matches.opt_str("show-span");
-    }
-
-    let r = matches.opt_strs("Z");
-    if r.contains(&("ls".to_string())) {
-        match input {
-            Input::File(ref ifile) => {
-                let mut stdout = old_io::stdout();
-                list_metadata(&sess, &(*ifile), &mut stdout).unwrap();
-            }
-            Input::Str(_) => {
-                early_error("cannot list metadata for stdin");
-            }
-        }
-        return;
-    }
-
     let plugins = sess.opts.debugging_opts.extra_plugins.clone();
-    let control = build_controller(&sess);
+    let control = callbacks.build_controller(&sess);
     driver::compile_input(sess, cfg, &input, &odir, &ofile, Some(plugins), control);
 }
 
-fn build_controller<'a>(sess: &Session) -> CompileController<'a> {
-    let mut control = CompileController::basic();
-
-    if sess.opts.parse_only ||
-       sess.opts.show_span.is_some() ||
-       sess.opts.debugging_opts.ast_json_noexpand {
-        control.after_parse.stop = true;
-    }
-
-    if sess.opts.no_analysis || sess.opts.debugging_opts.ast_json {
-        control.after_write_deps.stop = true;
-    }
-
-    if sess.opts.no_trans {
-        control.after_analysis.stop = true;
-    }
-
-    if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
-        control.after_llvm.stop = true;
-    }
-
-    if sess.opts.debugging_opts.save_analysis {
-        control.after_analysis.callback = box |state| {
-            time(state.session.time_passes(), "save analysis", state.krate.unwrap(), |krate|
-                 save::process_crate(state.session,
-                                     krate,
-                                     state.analysis.unwrap(),
-                                     state.out_dir));
-        };
-        control.make_glob_map = resolve::MakeGlobMap::Yes;
-    }
-
-    control
+// Extract output directory and file from matches.
+fn make_output(matches: &getopts::Matches) -> (Option<Path>, Option<Path>) {
+    let odir = matches.opt_str("out-dir").map(|o| Path::new(o));
+    let ofile = matches.opt_str("o").map(|o| Path::new(o));
+    (odir, ofile)
 }
 
-pub fn get_unstable_features_setting() -> UnstableFeatures {
-    // Whether this is a feature-staged build, i.e. on the beta or stable channel
-    let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
-    // The secret key needed to get through the rustc build itself by
-    // subverting the unstable features lints
-    let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
-    // The matching key to the above, only known by the build system
-    let bootstrap_provided_key = env::var_string("RUSTC_BOOTSTRAP_KEY").ok();
-    match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
-        (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
-        (true, _, _) => UnstableFeatures::Disallow,
-        (false, _, _) => UnstableFeatures::Default
+// Extract input (string or file and optional path) from matches.
+fn make_input(free_matches: &[String]) -> Option<(Input, Option<Path>)> {
+    if free_matches.len() == 1 {
+        let ifile = &free_matches[0][];
+        if ifile == "-" {
+            let contents = old_io::stdin().read_to_end().unwrap();
+            let src = String::from_utf8(contents).unwrap();
+            Some((Input::Str(src), None))
+        } else {
+            Some((Input::File(Path::new(ifile)), Some(Path::new(ifile))))
+        }
+    } else {
+        None
+    }
+}
+
+// A trait for customising the compilation process. Offers a number of hooks for
+// executing custom code or customising input.
+pub trait CompilerCalls<'a> {
+    // Hook for a callback early in the process of handling arguments. This will
+    // be called straight after options have been parsed but before anything
+    // else (e.g., selecting input and output). Return true to terminate compilation,
+    // false to continue.
+    fn early_callback(&mut self, &getopts::Matches, &diagnostics::registry::Registry) -> bool;
+
+    // Hook for a callback late in the process of handling arguments. This will
+    // be called just before actual compilation starts (and before build_controller
+    // is called), after all arguments etc. have been completely handled. Return
+    // true to terminate compilation, false to continue.
+    fn late_callback(&mut self,
+                     &getopts::Matches,
+                     &Session,
+                     &Input,
+                     &Option<Path>,
+                     &Option<Path>)
+                     -> bool;
+
+    // Called after we extract the input from the arguments. Gives the implementer
+    // an opportunity to change the inputs or to add some custom input handling.
+    // The default behaviour is to simply pass through the inputs.
+    fn some_input(&mut self, input: Input, input_path: Option<Path>) -> (Input, Option<Path>) {
+        (input, input_path)
+    }
+
+    // Called after we extract the input from the arguments if there is no valid
+    // input. Gives the implementer an opportunity to supply alternate input (by
+    // returning a Some value) or to add custom behaviour for this error such as
+    // emitting error messages. Returning None will cause compilation to stop
+    // at this point.
+    fn no_input(&mut self,
+                &getopts::Matches,
+                &config::Options,
+                &Option<Path>,
+                &Option<Path>,
+                &diagnostics::registry::Registry)
+                -> Option<(Input, Option<Path>)>;
+
+    // Parse pretty printing information from the arguments. The implementer can
+    // choose to ignore this (the default will return None) which will skip pretty
+    // printing. If you do want to pretty print, it is recommended to use the
+    // implementation of this method from RustcDefaultCalls.
+    // FIXME, this is a terrible bit of API. Parsing of pretty printing stuff
+    // should be done as part of the framework and the implementor should customise
+    // handling of it. However, that is not possible atm because pretty printing
+    // essentially goes off and takes another path through the compiler which
+    // means the session is either moved or not depending on what parse_pretty
+    // returns (we could fix this by cloning, but it's another hack). The proper
+    // solution is to handle pretty printing as if it were a compiler extension,
+    // extending CompileController to make this work (see for example the treatment
+    // of save-analysis in RustcDefaultCalls::build_controller).
+    fn parse_pretty(&mut self,
+                    _sess: &Session,
+                    _matches: &getopts::Matches)
+                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
+        None
+    }
+
+    // Create a CompilController struct for controlling the behaviour of compilation.
+    fn build_controller(&mut self, &Session) -> CompileController<'a>;
+}
+
+// CompilerCalls instance for a regular rustc build.
+#[derive(Copy)]
+pub struct RustcDefaultCalls;
+
+impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
+    fn early_callback(&mut self,
+                      matches: &getopts::Matches,
+                      descriptions: &diagnostics::registry::Registry)
+                      -> bool {
+        match matches.opt_str("explain") {
+            Some(ref code) => {
+                match descriptions.find_description(&code[]) {
+                    Some(ref description) => {
+                        println!("{}", description);
+                    }
+                    None => {
+                        early_error(&format!("no extended information for {}", code)[]);
+                    }
+                }
+                return true;
+            },
+            None => ()
+        }
+
+        return false;
+    }
+
+    fn no_input(&mut self,
+                matches: &getopts::Matches,
+                sopts: &config::Options,
+                odir: &Option<Path>,
+                ofile: &Option<Path>,
+                descriptions: &diagnostics::registry::Registry)
+                -> Option<(Input, Option<Path>)> {
+        match matches.free.len() {
+            0 => {
+                if sopts.describe_lints {
+                    let mut ls = lint::LintStore::new();
+                    ls.register_builtin(None);
+                    describe_lints(&ls, false);
+                    return None;
+                }
+                let sess = build_session(sopts.clone(), None, descriptions.clone());
+                if RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile) {
+                    return None;
+                }
+                early_error("no input filename given");
+            }
+            1 => panic!("make_input should have provided valid inputs"),
+            _ => early_error("multiple input filenames provided")
+        }
+
+        None
+    }
+
+    fn parse_pretty(&mut self,
+                    sess: &Session,
+                    matches: &getopts::Matches)
+                    -> Option<(PpMode, Option<UserIdentifiedItem>)> {
+        let pretty = if sess.opts.debugging_opts.unstable_options {
+            matches.opt_default("pretty", "normal").map(|a| {
+                // stable pretty-print variants only
+                pretty::parse_pretty(sess, &a, false)
+            })
+        } else {
+            None
+        };
+        if pretty.is_none() && sess.unstable_options() {
+            matches.opt_str("xpretty").map(|a| {
+                // extended with unstable pretty-print variants
+                pretty::parse_pretty(sess, &a, true)
+            })
+        } else {
+            pretty
+        }
+    }
+
+    fn late_callback(&mut self,
+                     matches: &getopts::Matches,
+                     sess: &Session,
+                     input: &Input,
+                     odir: &Option<Path>,
+                     ofile: &Option<Path>)
+                     -> bool {
+        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile) ||
+            RustcDefaultCalls::list_metadata(sess, matches, input)
+    }
+
+    fn build_controller(&mut self, sess: &Session) -> CompileController<'a> {
+        let mut control = CompileController::basic();
+
+        if sess.opts.parse_only ||
+           sess.opts.show_span.is_some() ||
+           sess.opts.debugging_opts.ast_json_noexpand {
+            control.after_parse.stop = true;
+        }
+
+        if sess.opts.no_analysis || sess.opts.debugging_opts.ast_json {
+            control.after_write_deps.stop = true;
+        }
+
+        if sess.opts.no_trans {
+            control.after_analysis.stop = true;
+        }
+
+        if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
+            control.after_llvm.stop = true;
+        }
+
+        if sess.opts.debugging_opts.save_analysis {
+            control.after_analysis.callback = box |state| {
+                time(state.session.time_passes(), "save analysis", state.krate.unwrap(), |krate|
+                     save::process_crate(state.session,
+                                         krate,
+                                         state.analysis.unwrap(),
+                                         state.out_dir));
+            };
+            control.make_glob_map = resolve::MakeGlobMap::Yes;
+        }
+
+        control
+    }
+}
+
+impl RustcDefaultCalls {
+    pub fn list_metadata(sess: &Session,
+                         matches: &getopts::Matches,
+                         input: &Input)
+                         -> bool {
+        let r = matches.opt_strs("Z");
+        if r.contains(&("ls".to_string())) {
+            match input {
+                &Input::File(ref ifile) => {
+                    let mut stdout = old_io::stdout();
+                    let path = &(*ifile);
+                    metadata::loader::list_file_metadata(sess.target.target.options.is_like_osx,
+                                                         path,
+                                                         &mut stdout).unwrap();
+                }
+                &Input::Str(_) => {
+                    early_error("cannot list metadata for stdin");
+                }
+            }
+            return true;
+        }
+
+        return false;
+    }
+
+
+    fn print_crate_info(sess: &Session,
+                        input: Option<&Input>,
+                        odir: &Option<Path>,
+                        ofile: &Option<Path>)
+                        -> bool {
+        if sess.opts.prints.len() == 0 {
+            return false
+        }
+
+        let attrs = input.map(|input| parse_crate_attrs(sess, input));
+        for req in &sess.opts.prints {
+            match *req {
+                PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
+                PrintRequest::FileNames |
+                PrintRequest::CrateName => {
+                    let input = match input {
+                        Some(input) => input,
+                        None => early_error("no input file provided"),
+                    };
+                    let attrs = attrs.as_ref().unwrap();
+                    let t_outputs = driver::build_output_filenames(input,
+                                                                   odir,
+                                                                   ofile,
+                                                                   attrs,
+                                                                   sess);
+                    let id = link::find_crate_name(Some(sess),
+                                                   attrs,
+                                                   input);
+                    if *req == PrintRequest::CrateName {
+                        println!("{}", id);
+                        continue
+                    }
+                    let crate_types = driver::collect_crate_types(sess, attrs);
+                    let metadata = driver::collect_crate_metadata(sess, attrs);
+                    *sess.crate_metadata.borrow_mut() = metadata;
+                    for &style in &crate_types {
+                        let fname = link::filename_for_input(sess,
+                                                             style,
+                                                             &id,
+                                                             &t_outputs.with_extension(""));
+                        println!("{}", fname.filename_display());
+                    }
+                }
+            }
+        }
+        return true;
     }
 }
 
@@ -535,50 +718,6 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     Some(matches)
 }
 
-fn print_crate_info(sess: &Session,
-                    input: Option<&Input>,
-                    odir: &Option<Path>,
-                    ofile: &Option<Path>)
-                    -> bool {
-    if sess.opts.prints.len() == 0 { return false }
-
-    let attrs = input.map(|input| parse_crate_attrs(sess, input));
-    for req in &sess.opts.prints {
-        match *req {
-            PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
-            PrintRequest::FileNames |
-            PrintRequest::CrateName => {
-                let input = match input {
-                    Some(input) => input,
-                    None => early_error("no input file provided"),
-                };
-                let attrs = attrs.as_ref().unwrap();
-                let t_outputs = driver::build_output_filenames(input,
-                                                               odir,
-                                                               ofile,
-                                                               attrs,
-                                                               sess);
-                let id = link::find_crate_name(Some(sess), attrs,
-                                               input);
-                if *req == PrintRequest::CrateName {
-                    println!("{}", id);
-                    continue
-                }
-                let crate_types = driver::collect_crate_types(sess, attrs);
-                let metadata = driver::collect_crate_metadata(sess, attrs);
-                *sess.crate_metadata.borrow_mut() = metadata;
-                for &style in &crate_types {
-                    let fname = link::filename_for_input(sess, style,
-                                                         &id,
-                                                         &t_outputs.with_extension(""));
-                    println!("{}", fname.filename_display());
-                }
-            }
-        }
-    }
-    return true;
-}
-
 fn parse_crate_attrs(sess: &Session, input: &Input) ->
                      Vec<ast::Attribute> {
     let result = match *input {
@@ -596,11 +735,6 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
         }
     };
     result.into_iter().collect()
-}
-
-pub fn list_metadata(sess: &Session, path: &Path,
-                     out: &mut old_io::Writer) -> old_io::IoResult<()> {
-    metadata::loader::list_file_metadata(sess.target.target.options.is_like_osx, path, out)
 }
 
 /// Run a procedure which will detect panics in the compiler and print nicer
