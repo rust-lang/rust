@@ -263,7 +263,13 @@ pub trait Combine<'tcx> : Sized {
             Err(ty::terr_projection_name_mismatched(
                 expected_found(self, a.item_name, b.item_name)))
         } else {
-            let trait_ref = try!(self.trait_refs(&*a.trait_ref, &*b.trait_ref));
+            // Note that the trait refs for the projection must be
+            // *equal*. This is because there is no inherent
+            // relationship between `<T as Foo>::Bar` and `<U as
+            // Foo>::Bar` that we can derive based on how `T` relates
+            // to `U`. Issue #21726 contains further discussion and
+            // in-depth examples.
+            let trait_ref = try!(self.equate().trait_refs(&*a.trait_ref, &*b.trait_ref));
             Ok(ty::ProjectionTy { trait_ref: Rc::new(trait_ref), item_name: a.item_name })
         }
     }
