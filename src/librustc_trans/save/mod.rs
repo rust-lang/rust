@@ -130,7 +130,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                      global: path.global,
                                      segments: segs};
             let qualname = if i == 0 && path.global {
-                format("::{}", path_to_string(&sub_path))
+                format!("::{}", path_to_string(&sub_path))
             } else {
                 path_to_string(&sub_path)
             };
@@ -169,7 +169,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             return;
         }
 
-        let sub_paths = sub_paths[..len-1];
+        let sub_paths = &sub_paths[..len-1];
         for (i, &(ref span, ref qualname)) in sub_paths.iter().enumerate() {
             let qualname = if i == 0 && global && !path.global {
                 format!("::{}", qualname)
@@ -339,7 +339,6 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     match self.analysis.ty_cx.map.get(def_id.node) {
                         NodeItem(_) => {
                             format!("::{}", ty::item_path_str(&self.analysis.ty_cx, def_id))
-                            result
                         }
                         _ => {
                             self.sess.span_bug(method.span,
@@ -1149,20 +1148,20 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 }
             }
             ast::ItemExternCrate(ref s) => {
-                let name = get_ident(ident);
+                let name = get_ident(item.ident);
                 let name = name.get();
                 let location = match *s {
                     Some((ref s, _)) => s.get().to_string(),
                     None => name.to_string(),
                 };
-                let alias_span = self.span.span_for_last_ident(i.span);
-                let cnum = match self.sess.cstore.find_extern_mod_stmt_cnum(id) {
+                let alias_span = self.span.span_for_last_ident(item.span);
+                let cnum = match self.sess.cstore.find_extern_mod_stmt_cnum(item.id) {
                     Some(cnum) => cnum,
                     None => 0,
                 };
-                self.fmt.extern_crate_str(i.span,
+                self.fmt.extern_crate_str(item.span,
                                           alias_span,
-                                          id,
+                                          item.id,
                                           cnum,
                                           name,
                                           &location[],

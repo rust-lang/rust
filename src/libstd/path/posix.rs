@@ -97,7 +97,7 @@ impl FromStr for Path {
 }
 
 /// Valuelue indicating that a path could not be parsed from a string.
-#[derive(Show, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct ParsePathError;
 
 impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Path {

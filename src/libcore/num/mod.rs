@@ -1728,11 +1728,11 @@ from_str_radix_int_impl! { u32 }
 from_str_radix_int_impl! { u64 }
 
 /// An error which can be returned when parsing an integer.
-#[derive(Show, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseIntError { kind: IntErrorKind }
 
-#[derive(Show, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum IntErrorKind {
     Empty,
     InvalidDigit,
@@ -1760,11 +1760,11 @@ impl Error for ParseIntError {
 }
 
 /// An error which can be returned when parsing a float.
-#[derive(Show, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseFloatError { kind: FloatErrorKind }
 
-#[derive(Show, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 enum FloatErrorKind {
     Empty,
     Invalid,

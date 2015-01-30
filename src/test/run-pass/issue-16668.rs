@@ -18,7 +18,7 @@ struct Parser<'a, I, O> {
     parse: Box<FnMut(I) -> Result<O, String> + 'a>
 }
 
-impl<'a, I, O: 'a> Parser<'a, I, O> {
+impl<'a, I: 'a, O: 'a> Parser<'a, I, O> {
     fn compose<K: 'a>(mut self, mut rhs: Parser<'a, O, K>) -> Parser<'a, I, K> {
         Parser {
             parse: box move |&mut: x: I| {

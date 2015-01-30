@@ -10,7 +10,6 @@
 
 #![crate_name = "rustc_borrowck"]
 #![unstable(feature = "rustc_private")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -18,16 +17,16 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![allow(unknown_features)]
-#![feature(quote)]
-#![feature(slicing_syntax, unsafe_destructor)]
-#![feature(rustc_diagnostic_macros)]
-#![allow(unknown_features)] #![feature(int_uint)]
 #![allow(non_camel_case_types)]
-#![feature(collections)]
+
 #![feature(core)]
-#![feature(rustc_private)]
 #![feature(hash)]
+#![feature(int_uint)]
+#![feature(quote)]
+#![feature(rustc_diagnostic_macros)]
+#![feature(rustc_private)]
+#![feature(staged_api)]
+#![feature(unsafe_destructor)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

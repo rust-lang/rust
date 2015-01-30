@@ -76,12 +76,12 @@ fn test_writer_hasher() {
     // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>
 
     unsafe {
-        let ptr: *const int = mem::transmute(5);
+        let ptr: *const i32 = mem::transmute(5is);
         assert_eq!(hash(&ptr), 5);
     }
 
     unsafe {
-        let ptr: *mut int = mem::transmute(5);
+        let ptr: *mut i32 = mem::transmute(5is);
         assert_eq!(hash(&ptr), 5);
     }
 }

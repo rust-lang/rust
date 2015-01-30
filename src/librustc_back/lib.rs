@@ -23,23 +23,23 @@
 
 #![crate_name = "rustc_back"]
 #![unstable(feature = "rustc_private")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![allow(unknown_features)]
-#![feature(slicing_syntax, box_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
+
+#![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
 #![feature(hash)]
+#![feature(int_uint)]
 #![feature(io)]
 #![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
+#![feature(staged_api)]
 
 extern crate syntax;
 extern crate serialize;

@@ -2204,7 +2204,7 @@ mod tests {
                 d.push_back(i);
             }
 
-            assert_eq!(d.drain().collect::<Vec<i32>>(), [0, 1, 2, 3, 4]);
+            assert_eq!(d.drain().collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
             assert!(d.is_empty());
         }
 
@@ -2214,21 +2214,21 @@ mod tests {
             for i in 0..5 {
                 d.push_back(i);
             }
-            for i in 6i..9 {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
-            assert_eq!(d.drain().collect::<Vec<i32>>(), [8,7,6,0,1,2,3,4]);
+            assert_eq!(d.drain().collect::<Vec<_>>(), [8,7,6,0,1,2,3,4]);
             assert!(d.is_empty());
         }
 
         // partially used
         {
-            let mut d = RingBuf::new();
+            let mut d: RingBuf<i32> = RingBuf::new();
             for i in 0..5 {
                 d.push_back(i);
             }
-            for i in 6i..9 {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
@@ -2669,7 +2669,7 @@ mod tests {
     #[test]
     fn test_as_slices() {
         let mut ring: RingBuf<i32> = RingBuf::with_capacity(127);
-        let cap = ring.capacity() as int;
+        let cap = ring.capacity() as i32;
         let first = cap/2;
         let last  = cap - first;
         for i in 0..first {
@@ -2690,14 +2690,14 @@ mod tests {
             assert_eq!(right, expected_right);
         }
 
-        assert_eq!(ring.len() as int, cap);
-        assert_eq!(ring.capacity() as int, cap);
+        assert_eq!(ring.len() as i32, cap);
+        assert_eq!(ring.capacity() as i32, cap);
     }
 
     #[test]
     fn test_as_mut_slices() {
         let mut ring: RingBuf<i32> = RingBuf::with_capacity(127);
-        let cap = ring.capacity() as int;
+        let cap = ring.capacity() as i32;
         let first = cap/2;
         let last  = cap - first;
         for i in 0..first {
@@ -2718,7 +2718,7 @@ mod tests {
             assert_eq!(right, expected_right);
         }
 
-        assert_eq!(ring.len() as int, cap);
-        assert_eq!(ring.capacity() as int, cap);
+        assert_eq!(ring.len() as i32, cap);
+        assert_eq!(ring.capacity() as i32, cap);
     }
 }

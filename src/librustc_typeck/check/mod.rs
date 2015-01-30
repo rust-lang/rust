@@ -1865,7 +1865,7 @@ pub enum LvaluePreference {
 }
 
 /// Whether `autoderef` requires types to resolve.
-#[derive(Copy, Show, PartialEq, Eq)]
+#[derive(Copy, Debug, PartialEq, Eq)]
 pub enum UnresolvedTypeAction {
     /// Produce an error and return `ty_err` whenever a type cannot
     /// be resolved (i.e. it is `ty_infer`).

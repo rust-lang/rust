@@ -110,7 +110,7 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("int_uint", "1.0.0", Active),
 
     // macro reexport needs more discusion and stabilization
-    ("macro_reexport", Active),
+    ("macro_reexport", "1.0.0", Active),
 
     // These are used to test this portion of the compiler, they don't actually
     // mean anything

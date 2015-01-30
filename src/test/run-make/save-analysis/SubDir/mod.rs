@@ -12,15 +12,15 @@
 
 use sub::sub2 as msalias;
 use sub::sub2;
-use std::io::stdio::println;
+use std::old_io::stdio::println;
 
 static yy: usize = 25us;
 
 mod sub {
     pub mod sub2 {
-        use std::io::stdio::println;
+        use std::old_io::stdio::println;
         pub mod sub3 {
-            use std::io::stdio::println;
+            use std::old_io::stdio::println;
             pub fn hello() {
                 println("hello from module 3");
             }

@@ -369,7 +369,7 @@ impl FromStr for SocketAddr {
     }
 }
 
-#[derive(Show, Clone, PartialEq, Copy)]
+#[derive(Debug, Clone, PartialEq, Copy)]
 pub struct ParseError;
 
 /// A trait for objects which can be converted or resolved to one or more `SocketAddr` values.

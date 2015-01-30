@@ -9,21 +9,20 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
-#![allow(unknown_features)]
-#![feature(slicing_syntax, unboxed_closures)]
+
 #![feature(box_syntax)]
-#![feature(int_uint)]
-#![feature(test)]
-#![feature(rustc_private)]
-#![feature(std_misc)]
-#![feature(path)]
-#![feature(io)]
-#![feature(core)]
 #![feature(collections)]
+#![feature(core)]
+#![feature(int_uint)]
+#![feature(io)]
 #![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(slicing_syntax, unboxed_closures)]
+#![feature(std_misc)]
+#![feature(test)]
 #![feature(unicode)]
 
-#![allow(unstable)]
 #![deny(warnings)]
 
 extern crate test;

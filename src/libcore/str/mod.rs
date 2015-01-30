@@ -148,7 +148,7 @@ impl FromStr for bool {
 }
 
 /// An error returned when parsing a `bool` from a string fails.
-#[derive(Show, Clone, PartialEq)]
+#[derive(Debug, Clone, PartialEq)]
 #[allow(missing_copy_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError { _priv: () }
