@@ -162,7 +162,8 @@ $(foreach file,$(wildcard $(S)src/doc/trpl/*.md), \
 ######################################################################
 
 # The main testing target. Tests lots of stuff.
-check: cleantmptestlogs cleantestlibs check-notidy tidy
+check: cleantmptestlogs cleantestlibs all check-stage2 tidy
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # As above but don't bother running tidy.
 check-notidy: cleantmptestlogs cleantestlibs all check-stage2
