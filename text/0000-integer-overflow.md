@@ -83,7 +83,7 @@ semantics, even if accidentally.
 By making the default for debugging code be checked overflow, we help
 ensure that users will encounter overflow errors in practice, and thus
 become aware that overflow in Rust is not the norm. It will also help
-debug simple errors, like signed underflow leading to an infinite
+debug simple errors, like unsigned underflow leading to an infinite
 loop.
 
 # Detailed design
@@ -209,7 +209,8 @@ impl WrappingOps for i64
 impl WrappingOps for u64
 ```
 
-These are implemented to wrap around on overflow unconditionally.
+These are implemented to preserve the pre-existing, wrapping semantics
+unconditionally.
 
 ### `Wrapping<T>` type for convenience
 
@@ -244,8 +245,8 @@ added against such operations, defaulting to warn, though the details
 
 **Making choices is hard.** Having to think about whether wraparound
 arithmetic is appropriate may cause an increased cognitive
-burden. However, wraparound arithmetic is almost never
-appropriate. Therefore, programmers should be able to keep using the
+burden. However, wraparound arithmetic is almost never the intended
+behavior. Therefore, programmers should be able to keep using the
 built-in integer types and to not think about this. Where wraparound
 semantics are required, it is generally a specialized use case with
 the implementor well aware of the requirement.
