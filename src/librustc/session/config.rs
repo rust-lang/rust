@@ -333,8 +333,8 @@ macro_rules! options {
                 break;
             }
             if !found {
-                early_error(&format!("unknown codegen option: `{}`",
-                                    key)[]);
+                early_error(&format!("unknown {} option: `{}`",
+                                    $outputname, key)[]);
             }
         }
         return op;
