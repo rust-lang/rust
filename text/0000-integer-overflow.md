@@ -48,12 +48,12 @@ The RFC has several major goals:
 To that end the RFC proposes two mechanisms:
 
 1. Optional, dynamic overflow checking. Ordinary arithmetic operations
-   (e.g., `a+b`) would *optionally* check for overflow. If checking is
-   enabled, and an overflow occurs, a thread panic will be
+   (e.g., `a+b`) would conditionally check for overflow. If an
+   overflow occurs when checking is enabled, a thread panic will be
    signaled. Specific intrinsics and library support are provided to
    permit either explicit overflow checks or explicit wrapping.
 2. Overflow checking would be, by default, tied to debug assertions
-   (`debug_assert!`).  It can be seen as analogous to a debug
+   (`debug_assert!`). It can be seen as analogous to a debug
    assertion: an important safety check that is too expensive to
    perform on all code.
    
@@ -99,42 +99,40 @@ a static/dynamic analysis tools as an error. This is largerly a
 semantic distinction, though.
 
 The result of an error condition depends upon the state of overflow
-checking, which can be either *enabled* or *optional* (this RFC does
+checking, which can be either *enabled* or *default* (this RFC does
 not describe a way to disable overflow checking completely). If
 overflow checking is *enabled*, then an error condition always results
 in a panic. For efficiency reasons, this panic may be delayed over
 some number of pure operations, as described below.
 
-If overflow checking is *optional*, then an error condition may result
-in a panic, but the erroneous operation may also simply produce a
-value. The permitted results for each error condition are specified
-below. When checking is optional, panics are not required to be
-consistent across executions. This means that, for example, the
-compiler could insert code which results in an overflow only if the
-value that was produced is actually consumed (which may occur on only
-one arm of a branch).
+If overflow checking is *default*, that means that erroneous
+operations will produce a value as specified below. Note though that
+code which encounters an error condition is still considered buggy.
+In particular, Rust source code (in particular library code) cannot
+rely on wrapping semantics, and should always be written with the
+assumption that overflow checking *may* be enabled. This is because
+overflow checking may be enabled by a downstream consumer of the
+library.
 
-In the future, we may add some way to explicit *disable* overflow
-checking (probably in a scoped fashion). In that case, the result of
-each error condition would simply be the same as the optional state
-when no panic occurs.
+In the future, we could add some way to explicitly *disable* overflow
+checking in a scoped fashion. In that case, the result of each error
+condition would simply be the same as the optional state when no panic
+occurs, and this would requests for override checking specified
+elsewhere. However, no mechanism for disabling overflow checks is
+provided by this RFC: instead, it is recommended that authors use the
+wrapped primitives.
 
 The error conditions that can arise, and their defined results, are as
-follows. In all cases, the defined results are the same as the defined
-results today. The only change is that now a panic may result.
+follows. The intention is that the defined results are the same as the
+defined results today. The only change is that now a panic may result.
 
-- The operations `+`, `-`, `*`, `/`, and `%` can underflow and overflow. If no panic occurs,
-  the result of such an operation is defined to be the same as wrapping.
-- When truncating, the casting operation `as` can overflow if the truncated bits contain
-  non-zero values. If no panic occurs, the result of such an operation is defined to
-  be the same as wrapping.
-- Shift operations (`<<`, `>>`) can shift a value of width `N` by more
-  than `N` bits.  If no panic occurs, the result of such an operation
-  is an *undefined value* (note that this is not the same as
-  *undefined behavior* in C).
-  - The reason that there is no defined result here is because
-    different CPUs have different behavior, and we wish to be able to translate shifting
-    operations directly to the corresponding machine instructions.
+- The operations `+`, `-`, `*`, `/`, `%` can underflow and
+  overflow. Shift operations (`<<`, `>>`) can shift a value of width `N` by more
+  than `N` bits. In these cases, the result is the same as the pre-existing,
+  wrapping semantics.
+- When truncating, the casting operation `as` can overflow if the
+  truncated bits contain non-zero values. If no panic occurs, the
+  result of such an operation is defined to be the same as wrapping.
 
 ## Enabling overflow checking
 
@@ -294,11 +292,10 @@ direct overhead of checking for overflow, there is some additional
 overhead when checks are enabled because compilers may have to forego
 other optimizations or code motion that might have been legal. This
 concern seems minimal since, in optimized builds, overflow checking
-will be considered *optional* and hence the compiler is free to ignore
-it. Certainly if we ever decided to change the default for overflow
-checking from *optional* to *enabled* in optimized builds, we would
-want to measure carefully and likely include some means of disabling
-checks in particularly hot paths.
+will not be enabled. Certainly if we ever decided to change the
+default for overflow checking to *enabled* in optimized builds, we
+would want to measure carefully and likely include some means of
+disabling checks in particularly hot paths.
 
 # Alternatives and possible future directions
 
