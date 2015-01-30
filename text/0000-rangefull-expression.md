@@ -41,7 +41,11 @@ slices don't need to use slicing syntax at all, so the change in verbosity from
 
 # Drawbacks
 
-Removing the slicing syntax `&foo[]` is a breaking change.
+* Removing the slicing syntax `&foo[]` is a breaking change.
+
+* `..` already appears in patterns, as in this example: 
+  `if let Some(..) = foo { }`. This is not a conflict per se, but the
+  same syntax element is used in two different ways in Rust.
 
 # Alternatives
 
