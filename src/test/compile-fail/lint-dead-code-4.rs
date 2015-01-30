@@ -13,7 +13,6 @@
 #![deny(dead_code)]
 #![feature(libc)]
 #![feature(core)]
-#![feature(collections)]
 
 extern crate libc;
 

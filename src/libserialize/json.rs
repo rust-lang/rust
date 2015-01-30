@@ -3952,8 +3952,8 @@ mod tests {
         struct ArbitraryType(uint);
         let mut hm: HashMap<ArbitraryType, bool> = HashMap::new();
         hm.insert(ArbitraryType(1), true);
-        let mut mem_buf = Vec::new();
-        let mut encoder = Encoder::new(&mut mem_buf as &mut fmt::Writer);
+        let mut mem_buf = string::String::new();
+        let mut encoder = Encoder::new(&mut mem_buf);
         let result = hm.encode(&mut encoder);
         match result.err().unwrap() {
             EncoderError::BadHashmapKey => (),
