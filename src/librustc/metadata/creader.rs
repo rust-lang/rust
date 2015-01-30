@@ -330,6 +330,7 @@ impl<'a> CrateReader<'a> {
                 if found {
                     ret = Some(cnum);
                 }
+                return
             }
 
             // Alright, so we've gotten this far which means that `data` has the
