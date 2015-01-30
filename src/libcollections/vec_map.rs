@@ -792,7 +792,7 @@ mod test_map {
     #[test]
     fn test_get_mut() {
         let mut m = VecMap::new();
-        assert!(m.insert(1, 12i).is_none());
+        assert!(m.insert(1, 12).is_none());
         assert!(m.insert(2, 8).is_none());
         assert!(m.insert(5, 14).is_none());
         let new = 100;
@@ -807,7 +807,7 @@ mod test_map {
         let mut map = VecMap::new();
         assert_eq!(map.len(), 0);
         assert!(map.is_empty());
-        assert!(map.insert(5, 20i).is_none());
+        assert!(map.insert(5, 20).is_none());
         assert_eq!(map.len(), 1);
         assert!(!map.is_empty());
         assert!(map.insert(11, 12).is_none());
@@ -821,7 +821,7 @@ mod test_map {
     #[test]
     fn test_clear() {
         let mut map = VecMap::new();
-        assert!(map.insert(5, 20i).is_none());
+        assert!(map.insert(5, 20).is_none());
         assert!(map.insert(11, 12).is_none());
         assert!(map.insert(14, 22).is_none());
         map.clear();
@@ -834,15 +834,15 @@ mod test_map {
     #[test]
     fn test_insert() {
         let mut m = VecMap::new();
-        assert_eq!(m.insert(1, 2i), None);
-        assert_eq!(m.insert(1, 3i), Some(2));
-        assert_eq!(m.insert(1, 4i), Some(3));
+        assert_eq!(m.insert(1, 2), None);
+        assert_eq!(m.insert(1, 3), Some(2));
+        assert_eq!(m.insert(1, 4), Some(3));
     }
 
     #[test]
     fn test_remove() {
         let mut m = VecMap::new();
-        m.insert(1, 2i);
+        m.insert(1, 2);
         assert_eq!(m.remove(&1), Some(2));
         assert_eq!(m.remove(&1), None);
     }
@@ -877,7 +877,7 @@ mod test_map {
     fn test_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(0, 1).is_none());
         assert!(m.insert(1, 2).is_none());
         assert!(m.insert(3, 5).is_none());
         assert!(m.insert(6, 10).is_none());
@@ -902,7 +902,7 @@ mod test_map {
     fn test_iterator_size_hints() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(0, 1).is_none());
         assert!(m.insert(1, 2).is_none());
         assert!(m.insert(3, 5).is_none());
         assert!(m.insert(6, 10).is_none());
@@ -918,7 +918,7 @@ mod test_map {
     fn test_mut_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(0, 1).is_none());
         assert!(m.insert(1, 2).is_none());
         assert!(m.insert(3, 5).is_none());
         assert!(m.insert(6, 10).is_none());
@@ -941,7 +941,7 @@ mod test_map {
     fn test_rev_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(0, 1).is_none());
         assert!(m.insert(1, 2).is_none());
         assert!(m.insert(3, 5).is_none());
         assert!(m.insert(6, 10).is_none());
@@ -960,7 +960,7 @@ mod test_map {
     fn test_mut_rev_iterator() {
         let mut m = VecMap::new();
 
-        assert!(m.insert(0, 1i).is_none());
+        assert!(m.insert(0, 1).is_none());
         assert!(m.insert(1, 2).is_none());
         assert!(m.insert(3, 5).is_none());
         assert!(m.insert(6, 10).is_none());
@@ -982,13 +982,13 @@ mod test_map {
     #[test]
     fn test_move_iter() {
         let mut m = VecMap::new();
-        m.insert(1, box 2i);
+        m.insert(1, box 2);
         let mut called = false;
         for (k, v) in m.into_iter() {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);
-            assert_eq!(v, box 2i);
+            assert_eq!(v, box 2);
         }
         assert!(called);
     }
@@ -1011,8 +1011,8 @@ mod test_map {
         let mut map = VecMap::new();
         let empty = VecMap::<int>::new();
 
-        map.insert(1, 2i);
-        map.insert(3, 4i);
+        map.insert(1, 2);
+        map.insert(3, 4);
 
         let map_str = format!("{:?}", map);
         assert!(map_str == "VecMap {1: 2, 3: 4}" || map_str == "{3: 4, 1: 2}");
@@ -1036,9 +1036,9 @@ mod test_map {
         let mut b = VecMap::new();
 
         assert!(a == b);
-        assert!(a.insert(0, 5i).is_none());
+        assert!(a.insert(0, 5).is_none());
         assert!(a != b);
-        assert!(b.insert(0, 4i).is_none());
+        assert!(b.insert(0, 4).is_none());
         assert!(a != b);
         assert!(a.insert(5, 19).is_none());
         assert!(a != b);
@@ -1058,7 +1058,7 @@ mod test_map {
         let mut b = VecMap::new();
 
         assert!(!(a < b) && !(b < a));
-        assert!(b.insert(2u, 5i).is_none());
+        assert!(b.insert(2u, 5).is_none());
         assert!(a < b);
         assert!(a.insert(2, 7).is_none());
         assert!(!(a < b) && b < a);
@@ -1076,7 +1076,7 @@ mod test_map {
         let mut b = VecMap::new();
 
         assert!(a <= b && a >= b);
-        assert!(a.insert(1u, 1i).is_none());
+        assert!(a.insert(1u, 1).is_none());
         assert!(a > b && a >= b);
         assert!(b < a && b <= a);
         assert!(b.insert(2, 2).is_none());

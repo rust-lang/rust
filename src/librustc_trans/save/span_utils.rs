@@ -237,7 +237,7 @@ impl<'a> SpanUtils<'a> {
 
         let mut toks = self.retokenise_span(span);
         // We keep track of how many brackets we're nested in
-        let mut bracket_count = 0i;
+        let mut bracket_count = 0;
         loop {
             let ts = toks.real_token();
             if ts.tok == token::Eof {

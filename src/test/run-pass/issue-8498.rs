@@ -12,14 +12,14 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    match &[(box 5i,box 7i)] {
+    match &[(box 5,box 7)] {
         ps => {
            let (ref y, _) = ps[0];
            assert!(**y == 5);
         }
     }
 
-    match Some(&[(box 5i,)]) {
+    match Some(&[(box 5,)]) {
         Some(ps) => {
            let (ref y,) = ps[0];
            assert!(**y == 5);
@@ -27,7 +27,7 @@ pub fn main() {
         None => ()
     }
 
-    match Some(&[(box 5i,box 7i)]) {
+    match Some(&[(box 5,box 7)]) {
         Some(ps) => {
            let (ref y, ref z) = ps[0];
            assert!(**y == 5);

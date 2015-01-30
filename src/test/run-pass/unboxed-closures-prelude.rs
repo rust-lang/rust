@@ -16,10 +16,10 @@
 
 fn main() {
     let task: Box<Fn(int) -> int> = box |&: x| x;
-    task.call((0i, ));
+    task.call((0, ));
 
     let mut task: Box<FnMut(int) -> int> = box |&mut: x| x;
-    task(0i);
+    task(0);
 
     call(|:x| x, 22);
 }

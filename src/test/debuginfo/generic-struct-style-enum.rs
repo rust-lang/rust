@@ -76,7 +76,7 @@ fn main() {
     // 0b01011001 = 89
     let case3: Regular<u16, i32, u64>  = Case3 { a: 0, b: 6438275382588823897 };
 
-    let univariant = TheOnlyCase { a: -1i };
+    let univariant = TheOnlyCase { a: -1 };
 
     zzz(); // #break
 }

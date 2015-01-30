@@ -253,9 +253,9 @@ mod test {
     fn smoke() {
         unsafe {
             let queue = Queue::new(0);
-            queue.push(1i);
+            queue.push(1);
             queue.push(2);
-            assert_eq!(queue.pop(), Some(1i));
+            assert_eq!(queue.pop(), Some(1));
             assert_eq!(queue.pop(), Some(2));
             assert_eq!(queue.pop(), None);
             queue.push(3);
@@ -270,7 +270,7 @@ mod test {
     fn peek() {
         unsafe {
             let queue = Queue::new(0);
-            queue.push(vec![1i]);
+            queue.push(vec![1]);
 
             // Ensure the borrowchecker works
             match queue.peek() {
@@ -290,8 +290,8 @@ mod test {
     fn drop_full() {
         unsafe {
             let q = Queue::new(0);
-            q.push(box 1i);
-            q.push(box 2i);
+            q.push(box 1);
+            q.push(box 2);
         }
     }
 
@@ -299,7 +299,7 @@ mod test {
     fn smoke_bound() {
         unsafe {
             let q = Queue::new(0);
-            q.push(1i);
+            q.push(1);
             q.push(2);
             assert_eq!(q.pop(), Some(1));
             assert_eq!(q.pop(), Some(2));
@@ -328,7 +328,7 @@ mod test {
                 for _ in 0u..100000 {
                     loop {
                         match q2.pop() {
-                            Some(1i) => break,
+                            Some(1) => break,
                             Some(_) => panic!(),
                             None => {}
                         }
@@ -336,7 +336,7 @@ mod test {
                 }
                 tx.send(()).unwrap();
             });
-            for _ in 0i..100000 {
+            for _ in 0..100000 {
                 q.push(1);
             }
             rx.recv().unwrap();

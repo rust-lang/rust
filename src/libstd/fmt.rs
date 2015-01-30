@@ -29,10 +29,10 @@
 //! ```
 //! format!("Hello");                  // => "Hello"
 //! format!("Hello, {}!", "world");    // => "Hello, world!"
-//! format!("The number is {}", 1i);   // => "The number is 1"
-//! format!("{:?}", (3i, 4i));         // => "(3i, 4i)"
-//! format!("{value}", value=4i);      // => "4"
-//! format!("{} {}", 1i, 2u);          // => "1 2"
+//! format!("The number is {}", 1);   // => "The number is 1"
+//! format!("{:?}", (3, 4));         // => "(3, 4)"
+//! format!("{value}", value=4);      // => "4"
+//! format!("{} {}", 1, 2u);          // => "1 2"
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is
@@ -55,7 +55,7 @@
 //! the iterator advances. This leads to behavior like this:
 //!
 //! ```rust
-//! format!("{1} {} {0} {}", 1i, 2i); // => "2 1 1 2"
+//! format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2"
 //! ```
 //!
 //! The internal iterator over the argument has not been advanced by the time
@@ -83,8 +83,8 @@
 //!
 //! ```
 //! format!("{argument}", argument = "test");   // => "test"
-//! format!("{name} {}", 1i, name = 2i);        // => "2 1"
-//! format!("{a} {c} {b}", a="a", b='b', c=3i);  // => "a 3 b"
+//! format!("{name} {}", 1, name = 2);        // => "2 1"
+//! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
 //! ```
 //!
 //! It is illegal to put positional parameters (those without names) after
@@ -206,7 +206,7 @@
 //!     let myvector = Vector2D { x: 3, y: 4 };
 //!
 //!     println!("{}", myvector);       // => "(3, 4)"
-//!     println!("{:?}", myvector);     // => "Vector2D {x: 3i, y:4i}"
+//!     println!("{:?}", myvector);     // => "Vector2D {x: 3, y:4}"
 //!     println!("{:10.3b}", myvector); // => "     5.000"
 //! }
 //! ```

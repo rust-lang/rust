@@ -3938,7 +3938,7 @@ mod tests {
         hash_map.insert("a".to_string(), 1u);
         hash_map.insert("b".to_string(), 2);
         assert_eq!(hash_map.to_json(), object);
-        assert_eq!(Some(15i).to_json(), I64(15));
+        assert_eq!(Some(15).to_json(), I64(15));
         assert_eq!(Some(15u).to_json(), U64(15));
         assert_eq!(None::<int>.to_json(), Null);
     }
@@ -3998,7 +3998,7 @@ mod tests {
 
     fn big_json() -> string::String {
         let mut src = "[\n".to_string();
-        for _ in 0i..500 {
+        for _ in 0..500 {
             src.push_str(r#"{ "a": true, "b": null, "c":3.1415, "d": "Hello world", "e": \
                             [1,2,3]},"#);
         }

@@ -12,24 +12,24 @@
 // where clause type, and not only type parameters.
 
 trait Foo {
-    fn foo(&self) -> int;
+    fn foo(&self) -> i32;
 }
 
-impl Foo for Option<int>
+impl Foo for Option<i32>
 {
-    fn foo(&self) -> int {
+    fn foo(&self) -> i32 {
         self.unwrap_or(22)
     }
 }
 
-impl Foo for Option<uint>
+impl Foo for Option<u32>
 {
-    fn foo(&self) -> int {
-        self.unwrap_or(22) as int
+    fn foo(&self) -> i32 {
+        self.unwrap_or(22) as i32
     }
 }
 
-fn check<T>(x: Option<T>) -> (int, int)
+fn check<T>(x: Option<T>) -> (i32, i32)
     where Option<T> : Foo
 {
     let y: Option<T> = None;
@@ -37,6 +37,6 @@ fn check<T>(x: Option<T>) -> (int, int)
 }
 
 fn main() {
-    assert_eq!(check(Some(23u)), (23i, 22i));
-    assert_eq!(check(Some(23i)), (23i, 22i));
+    assert_eq!(check(Some(23u32)), (23, 22));
+    assert_eq!(check(Some(23)), (23, 22));
 }

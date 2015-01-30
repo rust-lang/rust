@@ -35,7 +35,7 @@ pub fn main() {
         // Call with variable number of arguments
         let c = CString::from_slice(b"%d %f %c %s\n");
         check("42 42.500000 a %d %f %c %s\n\n", |s| {
-            sprintf(s, c.as_ptr(), 42i, 42.5f64, 'a' as c_int, c.as_ptr());
+            sprintf(s, c.as_ptr(), 42, 42.5f64, 'a' as c_int, c.as_ptr());
         });
 
         // Make a function pointer
@@ -50,7 +50,7 @@ pub fn main() {
             // Call with variable number of arguments
             let c = CString::from_slice(b"%d %f %c %s\n");
             check("42 42.500000 a %d %f %c %s\n\n", |s| {
-                sprintf(s, c.as_ptr(), 42i, 42.5f64, 'a' as c_int, c.as_ptr());
+                sprintf(s, c.as_ptr(), 42, 42.5f64, 'a' as c_int, c.as_ptr());
             });
         }
 

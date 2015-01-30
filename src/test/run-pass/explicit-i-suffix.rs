@@ -9,11 +9,11 @@
 // except according to those terms.
 
 pub fn main() {
-    let x: int = 8i;
-    let y = 9i;
+    let x: int = 8;
+    let y = 9;
     x + y;
 
-    let q: int = -8i;
-    let r = -9i;
+    let q: int = -8;
+    let r = -9;
     q + r;
 }

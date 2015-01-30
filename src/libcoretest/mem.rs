@@ -70,8 +70,8 @@ fn align_of_val_basic() {
 
 #[test]
 fn test_swap() {
-    let mut x = 31337i;
-    let mut y = 42i;
+    let mut x = 31337;
+    let mut y = 42;
     swap(&mut x, &mut y);
     assert_eq!(x, 42);
     assert_eq!(y, 31337);
@@ -87,7 +87,7 @@ fn test_replace() {
 
 #[test]
 fn test_transmute_copy() {
-    assert_eq!(1u, unsafe { transmute_copy(&1i) });
+    assert_eq!(1u, unsafe { transmute_copy(&1) });
 }
 
 #[test]
@@ -95,7 +95,7 @@ fn test_transmute() {
     trait Foo {}
     impl Foo for int {}
 
-    let a = box 100i as Box<Foo>;
+    let a = box 100 as Box<Foo>;
     unsafe {
         let x: ::core::raw::TraitObject = transmute(a);
         assert!(*(x.data as *const int) == 100);
@@ -146,7 +146,7 @@ fn trait_static_method_call(b: &mut Bencher) {
 
 #[bench]
 fn match_option_some(b: &mut Bencher) {
-    let x = Some(10i);
+    let x = Some(10);
     b.iter(|| {
         match x {
             Some(y) => y,
@@ -157,11 +157,11 @@ fn match_option_some(b: &mut Bencher) {
 
 #[bench]
 fn match_vec_pattern(b: &mut Bencher) {
-    let x = [1i,2,3,4,5,6];
+    let x = [1,2,3,4,5,6];
     b.iter(|| {
         match x {
-            [1,2,3,..] => 10i,
-            _ => 11i,
+            [1,2,3,..] => 10,
+            _ => 11,
         }
     });
 }

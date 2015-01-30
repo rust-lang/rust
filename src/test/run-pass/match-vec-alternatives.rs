@@ -55,28 +55,28 @@ fn match_nested_vecs_snoc<'a, T>(l1: Option<&'a [T]>, l2: Result<&'a [T], ()>) -
 }
 
 fn main() {
-    assert_eq!(match_vecs(&[1i, 2], &[2i, 3]), "both non-empty");
-    assert_eq!(match_vecs(&[], &[1i, 2, 3, 4]), "one empty");
+    assert_eq!(match_vecs(&[1, 2], &[2, 3]), "both non-empty");
+    assert_eq!(match_vecs(&[], &[1, 2, 3, 4]), "one empty");
     assert_eq!(match_vecs::<uint>(&[], &[]), "both empty");
-    assert_eq!(match_vecs(&[1i, 2, 3], &[]), "one empty");
+    assert_eq!(match_vecs(&[1, 2, 3], &[]), "one empty");
 
-    assert_eq!(match_vecs_cons(&[1i, 2], &[2i, 3]), "both non-empty");
-    assert_eq!(match_vecs_cons(&[], &[1i, 2, 3, 4]), "one empty");
+    assert_eq!(match_vecs_cons(&[1, 2], &[2, 3]), "both non-empty");
+    assert_eq!(match_vecs_cons(&[], &[1, 2, 3, 4]), "one empty");
     assert_eq!(match_vecs_cons::<uint>(&[], &[]), "both empty");
-    assert_eq!(match_vecs_cons(&[1i, 2, 3], &[]), "one empty");
+    assert_eq!(match_vecs_cons(&[1, 2, 3], &[]), "one empty");
 
-    assert_eq!(match_vecs_snoc(&[1i, 2], &[2i, 3]), "both non-empty");
-    assert_eq!(match_vecs_snoc(&[], &[1i, 2, 3, 4]), "one empty");
+    assert_eq!(match_vecs_snoc(&[1, 2], &[2, 3]), "both non-empty");
+    assert_eq!(match_vecs_snoc(&[], &[1, 2, 3, 4]), "one empty");
     assert_eq!(match_vecs_snoc::<uint>(&[], &[]), "both empty");
-    assert_eq!(match_vecs_snoc(&[1i, 2, 3], &[]), "one empty");
+    assert_eq!(match_vecs_snoc(&[1, 2, 3], &[]), "one empty");
 
     assert_eq!(match_nested_vecs_cons(None, Ok::<&[_], ()>(&[4u, 2u])),
                "None, Ok(at least two elements)");
     assert_eq!(match_nested_vecs_cons::<uint>(None, Err(())), "None, Ok(less than one element)");
     assert_eq!(match_nested_vecs_cons::<bool>(Some::<&[_]>(&[]), Ok::<&[_], ()>(&[])),
                "Some(empty), Ok(empty)");
-    assert_eq!(match_nested_vecs_cons(Some::<&[_]>(&[1i]), Err(())), "Some(non-empty), any");
-    assert_eq!(match_nested_vecs_cons(Some::<&[_]>(&[(42i, ())]), Ok::<&[_], ()>(&[(1i, ())])),
+    assert_eq!(match_nested_vecs_cons(Some::<&[_]>(&[1]), Err(())), "Some(non-empty), any");
+    assert_eq!(match_nested_vecs_cons(Some::<&[_]>(&[(42, ())]), Ok::<&[_], ()>(&[(1, ())])),
                "Some(non-empty), any");
 
     assert_eq!(match_nested_vecs_snoc(None, Ok::<&[_], ()>(&[4u, 2u])),
@@ -84,7 +84,7 @@ fn main() {
     assert_eq!(match_nested_vecs_snoc::<uint>(None, Err(())), "None, Ok(less than one element)");
     assert_eq!(match_nested_vecs_snoc::<bool>(Some::<&[_]>(&[]), Ok::<&[_], ()>(&[])),
                "Some(empty), Ok(empty)");
-    assert_eq!(match_nested_vecs_snoc(Some::<&[_]>(&[1i]), Err(())), "Some(non-empty), any");
-    assert_eq!(match_nested_vecs_snoc(Some::<&[_]>(&[(42i, ())]), Ok::<&[_], ()>(&[(1i, ())])),
+    assert_eq!(match_nested_vecs_snoc(Some::<&[_]>(&[1]), Err(())), "Some(non-empty), any");
+    assert_eq!(match_nested_vecs_snoc(Some::<&[_]>(&[(42, ())]), Ok::<&[_], ()>(&[(1, ())])),
                "Some(non-empty), any");
 }

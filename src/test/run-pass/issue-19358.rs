@@ -23,7 +23,7 @@ struct Bar<T> where T: Trait {
 impl Trait for int {}
 
 fn main() {
-    let a = Foo { foo: 12i };
-    let b = Bar { bar: 12i };
+    let a = Foo { foo: 12 };
+    let b = Bar { bar: 12 };
     println!("{:?} {:?}", a, b);
 }

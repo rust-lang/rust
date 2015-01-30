@@ -17,24 +17,24 @@ macro_rules! id {
 }
 
 fn foo() {
-    id!(1i) + 1;
-    id![1i] - 1;
-    id!(1i) * 1;
-    id![1i] / 1;
-    id!(1i) % 1;
+    id!(1) + 1;
+    id![1] - 1;
+    id!(1) * 1;
+    id![1] / 1;
+    id!(1) % 1;
 
-    id!(1i) & 1;
-    id![1i] | 1;
-    id!(1i) ^ 1;
+    id!(1) & 1;
+    id![1] | 1;
+    id!(1) ^ 1;
 
-    let mut x = 1i;
+    let mut x = 1;
     id![x] = 2;
     id!(x) += 1;
 
     id!(1f64).clone();
 
-    id!([1i, 2, 3])[1];
-    id![drop](1i);
+    id!([1, 2, 3])[1];
+    id![drop](1);
 
     id!(true) && true;
     id![true] || true;

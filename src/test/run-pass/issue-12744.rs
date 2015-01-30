@@ -12,6 +12,6 @@
 #![feature(box_syntax)]
 
 fn main() {
-    fn test() -> Box<std::any::Any + 'static> { box 1i }
+    fn test() -> Box<std::any::Any + 'static> { box 1 }
     println!("{:?}", test())
 }

@@ -12,6 +12,6 @@
 
 fn main() {
     let onetime = |: x| x;
-    onetime(0i);
+    onetime(0);
 }
 

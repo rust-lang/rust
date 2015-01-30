@@ -973,9 +973,9 @@ pub fn lltype_for_foreign_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 fn add_argument_attributes(tys: &ForeignTypes,
                            llfn: ValueRef) {
     let mut i = if tys.fn_ty.ret_ty.is_indirect() {
-        1i
+        1
     } else {
-        0i
+        0
     };
 
     match tys.fn_ty.ret_ty.attr {

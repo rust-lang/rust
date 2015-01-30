@@ -22,5 +22,5 @@ fn foo<B:Bar>(b: B) -> <B as Bar>::T {
 }
 
 fn main() {
-    println!("{}", foo(3i));
+    println!("{}", foo(3));
 }

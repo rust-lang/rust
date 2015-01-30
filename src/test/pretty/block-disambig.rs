@@ -15,9 +15,9 @@
 
 use std::cell::Cell;
 
-fn test1() { let val = &0i; { } *val; }
+fn test1() { let val = &0; { } *val; }
 
-fn test2() -> int { let val = &0i; { } *val }
+fn test2() -> int { let val = &0; { } *val }
 
 #[derive(Copy)]
 struct S { eax: int }
@@ -35,13 +35,13 @@ fn test5() -> (int, int) { { } (0, 1) }
 fn test6() -> bool { { } (true || false) && true }
 
 fn test7() -> uint {
-    let regs = &0i;
+    let regs = &0;
     match true { true => { } _ => { } }
     (*regs < 2) as uint
 }
 
 fn test8() -> int {
-    let val = &0i;
+    let val = &0;
     match true {
         true => { }
         _    => { }
@@ -54,12 +54,12 @@ fn test8() -> int {
 }
 
 fn test9() {
-    let regs = &Cell::new(0i);
+    let regs = &Cell::new(0);
     match true { true => { } _ => { } } regs.set(regs.get() + 1);
 }
 
 fn test10() -> int {
-    let regs = vec!(0i);
+    let regs = vec!(0);
     match true { true => { } _ => { } }
     regs[0]
 }

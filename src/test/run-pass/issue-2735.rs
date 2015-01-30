@@ -23,5 +23,5 @@ fn deadcode() {
 }
 
 pub fn main() {
-    perform_hax(box 42i);
+    perform_hax(box 42);
 }

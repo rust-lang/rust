@@ -15,7 +15,7 @@ use std::sync::mpsc::channel;
 
 pub fn main() {
     let (tx, rx) = channel();
-    tx.send(box 100i).unwrap();
+    tx.send(box 100).unwrap();
     let v = rx.recv().unwrap();
-    assert_eq!(v, box 100i);
+    assert_eq!(v, box 100);
 }

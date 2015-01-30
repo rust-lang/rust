@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static mut DROP: int = 0i;
-static mut DROP_S: int = 0i;
-static mut DROP_T: int = 0i;
+static mut DROP: int = 0;
+static mut DROP_S: int = 0;
+static mut DROP_T: int = 0;
 
 struct S;
 impl Drop for S {

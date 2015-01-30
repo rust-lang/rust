@@ -11,7 +11,7 @@
 #![feature(advanced_slice_patterns)]
 
 fn a() {
-    let x = [1i, 2, 3];
+    let x = [1, 2, 3];
     match x {
         [1, 2, 4] => unreachable!(),
         [0, 2, 3, ..] => unreachable!(),

@@ -25,9 +25,9 @@ use syntax::ptr::P;
 use rustc::plugin::Registry;
 
 #[macro_export]
-macro_rules! exported_macro { () => (2i) }
+macro_rules! exported_macro { () => (2) }
 
-macro_rules! unexported_macro { () => (3i) }
+macro_rules! unexported_macro { () => (3) }
 
 #[plugin_registrar]
 pub fn plugin_registrar(reg: &mut Registry) {
@@ -47,7 +47,7 @@ fn expand_make_a_1(cx: &mut ExtCtxt, sp: Span, tts: &[TokenTree])
     if !tts.is_empty() {
         cx.span_fatal(sp, "make_a_1 takes no arguments");
     }
-    MacExpr::new(quote_expr!(cx, 1i))
+    MacExpr::new(quote_expr!(cx, 1))
 }
 
 // See Issue #15750

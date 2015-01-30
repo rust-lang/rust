@@ -162,7 +162,7 @@ mod imp {
 
         pub static SIGSTKSZ: libc::size_t = 8192;
 
-        pub const SIG_DFL: sighandler_t = 0i as sighandler_t;
+        pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
 
         // This definition is not as accurate as it could be, {si_addr} is
         // actually a giant union. Currently we're only interested in that field,
@@ -214,7 +214,7 @@ mod imp {
 
         pub const SIGSTKSZ: libc::size_t = 131072;
 
-        pub const SIG_DFL: sighandler_t = 0i as sighandler_t;
+        pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
 
         pub type sigset_t = u32;
 
@@ -271,7 +271,7 @@ mod imp {
     }
 
     pub unsafe fn make_handler() -> super::Handler {
-        super::Handler { _data: 0i as *mut libc::c_void }
+        super::Handler { _data: 0 as *mut libc::c_void }
     }
 
     pub unsafe fn drop_handler(_handler: &mut super::Handler) {

@@ -14,14 +14,14 @@ use std::mem::drop;
 
 #[test]
 fn smoketest_cell() {
-    let x = Cell::new(10i);
+    let x = Cell::new(10);
     assert!(x == Cell::new(10));
     assert!(x.get() == 10);
     x.set(20);
     assert!(x == Cell::new(20));
     assert!(x.get() == 20);
 
-    let y = Cell::new((30i, 40i));
+    let y = Cell::new((30, 40));
     assert!(y == Cell::new((30, 40)));
     assert!(y.get() == (30, 40));
 }
@@ -50,35 +50,35 @@ fn ref_and_refmut_have_sensible_show() {
 
 #[test]
 fn double_imm_borrow() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     let _b1 = x.borrow();
     x.borrow();
 }
 
 #[test]
 fn no_mut_then_imm_borrow() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     let _b1 = x.borrow_mut();
     assert!(x.try_borrow().is_none());
 }
 
 #[test]
 fn no_imm_then_borrow_mut() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     let _b1 = x.borrow();
     assert!(x.try_borrow_mut().is_none());
 }
 
 #[test]
 fn no_double_borrow_mut() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     let _b1 = x.borrow_mut();
     assert!(x.try_borrow_mut().is_none());
 }
 
 #[test]
 fn imm_release_borrow_mut() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     {
         let _b1 = x.borrow();
     }
@@ -87,7 +87,7 @@ fn imm_release_borrow_mut() {
 
 #[test]
 fn mut_release_borrow_mut() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     {
         let _b1 = x.borrow_mut();
     }
@@ -96,7 +96,7 @@ fn mut_release_borrow_mut() {
 
 #[test]
 fn double_borrow_single_release_no_borrow_mut() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     let _b1 = x.borrow();
     {
         let _b2 = x.borrow();
@@ -107,7 +107,7 @@ fn double_borrow_single_release_no_borrow_mut() {
 #[test]
 #[should_fail]
 fn discard_doesnt_unborrow() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     let _b = x.borrow();
     let _ = _b;
     let _b = x.borrow_mut();
@@ -115,7 +115,7 @@ fn discard_doesnt_unborrow() {
 
 #[test]
 fn clone_ref_updates_flag() {
-    let x = RefCell::new(0i);
+    let x = RefCell::new(0);
     {
         let b1 = x.borrow();
         assert!(x.try_borrow_mut().is_none());

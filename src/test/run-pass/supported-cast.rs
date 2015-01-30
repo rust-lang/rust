@@ -34,8 +34,8 @@ pub fn main() {
   println!("{:?}", 1 as u16);
   println!("{:?}", 1 as u32);
   println!("{:?}", 1 as u64);
-  println!("{:?}", 1i as f32);
-  println!("{:?}", 1i as f64);
+  println!("{:?}", 1 as f32);
+  println!("{:?}", 1 as f64);
 
   println!("{:?}", 1u as int);
   println!("{:?}", 1u as uint);

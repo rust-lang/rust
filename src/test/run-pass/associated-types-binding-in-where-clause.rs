@@ -37,7 +37,7 @@ fn foo_uint<I: Foo<A=uint>>(x: I) -> uint {
 }
 
 pub fn main() {
-    let a = 42i;
+    let a = 42;
     foo_uint(a);
 
     let a = 'a';

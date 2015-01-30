@@ -11,8 +11,8 @@
 fn iter_vec<T, F>(v: Vec<T> , mut f: F) where F: FnMut(&T) { for x in v.iter() { f(x); } }
 
 pub fn main() {
-    let v = vec!(1i, 2, 3, 4, 5, 6, 7);
-    let mut odds = 0i;
+    let v = vec![1i32, 2, 3, 4, 5, 6, 7];
+    let mut odds = 0i32;
     iter_vec(v, |i| {
         if *i % 2 == 1 {
             odds += 1;

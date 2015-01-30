@@ -119,7 +119,7 @@ macro_rules! warn {
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
-///     let ret = 3i;
+///     let ret = 3;
 ///     info!("this function is about to return: {}", ret);
 /// }
 /// ```
@@ -145,7 +145,7 @@ macro_rules! info {
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
-///     debug!("x = {x}, y = {y}", x=10i, y=20i);
+///     debug!("x = {x}, y = {y}", x=10, y=20);
 /// }
 /// ```
 ///

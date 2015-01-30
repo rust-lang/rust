@@ -19,8 +19,8 @@
 
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 pub fn main() {
-    match List::Cons(10i, box List::Nil) {
-        List::Cons(10i, _) => {}
+    match List::Cons(10, box List::Nil) {
+        List::Cons(10, _) => {}
         List::Nil => {}
         _ => panic!()
     }

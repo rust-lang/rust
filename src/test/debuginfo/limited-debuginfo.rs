@@ -47,7 +47,7 @@ fn zzz() {()}
 
 fn some_function(a: int, b: int) {
     let some_variable = Struct { a: 11, b: 22 };
-    let some_other_variable = 23i;
+    let some_other_variable = 23;
 
     for x in 0..1 {
         zzz(); // #break

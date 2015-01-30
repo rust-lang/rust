@@ -168,7 +168,7 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// let s = RandomState::new();
     /// let mut set = HashSet::with_capacity_and_hash_state(10u, s);
-    /// set.insert(1i);
+    /// set.insert(1);
     /// ```
     #[inline]
     #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
@@ -290,8 +290,8 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Can be seen as `a - b`.
     /// for x in a.difference(&b) {
@@ -299,12 +299,12 @@ impl<T, S, H> HashSet<T, S>
     /// }
     ///
     /// let diff: HashSet<int> = a.difference(&b).map(|&x| x).collect();
-    /// assert_eq!(diff, [1i].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [1].iter().map(|&x| x).collect());
     ///
     /// // Note that difference is not symmetric,
     /// // and `b - a` means something else:
     /// let diff: HashSet<int> = b.difference(&a).map(|&x| x).collect();
-    /// assert_eq!(diff, [4i].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [4].iter().map(|&x| x).collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a HashSet<T, S>) -> Difference<'a, T, S> {
@@ -320,8 +320,8 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Print 1, 4 in arbitrary order.
     /// for x in a.symmetric_difference(&b) {
@@ -332,7 +332,7 @@ impl<T, S, H> HashSet<T, S>
     /// let diff2: HashSet<int> = b.symmetric_difference(&a).map(|&x| x).collect();
     ///
     /// assert_eq!(diff1, diff2);
-    /// assert_eq!(diff1, [1i, 4].iter().map(|&x| x).collect());
+    /// assert_eq!(diff1, [1, 4].iter().map(|&x| x).collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(&'a self, other: &'a HashSet<T, S>)
@@ -346,8 +346,8 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Print 2, 3 in arbitrary order.
     /// for x in a.intersection(&b) {
@@ -355,7 +355,7 @@ impl<T, S, H> HashSet<T, S>
     /// }
     ///
     /// let diff: HashSet<int> = a.intersection(&b).map(|&x| x).collect();
-    /// assert_eq!(diff, [2i, 3].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [2, 3].iter().map(|&x| x).collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a HashSet<T, S>) -> Intersection<'a, T, S> {
@@ -371,8 +371,8 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// ```
     /// use std::collections::HashSet;
-    /// let a: HashSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
-    /// let b: HashSet<int> = [4i, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let a: HashSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
+    /// let b: HashSet<int> = [4, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order.
     /// for x in a.union(&b) {
@@ -380,7 +380,7 @@ impl<T, S, H> HashSet<T, S>
     /// }
     ///
     /// let diff: HashSet<int> = a.union(&b).map(|&x| x).collect();
-    /// assert_eq!(diff, [1i, 2, 3, 4].iter().map(|&x| x).collect());
+    /// assert_eq!(diff, [1, 2, 3, 4].iter().map(|&x| x).collect());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a HashSet<T, S>) -> Union<'a, T, S> {
@@ -955,8 +955,8 @@ mod test_set {
         let mut ys = HashSet::new();
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
-        assert!(xs.insert(5i));
-        assert!(ys.insert(11i));
+        assert!(xs.insert(5));
+        assert!(ys.insert(11));
         assert!(xs.is_disjoint(&ys));
         assert!(ys.is_disjoint(&xs));
         assert!(xs.insert(7));
@@ -974,13 +974,13 @@ mod test_set {
     #[test]
     fn test_subset_and_superset() {
         let mut a = HashSet::new();
-        assert!(a.insert(0i));
+        assert!(a.insert(0));
         assert!(a.insert(5));
         assert!(a.insert(11));
         assert!(a.insert(7));
 
         let mut b = HashSet::new();
-        assert!(b.insert(0i));
+        assert!(b.insert(0));
         assert!(b.insert(7));
         assert!(b.insert(19));
         assert!(b.insert(250));
@@ -1018,7 +1018,7 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(11i));
+        assert!(a.insert(11));
         assert!(a.insert(1));
         assert!(a.insert(3));
         assert!(a.insert(77));
@@ -1026,7 +1026,7 @@ mod test_set {
         assert!(a.insert(5));
         assert!(a.insert(-5));
 
-        assert!(b.insert(2i));
+        assert!(b.insert(2));
         assert!(b.insert(11));
         assert!(b.insert(77));
         assert!(b.insert(-9));
@@ -1048,13 +1048,13 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1i));
+        assert!(a.insert(1));
         assert!(a.insert(3));
         assert!(a.insert(5));
         assert!(a.insert(9));
         assert!(a.insert(11));
 
-        assert!(b.insert(3i));
+        assert!(b.insert(3));
         assert!(b.insert(9));
 
         let mut i = 0;
@@ -1071,13 +1071,13 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1i));
+        assert!(a.insert(1));
         assert!(a.insert(3));
         assert!(a.insert(5));
         assert!(a.insert(9));
         assert!(a.insert(11));
 
-        assert!(b.insert(-2i));
+        assert!(b.insert(-2));
         assert!(b.insert(3));
         assert!(b.insert(9));
         assert!(b.insert(14));
@@ -1097,7 +1097,7 @@ mod test_set {
         let mut a = HashSet::new();
         let mut b = HashSet::new();
 
-        assert!(a.insert(1i));
+        assert!(a.insert(1));
         assert!(a.insert(3));
         assert!(a.insert(5));
         assert!(a.insert(9));
@@ -1106,7 +1106,7 @@ mod test_set {
         assert!(a.insert(19));
         assert!(a.insert(24));
 
-        assert!(b.insert(-2i));
+        assert!(b.insert(-2));
         assert!(b.insert(1));
         assert!(b.insert(5));
         assert!(b.insert(9));
@@ -1124,7 +1124,7 @@ mod test_set {
 
     #[test]
     fn test_from_iter() {
-        let xs = [1i, 2, 3, 4, 5, 6, 7, 8, 9];
+        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
         let set: HashSet<int> = xs.iter().map(|&x| x).collect();
 
@@ -1154,13 +1154,13 @@ mod test_set {
         // I'm keeping them around to prevent a regression.
         let mut s1 = HashSet::new();
 
-        s1.insert(1i);
+        s1.insert(1);
         s1.insert(2);
         s1.insert(3);
 
         let mut s2 = HashSet::new();
 
-        s2.insert(1i);
+        s2.insert(1);
         s2.insert(2);
 
         assert!(s1 != s2);
@@ -1175,7 +1175,7 @@ mod test_set {
         let mut set: HashSet<int> = HashSet::new();
         let empty: HashSet<int> = HashSet::new();
 
-        set.insert(1i);
+        set.insert(1);
         set.insert(2);
 
         let set_str = format!("{:?}", set);
@@ -1201,7 +1201,7 @@ mod test_set {
         let mut s: HashSet<int> = (1is..100).collect();
 
         // try this a bunch of times to make sure we don't screw up internal state.
-        for _ in 0i..20 {
+        for _ in 0..20 {
             assert_eq!(s.len(), 99);
 
             {
