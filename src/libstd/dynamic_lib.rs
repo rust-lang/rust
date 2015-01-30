@@ -256,18 +256,6 @@ mod dl {
         dlclose(handle as *mut libc::c_void); ()
     }
 
-    #[cfg(not(target_os = "openbsd"))]
-    #[link_name = "dl"]
-    extern {
-        fn dlopen(filename: *const libc::c_char,
-                  flag: libc::c_int) -> *mut libc::c_void;
-        fn dlerror() -> *mut libc::c_char;
-        fn dlsym(handle: *mut libc::c_void,
-                 symbol: *const libc::c_char) -> *mut libc::c_void;
-        fn dlclose(handle: *mut libc::c_void) -> libc::c_int;
-    }
-
-    #[cfg(target_os = "openbsd")]
     extern {
         fn dlopen(filename: *const libc::c_char,
                   flag: libc::c_int) -> *mut libc::c_void;
