@@ -213,6 +213,7 @@ impl LintStore {
                      UnstableFeatures,
                      Stability,
                      UnconditionalRecursion,
+                     PrivateNoMangleFns,
         );
 
         add_builtin_with_new!(sess,
