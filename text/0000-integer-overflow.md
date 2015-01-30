@@ -448,24 +448,17 @@ Reasons this was not pursued: My brain melted. :(
 
 # Unresolved questions
 
-"What should the default be where neither `overflow_checks(on)` nor `off` has
-been explicitly specified?", as discussed in the main text.
+The C semantics of wrapping operations in some cases are undefined:
 
-Instead of a single `WrappingOps` trait, should there perhaps be a separate
-trait for each operation, as with the built-in arithmetic traits `Add`, `Sub`,
-and so on? The only purpose of `WrappingOps` is to be implemented for the
-built-in numeric types, so it's not clear that there would be a benefit to doing
-so.
+- `INT_MIN / -1`, `INT_MIN % -1`
+- Shifts by an excessive number of bits
 
-C and C++ define `INT_MIN / -1` and `INT_MIN % -1` to be undefined behavior, to
-make it possible to use a division and remainder instruction to compute them.
-Mathematically, however, modulus can never overflow and `INT_MIN % -1` has value
-`0`. Should Rust consider these to be instances of overflow, or should it
-guarantee that they return the correct mathematical result, at the cost of a
-runtime branch? Division is already slow, so a branch here may be an affordable
-cost. If we do this, it would obviate the need for the `wrapping_div` and
-`wrapping_rem` methods, and they could be removed. This isn't intrinsically tied
-to the current RFC, and could be discussed separately.
+This RFC takes no position on the correct semantics of these
+operations, simply preserving the existing semantics. However, it may
+be worth trying to define the wrapping semantics of these operations
+in a portable way, even if that implies some runtime cost. Since these
+are all error conditions, this is an orthogonal topic to the matter of
+overflow.
 
 # Future work
 
