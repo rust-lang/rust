@@ -113,13 +113,10 @@ made workable in static expressions through a compiler plugin.
 In cases when an FFI function returns a pointer to a non-owned C string,
 it might be preferable to wrap the returned string safely as a 'thin'
 `&CStr` rather than scan it into a slice up front. To facilitate this,
-conversion from a raw pointer should be added (using the
-[lifetime anchor](https://github.com/rust-lang/rfcs/pull/556) convention):
+conversion from a raw pointer should be added:
 ```rust
 impl CStr {
-    pub unsafe fn from_raw_ptr<'a, T: ?Sized>(ptr: *const libc::c_char,
-                                              life_anchor: &'a T)
-                                             -> &'a CStr
+    pub unsafe fn from_raw_ptr<'a>(ptr: *const libc::c_char) -> &'a CStr
     { ... }
 }
 ```
