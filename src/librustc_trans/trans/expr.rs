@@ -1054,8 +1054,8 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     (tcx.lang_items.range_to_struct(), fields, vec![node_id_type(bcx, end.id)])
                 }
                 _ => {
-                    // Desugar to FullRange
-                    (tcx.lang_items.full_range_struct(), vec![], vec![])
+                    // Desugar to RangeFull
+                    (tcx.lang_items.range_full_struct(), vec![], vec![])
                 }
             };
 

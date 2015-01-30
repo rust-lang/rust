@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use ::std::ops::RangeFull;
+
 fn test<T : Clone>(arg: T) -> T {
     arg.clone()
 }
@@ -20,7 +22,7 @@ fn main() {
     assert!(test(1..5) == (1..5));
     assert!(test(..5) == (..5));
     assert!(test(1..) == (1..));
-    assert!(test(FullRange) == (FullRange));
+    assert!(test(RangeFull) == (RangeFull));
 
     // Check that ranges can still be used with non-clone limits
     assert!((Test(1)..Test(5)) == (Test(1)..Test(5)));
