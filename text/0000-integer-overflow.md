@@ -160,11 +160,14 @@ compile-time switch.
 If an error condition should occur and a thread panic should result,
 the compiler is not required to signal the panic at the precise point
 of overflow. It is free to coalesce checks from adjacent pure
-operations. Panics may never be delayed across an unsafe block nor
-delayed by an indefinite number of steps, however. The precise
-definition of a pure operation can be hammered out over time, but the
-intention here is that, at minimum, overflow checks for adjacent
-numeric operations like `a+b-c` can be coallesced into a single check.
+operations. Panics may never be delayed across an unsafe block nor may
+they be skipped entirely, however. The precise details of how panics
+may be deferred -- and the definition of a pure operation -- can be
+hammered out over time, but the intention here is that, at minimum,
+overflow checks for adjacent numeric operations like `a+b-c` can be
+coallesced into a single check. Another useful example might be that,
+when summing a vector, the final overflow check could be deferred
+until the summation is complete.
 
 ## `WrappingOps` trait for explicit wrapping arithmetic
 
