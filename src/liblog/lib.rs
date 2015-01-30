@@ -158,7 +158,6 @@
 #![crate_name = "log"]
 #![unstable(feature = "rustc_private",
             reason = "use the crates.io `log` library instead")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -166,17 +165,15 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![deny(missing_docs)]
 
-#![allow(unknown_features)]
+#![feature(staged_api)]
 #![feature(slicing_syntax)]
 #![feature(box_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
-#![deny(missing_docs)]
-#![feature(collections)]
+#![feature(int_uint)]
 #![feature(core)]
 #![feature(io)]
 #![feature(os)]
-#![feature(rustc_private)]
 #![feature(std_misc)]
 
 use std::cell::RefCell;

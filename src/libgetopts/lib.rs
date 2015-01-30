@@ -80,7 +80,6 @@
 #![crate_name = "getopts"]
 #![unstable(feature = "rustc_private",
             reason = "use the crates.io `getopts` library instead")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -88,11 +87,13 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
-#![feature(slicing_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
+
 #![deny(missing_docs)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(int_uint)]
+#![feature(slicing_syntax)]
+#![feature(staged_api)]
 #![cfg_attr(test, feature(rustc_private))]
 
 #[cfg(test)] #[macro_use] extern crate log;

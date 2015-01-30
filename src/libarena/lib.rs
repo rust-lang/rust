@@ -21,7 +21,6 @@
 
 #![crate_name = "arena"]
 #![unstable(feature = "rustc_private")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -29,16 +28,14 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![allow(unknown_features)]
-#![feature(unsafe_destructor)]
-#![feature(unboxed_closures)]
-#![feature(box_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
-#![allow(missing_docs)]
 #![feature(alloc)]
+#![feature(box_syntax)]
 #![feature(core)]
+#![feature(int_uint)]
+#![feature(staged_api)]
+#![feature(unboxed_closures)]
+#![feature(unsafe_destructor)]
 #![cfg_attr(test, feature(test))]
-#![cfg_attr(test, feature(collections))]
 
 extern crate alloc;
 

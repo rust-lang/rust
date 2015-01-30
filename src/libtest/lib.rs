@@ -25,27 +25,27 @@
 
 #![crate_name = "test"]
 #![unstable(feature = "test")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![allow(unknown_features)]
+
+#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
+
 #![feature(asm, slicing_syntax)]
 #![feature(box_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(hash)]
+#![feature(int_uint)]
 #![feature(io)]
 #![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
+#![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(hash)]
-// NOTE(stage0): remove cfg_attr after a snapshot
-#![cfg_attr(not(stage0), allow(unused_mut))]
 
 extern crate getopts;
 extern crate serialize;

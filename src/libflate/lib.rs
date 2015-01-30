@@ -16,17 +16,17 @@
 
 #![crate_name = "flate"]
 #![unstable(feature = "rustc_private")]
-#![feature(staged_api)]
 #![staged_api]
-#![allow(unknown_features)] #![feature(int_uint)]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![feature(hash)]
+
 #![feature(core)]
+#![feature(int_uint)]
 #![feature(libc)]
+#![feature(staged_api)]
 
 #[cfg(test)] #[macro_use] extern crate log;
 

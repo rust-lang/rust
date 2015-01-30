@@ -328,7 +328,7 @@ fn test_iterator_len() {
 
 #[test]
 fn test_iterator_sum() {
-    let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(v[..4].iter().map(|&x| x).sum(), 6);
     assert_eq!(v.iter().map(|&x| x).sum(), 55);
     assert_eq!(v[..0].iter().map(|&x| x).sum(), 0);
@@ -336,7 +336,7 @@ fn test_iterator_sum() {
 
 #[test]
 fn test_iterator_product() {
-    let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
+    let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
     assert_eq!(v[..4].iter().map(|&x| x).product(), 0);
     assert_eq!(v[1..5].iter().map(|&x| x).product(), 24);
     assert_eq!(v[..0].iter().map(|&x| x).product(), 1);
@@ -730,23 +730,23 @@ fn test_random_access_cycle() {
 
 #[test]
 fn test_double_ended_range() {
-    assert!((11..14).rev().collect::<Vec<int>>() == vec![13, 12, 11]);
+    assert!((11..14).rev().collect::<Vec<_>>() == vec![13, 12, 11]);
     for _ in (10..0).rev() {
         panic!("unreachable");
     }
 
-    assert!((11u..14).rev().collect::<Vec<uint>>() == vec![13u, 12, 11]);
-    for _ in (10u..0).rev() {
+    assert!((11..14).rev().collect::<Vec<_>>() == vec![13, 12, 11]);
+    for _ in (10..0).rev() {
         panic!("unreachable");
     }
 }
 
 #[test]
 fn test_range() {
-    assert!((0..5).collect::<Vec<int>>() == vec![0, 1, 2, 3, 4]);
-    assert!((-10..-1).collect::<Vec<int>>() ==
+    assert!((0..5).collect::<Vec<_>>() == vec![0, 1, 2, 3, 4]);
+    assert!((-10..-1).collect::<Vec<_>>() ==
                vec![-10, -9, -8, -7, -6, -5, -4, -3, -2]);
-    assert!((0..5).rev().collect::<Vec<int>>() == vec![4, 3, 2, 1, 0]);
+    assert!((0..5).rev().collect::<Vec<_>>() == vec![4, 3, 2, 1, 0]);
     assert_eq!((200..-5).count(), 0);
     assert_eq!((200..-5).rev().count(), 0);
     assert_eq!((200..200).count(), 0);

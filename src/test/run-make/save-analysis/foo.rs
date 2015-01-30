@@ -20,7 +20,7 @@ extern crate "flate" as myflate;
 use graphviz::maybe_owned_vec::MaybeOwnedVector;
 use std::collections::{HashMap,HashSet};
 use std::cell::RefCell;
-use std::io::stdio::println;
+use std::old_io::stdio::println;
 
 
 use sub::sub2 as msalias;
@@ -62,9 +62,9 @@ fn test_tup_struct(x: TupStruct) -> int {
 
 mod sub {
     pub mod sub2 {
-        use std::io::stdio::println;
+        use std::old_io::stdio::println;
         pub mod sub3 {
-            use std::io::stdio::println;
+            use std::old_io::stdio::println;
             pub fn hello() {
                 println("hello from module 3");
             }
