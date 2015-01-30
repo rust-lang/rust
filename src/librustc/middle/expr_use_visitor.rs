@@ -366,6 +366,9 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         consume_id: ast::NodeId,
                         consume_span: Span,
                         cmt: mc::cmt<'tcx>) {
+        debug!("delegate_consume(consume_id={}, cmt={})",
+               consume_id, cmt.repr(self.tcx()));
+
         let mode = copy_or_move(self.typer, &cmt, DirectRefMove);
         self.delegate.consume(consume_id, consume_span, cmt, mode);
     }
@@ -1208,51 +1211,30 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         debug!("walk_captures({})", closure_expr.repr(self.tcx()));
 
         ty::with_freevars(self.tcx(), closure_expr.id, |freevars| {
-            match self.tcx().capture_mode(closure_expr.id) {
-                ast::CaptureByRef => {
-                    self.walk_by_ref_captures(closure_expr, freevars);
-                }
-                ast::CaptureByValue => {
-                    self.walk_by_value_captures(closure_expr, freevars);
+            for freevar in freevars.iter() {
+                let id_var = freevar.def.def_id().node;
+                let upvar_id = ty::UpvarId { var_id: id_var,
+                                             closure_expr_id: closure_expr.id };
+                let upvar_capture = self.typer.upvar_capture(upvar_id).unwrap();
+                let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
+                                                                   closure_expr.span,
+                                                                   freevar.def));
+                match upvar_capture {
+                    ty::UpvarCapture::ByValue => {
+                        let mode = copy_or_move(self.typer, &cmt_var, CaptureMove);
+                        self.delegate.consume(closure_expr.id, freevar.span, cmt_var, mode);
+                    }
+                    ty::UpvarCapture::ByRef(upvar_borrow) => {
+                        self.delegate.borrow(closure_expr.id,
+                                             closure_expr.span,
+                                             cmt_var,
+                                             upvar_borrow.region,
+                                             upvar_borrow.kind,
+                                             ClosureCapture(freevar.span));
+                    }
                 }
             }
         });
-    }
-
-    fn walk_by_ref_captures(&mut self,
-                            closure_expr: &ast::Expr,
-                            freevars: &[ty::Freevar]) {
-        for freevar in freevars.iter() {
-            let id_var = freevar.def.def_id().node;
-            let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
-                                                               closure_expr.span,
-                                                               freevar.def));
-
-            // Lookup the kind of borrow the callee requires, as
-            // inferred by regionbk
-            let upvar_id = ty::UpvarId { var_id: id_var,
-                                         closure_expr_id: closure_expr.id };
-            let upvar_borrow = self.typer.upvar_borrow(upvar_id).unwrap();
-
-            self.delegate.borrow(closure_expr.id,
-                                 closure_expr.span,
-                                 cmt_var,
-                                 upvar_borrow.region,
-                                 upvar_borrow.kind,
-                                 ClosureCapture(freevar.span));
-        }
-    }
-
-    fn walk_by_value_captures(&mut self,
-                              closure_expr: &ast::Expr,
-                              freevars: &[ty::Freevar]) {
-        for freevar in freevars.iter() {
-            let cmt_var = return_if_err!(self.cat_captured_var(closure_expr.id,
-                                                               closure_expr.span,
-                                                               freevar.def));
-            let mode = copy_or_move(self.typer, &cmt_var, CaptureMove);
-            self.delegate.consume(closure_expr.id, freevar.span, cmt_var, mode);
-        }
     }
 
     fn cat_captured_var(&mut self,

@@ -1183,6 +1183,7 @@ impl<F,A,R> FnOnce<A,R> for F
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
 #[cfg(not(stage0))]
+#[rustc_paren_sugar]
 pub trait Fn<Args> {
     type Output;
 
@@ -1195,6 +1196,7 @@ pub trait Fn<Args> {
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
 #[cfg(not(stage0))]
+#[rustc_paren_sugar]
 pub trait FnMut<Args> {
     type Output;
 
@@ -1207,6 +1209,7 @@ pub trait FnMut<Args> {
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
 #[cfg(not(stage0))]
+#[rustc_paren_sugar]
 pub trait FnOnce<Args> {
     type Output;
 
