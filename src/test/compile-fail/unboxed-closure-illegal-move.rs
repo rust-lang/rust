@@ -19,24 +19,24 @@ fn main() {
     // By-ref cases
     {
         let x = box 0us;
-        let f = |&:| drop(x); //~ cannot move
+        let f = |&:| drop(x); //~ ERROR cannot move
     }
     {
         let x = box 0us;
-        let f = |&mut:| drop(x); //~ cannot move
+        let f = |&mut:| drop(x); //~ ERROR cannot move
     }
     {
         let x = box 0us;
-        let f = |:| drop(x); //~ cannot move
+        let f = |:| drop(x); // OK -- FnOnce
     }
     // By-value cases
     {
         let x = box 0us;
-        let f = move |&:| drop(x); //~ cannot move
+        let f = move |&:| drop(x); //~ ERROR cannot move
     }
     {
         let x = box 0us;
-        let f = move |&mut:| drop(x); //~ cannot move
+        let f = move |&mut:| drop(x); //~ ERROR cannot move
     }
     {
         let x = box 0us;

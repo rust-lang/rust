@@ -614,11 +614,9 @@ fn ast_path_to_trait_ref<'a,'tcx>(
 
     let (regions, types, assoc_bindings) = match path.segments.last().unwrap().parameters {
         ast::AngleBracketedParameters(ref data) => {
-            // For now, require that parenthetical notation be used
+            // For now, require that parenthetical5D notation be used
             // only with `Fn()` etc.
-            if !this.tcx().sess.features.borrow().unboxed_closures &&
-                this.tcx().lang_items.fn_trait_kind(trait_def_id).is_some()
-            {
+            if !this.tcx().sess.features.borrow().unboxed_closures && trait_def.paren_sugar {
                 span_err!(this.tcx().sess, path.span, E0215,
                                          "angle-bracket notation is not stable when \
                                          used with the `Fn` family of traits, use parentheses");
@@ -632,9 +630,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
         ast::ParenthesizedParameters(ref data) => {
             // For now, require that parenthetical notation be used
             // only with `Fn()` etc.
-            if !this.tcx().sess.features.borrow().unboxed_closures &&
-                this.tcx().lang_items.fn_trait_kind(trait_def_id).is_none()
-            {
+            if !this.tcx().sess.features.borrow().unboxed_closures && !trait_def.paren_sugar {
                 span_err!(this.tcx().sess, path.span, E0216,
                                          "parenthetical notation is only stable when \
                                          used with the `Fn` family of traits");

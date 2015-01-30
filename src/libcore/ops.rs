@@ -1134,6 +1134,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[lang="fn"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
+#[rustc_paren_sugar]
 pub trait Fn<Args> {
     type Output;
 
@@ -1145,6 +1146,7 @@ pub trait Fn<Args> {
 #[lang="fn_mut"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
+#[rustc_paren_sugar]
 pub trait FnMut<Args> {
     type Output;
 
@@ -1156,6 +1158,7 @@ pub trait FnMut<Args> {
 #[lang="fn_once"]
 #[unstable(feature = "core",
            reason = "uncertain about variadic generics, input versus associated types")]
+#[rustc_paren_sugar]
 pub trait FnOnce<Args> {
     type Output;
 

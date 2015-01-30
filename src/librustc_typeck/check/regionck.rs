@@ -718,16 +718,9 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
     match function_type.sty {
         ty::ty_closure(_, region, _) => {
-            if tcx.capture_modes.borrow()[expr.id].clone() == ast::CaptureByRef {
-                ty::with_freevars(tcx, expr.id, |freevars| {
-                    if !freevars.is_empty() {
-                        // Variables being referenced must be constrained and registered
-                        // in the upvar borrow map
-                        constrain_free_variables_in_by_ref_closure(
-                            rcx, *region, expr, freevars);
-                    }
-                })
-            }
+            ty::with_freevars(tcx, expr.id, |freevars| {
+                constrain_captured_variables(rcx, *region, expr, freevars);
+            })
         }
         _ => { }
     }
@@ -775,14 +768,14 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             let raw_var_ty = rcx.resolve_node_type(var_node_id);
             let upvar_id = ty::UpvarId { var_id: var_node_id,
                                          closure_expr_id: expr.id };
-            let var_ty = match rcx.fcx.inh.upvar_borrow_map.borrow().get(&upvar_id) {
-                Some(upvar_borrow) => {
+            let var_ty = match rcx.fcx.inh.upvar_capture_map.borrow()[upvar_id] {
+                ty::UpvarCapture::ByRef(ref upvar_borrow) => {
                     ty::mk_rptr(rcx.tcx(),
                                 rcx.tcx().mk_region(upvar_borrow.region),
                                 ty::mt { mutbl: upvar_borrow.kind.to_mutbl_lossy(),
                                          ty: raw_var_ty })
                 }
-                None => raw_var_ty
+                ty::UpvarCapture::ByValue => raw_var_ty,
             };
 
             // Check that the type meets the criteria of the existential bounds:
@@ -800,17 +793,17 @@ fn check_expr_fn_block(rcx: &mut Rcx,
 
     /// Make sure that all free variables referenced inside the closure outlive the closure's
     /// lifetime bound. Also, create an entry in the upvar_borrows map with a region.
-    fn constrain_free_variables_in_by_ref_closure(
+    fn constrain_captured_variables(
         rcx: &mut Rcx,
         region_bound: ty::Region,
         expr: &ast::Expr,
         freevars: &[ty::Freevar])
     {
         let tcx = rcx.fcx.ccx.tcx;
-        debug!("constrain_free_variables({}, {})",
+        debug!("constrain_captured_variables({}, {})",
                region_bound.repr(tcx), expr.repr(tcx));
         for freevar in freevars.iter() {
-            debug!("freevar def is {:?}", freevar.def);
+            debug!("constrain_captured_variables: freevar.def={:?}", freevar.def);
 
             // Identify the variable being closed over and its node-id.
             let def = freevar.def;
@@ -822,16 +815,20 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             let upvar_id = ty::UpvarId { var_id: var_node_id,
                                          closure_expr_id: expr.id };
 
-            let upvar_borrow = rcx.fcx.inh.upvar_borrow_map.borrow()[upvar_id];
+            match rcx.fcx.inh.upvar_capture_map.borrow()[upvar_id] {
+                ty::UpvarCapture::ByValue => { }
+                ty::UpvarCapture::ByRef(upvar_borrow) => {
+                    rcx.fcx.mk_subr(infer::FreeVariable(freevar.span, var_node_id),
+                                    region_bound, upvar_borrow.region);
 
-            rcx.fcx.mk_subr(infer::FreeVariable(freevar.span, var_node_id),
-                            region_bound, upvar_borrow.region);
-
-            // Guarantee that the closure does not outlive the variable itself.
-            let enclosing_region = region_of_def(rcx.fcx, def);
-            debug!("enclosing_region = {}", enclosing_region.repr(tcx));
-            rcx.fcx.mk_subr(infer::FreeVariable(freevar.span, var_node_id),
-                            region_bound, enclosing_region);
+                    // Guarantee that the closure does not outlive the variable itself.
+                    let enclosing_region = region_of_def(rcx.fcx, def);
+                    debug!("constrain_captured_variables: enclosing_region = {}",
+                           enclosing_region.repr(tcx));
+                    rcx.fcx.mk_subr(infer::FreeVariable(freevar.span, var_node_id),
+                                    region_bound, enclosing_region);
+                }
+            }
         }
     }
 }
@@ -1309,22 +1306,20 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     // Detect by-ref upvar `x`:
     let cause = match note {
         mc::NoteUpvarRef(ref upvar_id) => {
-            let mut upvar_borrow_map =
-                rcx.fcx.inh.upvar_borrow_map.borrow_mut();
-            match upvar_borrow_map.get_mut(upvar_id) {
-                Some(upvar_borrow) => {
+            let upvar_capture_map = rcx.fcx.inh.upvar_capture_map.borrow_mut();
+            match upvar_capture_map.get(upvar_id) {
+                Some(&ty::UpvarCapture::ByRef(ref upvar_borrow)) => {
                     // The mutability of the upvar may have been modified
                     // by the above adjustment, so update our local variable.
                     ref_kind = upvar_borrow.kind;
 
                     infer::ReborrowUpvar(span, *upvar_id)
                 }
-                None => {
+                _ => {
                     rcx.tcx().sess.span_bug(
                         span,
                         &format!("Illegal upvar id: {}",
-                                upvar_id.repr(
-                                    rcx.tcx()))[]);
+                                upvar_id.repr(rcx.tcx()))[]);
                 }
             }
         }

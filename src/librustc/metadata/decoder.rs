@@ -371,6 +371,11 @@ fn parse_unsafety(item_doc: rbml::Doc) -> ast::Unsafety {
     }
 }
 
+fn parse_paren_sugar(item_doc: rbml::Doc) -> bool {
+    let paren_sugar_doc = reader::get_doc(item_doc, tag_paren_sugar);
+    reader::doc_as_u8(paren_sugar_doc) != 0
+}
+
 fn parse_polarity(item_doc: rbml::Doc) -> ast::ImplPolarity {
     let polarity_doc = reader::get_doc(item_doc, tag_polarity);
     if reader::doc_as_u8(polarity_doc) != 0 {
@@ -400,8 +405,10 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
     let bounds = trait_def_bounds(item_doc, tcx, cdata);
     let unsafety = parse_unsafety(item_doc);
     let associated_type_names = parse_associated_type_names(item_doc);
+    let paren_sugar = parse_paren_sugar(item_doc);
 
     ty::TraitDef {
+        paren_sugar: paren_sugar,
         unsafety: unsafety,
         generics: generics,
         bounds: bounds,
