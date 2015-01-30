@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-stage1
-// ignore-android
 // aux-build:issue_16723_multiple_items_syntax_ext.rs
 #![feature(plugin)]
 

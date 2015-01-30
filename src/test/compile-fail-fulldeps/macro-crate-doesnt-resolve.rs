@@ -10,7 +10,6 @@
 
 // aux-build:macro_crate_test.rs
 // ignore-stage1
-// ignore-android
 
 #[macro_use] #[no_link]
 extern crate macro_crate_test;

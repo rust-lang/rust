@@ -10,7 +10,6 @@
 
 // aux-build:macro_crate_MacroRulesTT.rs
 // ignore-stage1
-// ignore-android
 // error-pattern: plugin tried to register a new MacroRulesTT
 
 #![feature(plugin)]
