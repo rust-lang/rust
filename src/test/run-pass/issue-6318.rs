@@ -23,7 +23,7 @@ impl Foo for Struct {}
 
 pub fn main() {
     match Thing::A(box Struct as Box<Foo+'static>) {
-        Thing::A(_a) => 0i,
+        Thing::A(_a) => 0,
     };
 }
 

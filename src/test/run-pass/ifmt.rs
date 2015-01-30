@@ -59,10 +59,10 @@ pub fn main() {
     // At least exercise all the formats
     t!(format!("{}", true), "true");
     t!(format!("{}", '☃'), "☃");
-    t!(format!("{}", 10i), "10");
+    t!(format!("{}", 10), "10");
     t!(format!("{}", 10u), "10");
     t!(format!("{:?}", '☃'), "'\\u{2603}'");
-    t!(format!("{:?}", 10i), "10");
+    t!(format!("{:?}", 10), "10");
     t!(format!("{:?}", 10u), "10");
     t!(format!("{:?}", "true"), "\"true\"");
     t!(format!("{:?}", "foo\nbar"), "\"foo\\nbar\"");
@@ -76,16 +76,16 @@ pub fn main() {
     t!(format!("{:x}", A), "aloha");
     t!(format!("{:X}", B), "adios");
     t!(format!("foo {} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
-    t!(format!("{1} {0}", 0i, 1i), "1 0");
-    t!(format!("{foo} {bar}", foo=0i, bar=1is), "0 1");
+    t!(format!("{1} {0}", 0, 1), "1 0");
+    t!(format!("{foo} {bar}", foo=0, bar=1is), "0 1");
     t!(format!("{foo} {1} {bar} {0}", 0is, 1is, foo=2is, bar=3is), "2 1 3 0");
     t!(format!("{} {0}", "a"), "a a");
-    t!(format!("{foo_bar}", foo_bar=1i), "1");
-    t!(format!("{}", 5i + 5i), "10");
+    t!(format!("{foo_bar}", foo_bar=1), "1");
+    t!(format!("{}", 5 + 5), "10");
     t!(format!("{:#4}", C), "☃123");
 
     // FIXME(#20676)
-    // let a: &fmt::Debug = &1i;
+    // let a: &fmt::Debug = &1;
     // t!(format!("{:?}", a), "1");
 
 
@@ -146,7 +146,7 @@ pub fn main() {
     test_order();
 
     // make sure that format! doesn't move out of local variables
-    let a = box 3i;
+    let a = box 3;
     format!("{}", a);
     format!("{}", a);
 
@@ -169,10 +169,10 @@ pub fn main() {
 fn test_write() {
     use std::fmt::Writer;
     let mut buf = String::new();
-    write!(&mut buf, "{}", 3i);
+    write!(&mut buf, "{}", 3);
     {
         let w = &mut buf;
-        write!(w, "{foo}", foo=4i);
+        write!(w, "{foo}", foo=4);
         write!(w, "{}", "hello");
         writeln!(w, "{}", "line");
         writeln!(w, "{foo}", foo="bar");
@@ -198,9 +198,9 @@ fn test_format_args() {
     let mut buf = String::new();
     {
         let w = &mut buf;
-        write!(w, "{}", format_args!("{}", 1i));
+        write!(w, "{}", format_args!("{}", 1));
         write!(w, "{}", format_args!("test"));
-        write!(w, "{}", format_args!("{test}", test=3i));
+        write!(w, "{}", format_args!("{test}", test=3));
     }
     let s = buf;
     t!(s, "1test3");

@@ -12,6 +12,6 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let i = box 100i;
+    let i = box 100;
     assert_eq!(*i, 100);
 }

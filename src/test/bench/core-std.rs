@@ -62,7 +62,7 @@ fn maybe_run_test<F>(argv: &[String], name: String, test: F) where F: FnOnce() {
 }
 
 fn shift_push() {
-    let mut v1 = repeat(1i).take(30000).collect::<Vec<_>>();
+    let mut v1 = repeat(1).take(30000).collect::<Vec<_>>();
     let mut v2 = Vec::new();
 
     while v1.len() > 0 {

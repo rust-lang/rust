@@ -24,8 +24,8 @@ struct Structure {
 }
 
 pub fn main() {
-    let x: Box<int> = box(HEAP) 2i;
-    let y: Box<int> = box 2i;
-    let b: Box<int> = box()(1i + 2);
-    let c = box()(3i + 4);
+    let x: Box<int> = box(HEAP) 2;
+    let y: Box<int> = box 2;
+    let b: Box<int> = box()(1 + 2);
+    let c = box()(3 + 4);
 }

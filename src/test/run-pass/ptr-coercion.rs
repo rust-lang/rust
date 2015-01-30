@@ -12,24 +12,24 @@
 
 pub fn main() {
     // &mut -> &
-    let x: &mut int = &mut 42i;
+    let x: &mut int = &mut 42;
     let x: &int = x;
 
-    let x: &int = &mut 42i;
+    let x: &int = &mut 42;
 
     // & -> *const
-    let x: &int = &42i;
+    let x: &int = &42;
     let x: *const int = x;
 
-    let x: *const int = &42i;
+    let x: *const int = &42;
 
     // &mut -> *const
-    let x: &mut int = &mut 42i;
+    let x: &mut int = &mut 42;
     let x: *const int = x;
 
-    let x: *const int = &mut 42i;
+    let x: *const int = &mut 42;
 
     // *mut -> *const
-    let x: *mut int = &mut 42i;
+    let x: *mut int = &mut 42;
     let x: *const int = x;
 }

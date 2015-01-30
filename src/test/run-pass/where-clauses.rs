@@ -29,9 +29,9 @@ fn equal<T>(x: &T, y: &T) -> bool where T: Eq {
 }
 
 fn main() {
-    println!("{}", equal(&1i, &2i));
-    println!("{}", equal(&1i, &1i));
+    println!("{}", equal(&1, &2));
+    println!("{}", equal(&1, &1));
     println!("{}", "hello".equal(&"hello"));
-    println!("{}", "hello".equals::<int,&str>(&1i, &1i, &"foo", &"bar"));
+    println!("{}", "hello".equals::<int,&str>(&1, &1, &"foo", &"bar"));
 }
 

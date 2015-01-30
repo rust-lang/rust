@@ -13,11 +13,11 @@ pub fn op2() -> Result<int, &'static str> { Err("sadface") }
 
 #[test]
 pub fn test_and() {
-    assert_eq!(op1().and(Ok(667i)).unwrap(), 667);
+    assert_eq!(op1().and(Ok(667)).unwrap(), 667);
     assert_eq!(op1().and(Err::<i32, &'static str>("bad")).unwrap_err(),
                "bad");
 
-    assert_eq!(op2().and(Ok(667i)).unwrap_err(), "sadface");
+    assert_eq!(op2().and(Ok(667)).unwrap_err(), "sadface");
     assert_eq!(op2().and(Err::<i32,&'static str>("bad")).unwrap_err(),
                "sadface");
 }
@@ -68,20 +68,20 @@ pub fn test_impl_map_err() {
 /* FIXME(#20575)
 #[test]
 fn test_collect() {
-    let v: Result<Vec<int>, ()> = (0i..0).map(|_| Ok::<int, ()>(0)).collect();
+    let v: Result<Vec<int>, ()> = (0..0).map(|_| Ok::<int, ()>(0)).collect();
     assert!(v == Ok(vec![]));
 
-    let v: Result<Vec<int>, ()> = (0i..3).map(|x| Ok::<int, ()>(x)).collect();
+    let v: Result<Vec<int>, ()> = (0..3).map(|x| Ok::<int, ()>(x)).collect();
     assert!(v == Ok(vec![0, 1, 2]));
 
-    let v: Result<Vec<int>, int> = (0i..3).map(|x| {
+    let v: Result<Vec<int>, int> = (0..3).map(|x| {
         if x > 1 { Err(x) } else { Ok(x) }
     }).collect();
     assert!(v == Err(2));
 
     // test that it does not take more elements than it needs
     let mut functions: [Box<Fn() -> Result<(), int>>; 3] =
-        [box || Ok(()), box || Err(1i), box || panic!()];
+        [box || Ok(()), box || Err(1), box || panic!()];
 
     let v: Result<Vec<()>, int> = functions.iter_mut().map(|f| (*f)()).collect();
     assert!(v == Err(1));
@@ -101,7 +101,7 @@ pub fn test_fmt_default() {
 
 #[test]
 pub fn test_unwrap_or() {
-    let ok: Result<int, &'static str> = Ok(100i);
+    let ok: Result<int, &'static str> = Ok(100);
     let ok_err: Result<int, &'static str> = Err("Err");
 
     assert_eq!(ok.unwrap_or(50), 100);
@@ -112,7 +112,7 @@ pub fn test_unwrap_or() {
 pub fn test_unwrap_or_else() {
     fn handler(msg: &'static str) -> int {
         if msg == "I got this." {
-            50i
+            50
         } else {
             panic!("BadBad")
         }
@@ -130,7 +130,7 @@ pub fn test_unwrap_or_else() {
 pub fn test_unwrap_or_else_panic() {
     fn handler(msg: &'static str) -> int {
         if msg == "I got this." {
-            50i
+            50
         } else {
             panic!("BadBad")
         }

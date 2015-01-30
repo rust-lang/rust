@@ -37,7 +37,7 @@ fn r(i: &Cell<int>) -> r {
 }
 
 fn test_rec() {
-    let i = &Cell::new(0i);
+    let i = &Cell::new(0);
     {
         let _a = BoxR {x: r(i)};
     }
@@ -49,7 +49,7 @@ fn test_tag() {
         t0(r<'a>),
     }
 
-    let i = &Cell::new(0i);
+    let i = &Cell::new(0);
     {
         let _a = t::t0(r(i));
     }
@@ -57,15 +57,15 @@ fn test_tag() {
 }
 
 fn test_tup() {
-    let i = &Cell::new(0i);
+    let i = &Cell::new(0);
     {
-        let _a = (r(i), 0i);
+        let _a = (r(i), 0);
     }
     assert_eq!(i.get(), 1);
 }
 
 fn test_unique() {
-    let i = &Cell::new(0i);
+    let i = &Cell::new(0);
     {
         let _a = box r(i);
     }
@@ -73,7 +73,7 @@ fn test_unique() {
 }
 
 fn test_unique_rec() {
-    let i = &Cell::new(0i);
+    let i = &Cell::new(0);
     {
         let _a = box BoxR {
             x: r(i)

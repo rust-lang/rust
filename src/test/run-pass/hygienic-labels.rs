@@ -18,19 +18,19 @@ macro_rules! loop_x {
 macro_rules! run_once {
     ($e: expr) => {
         // ditto
-        'x: for _ in 0i..1 { $e }
+        'x: for _ in 0..1 { $e }
     }
 }
 
 macro_rules! while_x {
     ($e: expr) => {
         // ditto
-        'x: while 1i + 1 == 2 { $e }
+        'x: while 1 + 1 == 2 { $e }
     }
 }
 
 pub fn main() {
-    'x: for _ in 0i..1 {
+    'x: for _ in 0..1 {
         // this 'x should refer to the outer loop, lexically
         loop_x!(break 'x);
         panic!("break doesn't act hygienically inside for loop");
@@ -42,12 +42,12 @@ pub fn main() {
         panic!("break doesn't act hygienically inside infinite loop");
     }
 
-    'x: while 1i + 1 == 2 {
+    'x: while 1 + 1 == 2 {
         while_x!(break 'x);
         panic!("break doesn't act hygienically inside infinite while loop");
     }
 
-    'x: for _ in 0i..1 {
+    'x: for _ in 0..1 {
         // ditto
         run_once!(continue 'x);
         panic!("continue doesn't act hygienically inside for loop");

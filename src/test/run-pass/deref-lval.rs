@@ -14,7 +14,7 @@
 use std::cell::Cell;
 
 pub fn main() {
-    let x = box Cell::new(5i);
-    x.set(1000i);
+    let x = box Cell::new(5);
+    x.set(1000);
     println!("{}", x.get());
 }

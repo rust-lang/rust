@@ -427,7 +427,7 @@ pub fn random<T: Rand>() -> T {
 /// use std::rand::{thread_rng, sample};
 ///
 /// let mut rng = thread_rng();
-/// let sample = sample(&mut rng, 1i..100, 5);
+/// let sample = sample(&mut rng, 1..100, 5);
 /// println!("{:?}", sample);
 /// ```
 pub fn sample<T, I: Iterator<Item=T>, R: Rng>(rng: &mut R,
@@ -481,16 +481,16 @@ mod test {
     fn test_gen_range() {
         let mut r = thread_rng();
         for _ in 0u..1000 {
-            let a = r.gen_range(-3i, 42);
+            let a = r.gen_range(-3, 42);
             assert!(a >= -3 && a < 42);
-            assert_eq!(r.gen_range(0i, 1), 0);
-            assert_eq!(r.gen_range(-12i, -11), -12);
+            assert_eq!(r.gen_range(0, 1), 0);
+            assert_eq!(r.gen_range(-12, -11), -12);
         }
 
         for _ in 0u..1000 {
-            let a = r.gen_range(10i, 42);
+            let a = r.gen_range(10, 42);
             assert!(a >= 10 && a < 42);
-            assert_eq!(r.gen_range(0i, 1), 0);
+            assert_eq!(r.gen_range(0, 1), 0);
             assert_eq!(r.gen_range(3_000_000, 3_000_001), 3_000_000);
         }
 
@@ -500,7 +500,7 @@ mod test {
     #[should_fail]
     fn test_gen_range_panic_int() {
         let mut r = thread_rng();
-        r.gen_range(5i, -2);
+        r.gen_range(5, -2);
     }
 
     #[test]
@@ -544,7 +544,7 @@ mod test {
     #[test]
     fn test_choose() {
         let mut r = thread_rng();
-        assert_eq!(r.choose(&[1i, 1, 1]).map(|&x|x), Some(1));
+        assert_eq!(r.choose(&[1, 1, 1]).map(|&x|x), Some(1));
 
         let v: &[int] = &[];
         assert_eq!(r.choose(v), None);
@@ -555,16 +555,16 @@ mod test {
         let mut r = thread_rng();
         let empty: &mut [int] = &mut [];
         r.shuffle(empty);
-        let mut one = [1i];
+        let mut one = [1];
         r.shuffle(&mut one);
         let b: &[_] = &[1];
         assert_eq!(one, b);
 
-        let mut two = [1i, 2];
+        let mut two = [1, 2];
         r.shuffle(&mut two);
         assert!(two == [1, 2] || two == [2, 1]);
 
-        let mut x = [1i, 1, 1];
+        let mut x = [1, 1, 1];
         r.shuffle(&mut x);
         let b: &[_] = &[1, 1, 1];
         assert_eq!(x, b);
@@ -574,7 +574,7 @@ mod test {
     fn test_thread_rng() {
         let mut r = thread_rng();
         r.gen::<int>();
-        let mut v = [1i, 1, 1];
+        let mut v = [1, 1, 1];
         r.shuffle(&mut v);
         let b: &[_] = &[1, 1, 1];
         assert_eq!(v, b);
@@ -597,8 +597,8 @@ mod test {
 
     #[test]
     fn test_sample() {
-        let min_val = 1i;
-        let max_val = 100i;
+        let min_val = 1;
+        let max_val = 100;
 
         let mut r = thread_rng();
         let vals = (min_val..max_val).collect::<Vec<int>>();

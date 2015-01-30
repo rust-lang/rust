@@ -12,7 +12,7 @@
 fn view<T>(x: &[T]) -> &[T] {x}
 
 pub fn main() {
-    let v = vec!(1i, 2, 3);
+    let v = vec!(1, 2, 3);
     let x = view(v.as_slice());
     let y = view(x.as_slice());
     assert!((v[0] == x[0]) && (v[0] == y[0]));

@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 fn match_on_local() {
-    let mut foo = Some(box 5i);
+    let mut foo = Some(box 5);
     match foo {
         None => {},
         Some(x) => {
@@ -22,7 +22,7 @@ fn match_on_local() {
     println!("'{}'", foo.unwrap());
 }
 
-fn match_on_arg(mut foo: Option<Box<int>>) {
+fn match_on_arg(mut foo: Option<Box<i32>>) {
     match foo {
         None => {}
         Some(x) => {
@@ -33,7 +33,7 @@ fn match_on_arg(mut foo: Option<Box<int>>) {
 }
 
 fn match_on_binding() {
-    match Some(box 7i) {
+    match Some(box 7) {
         mut foo => {
             match foo {
                 None => {},
@@ -47,7 +47,7 @@ fn match_on_binding() {
 }
 
 fn match_on_upvar() {
-    let mut foo = Some(box 8i);
+    let mut foo = Some(box 8i32);
     let f = move|:| {
         match foo {
             None => {},
@@ -62,7 +62,7 @@ fn match_on_upvar() {
 
 fn main() {
     match_on_local();
-    match_on_arg(Some(box 6i));
+    match_on_arg(Some(box 6));
     match_on_binding();
     match_on_upvar();
 }

@@ -19,8 +19,8 @@ use syntax::ext::base::ExtCtxt;
 
 #[allow(dead_code)]
 fn foobar(cx: &mut ExtCtxt) {
-    quote_expr!(cx, 1i);
-    quote_expr!(cx, 2i);
+    quote_expr!(cx, 1);
+    quote_expr!(cx, 2);
 }
 
 fn main() { }

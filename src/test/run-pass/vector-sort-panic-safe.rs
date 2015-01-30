@@ -12,8 +12,8 @@ use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use std::rand::{thread_rng, Rng, Rand};
 use std::thread::Thread;
 
-const REPEATS: uint = 5;
-const MAX_LEN: uint = 32;
+const REPEATS: usize = 5;
+const MAX_LEN: usize = 32;
 static drop_counts: [AtomicUsize;  MAX_LEN] =
     // FIXME #5244: AtomicUsize is not Copy.
     [
@@ -33,7 +33,7 @@ static drop_counts: [AtomicUsize;  MAX_LEN] =
 static creation_count: AtomicUsize = ATOMIC_USIZE_INIT;
 
 #[derive(Clone, PartialEq, PartialOrd, Eq, Ord)]
-struct DropCounter { x: uint, creation_id: uint }
+struct DropCounter { x: usize, creation_id: usize }
 
 impl Rand for DropCounter {
     fn rand<R: Rng>(rng: &mut R) -> DropCounter {
@@ -53,7 +53,7 @@ impl Drop for DropCounter {
 }
 
 pub fn main() {
-    assert!(MAX_LEN <= std::uint::BITS);
+    assert!(MAX_LEN <= std::usize::BITS);
     // len can't go above 64.
     for len in 2..MAX_LEN {
         for _ in 0..REPEATS {
@@ -67,11 +67,11 @@ pub fn main() {
 
             // work out the total number of comparisons required to sort
             // this array...
-            let mut count = 0;
+            let mut count = 0us;
             main.clone().as_mut_slice().sort_by(|a, b| { count += 1; a.cmp(b) });
 
             // ... and then panic on each and every single one.
-            for panic_countdown in 0i..count {
+            for panic_countdown in 0..count {
                 // refresh the counters.
                 for c in drop_counts.iter() {
                     c.store(0, Ordering::Relaxed);

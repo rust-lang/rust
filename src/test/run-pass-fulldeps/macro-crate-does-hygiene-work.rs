@@ -20,9 +20,9 @@
 extern crate macro_crate_test;
 
 fn main() {
-    let x = 3i;
+    let x = 3;
     assert_eq!(3, identity!(x));
     assert_eq!(6, identity!(x+x));
-    let x = 4i;
+    let x = 4;
     assert_eq!(4, identity!(x));
 }

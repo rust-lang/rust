@@ -151,8 +151,8 @@ mod tests {
 
     #[test]
     fn test_signed_checked_div() {
-        assert!(10i.checked_div(2) == Some(5));
-        assert!(5i.checked_div(0) == None);
+        assert!(10.checked_div(2) == Some(5));
+        assert!(5.checked_div(0) == None);
         assert!(int::MIN.checked_div(-1) == None);
     }
 

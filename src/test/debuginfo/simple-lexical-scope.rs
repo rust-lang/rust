@@ -91,7 +91,7 @@ fn main() {
         zzz(); // #break
         sentinel();
 
-        let x = 10i;
+        let x = 10;
 
         zzz(); // #break
         sentinel();

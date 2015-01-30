@@ -1308,8 +1308,8 @@ mod tests {
 
     #[test]
     fn test_simple_types() {
-        assert_eq!(1i.to_string(), "1");
-        assert_eq!((-1i).to_string(), "-1");
+        assert_eq!(1.to_string(), "1");
+        assert_eq!((-1).to_string(), "-1");
         assert_eq!(200u.to_string(), "200");
         assert_eq!(2u8.to_string(), "2");
         assert_eq!(true.to_string(), "true");
@@ -1321,9 +1321,9 @@ mod tests {
     fn test_vectors() {
         let x: Vec<int> = vec![];
         assert_eq!(format!("{:?}", x), "[]");
-        assert_eq!(format!("{:?}", vec![1i]), "[1]");
-        assert_eq!(format!("{:?}", vec![1i, 2, 3]), "[1, 2, 3]");
-        assert!(format!("{:?}", vec![vec![], vec![1i], vec![1i, 1]]) ==
+        assert_eq!(format!("{:?}", vec![1]), "[1]");
+        assert_eq!(format!("{:?}", vec![1, 2, 3]), "[1, 2, 3]");
+        assert!(format!("{:?}", vec![vec![], vec![1], vec![1, 1]]) ==
                "[[], [1], [1, 1]]");
     }
 

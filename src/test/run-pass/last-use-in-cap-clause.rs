@@ -17,7 +17,7 @@
 struct A { a: Box<int> }
 
 fn foo() -> Box<FnMut() -> int + 'static> {
-    let k = box 22i;
+    let k = box 22;
     let _u = A {a: k.clone()};
     let result  = |&mut:| 22;
     box result

@@ -12,11 +12,11 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let mut i = box 1i;
+    let mut i = box 1;
     // Should be a copy
     let mut j = i.clone();
-    *i = 2i;
-    *j = 3i;
-    assert_eq!(*i, 2i);
-    assert_eq!(*j, 3i);
+    *i = 2;
+    *j = 3;
+    assert_eq!(*i, 2);
+    assert_eq!(*j, 3);
 }

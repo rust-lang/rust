@@ -48,18 +48,18 @@
 #![omit_gdb_pretty_printer_section]
 
 fn function_one() {
-    let a = 10101i;
+    let a = 10101;
     zzz(); // #break
 }
 
 fn function_two() {
-    let b = 20202i;
+    let b = 20202;
     zzz(); // #break
 }
 
 
 fn function_three() {
-    let c = 30303i;
+    let c = 30303;
     zzz(); // #break
 }
 

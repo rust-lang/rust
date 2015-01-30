@@ -45,7 +45,7 @@ impl DerefMut for X {
 
 fn main() {
     {
-        let mut test = X(box 5i);
+        let mut test = X(box 5);
         {
             let mut change = |&mut:| { *test = 10 };
             change();

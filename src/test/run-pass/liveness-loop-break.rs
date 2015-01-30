@@ -11,7 +11,7 @@
 fn test() {
     let v;
     loop {
-        v = 3i;
+        v = 3;
         break;
     }
     println!("{}", v);

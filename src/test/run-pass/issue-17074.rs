@@ -17,6 +17,6 @@ fn main() {
     assert_eq!(match 1 {
         X => unreachable!(),
         Y => unreachable!(),
-        _ => 1i
+        _ => 1
     }, 1);
 }
