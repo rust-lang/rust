@@ -793,7 +793,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     trait_def.generics.types.as_slice(),
                     trait_def.generics.regions.as_slice(),
                     trait_ref.substs,
-                    variance);
+                    self.invariant);
             }
 
             ty::ty_trait(ref data) => {
