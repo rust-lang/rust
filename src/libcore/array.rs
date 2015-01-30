@@ -18,12 +18,14 @@ use clone::Clone;
 use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use fmt;
 use hash::{Hash, Hasher, self};
+use iter::IntoIterator;
 use marker::Copy;
 #[cfg(stage0)]
 use ops::{Deref, FullRange};
 #[cfg(not(stage0))]
 use ops::Deref;
 use option::Option;
+use slice::{Iter, IterMut, SliceExt};
 
 // macro for implementing n-ary tuple functions and operations
 macro_rules! array_impls {
@@ -46,6 +48,22 @@ macro_rules! array_impls {
             impl<T: fmt::Debug> fmt::Debug for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
                     fmt::Debug::fmt(&&self[], f)
+                }
+            }
+
+            impl<'a, T> IntoIterator for &'a [T; $N] {
+                type Iter = Iter<'a, T>;
+
+                fn into_iter(self) -> Iter<'a, T> {
+                    self.iter()
+                }
+            }
+
+            impl<'a, T> IntoIterator for &'a mut [T; $N] {
+                type Iter = IterMut<'a, T>;
+
+                fn into_iter(self) -> IterMut<'a, T> {
+                    self.iter_mut()
                 }
             }
 

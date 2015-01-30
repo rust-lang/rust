@@ -44,6 +44,8 @@
 #![feature(rustc_private)]
 #![feature(std_misc)]
 #![feature(hash)]
+// NOTE(stage0): remove cfg_attr after a snapshot
+#![cfg_attr(not(stage0), allow(unused_mut))]
 
 extern crate getopts;
 extern crate serialize;

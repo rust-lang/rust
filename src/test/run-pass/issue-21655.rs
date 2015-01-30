@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unreachable_code)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
-#![feature(core)]
-
-fn fail_len(v: Vec<isize> ) -> usize {
-    let mut i = 3;
-    panic!();
-    for x in v.iter() { i += 1us; }
-    //~^ ERROR: unreachable statement
-    return i;
+fn test(it: &mut Iterator<Item=i32>) {
+    for x in it {
+        assert_eq!(x, 1)
+    }
 }
-fn main() {}
+
+fn main() {
+    let v = vec![1];
+    test(&mut v.into_iter())
+}

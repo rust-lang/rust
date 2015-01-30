@@ -84,4 +84,7 @@ mod std {
     pub use core::cmp;
     pub use core::fmt;
     pub use core::marker;
+    // for-loops
+    pub use core::iter;
+    pub use core::option;
 }

@@ -18,6 +18,7 @@
 
 use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
+use clone::Clone;
 use cmp::{self, Eq};
 use default::Default;
 use error::Error;
@@ -279,7 +280,7 @@ Section: Iterators
 /// Iterator for the char (representing *Unicode Scalar Values*) of a string
 ///
 /// Created with the method `.chars()`.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
@@ -1007,11 +1008,11 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
     let whole = iter.as_slice();
     loop {
         // save the current thing we're pointing at.
-        let old = *iter;
+        let old = iter.clone();
 
         // restore the iterator we had at the start of this codepoint.
         macro_rules! err { () => {{
-            *iter = old;
+            *iter = old.clone();
             return Err(Utf8Error::InvalidByte(whole.len() - iter.as_slice().len()))
         }}}
 

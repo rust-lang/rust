@@ -34,6 +34,8 @@
 #![feature(unicode)]
 #![feature(hash)]
 #![cfg_attr(test, feature(test))]
+// NOTE(stage0): remove after a snapshot
+#![cfg_attr(not(stage0), allow(unused_mut))]
 
 #[macro_use]
 extern crate core;
@@ -114,6 +116,8 @@ mod std {
     pub use core::marker;   // derive(Copy)
     pub use core::hash;     // derive(Hash)
     pub use core::ops;      // RangeFull
+    // for-loops
+    pub use core::iter;
 }
 
 #[cfg(test)]

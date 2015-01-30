@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unreachable_code)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
-#![feature(core)]
-
-fn fail_len(v: Vec<isize> ) -> usize {
-    let mut i = 3;
-    panic!();
-    for x in v.iter() { i += 1us; }
-    //~^ ERROR: unreachable statement
-    return i;
+fn changer<'a>(mut things: Box<Iterator<Item=&'a mut u8>>) {
+    for item in *things { *item = 0 }
+//~^ ERROR the trait `core::marker::Sized` is not implemented for the type `core::iter::Iterator
+//~^^ ERROR
+//~^^^ ERROR
+// FIXME(#21528) error should be reported once, not thrice
 }
+
 fn main() {}

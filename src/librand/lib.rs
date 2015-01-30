@@ -498,6 +498,8 @@ mod std {
     pub use core::{option, fmt}; // panic!()
     pub use core::clone; // derive Clone
     pub use core::marker;
+    // for-loops
+    pub use core::iter;
 }
 
 #[cfg(test)]

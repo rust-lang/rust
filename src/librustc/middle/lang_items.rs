@@ -325,8 +325,6 @@ lets_do_this! {
 
     NonZeroItem,                     "non_zero",                non_zero;
 
-    IteratorItem,                    "iterator",                iterator;
-
     StackExhaustedLangItem,          "stack_exhausted",         stack_exhausted;
 
     DebugTraitLangItem,              "debug_trait",             debug_trait;

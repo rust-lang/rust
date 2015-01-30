@@ -28,7 +28,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Writer, Hasher, Hash};
-use core::iter::{self, FromIterator};
+use core::iter::{self, FromIterator, IntoIterator};
 use core::mem;
 use core::ptr;
 
@@ -827,6 +827,30 @@ impl<A> FromIterator<A> for DList<A> {
         let mut ret = DList::new();
         ret.extend(iterator);
         ret
+    }
+}
+
+impl<T> IntoIterator for DList<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a DList<T> {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut DList<T> {
+    type Iter = IterMut<'a, T>;
+
+    fn into_iter(mut self) -> IterMut<'a, T> {
+        self.iter_mut()
     }
 }
 

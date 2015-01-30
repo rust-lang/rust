@@ -68,7 +68,7 @@ use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DefId, Expr, ExprAgain, ExprBreak, ExprField};
-use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
+use syntax::ast::{ExprClosure, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprQPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
@@ -4560,39 +4560,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     visit::walk_expr(this, expr);
                 })
-            }
-
-            ExprForLoop(ref pattern, ref head, ref body, optional_label) => {
-                self.resolve_expr(&**head);
-
-                self.value_ribs.push(Rib::new(NormalRibKind));
-
-                self.resolve_pattern(&**pattern,
-                                     LocalIrrefutableMode,
-                                     &mut HashMap::new());
-
-                match optional_label {
-                    None => {}
-                    Some(label) => {
-                        self.label_ribs
-                            .push(Rib::new(NormalRibKind));
-                        let def_like = DlDef(DefLabel(expr.id));
-
-                        {
-                            let rib = self.label_ribs.last_mut().unwrap();
-                            let renamed = mtwt::resolve(label);
-                            rib.bindings.insert(renamed, def_like);
-                        }
-                    }
-                }
-
-                self.resolve_block(&**body);
-
-                if optional_label.is_some() {
-                    drop(self.label_ribs.pop())
-                }
-
-                self.value_ribs.pop();
             }
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {

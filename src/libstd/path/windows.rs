@@ -557,7 +557,7 @@ impl GenericPath for Path {
                     }
                     (Some(a), Some(_)) => {
                         comps.push("..");
-                        for _ in itb {
+                        for _ in itb.by_ref() {
                             comps.push("..");
                         }
                         comps.push(a);

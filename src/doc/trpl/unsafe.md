@@ -576,6 +576,10 @@ extern fn panic_fmt(args: &core::fmt::Arguments,
 #[lang = "eh_personality"] extern fn eh_personality() {}
 # #[start] fn start(argc: isize, argv: *const *const u8) -> isize { 0 }
 # fn main() {}
+# mod std {  // for-loops
+#     pub use core::iter;
+#     pub use core::option;
+# }
 ```
 
 Note that there is one extra lang item here which differs from the examples

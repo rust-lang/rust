@@ -84,6 +84,8 @@ This API is completely unstable and subject to change.
 #![feature(core)]
 #![feature(rustc_private)]
 #![feature(std_misc)]
+// NOTE(stage0) remove cfg_attr after a snapshot
+#![cfg_attr(not(stage0), allow(unused_mut))]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;

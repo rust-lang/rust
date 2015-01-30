@@ -1772,7 +1772,7 @@ mod test_map {
                 }
             });
 
-            for _ in half {}
+            for _ in half.by_ref() {}
 
             DROP_VECTOR.with(|v| {
                 let nk = (0u..100).filter(|&i| {

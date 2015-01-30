@@ -1053,48 +1053,6 @@ pub fn create_argument_metadata(bcx: Block, arg: &ast::Arg) {
     })
 }
 
-/// Creates debug information for the given for-loop variable.
-///
-/// This function assumes that there's a datum for each pattern component of the
-/// loop variable in `bcx.fcx.lllocals`.
-/// Adds the created metadata nodes directly to the crate's IR.
-pub fn create_for_loop_var_metadata(bcx: Block, pat: &ast::Pat) {
-    if bcx.unreachable.get() ||
-       fn_should_be_ignored(bcx.fcx) ||
-       bcx.sess().opts.debuginfo != FullDebugInfo {
-        return;
-    }
-
-    let def_map = &bcx.tcx().def_map;
-    let locals = bcx.fcx.lllocals.borrow();
-
-    pat_util::pat_bindings(def_map, pat, |_, node_id, span, var_ident| {
-        let datum = match locals.get(&node_id) {
-            Some(datum) => datum,
-            None => {
-                bcx.sess().span_bug(span,
-                    format!("no entry in lllocals table for {}",
-                            node_id).as_slice());
-            }
-        };
-
-        if unsafe { llvm::LLVMIsAAllocaInst(datum.val) } == ptr::null_mut() {
-            bcx.sess().span_bug(span, "debuginfo::create_for_loop_var_metadata() - \
-                                       Referenced variable location is not an alloca!");
-        }
-
-        let scope_metadata = scope_metadata(bcx.fcx, node_id, span);
-
-        declare_local(bcx,
-                      var_ident.node,
-                      datum.ty,
-                      scope_metadata,
-                      DirectVariable { alloca: datum.val },
-                      LocalVariable,
-                      span);
-    })
-}
-
 pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                     node_id: ast::NodeId,
                                                     node_span: Span,
@@ -3627,24 +3585,9 @@ fn create_scope_map(cx: &CrateContext,
                                               Found unexpanded while-let.");
             }
 
-            ast::ExprForLoop(ref pattern, ref head, ref body, _) => {
-                walk_expr(cx, &**head, scope_stack, scope_map);
-
-                with_new_scope(cx,
-                               exp.span,
-                               scope_stack,
-                               scope_map,
-                               |cx, scope_stack, scope_map| {
-                    scope_map.insert(exp.id,
-                                     scope_stack.last()
-                                                .unwrap()
-                                                .scope_metadata);
-                    walk_pattern(cx,
-                                 &**pattern,
-                                 scope_stack,
-                                 scope_map);
-                    walk_block(cx, &**body, scope_stack, scope_map);
-                })
+            ast::ExprForLoop(..) => {
+                cx.sess().span_bug(exp.span, "debuginfo::create_scope_map() - \
+                                              Found unexpanded for loop.");
             }
 
             ast::ExprMac(_) => {
