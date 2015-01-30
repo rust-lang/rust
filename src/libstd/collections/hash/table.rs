@@ -16,15 +16,14 @@ use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
 use iter::{Iterator, IteratorExt, ExactSizeIterator, count};
-use marker::{Copy, Sized, self};
+use marker::{Copy, Send, Sync, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
 use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
-use ptr::{Unique, PtrExt, copy_nonoverlapping_memory, zero_memory};
-use ptr;
+use ptr::{self, PtrExt, copy_nonoverlapping_memory, zero_memory};
 use rt::heap::{allocate, deallocate};
 use collections::hash_state::HashState;
 
@@ -70,11 +69,14 @@ const EMPTY_BUCKET: u64 = 0u64;
 pub struct RawTable<K, V> {
     capacity: uint,
     size:     uint,
-    hashes:   Unique<u64>,
+    hashes:   *mut u64,
     // Because K/V do not appear directly in any of the types in the struct,
     // inform rustc that in fact instances of K and V are reachable from here.
     marker:   marker::CovariantType<(K,V)>,
 }
+
+unsafe impl<K: Send, V: Send> Send for RawTable<K, V> {}
+unsafe impl<K: Sync, V: Sync> Sync for RawTable<K, V> {}
 
 struct RawBucket<K, V> {
     hash: *mut u64,
@@ -565,7 +567,7 @@ impl<K, V> RawTable<K, V> {
             return RawTable {
                 size: 0,
                 capacity: 0,
-                hashes: Unique::null(),
+                hashes: ptr::null_mut(),
                 marker: marker::CovariantType,
             };
         }
@@ -604,7 +606,7 @@ impl<K, V> RawTable<K, V> {
         RawTable {
             capacity: capacity,
             size:     0,
-            hashes:   Unique(hashes),
+            hashes:   hashes,
             marker:   marker::CovariantType,
         }
     }
@@ -613,14 +615,14 @@ impl<K, V> RawTable<K, V> {
         let hashes_size = self.capacity * size_of::<u64>();
         let keys_size = self.capacity * size_of::<K>();
 
-        let buffer = self.hashes.0 as *mut u8;
+        let buffer = self.hashes as *mut u8;
         let (keys_offset, vals_offset) = calculate_offsets(hashes_size,
                                                            keys_size, min_align_of::<K>(),
                                                            min_align_of::<V>());
 
         unsafe {
             RawBucket {
-                hash: self.hashes.0,
+                hash: self.hashes,
                 key:  buffer.offset(keys_offset as int) as *mut K,
                 val:  buffer.offset(vals_offset as int) as *mut V
             }
@@ -632,7 +634,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: uint) -> RawTable<K, V> {
         unsafe {
             let ret = RawTable::new_uninitialized(capacity);
-            zero_memory(ret.hashes.0, capacity);
+            zero_memory(ret.hashes, capacity);
             ret
         }
     }
@@ -652,7 +654,7 @@ impl<K, V> RawTable<K, V> {
         RawBuckets {
             raw: self.first_bucket_raw(),
             hashes_end: unsafe {
-                self.hashes.0.offset(self.capacity as int)
+                self.hashes.offset(self.capacity as int)
             },
             marker: marker::ContravariantLifetime,
         }
@@ -964,7 +966,7 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
 #[unsafe_destructor]
 impl<K, V> Drop for RawTable<K, V> {
     fn drop(&mut self) {
-        if self.hashes.0.is_null() {
+        if self.hashes.is_null() {
             return;
         }
         // This is done in reverse because we've likely partially taken
@@ -984,7 +986,7 @@ impl<K, V> Drop for RawTable<K, V> {
                                                     vals_size, min_align_of::<V>());
 
         unsafe {
-            deallocate(self.hashes.0 as *mut u8, size, align);
+            deallocate(self.hashes as *mut u8, size, align);
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
         }
