@@ -22,7 +22,7 @@ and safety.
 
 # Tools
 
-Getting started on a new Rust project is incredibly easy, thanks to Rust's
+Getting started on a new Rust project is easy, thanks to Rust's
 package manager, [Cargo](http://crates.io).
 
 To start a new project with Cargo, use `cargo new`:
