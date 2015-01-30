@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android: FIXME(#10381)
 // ignore-windows failing on 64-bit bots FIXME #17638
 // ignore-lldb
 
@@ -16,7 +15,7 @@
 
 // gdb-command:run
 // gdb-command:next
-// gdb-check:[...]34[...]s
+// gdb-check:[...]33[...]s
 // gdb-command:continue
 
 #![omit_gdb_pretty_printer_section]

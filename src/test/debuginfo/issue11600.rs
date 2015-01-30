@@ -17,7 +17,6 @@ fn main() {
     ::std::io::println(args[0]);
 }
 
-// ignore-android: FIXME(#10381)
 // ignore-lldb
 
 // This test case checks whether compile unit names are set correctly, so that the correct default
