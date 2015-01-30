@@ -13,7 +13,8 @@
 extern crate "coherence-lib" as lib;
 use lib::Remote1;
 
-impl<T> Remote1<T> for isize { }
-//~^ ERROR E0210
+pub struct BigInt;
+
+impl Remote1<BigInt> for isize { }
 
 fn main() { }

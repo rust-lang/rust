@@ -21,7 +21,7 @@ struct TheType;
 
 impl TheTrait<usize> for isize { } //~ ERROR E0117
 
-impl TheTrait<TheType> for isize { } //~ ERROR E0117
+impl TheTrait<TheType> for isize { }
 
 impl TheTrait<isize> for TheType { }
 
