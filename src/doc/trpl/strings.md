@@ -36,36 +36,16 @@ s.push_str(", world.");
 println!("{}", s);
 ```
 
-You can get a `&str` view into a `String` with the `as_slice()` method:
+`String`s will coerece into `&str` with an `&`:
 
-```{rust}
+```
 fn takes_slice(slice: &str) {
     println!("Got: {}", slice);
 }
 
 fn main() {
     let s = "Hello".to_string();
-    takes_slice(s.as_slice());
-}
-```
-
-To compare a String to a constant string, prefer `as_slice()`...
-
-```{rust}
-fn compare(string: String) {
-    if string.as_slice() == "Hello" {
-        println!("yes");
-    }
-}
-```
-
-... over `to_string()`:
-
-```{rust}
-fn compare(string: String) {
-    if string == "Hello".to_string() {
-        println!("yes");
-    }
+    takes_slice(&s);
 }
 ```
 
