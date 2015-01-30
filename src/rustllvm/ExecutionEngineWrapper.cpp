@@ -94,7 +94,7 @@ extern "C" LLVMExecutionEngineRef LLVMBuildExecutionEngine(
     ExecutionEngine *ee = EngineBuilder(std::move(m))
         .setEngineKind(EngineKind::JIT)
         .setErrorStr(&error_str)
-        .setMCJITMemoryManager(mm)
+        .setMCJITMemoryManager(std::unique_ptr<RTDyldMemoryManager>(mm))
         .setTargetOptions(options)
         .create();
 
