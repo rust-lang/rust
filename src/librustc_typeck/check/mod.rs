@@ -160,7 +160,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
     item_substs: RefCell<NodeMap<ty::ItemSubsts<'tcx>>>,
     adjustments: RefCell<NodeMap<ty::AutoAdjustment<'tcx>>>,
     method_map: MethodMap<'tcx>,
-    upvar_borrow_map: RefCell<ty::UpvarBorrowMap>,
+    upvar_capture_map: RefCell<ty::UpvarCaptureMap>,
     closures: RefCell<DefIdMap<ty::Closure<'tcx>>>,
     object_cast_map: ObjectCastMap<'tcx>,
 
@@ -305,7 +305,7 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     }
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool {
         let ty = self.infcx().resolve_type_vars_if_possible(&ty);
-        traits::type_known_to_meet_builtin_bound(self.infcx(), self, ty, ty::BoundCopy, span)
+        !traits::type_known_to_meet_builtin_bound(self.infcx(), self, ty, ty::BoundCopy, span)
     }
     fn node_method_ty(&self, method_call: ty::MethodCall)
                       -> Option<Ty<'tcx>> {
@@ -330,12 +330,8 @@ impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
     fn temporary_scope(&self, rvalue_id: ast::NodeId) -> Option<CodeExtent> {
         self.param_env().temporary_scope(rvalue_id)
     }
-    fn upvar_borrow(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarBorrow> {
-        self.inh.upvar_borrow_map.borrow().get(&upvar_id).cloned()
-    }
-    fn capture_mode(&self, closure_expr_id: ast::NodeId)
-                    -> ast::CaptureClause {
-        self.ccx.tcx.capture_mode(closure_expr_id)
+    fn upvar_capture(&self, upvar_id: ty::UpvarId) -> Option<ty::UpvarCapture> {
+        self.inh.upvar_capture_map.borrow().get(&upvar_id).cloned()
     }
 }
 
@@ -378,7 +374,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             adjustments: RefCell::new(NodeMap()),
             method_map: RefCell::new(FnvHashMap()),
             object_cast_map: RefCell::new(NodeMap()),
-            upvar_borrow_map: RefCell::new(FnvHashMap()),
+            upvar_capture_map: RefCell::new(FnvHashMap()),
             closures: RefCell::new(DefIdMap()),
             fn_sig_map: RefCell::new(NodeMap()),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),

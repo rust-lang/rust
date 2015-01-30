@@ -1317,6 +1317,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_item_variances(rbml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_unsafety(rbml_w, trait_def.unsafety);
+        encode_paren_sugar(rbml_w, trait_def.paren_sugar);
         encode_associated_type_names(rbml_w, trait_def.associated_type_names.as_slice());
         encode_generics(rbml_w, ecx, &trait_def.generics, tag_item_generics);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
@@ -1695,6 +1696,11 @@ fn encode_unsafety(rbml_w: &mut Encoder, unsafety: ast::Unsafety) {
         ast::Unsafety::Unsafe => 1,
     };
     rbml_w.wr_tagged_u8(tag_unsafety, byte);
+}
+
+fn encode_paren_sugar(rbml_w: &mut Encoder, paren_sugar: bool) {
+    let byte: u8 = if paren_sugar {1} else {0};
+    rbml_w.wr_tagged_u8(tag_paren_sugar, byte);
 }
 
 fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[ast::Name]) {

@@ -1775,7 +1775,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                    _attributes: &[ast::Attribute],
                                    output_type: ty::FnOutput<'tcx>,
                                    abi: Abi,
-                                   closure_env: closure::ClosureEnv<'b, 'tcx>) {
+                                   closure_env: closure::ClosureEnv<'b>) {
     ccx.stats().n_closures.set(ccx.stats().n_closures.get() + 1);
 
     let _icx = push_ctxt("trans_closure");
@@ -1784,12 +1784,17 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     debug!("trans_closure(..., param_substs={})",
            param_substs.repr(ccx.tcx()));
 
+    let has_env = match closure_env {
+        closure::ClosureEnv::Closure(_) => true,
+        closure::ClosureEnv::NotClosure => false,
+    };
+
     let (arena, fcx): (TypedArena<_>, FunctionContext);
     arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx,
                       llfndecl,
                       fn_ast_id,
-                      closure_env.kind != closure::NotClosure,
+                      has_env,
                       output_type,
                       param_substs,
                       Some(body.span),
@@ -1808,13 +1813,13 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         decl.inputs.iter()
                    .map(|arg| node_id_type(bcx, arg.id))
                    .collect::<Vec<_>>();
-    let monomorphized_arg_types = match closure_env.kind {
-        closure::NotClosure => {
+    let monomorphized_arg_types = match closure_env {
+        closure::ClosureEnv::NotClosure => {
             monomorphized_arg_types
         }
 
         // Tuple up closure argument types for the "rust-call" ABI.
-        closure::Closure(..) => {
+        closure::ClosureEnv::Closure(_) => {
             vec![ty::mk_tup(ccx.tcx(), monomorphized_arg_types)]
         }
     };
@@ -1835,14 +1840,14 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             &monomorphized_arg_types[])
     };
 
-    bcx = match closure_env.kind {
-        closure::NotClosure => {
+    bcx = match closure_env {
+        closure::ClosureEnv::NotClosure => {
             copy_args_to_allocas(bcx,
                                  arg_scope,
                                  &decl.inputs[],
                                  arg_datums)
         }
-        closure::Closure(..) => {
+        closure::ClosureEnv::Closure(_) => {
             copy_closure_args_to_allocas(
                 bcx,
                 arg_scope,
@@ -1932,7 +1937,7 @@ pub fn trans_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   attrs,
                   output_type,
                   abi,
-                  closure::ClosureEnv::new(&[], closure::NotClosure));
+                  closure::ClosureEnv::NotClosure);
 }
 
 pub fn trans_enum_variant<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,

@@ -1292,6 +1292,15 @@ impl<'tcx> Repr<'tcx> for ty::UpvarBorrow {
     }
 }
 
+impl<'tcx> Repr<'tcx> for ty::UpvarCapture {
+    fn repr(&self, tcx: &ctxt) -> String {
+        match *self {
+            ty::UpvarCapture::ByValue => format!("ByValue"),
+            ty::UpvarCapture::ByRef(ref data) => format!("ByRef({})", data.repr(tcx)),
+        }
+    }
+}
+
 impl<'tcx> Repr<'tcx> for ty::IntVid {
     fn repr(&self, _tcx: &ctxt) -> String {
         format!("{:?}", self)
