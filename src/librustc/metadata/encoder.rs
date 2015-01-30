@@ -618,17 +618,6 @@ fn encode_visibility(rbml_w: &mut Encoder, visibility: ast::Visibility) {
     rbml_w.end_tag();
 }
 
-fn encode_closure_kind(rbml_w: &mut Encoder, kind: ty::ClosureKind) {
-    rbml_w.start_tag(tag_closure_kind);
-    let ch = match kind {
-        ty::FnClosureKind => 'f',
-        ty::FnMutClosureKind => 'm',
-        ty::FnOnceClosureKind => 'o',
-    };
-    rbml_w.wr_str(&ch.to_string()[]);
-    rbml_w.end_tag();
-}
-
 fn encode_explicit_self(rbml_w: &mut Encoder,
                         explicit_self: &ty::ExplicitSelfCategory) {
     rbml_w.start_tag(tag_item_trait_method_explicit_self);
@@ -1843,24 +1832,6 @@ fn encode_macro_defs(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
-fn encode_closures<'a>(ecx: &'a EncodeContext, rbml_w: &'a mut Encoder) {
-    rbml_w.start_tag(tag_closures);
-    for (closure_id, closure) in ecx.tcx.closures.borrow().iter() {
-        if closure_id.krate != ast::LOCAL_CRATE {
-            continue
-        }
-
-        rbml_w.start_tag(tag_closure);
-        encode_def_id(rbml_w, *closure_id);
-        rbml_w.start_tag(tag_closure_type);
-        write_closure_type(ecx, rbml_w, &closure.closure_type);
-        rbml_w.end_tag();
-        encode_closure_kind(rbml_w, closure.kind);
-        rbml_w.end_tag();
-    }
-    rbml_w.end_tag();
-}
-
 fn encode_struct_field_attrs(rbml_w: &mut Encoder, krate: &ast::Crate) {
     struct StructFieldVisitor<'a, 'b:'a> {
         rbml_w: &'a mut Encoder<'b>,
@@ -2069,7 +2040,6 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         native_lib_bytes: u64,
         plugin_registrar_fn_bytes: u64,
         macro_defs_bytes: u64,
-        closure_bytes: u64,
         impl_bytes: u64,
         misc_bytes: u64,
         item_bytes: u64,
@@ -2084,7 +2054,6 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         native_lib_bytes: 0,
         plugin_registrar_fn_bytes: 0,
         macro_defs_bytes: 0,
-        closure_bytes: 0,
         impl_bytes: 0,
         misc_bytes: 0,
         item_bytes: 0,
@@ -2154,11 +2123,6 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
     encode_macro_defs(&mut rbml_w, krate);
     stats.macro_defs_bytes = rbml_w.writer.tell().unwrap() - i;
 
-    // Encode the types of all closures in this crate.
-    i = rbml_w.writer.tell().unwrap();
-    encode_closures(&ecx, &mut rbml_w);
-    stats.closure_bytes = rbml_w.writer.tell().unwrap() - i;
-
     // Encode the def IDs of impls, for coherence checking.
     i = rbml_w.writer.tell().unwrap();
     encode_impls(&ecx, krate, &mut rbml_w);
@@ -2199,7 +2163,6 @@ fn encode_metadata_inner(wr: &mut SeekableMemWriter,
         println!("          native bytes: {}", stats.native_lib_bytes);
         println!("plugin registrar bytes: {}", stats.plugin_registrar_fn_bytes);
         println!("       macro def bytes: {}", stats.macro_defs_bytes);
-        println!("         closure bytes: {}", stats.closure_bytes);
         println!("            impl bytes: {}", stats.impl_bytes);
         println!("            misc bytes: {}", stats.misc_bytes);
         println!("            item bytes: {}", stats.item_bytes);
