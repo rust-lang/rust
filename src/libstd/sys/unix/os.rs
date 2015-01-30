@@ -217,11 +217,18 @@ pub fn load_self() -> Option<Vec<u8>> {
 
 #[cfg(target_os = "openbsd")]
 pub fn load_self() -> Option<Vec<u8>> {
+    use sync::{StaticMutex, MUTEX_INIT};
+
+    static LOCK: StaticMutex = MUTEX_INIT;
+
     extern {
-        fn __load_self() -> *const c_char;
+        fn rust_load_self() -> *const c_char;
     }
+
+    let _guard = LOCK.lock();
+
     unsafe {
-        let v = __load_self();
+        let v = rust_load_self();
         if v.is_null() {
             None
         } else {

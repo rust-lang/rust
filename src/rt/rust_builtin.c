@@ -204,7 +204,7 @@ int *__dfly_error(void) { return __error(); }
 #include <sys/sysctl.h>
 #include <limits.h>
 
-const char * __load_self() {
+const char * rust_load_self() {
     static char *self = NULL;
 
     if (self == NULL) {
