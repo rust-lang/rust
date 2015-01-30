@@ -429,12 +429,12 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyTup(tys) => TyTup(tys.move_map(|ty| fld.fold_ty(ty))),
             TyParen(ty) => TyParen(fld.fold_ty(ty)),
             TyPath(path) => TyPath(fld.fold_path(path)),
+            TyQPath(qpath) => {
+                TyQPath(fld.fold_qpath(qpath))
+            }
             TyObjectSum(ty, bounds) => {
                 TyObjectSum(fld.fold_ty(ty),
                             fld.fold_bounds(bounds))
-            }
-            TyQPath(qpath) => {
-                TyQPath(fld.fold_qpath(qpath))
             }
             TyFixedLengthVec(ty, e) => {
                 TyFixedLengthVec(fld.fold_ty(ty), fld.fold_expr(e))
@@ -454,7 +454,7 @@ pub fn noop_fold_qpath<T: Folder>(qpath: P<QPath>, fld: &mut T) -> P<QPath> {
     qpath.map(|qpath| {
         QPath {
             self_type: fld.fold_ty(qpath.self_type),
-            trait_ref: qpath.trait_ref.map(|tr| fld.fold_trait_ref(tr)),
+            trait_path: fld.fold_path(qpath.trait_path),
             item_path: PathSegment {
                 identifier: fld.fold_ident(qpath.item_path.identifier),
                 parameters: fld.fold_path_parameters(qpath.item_path.parameters),

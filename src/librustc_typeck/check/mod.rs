@@ -3611,13 +3611,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           constrain_path_type_parameters(fcx, expr);
       }
       ast::ExprQPath(ref qpath) => {
-          // Require explicit type params for the trait.
           let self_ty = fcx.to_ty(&*qpath.self_type);
-          astconv::instantiate_trait_ref(fcx, fcx, &*qpath.trait_ref, Some(self_ty), None);
-
           let defn = lookup_def(fcx, expr.span, id);
           let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx, expr.span, defn);
-          let mut path = qpath.trait_ref.path.clone();
+          let mut path = qpath.trait_path.clone();
           path.segments.push(qpath.item_path.clone());
           instantiate_path(fcx, &path, scheme, &predicates, Some(self_ty),
                            defn, expr.span, expr.id);
@@ -4829,7 +4826,8 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // to add defaults. If the user provided *too many* types, that's
     // a problem.
     for &space in &ParamSpace::all() {
-        adjust_type_parameters(fcx, span, space, type_defs, &mut substs);
+        adjust_type_parameters(fcx, span, space, type_defs,
+                               opt_self_ty.is_some(), &mut substs);
         assert_eq!(substs.types.len(space), type_defs.len(space));
 
         adjust_region_parameters(fcx, span, space, region_defs, &mut substs);
@@ -5007,6 +5005,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         span: Span,
         space: ParamSpace,
         defs: &VecPerParamSpace<ty::TypeParameterDef<'tcx>>,
+        require_type_space: bool,
         substs: &mut Substs<'tcx>)
     {
         let provided_len = substs.types.len(space);
@@ -5029,9 +5028,8 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
         // Nothing specified at all: supply inference variables for
         // everything.
-        if provided_len == 0 {
-            substs.types.replace(space,
-                                 fcx.infcx().next_ty_vars(desired.len()));
+        if provided_len == 0 && !(require_type_space && space == subst::TypeSpace) {
+            substs.types.replace(space, fcx.infcx().next_ty_vars(desired.len()));
             return;
         }
 

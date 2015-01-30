@@ -125,8 +125,8 @@ pub trait Visitor<'v> : Sized {
     fn visit_path(&mut self, path: &'v Path, _id: ast::NodeId) {
         walk_path(self, path)
     }
-    fn visit_qpath(&mut self, qpath_span: Span, qpath: &'v QPath) {
-        walk_qpath(self, qpath_span, qpath)
+    fn visit_qpath(&mut self, qpath: &'v QPath, _id: ast::NodeId) {
+        walk_qpath(self, qpath)
     }
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
         walk_path_segment(self, path_span, path_segment)
@@ -402,12 +402,12 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
         TyPath(ref path) => {
             visitor.visit_path(path, typ.id);
         }
+        TyQPath(ref qpath) => {
+            visitor.visit_qpath(&**qpath, typ.id);
+        }
         TyObjectSum(ref ty, ref bounds) => {
             visitor.visit_ty(&**ty);
             walk_ty_param_bounds_helper(visitor, bounds);
-        }
-        TyQPath(ref qpath) => {
-            visitor.visit_qpath(typ.span, &**qpath);
         }
         TyFixedLengthVec(ref ty, ref expression) => {
             visitor.visit_ty(&**ty);
@@ -436,12 +436,10 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     }
 }
 
-pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V,
-                                      qpath_span: Span,
-                                      qpath: &'v QPath) {
+pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath) {
     visitor.visit_ty(&*qpath.self_type);
-    visitor.visit_trait_ref(&*qpath.trait_ref);
-    visitor.visit_path_segment(qpath_span, &qpath.item_path);
+    walk_path(visitor, &qpath.trait_path);
+    visitor.visit_path_segment(qpath.trait_path.span, &qpath.item_path);
 }
 
 pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
@@ -873,7 +871,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_path(path, expression.id)
         }
         ExprQPath(ref qpath) => {
-            visitor.visit_qpath(expression.span, &**qpath)
+            visitor.visit_qpath(&**qpath, expression.id)
         }
         ExprBreak(_) | ExprAgain(_) => {}
         ExprRet(ref optional_expression) => {

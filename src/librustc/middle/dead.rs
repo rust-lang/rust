@@ -306,6 +306,11 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         visit::walk_path(self, path);
     }
 
+    fn visit_qpath(&mut self, qpath: &ast::QPath, id: ast::NodeId) {
+        self.lookup_and_handle_definition(&id);
+        visit::walk_qpath(self, qpath);
+    }
+
     fn visit_item(&mut self, _: &ast::Item) {
         // Do not recurse into items. These items will be added to the
         // worklist and recursed into manually if necessary.

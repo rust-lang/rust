@@ -1629,7 +1629,7 @@ impl Clean<Type> for ast::QPath {
         Type::QPath {
             name: self.item_path.identifier.clean(cx),
             self_type: box self.self_type.clean(cx),
-            trait_: box self.trait_ref.clean(cx)
+            trait_: box resolve_type(cx, self.trait_path.clean(cx), 0)
         }
     }
 }

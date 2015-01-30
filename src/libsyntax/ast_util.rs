@@ -561,12 +561,17 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
         visit::walk_trait_item(self, tm);
     }
 
-    fn visit_lifetime_ref(&mut self, lifetime: &'v Lifetime) {
+    fn visit_lifetime_ref(&mut self, lifetime: &Lifetime) {
         self.operation.visit_id(lifetime.id);
     }
 
-    fn visit_lifetime_def(&mut self, def: &'v LifetimeDef) {
+    fn visit_lifetime_def(&mut self, def: &LifetimeDef) {
         self.visit_lifetime_ref(&def.lifetime);
+    }
+
+    fn visit_trait_ref(&mut self, trait_ref: &TraitRef) {
+        self.operation.visit_id(trait_ref.ref_id);
+        visit::walk_trait_ref(self, trait_ref);
     }
 }
 

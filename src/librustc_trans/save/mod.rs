@@ -1340,10 +1340,10 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 visit::walk_path(self, path);
             }
             ast::ExprQPath(ref qpath) => {
-                let mut path = qpath.trait_ref.path.clone();
+                let mut path = qpath.trait_path.clone();
                 path.segments.push(qpath.item_path.clone());
                 self.process_path(ex.id, ex.span, &path, None);
-                visit::walk_qpath(self, ex.span, &**qpath);
+                visit::walk_qpath(self, &**qpath);
             }
             ast::ExprStruct(ref path, ref fields, ref base) =>
                 self.process_struct_lit(ex, path, fields, base),
