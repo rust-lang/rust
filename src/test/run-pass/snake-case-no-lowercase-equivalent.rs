@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[deny(warnings)]
+#![feature(non_ascii_idents)]
+#![deny(non_snake_case)]
 
-const foo: isize = 3;
-//~^ ERROR: should have an upper case name such as
-//~^^ ERROR: constant item is never used
+// This name is neither upper nor lower case
+fn 你好() {}
 
 fn main() {}
