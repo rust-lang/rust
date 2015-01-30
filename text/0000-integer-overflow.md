@@ -180,6 +180,18 @@ pub trait WrappingOps {
     fn wrapping_mul(self, rhs: Self) -> Self;
     fn wrapping_div(self, rhs: Self) -> Self;
     fn wrapping_rem(self, rhs: Self) -> Self;
+    
+    fn wrapping_as_u8(self, rhs: Self) -> u8;
+    fn wrapping_as_u16(self, rhs: Self) -> u16;
+    fn wrapping_as_u32(self, rhs: Self) -> u32
+    fn wrapping_as_u64(self, rhs: Self) -> u64;
+    fn wrapping_as_usize(self, rhs: Self) -> usize;
+    
+    fn wrapping_as_i8(self, rhs: Self) -> i8;
+    fn wrapping_as_i16(self, rhs: Self) -> i16;
+    fn wrapping_as_i32(self, rhs: Self) -> i32
+    fn wrapping_as_i64(self, rhs: Self) -> i64;
+    fn wrapping_as_isize(self, rhs: Self) -> isize;
 }
 
 impl WrappingOps for isize
@@ -450,15 +462,6 @@ runtime branch? Division is already slow, so a branch here may be an affordable
 cost. If we do this, it would obviate the need for the `wrapping_div` and
 `wrapping_rem` methods, and they could be removed. This isn't intrinsically tied
 to the current RFC, and could be discussed separately.
-
-It is not clear whether, or how, overflowing casts between types should be
-provided. For casts between signed and unsigned integers of the same size,
-the [`Transmute` trait for safe transmutes][transmute] would be appropriate in
-the future, or the unsafe `transmute()` function in the present. For other casts
-(between different sized-types, between floats and integers), special operations
-might have to be provided if supporting them is desirable.
-
-[transmute]: https://github.com/rust-lang/rfcs/pull/91
 
 # Future work
 
