@@ -119,7 +119,6 @@ enum Family {
     StaticMethod,          // F
     Method,                // h
     Type,                  // y
-    ForeignType,           // T
     Mod,                   // m
     ForeignMod,            // n
     Enum,                  // t
@@ -145,7 +144,6 @@ fn item_family(item: rbml::Doc) -> Family {
       'F' => StaticMethod,
       'h' => Method,
       'y' => Type,
-      'T' => ForeignType,
       'm' => Mod,
       'n' => ForeignMod,
       't' => Enum,
@@ -346,7 +344,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
                 _ => panic!()
             }
         }
-        Type | ForeignType => DlDef(def::DefTy(did, false)),
+        Type => DlDef(def::DefTy(did, false)),
         Mod => DlDef(def::DefMod(did)),
         ForeignMod => DlDef(def::DefForeignMod(did)),
         StructVariant => {
