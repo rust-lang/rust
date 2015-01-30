@@ -21,6 +21,7 @@ use super::LvaluePreference;
 use super::method;
 use super::structurally_resolved_type;
 use super::TupleArgumentsFlag;
+use super::UnresolvedTypeAction;
 use super::write_call;
 
 use middle::infer;
@@ -77,6 +78,7 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                   callee_expr.span,
                   original_callee_ty,
                   Some(callee_expr),
+                  UnresolvedTypeAction::Error,
                   LvaluePreference::NoPreference,
                   |adj_ty, idx| {
                       let autoderefref = ty::AutoDerefRef { autoderefs: idx, autoref: None };

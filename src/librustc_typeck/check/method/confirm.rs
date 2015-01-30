@@ -11,6 +11,7 @@
 use super::probe;
 
 use check::{self, FnCtxt, NoPreference, PreferMutLvalue, callee, demand};
+use check::UnresolvedTypeAction;
 use middle::mem_categorization::Typer;
 use middle::subst::{self};
 use middle::traits;
@@ -141,10 +142,19 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Commit the autoderefs by calling `autoderef again, but this
         // time writing the results into the various tables.
-        let (autoderefd_ty, n, result) =
-            check::autoderef(
-                self.fcx, self.span, unadjusted_self_ty, Some(self.self_expr), NoPreference,
-                |_, n| if n == auto_deref_ref.autoderefs { Some(()) } else { None });
+        let (autoderefd_ty, n, result) = check::autoderef(self.fcx,
+                                                          self.span,
+                                                          unadjusted_self_ty,
+                                                          Some(self.self_expr),
+                                                          UnresolvedTypeAction::Error,
+                                                          NoPreference,
+                                                          |_, n| {
+            if n == auto_deref_ref.autoderefs {
+                Some(())
+            } else {
+                None
+            }
+        });
         assert_eq!(n, auto_deref_ref.autoderefs);
         assert_eq!(result, Some(()));
 
@@ -302,15 +312,18 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // yield an object-type (e.g., `&Object` or `Box<Object>`
         // etc).
 
-        let (_, _, result) =
-            check::autoderef(
-                self.fcx, self.span, self_ty, None, NoPreference,
-                |ty, _| {
-                    match ty.sty {
-                        ty::ty_trait(ref data) => Some(closure(self, ty, &**data)),
-                        _ => None,
-                    }
-                });
+        let (_, _, result) = check::autoderef(self.fcx,
+                                              self.span,
+                                              self_ty,
+                                              None,
+                                              UnresolvedTypeAction::Error,
+                                              NoPreference,
+                                              |ty, _| {
+            match ty.sty {
+                ty::ty_trait(ref data) => Some(closure(self, ty, &**data)),
+                _ => None,
+            }
+        });
 
         match result {
             Some(r) => r,
@@ -517,6 +530,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                                  expr.span,
                                  self.fcx.expr_ty(expr),
                                  Some(expr),
+                                 UnresolvedTypeAction::Error,
                                  PreferMutLvalue,
                                  |_, autoderefs| {
                                      if autoderefs == autoderef_count + 1 {

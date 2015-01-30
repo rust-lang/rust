@@ -33,12 +33,10 @@ use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap;
 use syntax::codemap::Span;
-use util::common::indent;
 use util::nodemap::FnvHashMap;
 use util::ppaux::{ty_to_string};
 use util::ppaux::{Repr, UserString};
 
-use self::coercion::Coerce;
 use self::combine::{Combine, Combineable, CombineFields};
 use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::equate::Equate;
@@ -47,7 +45,6 @@ use self::lub::Lub;
 use self::unify::{UnificationTable, InferCtxtMethodsForSimplyUnifiableTypes};
 use self::error_reporting::ErrorReporting;
 
-pub mod coercion;
 pub mod combine;
 pub mod doc;
 pub mod equate;
@@ -68,7 +65,6 @@ pub type Bound<T> = Option<T>;
 pub type cres<'tcx, T> = Result<T,ty::type_err<'tcx>>; // "combine result"
 pub type ures<'tcx> = cres<'tcx, ()>; // "unify result"
 pub type fres<T> = Result<T, fixup_err>; // "fixup result"
-pub type CoerceResult<'tcx> = cres<'tcx, Option<ty::AutoAdjustment<'tcx>>>;
 
 pub struct InferCtxt<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
@@ -409,24 +405,6 @@ fn expected_found<T>(a_is_expected: bool,
     }
 }
 
-pub fn mk_coercety<'a, 'tcx>(cx: &InferCtxt<'a, 'tcx>,
-                             a_is_expected: bool,
-                             origin: TypeOrigin,
-                             a: Ty<'tcx>,
-                             b: Ty<'tcx>)
-                             -> CoerceResult<'tcx> {
-    debug!("mk_coercety({} -> {})", a.repr(cx.tcx), b.repr(cx.tcx));
-    indent(|| {
-        cx.commit_if_ok(|| {
-            let trace = TypeTrace {
-                origin: origin,
-                values: Types(expected_found(a_is_expected, a, b))
-            };
-            Coerce(cx.combine_fields(a_is_expected, trace)).tys(a, b)
-        })
-    })
-}
-
 trait then<'tcx> {
     fn then<T, F>(&self, f: F) -> Result<T, ty::type_err<'tcx>> where
         T: Clone,
@@ -689,10 +667,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
     {
         debug!("sub_types({} <: {})", a.repr(self.tcx), b.repr(self.tcx));
         self.commit_if_ok(|| {
-            let trace = TypeTrace {
-                origin: origin,
-                values: Types(expected_found(a_is_expected, a, b))
-            };
+            let trace = TypeTrace::types(origin, a_is_expected, a, b);
             self.sub(a_is_expected, trace).tys(a, b).to_ures()
         })
     }
@@ -705,10 +680,7 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     -> ures<'tcx>
     {
         self.commit_if_ok(|| {
-            let trace = TypeTrace {
-                origin: origin,
-                values: Types(expected_found(a_is_expected, a, b))
-            };
+            let trace = TypeTrace::types(origin, a_is_expected, a, b);
             self.equate(a_is_expected, trace).tys(a, b).to_ures()
         })
     }
@@ -1116,6 +1088,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
 impl<'tcx> TypeTrace<'tcx> {
     pub fn span(&self) -> Span {
         self.origin.span()
+    }
+
+    pub fn types(origin: TypeOrigin,
+                 a_is_expected: bool,
+                 a: Ty<'tcx>,
+                 b: Ty<'tcx>)
+                 -> TypeTrace<'tcx> {
+        TypeTrace {
+            origin: origin,
+            values: Types(expected_found(a_is_expected, a, b))
+        }
     }
 
     pub fn dummy(tcx: &ty::ctxt<'tcx>) -> TypeTrace<'tcx> {
