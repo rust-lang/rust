@@ -48,6 +48,7 @@ body {
     margin-left: auto;
     margin-right:auto;
     max-width: 750px;
+    padding-bottom: 50px;
 }
 
 .chapter {
@@ -123,6 +124,14 @@ body {
     height: 2px;
     margin: 2px 0 3px;
     padding: 0;
+}
+
+.left {
+    float: left;
+}
+
+.right {
+    float: right;
 }
 
 "#;
