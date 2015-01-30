@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub use self::ClosureKind::*;
-
 use back::link::mangle_internal_name_by_path_and_seq;
 use middle::mem_categorization::Typer;
 use trans::adt;
@@ -33,9 +31,9 @@ use syntax::ast_util;
 
 fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         arg_scope_id: ScopeId,
-                                        freevar_mode: ast::CaptureClause,
                                         freevars: &[ty::Freevar])
-                                        -> Block<'blk, 'tcx> {
+                                        -> Block<'blk, 'tcx>
+{
     let _icx = push_ctxt("closure::load_closure_environment");
 
     // Special case for small by-value selfs.
@@ -65,18 +63,21 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     for (i, freevar) in freevars.iter().enumerate() {
+        let upvar_id = ty::UpvarId { var_id: freevar.def.local_node_id(),
+                                     closure_expr_id: closure_id.node };
+        let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
         let mut upvar_ptr = GEPi(bcx, llenv, &[0, i]);
-        let captured_by_ref = match freevar_mode {
-            ast::CaptureByRef => {
+        let captured_by_ref = match upvar_capture {
+            ty::UpvarCapture::ByValue => false,
+            ty::UpvarCapture::ByRef(..) => {
                 upvar_ptr = Load(bcx, upvar_ptr);
                 true
             }
-            ast::CaptureByValue => false
         };
         let def_id = freevar.def.def_id();
         bcx.fcx.llupvars.borrow_mut().insert(def_id.node, upvar_ptr);
 
-        if kind == ty::FnOnceClosureKind && freevar_mode == ast::CaptureByValue {
+        if kind == ty::FnOnceClosureKind && !captured_by_ref {
             bcx.fcx.schedule_drop_mem(arg_scope_id,
                                       upvar_ptr,
                                       node_id_type(bcx, def_id.node))
@@ -96,38 +97,23 @@ fn load_closure_environment<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     bcx
 }
 
-#[derive(PartialEq)]
-pub enum ClosureKind<'tcx> {
+pub enum ClosureEnv<'a> {
     NotClosure,
-    // See load_closure_environment.
-    Closure(ast::CaptureClause)
+    Closure(&'a [ty::Freevar]),
 }
 
-pub struct ClosureEnv<'a, 'tcx> {
-    freevars: &'a [ty::Freevar],
-    pub kind: ClosureKind<'tcx>
-}
-
-impl<'a, 'tcx> ClosureEnv<'a, 'tcx> {
-    pub fn new(freevars: &'a [ty::Freevar], kind: ClosureKind<'tcx>)
-               -> ClosureEnv<'a, 'tcx> {
-        ClosureEnv {
-            freevars: freevars,
-            kind: kind
-        }
-    }
-
-    pub fn load<'blk>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId)
-                      -> Block<'blk, 'tcx> {
-        // Don't bother to create the block if there's nothing to load
-        if self.freevars.is_empty() {
-            return bcx;
-        }
-
-        match self.kind {
-            NotClosure => bcx,
-            Closure(freevar_mode) => {
-                load_closure_environment(bcx, arg_scope, freevar_mode, self.freevars)
+impl<'a> ClosureEnv<'a> {
+    pub fn load<'blk,'tcx>(self, bcx: Block<'blk, 'tcx>, arg_scope: ScopeId)
+                           -> Block<'blk, 'tcx>
+    {
+        match self {
+            ClosureEnv::NotClosure => bcx,
+            ClosureEnv::Closure(freevars) => {
+                if freevars.is_empty() {
+                    bcx
+                } else {
+                    load_closure_environment(bcx, arg_scope, freevars)
+                }
             }
         }
     }
@@ -212,7 +198,6 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     let freevars: Vec<ty::Freevar> =
         ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
-    let freevar_mode = bcx.tcx().capture_mode(id);
 
     let sig = ty::erase_late_bound_regions(bcx.tcx(), &function_type.sig);
 
@@ -225,8 +210,7 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                   &[],
                   sig.output,
                   function_type.abi,
-                  ClosureEnv::new(&freevars[],
-                                  Closure(freevar_mode)));
+                  ClosureEnv::Closure(&freevars[]));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
@@ -249,11 +233,14 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                    dest_addr,
                                                    0,
                                                    i);
-        match freevar_mode {
-            ast::CaptureByValue => {
+        let upvar_id = ty::UpvarId { var_id: freevar.def.local_node_id(),
+                                     closure_expr_id: id };
+        let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
+        match upvar_capture {
+            ty::UpvarCapture::ByValue => {
                 bcx = datum.store_to(bcx, upvar_slot_dest);
             }
-            ast::CaptureByRef => {
+            ty::UpvarCapture::ByRef(..) => {
                 Store(bcx, datum.to_llref(), upvar_slot_dest);
             }
         }

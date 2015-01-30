@@ -855,6 +855,17 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         }
     };
 
+    let paren_sugar = ty::has_attr(tcx, def_id, "rustc_paren_sugar");
+    if paren_sugar && !ccx.tcx.sess.features.borrow().unboxed_closures {
+        ccx.tcx.sess.span_err(
+            it.span,
+            "the `#[rustc_paren_sugar]` attribute is a temporary means of controlling \
+             which traits can use parenthetical notation");
+        span_help!(ccx.tcx.sess, it.span,
+                   "add `#![feature(unboxed_closures)]` to \
+                    the crate attributes to use it");
+    }
+
     let substs = ccx.tcx.mk_substs(mk_trait_substs(ccx, generics));
 
     let ty_generics = ty_generics_for_trait(ccx,
@@ -887,6 +898,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
     });
 
     let trait_def = Rc::new(ty::TraitDef {
+        paren_sugar: paren_sugar,
         unsafety: unsafety,
         generics: ty_generics,
         bounds: bounds,
