@@ -830,6 +830,21 @@ like this RFC for over a year).
   preferably with concrete examples that can be fed into the
   prototype.)
 
+* How much can covariance help with some of the lifetime issues?
+
+  See in particular [Rust Issue 21198] "new scoping rules for safe
+  dtors may benefit from variance on type params"
+
+[Rust Issue 21198]: https://github.com/rust-lang/rust/issues/21198
+
+  Before adding Condition (B.) to [the Drop-Check Rule], it seemed
+  like enabling covariance in more standard library types was going to
+  be very important for landing this work.  And even now, it is
+  possible that covariance could still play an important role.
+  But nonetheless, there are some API's whose current form is fundamentally
+  incompatible with covariance; e.g. the current `TypedArena<T>` API
+  is fundamentally invariant with respect to `T`.
+
 # Appendices
 
 ## Appendix A: Why and when would Drop read from borrowed data
@@ -1074,5 +1089,5 @@ The main reason that we do not want to attempt to produce even finer
 grain scopes, at least not right now, is that there are scenarios
 where it is *important* to be able to assign the same region to two
 distinct pieces of data; in particular, this often arises when one
-wants to build cyclic structure, as discussed in [Cyclic structure is
-still allowed].
+wants to build cyclic structure, as discussed in
+[Cyclic structure still allowed].
