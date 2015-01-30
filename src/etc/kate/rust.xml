@@ -64,29 +64,45 @@
 		<item> while </item>
 	</list>
 	<list name="traits">
-		<item> Const </item>
+		<item> AsSlice </item>
+		<item> Box </item>
+		<item> CharExt </item>
+		<item> Clone </item>
 		<item> Copy </item>
-		<item> Send </item>
-		<item> Owned </item>
-		<item> Sized </item>
-		<item> Eq </item>
-		<item> Ord </item>
-		<item> Num </item>
-		<item> Ptr </item>
+		<item> Debug </item>
+		<item> Decodable </item>
+		<item> Default </item>
+		<item> Display </item>
+		<item> DoubleEndedIterator </item>
 		<item> Drop </item>
-		<item> Add </item>
-		<item> Sub </item>
-		<item> Mul </item>
-		<item> Quot </item>
-		<item> Rem </item>
-		<item> Neg </item>
-		<item> BitAnd </item>
-		<item> BitOr </item>
-		<item> BitXor </item>
-		<item> Shl </item>
-		<item> Shr </item>
-		<item> Index </item>
-		<item> Not </item>
+		<item> Encodable </item>
+		<item> Eq </item>
+		<item> Default </item>
+		<item> Extend </item>
+		<item> Fn </item>
+		<item> FnMut </item>
+		<item> FnOnce </item>
+		<item> FromPrimitive </item>
+		<item> Hash </item>
+		<item> Iterator </item>
+		<item> IteratorExt </item>
+		<item> MutPtrExt </item>
+		<item> Ord </item>
+		<item> PartialEq </item>
+		<item> PartialOrd </item>
+		<item> PtrExt </item>
+		<item> Rand </item>
+		<item> Send </item>
+		<item> Show </item>
+		<item> Sized </item>
+		<item> SliceConcatExt </item>
+		<item> SliceExt </item>
+		<item> Str </item>
+		<item> StrExt </item>
+		<item> String </item>
+		<item> Sync </item>
+		<item> ToString </item>
+		<item> Vec </item>
 	</list>
 	<list name="types">
 		<item> bool </item>
@@ -247,6 +263,7 @@
 		<context attribute="Definition" lineEndContext="#stay" name="Type">
 			<DetectSpaces/>
 			<DetectChar char="=" attribute="Normal Text" context="#pop"/>
+			<DetectChar char=";" attribute="Normal Text" context="#pop"/>
 			<DetectChar char="&lt;" attribute="Normal Text" context="#pop"/>
 		</context>
 		<context attribute="String" lineEndContext="#pop" name="String">
