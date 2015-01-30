@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![deny(unused_variables)]
+#![feature(core)]
 
 fn main() {
     for _ in 1is..101 {
