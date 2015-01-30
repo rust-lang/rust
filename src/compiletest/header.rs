@@ -352,8 +352,8 @@ pub fn gdb_version_to_int(version_string: &str) -> int {
         panic!("{}", error_string);
     }
 
-    let major: int = components[0].parse().expect(error_string);
-    let minor: int = components[1].parse().expect(error_string);
+    let major: int = components[0].parse().ok().expect(error_string);
+    let minor: int = components[1].parse().ok().expect(error_string);
 
     return major * 1000 + minor;
 }
@@ -363,6 +363,6 @@ pub fn lldb_version_to_int(version_string: &str) -> int {
         "Encountered LLDB version string with unexpected format: {}",
         version_string);
     let error_string = error_string.as_slice();
-    let major: int = version_string.parse().expect(error_string);
+    let major: int = version_string.parse().ok().expect(error_string);
     return major;
 }

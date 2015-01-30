@@ -25,17 +25,18 @@ pub enum Mode {
 }
 
 impl FromStr for Mode {
-    fn from_str(s: &str) -> Option<Mode> {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
-          "compile-fail" => Some(CompileFail),
-          "run-fail" => Some(RunFail),
-          "run-pass" => Some(RunPass),
-          "run-pass-valgrind" => Some(RunPassValgrind),
-          "pretty" => Some(Pretty),
-          "debuginfo-lldb" => Some(DebugInfoLldb),
-          "debuginfo-gdb" => Some(DebugInfoGdb),
-          "codegen" => Some(Codegen),
-          _ => None,
+          "compile-fail" => Ok(CompileFail),
+          "run-fail" => Ok(RunFail),
+          "run-pass" => Ok(RunPass),
+          "run-pass-valgrind" => Ok(RunPassValgrind),
+          "pretty" => Ok(Pretty),
+          "debuginfo-lldb" => Ok(DebugInfoLldb),
+          "debuginfo-gdb" => Ok(DebugInfoGdb),
+          "codegen" => Ok(Codegen),
+          _ => Err(()),
         }
     }
 }

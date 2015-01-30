@@ -2459,7 +2459,7 @@ impl<'a> Parser<'a> {
                     hi = self.span.hi;
                     self.bump();
 
-                    let index = n.as_str().parse::<usize>();
+                    let index = n.as_str().parse::<usize>().ok();
                     match index {
                         Some(n) => {
                             let id = spanned(dot, hi, n);
@@ -2479,7 +2479,7 @@ impl<'a> Parser<'a> {
                     self.span_err(last_span,
                                   &format!("unexpected token: `{}`", n.as_str())[]);
                     if fstr.chars().all(|x| "0123456789.".contains_char(x)) {
-                        let float = match fstr.parse::<f64>() {
+                        let float = match fstr.parse::<f64>().ok() {
                             Some(f) => f,
                             None => continue,
                         };

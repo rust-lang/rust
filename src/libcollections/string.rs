@@ -940,10 +940,12 @@ pub fn as_string<'a>(x: &'a str) -> DerefString<'a> {
     DerefString { x: as_vec(x.as_bytes()) }
 }
 
+#[unstable(feature = "collections", reason = "associated error type may change")]
 impl FromStr for String {
+    type Err = ();
     #[inline]
-    fn from_str(s: &str) -> Option<String> {
-        Some(String::from_str(s))
+    fn from_str(s: &str) -> Result<String, ()> {
+        Ok(String::from_str(s))
     }
 }
 
@@ -1016,7 +1018,7 @@ mod tests {
 
     #[test]
     fn test_from_str() {
-      let owned: Option<::std::string::String> = "string".parse();
+      let owned: Option<::std::string::String> = "string".parse().ok();
       assert_eq!(owned.as_ref().map(|s| s.as_slice()), Some("string"));
     }
 
