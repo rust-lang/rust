@@ -114,7 +114,6 @@
 #![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
 #![feature(int_uint)]
-#![feature(int_uint)]
 #![feature(core)]
 #![feature(libc)]
 #![feature(alloc)]
@@ -125,6 +124,7 @@
 #![cfg_attr(test, feature(test))]
 // NOTE(stage0): remove cfg_attr after a snapshot
 #![cfg_attr(not(stage0), allow(unused_mut))]
+#![feature(macro_reexport)]
 
 // Don't link to std. We are std.
 #![no_std]
