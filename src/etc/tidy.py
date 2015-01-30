@@ -64,58 +64,43 @@ if len(sys.argv) < 2:
 src_dir = sys.argv[1]
 
 try:
-    count_rs = 0
-    count_py = 0
-    count_js = 0
-    count_sh = 0
-    count_pl = 0
-    count_c = 0
-    count_h = 0
-    count_other = 0
-
     count_lines = 0
     count_non_blank_lines = 0
 
-    def update_counts(current_name):
-        global count_rs
-        global count_py
-        global count_js
-        global count_sh
-        global count_pl
-        global count_c
-        global count_h
-        global count_other
+    interesting_files = ['.rs', '.py', '.js', '.sh', '.c', '.h']
 
-        if current_name.endswith(".rs"):
-            count_rs += 1
-        if current_name.endswith(".py"):
-            count_py += 1
-        if current_name.endswith(".js"):
-            count_js += 1
-        if current_name.endswith(".sh"):
-            count_sh += 1
-        if current_name.endswith(".pl"):
-            count_pl += 1
-        if current_name.endswith(".c"):
-            count_c += 1
-        if current_name.endswith(".h"):
-            count_h += 1
+    file_counts = {ext: 0 for ext in interesting_files}
+    file_counts['other'] = 0
+
+    def update_counts(current_name):
+        global file_counts
+        _, ext = os.path.splitext(current_name)
+
+        if ext in file_counts:
+            file_counts[ext] += 1
+        else:
+            file_counts['other'] += 1
 
     all_paths = set()
 
     for (dirpath, dirnames, filenames) in os.walk(src_dir):
 
         # Skip some third-party directories
-        if "src/jemalloc" in dirpath: continue
-        if "src/llvm" in dirpath: continue
-        if "src/gyp" in dirpath: continue
-        if "src/libbacktrace" in dirpath: continue
-        if "src/compiler-rt" in dirpath: continue
-        if "src/rt/hoedown" in dirpath: continue
-        if "src/rustllvm" in dirpath: continue
-        if "src/rt/valgrind" in dirpath: continue
-        if "src/rt/msvc" in dirpath: continue
-        if "src/rust-installer" in dirpath: continue
+        skippable_dirs = {
+            'src/jemalloc',
+            'src/llvm',
+            'src/gyp',
+            'src/libbacktrace',
+            'src/compiler-rt',
+            'src/rt/hoedown',
+            'src/rustllvm',
+            'src/rt/valgrind',
+            'src/rt/msvc',
+            'src/rust-installer'
+        }
+
+        if any(d in dirpath for d in skippable_dirs):
+            continue
 
         def interesting_file(f):
             if "miniz.c" in f \
@@ -123,16 +108,7 @@ try:
             or "rust_android_dummy" in f:
                 return False
 
-            if f.endswith(".rs") \
-            or f.endswith(".py") \
-            or f.endswith(".js") \
-            or f.endswith(".sh") \
-            or f.endswith(".pl") \
-            or f.endswith(".c") \
-            or f.endswith(".h") :
-                return True
-            else:
-                return False
+            return any(os.path.splitext(f)[1] == ext for ext in interesting_files)
 
         file_names = [os.path.join(dirpath, f) for f in filenames
                       if interesting_file(f)
@@ -219,14 +195,8 @@ except UnicodeDecodeError as e:
     report_err("UTF-8 decoding error " + str(e))
 
 print
-print "* linted .rs files: " + str(count_rs)
-print "* linted .py files: " + str(count_py)
-print "* linted .js files: " + str(count_js)
-print "* linted .sh files: " + str(count_sh)
-print "* linted .pl files: " + str(count_pl)
-print "* linted .c files: " + str(count_c)
-print "* linted .h files: " + str(count_h)
-print "* other linted files: " + str(count_other)
+for ext in file_counts:
+    print "* linted " + str(file_counts[ext]) + " " + ext + " files"
 print "* total lines of code: " + str(count_lines)
 print "* total non-blank lines of code: " + str(count_non_blank_lines)
 print
