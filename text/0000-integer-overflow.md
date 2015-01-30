@@ -183,7 +183,10 @@ pub trait WrappingOps {
     fn wrapping_mul(self, rhs: Self) -> Self;
     fn wrapping_div(self, rhs: Self) -> Self;
     fn wrapping_rem(self, rhs: Self) -> Self;
-    
+
+    fn wrapping_lshift(self, amount: u32) -> Self;
+    fn wrapping_rshift(self, amount: u32) -> Self;
+
     fn wrapping_as_u8(self, rhs: Self) -> u8;
     fn wrapping_as_u16(self, rhs: Self) -> u16;
     fn wrapping_as_u32(self, rhs: Self) -> u32
