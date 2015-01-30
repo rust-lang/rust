@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android (FIXME #11419)
 // exec-env:RUST_LOG=info
 
 #![allow(unknown_features)]
