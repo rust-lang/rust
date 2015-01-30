@@ -199,7 +199,7 @@ impl<'a> Iterator for Decompositions<'a> {
         }
 
         if !self.sorted {
-            for ch in self.iter {
+            for ch in self.iter.by_ref() {
                 let buffer = &mut self.buffer;
                 let sorted = &mut self.sorted;
                 {
@@ -279,7 +279,7 @@ impl<'a> Iterator for Recompositions<'a> {
         loop {
             match self.state {
                 Composing => {
-                    for ch in self.iter {
+                    for ch in self.iter.by_ref() {
                         let ch_class = unicode::char::canonical_combining_class(ch);
                         if self.composee.is_none() {
                             if ch_class != 0 {
@@ -2154,7 +2154,7 @@ mod tests {
         let s = "ศไทย中华Việt Nam";
         let mut it = s.chars();
         it.next();
-        assert!(it.zip(it.clone()).all(|(x,y)| x == y));
+        assert!(it.clone().zip(it).all(|(x,y)| x == y));
     }
 
     #[test]

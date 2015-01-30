@@ -56,7 +56,7 @@ use core::cmp::{Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
-use core::iter::{repeat, FromIterator};
+use core::iter::{repeat, FromIterator, IntoIterator};
 use core::marker::{ContravariantLifetime, InvariantType};
 use core::mem;
 use core::nonzero::NonZero;
@@ -65,6 +65,7 @@ use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
+use core::slice;
 use core::uint;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
@@ -1404,6 +1405,30 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
+impl<T> IntoIterator for Vec<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a Vec<T> {
+    type Iter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> slice::Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut Vec<T> {
+    type Iter = slice::IterMut<'a, T>;
+
+    fn into_iter(mut self) -> slice::IterMut<'a, T> {
+        self.iter_mut()
+    }
+}
+
 #[unstable(feature = "collections", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
@@ -1623,7 +1648,7 @@ impl<T> IntoIter<T> {
     #[unstable(feature = "collections")]
     pub fn into_inner(mut self) -> Vec<T> {
         unsafe {
-            for _x in self { }
+            for _x in self.by_ref() { }
             let IntoIter { allocation, cap, ptr: _ptr, end: _end } = self;
             mem::forget(self);
             Vec { ptr: NonZero::new(allocation), cap: cap, len: 0 }
@@ -1701,7 +1726,7 @@ impl<T> Drop for IntoIter<T> {
     fn drop(&mut self) {
         // destroy the remaining elements
         if self.cap != 0 {
-            for _x in *self {}
+            for _x in self.by_ref() {}
             unsafe {
                 dealloc(self.allocation, self.cap);
             }
@@ -1791,7 +1816,7 @@ impl<'a, T> Drop for Drain<'a, T> {
         // so we can use #[unsafe_no_drop_flag].
 
         // destroy the remaining elements
-        for _x in *self {}
+        for _x in self.by_ref() {}
     }
 }
 

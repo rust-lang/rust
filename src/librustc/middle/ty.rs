@@ -4493,9 +4493,6 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             // the index method invoked for `a[i]` always yields an `&T`
             ast::ExprIndex(..) => LvalueExpr,
 
-            // `for` loops are statements
-            ast::ExprForLoop(..) => RvalueStmtExpr,
-
             // in the general case, result could be any type, use DPS
             _ => RvalueDpsExpr
         };
@@ -4582,6 +4579,10 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
         }
 
+        ast::ExprForLoop(..) => {
+            tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
+        }
+
         ast::ExprLit(ref lit) if lit_is_str(&**lit) => {
             RvalueDpsExpr
         }
@@ -4619,8 +4620,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprLoop(..) |
         ast::ExprAssign(..) |
         ast::ExprInlineAsm(..) |
-        ast::ExprAssignOp(..) |
-        ast::ExprForLoop(..) => {
+        ast::ExprAssignOp(..) => {
             RvalueStmtExpr
         }
 

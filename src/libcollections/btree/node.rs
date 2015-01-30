@@ -271,7 +271,7 @@ impl<T> DoubleEndedIterator for RawItems<T> {
 #[unsafe_destructor]
 impl<T> Drop for RawItems<T> {
     fn drop(&mut self) {
-        for _ in *self {}
+        for _ in self.by_ref() {}
     }
 }
 
@@ -1374,9 +1374,9 @@ impl<K, V> Drop for MoveTraversalImpl<K, V> {
     fn drop(&mut self) {
         // We need to cleanup the stored values manually, as the RawItems destructor would run
         // after our deallocation.
-        for _ in self.keys {}
-        for _ in self.vals {}
-        for _ in self.edges {}
+        for _ in self.keys.by_ref() {}
+        for _ in self.vals.by_ref() {}
+        for _ in self.edges.by_ref() {}
 
         let (alignment, size) =
                 calculate_allocation_generic::<K, V>(self.capacity, self.is_leaf);

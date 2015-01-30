@@ -221,21 +221,8 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 .flat_map(|arm| arm.0.iter())
                 .map(|pat| vec![&**pat])
                 .collect();
-            check_exhaustive(cx, ex.span, &matrix);
+            check_exhaustive(cx, ex.span, &matrix, source);
         },
-        ast::ExprForLoop(ref pat, _, _, _) => {
-            let mut static_inliner = StaticInliner::new(cx.tcx);
-            is_refutable(cx, &*static_inliner.fold_pat((*pat).clone()), |uncovered_pat| {
-                span_err!(cx.tcx.sess, pat.span, E0297,
-                    "refutable pattern in `for` loop binding: \
-                            `{}` not covered",
-                            pat_to_string(uncovered_pat));
-            });
-
-            // Check legality of move bindings.
-            check_legality_of_move_bindings(cx, false, slice::ref_slice(pat));
-            check_legality_of_bindings_in_at_patterns(cx, &**pat);
-        }
         _ => ()
     }
 }
@@ -327,6 +314,14 @@ fn check_arms(cx: &MatchCheckCtxt,
                             span_err!(cx.tcx.sess, span, E0165, "irrefutable while-let pattern");
                         },
 
+                        ast::MatchSource::ForLoopDesugar => {
+                            // this is a bug, because on `match iter.next()` we cover
+                            // `Some(<head>)` and `None`. It's impossible to have an unreachable
+                            // pattern
+                            // (see libsyntax/ext/expand.rs for the full expansion of a for loop)
+                            cx.tcx.sess.span_bug(pat.span, "unreachable for-loop pattern")
+                        },
+
                         ast::MatchSource::Normal => {
                             span_err!(cx.tcx.sess, pat.span, E0001, "unreachable pattern")
                         },
@@ -351,7 +346,7 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
     }
 }
 
-fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
+fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: ast::MatchSource) {
     match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
             let witness = match &pats[] {
@@ -359,10 +354,29 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix) {
                 [] => DUMMY_WILD_PAT,
                 _ => unreachable!()
             };
-            span_err!(cx.tcx.sess, sp, E0004,
-                "non-exhaustive patterns: `{}` not covered",
-                pat_to_string(witness)
-            );
+            match source {
+                ast::MatchSource::ForLoopDesugar => {
+                    // `witness` has the form `Some(<head>)`, peel off the `Some`
+                    let witness = match witness.node {
+                        ast::PatEnum(_, Some(ref pats)) => match &pats[] {
+                            [ref pat] => &**pat,
+                            _ => unreachable!(),
+                        },
+                        _ => unreachable!(),
+                    };
+
+                    span_err!(cx.tcx.sess, sp, E0297,
+                        "refutable pattern in `for` loop binding: \
+                                `{}` not covered",
+                                pat_to_string(witness));
+                },
+                _ => {
+                    span_err!(cx.tcx.sess, sp, E0004,
+                        "non-exhaustive patterns: `{}` not covered",
+                        pat_to_string(witness)
+                    );
+                },
+            }
         }
         NotUseful => {
             // This is good, wildcard pattern isn't reachable

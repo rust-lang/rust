@@ -54,7 +54,7 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
         let mut chars = inner.chars();
         while valid {
             let mut i = 0;
-            for c in chars {
+            for c in chars.by_ref() {
                 if c.is_numeric() {
                     i = i * 10 + c as uint - '0' as uint;
                 } else {

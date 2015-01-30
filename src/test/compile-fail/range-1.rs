@@ -17,7 +17,10 @@ pub fn main() {
 
     // Float => does not implement iterator.
     for i in 0f32..42f32 {}
-    //~^ ERROR `for` loop expression has type `core::ops::Range<f32>` which does not implement
+    //~^ ERROR `core::iter::Iterator` is not implemented for the type `core::ops::Range<f32>`
+    //~^^ ERROR
+    //~^^^ ERROR
+    // FIXME(#21528) not fulfilled obligation error should be reported once, not thrice
 
     // Unsized type.
     let arr: &[_] = &[1us, 2, 3];

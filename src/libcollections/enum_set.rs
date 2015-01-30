@@ -16,7 +16,7 @@
 use core::prelude::*;
 use core::fmt;
 use core::num::Int;
-use core::iter::FromIterator;
+use core::iter::{FromIterator, IntoIterator};
 use core::ops::{Sub, BitOr, BitAnd, BitXor};
 
 // FIXME(contentions): implement union family of methods? (general design may be wrong here)
@@ -253,6 +253,14 @@ impl<E:CLike> FromIterator<E> for EnumSet<E> {
         let mut ret = EnumSet::new();
         ret.extend(iterator);
         ret
+    }
+}
+
+impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
+    type Iter = Iter<E>;
+
+    fn into_iter(self) -> Iter<E> {
+        self.iter()
     }
 }
 

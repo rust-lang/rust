@@ -45,10 +45,6 @@ impl<'a, 'v> Visitor<'v> for CheckLoopVisitor<'a> {
             ast::ExprLoop(ref b, _) => {
                 self.with_context(Loop, |v| v.visit_block(&**b));
             }
-            ast::ExprForLoop(_, ref e, ref b, _) => {
-                self.visit_expr(&**e);
-                self.with_context(Loop, |v| v.visit_block(&**b));
-            }
             ast::ExprClosure(_, _, _, ref b) => {
                 self.with_context(Closure, |v| v.visit_block(&**b));
             }

@@ -153,7 +153,7 @@
 use core::prelude::*;
 
 use core::default::Default;
-use core::iter::FromIterator;
+use core::iter::{FromIterator, IntoIterator};
 use core::mem::{zeroed, replace, swap};
 use core::ptr;
 
@@ -652,6 +652,22 @@ impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
     fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BinaryHeap<T> {
         BinaryHeap::from_vec(iter.collect())
+    }
+}
+
+impl<T: Ord> IntoIterator for BinaryHeap<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
     }
 }
 

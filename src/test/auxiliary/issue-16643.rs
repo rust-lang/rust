@@ -15,7 +15,7 @@ pub struct TreeBuilder<H>;
 impl<H> TreeBuilder<H> {
     pub fn process_token(&mut self) {
         match self {
-            _ => for _y in *self {}
+            _ => for _y in self.by_ref() {}
         }
     }
 }

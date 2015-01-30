@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![deny(unreachable_code)]
-#![allow(unused_variables)]
-#![allow(dead_code)]
-#![feature(core)]
+// Test that for loops can do what RFC #235 claims
 
-fn fail_len(v: Vec<isize> ) -> usize {
-    let mut i = 3;
-    panic!();
-    for x in v.iter() { i += 1us; }
-    //~^ ERROR: unreachable statement
-    return i;
+fn main() {
+    let mut v = vec![1];
+
+    for x in &v {
+        assert_eq!(x, &1);
+    }
+
+    for x in &mut v {
+        assert_eq!(x, &mut 1);
+    }
+
+    for x in v {
+        assert_eq!(x, 1);
+    }
 }
-fn main() {}
