@@ -19,7 +19,10 @@ use cmp::{PartialEq, Eq, PartialOrd, Ord, Ordering};
 use fmt;
 use hash::{Hash, Hasher, self};
 use marker::Copy;
+#[cfg(stage0)]
 use ops::{Deref, FullRange};
+#[cfg(not(stage0))]
+use ops::Deref;
 use option::Option;
 
 // macro for implementing n-ary tuple functions and operations

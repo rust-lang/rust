@@ -18,7 +18,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use ops::{Drop, Fn, FnMut, FnOnce};
 
-// TEMPORARY
+#[cfg(stage0)]
 #[unstable(feature = "std_misc")]
 #[doc(no_inline)] pub use ops::FullRange;
 

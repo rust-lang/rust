@@ -82,11 +82,22 @@ impl OsString {
     }
 }
 
+#[cfg(stage0)]
 impl ops::Index<ops::FullRange> for OsString {
     type Output = OsStr;
 
     #[inline]
     fn index(&self, _index: &ops::FullRange) -> &OsStr {
+        unsafe { mem::transmute(self.inner.as_slice()) }
+    }
+}
+
+#[cfg(not(stage0))]
+impl ops::Index<ops::RangeFull> for OsString {
+    type Output = OsStr;
+
+    #[inline]
+    fn index(&self, _index: &ops::RangeFull) -> &OsStr {
         unsafe { mem::transmute(self.inner.as_slice()) }
     }
 }

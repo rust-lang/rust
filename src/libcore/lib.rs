@@ -153,8 +153,9 @@ mod core {
 mod std {
     pub use clone;
     pub use cmp;
-    pub use marker;
-    pub use option;
     pub use fmt;
     pub use hash;
+    pub use marker;
+    pub use ops;
+    pub use option;
 }
