@@ -52,7 +52,7 @@ follow-up PRs against this RFC.
     * [Modules]
         * [core::io] (stub)
         * [The std::io facade] (stub)
-        * [std::env] (stub)
+        * [std::env]
         * [std::fs] (stub)
         * [std::net] (stub)
         * [std::process] (stub)
@@ -703,7 +703,72 @@ throughout IO, we can go on to explore the modules in detail.
 ### `std::env`
 [std::env]: #stdenv
 
-> To be added in a follow-up PR.
+Most of what's available in `std::os` today will move to `std::env`,
+and the signatures will be updated to follow this RFC's
+[Design principles] as follows.
+
+**Arguments**:
+
+* `args`: change to yield an iterator rather than vector if possible; in any case, it should produce an `OsStrBuf`.
+
+**Environment variables**:
+
+* `vars` (renamed from `env`): yields a vector of `(OsStrBuf, OsStrBuf)` pairs.
+* `var` (renamed from `getenv`): take a value bounded by `IntoOsStrBuf`,
+  allowing Rust strings and slices to be ergonomically passed in. Yields an `Option<OsStrBuf>`.
+* `set_var` (renamed from `setenv`): takes two `IntoOsStrBuf`-bounded values.
+* `remove_var` (renamed from `unsetenv`): takes a `IntoOsStrBuf`-bounded value.
+
+* `join_paths`: take an `IntoIterator<T>` where `T: IntoOsStrBuf`, yield a `Result<OsStrBuf, JoinPathsError>`.
+* `split_paths` take a `IntoOsStrBuf`, yield an `Iterator<Path>`.
+
+**Working directory**:
+
+* `current_dir` (renamed from `getcwd`): yields a `PathBuf`.
+* `set_current_dir` (renamed from `change_dir`): takes an `AsPath` value.
+
+**Important locations**:
+
+* `home_dir` (renamed from `homedir`): returns home directory as a `PathBuf`
+* `temp_dir` (renamed from `tmpdir`): returns a temporary directly as a `PathBuf`
+* `current_exe` (renamed from `self_exe_name`): returns the full path
+  to the current binary as a `PathBuf`.
+
+**Exit status**:
+
+* `get_exit_status` and `set_exit_status` stay as they are, but with
+  updated docs that reflect that these only affect the return value of
+  `std::rt::start`.
+
+**Architecture information**:
+
+* `num_cpus`, `page_size`: stay as they are
+
+**Constants**:
+
+* Stabilize `ARCH`, `DLL_PREFIX`, `DLL_EXTENSION`, `DLL_SUFFIX`, `EXE_EXTENSION`, `EXE_SUFFIX`, `FAMILY` as they are.
+* Rename `SYSNAME` to `OS`.
+* Remove `TMPBUF_SZ`.
+
+This brings the constants into line with our naming conventions elsewhere.
+
+#### Items to move to `os::platform`
+
+* `pipe` will move to `os::unix`. It is currently primarily used for
+  hooking to the IO of a child process, which will now be done behind
+  a trait object abstraction.
+
+#### Removed items
+
+* `errno`, `error_string` and `last_os_error` provide redundant,
+  platform-specific functionality and will be removed for now. They
+  may reappear later in `os::unix` and `os::windows` in a modified
+  form.
+* `dll_filename`: deprecated in favor of working directly with the constants.
+* `_NSGetArgc`, `_NSGetArgv`: these should never have been public.
+* `self_exe_path`: deprecated in favor of `current_exe` plus path operations.
+* `make_absolute`: deprecated in favor of explicitly joining with the working directory.
+* all `_as_bytes` variants: deprecated in favor of yielding `OsStrBuf` values
 
 ### `std::fs`
 [std::fs]: #stdfs
