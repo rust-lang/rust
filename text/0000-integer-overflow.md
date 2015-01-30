@@ -217,6 +217,16 @@ newtype for which the operator overloads are implemented using the
 Note that this is only for potential convenience. The type-based approach has the
 drawback that e.g. `Vec<int>` and `Vec<Wrapping<int>>` are incompatible types.
 
+## Lint
+
+In general it seems inadvisable to use operations with error
+conditions (like a naked `+` or `-`) in unsafe code. It would be
+better to use explicit `checked` or `wrapped` operations as
+appropriate. The same holds for destructors, since unwinding in
+destructors is inadvisable. Therefore, the RFC recommends a lint be
+added against such operations, defaulting to warn, though the details
+(such as the name of this lint) are not spelled out.
+
 # Drawbacks
 
 **Making choices is hard.** Having to think about whether wraparound
@@ -252,10 +262,10 @@ violated. However, this danger already exists, as there are numerous
 ways to trigger a panic, and hence unsafe code must be written with
 this in mind.  It seems like the best advice is for unsafe code to
 eschew the plain `+` and `-` operators, and instead prefer explicit
-checked or wrapping operations as appropriate (this would be a good
-opportunity for a lint). Furthermore, the danger of an unexpected
-panic occurring in unsafe code must be weighed against the danger of a
-(silent) overflow, which can also lead to unsafety.
+checked or wrapping operations as appropriate (hence the proposed
+lint). Furthermore, the danger of an unexpected panic occurring in
+unsafe code must be weighed against the danger of a (silent) overflow,
+which can also lead to unsafety.
 
 **Divergence of debug and optimized code.** The proposal here causes
 additional divergence of debug and optimized code, since optimized
