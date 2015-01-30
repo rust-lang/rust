@@ -939,10 +939,9 @@ pub struct NonSnakeCase;
 
 impl NonSnakeCase {
     fn check_snake_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
-        fn is_snake_case(ident: ast::Ident) -> bool {
-            let ident = token::get_ident(ident);
-            if ident.get().is_empty() { return true; }
-            let ident = ident.get().trim_left_matches('\'');
+        fn is_snake_case(ident: &str) -> bool {
+            if ident.is_empty() { return true; }
+            let ident = ident.trim_left_matches('\'');
             let ident = ident.trim_matches('_');
 
             let mut allow_underscore = true;
@@ -979,10 +978,16 @@ impl NonSnakeCase {
 
         let s = token::get_ident(ident);
 
-        if !is_snake_case(ident) {
-            cx.span_lint(NON_SNAKE_CASE, span,
-                &format!("{} `{}` should have a snake case name such as `{}`",
-                        sort, s, to_snake_case(s.get()))[]);
+        if !is_snake_case(s.get()) {
+            let snaked = to_snake_case(s.get());
+            if is_snake_case(&*snaked) {
+                cx.span_lint(NON_SNAKE_CASE, span,
+                             &format!("{} `{}` should have a snake case name such as `{}`",
+                                      sort, s, snaked)[]);
+            } else {
+                cx.span_lint(NON_SNAKE_CASE, span,
+                             &format!("{} `{}` should have a snake case name", sort, s)[]);
+            }
         }
     }
 }
