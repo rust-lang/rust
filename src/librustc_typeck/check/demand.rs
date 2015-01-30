@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-use check::FnCtxt;
+use check::{coercion, FnCtxt};
 use middle::ty::{self, Ty};
 use middle::infer;
 
@@ -62,7 +62,7 @@ pub fn coerce<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>, sp: Span,
            expr_ty.repr(fcx.ccx.tcx));
     let expr_ty = fcx.resolve_type_vars_if_possible(expr_ty);
     let expected = fcx.resolve_type_vars_if_possible(expected);
-    match fcx.mk_assignty(expr, expr_ty, expected) {
+    match coercion::mk_assignty(fcx, expr, expr_ty, expected) {
       Ok(()) => { /* ok */ }
       Err(ref err) => {
         fcx.report_mismatched_types(sp, expected, expr_ty, err);
