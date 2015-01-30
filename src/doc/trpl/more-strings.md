@@ -100,7 +100,7 @@ To write a function that's generic over types of strings, use `&str`.
 
 ```
 fn some_string_length(x: &str) -> uint {
-        x.len()
+    x.len()
 }
 
 fn main() {
@@ -110,7 +110,7 @@ fn main() {
 
     let s = "Hello, world".to_string();
 
-    println!("{}", some_string_length(s.as_slice()));
+    println!("{}", some_string_length(&s));
 }
 ```
 
