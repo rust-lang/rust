@@ -68,6 +68,7 @@ use core::ops::FullRange;
 #[cfg(not(stage0))]
 use core::ops::RangeFull;
 use core::option::Option::{self, Some, None};
+use core::result::Result;
 use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
@@ -1231,13 +1232,12 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// # Example
     ///
     /// ```
-    /// assert_eq!("4".parse::<u32>(), Some(4));
-    /// assert_eq!("j".parse::<u32>(), None);
+    /// assert_eq!("4".parse::<u32>(), Ok(4));
+    /// assert!("j".parse::<u32>().is_err());
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this method was just created")]
-    fn parse<F: FromStr>(&self) -> Option<F> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
         core_str::StrExt::parse(&self[])
     }
 

@@ -59,7 +59,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     }
 
     let requested_node : Option<ast::NodeId> =
-        os::getenv("RUST_REGION_GRAPH_NODE").and_then(|s| s.parse());
+        os::getenv("RUST_REGION_GRAPH_NODE").and_then(|s| s.parse().ok());
 
     if requested_node.is_some() && requested_node != Some(subject_node) {
         return;

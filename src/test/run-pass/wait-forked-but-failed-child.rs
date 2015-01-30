@@ -41,7 +41,7 @@ fn find_zombies() {
         if 0 < line_no && 0 < line.len() &&
            my_pid == line.split(' ').filter(|w| 0 < w.len()).nth(1)
                          .expect("1st column should be PPID")
-                         .parse()
+                         .parse().ok()
                          .expect("PPID string into integer") &&
            line.contains("defunct") {
             panic!("Zombie child {}", line);

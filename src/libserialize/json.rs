@@ -2127,7 +2127,7 @@ macro_rules! read_primitive {
                 Json::F64(f) => Err(ExpectedError("Integer".to_string(), format!("{}", f))),
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                Json::String(s) => match s.parse() {
+                Json::String(s) => match s.parse().ok() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 },
@@ -2165,7 +2165,7 @@ impl ::Decoder for Decoder {
             Json::String(s) => {
                 // re: #12967.. a type w/ numeric keys (ie HashMap<uint, V> etc)
                 // is going to have a string here, as per JSON spec.
-                match s.parse() {
+                match s.parse().ok() {
                     Some(f) => Ok(f),
                     None => Err(ExpectedError("Number".to_string(), s)),
                 }
@@ -2597,8 +2597,9 @@ impl<'a, T: Encodable> fmt::Display for AsPrettyJson<'a, T> {
 }
 
 impl FromStr for Json {
-    fn from_str(s: &str) -> Option<Json> {
-        from_str(s).ok()
+    type Err = BuilderError;
+    fn from_str(s: &str) -> Result<Json, BuilderError> {
+        from_str(s)
     }
 }
 
