@@ -160,6 +160,7 @@ pub fn panicking() -> bool {
 // An uninlined, unmangled function upon which to slap yer breakpoints
 #[inline(never)]
 #[no_mangle]
+#[allow(private_no_mangle_fns)]
 fn rust_panic(cause: Box<Any + Send>) -> ! {
     rtdebug!("begin_unwind()");
 
@@ -237,6 +238,7 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
+    #[allow(private_no_mangle_fns)]
     extern fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,
@@ -290,6 +292,7 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
+    #[allow(private_no_mangle_fns)]
     pub extern "C" fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,
@@ -343,6 +346,7 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
+    #[allow(private_no_mangle_fns)]
     extern "C" fn rust_eh_personality(
         state: uw::_Unwind_State,
         ue_header: *mut uw::_Unwind_Exception,
@@ -432,6 +436,7 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
+    #[allow(private_no_mangle_fns)]
     extern "C" fn rust_eh_personality(
         exceptionRecord: *mut EXCEPTION_RECORD,
         establisherFrame: *mut c_void,
