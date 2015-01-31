@@ -4,7 +4,7 @@
 
 # Summary
 
-Feature gate attributes of the type `#[rustc_*]` and `#[rustc]` to allow for backwards compatibility of builtin attributes.
+Feature gate unused attributes for backwards compatibility.
 
 # Motivation
 
@@ -17,53 +17,33 @@ contains uses of the `#[awesome_deriving]` attribute might be broken. While such
 
 # Detailed design
 
-We deny the usage of any attributes with a name of `rustc` or a name starting with `rustc_` (unless a feature gate, `rustc_attributes` is enabled).
+We add a feature gate, `custom_attribute`, that disallows the use of any attributes not defined by the compiler or consumed in any other way.
 
-Whenever we define a new attribute that can be used outside of rustc (`#[must_use]` or `#[repr(..)]` are examples of preexisting attributes that do this),
-we can give it a name starting with `rustc_`, eg `#[rustc_attr_name]` (an alternative is `#[rustc(attr_name)]`, it's best to reserve both for now).
-We then whitelist the attribute from being denied; so that one will not need to enable the feature gate to use it in external crates.
+This is achieved by elevating the `unused_attribute` lint to a feature gate check (with the gate open, it reverts to being a lint). We'd also need to ensure that it runs after all the other lints (currently it runs as part of the main lint check and might warn about attributes which are actually consumed by other lints later on).
 
-
-This is fairly simple to achieve.
-
- - Add a feature gate for mentioning attributes that match the given patterns. Disallow its usage in release builds.
- - Have a builtin check for such attributes that will error when they are used, _unless_ they are in a whitelist or if the gate is opened
- - The whitelist will contain a list of language-exported custom attributes that are allowed to be used in release code.
-    We can add more complicated per-attribute feature-gate checking as needed (eg for `#[rustc_on_unimplemented]`,
-    which is builtin and exported but behind a feature gate).
-
-Note that this RfC does not impose any rules on future attributes defined by the compiler (except that they must be backwards compatible).
-One is free to use `#[rustc_attr_name]`, `#[rustc(attr_name)]`, or perhaps something like `#[rustc::attr_name]` if in the future we get
-arbitrary token trees in attributes (or at least some form of namespacing).
+Eventually, we can try for a namespacing system as described below, however with unused attributes feature gated, we need not worry about it until we start considering stabilizing plugins.
 
 # Drawbacks
 
-I don't see much of a drawback (except that the alternatives below might be more lucrative)
+I don't see much of a drawback (except that the alternatives below might be more lucrative). This might make it harder for people who wish to use custom attributes for static analysis in 1.0 code.
 
 # Alternatives
 
-## Forbid `unused_attributes`
+## Forbid `#[rustc_*]` and `#[rustc(...)]` attributes
 
-This is an alternative that is quite feasible. We simply make unused attributes a hard (unsilencable, perhaps feature gate silencing) error for release,
-and the problem is solved. Compiler-defined attributes can be whitelisted for `unused_attributes` if necessary, but a random
-attribute floating around in 1.0-release code will not be allowed (there's no reason to have it anyway, except perhaps for static analysis code)
+(This was the original proposal in the RfC)
 
-For this, we may have to move the unused attribute check to somewhere post-lints; currently other lints may run after it and an attribute that is actually used
-isn't marked as such.
-
-This might be more work to implement than the main RfC (and is more drastic); but I don't see any major issues with this a priori except for the aforementioned
-hurdle for static analysis. If the community is okay with it I'd love to make this the main proposal.
+This is less restrictive for the user, but it restricts us to a form of namespacing for any future attributes which we may wish to introduce. This is suboptimal, since by the time plugins stabilize (which is when user-defined attributes become useful for release code) we may add many more attributes to the compiler and they will all have cumbersome names.
 
 ## Do nothing
 
 If we do nothing we can still manage to add new attributes, however we will need to invent new syntax for it. This will probably be in the form of basic namespacing support
 (`#[rustc::awesome_deriving]`) or arbitrary token tree support (the use case will probably still end up looking something like `#[rustc::awesome_deriving]`)
 
+This has the drawback that the attribute parsing and representation will need to be overhauled before being able to add any new attributes to the compiler.
 
 # Unresolved questions
 
 Which proposal to use — disallowing `#[rustc_*]` and `#[rustc]` attributes, or just `#[forbid(unused_attribute)]`ing everything.
 
-The main proposal can be tweaked to just disallow the `#[rustc()]` attribute (or just the `rustc_` prefix).
-
-The names of the prefix and the feature gate could peraps be improved.
+The name of the feature gate could peraps be improved.
