@@ -5954,6 +5954,11 @@ impl<'a> Parser<'a> {
                     return P(spanned(lo, self.span.hi, ViewPathGlob(path)));
                   }
 
+                  // fall-through for case foo::bar::;
+                  token::Semi => {
+                    self.span_err(self.span, "expected identifier or `{` or `*`, found `;`");
+                  }
+
                   _ => break
                 }
             }
