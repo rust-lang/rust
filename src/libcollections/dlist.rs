@@ -856,7 +856,7 @@ impl<'a, T> IntoIterator for &'a mut DList<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for DList<A> {
-    fn extend<T: Iterator<Item=A>>(&mut self, mut iterator: T) {
+    fn extend<T: Iterator<Item=A>>(&mut self, iterator: T) {
         for elt in iterator { self.push_back(elt); }
     }
 }

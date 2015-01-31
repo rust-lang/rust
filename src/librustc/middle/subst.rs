@@ -317,7 +317,7 @@ impl<T> VecPerParamSpace<T> {
     ///
     /// Unlike the `extend` method in `Vec`, this should not be assumed
     /// to be a cheap operation (even when amortized over many calls).
-    pub fn extend<I:Iterator<Item=T>>(&mut self, space: ParamSpace, mut values: I) {
+    pub fn extend<I:Iterator<Item=T>>(&mut self, space: ParamSpace, values: I) {
         // This could be made more efficient, obviously.
         for item in values {
             self.push(space, item);

@@ -265,7 +265,7 @@ pub fn sanitize(s: &str) -> String {
     return result;
 }
 
-pub fn mangle<PI: Iterator<Item=PathElem>>(mut path: PI,
+pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
                                       hash: Option<&str>) -> String {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
@@ -1055,10 +1055,10 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     let libs = sess.cstore.get_used_libraries();
     let libs = libs.borrow();
 
-    let mut staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
+    let staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
         if kind == cstore::NativeStatic {Some(l)} else {None}
     });
-    let mut others = libs.iter().filter(|&&(_, kind)| {
+    let others = libs.iter().filter(|&&(_, kind)| {
         kind != cstore::NativeStatic
     });
 

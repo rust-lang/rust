@@ -1416,7 +1416,7 @@ impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
 {
     type Iter = IntoIter<K, V>;
 
-    fn into_iter(mut self) -> IntoIter<K, V> {
+    fn into_iter(self) -> IntoIter<K, V> {
         self.into_iter()
     }
 }
@@ -1575,7 +1575,7 @@ impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, mut iter: T) {
+    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }

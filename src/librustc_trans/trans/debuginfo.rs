@@ -3848,7 +3848,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       def_id: ast::DefId,
                       qualified: bool,
                       output: &mut String) {
-        ty::with_path(cx.tcx(), def_id, |mut path| {
+        ty::with_path(cx.tcx(), def_id, |path| {
             if qualified {
                 if def_id.krate == ast::LOCAL_CRATE {
                     output.push_str(crate_root_namespace(cx));

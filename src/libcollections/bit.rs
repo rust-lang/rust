@@ -934,7 +934,7 @@ impl FromIterator<bool> for Bitv {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<bool> for Bitv {
     #[inline]
-    fn extend<I: Iterator<Item=bool>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=bool>>(&mut self, iterator: I) {
         let (min, _) = iterator.size_hint();
         self.reserve(min);
         for element in iterator {
@@ -1141,7 +1141,7 @@ impl FromIterator<uint> for BitvSet {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<uint> for BitvSet {
     #[inline]
-    fn extend<I: Iterator<Item=uint>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=uint>>(&mut self, iterator: I) {
         for i in iterator {
             self.insert(i);
         }
@@ -1353,7 +1353,7 @@ impl BitvSet {
         }
 
         // virtually pad other with 0's for equal lengths
-        let mut other_words = {
+        let other_words = {
             let (_, result) = match_words(self_bitv, other_bitv);
             result
         };

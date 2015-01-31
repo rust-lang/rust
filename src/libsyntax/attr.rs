@@ -373,7 +373,7 @@ impl fmt::Display for StabilityLevel {
 fn find_stability_generic<'a,
                               AM: AttrMetaMethods,
                               I: Iterator<Item=&'a AM>>
-                             (diagnostic: &SpanHandler, mut attrs: I, item_sp: Span)
+                             (diagnostic: &SpanHandler, attrs: I, item_sp: Span)
                              -> (Option<Stability>, Vec<&'a AM>) {
 
     let mut stab: Option<Stability> = None;
