@@ -110,6 +110,7 @@ use util::nodemap::{DefIdMap, FnvHashMap, NodeMap};
 use util::lev_distance::lev_distance;
 
 use std::cell::{Cell, Ref, RefCell};
+use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::mem::replace;
 use std::rc::Rc;
 use std::iter::repeat;
@@ -172,15 +173,21 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // Tracks trait obligations incurred during this function body.
     fulfillment_cx: RefCell<traits::FulfillmentContext<'tcx>>,
 
-    //
-    deferred_resolutions: RefCell<Vec<DeferredResolutionHandler<'tcx>>>,
+    // When we process a call like `c()` where `c` is a closure type,
+    // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
+    // `FnOnce` closure. In that case, we defer full resolution of the
+    // call until upvar inference can kick in and make the
+    // decision. We keep these deferred resolutions sorted by the
+    // def-id of the closure, so that once we decide, we can easily go
+    // back and process them.
+    deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolutionHandler<'tcx>>>>,
 }
 
-trait DeferredResolution<'tcx> {
-    fn attempt_resolution<'a>(&self, fcx: &FnCtxt<'a,'tcx>) -> bool;
+trait DeferredCallResolution<'tcx> {
+    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx>);
 }
 
-type DeferredResolutionHandler<'tcx> = Box<DeferredResolution<'tcx>+'tcx>;
+type DeferredCallResolutionHandler<'tcx> = Box<DeferredCallResolution<'tcx>+'tcx>;
 
 /// When type-checking an expression, we propagate downward
 /// whatever type hint we are able in the form of an `Expectation`.
@@ -391,7 +398,7 @@ impl<'a, 'tcx> Inherited<'a, 'tcx> {
             closure_kinds: RefCell::new(DefIdMap()),
             fn_sig_map: RefCell::new(NodeMap()),
             fulfillment_cx: RefCell::new(traits::FulfillmentContext::new()),
-            deferred_resolutions: RefCell::new(Vec::new()),
+            deferred_call_resolutions: RefCell::new(DefIdMap()),
         }
     }
 
@@ -1295,8 +1302,23 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         if ty::type_has_ty_infer(t) || ty::type_is_error(t) { Err(()) } else { Ok(t) }
     }
 
-    fn record_deferred_resolution(&self, r: DeferredResolutionHandler<'tcx>) {
-        self.inh.deferred_resolutions.borrow_mut().push(r);
+    fn record_deferred_call_resolution(&self,
+                                       closure_def_id: ast::DefId,
+                                       r: DeferredCallResolutionHandler<'tcx>) {
+        let mut deferred_call_resolutions = self.inh.deferred_call_resolutions.borrow_mut();
+        let mut vec = match deferred_call_resolutions.entry(closure_def_id) {
+            Occupied(entry) => entry.into_mut(),
+            Vacant(entry) => entry.insert(Vec::new()),
+        };
+        vec.push(r);
+    }
+
+    fn remove_deferred_call_resolutions(&self,
+                                        closure_def_id: ast::DefId)
+                                        -> Vec<DeferredCallResolutionHandler<'tcx>>
+    {
+        let mut deferred_call_resolutions = self.inh.deferred_call_resolutions.borrow_mut();
+        deferred_call_resolutions.remove(&closure_def_id).unwrap_or(Vec::new())
     }
 
     pub fn tag(&self) -> String {
