@@ -415,6 +415,7 @@ impl AtomicIsize {
     /// let atomic_forty_two  = AtomicIsize::new(42);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(v: isize) -> AtomicIsize {
         AtomicIsize {v: UnsafeCell::new(v)}
     }
@@ -437,6 +438,7 @@ impl AtomicIsize {
     /// let value = some_isize.load(Ordering::Relaxed);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn load(&self, order: Ordering) -> isize {
         unsafe { atomic_load(self.v.get(), order) }
     }
@@ -459,6 +461,7 @@ impl AtomicIsize {
     ///
     /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, val: isize, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
@@ -477,6 +480,7 @@ impl AtomicIsize {
     /// let value = some_isize.swap(10, Ordering::Relaxed);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
@@ -498,6 +502,7 @@ impl AtomicIsize {
     /// let value = some_isize.compare_and_swap(5, 10, Ordering::Relaxed);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn compare_and_swap(&self, old: isize, new: isize, order: Ordering) -> isize {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
@@ -514,6 +519,7 @@ impl AtomicIsize {
     /// assert_eq!(10, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_add(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
@@ -530,6 +536,7 @@ impl AtomicIsize {
     /// assert_eq!(-10, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_sub(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
@@ -545,6 +552,7 @@ impl AtomicIsize {
     /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_and(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
@@ -560,6 +568,7 @@ impl AtomicIsize {
     /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_or(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
@@ -575,6 +584,7 @@ impl AtomicIsize {
     /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_xor(&self, val: isize, order: Ordering) -> isize {
         unsafe { atomic_xor(self.v.get(), val, order) }
     }
@@ -592,6 +602,7 @@ impl AtomicUsize {
     /// let atomic_forty_two = AtomicUsize::new(42);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(v: usize) -> AtomicUsize {
         AtomicUsize { v: UnsafeCell::new(v) }
     }
@@ -614,6 +625,7 @@ impl AtomicUsize {
     /// let value = some_usize.load(Ordering::Relaxed);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn load(&self, order: Ordering) -> usize {
         unsafe { atomic_load(self.v.get(), order) }
     }
@@ -636,6 +648,7 @@ impl AtomicUsize {
     ///
     /// Panics if `order` is `Acquire` or `AcqRel`.
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn store(&self, val: usize, order: Ordering) {
         unsafe { atomic_store(self.v.get(), val, order); }
     }
@@ -654,6 +667,7 @@ impl AtomicUsize {
     /// let value = some_usize.swap(10, Ordering::Relaxed);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn swap(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_swap(self.v.get(), val, order) }
     }
@@ -675,6 +689,7 @@ impl AtomicUsize {
     /// let value = some_usize.compare_and_swap(5, 10, Ordering::Relaxed);
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn compare_and_swap(&self, old: usize, new: usize, order: Ordering) -> usize {
         unsafe { atomic_compare_and_swap(self.v.get(), old, new, order) }
     }
@@ -691,6 +706,7 @@ impl AtomicUsize {
     /// assert_eq!(10, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_add(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_add(self.v.get(), val, order) }
     }
@@ -707,6 +723,7 @@ impl AtomicUsize {
     /// assert_eq!(0, foo.load(Ordering::SeqCst));
     /// ```
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_sub(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_sub(self.v.get(), val, order) }
     }
@@ -722,6 +739,7 @@ impl AtomicUsize {
     /// assert_eq!(0b101101, foo.fetch_and(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b100001, foo.load(Ordering::SeqCst));
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_and(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_and(self.v.get(), val, order) }
     }
@@ -737,6 +755,7 @@ impl AtomicUsize {
     /// assert_eq!(0b101101, foo.fetch_or(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b111111, foo.load(Ordering::SeqCst));
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_or(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_or(self.v.get(), val, order) }
     }
@@ -752,6 +771,7 @@ impl AtomicUsize {
     /// assert_eq!(0b101101, foo.fetch_xor(0b110011, Ordering::SeqCst));
     /// assert_eq!(0b011110, foo.load(Ordering::SeqCst));
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn fetch_xor(&self, val: usize, order: Ordering) -> usize {
         unsafe { atomic_xor(self.v.get(), val, order) }
     }
