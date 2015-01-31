@@ -114,7 +114,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_reader_rng_insufficient_bytes() {
         let mut rng = ReaderRng::new(MemReader::new(vec!()));
         let mut v = [0; 3];

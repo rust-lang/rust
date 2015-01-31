@@ -109,7 +109,7 @@ fn double_borrow_single_release_no_borrow_mut() {
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 fn discard_doesnt_unborrow() {
     let x = RefCell::new(0);
     let _b = x.borrow();

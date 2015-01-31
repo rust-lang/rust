@@ -175,7 +175,7 @@ mod tests {
         }
     }
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_normal_invalid_sd() {
         Normal::new(10.0, -1.0);
     }
@@ -191,7 +191,7 @@ mod tests {
         }
     }
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_log_normal_invalid_sd() {
         LogNormal::new(10.0, -1.0);
     }

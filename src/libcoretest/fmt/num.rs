@@ -161,7 +161,7 @@ fn test_format_radix() {
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 fn test_radix_base_too_large() {
     let _ = radix(55, 37);
 }

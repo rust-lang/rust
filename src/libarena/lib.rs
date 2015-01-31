@@ -323,7 +323,7 @@ fn test_arena_destructors() {
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 fn test_arena_destructors_fail() {
     let arena = Arena::new();
     // Put some stuff in the arena.

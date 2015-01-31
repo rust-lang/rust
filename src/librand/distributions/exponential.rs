@@ -109,12 +109,12 @@ mod test {
         }
     }
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_exp_invalid_lambda_zero() {
         Exp::new(0.0);
     }
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_exp_invalid_lambda_neg() {
         Exp::new(-10.0);
     }

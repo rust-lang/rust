@@ -922,7 +922,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn t2 () {
         let cm = CodeMap::new();
         let fm = cm.new_filemap("blork.rs".to_string(),

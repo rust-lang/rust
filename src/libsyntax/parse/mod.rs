@@ -813,7 +813,7 @@ mod test {
                    }))
     }
 
-    #[should_fail]
+    #[should_panic]
     #[test] fn bad_path_expr_1() {
         string_to_expr("::abc::def::return".to_string());
     }

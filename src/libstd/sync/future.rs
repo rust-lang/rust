@@ -204,7 +204,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_future_panic() {
         let mut f = Future::spawn(move|| panic!());
         let _x: String = f.get();

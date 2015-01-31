@@ -2197,7 +2197,7 @@ mod test_map {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_index_nonexistent() {
         let mut map = HashMap::new();
 
