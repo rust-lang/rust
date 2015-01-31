@@ -99,7 +99,7 @@ pub fn parse_pretty(sess: &Session,
             }
         }
     };
-    let opt_second = opt_second.and_then(|s| s.parse::<UserIdentifiedItem>());
+    let opt_second = opt_second.and_then(|s| s.parse::<UserIdentifiedItem>().ok());
     (first, opt_second)
 }
 
@@ -345,13 +345,11 @@ pub enum UserIdentifiedItem {
 }
 
 impl FromStr for UserIdentifiedItem {
-    fn from_str(s: &str) -> Option<UserIdentifiedItem> {
-        s.parse().map(ItemViaNode).or_else(|| {
-            let v : Vec<_> = s.split_str("::")
-                .map(|x|x.to_string())
-                .collect();
-            Some(ItemViaPath(v))
-        })
+    type Err = ();
+    fn from_str(s: &str) -> Result<UserIdentifiedItem, ()> {
+        Ok(s.parse().map(ItemViaNode).unwrap_or_else(|_| {
+            ItemViaPath(s.split_str("::").map(|s| s.to_string()).collect())
+        }))
     }
 }
 

@@ -403,7 +403,7 @@ mod test {
     #[bench]
     fn alloc_owned_small(b: &mut Bencher) {
         b.iter(|| {
-            box 10i
+            box 10
         })
     }
 }

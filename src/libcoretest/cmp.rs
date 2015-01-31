@@ -13,20 +13,20 @@ use core::cmp::Ordering::{Less, Greater, Equal};
 
 #[test]
 fn test_int_totalord() {
-    assert_eq!(5i.cmp(&10), Less);
-    assert_eq!(10i.cmp(&5), Greater);
-    assert_eq!(5i.cmp(&5), Equal);
-    assert_eq!((-5i).cmp(&12), Less);
-    assert_eq!(12i.cmp(&-5), Greater);
+    assert_eq!(5.cmp(&10), Less);
+    assert_eq!(10.cmp(&5), Greater);
+    assert_eq!(5.cmp(&5), Equal);
+    assert_eq!((-5).cmp(&12), Less);
+    assert_eq!(12.cmp(&-5), Greater);
 }
 
 #[test]
 fn test_mut_int_totalord() {
-    assert_eq!((&mut 5i).cmp(&&mut 10), Less);
-    assert_eq!((&mut 10i).cmp(&&mut 5), Greater);
-    assert_eq!((&mut 5i).cmp(&&mut 5), Equal);
-    assert_eq!((&mut -5i).cmp(&&mut 12), Less);
-    assert_eq!((&mut 12i).cmp(&&mut -5), Greater);
+    assert_eq!((&mut 5).cmp(&&mut 10), Less);
+    assert_eq!((&mut 10).cmp(&&mut 5), Greater);
+    assert_eq!((&mut 5).cmp(&&mut 5), Equal);
+    assert_eq!((&mut -5).cmp(&&mut 12), Less);
+    assert_eq!((&mut 12).cmp(&&mut -5), Greater);
 }
 
 #[test]
@@ -47,11 +47,11 @@ fn test_partial_min() {
     use core::f64::NAN;
     let data_integer = [
         // a, b, result
-        (0i, 0i, Some(0i)),
-        (1i, 0i, Some(0i)),
-        (0i, 1i, Some(0i)),
-        (-1i, 0i, Some(-1i)),
-        (0i, -1i, Some(-1i))
+        (0, 0, Some(0)),
+        (1, 0, Some(0)),
+        (0, 1, Some(0)),
+        (-1, 0, Some(-1)),
+        (0, -1, Some(-1))
     ];
 
     let data_float = [
@@ -80,11 +80,11 @@ fn test_partial_max() {
     use core::f64::NAN;
     let data_integer = [
         // a, b, result
-        (0i, 0i, Some(0i)),
-        (1i, 0i, Some(1i)),
-        (0i, 1i, Some(1i)),
-        (-1i, 0i, Some(0i)),
-        (0i, -1i, Some(0i))
+        (0, 0, Some(0)),
+        (1, 0, Some(1)),
+        (0, 1, Some(1)),
+        (-1, 0, Some(0)),
+        (0, -1, Some(0))
     ];
 
     let data_float = [

@@ -81,7 +81,7 @@ pub unsafe fn make_handler() -> Handler {
         panic!("failed to reserve stack space for exception handling");
     }
 
-    Handler { _data: 0i as *mut libc::c_void }
+    Handler { _data: 0 as *mut libc::c_void }
 }
 
 pub struct EXCEPTION_RECORD {

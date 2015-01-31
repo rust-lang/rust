@@ -165,8 +165,8 @@ mod tests {
     #[test]
     fn test_full() {
         let q = Queue::new();
-        q.push(box 1i);
-        q.push(box 2i);
+        q.push(box 1);
+        q.push(box 2);
     }
 
     #[test]

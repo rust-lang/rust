@@ -19,6 +19,7 @@ use iter::{AdditiveIterator, Extend};
 use iter::{Iterator, IteratorExt, Map};
 use marker::Sized;
 use option::Option::{self, Some, None};
+use result::Result::{self, Ok, Err};
 use slice::{AsSlice, Split, SliceExt, SliceConcatExt};
 use str::{self, FromStr, StrExt};
 use vec::Vec;
@@ -86,10 +87,18 @@ impl Ord for Path {
 }
 
 impl FromStr for Path {
-    fn from_str(s: &str) -> Option<Path> {
-        Path::new_opt(s)
+    type Err = ParsePathError;
+    fn from_str(s: &str) -> Result<Path, ParsePathError> {
+        match Path::new_opt(s) {
+            Some(p) => Ok(p),
+            None => Err(ParsePathError),
+        }
     }
 }
+
+/// Valuelue indicating that a path could not be parsed from a string.
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub struct ParsePathError;
 
 impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Path {
     #[inline]

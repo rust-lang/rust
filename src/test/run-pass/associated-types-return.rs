@@ -42,11 +42,11 @@ fn foo2<I: Foo>(x: I) -> <I as Foo>::A {
 }
 
 pub fn main() {
-    let a = 42i;
+    let a = 42;
     assert!(foo2(a) == 42u);
 
     let a = Bar;
-    assert!(foo2(a) == 43i);
+    assert!(foo2(a) == 43);
 
     let a = 'a';
     foo1(a);

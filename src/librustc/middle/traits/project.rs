@@ -430,6 +430,11 @@ fn project_type<'cx,'tcx>(
                                        &obligation_trait_ref,
                                        &mut candidates);
 
+    assemble_candidates_from_trait_def(selcx,
+                                       obligation,
+                                       &obligation_trait_ref,
+                                       &mut candidates);
+
     if let Err(e) = assemble_candidates_from_impls(selcx,
                                                    obligation,
                                                    &obligation_trait_ref,
@@ -472,6 +477,41 @@ fn assemble_candidates_from_param_env<'cx,'tcx>(
     let env_predicates = selcx.param_env().caller_bounds.clone();
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
                                         candidate_set, env_predicates);
+}
+
+/// In the case of a nested projection like <<A as Foo>::FooT as Bar>::BarT, we may find
+/// that the definition of `Foo` has some clues:
+///
+/// ```rust
+/// trait Foo {
+///     type FooT : Bar<BarT=i32>
+/// }
+/// ```
+///
+/// Here, for example, we could conclude that the result is `i32`.
+fn assemble_candidates_from_trait_def<'cx,'tcx>(
+    selcx: &mut SelectionContext<'cx,'tcx>,
+    obligation: &ProjectionTyObligation<'tcx>,
+    obligation_trait_ref: &Rc<ty::TraitRef<'tcx>>,
+    candidate_set: &mut ProjectionTyCandidateSet<'tcx>)
+{
+    // Check whether the self-type is itself a projection.
+    let trait_ref = match obligation_trait_ref.self_ty().sty {
+        ty::ty_projection(ref data) => data.trait_ref.clone(),
+        ty::ty_infer(ty::TyVar(_)) => {
+            // If the self-type is an inference variable, then it MAY wind up
+            // being a projected type, so induce an ambiguity.
+            candidate_set.ambiguous = true;
+            return;
+        }
+        _ => { return; }
+    };
+
+    // If so, extract what we know from the trait and try to come up with a good answer.
+    let trait_def = ty::lookup_trait_def(selcx.tcx(), trait_ref.def_id);
+    let bounds = trait_def.generics.to_bounds(selcx.tcx(), trait_ref.substs);
+    assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
+                                        candidate_set, bounds.predicates.into_vec());
 }
 
 fn assemble_candidates_from_predicates<'cx,'tcx>(

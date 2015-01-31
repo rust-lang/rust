@@ -499,7 +499,7 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
         let body_bcx = f(body_bcx, data_ptr, vt.unit_ty);
         AddIncomingToPhi(data_ptr, InBoundsGEP(body_bcx, data_ptr,
-                                               &[C_int(bcx.ccx(), 1i)]),
+                                               &[C_int(bcx.ccx(), 1)]),
                          body_bcx.llbb);
         Br(body_bcx, header_bcx.llbb, DebugLoc::None);
         next_bcx

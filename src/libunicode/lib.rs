@@ -31,7 +31,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![no_std]
 #![feature(slicing_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
+#![feature(int_uint)]
 #![feature(core)]
 
 extern crate core;
@@ -84,4 +84,7 @@ mod std {
     pub use core::cmp;
     pub use core::fmt;
     pub use core::marker;
+    // for-loops
+    pub use core::iter;
+    pub use core::option;
 }

@@ -1942,7 +1942,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
                 clean::VariantItem(ref var) => {
                     match var.kind {
                         clean::StructVariant(ref s) => {
-                            let mut fields = s.fields.iter().filter(|f| {
+                            let fields = s.fields.iter().filter(|f| {
                                 match f.inner {
                                     clean::StructFieldItem(ref t) => match *t {
                                         clean::HiddenStructField => false,

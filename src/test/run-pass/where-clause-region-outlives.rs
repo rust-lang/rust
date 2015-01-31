@@ -11,7 +11,7 @@
 struct A<'a, 'b> where 'a : 'b { x: &'a int, y: &'b int }
 
 fn main() {
-    let x = 1i;
-    let y = 1i;
+    let x = 1;
+    let y = 1;
     let a = A { x: &x, y: &y };
 }

@@ -32,7 +32,7 @@
 /// # #![allow(unreachable_code)]
 /// panic!();
 /// panic!("this is a terrible mistake!");
-/// panic!(4i); // panic with the value of 4 to be collected elsewhere
+/// panic!(4); // panic with the value of 4 to be collected elsewhere
 /// panic!("this is a {} {message}", "fancy", message = "message");
 /// ```
 #[macro_export]
@@ -68,7 +68,7 @@ macro_rules! panic {
 /// ```
 /// format!("test");
 /// format!("hello {}", "world!");
-/// format!("x = {}, y = {y}", 10i, y = 30i);
+/// format!("x = {}, y = {y}", 10, y = 30);
 /// ```
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -282,7 +282,7 @@ pub mod builtin {
     /// # Example
     ///
     /// ```
-    /// let s = concat!("test", 10i, 'b', true);
+    /// let s = concat!("test", 10, 'b', true);
     /// assert_eq!(s, "test10btrue");
     /// ```
     #[macro_export]

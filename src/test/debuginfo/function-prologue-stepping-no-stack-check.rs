@@ -270,7 +270,7 @@ fn non_immediate_args(a: BigStruct, b: BigStruct) {
 
 #[no_stack_check]
 fn binding(a: i64, b: u64, c: f64) {
-    let x = 0i;
+    let x = 0;
     ::std::old_io::print("");
 }
 

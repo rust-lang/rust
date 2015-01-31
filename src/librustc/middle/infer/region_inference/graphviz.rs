@@ -59,7 +59,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     }
 
     let requested_node : Option<ast::NodeId> =
-        os::getenv("RUST_REGION_GRAPH_NODE").and_then(|s| s.parse());
+        os::getenv("RUST_REGION_GRAPH_NODE").and_then(|s| s.parse().ok());
 
     if requested_node.is_some() && requested_node != Some(subject_node) {
         return;
@@ -157,10 +157,10 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
 
 impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     fn graph_id(&self) -> dot::Id {
-        dot::Id::new(self.graph_name.as_slice()).unwrap()
+        dot::Id::new(self.graph_name.as_slice()).ok().unwrap()
     }
     fn node_id(&self, n: &Node) -> dot::Id {
-        dot::Id::new(format!("node_{}", self.node_ids.get(n).unwrap())).unwrap()
+        dot::Id::new(format!("node_{}", self.node_ids.get(n).unwrap())).ok().unwrap()
     }
     fn node_label(&self, n: &Node) -> dot::LabelText {
         match *n {

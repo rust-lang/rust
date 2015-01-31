@@ -19,7 +19,7 @@ pub trait read {
 
 impl read for int {
     fn readMaybe(s: String) -> Option<int> {
-        s.parse()
+        s.parse().ok()
     }
 }
 

@@ -1078,7 +1078,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let sw = if kind == Switch {
         build::Switch(bcx, test_val, else_cx.llbb, opts.len())
     } else {
-        C_int(ccx, 0i) // Placeholder for when not using a switch
+        C_int(ccx, 0) // Placeholder for when not using a switch
     };
 
     let defaults = enter_default(else_cx, dm, m, col, val);
@@ -1535,31 +1535,6 @@ pub fn store_arg<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             bind_irrefutable_pat(bcx, pat, arg.val, arg_scope)
         }
     }
-}
-
-/// Generates code for the pattern binding in a `for` loop like
-/// `for <pat> in <expr> { ... }`.
-pub fn store_for_loop_binding<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                          pat: &ast::Pat,
-                                          llvalue: ValueRef,
-                                          body_scope: cleanup::ScopeId)
-                                          -> Block<'blk, 'tcx> {
-    let _icx = push_ctxt("match::store_for_loop_binding");
-
-    if simple_identifier(&*pat).is_some() &&
-       bcx.sess().opts.debuginfo != FullDebugInfo {
-        // Generate nicer LLVM for the common case of a `for` loop pattern
-        // like `for x in blahblah { ... }`.
-        let binding_type = node_id_type(bcx, pat.id);
-        bcx.fcx.lllocals.borrow_mut().insert(pat.id,
-                                             Datum::new(llvalue,
-                                                        binding_type,
-                                                        Lvalue));
-        return bcx
-    }
-
-    // General path. Copy out the values that are used in the pattern.
-    bind_irrefutable_pat(bcx, pat, llvalue, body_scope)
 }
 
 fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,

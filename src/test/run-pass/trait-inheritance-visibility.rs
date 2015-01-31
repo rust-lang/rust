@@ -24,5 +24,5 @@ fn f<T:Quux>(x: &T) {
 }
 
 pub fn main() {
-    f(&0i)
+    f(&0)
 }

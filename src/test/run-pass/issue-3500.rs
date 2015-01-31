@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-    let x = &Some(1i);
+    let x = &Some(1);
     match x {
         &Some(_) => (),
         &None => (),

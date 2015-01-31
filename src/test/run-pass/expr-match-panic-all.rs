@@ -16,7 +16,7 @@
 pub fn main() {
     let _x =
         match true {
-          true => { 10i }
+          true => { 10 }
           false => { match true { true => { panic!() } false => { panic!() } } }
         };
 }

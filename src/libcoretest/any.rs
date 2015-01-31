@@ -123,7 +123,7 @@ fn any_fixed_vec() {
 #[bench]
 fn bench_downcast_ref(b: &mut Bencher) {
     b.iter(|| {
-        let mut x = 0i;
+        let mut x = 0;
         let mut y = &mut x as &mut Any;
         test::black_box(&mut y);
         test::black_box(y.downcast_ref::<int>() == Some(&0));

@@ -17,7 +17,7 @@ fn foo(c: Vec<int> ) {
         t::some::<int>(_) => {
             for _i in c.iter() {
                 println!("{}", a);
-                let a = 17i;
+                let a = 17;
                 b.push(a);
             }
         }
@@ -27,4 +27,4 @@ fn foo(c: Vec<int> ) {
 
 enum t<T> { none, some(T), }
 
-pub fn main() { let x = 10i; let x = x + 20; assert!((x == 30)); foo(Vec::new()); }
+pub fn main() { let x = 10; let x = x + 20; assert!((x == 30)); foo(Vec::new()); }

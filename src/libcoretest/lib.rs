@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor, slicing_syntax)]
-#![feature(unboxed_closures)]
 #![feature(box_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
+#![feature(int_uint)]
+#![feature(unboxed_closures)]
+#![feature(unsafe_destructor, slicing_syntax)]
 
 extern crate core;
 extern crate test;

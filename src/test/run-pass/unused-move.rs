@@ -18,6 +18,6 @@
 
 pub fn main()
 {
-    let y = box 1i;
+    let y = box 1;
     y;
 }

@@ -11,11 +11,11 @@
 struct Foo<'a>(&'a [int]);
 
 fn main() {
-    let x: &[int] = &[1i, 2, 3];
+    let x: &[int] = &[1, 2, 3];
     let y = (x,);
     assert_eq!(y.0, x);
 
-    let x: &[int] = &[1i, 2, 3];
+    let x: &[int] = &[1, 2, 3];
     let y = Foo(x);
     assert_eq!(y.0, x);
 }

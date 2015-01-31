@@ -9,21 +9,20 @@
 // except according to those terms.
 
 #![crate_type = "bin"]
-#![allow(unknown_features)]
-#![feature(slicing_syntax, unboxed_closures)]
+
 #![feature(box_syntax)]
-#![feature(int_uint)]
-#![feature(test)]
-#![feature(rustc_private)]
-#![feature(std_misc)]
-#![feature(path)]
-#![feature(io)]
-#![feature(core)]
 #![feature(collections)]
+#![feature(core)]
+#![feature(int_uint)]
+#![feature(io)]
 #![feature(os)]
+#![feature(path)]
+#![feature(rustc_private)]
+#![feature(slicing_syntax, unboxed_closures)]
+#![feature(std_misc)]
+#![feature(test)]
 #![feature(unicode)]
 
-#![allow(unstable)]
 #![deny(warnings)]
 
 extern crate test;
@@ -35,7 +34,6 @@ extern crate log;
 use std::os;
 use std::old_io;
 use std::old_io::fs;
-use std::str::FromStr;
 use std::thunk::Thunk;
 use getopts::{optopt, optflag, reqopt};
 use common::Config;
@@ -140,9 +138,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         build_base: opt_path(matches, "build-base"),
         aux_base: opt_path(matches, "aux-base"),
         stage_id: matches.opt_str("stage-id").unwrap(),
-        mode: FromStr::from_str(matches.opt_str("mode")
-                                       .unwrap()
-                                       .as_slice()).expect("invalid mode"),
+        mode: matches.opt_str("mode").unwrap().parse().ok().expect("invalid mode"),
         run_ignored: matches.opt_present("ignored"),
         filter: filter,
         logfile: matches.opt_str("logfile").map(|s| Path::new(s)),

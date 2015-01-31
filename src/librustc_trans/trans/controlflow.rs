@@ -11,8 +11,6 @@
 use llvm::ValueRef;
 use middle::def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
-use trans::_match;
-use trans::adt;
 use trans::base::*;
 use trans::build::*;
 use trans::callee;
@@ -20,17 +18,12 @@ use trans::cleanup::CleanupMethods;
 use trans::cleanup;
 use trans::common::*;
 use trans::consts;
-use trans::datum;
 use trans::debuginfo;
 use trans::debuginfo::{DebugLoc, ToDebugLoc};
 use trans::expr;
-use trans::meth;
-use trans::type_::Type;
 use trans;
 use middle::ty;
-use middle::ty::MethodCall;
 use util::ppaux::Repr;
-use util::ppaux;
 
 use syntax::ast;
 use syntax::ast::Ident;
@@ -257,135 +250,6 @@ pub fn trans_while<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     fcx.pop_loop_cleanup_scope(loop_expr.id);
     return next_bcx_in;
-}
-
-/// Translates a `for` loop.
-pub fn trans_for<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                             loop_info: NodeIdAndSpan,
-                             pat: &ast::Pat,
-                             head: &ast::Expr,
-                             body: &ast::Block)
-                             -> Block<'blk, 'tcx>
-{
-    let _icx = push_ctxt("trans_for");
-
-    //            bcx
-    //             |
-    //      loopback_bcx_in  <-------+
-    //             |                 |
-    //      loopback_bcx_out         |
-    //           |      |            |
-    //           |    body_bcx_in    |
-    // cleanup_blk      |            |
-    //    |           body_bcx_out --+
-    // next_bcx_in
-
-    // Codegen the head to create the iterator value.
-    let iterator_datum =
-        unpack_datum!(bcx, expr::trans_to_lvalue(bcx, head, "for_head"));
-    let iterator_type = node_id_type(bcx, head.id);
-    debug!("iterator type is {}, datum type is {}",
-           ppaux::ty_to_string(bcx.tcx(), iterator_type),
-           ppaux::ty_to_string(bcx.tcx(), iterator_datum.ty));
-
-    let lliterator = load_ty(bcx, iterator_datum.val, iterator_datum.ty);
-
-    // Create our basic blocks and set up our loop cleanups.
-    let next_bcx_in = bcx.fcx.new_id_block("for_exit", loop_info.id);
-    let loopback_bcx_in = bcx.fcx.new_id_block("for_loopback", head.id);
-    let body_bcx_in = bcx.fcx.new_id_block("for_body", body.id);
-    bcx.fcx.push_loop_cleanup_scope(loop_info.id,
-                                    [next_bcx_in, loopback_bcx_in]);
-    Br(bcx, loopback_bcx_in.llbb, DebugLoc::None);
-    let cleanup_llbb = bcx.fcx.normal_exit_block(loop_info.id,
-                                                 cleanup::EXIT_BREAK);
-
-    // Set up the method call (to `.next()`).
-    let method_call = MethodCall::expr(loop_info.id);
-    let method_type = (*loopback_bcx_in.tcx()
-                                     .method_map
-                                     .borrow())[method_call]
-                                     .ty;
-    let method_type = monomorphize_type(loopback_bcx_in, method_type);
-    let method_result_type =
-        ty::assert_no_late_bound_regions( // LB regions are instantiated in invoked methods
-            loopback_bcx_in.tcx(), &ty::ty_fn_ret(method_type)).unwrap();
-    let option_cleanup_scope = body_bcx_in.fcx.push_custom_cleanup_scope();
-    let option_cleanup_scope_id = cleanup::CustomScope(option_cleanup_scope);
-
-    // Compile the method call (to `.next()`).
-    let mut loopback_bcx_out = loopback_bcx_in;
-    let option_datum =
-        unpack_datum!(loopback_bcx_out,
-                      datum::lvalue_scratch_datum(loopback_bcx_out,
-                                                  method_result_type,
-                                                  "loop_option",
-                                                  false,
-                                                  option_cleanup_scope_id,
-                                                  (),
-                                                  |(), bcx, lloption| {
-        let Result {
-            bcx,
-            val: _
-        } = callee::trans_call_inner(bcx,
-                                     Some(loop_info),
-                                     method_type,
-                                     |bcx, arg_cleanup_scope| {
-                                         meth::trans_method_callee(
-                                             bcx,
-                                             method_call,
-                                             None,
-                                             arg_cleanup_scope)
-                                     },
-                                     callee::ArgVals(&[lliterator]),
-                                     Some(expr::SaveIn(lloption)));
-        bcx
-    }));
-
-    // Check the discriminant; if the `None` case, exit the loop.
-    let option_representation = adt::represent_type(loopback_bcx_out.ccx(),
-                                                    method_result_type);
-    let lldiscriminant = adt::trans_get_discr(loopback_bcx_out,
-                                              &*option_representation,
-                                              option_datum.val,
-                                              None);
-    let i1_type = Type::i1(loopback_bcx_out.ccx());
-    let llcondition = Trunc(loopback_bcx_out, lldiscriminant, i1_type);
-    CondBr(loopback_bcx_out, llcondition, body_bcx_in.llbb, cleanup_llbb, DebugLoc::None);
-
-    // Now we're in the body. Unpack the `Option` value into the programmer-
-    // supplied pattern.
-    let llpayload = adt::trans_field_ptr(body_bcx_in,
-                                         &*option_representation,
-                                         option_datum.val,
-                                         1,
-                                         0);
-    let binding_cleanup_scope = body_bcx_in.fcx.push_custom_cleanup_scope();
-    let binding_cleanup_scope_id =
-        cleanup::CustomScope(binding_cleanup_scope);
-    let mut body_bcx_out =
-        _match::store_for_loop_binding(body_bcx_in,
-                                       pat,
-                                       llpayload,
-                                       binding_cleanup_scope_id);
-
-    debuginfo::create_for_loop_var_metadata(body_bcx_in, pat);
-
-    // Codegen the body.
-    body_bcx_out = trans_block(body_bcx_out, body, expr::Ignore);
-    body_bcx_out =
-        body_bcx_out.fcx
-                    .pop_and_trans_custom_cleanup_scope(body_bcx_out,
-                                                        binding_cleanup_scope);
-    body_bcx_out =
-        body_bcx_out.fcx
-                    .pop_and_trans_custom_cleanup_scope(body_bcx_out,
-                                                        option_cleanup_scope);
-    Br(body_bcx_out, loopback_bcx_in.llbb, DebugLoc::None);
-
-    // Codegen cleanups and leave.
-    next_bcx_in.fcx.pop_loop_cleanup_scope(loop_info.id);
-    next_bcx_in
 }
 
 pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,

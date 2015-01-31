@@ -174,7 +174,7 @@ fn main() {
         5000000
     } else {
         std::os::args().get(1)
-            .and_then(|arg| arg.parse())
+            .and_then(|arg| arg.parse().ok())
             .unwrap_or(1000)
     };
     let mut bodies = BODIES;

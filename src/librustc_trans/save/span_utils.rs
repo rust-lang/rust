@@ -37,7 +37,7 @@ impl<'a> SpanUtils<'a> {
         let lo_pos_byte = self.sess.codemap().lookup_byte_offset(span.lo).pos;
         let hi_pos_byte = self.sess.codemap().lookup_byte_offset(span.hi).pos;
 
-        format!("file_name,{},file_line,{},file_col,{},extent_start,{},extent_start_bytes,{},\
+        format!("file_name,\"{}\",file_line,{},file_col,{},extent_start,{},extent_start_bytes,{},\
                  file_line_end,{},file_col_end,{},extent_end,{},extent_end_bytes,{}",
                 lo_loc.file.name,
                 lo_loc.line, lo_loc.col.to_usize(), lo_pos.to_usize(), lo_pos_byte.to_usize(),
@@ -205,6 +205,7 @@ impl<'a> SpanUtils<'a> {
             bracket_count += match prev.tok {
                 token::Lt => 1,
                 token::Gt => -1,
+                token::BinOp(token::Shl) => 2,
                 token::BinOp(token::Shr) => -2,
                 _ => 0
             };
@@ -236,7 +237,7 @@ impl<'a> SpanUtils<'a> {
 
         let mut toks = self.retokenise_span(span);
         // We keep track of how many brackets we're nested in
-        let mut bracket_count = 0i;
+        let mut bracket_count = 0;
         loop {
             let ts = toks.real_token();
             if ts.tok == token::Eof {
@@ -296,13 +297,25 @@ impl<'a> SpanUtils<'a> {
     pub fn sub_span_after_keyword(&self,
                                   span: Span,
                                   keyword: keywords::Keyword) -> Option<Span> {
+        self.sub_span_after(span, |t| t.is_keyword(keyword))
+    }
+
+    pub fn sub_span_after_token(&self,
+                                span: Span,
+                                tok: Token) -> Option<Span> {
+        self.sub_span_after(span, |t| t == tok)
+    }
+
+    fn sub_span_after<F: Fn(Token) -> bool>(&self,
+                                            span: Span,
+                                            f: F) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
         loop {
             let ts = toks.real_token();
             if ts.tok == token::Eof {
                 return None;
             }
-            if ts.tok.is_keyword(keyword) {
+            if f(ts.tok) {
                 let ts = toks.real_token();
                 if ts.tok == token::Eof {
                     return None
@@ -312,6 +325,7 @@ impl<'a> SpanUtils<'a> {
             }
         }
     }
+
 
     // Returns a list of the spans of idents in a patch.
     // E.g., For foo::bar<x,t>::baz, we return [foo, bar, baz] (well, their spans)

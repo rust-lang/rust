@@ -26,25 +26,25 @@ fn საჭმელად_გემრიელი_სადილი() -> int
 
     // Lunch in several languages.
 
-    let ランチ = 10i;
-    let 午餐 = 10i;
+    let ランチ = 10;
+    let 午餐 = 10;
 
-    let ארוחת_צהריי = 10i;
+    let ארוחת_צהריי = 10;
     let غداء = 10u;
-    let լանչ = 10i;
-    let обед = 10i;
-    let абед = 10i;
-    let μεσημεριανό = 10i;
-    let hádegismatur = 10i;
-    let ручек = 10i;
+    let լանչ = 10;
+    let обед = 10;
+    let абед = 10;
+    let μεσημεριανό = 10;
+    let hádegismatur = 10;
+    let ручек = 10;
 
-    let ăn_trưa = 10i;
-    let อาหารกลางวัน = 10i;
+    let ăn_trưa = 10;
+    let อาหารกลางวัน = 10;
 
     // Lunchy arithmetic, mm.
 
     assert_eq!(hádegismatur * ручек * обед, 1000);
-    assert_eq!(10i, ארוחת_צהריי);
+    assert_eq!(10, ארוחת_צהריי);
     assert_eq!(ランチ + 午餐 + μεσημεριανό, 30);
     assert_eq!(ăn_trưa + อาหารกลางวัน, 20);
     return (абед + լանչ) >> غداء;

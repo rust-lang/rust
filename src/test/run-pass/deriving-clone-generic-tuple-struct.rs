@@ -12,5 +12,5 @@
 struct S<T>(T, ());
 
 pub fn main() {
-    let _ = S(1i, ()).clone();
+    let _ = S(1, ()).clone();
 }

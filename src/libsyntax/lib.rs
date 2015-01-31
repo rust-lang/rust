@@ -16,7 +16,6 @@
 
 #![crate_name = "syntax"]
 #![unstable(feature = "rustc_private")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -24,19 +23,21 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![allow(unknown_features)]
-#![feature(slicing_syntax)]
+#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
+
 #![feature(box_syntax)]
-#![feature(quote, unsafe_destructor)]
-#![allow(unknown_features)] #![feature(int_uint)]
 #![feature(collections)]
 #![feature(core)]
 #![feature(hash)]
+#![feature(int_uint)]
 #![feature(io)]
 #![feature(libc)]
 #![feature(os)]
 #![feature(path)]
+#![feature(quote, unsafe_destructor)]
 #![feature(rustc_private)]
+#![feature(slicing_syntax)]
+#![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
 

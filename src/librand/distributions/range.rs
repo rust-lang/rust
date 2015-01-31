@@ -171,12 +171,12 @@ mod tests {
     #[should_fail]
     #[test]
     fn test_range_bad_limits_equal() {
-        Range::new(10i, 10i);
+        Range::new(10, 10);
     }
     #[should_fail]
     #[test]
     fn test_range_bad_limits_flipped() {
-        Range::new(10i, 5i);
+        Range::new(10, 5);
     }
 
     #[test]

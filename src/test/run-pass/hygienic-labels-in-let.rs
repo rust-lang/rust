@@ -20,19 +20,19 @@ macro_rules! loop_x {
 macro_rules! while_true {
     ($e: expr) => {
         // $e shouldn't be able to interact with this 'x
-        'x: while 1i + 1 == 2 { $e }
+        'x: while 1 + 1 == 2 { $e }
     }
 }
 
 macro_rules! run_once {
     ($e: expr) => {
         // ditto
-        'x: for _ in 0i..1 { $e }
+        'x: for _ in 0..1 { $e }
     }
 }
 
 pub fn main() {
-    let mut i = 0i;
+    let mut i = 0;
 
     let j: int = {
         'x: loop {
@@ -42,35 +42,35 @@ pub fn main() {
         }
         i + 1
     };
-    assert_eq!(j, 1i);
+    assert_eq!(j, 1);
 
     let k: int = {
-        'x: for _ in 0i..1 {
+        'x: for _ in 0..1 {
             // ditto
             loop_x!(break 'x);
             i += 1;
         }
         i + 1
     };
-    assert_eq!(k, 1i);
+    assert_eq!(k, 1);
 
     let l: int = {
-        'x: for _ in 0i..1 {
+        'x: for _ in 0..1 {
             // ditto
             while_true!(break 'x);
             i += 1;
         }
         i + 1
     };
-    assert_eq!(l, 1i);
+    assert_eq!(l, 1);
 
     let n: int = {
-        'x: for _ in 0i..1 {
+        'x: for _ in 0..1 {
             // ditto
             run_once!(continue 'x);
             i += 1;
         }
         i + 1
     };
-    assert_eq!(n, 1i);
+    assert_eq!(n, 1);
 }

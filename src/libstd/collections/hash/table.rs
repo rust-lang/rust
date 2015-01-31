@@ -15,7 +15,7 @@ use self::BucketState::*;
 use clone::Clone;
 use cmp;
 use hash::{Hash, Hasher};
-use iter::{Iterator, ExactSizeIterator, count};
+use iter::{Iterator, IteratorExt, ExactSizeIterator, count};
 use marker::{Copy, Sized, self};
 use mem::{min_align_of, size_of};
 use mem;
@@ -274,7 +274,7 @@ impl<K, V, M: Deref<Target=RawTable<K, V>>> Bucket<K, V, M> {
         // ... and it's zero at all other times.
         let maybe_wraparound_dist = (self.idx ^ (self.idx + 1)) & self.table.capacity();
         // Finally, we obtain the offset 1 or the offset -cap + 1.
-        let dist = 1i - (maybe_wraparound_dist as int);
+        let dist = 1 - (maybe_wraparound_dist as int);
 
         self.idx += 1;
 
@@ -921,7 +921,7 @@ impl<'a, K, V> ExactSizeIterator for Drain<'a, K, V> {
 #[unsafe_destructor]
 impl<'a, K: 'a, V: 'a> Drop for Drain<'a, K, V> {
     fn drop(&mut self) {
-        for _ in *self {}
+        for _ in self.by_ref() {}
     }
 }
 

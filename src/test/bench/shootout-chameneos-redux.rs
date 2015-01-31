@@ -232,7 +232,7 @@ fn main() {
     } else {
         std::os::args().as_slice()
                        .get(1)
-                       .and_then(|arg| arg.parse())
+                       .and_then(|arg| arg.parse().ok())
                        .unwrap_or(600u)
     };
 

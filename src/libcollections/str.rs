@@ -68,6 +68,7 @@ use core::ops::FullRange;
 #[cfg(not(stage0))]
 use core::ops::RangeFull;
 use core::option::Option::{self, Some, None};
+use core::result::Result;
 use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
@@ -199,7 +200,7 @@ impl<'a> Iterator for Decompositions<'a> {
         }
 
         if !self.sorted {
-            for ch in self.iter {
+            for ch in self.iter.by_ref() {
                 let buffer = &mut self.buffer;
                 let sorted = &mut self.sorted;
                 {
@@ -279,7 +280,7 @@ impl<'a> Iterator for Recompositions<'a> {
         loop {
             match self.state {
                 Composing => {
-                    for ch in self.iter {
+                    for ch in self.iter.by_ref() {
                         let ch_class = unicode::char::canonical_combining_class(ch);
                         if self.composee.is_none() {
                             if ch_class != 0 {
@@ -443,12 +444,9 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// # Examples
     ///
     /// ```rust
-    /// let s = "Do you know the muffin man,
-    /// The muffin man, the muffin man, ...".to_string();
+    /// let s = "this is old";
     ///
-    /// assert_eq!(s.replace("muffin man", "little lamb"),
-    ///            "Do you know the little lamb,
-    /// The little lamb, the little lamb, ...".to_string());
+    /// assert_eq!(s.replace("old", "new"), "this is new");
     ///
     /// // not found, so no change.
     /// assert_eq!(s.replace("cookie monster", "little lamb"), s);
@@ -1231,13 +1229,12 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// # Example
     ///
     /// ```
-    /// assert_eq!("4".parse::<u32>(), Some(4));
-    /// assert_eq!("j".parse::<u32>(), None);
+    /// assert_eq!("4".parse::<u32>(), Ok(4));
+    /// assert!("j".parse::<u32>().is_err());
     /// ```
     #[inline]
-    #[unstable(feature = "collections",
-               reason = "this method was just created")]
-    fn parse<F: FromStr>(&self) -> Option<F> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
         core_str::StrExt::parse(&self[])
     }
 
@@ -2154,7 +2151,7 @@ mod tests {
         let s = "ศไทย中华Việt Nam";
         let mut it = s.chars();
         it.next();
-        assert!(it.zip(it.clone()).all(|(x,y)| x == y));
+        assert!(it.clone().zip(it).all(|(x,y)| x == y));
     }
 
     #[test]

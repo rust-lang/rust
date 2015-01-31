@@ -19,15 +19,15 @@ enum ES<T> {
 
 pub fn main() {
     let (es11, es12, es21, es22) = (ES::ES1 {
-        x: 1i
+        x: 1
     }, ES::ES1 {
-        x: 2i
+        x: 2
     }, ES::ES2 {
-        x: 1i,
-        y: 1i
+        x: 1,
+        y: 1
     }, ES::ES2 {
-        x: 1i,
-        y: 2i
+        x: 1,
+        y: 2
     });
 
     // in order for both PartialOrd and Ord

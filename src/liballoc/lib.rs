@@ -66,12 +66,11 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![no_std]
-#![allow(unknown_features)]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
+#![feature(int_uint)]
 #![feature(unboxed_closures)]
-#![allow(unknown_features)] #![feature(int_uint)]
 #![feature(core)]
 #![feature(hash)]
 #![feature(libc)]

@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
 fn main() {
     for
         &1is //~ ERROR refutable pattern in `for` loop binding

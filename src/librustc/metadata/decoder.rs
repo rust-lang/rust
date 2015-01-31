@@ -223,7 +223,7 @@ fn each_reexport<F>(d: rbml::Doc, f: F) -> bool where
 fn variant_disr_val(d: rbml::Doc) -> Option<ty::Disr> {
     reader::maybe_get_doc(d, tag_disr_val).and_then(|val_doc| {
         reader::with_doc_data(val_doc, |data| {
-            str::from_utf8(data).ok().and_then(|s| s.parse())
+            str::from_utf8(data).ok().and_then(|s| s.parse().ok())
         })
     })
 }

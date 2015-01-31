@@ -123,7 +123,7 @@ macro_rules! no_new_scope {
 
 macro_rules! new_scope {
     () => ({
-        let a = 890242i;
+        let a = 890242;
         zzz(); // #break
         sentinel();
     })
@@ -151,8 +151,8 @@ macro_rules! dup_expr {
 
 fn main() {
 
-    let a = trivial!(10i);
-    let b = no_new_scope!(33i);
+    let a = trivial!(10);
+    let b = no_new_scope!(33);
 
     zzz(); // #break
     sentinel();
@@ -162,12 +162,12 @@ fn main() {
     zzz(); // #break
     sentinel();
 
-    shadow_within_macro!(100i);
+    shadow_within_macro!(100);
 
     zzz(); // #break
     sentinel();
 
-    let c = dup_expr!(10i * 20);
+    let c = dup_expr!(10 * 20);
 
     zzz(); // #break
     sentinel();

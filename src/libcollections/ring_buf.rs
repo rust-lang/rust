@@ -19,7 +19,7 @@ use core::prelude::*;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::iter::{self, repeat, FromIterator, RandomAccessIterator};
+use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
 use core::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
@@ -186,7 +186,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(3i);
+    /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
     /// assert_eq!(buf.get(1).unwrap(), &4);
@@ -209,7 +209,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(3i);
+    /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
     /// match buf.get_mut(1) {
@@ -243,7 +243,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(3i);
+    /// buf.push_back(3);
     /// buf.push_back(4);
     /// buf.push_back(5);
     /// buf.swap(0, 2);
@@ -269,7 +269,7 @@ impl<T> RingBuf<T> {
     /// ```
     /// use std::collections::RingBuf;
     ///
-    /// let buf: RingBuf<int> = RingBuf::with_capacity(10);
+    /// let buf: RingBuf<i32> = RingBuf::with_capacity(10);
     /// assert!(buf.capacity() >= 10);
     /// ```
     #[inline]
@@ -292,7 +292,7 @@ impl<T> RingBuf<T> {
     /// ```
     /// use std::collections::RingBuf;
     ///
-    /// let mut buf: RingBuf<int> = vec![1].into_iter().collect();
+    /// let mut buf: RingBuf<i32> = vec![1].into_iter().collect();
     /// buf.reserve_exact(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -313,7 +313,7 @@ impl<T> RingBuf<T> {
     /// ```
     /// use std::collections::RingBuf;
     ///
-    /// let mut buf: RingBuf<int> = vec![1].into_iter().collect();
+    /// let mut buf: RingBuf<i32> = vec![1].into_iter().collect();
     /// buf.reserve(10);
     /// assert!(buf.capacity() >= 11);
     /// ```
@@ -473,8 +473,8 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
-    /// buf.push_back(10i);
+    /// buf.push_back(5);
+    /// buf.push_back(10);
     /// buf.push_back(15);
     /// buf.truncate(1);
     /// assert_eq!(buf.len(), 1);
@@ -496,11 +496,11 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
+    /// buf.push_back(5);
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// let b: &[_] = &[&5, &3, &4];
-    /// assert_eq!(buf.iter().collect::<Vec<&int>>().as_slice(), b);
+    /// assert_eq!(buf.iter().collect::<Vec<&i32>>().as_slice(), b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -519,14 +519,14 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
+    /// buf.push_back(5);
     /// buf.push_back(3);
     /// buf.push_back(4);
     /// for num in buf.iter_mut() {
     ///     *num = *num - 2;
     /// }
     /// let b: &[_] = &[&mut 3, &mut 1, &mut 2];
-    /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut int>>()[], b);
+    /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut i32>>()[], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
@@ -600,7 +600,7 @@ impl<T> RingBuf<T> {
     ///
     /// let mut v = RingBuf::new();
     /// assert_eq!(v.len(), 0);
-    /// v.push_back(1i);
+    /// v.push_back(1);
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -615,7 +615,7 @@ impl<T> RingBuf<T> {
     ///
     /// let mut v = RingBuf::new();
     /// assert!(v.is_empty());
-    /// v.push_front(1i);
+    /// v.push_front(1);
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -630,7 +630,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut v = RingBuf::new();
-    /// v.push_back(1i);
+    /// v.push_back(1);
     /// assert_eq!(v.drain().next(), Some(1));
     /// assert!(v.is_empty());
     /// ```
@@ -651,7 +651,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut v = RingBuf::new();
-    /// v.push_back(1i);
+    /// v.push_back(1);
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
@@ -672,9 +672,9 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
-    /// assert_eq!(d.front(), Some(&1i));
+    /// d.push_back(1);
+    /// d.push_back(2);
+    /// assert_eq!(d.front(), Some(&1));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front(&self) -> Option<&T> {
@@ -692,13 +692,13 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.front_mut(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push_back(1);
+    /// d.push_back(2);
     /// match d.front_mut() {
-    ///     Some(x) => *x = 9i,
+    ///     Some(x) => *x = 9,
     ///     None => (),
     /// }
-    /// assert_eq!(d.front(), Some(&9i));
+    /// assert_eq!(d.front(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn front_mut(&mut self) -> Option<&mut T> {
@@ -716,9 +716,9 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
-    /// assert_eq!(d.back(), Some(&2i));
+    /// d.push_back(1);
+    /// d.push_back(2);
+    /// assert_eq!(d.back(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back(&self) -> Option<&T> {
@@ -736,13 +736,13 @@ impl<T> RingBuf<T> {
     /// let mut d = RingBuf::new();
     /// assert_eq!(d.back(), None);
     ///
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push_back(1);
+    /// d.push_back(2);
     /// match d.back_mut() {
-    ///     Some(x) => *x = 9i,
+    ///     Some(x) => *x = 9,
     ///     None => (),
     /// }
-    /// assert_eq!(d.back(), Some(&9i));
+    /// assert_eq!(d.back(), Some(&9));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn back_mut(&mut self) -> Option<&mut T> {
@@ -759,11 +759,11 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut d = RingBuf::new();
-    /// d.push_back(1i);
-    /// d.push_back(2i);
+    /// d.push_back(1);
+    /// d.push_back(2);
     ///
-    /// assert_eq!(d.pop_front(), Some(1i));
-    /// assert_eq!(d.pop_front(), Some(2i));
+    /// assert_eq!(d.pop_front(), Some(1));
+    /// assert_eq!(d.pop_front(), Some(2));
     /// assert_eq!(d.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -785,9 +785,9 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut d = RingBuf::new();
-    /// d.push_front(1i);
-    /// d.push_front(2i);
-    /// assert_eq!(d.front(), Some(&2i));
+    /// d.push_front(1);
+    /// d.push_front(2);
+    /// assert_eq!(d.front(), Some(&2));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn push_front(&mut self, t: T) {
@@ -809,7 +809,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(1i);
+    /// buf.push_back(1);
     /// buf.push_back(3);
     /// assert_eq!(3, *buf.back().unwrap());
     /// ```
@@ -835,7 +835,7 @@ impl<T> RingBuf<T> {
     ///
     /// let mut buf = RingBuf::new();
     /// assert_eq!(buf.pop_back(), None);
-    /// buf.push_back(1i);
+    /// buf.push_back(1);
     /// buf.push_back(3);
     /// assert_eq!(buf.pop_back(), Some(3));
     /// ```
@@ -869,7 +869,7 @@ impl<T> RingBuf<T> {
     ///
     /// let mut buf = RingBuf::new();
     /// assert_eq!(buf.swap_back_remove(0), None);
-    /// buf.push_back(5i);
+    /// buf.push_back(5);
     /// buf.push_back(99);
     /// buf.push_back(15);
     /// buf.push_back(20);
@@ -902,11 +902,11 @@ impl<T> RingBuf<T> {
     ///
     /// let mut buf = RingBuf::new();
     /// assert_eq!(buf.swap_front_remove(0), None);
-    /// buf.push_back(15i);
+    /// buf.push_back(15);
     /// buf.push_back(5);
     /// buf.push_back(10);
     /// buf.push_back(99);
-    /// buf.push_back(20i);
+    /// buf.push_back(20);
     /// assert_eq!(buf.swap_front_remove(3), Some(99));
     /// ```
     #[unstable(feature = "collections",
@@ -934,7 +934,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(10i);
+    /// buf.push_back(10);
     /// buf.push_back(12);
     /// buf.insert(1,11);
     /// assert_eq!(Some(&11), buf.get(1));
@@ -1136,9 +1136,9 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
-    /// buf.push_back(10i);
-    /// buf.push_back(12i);
+    /// buf.push_back(5);
+    /// buf.push_back(10);
+    /// buf.push_back(12);
     /// buf.push_back(15);
     /// buf.remove(2);
     /// assert_eq!(Some(&15), buf.get(2));
@@ -1301,8 +1301,8 @@ impl<T: Clone> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::new();
-    /// buf.push_back(5i);
-    /// buf.push_back(10i);
+    /// buf.push_back(5);
+    /// buf.push_back(10);
     /// buf.push_back(15);
     /// buf.resize(2, 0);
     /// buf.resize(6, 20);
@@ -1510,7 +1510,7 @@ pub struct Drain<'a, T: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: 'a> Drop for Drain<'a, T> {
     fn drop(&mut self) {
-        for _ in *self {}
+        for _ in self.by_ref() {}
         self.inner.head = 0;
         self.inner.tail = 0;
     }
@@ -1609,6 +1609,30 @@ impl<A> FromIterator<A> for RingBuf<A> {
     }
 }
 
+impl<T> IntoIterator for RingBuf<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a RingBuf<T> {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
+    type Iter = IterMut<'a, T>;
+
+    fn into_iter(mut self) -> IterMut<'a, T> {
+        self.iter_mut()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for RingBuf<A> {
     fn extend<T: Iterator<Item=A>>(&mut self, mut iterator: T) {
@@ -1650,8 +1674,8 @@ mod tests {
     fn test_simple() {
         let mut d = RingBuf::new();
         assert_eq!(d.len(), 0u);
-        d.push_front(17i);
-        d.push_front(42i);
+        d.push_front(17);
+        d.push_front(42);
         d.push_back(137);
         assert_eq!(d.len(), 3u);
         d.push_back(137);
@@ -1769,7 +1793,7 @@ mod tests {
     fn bench_push_back_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            for i in 0i..100 {
+            for i in 0..100 {
                 deq.push_back(i);
             }
             deq.head = 0;
@@ -1781,7 +1805,7 @@ mod tests {
     fn bench_push_front_100(b: &mut test::Bencher) {
         let mut deq = RingBuf::with_capacity(101);
         b.iter(|| {
-            for i in 0i..100 {
+            for i in 0..100 {
                 deq.push_front(i);
             }
             deq.head = 0;
@@ -1791,7 +1815,7 @@ mod tests {
 
     #[bench]
     fn bench_pop_back_100(b: &mut test::Bencher) {
-        let mut deq: RingBuf<int> = RingBuf::with_capacity(101);
+        let mut deq: RingBuf<i32> = RingBuf::with_capacity(101);
 
         b.iter(|| {
             deq.head = 100;
@@ -1804,7 +1828,7 @@ mod tests {
 
     #[bench]
     fn bench_pop_front_100(b: &mut test::Bencher) {
-        let mut deq: RingBuf<int> = RingBuf::with_capacity(101);
+        let mut deq: RingBuf<i32> = RingBuf::with_capacity(101);
 
         b.iter(|| {
             deq.head = 100;
@@ -1819,7 +1843,7 @@ mod tests {
     fn bench_grow_1025(b: &mut test::Bencher) {
         b.iter(|| {
             let mut deq = RingBuf::new();
-            for i in 0i..1025 {
+            for i in 0..1025 {
                 deq.push_front(i);
             }
             test::black_box(deq);
@@ -1828,7 +1852,7 @@ mod tests {
 
     #[bench]
     fn bench_iter_1000(b: &mut test::Bencher) {
-        let ring: RingBuf<int> = (0i..1000).collect();
+        let ring: RingBuf<i32> = (0..1000).collect();
 
         b.iter(|| {
             let mut sum = 0;
@@ -1841,7 +1865,7 @@ mod tests {
 
     #[bench]
     fn bench_mut_iter_1000(b: &mut test::Bencher) {
-        let mut ring: RingBuf<int> = (0i..1000).collect();
+        let mut ring: RingBuf<i32> = (0..1000).collect();
 
         b.iter(|| {
             let mut sum = 0;
@@ -1854,28 +1878,28 @@ mod tests {
 
     #[derive(Clone, PartialEq, Debug)]
     enum Taggy {
-        One(int),
-        Two(int, int),
-        Three(int, int, int),
+        One(i32),
+        Two(i32, i32),
+        Three(i32, i32, i32),
     }
 
     #[derive(Clone, PartialEq, Debug)]
     enum Taggypar<T> {
-        Onepar(int),
-        Twopar(int, int),
-        Threepar(int, int, int),
+        Onepar(i32),
+        Twopar(i32, i32),
+        Threepar(i32, i32, i32),
     }
 
     #[derive(Clone, PartialEq, Debug)]
     struct RecCy {
-        x: int,
-        y: int,
+        x: i32,
+        y: i32,
         t: Taggy
     }
 
     #[test]
     fn test_param_int() {
-        test_parameterized::<int>(5, 72, 64, 175);
+        test_parameterized::<i32>(5, 72, 64, 175);
     }
 
     #[test]
@@ -1885,10 +1909,10 @@ mod tests {
 
     #[test]
     fn test_param_taggypar() {
-        test_parameterized::<Taggypar<int>>(Onepar::<int>(1),
-                                            Twopar::<int>(1, 2),
-                                            Threepar::<int>(1, 2, 3),
-                                            Twopar::<int>(17, 42));
+        test_parameterized::<Taggypar<i32>>(Onepar::<i32>(1),
+                                            Twopar::<i32>(1, 2),
+                                            Threepar::<i32>(1, 2, 3),
+                                            Twopar::<i32>(17, 42));
     }
 
     #[test]
@@ -1903,17 +1927,17 @@ mod tests {
     #[test]
     fn test_with_capacity() {
         let mut d = RingBuf::with_capacity(0);
-        d.push_back(1i);
+        d.push_back(1);
         assert_eq!(d.len(), 1);
         let mut d = RingBuf::with_capacity(50);
-        d.push_back(1i);
+        d.push_back(1);
         assert_eq!(d.len(), 1);
     }
 
     #[test]
     fn test_with_capacity_non_power_two() {
         let mut d3 = RingBuf::with_capacity(3);
-        d3.push_back(1i);
+        d3.push_back(1);
 
         // X = None, | = lo
         // [|1, X, X]
@@ -1977,10 +2001,10 @@ mod tests {
 
     #[test]
     fn test_swap() {
-        let mut d: RingBuf<int> = (0i..5).collect();
+        let mut d: RingBuf<i32> = (0..5).collect();
         d.pop_front();
         d.swap(0, 3);
-        assert_eq!(d.iter().map(|&x|x).collect::<Vec<int>>(), vec!(4, 2, 3, 1));
+        assert_eq!(d.iter().map(|&x|x).collect::<Vec<i32>>(), vec!(4, 2, 3, 1));
     }
 
     #[test]
@@ -1989,20 +2013,20 @@ mod tests {
         assert_eq!(d.iter().next(), None);
         assert_eq!(d.iter().size_hint(), (0, Some(0)));
 
-        for i in 0i..5 {
+        for i in 0..5 {
             d.push_back(i);
         }
         {
             let b: &[_] = &[&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
+            assert_eq!(d.iter().collect::<Vec<&i32>>(), b);
         }
 
-        for i in 6i..9 {
+        for i in 6..9 {
             d.push_front(i);
         }
         {
             let b: &[_] = &[&8,&7,&6,&0,&1,&2,&3,&4];
-            assert_eq!(d.iter().collect::<Vec<&int>>(), b);
+            assert_eq!(d.iter().collect::<Vec<&i32>>(), b);
         }
 
         let mut it = d.iter();
@@ -2020,19 +2044,19 @@ mod tests {
         let mut d = RingBuf::new();
         assert_eq!(d.iter().rev().next(), None);
 
-        for i in 0i..5 {
+        for i in 0..5 {
             d.push_back(i);
         }
         {
             let b: &[_] = &[&4,&3,&2,&1,&0];
-            assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
+            assert_eq!(d.iter().rev().collect::<Vec<&i32>>(), b);
         }
 
-        for i in 6i..9 {
+        for i in 6..9 {
             d.push_front(i);
         }
         let b: &[_] = &[&4,&3,&2,&1,&0,&6,&7,&8];
-        assert_eq!(d.iter().rev().collect::<Vec<&int>>(), b);
+        assert_eq!(d.iter().rev().collect::<Vec<&i32>>(), b);
     }
 
     #[test]
@@ -2040,13 +2064,13 @@ mod tests {
         let mut d = RingBuf::with_capacity(3);
         assert!(d.iter_mut().rev().next().is_none());
 
-        d.push_back(1i);
+        d.push_back(1);
         d.push_back(2);
         d.push_back(3);
         assert_eq!(d.pop_front(), Some(1));
         d.push_back(4);
 
-        assert_eq!(d.iter_mut().rev().map(|x| *x).collect::<Vec<int>>(),
+        assert_eq!(d.iter_mut().rev().map(|x| *x).collect::<Vec<i32>>(),
                    vec!(4, 3, 2));
     }
 
@@ -2101,7 +2125,7 @@ mod tests {
 
         // Empty iter
         {
-            let d: RingBuf<int> = RingBuf::new();
+            let d: RingBuf<i32> = RingBuf::new();
             let mut iter = d.into_iter();
 
             assert_eq!(iter.size_hint(), (0, Some(0)));
@@ -2112,35 +2136,35 @@ mod tests {
         // simple iter
         {
             let mut d = RingBuf::new();
-            for i in 0i..5 {
+            for i in 0..5 {
                 d.push_back(i);
             }
 
             let b = vec![0,1,2,3,4];
-            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+            assert_eq!(d.into_iter().collect::<Vec<i32>>(), b);
         }
 
         // wrapped iter
         {
             let mut d = RingBuf::new();
-            for i in 0i..5 {
+            for i in 0..5 {
                 d.push_back(i);
             }
-            for i in 6i..9 {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
             let b = vec![8,7,6,0,1,2,3,4];
-            assert_eq!(d.into_iter().collect::<Vec<int>>(), b);
+            assert_eq!(d.into_iter().collect::<Vec<i32>>(), b);
         }
 
         // partially used
         {
             let mut d = RingBuf::new();
-            for i in 0i..5 {
+            for i in 0..5 {
                 d.push_back(i);
             }
-            for i in 6i..9 {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
@@ -2160,7 +2184,7 @@ mod tests {
 
         // Empty iter
         {
-            let mut d: RingBuf<int> = RingBuf::new();
+            let mut d: RingBuf<i32> = RingBuf::new();
 
             {
                 let mut iter = d.drain();
@@ -2176,35 +2200,35 @@ mod tests {
         // simple iter
         {
             let mut d = RingBuf::new();
-            for i in 0i..5 {
+            for i in 0..5 {
                 d.push_back(i);
             }
 
-            assert_eq!(d.drain().collect::<Vec<int>>(), [0, 1, 2, 3, 4]);
+            assert_eq!(d.drain().collect::<Vec<_>>(), [0, 1, 2, 3, 4]);
             assert!(d.is_empty());
         }
 
         // wrapped iter
         {
             let mut d = RingBuf::new();
-            for i in 0i..5 {
+            for i in 0..5 {
                 d.push_back(i);
             }
-            for i in 6i..9 {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
-            assert_eq!(d.drain().collect::<Vec<int>>(), [8,7,6,0,1,2,3,4]);
+            assert_eq!(d.drain().collect::<Vec<_>>(), [8,7,6,0,1,2,3,4]);
             assert!(d.is_empty());
         }
 
         // partially used
         {
-            let mut d = RingBuf::new();
-            for i in 0i..5 {
+            let mut d: RingBuf<i32> = RingBuf::new();
+            for i in 0..5 {
                 d.push_back(i);
             }
-            for i in 6i..9 {
+            for i in 6..9 {
                 d.push_front(i);
             }
 
@@ -2225,9 +2249,9 @@ mod tests {
     #[test]
     fn test_from_iter() {
         use core::iter;
-        let v = vec!(1i,2,3,4,5,6,7);
-        let deq: RingBuf<int> = v.iter().map(|&x| x).collect();
-        let u: Vec<int> = deq.iter().map(|&x| x).collect();
+        let v = vec!(1,2,3,4,5,6,7);
+        let deq: RingBuf<i32> = v.iter().map(|&x| x).collect();
+        let u: Vec<i32> = deq.iter().map(|&x| x).collect();
         assert_eq!(u, v);
 
         let seq = iter::count(0u, 2).take(256);
@@ -2241,7 +2265,7 @@ mod tests {
     #[test]
     fn test_clone() {
         let mut d = RingBuf::new();
-        d.push_front(17i);
+        d.push_front(17);
         d.push_front(42);
         d.push_back(137);
         d.push_back(137);
@@ -2259,7 +2283,7 @@ mod tests {
     fn test_eq() {
         let mut d = RingBuf::new();
         assert!(d == RingBuf::with_capacity(0));
-        d.push_front(137i);
+        d.push_front(137);
         d.push_front(17);
         d.push_front(42);
         d.push_back(137);
@@ -2281,12 +2305,12 @@ mod tests {
       let mut x = RingBuf::new();
       let mut y = RingBuf::new();
 
-      x.push_back(1i);
+      x.push_back(1);
       x.push_back(2);
       x.push_back(3);
 
-      y.push_back(0i);
-      y.push_back(1i);
+      y.push_back(0);
+      y.push_back(1);
       y.pop_front();
       y.push_back(2);
       y.push_back(3);
@@ -2298,7 +2322,7 @@ mod tests {
     fn test_ord() {
         let x = RingBuf::new();
         let mut y = RingBuf::new();
-        y.push_back(1i);
+        y.push_back(1);
         y.push_back(2);
         y.push_back(3);
         assert!(x < y);
@@ -2309,7 +2333,7 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let ringbuf: RingBuf<int> = (0i..10).collect();
+        let ringbuf: RingBuf<i32> = (0..10).collect();
         assert_eq!(format!("{:?}", ringbuf), "RingBuf [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let ringbuf: RingBuf<&str> = vec!["just", "one", "test", "more"].iter()
@@ -2389,41 +2413,41 @@ mod tests {
         // test growth path A
         // [T o o H] -> [T o o H . . . . ]
         let mut ring = RingBuf::with_capacity(4);
-        for i in 0i..3 {
+        for i in 0..3 {
             ring.push_back(i);
         }
         ring.reserve(7);
-        for i in 0i..3 {
+        for i in 0..3 {
             assert_eq!(ring.pop_front(), Some(i));
         }
 
         // test growth path B
         // [H T o o] -> [. T o o H . . . ]
         let mut ring = RingBuf::with_capacity(4);
-        for i in 0i..1 {
+        for i in 0..1 {
             ring.push_back(i);
             assert_eq!(ring.pop_front(), Some(i));
         }
-        for i in 0i..3 {
+        for i in 0..3 {
             ring.push_back(i);
         }
         ring.reserve(7);
-        for i in 0i..3 {
+        for i in 0..3 {
             assert_eq!(ring.pop_front(), Some(i));
         }
 
         // test growth path C
         // [o o H T] -> [o o H . . . . T ]
         let mut ring = RingBuf::with_capacity(4);
-        for i in 0i..3 {
+        for i in 0..3 {
             ring.push_back(i);
             assert_eq!(ring.pop_front(), Some(i));
         }
-        for i in 0i..3 {
+        for i in 0..3 {
             ring.push_back(i);
         }
         ring.reserve(7);
-        for i in 0i..3 {
+        for i in 0..3 {
             assert_eq!(ring.pop_front(), Some(i));
         }
     }
@@ -2431,7 +2455,7 @@ mod tests {
     #[test]
     fn test_get() {
         let mut ring = RingBuf::new();
-        ring.push_back(0i);
+        ring.push_back(0);
         assert_eq!(ring.get(0), Some(&0));
         assert_eq!(ring.get(1), None);
 
@@ -2463,7 +2487,7 @@ mod tests {
     #[test]
     fn test_get_mut() {
         let mut ring = RingBuf::new();
-        for i in 0i..3 {
+        for i in 0..3 {
             ring.push_back(i);
         }
 
@@ -2633,8 +2657,8 @@ mod tests {
     #[test]
     fn test_front() {
         let mut ring = RingBuf::new();
-        ring.push_back(10i);
-        ring.push_back(20i);
+        ring.push_back(10);
+        ring.push_back(20);
         assert_eq!(ring.front(), Some(&10));
         ring.pop_front();
         assert_eq!(ring.front(), Some(&20));
@@ -2644,8 +2668,8 @@ mod tests {
 
     #[test]
     fn test_as_slices() {
-        let mut ring: RingBuf<int> = RingBuf::with_capacity(127);
-        let cap = ring.capacity() as int;
+        let mut ring: RingBuf<i32> = RingBuf::with_capacity(127);
+        let cap = ring.capacity() as i32;
         let first = cap/2;
         let last  = cap - first;
         for i in 0..first {
@@ -2666,14 +2690,14 @@ mod tests {
             assert_eq!(right, expected_right);
         }
 
-        assert_eq!(ring.len() as int, cap);
-        assert_eq!(ring.capacity() as int, cap);
+        assert_eq!(ring.len() as i32, cap);
+        assert_eq!(ring.capacity() as i32, cap);
     }
 
     #[test]
     fn test_as_mut_slices() {
-        let mut ring: RingBuf<int> = RingBuf::with_capacity(127);
-        let cap = ring.capacity() as int;
+        let mut ring: RingBuf<i32> = RingBuf::with_capacity(127);
+        let cap = ring.capacity() as i32;
         let first = cap/2;
         let last  = cap - first;
         for i in 0..first {
@@ -2694,7 +2718,7 @@ mod tests {
             assert_eq!(right, expected_right);
         }
 
-        assert_eq!(ring.len() as int, cap);
-        assert_eq!(ring.capacity() as int, cap);
+        assert_eq!(ring.len() as i32, cap);
+        assert_eq!(ring.capacity() as i32, cap);
     }
 }

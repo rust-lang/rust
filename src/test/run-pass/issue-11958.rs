@@ -19,6 +19,6 @@
 use std::thunk::Thunk;
 
 pub fn main() {
-    let mut x = 1i;
+    let mut x = 1i32;
     let _thunk = Thunk::new(move|| { x = 2; });
 }

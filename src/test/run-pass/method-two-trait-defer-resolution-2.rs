@@ -41,7 +41,7 @@ fn call_foo_copy() -> int {
 fn call_foo_other() -> int {
     let mut x = Vec::new();
     let y = x.foo();
-    x.push(box 0i);
+    x.push(box 0);
     y
 }
 

@@ -33,7 +33,7 @@ fn general() {
     assert_eq!(0xf0i | 0xf, 0xff);
     assert_eq!(0xfi << 4, 0xf0);
     assert_eq!(0xf0i >> 4, 0xf);
-    assert_eq!(-16i >> 2, -4);
+    assert_eq!(-16 >> 2, -4);
     assert_eq!(0b1010_1010i | 0b0101_0101, 0xff);
 }
 

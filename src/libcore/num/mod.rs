@@ -17,16 +17,17 @@
 
 use char::CharExt;
 use clone::Clone;
-use cmp::{PartialEq, Eq};
-use cmp::{PartialOrd, Ord};
+use cmp::{PartialEq, Eq, PartialOrd, Ord};
+use error::Error;
+use fmt;
 use intrinsics;
 use iter::IteratorExt;
 use marker::Copy;
 use mem::size_of;
 use ops::{Add, Sub, Mul, Div, Rem, Neg};
 use ops::{Not, BitAnd, BitOr, BitXor, Shl, Shr};
-use option::Option;
-use option::Option::{Some, None};
+use option::Option::{self, Some, None};
+use result::Result::{self, Ok, Err};
 use str::{FromStr, StrExt};
 
 /// A built-in signed or unsigned integer.
@@ -1428,22 +1429,25 @@ pub trait Float
 }
 
 /// A generic trait for converting a string with a radix (base) to a value
-#[unstable(feature = "core", reason = "might need to return Result")]
+#[unstable(feature = "core", reason = "needs reevaluation")]
 pub trait FromStrRadix {
-    fn from_str_radix(str: &str, radix: uint) -> Option<Self>;
+    type Err;
+    fn from_str_radix(str: &str, radix: uint) -> Result<Self, Self::Err>;
 }
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
-#[unstable(feature = "core", reason = "might need to return Result")]
-pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint) -> Option<T> {
+#[unstable(feature = "core", reason = "needs reevaluation")]
+pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint)
+                                       -> Result<T, T::Err> {
     FromStrRadix::from_str_radix(str, radix)
 }
 
 macro_rules! from_str_radix_float_impl {
     ($T:ty) => {
-        #[unstable(feature = "core",
-                   reason = "might need to return Result")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $T {
+            type Err = ParseFloatError;
+
             /// Convert a string in base 10 to a float.
             /// Accepts an optional decimal exponent.
             ///
@@ -1470,14 +1474,15 @@ macro_rules! from_str_radix_float_impl {
             /// `None` if the string did not represent a valid number.  Otherwise,
             /// `Some(n)` where `n` is the floating-point number represented by `src`.
             #[inline]
-            fn from_str(src: &str) -> Option<$T> {
+            fn from_str(src: &str) -> Result<$T, ParseFloatError> {
                 from_str_radix(src, 10)
             }
         }
 
-        #[unstable(feature = "core",
-                   reason = "might need to return Result")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStrRadix for $T {
+            type Err = ParseFloatError;
+
             /// Convert a string in a given base to a float.
             ///
             /// Due to possible conflicts, this function does **not** accept
@@ -1493,24 +1498,28 @@ macro_rules! from_str_radix_float_impl {
             ///
             /// # Return value
             ///
-            /// `None` if the string did not represent a valid number. Otherwise,
-            /// `Some(n)` where `n` is the floating-point number represented by `src`.
-            fn from_str_radix(src: &str, radix: uint) -> Option<$T> {
-               assert!(radix >= 2 && radix <= 36,
+            /// `None` if the string did not represent a valid number.
+            /// Otherwise, `Some(n)` where `n` is the floating-point number
+            /// represented by `src`.
+            fn from_str_radix(src: &str, radix: uint)
+                              -> Result<$T, ParseFloatError> {
+                use self::FloatErrorKind::*;
+                use self::ParseFloatError as PFE;
+                assert!(radix >= 2 && radix <= 36,
                        "from_str_radix_float: must lie in the range `[2, 36]` - found {}",
                        radix);
 
                 // Special values
                 match src {
-                    "inf"   => return Some(Float::infinity()),
-                    "-inf"  => return Some(Float::neg_infinity()),
-                    "NaN"   => return Some(Float::nan()),
+                    "inf"   => return Ok(Float::infinity()),
+                    "-inf"  => return Ok(Float::neg_infinity()),
+                    "NaN"   => return Ok(Float::nan()),
                     _       => {},
                 }
 
                 let (is_positive, src) =  match src.slice_shift_char() {
-                    None             => return None,
-                    Some(('-', ""))  => return None,
+                    None             => return Err(PFE { kind: Empty }),
+                    Some(('-', ""))  => return Err(PFE { kind: Empty }),
                     Some(('-', src)) => (false, src),
                     Some((_, _))     => (true,  src),
                 };
@@ -1524,7 +1533,7 @@ macro_rules! from_str_radix_float_impl {
                 let mut exp_info = None::<(char, uint)>;
 
                 // Parse the integer part of the significand
-                for (i, c) in cs {
+                for (i, c) in cs.by_ref() {
                     match c.to_digit(radix) {
                         Some(digit) => {
                             // shift significand one digit left
@@ -1541,15 +1550,15 @@ macro_rules! from_str_radix_float_impl {
                             // if we've not seen any non-zero digits.
                             if prev_sig != 0.0 {
                                 if is_positive && sig <= prev_sig
-                                    { return Some(Float::infinity()); }
+                                    { return Ok(Float::infinity()); }
                                 if !is_positive && sig >= prev_sig
-                                    { return Some(Float::neg_infinity()); }
+                                    { return Ok(Float::neg_infinity()); }
 
                                 // Detect overflow by reversing the shift-and-add process
                                 if is_positive && (prev_sig != (sig - digit as $T) / radix as $T)
-                                    { return Some(Float::infinity()); }
+                                    { return Ok(Float::infinity()); }
                                 if !is_positive && (prev_sig != (sig + digit as $T) / radix as $T)
-                                    { return Some(Float::neg_infinity()); }
+                                    { return Ok(Float::neg_infinity()); }
                             }
                             prev_sig = sig;
                         },
@@ -1562,7 +1571,7 @@ macro_rules! from_str_radix_float_impl {
                                 break;  // start of fractional part
                             },
                             _ => {
-                                return None;
+                                return Err(PFE { kind: Invalid });
                             },
                         },
                     }
@@ -1572,7 +1581,7 @@ macro_rules! from_str_radix_float_impl {
                 // part of the significand
                 if exp_info.is_none() {
                     let mut power = 1.0;
-                    for (i, c) in cs {
+                    for (i, c) in cs.by_ref() {
                         match c.to_digit(radix) {
                             Some(digit) => {
                                 // Decrease power one order of magnitude
@@ -1585,9 +1594,9 @@ macro_rules! from_str_radix_float_impl {
                                 };
                                 // Detect overflow by comparing to last value
                                 if is_positive && sig < prev_sig
-                                    { return Some(Float::infinity()); }
+                                    { return Ok(Float::infinity()); }
                                 if !is_positive && sig > prev_sig
-                                    { return Some(Float::neg_infinity()); }
+                                    { return Ok(Float::neg_infinity()); }
                                 prev_sig = sig;
                             },
                             None => match c {
@@ -1596,7 +1605,7 @@ macro_rules! from_str_radix_float_impl {
                                     break; // start of exponent
                                 },
                                 _ => {
-                                    return None; // invalid number
+                                    return Err(PFE { kind: Invalid });
                                 },
                             },
                         }
@@ -1609,7 +1618,7 @@ macro_rules! from_str_radix_float_impl {
                         let base = match c {
                             'E' | 'e' if radix == 10 => 10.0,
                             'P' | 'p' if radix == 16 => 2.0,
-                            _ => return None,
+                            _ => return Err(PFE { kind: Invalid }),
                         };
 
                         // Parse the exponent as decimal integer
@@ -1618,19 +1627,19 @@ macro_rules! from_str_radix_float_impl {
                             Some(('-', src)) => (false, src.parse::<uint>()),
                             Some(('+', src)) => (true,  src.parse::<uint>()),
                             Some((_, _))     => (true,  src.parse::<uint>()),
-                            None             => return None,
+                            None             => return Err(PFE { kind: Invalid }),
                         };
 
                         match (is_positive, exp) {
-                            (true,  Some(exp)) => base.powi(exp as i32),
-                            (false, Some(exp)) => 1.0 / base.powi(exp as i32),
-                            (_, None)          => return None,
+                            (true,  Ok(exp)) => base.powi(exp as i32),
+                            (false, Ok(exp)) => 1.0 / base.powi(exp as i32),
+                            (_, Err(_))      => return Err(PFE { kind: Invalid }),
                         }
                     },
                     None => 1.0, // no exponent
                 };
 
-                Some(sig * exp)
+                Ok(sig * exp)
             }
         }
     }
@@ -1640,19 +1649,22 @@ from_str_radix_float_impl! { f64 }
 
 macro_rules! from_str_radix_int_impl {
     ($T:ty) => {
-        #[unstable(feature = "core",
-                   reason = "might need to return Result")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStr for $T {
+            type Err = ParseIntError;
             #[inline]
-            fn from_str(src: &str) -> Option<$T> {
+            fn from_str(src: &str) -> Result<$T, ParseIntError> {
                 from_str_radix(src, 10)
             }
         }
 
-        #[unstable(feature = "core",
-                   reason = "might need to return Result")]
+        #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStrRadix for $T {
-            fn from_str_radix(src: &str, radix: uint) -> Option<$T> {
+            type Err = ParseIntError;
+            fn from_str_radix(src: &str, radix: uint)
+                              -> Result<$T, ParseIntError> {
+                use self::IntErrorKind::*;
+                use self::ParseIntError as PIE;
                 assert!(radix >= 2 && radix <= 36,
                        "from_str_radix_int: must lie in the range `[2, 36]` - found {}",
                        radix);
@@ -1666,18 +1678,18 @@ macro_rules! from_str_radix_int_impl {
                         for c in src.chars() {
                             let x = match c.to_digit(radix) {
                                 Some(x) => x,
-                                None => return None,
+                                None => return Err(PIE { kind: InvalidDigit }),
                             };
                             result = match result.checked_mul(radix as $T) {
                                 Some(result) => result,
-                                None => return None,
+                                None => return Err(PIE { kind: Underflow }),
                             };
                             result = match result.checked_sub(x as $T) {
                                 Some(result) => result,
-                                None => return None,
+                                None => return Err(PIE { kind: Underflow }),
                             };
                         }
-                        Some(result)
+                        Ok(result)
                     },
                     Some((_, _)) => {
                         // The number is signed
@@ -1685,20 +1697,20 @@ macro_rules! from_str_radix_int_impl {
                         for c in src.chars() {
                             let x = match c.to_digit(radix) {
                                 Some(x) => x,
-                                None => return None,
+                                None => return Err(PIE { kind: InvalidDigit }),
                             };
                             result = match result.checked_mul(radix as $T) {
                                 Some(result) => result,
-                                None => return None,
+                                None => return Err(PIE { kind: Overflow }),
                             };
                             result = match result.checked_add(x as $T) {
                                 Some(result) => result,
-                                None => return None,
+                                None => return Err(PIE { kind: Overflow }),
                             };
                         }
-                        Some(result)
+                        Ok(result)
                     },
-                    None => None,
+                    None => Err(ParseIntError { kind: Empty }),
                 }
             }
         }
@@ -1714,3 +1726,63 @@ from_str_radix_int_impl! { u8 }
 from_str_radix_int_impl! { u16 }
 from_str_radix_int_impl! { u32 }
 from_str_radix_int_impl! { u64 }
+
+/// An error which can be returned when parsing an integer.
+#[derive(Debug, Clone, PartialEq)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ParseIntError { kind: IntErrorKind }
+
+#[derive(Debug, Clone, PartialEq)]
+enum IntErrorKind {
+    Empty,
+    InvalidDigit,
+    Overflow,
+    Underflow,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for ParseIntError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseIntError {
+    fn description(&self) -> &str {
+        match self.kind {
+            IntErrorKind::Empty => "cannot parse integer from empty string",
+            IntErrorKind::InvalidDigit => "invalid digit found in string",
+            IntErrorKind::Overflow => "number too large to fit in target type",
+            IntErrorKind::Underflow => "number too small to fit in target type",
+        }
+    }
+}
+
+/// An error which can be returned when parsing a float.
+#[derive(Debug, Clone, PartialEq)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ParseFloatError { kind: FloatErrorKind }
+
+#[derive(Debug, Clone, PartialEq)]
+enum FloatErrorKind {
+    Empty,
+    Invalid,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for ParseFloatError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        self.description().fmt(f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseFloatError {
+    fn description(&self) -> &str {
+        match self.kind {
+            FloatErrorKind::Empty => "cannot parse float from empty string",
+            FloatErrorKind::Invalid => "invalid float literal",
+        }
+    }
+}

@@ -49,7 +49,6 @@
 
 #![crate_name = "core"]
 #![unstable(feature = "core")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -58,13 +57,16 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![no_std]
-#![allow(unknown_features, raw_pointer_derive)]
-#![allow(unknown_features)] #![feature(intrinsics, lang_items)]
-#![feature(simd, unsafe_destructor, slicing_syntax)]
-#![feature(unboxed_closures)]
-#![allow(unknown_features)] #![feature(int_uint)]
-#![feature(on_unimplemented)]
+#![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
+#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
+
+#![feature(int_uint)]
+#![feature(intrinsics, lang_items)]
+#![feature(on_unimplemented)]
+#![feature(simd, unsafe_destructor, slicing_syntax)]
+#![feature(staged_api)]
+#![feature(unboxed_closures)]
 
 #[macro_use]
 mod macros;
@@ -158,4 +160,6 @@ mod std {
     pub use marker;
     pub use ops;
     pub use option;
+    // for-loops
+    pub use iter;
 }

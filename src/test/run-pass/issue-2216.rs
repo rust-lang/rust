@@ -9,12 +9,12 @@
 // except according to those terms.
 
 pub fn main() {
-    let mut x = 0i;
+    let mut x = 0;
 
     'foo: loop {
         'bar: loop {
             'quux: loop {
-                if 1i == 2 {
+                if 1 == 2 {
                     break 'foo;
                 }
                 else {

@@ -623,7 +623,7 @@ pub fn compare_simd_types<'blk, 'tcx>(
                     size: uint,
                     op: ast::BinOp)
                     -> ValueRef {
-    match t.sty {
+    let cmp = match t.sty {
         ty::ty_float(_) => {
             // The comparison operators for floating point vectors are challenging.
             // LLVM outputs a `< size x i1 >`, but if we perform a sign extension
@@ -632,25 +632,32 @@ pub fn compare_simd_types<'blk, 'tcx>(
             cx.sess().bug("compare_simd_types: comparison operators \
                            not supported for floating point SIMD types")
         },
-        ty::ty_uint(_) | ty::ty_int(_) => {
-            let cmp = match op.node {
-                ast::BiEq => llvm::IntEQ,
-                ast::BiNe => llvm::IntNE,
-                ast::BiLt => llvm::IntSLT,
-                ast::BiLe => llvm::IntSLE,
-                ast::BiGt => llvm::IntSGT,
-                ast::BiGe => llvm::IntSGE,
-                _ => cx.sess().bug("compare_simd_types: must be a comparison operator"),
-            };
-            let return_ty = Type::vector(&type_of(cx.ccx(), t), size as u64);
-            // LLVM outputs an `< size x i1 >`, so we need to perform a sign extension
-            // to get the correctly sized type. This will compile to a single instruction
-            // once the IR is converted to assembly if the SIMD instruction is supported
-            // by the target architecture.
-            SExt(cx, ICmp(cx, cmp, lhs, rhs), return_ty)
+        ty::ty_uint(_) => match op.node {
+            ast::BiEq => llvm::IntEQ,
+            ast::BiNe => llvm::IntNE,
+            ast::BiLt => llvm::IntULT,
+            ast::BiLe => llvm::IntULE,
+            ast::BiGt => llvm::IntUGT,
+            ast::BiGe => llvm::IntUGE,
+            _ => cx.sess().bug("compare_simd_types: must be a comparison operator"),
+        },
+        ty::ty_int(_) => match op.node {
+            ast::BiEq => llvm::IntEQ,
+            ast::BiNe => llvm::IntNE,
+            ast::BiLt => llvm::IntSLT,
+            ast::BiLe => llvm::IntSLE,
+            ast::BiGt => llvm::IntSGT,
+            ast::BiGe => llvm::IntSGE,
+            _ => cx.sess().bug("compare_simd_types: must be a comparison operator"),
         },
         _ => cx.sess().bug("compare_simd_types: invalid SIMD type"),
-    }
+    };
+    let return_ty = Type::vector(&type_of(cx.ccx(), t), size as u64);
+    // LLVM outputs an `< size x i1 >`, so we need to perform a sign extension
+    // to get the correctly sized type. This will compile to a single instruction
+    // once the IR is converted to assembly if the SIMD instruction is supported
+    // by the target architecture.
+    SExt(cx, ICmp(cx, cmp, lhs, rhs), return_ty)
 }
 
 // Iterates through the elements of a structural type.

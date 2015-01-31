@@ -24,7 +24,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt::Debug;
 use core::hash::{Hash, Hasher};
-use core::iter::{Map, FromIterator};
+use core::iter::{Map, FromIterator, IntoIterator};
 use core::ops::{Index, IndexMut};
 use core::{iter, fmt, mem};
 use Bound::{self, Included, Excluded, Unbounded};
@@ -475,6 +475,30 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 Continue(new_stack) => stack = new_stack
             }
         }
+    }
+}
+
+impl<K, V> IntoIterator for BTreeMap<K, V> {
+    type Iter = IntoIter<K, V>;
+
+    fn into_iter(self) -> IntoIter<K, V> {
+        self.into_iter()
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
+    type Iter = Iter<'a, K, V>;
+
+    fn into_iter(self) -> Iter<'a, K, V> {
+        self.iter()
+    }
+}
+
+impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
+    type Iter = IterMut<'a, K, V>;
+
+    fn into_iter(mut self) -> IterMut<'a, K, V> {
+        self.iter_mut()
     }
 }
 
@@ -1782,7 +1806,7 @@ mod test {
 
     #[test]
     fn test_entry(){
-        let xs = [(1i, 10i), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
+        let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
         let mut map: BTreeMap<int, int> = xs.iter().map(|&x| x).collect();
 

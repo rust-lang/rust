@@ -24,9 +24,9 @@ impl it for t {
 }
 
 pub fn main() {
-  //    let x = ({a: 4i} as it);
-  //   let y = box ({a: 4i});
-  //    let z = box ({a: 4i} as it);
+  //    let x = ({a: 4} as it);
+  //   let y = box ({a: 4});
+  //    let z = box ({a: 4} as it);
   //    let z = box ({a: true} as it);
     let z = box() (box true as Box<it>);
     //  x.f();

@@ -182,7 +182,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
 fn main() {
     let n = std::os::args().as_slice()
         .get(1)
-        .and_then(|arg| arg.parse())
+        .and_then(|arg| arg.parse().ok())
         .unwrap_or(2i32);
 
     let (checksum, maxflips) = fannkuch(n);

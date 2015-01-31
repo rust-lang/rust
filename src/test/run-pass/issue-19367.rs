@@ -16,7 +16,7 @@ struct S {
 // on field of struct or tuple which we reassign in the match body.
 
 fn main() {
-    let mut a = (0i, Some("right".to_string()));
+    let mut a = (0, Some("right".to_string()));
     let b = match a.1 {
         Some(v) => {
             a.1 = Some("wrong".to_string());

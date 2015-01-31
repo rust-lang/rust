@@ -274,7 +274,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![feature(slicing_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
+#![feature(int_uint)]
 #![feature(collections)]
 #![feature(core)]
 #![feature(io)]
@@ -362,19 +362,19 @@ impl<'a> Id<'a> {
     ///
     /// Passing an invalid string (containing spaces, brackets,
     /// quotes, ...) will return an empty `Err` value.
-    pub fn new<Name: IntoCow<'a, String, str>>(name: Name) -> Option<Id<'a>> {
+    pub fn new<Name: IntoCow<'a, String, str>>(name: Name) -> Result<Id<'a>, ()> {
         let name = name.into_cow();
         {
             let mut chars = name.chars();
             match chars.next() {
                 Some(c) if is_letter_or_underscore(c) => { ; },
-                _ => return None
+                _ => return Err(())
             }
             if !chars.all(is_constituent) {
-                return None
+                return Err(())
             }
         }
-        return Some(Id{ name: name });
+        return Ok(Id{ name: name });
 
         fn is_letter_or_underscore(c: char) -> bool {
             in_range('a', c, 'z') || in_range('A', c, 'Z') || c == '_'
@@ -878,8 +878,8 @@ r#"digraph syntax_tree {
     fn simple_id_construction() {
         let id1 = Id::new("hello");
         match id1 {
-            Some(_) => {;},
-            None => panic!("'hello' is not a valid value for id anymore")
+            Ok(_) => {;},
+            Err(..) => panic!("'hello' is not a valid value for id anymore")
         }
     }
 
@@ -887,8 +887,8 @@ r#"digraph syntax_tree {
     fn badly_formatted_id() {
         let id2 = Id::new("Weird { struct : ure } !!!");
         match id2 {
-            Some(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
-            None => {;}
+            Ok(_) => panic!("graphviz id suddenly allows spaces, brackets and stuff"),
+            Err(..) => {;}
         }
     }
 }

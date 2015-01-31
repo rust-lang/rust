@@ -56,6 +56,10 @@ pub fn stack_guard() -> uint {
 
 pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
     THREAD_INFO.with(|c| assert!(c.borrow().is_none()));
+    match thread.name() {
+        Some(name) => unsafe { ::sys::thread::set_name(name.as_slice()); },
+        None => {}
+    }
     THREAD_INFO.with(move |c| *c.borrow_mut() = Some(ThreadInfo{
         stack_bounds: stack_bounds,
         stack_guard: stack_guard,
