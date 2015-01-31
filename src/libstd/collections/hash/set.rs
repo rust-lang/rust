@@ -18,7 +18,9 @@ use default::Default;
 use fmt::Debug;
 use fmt;
 use hash::{self, Hash};
-use iter::{Iterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend};
+use iter::{
+    Iterator, IntoIterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend,
+};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
@@ -831,6 +833,30 @@ pub struct SymmetricDifference<'a, T: 'a, S: 'a> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>
+}
+
+impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
+    where T: Eq + Hash<H>,
+          S: HashState<Hasher=H>,
+          H: hash::Hasher<Output=u64>
+{
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<T, S, H> IntoIterator for HashSet<T, S>
+    where T: Eq + Hash<H>,
+          S: HashState<Hasher=H>,
+          H: hash::Hasher<Output=u64>
+{
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
