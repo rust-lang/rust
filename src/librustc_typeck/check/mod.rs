@@ -493,8 +493,9 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_sig,
                                decl, id, body, &inh);
 
-            vtable::select_all_fcx_obligations_or_error(&fcx);
+            vtable::select_all_fcx_obligations_and_apply_defaults(&fcx);
             upvar::closure_analyze_fn(&fcx, id, decl, body);
+            vtable::select_all_fcx_obligations_or_error(&fcx);
             regionck::regionck_fn(&fcx, id, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
