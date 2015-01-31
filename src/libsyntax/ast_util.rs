@@ -102,6 +102,20 @@ pub fn is_by_value_binop(b: BinOp_) -> bool {
     }
 }
 
+/// Returns `true` if the binary operator is symmetric in the sense that LHS
+/// and RHS must have the same type. So the type of LHS can serve as an hint
+/// for the type of RHS and vice versa.
+pub fn is_symmetric_binop(b: BinOp_) -> bool {
+    match b {
+        BiAdd | BiSub | BiMul | BiDiv | BiRem |
+        BiBitXor | BiBitAnd | BiBitOr |
+        BiEq | BiLt | BiLe | BiNe | BiGt | BiGe => {
+            true
+        }
+        _ => false
+    }
+}
+
 /// Returns `true` if the unary operator takes its argument by value
 pub fn is_by_value_unop(u: UnOp) -> bool {
     match u {
