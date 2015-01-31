@@ -16,7 +16,7 @@ impl<A> vec_monad<A> for Vec<A> {
     fn bind<B, F>(&self, mut f: F) where F: FnMut(A) -> Vec<B> {
         let mut r = panic!();
         for elt in self.iter() { r = r + f(*elt); }
-        //~^ ERROR the type of this value must be known
+        //~^ ERROR binary operation `+` cannot be applied to type `collections::vec::Vec<B>`
    }
 }
 fn main() {
