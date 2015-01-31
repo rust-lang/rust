@@ -42,8 +42,8 @@ pub mod generic;
 pub fn expand_deprecated_deriving(cx: &mut ExtCtxt,
                                   span: Span,
                                   _: &MetaItem,
-                                  _: &Item,
-                                  _: Box<FnMut(P<Item>)>) {
+                                  _: &Annotatable,
+                                  _: Box<FnMut(Annotatable)>) {
     cx.span_err(span, "`deriving` has been renamed to `derive`");
 }
 

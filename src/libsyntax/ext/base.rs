@@ -29,7 +29,8 @@ use fold::Folder;
 use std::collections::HashMap;
 use std::rc::Rc;
 
-#[deprecated="Replaced by MultiItemDecorator"]
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
 pub trait ItemDecorator {
     fn expand(&self,
               ecx: &mut ExtCtxt,
@@ -40,7 +41,8 @@ pub trait ItemDecorator {
 }
 
 #[allow(deprecated)]
-#[deprecated="Replaced by MultiItemDecorator"]
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemDecorator")]
 impl<F> ItemDecorator for F
     where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, &ast::Item, Box<FnMut(P<ast::Item>)>)
 {
@@ -54,7 +56,8 @@ impl<F> ItemDecorator for F
     }
 }
 
-#[deprecated="Replaced by MultiItemModifier"]
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
 pub trait ItemModifier {
     fn expand(&self,
               ecx: &mut ExtCtxt,
@@ -65,7 +68,8 @@ pub trait ItemModifier {
 }
 
 #[allow(deprecated)]
-#[deprecated="Replaced by MultiItemModifier"]
+#[unstable(feature = "rustc_private")]
+#[deprecated(since = "1.0.0", reason = "replaced by MultiItemModifier")]
 impl<F> ItemModifier for F
     where F : Fn(&mut ExtCtxt, Span, &ast::MetaItem, P<ast::Item>) -> P<ast::Item>
 {
@@ -423,7 +427,8 @@ impl MacResult for DummyResult {
 pub enum SyntaxExtension {
     /// A syntax extension that is attached to an item and creates new items
     /// based upon it.
-    #[deprecated="Replaced by MultiDecorator"]
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0", reason = "replaced by MultiDecorator")]
     Decorator(Box<ItemDecorator + 'static>),
 
     /// A syntax extension that is attached to an item and creates new items
@@ -434,7 +439,8 @@ pub enum SyntaxExtension {
 
     /// A syntax extension that is attached to an item and modifies it
     /// in-place.
-    #[deprecated="Replaced by MultiModifier"]
+    #[unstable(feature = "rustc_private")]
+    #[deprecated(since = "1.0.0", reason = "replaced by MultiModifier")]
     Modifier(Box<ItemModifier + 'static>),
 
     /// A syntax extension that is attached to an item and modifies it
@@ -504,7 +510,7 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("derive"),
                             MultiDecorator(box ext::deriving::expand_meta_derive));
     syntax_expanders.insert(intern("deriving"),
-                            Decorator(box ext::deriving::expand_deprecated_deriving));
+                            MultiDecorator(box ext::deriving::expand_deprecated_deriving));
 
     if ecfg.enable_quotes {
         // Quasi-quoting expanders
