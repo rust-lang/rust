@@ -413,10 +413,6 @@ pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;
 pub use core::fmt::{ArgumentV1, Arguments, write, radix, Radix, RadixFmt};
 
-#[doc(hidden)]
-#[cfg(stage0)]
-pub use core::fmt::{argument, argumentuint};
-
 /// The format function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
 ///

@@ -120,7 +120,7 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![cfg_attr(not(stage0), feature(macro_reexport))]
+#![feature(macro_reexport)]
 #![cfg_attr(test, feature(test))]
 
 // Don't link to std. We are std.

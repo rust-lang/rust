@@ -26,9 +26,6 @@
 
 // Reexported core operators
 pub use marker::{Copy, Send, Sized, Sync};
-#[cfg(stage0)]
-pub use ops::{Drop, Fn, FnMut, FnOnce, FullRange};
-#[cfg(not(stage0))]
 pub use ops::{Drop, Fn, FnMut, FnOnce};
 
 // Reexported functions

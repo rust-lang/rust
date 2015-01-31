@@ -61,11 +61,6 @@ use core::clone::Clone;
 use core::iter::AdditiveIterator;
 use core::iter::{Iterator, IteratorExt};
 use core::ops::Index;
-#[cfg(stage0)]
-use core::ops::FullRange as RangeFull;
-#[cfg(stage0)]
-use core::ops::FullRange;
-#[cfg(not(stage0))]
 use core::ops::RangeFull;
 use core::option::Option::{self, Some, None};
 use core::result::Result;
