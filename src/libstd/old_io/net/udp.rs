@@ -193,7 +193,7 @@ mod test {
     #[cfg_attr(any(windows, target_os = "android"), ignore)]
     #[test]
     fn bind_error() {
-        let addr = SocketAddr { ip: Ipv4Addr(0, 0, 0, 0), port: 1 };
+        let addr = SocketAddr { ip: IpAddr::new_v4(0, 0, 0, 0), port: 1 };
         match UdpSocket::bind(addr) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, PermissionDenied),

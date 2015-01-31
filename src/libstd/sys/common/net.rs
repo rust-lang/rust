@@ -15,7 +15,7 @@ use self::InAddr::*;
 use ffi::CString;
 use ffi;
 use old_io::net::addrinfo;
-use old_io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
+use old_io::net::ip::{SocketAddr, IpAddr};
 use old_io::{IoResult, IoError};
 use libc::{self, c_char, c_int};
 use mem;
@@ -56,7 +56,8 @@ pub enum InAddr {
 
 pub fn ip_to_inaddr(ip: IpAddr) -> InAddr {
     match ip {
-        Ipv4Addr(a, b, c, d) => {
+        IpAddr::V4(v4) => {
+            let &[a, b, c, d] = v4.octets();
             let ip = ((a as u32) << 24) |
                      ((b as u32) << 16) |
                      ((c as u32) <<  8) |
@@ -65,7 +66,8 @@ pub fn ip_to_inaddr(ip: IpAddr) -> InAddr {
                 s_addr: Int::from_be(ip)
             })
         }
-        Ipv6Addr(a, b, c, d, e, f, g, h) => {
+        IpAddr::V6(v6) => {
+            let &[a, b, c, d, e, f, g, h] = v6.segments();
             In6Addr(libc::in6_addr {
                 s6_addr: [
                     htons(a),
@@ -109,8 +111,8 @@ pub fn addr_to_sockaddr(addr: SocketAddr,
 pub fn socket(addr: SocketAddr, ty: libc::c_int) -> IoResult<sock_t> {
     unsafe {
         let fam = match addr.ip {
-            Ipv4Addr(..) => libc::AF_INET,
-            Ipv6Addr(..) => libc::AF_INET6,
+            IpAddr::V4(..) => libc::AF_INET,
+            IpAddr::V6(..) => libc::AF_INET6,
         };
         match libc::socket(fam, ty, 0) {
             -1 => Err(last_net_error()),
@@ -184,7 +186,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let c = (ip >>  8) as u8;
             let d = (ip >>  0) as u8;
             Ok(SocketAddr {
-                ip: Ipv4Addr(a, b, c, d),
+                ip: IpAddr::new_v4(a, b, c, d),
                 port: ntohs(storage.sin_port),
             })
         }
@@ -202,7 +204,7 @@ pub fn sockaddr_to_addr(storage: &libc::sockaddr_storage,
             let g = ntohs(storage.sin6_addr.s6_addr[6]);
             let h = ntohs(storage.sin6_addr.s6_addr[7]);
             Ok(SocketAddr {
-                ip: Ipv6Addr(a, b, c, d, e, f, g, h),
+                ip: IpAddr::new_v6(a, b, c, d, e, f, g, h),
                 port: ntohs(storage.sin6_port),
             })
         }
@@ -907,20 +909,20 @@ impl UdpSocket {
 
     pub fn join_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
         match multi {
-            Ipv4Addr(..) => {
+            IpAddr::V4(..) => {
                 self.set_membership(multi, libc::IP_ADD_MEMBERSHIP)
             }
-            Ipv6Addr(..) => {
+            IpAddr::V6(..) => {
                 self.set_membership(multi, libc::IPV6_ADD_MEMBERSHIP)
             }
         }
     }
     pub fn leave_multicast(&mut self, multi: IpAddr) -> IoResult<()> {
         match multi {
-            Ipv4Addr(..) => {
+            IpAddr::V4(..) => {
                 self.set_membership(multi, libc::IP_DROP_MEMBERSHIP)
             }
-            Ipv6Addr(..) => {
+            IpAddr::V6(..) => {
                 self.set_membership(multi, libc::IPV6_DROP_MEMBERSHIP)
             }
         }
