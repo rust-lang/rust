@@ -2815,11 +2815,19 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             BinopAssignment => PreferMutLvalue,
             SimpleBinop => NoPreference
         };
-        check_expr_with_lvalue_pref(fcx, &*lhs, lvalue_pref);
+        check_expr_with_lvalue_pref(fcx, lhs, lvalue_pref);
 
         // Callee does bot / err checking
-        let lhs_t = structurally_resolved_type(fcx, lhs.span,
-                                               fcx.expr_ty(&*lhs));
+        let lhs_t =
+            structurally_resolve_type_or_else(fcx, lhs.span, fcx.expr_ty(lhs), || {
+                if ast_util::is_symmetric_binop(op.node) {
+                    // Try RHS first
+                    check_expr(fcx, &**rhs);
+                    fcx.expr_ty(&**rhs)
+                } else {
+                    fcx.tcx().types.err
+                }
+            });
 
         if ty::type_is_integral(lhs_t) && ast_util::is_shift_binop(op.node) {
             // Shift is a special case: rhs must be uint, no matter what lhs is
@@ -5071,6 +5079,33 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     }
 }
 
+fn structurally_resolve_type_or_else<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
+                                                  sp: Span,
+                                                  ty: Ty<'tcx>,
+                                                  f: F) -> Ty<'tcx>
+    where F: Fn() -> Ty<'tcx>
+{
+    let mut ty = fcx.resolve_type_vars_if_possible(ty);
+
+    if ty::type_is_ty_var(ty) {
+        let alternative = f();
+
+        // If not, error.
+        if ty::type_is_ty_var(alternative) || ty::type_is_error(alternative) {
+            fcx.type_error_message(sp, |_actual| {
+                "the type of this value must be known in this context".to_string()
+            }, ty, None);
+            demand::suptype(fcx, sp, fcx.tcx().types.err, ty);
+            ty = fcx.tcx().types.err;
+        } else {
+            demand::suptype(fcx, sp, alternative, ty);
+            ty = alternative;
+        }
+    }
+
+    ty
+}
+
 // Resolves `typ` by a single level if `typ` is a type variable.  If no
 // resolution is possible, then an error is reported.
 pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -5078,19 +5113,9 @@ pub fn structurally_resolved_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                             ty: Ty<'tcx>)
                                             -> Ty<'tcx>
 {
-    let mut ty = fcx.resolve_type_vars_if_possible(ty);
-
-    // If not, error.
-    if ty::type_is_ty_var(ty) {
-        fcx.type_error_message(sp, |_actual| {
-            "the type of this value must be known in this \
-             context".to_string()
-        }, ty, None);
-        demand::suptype(fcx, sp, fcx.tcx().types.err, ty);
-        ty = fcx.tcx().types.err;
-    }
-
-    ty
+    structurally_resolve_type_or_else(fcx, sp, ty, || {
+        fcx.tcx().types.err
+    })
 }
 
 // Returns true if b contains a break that can exit from b
