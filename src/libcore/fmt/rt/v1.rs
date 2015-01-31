@@ -16,19 +16,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-#[cfg(stage0)] pub use self::Position::*;
-
-#[cfg(stage0)] pub use self::Alignment::Left as AlignLeft;
-#[cfg(stage0)] pub use self::Alignment::Right as AlignRight;
-#[cfg(stage0)] pub use self::Alignment::Center as AlignCenter;
-#[cfg(stage0)] pub use self::Alignment::Unknown as AlignUnknown;
-#[cfg(stage0)] pub use self::Count::Is as CountIs;
-#[cfg(stage0)] pub use self::Count::Implied as CountImplied;
-#[cfg(stage0)] pub use self::Count::Param as CountIsParam;
-#[cfg(stage0)] pub use self::Count::NextParam as CountIsNextParam;
-#[cfg(stage0)] pub use self::Position::Next as ArgumentNext;
-#[cfg(stage0)] pub use self::Position::At as ArgumentIs;
-
 #[derive(Copy)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Argument {

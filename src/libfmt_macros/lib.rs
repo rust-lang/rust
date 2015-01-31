@@ -24,7 +24,6 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![cfg_attr(stage0, feature(core))]
 #![feature(int_uint)]
 #![feature(slicing_syntax)]
 #![feature(staged_api)]

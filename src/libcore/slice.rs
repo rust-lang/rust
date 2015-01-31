@@ -43,9 +43,6 @@ use default::Default;
 use iter::*;
 use num::Int;
 use ops::{FnMut, self, Index};
-#[cfg(stage0)]
-use ops::FullRange as RangeFull;
-#[cfg(not(stage0))]
 use ops::RangeFull;
 use option::Option;
 use option::Option::{None, Some};
@@ -769,16 +766,6 @@ impl<'a, T> ops::Index<ops::RangeFrom<uint>> for Iter<'a, T> {
     }
 }
 
-#[cfg(stage0)]
-#[unstable(feature = "core")]
-impl<'a, T> ops::Index<ops::FullRange> for Iter<'a, T> {
-    type Output = [T];
-    #[inline]
-    fn index(&self, _index: &ops::FullRange) -> &[T] {
-        self.as_slice()
-    }
-}
-#[cfg(not(stage0))]
 #[unstable(feature = "core")]
 impl<'a, T> ops::Index<RangeFull> for Iter<'a, T> {
     type Output = [T];
