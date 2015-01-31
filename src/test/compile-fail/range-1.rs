@@ -12,7 +12,7 @@
 
 pub fn main() {
     // Mixed types.
-    let _ = 0us..10is;
+    let _ = 0u32..10i32;
     //~^ ERROR start and end of range have incompatible types
 
     // Float => does not implement iterator.
@@ -23,7 +23,7 @@ pub fn main() {
     // FIXME(#21528) not fulfilled obligation error should be reported once, not thrice
 
     // Unsized type.
-    let arr: &[_] = &[1us, 2, 3];
+    let arr: &[_] = &[1u32, 2, 3];
     let range = *arr..;
     //~^ ERROR the trait `core::marker::Sized` is not implemented
 }

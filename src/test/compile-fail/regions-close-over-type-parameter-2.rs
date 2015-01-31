@@ -29,7 +29,7 @@ fn main() {
     // ~Repeat<&'blk isize> where blk is the lifetime of the block below.
 
     let _ = {
-        let tmp0 = 3is;
+        let tmp0 = 3;
         let tmp1 = &tmp0; //~ ERROR `tmp0` does not live long enough
         repeater3(tmp1)
     };

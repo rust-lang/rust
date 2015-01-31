@@ -30,6 +30,6 @@ fn make_shower<T>(x: T) -> Debuger<T> {
 }
 
 pub fn main() {
-    let show3 = make_shower(3is);
+    let show3 = make_shower(3);
     show3();
 }

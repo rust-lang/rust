@@ -14,7 +14,7 @@ use std::cell::RefCell;
 fn bar<T: Sync>(_: T) {}
 
 fn main() {
-    let x = Rc::new(RefCell::new(5is));
+    let x = Rc::new(RefCell::new(5));
     bar(x);
     //~^ ERROR the trait `core::marker::Sync` is not implemented
 }

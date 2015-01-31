@@ -9,10 +9,10 @@
 // except according to those terms.
 
 fn main() {
-    let x = if true { 10is } else { 10us };
+    let x = if true { 10i32 } else { 10u32 };
     //~^ ERROR if and else have incompatible types
-    //~| expected `isize`
-    //~| found `usize`
-    //~| expected isize
-    //~| found usize
+    //~| expected `i32`
+    //~| found `u32`
+    //~| expected i32
+    //~| found u32
 }

@@ -29,7 +29,7 @@ fn main() {
     //~| expected u16
     //~| found i32
 
-    let a = 3is;
+    let a = 3;
 
     fn identity_i(n: isize) -> isize { n }
 

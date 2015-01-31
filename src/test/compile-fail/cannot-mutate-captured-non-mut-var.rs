@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn main() {
-    let x = 1is;
+    let x = 1;
     move|:| { x = 2; };
     //~^ ERROR: cannot assign to immutable captured outer variable
 

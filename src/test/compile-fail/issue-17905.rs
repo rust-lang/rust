@@ -25,6 +25,6 @@ impl Pair<
 }
 
 fn main() {
-    let result = &Pair("shane", 1is);
+    let result = &Pair("shane", 1);
     result.say();
 }

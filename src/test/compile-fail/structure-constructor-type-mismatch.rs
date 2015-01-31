@@ -26,39 +26,39 @@ fn main() {
     let pt = PointF {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found isize
-        x: 1is,
-        y: 2is,
+        //~| found i32
+        x: 1i32,
+        y: 2i32,
     };
 
     let pt2 = Point::<f32> {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found isize
-        x: 3is,
-        y: 4is,
+        //~| found i32
+        x: 3i32,
+        y: 4i32,
     };
 
     let pair = PairF {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found isize
-        x: 5is,
-        y: 6is,
+        //~| found i32
+        x: 5i32,
+        y: 6i32,
     };
 
-    let pair2 = PairF::<isize> {
+    let pair2 = PairF::<i32> {
         //~^ ERROR structure constructor specifies a structure of type
         //~| expected f32
-        //~| found isize
-        x: 7is,
-        y: 8is,
+        //~| found i32
+        x: 7i32,
+        y: 8i32,
     };
 
-    let pt3 = PointF::<isize> {
+    let pt3 = PointF::<i32> {
         //~^ ERROR wrong number of type arguments
-        x: 9is,
-        y: 10is,
+        x: 9i32,
+        y: 10i32,
     };
 }
 

@@ -11,7 +11,7 @@
 fn test(cond: bool) {
     let v;
     while cond {
-        v = 3is;
+        v = 3;
         break;
     }
     println!("{}", v); //~ ERROR use of possibly uninitialized variable: `v`

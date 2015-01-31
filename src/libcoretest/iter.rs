@@ -375,7 +375,7 @@ fn test_iterator_size_hint() {
     assert_eq!(c.clone().enumerate().size_hint(), (uint::MAX, None));
     assert_eq!(c.clone().chain(vi.clone().map(|&i| i)).size_hint(), (uint::MAX, None));
     assert_eq!(c.clone().zip(vi.clone()).size_hint(), (10, Some(10)));
-    assert_eq!(c.clone().scan(0i, |_,_| Some(0)).size_hint(), (0, None));
+    assert_eq!(c.clone().scan(0, |_,_| Some(0)).size_hint(), (0, None));
     assert_eq!(c.clone().filter(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().map(|_| 0).size_hint(), (uint::MAX, None));
     assert_eq!(c.filter_map(|_| Some(0)).size_hint(), (0, None));
@@ -389,7 +389,7 @@ fn test_iterator_size_hint() {
     assert_eq!(vi.clone().enumerate().size_hint(), (10, Some(10)));
     assert_eq!(vi.clone().chain(v2.iter()).size_hint(), (13, Some(13)));
     assert_eq!(vi.clone().zip(v2.iter()).size_hint(), (3, Some(3)));
-    assert_eq!(vi.clone().scan(0i, |_,_| Some(0)).size_hint(), (0, Some(10)));
+    assert_eq!(vi.clone().scan(0, |_,_| Some(0)).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().filter(|_| false).size_hint(), (0, Some(10)));
     assert_eq!(vi.clone().map(|&i| i+1).size_hint(), (10, Some(10)));
     assert_eq!(vi.filter_map(|_| Some(0)).size_hint(), (0, Some(10)));

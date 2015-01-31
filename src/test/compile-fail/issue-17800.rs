@@ -14,8 +14,8 @@ enum MyOption<T> {
 }
 
 fn main() {
-    match MyOption::MySome(42is) {
-        MyOption::MySome { x: 42is } => (),
+    match MyOption::MySome(42) {
+        MyOption::MySome { x: 42 } => (),
         //~^ ERROR `MyOption::MySome` does not name a struct or a struct variant
         _ => (),
     }

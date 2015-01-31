@@ -50,7 +50,7 @@ fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
 
     myflate::deflate_bytes(&[]);
 
-    let x = (3is, 4us);
+    let x = (3, 4us);
     let y = x.1;
 }
 

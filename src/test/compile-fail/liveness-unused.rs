@@ -31,40 +31,40 @@ fn f1d() {
 }
 
 fn f2() {
-    let x = 3is;
+    let x = 3;
     //~^ ERROR unused variable: `x`
 }
 
 fn f3() {
-    let mut x = 3is;
+    let mut x = 3;
     //~^ ERROR variable `x` is assigned to, but never used
-    x += 4is;
+    x += 4;
     //~^ ERROR value assigned to `x` is never read
 }
 
 fn f3b() {
-    let mut z = 3is;
+    let mut z = 3;
     //~^ ERROR variable `z` is assigned to, but never used
     loop {
-        z += 4is;
+        z += 4;
     }
 }
 
 #[allow(unused_variables)]
 fn f3c() {
-    let mut z = 3is;
-    loop { z += 4is; }
+    let mut z = 3;
+    loop { z += 4; }
 }
 
 #[allow(unused_variables)]
 #[allow(unused_assignments)]
 fn f3d() {
-    let mut x = 3is;
-    x += 4is;
+    let mut x = 3;
+    x += 4;
 }
 
 fn f4() {
-    match Some(3is) {
+    match Some(3) {
       Some(i) => {
         //~^ ERROR unused variable: `i`
       }
@@ -77,7 +77,7 @@ enum tri {
 }
 
 fn f4b() -> isize {
-    match tri::a(3is) {
+    match tri::a(3) {
       tri::a(i) | tri::b(i) | tri::c(i) => {
         i
       }
@@ -85,17 +85,17 @@ fn f4b() -> isize {
 }
 
 fn f5a() {
-    for x in 1is..10 { }
+    for x in 1..10 { }
     //~^ ERROR unused variable: `x`
 }
 
 fn f5b() {
-    for (x, _) in [1is, 2, 3].iter().enumerate() { }
+    for (x, _) in [1, 2, 3].iter().enumerate() { }
     //~^ ERROR unused variable: `x`
 }
 
 fn f5c() {
-    for (_, x) in [1is, 2, 3].iter().enumerate() {
+    for (_, x) in [1, 2, 3].iter().enumerate() {
     //~^ ERROR unused variable: `x`
         continue;
         std::os::set_exit_status(*x); //~ WARNING unreachable statement
