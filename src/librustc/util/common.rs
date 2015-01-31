@@ -96,7 +96,7 @@ impl<'v, P> Visitor<'v> for LoopQueryVisitor<P> where P: FnMut(&ast::Expr_) -> b
         match e.node {
           // Skip inner loops, since a break in the inner loop isn't a
           // break inside the outer loop
-          ast::ExprLoop(..) | ast::ExprWhile(..) | ast::ExprForLoop(..) => {}
+          ast::ExprLoop(..) | ast::ExprWhile(..) => {}
           _ => visit::walk_expr(self, e)
         }
     }

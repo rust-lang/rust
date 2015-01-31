@@ -10,7 +10,6 @@
 
 #![crate_name = "rustc_resolve"]
 #![unstable(feature = "rustc_private")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "dylib"]
 #![crate_type = "rlib"]
@@ -18,15 +17,16 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(slicing_syntax)]
-#![feature(rustc_diagnostic_macros)]
-#![allow(unknown_features)] #![feature(int_uint)]
 #![feature(alloc)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(rustc_private)]
-#![feature(std_misc)]
 #![feature(hash)]
+#![feature(int_uint)]
+#![feature(rustc_diagnostic_macros)]
+#![feature(rustc_private)]
+#![feature(slicing_syntax)]
+#![feature(staged_api)]
+#![feature(std_misc)]
 
 #[macro_use] extern crate log;
 #[macro_use] extern crate syntax;
@@ -68,7 +68,7 @@ use rustc::util::lev_distance::lev_distance;
 
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DefId, Expr, ExprAgain, ExprBreak, ExprField};
-use syntax::ast::{ExprClosure, ExprForLoop, ExprLoop, ExprWhile, ExprMethodCall};
+use syntax::ast::{ExprClosure, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprQPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
@@ -4557,39 +4557,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                     visit::walk_expr(this, expr);
                 })
-            }
-
-            ExprForLoop(ref pattern, ref head, ref body, optional_label) => {
-                self.resolve_expr(&**head);
-
-                self.value_ribs.push(Rib::new(NormalRibKind));
-
-                self.resolve_pattern(&**pattern,
-                                     LocalIrrefutableMode,
-                                     &mut HashMap::new());
-
-                match optional_label {
-                    None => {}
-                    Some(label) => {
-                        self.label_ribs
-                            .push(Rib::new(NormalRibKind));
-                        let def_like = DlDef(DefLabel(expr.id));
-
-                        {
-                            let rib = self.label_ribs.last_mut().unwrap();
-                            let renamed = mtwt::resolve(label);
-                            rib.bindings.insert(renamed, def_like);
-                        }
-                    }
-                }
-
-                self.resolve_block(&**body);
-
-                if optional_label.is_some() {
-                    drop(self.label_ribs.pop())
-                }
-
-                self.value_ribs.pop();
             }
 
             ExprBreak(Some(label)) | ExprAgain(Some(label)) => {

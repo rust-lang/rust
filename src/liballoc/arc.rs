@@ -12,20 +12,22 @@
 
 //! Threadsafe reference-counted boxes (the `Arc<T>` type).
 //!
-//! The `Arc<T>` type provides shared ownership of an immutable value. Destruction is
-//! deterministic, and will occur as soon as the last owner is gone. It is marked as `Send` because
-//! it uses atomic reference counting.
+//! The `Arc<T>` type provides shared ownership of an immutable value.
+//! Destruction is deterministic, and will occur as soon as the last owner is
+//! gone. It is marked as `Send` because it uses atomic reference counting.
 //!
-//! If you do not need thread-safety, and just need shared ownership, consider the [`Rc<T>`
-//! type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but does not use atomics, making it
-//! both thread-unsafe as well as significantly faster when updating the reference count.
+//! If you do not need thread-safety, and just need shared ownership, consider
+//! the [`Rc<T>` type](../rc/struct.Rc.html). It is the same as `Arc<T>`, but
+//! does not use atomics, making it both thread-unsafe as well as significantly
+//! faster when updating the reference count.
 //!
-//! The `downgrade` method can be used to create a non-owning `Weak<T>` pointer to the box. A
-//! `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but will return `None` if the value
-//! has already been dropped.
+//! The `downgrade` method can be used to create a non-owning `Weak<T>` pointer
+//! to the box. A `Weak<T>` pointer can be upgraded to an `Arc<T>` pointer, but
+//! will return `None` if the value has already been dropped.
 //!
-//! For example, a tree with parent pointers can be represented by putting the nodes behind strong
-//! `Arc<T>` pointers, and then storing the parent pointers as `Weak<T>` pointers.
+//! For example, a tree with parent pointers can be represented by putting the
+//! nodes behind strong `Arc<T>` pointers, and then storing the parent pointers
+//! as `Weak<T>` pointers.
 //!
 //! # Examples
 //!
@@ -35,7 +37,7 @@
 //! use std::sync::Arc;
 //! use std::thread::Thread;
 //!
-//! let five = Arc::new(5i);
+//! let five = Arc::new(5);
 //!
 //! for _ in 0u..10 {
 //!     let five = five.clone();
@@ -52,7 +54,7 @@
 //! use std::sync::{Arc, Mutex};
 //! use std::thread::Thread;
 //!
-//! let five = Arc::new(Mutex::new(5i));
+//! let five = Arc::new(Mutex::new(5));
 //!
 //! for _ in 0u..10 {
 //!     let five = five.clone();
@@ -87,8 +89,9 @@ use heap::deallocate;
 ///
 /// # Example
 ///
-/// In this example, a large vector of floats is shared between several tasks. With simple pipes,
-/// without `Arc`, a copy would have to be made for each task.
+/// In this example, a large vector of floats is shared between several tasks.
+/// With simple pipes, without `Arc`, a copy would have to be made for each
+/// task.
 ///
 /// ```rust
 /// use std::sync::Arc;
@@ -154,7 +157,7 @@ impl<T> Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -176,7 +179,7 @@ impl<T> Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
     /// let weak_five = five.downgrade();
     /// ```
@@ -221,7 +224,7 @@ impl<T> Clone for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
     /// five.clone();
     /// ```
@@ -268,7 +271,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let mut five = Arc::new(5i);
+    /// let mut five = Arc::new(5);
     ///
     /// let mut_five = five.make_unique();
     /// ```
@@ -304,14 +307,14 @@ impl<T: Sync + Send> Drop for Arc<T> {
     /// use std::sync::Arc;
     ///
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///
     ///     // stuff
     ///
     ///     drop(five); // explict drop
     /// }
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///
     ///     // stuff
     ///
@@ -371,7 +374,7 @@ impl<T: Sync + Send> Weak<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
     /// let weak_five = five.downgrade();
     ///
@@ -408,7 +411,7 @@ impl<T: Sync + Send> Clone for Weak<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let weak_five = Arc::new(5i).downgrade();
+    /// let weak_five = Arc::new(5).downgrade();
     ///
     /// weak_five.clone();
     /// ```
@@ -433,7 +436,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     /// use std::sync::Arc;
     ///
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///     let weak_five = five.downgrade();
     ///
     ///     // stuff
@@ -441,7 +444,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     ///     drop(weak_five); // explict drop
     /// }
     /// {
-    ///     let five = Arc::new(5i);
+    ///     let five = Arc::new(5);
     ///     let weak_five = five.downgrade();
     ///
     ///     // stuff
@@ -475,9 +478,9 @@ impl<T: PartialEq> PartialEq for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five == Arc::new(5i);
+    /// five == Arc::new(5);
     /// ```
     fn eq(&self, other: &Arc<T>) -> bool { *(*self) == *(*other) }
 
@@ -490,9 +493,9 @@ impl<T: PartialEq> PartialEq for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five != Arc::new(5i);
+    /// five != Arc::new(5);
     /// ```
     fn ne(&self, other: &Arc<T>) -> bool { *(*self) != *(*other) }
 }
@@ -507,9 +510,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five.partial_cmp(&Arc::new(5i));
+    /// five.partial_cmp(&Arc::new(5));
     /// ```
     fn partial_cmp(&self, other: &Arc<T>) -> Option<Ordering> {
         (**self).partial_cmp(&**other)
@@ -524,9 +527,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five < Arc::new(5i);
+    /// five < Arc::new(5);
     /// ```
     fn lt(&self, other: &Arc<T>) -> bool { *(*self) < *(*other) }
 
@@ -539,9 +542,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five <= Arc::new(5i);
+    /// five <= Arc::new(5);
     /// ```
     fn le(&self, other: &Arc<T>) -> bool { *(*self) <= *(*other) }
 
@@ -554,9 +557,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five > Arc::new(5i);
+    /// five > Arc::new(5);
     /// ```
     fn gt(&self, other: &Arc<T>) -> bool { *(*self) > *(*other) }
 
@@ -569,9 +572,9 @@ impl<T: PartialOrd> PartialOrd for Arc<T> {
     /// ```
     /// use std::sync::Arc;
     ///
-    /// let five = Arc::new(5i);
+    /// let five = Arc::new(5);
     ///
-    /// five >= Arc::new(5i);
+    /// five >= Arc::new(5);
     /// ```
     fn ge(&self, other: &Arc<T>) -> bool { *(*self) >= *(*other) }
 }
@@ -719,14 +722,14 @@ mod tests {
 
     #[test]
     fn test_live() {
-        let x = Arc::new(5i);
+        let x = Arc::new(5);
         let y = x.downgrade();
         assert!(y.upgrade().is_some());
     }
 
     #[test]
     fn test_dead() {
-        let x = Arc::new(5i);
+        let x = Arc::new(5);
         let y = x.downgrade();
         drop(x);
         assert!(y.upgrade().is_none());

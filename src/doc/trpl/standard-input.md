@@ -20,7 +20,7 @@ Let's go over these chunks, one by one:
 std::old_io::stdin();
 ```
 
-This calls a function, `stdin()`, that lives inside the `std::io` module. As
+This calls a function, `stdin()`, that lives inside the `std::old_io` module. As
 you can imagine, everything in `std` is provided by Rust, the 'standard
 library.' We'll talk more about the module system later.
 

@@ -15,7 +15,6 @@
 
 #![crate_name = "collections"]
 #![unstable(feature = "collections")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -23,17 +22,20 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![allow(unknown_features)]
-#![feature(unsafe_destructor, slicing_syntax)]
-#![feature(box_syntax)]
-#![feature(unboxed_closures)]
-#![allow(unknown_features)] #![feature(int_uint)]
-#![no_std]
-#![feature(core)]
+#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
+
 #![feature(alloc)]
-#![feature(unicode)]
+#![feature(box_syntax)]
+#![feature(core)]
 #![feature(hash)]
+#![feature(int_uint)]
+#![feature(staged_api)]
+#![feature(unboxed_closures)]
+#![feature(unicode)]
+#![feature(unsafe_destructor, slicing_syntax)]
 #![cfg_attr(test, feature(test))]
+
+#![no_std]
 
 #[macro_use]
 extern crate core;
@@ -114,6 +116,8 @@ mod std {
     pub use core::marker;   // derive(Copy)
     pub use core::hash;     // derive(Hash)
     pub use core::ops;      // RangeFull
+    // for-loops
+    pub use core::iter;
 }
 
 #[cfg(test)]

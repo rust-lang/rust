@@ -11,12 +11,14 @@
 //! Exposes the NonZero lang item which provides optimization hints.
 
 use ops::Deref;
+use ptr::Unique;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
 pub unsafe trait Zeroable {}
 
 unsafe impl<T> Zeroable for *const T {}
 unsafe impl<T> Zeroable for *mut T {}
+unsafe impl<T> Zeroable for Unique<T> { }
 unsafe impl Zeroable for int {}
 unsafe impl Zeroable for uint {}
 unsafe impl Zeroable for i8 {}

@@ -14,9 +14,9 @@
 use std::mem::swap;
 
 pub fn main() {
-    let mut i = box 100i;
-    let mut j = box 200i;
+    let mut i = box 100;
+    let mut j = box 200;
     swap(&mut i, &mut j);
-    assert_eq!(i, box 200i);
-    assert_eq!(j, box 100i);
+    assert_eq!(i, box 200);
+    assert_eq!(j, box 100);
 }

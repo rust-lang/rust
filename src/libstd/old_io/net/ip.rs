@@ -25,7 +25,7 @@ use iter::{Iterator, IteratorExt};
 use ops::{FnOnce, FnMut};
 use option::Option;
 use option::Option::{None, Some};
-use result::Result::{Ok, Err};
+use result::Result::{self, Ok, Err};
 use slice::SliceExt;
 use str::{FromStr, StrExt};
 use vec::Vec;
@@ -350,16 +350,27 @@ impl<'a> Parser<'a> {
 }
 
 impl FromStr for IpAddr {
-    fn from_str(s: &str) -> Option<IpAddr> {
-        Parser::new(s).read_till_eof(|p| p.read_ip_addr())
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<IpAddr, ParseError> {
+        match Parser::new(s).read_till_eof(|p| p.read_ip_addr()) {
+            Some(s) => Ok(s),
+            None => Err(ParseError),
+        }
     }
 }
 
 impl FromStr for SocketAddr {
-    fn from_str(s: &str) -> Option<SocketAddr> {
-        Parser::new(s).read_till_eof(|p| p.read_socket_addr())
+    type Err = ParseError;
+    fn from_str(s: &str) -> Result<SocketAddr, ParseError> {
+        match Parser::new(s).read_till_eof(|p| p.read_socket_addr()) {
+            Some(s) => Ok(s),
+            None => Err(ParseError),
+        }
     }
 }
+
+#[derive(Debug, Clone, PartialEq, Copy)]
+pub struct ParseError;
 
 /// A trait for objects which can be converted or resolved to one or more `SocketAddr` values.
 ///
@@ -493,7 +504,7 @@ fn parse_and_resolve_socket_addr(s: &str) -> IoResult<Vec<SocketAddr>> {
     let mut parts_iter = s.rsplitn(2, ':');
     let port_str = try_opt!(parts_iter.next(), "invalid socket address");
     let host = try_opt!(parts_iter.next(), "invalid socket address");
-    let port: u16 = try_opt!(FromStr::from_str(port_str), "invalid port value");
+    let port: u16 = try_opt!(port_str.parse().ok(), "invalid port value");
     resolve_socket_addr(host, port)
 }
 
@@ -502,7 +513,7 @@ impl<'a> ToSocketAddr for (&'a str, u16) {
         let (host, port) = *self;
 
         // try to parse the host as a regular IpAddr first
-        match FromStr::from_str(host) {
+        match host.parse().ok() {
             Some(addr) => return Ok(vec![SocketAddr {
                 ip: addr,
                 port: port
@@ -518,7 +529,7 @@ impl<'a> ToSocketAddr for (&'a str, u16) {
 impl<'a> ToSocketAddr for &'a str {
     fn to_socket_addr(&self) -> IoResult<SocketAddr> {
         // try to parse as a regular SocketAddr first
-        match FromStr::from_str(*self) {
+        match self.parse().ok() {
             Some(addr) => return Ok(addr),
             None => {}
         }
@@ -535,7 +546,7 @@ impl<'a> ToSocketAddr for &'a str {
 
     fn to_socket_addr_all(&self) -> IoResult<Vec<SocketAddr>> {
         // try to parse as a regular SocketAddr first
-        match FromStr::from_str(*self) {
+        match self.parse().ok() {
             Some(addr) => return Ok(vec![addr]),
             None => {}
         }
@@ -553,95 +564,94 @@ mod test {
 
     #[test]
     fn test_from_str_ipv4() {
-        assert_eq!(Some(Ipv4Addr(127, 0, 0, 1)), FromStr::from_str("127.0.0.1"));
-        assert_eq!(Some(Ipv4Addr(255, 255, 255, 255)), FromStr::from_str("255.255.255.255"));
-        assert_eq!(Some(Ipv4Addr(0, 0, 0, 0)), FromStr::from_str("0.0.0.0"));
+        assert_eq!(Ok(Ipv4Addr(127, 0, 0, 1)), "127.0.0.1".parse());
+        assert_eq!(Ok(Ipv4Addr(255, 255, 255, 255)), "255.255.255.255".parse());
+        assert_eq!(Ok(Ipv4Addr(0, 0, 0, 0)), "0.0.0.0".parse());
 
         // out of range
-        let none: Option<IpAddr> = FromStr::from_str("256.0.0.1");
+        let none: Option<IpAddr> = "256.0.0.1".parse().ok();
         assert_eq!(None, none);
         // too short
-        let none: Option<IpAddr> = FromStr::from_str("255.0.0");
+        let none: Option<IpAddr> = "255.0.0".parse().ok();
         assert_eq!(None, none);
         // too long
-        let none: Option<IpAddr> = FromStr::from_str("255.0.0.1.2");
+        let none: Option<IpAddr> = "255.0.0.1.2".parse().ok();
         assert_eq!(None, none);
         // no number between dots
-        let none: Option<IpAddr> = FromStr::from_str("255.0..1");
+        let none: Option<IpAddr> = "255.0..1".parse().ok();
         assert_eq!(None, none);
     }
 
     #[test]
     fn test_from_str_ipv6() {
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("0:0:0:0:0:0:0:0"));
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("0:0:0:0:0:0:0:1"));
+        assert_eq!(Ok(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), "0:0:0:0:0:0:0:0".parse());
+        assert_eq!(Ok(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), "0:0:0:0:0:0:0:1".parse());
 
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), FromStr::from_str("::1"));
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), FromStr::from_str("::"));
+        assert_eq!(Ok(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1)), "::1".parse());
+        assert_eq!(Ok(Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 0)), "::".parse());
 
-        assert_eq!(Some(Ipv6Addr(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)),
-                FromStr::from_str("2a02:6b8::11:11"));
+        assert_eq!(Ok(Ipv6Addr(0x2a02, 0x6b8, 0, 0, 0, 0, 0x11, 0x11)),
+                "2a02:6b8::11:11".parse());
 
         // too long group
-        let none: Option<IpAddr> = FromStr::from_str("::00000");
+        let none: Option<IpAddr> = "::00000".parse().ok();
         assert_eq!(None, none);
         // too short
-        let none: Option<IpAddr> = FromStr::from_str("1:2:3:4:5:6:7");
+        let none: Option<IpAddr> = "1:2:3:4:5:6:7".parse().ok();
         assert_eq!(None, none);
         // too long
-        let none: Option<IpAddr> = FromStr::from_str("1:2:3:4:5:6:7:8:9");
+        let none: Option<IpAddr> = "1:2:3:4:5:6:7:8:9".parse().ok();
         assert_eq!(None, none);
         // triple colon
-        let none: Option<IpAddr> = FromStr::from_str("1:2:::6:7:8");
+        let none: Option<IpAddr> = "1:2:::6:7:8".parse().ok();
         assert_eq!(None, none);
         // two double colons
-        let none: Option<IpAddr> = FromStr::from_str("1:2::6::8");
+        let none: Option<IpAddr> = "1:2::6::8".parse().ok();
         assert_eq!(None, none);
     }
 
     #[test]
     fn test_from_str_ipv4_in_ipv6() {
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0, 49152, 545)),
-                FromStr::from_str("::192.0.2.33"));
-        assert_eq!(Some(Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)),
-                FromStr::from_str("::FFFF:192.0.2.33"));
-        assert_eq!(Some(Ipv6Addr(0x64, 0xff9b, 0, 0, 0, 0, 49152, 545)),
-                FromStr::from_str("64:ff9b::192.0.2.33"));
-        assert_eq!(Some(Ipv6Addr(0x2001, 0xdb8, 0x122, 0xc000, 0x2, 0x2100, 49152, 545)),
-                FromStr::from_str("2001:db8:122:c000:2:2100:192.0.2.33"));
+        assert_eq!(Ok(Ipv6Addr(0, 0, 0, 0, 0, 0, 49152, 545)),
+                "::192.0.2.33".parse());
+        assert_eq!(Ok(Ipv6Addr(0, 0, 0, 0, 0, 0xFFFF, 49152, 545)),
+                "::FFFF:192.0.2.33".parse());
+        assert_eq!(Ok(Ipv6Addr(0x64, 0xff9b, 0, 0, 0, 0, 49152, 545)),
+                "64:ff9b::192.0.2.33".parse());
+        assert_eq!(Ok(Ipv6Addr(0x2001, 0xdb8, 0x122, 0xc000, 0x2, 0x2100, 49152, 545)),
+                "2001:db8:122:c000:2:2100:192.0.2.33".parse());
 
         // colon after v4
-        let none: Option<IpAddr> = FromStr::from_str("::127.0.0.1:");
+        let none: Option<IpAddr> = "::127.0.0.1:".parse().ok();
         assert_eq!(None, none);
         // not enough groups
-        let none: Option<IpAddr> = FromStr::from_str("1.2.3.4.5:127.0.0.1");
+        let none: Option<IpAddr> = "1.2.3.4.5:127.0.0.1".parse().ok();
         assert_eq!(None, none);
         // too many groups
-        let none: Option<IpAddr> =
-            FromStr::from_str("1.2.3.4.5:6:7:127.0.0.1");
+        let none: Option<IpAddr> = "1.2.3.4.5:6:7:127.0.0.1".parse().ok();
         assert_eq!(None, none);
     }
 
     #[test]
     fn test_from_str_socket_addr() {
-        assert_eq!(Some(SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 80 }),
-                FromStr::from_str("77.88.21.11:80"));
-        assert_eq!(Some(SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 }),
-                FromStr::from_str("[2a02:6b8:0:1::1]:53"));
-        assert_eq!(Some(SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0x7F00, 1), port: 22 }),
-                FromStr::from_str("[::127.0.0.1]:22"));
+        assert_eq!(Ok(SocketAddr { ip: Ipv4Addr(77, 88, 21, 11), port: 80 }),
+                "77.88.21.11:80".parse());
+        assert_eq!(Ok(SocketAddr { ip: Ipv6Addr(0x2a02, 0x6b8, 0, 1, 0, 0, 0, 1), port: 53 }),
+                "[2a02:6b8:0:1::1]:53".parse());
+        assert_eq!(Ok(SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0x7F00, 1), port: 22 }),
+                "[::127.0.0.1]:22".parse());
 
         // without port
-        let none: Option<SocketAddr> = FromStr::from_str("127.0.0.1");
+        let none: Option<SocketAddr> = "127.0.0.1".parse().ok();
         assert_eq!(None, none);
         // without port
-        let none: Option<SocketAddr> = FromStr::from_str("127.0.0.1:");
+        let none: Option<SocketAddr> = "127.0.0.1:".parse().ok();
         assert_eq!(None, none);
         // wrong brackets around v4
-        let none: Option<SocketAddr> = FromStr::from_str("[127.0.0.1]:22");
+        let none: Option<SocketAddr> = "[127.0.0.1]:22".parse().ok();
         assert_eq!(None, none);
         // port out of range
-        let none: Option<SocketAddr> = FromStr::from_str("127.0.0.1:123456");
+        let none: Option<SocketAddr> = "127.0.0.1:123456".parse().ok();
         assert_eq!(None, none);
     }
 

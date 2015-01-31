@@ -10,9 +10,9 @@
 
 #[test]
 fn test_bool_from_str() {
-    assert_eq!("true".parse(), Some(true));
-    assert_eq!("false".parse(), Some(false));
-    assert_eq!("not even a boolean".parse::<bool>(), None);
+    assert_eq!("true".parse().ok(), Some(true));
+    assert_eq!("false".parse().ok(), Some(false));
+    assert_eq!("not even a boolean".parse::<bool>().ok(), None);
 }
 
 fn check_contains_all_substrings(s: &str) {

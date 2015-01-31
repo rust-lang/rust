@@ -717,12 +717,16 @@ pub fn parse_def_id(buf: &[u8]) -> ast::DefId {
     let crate_part = &buf[0u..colon_idx];
     let def_part = &buf[colon_idx + 1u..len];
 
-    let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| s.parse::<uint>()) {
+    let crate_num = match str::from_utf8(crate_part).ok().and_then(|s| {
+        s.parse::<uint>().ok()
+    }) {
        Some(cn) => cn as ast::CrateNum,
        None => panic!("internal error: parse_def_id: crate number expected, found {:?}",
                      crate_part)
     };
-    let def_num = match str::from_utf8(def_part).ok().and_then(|s| s.parse::<uint>()) {
+    let def_num = match str::from_utf8(def_part).ok().and_then(|s| {
+        s.parse::<uint>().ok()
+    }) {
        Some(dn) => dn as ast::NodeId,
        None => panic!("internal error: parse_def_id: id expected, found {:?}",
                      def_part)

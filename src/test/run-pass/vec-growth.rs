@@ -10,11 +10,11 @@
 
 
 pub fn main() {
-    let mut v = vec!(1i);
-    v.push(2i);
-    v.push(3i);
-    v.push(4i);
-    v.push(5i);
+    let mut v = vec!(1);
+    v.push(2);
+    v.push(3);
+    v.push(4);
+    v.push(5);
     assert_eq!(v[0], 1);
     assert_eq!(v[1], 2);
     assert_eq!(v[2], 3);

@@ -27,14 +27,15 @@ enum Mode {
 }
 
 impl FromStr for Mode {
-    fn from_str(s: &str) -> Option<Mode> {
+    type Err = ();
+    fn from_str(s: &str) -> Result<Mode, ()> {
         let mode = match s {
             "expr" => Mode::Expression,
             "pat" => Mode::Pattern,
             "ty" => Mode::Type,
-            _ => return None
+            _ => return Err(())
         };
-        Some(mode)
+        Ok(mode)
     }
 }
 
@@ -73,7 +74,7 @@ impl<'a, 'v> Visitor<'v> for ShowSpanVisitor<'a> {
 pub fn run(span_diagnostic: &diagnostic::SpanHandler,
            mode: &str,
            krate: &ast::Crate) {
-    let mode = match mode.parse() {
+    let mode = match mode.parse().ok() {
         Some(mode) => mode,
         None => return
     };

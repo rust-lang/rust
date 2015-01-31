@@ -109,6 +109,9 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // int and uint are now deprecated
     ("int_uint", "1.0.0", Active),
 
+    // macro reexport needs more discusion and stabilization
+    ("macro_reexport", "1.0.0", Active),
+
     // These are used to test this portion of the compiler, they don't actually
     // mean anything
     ("test_accepted_feature", "1.0.0", Accepted),
@@ -271,6 +274,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 if attr::contains_name(&i.attrs[], "plugin") {
                     self.gate_feature("plugin", i.span,
                                       "compiler plugins are experimental \
+                                       and possibly buggy");
+                } else if attr::contains_name(&i.attrs[], "macro_reexport") {
+                    self.gate_feature("macro_reexport", i.span,
+                                      "macros reexports are experimental \
                                        and possibly buggy");
                 }
             }

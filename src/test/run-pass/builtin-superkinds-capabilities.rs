@@ -24,6 +24,6 @@ fn foo<T: Foo>(val: T, chan: Sender<T>) {
 
 pub fn main() {
     let (tx, rx): (Sender<int>, Receiver<int>) = channel();
-    foo(31337i, tx);
-    assert!(rx.recv().unwrap() == 31337i);
+    foo(31337, tx);
+    assert!(rx.recv().unwrap() == 31337);
 }

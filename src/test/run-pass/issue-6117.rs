@@ -14,7 +14,7 @@
 enum Either<T, U> { Left(T), Right(U) }
 
 pub fn main() {
-    match Either::Left(box 17i) {
+    match Either::Left(box 17) {
         Either::Right(()) => {}
         _ => {}
     }

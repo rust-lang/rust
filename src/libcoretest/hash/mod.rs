@@ -56,7 +56,7 @@ fn test_writer_hasher() {
     assert_eq!(hash(&5i16), 5);
     assert_eq!(hash(&5i32), 5);
     assert_eq!(hash(&5i64), 5);
-    assert_eq!(hash(&5i), 5);
+    assert_eq!(hash(&5), 5);
 
     assert_eq!(hash(&false), 0);
     assert_eq!(hash(&true), 1);
@@ -76,12 +76,12 @@ fn test_writer_hasher() {
     // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>
 
     unsafe {
-        let ptr: *const int = mem::transmute(5i);
+        let ptr: *const i32 = mem::transmute(5is);
         assert_eq!(hash(&ptr), 5);
     }
 
     unsafe {
-        let ptr: *mut int = mem::transmute(5i);
+        let ptr: *mut i32 = mem::transmute(5is);
         assert_eq!(hash(&ptr), 5);
     }
 }

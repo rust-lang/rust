@@ -263,43 +263,8 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 self.tcx.sess.span_bug(expr.span, "non-desugared ExprWhileLet");
             }
 
-            ast::ExprForLoop(ref pat, ref head, ref body, _) => {
-                //
-                //          [pred]
-                //            |
-                //            v 1
-                //          [head]
-                //            |
-                //            v 2
-                //        [loopback] <--+ 7
-                //            |         |
-                //            v 3       |
-                //   +------[cond]      |
-                //   |        |         |
-                //   |        v 5       |
-                //   |       [pat]      |
-                //   |        |         |
-                //   |        v 6       |
-                //   v 4    [body] -----+
-                // [expr]
-                //
-                // Note that `break` and `continue` statements
-                // may cause additional edges.
-
-                let head = self.expr(&**head, pred);             // 1
-                let loopback = self.add_dummy_node(&[head]);     // 2
-                let cond = self.add_dummy_node(&[loopback]);     // 3
-                let expr_exit = self.add_node(expr.id, &[cond]); // 4
-                self.loop_scopes.push(LoopScope {
-                    loop_id: expr.id,
-                    continue_index: loopback,
-                    break_index: expr_exit,
-                });
-                let pat = self.pat(&**pat, cond);               // 5
-                let body = self.block(&**body, pat);            // 6
-                self.add_contained_edge(body, loopback);        // 7
-                self.loop_scopes.pop();
-                expr_exit
+            ast::ExprForLoop(..) => {
+                self.tcx.sess.span_bug(expr.span, "non-desugared ExprForLoop");
             }
 
             ast::ExprLoop(ref body, _) => {

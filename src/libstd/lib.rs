@@ -97,7 +97,6 @@
 
 #![crate_name = "std"]
 #![stable(feature = "rust1", since = "1.0.0")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
@@ -106,28 +105,29 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
-#![allow(unknown_features)]
-#![feature(linkage, thread_local, asm)]
-#![feature(lang_items, unsafe_destructor)]
-#![feature(slicing_syntax, unboxed_closures)]
+#![feature(alloc)]
 #![feature(box_syntax)]
+#![feature(collections)]
+#![feature(core)]
+#![feature(hash)]
+#![feature(int_uint)]
+#![feature(lang_items, unsafe_destructor)]
+#![feature(libc)]
+#![feature(linkage, thread_local, asm)]
 #![feature(old_impl_check)]
 #![feature(optin_builtin_traits)]
-#![feature(int_uint)]
-#![feature(int_uint)]
-#![feature(core)]
-#![feature(libc)]
-#![feature(alloc)]
-#![feature(unicode)]
-#![feature(collections)]
 #![feature(rand)]
-#![feature(hash)]
+#![feature(staged_api)]
+#![feature(unboxed_closures)]
+#![feature(unicode)]
+#![cfg_attr(not(stage0), feature(macro_reexport))]
 #![cfg_attr(test, feature(test))]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![deny(missing_docs)]
+#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
 
 #[cfg(test)]
 #[macro_use]
@@ -310,4 +310,6 @@ mod std {
     pub use slice;
 
     pub use boxed; // used for vec![]
+    // for-loops
+    pub use iter;
 }

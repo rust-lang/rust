@@ -254,7 +254,7 @@ impl LintPass for TypeLimits {
                         let lit_val: f64 = match lit.node {
                             ast::LitFloat(ref v, _) |
                             ast::LitFloatUnsuffixed(ref v) => {
-                                match v.parse() {
+                                match v.parse().ok() {
                                     Some(f) => f,
                                     None => return
                                 }
@@ -493,7 +493,7 @@ pub struct BoxPointers;
 impl BoxPointers {
     fn check_heap_type<'a, 'tcx>(&self, cx: &Context<'a, 'tcx>,
                                  span: Span, ty: Ty<'tcx>) {
-        let mut n_uniq = 0i;
+        let mut n_uniq = 0u;
         ty::fold_ty(cx.tcx, ty, |t| {
             match t.sty {
                 ty::ty_uniq(_) => {
@@ -938,6 +938,34 @@ declare_lint! {
 pub struct NonSnakeCase;
 
 impl NonSnakeCase {
+    fn to_snake_case(mut str: &str) -> String {
+        let mut words = vec![];
+        // Preserve leading underscores
+        str = str.trim_left_matches(|&mut: c: char| {
+            if c == '_' {
+                words.push(String::new());
+                true
+            } else { false }
+        });
+        for s in str.split('_') {
+            let mut last_upper = false;
+            let mut buf = String::new();
+            if s.is_empty() { continue; }
+            for ch in s.chars() {
+                if !buf.is_empty() && buf != "'"
+                                   && ch.is_uppercase()
+                                   && !last_upper {
+                    words.push(buf);
+                    buf = String::new();
+                }
+                last_upper = ch.is_uppercase();
+                buf.push(ch.to_lowercase());
+            }
+            words.push(buf);
+        }
+        words.connect("_")
+    }
+
     fn check_snake_case(&self, cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
         fn is_snake_case(ident: ast::Ident) -> bool {
             let ident = token::get_ident(ident);
@@ -948,41 +976,28 @@ impl NonSnakeCase {
             let mut allow_underscore = true;
             ident.chars().all(|c| {
                 allow_underscore = match c {
-                    c if c.is_lowercase() || c.is_numeric() => true,
-                    '_' if allow_underscore => false,
+                    '_' if !allow_underscore => return false,
+                    '_' => false,
+                    c if !c.is_uppercase() => true,
                     _ => return false,
                 };
                 true
             })
         }
 
-        fn to_snake_case(str: &str) -> String {
-            let mut words = vec![];
-            for s in str.split('_') {
-                let mut last_upper = false;
-                let mut buf = String::new();
-                if s.is_empty() { continue; }
-                for ch in s.chars() {
-                    if !buf.is_empty() && buf != "'"
-                                       && ch.is_uppercase()
-                                       && !last_upper {
-                        words.push(buf);
-                        buf = String::new();
-                    }
-                    last_upper = ch.is_uppercase();
-                    buf.push(ch.to_lowercase());
-                }
-                words.push(buf);
-            }
-            words.connect("_")
-        }
-
         let s = token::get_ident(ident);
 
         if !is_snake_case(ident) {
-            cx.span_lint(NON_SNAKE_CASE, span,
-                &format!("{} `{}` should have a snake case name such as `{}`",
-                        sort, s, to_snake_case(s.get()))[]);
+            let sc = NonSnakeCase::to_snake_case(s.get());
+            if sc != s.get() {
+                cx.span_lint(NON_SNAKE_CASE, span,
+                    &*format!("{} `{}` should have a snake case name such as `{}`",
+                            sort, s, sc));
+            } else {
+                cx.span_lint(NON_SNAKE_CASE, span,
+                    &*format!("{} `{}` should have a snake case name",
+                            sort, s));
+            }
         }
     }
 }
@@ -1050,6 +1065,26 @@ declare_lint! {
 #[derive(Copy)]
 pub struct NonUpperCaseGlobals;
 
+impl NonUpperCaseGlobals {
+    fn check_upper_case(cx: &Context, sort: &str, ident: ast::Ident, span: Span) {
+        let s = token::get_ident(ident);
+
+        if s.get().chars().any(|c| c.is_lowercase()) {
+            let uc: String = NonSnakeCase::to_snake_case(s.get()).chars()
+                                           .map(|c| c.to_uppercase()).collect();
+            if uc != s.get() {
+                cx.span_lint(NON_UPPER_CASE_GLOBALS, span,
+                    format!("{} `{}` should have an upper case name such as `{}`",
+                            sort, s, uc).as_slice());
+            } else {
+                cx.span_lint(NON_UPPER_CASE_GLOBALS, span,
+                    format!("{} `{}` should have an upper case name",
+                            sort, s).as_slice());
+            }
+        }
+    }
+}
+
 impl LintPass for NonUpperCaseGlobals {
     fn get_lints(&self) -> LintArray {
         lint_array!(NON_UPPER_CASE_GLOBALS)
@@ -1058,19 +1093,11 @@ impl LintPass for NonUpperCaseGlobals {
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         match it.node {
             // only check static constants
-            ast::ItemStatic(_, ast::MutImmutable, _) |
+            ast::ItemStatic(_, ast::MutImmutable, _) => {
+                NonUpperCaseGlobals::check_upper_case(cx, "static constant", it.ident, it.span);
+            }
             ast::ItemConst(..) => {
-                let s = token::get_ident(it.ident);
-                // check for lowercase letters rather than non-uppercase
-                // ones (some scripts don't have a concept of
-                // upper/lowercase)
-                if s.get().chars().any(|c| c.is_lowercase()) {
-                    cx.span_lint(NON_UPPER_CASE_GLOBALS, it.span,
-                        &format!("static constant `{}` should have an uppercase name \
-                                 such as `{}`",
-                                s.get(), &s.get().chars().map(|c| c.to_uppercase())
-                                .collect::<String>()[])[]);
-                }
+                NonUpperCaseGlobals::check_upper_case(cx, "constant", it.ident, it.span);
             }
             _ => {}
         }
@@ -1080,14 +1107,8 @@ impl LintPass for NonUpperCaseGlobals {
         // Lint for constants that look like binding identifiers (#7526)
         match (&p.node, cx.tcx.def_map.borrow().get(&p.id)) {
             (&ast::PatIdent(_, ref path1, _), Some(&def::DefConst(..))) => {
-                let s = token::get_ident(path1.node);
-                if s.get().chars().any(|c| c.is_lowercase()) {
-                    cx.span_lint(NON_UPPER_CASE_GLOBALS, path1.span,
-                        &format!("static constant in pattern `{}` should have an uppercase \
-                                 name such as `{}`",
-                                s.get(), &s.get().chars().map(|c| c.to_uppercase())
-                                    .collect::<String>()[])[]);
-                }
+                NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
+                                                      path1.node, p.span);
             }
             _ => {}
         }
@@ -1164,6 +1185,7 @@ impl LintPass for UnusedParens {
                 ast::MatchSource::Normal => (head, "`match` head expression", true),
                 ast::MatchSource::IfLetDesugar { .. } => (head, "`if let` head expression", true),
                 ast::MatchSource::WhileLetDesugar => (head, "`while let` head expression", true),
+                ast::MatchSource::ForLoopDesugar => (head, "`for` head expression", true),
             },
             ast::ExprRet(Some(ref value)) => (value, "`return` value", false),
             ast::ExprAssign(_, ref value) => (value, "assigned value", false),

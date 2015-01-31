@@ -22,7 +22,7 @@ extern {
 pub fn main() {
     unsafe {
         Thread::scoped(move|| {
-            let i = &100i;
+            let i = &100;
             rust_dbg_call(callback, mem::transmute(i));
         }).join();
     }
@@ -31,6 +31,6 @@ pub fn main() {
 extern fn callback(data: libc::uintptr_t) {
     unsafe {
         let data: *const int = mem::transmute(data);
-        assert_eq!(*data, 100i);
+        assert_eq!(*data, 100);
     }
 }

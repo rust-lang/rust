@@ -534,8 +534,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           ast::ExprBlock(..) | ast::ExprLoop(..) | ast::ExprMatch(..) |
           ast::ExprLit(..) | ast::ExprBreak(..) | ast::ExprMac(..) |
           ast::ExprAgain(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
-          ast::ExprInlineAsm(..) | ast::ExprBox(..) |
-          ast::ExprForLoop(..) => {
+          ast::ExprInlineAsm(..) | ast::ExprBox(..) => {
             Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
           }
 
@@ -544,6 +543,9 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           }
           ast::ExprWhileLet(..) => {
             self.tcx().sess.span_bug(expr.span, "non-desugared ExprWhileLet");
+          }
+          ast::ExprForLoop(..) => {
+            self.tcx().sess.span_bug(expr.span, "non-desugared ExprForLoop");
           }
         }
     }

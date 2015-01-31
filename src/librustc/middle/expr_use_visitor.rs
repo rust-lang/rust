@@ -540,22 +540,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.tcx().sess.span_bug(expr.span, "non-desugared ExprWhileLet");
             }
 
-            ast::ExprForLoop(ref pat, ref head, ref blk, _) => {
-                // The pattern lives as long as the block.
-                debug!("walk_expr for loop case: blk id={}", blk.id);
-                self.consume_expr(&**head);
-
-                // Fetch the type of the value that the iteration yields to
-                // produce the pattern's categorized mutable type.
-                let pattern_type = return_if_err!(self.typer.node_ty(pat.id));
-                let blk_scope = region::CodeExtent::from_node_id(blk.id);
-                let pat_cmt = self.mc.cat_rvalue(pat.id,
-                                                 pat.span,
-                                                 ty::ReScope(blk_scope),
-                                                 pattern_type);
-                self.walk_irrefutable_pat(pat_cmt, &**pat);
-
-                self.walk_block(&**blk);
+            ast::ExprForLoop(..) => {
+                self.tcx().sess.span_bug(expr.span, "non-desugared ExprForLoop");
             }
 
             ast::ExprUnary(op, ref lhs) => {

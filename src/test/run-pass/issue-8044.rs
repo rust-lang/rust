@@ -14,5 +14,5 @@ extern crate "issue-8044" as minimal;
 use minimal::{BTree, leaf};
 
 pub fn main() {
-    BTree::<int> { node: leaf(1i) };
+    BTree::<int> { node: leaf(1) };
 }

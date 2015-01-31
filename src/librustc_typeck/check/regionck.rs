@@ -658,30 +658,6 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             rcx.set_repeating_scope(repeating_scope);
         }
 
-        ast::ExprForLoop(ref pat, ref head, ref body, _) => {
-            constrain_bindings_in_pat(&**pat, rcx);
-
-            {
-                let mc = mc::MemCategorizationContext::new(rcx.fcx);
-                let pat_ty = rcx.resolve_node_type(pat.id);
-                let pat_cmt = mc.cat_rvalue(pat.id,
-                                            pat.span,
-                                            ty::ReScope(CodeExtent::from_node_id(body.id)),
-                                            pat_ty);
-                link_pattern(rcx, mc, pat_cmt, &**pat);
-            }
-
-            rcx.visit_expr(&**head);
-            type_of_node_must_outlive(rcx,
-                                      infer::AddrOf(expr.span),
-                                      head.id,
-                                      ty::ReScope(CodeExtent::from_node_id(expr.id)));
-
-            let repeating_scope = rcx.set_repeating_scope(body.id);
-            rcx.visit_block(&**body);
-            rcx.set_repeating_scope(repeating_scope);
-        }
-
         _ => {
             visit::walk_expr(rcx, expr);
         }

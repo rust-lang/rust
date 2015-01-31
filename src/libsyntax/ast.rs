@@ -788,6 +788,7 @@ pub enum MatchSource {
     Normal,
     IfLetDesugar { contains_else_clause: bool },
     WhileLetDesugar,
+    ForLoopDesugar,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

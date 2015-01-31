@@ -12,6 +12,6 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let vect = vec!(box 100i);
+    let vect = vec!(box 100);
     assert!(vect[0] == box 100);
 }

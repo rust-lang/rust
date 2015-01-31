@@ -89,7 +89,7 @@ use core::fmt;
 use core::hash;
 use core::iter::RandomAccessIterator;
 use core::iter::{Chain, Enumerate, Repeat, Skip, Take, repeat, Cloned};
-use core::iter::{self, FromIterator};
+use core::iter::{self, FromIterator, IntoIterator};
 use core::num::Int;
 use core::ops::Index;
 use core::slice;
@@ -1070,6 +1070,14 @@ impl<'a> RandomAccessIterator for Iter<'a> {
     }
 }
 
+impl<'a> IntoIterator for &'a Bitv {
+    type Iter = Iter<'a>;
+
+    fn into_iter(self) -> Iter<'a> {
+        self.iter()
+    }
+}
+
 /// An implementation of a set using a bit vector as an underlying
 /// representation for holding unsigned numerical elements.
 ///
@@ -1730,6 +1738,7 @@ impl BitvSet {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "BitvSet {{"));
@@ -1873,6 +1882,13 @@ impl<'a> Iterator for SymmetricDifference<'a> {
     #[inline] fn size_hint(&self) -> (uint, Option<uint>) { self.0.size_hint() }
 }
 
+impl<'a> IntoIterator for &'a BitvSet {
+    type Iter = SetIter<'a>;
+
+    fn into_iter(self) -> SetIter<'a> {
+        self.iter()
+    }
+}
 
 #[cfg(test)]
 mod tests {

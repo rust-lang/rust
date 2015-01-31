@@ -393,14 +393,15 @@ impl Command {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Command {
     /// Format the program and arguments of a Command for display. Any
     /// non-utf8 data is lossily converted using the utf8 replacement
     /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "{}", String::from_utf8_lossy(self.program.as_bytes())));
+        try!(write!(f, "{:?}", self.program));
         for arg in self.args.iter() {
-            try!(write!(f, " '{}'", String::from_utf8_lossy(arg.as_bytes())));
+            try!(write!(f, " '{:?}'", arg));
         }
         Ok(())
     }
@@ -1142,7 +1143,7 @@ mod tests {
     fn test_zero() {
         let mut p = sleeper();
         p.signal_kill().unwrap();
-        for _ in 0i..20 {
+        for _ in 0..20 {
             if p.signal(0).is_err() {
                 assert!(!p.wait().unwrap().success());
                 return

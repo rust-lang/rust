@@ -151,15 +151,15 @@ mod tests {
 
     #[test]
     fn test_signed_checked_div() {
-        assert!(10i.checked_div(2) == Some(5));
-        assert!(5i.checked_div(0) == None);
+        assert!(10.checked_div(2) == Some(5));
+        assert!(5.checked_div(0) == None);
         assert!(int::MIN.checked_div(-1) == None);
     }
 
     #[test]
     fn test_from_str() {
         fn from_str<T: ::std::str::FromStr>(t: &str) -> Option<T> {
-            ::std::str::FromStr::from_str(t)
+            ::std::str::FromStr::from_str(t).ok()
         }
         assert_eq!(from_str::<$T>("0"), Some(0 as $T));
         assert_eq!(from_str::<$T>("3"), Some(3 as $T));
@@ -180,26 +180,26 @@ mod tests {
 
     #[test]
     fn test_from_str_radix() {
-        assert_eq!(FromStrRadix::from_str_radix("123", 10), Some(123 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("1001", 2), Some(9 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("123", 8), Some(83 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("123", 16), Some(291 as i32));
-        assert_eq!(FromStrRadix::from_str_radix("ffff", 16), Some(65535 as i32));
-        assert_eq!(FromStrRadix::from_str_radix("FFFF", 16), Some(65535 as i32));
-        assert_eq!(FromStrRadix::from_str_radix("z", 36), Some(35 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("Z", 36), Some(35 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("123", 10), Ok(123 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("1001", 2), Ok(9 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("123", 8), Ok(83 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("123", 16), Ok(291 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("ffff", 16), Ok(65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("FFFF", 16), Ok(65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("z", 36), Ok(35 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("Z", 36), Ok(35 as $T));
 
-        assert_eq!(FromStrRadix::from_str_radix("-123", 10), Some(-123 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("-1001", 2), Some(-9 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("-123", 8), Some(-83 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("-123", 16), Some(-291 as i32));
-        assert_eq!(FromStrRadix::from_str_radix("-ffff", 16), Some(-65535 as i32));
-        assert_eq!(FromStrRadix::from_str_radix("-FFFF", 16), Some(-65535 as i32));
-        assert_eq!(FromStrRadix::from_str_radix("-z", 36), Some(-35 as $T));
-        assert_eq!(FromStrRadix::from_str_radix("-Z", 36), Some(-35 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-123", 10), Ok(-123 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-1001", 2), Ok(-9 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-123", 8), Ok(-83 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-123", 16), Ok(-291 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("-ffff", 16), Ok(-65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("-FFFF", 16), Ok(-65535 as i32));
+        assert_eq!(FromStrRadix::from_str_radix("-z", 36), Ok(-35 as $T));
+        assert_eq!(FromStrRadix::from_str_radix("-Z", 36), Ok(-35 as $T));
 
-        assert_eq!(FromStrRadix::from_str_radix("Z", 35), None::<$T>);
-        assert_eq!(FromStrRadix::from_str_radix("-9", 2), None::<$T>);
+        assert_eq!(FromStrRadix::from_str_radix("Z", 35).ok(), None::<$T>);
+        assert_eq!(FromStrRadix::from_str_radix("-9", 2).ok(), None::<$T>);
     }
 }
 

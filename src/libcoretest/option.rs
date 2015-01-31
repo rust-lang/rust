@@ -16,7 +16,7 @@ use core::clone::Clone;
 #[test]
 fn test_get_ptr() {
     unsafe {
-        let x = box 0i;
+        let x = box 0;
         let addr_x: *const int = mem::transmute(&*x);
         let opt = Some(x);
         let y = opt.unwrap();
@@ -59,7 +59,7 @@ fn test_get_resource() {
         }
     }
 
-    let i = Rc::new(RefCell::new(0i));
+    let i = Rc::new(RefCell::new(0));
     {
         let x = r(i.clone());
         let opt = Some(x);
@@ -71,7 +71,7 @@ fn test_get_resource() {
 #[test]
 fn test_option_dance() {
     let x = Some(());
-    let mut y = Some(5i);
+    let mut y = Some(5);
     let mut y2 = 0;
     for _x in x.iter() {
         y2 = y.take().unwrap();
@@ -89,12 +89,12 @@ fn test_option_too_much_dance() {
 
 #[test]
 fn test_and() {
-    let x: Option<int> = Some(1i);
-    assert_eq!(x.and(Some(2i)), Some(2));
+    let x: Option<int> = Some(1);
+    assert_eq!(x.and(Some(2)), Some(2));
     assert_eq!(x.and(None::<int>), None);
 
     let x: Option<int> = None;
-    assert_eq!(x.and(Some(2i)), None);
+    assert_eq!(x.and(Some(2)), None);
     assert_eq!(x.and(None::<int>), None);
 }
 
@@ -133,7 +133,7 @@ fn test_or_else() {
 
 #[test]
 fn test_unwrap() {
-    assert_eq!(Some(1i).unwrap(), 1);
+    assert_eq!(Some(1).unwrap(), 1);
     let s = Some("hello".to_string()).unwrap();
     assert_eq!(s, "hello");
 }
@@ -172,7 +172,7 @@ fn test_unwrap_or_else() {
 
 #[test]
 fn test_iter() {
-    let val = 5i;
+    let val = 5;
 
     let x = Some(val);
     let mut it = x.iter();
@@ -185,8 +185,8 @@ fn test_iter() {
 
 #[test]
 fn test_mut_iter() {
-    let val = 5i;
-    let new_val = 11i;
+    let val = 5;
+    let new_val = 11;
 
     let mut x = Some(val);
     {
@@ -223,13 +223,13 @@ fn test_ord() {
 /* FIXME(#20575)
 #[test]
 fn test_collect() {
-    let v: Option<Vec<int>> = (0i..0).map(|_| Some(0i)).collect();
+    let v: Option<Vec<int>> = (0..0).map(|_| Some(0i)).collect();
     assert!(v == Some(vec![]));
 
-    let v: Option<Vec<int>> = (0i..3).map(|x| Some(x)).collect();
+    let v: Option<Vec<int>> = (0..3).map(|x| Some(x)).collect();
     assert!(v == Some(vec![0, 1, 2]));
 
-    let v: Option<Vec<int>> = (0i..3).map(|x| {
+    let v: Option<Vec<int>> = (0..3).map(|x| {
         if x > 1 { None } else { Some(x) }
     }).collect();
     assert!(v == None);

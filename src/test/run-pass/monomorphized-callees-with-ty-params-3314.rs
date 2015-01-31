@@ -32,9 +32,9 @@ impl Serializer for int {
 }
 
 pub fn main() {
-    let foo = F { a: 1i };
-    foo.serialize(1i);
+    let foo = F { a: 1 };
+    foo.serialize(1);
 
-    let bar = F { a: F {a: 1i } };
-    bar.serialize(2i);
+    let bar = F { a: F {a: 1 } };
+    bar.serialize(2);
 }

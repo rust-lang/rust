@@ -16,6 +16,6 @@ fn f(i: Box<int>) {
 }
 
 pub fn main() {
-    let i = box 100i;
+    let i = box 100;
     f(i);
 }

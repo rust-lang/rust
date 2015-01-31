@@ -18,7 +18,7 @@ use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Debug;
 use core::fmt;
-use core::iter::{Peekable, Map, FromIterator};
+use core::iter::{Peekable, Map, FromIterator, IntoIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
 use btree_map::{BTreeMap, Keys};
@@ -282,7 +282,7 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// let mut v = BTreeSet::new();
     /// assert_eq!(v.len(), 0);
-    /// v.insert(1i);
+    /// v.insert(1);
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -297,7 +297,7 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// let mut v = BTreeSet::new();
     /// assert!(v.is_empty());
-    /// v.insert(1i);
+    /// v.insert(1);
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -311,7 +311,7 @@ impl<T: Ord> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut v = BTreeSet::new();
-    /// v.insert(1i);
+    /// v.insert(1);
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
@@ -331,7 +331,7 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let set: BTreeSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
     /// assert_eq!(set.contains(&1), true);
     /// assert_eq!(set.contains(&4), false);
     /// ```
@@ -348,7 +348,7 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let a: BTreeSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let a: BTreeSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
     /// let mut b: BTreeSet<int> = BTreeSet::new();
     ///
     /// assert_eq!(a.is_disjoint(&b), true);
@@ -369,7 +369,7 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let sup: BTreeSet<int> = [1i, 2, 3].iter().map(|&x| x).collect();
+    /// let sup: BTreeSet<int> = [1, 2, 3].iter().map(|&x| x).collect();
     /// let mut set: BTreeSet<int> = BTreeSet::new();
     ///
     /// assert_eq!(set.is_subset(&sup), true);
@@ -411,7 +411,7 @@ impl<T: Ord> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let sub: BTreeSet<int> = [1i, 2].iter().map(|&x| x).collect();
+    /// let sub: BTreeSet<int> = [1, 2].iter().map(|&x| x).collect();
     /// let mut set: BTreeSet<int> = BTreeSet::new();
     ///
     /// assert_eq!(set.is_superset(&sub), false);
@@ -438,8 +438,8 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// let mut set = BTreeSet::new();
     ///
-    /// assert_eq!(set.insert(2i), true);
-    /// assert_eq!(set.insert(2i), false);
+    /// assert_eq!(set.insert(2), true);
+    /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -461,7 +461,7 @@ impl<T: Ord> BTreeSet<T> {
     ///
     /// let mut set = BTreeSet::new();
     ///
-    /// set.insert(2i);
+    /// set.insert(2);
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```
@@ -477,6 +477,22 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
         let mut set = BTreeSet::new();
         set.extend(iter);
         set
+    }
+}
+
+impl<T> IntoIterator for BTreeSet<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a BTreeSet<T> {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
     }
 }
 
@@ -731,7 +747,7 @@ mod test {
     fn test_clone_eq() {
       let mut m = BTreeSet::new();
 
-      m.insert(1i);
+      m.insert(1);
       m.insert(2);
 
       assert!(m.clone() == m);
@@ -742,11 +758,11 @@ mod test {
       let mut x = BTreeSet::new();
       let mut y = BTreeSet::new();
 
-      x.insert(1i);
+      x.insert(1);
       x.insert(2);
       x.insert(3);
 
-      y.insert(3i);
+      y.insert(3);
       y.insert(2);
       y.insert(1);
 
@@ -874,7 +890,7 @@ mod test {
 
     #[test]
     fn test_from_iter() {
-        let xs = [1i, 2, 3, 4, 5, 6, 7, 8, 9];
+        let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
         let set: BTreeSet<int> = xs.iter().map(|&x| x).collect();
 

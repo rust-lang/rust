@@ -701,14 +701,6 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
                 terminating(body.id);
             }
 
-            ast::ExprForLoop(ref _pat, ref _head, ref body, _) => {
-                terminating(body.id);
-
-                // The variable parent of everything inside (most importantly, the
-                // pattern) is the body.
-                visitor.cx.var_parent = InnermostDeclaringBlock::Block(body.id);
-            }
-
             ast::ExprMatch(..) => {
                 visitor.cx.var_parent = InnermostDeclaringBlock::Match(expr.id);
             }

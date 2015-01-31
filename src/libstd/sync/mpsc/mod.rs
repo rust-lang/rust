@@ -59,9 +59,9 @@
 //! // Create a simple streaming channel
 //! let (tx, rx) = channel();
 //! Thread::spawn(move|| {
-//!     tx.send(10i).unwrap();
+//!     tx.send(10).unwrap();
 //! });
-//! assert_eq!(rx.recv().unwrap(), 10i);
+//! assert_eq!(rx.recv().unwrap(), 10);
 //! ```
 //!
 //! Shared usage:
@@ -74,14 +74,14 @@
 //! // where tx is the sending half (tx for transmission), and rx is the receiving
 //! // half (rx for receiving).
 //! let (tx, rx) = channel();
-//! for i in 0i..10i {
+//! for i in 0..10 {
 //!     let tx = tx.clone();
 //!     Thread::spawn(move|| {
 //!         tx.send(i).unwrap();
 //!     });
 //! }
 //!
-//! for _ in 0i..10i {
+//! for _ in 0..10 {
 //!     let j = rx.recv().unwrap();
 //!     assert!(0 <= j && j < 10);
 //! }
@@ -382,8 +382,8 @@ impl<T> !Sync for SyncSender<T> {}
 /// A `send` operation can only fail if the receiving end of a channel is
 /// disconnected, implying that the data could never be received. The error
 /// contains the data being sent as a payload so it can be recovered.
-#[derive(PartialEq, Eq)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub struct SendError<T>(pub T);
 
 /// An error returned from the `recv` function on a `Receiver`.
@@ -396,7 +396,7 @@ pub struct RecvError;
 
 /// This enumeration is the list of the possible reasons that try_recv could not
 /// return data when called.
-#[derive(PartialEq, Clone, Copy, Debug)]
+#[derive(PartialEq, Eq, Clone, Copy, Debug)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum TryRecvError {
     /// This channel is currently empty, but the sender(s) have not yet
@@ -412,8 +412,8 @@ pub enum TryRecvError {
 
 /// This enumeration is the list of the possible error outcomes for the
 /// `SyncSender::try_send` method.
-#[derive(PartialEq, Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
+#[derive(PartialEq, Eq, Clone, Copy)]
 pub enum TrySendError<T> {
     /// The data could not be sent on the channel because it would require that
     /// the callee block to send the data.
@@ -514,15 +514,15 @@ pub fn channel<T: Send>() -> (Sender<T>, Receiver<T>) {
 /// let (tx, rx) = sync_channel(1);
 ///
 /// // this returns immediately
-/// tx.send(1i).unwrap();
+/// tx.send(1).unwrap();
 ///
 /// Thread::spawn(move|| {
 ///     // this will block until the previous message has been received
-///     tx.send(2i).unwrap();
+///     tx.send(2).unwrap();
 /// });
 ///
-/// assert_eq!(rx.recv().unwrap(), 1i);
-/// assert_eq!(rx.recv().unwrap(), 2i);
+/// assert_eq!(rx.recv().unwrap(), 1);
+/// assert_eq!(rx.recv().unwrap(), 2);
 /// ```
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn sync_channel<T: Send>(bound: uint) -> (SyncSender<T>, Receiver<T>) {
@@ -562,11 +562,11 @@ impl<T: Send> Sender<T> {
     /// let (tx, rx) = channel();
     ///
     /// // This send is always successful
-    /// tx.send(1i).unwrap();
+    /// tx.send(1).unwrap();
     ///
     /// // This send will fail because the receiver is gone
     /// drop(rx);
-    /// assert_eq!(tx.send(1i).err().unwrap().0, 1);
+    /// assert_eq!(tx.send(1).err().unwrap().0, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn send(&self, t: T) -> Result<(), SendError<T>> {
@@ -1045,7 +1045,7 @@ mod test {
     #[test]
     fn drop_full() {
         let (tx, _rx) = channel();
-        tx.send(box 1i).unwrap();
+        tx.send(box 1).unwrap();
     }
 
     #[test]
@@ -1053,7 +1053,7 @@ mod test {
         let (tx, _rx) = channel();
         drop(tx.clone());
         drop(tx.clone());
-        tx.send(box 1i).unwrap();
+        tx.send(box 1).unwrap();
     }
 
     #[test]
@@ -1147,7 +1147,7 @@ mod test {
     fn stress() {
         let (tx, rx) = channel::<int>();
         let t = Thread::scoped(move|| {
-            for _ in 0u..10000 { tx.send(1i).unwrap(); }
+            for _ in 0u..10000 { tx.send(1).unwrap(); }
         });
         for _ in 0u..10000 {
             assert_eq!(rx.recv().unwrap(), 1);
@@ -1187,13 +1187,13 @@ mod test {
         let (tx2, rx2) = channel::<int>();
         let t1 = Thread::scoped(move|| {
             tx1.send(()).unwrap();
-            for _ in 0i..40 {
+            for _ in 0..40 {
                 assert_eq!(rx2.recv().unwrap(), 1);
             }
         });
         rx1.recv().unwrap();
         let t2 = Thread::scoped(move|| {
-            for _ in 0i..40 {
+            for _ in 0..40 {
                 tx2.send(1).unwrap();
             }
         });
@@ -1205,7 +1205,7 @@ mod test {
     fn recv_from_outside_runtime() {
         let (tx, rx) = channel::<int>();
         let t = Thread::scoped(move|| {
-            for _ in 0i..40 {
+            for _ in 0..40 {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
         });
@@ -1391,9 +1391,9 @@ mod test {
         for _ in 0..stress_factor() {
             let (tx, rx) = channel();
             let _t = Thread::spawn(move|| {
-                tx.send(box 10i).unwrap();
+                tx.send(box 10).unwrap();
             });
-            assert!(rx.recv().unwrap() == box 10i);
+            assert!(rx.recv().unwrap() == box 10);
         }
     }
 
@@ -1429,8 +1429,8 @@ mod test {
     fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (tx, rx) = channel();
-        for _ in 0i..10000 { tx.send(()).unwrap(); }
-        for _ in 0i..10000 { rx.recv().unwrap(); }
+        for _ in 0..10000 { tx.send(()).unwrap(); }
+        for _ in 0..10000 { rx.recv().unwrap(); }
     }
 
     #[test]
@@ -1567,7 +1567,7 @@ mod sync_tests {
     #[test]
     fn drop_full() {
         let (tx, _rx) = sync_channel(1);
-        tx.send(box 1i).unwrap();
+        tx.send(box 1).unwrap();
     }
 
     #[test]
@@ -1855,9 +1855,9 @@ mod sync_tests {
         for _ in 0..stress_factor() {
             let (tx, rx) = sync_channel::<Box<int>>(0);
             let _t = Thread::spawn(move|| {
-                tx.send(box 10i).unwrap();
+                tx.send(box 10).unwrap();
             });
-            assert!(rx.recv().unwrap() == box 10i);
+            assert!(rx.recv().unwrap() == box 10);
         }
     }
 

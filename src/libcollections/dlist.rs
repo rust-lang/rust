@@ -28,7 +28,7 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Writer, Hasher, Hash};
-use core::iter::{self, FromIterator};
+use core::iter::{self, FromIterator, IntoIterator};
 use core::mem;
 use core::ptr;
 
@@ -235,9 +235,9 @@ impl<T> DList<T> {
     ///
     /// let mut a = DList::new();
     /// let mut b = DList::new();
-    /// a.push_back(1i);
+    /// a.push_back(1);
     /// a.push_back(2);
-    /// b.push_back(3i);
+    /// b.push_back(3);
     /// b.push_back(4);
     ///
     /// a.append(&mut b);
@@ -529,7 +529,7 @@ impl<T> DList<T> {
     /// use std::collections::DList;
     ///
     /// let mut d = DList::new();
-    /// d.push_back(1i);
+    /// d.push_back(1);
     /// d.push_back(3);
     /// assert_eq!(3, *d.back().unwrap());
     /// ```
@@ -548,7 +548,7 @@ impl<T> DList<T> {
     ///
     /// let mut d = DList::new();
     /// assert_eq!(d.pop_back(), None);
-    /// d.push_back(1i);
+    /// d.push_back(1);
     /// d.push_back(3);
     /// assert_eq!(d.pop_back(), Some(3));
     /// ```
@@ -766,7 +766,7 @@ impl<'a, A> IterMut<'a, A> {
     /// }
     /// {
     ///     let vec: Vec<int> = list.into_iter().collect();
-    ///     assert_eq!(vec, vec![1i, 2, 3, 4]);
+    ///     assert_eq!(vec, vec![1, 2, 3, 4]);
     /// }
     /// ```
     #[inline]
@@ -827,6 +827,30 @@ impl<A> FromIterator<A> for DList<A> {
         let mut ret = DList::new();
         ret.extend(iterator);
         ret
+    }
+}
+
+impl<T> IntoIterator for DList<T> {
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a DList<T> {
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<'a, T> IntoIterator for &'a mut DList<T> {
+    type Iter = IterMut<'a, T>;
+
+    fn into_iter(mut self) -> IterMut<'a, T> {
+        self.iter_mut()
     }
 }
 
@@ -964,7 +988,7 @@ mod tests {
         assert_eq!(m.pop_front(), Some(box 1));
 
         let mut n = DList::new();
-        n.push_front(2i);
+        n.push_front(2);
         n.push_front(3);
         {
             assert_eq!(n.front().unwrap(), &3);
@@ -984,7 +1008,7 @@ mod tests {
 
     #[cfg(test)]
     fn generate_test() -> DList<int> {
-        list_from(&[0i,1,2,3,4,5,6])
+        list_from(&[0,1,2,3,4,5,6])
     }
 
     #[cfg(test)]
@@ -1007,7 +1031,7 @@ mod tests {
         {
             let mut m = DList::new();
             let mut n = DList::new();
-            n.push_back(2i);
+            n.push_back(2);
             m.append(&mut n);
             check_links(&m);
             assert_eq!(m.len(), 1);
@@ -1019,7 +1043,7 @@ mod tests {
         {
             let mut m = DList::new();
             let mut n = DList::new();
-            m.push_back(2i);
+            m.push_back(2);
             m.append(&mut n);
             check_links(&m);
             assert_eq!(m.len(), 1);
@@ -1028,8 +1052,8 @@ mod tests {
         }
 
         // Non-empty to non-empty
-        let v = vec![1i,2,3,4,5];
-        let u = vec![9i,8,1,2,3,4,5];
+        let v = vec![1,2,3,4,5];
+        let u = vec![9,8,1,2,3,4,5];
         let mut m = list_from(v.as_slice());
         let mut n = list_from(u.as_slice());
         m.append(&mut n);
@@ -1054,7 +1078,7 @@ mod tests {
         // singleton
         {
             let mut m = DList::new();
-            m.push_back(1i);
+            m.push_back(1);
 
             let p = m.split_off(0);
             assert_eq!(m.len(), 0);
@@ -1065,29 +1089,29 @@ mod tests {
 
         // not singleton, forwards
         {
-            let u = vec![1i,2,3,4,5];
+            let u = vec![1,2,3,4,5];
             let mut m = list_from(u.as_slice());
             let mut n = m.split_off(2);
             assert_eq!(m.len(), 2);
             assert_eq!(n.len(), 3);
-            for elt in 1i..3 {
+            for elt in 1..3 {
                 assert_eq!(m.pop_front(), Some(elt));
             }
-            for elt in 3i..6 {
+            for elt in 3..6 {
                 assert_eq!(n.pop_front(), Some(elt));
             }
         }
         // not singleton, backwards
         {
-            let u = vec![1i,2,3,4,5];
+            let u = vec![1,2,3,4,5];
             let mut m = list_from(u.as_slice());
             let mut n = m.split_off(4);
             assert_eq!(m.len(), 4);
             assert_eq!(n.len(), 1);
-            for elt in 1i..5 {
+            for elt in 1..5 {
                 assert_eq!(m.pop_front(), Some(elt));
             }
-            for elt in 5i..6 {
+            for elt in 5..6 {
                 assert_eq!(n.pop_front(), Some(elt));
             }
         }
@@ -1102,7 +1126,7 @@ mod tests {
         }
         let mut n = DList::new();
         assert_eq!(n.iter().next(), None);
-        n.push_front(4i);
+        n.push_front(4);
         let mut it = n.iter();
         assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(it.next().unwrap(), &4);
@@ -1113,7 +1137,7 @@ mod tests {
     #[test]
     fn test_iterator_clone() {
         let mut n = DList::new();
-        n.push_back(2i);
+        n.push_back(2);
         n.push_back(3);
         n.push_back(4);
         let mut it = n.iter();
@@ -1128,7 +1152,7 @@ mod tests {
     fn test_iterator_double_end() {
         let mut n = DList::new();
         assert_eq!(n.iter().next(), None);
-        n.push_front(4i);
+        n.push_front(4);
         n.push_front(5);
         n.push_front(6);
         let mut it = n.iter();
@@ -1150,7 +1174,7 @@ mod tests {
         }
         let mut n = DList::new();
         assert_eq!(n.iter().rev().next(), None);
-        n.push_front(4i);
+        n.push_front(4);
         let mut it = n.iter().rev();
         assert_eq!(it.size_hint(), (1, Some(1)));
         assert_eq!(it.next().unwrap(), &4);
@@ -1169,7 +1193,7 @@ mod tests {
         assert_eq!(len, 0);
         let mut n = DList::new();
         assert!(n.iter_mut().next().is_none());
-        n.push_front(4i);
+        n.push_front(4);
         n.push_back(5);
         let mut it = n.iter_mut();
         assert_eq!(it.size_hint(), (2, Some(2)));
@@ -1183,7 +1207,7 @@ mod tests {
     fn test_iterator_mut_double_end() {
         let mut n = DList::new();
         assert!(n.iter_mut().next_back().is_none());
-        n.push_front(4i);
+        n.push_front(4);
         n.push_front(5);
         n.push_front(6);
         let mut it = n.iter_mut();
@@ -1199,7 +1223,7 @@ mod tests {
 
     #[test]
     fn test_insert_prev() {
-        let mut m = list_from(&[0i,2,4,6,8]);
+        let mut m = list_from(&[0,2,4,6,8]);
         let len = m.len();
         {
             let mut it = m.iter_mut();
@@ -1232,7 +1256,7 @@ mod tests {
         }
         let mut n = DList::new();
         assert!(n.iter_mut().rev().next().is_none());
-        n.push_front(4i);
+        n.push_front(4);
         let mut it = n.iter_mut().rev();
         assert!(it.next().is_some());
         assert!(it.next().is_none());
@@ -1240,7 +1264,7 @@ mod tests {
 
     #[test]
     fn test_send() {
-        let n = list_from(&[1i,2,3]);
+        let n = list_from(&[1,2,3]);
         Thread::scoped(move || {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
@@ -1258,8 +1282,8 @@ mod tests {
         m.push_back(1);
         assert!(n == m);
 
-        let n = list_from(&[2i,3,4]);
-        let m = list_from(&[1i,2,3]);
+        let n = list_from(&[2,3,4]);
+        let m = list_from(&[1,2,3]);
         assert!(n != m);
     }
 
@@ -1270,11 +1294,11 @@ mod tests {
 
       assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
 
-      x.push_back(1i);
+      x.push_back(1);
       x.push_back(2);
       x.push_back(3);
 
-      y.push_front(3i);
+      y.push_front(3);
       y.push_front(2);
       y.push_front(1);
 
@@ -1284,7 +1308,7 @@ mod tests {
     #[test]
     fn test_ord() {
         let n: DList<int> = list_from(&[]);
-        let m = list_from(&[1i,2,3]);
+        let m = list_from(&[1,2,3]);
         assert!(n < m);
         assert!(m > n);
         assert!(n <= n);
@@ -1334,7 +1358,7 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let list: DList<int> = (0i..10).collect();
+        let list: DList<i32> = (0..10).collect();
         assert_eq!(format!("{:?}", list), "DList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
         let list: DList<&str> = vec!["just", "one", "test", "more"].iter()
@@ -1384,7 +1408,7 @@ mod tests {
 
     #[bench]
     fn bench_collect_into(b: &mut test::Bencher) {
-        let v = &[0i; 64];
+        let v = &[0; 64];
         b.iter(|| {
             let _: DList<int> = v.iter().map(|x| *x).collect();
         })
@@ -1426,7 +1450,7 @@ mod tests {
 
     #[bench]
     fn bench_iter(b: &mut test::Bencher) {
-        let v = &[0i; 128];
+        let v = &[0; 128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
             assert!(m.iter().count() == 128);
@@ -1434,7 +1458,7 @@ mod tests {
     }
     #[bench]
     fn bench_iter_mut(b: &mut test::Bencher) {
-        let v = &[0i; 128];
+        let v = &[0; 128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
             assert!(m.iter_mut().count() == 128);
@@ -1442,7 +1466,7 @@ mod tests {
     }
     #[bench]
     fn bench_iter_rev(b: &mut test::Bencher) {
-        let v = &[0i; 128];
+        let v = &[0; 128];
         let m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
             assert!(m.iter().rev().count() == 128);
@@ -1450,7 +1474,7 @@ mod tests {
     }
     #[bench]
     fn bench_iter_mut_rev(b: &mut test::Bencher) {
-        let v = &[0i; 128];
+        let v = &[0; 128];
         let mut m: DList<int> = v.iter().map(|&x|x).collect();
         b.iter(|| {
             assert!(m.iter_mut().rev().count() == 128);

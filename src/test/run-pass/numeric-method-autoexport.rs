@@ -21,7 +21,7 @@ use std::num::ToPrimitive;
 pub fn main() {
 // ints
     // num
-    assert_eq!(15i.add(6), 21);
+    assert_eq!(15is.add(6is), 21is);
     assert_eq!(15i8.add(6i8), 21i8);
     assert_eq!(15i16.add(6i16), 21i16);
     assert_eq!(15i32.add(6i32), 21i32);
@@ -29,7 +29,7 @@ pub fn main() {
 
 // uints
     // num
-    assert_eq!(15u.add(6u), 21u);
+    assert_eq!(15u.add(6us), 21us);
     assert_eq!(15u8.add(6u8), 21u8);
     assert_eq!(15u16.add(6u16), 21u16);
     assert_eq!(15u32.add(6u32), 21u32);

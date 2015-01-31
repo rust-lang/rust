@@ -18,6 +18,7 @@
 
 use self::Searcher::{Naive, TwoWay, TwoWayLong};
 
+use clone::Clone;
 use cmp::{self, Eq};
 use default::Default;
 use error::Error;
@@ -108,35 +109,60 @@ macro_rules! delegate_iter {
 
 /// A trait to abstract the idea of creating a new instance of a type from a
 /// string.
-// FIXME(#17307): there should be an `E` associated type for a `Result` return
-#[unstable(feature = "core",
-           reason = "will return a Result once associated types are working")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait FromStr {
+    /// The associated error which can be returned from parsing.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type Err;
+
     /// Parses a string `s` to return an optional value of this type. If the
     /// string is ill-formatted, the None is returned.
-    fn from_str(s: &str) -> Option<Self>;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn from_str(s: &str) -> Result<Self, Self::Err>;
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl FromStr for bool {
+    type Err = ParseBoolError;
+
     /// Parse a `bool` from a string.
     ///
-    /// Yields an `Option<bool>`, because `s` may or may not actually be parseable.
+    /// Yields an `Option<bool>`, because `s` may or may not actually be
+    /// parseable.
     ///
     /// # Examples
     ///
     /// ```rust
-    /// assert_eq!("true".parse(), Some(true));
-    /// assert_eq!("false".parse(), Some(false));
-    /// assert_eq!("not even a boolean".parse::<bool>(), None);
+    /// assert_eq!("true".parse(), Ok(true));
+    /// assert_eq!("false".parse(), Ok(false));
+    /// assert!("not even a boolean".parse::<bool>().is_err());
     /// ```
     #[inline]
-    fn from_str(s: &str) -> Option<bool> {
+    fn from_str(s: &str) -> Result<bool, ParseBoolError> {
         match s {
-            "true"  => Some(true),
-            "false" => Some(false),
-            _       => None,
+            "true"  => Ok(true),
+            "false" => Ok(false),
+            _       => Err(ParseBoolError { _priv: () }),
         }
     }
+}
+
+/// An error returned when parsing a `bool` from a string fails.
+#[derive(Debug, Clone, PartialEq)]
+#[allow(missing_copy_implementations)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct ParseBoolError { _priv: () }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Display for ParseBoolError {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        "provided string was not `true` or `false`".fmt(f)
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Error for ParseBoolError {
+    fn description(&self) -> &str { "failed to parse bool" }
 }
 
 /*
@@ -279,7 +305,7 @@ Section: Iterators
 /// Iterator for the char (representing *Unicode Scalar Values*) of a string
 ///
 /// Created with the method `.chars()`.
-#[derive(Clone, Copy)]
+#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Chars<'a> {
     iter: slice::Iter<'a, u8>
@@ -460,15 +486,6 @@ delegate_iter!{exact u8 : Bytes<'a>}
 #[derive(Copy, Clone)]
 struct BytesDeref;
 
-#[cfg(stage0)]
-impl<'a> Fn(&'a u8) -> u8 for BytesDeref {
-    #[inline]
-    extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
-        *ptr
-    }
-}
-
-#[cfg(not(stage0))]
 impl<'a> Fn<(&'a u8,)> for BytesDeref {
     type Output = u8;
 
@@ -1007,11 +1024,11 @@ fn run_utf8_validation_iterator(iter: &mut slice::Iter<u8>)
     let whole = iter.as_slice();
     loop {
         // save the current thing we're pointing at.
-        let old = *iter;
+        let old = iter.clone();
 
         // restore the iterator we had at the start of this codepoint.
         macro_rules! err { () => {{
-            *iter = old;
+            *iter = old.clone();
             return Err(Utf8Error::InvalidByte(whole.len() - iter.as_slice().len()))
         }}}
 
@@ -1355,7 +1372,7 @@ pub trait StrExt {
     fn as_ptr(&self) -> *const u8;
     fn len(&self) -> uint;
     fn is_empty(&self) -> bool;
-    fn parse<T: FromStr>(&self) -> Option<T>;
+    fn parse<T: FromStr>(&self) -> Result<T, T::Err>;
 }
 
 #[inline(never)]
@@ -1670,7 +1687,7 @@ impl StrExt for str {
     fn is_empty(&self) -> bool { self.len() == 0 }
 
     #[inline]
-    fn parse<T: FromStr>(&self) -> Option<T> { FromStr::from_str(self) }
+    fn parse<T: FromStr>(&self) -> Result<T, T::Err> { FromStr::from_str(self) }
 }
 
 /// Pluck a code point out of a UTF-8-like byte slice and return the

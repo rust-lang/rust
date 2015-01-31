@@ -10,7 +10,7 @@
 
 #[test]
 fn test_borrowed_clone() {
-    let x = 5i;
+    let x = 5;
     let y: &int = &x;
     let z: &int = (&y).clone();
     assert_eq!(*z, 5);
@@ -18,8 +18,8 @@ fn test_borrowed_clone() {
 
 #[test]
 fn test_clone_from() {
-    let a = box 5i;
-    let mut b = box 10i;
+    let a = box 5;
+    let mut b = box 10;
     b.clone_from(&a);
     assert_eq!(*b, 5);
 }

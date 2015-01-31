@@ -333,8 +333,8 @@ macro_rules! options {
                 break;
             }
             if !found {
-                early_error(&format!("unknown codegen option: `{}`",
-                                    key)[]);
+                early_error(&format!("unknown {} option: `{}`",
+                                    $outputname, key)[]);
             }
         }
         return op;
@@ -424,7 +424,7 @@ macro_rules! options {
         }
 
         fn parse_uint(slot: &mut uint, v: Option<&str>) -> bool {
-            match v.and_then(|s| s.parse()) {
+            match v.and_then(|s| s.parse().ok()) {
                 Some(i) => { *slot = i; true },
                 None => false
             }
@@ -432,7 +432,7 @@ macro_rules! options {
 
         fn parse_opt_uint(slot: &mut Option<uint>, v: Option<&str>) -> bool {
             match v {
-                Some(s) => { *slot = s.parse(); slot.is_some() }
+                Some(s) => { *slot = s.parse().ok(); slot.is_some() }
                 None => { *slot = None; true }
             }
         }

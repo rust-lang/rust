@@ -40,11 +40,11 @@ pub fn test_num<T>(ten: T, two: T) where
      + Rem<Output=T> + Debug
      + Copy
 {
-    assert_eq!(ten.add(two),  cast(12i).unwrap());
-    assert_eq!(ten.sub(two),  cast(8i).unwrap());
-    assert_eq!(ten.mul(two),  cast(20i).unwrap());
-    assert_eq!(ten.div(two),  cast(5i).unwrap());
-    assert_eq!(ten.rem(two),  cast(0i).unwrap());
+    assert_eq!(ten.add(two),  cast(12).unwrap());
+    assert_eq!(ten.sub(two),  cast(8).unwrap());
+    assert_eq!(ten.mul(two),  cast(20).unwrap());
+    assert_eq!(ten.div(two),  cast(5).unwrap());
+    assert_eq!(ten.rem(two),  cast(0).unwrap());
 
     assert_eq!(ten.add(two),  ten + two);
     assert_eq!(ten.sub(two),  ten - two);
@@ -62,64 +62,64 @@ mod test {
 
     #[test]
     fn from_str_issue7588() {
-        let u : Option<u8> = from_str_radix("1000", 10);
+        let u : Option<u8> = from_str_radix("1000", 10).ok();
         assert_eq!(u, None);
-        let s : Option<i16> = from_str_radix("80000", 10);
+        let s : Option<i16> = from_str_radix("80000", 10).ok();
         assert_eq!(s, None);
-        let f : Option<f32> = from_str_radix("10000000000000000000000000000000000000000", 10);
+        let f : Option<f32> = from_str_radix("10000000000000000000000000000000000000000", 10).ok();
         assert_eq!(f, Some(Float::infinity()));
-        let fe : Option<f32> = from_str_radix("1e40", 10);
+        let fe : Option<f32> = from_str_radix("1e40", 10).ok();
         assert_eq!(fe, Some(Float::infinity()));
     }
 
     #[test]
     fn test_from_str_radix_float() {
-        let x1 : Option<f64> = from_str_radix("-123.456", 10);
+        let x1 : Option<f64> = from_str_radix("-123.456", 10).ok();
         assert_eq!(x1, Some(-123.456));
-        let x2 : Option<f32> = from_str_radix("123.456", 10);
+        let x2 : Option<f32> = from_str_radix("123.456", 10).ok();
         assert_eq!(x2, Some(123.456));
-        let x3 : Option<f32> = from_str_radix("-0.0", 10);
+        let x3 : Option<f32> = from_str_radix("-0.0", 10).ok();
         assert_eq!(x3, Some(-0.0));
-        let x4 : Option<f32> = from_str_radix("0.0", 10);
+        let x4 : Option<f32> = from_str_radix("0.0", 10).ok();
         assert_eq!(x4, Some(0.0));
-        let x4 : Option<f32> = from_str_radix("1.0", 10);
+        let x4 : Option<f32> = from_str_radix("1.0", 10).ok();
         assert_eq!(x4, Some(1.0));
-        let x5 : Option<f32> = from_str_radix("-1.0", 10);
+        let x5 : Option<f32> = from_str_radix("-1.0", 10).ok();
         assert_eq!(x5, Some(-1.0));
     }
 
     #[test]
     fn test_int_from_str_overflow() {
         let mut i8_val: i8 = 127_i8;
-        assert_eq!("127".parse::<i8>(), Some(i8_val));
-        assert_eq!("128".parse::<i8>(), None);
+        assert_eq!("127".parse::<i8>().ok(), Some(i8_val));
+        assert_eq!("128".parse::<i8>().ok(), None);
 
         i8_val += 1 as i8;
-        assert_eq!("-128".parse::<i8>(), Some(i8_val));
-        assert_eq!("-129".parse::<i8>(), None);
+        assert_eq!("-128".parse::<i8>().ok(), Some(i8_val));
+        assert_eq!("-129".parse::<i8>().ok(), None);
 
         let mut i16_val: i16 = 32_767_i16;
-        assert_eq!("32767".parse::<i16>(), Some(i16_val));
-        assert_eq!("32768".parse::<i16>(), None);
+        assert_eq!("32767".parse::<i16>().ok(), Some(i16_val));
+        assert_eq!("32768".parse::<i16>().ok(), None);
 
         i16_val += 1 as i16;
-        assert_eq!("-32768".parse::<i16>(), Some(i16_val));
-        assert_eq!("-32769".parse::<i16>(), None);
+        assert_eq!("-32768".parse::<i16>().ok(), Some(i16_val));
+        assert_eq!("-32769".parse::<i16>().ok(), None);
 
         let mut i32_val: i32 = 2_147_483_647_i32;
-        assert_eq!("2147483647".parse::<i32>(), Some(i32_val));
-        assert_eq!("2147483648".parse::<i32>(), None);
+        assert_eq!("2147483647".parse::<i32>().ok(), Some(i32_val));
+        assert_eq!("2147483648".parse::<i32>().ok(), None);
 
         i32_val += 1 as i32;
-        assert_eq!("-2147483648".parse::<i32>(), Some(i32_val));
-        assert_eq!("-2147483649".parse::<i32>(), None);
+        assert_eq!("-2147483648".parse::<i32>().ok(), Some(i32_val));
+        assert_eq!("-2147483649".parse::<i32>().ok(), None);
 
         let mut i64_val: i64 = 9_223_372_036_854_775_807_i64;
-        assert_eq!("9223372036854775807".parse::<i64>(), Some(i64_val));
-        assert_eq!("9223372036854775808".parse::<i64>(), None);
+        assert_eq!("9223372036854775807".parse::<i64>().ok(), Some(i64_val));
+        assert_eq!("9223372036854775808".parse::<i64>().ok(), None);
 
         i64_val += 1 as i64;
-        assert_eq!("-9223372036854775808".parse::<i64>(), Some(i64_val));
-        assert_eq!("-9223372036854775809".parse::<i64>(), None);
+        assert_eq!("-9223372036854775808".parse::<i64>().ok(), Some(i64_val));
+        assert_eq!("-9223372036854775809".parse::<i64>().ok(), None);
     }
 }

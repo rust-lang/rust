@@ -29,10 +29,10 @@
 //! ```
 //! format!("Hello");                  // => "Hello"
 //! format!("Hello, {}!", "world");    // => "Hello, world!"
-//! format!("The number is {}", 1i);   // => "The number is 1"
-//! format!("{:?}", (3i, 4i));         // => "(3i, 4i)"
-//! format!("{value}", value=4i);      // => "4"
-//! format!("{} {}", 1i, 2u);          // => "1 2"
+//! format!("The number is {}", 1);   // => "The number is 1"
+//! format!("{:?}", (3, 4));         // => "(3, 4)"
+//! format!("{value}", value=4);      // => "4"
+//! format!("{} {}", 1, 2u);          // => "1 2"
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is
@@ -55,7 +55,7 @@
 //! the iterator advances. This leads to behavior like this:
 //!
 //! ```rust
-//! format!("{1} {} {0} {}", 1i, 2i); // => "2 1 1 2"
+//! format!("{1} {} {0} {}", 1, 2); // => "2 1 1 2"
 //! ```
 //!
 //! The internal iterator over the argument has not been advanced by the time
@@ -83,8 +83,8 @@
 //!
 //! ```
 //! format!("{argument}", argument = "test");   // => "test"
-//! format!("{name} {}", 1i, name = 2i);        // => "2 1"
-//! format!("{a} {c} {b}", a="a", b='b', c=3i);  // => "a 3 b"
+//! format!("{name} {}", 1, name = 2);        // => "2 1"
+//! format!("{a} {c} {b}", a="a", b='b', c=3);  // => "a 3 b"
 //! ```
 //!
 //! It is illegal to put positional parameters (those without names) after
@@ -206,7 +206,7 @@
 //!     let myvector = Vector2D { x: 3, y: 4 };
 //!
 //!     println!("{}", myvector);       // => "(3, 4)"
-//!     println!("{:?}", myvector);     // => "Vector2D {x: 3i, y:4i}"
+//!     println!("{:?}", myvector);     // => "Vector2D {x: 3, y:4}"
 //!     println!("{:10.3b}", myvector); // => "     5.000"
 //! }
 //! ```
@@ -411,9 +411,10 @@ pub use core::fmt::{Display, Debug};
 pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;
-pub use core::fmt::{Argument, Arguments, write, radix, Radix, RadixFmt};
+pub use core::fmt::{ArgumentV1, Arguments, write, radix, Radix, RadixFmt};
 
 #[doc(hidden)]
+#[cfg(stage0)]
 pub use core::fmt::{argument, argumentuint};
 
 /// The format function takes a precompiled format string and a list of
@@ -431,9 +432,7 @@ pub use core::fmt::{argument, argumentuint};
 /// let s = fmt::format(format_args!("Hello, {}!", "world"));
 /// assert_eq!(s, "Hello, world!".to_string());
 /// ```
-#[unstable(feature = "std_misc",
-           reason = "this is an implementation detail of format! and should not \
-                     be called directly")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();
     let _ = write!(&mut output, "{}", args);

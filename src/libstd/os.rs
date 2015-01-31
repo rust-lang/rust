@@ -1484,7 +1484,7 @@ mod tests {
     #[ignore]
     fn test_getenv_big() {
         let mut s = "".to_string();
-        let mut i = 0i;
+        let mut i = 0;
         while i < 100 {
             s.push_str("aaaaaaaaaa");
             i += 1;

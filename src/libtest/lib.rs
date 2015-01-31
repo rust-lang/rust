@@ -25,25 +25,27 @@
 
 #![crate_name = "test"]
 #![unstable(feature = "test")]
-#![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
 #![crate_type = "dylib"]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
-#![allow(unknown_features)]
+
+#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
+
 #![feature(asm, slicing_syntax)]
 #![feature(box_syntax)]
-#![allow(unknown_features)] #![feature(int_uint)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(hash)]
+#![feature(int_uint)]
 #![feature(io)]
 #![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
+#![feature(staged_api)]
 #![feature(std_misc)]
-#![feature(hash)]
 
 extern crate getopts;
 extern crate serialize;
@@ -74,7 +76,6 @@ use std::old_io;
 use std::iter::repeat;
 use std::num::{Float, Int};
 use std::os;
-use std::str::FromStr;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::{self, Thread};
 use std::thunk::{Thunk, Invoke};
@@ -818,7 +819,7 @@ fn get_concurrency() -> uint {
     use std::rt;
     match os::getenv("RUST_TEST_TASKS") {
         Some(s) => {
-            let opt_n: Option<uint> = FromStr::from_str(s.as_slice());
+            let opt_n: Option<uint> = s.parse().ok();
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => panic!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
