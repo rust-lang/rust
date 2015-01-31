@@ -575,8 +575,7 @@ pub fn instantiate_poly_trait_ref<'tcx>(
     let shifted_rscope = ShiftedRscope::new(rscope);
 
     let trait_ref = instantiate_trait_ref(this, &shifted_rscope,
-                                          &ast_trait_ref.trait_ref.path,
-                                          ast_trait_ref.trait_ref.ref_id,
+                                          &ast_trait_ref.trait_ref,
                                           None, self_ty, Some(&mut projections));
 
     for projection in projections {
@@ -595,14 +594,14 @@ pub fn instantiate_poly_trait_ref<'tcx>(
 pub fn instantiate_trait_ref<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
-    path: &ast::Path,
-    path_id: ast::NodeId,
+    trait_ref: &ast::TraitRef,
     impl_id: Option<ast::NodeId>,
     self_ty: Option<Ty<'tcx>>,
     projections: Option<&mut Vec<ty::ProjectionPredicate<'tcx>>>)
     -> Rc<ty::TraitRef<'tcx>>
 {
-    match ::lookup_def_tcx(this.tcx(), path.span, path_id) {
+    let path = &trait_ref.path;
+    match ::lookup_def_tcx(this.tcx(), path.span, trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => {
             let trait_ref = ast_path_to_trait_ref(this,
                                                   rscope,
@@ -1201,11 +1200,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             ast::TyPolyTraitRef(ref bounds) => {
                 conv_ty_poly_trait_ref(this, rscope, ast_ty.span, &bounds[..])
             }
-            ast::TyPath(_) | ast::TyQPath(_) => {
-                let simple_path = |&:| match ast_ty.node {
-                    ast::TyPath(ref path) => path,
-                    _ => tcx.sess.span_bug(ast_ty.span, "expected non-qualified path")
-                };
+            ast::TyPath(ref path) | ast::TyQPath(ast::QPath { ref path, .. }) => {
                 let a_def = match tcx.def_map.borrow().get(&ast_ty.id) {
                     None => {
                         tcx.sess
@@ -1224,24 +1219,24 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                         let trait_ref = object_path_to_poly_trait_ref(this,
                                                                       rscope,
                                                                       trait_def_id,
-                                                                      simple_path(),
+                                                                      path,
                                                                       &mut projection_bounds);
 
                         trait_ref_to_object_type(this, rscope, ast_ty.span,
                                                  trait_ref, projection_bounds, &[])
                     }
                     def::DefTy(did, _) | def::DefStruct(did) => {
-                        ast_path_to_ty(this, rscope, did, simple_path()).ty
+                        ast_path_to_ty(this, rscope, did, path).ty
                     }
                     def::DefTyParam(space, index, _, name) => {
-                        check_path_args(tcx, simple_path(), NO_TPS | NO_REGIONS);
+                        check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         ty::mk_param(tcx, space, index, name)
                     }
                     def::DefSelfTy(_) => {
                         // n.b.: resolve guarantees that the this type only appears in a
                         // trait, which we rely upon in various places when creating
                         // substs
-                        check_path_args(tcx, simple_path(), NO_TPS | NO_REGIONS);
+                        check_path_args(tcx, path, NO_TPS | NO_REGIONS);
                         ty::mk_self_type(tcx)
                     }
                     def::DefMod(id) => {
@@ -1253,19 +1248,14 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                         panic!("DefPrimTy arm missed in previous ast_ty_to_prim_ty call");
                     }
                     def::DefAssociatedTy(trait_did, _) => {
-                        let (opt_self_ty, trait_segment, item_segment) = match ast_ty.node {
-                            ast::TyQPath(ref qpath) => {
-                                (Some(&*qpath.self_type), qpath.trait_path.segments.last().unwrap(),
-                                 &qpath.item_path)
-                            }
-                            ast::TyPath(ref path) => {
-                                (None, &path.segments[path.segments.len()-2],
-                                 path.segments.last().unwrap())
-                            }
-                            _ => unreachable!()
+                        let opt_self_ty = if let ast::TyQPath(ref qpath) = ast_ty.node {
+                            Some(&*qpath.self_type)
+                        } else {
+                            None
                         };
-                        qpath_to_ty(this, rscope, ast_ty.span, opt_self_ty,
-                                    trait_did, trait_segment, item_segment)
+                        qpath_to_ty(this, rscope, ast_ty.span, opt_self_ty, trait_did,
+                                    &path.segments[path.segments.len()-2],
+                                    path.segments.last().unwrap())
                     }
                     def::DefAssociatedPath(provenance, assoc_ident) => {
                         associated_path_def_to_ty(this, ast_ty, provenance, assoc_ident.name)

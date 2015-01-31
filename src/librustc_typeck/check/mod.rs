@@ -3614,9 +3614,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           let self_ty = fcx.to_ty(&*qpath.self_type);
           let defn = lookup_def(fcx, expr.span, id);
           let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx, expr.span, defn);
-          let mut path = qpath.trait_path.clone();
-          path.segments.push(qpath.item_path.clone());
-          instantiate_path(fcx, &path, scheme, &predicates, Some(self_ty),
+          instantiate_path(fcx, &qpath.path, scheme, &predicates, Some(self_ty),
                            defn, expr.span, expr.id);
 
           // We always require that the type provided as the value for

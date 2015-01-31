@@ -757,7 +757,7 @@ pub enum Expr_ {
     /// type parameters, e.g. foo::bar::<baz>
     ExprPath(Path),
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
-    ExprQPath(P<QPath>),
+    ExprQPath(QPath),
 
     ExprAddrOf(Mutability, P<Expr>),
     ExprBreak(Option<Ident>),
@@ -781,13 +781,12 @@ pub enum Expr_ {
 /// A "qualified path":
 ///
 ///     <Vec<T> as SomeTrait>::SomeAssociatedItem
-///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
-///      self_type  trait_path  item_path
+///      ^~~~~     ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+///      self_type  path
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct QPath {
     pub self_type: P<Ty>,
-    pub trait_path: Path,
-    pub item_path: PathSegment,
+    pub path: Path,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1259,7 +1258,7 @@ pub enum Ty_ {
     /// Type parameters are stored in the Path itself
     TyPath(Path),
     /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
-    TyQPath(P<QPath>),
+    TyQPath(QPath),
     /// Something like `A+B`. Note that `B` must always be a path.
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`

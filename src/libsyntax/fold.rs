@@ -146,10 +146,6 @@ pub trait Folder : Sized {
         noop_fold_ty(t, self)
     }
 
-    fn fold_qpath(&mut self, t: P<QPath>) -> P<QPath> {
-        noop_fold_qpath(t, self)
-    }
-
     fn fold_ty_binding(&mut self, t: P<TypeBinding>) -> P<TypeBinding> {
         noop_fold_ty_binding(t, self)
     }
@@ -430,7 +426,10 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             TyParen(ty) => TyParen(fld.fold_ty(ty)),
             TyPath(path) => TyPath(fld.fold_path(path)),
             TyQPath(qpath) => {
-                TyQPath(fld.fold_qpath(qpath))
+                TyQPath(QPath {
+                    self_type: fld.fold_ty(qpath.self_type),
+                    path: fld.fold_path(qpath.path)
+                })
             }
             TyObjectSum(ty, bounds) => {
                 TyObjectSum(fld.fold_ty(ty),
@@ -447,19 +446,6 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             }
         },
         span: fld.new_span(span)
-    })
-}
-
-pub fn noop_fold_qpath<T: Folder>(qpath: P<QPath>, fld: &mut T) -> P<QPath> {
-    qpath.map(|qpath| {
-        QPath {
-            self_type: fld.fold_ty(qpath.self_type),
-            trait_path: fld.fold_path(qpath.trait_path),
-            item_path: PathSegment {
-                identifier: fld.fold_ident(qpath.item_path.identifier),
-                parameters: fld.fold_path_parameters(qpath.item_path.parameters),
-            }
-        }
     })
 }
 
@@ -1362,7 +1348,10 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                           e2.map(|x| folder.fold_expr(x)))
             }
             ExprPath(pth) => ExprPath(folder.fold_path(pth)),
-            ExprQPath(qpath) => ExprQPath(folder.fold_qpath(qpath)),
+            ExprQPath(qpath) => ExprQPath(QPath {
+                self_type: folder.fold_ty(qpath.self_type),
+                path: folder.fold_path(qpath.path)
+            }),
             ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
             ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),
             ExprRet(e) => ExprRet(e.map(|x| folder.fold_expr(x))),

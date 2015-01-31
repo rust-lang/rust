@@ -157,7 +157,6 @@ pub trait LintPass {
     fn check_explicit_self(&mut self, _: &Context, _: &ast::ExplicitSelf) { }
     fn check_mac(&mut self, _: &Context, _: &ast::Mac) { }
     fn check_path(&mut self, _: &Context, _: &ast::Path, _: ast::NodeId) { }
-    fn check_qpath(&mut self, _: &Context, _: &ast::QPath, _: ast::NodeId) { }
     fn check_attribute(&mut self, _: &Context, _: &ast::Attribute) { }
 
     /// Called when entering a syntax node that can have lint attributes such
