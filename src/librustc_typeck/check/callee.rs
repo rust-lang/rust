@@ -150,6 +150,7 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 adjusted_ty: adjusted_ty,
                 autoderefref: autoderefref,
                 fn_sig: fn_sig.clone(),
+                closure_def_id: def_id,
             });
             return Some(CallStep::Closure(fn_sig));
         }
@@ -321,17 +322,19 @@ struct CallResolution<'tcx> {
     adjusted_ty: Ty<'tcx>,
     autoderefref: ty::AutoDerefRef<'tcx>,
     fn_sig: ty::FnSig<'tcx>,
+    closure_def_id: ast::DefId,
 }
 
 impl<'tcx> Repr<'tcx> for CallResolution<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("CallResolution(call_expr={}, callee_expr={}, adjusted_ty={}, \
-                autoderefref={}, fn_sig={})",
+                autoderefref={}, fn_sig={}, closure_def_id={})",
                 self.call_expr.repr(tcx),
                 self.callee_expr.repr(tcx),
                 self.adjusted_ty.repr(tcx),
                 self.autoderefref.repr(tcx),
-                self.fn_sig.repr(tcx))
+                self.fn_sig.repr(tcx),
+                self.closure_def_id.repr(tcx))
     }
 }
 
@@ -339,6 +342,13 @@ impl<'tcx> DeferredResolution<'tcx> for CallResolution<'tcx> {
     fn attempt_resolution<'a>(&self, fcx: &FnCtxt<'a,'tcx>) -> bool {
         debug!("attempt_resolution() {}",
                self.repr(fcx.tcx()));
+
+        match fcx.closure_kind(self.closure_def_id) {
+            Some(_) => { }
+            None => {
+                return false;
+            }
+        }
 
         // We may now know enough to figure out fn vs fnmut etc.
         match try_overloaded_call_traits(fcx, self.call_expr, self.callee_expr,

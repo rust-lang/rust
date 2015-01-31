@@ -278,7 +278,7 @@ fn check_object_type_binds_all_associated_types<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 
 pub fn select_all_fcx_obligations_and_apply_defaults(fcx: &FnCtxt) {
-    debug!("select_all_fcx_obligations_or_error");
+    debug!("select_all_fcx_obligations_and_apply_defaults");
 
     fcx.inh.deferred_resolutions.borrow_mut()
                                 .retain(|r| !r.attempt_resolution(fcx));

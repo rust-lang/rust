@@ -45,17 +45,10 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             // that, otherwise we'll error, requesting an annotation.
             match expected_sig_and_kind {
                 None => { // don't have information about the kind, request explicit annotation
-                    // NB We still need to typeck the body, so assume `FnMut` kind just for that
-                    let kind = ty::FnMutClosureKind;
-
-                    check_closure(fcx, expr, kind, decl, body, None);
-
-                    span_err!(fcx.ccx.tcx.sess, expr.span, E0187,
-                        "can't infer the \"kind\" of the closure; explicitly annotate it; e.g. \
-                        `|&:| {{}}`");
+                    check_closure(fcx, expr, None, decl, body, None);
                 },
                 Some((sig, kind)) => {
-                    check_closure(fcx, expr, kind, decl, body, Some(sig));
+                    check_closure(fcx, expr, Some(kind), decl, body, Some(sig));
                 }
             }
         }
@@ -68,21 +61,21 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             };
 
             let expected_sig = expected_sig_and_kind.map(|t| t.0);
-            check_closure(fcx, expr, kind, decl, body, expected_sig);
+            check_closure(fcx, expr, Some(kind), decl, body, expected_sig);
         }
     }
 }
 
 fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                           expr: &ast::Expr,
-                          kind: ty::ClosureKind,
+                          opt_kind: Option<ty::ClosureKind>,
                           decl: &'tcx ast::FnDecl,
                           body: &'tcx ast::Block,
                           expected_sig: Option<ty::FnSig<'tcx>>) {
     let expr_def_id = ast_util::local_def(expr.id);
 
-    debug!("check_closure kind={:?} expected_sig={}",
-           kind,
+    debug!("check_closure opt_kind={:?} expected_sig={}",
+           opt_kind,
            expected_sig.repr(fcx.tcx()));
 
     let mut fn_ty = astconv::ty_of_closure(
@@ -124,13 +117,16 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     // the `closures` table.
     fn_ty.sig.0.inputs = vec![ty::mk_tup(fcx.tcx(), fn_ty.sig.0.inputs)];
 
-    debug!("closure for {} --> sig={} kind={:?}",
+    debug!("closure for {} --> sig={} opt_kind={:?}",
            expr_def_id.repr(fcx.tcx()),
            fn_ty.sig.repr(fcx.tcx()),
-           kind);
+           opt_kind);
 
     fcx.inh.closure_tys.borrow_mut().insert(expr_def_id, fn_ty);
-    fcx.inh.closure_kinds.borrow_mut().insert(expr_def_id, kind);
+    match opt_kind {
+        Some(kind) => { fcx.inh.closure_kinds.borrow_mut().insert(expr_def_id, kind); }
+        None => { }
+    }
 }
 
 fn deduce_expectations_from_expected_type<'a,'tcx>(
