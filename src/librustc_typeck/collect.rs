@@ -439,7 +439,7 @@ fn convert_associated_type<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
 
 fn convert_methods<'a,'tcx,'i,I>(ccx: &CollectCtxt<'a, 'tcx>,
                                  container: ImplOrTraitItemContainer,
-                                 mut ms: I,
+                                 ms: I,
                                  untransformed_rcvr_ty: Ty<'tcx>,
                                  rcvr_ty_generics: &ty::Generics<'tcx>,
                                  rcvr_visibility: ast::Visibility)
@@ -1655,7 +1655,7 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
     loop {
         let num_inputs = input_parameters.len();
 
-        let mut projection_predicates =
+        let projection_predicates =
             impl_scheme.generics.predicates
             .iter()
             .filter_map(|predicate| {

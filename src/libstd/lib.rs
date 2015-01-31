@@ -127,7 +127,6 @@
 #![no_std]
 
 #![deny(missing_docs)]
-#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
 
 #[cfg(test)]
 #[macro_use]

@@ -597,7 +597,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
         return Ok(())
     }
 
-    let mut comps = path.components();
+    let comps = path.components();
     let mut curpath = path.root_path().unwrap_or(Path::new("."));
 
     for c in comps {

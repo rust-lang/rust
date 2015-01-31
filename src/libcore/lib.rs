@@ -59,7 +59,6 @@
 #![no_std]
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
-#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
 
 #![feature(int_uint)]
 #![feature(intrinsics, lang_items)]

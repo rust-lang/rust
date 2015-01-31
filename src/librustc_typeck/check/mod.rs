@@ -805,7 +805,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         a.check_name("rustc_on_unimplemented")
     }) {
         if let Some(ref istring) = attr.value_str() {
-            let mut parser = Parser::new(istring.get());
+            let parser = Parser::new(istring.get());
             let types = generics.ty_params.as_slice();
             for token in parser {
                 match token {

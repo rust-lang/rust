@@ -729,7 +729,7 @@ impl<'a> FromIterator<&'a str> for String {
 #[unstable(feature = "collections",
            reason = "waiting on Extend stabilization")]
 impl Extend<char> for String {
-    fn extend<I:Iterator<Item=char>>(&mut self, mut iterator: I) {
+    fn extend<I:Iterator<Item=char>>(&mut self, iterator: I) {
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
         for ch in iterator {
@@ -741,7 +741,7 @@ impl Extend<char> for String {
 #[unstable(feature = "collections",
            reason = "waiting on Extend stabilization")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: Iterator<Item=&'a str>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=&'a str>>(&mut self, iterator: I) {
         // A guess that at least one byte per iterator element will be needed.
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);

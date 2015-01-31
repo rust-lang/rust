@@ -295,7 +295,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     fn evaluate_predicates_recursively<'a,'o,I>(&mut self,
                                                 stack: Option<&TraitObligationStack<'o, 'tcx>>,
-                                                mut predicates: I)
+                                                predicates: I)
                                                 -> EvaluationResult<'tcx>
         where I : Iterator<Item=&'a PredicateObligation<'tcx>>, 'tcx:'a
     {

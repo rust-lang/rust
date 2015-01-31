@@ -332,7 +332,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 
 /// Returns a HashMap with the number of occurrences of every element in the
 /// sequence that the iterator exposes.
-pub fn freq_count<T, U>(mut iter: T) -> hash_map::HashMap<U, uint>
+pub fn freq_count<T, U>(iter: T) -> hash_map::HashMap<U, uint>
   where T: Iterator<Item=U>, U: Eq + Clone + Hash<Hasher>
 {
     let mut map: hash_map::HashMap<U,uint> = hash_map::HashMap::new();

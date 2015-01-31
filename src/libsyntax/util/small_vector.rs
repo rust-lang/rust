@@ -38,7 +38,7 @@ impl<T> FromIterator<T> for SmallVector<T> {
 }
 
 impl<T> Extend<T> for SmallVector<T> {
-    fn extend<I: Iterator<Item=T>>(&mut self, mut iter: I) {
+    fn extend<I: Iterator<Item=T>>(&mut self, iter: I) {
         for val in iter {
             self.push(val);
         }
