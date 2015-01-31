@@ -1525,18 +1525,14 @@ impl<'a> Parser<'a> {
             // QUALIFIED PATH `<TYPE as TRAIT_REF>::item`
             let self_type = self.parse_ty_sum();
             self.expect_keyword(keywords::As);
-            let trait_path = self.parse_path(LifetimeAndTypesWithoutColons);
+            let mut path = self.parse_path(LifetimeAndTypesWithoutColons);
             self.expect(&token::Gt);
             self.expect(&token::ModSep);
-            let item_name = self.parse_ident();
-            TyQPath(P(QPath {
-                self_type: self_type,
-                trait_path: trait_path,
-                item_path: ast::PathSegment {
-                    identifier: item_name,
-                    parameters: ast::PathParameters::none()
-                }
-            }))
+            path.segments.push(ast::PathSegment {
+                identifier: self.parse_ident(),
+                parameters: ast::PathParameters::none()
+            });
+            TyQPath(QPath { self_type: self_type, path: path })
         } else if self.check(&token::ModSep) ||
                   self.token.is_ident() ||
                   self.token.is_path() {
@@ -2220,7 +2216,7 @@ impl<'a> Parser<'a> {
                     // QUALIFIED PATH `<TYPE as TRAIT_REF>::item::<'a, T>`
                     let self_type = self.parse_ty_sum();
                     self.expect_keyword(keywords::As);
-                    let trait_path = self.parse_path(LifetimeAndTypesWithoutColons);
+                    let mut path = self.parse_path(LifetimeAndTypesWithoutColons);
                     self.expect(&token::Gt);
                     self.expect(&token::ModSep);
                     let item_name = self.parse_ident();
@@ -2237,15 +2233,13 @@ impl<'a> Parser<'a> {
                     } else {
                         ast::PathParameters::none()
                     };
+                    path.segments.push(ast::PathSegment {
+                        identifier: item_name,
+                        parameters: parameters
+                    });
                     let hi = self.span.hi;
-                    return self.mk_expr(lo, hi, ExprQPath(P(QPath {
-                        self_type: self_type,
-                        trait_path: trait_path,
-                        item_path: ast::PathSegment {
-                            identifier: item_name,
-                            parameters: parameters
-                        }
-                    })));
+                    return self.mk_expr(lo, hi,
+                        ExprQPath(QPath { self_type: self_type, path: path }));
                 }
                 if self.eat_keyword(keywords::Move) {
                     return self.parse_lambda_expr(CaptureByValue);

@@ -1021,11 +1021,6 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         self.check_path(path.span, id, path.segments.last().unwrap().identifier);
         visit::walk_path(self, path);
     }
-
-    fn visit_qpath(&mut self, qpath: &ast::QPath, id: ast::NodeId) {
-        self.check_path(qpath.trait_path.span, id, qpath.item_path.identifier);
-        visit::walk_qpath(self, qpath);
-    }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

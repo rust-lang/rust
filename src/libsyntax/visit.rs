@@ -125,9 +125,6 @@ pub trait Visitor<'v> : Sized {
     fn visit_path(&mut self, path: &'v Path, _id: ast::NodeId) {
         walk_path(self, path)
     }
-    fn visit_qpath(&mut self, qpath: &'v QPath, _id: ast::NodeId) {
-        walk_qpath(self, qpath)
-    }
     fn visit_path_segment(&mut self, path_span: Span, path_segment: &'v PathSegment) {
         walk_path_segment(self, path_span, path_segment)
     }
@@ -403,7 +400,8 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             visitor.visit_path(path, typ.id);
         }
         TyQPath(ref qpath) => {
-            visitor.visit_qpath(&**qpath, typ.id);
+            visitor.visit_ty(&*qpath.self_type);
+            visitor.visit_path(&qpath.path, typ.id);
         }
         TyObjectSum(ref ty, ref bounds) => {
             visitor.visit_ty(&**ty);
@@ -434,12 +432,6 @@ pub fn walk_path<'v, V: Visitor<'v>>(visitor: &mut V, path: &'v Path) {
     for segment in &path.segments {
         visitor.visit_path_segment(path.span, segment);
     }
-}
-
-pub fn walk_qpath<'v, V: Visitor<'v>>(visitor: &mut V, qpath: &'v QPath) {
-    visitor.visit_ty(&*qpath.self_type);
-    walk_path(visitor, &qpath.trait_path);
-    visitor.visit_path_segment(qpath.trait_path.span, &qpath.item_path);
 }
 
 pub fn walk_path_segment<'v, V: Visitor<'v>>(visitor: &mut V,
@@ -871,7 +863,8 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_path(path, expression.id)
         }
         ExprQPath(ref qpath) => {
-            visitor.visit_qpath(&**qpath, expression.id)
+            visitor.visit_ty(&*qpath.self_type);
+            visitor.visit_path(&qpath.path, expression.id);
         }
         ExprBreak(_) | ExprAgain(_) => {}
         ExprRet(ref optional_expression) => {

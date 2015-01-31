@@ -1500,10 +1500,12 @@ impl Clean<Type> for ast::Ty {
                 resolve_type(cx, p.clean(cx), self.id)
             }
             TyQPath(ref qp) => {
+                let mut trait_path = qp.path.clone();
+                trait_path.segments.pop();
                 Type::QPath {
-                    name: qp.item_path.identifier.clean(cx),
+                    name: qp.path.segments.last().unwrap().identifier.clean(cx),
                     self_type: box qp.self_type.clean(cx),
-                    trait_: box resolve_type(cx, qp.trait_path.clean(cx), self.id)
+                    trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }
             TyObjectSum(ref lhs, ref bounds) => {

@@ -194,7 +194,6 @@ mod svh_visitor {
         SawVariant,
         SawExplicitSelf,
         SawPath,
-        SawQPath,
         SawOptLifetimeRef,
         SawBlock,
         SawPat,
@@ -484,10 +483,6 @@ mod svh_visitor {
 
         fn visit_path(&mut self, path: &Path, _: ast::NodeId) {
             SawPath.hash(self.st); visit::walk_path(self, path)
-        }
-
-        fn visit_qpath(&mut self, qpath: &QPath, _: ast::NodeId) {
-            SawQPath.hash(self.st); visit::walk_qpath(self, qpath)
         }
 
         fn visit_block(&mut self, b: &Block) {
