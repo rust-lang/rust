@@ -128,3 +128,8 @@ adjust a lifetime.
 # Unresolved questions
 
 Should the change in function parameter signatures be done before 1.0?
+
+# Acknowledgements
+
+Thanks to Alex Crichton for shepherding this proposal in a constructive and
+timely manner. He has in fact rationalized the convention in its current form.
