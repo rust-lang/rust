@@ -126,7 +126,7 @@ pub fn test_unwrap_or_else() {
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 pub fn test_unwrap_or_else_panic() {
     fn handler(msg: &'static str) -> int {
         if msg == "I got this." {

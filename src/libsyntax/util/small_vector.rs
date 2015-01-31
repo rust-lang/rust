@@ -236,13 +236,13 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_expect_one_zero() {
         let _: isize = SmallVector::zero().expect_one("");
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_expect_one_many() {
         SmallVector::many(vec!(1, 2)).expect_one("");
     }

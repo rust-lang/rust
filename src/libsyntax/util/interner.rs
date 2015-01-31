@@ -234,7 +234,7 @@ mod tests {
     use ast::Name;
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn i1 () {
         let i : Interner<RcStr> = Interner::new();
         i.get(Name(13));

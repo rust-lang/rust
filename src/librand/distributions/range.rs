@@ -169,12 +169,12 @@ mod tests {
     use distributions::{Sample, IndependentSample};
     use super::Range as Range;
 
-    #[should_fail]
+    #[should_panic]
     #[test]
     fn test_range_bad_limits_equal() {
         Range::new(10, 10);
     }
-    #[should_fail]
+    #[should_panic]
     #[test]
     fn test_range_bad_limits_flipped() {
         Range::new(10, 5);

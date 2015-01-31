@@ -500,14 +500,14 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_gen_range_panic_int() {
         let mut r = thread_rng();
         r.gen_range(5, -2);
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_gen_range_panic_uint() {
         let mut r = thread_rng();
         r.gen_range(5, 2);

@@ -581,7 +581,7 @@ fn test_rposition() {
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 fn test_rposition_panic() {
     let v: [(Box<_>, Box<_>); 4] =
         [(box 0, box 0), (box 0, box 0),

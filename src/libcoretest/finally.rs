@@ -30,7 +30,7 @@ fn test_success() {
 }
 
 #[test]
-#[should_fail]
+#[should_panic]
 fn test_fail() {
     let mut i = 0;
     try_finally(

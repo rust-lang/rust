@@ -1647,14 +1647,14 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_tail_empty() {
         let a = Vec::<i32>::new();
         a.tail();
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_tail_mut_empty() {
         let mut a = Vec::<i32>::new();
         a.tail_mut();
@@ -1681,14 +1681,14 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_init_empty() {
         let a = Vec::<i32>::new();
         a.init();
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_init_mut_empty() {
         let mut a = Vec::<i32>::new();
         a.init_mut();
@@ -1790,7 +1790,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_swap_remove_fail() {
         let mut v = vec![1];
         let _ = v.swap_remove(0);
@@ -2205,7 +2205,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_insert_oob() {
         let mut a = vec![1, 2, 3];
         a.insert(4, 5);
@@ -2229,7 +2229,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_remove_fail() {
         let mut a = vec![1];
         let _ = a.remove(0);
@@ -2253,7 +2253,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_permute_fail() {
         let v: [(Box<_>, Rc<_>); 4] =
             [(box 0, Rc::new(0)), (box 0, Rc::new(0)),
@@ -2528,7 +2528,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_windowsator_0() {
         let v = &[1,2,3,4];
         let _it = v.windows(0);
@@ -2564,7 +2564,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_chunksator_0() {
         let v = &[1,2,3,4];
         let _it = v.chunks(0);
@@ -2647,7 +2647,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_overflow_does_not_cause_segfault() {
         let mut v = vec![];
         v.reserve_exact(-1);
@@ -2656,7 +2656,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_overflow_does_not_cause_segfault_managed() {
         let mut v = vec![Rc::new(1)];
         v.reserve_exact(-1);
@@ -2833,7 +2833,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_mut_chunks_0() {
         let mut v = [1, 2, 3, 4];
         let _it = v.chunks_mut(0);

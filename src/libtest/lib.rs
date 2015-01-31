@@ -90,7 +90,7 @@ pub mod test {
              Metric, MetricMap,
              StaticTestFn, StaticTestName, DynTestName, DynTestFn,
              run_test, test_main, test_main_static, filter_tests,
-             parse_opts, StaticBenchFn, ShouldFail};
+             parse_opts, StaticBenchFn, ShouldPanic};
 }
 
 pub mod stats;
@@ -202,7 +202,7 @@ pub struct Bencher {
 }
 
 #[derive(Copy, Clone, Debug, PartialEq, Eq, Hash)]
-pub enum ShouldFail {
+pub enum ShouldPanic {
     No,
     Yes(Option<&'static str>)
 }
@@ -213,7 +213,7 @@ pub enum ShouldFail {
 pub struct TestDesc {
     pub name: TestName,
     pub ignore: bool,
-    pub should_fail: ShouldFail,
+    pub should_panic: ShouldPanic,
 }
 
 unsafe impl Send for TestDesc {}
@@ -351,10 +351,10 @@ Test Attributes:
                      takes no arguments.
     #[bench]       - Indicates a function is a benchmark to be run. This
                      function takes one argument (test::Bencher).
-    #[should_fail] - This function (also labeled with #[test]) will only pass if
-                     the code causes a failure (an assertion failure or panic!)
+    #[should_panic] - This function (also labeled with #[test]) will only pass if
+                     the code causes a panic (an assertion failure or panic!)
                      A message may be provided, which the failure string must
-                     contain: #[should_fail(expected = "foo")].
+                     contain: #[should_panic(expected = "foo")].
     #[ignore]      - When applied to a function which is already attributed as a
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
@@ -717,13 +717,13 @@ fn should_sort_failures_before_printing_them() {
     let test_a = TestDesc {
         name: StaticTestName("a"),
         ignore: false,
-        should_fail: ShouldFail::No
+        should_panic: ShouldPanic::No
     };
 
     let test_b = TestDesc {
         name: StaticTestName("b"),
         ignore: false,
-        should_fail: ShouldFail::No
+        should_panic: ShouldPanic::No
     };
 
     let mut st = ConsoleTestState {
@@ -953,10 +953,10 @@ pub fn run_test(opts: &TestOpts,
 }
 
 fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any+Send>>) -> TestResult {
-    match (&desc.should_fail, task_result) {
-        (&ShouldFail::No, Ok(())) |
-        (&ShouldFail::Yes(None), Err(_)) => TrOk,
-        (&ShouldFail::Yes(Some(msg)), Err(ref err))
+    match (&desc.should_panic, task_result) {
+        (&ShouldPanic::No, Ok(())) |
+        (&ShouldPanic::Yes(None), Err(_)) => TrOk,
+        (&ShouldPanic::Yes(Some(msg)), Err(ref err))
             if err.downcast_ref::<String>()
                 .map(|e| &**e)
                 .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e))
@@ -1151,7 +1151,7 @@ mod tests {
     use test::{TrFailed, TrIgnored, TrOk, filter_tests, parse_opts,
                TestDesc, TestDescAndFn, TestOpts, run_test,
                MetricMap,
-               StaticTestName, DynTestName, DynTestFn, ShouldFail};
+               StaticTestName, DynTestName, DynTestFn, ShouldPanic};
     use std::thunk::Thunk;
     use std::sync::mpsc::channel;
 
@@ -1162,7 +1162,7 @@ mod tests {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: true,
-                should_fail: ShouldFail::No,
+                should_panic: ShouldPanic::No,
             },
             testfn: DynTestFn(Thunk::new(move|| f())),
         };
@@ -1179,7 +1179,7 @@ mod tests {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: true,
-                should_fail: ShouldFail::No,
+                should_panic: ShouldPanic::No,
             },
             testfn: DynTestFn(Thunk::new(move|| f())),
         };
@@ -1190,13 +1190,13 @@ mod tests {
     }
 
     #[test]
-    fn test_should_fail() {
+    fn test_should_panic() {
         fn f() { panic!(); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
-                should_fail: ShouldFail::Yes(None)
+                should_panic: ShouldPanic::Yes(None)
             },
             testfn: DynTestFn(Thunk::new(move|| f())),
         };
@@ -1207,13 +1207,13 @@ mod tests {
     }
 
     #[test]
-    fn test_should_fail_good_message() {
+    fn test_should_panic_good_message() {
         fn f() { panic!("an error message"); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
-                should_fail: ShouldFail::Yes(Some("error message"))
+                should_panic: ShouldPanic::Yes(Some("error message"))
             },
             testfn: DynTestFn(Thunk::new(move|| f())),
         };
@@ -1224,13 +1224,13 @@ mod tests {
     }
 
     #[test]
-    fn test_should_fail_bad_message() {
+    fn test_should_panic_bad_message() {
         fn f() { panic!("an error message"); }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
-                should_fail: ShouldFail::Yes(Some("foobar"))
+                should_panic: ShouldPanic::Yes(Some("foobar"))
             },
             testfn: DynTestFn(Thunk::new(move|| f())),
         };
@@ -1241,13 +1241,13 @@ mod tests {
     }
 
     #[test]
-    fn test_should_fail_but_succeeds() {
+    fn test_should_panic_but_succeeds() {
         fn f() { }
         let desc = TestDescAndFn {
             desc: TestDesc {
                 name: StaticTestName("whatever"),
                 ignore: false,
-                should_fail: ShouldFail::Yes(None)
+                should_panic: ShouldPanic::Yes(None)
             },
             testfn: DynTestFn(Thunk::new(move|| f())),
         };
@@ -1283,7 +1283,7 @@ mod tests {
                 desc: TestDesc {
                     name: StaticTestName("1"),
                     ignore: true,
-                    should_fail: ShouldFail::No,
+                    should_panic: ShouldPanic::No,
                 },
                 testfn: DynTestFn(Thunk::new(move|| {})),
             },
@@ -1291,7 +1291,7 @@ mod tests {
                 desc: TestDesc {
                     name: StaticTestName("2"),
                     ignore: false,
-                    should_fail: ShouldFail::No,
+                    should_panic: ShouldPanic::No,
                 },
                 testfn: DynTestFn(Thunk::new(move|| {})),
             });
@@ -1327,7 +1327,7 @@ mod tests {
                     desc: TestDesc {
                         name: DynTestName((*name).clone()),
                         ignore: false,
-                        should_fail: ShouldFail::No,
+                        should_panic: ShouldPanic::No,
                     },
                     testfn: DynTestFn(Thunk::new(testfn)),
                 };

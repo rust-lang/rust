@@ -1324,7 +1324,7 @@ mod tests {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_not_utf8_panics() {
         Path::new(b"hello\x80.txt");
     }

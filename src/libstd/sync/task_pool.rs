@@ -164,7 +164,7 @@ mod test {
     }
 
     #[test]
-    #[should_fail]
+    #[should_panic]
     fn test_zero_tasks_panic() {
         TaskPool::new(0);
     }
