@@ -1824,6 +1824,7 @@ impl<I> RandomAccessIterator for Enumerate<I> where I: RandomAccessIterator {
 }
 
 /// An iterator with a `peek()` that returns an optional reference to the next element.
+#[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Peekable<T, I> where I: Iterator<Item=T> {
