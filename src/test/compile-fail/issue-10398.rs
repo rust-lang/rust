@@ -11,7 +11,7 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let x = box 1is;
+    let x = box 1;
     let f = move|:| {
         let _a = x;
         drop(x);

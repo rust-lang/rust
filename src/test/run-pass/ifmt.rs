@@ -77,8 +77,8 @@ pub fn main() {
     t!(format!("{:X}", B), "adios");
     t!(format!("foo {} ☃☃☃☃☃☃", "bar"), "foo bar ☃☃☃☃☃☃");
     t!(format!("{1} {0}", 0, 1), "1 0");
-    t!(format!("{foo} {bar}", foo=0, bar=1is), "0 1");
-    t!(format!("{foo} {1} {bar} {0}", 0is, 1is, foo=2is, bar=3is), "2 1 3 0");
+    t!(format!("{foo} {bar}", foo=0, bar=1), "0 1");
+    t!(format!("{foo} {1} {bar} {0}", 0, 1, foo=2, bar=3), "2 1 3 0");
     t!(format!("{} {0}", "a"), "a a");
     t!(format!("{foo_bar}", foo_bar=1), "1");
     t!(format!("{}", 5 + 5), "10");

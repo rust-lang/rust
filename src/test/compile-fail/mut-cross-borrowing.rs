@@ -13,7 +13,7 @@
 fn f(_: &mut isize) {}
 
 fn main() {
-    let mut x = box 3is;
+    let mut x = box 3;
     f(x)    //~ ERROR mismatched types
 }
 

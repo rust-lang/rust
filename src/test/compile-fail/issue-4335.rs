@@ -18,6 +18,6 @@ fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
 }
 
 fn main() {
-    let v = &5is;
+    let v = &5;
     println!("{}", f(v).call_mut(()));
 }

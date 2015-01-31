@@ -25,7 +25,7 @@ fn main() {
     let _t = Thread::spawn(move|| { helper(rx) });
     let (snd, rcv) = channel::<int>();
     for _ in 1..100000 {
-        snd.send(1i).unwrap();
+        snd.send(1).unwrap();
         let (tx2, rx2) = channel();
         tx.send(tx2).unwrap();
         select! {

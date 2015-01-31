@@ -16,7 +16,7 @@ fn foo<F:FnOnce()+'static>(_p: F) { }
 static i: isize = 3;
 
 fn capture_local() {
-    let x = 3is;
+    let x = 3;
     let y = &x; //~ ERROR `x` does not live long enough
     foo(move|| {
         let _a = *y;

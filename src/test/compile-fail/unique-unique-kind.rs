@@ -16,7 +16,7 @@ fn f<T:Send>(_i: T) {
 }
 
 fn main() {
-    let i = box Rc::new(100is);
+    let i = box Rc::new(100);
     f(i);
     //~^ ERROR `core::marker::Send` is not implemented
 }

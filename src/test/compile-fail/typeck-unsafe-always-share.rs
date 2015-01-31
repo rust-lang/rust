@@ -25,7 +25,7 @@ impl !Sync for NoSync {}
 fn test<T: Sync>(s: T) {}
 
 fn main() {
-    let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0is)});
+    let us = UnsafeCell::new(MySync{u: UnsafeCell::new(0)});
     test(us);
     //~^ ERROR `core::marker::Sync` is not implemented
 

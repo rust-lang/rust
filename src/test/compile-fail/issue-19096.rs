@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    let t = (42is, 42is);
+    let t = (42, 42);
     t.0::<isize>; //~ ERROR expected one of `.`, `;`, `}`, or an operator, found `::`
 }

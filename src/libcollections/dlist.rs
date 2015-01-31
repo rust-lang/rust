@@ -333,7 +333,7 @@ impl<T> DList<T> {
     ///
     /// let mut dl = DList::new();
     ///
-    /// dl.push_front(2is);
+    /// dl.push_front(2);
     /// assert_eq!(dl.len(), 1);
     ///
     /// dl.push_front(1);
@@ -360,10 +360,10 @@ impl<T> DList<T> {
     ///
     /// let mut dl = DList::new();
     ///
-    /// dl.push_front(2is);
+    /// dl.push_front(2);
     /// dl.push_front(1);
     /// assert_eq!(dl.len(), 2);
-    /// assert_eq!(dl.front(), Some(&1is));
+    /// assert_eq!(dl.front(), Some(&1));
     ///
     /// dl.clear();
     /// assert_eq!(dl.len(), 0);
@@ -388,7 +388,7 @@ impl<T> DList<T> {
     /// assert_eq!(dl.front(), None);
     ///
     /// dl.push_front(1);
-    /// assert_eq!(dl.front(), Some(&1is));
+    /// assert_eq!(dl.front(), Some(&1));
     ///
     /// ```
     #[inline]
@@ -409,13 +409,13 @@ impl<T> DList<T> {
     /// assert_eq!(dl.front(), None);
     ///
     /// dl.push_front(1);
-    /// assert_eq!(dl.front(), Some(&1is));
+    /// assert_eq!(dl.front(), Some(&1));
     ///
     /// match dl.front_mut() {
     ///     None => {},
-    ///     Some(x) => *x = 5is,
+    ///     Some(x) => *x = 5,
     /// }
-    /// assert_eq!(dl.front(), Some(&5is));
+    /// assert_eq!(dl.front(), Some(&5));
     ///
     /// ```
     #[inline]
@@ -436,7 +436,7 @@ impl<T> DList<T> {
     /// assert_eq!(dl.back(), None);
     ///
     /// dl.push_back(1);
-    /// assert_eq!(dl.back(), Some(&1is));
+    /// assert_eq!(dl.back(), Some(&1));
     ///
     /// ```
     #[inline]
@@ -457,13 +457,13 @@ impl<T> DList<T> {
     /// assert_eq!(dl.back(), None);
     ///
     /// dl.push_back(1);
-    /// assert_eq!(dl.back(), Some(&1is));
+    /// assert_eq!(dl.back(), Some(&1));
     ///
     /// match dl.back_mut() {
     ///     None => {},
-    ///     Some(x) => *x = 5is,
+    ///     Some(x) => *x = 5,
     /// }
-    /// assert_eq!(dl.back(), Some(&5is));
+    /// assert_eq!(dl.back(), Some(&5));
     ///
     /// ```
     #[inline]
@@ -483,8 +483,8 @@ impl<T> DList<T> {
     ///
     /// let mut dl = DList::new();
     ///
-    /// dl.push_front(2is);
-    /// assert_eq!(dl.front().unwrap(), &2is);
+    /// dl.push_front(2);
+    /// assert_eq!(dl.front().unwrap(), &2);
     ///
     /// dl.push_front(1);
     /// assert_eq!(dl.front().unwrap(), &1);
@@ -508,7 +508,7 @@ impl<T> DList<T> {
     /// let mut d = DList::new();
     /// assert_eq!(d.pop_front(), None);
     ///
-    /// d.push_front(1is);
+    /// d.push_front(1);
     /// d.push_front(3);
     /// assert_eq!(d.pop_front(), Some(3));
     /// assert_eq!(d.pop_front(), Some(1));
@@ -568,7 +568,7 @@ impl<T> DList<T> {
     ///
     /// let mut d = DList::new();
     ///
-    /// d.push_front(1is);
+    /// d.push_front(1);
     /// d.push_front(2);
     /// d.push_front(3);
     ///

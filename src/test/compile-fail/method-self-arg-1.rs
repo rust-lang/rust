@@ -23,9 +23,9 @@ fn main() {
                  //~| found `Foo`
                  //~| expected &-ptr
                  //~| found struct `Foo`
-    Foo::bar(&42is); //~  ERROR mismatched types
-                     //~| expected `&Foo`
-                     //~| found `&isize`
-                     //~| expected struct `Foo`
-                     //~| found isize
+    Foo::bar(&42i32); //~  ERROR mismatched types
+                      //~| expected `&Foo`
+                      //~| found `&i32`
+                      //~| expected struct `Foo`
+                      //~| found i32
 }

@@ -13,7 +13,7 @@
 
 pub fn main() {
     // *const -> *mut
-    let x: *const isize = &42is;
+    let x: *const isize = &42;
     let x: *mut isize = x; //~  ERROR mismatched types
                            //~| expected `*mut isize`
                            //~| found `*const isize`
