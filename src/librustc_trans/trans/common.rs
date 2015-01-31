@@ -515,7 +515,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                        -> Block<'a, 'tcx> {
         let out = self.new_id_block("join", id);
         let mut reachable = false;
-        for bcx in in_cxs.iter() {
+        for bcx in in_cxs {
             if !bcx.unreachable.get() {
                 build::Br(*bcx, out.llbb, DebugLoc::None);
                 reachable = true;

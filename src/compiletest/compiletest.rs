@@ -276,7 +276,7 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
            config.src_base.display());
     let mut tests = Vec::new();
     let dirs = fs::readdir(&config.src_base).unwrap();
-    for file in dirs.iter() {
+    for file in &dirs {
         let file = file.clone();
         debug!("inspecting file {:?}", file.display());
         if is_test(config, &file) {
@@ -304,13 +304,13 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
 
     let mut valid = false;
 
-    for ext in valid_extensions.iter() {
+    for ext in &valid_extensions {
         if name.ends_with(ext.as_slice()) {
             valid = true;
         }
     }
 
-    for pre in invalid_prefixes.iter() {
+    for pre in &invalid_prefixes {
         if name.starts_with(pre.as_slice()) {
             valid = false;
         }

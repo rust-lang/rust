@@ -13,7 +13,7 @@ pub fn main() {
     let y = [ 0; 1 ];
 
     print!("[");
-    for xi in x.iter() {
+    for xi in &x[] {
         print!("{:?}, ", &xi[]);
     }
     println!("]");

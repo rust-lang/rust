@@ -232,7 +232,7 @@ pub fn escape_default<F>(c: u8, mut f: F) where
         _ => {
             f(b'\\');
             f(b'x');
-            for &offset in [4u, 0u].iter() {
+            for &offset in &[4u, 0u] {
                 match ((c as i32) >> offset) & 0xf {
                     i @ 0 ... 9 => f(b'0' + (i as u8)),
                     i => f(b'a' + (i as u8 - 10)),

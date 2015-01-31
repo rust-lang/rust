@@ -188,7 +188,7 @@ mod tests {
                    let v: &[($ty, $ty)] = &[(0, 10),
                                             (10, 127),
                                             (Int::min_value(), Int::max_value())];
-                   for &(low, high) in v.iter() {
+                   for &(low, high) in v {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in 0u..1000 {
                             let v = sampler.sample(&mut rng);
@@ -214,7 +214,7 @@ mod tests {
                                             (-1e35, -1e25),
                                             (1e-35, 1e-25),
                                             (-1e35, 1e35)];
-                   for &(low, high) in v.iter() {
+                   for &(low, high) in v {
                         let mut sampler: Range<$ty> = Range::new(low, high);
                         for _ in 0u..1000 {
                             let v = sampler.sample(&mut rng);

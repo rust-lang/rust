@@ -261,13 +261,13 @@ impl AttrBuilder {
     }
 
     pub fn apply_llfn(&self, llfn: ValueRef) {
-        for &(idx, ref attr) in self.attrs.iter() {
+        for &(idx, ref attr) in &self.attrs {
             attr.apply_llfn(idx as c_uint, llfn);
         }
     }
 
     pub fn apply_callsite(&self, callsite: ValueRef) {
-        for &(idx, ref attr) in self.attrs.iter() {
+        for &(idx, ref attr) in &self.attrs {
             attr.apply_callsite(idx as c_uint, callsite);
         }
     }

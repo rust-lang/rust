@@ -976,7 +976,7 @@ impl Ord for Bitv {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for Bitv {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        for bit in self.iter() {
+        for bit in self {
             try!(write!(fmt, "{}", if bit { 1u32 } else { 0u32 }));
         }
         Ok(())
@@ -1743,7 +1743,7 @@ impl fmt::Debug for BitvSet {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "BitvSet {{"));
         let mut first = true;
-        for n in self.iter() {
+        for n in self {
             if !first {
                 try!(write!(fmt, ", "));
             }
@@ -1756,7 +1756,7 @@ impl fmt::Debug for BitvSet {
 
 impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for BitvSet {
     fn hash(&self, state: &mut S) {
-        for pos in self.iter() {
+        for pos in self {
             pos.hash(state);
         }
     }
@@ -2600,7 +2600,7 @@ mod bitv_bench {
         b.iter(|| {
             let mut sum = 0u;
             for _ in 0u..10 {
-                for pres in bitv.iter() {
+                for pres in &bitv {
                     sum += pres as uint;
                 }
             }
@@ -2613,7 +2613,7 @@ mod bitv_bench {
         let bitv = Bitv::from_elem(BENCH_BITS, false);
         b.iter(|| {
             let mut sum = 0u;
-            for pres in bitv.iter() {
+            for pres in &bitv {
                 sum += pres as uint;
             }
             sum
@@ -2674,8 +2674,8 @@ mod bitv_set_test {
     fn test_bitv_set_frombitv_init() {
         let bools = [true, false];
         let lengths = [10, 64, 100];
-        for &b in bools.iter() {
-            for &l in lengths.iter() {
+        for &b in &bools {
+            for &l in &lengths {
                 let bitset = BitvSet::from_bitv(Bitv::from_elem(l, b));
                 assert_eq!(bitset.contains(&1u), b);
                 assert_eq!(bitset.contains(&(l-1u)), b);
@@ -3062,7 +3062,7 @@ mod bitv_set_bench {
                                               |idx| {idx % 3 == 0}));
         b.iter(|| {
             let mut sum = 0u;
-            for idx in bitv.iter() {
+            for idx in &bitv {
                 sum += idx as uint;
             }
             sum

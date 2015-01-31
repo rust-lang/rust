@@ -29,7 +29,7 @@ trait map<T> {
 impl<T> map<T> for Vec<T> {
     fn map<U, F>(&self, mut f: F) -> Vec<U> where F: FnMut(&T) -> U {
         let mut r = Vec::new();
-        for i in self.iter() {
+        for i in self {
             r.push(f(i));
         }
         r

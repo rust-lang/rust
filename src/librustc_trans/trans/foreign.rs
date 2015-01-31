@@ -352,7 +352,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 
     arg_idx += 1;
-    for arg_ty in fn_type.arg_tys.iter() {
+    for arg_ty in &fn_type.arg_tys {
         if arg_ty.is_ignore() {
             continue;
         }
@@ -453,7 +453,7 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
 
 pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
     let _icx = push_ctxt("foreign::trans_foreign_mod");
-    for foreign_item in foreign_mod.items.iter() {
+    for foreign_item in &foreign_mod.items {
         let lname = link_name(&**foreign_item);
 
         if let ast::ForeignItemFn(ref decl, _) = foreign_item.node {
@@ -936,7 +936,7 @@ fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> T
         }
     };
 
-    for &arg_ty in tys.fn_ty.arg_tys.iter() {
+    for &arg_ty in &tys.fn_ty.arg_tys {
         if arg_ty.is_ignore() {
             continue;
         }
@@ -987,7 +987,7 @@ fn add_argument_attributes(tys: &ForeignTypes,
 
     i += 1;
 
-    for &arg_ty in tys.fn_ty.arg_tys.iter() {
+    for &arg_ty in &tys.fn_ty.arg_tys {
         if arg_ty.is_ignore() {
             continue;
         }

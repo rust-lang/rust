@@ -99,7 +99,7 @@ pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
     let oslibname = format!("{}{}{}", osprefix, name, ossuffix);
     let unixlibname = format!("lib{}.a", name);
 
-    for path in search_paths.iter() {
+    for path in search_paths {
         debug!("looking for {} inside {:?}", name, path.display());
         let test = path.join(&oslibname[]);
         if test.exists() { return test }
@@ -244,7 +244,7 @@ impl<'a> ArchiveBuilder<'a> {
         // 32,768, and we leave a bit of extra space for the program name.
         static ARG_LENGTH_LIMIT: uint = 32000;
 
-        for member_name in self.members.iter() {
+        for member_name in &self.members {
             let len = member_name.as_vec().len();
 
             // `len + 1` to account for the space that's inserted before each
@@ -297,7 +297,7 @@ impl<'a> ArchiveBuilder<'a> {
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
         let files = try!(fs::readdir(loc.path()));
-        for file in files.iter() {
+        for file in &files {
             let filename = file.filename_str().unwrap();
             if skip(filename) { continue }
             if filename.contains(".SYMDEF") { continue }

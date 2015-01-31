@@ -167,7 +167,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
     fn sum(&self) -> T {
         let mut partials = vec![];
 
-        for &x in self.iter() {
+        for &x in self {
             let mut x = x;
             let mut j = 0;
             // This inner loop applies `hi`/`lo` summation to each
@@ -223,7 +223,7 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
         } else {
             let mean = self.mean();
             let mut v: T = Float::zero();
-            for s in self.iter() {
+            for s in self {
                 let x = *s - mean;
                 v = v + x*x;
             }

@@ -452,7 +452,7 @@ impl<'a> Context<'a> {
                     &format!("multiple matching crates for `{}`",
                             self.crate_name)[]);
                 self.sess.note("candidates:");
-                for lib in libraries.iter() {
+                for lib in &libraries {
                     match lib.dylib {
                         Some((ref p, _)) => {
                             self.sess.note(&format!("path: {}",

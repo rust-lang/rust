@@ -576,7 +576,7 @@ impl<T: Writer> ConsoleTestState<T> {
         try!(self.write_plain("\nfailures:\n"));
         let mut failures = Vec::new();
         let mut fail_out = String::new();
-        for &(ref f, ref stdout) in self.failures.iter() {
+        for &(ref f, ref stdout) in &self.failures {
             failures.push(f.name.to_string());
             if stdout.len() > 0 {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
@@ -593,7 +593,7 @@ impl<T: Writer> ConsoleTestState<T> {
 
         try!(self.write_plain("\nfailures:\n"));
         failures.sort();
-        for name in failures.iter() {
+        for name in &failures {
             try!(self.write_plain(format!("    {}\n",
                                           name.as_slice()).as_slice()));
         }
@@ -652,7 +652,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io:
                     TrMetrics(mm) => {
                         let tname = test.name.as_slice();
                         let MetricMap(mm) = mm;
-                        for (k,v) in mm.iter() {
+                        for (k,v) in &mm {
                             st.metrics
                               .insert_metric(format!("{}.{}",
                                                      tname,
@@ -1299,7 +1299,7 @@ mod tests {
         {
             fn testfn() { }
             let mut tests = Vec::new();
-            for name in names.iter() {
+            for name in &names {
                 let test = TestDescAndFn {
                     desc: TestDesc {
                         name: DynTestName((*name).clone()),

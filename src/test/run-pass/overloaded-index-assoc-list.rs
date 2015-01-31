@@ -32,7 +32,7 @@ impl<K: PartialEq + std::fmt::Debug, V:Clone> Index<K> for AssociationList<K,V> 
     type Output = V;
 
     fn index<'a>(&'a self, index: &K) -> &'a V {
-        for pair in self.pairs.iter() {
+        for pair in &self.pairs {
             if pair.key == *index {
                 return &pair.value
             }

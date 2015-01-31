@@ -1110,7 +1110,7 @@ mod test {
         }
         let files = check!(readdir(dir));
         let mut mem = [0u8; 4];
-        for f in files.iter() {
+        for f in &files {
             {
                 let n = f.filestem_str();
                 check!(File::open(f).read(&mut mem));

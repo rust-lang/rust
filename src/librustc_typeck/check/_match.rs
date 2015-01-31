@@ -240,7 +240,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             // below for details.
             demand::eqtype(fcx, pat.span, expected, pat_ty);
 
-            for elt in before.iter() {
+            for elt in before {
                 check_pat(pcx, &**elt, inner_ty);
             }
             if let Some(ref slice) = *slice {
@@ -254,7 +254,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                 });
                 check_pat(pcx, &**slice, slice_ty);
             }
-            for elt in after.iter() {
+            for elt in after {
                 check_pat(pcx, &**elt, inner_ty);
             }
         }
@@ -348,12 +348,12 @@ pub fn check_match<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Typecheck the patterns first, so that we get types for all the
     // bindings.
-    for arm in arms.iter() {
+    for arm in arms {
         let mut pcx = pat_ctxt {
             fcx: fcx,
             map: pat_id_map(&tcx.def_map, &*arm.pats[0]),
         };
-        for p in arm.pats.iter() {
+        for p in &arm.pats {
             check_pat(&mut pcx, &**p, discrim_ty);
         }
     }
@@ -439,7 +439,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
                 "use of trait `{}` in a struct pattern", name);
             fcx.write_error(pat.id);
 
-            for field in fields.iter() {
+            for field in fields {
                 check_pat(pcx, &*field.node.pat, tcx.types.err);
             }
             return;
@@ -458,7 +458,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
                         "`{}` does not name a struct or a struct variant", name);
                     fcx.write_error(pat.id);
 
-                    for field in fields.iter() {
+                    for field in fields {
                         check_pat(pcx, &*field.node.pat, tcx.types.err);
                     }
                     return;
@@ -540,7 +540,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             fcx.write_error(pat.id);
 
             if let Some(subpats) = subpats {
-                for pat in subpats.iter() {
+                for pat in subpats {
                     check_pat(pcx, &**pat, tcx.types.err);
                 }
             }
@@ -558,7 +558,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                       "this pattern has {} field{}, but the corresponding {} has no fields",
                       subpats.len(), if subpats.len() == 1 {""} else {"s"}, kind_name);
 
-            for pat in subpats.iter() {
+            for pat in subpats {
                 check_pat(pcx, &**pat, tcx.types.err);
             }
         } else {
@@ -568,7 +568,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
                       kind_name,
                       arg_tys.len(), if arg_tys.len() == 1 {""} else {"s"});
 
-            for pat in subpats.iter() {
+            for pat in subpats {
                 check_pat(pcx, &**pat, tcx.types.err);
             }
         }
@@ -598,7 +598,7 @@ pub fn check_struct_pat_fields<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let mut used_fields = FnvHashMap();
 
     // Typecheck each field.
-    for &Spanned { node: ref field, span } in fields.iter() {
+    for &Spanned { node: ref field, span } in fields {
         let field_type = match used_fields.entry(field.ident.name) {
             Occupied(occupied) => {
                 span_err!(tcx.sess, span, E0025,

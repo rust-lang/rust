@@ -551,7 +551,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
         let amt = CALLBACK_CNT.load(Ordering::SeqCst);
         &CALLBACKS[..cmp::min(amt, MAX_CALLBACKS)]
     };
-    for cb in callbacks.iter() {
+    for cb in callbacks {
         match cb.load(Ordering::SeqCst) {
             0 => {}
             n => {

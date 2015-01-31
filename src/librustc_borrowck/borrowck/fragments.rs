@@ -204,14 +204,14 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     debug!("fragments 1 assigned: {:?}", path_lps(&assigned[]));
 
     // Second, build parents from the moved and assigned.
-    for m in moved.iter() {
+    for m in &moved {
         let mut p = this.path_parent(*m);
         while p != InvalidMovePathIndex {
             parents.push(p);
             p = this.path_parent(p);
         }
     }
-    for a in assigned.iter() {
+    for a in &assigned {
         let mut p = this.path_parent(*a);
         while p != InvalidMovePathIndex {
             parents.push(p);
@@ -231,15 +231,15 @@ pub fn fixup_fragment_sets<'tcx>(this: &MoveData<'tcx>, tcx: &ty::ctxt<'tcx>) {
     debug!("fragments 3 assigned: {:?}", path_lps(&assigned[]));
 
     // Fourth, build the leftover from the moved, assigned, and parents.
-    for m in moved.iter() {
+    for m in &moved {
         let lp = this.path_loan_path(*m);
         add_fragment_siblings(this, tcx, &mut unmoved, lp, None);
     }
-    for a in assigned.iter() {
+    for a in &assigned {
         let lp = this.path_loan_path(*a);
         add_fragment_siblings(this, tcx, &mut unmoved, lp, None);
     }
-    for p in parents.iter() {
+    for p in &parents {
         let lp = this.path_loan_path(*p);
         add_fragment_siblings(this, tcx, &mut unmoved, lp, None);
     }
@@ -369,7 +369,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             let fields = ty::lookup_struct_fields(tcx, def_id);
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
-                    for f in fields.iter() {
+                    for f in &fields {
                         if f.name == ast_name {
                             continue;
                         }
@@ -407,7 +407,7 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
                     let variant_arg_names = variant_info.arg_names.as_ref().unwrap();
-                    for variant_arg_ident in variant_arg_names.iter() {
+                    for variant_arg_ident in variant_arg_names {
                         if variant_arg_ident.name == ast_name {
                             continue;
                         }

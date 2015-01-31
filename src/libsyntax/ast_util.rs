@@ -302,7 +302,7 @@ pub fn split_trait_methods(trait_methods: &[TraitItem])
                            -> (Vec<TypeMethod>, Vec<P<Method>> ) {
     let mut reqd = Vec::new();
     let mut provd = Vec::new();
-    for trt_method in trait_methods.iter() {
+    for trt_method in trait_methods {
         match *trt_method {
             RequiredMethod(ref tm) => reqd.push((*tm).clone()),
             ProvidedMethod(ref m) => provd.push((*m).clone()),
@@ -391,10 +391,10 @@ pub struct IdVisitor<'a, O:'a> {
 
 impl<'a, O: IdVisitingOperation> IdVisitor<'a, O> {
     fn visit_generics_helper(&mut self, generics: &Generics) {
-        for type_parameter in generics.ty_params.iter() {
+        for type_parameter in &*generics.ty_params {
             self.operation.visit_id(type_parameter.id)
         }
-        for lifetime in generics.lifetimes.iter() {
+        for lifetime in &generics.lifetimes {
             self.operation.visit_id(lifetime.lifetime.id)
         }
     }
@@ -430,14 +430,14 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
                     ViewPathSimple(_, _) |
                     ViewPathGlob(_) => {}
                     ViewPathList(_, ref paths) => {
-                        for path in paths.iter() {
+                        for path in paths {
                             self.operation.visit_id(path.node.id())
                         }
                     }
                 }
             }
             ItemEnum(ref enum_definition, _) => {
-                for variant in enum_definition.variants.iter() {
+                for variant in &enum_definition.variants {
                     self.operation.visit_id(variant.node.id)
                 }
             }
@@ -511,7 +511,7 @@ impl<'a, 'v, O: IdVisitingOperation> Visitor<'v> for IdVisitor<'a, O> {
             visit::FkFnBlock => {}
         }
 
-        for argument in function_declaration.inputs.iter() {
+        for argument in &function_declaration.inputs {
             self.operation.visit_id(argument.id)
         }
 

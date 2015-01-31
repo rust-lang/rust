@@ -888,7 +888,7 @@ impl<T: Debug> Debug for [T] {
             try!(write!(f, "["));
         }
         let mut is_first = true;
-        for x in self.iter() {
+        for x in self {
             if is_first {
                 is_first = false;
             } else {

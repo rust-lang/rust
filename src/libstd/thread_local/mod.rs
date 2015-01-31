@@ -425,7 +425,7 @@ mod imp {
         unsafe extern fn run_dtors(mut ptr: *mut u8) {
             while !ptr.is_null() {
                 let list: Box<List> = mem::transmute(ptr);
-                for &(ptr, dtor) in list.iter() {
+                for &(ptr, dtor) in &*list {
                     dtor(ptr);
                 }
                 ptr = DTORS.get();

@@ -126,7 +126,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             }
 
             ty::ty_tup(ref tuptys) => {
-                for &tupty in tuptys.iter() {
+                for &tupty in tuptys {
                     self.accumulate_from_ty(tupty);
                 }
             }
@@ -236,7 +236,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         // Variance of each type/region parameter.
         let variances = ty::item_variances(self.tcx, def_id);
 
-        for &space in ParamSpace::all().iter() {
+        for &space in &ParamSpace::all() {
             let region_params = substs.regions().get_slice(space);
             let region_variances = variances.regions.get_slice(space);
             let region_param_defs = generics.regions.get_slice(space);
@@ -272,7 +272,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                     }
                 }
 
-                for &region_bound in region_param_def.bounds.iter() {
+                for &region_bound in &region_param_def.bounds {
                     // The type declared a constraint like
                     //
                     //     'b : 'a
@@ -314,7 +314,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
                 // Inspect bounds on this type parameter for any
                 // region bounds.
-                for &r in type_param_def.bounds.region_bounds.iter() {
+                for &r in &type_param_def.bounds.region_bounds {
                     self.stack.push((r, Some(ty)));
                     self.accumulate_from_ty(type_param_ty);
                     self.stack.pop().unwrap();
@@ -368,7 +368,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         // And then, in turn, to be well-formed, the
         // `region_bound` that user specified must imply the
         // region bounds required from all of the trait types:
-        for &r_d in required_region_bounds.iter() {
+        for &r_d in &required_region_bounds {
             // Each of these is an instance of the `'c <= 'b`
             // constraint above
             self.out.push(RegionSubRegionConstraint(Some(ty), r_d, r_c));

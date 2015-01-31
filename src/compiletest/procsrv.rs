@@ -46,7 +46,7 @@ pub fn run(lib_path: &str,
 
     match cmd.spawn() {
         Ok(mut process) => {
-            for input in input.iter() {
+            if let Some(input) = input {
                 process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
             }
             let ProcessOutput { status, output, error } =
@@ -78,7 +78,7 @@ pub fn run_background(lib_path: &str,
 
     match cmd.spawn() {
         Ok(mut process) => {
-            for input in input.iter() {
+            if let Some(input) = input {
                 process.stdin.as_mut().unwrap().write_all(input.as_bytes()).unwrap();
             }
 

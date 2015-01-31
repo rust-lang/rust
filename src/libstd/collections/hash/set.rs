@@ -1033,7 +1033,7 @@ mod test_set {
             assert!(a.insert(i));
         }
         let mut observed: u32 = 0;
-        for k in a.iter() {
+        for k in &a {
             observed |= 1 << *k;
         }
         assert_eq!(observed, 0xFFFF_FFFF);
@@ -1154,7 +1154,7 @@ mod test_set {
 
         let set: HashSet<int> = xs.iter().map(|&x| x).collect();
 
-        for x in xs.iter() {
+        for x in &xs {
             assert!(set.contains(x));
         }
     }
@@ -1240,7 +1240,7 @@ mod test_set {
                 assert_eq!(last_i, 49);
             }
 
-            for _ in s.iter() { panic!("s should be empty!"); }
+            for _ in &s { panic!("s should be empty!"); }
 
             // reset to try again.
             s.extend(1..100);

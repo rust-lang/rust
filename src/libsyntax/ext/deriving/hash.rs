@@ -100,7 +100,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         _ => cx.span_bug(trait_span, "impossible substructure in `derive(Hash)`")
     };
 
-    for &FieldInfo { ref self_, span, .. } in fields.iter() {
+    for &FieldInfo { ref self_, span, .. } in fields {
         stmts.push(call_hash(span, self_.clone()));
     }
 

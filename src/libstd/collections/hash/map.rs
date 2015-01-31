@@ -1977,7 +1977,7 @@ mod test_map {
 
         let mut observed: u32 = 0;
 
-        for (k, v) in m.iter() {
+        for (k, v) in &m {
             assert_eq!(*v, *k * 2);
             observed |= 1 << *k;
         }
@@ -2167,7 +2167,7 @@ mod test_map {
 
         let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
-        for &(k, v) in xs.iter() {
+        for &(k, v) in &xs {
             assert_eq!(map.get(&k), Some(&v));
         }
     }

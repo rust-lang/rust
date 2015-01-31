@@ -209,12 +209,12 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
              ret_val: &mut HashMap<Ident, Rc<NamedMatch>>, idx: &mut usize) {
         match m {
             &TtSequence(_, ref seq) => {
-                for next_m in seq.tts.iter() {
+                for next_m in &seq.tts {
                     n_rec(p_s, next_m, res, ret_val, idx)
                 }
             }
             &TtDelimited(_, ref delim) => {
-                for next_m in delim.tts.iter() {
+                for next_m in &delim.tts {
                     n_rec(p_s, next_m, res, ret_val, idx)
                 }
             }
@@ -239,7 +239,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
     }
     let mut ret_val = HashMap::new();
     let mut idx = 0us;
-    for m in ms.iter() { n_rec(p_s, m, res, &mut ret_val, &mut idx) }
+    for m in ms { n_rec(p_s, m, res, &mut ret_val, &mut idx) }
     ret_val
 }
 

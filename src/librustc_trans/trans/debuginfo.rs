@@ -375,7 +375,7 @@ impl<'tcx> TypeMap<'tcx> {
             },
             ty::ty_tup(ref component_types) => {
                 unique_type_id.push_str("tuple ");
-                for &component_type in component_types.iter() {
+                for &component_type in component_types {
                     let component_type_id =
                         self.get_unique_type_id_of_type(cx, component_type);
                     let component_type_id =
@@ -447,7 +447,7 @@ impl<'tcx> TypeMap<'tcx> {
 
                 let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
 
-                for &parameter_type in sig.inputs.iter() {
+                for &parameter_type in &sig.inputs {
                     let parameter_type_id =
                         self.get_unique_type_id_of_type(cx, parameter_type);
                     let parameter_type_id =
@@ -533,7 +533,7 @@ impl<'tcx> TypeMap<'tcx> {
             if tps.len() > 0 {
                 output.push('<');
 
-                for &type_parameter in tps.iter() {
+                for &type_parameter in tps {
                     let param_type_id =
                         type_map.get_unique_type_id_of_type(cx, type_parameter);
                     let param_type_id =
@@ -563,7 +563,7 @@ impl<'tcx> TypeMap<'tcx> {
 
         let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
 
-        for &parameter_type in sig.inputs.iter() {
+        for &parameter_type in &sig.inputs {
             let parameter_type_id =
                 self.get_unique_type_id_of_type(cx, parameter_type);
             let parameter_type_id =
@@ -1440,7 +1440,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
 
         // Arguments types
-        for arg in fn_decl.inputs.iter() {
+        for arg in &fn_decl.inputs {
             assert_type_for_node_id(cx, arg.pat.id, arg.pat.span);
             let arg_type = ty::node_id_to_type(cx.tcx(), arg.pat.id);
             let arg_type = monomorphize::apply_param_substs(cx.tcx(),
@@ -2838,7 +2838,7 @@ fn subroutine_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     });
 
     // regular arguments
-    for &argument_type in signature.inputs.iter() {
+    for &argument_type in &signature.inputs {
         signature_metadata.push(type_metadata(cx, argument_type, span));
     }
 
@@ -3226,7 +3226,7 @@ fn create_scope_map(cx: &CrateContext,
 
     // Push argument identifiers onto the stack so arguments integrate nicely
     // with variable shadowing.
-    for arg in args.iter() {
+    for arg in args {
         pat_util::pat_bindings(def_map, &*arg.pat, |_, node_id, _, path1| {
             scope_stack.push(ScopeStackEntry { scope_metadata: fn_metadata,
                                                ident: Some(path1.node) });
@@ -3292,7 +3292,7 @@ fn create_scope_map(cx: &CrateContext,
         scope_map.insert(block.id, scope_stack.last().unwrap().scope_metadata);
 
         // The interesting things here are statements and the concluding expression.
-        for statement in block.stmts.iter() {
+        for statement in &block.stmts {
             scope_map.insert(ast_util::stmt_id(&**statement),
                              scope_stack.last().unwrap().scope_metadata);
 
@@ -3306,7 +3306,7 @@ fn create_scope_map(cx: &CrateContext,
             }
         }
 
-        for exp in block.expr.iter() {
+        if let Some(ref exp) = block.expr {
             walk_expr(cx, &**exp, scope_stack, scope_map);
         }
     }
@@ -3321,7 +3321,7 @@ fn create_scope_map(cx: &CrateContext,
 
                 walk_pattern(cx, &*local.pat, scope_stack, scope_map);
 
-                for exp in local.init.iter() {
+                if let Some(ref exp) = local.init {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
             }
@@ -3407,7 +3407,7 @@ fn create_scope_map(cx: &CrateContext,
 
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-                for sub_pat in sub_pat_opt.iter() {
+                if let Some(ref sub_pat) = *sub_pat_opt {
                     walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
                 }
             }
@@ -3419,8 +3419,8 @@ fn create_scope_map(cx: &CrateContext,
             ast::PatEnum(_, ref sub_pats_opt) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-                for sub_pats in sub_pats_opt.iter() {
-                    for p in sub_pats.iter() {
+                if let Some(ref sub_pats) = *sub_pats_opt {
+                    for p in sub_pats {
                         walk_pattern(cx, &**p, scope_stack, scope_map);
                     }
                 }
@@ -3440,7 +3440,7 @@ fn create_scope_map(cx: &CrateContext,
             ast::PatTup(ref sub_pats) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-                for sub_pat in sub_pats.iter() {
+                for sub_pat in sub_pats {
                     walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
                 }
             }
@@ -3464,15 +3464,15 @@ fn create_scope_map(cx: &CrateContext,
             ast::PatVec(ref front_sub_pats, ref middle_sub_pats, ref back_sub_pats) => {
                 scope_map.insert(pat.id, scope_stack.last().unwrap().scope_metadata);
 
-                for sub_pat in front_sub_pats.iter() {
+                for sub_pat in front_sub_pats {
                     walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
                 }
 
-                for sub_pat in middle_sub_pats.iter() {
+                if let Some(ref sub_pat) = *middle_sub_pats {
                     walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
                 }
 
-                for sub_pat in back_sub_pats.iter() {
+                for sub_pat in back_sub_pats {
                     walk_pattern(cx, &**sub_pat, scope_stack, scope_map);
                 }
             }
@@ -3534,7 +3534,7 @@ fn create_scope_map(cx: &CrateContext,
 
             ast::ExprVec(ref init_expressions) |
             ast::ExprTup(ref init_expressions) => {
-                for ie in init_expressions.iter() {
+                for ie in init_expressions {
                     walk_expr(cx, &**ie, scope_stack, scope_map);
                 }
             }
@@ -3612,7 +3612,7 @@ fn create_scope_map(cx: &CrateContext,
                                scope_stack,
                                scope_map,
                                |cx, scope_stack, scope_map| {
-                    for &ast::Arg { pat: ref pattern, .. } in decl.inputs.iter() {
+                    for &ast::Arg { pat: ref pattern, .. } in &decl.inputs {
                         walk_pattern(cx, &**pattern, scope_stack, scope_map);
                     }
 
@@ -3623,13 +3623,13 @@ fn create_scope_map(cx: &CrateContext,
             ast::ExprCall(ref fn_exp, ref args) => {
                 walk_expr(cx, &**fn_exp, scope_stack, scope_map);
 
-                for arg_exp in args.iter() {
+                for arg_exp in args {
                     walk_expr(cx, &**arg_exp, scope_stack, scope_map);
                 }
             }
 
             ast::ExprMethodCall(_, _, ref args) => {
-                for arg_exp in args.iter() {
+                for arg_exp in args {
                     walk_expr(cx, &**arg_exp, scope_stack, scope_map);
                 }
             }
@@ -3642,7 +3642,7 @@ fn create_scope_map(cx: &CrateContext,
                 // walk only one pattern per arm, as they all must contain the
                 // same binding names.
 
-                for arm_ref in arms.iter() {
+                for arm_ref in arms {
                     let arm_span = arm_ref.pats[0].span;
 
                     with_new_scope(cx,
@@ -3650,11 +3650,11 @@ fn create_scope_map(cx: &CrateContext,
                                    scope_stack,
                                    scope_map,
                                    |cx, scope_stack, scope_map| {
-                        for pat in arm_ref.pats.iter() {
+                        for pat in &arm_ref.pats {
                             walk_pattern(cx, &**pat, scope_stack, scope_map);
                         }
 
-                        for guard_exp in arm_ref.guard.iter() {
+                        if let Some(ref guard_exp) = arm_ref.guard {
                             walk_expr(cx, &**guard_exp, scope_stack, scope_map)
                         }
 
@@ -3664,7 +3664,7 @@ fn create_scope_map(cx: &CrateContext,
             }
 
             ast::ExprStruct(_, ref fields, ref base_exp) => {
-                for &ast::Field { expr: ref exp, .. } in fields.iter() {
+                for &ast::Field { expr: ref exp, .. } in fields {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
 
@@ -3678,11 +3678,11 @@ fn create_scope_map(cx: &CrateContext,
                                                 ref outputs,
                                                 .. }) => {
                 // inputs, outputs: Vec<(String, P<Expr>)>
-                for &(_, ref exp) in inputs.iter() {
+                for &(_, ref exp) in inputs {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
 
-                for &(_, ref exp, _) in outputs.iter() {
+                for &(_, ref exp, _) in outputs {
                     walk_expr(cx, &**exp, scope_stack, scope_map);
                 }
             }
@@ -3737,7 +3737,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         },
         ty::ty_tup(ref component_types) => {
             output.push('(');
-            for &component_type in component_types.iter() {
+            for &component_type in component_types {
                 push_debuginfo_type_name(cx, component_type, true, output);
                 output.push_str(", ");
             }
@@ -3802,7 +3802,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             let sig = ty::erase_late_bound_regions(cx.tcx(), sig);
             if sig.inputs.len() > 0 {
-                for &parameter_type in sig.inputs.iter() {
+                for &parameter_type in &sig.inputs {
                     push_debuginfo_type_name(cx, parameter_type, true, output);
                     output.push_str(", ");
                 }

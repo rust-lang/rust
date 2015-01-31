@@ -36,7 +36,7 @@ impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "EnumSet {{"));
         let mut first = true;
-        for e in self.iter() {
+        for e in self {
             if !first {
                 try!(write!(fmt, ", "));
             }

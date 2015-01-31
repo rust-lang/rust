@@ -74,7 +74,7 @@ impl<
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         e.emit_map(self.len(), |e| {
             let mut i = 0;
-            for (key, val) in self.iter() {
+            for (key, val) in self {
                 try!(e.emit_map_elt_key(i, |e| key.encode(e)));
                 try!(e.emit_map_elt_val(i, |e| val.encode(e)));
                 i += 1;
@@ -107,7 +107,7 @@ impl<
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         s.emit_seq(self.len(), |s| {
             let mut i = 0;
-            for e in self.iter() {
+            for e in self {
                 try!(s.emit_seq_elt(i, |s| e.encode(s)));
                 i += 1;
             }
@@ -135,7 +135,7 @@ impl<
 > Encodable for EnumSet<T> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let mut bits = 0;
-        for item in self.iter() {
+        for item in self {
             bits |= item.to_uint();
         }
         s.emit_uint(bits)
@@ -166,7 +166,7 @@ impl<K, V, S> Encodable for HashMap<K, V, S>
     fn encode<E: Encoder>(&self, e: &mut E) -> Result<(), E::Error> {
         e.emit_map(self.len(), |e| {
             let mut i = 0;
-            for (key, val) in self.iter() {
+            for (key, val) in self {
                 try!(e.emit_map_elt_key(i, |e| key.encode(e)));
                 try!(e.emit_map_elt_val(i, |e| val.encode(e)));
                 i += 1;
@@ -204,7 +204,7 @@ impl<T, S> Encodable for HashSet<T, S>
     fn encode<E: Encoder>(&self, s: &mut E) -> Result<(), E::Error> {
         s.emit_seq(self.len(), |s| {
             let mut i = 0;
-            for e in self.iter() {
+            for e in self {
                 try!(s.emit_seq_elt(i, |s| e.encode(s)));
                 i += 1;
             }

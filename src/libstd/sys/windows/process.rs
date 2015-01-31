@@ -142,7 +142,7 @@ impl Process {
         // To have the spawning semantics of unix/windows stay the same, we need to
         // read the *child's* PATH if one is provided. See #15149 for more details.
         let program = cfg.env().and_then(|env| {
-            for (key, v) in env.iter() {
+            for (key, v) in env {
                 if b"PATH" != key.container_as_bytes() { continue }
 
                 // Split the value and test each path to see if the
@@ -372,7 +372,7 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     let mut cmd = String::new();
     append_arg(&mut cmd, str::from_utf8(prog.as_bytes()).ok()
                              .expect("expected program name to be utf-8 encoded"));
-    for arg in args.iter() {
+    for arg in args {
         cmd.push(' ');
         append_arg(&mut cmd, str::from_utf8(arg.as_bytes()).ok()
                                 .expect("expected argument to be utf-8 encoded"));
@@ -437,7 +437,7 @@ fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T
         Some(env) => {
             let mut blk = Vec::new();
 
-            for pair in env.iter() {
+            for pair in env {
                 let kv = format!("{}={}",
                                  pair.0.container_as_str().unwrap(),
                                  pair.1.container_as_str().unwrap());

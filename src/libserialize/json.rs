@@ -1051,7 +1051,7 @@ impl Json {
     /// Otherwise, it will return the Json value associated with the final key.
     pub fn find_path<'a>(&'a self, keys: &[&str]) -> Option<&'a Json>{
         let mut target = self;
-        for key in keys.iter() {
+        for key in keys {
             match target.find(*key) {
                 Some(t) => { target = t; },
                 None => return None
@@ -1069,7 +1069,7 @@ impl Json {
                 match map.get(key) {
                     Some(json_value) => Some(json_value),
                     None => {
-                        for (_, v) in map.iter() {
+                        for (_, v) in map {
                             match v.search(key) {
                                 x if x.is_some() => return x,
                                 _ => ()
@@ -1367,7 +1367,7 @@ impl Stack {
     // Used by Parser to insert StackElement::Key elements at the top of the stack.
     fn push_key(&mut self, key: string::String) {
         self.stack.push(InternalKey(self.str_buffer.len() as u16, key.len() as u16));
-        for c in key.as_bytes().iter() {
+        for c in key.as_bytes() {
             self.str_buffer.push(*c);
         }
     }
@@ -2497,7 +2497,7 @@ impl<A: ToJson> ToJson for Vec<A> {
 impl<A: ToJson> ToJson for BTreeMap<string::String, A> {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();
-        for (key, value) in self.iter() {
+        for (key, value) in self {
             d.insert((*key).clone(), value.to_json());
         }
         Json::Object(d)
@@ -2507,7 +2507,7 @@ impl<A: ToJson> ToJson for BTreeMap<string::String, A> {
 impl<A: ToJson> ToJson for HashMap<string::String, A> {
     fn to_json(&self) -> Json {
         let mut d = BTreeMap::new();
-        for (key, value) in self.iter() {
+        for (key, value) in self {
             d.insert((*key).clone(), value.to_json());
         }
         Json::Object(d)
@@ -2670,7 +2670,7 @@ mod tests {
     fn mk_object(items: &[(string::String, Json)]) -> Json {
         let mut d = BTreeMap::new();
 
-        for item in items.iter() {
+        for item in items {
             match *item {
                 (ref key, ref value) => { d.insert((*key).clone(), (*value).clone()); },
             }
@@ -3044,7 +3044,7 @@ mod tests {
                  ("\"\\u12ab\"", "\u{12ab}"),
                  ("\"\\uAB12\"", "\u{AB12}")];
 
-        for &(i, o) in s.iter() {
+        for &(i, o) in &s {
             let v: string::String = super::decode(i).unwrap();
             assert_eq!(v, o);
         }

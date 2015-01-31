@@ -62,7 +62,7 @@ impl Hasher for FnvHasher {
 impl Writer for FnvHasher {
     fn write(&mut self, bytes: &[u8]) {
         let FnvHasher(mut hash) = *self;
-        for byte in bytes.iter() {
+        for byte in bytes {
             hash = hash ^ (*byte as u64);
             hash = hash * 0x100000001b3;
         }

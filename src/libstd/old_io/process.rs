@@ -400,7 +400,7 @@ impl fmt::Debug for Command {
     /// character.
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "{:?}", self.program));
-        for arg in self.args.iter() {
+        for arg in &self.args {
             try!(write!(f, " '{:?}'", arg));
         }
         Ok(())
@@ -1045,7 +1045,7 @@ mod tests {
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
 
         let r = os::env();
-        for &(ref k, ref v) in r.iter() {
+        for &(ref k, ref v) in &r {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() ||
                     output.contains(format!("{}={}", *k, *v).as_slice()),
@@ -1063,7 +1063,7 @@ mod tests {
         let output = String::from_utf8(prog.wait_with_output().unwrap().output).unwrap();
 
         let r = os::env();
-        for &(ref k, ref v) in r.iter() {
+        for &(ref k, ref v) in &r {
             // don't check android RANDOM variables
             if *k != "RANDOM".to_string() {
                 assert!(output.contains(format!("{}={}",

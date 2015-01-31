@@ -241,7 +241,7 @@ pub struct SeparateVecsPerParamSpace<T> {
 impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "VecPerParamSpace {{"));
-        for space in ParamSpace::all().iter() {
+        for space in &ParamSpace::all() {
             try!(write!(fmt, "{:?}: {:?}, ", *space, self.get_slice(*space)));
         }
         try!(write!(fmt, "}}"));

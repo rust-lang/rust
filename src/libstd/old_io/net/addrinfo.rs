@@ -121,7 +121,7 @@ mod test {
         let ipaddrs = get_host_addresses("localhost").unwrap();
         let mut found_local = false;
         let local_addr = &Ipv4Addr(127, 0, 0, 1);
-        for addr in ipaddrs.iter() {
+        for addr in &ipaddrs {
             found_local = found_local || addr == local_addr;
         }
         assert!(found_local);

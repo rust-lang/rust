@@ -136,7 +136,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                     }
 
                     ViewPathList(_, ref list) => {
-                        for i in list.iter() {
+                        for i in list {
                             self.finalize_import(i.node.id(), i.span);
                         }
                     }

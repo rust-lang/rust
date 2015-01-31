@@ -186,7 +186,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
     };
 
     let mut arg_tys = Vec::new();
-    for &aty in atys.iter() {
+    for &aty in atys {
         let ty = classify_arg_ty(ccx, aty, align_fn);
         arg_tys.push(ty);
     }

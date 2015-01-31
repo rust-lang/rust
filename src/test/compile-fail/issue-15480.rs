@@ -14,7 +14,7 @@ fn main() {
 //~^ ERROR borrowed value does not live long enough
     ];
 
-    for &&x in v.iter() {
+    for &&x in &v {
         println!("{}", x + 3);
     }
 }

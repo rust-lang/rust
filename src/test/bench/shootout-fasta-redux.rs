@@ -92,7 +92,7 @@ static HOMO_SAPIENS: [AminoAcid;4] = [
 fn sum_and_scale(a: &'static [AminoAcid]) -> Vec<AminoAcid> {
     let mut result = Vec::new();
     let mut p = 0f32;
-    for a_i in a.iter() {
+    for a_i in a {
         let mut a_i = *a_i;
         p += a_i.p;
         a_i.p = p * LOOKUP_SCALE;
@@ -180,7 +180,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
 
     fn nextc(&mut self) -> u8 {
         let r = self.rng(1.0);
-        for a in self.lookup.iter() {
+        for a in &self.lookup[] {
             if a.p >= r {
                 return a.c;
             }

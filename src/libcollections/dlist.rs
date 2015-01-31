@@ -917,7 +917,7 @@ impl<A: fmt::Debug> fmt::Debug for DList<A> {
 impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for DList<A> {
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
         }
     }

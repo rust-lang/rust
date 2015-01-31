@@ -1573,7 +1573,7 @@ impl<A: Ord> Ord for RingBuf<A> {
 impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
         }
     }
@@ -1856,7 +1856,7 @@ mod tests {
 
         b.iter(|| {
             let mut sum = 0;
-            for &i in ring.iter() {
+            for &i in &ring {
                 sum += i;
             }
             test::black_box(sum);

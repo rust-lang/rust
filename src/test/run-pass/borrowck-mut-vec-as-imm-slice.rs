@@ -11,7 +11,7 @@
 
 fn want_slice(v: &[int]) -> int {
     let mut sum = 0;
-    for i in v.iter() { sum += *i; }
+    for i in v { sum += *i; }
     sum
 }
 
