@@ -1499,6 +1499,13 @@ impl Clean<Type> for ast::Ty {
             TyPath(ref p) => {
                 resolve_type(cx, p.clean(cx), self.id)
             }
+            TyQPath(ref qp) => {
+                Type::QPath {
+                    name: qp.item_path.identifier.clean(cx),
+                    self_type: box qp.self_type.clean(cx),
+                    trait_: box resolve_type(cx, qp.trait_path.clean(cx), self.id)
+                }
+            }
             TyObjectSum(ref lhs, ref bounds) => {
                 let lhs_ty = lhs.clean(cx);
                 match lhs_ty {
@@ -1512,7 +1519,6 @@ impl Clean<Type> for ast::Ty {
             }
             TyBareFn(ref barefn) => BareFunction(box barefn.clean(cx)),
             TyParen(ref ty) => ty.clean(cx),
-            TyQPath(ref qp) => qp.clean(cx),
             TyPolyTraitRef(ref bounds) => {
                 PolyTraitRef(bounds.clean(cx))
             },
@@ -1620,16 +1626,6 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
 
             ty::ty_infer(..) => panic!("ty_infer"),
             ty::ty_err => panic!("ty_err"),
-        }
-    }
-}
-
-impl Clean<Type> for ast::QPath {
-    fn clean(&self, cx: &DocContext) -> Type {
-        Type::QPath {
-            name: self.item_path.identifier.clean(cx),
-            self_type: box self.self_type.clean(cx),
-            trait_: box resolve_type(cx, self.trait_path.clean(cx), 0)
         }
     }
 }

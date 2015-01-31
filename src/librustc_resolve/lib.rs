@@ -3563,8 +3563,24 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match ty.node {
             // Like path expressions, the interpretation of path types depends
             // on whether the path has multiple elements in it or not.
+            TyPath(_) | TyQPath(_) => {
+                let mut path_from_qpath;
+                let path = match ty.node {
+                    TyPath(ref path) => path,
+                    TyQPath(ref qpath) => {
+                        self.resolve_type(&*qpath.self_type);
 
-            TyPath(ref path) => {
+                        // Just make sure the trait is valid, don't record a def.
+                        self.resolve_trait_reference(ty.id, &qpath.trait_path, TraitQPath);
+                        self.def_map.borrow_mut().remove(&ty.id);
+
+                        path_from_qpath = qpath.trait_path.clone();
+                        path_from_qpath.segments.push(qpath.item_path.clone());
+                        &path_from_qpath
+                    }
+                    _ => unreachable!()
+                };
+
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
                 let mut result_def = None;
@@ -3609,7 +3625,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.record_def(ty.id, def);
                     }
                     None => {
-                        let msg = format!("use of undeclared type name `{}`",
+                        let kind = match ty.node {
+                            TyQPath(_) => "associated type",
+                            _ => "type name"
+                        };
+                        let msg = format!("use of undeclared {} `{}`", kind,
                                           self.path_names_to_string(path));
                         self.resolve_error(ty.span, &msg[..]);
                     }
@@ -3619,17 +3639,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             TyObjectSum(ref ty, ref bound_vec) => {
                 self.resolve_type(&**ty);
                 self.resolve_type_parameter_bounds(bound_vec, TraitBoundingTypeParameter);
-            }
-
-            TyQPath(ref qpath) => {
-                self.resolve_type(&*qpath.self_type);
-                self.resolve_trait_reference(ty.id, &qpath.trait_path, TraitQPath);
-                for ty in qpath.item_path.parameters.types() {
-                    self.resolve_type(&**ty);
-                }
-                for binding in qpath.item_path.parameters.bindings() {
-                    self.resolve_type(&*binding.ty);
-                }
             }
 
             TyPolyTraitRef(ref bounds) => {
