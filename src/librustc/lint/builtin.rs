@@ -227,7 +227,7 @@ impl LintPass for TypeLimits {
                                 if (negative && v > (min.abs() as u64)) ||
                                    (!negative && v > (max.abs() as u64)) {
                                     cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                                 "literal out of range for its type");
+                                                 &*format!("literal out of range for {:?}", t));
                                     return;
                                 }
                             }
@@ -246,7 +246,7 @@ impl LintPass for TypeLimits {
                         };
                         if  lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         "literal out of range for its type");
+                                         &*format!("literal out of range for {:?}", t));
                         }
                     },
                     ty::ty_float(t) => {
@@ -263,7 +263,7 @@ impl LintPass for TypeLimits {
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         "literal out of range for its type");
+                                         &*format!("literal out of range for {:?}", t));
                         }
                     },
                     _ => ()
