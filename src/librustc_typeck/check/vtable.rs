@@ -280,8 +280,6 @@ fn check_object_type_binds_all_associated_types<'tcx>(tcx: &ty::ctxt<'tcx>,
 pub fn select_all_fcx_obligations_and_apply_defaults(fcx: &FnCtxt) {
     debug!("select_all_fcx_obligations_and_apply_defaults");
 
-    fcx.inh.deferred_resolutions.borrow_mut()
-                                .retain(|r| !r.attempt_resolution(fcx));
     select_fcx_obligations_where_possible(fcx);
     fcx.default_type_parameters();
     select_fcx_obligations_where_possible(fcx);
@@ -289,6 +287,10 @@ pub fn select_all_fcx_obligations_and_apply_defaults(fcx: &FnCtxt) {
 
 pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
     debug!("select_all_fcx_obligations_or_error");
+
+    // upvar inference should have ensured that all deferrred call
+    // resolutions are handled by now.
+    assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
 
     select_all_fcx_obligations_and_apply_defaults(fcx);
     let mut fulfillment_cx = fcx.inh.fulfillment_cx.borrow_mut();

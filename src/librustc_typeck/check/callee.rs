@@ -14,7 +14,7 @@ use super::check_argument_types;
 use super::check_expr;
 use super::check_method_argument_types;
 use super::demand;
-use super::DeferredResolution;
+use super::DeferredCallResolution;
 use super::err_args;
 use super::Expectation;
 use super::expected_types_for_fn_args;
@@ -99,8 +99,8 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             confirm_builtin_call(fcx, call_expr, callee_ty, arg_exprs, expected);
         }
 
-        Some(CallStep::Closure(fn_sig)) => {
-            confirm_closure_call(fcx, call_expr, arg_exprs, expected, fn_sig);
+        Some(CallStep::DeferredClosure(fn_sig)) => {
+            confirm_deferred_closure_call(fcx, call_expr, arg_exprs, expected, fn_sig);
         }
 
         Some(CallStep::Overloaded(method_callee)) => {
@@ -112,7 +112,7 @@ pub fn check_call<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
 enum CallStep<'tcx> {
     Builtin,
-    Closure(ty::FnSig<'tcx>),
+    DeferredClosure(ty::FnSig<'tcx>),
     Overloaded(ty::MethodCallee<'tcx>)
 }
 
@@ -138,21 +138,28 @@ fn try_overloaded_call_step<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         ty::ty_closure(def_id, _, substs) => {
-            let closure_ty =
-                fcx.closure_type(def_id, substs);
-            let fn_sig =
-                fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
-                                                                      infer::FnCall,
-                                                                      &closure_ty.sig).0;
-            fcx.record_deferred_resolution(box CallResolution {
-                call_expr: call_expr,
-                callee_expr: callee_expr,
-                adjusted_ty: adjusted_ty,
-                autoderefref: autoderefref,
-                fn_sig: fn_sig.clone(),
-                closure_def_id: def_id,
-            });
-            return Some(CallStep::Closure(fn_sig));
+            assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+
+            // Check whether this is a call to a closure where we
+            // haven't yet decided on whether the closure is fn vs
+            // fnmut vs fnonce. If so, we have to defer further processing.
+            if fcx.closure_kind(def_id).is_none() {
+                let closure_ty =
+                    fcx.closure_type(def_id, substs);
+                let fn_sig =
+                    fcx.infcx().replace_late_bound_regions_with_fresh_var(call_expr.span,
+                                                                          infer::FnCall,
+                                                                          &closure_ty.sig).0;
+                fcx.record_deferred_call_resolution(
+                    def_id,
+                    box CallResolution {call_expr: call_expr,
+                                        callee_expr: callee_expr,
+                                        adjusted_ty: adjusted_ty,
+                                        autoderefref: autoderefref,
+                                        fn_sig: fn_sig.clone(),
+                                        closure_def_id: def_id});
+                return Some(CallStep::DeferredClosure(fn_sig));
+            }
         }
 
         _ => {}
@@ -258,11 +265,11 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     write_call(fcx, call_expr, fn_sig.output);
 }
 
-fn confirm_closure_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
-                                 call_expr: &ast::Expr,
-                                 arg_exprs: &'tcx [P<ast::Expr>],
-                                 expected: Expectation<'tcx>,
-                                 fn_sig: ty::FnSig<'tcx>)
+fn confirm_deferred_closure_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
+                                          call_expr: &ast::Expr,
+                                          arg_exprs: &'tcx [P<ast::Expr>],
+                                          expected: Expectation<'tcx>,
+                                          fn_sig: ty::FnSig<'tcx>)
 {
     // `fn_sig` is the *signature* of the cosure being called. We
     // don't know the full details yet (`Fn` vs `FnMut` etc), but we
@@ -338,22 +345,18 @@ impl<'tcx> Repr<'tcx> for CallResolution<'tcx> {
     }
 }
 
-impl<'tcx> DeferredResolution<'tcx> for CallResolution<'tcx> {
-    fn attempt_resolution<'a>(&self, fcx: &FnCtxt<'a,'tcx>) -> bool {
-        debug!("attempt_resolution() {}",
+impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
+    fn resolve<'a>(&mut self, fcx: &FnCtxt<'a,'tcx>) {
+        debug!("DeferredCallResolution::resolve() {}",
                self.repr(fcx.tcx()));
 
-        match fcx.closure_kind(self.closure_def_id) {
-            Some(_) => { }
-            None => {
-                return false;
-            }
-        }
+        // we should not be invoked until the closure kind has been
+        // determined by upvar inference
+        assert!(fcx.closure_kind(self.closure_def_id).is_some());
 
         // We may now know enough to figure out fn vs fnmut etc.
         match try_overloaded_call_traits(fcx, self.call_expr, self.callee_expr,
                                          self.adjusted_ty, self.autoderefref.clone()) {
-            None => false,
             Some(method_callee) => {
                 // One problem is that when we get here, we are going
                 // to have a newly instantiated function signature
@@ -382,8 +385,11 @@ impl<'tcx> DeferredResolution<'tcx> for CallResolution<'tcx> {
                                self.fn_sig.output.unwrap());
 
                 write_overloaded_call_method_map(fcx, self.call_expr, method_callee);
-
-                true
+            }
+            None => {
+                fcx.tcx().sess.span_bug(
+                    self.call_expr.span,
+                    "failed to find an overloaded call trait for closure call");
             }
         }
     }

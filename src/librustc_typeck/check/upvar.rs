@@ -67,6 +67,9 @@ pub fn closure_analyze_fn(fcx: &FnCtxt,
 
     let mut adjust = AdjustBorrowKind::new(fcx, &closures_with_inferred_kinds);
     adjust.visit_block(body);
+
+    // it's our job to process these.
+    assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -186,10 +189,56 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
         self.visit_block(body);
 
-        debug!("analyzing fn body with id {}", body.id);
+        debug!("analyzing closure `{}` with fn body id `{}`", id, body.id);
 
         let mut euv = euv::ExprUseVisitor::new(self, self.fcx);
         euv.walk_fn(decl, body);
+
+        // If we had not yet settled on a closure kind for this closure,
+        // then we should have by now. Process and remove any deferred resolutions.
+        //
+        // Interesting fact: all calls to this closure must come
+        // *after* its definition.  Initially, I thought that some
+        // kind of fixed-point iteration would be required, due to the
+        // possibility of twisted examples like this one:
+        //
+        // ```rust
+        // let mut closure0 = None;
+        // let vec = vec!(1, 2, 3);
+        //
+        // loop {
+        //     {
+        //         let closure1 = || {
+        //             match closure0.take() {
+        //                 Some(c) => {
+        //                     return c(); // (*) call to `closure0` before it is defined
+        //                 }
+        //                 None => { }
+        //             }
+        //         };
+        //         closure1();
+        //     }
+        //
+        //     closure0 = || vec;
+        // }
+        // ```
+        //
+        // However, this turns out to be wrong. Examples like this
+        // fail to compile because the type of the variable `c` above
+        // is an inference variable.  And in fact since closure types
+        // cannot be written, there is no way to make this example
+        // work without a boxed closure. This implies that we can't
+        // have two closures that recursively call one another without
+        // some form of boxing (and hence explicit writing of a
+        // closure kind) involved. Huzzah. -nmatsakis
+        let closure_def_id = ast_util::local_def(id);
+        if self.closures_with_inferred_kinds.contains(&id) {
+            let mut deferred_call_resolutions =
+                self.fcx.remove_deferred_call_resolutions(closure_def_id);
+            for deferred_call_resolution in deferred_call_resolutions.iter_mut() {
+                deferred_call_resolution.resolve(self.fcx);
+            }
+        }
     }
 
     fn adjust_upvar_borrow_kind_for_consume(&self,
