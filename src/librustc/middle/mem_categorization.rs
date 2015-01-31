@@ -1204,13 +1204,16 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         // Note: This goes up here (rather than within the PatEnum arm
         // alone) because struct patterns can refer to struct types or
         // to struct variants within enums.
-        let cmt = match opt_def {
-            Some(def::DefVariant(enum_did, variant_did, _))
-                // univariant enums do not need downcasts
-                if !ty::enum_is_univariant(self.tcx(), enum_did) => {
-                    self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
-                }
-            _ => cmt
+        let cmt = if let Some(def::DefVariant(enum_did, variant_did, _)) = opt_def {
+            let enum_def = ty::lookup_datatype_def(self.tcx(), enum_did);
+            // Univariant enums don't need a downcast
+            if !enum_def.is_univariant() {
+                self.cat_downcast(pat, cmt.clone(), cmt.ty, variant_did)
+            } else {
+                cmt
+            }
+        } else {
+            cmt
         };
 
         match pat.node {
@@ -1635,4 +1638,3 @@ impl<'tcx> UserString<'tcx> for Upvar {
         format!("captured outer variable in an `{}` closure", kind)
     }
 }
-

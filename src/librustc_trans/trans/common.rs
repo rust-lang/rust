@@ -24,7 +24,7 @@ use middle::infer;
 use middle::lang_items::LangItem;
 use middle::mem_categorization as mc;
 use middle::region;
-use middle::subst::{self, Subst, Substs};
+use middle::subst::{self, Substs};
 use trans::base;
 use trans::build;
 use trans::cleanup;
@@ -151,11 +151,9 @@ pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 pub fn unsized_part_of_type<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty::ty_str | ty::ty_trait(..) | ty::ty_vec(..) => ty,
-        ty::ty_struct(def_id, substs) => {
-            let unsized_fields: Vec<_> =
-                ty::struct_fields(cx, def_id, substs)
-                .iter()
-                .map(|f| f.mt.ty)
+        ty::ty_struct(def, substs) => {
+            let unsized_fields: Vec<_> = def.variants[0].fields.iter()
+                .map(|f| f.subst_ty(cx, substs))
                 .filter(|ty| !type_is_sized(cx, *ty))
                 .collect();
 
@@ -197,14 +195,11 @@ pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<
                 ty::ty_bool | ty::ty_int(_) | ty::ty_uint(_) |
                 ty::ty_float(_) | ty::ty_tup(_) | ty::ty_ptr(_) => false,
 
-                ty::ty_enum(did, substs) =>
-                    ty::enum_variants(tcx, did).iter().any(|v|
-                        v.args.iter().any(|&aty| {
-                            let t = aty.subst(tcx, substs);
-                            type_needs_unwind_cleanup_(tcx, t, tycache)
-                        })
-                    ),
-
+                ty::ty_enum(def, substs) => {
+                    def.variants.iter()
+                        .flat_map(|v| v.subst_fields(tcx, substs))
+                        .any(|t| type_needs_unwind_cleanup_(tcx, t, tycache))
+                }
                 _ => true
             };
             !needs_unwind_cleanup
@@ -219,10 +214,10 @@ pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
-        ty::ty_struct(def_id, substs) => {
-            let fields = ty::lookup_struct_fields(ccx.tcx(), def_id);
+        ty::ty_struct(def, substs) => {
+            let fields = &def.variants[0].fields[];
             fields.len() == 1 && {
-                let ty = ty::lookup_field_type(ccx.tcx(), def_id, fields[0].id, substs);
+                let ty = fields[0].subst_ty(ccx.tcx(), substs);
                 let ty = monomorphize::normalize_associated_type(ccx.tcx(), &ty);
                 type_is_immediate(ccx, ty)
             }
@@ -268,8 +263,8 @@ pub fn type_is_zero_size<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -
 /// return types. These are `()`, bot, and uninhabited enums. Note that all such types are also
 /// zero-size, but not all zero-size types use a `void` return type (in order to aid with C ABI
 /// compatibility).
-pub fn return_type_is_void(ccx: &CrateContext, ty: Ty) -> bool {
-    ty::type_is_nil(ty) || ty::type_is_empty(ccx.tcx(), ty)
+pub fn return_type_is_void(ty: Ty) -> bool {
+    ty::type_is_nil(ty) || ty::type_is_empty(ty)
 }
 
 /// Generates a unique symbol based off the name given. This is used to create

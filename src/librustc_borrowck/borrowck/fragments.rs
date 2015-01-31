@@ -370,11 +370,11 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::ty_struct(def_id, ref _substs), None) => {
-            let fields = ty::lookup_struct_fields(tcx, def_id);
+        (&ty::ty_struct(def, ref _substs), None) => {
+            let fields = &def.variants[0].fields[];
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
-                    for f in &fields {
+                    for f in fields {
                         if f.name == ast_name {
                             continue;
                         }
@@ -394,35 +394,31 @@ fn add_fragment_siblings_for_extension<'tcx>(this: &MoveData<'tcx>,
             }
         }
 
-        (&ty::ty_enum(enum_def_id, substs), ref enum_variant_info) => {
-            let variant_info = {
-                let mut variants = ty::substd_enum_variants(tcx, enum_def_id, substs);
+        (&ty::ty_enum(def, _), ref enum_variant_info) => {
+            let variant = {
                 match *enum_variant_info {
-                    Some((variant_def_id, ref _lp2)) =>
-                        variants.iter()
-                        .find(|variant| variant.id == variant_def_id)
-                        .expect("enum_variant_with_id(): no variant exists with that ID")
-                        .clone(),
+                    Some((variant_def_id, _)) => {
+                        def.get_variant(variant_def_id)
+                            .expect("no variant exists with that ID")
+                    }
                     None => {
-                        assert_eq!(variants.len(), 1);
-                        variants.pop().unwrap()
+                        assert_eq!(def.variants.len(), 1);
+                        &def.variants[0]
                     }
                 }
             };
             match *origin_field_name {
                 mc::NamedField(ast_name) => {
-                    let variant_arg_names = variant_info.arg_names.as_ref().unwrap();
-                    for variant_arg_ident in variant_arg_names {
-                        if variant_arg_ident.name == ast_name {
+                    for field in &variant.fields {
+                        if field.name == ast_name {
                             continue;
                         }
-                        let field_name = mc::NamedField(variant_arg_ident.name);
-                        add_fragment_sibling_local(field_name, Some(variant_info.id));
+                        let field_name = mc::NamedField(field.name);
+                        add_fragment_sibling_local(field_name, Some(variant.id));
                     }
                 }
                 mc::PositionalField(tuple_idx) => {
-                    let variant_arg_types = &variant_info.args;
-                    for (i, _variant_arg_ty) in variant_arg_types.iter().enumerate() {
+                    for (i, _) in variant.fields.iter().enumerate() {
                         if tuple_idx == i {
                             continue;
                         }

@@ -248,9 +248,9 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 !attr::contains_name(&item.attrs, "unsafe_destructor")
             {
                 match self_ty.sty {
-                    ty::ty_struct(def_id, _) |
-                    ty::ty_enum(def_id, _) => {
-                        check_struct_safe_for_destructor(fcx, item.span, def_id);
+                    ty::ty_struct(def, _) |
+                    ty::ty_enum(def, _) => {
+                        check_struct_safe_for_destructor(fcx, item.span, def.def_id);
                     }
                     _ => {
                         // Coherence already reports an error in this case.
@@ -614,8 +614,9 @@ impl<'cx,'tcx> TypeFolder<'tcx> for BoundsChecker<'cx,'tcx> {
         }
 
         match t.sty{
-            ty::ty_struct(type_id, substs) |
-            ty::ty_enum(type_id, substs) => {
+            ty::ty_struct(type_def, substs) |
+            ty::ty_enum(type_def, substs) => {
+                let type_id = type_def.def_id;
                 let type_predicates = ty::lookup_predicates(self.fcx.tcx(), type_id);
                 let bounds = self.fcx.instantiate_bounds(self.span, substs,
                                                          &type_predicates);

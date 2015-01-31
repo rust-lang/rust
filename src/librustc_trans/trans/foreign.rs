@@ -888,7 +888,7 @@ fn foreign_signature<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let llarg_tys = arg_tys.iter().map(|&arg| foreign_arg_type_of(ccx, arg)).collect();
     let (llret_ty, ret_def) = match fn_sig.output {
         ty::FnConverging(ret_ty) =>
-            (type_of::foreign_arg_type_of(ccx, ret_ty), !return_type_is_void(ccx, ret_ty)),
+            (type_of::foreign_arg_type_of(ccx, ret_ty), !return_type_is_void(ret_ty)),
         ty::FnDiverging =>
             (Type::nil(ccx), false)
     };

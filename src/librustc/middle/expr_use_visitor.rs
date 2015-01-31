@@ -736,11 +736,20 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
         let with_cmt = return_if_err!(self.mc.cat_expr(&*with_expr));
 
-        // Select just those fields of the `with`
-        // expression that will actually be used
-        let with_fields = match with_cmt.ty.sty {
-            ty::ty_struct(did, substs) => {
-                ty::struct_fields(self.tcx(), did, substs)
+        match with_cmt.ty.sty {
+            ty::ty_struct(def, substs) => {
+                // Consume those fields of the with expression that are needed.
+
+                for with_field in &def.variants[0].fields {
+                    if !contains_field_named(with_field.name, &fields[]) {
+                        let field_ty = with_field.subst_ty(self.tcx(), substs);
+                        let cmt_field = self.mc.cat_field(&*with_expr,
+                                                          with_cmt.clone(),
+                                                          with_field.name,
+                                                          field_ty);
+                        self.delegate_consume(with_expr.id, with_expr.span, cmt_field);
+                    }
+                }
             }
             _ => {
                 // the base expression should always evaluate to a
@@ -753,31 +762,19 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         "with expression doesn't evaluate to a struct");
                 }
                 assert!(self.tcx().sess.has_errors());
-                vec!()
-            }
-        };
-
-        // Consume those fields of the with expression that are needed.
-        for with_field in &with_fields {
-            if !contains_field_named(with_field, fields) {
-                let cmt_field = self.mc.cat_field(&*with_expr,
-                                                  with_cmt.clone(),
-                                                  with_field.name,
-                                                  with_field.mt.ty);
-                self.delegate_consume(with_expr.id, with_expr.span, cmt_field);
             }
         }
+
 
         // walk the with expression so that complex expressions
         // are properly handled.
         self.walk_expr(with_expr);
 
-        fn contains_field_named(field: &ty::field,
-                                fields: &Vec<ast::Field>)
-                                -> bool
+        fn contains_field_named(name: ast::Name,
+                                fields: &[ast::Field]) -> bool
         {
             fields.iter().any(
-                |f| f.ident.node.name == field.name)
+                |f| f.ident.node.name == name)
         }
     }
 
@@ -1104,13 +1101,13 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         }
 
                         Some(def::DefVariant(enum_did, variant_did, _is_struct)) => {
-                            let downcast_cmt =
-                                if ty::enum_is_univariant(tcx, enum_did) {
-                                    cmt_pat
-                                } else {
-                                    let cmt_pat_ty = cmt_pat.ty;
-                                    mc.cat_downcast(pat, cmt_pat, cmt_pat_ty, variant_did)
-                                };
+                            let enum_def = ty::lookup_datatype_def(tcx, enum_did);
+                            let downcast_cmt = if enum_def.is_univariant() {
+                                cmt_pat
+                            } else {
+                                let cmt_pat_ty = cmt_pat.ty;
+                                mc.cat_downcast(pat, cmt_pat, cmt_pat_ty, variant_did)
+                            };
 
                             debug!("variant downcast_cmt={} pat={}",
                                    downcast_cmt.repr(tcx),

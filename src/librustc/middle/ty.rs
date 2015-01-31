@@ -76,13 +76,14 @@ use std::hash::{Hash, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
+use std::slice;
 use std::vec::{CowVec, IntoIter};
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
-use syntax::ast::{CrateNum, DefId, Ident, ItemTrait, LOCAL_CRATE};
-use syntax::ast::{MutImmutable, MutMutable, Name, NamedField, NodeId};
-use syntax::ast::{StmtExpr, StmtSemi, StructField, UnnamedField, Visibility};
+use syntax::ast::{CrateNum, DefId, ItemTrait, LOCAL_CRATE};
+use syntax::ast::{MutImmutable, MutMutable, Name, NodeId};
+use syntax::ast::{StmtExpr, StmtSemi, Visibility};
 use syntax::ast_util::{self, is_local, lit_is_str, local_def, PostExpansionMethod};
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::Span;
@@ -105,12 +106,6 @@ pub struct CrateAnalysis<'tcx> {
     pub reachable: NodeSet,
     pub name: String,
     pub glob_map: Option<GlobMap>,
-}
-
-#[derive(Copy, Clone, PartialEq, Eq, Hash)]
-pub struct field<'tcx> {
-    pub name: ast::Name,
-    pub mt: mt<'tcx>
 }
 
 #[derive(Clone, Copy, Debug)]
@@ -247,14 +242,6 @@ pub struct AssociatedType {
 pub struct mt<'tcx> {
     pub ty: Ty<'tcx>,
     pub mutbl: ast::Mutability,
-}
-
-#[derive(Clone, Copy, Debug)]
-pub struct field_ty {
-    pub name: Name,
-    pub id: DefId,
-    pub vis: ast::Visibility,
-    pub origin: ast::DefId,  // The DefId of the struct in which the field is declared.
 }
 
 // Contains information needed to resolve types and (in the future) look up
@@ -628,6 +615,7 @@ pub struct CtxtArenas<'tcx> {
     substs: TypedArena<Substs<'tcx>>,
     bare_fn: TypedArena<BareFnTy<'tcx>>,
     region: TypedArena<Region>,
+    datatype_def: TypedArena<DatatypeDef<'tcx>>,
 }
 
 impl<'tcx> CtxtArenas<'tcx> {
@@ -637,6 +625,7 @@ impl<'tcx> CtxtArenas<'tcx> {
             substs: TypedArena::new(),
             bare_fn: TypedArena::new(),
             region: TypedArena::new(),
+            datatype_def: TypedArena::new(),
         }
     }
 }
@@ -723,19 +712,18 @@ pub struct ctxt<'tcx> {
     pub map: ast_map::Map<'tcx>,
     pub intrinsic_defs: RefCell<DefIdMap<Ty<'tcx>>>,
     pub freevars: RefCell<FreevarMap>,
+    pub datatype_defs: RefCell<DefIdMap<&'tcx DatatypeDef<'tcx>>>,
     pub tcache: RefCell<DefIdMap<TypeScheme<'tcx>>>,
     pub rcache: RefCell<FnvHashMap<creader_cache_key, Ty<'tcx>>>,
     pub short_names_cache: RefCell<FnvHashMap<Ty<'tcx>, String>>,
     pub tc_cache: RefCell<FnvHashMap<Ty<'tcx>, TypeContents>>,
     pub ast_ty_to_ty_cache: RefCell<NodeMap<ast_ty_to_ty_cache_entry<'tcx>>>,
-    pub enum_var_cache: RefCell<DefIdMap<Rc<Vec<Rc<VariantInfo<'tcx>>>>>>,
     pub ty_param_defs: RefCell<NodeMap<TypeParameterDef<'tcx>>>,
     pub adjustments: RefCell<NodeMap<AutoAdjustment<'tcx>>>,
     pub normalized_cache: RefCell<FnvHashMap<Ty<'tcx>, Ty<'tcx>>>,
     pub lang_items: middle::lang_items::LanguageItems,
     /// A mapping of fake provided method def_ids to the default implementation
     pub provided_method_sources: RefCell<DefIdMap<ast::DefId>>,
-    pub struct_fields: RefCell<DefIdMap<Rc<Vec<field_ty>>>>,
 
     /// Maps from def-id of a type or region parameter to its
     /// (inferred) variance.
@@ -1353,7 +1341,7 @@ pub enum sty<'tcx> {
     /// from the tcx, use the `NodeId` from the `ast::Ty` and look it up in
     /// the `ast_ty_to_ty_cache`. This is probably true for `ty_struct` as
     /// well.`
-    ty_enum(DefId, &'tcx Substs<'tcx>),
+    ty_enum(&'tcx DatatypeDef<'tcx>, &'tcx Substs<'tcx>),
     ty_uniq(Ty<'tcx>),
     ty_str,
     ty_vec(Ty<'tcx>, Option<uint>), // Second field is length.
@@ -1365,7 +1353,7 @@ pub enum sty<'tcx> {
     ty_bare_fn(Option<DefId>, &'tcx BareFnTy<'tcx>),
 
     ty_trait(Box<TyTrait<'tcx>>),
-    ty_struct(DefId, &'tcx Substs<'tcx>),
+    ty_struct(&'tcx DatatypeDef<'tcx>, &'tcx Substs<'tcx>),
 
     ty_closure(DefId, &'tcx Region, &'tcx Substs<'tcx>),
 
@@ -2282,6 +2270,169 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
     }
 }
 
+pub struct DatatypeDef<'tcx> {
+    pub def_id: DefId,
+    pub variants: Vec<VariantDef<'tcx>>,
+}
+
+pub struct VariantDef<'tcx> {
+    pub id: DefId,
+    pub name: Name,
+    pub disr_val: Disr,
+    pub fields: Vec<FieldTy<'tcx>>,
+    pub vis: Visibility,
+}
+
+
+pub struct FieldTy<'tcx> {
+    // The DefId of the field itself.
+    pub id: DefId,
+    pub name: Name,
+    pub vis: ast::Visibility,
+    // The "parent" of the field, the DefId of the struct or enum this field comes from
+    pub origin: DefId,
+    // `Cell` is used here to to allow the construction of a DatatypeDef that contains types
+    // that reference this type. For example:
+    //
+    //     struct Foo(Bar);
+    //     struct Bar(Option<Box<Foo>>);
+    //
+    // Making the `ty_struct` for `Foo` requires the type of `Bar`, but making the `type`
+    // of `Bar` requires the type of `Foo`. The `Cell` is initially set to `ty_err` and
+    // the real type is filled in later
+    ty: Cell<Ty<'tcx>>
+}
+
+impl<'tcx> DatatypeDef<'tcx> {
+
+    pub fn is_tuple_variant(&self, variant_idx: usize) -> bool {
+        if self.variants.len() <= variant_idx { return false; }
+
+        self.variants[variant_idx].is_tuple_variant()
+    }
+
+    pub fn get_variant(&'tcx self, def: DefId) -> Option<&'tcx VariantDef<'tcx>> {
+        self.variants.iter().find(|v| v.id == def)
+    }
+
+    pub fn is_univariant(&self) -> bool {
+        self.variants.len() == 1
+    }
+
+    pub fn is_struct_def(&self) -> bool {
+        self.is_univariant() && self.def_id == self.variants[0].id
+    }
+
+    pub fn is_c_like(&self) -> bool {
+        if self.variants.len() == 0 {
+            return false;
+        }
+
+        self.variants.iter().all(|v| v.fields.len() == 0)
+    }
+}
+
+impl<'tcx> VariantDef<'tcx> {
+    pub fn subst_fields<'a>(&'a self, cx: &'a ctxt<'tcx>,
+                            substs: &'tcx Substs<'tcx>) -> FieldTyIter<'a, 'tcx> {
+        FieldTyIter {
+            cx: cx,
+            substs: substs,
+            iter: self.fields.iter()
+        }
+    }
+
+    pub fn is_tuple_variant(&self) -> bool {
+        !self.fields.is_empty() &&
+            self.fields.iter().all(|f| f.is_unnamed())
+    }
+}
+
+impl<'tcx> FieldTy<'tcx> {
+    pub fn new(tcx: &ctxt<'tcx>,
+               id: DefId, name: Name, vis: ast::Visibility, origin: DefId) -> FieldTy<'tcx> {
+        FieldTy {
+            id: id,
+            name: name,
+            vis: vis,
+            origin: origin,
+            ty: Cell::new(tcx.types.err),
+        }
+    }
+
+    pub fn is_unnamed(&self) -> bool {
+        self.name == token::special_names::unnamed_field
+    }
+
+    pub fn set_ty(&self, ty: Ty<'tcx>) {
+        if let ty_err = self.ty().sty {
+            self.ty.set(ty);
+        } else {
+            panic!("FieldTy::set_ty: Field type already set");
+        }
+    }
+
+    pub fn ty(&self) -> Ty<'tcx> {
+        self.ty.get()
+    }
+
+    pub fn subst_ty(&self, tcx: &ctxt<'tcx>, substs: &Substs<'tcx>) -> Ty<'tcx> {
+        self.ty().subst(tcx, substs)
+    }
+
+    pub fn subst_ty_spanned(&self, tcx: &ctxt<'tcx>, substs: &Substs<'tcx>,
+                            span: Span) -> Ty<'tcx> {
+        self.ty().subst_spanned(tcx, substs, Some(span))
+    }
+}
+
+pub struct FieldTyIter<'a, 'tcx:'a> {
+    cx: &'a ctxt<'tcx>,
+    substs: &'tcx Substs<'tcx>,
+    iter: slice::Iter<'a, FieldTy<'tcx>>
+}
+
+impl<'a, 'tcx> Iterator for FieldTyIter<'a, 'tcx> {
+    type Item = Ty<'tcx>;
+
+    fn next(&mut self) -> Option<Ty<'tcx>> {
+        self.iter.next().map(|f| f.subst_ty(self.cx, self.substs))
+    }
+
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        self.iter.size_hint()
+    }
+}
+
+
+impl<'tcx> PartialEq for DatatypeDef<'tcx> {
+    fn eq(&self, other: &DatatypeDef) -> bool {
+        self.def_id == other.def_id
+    }
+}
+
+impl<'tcx> Eq for DatatypeDef<'tcx> { }
+
+impl<'tcx> Hash for DatatypeDef<'tcx> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.def_id.hash(s);
+    }
+}
+
+impl<'tcx> fmt::Debug for DatatypeDef<'tcx> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        try!(write!(f, "DatatypeDef {{ def_id: {:?}, variants: [\n",
+                    self.def_id));
+        for v in self.variants.iter() {
+            try!(write!(f, "  VariantDef {{ id: {:?}, disr_val: {:?}, <{} fields> }}\n",
+                        v.id, v.disr_val, v.fields.len()));
+        }
+
+        f.write_str("  ]\n}")
+    }
+}
+
+
 /// A "type scheme", in ML terminology, is a type combined with some
 /// set of generic types that the type is, well, generic over. In Rust
 /// terms, it is the "type" of a fn item or struct -- this type will
@@ -2455,12 +2606,12 @@ pub fn mk_ctxt<'tcx>(s: Session,
         map: map,
         intrinsic_defs: RefCell::new(DefIdMap()),
         freevars: freevars,
+        datatype_defs: RefCell::new(DefIdMap()),
         tcache: RefCell::new(DefIdMap()),
         rcache: RefCell::new(FnvHashMap()),
         short_names_cache: RefCell::new(FnvHashMap()),
         tc_cache: RefCell::new(FnvHashMap()),
         ast_ty_to_ty_cache: RefCell::new(NodeMap()),
-        enum_var_cache: RefCell::new(DefIdMap()),
         impl_or_trait_items: RefCell::new(DefIdMap()),
         trait_item_def_ids: RefCell::new(DefIdMap()),
         trait_items_cache: RefCell::new(DefIdMap()),
@@ -2470,7 +2621,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         normalized_cache: RefCell::new(FnvHashMap()),
         lang_items: lang_items,
         provided_method_sources: RefCell::new(DefIdMap()),
-        struct_fields: RefCell::new(DefIdMap()),
         destructor_for_type: RefCell::new(DefIdMap()),
         destructors: RefCell::new(DefIdSet()),
         trait_impls: RefCell::new(DefIdMap()),
@@ -2532,6 +2682,10 @@ impl<'tcx> ctxt<'tcx> {
         let region = self.arenas.region.alloc(region);
         self.region_interner.borrow_mut().insert(region, region);
         region
+    }
+
+    pub fn mk_datatype_def(&self, def: DatatypeDef<'tcx>) -> &'tcx DatatypeDef<'tcx> {
+        self.arenas.datatype_def.alloc(def)
     }
 
     pub fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
@@ -2812,9 +2966,10 @@ pub fn mk_str_slice<'tcx>(cx: &ctxt<'tcx>, r: &'tcx Region, m: ast::Mutability) 
             })
 }
 
-pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
+pub fn mk_enum<'tcx>(cx: &ctxt<'tcx>,
+                     def: &'tcx DatatypeDef<'tcx>, substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_enum(did, substs))
+    mk_t(cx, ty_enum(def, substs))
 }
 
 pub fn mk_uniq<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> { mk_t(cx, ty_uniq(ty)) }
@@ -2921,10 +3076,10 @@ pub fn mk_projection<'tcx>(cx: &ctxt<'tcx>,
     mk_t(cx, ty_projection(inner))
 }
 
-pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, struct_id: ast::DefId,
+pub fn mk_struct<'tcx>(cx: &ctxt<'tcx>, datatype_def: &'tcx DatatypeDef<'tcx>,
                        substs: &'tcx Substs<'tcx>) -> Ty<'tcx> {
     // take a copy of substs so that we own the vectors inside
-    mk_t(cx, ty_struct(struct_id, substs))
+    mk_t(cx, ty_struct(datatype_def, substs))
 }
 
 pub fn mk_closure<'tcx>(cx: &ctxt<'tcx>, closure_id: ast::DefId,
@@ -3160,7 +3315,7 @@ pub fn type_is_structural(ty: Ty) -> bool {
 
 pub fn type_is_simd(cx: &ctxt, ty: Ty) -> bool {
     match ty.sty {
-        ty_struct(did, _) => lookup_simd(cx, did),
+        ty_struct(def, _) => lookup_simd(cx, def.def_id),
         _ => false
     }
 }
@@ -3174,21 +3329,20 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     }
 }
 
-pub fn simd_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
+pub fn simd_type<'tcx>(ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
-        ty_struct(did, substs) => {
-            let fields = lookup_struct_fields(cx, did);
-            lookup_field_type(cx, did, fields[0].id, substs)
+        ty_struct(def, _) => {
+            let fields = &def.variants[0].fields[];
+            fields[0].ty()
         }
         _ => panic!("simd_type called on invalid type")
     }
 }
 
-pub fn simd_size(cx: &ctxt, ty: Ty) -> uint {
+pub fn simd_size(ty: Ty) -> uint {
     match ty.sty {
-        ty_struct(did, _) => {
-            let fields = lookup_struct_fields(cx, did);
-            fields.len()
+        ty_struct(def, _) => {
+            def.variants[0].fields.len()
         }
         _ => panic!("simd_size called on invalid type")
     }
@@ -3366,10 +3520,11 @@ impl TypeContents {
         *self & TC::ReachesAll
     }
 
-    pub fn union<T, F>(v: &[T], mut f: F) -> TypeContents where
-        F: FnMut(&T) -> TypeContents,
+    pub fn union<T, I, F>(i: I, mut f: F) -> TypeContents where
+        I: Iterator<Item=T>,
+        F: FnMut(T) -> TypeContents,
     {
-        v.iter().fold(TC::None, |tc, ty| tc | f(ty))
+        i.fold(TC::None, |tc, ty| tc | f(ty))
     }
 
     pub fn has_dtor(&self) -> bool {
@@ -3497,51 +3652,47 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
             ty_str => TC::Nonsized,
 
-            ty_struct(did, substs) => {
-                let flds = struct_fields(cx, did, substs);
-                let mut res =
-                    TypeContents::union(&flds[..],
-                                        |f| tc_mt(cx, f.mt, cache));
+            ty_struct(def, substs) => {
+                let field_tys = def.variants.iter().flat_map(|v| {
+                    v.subst_fields(cx, substs)
+                });
+                let mut res = TypeContents::union(field_tys, |ty| tc_ty(cx, ty, cache));
 
-                if !lookup_repr_hints(cx, did).contains(&attr::ReprExtern) {
+                if !lookup_repr_hints(cx, def.def_id).contains(&attr::ReprExtern) {
                     res = res | TC::ReachesFfiUnsafe;
                 }
 
-                if ty::has_dtor(cx, did) {
+                if ty::has_dtor(cx, def.def_id) {
                     res = res | TC::OwnsDtor;
                 }
-                apply_lang_items(cx, did, res)
+                apply_lang_items(cx, def.def_id, res)
             }
 
             ty_closure(did, r, substs) => {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                 let param_env = ty::empty_parameter_environment(cx);
                 let upvars = closure_upvars(&param_env, did, substs).unwrap();
-                TypeContents::union(&upvars,
-                                    |f| tc_ty(cx, &f.ty, cache))
+                TypeContents::union(upvars.as_slice().iter(),
+                                    |f| tc_ty(cx, f.ty, cache))
                     | borrowed_contents(*r, MutMutable)
             }
 
             ty_tup(ref tys) => {
-                TypeContents::union(&tys[..],
+                TypeContents::union(tys.iter(),
                                     |ty| tc_ty(cx, *ty, cache))
             }
 
-            ty_enum(did, substs) => {
-                let variants = substd_enum_variants(cx, did, substs);
-                let mut res =
-                    TypeContents::union(&variants[..], |variant| {
-                        TypeContents::union(&variant.args,
-                                            |arg_ty| {
-                            tc_ty(cx, *arg_ty, cache)
-                        })
-                    });
+            ty_enum(def, substs) => {
+                let did = def.def_id;
+                let tys = def.variants.iter().flat_map(|v| v.subst_fields(cx, substs));
+                let mut res = TypeContents::union(tys, |ty| tc_ty(cx, ty, cache));
 
                 if ty::has_dtor(cx, did) {
                     res = res | TC::OwnsDtor;
                 }
 
-                if variants.len() != 0 {
+                if def.variants.len() != 0 {
+                    let variants = &def.variants[];
                     let repr_hints = lookup_repr_hints(cx, did);
                     if repr_hints.len() > 1 {
                         // this is an error later on, but this type isn't safe
@@ -3563,12 +3714,13 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                             if variants.len() == 2 {
                                 let mut data_idx = 0;
 
-                                if variants[0].args.len() == 0 {
+                                if variants[0].fields.len() == 0 {
                                     data_idx = 1;
                                 }
 
-                                if variants[data_idx].args.len() == 1 {
-                                    match variants[data_idx].args[0].sty {
+                                if variants[data_idx].fields.len() == 1 {
+                                    let ty = variants[data_idx].fields[0].subst_ty(cx, substs);
+                                    match ty.sty {
                                         ty_bare_fn(..) => { res = res - TC::ReachesFfiUnsafe; }
                                         _ => { }
                                     }
@@ -3595,14 +3747,6 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
 
         cache.insert(ty, result);
         result
-    }
-
-    fn tc_mt<'tcx>(cx: &ctxt<'tcx>,
-                   mt: mt<'tcx>,
-                   cache: &mut FnvHashMap<Ty<'tcx>, TypeContents>) -> TypeContents
-    {
-        let mc = TC::ReachesMutable.when(mt.mutbl == MutMutable);
-        mc | tc_ty(cx, mt.ty, cache)
     }
 
     fn apply_lang_items(cx: &ctxt, did: ast::DefId, tc: TypeContents)
@@ -3760,14 +3904,33 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 false
             }
 
-            ty_struct(ref did, _) if seen.contains(did) => {
+            ty_enum(&DatatypeDef { def_id: ref did, ..}, _) |
+            ty_struct(&DatatypeDef { def_id: ref did, ..}, _) if seen.contains(did) => {
                 false
             }
 
-            ty_struct(did, substs) => {
-                seen.push(did);
-                let fields = struct_fields(cx, did, substs);
-                let r = fields.iter().any(|f| type_requires(cx, seen, r_ty, f.mt.ty));
+            ty_struct(def, substs) => {
+                seen.push(def.def_id);
+                let r = def.variants[0].subst_fields(cx, substs).any(|ty| {
+                    type_requires(cx, seen, r_ty, ty)
+                });
+                seen.pop().unwrap();
+                r
+            }
+
+            ty_enum(def, substs) => {
+                seen.push(def.def_id);
+                let r = if !def.variants.is_empty() {
+                    def.variants.iter()
+                        .all(|v| {
+                            v.subst_fields(cx, substs).any(|ty| {
+                                type_requires(cx, seen, r_ty, ty)
+                            })
+                        })
+                } else {
+                    false
+                };
+
                 seen.pop().unwrap();
                 r
             }
@@ -3784,22 +3947,6 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
                 ts.iter().any(|ty| type_requires(cx, seen, r_ty, *ty))
             }
 
-            ty_enum(ref did, _) if seen.contains(did) => {
-                false
-            }
-
-            ty_enum(did, substs) => {
-                seen.push(did);
-                let vs = enum_variants(cx, did);
-                let r = !vs.is_empty() && vs.iter().all(|variant| {
-                    variant.args.iter().any(|aty| {
-                        let sty = aty.subst(cx, substs);
-                        type_requires(cx, seen, r_ty, sty)
-                    })
-                });
-                seen.pop().unwrap();
-                r
-            }
         };
 
         debug!("subtypes_require({:?}, {:?})? {:?}",
@@ -3855,17 +4002,12 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             ty_vec(ty, Some(_)) => {
                 is_type_structurally_recursive(cx, sp, seen, ty)
             }
-            ty_struct(did, substs) => {
-                let fields = struct_fields(cx, did, substs);
-                find_nonrepresentable(cx, sp, seen, fields.iter().map(|f| f.mt.ty))
-            }
-            ty_enum(did, substs) => {
-                let vs = enum_variants(cx, did);
-                let iter = vs.iter()
-                    .flat_map(|variant| { variant.args.iter() })
-                    .map(|aty| { aty.subst_spanned(cx, substs, Some(sp)) });
-
-                find_nonrepresentable(cx, sp, seen, iter)
+            ty_enum(def, substs) |
+            ty_struct(def, substs) => {
+                let fields = def.variants.iter().flat_map(|v| {
+                    v.subst_fields(cx, substs)
+                });
+                find_nonrepresentable(cx, sp, seen, fields)
             }
             ty_closure(..) => {
                 // this check is run on type definitions, so we don't expect
@@ -3878,8 +4020,8 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
     fn same_struct_or_enum_def_id(ty: Ty, did: DefId) -> bool {
         match ty.sty {
-            ty_struct(ty_did, _) | ty_enum(ty_did, _) => {
-                 ty_did == did
+            ty_struct(def, _) | ty_enum(def, _) => {
+                def.def_id == did
             }
             _ => false
         }
@@ -3887,9 +4029,9 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
     fn same_type<'tcx>(a: Ty<'tcx>, b: Ty<'tcx>) -> bool {
         match (&a.sty, &b.sty) {
-            (&ty_struct(did_a, ref substs_a), &ty_struct(did_b, ref substs_b)) |
-            (&ty_enum(did_a, ref substs_a), &ty_enum(did_b, ref substs_b)) => {
-                if did_a != did_b {
+            (&ty_struct(def_a, ref substs_a), &ty_struct(def_b, ref substs_b)) |
+            (&ty_enum(def_a, ref substs_a), &ty_enum(def_b, ref substs_b)) => {
+                if def_a != def_b {
                     return false;
                 }
 
@@ -3915,7 +4057,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                ::util::ppaux::ty_to_string(cx, ty));
 
         match ty.sty {
-            ty_struct(did, _) | ty_enum(did, _) => {
+            ty_struct(def, _) | ty_enum(def, _) => {
                 {
                     // Iterate through stack of previously seen types.
                     let mut iter = seen.iter();
@@ -3930,7 +4072,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
 
                     match iter.next() {
                         Some(&seen_type) => {
-                            if same_struct_or_enum_def_id(seen_type, did) {
+                            if same_struct_or_enum_def_id(seen_type, def.def_id) {
                                 debug!("SelfRecursive: {:?} contains {:?}",
                                        ::util::ppaux::ty_to_string(cx, seen_type),
                                        ::util::ppaux::ty_to_string(cx, ty));
@@ -4072,15 +4214,10 @@ pub fn type_is_machine(ty: Ty) -> bool {
 
 // Whether a type is enum like, that is an enum type with only nullary
 // constructors
-pub fn type_is_c_like_enum(cx: &ctxt, ty: Ty) -> bool {
+pub fn type_is_c_like_enum(ty: Ty) -> bool {
     match ty.sty {
-        ty_enum(did, _) => {
-            let variants = enum_variants(cx, did);
-            if variants.len() == 0 {
-                false
-            } else {
-                variants.iter().all(|v| v.args.len() == 0)
-            }
+        ty_enum(def, _) => {
+            def.is_c_like()
         }
         _ => false
     }
@@ -4142,20 +4279,24 @@ pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
         (&ty_tup(ref v), None) => v.get(i).cloned(),
 
 
-        (&ty_struct(def_id, substs), None) => lookup_struct_fields(cx, def_id)
-            .get(i)
-            .map(|&t|lookup_item_type(cx, t.id).ty.subst(cx, substs)),
-
-        (&ty_enum(def_id, substs), Some(variant_def_id)) => {
-            let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
-            variant_info.args.get(i).map(|t|t.subst(cx, substs))
+        (&ty_struct(def, substs), None) => {
+            def.variants.get(0).and_then(|v| {
+                v.fields.get(i).map(|f| f.subst_ty(cx, substs))
+            })
         }
 
-        (&ty_enum(def_id, substs), None) => {
-            assert!(enum_is_univariant(cx, def_id));
-            let enum_variants = enum_variants(cx, def_id);
-            let variant_info = &(*enum_variants)[0];
-            variant_info.args.get(i).map(|t|t.subst(cx, substs))
+        (&ty_enum(def, substs), Some(variant_def_id)) => {
+            let variant = def.get_variant(variant_def_id);
+            variant.and_then(|v| {
+                v.fields.get(i).map(|f| f.subst_ty(cx, substs))
+            })
+        }
+
+        (&ty_enum(def, substs), None) => {
+            assert!(def.variants.len() == 1);
+            def.variants.get(0).and_then(|v| {
+                v.fields.get(i).map(|f| f.subst_ty(cx, substs))
+            })
         }
 
         _ => None
@@ -4170,18 +4311,15 @@ pub fn named_element_ty<'tcx>(cx: &ctxt<'tcx>,
                               variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
 
     match (&ty.sty, variant) {
-        (&ty_struct(def_id, substs), None) => {
-            let r = lookup_struct_fields(cx, def_id);
+        (&ty_struct(def, substs), None) => {
+            let r = &def.variants[0].fields[];
             r.iter().find(|f| f.name == n)
-                .map(|&f| lookup_field_type(cx, def_id, f.id, substs))
+                .map(|f| f.subst_ty(cx, substs))
         }
-        (&ty_enum(def_id, substs), Some(variant_def_id)) => {
-            let variant_info = enum_variant_with_id(cx, def_id, variant_def_id);
-            variant_info.arg_names.as_ref()
-                .expect("must have struct enum variant if accessing a named fields")
-                .iter().zip(variant_info.args.iter())
-                .find(|&(ident, _)| ident.name == n)
-                .map(|(_ident, arg_t)| arg_t.subst(cx, substs))
+        (&ty_enum(def, substs), Some(variant_def_id)) => {
+            let variant = def.get_variant(variant_def_id).unwrap();
+            variant.fields.iter().find(|f| f.name == n)
+                .map(|f| f.subst_ty(cx, substs))
         }
         _ => None
     }
@@ -4311,7 +4449,11 @@ pub fn pat_ty<'tcx>(cx: &ctxt<'tcx>, pat: &ast::Pat) -> Ty<'tcx> {
 // ask for the type of "id" in "id(3)", it will return "fn(&int) -> int"
 // instead of "fn(ty) -> T with T = int".
 pub fn expr_ty<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Ty<'tcx> {
-    return node_id_to_type(cx, expr.id);
+    if let Some(ty) = expr_ty_opt(cx, expr) {
+        ty
+    } else {
+        cx.sess.span_bug(expr.span, "No type for expression")
+    }
 }
 
 pub fn expr_ty_opt<'tcx>(cx: &ctxt<'tcx>, expr: &ast::Expr) -> Option<Ty<'tcx>> {
@@ -4496,12 +4638,12 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
                                           ty_to_string(cx, ty)))
         },
         &UnsizeStruct(box ref k, tp_index) => match ty.sty {
-            ty_struct(did, substs) => {
+            ty_struct(def, substs) => {
                 let ty_substs = substs.types.get_slice(subst::TypeSpace);
                 let new_ty = unsize_ty(cx, ty_substs[tp_index], k, span);
                 let mut unsized_substs = substs.clone();
                 unsized_substs.types.get_mut_slice(subst::TypeSpace)[tp_index] = new_ty;
-                mk_struct(cx, did, cx.mk_substs(unsized_substs))
+                mk_struct(cx, def, cx.mk_substs(unsized_substs))
             }
             _ => cx.sess.span_bug(span,
                                   &format!("UnsizeStruct with bad sty: {:?}",
@@ -4566,8 +4708,9 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
         ast::ExprPath(..) => {
             match resolve_expr(tcx, expr) {
                 def::DefVariant(tid, vid, _) => {
-                    let variant_info = enum_variant_with_id(tcx, tid, vid);
-                    if variant_info.args.len() > 0 {
+                    let enum_def = ty::lookup_datatype_def(tcx, tid);
+                    let variant = enum_def.get_variant(vid).expect("variant not in enum");
+                    if variant.fields.len() > 0 {
                         // N-ary variant.
                         RvalueDatumExpr
                     } else {
@@ -4728,18 +4871,6 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
     }
 }
 
-pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
-                     -> uint {
-    let mut i = 0;
-    for f in fields { if f.name == name { return i; } i += 1; }
-    tcx.sess.bug(&format!(
-        "no field named `{}` found in the list of fields `{:?}`",
-        token::get_name(name),
-        fields.iter()
-              .map(|f| token::get_name(f.name).to_string())
-              .collect::<Vec<String>>()));
-}
-
 pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
                               -> Option<uint> {
     trait_items.iter().position(|m| m.name() == id)
@@ -4753,7 +4884,7 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         }
         ty_tup(ref tys) if tys.is_empty() => ::util::ppaux::ty_to_string(cx, ty),
 
-        ty_enum(id, _) => format!("enum `{}`", item_path_str(cx, id)),
+        ty_enum(def, _) => format!("enum `{}`", item_path_str(cx, def.def_id)),
         ty_uniq(_) => "box".to_string(),
         ty_vec(_, Some(n)) => format!("array of {} elements", n),
         ty_vec(_, None) => "slice".to_string(),
@@ -4764,8 +4895,8 @@ pub fn ty_sort_string<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> String {
         ty_trait(ref inner) => {
             format!("trait {}", item_path_str(cx, inner.principal_def_id()))
         }
-        ty_struct(id, _) => {
-            format!("struct `{}`", item_path_str(cx, id))
+        ty_struct(def, _) => {
+            format!("struct `{}`", item_path_str(cx, def.def_id))
         }
         ty_closure(..) => "closure".to_string(),
         ty_tup(_) => "tuple".to_string(),
@@ -5170,102 +5301,13 @@ pub fn ty_to_def_id(ty: Ty) -> Option<ast::DefId> {
     match ty.sty {
         ty_trait(ref tt) =>
             Some(tt.principal_def_id()),
-        ty_struct(id, _) |
-        ty_enum(id, _) |
+        ty_enum(def, _) |
+        ty_struct(def, _) => Some(def.def_id),
         ty_closure(id, _, _) =>
             Some(id),
         _ =>
             None
     }
-}
-
-// Enum information
-#[derive(Clone)]
-pub struct VariantInfo<'tcx> {
-    pub args: Vec<Ty<'tcx>>,
-    pub arg_names: Option<Vec<ast::Ident>>,
-    pub ctor_ty: Option<Ty<'tcx>>,
-    pub name: ast::Name,
-    pub id: ast::DefId,
-    pub disr_val: Disr,
-    pub vis: Visibility
-}
-
-impl<'tcx> VariantInfo<'tcx> {
-
-    /// Creates a new VariantInfo from the corresponding ast representation.
-    ///
-    /// Does not do any caching of the value in the type context.
-    pub fn from_ast_variant(cx: &ctxt<'tcx>,
-                            ast_variant: &ast::Variant,
-                            discriminant: Disr) -> VariantInfo<'tcx> {
-        let ctor_ty = node_id_to_type(cx, ast_variant.node.id);
-
-        match ast_variant.node.kind {
-            ast::TupleVariantKind(ref args) => {
-                let arg_tys = if args.len() > 0 {
-                    // the regions in the argument types come from the
-                    // enum def'n, and hence will all be early bound
-                    ty::no_late_bound_regions(cx, &ty_fn_args(ctor_ty)).unwrap()
-                } else {
-                    Vec::new()
-                };
-
-                return VariantInfo {
-                    args: arg_tys,
-                    arg_names: None,
-                    ctor_ty: Some(ctor_ty),
-                    name: ast_variant.node.name.name,
-                    id: ast_util::local_def(ast_variant.node.id),
-                    disr_val: discriminant,
-                    vis: ast_variant.node.vis
-                };
-            },
-            ast::StructVariantKind(ref struct_def) => {
-                let fields: &[StructField] = &struct_def.fields;
-
-                assert!(fields.len() > 0);
-
-                let arg_tys = struct_def.fields.iter()
-                    .map(|field| node_id_to_type(cx, field.node.id)).collect();
-                let arg_names = fields.iter().map(|field| {
-                    match field.node.kind {
-                        NamedField(ident, _) => ident,
-                        UnnamedField(..) => cx.sess.bug(
-                            "enum_variants: all fields in struct must have a name")
-                    }
-                }).collect();
-
-                return VariantInfo {
-                    args: arg_tys,
-                    arg_names: Some(arg_names),
-                    ctor_ty: None,
-                    name: ast_variant.node.name.name,
-                    id: ast_util::local_def(ast_variant.node.id),
-                    disr_val: discriminant,
-                    vis: ast_variant.node.vis
-                };
-            }
-        }
-    }
-}
-
-pub fn substd_enum_variants<'tcx>(cx: &ctxt<'tcx>,
-                                  id: ast::DefId,
-                                  substs: &Substs<'tcx>)
-                                  -> Vec<Rc<VariantInfo<'tcx>>> {
-    enum_variants(cx, id).iter().map(|variant_info| {
-        let substd_args = variant_info.args.iter()
-            .map(|aty| aty.subst(cx, substs)).collect::<Vec<_>>();
-
-        let substd_ctor_ty = variant_info.ctor_ty.subst(cx, substs);
-
-        Rc::new(VariantInfo {
-            args: substd_args,
-            ctor_ty: substd_ctor_ty,
-            ..(**variant_info).clone()
-        })
-    }).collect()
 }
 
 pub fn item_path_str(cx: &ctxt, id: ast::DefId) -> String {
@@ -5321,88 +5363,12 @@ pub fn with_path<T, F>(cx: &ctxt, id: ast::DefId, f: F) -> T where
     }
 }
 
-pub fn enum_is_univariant(cx: &ctxt, id: ast::DefId) -> bool {
-    enum_variants(cx, id).len() == 1
-}
-
-pub fn type_is_empty(cx: &ctxt, ty: Ty) -> bool {
+pub fn type_is_empty(ty: Ty) -> bool {
     match ty.sty {
-       ty_enum(did, _) => (*enum_variants(cx, did)).is_empty(),
+       ty_enum(def, _) => def.variants.is_empty(),
        _ => false
      }
 }
-
-pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
-                           -> Rc<Vec<Rc<VariantInfo<'tcx>>>> {
-    memoized(&cx.enum_var_cache, id, |id: ast::DefId| {
-        if ast::LOCAL_CRATE != id.krate {
-            Rc::new(csearch::get_enum_variants(cx, id))
-        } else {
-            /*
-              Although both this code and check_enum_variants in typeck/check
-              call eval_const_expr, it should never get called twice for the same
-              expr, since check_enum_variants also updates the enum_var_cache
-             */
-            match cx.map.get(id.node) {
-                ast_map::NodeItem(ref item) => {
-                    match item.node {
-                        ast::ItemEnum(ref enum_definition, _) => {
-                            let mut last_discriminant: Option<Disr> = None;
-                            Rc::new(enum_definition.variants.iter().map(|variant| {
-
-                                let mut discriminant = match last_discriminant {
-                                    Some(val) => val + 1,
-                                    None => INITIAL_DISCRIMINANT_VALUE
-                                };
-
-                                if let Some(ref e) = variant.node.disr_expr {
-                                    // Preserve all values, and prefer signed.
-                                    let ty = Some(cx.types.i64);
-                                    match const_eval::eval_const_expr_partial(cx, &**e, ty) {
-                                        Ok(const_eval::const_int(val)) => {
-                                            discriminant = val as Disr;
-                                        }
-                                        Ok(const_eval::const_uint(val)) => {
-                                            discriminant = val as Disr;
-                                        }
-                                        Ok(_) => {
-                                            span_err!(cx.sess, e.span, E0304,
-                                                      "expected signed integer constant");
-                                        }
-                                        Err(err) => {
-                                            span_err!(cx.sess, e.span, E0305,
-                                                      "expected constant: {}", err);
-                                        }
-                                    }
-                                };
-
-                                last_discriminant = Some(discriminant);
-                                Rc::new(VariantInfo::from_ast_variant(cx, &**variant,
-                                                                      discriminant))
-                            }).collect())
-                        }
-                        _ => {
-                            cx.sess.bug("enum_variants: id not bound to an enum")
-                        }
-                    }
-                }
-                _ => cx.sess.bug("enum_variants: id not bound to an enum")
-            }
-        }
-    })
-}
-
-// Returns information about the enum variant with the given ID:
-pub fn enum_variant_with_id<'tcx>(cx: &ctxt<'tcx>,
-                                  enum_id: ast::DefId,
-                                  variant_id: ast::DefId)
-                                  -> Rc<VariantInfo<'tcx>> {
-    enum_variants(cx, enum_id).iter()
-                              .find(|variant| variant.id == variant_id)
-                              .expect("enum_variant_with_id(): no variant exists with that ID")
-                              .clone()
-}
-
 
 // If the given item is in an external crate, looks up its type and adds it to
 // the type cache. Returns the type parameters and type.
@@ -5431,6 +5397,15 @@ pub fn lookup_predicates<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId)
         assert!(did.krate != ast::LOCAL_CRATE);
         csearch::get_predicates(cx, did)
     })
+}
+
+pub fn lookup_datatype_def<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId) -> &'tcx DatatypeDef<'tcx> {
+    if let Some(&def) = cx.datatype_defs.borrow().get(&did) {
+        return def;
+    }
+
+    assert!(did.krate != ast::LOCAL_CRATE);
+    csearch::get_datatype_def(cx, did)
 }
 
 /// Given a reference to a trait, returns the "superbounds" declared
@@ -5618,76 +5593,6 @@ pub fn lookup_repr_hints(tcx: &ctxt, did: DefId) -> Rc<Vec<attr::ReprAttr>> {
     })
 }
 
-// Look up a field ID, whether or not it's local
-// Takes a list of type substs in case the struct is generic
-pub fn lookup_field_type<'tcx>(tcx: &ctxt<'tcx>,
-                               struct_id: DefId,
-                               id: DefId,
-                               substs: &Substs<'tcx>)
-                               -> Ty<'tcx> {
-    let ty = if id.krate == ast::LOCAL_CRATE {
-        node_id_to_type(tcx, id.node)
-    } else {
-        let mut tcache = tcx.tcache.borrow_mut();
-        let pty = tcache.entry(id).get().unwrap_or_else(
-            |vacant_entry| vacant_entry.insert(csearch::get_field_type(tcx, struct_id, id)));
-        pty.ty
-    };
-    ty.subst(tcx, substs)
-}
-
-// Look up the list of field names and IDs for a given struct.
-// Panics if the id is not bound to a struct.
-pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
-    if did.krate == ast::LOCAL_CRATE {
-        let struct_fields = cx.struct_fields.borrow();
-        match struct_fields.get(&did) {
-            Some(fields) => (**fields).clone(),
-            _ => {
-                cx.sess.bug(
-                    &format!("ID not mapped to struct fields: {}",
-                            cx.map.node_to_string(did.node)));
-            }
-        }
-    } else {
-        csearch::get_struct_fields(&cx.sess.cstore, did)
-    }
-}
-
-pub fn is_tuple_struct(cx: &ctxt, did: ast::DefId) -> bool {
-    let fields = lookup_struct_fields(cx, did);
-    !fields.is_empty() && fields.iter().all(|f| f.name == token::special_names::unnamed_field)
-}
-
-// Returns a list of fields corresponding to the struct's items. trans uses
-// this. Takes a list of substs with which to instantiate field types.
-pub fn struct_fields<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &Substs<'tcx>)
-                           -> Vec<field<'tcx>> {
-    lookup_struct_fields(cx, did).iter().map(|f| {
-       field {
-            name: f.name,
-            mt: mt {
-                ty: lookup_field_type(cx, did, f.id, substs),
-                mutbl: MutImmutable
-            }
-        }
-    }).collect()
-}
-
-// Returns a list of fields corresponding to the tuple's items. trans uses
-// this.
-pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
-    v.iter().enumerate().map(|(i, &f)| {
-       field {
-            name: token::intern(&i.to_string()),
-            mt: mt {
-                ty: f,
-                mutbl: MutImmutable
-            }
-        }
-    }).collect()
-}
-
 #[derive(Copy, Clone)]
 pub struct ClosureUpvar<'tcx> {
     pub def: def::Def,
@@ -5796,7 +5701,7 @@ pub fn is_binopable<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>, op: ast::BinOp) -> bool
 
     fn tycat<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> int {
         if type_is_simd(cx, ty) {
-            return tycat(cx, simd_type(cx, ty))
+            return tycat(cx, simd_type(ty))
         }
         match ty.sty {
           ty_char => tycat_char,
@@ -6239,9 +6144,9 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 ty_str => {
                     byte!(7);
                 }
-                ty_enum(d, _) => {
+                ty_enum(def, _) => {
                     byte!(8);
-                    did(state, d);
+                    did(state, def.def_id);
                 }
                 ty_uniq(_) => {
                     byte!(9);
@@ -6282,9 +6187,9 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
 
                     return false;
                 }
-                ty_struct(d, _) => {
+                ty_struct(def, _) => {
                     byte!(18);
-                    did(state, d);
+                    did(state, def.def_id);
                 }
                 ty_tup(ref inner) => {
                     byte!(19);
@@ -6962,27 +6867,26 @@ pub fn can_type_implement_copy<'a,'tcx>(param_env: &ParameterEnvironment<'a, 'tc
     let tcx = param_env.tcx;
 
     let did = match self_type.sty {
-        ty::ty_struct(struct_did, substs) => {
-            let fields = ty::struct_fields(tcx, struct_did, substs);
-            for field in &fields {
-                if type_moves_by_default(param_env, span, field.mt.ty) {
+        ty::ty_struct(struct_def, substs) => {
+            let fields = struct_def.variants.iter().flat_map(|v| v.fields.iter());
+            for field in fields {
+                let fty = field.subst_ty_spanned(tcx, substs, span);
+                if type_moves_by_default(param_env, span, fty) {
                     return Err(FieldDoesNotImplementCopy(field.name))
                 }
             }
-            struct_did
+            struct_def.def_id
         }
-        ty::ty_enum(enum_did, substs) => {
-            let enum_variants = ty::enum_variants(tcx, enum_did);
-            for variant in &*enum_variants {
-                for variant_arg_type in &variant.args {
-                    let substd_arg_type =
-                        variant_arg_type.subst(tcx, substs);
-                    if type_moves_by_default(param_env, span, substd_arg_type) {
+        ty::ty_enum(def, substs) => {
+            for variant in &def.variants {
+                for field in &variant.fields {
+                    let fty = field.subst_ty_spanned(tcx, substs, span);
+                    if type_moves_by_default(param_env, span, fty) {
                         return Err(VariantDoesNotImplementCopy(variant.name))
                     }
                 }
             }
-            enum_did
+            def.def_id
         }
         _ => return Err(TypeIsStructural),
     };
@@ -7273,15 +7177,15 @@ impl<'tcx> HasProjectionTypes for FnSig<'tcx> {
     }
 }
 
-impl<'tcx> HasProjectionTypes for field<'tcx> {
-    fn has_projection_types(&self) -> bool {
-        self.mt.ty.has_projection_types()
-    }
-}
-
 impl<'tcx> HasProjectionTypes for BareFnTy<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.sig.has_projection_types()
+    }
+}
+
+impl<'tcx> HasProjectionTypes for FieldTy<'tcx> {
+    fn has_projection_types(&self) -> bool {
+        self.ty().has_projection_types()
     }
 }
 
@@ -7322,6 +7226,12 @@ impl<'tcx> ReferencesError for TraitRef<'tcx> {
 impl<'tcx> ReferencesError for Ty<'tcx> {
     fn references_error(&self) -> bool {
         type_is_error(*self)
+    }
+}
+
+impl<'tcx> ReferencesError for FieldTy<'tcx> {
+    fn references_error(&self) -> bool {
+        self.ty().references_error()
     }
 }
 
@@ -7376,11 +7286,11 @@ impl<'tcx> Repr<'tcx> for ClosureUpvar<'tcx> {
     }
 }
 
-impl<'tcx> Repr<'tcx> for field<'tcx> {
+impl<'tcx> Repr<'tcx> for FieldTy<'tcx> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("field({},{})",
                 self.name.repr(tcx),
-                self.mt.repr(tcx))
+                self.ty().repr(tcx))
     }
 }
 

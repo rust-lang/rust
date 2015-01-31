@@ -1567,21 +1567,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     }
                 }
             }
-
-            ty::ty_struct(def_id, substs) => {
-                let types: Vec<Ty> =
-                    ty::struct_fields(self.tcx(), def_id, substs).iter()
-                                                                 .map(|f| f.mt.ty)
-                                                                 .collect();
-                nominal(bound, types)
-            }
-
-            ty::ty_enum(def_id, substs) => {
-                let types: Vec<Ty> =
-                    ty::substd_enum_variants(self.tcx(), def_id, substs)
-                    .iter()
-                    .flat_map(|variant| variant.args.iter())
-                    .cloned()
+            ty::ty_enum(def, substs) |
+            ty::ty_struct(def, substs) => {
+                let types: Vec<Ty> = def.variants.iter()
+                    .flat_map(|v| v.subst_fields(self.tcx(), substs))
                     .collect();
                 nominal(bound, types)
             }
@@ -1700,18 +1689,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_struct(def_id, substs) => {
-                Some(ty::struct_fields(self.tcx(), def_id, substs).iter()
-                     .map(|f| f.mt.ty)
-                     .collect())
-            }
-
-            ty::ty_enum(def_id, substs) => {
-                Some(ty::substd_enum_variants(self.tcx(), def_id, substs)
-                     .iter()
-                     .flat_map(|variant| variant.args.iter())
-                     .map(|&ty| ty)
-                     .collect())
+            ty::ty_enum(def, substs) |
+            ty::ty_struct(def, substs) => {
+                Some(def.variants.iter()
+                     .flat_map(|v| v.subst_fields(self.tcx(), substs)).collect())
             }
         }
     }

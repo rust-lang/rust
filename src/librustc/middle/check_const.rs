@@ -376,8 +376,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
 fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         e: &ast::Expr, node_ty: Ty<'tcx>) {
     match node_ty.sty {
-        ty::ty_struct(did, _) |
-        ty::ty_enum(did, _) if ty::has_dtor(v.tcx, did) => {
+        ty::ty_struct(def, _) |
+        ty::ty_enum(def, _) if ty::has_dtor(v.tcx, def.def_id) => {
             v.add_qualif(NEEDS_DROP);
             if v.mode != Mode::Var {
                 v.tcx.sess.span_err(e.span,

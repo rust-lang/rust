@@ -194,8 +194,12 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Stru
     use syntax::parse::token::special_idents::unnamed_field;
 
     let t = ty::lookup_item_type(tcx, did);
+
     let predicates = ty::lookup_predicates(tcx, did);
-    let fields = ty::lookup_struct_fields(tcx, did);
+    let fields = match t.ty.sty {
+        ty::ty_struct(def, _) => &def.variants[0].fields[],
+        _ => panic!("bad struct"),
+    };
 
     clean::Struct {
         struct_type: match &*fields {
@@ -205,7 +209,7 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Stru
             _ => doctree::Plain,
         },
         generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
-        fields: fields.clean(cx),
+        fields: fields.iter().map(|f| f.clean(cx)).collect(),
         fields_stripped: false,
     }
 }
@@ -214,11 +218,11 @@ fn build_type(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::ItemEn
     let t = ty::lookup_item_type(tcx, did);
     let predicates = ty::lookup_predicates(tcx, did);
     match t.ty.sty {
-        ty::ty_enum(edid, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
+        ty::ty_enum(def, _) if !csearch::is_typedef(&tcx.sess.cstore, did) => {
             return clean::EnumItem(clean::Enum {
                 generics: (&t.generics, &predicates, subst::TypeSpace).clean(cx),
                 variants_stripped: false,
-                variants: ty::enum_variants(tcx, edid).clean(cx),
+                variants: def.variants.clean(cx),
             })
         }
         _ => {}

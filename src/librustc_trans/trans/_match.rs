@@ -601,7 +601,8 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let opt_def = tcx.def_map.borrow().get(&cur.id).map(|d| d.full_def());
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
-                        let variant = ty::enum_variant_with_id(tcx, enum_id, var_id);
+                        let enum_def = ty::lookup_datatype_def(tcx, enum_id);
+                        let variant = enum_def.get_variant(var_id).expect("variant not in enum");
                         Variant(variant.disr_val,
                                 adt::represent_node(bcx, cur.id),
                                 var_id,
@@ -1412,7 +1413,6 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("match::trans_match_inner");
     let fcx = scope_cx.fcx;
     let mut bcx = scope_cx;
-    let tcx = bcx.tcx();
 
     let discr_datum = unpack_datum!(bcx, expr::trans_to_lvalue(bcx, discr_expr,
                                                                "match"));
@@ -1421,7 +1421,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
     }
 
     let t = node_id_type(bcx, discr_expr.id);
-    let chk = if ty::type_is_empty(tcx, t) {
+    let chk = if ty::type_is_empty(t) {
         Unreachable
     } else {
         Infallible
@@ -1656,7 +1656,6 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("match::bind_irrefutable_pat");
     let mut bcx = bcx;
     let tcx = bcx.tcx();
-    let ccx = bcx.ccx();
     match pat.node {
         ast::PatIdent(pat_binding_mode, ref path1, ref inner) => {
             if pat_is_binding(&tcx.def_map, &*pat) {
@@ -1693,12 +1692,11 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             match opt_def {
                 Some(def::DefVariant(enum_id, var_id, _)) => {
                     let repr = adt::represent_node(bcx, pat.id);
-                    let vinfo = ty::enum_variant_with_id(ccx.tcx(),
-                                                         enum_id,
-                                                         var_id);
+                    let enum_def = ty::lookup_datatype_def(bcx.tcx(), enum_id);
+                    let variant = enum_def.get_variant(var_id).expect("variant not in enum");
                     let args = extract_variant_args(bcx,
                                                     &*repr,
-                                                    vinfo.disr_val,
+                                                    variant.disr_val,
                                                     val);
                     if let Some(ref sub_pat) = *sub_pats {
                         for (i, &argval) in args.vals.iter().enumerate() {
@@ -1735,7 +1733,9 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let pat_repr = adt::represent_type(bcx.ccx(), pat_ty);
             expr::with_field_tys(tcx, pat_ty, Some(pat.id), |discr, field_tys| {
                 for f in fields {
-                    let ix = ty::field_idx_strict(tcx, f.node.ident.name, field_tys);
+                    let ix = field_tys.iter().position(|fld| {
+                        fld.name == f.node.ident.name
+                    }).unwrap();
                     let fldptr = adt::trans_field_ptr(bcx, &*pat_repr, val,
                                                       discr, ix);
                     bcx = bind_irrefutable_pat(bcx, &*f.node.pat, fldptr, cleanup_scope);

@@ -60,9 +60,9 @@ fn get_base_type_def_id<'a, 'tcx>(inference_context: &InferCtxt<'a, 'tcx>,
                                   ty: Ty<'tcx>)
                                   -> Option<DefId> {
     match ty.sty {
-        ty_enum(def_id, _) |
-        ty_struct(def_id, _) => {
-            Some(def_id)
+        ty_enum(def, _) |
+        ty_struct(def, _) => {
+            Some(def.def_id)
         }
 
         ty_trait(ref t) => {
@@ -395,8 +395,8 @@ impl<'a, 'tcx> CoherenceChecker<'a, 'tcx> {
 
             let self_type = self.get_self_type_for_implementation(impl_did);
             match self_type.ty.sty {
-                ty::ty_enum(type_def_id, _) |
-                ty::ty_struct(type_def_id, _) |
+                ty::ty_enum(&ty::DatatypeDef { def_id: type_def_id, ..}, _) |
+                ty::ty_struct(&ty::DatatypeDef { def_id: type_def_id, ..}, _) |
                 ty::ty_closure(type_def_id, _, _) => {
                     tcx.destructor_for_type
                        .borrow_mut()

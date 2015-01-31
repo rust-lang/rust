@@ -194,7 +194,6 @@ use llvm;
 use llvm::{ModuleRef, ContextRef, ValueRef};
 use llvm::debuginfo::*;
 use metadata::csearch;
-use middle::subst::{self, Substs};
 use trans::{self, adt, machine, type_of};
 use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
                     C_bytes, NormalizingClosureTyper};
@@ -202,6 +201,7 @@ use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
 use trans::type_::Type;
 use middle::ty::{self, Ty, ClosureTyper};
+use middle::subst::{self, Substs};
 use middle::pat_util;
 use session::config::{self, FullDebugInfo, LimitedDebugInfo, NoDebugInfo};
 use util::nodemap::{DefIdMap, NodeMap, FnvHashMap, FnvHashSet};
@@ -362,13 +362,13 @@ impl<'tcx> TypeMap<'tcx> {
             ty::ty_float(_) => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
             },
-            ty::ty_enum(def_id, substs) => {
+            ty::ty_enum(def, substs) => {
                 unique_type_id.push_str("enum ");
-                from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
+                from_def_id_and_substs(self, cx, def.def_id, substs, &mut unique_type_id);
             },
-            ty::ty_struct(def_id, substs) => {
+            ty::ty_struct(def, substs) => {
                 unique_type_id.push_str("struct ");
-                from_def_id_and_substs(self, cx, def_id, substs, &mut unique_type_id);
+                from_def_id_and_substs(self, cx, def.def_id, substs, &mut unique_type_id);
             },
             ty::ty_tup(ref component_types) if component_types.is_empty() => {
                 push_debuginfo_type_name(cx, type_, false, &mut unique_type_id);
@@ -1973,7 +1973,7 @@ impl<'tcx> RecursiveTypeDescription<'tcx> {
 
 // Creates MemberDescriptions for the fields of a struct
 struct StructMemberDescriptionFactory<'tcx> {
-    fields: Vec<ty::field<'tcx>>,
+    fields: Vec<trans::expr::FieldInfo<'tcx>>,
     is_simd: bool,
     span: Span,
 }
@@ -1986,7 +1986,7 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
         }
 
         let field_size = if self.is_simd {
-            machine::llsize_of_alloc(cx, type_of::type_of(cx, self.fields[0].mt.ty)) as uint
+            machine::llsize_of_alloc(cx, type_of::type_of(cx, self.fields[0].ty)) as uint
         } else {
             0xdeadbeef
         };
@@ -2007,8 +2007,8 @@ impl<'tcx> StructMemberDescriptionFactory<'tcx> {
 
             MemberDescription {
                 name: name,
-                llvm_type: type_of::type_of(cx, field.mt.ty),
-                type_metadata: type_metadata(cx, field.mt.ty, self.span),
+                llvm_type: type_of::type_of(cx, field.ty),
+                type_metadata: type_metadata(cx, field.ty, self.span),
                 offset: offset,
                 flags: FLAGS_NONE,
             }
@@ -2022,8 +2022,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                      def_id: ast::DefId,
                                      substs: &subst::Substs<'tcx>,
                                      unique_type_id: UniqueTypeId,
-                                     span: Span)
-                                     -> RecursiveTypeDescription<'tcx> {
+                                     span: Span) -> RecursiveTypeDescription<'tcx> {
     let struct_name = compute_debuginfo_type_name(cx, struct_type, false);
     let struct_llvm_type = type_of::type_of(cx, struct_type);
 
@@ -2035,13 +2034,14 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                                   unique_type_id,
                                                   containing_scope);
 
-    let mut fields = ty::struct_fields(cx.tcx(), def_id, substs);
-
-    // The `Ty` values returned by `ty::struct_fields` can still contain
-    // `ty_projection` variants, so normalize those away.
-    for field in &mut fields {
-        field.mt.ty = monomorphize::normalize_associated_type(cx.tcx(), &field.mt.ty);
-    }
+    let struct_def = ty::lookup_datatype_def(cx.tcx(), def_id);
+    let fields = struct_def.variants[0].fields.iter().map(|f| {
+        let ty = f.subst_ty(cx.tcx(), substs);
+        trans::expr::FieldInfo {
+            name: f.name,
+            ty: monomorphize::normalize_associated_type(cx.tcx(), &ty)
+        }
+    }).collect();
 
     create_and_register_recursive_type_forward_declaration(
         cx,
@@ -2122,7 +2122,7 @@ fn prepare_tuple_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 struct EnumMemberDescriptionFactory<'tcx> {
     enum_type: Ty<'tcx>,
     type_rep: Rc<adt::Repr<'tcx>>,
-    variants: Rc<Vec<Rc<ty::VariantInfo<'tcx>>>>,
+    variants: &'tcx [ty::VariantDef<'tcx>],
     discriminant_type_metadata: Option<DIType>,
     containing_scope: DIScope,
     file_metadata: DIFile,
@@ -2147,7 +2147,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                             describe_enum_variant(cx,
                                                   self.enum_type,
                                                   struct_def,
-                                                  &*(*self.variants)[i],
+                                                  &self.variants[i],
                                                   discriminant_info,
                                                   self.containing_scope,
                                                   self.span);
@@ -2180,7 +2180,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                         describe_enum_variant(cx,
                                               self.enum_type,
                                               struct_def,
-                                              &*(*self.variants)[0],
+                                              &self.variants[0],
                                               NoDiscriminant,
                                               self.containing_scope,
                                               self.span);
@@ -2224,10 +2224,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                 // For the metadata of the wrapper struct, we need to create a
                 // MemberDescription of the struct's single field.
                 let sole_struct_member_description = MemberDescription {
-                    name: match non_null_variant.arg_names {
-                        Some(ref names) => token::get_ident(names[0]).to_string(),
-                        None => "".to_string()
-                    },
+                    name: token::get_name(non_null_variant.fields[0].name).to_string(),
                     llvm_type: non_null_llvm_type,
                     type_metadata: non_null_type_metadata,
                     offset: FixedMemberOffset { bytes: 0 },
@@ -2280,7 +2277,7 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                     describe_enum_variant(cx,
                                           self.enum_type,
                                           struct_def,
-                                          &*(*self.variants)[nndiscr as uint],
+                                          &self.variants[nndiscr as uint],
                                           OptimizedDiscriminant,
                                           self.containing_scope,
                                           self.span);
@@ -2357,14 +2354,14 @@ enum EnumDiscriminantInfo {
 // of the variant, and (3) a MemberDescriptionFactory for producing the
 // descriptions of the fields of the variant. This is a rudimentary version of a
 // full RecursiveTypeDescription.
-fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
-                                   enum_type: Ty<'tcx>,
-                                   struct_def: &adt::Struct<'tcx>,
-                                   variant_info: &ty::VariantInfo<'tcx>,
-                                   discriminant_info: EnumDiscriminantInfo,
-                                   containing_scope: DIScope,
-                                   span: Span)
-                                   -> (DICompositeType, Type, MemberDescriptionFactory<'tcx>) {
+fn describe_enum_variant<'a, 'tcx>(
+    cx: &CrateContext<'a, 'tcx>,
+    enum_type: Ty<'tcx>,
+    struct_def: &adt::Struct<'tcx>,
+    variant_info: &ty::VariantDef<'tcx>,
+    discriminant_info: EnumDiscriminantInfo,
+    containing_scope: DIScope,
+    span: Span) -> (DICompositeType, Type, MemberDescriptionFactory<'tcx>) {
     let variant_llvm_type =
         Type::struct_(cx, &struct_def.fields
                                     .iter()
@@ -2390,15 +2387,9 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                            containing_scope);
 
     // Get the argument names from the enum variant info
-    let mut arg_names: Vec<_> = match variant_info.arg_names {
-        Some(ref names) => {
-            names.iter()
-                 .map(|ident| {
-                     token::get_ident(*ident).to_string()
-                 }).collect()
-        }
-        None => variant_info.args.iter().map(|_| "".to_string()).collect()
-    };
+    let mut arg_names: Vec<_> = variant_info.fields.iter().map(|f| {
+        token::get_name(f.name).to_string()
+    }).collect();
 
     // If this is not a univariant enum, there is also the discriminant field.
     match discriminant_info {
@@ -2431,17 +2422,16 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                    enum_type: Ty<'tcx>,
                                    enum_def_id: ast::DefId,
                                    unique_type_id: UniqueTypeId,
-                                   span: Span)
-                                   -> RecursiveTypeDescription<'tcx> {
+                                   span: Span) -> RecursiveTypeDescription<'tcx> {
     let enum_name = compute_debuginfo_type_name(cx, enum_type, false);
 
     let (containing_scope, definition_span) = get_namespace_and_span_for_item(cx, enum_def_id);
     let loc = span_start(cx, definition_span);
     let file_metadata = file_metadata(cx, &loc.file.name);
 
-    let variants = ty::enum_variants(cx.tcx(), enum_def_id);
+    let enum_def = ty::lookup_datatype_def(cx.tcx(), enum_def_id);
 
-    let enumerators_metadata: Vec<DIDescriptor> = variants
+    let enumerators_metadata: Vec<DIDescriptor> = enum_def.variants
         .iter()
         .map(|v| {
             let token = token::get_name(v.name);
@@ -2452,8 +2442,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     name.as_ptr(),
                     v.disr_val as u64)
             }
-        })
-        .collect();
+        }).collect();
 
     let discriminant_type_metadata = |inttype| {
         // We can reuse the type of the discriminant for all monomorphized
@@ -2544,7 +2533,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         EnumMDF(EnumMemberDescriptionFactory {
             enum_type: enum_type,
             type_rep: type_rep.clone(),
-            variants: variants,
+            variants: &enum_def.variants[],
             discriminant_type_metadata: discriminant_type_metadata,
             containing_scope: containing_scope,
             file_metadata: file_metadata,
@@ -2938,8 +2927,8 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_tup(ref elements) if elements.is_empty() => {
             MetadataCreationResult::new(basic_type_metadata(cx, t), false)
         }
-        ty::ty_enum(def_id, _) => {
-            prepare_enum_metadata(cx, t, def_id, unique_type_id, usage_site_span).finalize(cx)
+        ty::ty_enum(def, _) => {
+            prepare_enum_metadata(cx, t, def.def_id, unique_type_id, usage_site_span).finalize(cx)
         }
         ty::ty_vec(typ, len) => {
             fixed_vec_metadata(cx, unique_type_id, typ, len.map(|x| x as u64), usage_site_span)
@@ -2988,10 +2977,10 @@ fn type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let sig = typer.closure_type(def_id, substs).sig;
             subroutine_type_metadata(cx, unique_type_id, &sig, usage_site_span)
         }
-        ty::ty_struct(def_id, substs) => {
+        ty::ty_struct(def, substs) => {
             prepare_struct_metadata(cx,
                                     t,
-                                    def_id,
+                                    def.def_id,
                                     substs,
                                     unique_type_id,
                                     usage_site_span).finalize(cx)
@@ -3721,9 +3710,9 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ty::ty_uint(ast::TyU64)  => output.push_str("u64"),
         ty::ty_float(ast::TyF32) => output.push_str("f32"),
         ty::ty_float(ast::TyF64) => output.push_str("f64"),
-        ty::ty_struct(def_id, substs) |
-        ty::ty_enum(def_id, substs) => {
-            push_item_name(cx, def_id, qualified, output);
+        ty::ty_struct(def, substs) |
+        ty::ty_enum(def, substs) => {
+            push_item_name(cx, def.def_id, qualified, output);
             push_type_params(cx, substs, output);
         },
         ty::ty_tup(ref component_types) => {

@@ -639,8 +639,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
     fn iter_variant<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                                    repr: &adt::Repr<'tcx>,
                                    av: ValueRef,
-                                   variant: &ty::VariantInfo<'tcx>,
-                                   substs: &Substs<'tcx>,
+                                   variant: &ty::VariantDef<'tcx>,
+                                   substs: &'tcx Substs<'tcx>,
                                    f: &mut F)
                                    -> Block<'blk, 'tcx> where
         F: FnMut(Block<'blk, 'tcx>, ValueRef, Ty<'tcx>) -> Block<'blk, 'tcx>,
@@ -649,8 +649,8 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
         let tcx = cx.tcx();
         let mut cx = cx;
 
-        for (i, &arg) in variant.args.iter().enumerate() {
-            let arg = monomorphize::apply_param_substs(tcx, substs, &arg);
+        for (i, fld) in variant.fields.iter().enumerate() {
+            let arg = monomorphize::apply_param_substs(tcx, substs, &fld.ty());
             cx = f(cx, adt::trans_field_ptr(cx, repr, av, variant.disr_val, i), arg);
         }
         return cx;
@@ -670,7 +670,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
           let repr = adt::represent_type(cx.ccx(), t);
           expr::with_field_tys(cx.tcx(), t, None, |discr, field_tys| {
               for (i, field_ty) in field_tys.iter().enumerate() {
-                  let field_ty = field_ty.mt.ty;
+                  let field_ty = field_ty.ty;
                   let llfld_a = adt::trans_field_ptr(cx, &*repr, data_ptr, discr, i);
 
                   let val = if common::type_is_sized(cx.tcx(), field_ty) {
@@ -706,20 +706,20 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
               cx = f(cx, llfld_a, *arg);
           }
       }
-      ty::ty_enum(tid, substs) => {
+      ty::ty_enum(def, substs) => {
           let fcx = cx.fcx;
           let ccx = fcx.ccx;
 
           let repr = adt::represent_type(ccx, t);
-          let variants = ty::enum_variants(ccx.tcx(), tid);
-          let n_variants = (*variants).len();
+          let variants = &def.variants[];
+          let n_variants = variants.len();
 
           // NB: we must hit the discriminant first so that structural
           // comparison know not to proceed when the discriminants differ.
 
           match adt::trans_switch(cx, &*repr, av) {
               (_match::Single, None) => {
-                  cx = iter_variant(cx, &*repr, av, &*(*variants)[0],
+                  cx = iter_variant(cx, &*repr, av, &variants[0],
                                     substs, &mut f);
               }
               (_match::Switch, Some(lldiscrim_a)) => {
@@ -730,12 +730,10 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                                         n_variants);
                   let next_cx = fcx.new_temp_block("enum-iter-next");
 
-                  for variant in &(*variants) {
-                      let variant_cx =
-                          fcx.new_temp_block(
-                              &format!("enum-iter-variant-{}",
-                                      &variant.disr_val.to_string())
-                              );
+                  for variant in variants {
+                      let block_name = format!("enum-iter-variant-{}",
+                                               &variant.disr_val.to_string());
+                      let variant_cx = fcx.new_temp_block(&block_name[]);
                       match adt::trans_case(cx, &*repr, variant.disr_val) {
                           _match::SingleResult(r) => {
                               AddCase(llswitch, r.val, variant_cx.llbb)
@@ -747,7 +745,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                           iter_variant(variant_cx,
                                        &*repr,
                                        data_ptr,
-                                       &**variant,
+                                       variant,
                                        substs,
                                        &mut f);
                       Br(variant_cx, next_cx.llbb, DebugLoc::None);
@@ -1468,7 +1466,7 @@ pub fn init_function<'a, 'tcx>(fcx: &'a FunctionContext<'a, 'tcx>,
         // This shouldn't need to recompute the return type,
         // as new_fn_ctxt did it already.
         let substd_output_type = fcx.monomorphize(&output_type);
-        if !return_type_is_void(fcx.ccx, substd_output_type) {
+        if !return_type_is_void(substd_output_type) {
             // If the function returns nil/bot, there is no real return
             // value, so do not set `llretslotptr`.
             if !skip_retptr || fcx.caller_expects_out_pointer {

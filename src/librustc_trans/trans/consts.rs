@@ -369,7 +369,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let (te1, ty) = const_expr(cx, &**e1, param_substs);
             let is_simd = ty::type_is_simd(cx.tcx(), ty);
             let intype = if is_simd {
-                ty::simd_type(cx.tcx(), ty)
+                ty::simd_type(ty)
             } else {
                 ty
             };
@@ -448,7 +448,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               let (bv, bt) = const_expr(cx, &**base, param_substs);
               let brepr = adt::represent_type(cx, bt);
               expr::with_field_tys(cx.tcx(), bt, None, |discr, field_tys| {
-                  let ix = ty::field_idx_strict(cx.tcx(), field.node.name, field_tys);
+                  let ix = field_tys.iter().position(|f| f.name == field.node.name).unwrap();
                   adt::const_get_field(cx, &*brepr, bv, discr, ix)
               })
           }
@@ -611,7 +611,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
               expr::with_field_tys(cx.tcx(), ety, Some(e.id), |discr, field_tys| {
                   let cs = field_tys.iter().enumerate()
-                                    .map(|(ix, &field_ty)| {
+                                    .map(|(ix, field_ty)| {
                       match fs.iter().find(|f| field_ty.name == f.ident.node.name) {
                           Some(ref f) => const_expr(cx, &*f.expr, param_substs).0,
                           None => {
@@ -673,16 +673,16 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     const_deref_ptr(cx, get_const_val(cx, def_id, e))
                 }
                 def::DefVariant(enum_did, variant_did, _) => {
-                    let vinfo = ty::enum_variant_with_id(cx.tcx(),
-                                                         enum_did,
-                                                         variant_did);
-                    if vinfo.args.len() > 0 {
+                    let enum_def = ty::lookup_datatype_def(cx.tcx(), enum_did);
+                    let variant = enum_def.get_variant(variant_did).expect("variant not in enum");
+
+                    if variant.fields.len() > 0 {
                         // N-ary variant.
                         expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                     } else {
                         // Nullary variant.
                         let repr = adt::represent_type(cx, ety);
-                        adt::trans_const(cx, &*repr, vinfo.disr_val, &[])
+                        adt::trans_const(cx, &*repr, variant.disr_val, &[])
                     }
                 }
                 def::DefStruct(_) => {
@@ -714,12 +714,14 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                   }
                   Some(def::DefVariant(enum_did, variant_did, _)) => {
                       let repr = adt::represent_type(cx, ety);
-                      let vinfo = ty::enum_variant_with_id(cx.tcx(),
-                                                           enum_did,
-                                                           variant_did);
+
+                      let enum_def = ty::lookup_datatype_def(cx.tcx(), enum_did);
+                      let variant = enum_def.get_variant(variant_did)
+                          .expect("variant not in enum");
+
                       adt::trans_const(cx,
                                        &*repr,
-                                       vinfo.disr_val,
+                                       variant.disr_val,
                                        &arg_vals[..])
                   }
                   _ => cx.sess().span_bug(e.span, "expected a struct or variant def")

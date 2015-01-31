@@ -206,7 +206,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             // Check for empty enum, because is_useful only works on inhabited types.
             let pat_ty = node_id_to_type(cx.tcx, scrut.id);
             if inlined_arms.is_empty() {
-                if !type_is_empty(cx.tcx, pat_ty) {
+                if !type_is_empty(pat_ty) {
                     // We know the type is inhabited, so this must be wrong
                     span_err!(cx.tcx.sess, ex.span, E0002,
                         "non-exhaustive patterns: type {} is non-empty",
@@ -241,12 +241,12 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
         match p.node {
             ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
                 let pat_ty = ty::pat_ty(cx.tcx, p);
-                if let ty::ty_enum(def_id, _) = pat_ty.sty {
+                if let ty::ty_enum(enum_def, _) = pat_ty.sty {
                     let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(DefLocal(_)) = def {
-                        if ty::enum_variants(cx.tcx, def_id).iter().any(|variant|
+                        if enum_def.variants.iter().any(|variant|
                             token::get_name(variant.name) == token::get_name(ident.node.name)
-                                && variant.args.len() == 0
+                                && variant.fields.len() == 0
                         ) {
                             span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
@@ -501,16 +501,16 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
     let pat = match left_ty.sty {
         ty::ty_tup(_) => ast::PatTup(pats.collect()),
 
-        ty::ty_enum(cid, _) | ty::ty_struct(cid, _)  => {
-            let (vid, is_structure) = match ctor {
-                &Variant(vid) =>
-                    (vid, ty::enum_variant_with_id(cx.tcx, cid, vid).arg_names.is_some()),
-                _ =>
-                    (cid, !ty::is_tuple_struct(cx.tcx, cid))
+        ty::ty_enum(def, _) | ty::ty_struct(def, _)  => {
+            let variant = if let &Variant(vid) = ctor {
+                def.get_variant(vid).expect("Variant is not in this type")
+            } else {
+                &def.variants[0]
             };
-            if is_structure {
-                let fields = ty::lookup_struct_fields(cx.tcx, vid);
-                let field_pats: Vec<_> = fields.into_iter()
+
+            if variant.fields.len() > 0 && !variant.is_tuple_variant() {
+                let fields = &variant.fields[];
+                let field_pats: Vec<_> = fields.iter()
                     .zip(pats)
                     .filter(|&(_, ref pat)| pat.node != ast::PatWild(ast::PatWildSingle))
                     .map(|(field, pat)| Spanned {
@@ -522,9 +522,9 @@ fn construct_witness(cx: &MatchCheckCtxt, ctor: &Constructor,
                         }
                     }).collect();
                 let has_more_fields = field_pats.len() < pats_len;
-                ast::PatStruct(def_to_path(cx.tcx, vid), field_pats, has_more_fields)
+                ast::PatStruct(def_to_path(cx.tcx, variant.id), field_pats, has_more_fields)
             } else {
-                ast::PatEnum(def_to_path(cx.tcx, vid), Some(pats.collect()))
+                ast::PatEnum(def_to_path(cx.tcx, variant.id), Some(pats.collect()))
             }
         }
 
@@ -578,7 +578,7 @@ fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
     let used_constructors: Vec<Constructor> = rows.iter()
         .flat_map(|row| pat_constructors(cx, row[0], left_ty, max_slice_length).into_iter())
         .collect();
-    all_constructors(cx, left_ty, max_slice_length)
+    all_constructors(left_ty, max_slice_length)
         .into_iter()
         .find(|c| !used_constructors.contains(c))
 }
@@ -587,8 +587,7 @@ fn missing_constructor(cx: &MatchCheckCtxt, &Matrix(ref rows): &Matrix,
 /// values of type `left_ty`. For vectors, this would normally be an infinite set
 /// but is instead bounded by the maximum fixed length of slice patterns in
 /// the column of patterns being analyzed.
-fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
-                    max_slice_length: uint) -> Vec<Constructor> {
+fn all_constructors(left_ty: Ty, max_slice_length: uint) -> Vec<Constructor> {
     match left_ty.sty {
         ty::ty_bool =>
             [true, false].iter().map(|b| ConstantValue(const_bool(*b))).collect(),
@@ -599,9 +598,8 @@ fn all_constructors(cx: &MatchCheckCtxt, left_ty: Ty,
             _ => vec!(Single)
         },
 
-        ty::ty_enum(eid, _) =>
-            ty::enum_variants(cx.tcx, eid)
-                .iter()
+        ty::ty_enum(def, _) =>
+            def.variants.iter()
                 .map(|va| Variant(va.id))
                 .collect(),
 
@@ -659,10 +657,10 @@ fn is_useful(cx: &MatchCheckCtxt,
     if constructors.is_empty() {
         match missing_constructor(cx, matrix, left_ty, max_slice_length) {
             None => {
-                all_constructors(cx, left_ty, max_slice_length).into_iter().map(|c| {
+                all_constructors(left_ty, max_slice_length).into_iter().map(|c| {
                     match is_useful_specialized(cx, matrix, v, c.clone(), left_ty, witness) {
                         UsefulWithWitness(pats) => UsefulWithWitness({
-                            let arity = constructor_arity(cx, &c, left_ty);
+                            let arity = constructor_arity(&c, left_ty);
                             let mut result = {
                                 let pat_slice = &pats[..];
                                 let subpats: Vec<_> = (0..arity).map(|i| {
@@ -688,7 +686,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                 }).collect();
                 match is_useful(cx, &matrix, v.tail(), witness) {
                     UsefulWithWitness(pats) => {
-                        let arity = constructor_arity(cx, &constructor, left_ty);
+                        let arity = constructor_arity(&constructor, left_ty);
                         let wild_pats: Vec<_> = repeat(DUMMY_WILD_PAT).take(arity).collect();
                         let enum_pat = construct_witness(cx, &constructor, wild_pats, left_ty);
                         let mut new_pats = vec![enum_pat];
@@ -709,7 +707,7 @@ fn is_useful(cx: &MatchCheckCtxt,
 fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          v: &[&Pat], ctor: Constructor, lty: Ty,
                          witness: WitnessPreference) -> Usefulness {
-    let arity = constructor_arity(cx, &ctor, lty);
+    let arity = constructor_arity(&ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
         specialize(cx, &r[..], &ctor, 0, arity)
     }).collect());
@@ -786,7 +784,7 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 ///
 /// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
-pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uint {
+pub fn constructor_arity(ctor: &Constructor, ty: Ty) -> uint {
     match ty.sty {
         ty::ty_tup(ref fs) => fs.len(),
         ty::ty_uniq(_) => 1,
@@ -799,13 +797,16 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uin
             ty::ty_str => 0,
             _ => 1
         },
-        ty::ty_enum(eid, _) => {
+        ty::ty_enum(def, _) => {
             match *ctor {
-                Variant(id) => enum_variant_with_id(cx.tcx, eid, id).args.len(),
+                Variant(id) => {
+                    let variant = def.get_variant(id).unwrap();
+                    variant.fields.len()
+                }
                 _ => unreachable!()
             }
         }
-        ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
+        ty::ty_struct(def, _) => def.variants[0].fields.len(),
         ty::ty_vec(_, Some(n)) => n,
         _ => 0
     }
@@ -881,30 +882,35 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         ast::PatStruct(_, ref pattern_fields, _) => {
             // Is this a struct or an enum variant?
             let def = cx.tcx.def_map.borrow()[pat_id].full_def();
-            let class_id = match def {
+            let variant = match def {
                 DefConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
                                                     been rewritten"),
-                DefVariant(_, variant_id, _) => if *constructor == Variant(variant_id) {
-                    Some(variant_id)
+                DefVariant(def_id, variant_id, _) => if *constructor == Variant(variant_id) {
+                    let def = ty::lookup_datatype_def(cx.tcx, def_id);
+                    def.get_variant(variant_id)
                 } else {
                     None
                 },
                 _ => {
                     // Assume this is a struct.
-                    match ty::ty_to_def_id(node_id_to_type(cx.tcx, pat_id)) {
-                        None => {
-                            cx.tcx.sess.span_bug(pat_span,
-                                                 "struct pattern wasn't of a \
-                                                  type with a def ID?!")
-                        }
-                        Some(def_id) => Some(def_id),
+                    let def = match node_id_to_type(cx.tcx, pat_id).sty {
+                        ty::ty_struct(def, _) => def,
+                        ty::ty_enum(def, _) => def,
+                        _ => cx.tcx.sess.span_bug(pat_span, "struct pattern isn't a data type")
+                    };
+
+                    if let &Variant(variant_id) = constructor {
+                        def.get_variant(variant_id)
+                    } else {
+                        Some(&def.variants[0])
                     }
                 }
             };
-            class_id.map(|variant_id| {
-                let struct_fields = ty::lookup_struct_fields(cx.tcx, variant_id);
-                let args = struct_fields.iter().map(|sf| {
+            variant.map(|variant| {
+                let fields = &variant.fields[];
+
+                let args = fields.iter().map(|sf| {
                     match pattern_fields.iter().find(|f| f.node.ident.name == sf.name) {
                         Some(ref f) => &*f.node.pat,
                         _ => DUMMY_WILD_PAT

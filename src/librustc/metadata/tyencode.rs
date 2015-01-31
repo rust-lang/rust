@@ -84,7 +84,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
             }
         }
         ty::ty_enum(def, substs) => {
-            mywrite!(w, "t[{}|", (cx.ds)(def));
+            mywrite!(w, "t[{}|", (cx.ds)(def.def_id));
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }
@@ -135,7 +135,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
             mywrite!(w, "p[{}|{}|{}]", idx, space.to_uint(), token::get_name(name))
         }
         ty::ty_struct(def, substs) => {
-            mywrite!(w, "a[{}|", (cx.ds)(def));
+            mywrite!(w, "a[{}|", (cx.ds)(def.def_id));
             enc_substs(w, cx, substs);
             mywrite!(w, "]");
         }

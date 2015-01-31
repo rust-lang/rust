@@ -276,8 +276,10 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 self.assemble_inherent_candidates_from_object(self_ty, data);
                 self.assemble_inherent_impl_candidates_for_type(data.principal_def_id());
             }
-            ty::ty_enum(did, _) |
-            ty::ty_struct(did, _) |
+            ty::ty_enum(def, _) |
+            ty::ty_struct(def, _) => {
+                self.assemble_inherent_impl_candidates_for_type(def.def_id);
+            }
             ty::ty_closure(did, _, _) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
             }

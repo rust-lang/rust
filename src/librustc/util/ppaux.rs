@@ -391,10 +391,10 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 param_ty.user_string(cx)
             }
         }
-        ty_enum(did, substs) | ty_struct(did, substs) => {
-            let base = ty::item_path_str(cx, did);
-            parameterized(cx, &base, substs, did, &[],
-                          || ty::lookup_item_type(cx, did).generics)
+        ty_enum(def, substs) | ty_struct(def, substs) => {
+            let base = ty::item_path_str(cx, def.def_id);
+            parameterized(cx, &base, substs, def.def_id, &[],
+                          || ty::lookup_item_type(cx, def.def_id).generics)
         }
         ty_trait(ref data) => {
             data.user_string(cx)

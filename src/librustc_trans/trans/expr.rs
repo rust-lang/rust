@@ -71,7 +71,6 @@ use trans::meth;
 use trans::monomorphize;
 use trans::tvec;
 use trans::type_of;
-use middle::ty::{struct_fields, tup_fields};
 use middle::ty::{AdjustDerefRef, AdjustReifyFnPointer, AutoUnsafe};
 use middle::ty::{AutoPtr};
 use middle::ty::{self, Ty};
@@ -699,7 +698,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                               base: &ast::Expr,
                               get_idx: F)
                               -> DatumBlock<'blk, 'tcx, Expr> where
-    F: FnOnce(&'blk ty::ctxt<'tcx>, &[ty::field<'tcx>]) -> uint,
+    F: FnOnce(&'blk ty::ctxt<'tcx>, &[FieldInfo<'tcx>]) -> uint,
 {
     let mut bcx = bcx;
     let _icx = push_ctxt("trans_rec_field");
@@ -708,10 +707,10 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let bare_ty = base_datum.ty;
     let repr = adt::represent_type(bcx.ccx(), bare_ty);
     with_field_tys(bcx.tcx(), bare_ty, None, move |discr, field_tys| {
-        let ix = get_idx(bcx.tcx(), field_tys);
+        let ix = get_idx(bcx.tcx(), &field_tys[]);
         let d = base_datum.get_element(
             bcx,
-            field_tys[ix].mt.ty,
+            field_tys[ix].ty,
             |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, ix));
 
         if type_is_sized(bcx.tcx(), d.ty) {
@@ -732,9 +731,10 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 /// Translates `base.field`.
 fn trans_rec_field<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                base: &ast::Expr,
-                               field: ast::Ident)
-                               -> DatumBlock<'blk, 'tcx, Expr> {
-    trans_field(bcx, base, |tcx, field_tys| ty::field_idx_strict(tcx, field.name, field_tys))
+                               field: ast::Ident) -> DatumBlock<'blk, 'tcx, Expr> {
+    trans_field(bcx, base, |_, field_tys| {
+        field_tys.iter().position(|f| f.name == field.name).unwrap()
+    })
 }
 
 /// Translates `base.<idx>`.
@@ -1093,13 +1093,14 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             if let Some(did) = did {
+                let def = ty::lookup_datatype_def(tcx, did);
                 let substs = Substs::new_type(ty_params, vec![]);
                 trans_struct(bcx,
                              &fields,
                              None,
                              expr.span,
                              expr.id,
-                             ty::mk_struct(tcx, did, tcx.mk_substs(substs)),
+                             ty::mk_struct(tcx, def, tcx.mk_substs(substs)),
                              dest)
             } else {
                 tcx.sess.span_bug(expr.span,
@@ -1229,8 +1230,9 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     match def {
         def::DefVariant(tid, vid, _) => {
-            let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
-            if variant_info.args.len() > 0 {
+            let enum_def = ty::lookup_datatype_def(bcx.tcx(), tid);
+            let variant = enum_def.get_variant(vid).expect("variant not in enum");
+            if variant.fields.len() > 0u {
                 // N-ary variant.
                 let llfn = callee::trans_fn_ref(bcx.ccx(), vid,
                                                 ExprId(ref_expr.id),
@@ -1242,14 +1244,14 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let ty = expr_ty(bcx, ref_expr);
                 let repr = adt::represent_type(bcx.ccx(), ty);
                 adt::trans_set_discr(bcx, &*repr, lldest,
-                                     variant_info.disr_val);
+                                     variant.disr_val);
                 return bcx;
             }
         }
         def::DefStruct(_) => {
             let ty = expr_ty(bcx, ref_expr);
             match ty.sty {
-                ty::ty_struct(did, _) if ty::has_dtor(bcx.tcx(), did) => {
+                ty::ty_struct(def, _) if ty::has_dtor(bcx.tcx(), def.def_id) => {
                     let repr = adt::represent_type(bcx.ccx(), ty);
                     adt::trans_set_discr(bcx, &*repr, lldest, 0);
                 }
@@ -1332,6 +1334,11 @@ pub fn trans_local_var<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
+pub struct FieldInfo<'tcx> {
+    pub name: ast::Name,
+    pub ty: ty::Ty<'tcx>
+}
+
 /// Helper for enumerating the field types of structs, enums, or records. The optional node ID here
 /// is the node ID of the path identifying the enum variant in use. If none, this cannot possibly
 /// an enum variant (so, if it is and `node_id_opt` is none, this function panics).
@@ -1340,20 +1347,31 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                                   node_id_opt: Option<ast::NodeId>,
                                   op: F)
                                   -> R where
-    F: FnOnce(ty::Disr, &[ty::field<'tcx>]) -> R,
+    F: FnOnce(ty::Disr, Vec<FieldInfo<'tcx>>) -> R,
 {
     match ty.sty {
-        ty::ty_struct(did, substs) => {
-            let fields = struct_fields(tcx, did, substs);
-            let fields = monomorphize::normalize_associated_type(tcx, &fields);
-            op(0, &fields[..])
+        ty::ty_struct(def, substs) => {
+            let fi = def.variants[0].fields.iter().map(|f| {
+                let ty = f.subst_ty(tcx, substs);
+                FieldInfo {
+                    name: f.name,
+                    ty: monomorphize::normalize_associated_type(tcx, &ty)
+                }
+            }).collect();
+            op(0, fi)
         }
 
         ty::ty_tup(ref v) => {
-            op(0, &tup_fields(&v[..]))
+            let fi = v.iter().enumerate().map(|(i, &ty)| {
+                FieldInfo {
+                    name: token::intern(&i.to_string()[]),
+                    ty: ty
+                }
+            }).collect();
+            op(0, fi)
         }
 
-        ty::ty_enum(_, substs) => {
+        ty::ty_enum(enum_def, substs) => {
             // We want the *variant* ID here, not the enum ID.
             match node_id_opt {
                 None => {
@@ -1366,11 +1384,17 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                     let def = tcx.def_map.borrow()[node_id].full_def();
                     match def {
                         def::DefVariant(enum_id, variant_id, _) => {
-                            let variant_info = ty::enum_variant_with_id(
-                                tcx, enum_id, variant_id);
-                            let fields = struct_fields(tcx, variant_id, substs);
-                            let fields = monomorphize::normalize_associated_type(tcx, &fields);
-                            op(variant_info.disr_val, &fields[..])
+                            assert_eq!(enum_def.def_id, enum_id);
+                            let variant = enum_def.get_variant(variant_id)
+                                .expect("variant isn't in enum");
+                            let fi = variant.fields.iter().map(|f| {
+                                let ty = f.subst_ty(tcx, substs);
+                                FieldInfo {
+                                    name: f.name,
+                                    ty: monomorphize::normalize_associated_type(tcx, &ty)
+                                }
+                            }).collect();
+                            op(variant.disr_val, fi)
                         }
                         _ => {
                             tcx.sess.bug("resolve didn't map this expr to a \
@@ -1423,7 +1447,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let mut leftovers = Vec::new();
                 for (i, b) in need_base.iter().enumerate() {
                     if *b {
-                        leftovers.push((i, field_tys[i].mt.ty));
+                        leftovers.push((i, field_tys[i].ty));
                     }
                 }
                 Some(StructBaseInfo {expr: base_expr,
@@ -1703,7 +1727,7 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let tcx = bcx.tcx();
     let is_simd = ty::type_is_simd(tcx, lhs_t);
     let intype = if is_simd {
-        ty::simd_type(tcx, lhs_t)
+        ty::simd_type(lhs_t)
     } else {
         lhs_t
     };

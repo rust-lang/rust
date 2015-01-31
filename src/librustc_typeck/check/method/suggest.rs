@@ -58,8 +58,8 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 None);
 
             // If the method has the name of a field, give a help note
-            if let (&ty::ty_struct(did, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
-                let fields = ty::lookup_struct_fields(cx, did);
+            if let (&ty::ty_struct(def, _), Some(_)) = (&rcvr_ty.sty, rcvr_expr) {
+                let fields = &def.variants[0].fields[..];
                 if fields.iter().any(|f| f.name == method_name) {
                     cx.sess.span_note(span,
                         &format!("use `(s.{0})(...)` if you meant to call the \
@@ -235,7 +235,7 @@ fn type_derefs_to_local<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   rcvr_expr: Option<&ast::Expr>) -> bool {
     fn is_local(ty: Ty) -> bool {
         match ty.sty {
-            ty::ty_enum(did, _) | ty::ty_struct(did, _) => ast_util::is_local(did),
+            ty::ty_enum(def, _) | ty::ty_struct(def, _) => ast_util::is_local(def.def_id),
 
             ty::ty_trait(ref tr) => ast_util::is_local(tr.principal_def_id()),
 

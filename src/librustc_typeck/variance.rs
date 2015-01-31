@@ -595,50 +595,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                item.repr(tcx));
 
         match item.node {
-            ast::ItemEnum(ref enum_definition, _) => {
-                let scheme = ty::lookup_item_type(tcx, did);
-
-                // Not entirely obvious: constraints on structs/enums do not
-                // affect the variance of their type parameters. See discussion
-                // in comment at top of module.
-                //
-                // self.add_constraints_from_generics(&scheme.generics);
-
-                // Hack: If we directly call `ty::enum_variants`, it
-                // annoyingly takes it upon itself to run off and
-                // evaluate the discriminants eagerly (*grumpy* that's
-                // not the typical pattern). This results in double
-                // error messages because typeck goes off and does
-                // this at a later time. All we really care about is
-                // the types of the variant arguments, so we just call
-                // `ty::VariantInfo::from_ast_variant()` ourselves
-                // here, mainly so as to mask the differences between
-                // struct-like enums and so forth.
-                for ast_variant in &enum_definition.variants {
-                    let variant =
-                        ty::VariantInfo::from_ast_variant(tcx,
-                                                          &**ast_variant,
-                                                          /*discriminant*/ 0);
-                    for arg_ty in &variant.args {
-                        self.add_constraints_from_ty(&scheme.generics, *arg_ty, self.covariant);
-                    }
-                }
-            }
-
+            ast::ItemEnum(..) |
             ast::ItemStruct(..) => {
-                let scheme = ty::lookup_item_type(tcx, did);
-
-                // Not entirely obvious: constraints on structs/enums do not
-                // affect the variance of their type parameters. See discussion
-                // in comment at top of module.
-                //
-                // self.add_constraints_from_generics(&scheme.generics);
-
-                let struct_fields = ty::lookup_struct_fields(tcx, did);
-                for field_info in &struct_fields {
-                    assert_eq!(field_info.id.krate, ast::LOCAL_CRATE);
-                    let field_ty = ty::node_id_to_type(tcx, field_info.id.node);
-                    self.add_constraints_from_ty(&scheme.generics, field_ty, self.covariant);
+                let generics = &ty::lookup_item_type(tcx, did).generics;
+                let adt_def = ty::lookup_datatype_def(tcx, did);
+                for fld in adt_def.variants.iter().flat_map(|v| v.fields.iter()) {
+                    assert_eq!(fld.id.krate, ast::LOCAL_CRATE);
+                    let fld_ty = fld.ty();
+                    self.add_constraints_from_ty(generics, fld_ty, self.covariant);
                 }
             }
 
@@ -925,9 +889,9 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 }
             }
 
-            ty::ty_enum(def_id, substs) |
-            ty::ty_struct(def_id, substs) => {
-                let item_type = ty::lookup_item_type(self.tcx(), def_id);
+            ty::ty_enum(def, substs) |
+            ty::ty_struct(def, substs) => {
+                let item_type = ty::lookup_item_type(self.tcx(), def.def_id);
 
                 // All type parameters on enums and structs should be
                 // in the TypeSpace.
@@ -938,7 +902,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
                 self.add_constraints_from_substs(
                     generics,
-                    def_id,
+                    def.def_id,
                     item_type.generics.types.get_slice(subst::TypeSpace),
                     item_type.generics.regions.get_slice(subst::TypeSpace),
                     substs,
@@ -1350,4 +1314,3 @@ fn glb(v1: ty::Variance, v2: ty::Variance) -> ty::Variance {
         (x, ty::Bivariant) | (ty::Bivariant, x) => x,
     }
 }
-
