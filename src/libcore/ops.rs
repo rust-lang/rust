@@ -977,7 +977,7 @@ impl fmt::Debug for RangeFull {
 }
 
 /// A (half-open) range which is bounded at both ends.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[lang="range"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Range<Idx> {
@@ -995,7 +995,7 @@ impl<Idx: fmt::Debug> fmt::Debug for Range<Idx> {
 }
 
 /// A range which is only bounded below.
-#[derive(Copy, Clone, PartialEq, Eq)]
+#[derive(Clone, PartialEq, Eq)]
 #[lang="range_from"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFrom<Idx> {
