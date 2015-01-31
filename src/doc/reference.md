@@ -268,7 +268,7 @@ cases mentioned in [Number literals](#number-literals) below.
 ##### Suffixes
 | Integer | Floating-point |
 |---------|----------------|
-| `is` (`isize`), `us` (`usize`), `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64` | `f32`, `f64` |
+| `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64`, `is` (`isize`), `us` (`usize`) | `f32`, `f64` |
 
 #### Character and string literals
 
@@ -468,27 +468,29 @@ Like any literal, an integer literal may be followed (immediately,
 without any spaces) by an _integer suffix_, which forcibly sets the
 type of the literal. There are 10 valid values for an integer suffix:
 
-* The `is` and `us` suffixes give the literal type `isize` or `usize`,
-  respectively.
 * Each of the signed and unsigned machine types `u8`, `i8`,
   `u16`, `i16`, `u32`, `i32`, `u64` and `i64`
   give the literal the corresponding machine type.
+* The `is` and `us` suffixes give the literal type `isize` or `usize`,
+  respectively.
 
 The type of an _unsuffixed_ integer literal is determined by type inference.
 If an integer type can be _uniquely_ determined from the surrounding program
 context, the unsuffixed integer literal has that type. If the program context
-underconstrains the type, it is considered a static type error; if the program
-context overconstrains the type, it is also considered a static type error.
+underconstrains the type, it defaults to the signed 32-bit integer `i32`; if
+the program context overconstrains the type, it is considered a static type
+error.
 
 Examples of integer literals of various forms:
 
 ```
-123is;                             // type isize
-123us;                             // type usize
-123_us;                            // type usize
+123i32;                            // type i32
+123u32;                            // type u32
+123_u32;                           // type u32
 0xff_u8;                           // type u8
 0o70_i16;                          // type i16
 0b1111_1111_1001_0000_i32;         // type i32
+0us;                               // type usize
 ```
 
 ##### Floating-point literals
@@ -1135,8 +1137,8 @@ used as a type name.
 
 When a generic function is referenced, its type is instantiated based on the
 context of the reference. For example, calling the `iter` function defined
-above on `[1, 2]` will instantiate type parameter `T` with `isize`, and require
-the closure parameter to have type `fn(isize)`.
+above on `[1, 2]` will instantiate type parameter `T` with `i32`, and require
+the closure parameter to have type `fn(i32)`.
 
 The type parameters can also be explicitly supplied in a trailing
 [path](#paths) component after the function name. This might be necessary if
@@ -2746,9 +2748,9 @@ constant expression that can be evaluated at compile time, such as a
 [literal](#literals) or a [static item](#static-items).
 
 ```
-[1is, 2, 3, 4];
+[1, 2, 3, 4];
 ["a", "b", "c", "d"];
-[0is; 128];            // array with 128 zeros
+[0; 128];              // array with 128 zeros
 [0u8, 0u8, 0u8, 0u8];
 ```
 
@@ -2921,7 +2923,7 @@ moves](#moved-and-copied-types) its right-hand operand to its left-hand
 operand.
 
 ```
-# let mut x = 0is;
+# let mut x = 0;
 # let y = 0;
 
 x = y;
@@ -3307,11 +3309,11 @@ fn main() {
 ```
 
 Patterns can also dereference pointers by using the `&`, `&mut` and `box`
-symbols, as appropriate. For example, these two matches on `x: &isize` are
+symbols, as appropriate. For example, these two matches on `x: &i32` are
 equivalent:
 
 ```
-# let x = &3is;
+# let x = &3;
 let y = match *x { 0 => "zero", _ => "some" };
 let z = match x { &0 => "zero", _ => "some" };
 
@@ -3332,7 +3334,7 @@ Multiple match patterns may be joined with the `|` operator. A range of values
 may be specified with `...`. For example:
 
 ```
-# let x = 2is;
+# let x = 2;
 
 let message = match x {
   0 | 1  => "not many",
@@ -3673,16 +3675,16 @@ The type of a closure mapping an input of type `A` to an output of type `B` is
 An example of creating and calling a closure:
 
 ```rust
-let captured_var = 10is;
+let captured_var = 10;
 
 let closure_no_args = |&:| println!("captured_var={}", captured_var);
 
-let closure_args = |&: arg: isize| -> isize {
+let closure_args = |&: arg: i32| -> i32 {
   println!("captured_var={}, arg={}", captured_var, arg);
   arg // Note lack of semicolon after 'arg'
 };
 
-fn call_closure<F: Fn(), G: Fn(isize) -> isize>(c1: F, c2: G) {
+fn call_closure<F: Fn(), G: Fn(i32) -> i32>(c1: F, c2: G) {
   c1();
   c2(2);
 }
@@ -3714,7 +3716,7 @@ trait Printable {
   fn stringify(&self) -> String;
 }
 
-impl Printable for isize {
+impl Printable for i32 {
   fn stringify(&self) -> String { self.to_string() }
 }
 
@@ -3723,7 +3725,7 @@ fn print(a: Box<Printable>) {
 }
 
 fn main() {
-   print(Box::new(10is) as Box<Printable>);
+   print(Box::new(10) as Box<Printable>);
 }
 ```
 
