@@ -148,7 +148,7 @@ impl Index {
     /// Construct the stability index for a crate being compiled.
     pub fn build(sess: &Session, krate: &Crate) -> Index {
         let mut staged_api = false;
-        for attr in krate.attrs.iter() {
+        for attr in &krate.attrs {
             if attr.name().get() == "staged_api" {
                 match attr.node.value.node {
                     ast::MetaWord(_) => {
@@ -273,7 +273,7 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item,
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
         ast::ItemTrait(_, _, ref supertraits, _) => {
-            for t in supertraits.iter() {
+            for t in &**supertraits {
                 if let ast::TraitTyParamBound(ref t, _) = *t {
                     let id = ty::trait_ref_to_def_id(tcx, &t.trait_ref);
                     maybe_do_stability_check(tcx, id, t.trait_ref.path.span, cb);
@@ -410,11 +410,11 @@ pub fn check_unused_features(sess: &Session,
     let mut active_lib_features: FnvHashMap<InternedString, Span>
         = lib_features.clone().into_iter().collect();
 
-    for used_feature in used_lib_features.iter() {
+    for used_feature in used_lib_features {
         active_lib_features.remove(used_feature);
     }
 
-    for (_, &span) in active_lib_features.iter() {
+    for (_, &span) in &active_lib_features {
         sess.add_lint(lint::builtin::UNUSED_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,

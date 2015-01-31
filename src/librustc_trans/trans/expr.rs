@@ -1451,7 +1451,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let custom_cleanup_scope = fcx.push_custom_cleanup_scope();
 
     // First we trans the base, if we have one, to the dest
-    for base in optbase.iter() {
+    if let Some(base) = optbase {
         assert_eq!(discr, 0);
 
         match ty::expr_kind(bcx.tcx(), &*base.expr) {
@@ -1461,7 +1461,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             ty::RvalueStmtExpr => bcx.tcx().sess.bug("unexpected expr kind for struct base expr"),
             _ => {
                 let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, &*base.expr, "base"));
-                for &(i, t) in base.fields.iter() {
+                for &(i, t) in &base.fields {
                     let datum = base_datum.get_element(
                             bcx, t, |srcval| adt::trans_field_ptr(bcx, &*repr, srcval, discr, i));
                     assert!(type_is_sized(bcx.tcx(), datum.ty));
@@ -1485,7 +1485,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // (i.e. avoid GEPi and `store`s to an alloca) .
         let mut vec_val = C_undef(llty);
 
-        for &(i, ref e) in fields.iter() {
+        for &(i, ref e) in fields {
             let block_datum = trans(bcx, &**e);
             bcx = block_datum.bcx;
             let position = C_uint(bcx.ccx(), i);
@@ -1495,7 +1495,7 @@ pub fn trans_adt<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         Store(bcx, vec_val, addr);
     } else {
         // Now, we just overwrite the fields we've explicitly specified
-        for &(i, ref e) in fields.iter() {
+        for &(i, ref e) in fields {
             let dest = adt::trans_field_ptr(bcx, &*repr, addr, discr, i);
             let e_ty = expr_ty_adjusted(bcx, &**e);
             bcx = trans_into(bcx, &**e, SaveIn(dest));

@@ -90,7 +90,7 @@ impl<S: Writer + Hasher, V: Hash<S>> Hash<S> for VecMap<V> {
         // In order to not traverse the `VecMap` twice, count the elements
         // during iteration.
         let mut count: uint = 0;
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
             count += 1;
         }
@@ -1112,7 +1112,7 @@ mod test_map {
 
         let map: VecMap<char> = xs.iter().map(|&x| x).collect();
 
-        for &(k, v) in xs.iter() {
+        for &(k, v) in &xs {
             assert_eq!(map.get(&k), Some(&v));
         }
     }

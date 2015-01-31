@@ -25,7 +25,7 @@ impl Default for MyHasher {
 impl Writer for MyHasher {
     // Most things we'll just add up the bytes.
     fn write(&mut self, buf: &[u8]) {
-        for byte in buf.iter() {
+        for byte in buf {
             self.hash += *byte as u64;
         }
     }

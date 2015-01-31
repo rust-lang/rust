@@ -694,7 +694,7 @@ fn mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
 
 fn mk_tts(cx: &ExtCtxt, tts: &[ast::TokenTree]) -> Vec<P<ast::Stmt>> {
     let mut ss = Vec::new();
-    for tt in tts.iter() {
+    for tt in tts {
         ss.extend(mk_tt(cx, tt).into_iter());
     }
     ss

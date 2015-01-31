@@ -435,7 +435,7 @@ Available lint options:
 
 fn describe_debug_flags() {
     println!("\nAvailable debug options:\n");
-    for &(name, _, opt_type_desc, desc) in config::DB_OPTIONS.iter() {
+    for &(name, _, opt_type_desc, desc) in config::DB_OPTIONS {
         let (width, extra) = match opt_type_desc {
             Some(..) => (21, "=val"),
             None => (25, "")
@@ -447,7 +447,7 @@ fn describe_debug_flags() {
 
 fn describe_codegen_flags() {
     println!("\nAvailable codegen options:\n");
-    for &(name, _, opt_type_desc, desc) in config::CG_OPTIONS.iter() {
+    for &(name, _, opt_type_desc, desc) in config::CG_OPTIONS {
         let (width, extra) = match opt_type_desc {
             Some(..) => (21, "=val"),
             None => (25, "")
@@ -542,7 +542,7 @@ fn print_crate_info(sess: &Session,
     if sess.opts.prints.len() == 0 { return false }
 
     let attrs = input.map(|input| parse_crate_attrs(sess, input));
-    for req in sess.opts.prints.iter() {
+    for req in &sess.opts.prints {
         match *req {
             PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
             PrintRequest::FileNames |
@@ -566,7 +566,7 @@ fn print_crate_info(sess: &Session,
                 let crate_types = driver::collect_crate_types(sess, attrs);
                 let metadata = driver::collect_crate_metadata(sess, attrs);
                 *sess.crate_metadata.borrow_mut() = metadata;
-                for &style in crate_types.iter() {
+                for &style in &crate_types {
                     let fname = link::filename_for_input(sess, style,
                                                          id.as_slice(),
                                                          &t_outputs.with_extension(""));
@@ -645,7 +645,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                             BUG_REPORT_URL),
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
-                for note in xs.iter() {
+                for note in &xs {
                     emitter.emit(None, &note[], None, diagnostic::Note)
                 }
 

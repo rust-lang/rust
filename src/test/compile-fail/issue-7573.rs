@@ -32,7 +32,7 @@ pub fn remove_package_from_database() {
     };
     list_database(push_id);
 
-    for l in lines_to_use.iter() {
+    for l in &lines_to_use {
         println!("{}", l.local_path);
     }
 
@@ -41,7 +41,7 @@ pub fn remove_package_from_database() {
 pub fn list_database<F>(mut f: F) where F: FnMut(&CrateId) {
     let stuff = ["foo", "bar"];
 
-    for l in stuff.iter() {
+    for l in &stuff {
         f(&CrateId::new(*l));
     }
 }

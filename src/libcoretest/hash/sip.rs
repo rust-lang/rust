@@ -109,7 +109,7 @@ fn test_siphash() {
 
     fn to_hex_str(r: &[u8; 8]) -> String {
         let mut s = String::new();
-        for b in r.iter() {
+        for b in r {
             s.push_str(format!("{}", fmt::radix(*b, 16)).as_slice());
         }
         s
@@ -130,7 +130,7 @@ fn test_siphash() {
     fn result_str(h: u64) -> String {
         let r = result_bytes(h);
         let mut s = String::new();
-        for b in r.iter() {
+        for b in &r {
             s.push_str(format!("{}", fmt::radix(*b, 16)).as_slice());
         }
         s

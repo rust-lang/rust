@@ -1118,7 +1118,7 @@ mod tests {
              (String::from_str("\u{20000}"),
               vec![0xD840, 0xDC00])];
 
-        for p in pairs.iter() {
+        for p in &pairs {
             let (s, u) = (*p).clone();
             let s_as_utf16 = s.utf16_units().collect::<Vec<u16>>();
             let u_as_string = String::from_utf16(u.as_slice()).unwrap();

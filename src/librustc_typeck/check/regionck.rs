@@ -148,7 +148,7 @@ pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   component_tys: &[Ty<'tcx>]) {
     let mut rcx = Rcx::new(fcx, Repeating(0), SubjectNode::None);
-    for &component_ty in component_tys.iter() {
+    for &component_ty in component_tys {
         // Check that each type outlives the empty region. Since the
         // empty region is a subregion of all others, this can't fail
         // unless the type does not meet the well-formedness
@@ -298,7 +298,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                                        .region_obligations(node_id)
                                        .to_vec();
 
-        for r_o in region_obligations.iter() {
+        for r_o in &region_obligations {
             debug!("visit_region_obligations: r_o={}",
                    r_o.repr(self.tcx()));
             let sup_type = self.resolve_type(r_o.sup_type);
@@ -327,7 +327,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         debug!("relate_free_regions >>");
         let tcx = self.tcx();
 
-        for &ty in fn_sig_tys.iter() {
+        for &ty in fn_sig_tys {
             let ty = self.resolve_type(ty);
             debug!("relate_free_regions(t={})", ty.repr(tcx));
             let body_scope = CodeExtent::from_node_id(body_id);
@@ -337,7 +337,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                     tcx,
                     ty,
                     body_scope);
-            for constraint in constraints.iter() {
+            for constraint in &constraints {
                 debug!("constraint: {}", constraint.repr(tcx));
                 match *constraint {
                     regionmanip::RegionSubRegionConstraint(_,
@@ -424,7 +424,7 @@ fn visit_block(rcx: &mut Rcx, b: &ast::Block) {
 
 fn visit_arm(rcx: &mut Rcx, arm: &ast::Arm) {
     // see above
-    for p in arm.pats.iter() {
+    for p in &arm.pats {
         constrain_bindings_in_pat(&**p, rcx);
     }
 
@@ -487,13 +487,13 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
     let has_method_map = rcx.fcx.inh.method_map.borrow().contains_key(&method_call);
 
     // Check any autoderefs or autorefs that appear.
-    for &adjustment in rcx.fcx.inh.adjustments.borrow().get(&expr.id).iter() {
+    if let Some(adjustment) = rcx.fcx.inh.adjustments.borrow().get(&expr.id) {
         debug!("adjustment={:?}", adjustment);
         match *adjustment {
             ty::AdjustDerefRef(ty::AutoDerefRef {autoderefs, autoref: ref opt_autoref}) => {
                 let expr_ty = rcx.resolve_node_type(expr.id);
                 constrain_autoderefs(rcx, expr, autoderefs, expr_ty);
-                for autoref in opt_autoref.iter() {
+                if let Some(ref autoref) = *opt_autoref {
                     link_autoref(rcx, expr, autoderefs, autoref);
 
                     // Require that the resulting region encompasses
@@ -753,7 +753,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         debug!("ensure_free_variable_types_outlive_closure_bound({}, {})",
                bounds.region_bound.repr(tcx), expr.repr(tcx));
 
-        for freevar in freevars.iter() {
+        for freevar in freevars {
             let var_node_id = {
                 let def_id = freevar.def.def_id();
                 assert!(def_id.krate == ast::LOCAL_CRATE);
@@ -779,7 +779,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
             };
 
             // Check that the type meets the criteria of the existential bounds:
-            for builtin_bound in bounds.builtin_bounds.iter() {
+            for builtin_bound in &bounds.builtin_bounds {
                 let code = traits::ClosureCapture(var_node_id, expr.span, builtin_bound);
                 let cause = traits::ObligationCause::new(freevar.span, rcx.fcx.body_id, code);
                 rcx.fcx.register_builtin_bound(var_ty, builtin_bound, cause);
@@ -802,7 +802,7 @@ fn check_expr_fn_block(rcx: &mut Rcx,
         let tcx = rcx.fcx.ccx.tcx;
         debug!("constrain_captured_variables({}, {})",
                region_bound.repr(tcx), expr.repr(tcx));
-        for freevar in freevars.iter() {
+        for freevar in freevars {
             debug!("constrain_captured_variables: freevar.def={:?}", freevar.def);
 
             // Identify the variable being closed over and its node-id.
@@ -897,13 +897,13 @@ fn constrain_call<'a, I: Iterator<Item=&'a ast::Expr>>(rcx: &mut Rcx,
     }
 
     // as loop above, but for receiver
-    for r in receiver.iter() {
+    if let Some(r) = receiver {
         debug!("receiver: {}", r.repr(tcx));
         type_of_node_must_outlive(
             rcx, infer::CallRcvr(r.span),
             r.id, callee_region);
         if implicitly_ref_args {
-            link_by_ref(rcx, &**r, callee_scope);
+            link_by_ref(rcx, &*r, callee_scope);
         }
     }
 }
@@ -1079,8 +1079,8 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
     let mc = mc::MemCategorizationContext::new(rcx.fcx);
     let discr_cmt = ignore_err!(mc.cat_expr(discr));
     debug!("discr_cmt={}", discr_cmt.repr(rcx.tcx()));
-    for arm in arms.iter() {
-        for root_pat in arm.pats.iter() {
+    for arm in arms {
+        for root_pat in &arm.pats {
             link_pattern(rcx, mc, discr_cmt.clone(), &**root_pat);
         }
     }
@@ -1092,7 +1092,7 @@ fn link_match(rcx: &Rcx, discr: &ast::Expr, arms: &[ast::Arm]) {
 fn link_fn_args(rcx: &Rcx, body_scope: CodeExtent, args: &[ast::Arg]) {
     debug!("regionck::link_fn_args(body_scope={:?})", body_scope);
     let mc = mc::MemCategorizationContext::new(rcx.fcx);
-    for arg in args.iter() {
+    for arg in args {
         let arg_ty = rcx.fcx.node_ty(arg.id);
         let re_scope = ty::ReScope(body_scope);
         let arg_cmt = mc.cat_rvalue(arg.id, arg.ty.span, re_scope, arg_ty);
@@ -1418,7 +1418,7 @@ fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
             rcx.tcx(),
             ty,
             region);
-    for constraint in constraints.iter() {
+    for constraint in &constraints {
         debug!("constraint: {}", constraint.repr(rcx.tcx()));
         match *constraint {
             regionmanip::RegionSubRegionConstraint(None, r_a, r_b) => {
@@ -1479,7 +1479,7 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
     // The problem is that the type of `x` is `&'a A`. To be
     // well-formed, then, A must be lower-generic by `'a`, but we
     // don't know that this holds from first principles.
-    for &(ref r, ref p) in rcx.region_bound_pairs.iter() {
+    for &(ref r, ref p) in &rcx.region_bound_pairs {
         debug!("generic={} p={}",
                generic.repr(rcx.tcx()),
                p.repr(rcx.tcx()));

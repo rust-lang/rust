@@ -572,7 +572,7 @@ pub fn emit_tydescs(ccx: &CrateContext) {
     // As of this point, allow no more tydescs to be created.
     ccx.finished_tydescs().set(true);
     let glue_fn_ty = Type::generic_glue_fn(ccx).ptr_to();
-    for (_, ti) in ccx.tydescs().borrow().iter() {
+    for (_, ti) in &*ccx.tydescs().borrow() {
         // Each of the glue functions needs to be cast to a generic type
         // before being put into the tydesc because we only have a singleton
         // tydesc type. Then we'll recast each function to its real type when

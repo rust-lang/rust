@@ -221,7 +221,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // bounds attached to the object cast. (In other words, if the
     // object type is Foo+Send, this would create an obligation
     // for the Send check.)
-    for builtin_bound in object_trait.bounds.builtin_bounds.iter() {
+    for builtin_bound in &object_trait.bounds.builtin_bounds {
         fcx.register_builtin_bound(
             referent_ty,
             builtin_bound,
@@ -231,7 +231,7 @@ pub fn register_object_cast_obligations<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Create obligations for the projection predicates.
     let projection_bounds =
         object_trait.projection_bounds_with_self_ty(fcx.tcx(), referent_ty);
-    for projection_bound in projection_bounds.iter() {
+    for projection_bound in &projection_bounds {
         let projection_obligation =
             Obligation::new(cause.clone(), projection_bound.as_predicate());
         fcx.register_predicate(projection_obligation);
@@ -263,7 +263,7 @@ fn check_object_type_binds_all_associated_types<'tcx>(tcx: &ty::ctxt<'tcx>,
         })
         .collect();
 
-    for projection_bound in object_trait.bounds.projection_bounds.iter() {
+    for projection_bound in &object_trait.bounds.projection_bounds {
         let pair = (projection_bound.0.projection_ty.trait_ref.def_id,
                     projection_bound.0.projection_ty.item_name);
         associated_types.remove(&pair);

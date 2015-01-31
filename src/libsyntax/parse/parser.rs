@@ -2706,7 +2706,7 @@ impl<'a> Parser<'a> {
         match self.token {
             token::Eof => {
                 let open_braces = self.open_braces.clone();
-                for sp in open_braces.iter() {
+                for sp in &open_braces {
                     self.span_help(*sp, "did you mean to close this delimiter?");
                 }
                 // There shouldn't really be a span, but it's easier for the test runner
@@ -5200,7 +5200,7 @@ impl<'a> Parser<'a> {
             Some(i) => {
                 let mut err = String::from_str("circular modules: ");
                 let len = included_mod_stack.len();
-                for p in included_mod_stack[i.. len].iter() {
+                for p in &included_mod_stack[i.. len] {
                     err.push_str(&p.display().as_cow()[]);
                     err.push_str(" -> ");
                 }

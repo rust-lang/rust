@@ -263,7 +263,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprVec(ref elements) => {
             match dest {
                 Ignore => {
-                    for element in elements.iter() {
+                    for element in elements {
                         bcx = expr::trans_into(bcx, &**element, Ignore);
                     }
                 }

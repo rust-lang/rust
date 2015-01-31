@@ -40,7 +40,7 @@ impl<T: Eq + Hash<Hasher> + Clone + 'static> Interner<T> {
 
     pub fn prefill(init: &[T]) -> Interner<T> {
         let rv = Interner::new();
-        for v in init.iter() {
+        for v in init {
             rv.intern((*v).clone());
         }
         rv
@@ -158,7 +158,7 @@ impl StrInterner {
 
     pub fn prefill(init: &[&str]) -> StrInterner {
         let rv = StrInterner::new();
-        for &v in init.iter() { rv.intern(v); }
+        for &v in init { rv.intern(v); }
         rv
     }
 

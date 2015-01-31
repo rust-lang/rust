@@ -240,7 +240,7 @@ pub fn split_paths(unparsed: &[u8]) -> Vec<Path> {
     let mut in_progress = Vec::new();
     let mut in_quote = false;
 
-    for b in unparsed.iter() {
+    for b in unparsed {
         match *b {
             b';' if !in_quote => {
                 parsed.push(Path::new(in_progress.as_slice()));

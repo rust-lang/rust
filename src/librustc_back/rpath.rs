@@ -51,7 +51,7 @@ pub fn get_rpath_flags<F, G>(config: RPathConfig<F, G>) -> Vec<String> where
 
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
-    for rpath in rpaths.iter() {
+    for rpath in rpaths {
         ret.push(format!("-Wl,-rpath,{}", &(*rpath)[]));
     }
     return ret;
@@ -63,7 +63,7 @@ fn get_rpaths<F, G>(mut config: RPathConfig<F, G>, libs: &[Path]) -> Vec<String>
 {
     debug!("output: {:?}", config.out_filename.display());
     debug!("libs:");
-    for libpath in libs.iter() {
+    for libpath in libs {
         debug!("    {:?}", libpath.display());
     }
 
@@ -77,7 +77,7 @@ fn get_rpaths<F, G>(mut config: RPathConfig<F, G>, libs: &[Path]) -> Vec<String>
 
     fn log_rpaths(desc: &str, rpaths: &[String]) {
         debug!("{} rpaths:", desc);
-        for rpath in rpaths.iter() {
+        for rpath in rpaths {
             debug!("    {}", *rpath);
         }
     }
@@ -139,7 +139,7 @@ fn get_install_prefix_rpath<F, G>(config: RPathConfig<F, G>) -> String where
 fn minimize_rpaths(rpaths: &[String]) -> Vec<String> {
     let mut set = HashSet::new();
     let mut minimized = Vec::new();
-    for rpath in rpaths.iter() {
+    for rpath in rpaths {
         if set.insert(&rpath[]) {
             minimized.push(rpath.clone());
         }

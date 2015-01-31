@@ -760,11 +760,11 @@ fn write_out_deps(sess: &Session,
                   id: &str) {
 
     let mut out_filenames = Vec::new();
-    for output_type in sess.opts.output_types.iter() {
+    for output_type in &sess.opts.output_types {
         let file = outputs.path(*output_type);
         match *output_type {
             config::OutputTypeExe => {
-                for output in sess.crate_types.borrow().iter() {
+                for output in &*sess.crate_types.borrow() {
                     let p = link::filename_for_input(sess, *output,
                                                      id, &file);
                     out_filenames.push(p);
@@ -800,7 +800,7 @@ fn write_out_deps(sess: &Session,
                                    .map(|fmap| escape_dep_filename(&fmap.name[]))
                                    .collect();
         let mut file = try!(old_io::File::create(&deps_filename));
-        for path in out_filenames.iter() {
+        for path in &out_filenames {
             try!(write!(&mut file as &mut Writer,
                           "{}: {}\n\n", path.display(), files.connect(" ")));
         }

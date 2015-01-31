@@ -58,7 +58,7 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     };
 
     // Look for the terminal in all of the search directories
-    for p in dirs_to_search.iter() {
+    for p in &dirs_to_search {
         if p.exists() {
             let f = first_char.to_string();
             let newp = p.join_many(&[&f[], term]);

@@ -730,7 +730,7 @@ impl<'ast> NodeCollector<'ast> {
     }
 
     fn visit_fn_decl(&mut self, decl: &'ast FnDecl) {
-        for a in decl.inputs.iter() {
+        for a in &decl.inputs {
             self.insert(a.id, NodeArg(&*a.pat));
         }
     }
@@ -743,7 +743,7 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
         self.parent = i.id;
         match i.node {
             ItemImpl(_, _, _, _, _, ref impl_items) => {
-                for impl_item in impl_items.iter() {
+                for impl_item in impl_items {
                     match *impl_item {
                         MethodImplItem(ref m) => {
                             self.insert(m.id, NodeImplItem(impl_item));
@@ -755,12 +755,12 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 }
             }
             ItemEnum(ref enum_definition, _) => {
-                for v in enum_definition.variants.iter() {
+                for v in &enum_definition.variants {
                     self.insert(v.node.id, NodeVariant(&**v));
                 }
             }
             ItemForeignMod(ref nm) => {
-                for nitem in nm.items.iter() {
+                for nitem in &nm.items {
                     self.insert(nitem.id, NodeForeignItem(&**nitem));
                 }
             }
@@ -774,13 +774,13 @@ impl<'ast> Visitor<'ast> for NodeCollector<'ast> {
                 }
             }
             ItemTrait(_, _, ref bounds, ref trait_items) => {
-                for b in bounds.iter() {
+                for b in &**bounds {
                     if let TraitTyParamBound(ref t, TraitBoundModifier::None) = *b {
                         self.insert(t.trait_ref.ref_id, NodeItem(i));
                     }
                 }
 
-                for tm in trait_items.iter() {
+                for tm in trait_items {
                     match *tm {
                         RequiredMethod(ref m) => {
                             self.insert(m.id, NodeTraitItem(tm));

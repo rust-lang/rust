@@ -176,7 +176,7 @@ fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // The `Self` type is erased, so it should not appear in list of
     // arguments or return type apart from the receiver.
     let ref sig = method.fty.sig;
-    for &input_ty in sig.0.inputs[1..].iter() {
+    for &input_ty in &sig.0.inputs[1..] {
         if contains_illegal_self_type_reference(tcx, trait_def_id, input_ty) {
             return Some(MethodViolationCode::ReferencesSelf);
         }

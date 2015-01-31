@@ -384,7 +384,7 @@ impl Target {
         let paths = os::split_paths(&target_path[]);
         // FIXME 16351: add a sane default search path?
 
-        for dir in paths.iter() {
+        for dir in &paths {
             let p =  dir.join(path.clone());
             if p.is_file() {
                 return load_file(&p);

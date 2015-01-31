@@ -856,7 +856,7 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Hasher, K: Hash<S>, V: Hash<S>> Hash<S> for BTreeMap<K, V> {
     fn hash(&self, state: &mut S) {
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
         }
     }
@@ -1946,7 +1946,7 @@ mod bench {
         }
 
         b.iter(|| {
-            for entry in map.iter() {
+            for entry in &map {
                 black_box(entry);
             }
         });

@@ -305,7 +305,7 @@ mod tests {
 
                 let mut rng = CountingRng { i: 0 };
 
-                for &val in expected.iter() {
+                for &val in &expected {
                     assert_eq!(wc.ind_sample(&mut rng), val)
                 }
             }}

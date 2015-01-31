@@ -49,7 +49,7 @@ impl<'a> Iterator for BookItems<'a> {
                 let cur = self.cur_items.get(self.cur_idx).unwrap();
 
                 let mut section = "".to_string();
-                for &(_, idx) in self.stack.iter() {
+                for &(_, idx) in &self.stack {
                     section.push_str(&(idx + 1).to_string()[]);
                     section.push('.');
                 }

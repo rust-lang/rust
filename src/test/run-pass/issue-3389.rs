@@ -15,7 +15,7 @@ struct trie_node {
 }
 
 fn print_str_vector(vector: Vec<String> ) {
-    for string in vector.iter() {
+    for string in &vector {
         println!("{}", *string);
     }
 }

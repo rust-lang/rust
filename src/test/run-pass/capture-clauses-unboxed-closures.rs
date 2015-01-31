@@ -11,7 +11,7 @@
 #![feature(unboxed_closures)]
 
 fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
-    for val in x.iter() {
+    for val in x {
         f(val)
     }
 }

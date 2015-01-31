@@ -1526,7 +1526,7 @@ mod test {
     // check that the given reader produces the desired stream
     // of tokens (stop checking after exhausting the expected vec)
     fn check_tokenization (mut string_reader: StringReader, expected: Vec<token::Token> ) {
-        for expected_tok in expected.iter() {
+        for expected_tok in &expected {
             assert_eq!(&string_reader.next_token().tok, expected_tok);
         }
     }

@@ -766,7 +766,7 @@ fn encode_vec_per_param_space<T, F>(rbml_w: &mut Encoder,
                                     mut f: F) where
     F: FnMut(&mut Encoder, &T),
 {
-    for &space in subst::ParamSpace::all().iter() {
+    for &space in &subst::ParamSpace::all() {
         rbml_w.emit_from_vec(v.get_slice(space),
                              |rbml_w, n| Ok(f(rbml_w, n))).unwrap();
     }
@@ -1156,14 +1156,14 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     debug!("Encoding side tables for id {}", id);
 
-    for def in tcx.def_map.borrow().get(&id).iter() {
+    if let Some(def) = tcx.def_map.borrow().get(&id) {
         rbml_w.tag(c::tag_table_def, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| (*def).encode(rbml_w).unwrap());
         })
     }
 
-    for &ty in tcx.node_types.borrow().get(&id).iter() {
+    if let Some(ty) = tcx.node_types.borrow().get(&id) {
         rbml_w.tag(c::tag_table_node_type, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1172,7 +1172,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &item_substs in tcx.item_substs.borrow().get(&id).iter() {
+    if let Some(item_substs) = tcx.item_substs.borrow().get(&id) {
         rbml_w.tag(c::tag_table_item_subst, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1181,7 +1181,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &fv in tcx.freevars.borrow().get(&id).iter() {
+    if let Some(fv) = tcx.freevars.borrow().get(&id) {
         rbml_w.tag(c::tag_table_freevars, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1191,7 +1191,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
             })
         });
 
-        for freevar in fv.iter() {
+        for freevar in fv {
             rbml_w.tag(c::tag_table_upvar_capture_map, |rbml_w| {
                 rbml_w.id(id);
                 rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1209,7 +1209,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     let lid = ast::DefId { krate: ast::LOCAL_CRATE, node: id };
-    for &type_scheme in tcx.tcache.borrow().get(&lid).iter() {
+    if let Some(type_scheme) = tcx.tcache.borrow().get(&lid) {
         rbml_w.tag(c::tag_table_tcache, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1218,7 +1218,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &type_param_def in tcx.ty_param_defs.borrow().get(&id).iter() {
+    if let Some(type_param_def) = tcx.ty_param_defs.borrow().get(&id) {
         rbml_w.tag(c::tag_table_param_defs, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1228,7 +1228,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
     }
 
     let method_call = MethodCall::expr(id);
-    for &method in tcx.method_map.borrow().get(&method_call).iter() {
+    if let Some(method) = tcx.method_map.borrow().get(&method_call) {
         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1237,7 +1237,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &trait_ref in tcx.object_cast_map.borrow().get(&id).iter() {
+    if let Some(trait_ref) = tcx.object_cast_map.borrow().get(&id) {
         rbml_w.tag(c::tag_table_object_cast_map, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1246,11 +1246,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &adjustment in tcx.adjustments.borrow().get(&id).iter() {
+    if let Some(adjustment) = tcx.adjustments.borrow().get(&id) {
         match *adjustment {
             _ if ty::adjust_is_object(adjustment) => {
                 let method_call = MethodCall::autoobject(id);
-                for &method in tcx.method_map.borrow().get(&method_call).iter() {
+                if let Some(method) = tcx.method_map.borrow().get(&method_call) {
                     rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                         rbml_w.id(id);
                         rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1263,7 +1263,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
                 assert!(!ty::adjust_is_object(adjustment));
                 for autoderef in 0..adj.autoderefs {
                     let method_call = MethodCall::autoderef(id, autoderef);
-                    for &method in tcx.method_map.borrow().get(&method_call).iter() {
+                    if let Some(method) = tcx.method_map.borrow().get(&method_call) {
                         rbml_w.tag(c::tag_table_method_map, |rbml_w| {
                             rbml_w.id(id);
                             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1287,7 +1287,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &closure_type in tcx.closure_tys.borrow().get(&ast_util::local_def(id)).iter() {
+    if let Some(closure_type) = tcx.closure_tys.borrow().get(&ast_util::local_def(id)) {
         rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
@@ -1296,11 +1296,11 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for &&closure_kind in tcx.closure_kinds.borrow().get(&ast_util::local_def(id)).iter() {
+    if let Some(closure_kind) = tcx.closure_kinds.borrow().get(&ast_util::local_def(id)) {
         rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                encode_closure_kind(rbml_w, closure_kind)
+                encode_closure_kind(rbml_w, *closure_kind)
             })
         })
     }

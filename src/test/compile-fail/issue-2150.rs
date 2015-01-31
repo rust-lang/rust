@@ -16,7 +16,7 @@
 fn fail_len(v: Vec<isize> ) -> usize {
     let mut i = 3;
     panic!();
-    for x in v.iter() { i += 1us; }
+    for x in &v { i += 1us; }
     //~^ ERROR: unreachable statement
     return i;
 }

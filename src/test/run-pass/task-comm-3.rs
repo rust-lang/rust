@@ -51,7 +51,7 @@ fn test00() {
 
     // Read from spawned tasks...
     let mut sum = 0;
-    for _r in results.iter() {
+    for _r in &results {
         i = 0;
         while i < number_of_messages {
             let value = rx.recv().unwrap();

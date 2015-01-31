@@ -1118,7 +1118,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
     fn concat(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
-        for v in self.iter() {
+        for v in self {
             result.push_all(v.as_slice())
         }
         result
@@ -1128,7 +1128,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
-        for v in self.iter() {
+        for v in self {
             if first { first = false } else { result.push(sep.clone()) }
             result.push_all(v.as_slice())
         }
@@ -2681,13 +2681,13 @@ mod tests {
         assert_eq!(v.len(), 3);
         let mut cnt = 0u;
 
-        for f in v.iter() {
+        for f in &v {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 3);
 
-        for f in v[1..3].iter() {
+        for f in &v[1..3] {
             assert!(*f == Foo);
             cnt += 1;
         }
@@ -2707,7 +2707,7 @@ mod tests {
 
         let xs: [Foo; 3] = [Foo, Foo, Foo];
         cnt = 0;
-        for f in xs.iter() {
+        for f in &xs {
             assert!(*f == Foo);
             cnt += 1;
         }
@@ -2858,7 +2858,7 @@ mod bench {
 
         b.iter(|| {
             let mut sum = 0;
-            for x in v.iter() {
+            for x in &v {
                 sum += *x;
             }
             // sum == 11806, to stop dead code elimination.

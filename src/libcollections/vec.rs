@@ -1547,7 +1547,7 @@ impl<T> Drop for Vec<T> {
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         if self.cap != 0 {
             unsafe {
-                for x in self.iter() {
+                for x in &*self {
                     ptr::read(x);
                 }
                 dealloc(*self.ptr, self.cap)
@@ -2129,7 +2129,7 @@ mod tests {
         v.push(());
         assert_eq!(v.iter().count(), 2);
 
-        for &() in v.iter() {}
+        for &() in &v {}
 
         assert_eq!(v.iter_mut().count(), 2);
         v.push(());

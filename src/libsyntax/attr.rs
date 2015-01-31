@@ -394,7 +394,7 @@ fn find_stability_generic<'a,
                 let mut feature = None;
                 let mut since = None;
                 let mut reason = None;
-                for meta in metas.iter() {
+                for meta in metas {
                     if meta.name().get() == "feature" {
                         match meta.value_str() {
                             Some(v) => feature = Some(v),
@@ -496,7 +496,7 @@ pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute],
 
 pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
     let mut set = HashSet::new();
-    for meta in metas.iter() {
+    for meta in metas {
         let name = meta.name();
 
         if !set.insert(name.clone()) {
@@ -518,7 +518,7 @@ pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAt
     match attr.node.value.node {
         ast::MetaList(ref s, ref items) if *s == "repr" => {
             mark_used(attr);
-            for item in items.iter() {
+            for item in items {
                 match item.node {
                     ast::MetaWord(ref word) => {
                         let hint = match word.get() {

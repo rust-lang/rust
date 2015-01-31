@@ -46,7 +46,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
                 (k, v.borrow().clone())
             }).collect();
 
-        for &(trait_def_id, ref impls) in trait_def_ids.iter() {
+        for &(trait_def_id, ref impls) in &trait_def_ids {
             self.check_for_overlapping_impls_of_trait(trait_def_id, impls);
         }
     }
@@ -65,7 +65,7 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
                 continue;
             }
 
-            for &impl2_def_id in trait_impls[(i+1)..].iter() {
+            for &impl2_def_id in &trait_impls[(i+1)..] {
                 self.check_if_impls_overlap(trait_def_id,
                                             impl1_def_id,
                                             impl2_def_id);
