@@ -77,14 +77,12 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                     Ok(()) => { }
                     Err(traits::OrphanCheckErr::NoLocalInputType) => {
                         if !ty::has_attr(self.tcx, trait_def_id, "old_orphan_check") {
-                            let self_ty = ty::lookup_item_type(self.tcx, def_id).ty;
                             span_err!(
                                 self.tcx.sess, item.span, E0117,
-                                "the type `{}` does not reference any \
+                                "the impl does not reference any \
                                  types defined in this crate; \
                                  only traits defined in the current crate can be \
-                                 implemented for arbitrary types",
-                                self_ty.user_string(self.tcx));
+                                 implemented for arbitrary types");
                         }
                     }
                     Err(traits::OrphanCheckErr::UncoveredTy(param_ty)) => {
