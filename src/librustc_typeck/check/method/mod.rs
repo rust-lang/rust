@@ -44,6 +44,9 @@ pub enum MethodError {
 
     // Multiple methods might apply.
     Ambiguity(Vec<CandidateSource>),
+
+    // Using a `Fn`/`FnMut`/etc method on a raw closure type before we have inferred its kind.
+    ClosureAmbiguity(/* DefId of fn trait */ ast::DefId),
 }
 
 // A pared down enum describing just the places from which a method
@@ -65,9 +68,10 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         -> bool
 {
     match probe::probe(fcx, span, method_name, self_ty, call_expr_id) {
-        Ok(_) => true,
-        Err(NoMatch(_, _)) => false,
-        Err(Ambiguity(_)) => true,
+        Ok(..) => true,
+        Err(NoMatch(..)) => false,
+        Err(Ambiguity(..)) => true,
+        Err(ClosureAmbiguity(..)) => true,
     }
 }
 
@@ -90,8 +94,8 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         method_name: ast::Name,
                         self_ty: Ty<'tcx>,
                         supplied_method_types: Vec<Ty<'tcx>>,
-                        call_expr: &ast::Expr,
-                        self_expr: &ast::Expr)
+                        call_expr: &'tcx ast::Expr,
+                        self_expr: &'tcx ast::Expr)
                         -> Result<MethodCallee<'tcx>, MethodError>
 {
     debug!("lookup(method_name={}, self_ty={}, call_expr={}, self_expr={})",

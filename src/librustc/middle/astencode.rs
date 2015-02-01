@@ -647,30 +647,7 @@ impl<'tcx> tr for MethodOrigin<'tcx> {
 }
 
 pub fn encode_closure_kind(ebml_w: &mut Encoder, kind: ty::ClosureKind) {
-    use serialize::Encoder;
-
-    ebml_w.emit_enum("ClosureKind", |ebml_w| {
-        match kind {
-            ty::FnClosureKind => {
-                ebml_w.emit_enum_variant("FnClosureKind", 0, 3, |_| {
-                    Ok(())
-                })
-            }
-            ty::FnMutClosureKind => {
-                ebml_w.emit_enum_variant("FnMutClosureKind", 1, 3, |_| {
-                    Ok(())
-                })
-            }
-            ty::FnOnceClosureKind => {
-                ebml_w.emit_enum_variant("FnOnceClosureKind",
-                                         2,
-                                         3,
-                                         |_| {
-                    Ok(())
-                })
-            }
-        }
-    }).unwrap()
+    kind.encode(ebml_w).unwrap();
 }
 
 pub trait vtable_decoder_helpers<'tcx> {
@@ -1310,12 +1287,20 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         })
     }
 
-    for closure in tcx.closures.borrow().get(&ast_util::local_def(id)).iter() {
-        rbml_w.tag(c::tag_table_closures, |rbml_w| {
+    for &closure_type in tcx.closure_tys.borrow().get(&ast_util::local_def(id)).iter() {
+        rbml_w.tag(c::tag_table_closure_tys, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_closure_type(ecx, &closure.closure_type);
-                encode_closure_kind(rbml_w, closure.kind)
+                rbml_w.emit_closure_type(ecx, closure_type);
+            })
+        })
+    }
+
+    for &&closure_kind in tcx.closure_kinds.borrow().get(&ast_util::local_def(id)).iter() {
+        rbml_w.tag(c::tag_table_closure_kinds, |rbml_w| {
+            rbml_w.id(id);
+            rbml_w.tag(c::tag_table_val, |rbml_w| {
+                encode_closure_kind(rbml_w, closure_kind)
             })
         })
     }
@@ -1354,8 +1339,10 @@ trait rbml_decoder_decoder_helpers<'tcx> {
                            -> subst::Substs<'tcx>;
     fn read_auto_adjustment<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                     -> ty::AutoAdjustment<'tcx>;
-    fn read_closure<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
-                            -> ty::Closure<'tcx>;
+    fn read_closure_kind<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                                 -> ty::ClosureKind;
+    fn read_closure_ty<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
+                               -> ty::ClosureTy<'tcx>;
     fn read_auto_deref_ref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
                                    -> ty::AutoDerefRef<'tcx>;
     fn read_autoref<'a, 'b>(&mut self, dcx: &DecodeContext<'a, 'b, 'tcx>)
@@ -1782,35 +1769,23 @@ impl<'a, 'tcx> rbml_decoder_decoder_helpers<'tcx> for reader::Decoder<'a> {
         }).unwrap()
     }
 
-    fn read_closure<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
-                            -> ty::Closure<'tcx> {
-        let closure_type = self.read_opaque(|this, doc| {
+    fn read_closure_kind<'b, 'c>(&mut self, _dcx: &DecodeContext<'b, 'c, 'tcx>)
+                                 -> ty::ClosureKind
+    {
+        Decodable::decode(self).ok().unwrap()
+    }
+
+    fn read_closure_ty<'b, 'c>(&mut self, dcx: &DecodeContext<'b, 'c, 'tcx>)
+                               -> ty::ClosureTy<'tcx>
+    {
+        self.read_opaque(|this, doc| {
             Ok(tydecode::parse_ty_closure_data(
                 doc.data,
                 dcx.cdata.cnum,
                 doc.start,
                 dcx.tcx,
                 |s, a| this.convert_def_id(dcx, s, a)))
-        }).unwrap();
-        let variants = &[
-            "FnClosureKind",
-            "FnMutClosureKind",
-            "FnOnceClosureKind"
-        ];
-        let kind = self.read_enum("ClosureKind", |this| {
-            this.read_enum_variant(variants, |_, i| {
-                Ok(match i {
-                    0 => ty::FnClosureKind,
-                    1 => ty::FnMutClosureKind,
-                    2 => ty::FnOnceClosureKind,
-                    _ => panic!("bad enum variant for ty::ClosureKind"),
-                })
-            })
-        }).unwrap();
-        ty::Closure {
-            closure_type: closure_type,
-            kind: kind,
-        }
+        }).unwrap()
     }
 
     /// Converts a def-id that appears in a type.  The correct
@@ -1937,11 +1912,17 @@ fn decode_side_tables(dcx: &DecodeContext,
                         let adj: ty::AutoAdjustment = val_dsr.read_auto_adjustment(dcx);
                         dcx.tcx.adjustments.borrow_mut().insert(id, adj);
                     }
-                    c::tag_table_closures => {
-                        let closure =
-                            val_dsr.read_closure(dcx);
-                        dcx.tcx.closures.borrow_mut().insert(ast_util::local_def(id),
-                                                             closure);
+                    c::tag_table_closure_tys => {
+                        let closure_ty =
+                            val_dsr.read_closure_ty(dcx);
+                        dcx.tcx.closure_tys.borrow_mut().insert(ast_util::local_def(id),
+                                                                closure_ty);
+                    }
+                    c::tag_table_closure_kinds => {
+                        let closure_kind =
+                            val_dsr.read_closure_kind(dcx);
+                        dcx.tcx.closure_kinds.borrow_mut().insert(ast_util::local_def(id),
+                                                                  closure_kind);
                     }
                     _ => {
                         dcx.tcx.sess.bug(

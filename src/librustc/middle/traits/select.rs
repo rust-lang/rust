@@ -1024,12 +1024,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                kind,
                obligation.repr(self.tcx()));
 
-        let closure_kind = self.closure_typer.closure_kind(closure_def_id);
-
-        debug!("closure_kind = {:?}", closure_kind);
-
-        if closure_kind == kind {
-            candidates.vec.push(ClosureCandidate(closure_def_id, substs.clone()));
+        match self.closure_typer.closure_kind(closure_def_id) {
+            Some(closure_kind) => {
+                debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
+                if closure_kind == kind {
+                    candidates.vec.push(ClosureCandidate(closure_def_id, substs.clone()));
+                }
+            }
+            None => {
+                debug!("assemble_unboxed_candidates: closure_kind not yet known");
+                candidates.ambiguous = true;
+            }
         }
 
         Ok(())

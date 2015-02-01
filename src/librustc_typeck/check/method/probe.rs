@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use super::{MethodError,Ambiguity,NoMatch};
+use super::{MethodError};
 use super::MethodIndex;
 use super::{CandidateSource,ImplSource,TraitSource};
 use super::suggest;
@@ -129,7 +129,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // take place in the `fcx.infcx().probe` below.
     let steps = match create_steps(fcx, span, self_ty) {
         Some(steps) => steps,
-        None => return Err(NoMatch(Vec::new(), Vec::new())),
+        None => return Err(MethodError::NoMatch(Vec::new(), Vec::new())),
     };
 
     // Create a list of simplified self types, if we can.
@@ -158,7 +158,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         let (steps, opt_simplified_steps) = dummy.take().unwrap();
         let mut probe_cx = ProbeContext::new(fcx, span, method_name, steps, opt_simplified_steps);
         probe_cx.assemble_inherent_candidates();
-        probe_cx.assemble_extension_candidates_for_traits_in_scope(call_expr_id);
+        try!(probe_cx.assemble_extension_candidates_for_traits_in_scope(call_expr_id));
         probe_cx.pick()
     })
 }
@@ -444,29 +444,34 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_extension_candidates_for_traits_in_scope(&mut self,
                                                          expr_id: ast::NodeId)
+                                                         -> Result<(),MethodError>
     {
         let mut duplicates = HashSet::new();
         let opt_applicable_traits = self.fcx.ccx.trait_map.get(&expr_id);
         for applicable_traits in opt_applicable_traits.into_iter() {
             for &trait_did in applicable_traits.iter() {
                 if duplicates.insert(trait_did) {
-                    self.assemble_extension_candidates_for_trait(trait_did);
+                    try!(self.assemble_extension_candidates_for_trait(trait_did));
                 }
             }
         }
+        Ok(())
     }
 
-    fn assemble_extension_candidates_for_all_traits(&mut self) {
+    fn assemble_extension_candidates_for_all_traits(&mut self) -> Result<(),MethodError> {
         let mut duplicates = HashSet::new();
         for trait_info in suggest::all_traits(self.fcx.ccx) {
             if duplicates.insert(trait_info.def_id) {
-                self.assemble_extension_candidates_for_trait(trait_info.def_id)
+                try!(self.assemble_extension_candidates_for_trait(trait_info.def_id));
             }
         }
+        Ok(())
     }
 
     fn assemble_extension_candidates_for_trait(&mut self,
-                                               trait_def_id: ast::DefId) {
+                                               trait_def_id: ast::DefId)
+                                               -> Result<(),MethodError>
+    {
         debug!("assemble_extension_candidates_for_trait(trait_def_id={})",
                trait_def_id.repr(self.tcx()));
 
@@ -478,26 +483,27 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                        .position(|item| item.name() == self.method_name);
         let matching_index = match matching_index {
             Some(i) => i,
-            None => { return; }
+            None => { return Ok(()); }
         };
         let method = match (&*trait_items)[matching_index].as_opt_method() {
             Some(m) => m,
-            None => { return; }
+            None => { return Ok(()); }
         };
 
         // Check whether `trait_def_id` defines a method with suitable name:
         if !self.has_applicable_self(&*method) {
             debug!("method has inapplicable self");
-            return self.record_static_candidate(TraitSource(trait_def_id));
+            self.record_static_candidate(TraitSource(trait_def_id));
+            return Ok(());
         }
 
         self.assemble_extension_candidates_for_trait_impls(trait_def_id,
                                                            method.clone(),
                                                            matching_index);
 
-        self.assemble_closure_candidates(trait_def_id,
-                                         method.clone(),
-                                         matching_index);
+        try!(self.assemble_closure_candidates(trait_def_id,
+                                              method.clone(),
+                                              matching_index));
 
         self.assemble_projection_candidates(trait_def_id,
                                             method.clone(),
@@ -506,6 +512,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         self.assemble_where_clause_candidates(trait_def_id,
                                               method,
                                               matching_index);
+
+        Ok(())
     }
 
     fn assemble_extension_candidates_for_trait_impls(&mut self,
@@ -576,6 +584,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                    trait_def_id: ast::DefId,
                                    method_ty: Rc<ty::Method<'tcx>>,
                                    method_index: uint)
+                                   -> Result<(),MethodError>
     {
         // Check if this is one of the Fn,FnMut,FnOnce traits.
         let tcx = self.tcx();
@@ -586,7 +595,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         } else if Some(trait_def_id) == tcx.lang_items.fn_once_trait() {
             ty::FnOnceClosureKind
         } else {
-            return;
+            return Ok(());
         };
 
         // Check if there is an unboxed-closure self-type in the list of receivers.
@@ -598,19 +607,16 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 _ => continue,
             };
 
-            let closures = self.fcx.inh.closures.borrow();
-            let closure_data = match closures.get(&closure_def_id) {
-                Some(data) => data,
+            let closure_kinds = self.fcx.inh.closure_kinds.borrow();
+            let closure_kind = match closure_kinds.get(&closure_def_id) {
+                Some(&k) => k,
                 None => {
-                    self.tcx().sess.span_bug(
-                        self.span,
-                        &format!("No entry for closure: {}",
-                                closure_def_id.repr(self.tcx()))[]);
+                    return Err(MethodError::ClosureAmbiguity(trait_def_id));
                 }
             };
 
             // this closure doesn't implement the right kind of `Fn` trait
-            if closure_data.kind != kind {
+            if closure_kind != kind {
                 continue;
             }
 
@@ -630,6 +636,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                 kind: ClosureCandidate(trait_def_id, method_index)
             });
         }
+
+        Ok(())
     }
 
     fn assemble_projection_candidates(&mut self,
@@ -735,11 +743,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         let span = self.span;
         let tcx = self.tcx();
 
-        self.assemble_extension_candidates_for_all_traits();
+        try!(self.assemble_extension_candidates_for_all_traits());
 
         let out_of_scope_traits = match self.pick_core() {
             Some(Ok(p)) => vec![p.method_ty.container.id()],
-            Some(Err(Ambiguity(v))) => v.into_iter().map(|source| {
+            Some(Err(MethodError::Ambiguity(v))) => v.into_iter().map(|source| {
                 match source {
                     TraitSource(id) => id,
                     ImplSource(impl_id) => {
@@ -752,14 +760,18 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     }
                 }
             }).collect(),
-            Some(Err(NoMatch(_, others))) => {
+            Some(Err(MethodError::NoMatch(_, others))) => {
                 assert!(others.is_empty());
                 vec![]
             }
+            Some(Err(MethodError::ClosureAmbiguity(..))) => {
+                // this error only occurs when assembling candidates
+                tcx.sess.span_bug(span, "encountered ClosureAmbiguity from pick_core");
+            }
             None => vec![],
         };
-;
-        Err(NoMatch(static_candidates, out_of_scope_traits))
+
+        Err(MethodError::NoMatch(static_candidates, out_of_scope_traits))
     }
 
     fn pick_core(&mut self) -> Option<PickResult<'tcx>> {
@@ -895,7 +907,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         if applicable_candidates.len() > 1 {
             let sources = probes.iter().map(|p| p.to_source()).collect();
-            return Some(Err(Ambiguity(sources)));
+            return Some(Err(MethodError::Ambiguity(sources)));
         }
 
         applicable_candidates.pop().map(|probe| {
