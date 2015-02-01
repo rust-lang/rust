@@ -126,7 +126,7 @@ pub const RLIB_BYTECODE_OBJECT_V1_DATA_OFFSET: uint =
 pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
-    let validate = |&: s: String, span: Option<Span>| {
+    let validate = |s: String, span: Option<Span>| {
         creader::validate_crate_name(sess, &s[], span);
         s
     };
@@ -1006,7 +1006,7 @@ fn link_args(cmd: &mut Command,
     if sess.opts.cg.rpath {
         let sysroot = sess.sysroot();
         let target_triple = &sess.opts.target_triple[];
-        let get_install_prefix_lib_path = |:| {
+        let get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
             let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
             let mut path = Path::new(install_prefix);

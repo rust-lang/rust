@@ -23,37 +23,37 @@ fn set(x: &mut isize) {
 
 fn a() {
     let mut x = 3;
-    let c1 = |&mut:| x = 4;
-    let c2 = |&mut:| x * 5; //~ ERROR cannot borrow `x`
+    let c1 = || x = 4;
+    let c2 = || x * 5; //~ ERROR cannot borrow `x`
 }
 
 fn b() {
     let mut x = 3;
-    let c1 = |&mut:| set(&mut x);
-    let c2 = |&mut:| get(&x); //~ ERROR cannot borrow `x`
+    let c1 = || set(&mut x);
+    let c2 = || get(&x); //~ ERROR cannot borrow `x`
 }
 
 fn c() {
     let mut x = 3;
-    let c1 = |&mut:| set(&mut x);
-    let c2 = |&mut:| x * 5; //~ ERROR cannot borrow `x`
+    let c1 = || set(&mut x);
+    let c2 = || x * 5; //~ ERROR cannot borrow `x`
 }
 
 fn d() {
     let mut x = 3;
-    let c2 = |&mut:| x * 5;
+    let c2 = || x * 5;
     x = 5; //~ ERROR cannot assign
 }
 
 fn e() {
     let mut x = 3;
-    let c1 = |&mut:| get(&x);
+    let c1 = || get(&x);
     x = 5; //~ ERROR cannot assign
 }
 
 fn f() {
     let mut x = box 3;
-    let c1 = |&mut:| get(&*x);
+    let c1 = || get(&*x);
     *x = 5; //~ ERROR cannot assign
 }
 
@@ -63,7 +63,7 @@ fn g() {
     }
 
     let mut x = box Foo { f: box 3 };
-    let c1 = |&mut:| get(&*x.f);
+    let c1 = || get(&*x.f);
     *x.f = 5; //~ ERROR cannot assign to `*x.f`
 }
 
@@ -73,8 +73,8 @@ fn h() {
     }
 
     let mut x = box Foo { f: box 3 };
-    let c1 = |&mut:| get(&*x.f);
-    let c2 = |&mut:| *x.f = 5; //~ ERROR cannot borrow `x` as mutable
+    let c1 = || get(&*x.f);
+    let c2 = || *x.f = 5; //~ ERROR cannot borrow `x` as mutable
 }
 
 fn main() {

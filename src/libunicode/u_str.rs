@@ -89,12 +89,12 @@ impl UnicodeStr for str {
 
     #[inline]
     fn trim_left(&self) -> &str {
-        self.trim_left_matches(|&: c: char| c.is_whitespace())
+        self.trim_left_matches(|c: char| c.is_whitespace())
     }
 
     #[inline]
     fn trim_right(&self) -> &str {
-        self.trim_right_matches(|&: c: char| c.is_whitespace())
+        self.trim_right_matches(|c: char| c.is_whitespace())
     }
 }
 

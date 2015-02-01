@@ -439,7 +439,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
             // If we're verifying or linting, add them to the function pass
             // manager.
-            let addpass = |&: pass: &str| {
+            let addpass = |pass: &str| {
                 let pass = CString::from_slice(pass.as_bytes());
                 llvm::LLVMRustAddPass(fpm, pass.as_ptr())
             };
@@ -660,7 +660,7 @@ pub fn run_passes(sess: &Session,
 
     // Produce final compile outputs.
 
-    let copy_if_one_unit = |&: ext: &str, output_type: config::OutputType, keep_numbered: bool| {
+    let copy_if_one_unit = |ext: &str, output_type: config::OutputType, keep_numbered: bool| {
         // Three cases:
         if sess.opts.cg.codegen_units == 1 {
             // 1) Only one codegen unit.  In this case it's no difficulty
@@ -685,7 +685,7 @@ pub fn run_passes(sess: &Session,
         }
     };
 
-    let link_obj = |&: output_path: &Path| {
+    let link_obj = |output_path: &Path| {
         // Running `ld -r` on a single input is kind of pointless.
         if sess.opts.cg.codegen_units == 1 {
             fs::copy(&crate_output.with_extension("0.o"),
@@ -910,7 +910,7 @@ fn run_work_multithreaded(sess: &Session,
         let mut tx = Some(tx);
         futures.push(rx);
 
-        thread::Builder::new().name(format!("codegen-{}", i)).spawn(move |:| {
+        thread::Builder::new().name(format!("codegen-{}", i)).spawn(move || {
             let diag_handler = mk_handler(true, box diag_emitter);
 
             // Must construct cgcx inside the proc because it has non-Send
@@ -1001,7 +1001,7 @@ unsafe fn configure_llvm(sess: &Session) {
     let mut llvm_c_strs = Vec::new();
     let mut llvm_args = Vec::new();
     {
-        let mut add = |&mut : arg: &str| {
+        let mut add = |arg: &str| {
             let s = CString::from_slice(arg.as_bytes());
             llvm_args.push(s.as_ptr());
             llvm_c_strs.push(s);

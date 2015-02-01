@@ -79,7 +79,7 @@ fn main() {
     zzz(); // #break
     sentinel();
 
-    let closure = |&: x: int| {
+    let closure = |x: int| {
         zzz(); // #break
         sentinel();
 

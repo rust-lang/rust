@@ -24,7 +24,7 @@ fn invoke<F>(f: F) where F: FnOnce() -> usize {
 
 fn main() {
       let x  : Box<usize>  = box 9;
-      let sq =  |:| { *x * *x };
+      let sq =  || { *x * *x };
 
       twice(x); //~ ERROR: cannot move out of
       invoke(sq);

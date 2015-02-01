@@ -801,7 +801,7 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
 fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                generics: &ast::Generics,
                                item: &ast::Item) {
-    if let Some(ref attr) = item.attrs.iter().find(|&: a| {
+    if let Some(ref attr) = item.attrs.iter().find(|a| {
         a.check_name("rustc_on_unimplemented")
     }) {
         if let Some(ref istring) = attr.value_str() {
@@ -1715,7 +1715,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let raw_ty = self.expr_ty(expr);
         let raw_ty = self.infcx().shallow_resolve(raw_ty);
-        let resolve_ty = |&: ty: Ty<'tcx>| self.infcx().resolve_type_vars_if_possible(&ty);
+        let resolve_ty = |ty: Ty<'tcx>| self.infcx().resolve_type_vars_if_possible(&ty);
         ty::adjust_ty(self.tcx(),
                       expr.span,
                       expr.id,

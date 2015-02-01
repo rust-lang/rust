@@ -47,8 +47,9 @@ fn test_fail() {
 
 #[test]
 fn test_retval() {
-    let mut closure = |&mut:| 10;
-    let i = closure.finally(|| { });
+    let mut closure = || 10;
+    // FIXME(#16640) `: i32` annotation shouldn't be necessary
+    let i: i32 = closure.finally(|| { });
     assert_eq!(i, 10);
 }
 

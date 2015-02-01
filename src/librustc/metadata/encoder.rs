@@ -1409,7 +1409,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             encode_parent_sort(rbml_w, 't');
 
             let trait_item = &ms[i];
-            let encode_trait_item = |&: rbml_w: &mut Encoder| {
+            let encode_trait_item = |rbml_w: &mut Encoder| {
                 // If this is a static method, we've already
                 // encoded this.
                 if is_nonstatic_method {

@@ -28,14 +28,14 @@
 pub fn main() {
     fn explicit() {
         fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<for<'a> FnMut(&'a int)>) {}
-        test(Some(box |&mut: _f: Box<for<'a> FnMut(&'a int)>| {}));
+        test(Some(box |_f: Box<for<'a> FnMut(&'a int)>| {}));
     }
 
     // The code below is shorthand for the code above (and more likely
     // to represent what one encounters in practice).
     fn implicit() {
         fn test<F>(_x: Option<Box<F>>) where F: FnMut(Box<        FnMut(&   int)>) {}
-        test(Some(box |&mut: _f: Box<        FnMut(&   int)>| {}));
+        test(Some(box |_f: Box<        FnMut(&   int)>| {}));
     }
 
     explicit();

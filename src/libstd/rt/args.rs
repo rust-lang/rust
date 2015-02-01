@@ -125,7 +125,7 @@ mod imp {
             assert!(take() == Some(expected.clone()));
             assert!(take() == None);
 
-            (|&mut:| {
+            (|| {
             }).finally(|| {
                 // Restore the actual global state.
                 match saved_value {

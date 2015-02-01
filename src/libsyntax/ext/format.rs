@@ -307,7 +307,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
     fn trans_count(&self, c: parse::Count) -> P<ast::Expr> {
         let sp = self.fmtsp;
-        let count = |: c, arg| {
+        let count = |c, arg| {
             let mut path = Context::rtpath(self.ecx, "Count");
             path.push(self.ecx.ident_of(c));
             match arg {
@@ -353,7 +353,7 @@ impl<'a, 'b> Context<'a, 'b> {
             parse::NextArgument(ref arg) => {
                 // Translate the position
                 let pos = {
-                    let pos = |: c, arg| {
+                    let pos = |c, arg| {
                         let mut path = Context::rtpath(self.ecx, "Position");
                         path.push(self.ecx.ident_of(c));
                         match arg {
@@ -404,7 +404,7 @@ impl<'a, 'b> Context<'a, 'b> {
 
                 // Translate the format
                 let fill = self.ecx.expr_lit(sp, ast::LitChar(fill));
-                let align = |:name| {
+                let align = |name| {
                     let mut p = Context::rtpath(self.ecx, "Alignment");
                     p.push(self.ecx.ident_of(name));
                     self.ecx.path_global(sp, p)

@@ -30,6 +30,6 @@ pub fn replace_map<'a, T, F>(src: &mut T, prod: F) where F: FnOnce(T) -> T {
 pub fn main() {
     let mut a = 7u;
     let b = &mut a;
-    replace_map(b, |: x: uint| x * 2);
+    replace_map(b, |x: uint| x * 2);
     assert_eq!(*b, 14u);
 }

@@ -666,7 +666,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
 
     {
         let region_maps = &mut visitor.region_maps;
-        let terminating = |&: id| {
+        let terminating = |id| {
             let scope = CodeExtent::from_node_id(id);
             region_maps.mark_as_terminating_scope(scope)
         };

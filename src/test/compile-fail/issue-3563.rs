@@ -10,7 +10,7 @@
 
 trait A {
     fn a(&self) {
-        |&:| self.b()
+        || self.b()
         //~^ ERROR type `&Self` does not implement any method in scope named `b`
         //~| ERROR mismatched types
         //~| expected `()`

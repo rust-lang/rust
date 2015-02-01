@@ -61,7 +61,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
     loop {
         let next = lexer.next_token();
 
-        let snip = |&: sp| sess.span_diagnostic.cm.span_to_snippet(sp).unwrap();
+        let snip = |sp| sess.span_diagnostic.cm.span_to_snippet(sp).unwrap();
 
         if next.tok == token::Eof { break }
 

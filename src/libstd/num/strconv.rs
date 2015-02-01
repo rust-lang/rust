@@ -321,10 +321,10 @@ pub fn float_to_str_bytes_common<T: Float>(
         // cut off the one extra digit, and depending on its value
         // round the remaining ones.
         if limit_digits && dig == digit_count {
-            let ascii2value = |&: chr: u8| {
+            let ascii2value = |chr: u8| {
                 (chr as char).to_digit(radix).unwrap()
             };
-            let value2ascii = |&: val: uint| {
+            let value2ascii = |val: uint| {
                 char::from_digit(val, radix).unwrap() as u8
             };
 

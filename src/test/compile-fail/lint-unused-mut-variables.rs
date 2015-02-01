@@ -35,7 +35,7 @@ fn main() {
       _ => {}
     }
 
-    let x = |&: mut y: isize| 10; //~ ERROR: variable does not need to be mutable
+    let x = |mut y: isize| 10; //~ ERROR: variable does not need to be mutable
     fn what(mut foo: isize) {} //~ ERROR: variable does not need to be mutable
 
     // positive cases
@@ -65,7 +65,7 @@ fn main() {
       _ => {}
     }
 
-    let x = |&mut: mut y: isize| y = 32;
+    let x = |mut y: isize| y = 32;
     fn nothing(mut foo: isize) { foo = 37; }
 
     // leading underscore should avoid the warning, just like the

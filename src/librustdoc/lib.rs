@@ -365,7 +365,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
 
-    let (mut krate, analysis) = std::thread::Thread::scoped(move |:| {
+    let (mut krate, analysis) = std::thread::Thread::scoped(move || {
         use rustc::session::config::Input;
 
         let cr = cr;

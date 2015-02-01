@@ -10,6 +10,6 @@
 
 pub fn main() {
   let x = 1u;
-  let y = |&:| x;
+  let y = || x;
   let _z = y();
 }
