@@ -15,6 +15,7 @@ use core::ops::Deref;
 use core::result::Result::{Ok, Err};
 use core::clone::Clone;
 
+use std::boxed;
 use std::boxed::Box;
 use std::boxed::BoxAny;
 
@@ -72,4 +73,45 @@ fn test_show() {
 fn deref() {
     fn homura<T: Deref<Target=i32>>(_: T) { }
     homura(Box::new(765i32));
+}
+
+#[test]
+fn raw_sized() {
+    unsafe {
+        let x = Box::new(17i32);
+        let p = boxed::into_raw(x);
+        assert_eq!(17, *p);
+        *p = 19;
+        let y = Box::from_raw(p);
+        assert_eq!(19, *y);
+    }
+}
+
+#[test]
+fn raw_trait() {
+    trait Foo {
+        fn get(&self) -> u32;
+        fn set(&mut self, value: u32);
+    }
+
+    struct Bar(u32);
+
+    impl Foo for Bar {
+        fn get(&self) -> u32 {
+            self.0
+        }
+
+        fn set(&mut self, value: u32) {
+            self.0 = value;
+        }
+    }
+
+    unsafe {
+        let x: Box<Foo> = Box::new(Bar(17));
+        let p = boxed::into_raw(x);
+        assert_eq!(17, (*p).get());
+        (*p).set(19);
+        let y: Box<Foo> = Box::from_raw(p);
+        assert_eq!(19, y.get());
+    }
 }
