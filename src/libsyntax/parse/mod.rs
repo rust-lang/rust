@@ -573,7 +573,7 @@ pub fn byte_lit(lit: &str) -> (u8, usize) {
     if lit.len() == 1 {
         (lit.as_bytes()[0], 1)
     } else {
-        assert!(lit.as_bytes()[0] == b'\\', err(0is));
+        assert!(lit.as_bytes()[0] == b'\\', err(0));
         let b = match lit.as_bytes()[1] {
             b'"' => b'"',
             b'n' => b'\n',

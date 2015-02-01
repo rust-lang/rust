@@ -12,9 +12,9 @@
 #![feature(box_syntax)]
 
 fn f() {
-    let mut a = [box 0is, box 1is];
+    let mut a = [box 0, box 1];
     drop(a[0]);
-    a[1] = box 2is;
+    a[1] = box 2;
     drop(a[0]); //~ ERROR use of moved value: `a[..]`
 }
 

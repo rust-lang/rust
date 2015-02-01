@@ -223,7 +223,7 @@ fn test_ord() {
 /* FIXME(#20575)
 #[test]
 fn test_collect() {
-    let v: Option<Vec<int>> = (0..0).map(|_| Some(0i)).collect();
+    let v: Option<Vec<int>> = (0..0).map(|_| Some(0)).collect();
     assert!(v == Some(vec![]));
 
     let v: Option<Vec<int>> = (0..3).map(|x| Some(x)).collect();

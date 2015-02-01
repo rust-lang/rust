@@ -19,7 +19,7 @@ struct S {
 }
 
 pub fn main() {
-    match 1is {
+    match 1 {
         x => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }
@@ -37,13 +37,13 @@ pub fn main() {
         }
     }
 
-    match (1is,) {
+    match (1,) {
         (x,) => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }
     }
 
-    match [1is,2,3] {
+    match [1,2,3] {
         [x,_,_] => {
             x += 1; //~ ERROR re-assignment of immutable variable `x`
         }

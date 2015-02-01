@@ -9,10 +9,10 @@
 // except according to those terms.
 
 pub fn expr_if_twoarm_9() {
-    let x = 91is; let _y;
-    if x > 92is {
-        _y = 93is;
+    let x = 91; let _y;
+    if x > 92 {
+        _y = 93;
     } else {
-        _y = 94is+95is;
+        _y = 94+95;
     }
 }

@@ -9,8 +9,8 @@
 // except according to those terms.
 
 pub fn expr_if_onearm_8() {
-    let x = 8is; let _y;
-    if x > 88is {
-        _y = 888is;
+    let x = 8; let _y;
+    if x > 88 {
+        _y = 888;
     }
 }

@@ -45,7 +45,7 @@ pub fn baz(x: &Foo<A=Bar>) {
 
 
 pub fn main() {
-    let a = 42is;
+    let a = 42;
     foo1(a);
     //~^ ERROR type mismatch resolving
     //~| expected usize

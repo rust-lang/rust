@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static i: String = 10is;
+static i: String = 10i32;
 //~^ ERROR mismatched types
 //~| expected `collections::string::String`
-//~| found `isize`
+//~| found `i32`
 //~| expected struct `collections::string::String`
-//~| found isize
+//~| found i32
 fn main() { println!("{}", i); }

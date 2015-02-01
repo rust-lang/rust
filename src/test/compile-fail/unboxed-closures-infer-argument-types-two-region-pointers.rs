@@ -23,7 +23,7 @@ fn doit<T,F>(val: T, f: &F)
 }
 
 pub fn main() {
-    doit(0is, &|&: x, y| {
+    doit(0, &|&: x, y| {
         x.set(y); //~ ERROR cannot infer
     });
 }

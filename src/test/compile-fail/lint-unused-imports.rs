@@ -54,7 +54,7 @@ mod bar {
     pub mod c {
         use foo::Point;
         use foo::Square; //~ ERROR unused import
-        pub fn cc(p: Point) -> isize { return 2is * (p.x + p.y); }
+        pub fn cc(p: Point) -> isize { return 2 * (p.x + p.y); }
     }
 
     #[allow(unused_imports)]
@@ -65,8 +65,8 @@ mod bar {
 
 fn main() {
     cal(foo::Point{x:3, y:9});
-    let mut a = 3is;
-    let mut b = 4is;
+    let mut a = 3;
+    let mut b = 4;
     swap(&mut a, &mut b);
     test::C.b();
     let _a = foo();

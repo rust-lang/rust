@@ -22,6 +22,6 @@ impl <T: Sync> Foo for T { }
 
 fn main() {
     let (tx, rx) = channel();
-    1193182is.foo(tx);
-    assert!(rx.recv() == 1193182is);
+    1193182.foo(tx);
+    assert!(rx.recv() == 1193182);
 }

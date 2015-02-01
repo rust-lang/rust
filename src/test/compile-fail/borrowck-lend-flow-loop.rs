@@ -41,7 +41,7 @@ fn block_overarching_alias_mut() {
 
     let mut v = box 3;
     let mut x = &mut v;
-    for _ in 0is..3 {
+    for _ in 0..3 {
         borrow(&*v); //~ ERROR cannot borrow
     }
     *x = box 5;

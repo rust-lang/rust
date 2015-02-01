@@ -1198,7 +1198,7 @@ mod test_set {
 
     #[test]
     fn test_drain() {
-        let mut s: HashSet<int> = (1is..100).collect();
+        let mut s: HashSet<i32> = (1..100).collect();
 
         // try this a bunch of times to make sure we don't screw up internal state.
         for _ in 0..20 {
@@ -1217,7 +1217,7 @@ mod test_set {
             for _ in s.iter() { panic!("s should be empty!"); }
 
             // reset to try again.
-            s.extend(1is..100);
+            s.extend(1..100);
         }
     }
 }

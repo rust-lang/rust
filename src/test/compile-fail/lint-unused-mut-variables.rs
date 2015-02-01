@@ -18,16 +18,16 @@
 
 fn main() {
     // negative cases
-    let mut a = 3is; //~ ERROR: variable does not need to be mutable
-    let mut a = 2is; //~ ERROR: variable does not need to be mutable
-    let mut b = 3is; //~ ERROR: variable does not need to be mutable
-    let mut a = vec!(3is); //~ ERROR: variable does not need to be mutable
-    let (mut a, b) = (1is, 2is); //~ ERROR: variable does not need to be mutable
+    let mut a = 3; //~ ERROR: variable does not need to be mutable
+    let mut a = 2; //~ ERROR: variable does not need to be mutable
+    let mut b = 3; //~ ERROR: variable does not need to be mutable
+    let mut a = vec!(3); //~ ERROR: variable does not need to be mutable
+    let (mut a, b) = (1, 2); //~ ERROR: variable does not need to be mutable
 
-    match 30is {
+    match 30 {
         mut x => {} //~ ERROR: variable does not need to be mutable
     }
-    match (30is, 2is) {
+    match (30, 2) {
       (mut x, 1) | //~ ERROR: variable does not need to be mutable
       (mut x, 2) |
       (mut x, 3) => {
@@ -35,28 +35,28 @@ fn main() {
       _ => {}
     }
 
-    let x = |&: mut y: isize| 10is; //~ ERROR: variable does not need to be mutable
+    let x = |&: mut y: isize| 10; //~ ERROR: variable does not need to be mutable
     fn what(mut foo: isize) {} //~ ERROR: variable does not need to be mutable
 
     // positive cases
-    let mut a = 2is;
-    a = 3is;
+    let mut a = 2;
+    a = 3;
     let mut a = Vec::new();
-    a.push(3is);
+    a.push(3);
     let mut a = Vec::new();
     callback(|| {
-        a.push(3is);
+        a.push(3);
     });
-    let (mut a, b) = (1is, 2is);
+    let (mut a, b) = (1, 2);
     a = 34;
 
-    match 30is {
+    match 30 {
         mut x => {
-            x = 21is;
+            x = 21;
         }
     }
 
-    match (30is, 2is) {
+    match (30, 2) {
       (mut x, 1) |
       (mut x, 2) |
       (mut x, 3) => {
@@ -65,12 +65,12 @@ fn main() {
       _ => {}
     }
 
-    let x = |&mut: mut y: isize| y = 32is;
-    fn nothing(mut foo: isize) { foo = 37is; }
+    let x = |&mut: mut y: isize| y = 32;
+    fn nothing(mut foo: isize) { foo = 37; }
 
     // leading underscore should avoid the warning, just like the
     // unused variable lint.
-    let mut _allowed = 1is;
+    let mut _allowed = 1;
 }
 
 fn callback<F>(f: F) where F: FnOnce() {}
@@ -78,6 +78,6 @@ fn callback<F>(f: F) where F: FnOnce() {}
 // make sure the lint attribute can be turned off
 #[allow(unused_mut)]
 fn foo(mut a: isize) {
-    let mut a = 3is;
-    let mut b = vec!(2is);
+    let mut a = 3;
+    let mut b = vec!(2);
 }

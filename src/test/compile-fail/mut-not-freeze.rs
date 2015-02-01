@@ -13,7 +13,7 @@ use std::cell::RefCell;
 fn f<T: Sync>(_: T) {}
 
 fn main() {
-    let x = RefCell::new(0is);
+    let x = RefCell::new(0);
     f(x);
     //~^ ERROR `core::marker::Sync` is not implemented
     //~^^ ERROR `core::marker::Sync` is not implemented

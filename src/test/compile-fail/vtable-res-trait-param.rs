@@ -28,6 +28,6 @@ fn call_it<B:TraitB>(b: B)  -> isize {
 }
 
 fn main() {
-    let x = 3is;
+    let x = 3;
     assert_eq!(call_it(x), 22);
 }

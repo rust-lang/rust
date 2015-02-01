@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn pat_vec_7() {
-    match [7is, 77is, 777is, 7777is] {
+    match [7, 77, 777, 7777] {
         [x, y, ..] => x + y
     };
 }

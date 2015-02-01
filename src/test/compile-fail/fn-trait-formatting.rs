@@ -34,7 +34,7 @@ fn main() {
     //~| expected ()
     //~| found box
 
-    needs_fn(1is);
+    needs_fn(1);
     //~^ ERROR `core::ops::Fn<(isize,)>`
     //~| ERROR `core::ops::Fn<(isize,)>`
 }
