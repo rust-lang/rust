@@ -784,6 +784,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
         hir::ExprField(..) |
         hir::ExprTupField(..) |
         hir::ExprVec(_) |
+        hir::ExprType(..) |
         hir::ExprTup(..) => {}
 
         // Conditional control flow (possible to implement).

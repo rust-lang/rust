@@ -697,6 +697,10 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(subexpression);
             visitor.visit_ty(typ)
         }
+        ExprType(ref subexpression, ref typ) => {
+            visitor.visit_expr(&**subexpression);
+            visitor.visit_ty(&**typ)
+        }
         ExprIf(ref head_expression, ref if_block, ref optional_else) => {
             visitor.visit_expr(head_expression);
             visitor.visit_block(if_block);

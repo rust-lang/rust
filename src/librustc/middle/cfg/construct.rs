@@ -352,6 +352,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             hir::ExprBox(ref e) |
             hir::ExprAddrOf(_, ref e) |
             hir::ExprCast(ref e, _) |
+            hir::ExprType(ref e, _) |
             hir::ExprUnary(_, ref e) |
             hir::ExprField(ref e, _) |
             hir::ExprTupField(ref e, _) => {
