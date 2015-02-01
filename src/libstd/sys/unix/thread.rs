@@ -248,7 +248,9 @@ pub unsafe fn set_name(name: &str) {
     }
 }
 
-#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+#[cfg(any(target_os = "freebsd",
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 pub unsafe fn set_name(name: &str) {
     // pthread_set_name_np() since almost forever on all BSDs
     let cname = CString::from_slice(name.as_bytes());
@@ -314,7 +316,9 @@ extern {
                                  stacksize: *mut libc::size_t) -> libc::c_int;
 }
 
-#[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+#[cfg(any(target_os = "freebsd",
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 extern {
     pub fn pthread_self() -> libc::pthread_t;
     fn pthread_set_name_np(tid: libc::pthread_t, name: *const libc::c_char);
@@ -330,7 +334,6 @@ extern {
 
 #[cfg(target_os = "openbsd")]
 extern {
-        pub fn pthread_self() -> libc::pthread_t;
         pub fn pthread_stackseg_np(thread: libc::pthread_t,
                                    sinfo: *mut stack_t) -> libc::c_uint;
         pub fn pthread_main_np() -> libc::c_uint;
