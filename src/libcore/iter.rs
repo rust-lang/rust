@@ -2797,93 +2797,71 @@ impl<A: Int> Iterator for RangeStepInclusive<A> {
     }
 }
 
-macro_rules! range_impl {
+macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl Iterator for ::ops::Range<$t> {
-            type Item = $t;
-
+        impl ExactSizeIterator for ::ops::Range<$t> {
             #[inline]
-            fn next(&mut self) -> Option<$t> {
-                if self.start < self.end {
-                    let result = self.start;
-                    self.start += 1;
-                    return Some(result);
-                }
-
-                return None;
-            }
-
-            #[inline]
-            fn size_hint(&self) -> (usize, Option<usize>) {
+            fn len(&self) -> usize {
                 debug_assert!(self.end >= self.start);
-                let hint = (self.end - self.start) as usize;
-                (hint, Some(hint))
-            }
-        }
-
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl ExactSizeIterator for ::ops::Range<$t> {}
-    )*)
-}
-
-macro_rules! range_impl_no_hint {
-    ($($t:ty)*) => ($(
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Iterator for ::ops::Range<$t> {
-            type Item = $t;
-
-            #[inline]
-            fn next(&mut self) -> Option<$t> {
-                if self.start < self.end {
-                    let result = self.start;
-                    self.start += 1;
-                    return Some(result);
-                }
-
-                return None;
+                (self.end - self.start) as usize
             }
         }
     )*)
 }
 
-macro_rules! range_other_impls {
-    ($($t:ty)*) => ($(
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl DoubleEndedIterator for ::ops::Range<$t> {
-            #[inline]
-            fn next_back(&mut self) -> Option<$t> {
-                if self.start < self.end {
-                    self.end -= 1;
-                    return Some(self.end);
-                }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Int> Iterator for ::ops::Range<A> {
+    type Item = A;
 
-                return None;
-            }
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        if self.start < self.end {
+            let result = self.start;
+            self.start = self.start + Int::one();
+            Some(result)
+        } else {
+            None
         }
+    }
 
-        #[stable(feature = "rust1", since = "1.0.0")]
-        impl Iterator for ::ops::RangeFrom<$t> {
-            type Item = $t;
-
-            #[inline]
-            fn next(&mut self) -> Option<$t> {
-                let result = self.start;
-                self.start += 1;
-                debug_assert!(result < self.start);
-                return Some(result);
-            }
-        }
-    )*)
+    #[inline]
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        debug_assert!(self.end >= self.start);
+        let hint = (self.end - self.start).to_uint();
+        (hint.unwrap_or(0), hint)
+    }
 }
 
-range_impl!(usize u8 u16 u32 isize i8 i16 i32);
+range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
 #[cfg(target_pointer_width = "64")]
-range_impl!(u64 i64);
-#[cfg(target_pointer_width = "32")]
-range_impl_no_hint!(u64 i64);
+range_exact_iter_impl!(u64 i64);
 
-range_other_impls!(usize u8 u16 u32 u64 isize i8 i16 i32 i64);
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Int> DoubleEndedIterator for ::ops::Range<A> {
+    #[inline]
+    fn next_back(&mut self) -> Option<A> {
+        if self.start < self.end {
+            self.end = self.end - Int::one();
+            Some(self.end)
+        } else {
+            None
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<A: Int> Iterator for ::ops::RangeFrom<A> {
+    type Item = A;
+
+    #[inline]
+    fn next(&mut self) -> Option<A> {
+        let result = self.start;
+        self.start = self.start + Int::one();
+        debug_assert!(result < self.start);
+        Some(result)
+    }
+}
 
 /// An iterator that repeats an element endlessly
 #[derive(Clone)]
