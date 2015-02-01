@@ -22,6 +22,7 @@ use util::ppaux::UserString;
 
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
+use syntax::print::pprust;
 
 use std::cell;
 use std::cmp::Ordering;
@@ -32,6 +33,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               span: Span,
                               rcvr_ty: Ty<'tcx>,
                               method_name: ast::Name,
+                              callee_expr: &ast::Expr,
                               error: MethodError)
 {
     match error {
@@ -83,6 +85,18 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                       "multiple applicable methods in scope");
 
             report_candidates(fcx, span, method_name, sources);
+        }
+
+        MethodError::ClosureAmbiguity(trait_def_id) => {
+            fcx.sess().span_err(
+                span,
+                &*format!("the `{}` method from the `{}` trait cannot be explicitly \
+                           invoked on this closure as we have not yet inferred what \
+                           kind of closure it is; use overloaded call notation instead \
+                           (e.g., `{}()`)",
+                          method_name.user_string(fcx.tcx()),
+                          ty::item_path_str(fcx.tcx(), trait_def_id),
+                          pprust::expr_to_string(callee_expr)));
         }
     }
 

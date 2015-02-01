@@ -2695,7 +2695,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 method_ty
             }
             Err(error) => {
-                method::report_error(fcx, method_name.span, expr_t, method_name.node.name, error);
+                method::report_error(fcx, method_name.span, expr_t,
+                                     method_name.node.name, rcvr, error);
                 fcx.write_error(expr.id);
                 fcx.tcx().types.err
             }
