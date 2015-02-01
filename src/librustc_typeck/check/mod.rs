@@ -177,7 +177,7 @@ pub struct Inherited<'a, 'tcx: 'a> {
     // we may not have decided yet whether `c` is a `Fn`, `FnMut`, or
     // `FnOnce` closure. In that case, we defer full resolution of the
     // call until upvar inference can kick in and make the
-    // decision. We keep these deferred resolutions sorted by the
+    // decision. We keep these deferred resolutions grouped by the
     // def-id of the closure, so that once we decide, we can easily go
     // back and process them.
     deferred_call_resolutions: RefCell<DefIdMap<Vec<DeferredCallResolutionHandler<'tcx>>>>,

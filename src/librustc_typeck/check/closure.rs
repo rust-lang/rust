@@ -42,7 +42,8 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
             // If users didn't specify what sort of closure they want,
             // examine the expected type. For now, if we see explicit
             // evidence than an unboxed closure is desired, we'll use
-            // that, otherwise we'll error, requesting an annotation.
+            // that. Otherwise, we leave it unspecified, to be filled
+            // in by upvar inference.
             match expected_sig_and_kind {
                 None => { // don't have information about the kind, request explicit annotation
                     check_closure(fcx, expr, None, decl, body, None);
