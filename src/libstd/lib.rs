@@ -128,9 +128,8 @@
 
 #![deny(missing_docs)]
 
-#[cfg(test)]
-#[macro_use]
-extern crate log;
+#[cfg(test)] extern crate test;
+#[cfg(test)] #[macro_use] extern crate log;
 
 #[macro_use]
 #[macro_reexport(assert, assert_eq, debug_assert, debug_assert_eq,
@@ -248,6 +247,7 @@ pub mod dynamic_lib;
 pub mod ffi;
 pub mod fmt;
 pub mod old_io;
+pub mod io;
 pub mod os;
 pub mod env;
 pub mod path;
