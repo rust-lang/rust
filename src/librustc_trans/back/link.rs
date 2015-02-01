@@ -740,7 +740,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
     let _ = ab.build();
 
     if !all_native_libs.is_empty() {
-        sess.warn("link against the following native artifacts when linking against \
+        sess.note("link against the following native artifacts when linking against \
                   this static library");
         sess.note("the order and any duplication can be significant on some platforms, \
                   and so may need to be preserved");
