@@ -418,7 +418,7 @@ struct Wheel {
 fn main() {
     let car = Car { name: "DeLorean".to_string() };
 
-    for _ in range(0, 4) {
+    for _ in 0..4 {
         Wheel { size: 360, owner: car };
     }
 }
@@ -456,7 +456,7 @@ fn main() {
 
     let car_owner = Rc::new(car);
 
-    for _ in range(0, 4) {
+    for _ in 0..4 {
         Wheel { size: 360, owner: car_owner.clone() };
     }
 }

@@ -512,7 +512,7 @@ use test::Bencher;
 #[bench]
 fn bench_xor_1000_ints(b: &mut Bencher) {
     b.iter(|| {
-        range(0, 1000).fold(0, |old, new| old ^ new);
+        (0..1000).fold(0, |old, new| old ^ new);
     });
 }
 ```
@@ -537,7 +537,7 @@ computation entirely. This could be done for the example above by adjusting the
 # impl X { fn iter<T, F>(&self, _: F) where F: FnMut() -> T {} } let b = X;
 b.iter(|| {
     // note lack of `;` (could also use an explicit `return`).
-    range(0, 1000).fold(0, |old, new| old ^ new)
+    (0..1000).fold(0, |old, new| old ^ new)
 });
 ```
 
@@ -554,7 +554,7 @@ extern crate test;
 b.iter(|| {
     let n = test::black_box(1000);
 
-    range(0, n).fold(0, |a, b| a ^ b)
+    (0..n).fold(0, |a, b| a ^ b)
 })
 # }
 ```
