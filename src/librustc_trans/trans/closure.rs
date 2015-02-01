@@ -125,7 +125,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
                                                       closure_id: ast::DefId,
                                                       substs: &Substs<'tcx>)
                                                       -> Option<Datum<'tcx, Rvalue>> {
-    if !ccx.tcx().closures.borrow().contains_key(&closure_id) {
+    if !ccx.tcx().closure_kinds.borrow().contains_key(&closure_id) {
         // Not a closure.
         return None
     }

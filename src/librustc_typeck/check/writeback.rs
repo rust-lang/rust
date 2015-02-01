@@ -204,14 +204,13 @@ impl<'cx, 'tcx> WritebackCx<'cx, 'tcx> {
             return
         }
 
-        for (def_id, closure) in self.fcx.inh.closures.borrow().iter() {
-            let closure_ty = self.resolve(&closure.closure_type,
-                                          ResolvingClosure(*def_id));
-            let closure = ty::Closure {
-                closure_type: closure_ty,
-                kind: closure.kind,
-            };
-            self.fcx.tcx().closures.borrow_mut().insert(*def_id, closure);
+        for (def_id, closure_ty) in self.fcx.inh.closure_tys.borrow().iter() {
+            let closure_ty = self.resolve(closure_ty, ResolvingClosure(*def_id));
+            self.fcx.tcx().closure_tys.borrow_mut().insert(*def_id, closure_ty);
+        }
+
+        for (def_id, &closure_kind) in self.fcx.inh.closure_kinds.borrow().iter() {
+            self.fcx.tcx().closure_kinds.borrow_mut().insert(*def_id, closure_kind);
         }
     }
 

@@ -790,7 +790,11 @@ pub struct ctxt<'tcx> {
 
     /// Records the type of each closure. The def ID is the ID of the
     /// expression defining the closure.
-    pub closures: RefCell<DefIdMap<Closure<'tcx>>>,
+    pub closure_kinds: RefCell<DefIdMap<ClosureKind>>,
+
+    /// Records the type of each closure. The def ID is the ID of the
+    /// expression defining the closure.
+    pub closure_tys: RefCell<DefIdMap<ClosureTy<'tcx>>>,
 
     pub node_lint_levels: RefCell<FnvHashMap<(ast::NodeId, lint::LintId),
                                               lint::LevelSource>>,
@@ -2251,16 +2255,7 @@ pub struct ItemSubsts<'tcx> {
     pub substs: Substs<'tcx>,
 }
 
-/// Records information about each closure.
-#[derive(Clone)]
-pub struct Closure<'tcx> {
-    /// The type of the closure.
-    pub closure_type: ClosureTy<'tcx>,
-    /// The kind of closure this is.
-    pub kind: ClosureKind,
-}
-
-#[derive(Clone, Copy, PartialEq, Eq, Debug)]
+#[derive(Clone, Copy, PartialEq, Eq, Debug, RustcEncodable, RustcDecodable)]
 pub enum ClosureKind {
     FnClosureKind,
     FnMutClosureKind,
@@ -2288,14 +2283,22 @@ impl ClosureKind {
 pub trait ClosureTyper<'tcx> {
     fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
 
-    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind;
+    /// Is this a `Fn`, `FnMut` or `FnOnce` closure? During typeck,
+    /// returns `None` if the kind of this closure has not yet been
+    /// inferred.
+    fn closure_kind(&self,
+                    def_id: ast::DefId)
+                    -> Option<ty::ClosureKind>;
 
+    /// Returns the argument/return types of this closure.
     fn closure_type(&self,
                     def_id: ast::DefId,
                     substs: &subst::Substs<'tcx>)
                     -> ty::ClosureTy<'tcx>;
 
-    // Returns `None` if the upvar types cannot yet be definitively determined.
+    /// Returns the set of all upvars and their transformed
+    /// types. During typeck, maybe return `None` if the upvar types
+    /// have not yet been inferred.
     fn closure_upvars(&self,
                       def_id: ast::DefId,
                       substs: &Substs<'tcx>)
@@ -2391,7 +2394,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         extern_const_variants: RefCell::new(DefIdMap()),
         method_map: RefCell::new(FnvHashMap()),
         dependency_formats: RefCell::new(FnvHashMap()),
-        closures: RefCell::new(DefIdMap()),
+        closure_kinds: RefCell::new(DefIdMap()),
+        closure_tys: RefCell::new(DefIdMap()),
         node_lint_levels: RefCell::new(FnvHashMap()),
         transmute_restrictions: RefCell::new(Vec::new()),
         stability: RefCell::new(stability),
@@ -2438,7 +2442,7 @@ impl<'tcx> ctxt<'tcx> {
     }
 
     pub fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
-        self.closures.borrow()[def_id].kind
+        self.closure_kinds.borrow()[def_id]
     }
 
     pub fn closure_type(&self,
@@ -2446,7 +2450,7 @@ impl<'tcx> ctxt<'tcx> {
                         substs: &subst::Substs<'tcx>)
                         -> ty::ClosureTy<'tcx>
     {
-        self.closures.borrow()[def_id].closure_type.subst(self, substs)
+        self.closure_tys.borrow()[def_id].subst(self, substs)
     }
 }
 
@@ -5635,32 +5639,26 @@ pub fn closure_upvars<'tcx>(typer: &mc::Typer<'tcx>,
                             closure_expr_id: closure_id.node
                         };
 
-                        let captured_freevar_ty = match typer.upvar_capture(upvar_id) {
-                            Some(UpvarCapture::ByValue) => {
-                                freevar_ty
-                            }
+                        typer.upvar_capture(upvar_id).map(|capture| {
+                            let freevar_ref_ty = match capture {
+                                UpvarCapture::ByValue => {
+                                    freevar_ty
+                                }
+                                UpvarCapture::ByRef(borrow) => {
+                                    mk_rptr(tcx,
+                                            tcx.mk_region(borrow.region),
+                                            ty::mt {
+                                                ty: freevar_ty,
+                                                mutbl: borrow.kind.to_mutbl_lossy(),
+                                            })
+                                }
+                            };
 
-                            Some(UpvarCapture::ByRef(borrow)) => {
-                                mk_rptr(tcx,
-                                        tcx.mk_region(borrow.region),
-                                        ty::mt {
-                                            ty: freevar_ty,
-                                            mutbl: borrow.kind.to_mutbl_lossy(),
-                                        })
+                            ClosureUpvar {
+                                def: freevar.def,
+                                span: freevar.span,
+                                ty: freevar_ref_ty,
                             }
-
-                            None => {
-                                // FIXME(#16640) we should really return None here;
-                                // but that requires better inference integration,
-                                // for now gin up something.
-                                freevar_ty
-                            }
-                        };
-
-                        Some(ClosureUpvar {
-                            def: freevar.def,
-                            span: freevar.span,
-                            ty: captured_freevar_ty,
                         })
                     })
                     .collect()
@@ -6473,8 +6471,11 @@ impl<'a,'tcx> ClosureTyper<'tcx> for ty::ParameterEnvironment<'a,'tcx> {
         self
     }
 
-    fn closure_kind(&self, def_id: ast::DefId) -> ty::ClosureKind {
-        self.tcx.closure_kind(def_id)
+    fn closure_kind(&self,
+                    def_id: ast::DefId)
+                    -> Option<ty::ClosureKind>
+    {
+        Some(self.tcx.closure_kind(def_id))
     }
 
     fn closure_type(&self,
