@@ -166,7 +166,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                 _ => unreachable!(),
             };
             let mut tmp = Vec::new();
-            for child in m.items.iter_mut() {
+            for child in &mut m.items {
                 match child.inner {
                     ModuleItem(..) => {}
                     _ => continue,

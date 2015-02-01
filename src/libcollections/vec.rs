@@ -2022,7 +2022,7 @@ mod tests {
         {
             let slice = &mut values[2 ..];
             assert!(slice == [3, 4, 5]);
-            for p in slice.iter_mut() {
+            for p in slice {
                 *p += 2;
             }
         }
@@ -2036,7 +2036,7 @@ mod tests {
         {
             let slice = &mut values[.. 2];
             assert!(slice == [1, 2]);
-            for p in slice.iter_mut() {
+            for p in slice {
                 *p += 1;
             }
         }
@@ -2053,7 +2053,7 @@ mod tests {
                 let left: &[_] = left;
                 assert!(&left[..left.len()] == &[1, 2][]);
             }
-            for p in left.iter_mut() {
+            for p in left {
                 *p += 1;
             }
 
@@ -2061,7 +2061,7 @@ mod tests {
                 let right: &[_] = right;
                 assert!(&right[..right.len()] == &[3, 4, 5][]);
             }
-            for p in right.iter_mut() {
+            for p in right {
                 *p += 2;
             }
         }
@@ -2137,7 +2137,7 @@ mod tests {
         v.push(());
         assert_eq!(v.iter_mut().count(), 4);
 
-        for &mut () in v.iter_mut() {}
+        for &mut () in &mut v {}
         unsafe { v.set_len(0); }
         assert_eq!(v.iter_mut().count(), 0);
     }

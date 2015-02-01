@@ -154,7 +154,7 @@ pub trait Rng : Sized {
         // optimisations are on.
         let mut count = 0;
         let mut num = 0;
-        for byte in dest.iter_mut() {
+        for byte in dest {
             if count == 0 {
                 // we could micro-optimise here by generating a u32 if
                 // we only need a few more bytes to fill the vector

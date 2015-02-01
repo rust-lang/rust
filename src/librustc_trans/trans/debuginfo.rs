@@ -2050,7 +2050,7 @@ fn prepare_struct_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // The `Ty` values returned by `ty::struct_fields` can still contain
     // `ty_projection` variants, so normalize those away.
-    for field in fields.iter_mut() {
+    for field in &mut fields {
         field.mt.ty = monomorphize::normalize_associated_type(cx.tcx(), &field.mt.ty);
     }
 

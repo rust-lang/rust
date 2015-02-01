@@ -321,7 +321,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
     let lo = percentile_of_sorted(tmp.as_slice(), pct);
     let hundred: T = FromPrimitive::from_uint(100).unwrap();
     let hi = percentile_of_sorted(tmp.as_slice(), hundred-pct);
-    for samp in samples.iter_mut() {
+    for samp in samples {
         if *samp > hi {
             *samp = hi
         } else if *samp < lo {

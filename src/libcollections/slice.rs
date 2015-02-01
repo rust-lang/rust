@@ -1228,7 +1228,7 @@ impl Iterator for ElementSwaps {
                 self.sdir.swap(i, j);
 
                 // Swap the direction of each larger SizeDirection
-                for x in self.sdir.iter_mut() {
+                for x in &mut self.sdir {
                     if x.size > sd.size {
                         x.dir = match x.dir { Pos => Neg, Neg => Pos };
                     }
@@ -2356,7 +2356,7 @@ mod tests {
     #[test]
     fn test_mut_iterator() {
         let mut xs = [1, 2, 3, 4, 5];
-        for x in xs.iter_mut() {
+        for x in &mut xs {
             *x += 1;
         }
         assert!(xs == [2, 3, 4, 5, 6])
@@ -2656,7 +2656,7 @@ mod tests {
                 let left: &[_] = left;
                 assert!(left[..left.len()] == [1, 2][]);
             }
-            for p in left.iter_mut() {
+            for p in left {
                 *p += 1;
             }
 
@@ -2664,7 +2664,7 @@ mod tests {
                 let right: &[_] = right;
                 assert!(right[..right.len()] == [3, 4, 5][]);
             }
-            for p in right.iter_mut() {
+            for p in right {
                 *p += 2;
             }
         }
@@ -2693,7 +2693,7 @@ mod tests {
         }
         assert_eq!(cnt, 5);
 
-        for f in v.iter_mut() {
+        for f in &mut v {
             assert!(*f == Foo);
             cnt += 1;
         }
@@ -2796,7 +2796,7 @@ mod tests {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
         assert_eq!(v.chunks_mut(2).len(), 4);
         for (i, chunk) in v.chunks_mut(3).enumerate() {
-            for x in chunk.iter_mut() {
+            for x in chunk {
                 *x = i as u8;
             }
         }
@@ -2808,7 +2808,7 @@ mod tests {
     fn test_mut_chunks_rev() {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
         for (i, chunk) in v.chunks_mut(3).rev().enumerate() {
-            for x in chunk.iter_mut() {
+            for x in chunk {
                 *x = i as u8;
             }
         }
@@ -2872,7 +2872,7 @@ mod bench {
 
         b.iter(|| {
             let mut i = 0;
-            for x in v.iter_mut() {
+            for x in &mut v {
                 *x = i;
                 i += 1;
             }
@@ -3006,7 +3006,7 @@ mod bench {
             unsafe {
                 v.set_len(1024);
             }
-            for x in v.iter_mut() {
+            for x in &mut v {
                 *x = 0;
             }
             v

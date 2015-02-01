@@ -2205,7 +2205,7 @@ impl<A, B, I, U, F> Iterator for FlatMap<A, B, I, U, F> where
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
-            for inner in self.frontiter.iter_mut() {
+            if let Some(ref mut inner) = self.frontiter {
                 for x in inner.by_ref() {
                     return Some(x)
                 }
@@ -2238,7 +2238,7 @@ impl<A, B, I, U, F> DoubleEndedIterator for FlatMap<A, B, I, U, F> where
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
-            for inner in self.backiter.iter_mut() {
+            if let Some(ref mut inner) = self.backiter {
                 match inner.next_back() {
                     None => (),
                     y => return y

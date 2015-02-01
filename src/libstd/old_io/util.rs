@@ -144,7 +144,7 @@ impl<W> MultiWriter<W> where W: Writer {
 impl<W> Writer for MultiWriter<W> where W: Writer {
     #[inline]
     fn write_all(&mut self, buf: &[u8]) -> old_io::IoResult<()> {
-        for writer in self.writers.iter_mut() {
+        for writer in &mut self.writers {
             try!(writer.write_all(buf));
         }
         Ok(())
@@ -152,7 +152,7 @@ impl<W> Writer for MultiWriter<W> where W: Writer {
 
     #[inline]
     fn flush(&mut self) -> old_io::IoResult<()> {
-        for writer in self.writers.iter_mut() {
+        for writer in &mut self.writers {
             try!(writer.flush());
         }
         Ok(())

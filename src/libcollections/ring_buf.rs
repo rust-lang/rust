@@ -1869,7 +1869,7 @@ mod tests {
 
         b.iter(|| {
             let mut sum = 0;
-            for i in ring.iter_mut() {
+            for i in &mut ring {
                 sum += *i;
             }
             test::black_box(sum);
