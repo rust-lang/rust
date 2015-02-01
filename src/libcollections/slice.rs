@@ -2699,7 +2699,7 @@ mod tests {
         }
         assert_eq!(cnt, 8);
 
-        for f in v.into_iter() {
+        for f in v {
             assert!(f == Foo);
             cnt += 1;
         }

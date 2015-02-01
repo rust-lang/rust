@@ -537,7 +537,7 @@ pub fn instantiate_poly_trait_ref<'tcx>(
         instantiate_trait_ref(this, &shifted_rscope, &ast_trait_ref.trait_ref,
                               self_ty, Some(&mut projections));
 
-    for projection in projections.into_iter() {
+    for projection in projections {
         poly_projections.push(ty::Binder(projection));
     }
 

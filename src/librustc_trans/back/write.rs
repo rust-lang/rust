@@ -941,7 +941,7 @@ fn run_work_multithreaded(sess: &Session,
     }
 
     let mut panicked = false;
-    for rx in futures.into_iter() {
+    for rx in futures {
         match rx.recv() {
             Ok(()) => {},
             Err(_) => {

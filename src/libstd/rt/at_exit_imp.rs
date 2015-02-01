@@ -58,7 +58,7 @@ pub fn cleanup() {
         // If we never called init, not need to cleanup!
         if queue as uint != 0 {
             let queue: Box<Queue> = mem::transmute(queue);
-            for to_run in queue.into_iter() {
+            for to_run in *queue {
                 to_run.invoke(());
             }
         }

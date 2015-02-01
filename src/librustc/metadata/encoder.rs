@@ -1589,7 +1589,7 @@ fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: 
     T: Hash<SipHasher>,
 {
     let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
-    for elt in index.into_iter() {
+    for elt in index {
         let mut s = SipHasher::new();
         elt.val.hash(&mut s);
         let h = s.finish() as uint;

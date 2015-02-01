@@ -21,7 +21,7 @@ fn main() {
     call(|| {
         // Move `y`, but do not move `counter`, even though it is read
         // by value (note that it is also mutated).
-        for item in y.into_iter() {
+        for item in y {
             let v = counter;
             counter += v;
         }

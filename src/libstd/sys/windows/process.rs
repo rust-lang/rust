@@ -147,7 +147,7 @@ impl Process {
 
                 // Split the value and test each path to see if the
                 // program exists.
-                for path in os::split_paths(v.container_as_bytes()).into_iter() {
+                for path in os::split_paths(v.container_as_bytes()) {
                     let path = path.join(cfg.program().as_bytes())
                                    .with_extension(os::consts::EXE_EXTENSION);
                     if path.exists() {

@@ -177,7 +177,7 @@ impl Subcommand for Build {
             }
             Err(errors) => {
                 let n = errors.len();
-                for err in errors.into_iter() {
+                for err in errors {
                     term.err(&format!("error: {}", err)[]);
                 }
 

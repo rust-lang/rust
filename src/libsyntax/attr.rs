@@ -490,7 +490,7 @@ fn find_stability_generic<'a,
 pub fn find_stability(diagnostic: &SpanHandler, attrs: &[Attribute],
                       item_sp: Span) -> Option<Stability> {
     let (s, used) = find_stability_generic(diagnostic, attrs.iter(), item_sp);
-    for used in used.into_iter() { mark_used(used) }
+    for used in used { mark_used(used) }
     return s;
 }
 

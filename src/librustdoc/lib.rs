@@ -431,7 +431,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
         pm.add_plugin(plugin);
     }
     info!("loading plugins...");
-    for pname in plugins.into_iter() {
+    for pname in plugins {
         pm.load_plugin(pname);
     }
 

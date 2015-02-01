@@ -1503,7 +1503,7 @@ fn _arm_exec_compiled_test(config: &Config,
 
     // run test via adb_run_wrapper
     runargs.push("shell".to_string());
-    for (key, val) in env.into_iter() {
+    for (key, val) in env {
         runargs.push(format!("{}={}", key, val));
     }
     runargs.push(format!("{}/adb_run_wrapper.sh", config.adb_test_dir));

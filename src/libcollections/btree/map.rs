@@ -197,7 +197,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn clear(&mut self) {
         let b = self.b;
         // avoid recursive destructors by manually traversing the tree
-        for _ in mem::replace(self, BTreeMap::with_b(b)).into_iter() {};
+        for _ in mem::replace(self, BTreeMap::with_b(b)) {};
     }
 
     // Searching in a B-Tree is pretty straightforward.

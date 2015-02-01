@@ -204,7 +204,7 @@ impl<'a> PluginLoader<'a> {
             }
         }
 
-        for mut def in macros.into_iter() {
+        for mut def in macros {
             let name = token::get_ident(def.ident);
             def.use_locally = match macro_selection.as_ref() {
                 None => true,

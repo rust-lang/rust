@@ -308,7 +308,7 @@ fn main() {
         Thread::scoped(move|| generate_frequencies(input.as_slice(), occ.len()))
     }).collect();
 
-    for (i, freq) in nb_freqs.into_iter() {
+    for (i, freq) in nb_freqs {
         print_frequencies(&freq.join().ok().unwrap(), i);
     }
     for (&occ, freq) in OCCURRENCES.iter().zip(occ_freqs.into_iter()) {

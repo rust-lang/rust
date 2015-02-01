@@ -1109,7 +1109,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
 
     debug!("ty_generics_for_trait: assoc_predicates={}", assoc_predicates.repr(ccx.tcx));
 
-    for assoc_predicate in assoc_predicates.into_iter() {
+    for assoc_predicate in assoc_predicates {
         generics.predicates.push(subst::TypeSpace, assoc_predicate);
     }
 
@@ -1310,7 +1310,7 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     {
         for type_param_def in result.types.get_slice(space) {
             let param_ty = ty::mk_param_from_def(tcx, type_param_def);
-            for predicate in ty::predicates(tcx, param_ty, &type_param_def.bounds).into_iter() {
+            for predicate in ty::predicates(tcx, param_ty, &type_param_def.bounds) {
                 result.predicates.push(space, predicate);
             }
         }

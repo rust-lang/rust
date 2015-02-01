@@ -268,10 +268,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 let selcx = &mut traits::SelectionContext::new(fcx.infcx(), fcx);
                 traits::normalize(selcx, cause.clone(), &predicates)
             };
-            for predicate in predicates.value.into_iter() {
+            for predicate in predicates.value {
                 fcx.register_predicate(traits::Obligation::new(cause.clone(), predicate));
             }
-            for obligation in predicates.obligations.into_iter() {
+            for obligation in predicates.obligations {
                 fcx.register_predicate(obligation);
             }
         });

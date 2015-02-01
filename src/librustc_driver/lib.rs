@@ -373,7 +373,7 @@ Available lint options:
     println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |&: lints: Vec<&Lint>| {
-        for lint in lints.into_iter() {
+        for lint in lints {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
                      padded(&name[]), lint.default_level.as_str(), lint.desc);
@@ -400,7 +400,7 @@ Available lint options:
     println!("    {}  {}", padded("----"), "---------");
 
     let print_lint_groups = |&: lints: Vec<(&'static str, Vec<lint::LintId>)>| {
-        for (name, to) in lints.into_iter() {
+        for (name, to) in lints {
             let name = name.chars().map(|x| x.to_lowercase())
                            .collect::<String>().replace("_", "-");
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
