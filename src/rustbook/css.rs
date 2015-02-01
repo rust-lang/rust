@@ -29,7 +29,6 @@ body {
     font-size: 16px;
     background: none repeat scroll 0% 0% #FFF;
     box-sizing: border-box;
-    -webkit-overflow-scrolling: touch;
 }
 
 #page-wrapper {
@@ -41,7 +40,6 @@ body {
     bottom: 0px;
     box-sizing: border-box;
     background: none repeat scroll 0% 0% #FFF;
-    -webkit-overflow-scrolling: touch;
 }
 
 #page {
@@ -74,15 +72,26 @@ body {
 }
 
 @media only screen and (max-width: 1060px) {
+    #nav {
+        position: fixed;
+        top: 0;
+        left: 0;
+        z-index: 100;
+        width: 100%;
+        background-color: white;
+        padding-left: 15px;
+    }
     #toc {
         width: 100%;
         margin-right: 0;
         top: 40px;
+        overflow-y: visible;
     }
     #page-wrapper {
         top: 40px;
         left: 15px;
         padding-right: 15px;
+        overflow-y: visible;
     }
     .mobile-hidden {
         display: none;
