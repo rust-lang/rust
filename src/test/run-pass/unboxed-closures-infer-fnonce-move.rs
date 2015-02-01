@@ -10,8 +10,8 @@
 
 #![feature(unsafe_destructor)]
 
-// Test that we are able to infer a suitable kind for this closure
-// that is just called (`FnOnce`).
+// Test that we are able to infer a suitable kind for this `move`
+// closure that is just called (`FnOnce`).
 
 use std::mem;
 
@@ -29,7 +29,7 @@ fn main() {
 
     {
         let drop_me = DropMe(&mut counter);
-        let tick = || mem::drop(drop_me);
+        let tick = move || mem::drop(drop_me);
         tick();
     }
 

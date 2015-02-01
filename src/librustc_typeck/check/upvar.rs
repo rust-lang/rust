@@ -263,16 +263,29 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         match guarantor.cat {
             mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(_, _, mc::Implicit(..)) => {
-                if let mc::NoteUpvarRef(upvar_id) = cmt.note {
-                    debug!("adjust_upvar_borrow_kind_for_consume: \
-                            setting upvar_id={:?} to by value",
-                           upvar_id);
+                match cmt.note {
+                    mc::NoteUpvarRef(upvar_id) => {
+                        debug!("adjust_upvar_borrow_kind_for_consume: \
+                                setting upvar_id={:?} to by value",
+                               upvar_id);
 
-                    // to move out of an upvar, this must be a FnOnce closure
-                    self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnOnceClosureKind);
+                        // to move out of an upvar, this must be a FnOnce closure
+                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnOnceClosureKind);
 
-                    let mut upvar_capture_map = self.fcx.inh.upvar_capture_map.borrow_mut();
-                    upvar_capture_map.insert(upvar_id, ty::UpvarCapture::ByValue);
+                        let mut upvar_capture_map = self.fcx.inh.upvar_capture_map.borrow_mut();
+                        upvar_capture_map.insert(upvar_id, ty::UpvarCapture::ByValue);
+                    }
+                    mc::NoteClosureEnv(upvar_id) => {
+                        // we get just a closureenv ref if this is a
+                        // `move` closure, or if the upvar has already
+                        // been inferred to by-value. In any case, we
+                        // must still adjust the kind of the closure
+                        // to be a FnOnce closure to permit moves out
+                        // of the environment.
+                        self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnOnceClosureKind);
+                    }
+                    mc::NoteNone => {
+                    }
                 }
             }
             _ => { }
@@ -297,15 +310,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
             mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(base, _, mc::Implicit(..)) => {
-                if let mc::NoteUpvarRef(upvar_id) = cmt.note {
-                    // if this is an implicit deref of an
-                    // upvar, then we need to modify the
-                    // borrow_kind of the upvar to make sure it
-                    // is inferred to mutable if necessary
-                    let mut upvar_capture_map = self.fcx.inh.upvar_capture_map.borrow_mut();
-                    let ub = &mut upvar_capture_map[upvar_id];
-                    self.adjust_upvar_borrow_kind(upvar_id, ub, ty::MutBorrow);
-                } else {
+                if !self.try_adjust_upvar_deref(&cmt.note, ty::MutBorrow) {
                     // assignment to deref of an `&mut`
                     // borrowed pointer implies that the
                     // pointer itself must be unique, but not
@@ -339,15 +344,7 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
 
             mc::cat_deref(base, _, mc::BorrowedPtr(..)) |
             mc::cat_deref(base, _, mc::Implicit(..)) => {
-                if let mc::NoteUpvarRef(upvar_id) = cmt.note {
-                    // if this is an implicit deref of an
-                    // upvar, then we need to modify the
-                    // borrow_kind of the upvar to make sure it
-                    // is inferred to unique if necessary
-                    let mut ub = self.fcx.inh.upvar_capture_map.borrow_mut();
-                    let ub = &mut ub[upvar_id];
-                    self.adjust_upvar_borrow_kind(upvar_id, ub, ty::UniqueImmBorrow);
-                } else {
+                if !self.try_adjust_upvar_deref(&cmt.note, ty::UniqueImmBorrow) {
                     // for a borrowed pointer to be unique, its
                     // base must be unique
                     self.adjust_upvar_borrow_kind_for_unique(base);
@@ -363,6 +360,48 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
         }
     }
 
+    fn try_adjust_upvar_deref(&self,
+                              note: &mc::Note,
+                              borrow_kind: ty::BorrowKind)
+                              -> bool
+    {
+        assert!(match borrow_kind {
+            ty::MutBorrow => true,
+            ty::UniqueImmBorrow => true,
+
+            // imm borrows never require adjusting any kinds, so we don't wind up here
+            ty::ImmBorrow => false,
+        });
+
+        match *note {
+            mc::NoteUpvarRef(upvar_id) => {
+                // if this is an implicit deref of an
+                // upvar, then we need to modify the
+                // borrow_kind of the upvar to make sure it
+                // is inferred to mutable if necessary
+                let mut upvar_capture_map = self.fcx.inh.upvar_capture_map.borrow_mut();
+                let ub = &mut upvar_capture_map[upvar_id];
+                self.adjust_upvar_borrow_kind(upvar_id, ub, borrow_kind);
+
+                // also need to be in an FnMut closure since this is not an ImmBorrow
+                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnMutClosureKind);
+
+                true
+            }
+            mc::NoteClosureEnv(upvar_id) => {
+                // this kind of deref occurs in a `move` closure, or
+                // for a by-value upvar; in either case, to mutate an
+                // upvar, we need to be an FnMut closure
+                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnMutClosureKind);
+
+                true
+            }
+            mc::NoteNone => {
+                false
+            }
+        }
+    }
+
     /// We infer the borrow_kind with which to borrow upvars in a stack closure. The borrow_kind
     /// basically follows a lattice of `imm < unique-imm < mut`, moving from left to right as needed
     /// (but never right to left). Here the argument `mutbl` is the borrow_kind that is required by
@@ -373,13 +412,6 @@ impl<'a,'tcx> AdjustBorrowKind<'a,'tcx> {
                                 kind: ty::BorrowKind) {
         debug!("adjust_upvar_borrow_kind(upvar_id={:?}, upvar_capture={:?}, kind={:?})",
                upvar_id, upvar_capture, kind);
-
-        match kind {
-            ty::ImmBorrow => { }
-            ty::UniqueImmBorrow | ty::MutBorrow => {
-                self.adjust_closure_kind(upvar_id.closure_expr_id, ty::FnMutClosureKind);
-            }
-        }
 
         match *upvar_capture {
             ty::UpvarCapture::ByValue => {

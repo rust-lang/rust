@@ -8,30 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(unsafe_destructor)]
-
 // Test that we are able to infer a suitable kind for this closure
-// that is just called (`FnOnce`).
-
-use std::mem;
-
-struct DropMe<'a>(&'a mut i32);
-
-#[unsafe_destructor]
-impl<'a> Drop for DropMe<'a> {
-    fn drop(&mut self) {
-        *self.0 += 1;
-    }
-}
+// that is just called (`FnMut`).
 
 fn main() {
     let mut counter = 0;
-
-    {
-        let drop_me = DropMe(&mut counter);
-        let tick = || mem::drop(drop_me);
-        tick();
-    }
-
-    assert_eq!(counter, 1);
+    let tick = move || counter += 1;
+    tick(); //~ ERROR cannot borrow immutable local variable `tick` as mutable
 }
