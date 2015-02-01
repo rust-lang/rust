@@ -5,7 +5,7 @@ Let's talk about loops.
 Remember Rust's `for` loop? Here's an example:
 
 ```{rust}
-for x in range(0, 10) {
+for x in 0..10 {
     println!("{}", x);
 }
 ```
@@ -17,7 +17,7 @@ call the `.next()` method on repeatedly, and it gives us a sequence of things.
 Like this:
 
 ```{rust}
-let mut range = range(0, 10);
+let mut range = 0..10;
 
 loop {
     match range.next() {
@@ -52,7 +52,7 @@ a vector, you may be tempted to write this:
 ```{rust}
 let nums = vec![1, 2, 3];
 
-for i in range(0, nums.len()) {
+for i in 0..nums.len() {
     println!("{}", nums[i]);
 }
 ```
@@ -118,7 +118,7 @@ The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
 ```{rust,ignore}
-let one_to_one_hundred = range(1, 101).collect();
+let one_to_one_hundred = (1..101i32).collect();
 ```
 
 As you can see, we call `collect()` on our iterator. `collect()` takes
@@ -128,7 +128,7 @@ type of things you want to collect, and so you need to let it know.
 Here's the version that does compile:
 
 ```{rust}
-let one_to_one_hundred = range(1, 101).collect::<Vec<i32>>();
+let one_to_one_hundred = (1..101i32).collect::<Vec<i32>>();
 ```
 
 If you remember, the `::<>` syntax allows us to give a type hint,
@@ -138,7 +138,7 @@ and so we tell it that we want a vector of integers.
 is one:
 
 ```{rust}
-let greater_than_forty_two = range(0, 100)
+let greater_than_forty_two = (0..100i32)
                              .find(|x| *x > 42);
 
 match greater_than_forty_two {
@@ -155,7 +155,7 @@ element, `find` returns an `Option` rather than the element itself.
 Another important consumer is `fold`. Here's what it looks like:
 
 ```{rust}
-let sum = range(1, 4)
+let sum = (1..4)
               .fold(0, |sum, x| sum + x);
 ```
 
@@ -179,7 +179,7 @@ in this iterator:
 We called `fold()` with these arguments:
 
 ```{rust}
-# range(1, 4)
+# (1..4)
 .fold(0, |sum, x| sum + x);
 ```
 
@@ -210,20 +210,20 @@ This code, for example, does not actually generate the numbers
 `1-100`, and just creates a value that represents the sequence:
 
 ```{rust}
-let nums = range(1, 100);
+let nums = 1..100;
 ```
 
 Since we didn't do anything with the range, it didn't generate the sequence.
 Let's add the consumer:
 
 ```{rust}
-let nums = range(1, 100).collect::<Vec<i32>>();
+let nums = (1..100).collect::<Vec<i32>>();
 ```
 
-Now, `collect()` will require that `range()` give it some numbers, and so
+Now, `collect()` will require that the range gives it some numbers, and so
 it will do the work of generating the sequence.
 
-`range` is one of two basic iterators that you'll see. The other is `iter()`,
+A range is one of two basic iterators that you'll see. The other is `iter()`,
 which you've used before. `iter()` can turn a vector into a simple iterator
 that gives you each element in turn:
 
@@ -256,7 +256,7 @@ we need to talk about with regards to iterators. Let's get to it!
 a new iterator. The simplest one is called `map`:
 
 ```{rust,ignore}
-range(1, 100).map(|x| x + 1);
+(1..100i32).map(|x| x + 1);
 ```
 
 `map` is called upon another iterator, and produces a new iterator where each
@@ -267,7 +267,7 @@ compile the example, you'll get a warning:
 ```{notrust,ignore}
 warning: unused result which must be used: iterator adaptors are lazy and
          do nothing unless consumed, #[warn(unused_must_use)] on by default
- range(1, 100).map(|x| x + 1);
+(1..100).map(|x| x + 1);
  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
 ```
 
@@ -275,7 +275,7 @@ Laziness strikes again! That closure will never execute. This example
 doesn't print any numbers:
 
 ```{rust,ignore}
-range(1, 100).map(|x| println!("{}", x));
+(1..100).map(|x| println!("{}", x));
 ```
 
 If you are trying to execute a closure on an iterator for its side effects,
@@ -307,7 +307,7 @@ returns `true` or `false`. The new iterator `filter()` produces
 only the elements that that closure returns `true` for:
 
 ```{rust}
-for i in range(1, 100).filter(|&x| x % 2 == 0) {
+for i in (1..100i32).filter(|&x| x % 2 == 0) {
     println!("{}", i);
 }
 ```
@@ -322,7 +322,7 @@ You can chain all three things together: start with an iterator, adapt it
 a few times, and then consume the result. Check it out:
 
 ```{rust}
-range(1, 1000)
+(1..1000i32)
     .filter(|&x| x % 2 == 0)
     .filter(|&x| x % 3 == 0)
     .take(5)
