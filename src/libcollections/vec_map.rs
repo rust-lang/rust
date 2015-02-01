@@ -924,7 +924,7 @@ mod test_map {
         assert!(m.insert(6, 10).is_none());
         assert!(m.insert(10, 11).is_none());
 
-        for (k, v) in m.iter_mut() {
+        for (k, v) in &mut m {
             *v += k as int;
         }
 

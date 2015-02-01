@@ -733,7 +733,7 @@ fn ast_type_binding_to_projection_predicate<'tcx>(
     // If converting for an object type, then remove the dummy-ty from `Self` now.
     // Yuckety yuck.
     if self_ty.is_none() {
-        for candidate in candidates.iter_mut() {
+        for candidate in &mut candidates {
             let mut dummy_substs = candidate.0.substs.clone();
             assert!(dummy_substs.self_ty() == Some(dummy_self_ty));
             dummy_substs.types.pop(SelfSpace);

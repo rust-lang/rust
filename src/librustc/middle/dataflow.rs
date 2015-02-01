@@ -501,7 +501,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
 
     fn reset(&mut self, bits: &mut [uint]) {
         let e = if self.dfcx.oper.initial_value() {uint::MAX} else {0};
-        for b in bits.iter_mut() {
+        for b in bits {
             *b = e;
         }
     }

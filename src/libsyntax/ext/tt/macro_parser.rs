@@ -444,7 +444,7 @@ pub fn parse(sess: &ParseSess,
         if token_name_eq(&tok, &token::Eof) {
             if eof_eis.len() == 1us {
                 let mut v = Vec::new();
-                for dv in (&mut eof_eis[0]).matches.iter_mut() {
+                for dv in &mut (&mut eof_eis[0]).matches {
                     v.push(dv.pop().unwrap());
                 }
                 return Success(nameize(sess, ms, &v[]));

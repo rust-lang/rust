@@ -335,7 +335,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                   same_frs: &FreeRegionsFromSameFn) {
             let scope_id = same_frs.scope_id;
             let (sub_fr, sup_fr) = (same_frs.sub_fr, same_frs.sup_fr);
-            for sr in same_regions.iter_mut() {
+            for sr in &mut *same_regions {
                 if sr.contains(&sup_fr.bound_region)
                    && scope_id == sr.scope_id {
                     sr.push(sub_fr.bound_region);

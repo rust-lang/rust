@@ -151,7 +151,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     }
 
     fn all_mem(cls: &mut [RegClass]) {
-        for elt in cls.iter_mut() {
+        for elt in cls {
             *elt = Memory;
         }
     }

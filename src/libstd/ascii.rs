@@ -134,7 +134,7 @@ impl AsciiExt<Vec<u8>> for [u8] {
 impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_uppercase(mut self) -> Vec<u8> {
-        for byte in self.iter_mut() {
+        for byte in &mut self {
             *byte = byte.to_ascii_uppercase();
         }
         self
@@ -142,7 +142,7 @@ impl OwnedAsciiExt for Vec<u8> {
 
     #[inline]
     fn into_ascii_lowercase(mut self) -> Vec<u8> {
-        for byte in self.iter_mut() {
+        for byte in &mut self {
             *byte = byte.to_ascii_lowercase();
         }
         self

@@ -109,7 +109,7 @@ fn advance(bodies: &mut [Planet;N_BODIES], dt: f64, steps: int) {
                 Some(bi) => bi,
                 None => break
             };
-            for bj in b_slice.iter_mut() {
+            for bj in &mut *b_slice {
                 let dx = bi.x - bj.x;
                 let dy = bi.y - bj.y;
                 let dz = bi.z - bj.z;

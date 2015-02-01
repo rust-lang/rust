@@ -431,7 +431,7 @@ impl Bitv {
     /// ```
     #[inline]
     pub fn set_all(&mut self) {
-        for w in self.storage.iter_mut() { *w = !0u32; }
+        for w in &mut self.storage { *w = !0u32; }
         self.fix_last_block();
     }
 
@@ -451,7 +451,7 @@ impl Bitv {
     /// ```
     #[inline]
     pub fn negate(&mut self) {
-        for w in self.storage.iter_mut() { *w = !*w; }
+        for w in &mut self.storage { *w = !*w; }
         self.fix_last_block();
     }
 
@@ -912,7 +912,7 @@ impl Bitv {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        for w in self.storage.iter_mut() { *w = 0u32; }
+        for w in &mut self.storage { *w = 0u32; }
     }
 }
 

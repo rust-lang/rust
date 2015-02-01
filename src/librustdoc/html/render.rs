@@ -1270,7 +1270,7 @@ impl Context {
             v.push(NameDoc(myname, Some(shorter_line(item.doc_value()))));
         }
 
-        for (_, items) in map.iter_mut() {
+        for (_, items) in &mut map {
             items.sort();
         }
         return map;

@@ -1060,7 +1060,7 @@ impl Bencher {
 
             let loop_run = Duration::span(|| {
 
-                for p in samples.iter_mut() {
+                for p in &mut *samples {
                     self.bench_n(n, |x| f(x));
                     *p = self.ns_per_iter() as f64;
                 };
@@ -1068,7 +1068,7 @@ impl Bencher {
                 stats::winsorize(samples, 5.0);
                 summ = Some(stats::Summary::new(samples));
 
-                for p in samples.iter_mut() {
+                for p in &mut *samples {
                     self.bench_n(5 * n, |x| f(x));
                     *p = self.ns_per_iter() as f64;
                 };
