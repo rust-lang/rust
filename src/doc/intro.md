@@ -424,7 +424,7 @@ Let's see an example. This Rust code will not compile:
 use std::thread::Thread;
 
 fn main() {
-    let mut numbers = vec![1is, 2, 3];
+    let mut numbers = vec![1, 2, 3];
 
     for i in 0..3 {
         Thread::spawn(move || {
@@ -478,7 +478,7 @@ use std::thread::Thread;
 use std::sync::{Arc,Mutex};
 
 fn main() {
-    let numbers = Arc::new(Mutex::new(vec![1is, 2, 3]));
+    let numbers = Arc::new(Mutex::new(vec![1, 2, 3]));
 
     for i in 0us..3 {
         let number = numbers.clone();
@@ -539,7 +539,7 @@ safety check that makes this an error about moved values:
 use std::thread::Thread;
 
 fn main() {
-    let vec = vec![1is, 2, 3];
+    let vec = vec![1, 2, 3];
 
     for i in 0us..3 {
         Thread::spawn(move || {

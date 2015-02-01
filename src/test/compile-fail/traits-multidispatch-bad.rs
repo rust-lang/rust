@@ -14,9 +14,9 @@ trait Convert<Target> {
     fn convert(&self) -> Target;
 }
 
-impl Convert<usize> for isize {
-    fn convert(&self) -> usize {
-        *self as usize
+impl Convert<u32> for i32 {
+    fn convert(&self) -> u32 {
+        *self as u32
     }
 }
 
@@ -26,7 +26,7 @@ where T : Convert<U>
 }
 
 fn a() {
-    test(22is, 44is); //~ ERROR mismatched types
+    test(22i32, 44i32); //~ ERROR mismatched types
 }
 
 fn main() {}

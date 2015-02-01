@@ -23,10 +23,10 @@ impl Drop for Enum {
 }
 
 fn main() {
-    let foo = X(1is);
+    let foo = X(1);
     drop(foo);
     match foo { //~ ERROR use of moved value
-        X(1is) => (),
+        X(1) => (),
         _ => unreachable!()
     }
 

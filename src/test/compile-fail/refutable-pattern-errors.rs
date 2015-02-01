@@ -13,6 +13,6 @@ fn func((1, (Some(1), 2...3)): (isize, (Option<isize>, isize))) { }
 //~^ ERROR refutable pattern in function argument: `(_, _)` not covered
 
 fn main() {
-    let (1is, (Some(1is), 2is...3is)) = (1is, (None, 2is));
+    let (1, (Some(1), 2...3)) = (1, (None, 2));
     //~^ ERROR refutable pattern in local binding: `(_, _)` not covered
 }

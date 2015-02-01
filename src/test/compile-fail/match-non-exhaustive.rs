@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    match 0is { 1is => () } //~ ERROR non-exhaustive patterns
-    match 0is { 0is if false => () } //~ ERROR non-exhaustive patterns
+    match 0 { 1 => () } //~ ERROR non-exhaustive patterns
+    match 0 { 0 if false => () } //~ ERROR non-exhaustive patterns
 }

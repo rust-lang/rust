@@ -11,7 +11,7 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let x = Some(box 1is);
+    let x = Some(box 1);
     match x {
       Some(ref _y) => {
         let _a = x; //~ ERROR cannot move

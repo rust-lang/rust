@@ -10,19 +10,19 @@
 
 #[allow(unreachable_code)]
 pub fn expr_while_23() {
-    let mut x = 23is;
-    let mut y = 23is;
-    let mut z = 23is;
+    let mut x = 23;
+    let mut y = 23;
+    let mut z = 23;
 
-    while x > 0is {
-        x -= 1is;
+    while x > 0 {
+        x -= 1;
 
-        while y > 0is {
-            y -= 1is;
+        while y > 0 {
+            y -= 1;
 
-            while z > 0is { z -= 1is; }
+            while z > 0 { z -= 1; }
 
-            if x > 10is {
+            if x > 10 {
                 return;
                 "unreachable";
             }

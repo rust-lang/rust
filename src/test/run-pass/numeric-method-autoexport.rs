@@ -29,7 +29,7 @@ pub fn main() {
 
 // uints
     // num
-    assert_eq!(15u.add(6us), 21us);
+    assert_eq!(15us.add(6us), 21us);
     assert_eq!(15u8.add(6u8), 21u8);
     assert_eq!(15u16.add(6u16), 21u16);
     assert_eq!(15u32.add(6u32), 21u32);
@@ -37,6 +37,6 @@ pub fn main() {
 
 // floats
     // num
-    assert_eq!(10f32.to_int().unwrap(), 10);
-    assert_eq!(10f64.to_int().unwrap(), 10);
+    assert_eq!(10f32.to_i32().unwrap(), 10);
+    assert_eq!(10f64.to_i32().unwrap(), 10);
 }

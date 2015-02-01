@@ -14,8 +14,8 @@ pub trait Foo {
     type A;
 }
 
-impl Foo for isize {
-    type A = usize;
+impl Foo for i32 {
+    type A = u32;
 }
 
 pub fn f1<T: Foo>(a: T, x: T::A) {}
@@ -24,33 +24,33 @@ pub fn f2<T: Foo>(a: T) -> T::A {
 }
 
 pub fn f1_int_int() {
-    f1(2is, 4is);
+    f1(2i32, 4i32);
     //~^ ERROR mismatched types
-    //~| expected usize
-    //~| found isize
+    //~| expected u32
+    //~| found i32
 }
 
 pub fn f1_int_uint() {
-    f1(2is, 4us);
+    f1(2i32, 4u32);
 }
 
 pub fn f1_uint_uint() {
-    f1(2us, 4us);
+    f1(2u32, 4u32);
     //~^ ERROR the trait `Foo` is not implemented
     //~| ERROR the trait `Foo` is not implemented
 }
 
 pub fn f1_uint_int() {
-    f1(2us, 4is);
+    f1(2u32, 4i32);
     //~^ ERROR the trait `Foo` is not implemented
     //~| ERROR the trait `Foo` is not implemented
 }
 
 pub fn f2_int() {
-    let _: isize = f2(2is);
+    let _: i32 = f2(2i32);
     //~^ ERROR mismatched types
-    //~| expected `isize`
-    //~| found `usize`
+    //~| expected `i32`
+    //~| found `u32`
 }
 
 pub fn main() { }

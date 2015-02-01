@@ -10,6 +10,6 @@
 
 fn main() {
     for
-        &1is //~ ERROR refutable pattern in `for` loop binding
-        in [1is].iter() {}
+        &1 //~ ERROR refutable pattern in `for` loop binding
+        in [1].iter() {}
 }
