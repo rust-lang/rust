@@ -45,40 +45,40 @@ pub struct Iter<'a, T: 'a> {
 /// An owning iterator over a BTreeSet's items.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
-    iter: Map<(T, ()), T, ::btree_map::IntoIter<T, ()>, fn((T, ())) -> T>
+    iter: Map<::btree_map::IntoIter<T, ()>, fn((T, ())) -> T>
 }
 
 /// An iterator over a sub-range of BTreeSet's items.
 pub struct Range<'a, T: 'a> {
-    iter: Map<(&'a T, &'a ()), &'a T, ::btree_map::Range<'a, T, ()>, fn((&'a T, &'a ())) -> &'a T>
+    iter: Map<::btree_map::Range<'a, T, ()>, fn((&'a T, &'a ())) -> &'a T>
 }
 
 /// A lazy iterator producing elements in the set difference (in-order).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Difference<'a, T:'a> {
-    a: Peekable<&'a T, Iter<'a, T>>,
-    b: Peekable<&'a T, Iter<'a, T>>,
+    a: Peekable<Iter<'a, T>>,
+    b: Peekable<Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set symmetric difference (in-order).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct SymmetricDifference<'a, T:'a> {
-    a: Peekable<&'a T, Iter<'a, T>>,
-    b: Peekable<&'a T, Iter<'a, T>>,
+    a: Peekable<Iter<'a, T>>,
+    b: Peekable<Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set intersection (in-order).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Intersection<'a, T:'a> {
-    a: Peekable<&'a T, Iter<'a, T>>,
-    b: Peekable<&'a T, Iter<'a, T>>,
+    a: Peekable<Iter<'a, T>>,
+    b: Peekable<Iter<'a, T>>,
 }
 
 /// A lazy iterator producing elements in the set union (in-order).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Union<'a, T:'a> {
-    a: Peekable<&'a T, Iter<'a, T>>,
-    b: Peekable<&'a T, Iter<'a, T>>,
+    a: Peekable<Iter<'a, T>>,
+    b: Peekable<Iter<'a, T>>,
 }
 
 impl<T: Ord> BTreeSet<T> {
