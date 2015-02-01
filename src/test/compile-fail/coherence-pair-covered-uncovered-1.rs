@@ -8,13 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that the same coverage rules apply even if the local type appears in the
+// list of type parameters, not the self type.
+
 // aux-build:coherence-lib.rs
 
 extern crate "coherence-lib" as lib;
-use lib::Remote1;
+use lib::{Remote1, Pair};
 
-pub struct BigInt;
+pub struct Local<T>(T);
 
-impl Remote1<BigInt> for Vec<isize> { } //~ ERROR E0117
+impl<T,U> Remote1<Pair<T,Local<U>>> for i32 { }
+//~^ ERROR type parameter `T` is not constrained
 
 fn main() { }
