@@ -61,7 +61,7 @@ fn test00() {
     }
 
     // Join spawned tasks...
-    for r in results.into_iter() { r.join(); }
+    for r in results { r.join(); }
 
     println!("Completed: Final number is: ");
     println!("{}", sum);

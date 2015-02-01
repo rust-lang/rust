@@ -2333,7 +2333,7 @@ mod tests {
     fn test_move_items() {
         let vec = vec![1, 2, 3];
         let mut vec2 : Vec<i32> = vec![];
-        for i in vec.into_iter() {
+        for i in vec {
             vec2.push(i);
         }
         assert!(vec2 == vec![1, 2, 3]);
@@ -2353,7 +2353,7 @@ mod tests {
     fn test_move_items_zero_sized() {
         let vec = vec![(), (), ()];
         let mut vec2 : Vec<()> = vec![];
-        for i in vec.into_iter() {
+        for i in vec {
             vec2.push(i);
         }
         assert!(vec2 == vec![(), (), ()]);

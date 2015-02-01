@@ -1420,11 +1420,11 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
     let mut expander = MacroExpander::new(&mut cx);
 
-    for def in imported_macros.into_iter() {
+    for def in imported_macros {
         expander.cx.insert_macro(def);
     }
 
-    for (name, extension) in user_exts.into_iter() {
+    for (name, extension) in user_exts {
         expander.cx.syntax_env.insert(name, extension);
     }
 

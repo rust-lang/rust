@@ -142,7 +142,7 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
               ty::item_path_str(tcx, object_trait_ref.def_id()));
 
     let violations = traits::object_safety_violations(tcx, object_trait_ref.clone());
-    for violation in violations.into_iter() {
+    for violation in violations {
         match violation {
             ObjectSafetyViolation::SizedSelf => {
                 tcx.sess.span_note(
@@ -269,7 +269,7 @@ fn check_object_type_binds_all_associated_types<'tcx>(tcx: &ty::ctxt<'tcx>,
         associated_types.remove(&pair);
     }
 
-    for (trait_def_id, name) in associated_types.into_iter() {
+    for (trait_def_id, name) in associated_types {
         span_err!(tcx.sess, span, E0191,
             "the value of the associated type `{}` (from the trait `{}`) must be specified",
                     name.user_string(tcx),

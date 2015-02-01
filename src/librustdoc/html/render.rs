@@ -1231,7 +1231,7 @@ impl Context {
                         _ => unreachable!()
                     };
                     this.sidebar = this.build_sidebar(&m);
-                    for item in m.items.into_iter() {
+                    for item in m.items {
                         f(this,item);
                     }
                     Ok(())

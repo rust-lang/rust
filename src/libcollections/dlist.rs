@@ -1061,7 +1061,7 @@ mod tests {
         let mut sum = v;
         sum.push_all(u.as_slice());
         assert_eq!(sum.len(), m.len());
-        for elt in sum.into_iter() {
+        for elt in sum {
             assert_eq!(m.pop_front(), Some(elt))
         }
         assert_eq!(n.len(), 0);

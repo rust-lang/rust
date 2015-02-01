@@ -424,7 +424,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 diagnostics::plugin::expand_build_diagnostic_array);
         }
 
-        for registrar in registrars.into_iter() {
+        for registrar in registrars {
             registry.args_hidden = Some(registrar.args);
             (registrar.fun)(&mut registry);
         }
@@ -434,11 +434,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     {
         let mut ls = sess.lint_store.borrow_mut();
-        for pass in lint_passes.into_iter() {
+        for pass in lint_passes {
             ls.register_pass(Some(sess), true, pass);
         }
 
-        for (name, to) in lint_groups.into_iter() {
+        for (name, to) in lint_groups {
             ls.register_group(Some(sess), true, name, to);
         }
     }

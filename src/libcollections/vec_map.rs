@@ -984,7 +984,7 @@ mod test_map {
         let mut m = VecMap::new();
         m.insert(1, box 2);
         let mut called = false;
-        for (k, v) in m.into_iter() {
+        for (k, v) in m {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);

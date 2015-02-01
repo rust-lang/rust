@@ -171,7 +171,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
 
     let mut checksum = 0;
     let mut maxflips = 0;
-    for fut in futures.into_iter() {
+    for fut in futures {
         let (cs, mf) = fut.join().ok().unwrap();
         checksum += cs;
         maxflips = cmp::max(maxflips, mf);

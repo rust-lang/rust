@@ -125,7 +125,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
         let mut selcx = SelectionContext::new(infcx, typer);
         let normalized = project::normalize_projection_type(&mut selcx, projection_ty, cause, 0);
 
-        for obligation in normalized.obligations.into_iter() {
+        for obligation in normalized.obligations {
             self.register_predicate_obligation(infcx, obligation);
         }
 
@@ -289,7 +289,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
 
             // Now go through all the successful ones,
             // registering any nested obligations for the future.
-            for new_obligation in new_obligations.into_iter() {
+            for new_obligation in new_obligations {
                 self.register_predicate_obligation(selcx.infcx(), new_obligation);
             }
         }

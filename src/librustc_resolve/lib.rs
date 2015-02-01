@@ -3607,10 +3607,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             TyQPath(ref qpath) => {
                 self.resolve_type(&*qpath.self_type);
                 self.resolve_trait_reference(ty.id, &*qpath.trait_ref, TraitQPath);
-                for ty in qpath.item_path.parameters.types().into_iter() {
+                for ty in qpath.item_path.parameters.types() {
                     self.resolve_type(&**ty);
                 }
-                for binding in qpath.item_path.parameters.bindings().into_iter() {
+                for binding in qpath.item_path.parameters.bindings() {
                     self.resolve_type(&*binding.ty);
                 }
             }

@@ -300,7 +300,7 @@ macro_rules! options {
     pub fn $buildfn(matches: &getopts::Matches) -> $struct_name
     {
         let mut op = $defaultfn();
-        for option in matches.opt_strs($prefix).into_iter() {
+        for option in matches.opt_strs($prefix) {
             let mut iter = option.splitn(1, '=');
             let key = iter.next().unwrap();
             let value = iter.next();
@@ -831,7 +831,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let mut describe_lints = false;
 
     for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
-        for lint_name in matches.opt_strs(level.as_str()).into_iter() {
+        for lint_name in matches.opt_strs(level.as_str()) {
             if lint_name == "help" {
                 describe_lints = true;
             } else {

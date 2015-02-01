@@ -2371,7 +2371,7 @@ impl ::Decoder for Decoder {
     {
         let obj = try!(expect!(self.pop(), Object));
         let len = obj.len();
-        for (key, value) in obj.into_iter() {
+        for (key, value) in obj {
             self.stack.push(value);
             self.stack.push(Json::String(key));
         }

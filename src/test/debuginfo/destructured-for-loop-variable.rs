@@ -215,7 +215,7 @@ fn main() {
       zzz(); // #break
     }
 
-    for simple_tuple_ident in vec![(34903493u32, 232323i64)].into_iter() {
+    for simple_tuple_ident in vec![(34903493u32, 232323i64)] {
       zzz(); // #break
     }
 }

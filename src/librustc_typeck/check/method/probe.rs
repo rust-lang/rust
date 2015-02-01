@@ -448,7 +448,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     {
         let mut duplicates = HashSet::new();
         let opt_applicable_traits = self.fcx.ccx.trait_map.get(&expr_id);
-        for applicable_traits in opt_applicable_traits.into_iter() {
+        if let Some(applicable_traits) = opt_applicable_traits {
             for &trait_did in applicable_traits {
                 if duplicates.insert(trait_did) {
                     try!(self.assemble_extension_candidates_for_trait(trait_did));

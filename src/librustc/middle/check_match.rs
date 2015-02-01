@@ -77,7 +77,7 @@ impl<'a> fmt::Debug for Matrix<'a> {
         let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
         let br = repeat('+').take(total_width).collect::<String>();
         try!(write!(f, "{}\n", br));
-        for row in pretty_printed_matrix.into_iter() {
+        for row in pretty_printed_matrix {
             try!(write!(f, "+"));
             for (column, pat_str) in row.into_iter().enumerate() {
                 try!(write!(f, " "));

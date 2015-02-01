@@ -966,7 +966,7 @@ impl<'a> State<'a> {
                 try!(self.print_generics(generics));
                 let bounds: Vec<_> = bounds.iter().map(|b| b.clone()).collect();
                 let mut real_bounds = Vec::with_capacity(bounds.len());
-                for b in bounds.into_iter() {
+                for b in bounds {
                     if let TraitTyParamBound(ref ptr, ast::TraitBoundModifier::Maybe) = b {
                         try!(space(&mut self.s));
                         try!(self.word_space("for ?"));

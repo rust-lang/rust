@@ -22,7 +22,7 @@ fn main() {
         // Here: `x` must be captured with a mutable reference in
         // order for us to append on it, and `y` must be captured by
         // value.
-        for item in y.into_iter() {
+        for item in y {
             x.push(item);
         }
     });
