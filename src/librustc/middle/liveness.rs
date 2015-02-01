@@ -505,7 +505,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
       ast::ExprBlock(..) | ast::ExprAssign(..) | ast::ExprAssignOp(..) |
       ast::ExprMac(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
       ast::ExprParen(..) | ast::ExprInlineAsm(..) | ast::ExprBox(..) |
-      ast::ExprRange(..) => {
+      ast::ExprRange(..) | ast::ExprType(..) => {
           visit::walk_expr(ir, expr);
       }
     }
@@ -1188,6 +1188,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           ast::ExprBox(None, ref e) |
           ast::ExprAddrOf(_, ref e) |
           ast::ExprCast(ref e, _) |
+          ast::ExprType(ref e, _) |
           ast::ExprUnary(_, ref e) |
           ast::ExprParen(ref e) => {
             self.propagate_through_expr(&**e, succ)
@@ -1468,7 +1469,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ast::ExprBlock(..) | ast::ExprMac(..) | ast::ExprAddrOf(..) |
       ast::ExprStruct(..) | ast::ExprRepeat(..) | ast::ExprParen(..) |
       ast::ExprClosure(..) | ast::ExprPath(..) | ast::ExprBox(..) |
-      ast::ExprRange(..) | ast::ExprQPath(..) => {
+      ast::ExprRange(..) | ast::ExprQPath(..) | ast::ExprType(..) => {
         visit::walk_expr(this, expr);
       }
       ast::ExprIfLet(..) => {

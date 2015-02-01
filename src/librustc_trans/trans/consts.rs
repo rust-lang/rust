@@ -663,7 +663,8 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
                   _ => cx.sess().span_bug(e.span, "expected a struct or variant def")
               }
           }
-          ast::ExprParen(ref e) => const_expr(cx, &**e).0,
+          ast::ExprParen(ref e) |
+          ast::ExprType(ref e, _) => const_expr(cx, &**e).0,
           ast::ExprBlock(ref block) => {
             match block.expr {
                 Some(ref expr) => const_expr(cx, &**expr).0,

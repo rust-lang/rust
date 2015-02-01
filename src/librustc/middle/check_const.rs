@@ -167,6 +167,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) {
         ast::ExprTupField(..) |
         ast::ExprIndex(..) |
         ast::ExprTup(..) |
+        ast::ExprType(..) |
         ast::ExprRepeat(..) |
         ast::ExprStruct(..) => {}
 
