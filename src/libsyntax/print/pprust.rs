@@ -468,7 +468,8 @@ fn needs_parentheses(expr: &ast::Expr) -> bool {
     match expr.node {
         ast::ExprAssign(..) | ast::ExprBinary(..) |
         ast::ExprClosure(..) |
-        ast::ExprAssignOp(..) | ast::ExprCast(..) => true,
+        ast::ExprAssignOp(..) | ast::ExprCast(..) |
+        ast::ExprType(..) => true,
         _ => false,
     }
 }
@@ -1719,6 +1720,11 @@ impl<'a> State<'a> {
                 try!(self.print_expr(&**expr));
                 try!(space(&mut self.s));
                 try!(self.word_space("as"));
+                try!(self.print_type(&**ty));
+            }
+            ast::ExprType(ref expr, ref ty) => {
+                try!(self.print_expr(&**expr));
+                try!(self.word_space(":"));
                 try!(self.print_type(&**ty));
             }
             ast::ExprIf(ref test, ref blk, ref elseopt) => {

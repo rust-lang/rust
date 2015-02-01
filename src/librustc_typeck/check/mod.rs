@@ -3864,6 +3864,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             });
         }
       }
+      ast::ExprType(ref e, ref t) => {
+        let typ = fcx.to_ty(&**t);
+        check_expr_coercable_to_type(fcx, &**e, typ);
+        fcx.write_ty(id, typ);
+      }
       ast::ExprVec(ref args) => {
         let uty = expected.to_option(fcx).and_then(|uty| {
             match uty.sty {

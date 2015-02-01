@@ -19,8 +19,7 @@ use codemap::Span;
 use ext::base;
 use ext::base::*;
 use feature_gate;
-use parse::token::InternedString;
-use parse::token;
+use parse::{self, token};
 use ptr::P;
 
 enum State {
@@ -55,8 +54,17 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         return DummyResult::expr(sp);
     }
 
-    let mut p = cx.new_parser_from_tts(tts);
-    let mut asm = InternedString::new("");
+    // Split the tts before the first colon, to avoid `asm!("x": y)`  being
+    // parsed as `asm!(z)` with `z = "x": y` which is type ascription.
+    let first_colon = tts.iter().position(|tt| {
+        match *tt {
+            ast::TtToken(_, token::Colon) |
+            ast::TtToken(_, token::ModSep) => true,
+            _ => false
+        }
+    }).unwrap_or(tts.len());
+    let mut p = cx.new_parser_from_tts(&tts[first_colon..]);
+    let mut asm = token::InternedString::new("");
     let mut asm_str_style = None;
     let mut outputs = Vec::new();
     let mut inputs = Vec::new();
@@ -76,12 +84,22 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     cx.span_err(sp, "malformed inline assembly");
                     return DummyResult::expr(sp);
                 }
-                let (s, style) = match expr_to_string(cx, p.parse_expr(),
+                // Nested parser, stop before the first colon (see above).
+                let mut p2 = cx.new_parser_from_tts(&tts[..first_colon]);
+                let (s, style) = match expr_to_string(cx, p2.parse_expr(),
                                                    "inline assembly must be a string literal") {
                     Some((s, st)) => (s, st),
                     // let compilation continue
                     None => return DummyResult::expr(sp),
                 };
+
+                // This is most likely malformed.
+                if p2.token != token::Eof {
+                    let mut extra_tts = p2.parse_all_token_trees();
+                    extra_tts.extend(tts[first_colon..].iter().cloned());
+                    p = parse::tts_to_parser(cx.parse_sess, extra_tts, cx.cfg());
+                }
+
                 asm = s;
                 asm_str_style = Some(style);
             }
