@@ -102,6 +102,52 @@ impl<T> Box<T> {
     }
 }
 
+impl<T : ?Sized> Box<T> {
+    /// Constructs a box from the raw pointer.
+    ///
+    /// After this function call, pointer is owned by resulting box.
+    /// In particular, it means that `Box` destructor calls destructor
+    /// of `T` and releases memory. Since the way `Box` allocates and
+    /// releases memory is unspecified, so the only valid pointer to
+    /// pass to this function is the one taken from another `Box` with
+    /// `box::into_raw` function.
+    ///
+    /// Function is unsafe, because improper use of this function may
+    /// lead to memory problems like double-free, for example if the
+    /// function is called twice on the same raw pointer.
+    #[unstable(feature = "alloc",
+               reason = "may be renamed or moved out of Box scope")]
+    pub unsafe fn from_raw(raw: *mut T) -> Self {
+        mem::transmute(raw)
+    }
+}
+
+/// Consumes the `Box`, returning the wrapped raw pointer.
+///
+/// After call to this function, caller is responsible for the memory
+/// previously managed by `Box`, in particular caller should properly
+/// destroy `T` and release memory. The proper way to do it is to
+/// convert pointer back to `Box` with `Box::from_raw` function, because
+/// `Box` does not specify, how memory is allocated.
+///
+/// Function is unsafe, because result of this function is no longer
+/// automatically managed that may lead to memory or other resource
+/// leak.
+///
+/// # Example
+/// ```
+/// use std::boxed;
+///
+/// let seventeen = Box::new(17u32);
+/// let raw = unsafe { boxed::into_raw(seventeen) };
+/// let boxed_again = unsafe { Box::from_raw(raw) };
+/// ```
+#[unstable(feature = "alloc",
+           reason = "may be renamed")]
+pub unsafe fn into_raw<T : ?Sized>(b: Box<T>) -> *mut T {
+    mem::transmute(b)
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Default> Default for Box<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
