@@ -22,7 +22,7 @@ impl Foo {
 
 fn main() {
     while Foo {
-        x: 3    //~ ERROR expected one of `!`, `.`, `::`, `;`, `{`, `}`, or an operator, found `:`
+        x: 3    //~ ERROR expected type, found `3`
     }.hi() {
         println!("yo");
     }

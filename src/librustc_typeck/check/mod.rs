@@ -3525,6 +3525,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             deferred_cast_checks.push(cast_check);
         }
       }
+      hir::ExprType(ref e, ref t) => {
+        let typ = fcx.to_ty(&**t);
+        check_expr_coercable_to_type(fcx, &**e, typ);
+        fcx.write_ty(id, typ);
+      }
       hir::ExprVec(ref args) => {
         let uty = expected.to_option(fcx).and_then(|uty| {
             match uty.sty {
