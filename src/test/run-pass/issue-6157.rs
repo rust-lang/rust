@@ -21,7 +21,7 @@ fn squarei<'a>(x: int, op: &'a mut OpInt) -> int { op.call(x, x) }
 fn muli(x:int, y:int) -> int { x * y }
 
 pub fn main() {
-    let mut f = |&mut: x, y| muli(x, y);
+    let mut f = |x, y| muli(x, y);
     {
         let g = &mut f;
         let h = g as &mut OpInt;

@@ -15,6 +15,6 @@ fn f<F:FnOnce()>(p: F) {
 }
 
 pub fn main() {
-    let p = |:| ();
+    let p = || ();
     f(p);
 }

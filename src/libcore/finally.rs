@@ -23,7 +23,7 @@
 //!
 //! use std::finally::Finally;
 //!
-//! (|&mut:| {
+//! (|| {
 //!     // ...
 //! }).finally(|| {
 //!     // this code is always run

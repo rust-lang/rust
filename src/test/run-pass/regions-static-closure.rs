@@ -25,6 +25,6 @@ fn call_static_closure(mut cl: closure_box<'static>) {
 }
 
 pub fn main() {
-    let cl_box = box_it(box |&mut:| println!("Hello, world!"));
+    let cl_box = box_it(box || println!("Hello, world!"));
     call_static_closure(cl_box);
 }

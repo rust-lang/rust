@@ -17,7 +17,7 @@
 // cause a compilation error. Issue #18772.
 
 fn adder(y: int) -> Box<Fn(int) -> int + 'static> {
-    box move |&: x| y + x
+    box move |x| y + x
 }
 
 fn main() {}

@@ -13,7 +13,7 @@
 #![deny(unreachable_code)]
 
 fn main() {
-    let x = |:| panic!();
+    let x = || panic!();
     x();
     std::io::println("Foo bar"); //~ ERROR: unreachable statement
 }

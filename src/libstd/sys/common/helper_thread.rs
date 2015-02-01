@@ -95,14 +95,14 @@ impl<M: Send> Helper<M> {
                 let receive = RaceBox(receive);
 
                 let t = f();
-                Thread::spawn(move |:| {
+                Thread::spawn(move || {
                     helper(receive.0, rx, t);
                     let _g = self.lock.lock().unwrap();
                     *self.shutdown.get() = true;
                     self.cond.notify_one()
                 });
 
-                rt::at_exit(move|:| { self.shutdown() });
+                rt::at_exit(move|| { self.shutdown() });
                 *self.initialized.get() = true;
             }
         }

@@ -1475,7 +1475,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let mut import_resolutions = module_.import_resolutions.borrow_mut();
         let import_resolution = &mut (*import_resolutions)[target];
         {
-            let mut check_and_write_import = |&mut: namespace, result: &_, used_public: &mut bool| {
+            let mut check_and_write_import = |namespace, result: &_, used_public: &mut bool| {
                 let namespace_name = match namespace {
                     TypeNS => "type",
                     ValueNS => "value",
@@ -1714,7 +1714,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Merge the child item into the import resolution.
         {
-            let mut merge_child_item = |&mut : namespace| {
+            let mut merge_child_item = |namespace| {
                 if name_bindings.defined_in_namespace_with(namespace, IMPORTABLE | PUBLIC) {
                     let namespace_name = match namespace {
                         TypeNS => "type",

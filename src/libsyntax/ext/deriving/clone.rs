@@ -63,7 +63,7 @@ fn cs_clone(
         cx.ident_of("Clone"),
         cx.ident_of("clone"),
     ];
-    let subcall = |&: field: &FieldInfo| {
+    let subcall = |field: &FieldInfo| {
         let args = vec![cx.expr_addr_of(field.span, field.self_.clone())];
 
         cx.expr_call_global(field.span, fn_path.clone(), args)

@@ -20,9 +20,9 @@ fn set(x: &mut isize) {
 }
 
 fn a(x: &isize) {
-    let c1 = |&mut:| set(&mut *x);
+    let c1 = || set(&mut *x);
     //~^ ERROR cannot borrow
-    let c2 = |&mut:| set(&mut *x);
+    let c2 = || set(&mut *x);
     //~^ ERROR cannot borrow
     //~| ERROR closure requires unique access
 }

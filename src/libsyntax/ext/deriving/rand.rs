@@ -70,7 +70,7 @@ fn rand_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         cx.ident_of("Rand"),
         cx.ident_of("rand")
     );
-    let rand_call = |&: cx: &mut ExtCtxt, span| {
+    let rand_call = |cx: &mut ExtCtxt, span| {
         cx.expr_call_global(span,
                             rand_ident.clone(),
                             vec!(rng.clone()))

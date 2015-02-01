@@ -703,7 +703,7 @@ impl Process {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => {
-                    Thread::spawn(move |:| {
+                    Thread::spawn(move || {
                         let mut stream = stream;
                         tx.send(stream.read_to_end()).unwrap();
                     });

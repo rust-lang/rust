@@ -17,5 +17,5 @@ fn action(cb: Thunk<uint, uint>) -> uint {
 }
 
 pub fn main() {
-    println!("num: {}", action(Thunk::with_arg(move |:u| u)));
+    println!("num: {}", action(Thunk::with_arg(move |u| u)));
 }

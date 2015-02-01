@@ -14,7 +14,7 @@
 
 pub fn main() {
     let bar = box 3;
-    let h = |:| -> int *bar;
+    let h = || -> int *bar;
     assert_eq!(h(), 3);
 }
 

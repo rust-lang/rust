@@ -14,7 +14,7 @@
 type Connection = Box<FnMut(Vec<u8>) + 'static>;
 
 fn f() -> Option<Connection> {
-    let mock_connection: Connection = box |&mut: _| {};
+    let mock_connection: Connection = box |_| {};
     Some(mock_connection)
 }
 
