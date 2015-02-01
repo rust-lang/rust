@@ -15,7 +15,7 @@ use super::{Obligation, ObligationCause};
 use super::project;
 use super::util;
 
-use middle::subst::{Subst};
+use middle::subst::{Subst, TypeSpace};
 use middle::ty::{self, Ty};
 use middle::infer::InferCtxt;
 use std::collections::HashSet;
@@ -89,16 +89,28 @@ pub fn orphan_check<'tcx>(tcx: &ty::ctxt<'tcx>,
         return Ok(());
     }
 
-    // Otherwise, check that (1) all type parameters are covered.
-    let covered_params = type_parameters_covered_by_ty(tcx, trait_ref.self_ty());
-    let all_params = type_parameters_reachable_from_ty(trait_ref.self_ty());
-    for &param in all_params.difference(&covered_params) {
-        return Err(OrphanCheckErr::UncoveredTy(param));
-    }
+    // First, create an ordered iterator over all the type parameters to the trait, with the self
+    // type appearing first.
+    let input_tys = Some(trait_ref.self_ty());
+    let input_tys = input_tys.iter().chain(trait_ref.substs.types.get_slice(TypeSpace).iter());
+    let mut input_tys = input_tys;
 
-    // And (2) some local type appears.
-    if !trait_ref.self_ty().walk().any(|t| ty_is_local_constructor(tcx, t)) {
-        return Err(OrphanCheckErr::NoLocalInputType);
+    // Find the first input type that either references a type parameter OR
+    // some local type.
+    match input_tys.find(|&&input_ty| references_local_or_type_parameter(tcx, input_ty)) {
+        Some(&input_ty) => {
+            // Within this first type, check that all type parameters are covered by a local
+            // type constructor. Note that if there is no local type constructor, then any
+            // type parameter at all will be an error.
+            let covered_params = type_parameters_covered_by_ty(tcx, input_ty);
+            let all_params = type_parameters_reachable_from_ty(input_ty);
+            for &param in all_params.difference(&covered_params) {
+                return Err(OrphanCheckErr::UncoveredTy(param));
+            }
+        }
+        None => {
+            return Err(OrphanCheckErr::NoLocalInputType);
+        }
     }
 
     return Ok(());
@@ -162,13 +174,17 @@ fn type_parameters_covered_by_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
 
 /// All type parameters reachable from `ty`
 fn type_parameters_reachable_from_ty<'tcx>(ty: Ty<'tcx>) -> HashSet<Ty<'tcx>> {
-    ty.walk()
-        .filter(|&t| {
-            match t.sty {
-                // FIXME(#20590) straighten story about projection types
-                ty::ty_projection(..) | ty::ty_param(..) => true,
-                _ => false,
-            }
-        })
-        .collect()
+    ty.walk().filter(|&t| is_type_parameter(t)).collect()
+}
+
+fn references_local_or_type_parameter<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    ty.walk().any(|ty| is_type_parameter(ty) || ty_is_local_constructor(tcx, ty))
+}
+
+fn is_type_parameter<'tcx>(ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        // FIXME(#20590) straighten story about projection types
+        ty::ty_projection(..) | ty::ty_param(..) => true,
+        _ => false,
+    }
 }
