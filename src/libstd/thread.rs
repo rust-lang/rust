@@ -123,7 +123,8 @@
 //! * The `Thread::park()` function blocks the current thread unless or until
 //!   the token is available for its thread handle, at which point It atomically
 //!   consumes the token. It may also return *spuriously*, without consuming the
-//!   token.
+//!   token. `Thread::park_timeout()` does the same, but allows specifying a
+//!   maximum time to block the thread for.
 //!
 //! * The `unpark()` method on a `Thread` atomically makes the token available
 //!   if it wasn't already.
@@ -160,6 +161,7 @@ use string::String;
 use rt::{self, unwind};
 use old_io::{Writer, stdio};
 use thunk::Thunk;
+use time::Duration;
 
 use sys::thread as imp;
 use sys_common::{stack, thread_info};
@@ -414,6 +416,27 @@ impl Thread {
         *guard = false;
     }
 
+    /// Block unless or until the current thread's token is made available or
+    /// the specified duration has been reached (may wake spuriously).
+    ///
+    /// The semantics of this function are equivalent to `park()` except that the
+    /// thread will be blocked for roughly no longer than dur. This method
+    /// should not be used for precise timing due to anomalies such as
+    /// preemption or platform differences that may not cause the maximum
+    /// amount of time waited to be precisely dur
+    ///
+    /// See the module doc for more detail.
+    #[unstable(feature = "std_misc", reason = "recently introduced")]
+    pub fn park_timeout(dur: Duration) {
+        let thread = Thread::current();
+        let mut guard = thread.inner.lock.lock().unwrap();
+        if !*guard {
+            let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
+            guard = g;
+        }
+        *guard = false;
+    }
+
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// See the module doc for more detail.
@@ -519,6 +542,7 @@ mod test {
     use std::old_io::{ChanReader, ChanWriter};
     use super::{Thread, Builder};
     use thunk::Thunk;
+    use time::Duration;
 
     // !!! These tests are dangerous. If something is buggy, they will hang, !!!
     // !!! instead of exiting cleanly. This might wedge the buildbots.       !!!
@@ -731,6 +755,37 @@ mod test {
 
         let output = reader.read_to_string().unwrap();
         assert_eq!(output, "Hello, world!".to_string());
+    }
+
+    #[test]
+    fn test_park_timeout_unpark_before() {
+        for _ in 0..10 {
+            Thread::current().unpark();
+            Thread::park_timeout(Duration::seconds(10_000_000));
+        }
+    }
+
+    #[test]
+    fn test_park_timeout_unpark_not_called() {
+        for _ in 0..10 {
+            Thread::park_timeout(Duration::milliseconds(10));
+        }
+    }
+
+    #[test]
+    fn test_park_timeout_unpark_called_other_thread() {
+        use std::old_io;
+
+        for _ in 0..10 {
+            let th = Thread::current();
+
+            let _guard = Thread::scoped(move || {
+                old_io::timer::sleep(Duration::milliseconds(50));
+                th.unpark();
+            });
+
+            Thread::park_timeout(Duration::seconds(10_000_000));
+        }
     }
 
     // NOTE: the corresponding test for stderr is in run-pass/task-stderr, due
