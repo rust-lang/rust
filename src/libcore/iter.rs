@@ -119,14 +119,18 @@ impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {
                           built from an iterator over elements of type `{A}`"]
 pub trait FromIterator<A> {
     /// Build a container with elements from an external iterator.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
 }
 
 /// Conversion into an `Iterator`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Iter: Iterator;
 
     /// Consumes `Self` and returns an iterator over it
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::Iter;
 }
 
@@ -1866,6 +1870,7 @@ impl<T, I> Peekable<T, I> where I: Iterator<Item=T> {
     /// Return a reference to the next element of the iterator with out advancing it,
     /// or None if the iterator is exhausted.
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn peek(&mut self) -> Option<&T> {
         if self.peeked.is_none() {
             self.peeked = self.iter.next();

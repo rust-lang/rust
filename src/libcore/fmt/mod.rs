@@ -298,6 +298,7 @@ pub trait Show {
 #[lang = "debug_trait"]
 pub trait Debug {
     /// Formats the value using the given formatter.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
@@ -324,6 +325,7 @@ pub trait String {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Display {
     /// Formats the value using the given formatter.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
