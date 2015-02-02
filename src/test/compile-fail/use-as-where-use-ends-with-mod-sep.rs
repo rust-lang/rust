@@ -8,4 +8,5 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::any:: as foo; //~ ERROR expected identifier or `{` or `*`, found `as`
+use std::any:: as foo; //~ ERROR expected identifier, found keyword `as`
+//~^ ERROR: expected one of `::`, `;`, or `as`, found `foo`

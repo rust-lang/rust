@@ -116,8 +116,7 @@ pub fn chdir(p: &Path) -> IoResult<()> {
 }
 
 pub struct SplitPaths<'a> {
-    iter: iter::Map<&'a [u8], Path,
-                    slice::Split<'a, u8, fn(&u8) -> bool>,
+    iter: iter::Map<slice::Split<'a, u8, fn(&u8) -> bool>,
                     fn(&'a [u8]) -> Path>,
 }
 
@@ -450,7 +449,16 @@ pub fn temp_dir() -> Path {
 }
 
 pub fn home_dir() -> Option<Path> {
-    getenv("HOME".as_os_str()).or_else(|| unsafe {
+    return getenv("HOME".as_os_str()).or_else(|| unsafe {
+        fallback()
+    }).map(|os| {
+        Path::new(os.into_vec())
+    });
+
+    #[cfg(target_os = "android")]
+    unsafe fn fallback() -> Option<OsString> { None }
+    #[cfg(not(target_os = "android"))]
+    unsafe fn fallback() -> Option<OsString> {
         let mut amt = match libc::sysconf(c::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,
             n => n as usize,
@@ -470,7 +478,5 @@ pub fn home_dir() -> Option<Path> {
             let bytes = ffi::c_str_to_bytes(&ptr).to_vec();
             return Some(OsStringExt::from_vec(bytes))
         }
-    }).map(|os| {
-        Path::new(os.into_vec())
-    })
+    }
 }

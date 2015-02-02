@@ -18,7 +18,11 @@ fn main() {
     assert!(home_dir() == Some(Path::new("/home/MountainView")));
 
     remove_var("HOME");
-    assert!(home_dir().is_some());
+    if cfg!(target_os = "android") {
+        assert!(home_dir().is_none());
+    } else {
+        assert!(home_dir().is_some());
+    }
 }
 
 #[cfg(windows)]

@@ -10,6 +10,8 @@
 
 // Tests the default for the unused_features lint
 
+#![deny(warnings)]
+
 #![feature(this_is_not_a_feature)] //~ ERROR: unused or unknown feature
 
 fn main() { }
