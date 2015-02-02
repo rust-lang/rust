@@ -56,6 +56,7 @@ use core::cmp::{Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
+use core::intrinsics::assume;
 use core::iter::{repeat, FromIterator, IntoIterator};
 use core::marker::{self, ContravariantLifetime, InvariantType};
 use core::mem;
@@ -1587,8 +1588,12 @@ impl<T> AsSlice<T> for Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &[T] {
         unsafe {
+            let p = *self.ptr;
+            if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
+                assume(p != 0 as *mut T);
+            }
             mem::transmute(RawSlice {
-                data: *self.ptr,
+                data: p,
                 len: self.len
             })
         }
