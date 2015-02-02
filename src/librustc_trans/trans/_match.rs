@@ -191,6 +191,8 @@ use self::FailureHandler::*;
 use back::abi;
 use llvm::{ValueRef, BasicBlockRef};
 use middle::check_match::StaticInliner;
+use middle::check_match::Usefulness::NotUseful;
+use middle::check_match::WitnessPreference::LeaveOutWitness;
 use middle::check_match;
 use middle::const_eval;
 use middle::def::{self, DefMap};
@@ -480,6 +482,34 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     })
 }
 
+fn range_or_lit_eq(ctor: &check_match::Constructor,
+                   pat_ctor: &check_match::Constructor,
+                   kind: BranchKind) -> Option<bool> {
+    match (ctor, pat_ctor) {
+        (&check_match::Single, _) => Some(true),
+        (&check_match::ConstantValue(id, ref val),
+         &check_match::ConstantValue(pat_id, ref pat_val)) =>
+            if kind == Switch {
+                const_eval::compare_const_vals(val, pat_val).map(|r| r == 0)
+            } else {
+                Some(id == pat_id)
+            },
+
+        (&check_match::ConstantRange(id1, _, id2, _),
+         &check_match::ConstantRange(pat_id1, _, pat_id2, _)) =>
+            // The branch kind can't be LLVM switch since we have range
+            // pattern here. So it can only equal to itself.
+            Some(id1 == pat_id1 && id2 == pat_id2),
+
+        (&check_match::ConstantValue(..), &check_match::ConstantRange(..)) |
+        (&check_match::ConstantRange(..), &check_match::ConstantValue(..)) =>
+            Some(false),
+
+
+        _ => unreachable!()
+    }
+}
+
 // <pcwalton> nmatsakis: what does enter_opt do?
 // <pcwalton> in trans/match
 // <pcwalton> trans/match.rs is like stumbling around in a dark cave
@@ -510,11 +540,11 @@ fn enter_default<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// the check_match specialization step.
 fn enter_opt<'a, 'p, 'blk, 'tcx>(
              bcx: Block<'blk, 'tcx>,
-             _: ast::NodeId,
              dm: &DefMap,
              m: &[Match<'a, 'p, 'blk, 'tcx>],
              opt: &Opt,
              col: uint,
+             kind: BranchKind,
              variant_size: uint,
              val: ValueRef)
              -> Vec<Match<'a, 'p, 'blk, 'tcx>> {
@@ -528,11 +558,11 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
 
     let ctor = match opt {
         &ConstantValue(ConstantExpr(expr)) => check_match::ConstantValue(
-            const_eval::eval_const_expr(bcx.tcx(), &*expr)
+            expr.id, const_eval::eval_const_expr(bcx.tcx(), &*expr)
         ),
         &ConstantRange(ConstantExpr(lo), ConstantExpr(hi)) => check_match::ConstantRange(
-            const_eval::eval_const_expr(bcx.tcx(), &*lo),
-            const_eval::eval_const_expr(bcx.tcx(), &*hi)
+            lo.id, const_eval::eval_const_expr(bcx.tcx(), &*lo),
+            hi.id, const_eval::eval_const_expr(bcx.tcx(), &*hi)
         ),
         &SliceLengthEqual(n) =>
             check_match::Slice(n),
@@ -547,8 +577,11 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
         tcx: bcx.tcx(),
         param_env: param_env,
     };
-    enter_match(bcx, dm, m, col, val, |pats|
-        check_match::specialize(&mcx, &pats[], &ctor, col, variant_size)
+    enter_match(
+        bcx, dm, m, col, val,
+        |pats| check_match::specialize(
+            &mcx, &pats[], &ctor, col, variant_size,
+            |ctor, pat_ctor| range_or_lit_eq(ctor, pat_ctor, kind))
     )
 }
 
@@ -556,43 +589,102 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
 fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    m: &[Match<'a, 'p, 'blk, 'tcx>], col: uint)
-                                    -> Vec<Opt<'p, 'tcx>> {
+                                    m: &[Match<'a, 'p, 'blk, 'tcx>],
+                                    col: uint,
+                                    left_ty: Ty<'tcx>,
+                                    val: ValueRef)
+                                    -> (Vec<Opt<'p, 'tcx>>, BranchKind, ValueRef) {
     let tcx = bcx.tcx();
 
-    let mut found: Vec<Opt> = vec![];
-    for br in m.iter() {
+    let match_to_opt = |&: br: &Match<'a, 'p, 'blk, 'tcx>| {
         let cur = br.pats[col];
-        let opt = match cur.node {
-            ast::PatLit(ref l) => ConstantValue(ConstantExpr(&**l)),
+        match cur.node {
+            ast::PatLit(ref l) => Some(ConstantValue(ConstantExpr(&**l))),
             ast::PatIdent(..) | ast::PatEnum(..) | ast::PatStruct(..) => {
                 // This is either an enum variant or a variable binding.
                 let opt_def = tcx.def_map.borrow().get(&cur.id).cloned();
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
                         let variant = ty::enum_variant_with_id(tcx, enum_id, var_id);
-                        Variant(variant.disr_val, adt::represent_node(bcx, cur.id), var_id)
+                        Some(Variant(
+                            variant.disr_val,
+                            adt::represent_node(bcx, cur.id), var_id))
                     }
-                    _ => continue
+                    _ => None
                 }
             }
             ast::PatRange(ref l1, ref l2) => {
-                ConstantRange(ConstantExpr(&**l1), ConstantExpr(&**l2))
+                Some(ConstantRange(ConstantExpr(&**l1), ConstantExpr(&**l2)))
             }
             ast::PatVec(ref before, None, ref after) => {
-                SliceLengthEqual(before.len() + after.len())
+                Some(SliceLengthEqual(before.len() + after.len()))
             }
             ast::PatVec(ref before, Some(_), ref after) => {
-                SliceLengthGreaterOrEqual(before.len(), after.len())
+                Some(SliceLengthGreaterOrEqual(before.len(), after.len()))
             }
-            _ => continue
-        };
-
-        if !found.iter().any(|x| x.eq(&opt, tcx)) {
-            found.push(opt);
+            _ => None
         }
-    }
-    found
+    };
+    let compute_branch_kind = |&: opts: &Vec<Opt<'p, 'tcx>>| {
+        let mut kind = NoBranch;
+        let mut test_val = val;
+        debug!("test_val={}", bcx.val_to_string(test_val));
+        if opts.len() > 0u {
+            match opts[0] {
+                ConstantValue(_) | ConstantRange(_, _) => {
+                    test_val = load_if_immediate(bcx, val, left_ty);
+                    kind = if ty::type_is_integral(left_ty) {
+                        Switch
+                    } else {
+                        Compare
+                    };
+                }
+                Variant(_, ref repr, _) => {
+                    let (the_kind, val_opt) = adt::trans_switch(bcx, &**repr, val);
+                    kind = the_kind;
+                    for &tval in val_opt.iter() { test_val = tval; }
+                }
+                SliceLengthEqual(_) | SliceLengthGreaterOrEqual(_, _) => {
+                    let (_, len) = tvec::get_base_and_len(bcx, val, left_ty);
+                    test_val = len;
+                    kind = Switch;
+                }
+            }
+        }
+        for o in opts.iter() {
+            match *o {
+                ConstantRange(_, _) => { kind = Compare; break },
+                SliceLengthGreaterOrEqual(_, _) => { kind = CompareSliceLength; break },
+                _ => ()
+            }
+        }
+        (kind, test_val)
+    };
+
+    let all_opts: Vec<Opt> = m.iter().filter_map(match_to_opt).collect();
+    let (kind, test_val) = compute_branch_kind(&all_opts);
+    let opts: Vec<Opt> = if (kind == Switch) | (kind == Single) {
+        // LLVM switch instruction can't have duplicated switch case,
+        // so dedup all opts based on their values.
+        all_opts
+            .into_iter()
+            .fold(vec![],
+                |mut opts, opt|
+                if !opts.iter().any(|x| x.eq(&opt, tcx)) {
+                    opts.push(opt); opts
+                } else {
+                    opts
+                })
+    } else {
+        // Otherwise we can not do the dedup, otherwise, subtle bugs
+        // such as #18060 may creep in.
+        // Note, strictly speaking, we can dedup consecutive duplicated
+        // opts. But because `enter_match` deals with one row of
+        // matches a time, an following `enter_match` will not be able
+        // to tell the start and end of one such group of opts.
+        all_opts
+    };
+    (opts, kind, test_val)
 }
 
 struct ExtractedBlock<'blk, 'tcx: 'blk> {
@@ -1023,10 +1115,11 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
 
     match adt_vals {
         Some(field_vals) => {
-            let pats = enter_match(bcx, dm, m, col, val, |pats|
-                check_match::specialize(&mcx, pats,
-                                        &check_match::Single, col,
-                                        field_vals.len())
+            let pats = enter_match(
+                bcx, dm, m, col, val,
+                |pats| check_match::specialize(
+                    &mcx, pats, &check_match::Single, col, field_vals.len(),
+                    |ctor, pat_ctor| range_or_lit_eq(ctor, pat_ctor, Single))
             );
             let mut vals = field_vals;
             vals.push_all(vals_left.as_slice());
@@ -1037,40 +1130,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     }
 
     // Decide what kind of branch we need
-    let opts = get_branches(bcx, m, col);
+    let (opts, kind, test_val) = get_branches(bcx, m, col, left_ty, val);
     debug!("options={:?}", opts);
-    let mut kind = NoBranch;
-    let mut test_val = val;
-    debug!("test_val={}", bcx.val_to_string(test_val));
-    if opts.len() > 0u {
-        match opts[0] {
-            ConstantValue(_) | ConstantRange(_, _) => {
-                test_val = load_if_immediate(bcx, val, left_ty);
-                kind = if ty::type_is_integral(left_ty) {
-                    Switch
-                } else {
-                    Compare
-                };
-            }
-            Variant(_, ref repr, _) => {
-                let (the_kind, val_opt) = adt::trans_switch(bcx, &**repr, val);
-                kind = the_kind;
-                for &tval in val_opt.iter() { test_val = tval; }
-            }
-            SliceLengthEqual(_) | SliceLengthGreaterOrEqual(_, _) => {
-                let (_, len) = tvec::get_base_and_len(bcx, val, left_ty);
-                test_val = len;
-                kind = Switch;
-            }
-        }
-    }
-    for o in opts.iter() {
-        match *o {
-            ConstantRange(_, _) => { kind = Compare; break },
-            SliceLengthGreaterOrEqual(_, _) => { kind = CompareSliceLength; break },
-            _ => ()
-        }
-    }
     let else_cx = match kind {
         NoBranch | Single => bcx,
         _ => bcx.fcx.new_temp_block("match_else")
@@ -1181,7 +1242,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
             ConstantValue(_) | ConstantRange(_, _) => ()
         }
-        let opt_ms = enter_opt(opt_cx, pat_id, dm, m, opt, col, size, val);
+        let opt_ms = enter_opt(opt_cx, dm, m, opt, col, kind, size, val);
         let mut opt_vals = unpacked;
         opt_vals.push_all(&vals_left[]);
         compile_submatch(opt_cx,
@@ -1398,14 +1459,27 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
 
     // `compile_submatch` works one column of arm patterns a time and
     // then peels that column off. So as we progress, it may become
-    // impossible to tell whether we have a genuine default arm, i.e.
-    // `_ => foo` or not. Sometimes it is important to know that in order
-    // to decide whether moving on to the next condition or falling back
-    // to the default arm.
-    let has_default = arms.last().map_or(false, |arm| {
-        arm.pats.len() == 1
-        && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
-    });
+    // impossible to tell whether we have a genuine default arm or not.
+    // Computing such property upfront, however, is straightforward -
+    // if the last arm of the match expression shadows a `PatWildSingle`,
+    // then it is a genuine default arm.
+    //
+    // Sometimes it is important to know that in order to decide whether
+    // moving on to the next arm or falling back to the default one.
+    let is_geniune_default = |&: pats: &Vec<P<ast::Pat>>| {
+        let mcx = check_match::MatchCheckCtxt {
+            tcx: tcx,
+            param_env: ty::empty_parameter_environment(tcx),
+        };
+        let ps = pats.iter().map(|p| &**p).collect();
+        let matrix = check_match::Matrix(vec![ps]);
+        let candidate = [check_match::DUMMY_WILD_PAT];
+        match check_match::is_useful(&mcx, &matrix, &candidate, LeaveOutWitness) {
+            NotUseful => true,
+            _ => false
+        }
+    };
+    let has_default = arm_pats.iter().last().map_or(false, is_geniune_default);
 
     compile_submatch(bcx, &matches[], &[discr_datum.val], &chk, has_default);
 
