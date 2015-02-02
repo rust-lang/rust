@@ -724,6 +724,7 @@ pub enum Expr_ {
     ExprUnary(UnOp, P<Expr>),
     ExprLit(P<Lit>),
     ExprCast(P<Expr>, P<Ty>),
+    ExprType(P<Expr>, P<Ty>),
     ExprIf(P<Expr>, P<Block>, Option<P<Expr>>),
     ExprIfLet(P<Pat>, P<Expr>, P<Block>, Option<P<Expr>>),
     // FIXME #6993: change to Option<Name> ... or not, if these are hygienic.

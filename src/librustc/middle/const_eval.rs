@@ -232,8 +232,8 @@ impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
                 }
             }
 
-            ast::ExprField(ref base, _) => self.classify(&**base),
-
+            ast::ExprType(ref base, _) |
+            ast::ExprField(ref base, _) |
             ast::ExprTupField(ref base, _) => self.classify(&**base),
 
             ast::ExprIndex(ref base, ref idx) =>
@@ -556,7 +556,8 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
           }
       }
       ast::ExprLit(ref lit) => Ok(lit_to_const(&**lit)),
-      ast::ExprParen(ref e)     => eval_const_expr_partial(tcx, &**e),
+      ast::ExprParen(ref e) |
+      ast::ExprType(ref e, _) => eval_const_expr_partial(tcx, &**e),
       ast::ExprBlock(ref block) => {
         match block.expr {
             Some(ref expr) => eval_const_expr_partial(tcx, &**expr),

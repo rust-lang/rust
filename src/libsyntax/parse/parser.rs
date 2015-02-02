@@ -26,7 +26,7 @@ use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprQPath};
-use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
+use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprType, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{FnClosureKind, FnMutClosureKind};
 use ast::{FnOnceClosureKind};
@@ -2873,23 +2873,29 @@ impl<'a> Parser<'a> {
                     let rhs_span = rhs.span;
                     let binary = self.mk_binary(codemap::respan(cur_op_span, cur_op), lhs, rhs);
                     let bin = self.mk_expr(lhs_span.lo, rhs_span.hi, binary);
-                    self.parse_more_binops(bin, min_prec)
-                } else {
-                    lhs
+                    return self.parse_more_binops(bin, min_prec);
                 }
             }
             None => {
-                if AS_PREC >= min_prec && self.eat_keyword(keywords::As) {
-                    let rhs = self.parse_ty();
-                    let _as = self.mk_expr(lhs.span.lo,
-                                           rhs.span.hi,
-                                           ExprCast(lhs, rhs));
-                    self.parse_more_binops(_as, min_prec)
-                } else {
-                    lhs
+                if AS_PREC >= min_prec {
+                    if self.eat_keyword(keywords::As) {
+                        let rhs = self.parse_ty();
+                        let _as = self.mk_expr(lhs.span.lo,
+                                               rhs.span.hi,
+                                               ExprCast(lhs, rhs));
+                        return self.parse_more_binops(_as, min_prec);
+                    } else if self.token == token::Colon {
+                        self.bump();
+                        let rhs = self.parse_ty();
+                        let ex = self.mk_expr(lhs.span.lo,
+                                              rhs.span.hi,
+                                              ExprType(lhs, rhs));
+                        return self.parse_more_binops(ex, min_prec);
+                    }
                 }
             }
         }
+        lhs
     }
 
     /// Produce an error if comparison operators are chained (RFC #558).
