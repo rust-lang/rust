@@ -436,7 +436,7 @@ pub fn str_lit(lit: &str) -> String {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a>(it: &mut iter::Peekable<(usize, char), str::CharIndices<'a>>) {
+    fn eat<'a>(it: &mut iter::Peekable<str::CharIndices<'a>>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
@@ -605,7 +605,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<(usize, u8), I>) {
+    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<I>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {

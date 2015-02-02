@@ -16,12 +16,7 @@ use std::iter::{Filter, Map};
 #[derive(Copy)]
 pub struct BasicBlock(pub BasicBlockRef);
 
-pub type Preds = Map<
-    Value,
-    BasicBlock,
-    Filter<Value, Users, fn(&Value) -> bool>,
-    fn(Value) -> BasicBlock,
->;
+pub type Preds = Map<Filter<Users, fn(&Value) -> bool>, fn(Value) -> BasicBlock>;
 
 /// Wrapper for LLVM BasicBlockRef
 impl BasicBlock {

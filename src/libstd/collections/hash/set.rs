@@ -796,13 +796,13 @@ pub struct Iter<'a, K: 'a> {
 /// HashSet move iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K> {
-    iter: Map<(K, ()), K, map::IntoIter<K, ()>, fn((K, ())) -> K>
+    iter: Map<map::IntoIter<K, ()>, fn((K, ())) -> K>
 }
 
 /// HashSet drain iterator
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Drain<'a, K: 'a> {
-    iter: Map<(K, ()), K, map::Drain<'a, K, ()>, fn((K, ())) -> K>,
+    iter: Map<map::Drain<'a, K, ()>, fn((K, ())) -> K>,
 }
 
 /// Intersection iterator
