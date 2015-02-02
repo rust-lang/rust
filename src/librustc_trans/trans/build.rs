@@ -629,6 +629,23 @@ pub fn LoadRangeAssert(cx: Block, pointer_val: ValueRef, lo: u64,
     }
 }
 
+pub fn LoadNonNull(cx: Block, ptr: ValueRef) -> ValueRef {
+    if cx.unreachable.get() {
+        let ccx = cx.fcx.ccx;
+        let ty = val_ty(ptr);
+        let eltty = if ty.kind() == llvm::Array {
+            ty.element_type()
+        } else {
+            ccx.int_type()
+        };
+        unsafe {
+            llvm::LLVMGetUndef(eltty.to_ref())
+        }
+    } else {
+        B(cx).load_nonnull(ptr)
+    }
+}
+
 pub fn Store(cx: Block, val: ValueRef, ptr: ValueRef) {
     if cx.unreachable.get() { return; }
     B(cx).store(val, ptr)
