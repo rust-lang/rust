@@ -120,7 +120,7 @@ mod test {
     fn dns_smoke_test() {
         let ipaddrs = get_host_addresses("localhost").unwrap();
         let mut found_local = false;
-        let local_addr = &Ipv4Addr(127, 0, 0, 1);
+        let local_addr = &IpAddr::new_v4(127, 0, 0, 1);
         for addr in ipaddrs.iter() {
             found_local = found_local || addr == local_addr;
         }

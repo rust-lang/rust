@@ -55,12 +55,12 @@ pub fn next_test_unix() -> Path {
 
 /// Get a unique IPv4 localhost:port pair starting at 9600
 pub fn next_test_ip4() -> SocketAddr {
-    SocketAddr { ip: Ipv4Addr(127, 0, 0, 1), port: next_test_port() }
+    SocketAddr { ip: IpAddr::new_v4(127, 0, 0, 1), port: next_test_port() }
 }
 
 /// Get a unique IPv6 localhost:port pair starting at 9600
 pub fn next_test_ip6() -> SocketAddr {
-    SocketAddr { ip: Ipv6Addr(0, 0, 0, 0, 0, 0, 0, 1), port: next_test_port() }
+    SocketAddr { ip: IpAddr::new_v6(0, 0, 0, 0, 0, 0, 0, 1), port: next_test_port() }
 }
 
 /*
