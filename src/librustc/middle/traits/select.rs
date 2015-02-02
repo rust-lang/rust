@@ -21,13 +21,13 @@ use super::{DerivedObligationCause};
 use super::{project};
 use super::project::Normalized;
 use super::{PredicateObligation, TraitObligation, ObligationCause};
-use super::{ObligationCauseCode, BuiltinDerivedObligation};
+use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
             VtableFnPointer, VtableObject, VtableDefaultTrait};
-use super::{VtableImplData, VtableObjectData, VtableBuiltinData};
+use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableDefaultTraitData};
 use super::object_safety;
 use super::{util};
 
@@ -1535,7 +1535,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::struct_fields(self.tcx(), def_id, substs).iter()
                                                                  .map(|f| f.mt.ty)
                                                                  .collect();
-                nominal(self, bound, def_id, types)
+                nominal(bound, types)
             }
 
             ty::ty_enum(def_id, substs) => {
@@ -1545,7 +1545,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     .flat_map(|variant| variant.args.iter())
                     .cloned()
                     .collect();
-                nominal(self, bound, def_id, types)
+                nominal(bound, types)
             }
 
             ty::ty_projection(_) |
@@ -1594,9 +1594,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
         };
 
-        fn nominal<'cx, 'tcx>(this: &mut SelectionContext<'cx, 'tcx>,
-                              bound: ty::BuiltinBound,
-                              def_id: ast::DefId,
+        fn nominal<'cx, 'tcx>(bound: ty::BuiltinBound,
                               types: Vec<Ty<'tcx>>)
                               -> Result<BuiltinBoundConditions<'tcx>,SelectionError<'tcx>>
         {
@@ -1612,6 +1610,89 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             Ok(If(types))
+        }
+    }
+
+    fn constituent_types(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+        match t.sty {
+            ty::ty_uint(_) |
+            ty::ty_int(_) |
+            ty::ty_bool |
+            ty::ty_float(_) |
+            ty::ty_bare_fn(..) |
+            ty::ty_str |
+            ty::ty_err |
+            ty::ty_char => {
+                Vec::new()
+            }
+
+            ty::ty_projection(..) |
+            ty::ty_param(..) |
+            ty::ty_infer(..) => {
+                self.tcx().sess.bug(
+                    &format!(
+                        "asked to assemble constituent types of unexpected type: {}",
+                        t.repr(self.tcx()))[]);
+            }
+
+            ty::ty_uniq(referent_ty) => {  // Box<T>
+                vec![referent_ty]
+            }
+
+
+            ty::ty_trait(ref data) => {
+                // Recursively check all supertraits to find out if any further
+                // bounds are required and thus we must fulfill.
+                let principal =
+                    data.principal_trait_ref_with_self_ty(self.tcx(),
+                                                          self.tcx().types.err);
+
+
+                util::supertraits(self.tcx(), principal).map(|tr| tr.self_ty()).collect()
+            }
+
+            ty::ty_open(element_ty) => {vec![element_ty]},
+
+            ty::ty_ptr(ty::mt { ty: element_ty, ..}) |
+            ty::ty_rptr(_, ty::mt { ty: element_ty, ..}) => {
+                vec![element_ty]
+            },
+
+            ty::ty_vec(element_ty, _) => {
+                vec![element_ty]
+            }
+
+            ty::ty_tup(ref tys) => {
+                // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
+                tys.clone()
+            }
+
+            ty::ty_closure(def_id, _, substs) => {
+                assert_eq!(def_id.krate, ast::LOCAL_CRATE);
+
+                match self.closure_typer.closure_upvars(def_id, substs) {
+                    Some(upvars) => {
+                        upvars.iter().map(|c| c.ty).collect()
+                    }
+                    None => {
+                        Vec::new()
+                    }
+                }
+            }
+
+            ty::ty_struct(def_id, substs) => {
+                ty::struct_fields(self.tcx(), def_id, substs).iter()
+                    .map(|f| f.mt.ty)
+                    .collect()
+            }
+
+            ty::ty_enum(def_id, substs) => {
+                ty::substd_enum_variants(self.tcx(), def_id, substs)
+                    .iter()
+                    .flat_map(|variant| variant.args.iter())
+                    .map(|&ty| ty)
+                    .collect()
+            }
         }
     }
 
@@ -1648,7 +1729,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             DefaultTraitCandidate(trait_def_id) => {
-                Ok(VtableDefaultTrait(trait_def_id))
+                let data = try!(self.confirm_default_impl_candidate(obligation, trait_def_id));
+                Ok(VtableDefaultTrait(data))
             }
 
             ImplCandidate(impl_def_id) => {
@@ -1781,6 +1863,68 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                obligations.repr(self.tcx()));
 
         VtableBuiltinData { nested: obligations }
+    }
+
+    fn confirm_default_impl_candidate(&mut self,
+                              obligation: &TraitObligation<'tcx>,
+                              impl_def_id: ast::DefId)
+                              -> Result<VtableDefaultTraitData<PredicateObligation<'tcx>>,
+                                        SelectionError<'tcx>>
+    {
+        debug!("confirm_default_impl_candidate({}, {})",
+               obligation.repr(self.tcx()),
+               impl_def_id.repr(self.tcx()));
+
+        let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
+        let types = self.constituent_types(self_ty);
+        Ok(self.vtable_default_impl(obligation, impl_def_id, types))
+    }
+
+    fn vtable_default_impl(&mut self,
+                           obligation: &TraitObligation<'tcx>,
+                           trait_def_id: ast::DefId,
+                           nested: Vec<Ty<'tcx>>)
+                           -> VtableDefaultTraitData<PredicateObligation<'tcx>>
+    {
+        let derived_cause = self.derived_cause(obligation, ImplDerivedObligation);
+        let obligations = nested.iter().map(|&nested_ty| {
+            // the obligation might be higher-ranked, e.g. for<'a> &'a
+            // int : Copy. In that case, we will wind up with
+            // late-bound regions in the `nested` vector. So for each
+            // one we instantiate to a skolemized region, do our work
+            // to produce something like `&'0 int : Copy`, and then
+            // re-bind it. This is a bit of busy-work but preserves
+            // the invariant that we only manipulate free regions, not
+            // bound ones.
+            self.infcx.try(|snapshot| {
+                let (skol_ty, skol_map) =
+                    self.infcx().skolemize_late_bound_regions(&ty::Binder(nested_ty), snapshot);
+                let skol_predicate =
+                    util::predicate_for_default_trait_impl(
+                        self.tcx(),
+                        derived_cause.clone(),
+                        trait_def_id,
+                        obligation.recursion_depth + 1,
+                        skol_ty);
+                match skol_predicate {
+                    Ok(skol_predicate) => Ok(self.infcx().plug_leaks(skol_map, snapshot,
+                                                                     &skol_predicate)),
+                    Err(ErrorReported) => Err(ErrorReported)
+                }
+            })
+        }).collect::<Result<_, _>>();
+        let obligations = match obligations {
+            Ok(o) => o,
+            Err(ErrorReported) => Vec::new()
+        };
+
+        let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
+        debug!("vtable_default_impl_data: obligations={}", obligations.repr(self.tcx()));
+
+        VtableDefaultTraitData {
+            trait_def_id: trait_def_id,
+            nested: obligations
+        }
     }
 
     fn confirm_impl_candidate(&mut self,

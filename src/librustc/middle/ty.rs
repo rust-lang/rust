@@ -5175,6 +5175,9 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 &None => None
                             }
                         }
+                        ast::ItemDefTrait(_, ref ast_trait_ref) => {
+                            Some(ty::node_id_to_trait_ref(cx, ast_trait_ref.ref_id))
+                        }
                         _ => None
                     }
                 }
@@ -5999,7 +6002,6 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
 /// Records a trait-to-implementation mapping.
 pub fn record_default_trait_implementation(tcx: &ctxt, trait_def_id: DefId) {
 
-    //assert!(did.krate != ast::LOCAL_CRATE);
     if tcx.default_trait_impls.borrow().contains(&trait_def_id) {
         return;
     }
