@@ -197,7 +197,7 @@ use metadata::csearch;
 use middle::subst::{self, Substs};
 use trans::{self, adt, machine, type_of};
 use trans::common::{self, NodeIdAndSpan, CrateContext, FunctionContext, Block,
-                    C_bytes, C_i32, C_i64, NormalizingClosureTyper};
+                    C_bytes, NormalizingClosureTyper};
 use trans::_match::{BindingInfo, TrByCopy, TrByMove, TrByRef};
 use trans::monomorphize;
 use trans::type_::Type;
@@ -702,7 +702,7 @@ enum VariableAccess<'a> {
     DirectVariable { alloca: ValueRef },
     // The llptr given is an alloca containing the start of some pointer chain
     // leading to the variable's content.
-    IndirectVariable { alloca: ValueRef, address_operations: &'a [ValueRef] }
+    IndirectVariable { alloca: ValueRef, address_operations: &'a [i64] }
 }
 
 enum VariableKind {
@@ -928,10 +928,10 @@ pub fn create_captured_var_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                               env_index);
 
     let address_operations = unsafe {
-        [llvm::LLVMDIBuilderCreateOpDeref(Type::i64(cx).to_ref()),
-         llvm::LLVMDIBuilderCreateOpPlus(Type::i64(cx).to_ref()),
-         C_i64(cx, byte_offset_of_var_in_env as i64),
-         llvm::LLVMDIBuilderCreateOpDeref(Type::i64(cx).to_ref())]
+        [llvm::LLVMDIBuilderCreateOpDeref(),
+         llvm::LLVMDIBuilderCreateOpPlus(),
+         byte_offset_of_var_in_env as i64,
+         llvm::LLVMDIBuilderCreateOpDeref()]
     };
 
     let address_op_count = if captured_by_ref {
@@ -969,7 +969,7 @@ pub fn create_match_binding_metadata<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let scope_metadata = scope_metadata(bcx.fcx, binding.id, binding.span);
     let aops = unsafe {
-        [llvm::LLVMDIBuilderCreateOpDeref(bcx.ccx().int_type().to_ref())]
+        [llvm::LLVMDIBuilderCreateOpDeref()]
     };
     // Regardless of the actual type (`T`) we're always passed the stack slot (alloca)
     // for the binding. For ByRef bindings that's a `T*` but for ByMove bindings we
@@ -1657,11 +1657,11 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     };
 
     let name = CString::from_slice(name.get().as_bytes());
-    let (var_alloca, var_metadata) = match variable_access {
-        DirectVariable { alloca } => (
-            alloca,
-            unsafe {
-                llvm::LLVMDIBuilderCreateLocalVariable(
+    match (variable_access, [].as_slice()) {
+        (DirectVariable { alloca }, address_operations) |
+        (IndirectVariable {alloca, address_operations}, _) => {
+            let metadata = unsafe {
+                llvm::LLVMDIBuilderCreateVariable(
                     DIB(cx),
                     dwarf_tag,
                     scope_metadata,
@@ -1671,38 +1671,25 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     type_metadata,
                     cx.sess().opts.optimize != config::No,
                     0,
-                    argument_index)
-            }
-        ),
-        IndirectVariable { alloca, address_operations } => (
-            alloca,
-            unsafe {
-                llvm::LLVMDIBuilderCreateComplexVariable(
-                    DIB(cx),
-                    dwarf_tag,
-                    scope_metadata,
-                    name.as_ptr(),
-                    file_metadata,
-                    loc.line as c_uint,
-                    type_metadata,
                     address_operations.as_ptr(),
                     address_operations.len() as c_uint,
                     argument_index)
-            }
-        )
-    };
-
-    set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
+            };
+            set_debug_location(cx, InternalDebugLocation::new(scope_metadata,
                                                       loc.line,
                                                       loc.col.to_usize()));
-    unsafe {
-        let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
-            DIB(cx),
-            var_alloca,
-            var_metadata,
-            bcx.llbb);
+            unsafe {
+                let instr = llvm::LLVMDIBuilderInsertDeclareAtEnd(
+                    DIB(cx),
+                    alloca,
+                    metadata,
+                    address_operations.as_ptr(),
+                    address_operations.len() as c_uint,
+                    bcx.llbb);
 
-        llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+                llvm::LLVMSetInstDebugLocation(trans::build::B(bcx).llbuilder, instr);
+            }
+        }
     }
 
     match variable_kind {
@@ -2674,7 +2661,7 @@ fn set_members_of_composite_type(cx: &CrateContext,
 
     unsafe {
         let type_array = create_DIArray(DIB(cx), &member_metadata[]);
-        llvm::LLVMDICompositeTypeSetTypeArray(composite_type_metadata, type_array);
+        llvm::LLVMDICompositeTypeSetTypeArray(DIB(cx), composite_type_metadata, type_array);
     }
 }
 
@@ -3108,12 +3095,14 @@ fn set_debug_location(cx: &CrateContext, debug_location: InternalDebugLocation) 
             // Always set the column to zero like Clang and GCC
             let col = UNKNOWN_COLUMN_NUMBER;
             debug!("setting debug location to {} {}", line, col);
-            let elements = [C_i32(cx, line as i32), C_i32(cx, col as i32),
-                            scope, ptr::null_mut()];
+
             unsafe {
-                metadata_node = llvm::LLVMMDNodeInContext(debug_context(cx).llcontext,
-                                                          elements.as_ptr(),
-                                                          elements.len() as c_uint);
+                metadata_node = llvm::LLVMDIBuilderCreateDebugLocation(
+                    debug_context(cx).llcontext,
+                    line as c_uint,
+                    col as c_uint,
+                    scope,
+                    ptr::null_mut());
             }
         }
         UnknownLocation => {

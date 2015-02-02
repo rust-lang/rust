@@ -778,10 +778,6 @@ pub fn C_i32(ccx: &CrateContext, i: i32) -> ValueRef {
     C_integral(Type::i32(ccx), i as u64, true)
 }
 
-pub fn C_i64(ccx: &CrateContext, i: i64) -> ValueRef {
-    C_integral(Type::i64(ccx), i as u64, true)
-}
-
 pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {
     C_integral(Type::i64(ccx), i, false)
 }
