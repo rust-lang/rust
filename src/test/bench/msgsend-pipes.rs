@@ -110,5 +110,5 @@ fn main() {
     };
 
     println!("{:?}", args);
-    run(args.as_slice());
+    run(&args);
 }

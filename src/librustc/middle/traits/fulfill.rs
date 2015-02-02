@@ -180,7 +180,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     {
         match self.region_obligations.get(&body_id) {
             None => Default::default(),
-            Some(vec) => vec.as_slice(),
+            Some(vec) => vec,
         }
     }
 

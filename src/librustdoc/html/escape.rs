@@ -24,7 +24,7 @@ impl<'a> fmt::Display for Escape<'a> {
         // Because the internet is always right, turns out there's not that many
         // characters to escape: http://stackoverflow.com/questions/7381974
         let Escape(s) = *self;
-        let pile_o_bits = s.as_slice();
+        let pile_o_bits = s;
         let mut last = 0;
         for (i, ch) in s.bytes().enumerate() {
             match ch as char {

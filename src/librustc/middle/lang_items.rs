@@ -147,7 +147,7 @@ struct LanguageItemCollector<'a> {
 
 impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
-        match extract(item.attrs.as_slice()) {
+        match extract(&item.attrs) {
             Some(value) => {
                 let item_index = self.item_refs.get(value.get()).map(|x| *x);
 

@@ -454,7 +454,7 @@ pub fn str_lit(lit: &str) -> String {
                 match c {
                     '\\' => {
                         let ch = chars.peek().unwrap_or_else(|| {
-                            panic!("{}", error(i).as_slice())
+                            panic!("{}", error(i))
                         }).1;
 
                         if ch == '\n' {
@@ -462,7 +462,7 @@ pub fn str_lit(lit: &str) -> String {
                         } else if ch == '\r' {
                             chars.next();
                             let ch = chars.peek().unwrap_or_else(|| {
-                                panic!("{}", error(i).as_slice())
+                                panic!("{}", error(i))
                             }).1;
 
                             if ch != '\n' {
@@ -480,7 +480,7 @@ pub fn str_lit(lit: &str) -> String {
                     },
                     '\r' => {
                         let ch = chars.peek().unwrap_or_else(|| {
-                            panic!("{}", error(i).as_slice())
+                            panic!("{}", error(i))
                         }).1;
 
                         if ch != '\n' {
@@ -622,11 +622,11 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
         match chars.next() {
             Some((i, b'\\')) => {
                 let em = error(i);
-                match chars.peek().expect(em.as_slice()).1 {
+                match chars.peek().expect(&em).1 {
                     b'\n' => eat(&mut chars),
                     b'\r' => {
                         chars.next();
-                        if chars.peek().expect(em.as_slice()).1 != b'\n' {
+                        if chars.peek().expect(&em).1 != b'\n' {
                             panic!("lexer accepted bare CR");
                         }
                         eat(&mut chars);
@@ -644,7 +644,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
             },
             Some((i, b'\r')) => {
                 let em = error(i);
-                if chars.peek().expect(em.as_slice()).1 != b'\n' {
+                if chars.peek().expect(&em).1 != b'\n' {
                     panic!("lexer accepted bare CR");
                 }
                 chars.next();
@@ -1200,7 +1200,7 @@ mod test {
         let name = "<source>".to_string();
         let source = "/// doc comment\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
-        let doc = first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
         assert_eq!(doc.get(), "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
@@ -1212,7 +1212,7 @@ mod test {
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
-        let doc = first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
+        let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
         assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
     }
 

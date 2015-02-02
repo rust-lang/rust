@@ -112,7 +112,7 @@ mod test {
         let mut buf = [0, 0];
         reader.read(&mut buf).unwrap();
         let b: &[_] = &[0, 1];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
     }
 
     #[test]

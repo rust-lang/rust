@@ -762,7 +762,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(&**subexpression)
         }
         ExprVec(ref subexpressions) => {
-            walk_exprs(visitor, subexpressions.as_slice())
+            walk_exprs(visitor, subexpressions)
         }
         ExprRepeat(ref element, ref count) => {
             visitor.visit_expr(&**element);
@@ -787,7 +787,7 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             visitor.visit_expr(&**callee_expression)
         }
         ExprMethodCall(_, ref types, ref arguments) => {
-            walk_exprs(visitor, arguments.as_slice());
+            walk_exprs(visitor, arguments);
             for typ in types {
                 visitor.visit_ty(&**typ)
             }

@@ -730,7 +730,7 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
                 check_impl_items_against_trait(ccx,
                                                it.span,
                                                &*impl_trait_ref,
-                                               impl_items.as_slice());
+                                               impl_items);
               }
               None => { }
           }
@@ -806,7 +806,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }) {
         if let Some(ref istring) = attr.value_str() {
             let parser = Parser::new(istring.get());
-            let types = generics.ty_params.as_slice();
+            let types = &*generics.ty_params;
             for token in parser {
                 match token {
                     Piece::String(_) => (), // Normal string, no need to check it
@@ -908,9 +908,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 // caught in resolve.
                                 tcx.sess.span_bug(
                                     impl_method.span,
-                                    format!("item `{}` is of a different kind from its trait `{}`",
-                                            token::get_name(impl_item_ty.name()),
-                                            impl_trait_ref.repr(tcx)).as_slice());
+                                    &format!("item `{}` is of a different kind from its trait `{}`",
+                                             token::get_name(impl_item_ty.name()),
+                                             impl_trait_ref.repr(tcx)));
                             }
                         }
                     }
@@ -919,9 +919,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         // caught in resolve.
                         tcx.sess.span_bug(
                             impl_method.span,
-                            format!("method `{}` is not a member of trait `{}`",
-                                    token::get_name(impl_item_ty.name()),
-                                    impl_trait_ref.repr(tcx)).as_slice());
+                            &format!("method `{}` is not a member of trait `{}`",
+                                     token::get_name(impl_item_ty.name()),
+                                     impl_trait_ref.repr(tcx)));
                     }
                 }
             }
@@ -944,9 +944,9 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                                 // already been caught in resolve.
                                 tcx.sess.span_bug(
                                     typedef.span,
-                                    format!("item `{}` is of a different kind from its trait `{}`",
-                                            token::get_name(typedef_ty.name()),
-                                            impl_trait_ref.repr(tcx)).as_slice());
+                                    &format!("item `{}` is of a different kind from its trait `{}`",
+                                             token::get_name(typedef_ty.name()),
+                                             impl_trait_ref.repr(tcx)));
                             }
                         }
                     }
@@ -955,11 +955,11 @@ fn check_impl_items_against_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                         // caught in resolve.
                         tcx.sess.span_bug(
                             typedef.span,
-                            format!(
+                            &format!(
                                 "associated type `{}` is not a member of \
                                  trait `{}`",
                                 token::get_name(typedef_ty.name()),
-                                impl_trait_ref.repr(tcx)).as_slice());
+                                impl_trait_ref.repr(tcx)));
                     }
                 }
             }
@@ -3123,7 +3123,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
         if let Some(n) = best {
             tcx.sess.span_help(field.span,
-                format!("did you mean `{}`?", n).as_slice());
+                &format!("did you mean `{}`?", n));
         }
     }
 
@@ -3734,7 +3734,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         }
       }
       ast::ExprMatch(ref discrim, ref arms, match_src) => {
-        _match::check_match(fcx, expr, &**discrim, arms.as_slice(), expected, match_src);
+        _match::check_match(fcx, expr, &**discrim, arms, expected, match_src);
       }
       ast::ExprClosure(capture, ref decl, ref body) => {
           closure::check_expr_closure(fcx, expr, capture, &**decl, &**body, expected);
@@ -5217,7 +5217,7 @@ pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
 
 pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
     fn param<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, n: u32) -> Ty<'tcx> {
-        let name = token::intern(format!("P{}", n).as_slice());
+        let name = token::intern(&format!("P{}", n));
         ty::mk_param(ccx.tcx, subst::FnSpace, n, name)
     }
 

@@ -1185,7 +1185,7 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
         rbml_w.tag(c::tag_table_freevars, |rbml_w| {
             rbml_w.id(id);
             rbml_w.tag(c::tag_table_val, |rbml_w| {
-                rbml_w.emit_from_vec(fv.as_slice(), |rbml_w, fv_entry| {
+                rbml_w.emit_from_vec(fv, |rbml_w, fv_entry| {
                     Ok(encode_freevar_entry(rbml_w, fv_entry))
                 });
             })

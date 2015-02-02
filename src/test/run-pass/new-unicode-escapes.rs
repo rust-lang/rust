@@ -18,5 +18,5 @@ pub fn main() {
     let s = "\\{20}";
     let mut correct_s = String::from_str("\\");
     correct_s.push_str("{20}");
-    assert_eq!(s, correct_s.as_slice());
+    assert_eq!(s, correct_s);
 }

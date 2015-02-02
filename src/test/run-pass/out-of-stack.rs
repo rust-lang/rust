@@ -35,20 +35,20 @@ fn loud_recurse() {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
-    if args.len() > 1 && args[1].as_slice() == "silent" {
+    let args = args;
+    if args.len() > 1 && args[1] == "silent" {
         silent_recurse();
-    } else if args.len() > 1 && args[1].as_slice() == "loud" {
+    } else if args.len() > 1 && args[1] == "loud" {
         loud_recurse();
     } else {
-        let silent = Command::new(args[0].as_slice()).arg("silent").output().unwrap();
+        let silent = Command::new(&args[0]).arg("silent").output().unwrap();
         assert!(!silent.status.success());
-        let error = String::from_utf8_lossy(silent.error.as_slice());
+        let error = String::from_utf8_lossy(&silent.error);
         assert!(error.contains("has overflowed its stack"));
 
-        let loud = Command::new(args[0].as_slice()).arg("loud").output().unwrap();
+        let loud = Command::new(&args[0]).arg("loud").output().unwrap();
         assert!(!loud.status.success());
-        let error = String::from_utf8_lossy(silent.error.as_slice());
+        let error = String::from_utf8_lossy(&silent.error);
         assert!(error.contains("has overflowed its stack"));
     }
 }

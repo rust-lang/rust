@@ -1681,7 +1681,7 @@ impl<'a> Parser<'a> {
 
                     token::Str_(s) => {
                         (true,
-                         LitStr(token::intern_and_get_ident(parse::str_lit(s.as_str()).as_slice()),
+                         LitStr(token::intern_and_get_ident(&parse::str_lit(s.as_str())),
                                 ast::CookedStr))
                     }
                     token::StrRaw(s, n) => {
@@ -2596,7 +2596,7 @@ impl<'a> Parser<'a> {
                         |p| p.parse_token_tree()
                     );
                     let (sep, repeat) = self.parse_sep_and_kleene_op();
-                    let name_num = macro_parser::count_names(seq.as_slice());
+                    let name_num = macro_parser::count_names(&seq);
                     return TtSequence(mk_sp(sp.lo, seq_span.hi),
                                       Rc::new(SequenceRepetition {
                                           tts: seq,

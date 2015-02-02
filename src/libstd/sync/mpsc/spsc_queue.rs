@@ -274,7 +274,7 @@ mod test {
 
             // Ensure the borrowchecker works
             match queue.peek() {
-                Some(vec) => match vec.as_slice() {
+                Some(vec) => match &**vec {
                     // Note that `pop` is not allowed here due to borrow
                     [1] => {}
                     _ => return

@@ -239,8 +239,8 @@ impl Command {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
                 self.env = Some(os::env_as_bytes().into_iter().map(|(k, v)| {
-                    (EnvKey(CString::from_slice(k.as_slice())),
-                     CString::from_slice(v.as_slice()))
+                    (EnvKey(CString::from_slice(&k)),
+                     CString::from_slice(&v))
                 }).collect());
                 self.env.as_mut().unwrap()
             }
@@ -440,7 +440,7 @@ impl sys::process::ProcessConfig<EnvKey, CString> for Command {
         &self.program
     }
     fn args(&self) -> &[CString] {
-        self.args.as_slice()
+        &self.args
     }
     fn env(&self) -> Option<&EnvMap> {
         self.env.as_ref()
@@ -915,7 +915,7 @@ mod tests {
     fn test_process_output_output() {
         let ProcessOutput {status, output, error}
              = Command::new("echo").arg("hello").output().unwrap();
-        let output_str = str::from_utf8(output.as_slice()).unwrap();
+        let output_str = str::from_utf8(&output).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
@@ -956,7 +956,7 @@ mod tests {
     fn test_wait_with_output_once() {
         let prog = Command::new("echo").arg("hello").spawn().unwrap();
         let ProcessOutput {status, output, error} = prog.wait_with_output().unwrap();
-        let output_str = str::from_utf8(output.as_slice()).unwrap();
+        let output_str = str::from_utf8(&output).unwrap();
 
         assert!(status.success());
         assert_eq!(output_str.trim().to_string(), "hello");
@@ -1049,7 +1049,7 @@ mod tests {
         for &(ref k, ref v) in &r {
             // don't check windows magical empty-named variables
             assert!(k.is_empty() ||
-                    output.contains(format!("{}={}", *k, *v).as_slice()),
+                    output.contains(&format!("{}={}", *k, *v)),
                     "output doesn't contain `{}={}`\n{}",
                     k, v, output);
         }
@@ -1067,12 +1067,12 @@ mod tests {
         for &(ref k, ref v) in &r {
             // don't check android RANDOM variables
             if *k != "RANDOM".to_string() {
-                assert!(output.contains(format!("{}={}",
-                                                *k,
-                                                *v).as_slice()) ||
-                        output.contains(format!("{}=\'{}\'",
-                                                *k,
-                                                *v).as_slice()));
+                assert!(output.contains(&format!("{}={}",
+                                                 *k,
+                                                 *v)) ||
+                        output.contains(&format!("{}=\'{}\'",
+                                                 *k,
+                                                 *v)));
             }
         }
     }
@@ -1091,13 +1091,13 @@ mod tests {
             None => {}
             Some(val) => {
                 path_val = val;
-                new_env.push(("PATH", path_val.as_slice()))
+                new_env.push(("PATH", &path_val))
             }
         }
 
-        let prog = env_cmd().env_set_all(new_env.as_slice()).spawn().unwrap();
+        let prog = env_cmd().env_set_all(&new_env).spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
-        let output = String::from_utf8_lossy(result.output.as_slice()).to_string();
+        let output = String::from_utf8_lossy(&result.output).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);
@@ -1107,7 +1107,7 @@ mod tests {
     fn test_add_to_env() {
         let prog = env_cmd().env("RUN_TEST_NEW_ENV", "123").spawn().unwrap();
         let result = prog.wait_with_output().unwrap();
-        let output = String::from_utf8_lossy(result.output.as_slice()).to_string();
+        let output = String::from_utf8_lossy(&result.output).to_string();
 
         assert!(output.contains("RUN_TEST_NEW_ENV=123"),
                 "didn't find RUN_TEST_NEW_ENV inside of:\n\n{}", output);

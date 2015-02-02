@@ -82,8 +82,8 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
     visit::walk_crate(&mut loader, krate);
 
     if let Some(plugins) = addl_plugins {
-        for plugin in &plugins {
-            loader.load_plugin(CrateOrString::Str(plugin.as_slice()),
+        for plugin in plugins {
+            loader.load_plugin(CrateOrString::Str(&plugin),
                                                   None, None, None)
         }
     }

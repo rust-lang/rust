@@ -77,7 +77,7 @@ pub fn find_rand_n<M, T, I, F>(n: uint,
         insert(map, *k);
     }
 
-    rng.shuffle(keys.as_mut_slice());
+    rng.shuffle(&mut keys);
 
     // measure
     let mut i = 0;

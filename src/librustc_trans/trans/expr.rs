@@ -1056,7 +1056,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if let Some(did) = did {
                 let substs = Substs::new_type(ty_params, vec![]);
                 trans_struct(bcx,
-                             fields.as_slice(),
+                             &fields,
                              None,
                              expr.span,
                              expr.id,
@@ -1398,7 +1398,7 @@ fn trans_struct<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         trans_adt(bcx,
                   ty,
                   discr,
-                  numbered_fields.as_slice(),
+                  &numbered_fields,
                   optbase,
                   dest,
                   DebugLoc::At(expr_id, expr_span))

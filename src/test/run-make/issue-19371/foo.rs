@@ -28,9 +28,9 @@ fn main() {
         panic!("expected rustc path");
     }
 
-    let tmpdir = Path::new(args[1].as_slice());
+    let tmpdir = Path::new(&args[1]);
 
-    let mut sysroot = Path::new(args[3].as_slice());
+    let mut sysroot = Path::new(&args[3]);
     sysroot.pop();
     sysroot.pop();
 

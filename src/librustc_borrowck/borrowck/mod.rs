@@ -798,8 +798,8 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
             mc::AliasableClosure(id) => {
                 self.tcx.sess.span_err(span,
-                                       format!("{} in a captured outer \
-                                               variable in an `Fn` closure", prefix).as_slice());
+                                       &format!("{} in a captured outer \
+                                                variable in an `Fn` closure", prefix));
                 if let BorrowViolation(euv::ClosureCapture(_)) = kind {
                     // The aliasability violation with closure captures can
                     // happen for nested closures, so we know the enclosing

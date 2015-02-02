@@ -309,7 +309,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                 Some(def_id) => {
                                     result.push_str(" as ");
                                     result.push_str(
-                                        ty::item_path_str(&self.analysis.ty_cx, def_id).as_slice());
+                                        &ty::item_path_str(&self.analysis.ty_cx, def_id));
                                 },
                                 None => {}
                             }
@@ -643,7 +643,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         item.id);
 
                     for field in &struct_def.fields {
-                        self.process_struct_field_def(field, qualname.as_slice(), variant.node.id);
+                        self.process_struct_field_def(field, &qualname, variant.node.id);
                         self.visit_ty(&*field.node.ty);
                     }
                 }
@@ -795,7 +795,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         let def_map = self.analysis.ty_cx.def_map.borrow();
         if !def_map.contains_key(&id) {
             self.sess.span_bug(span,
-                               format!("def_map has no key for {} in visit_expr", id).as_slice());
+                               &format!("def_map has no key for {} in visit_expr", id));
         }
         let def = &(*def_map)[id];
         let sub_span = self.span.span_for_last_ident(span);
@@ -1117,7 +1117,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         self.fmt.use_glob_str(path.span,
                                               sub_span,
                                               item.id,
-                                              name_string.as_slice(),
+                                              &name_string,
                                               self.cur_scope);
                         self.write_sub_paths(path, true);
                     }
@@ -1200,7 +1200,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                      &value[]);
 
                 self.visit_ty(&**ty);
-                self.process_generic_params(ty_params, item.span, qualname.as_slice(), item.id);
+                self.process_generic_params(ty_params, item.span, &qualname, item.id);
             },
             ast::ItemMac(_) => (),
             _ => visit::walk_item(self, item),

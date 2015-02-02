@@ -1082,12 +1082,12 @@ impl NonUpperCaseGlobals {
                                            .map(|c| c.to_uppercase()).collect();
             if uc != s.get() {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS, span,
-                    format!("{} `{}` should have an upper case name such as `{}`",
-                            sort, s, uc).as_slice());
+                    &format!("{} `{}` should have an upper case name such as `{}`",
+                             sort, s, uc));
             } else {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS, span,
-                    format!("{} `{}` should have an upper case name",
-                            sort, s).as_slice());
+                    &format!("{} `{}` should have an upper case name",
+                             sort, s));
             }
         }
     }
@@ -2084,11 +2084,11 @@ impl LintPass for PrivateNoMangleFns {
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         match it.node {
             ast::ItemFn(..) => {
-                if attr::contains_name(it.attrs.as_slice(), "no_mangle") &&
+                if attr::contains_name(&it.attrs, "no_mangle") &&
                        !cx.exported_items.contains(&it.id) {
                     let msg = format!("function {} is marked #[no_mangle], but not exported",
                                       it.ident);
-                    cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg.as_slice());
+                    cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
                 }
             },
             _ => {},

@@ -1337,10 +1337,10 @@ mod tests {
 
         let path = Path::new("foo");
         let mo = path.display().as_cow();
-        assert_eq!(mo.as_slice(), "foo");
+        assert_eq!(mo, "foo");
         let path = Path::new(b"\\");
         let mo = path.filename_display().as_cow();
-        assert_eq!(mo.as_slice(), "");
+        assert_eq!(mo, "");
     }
 
     #[test]

@@ -565,7 +565,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
         } else {
             let escaped = g.node_label(n).escape();
             try!(writeln(w, &[id.as_slice(),
-                              "[label=\"", escaped.as_slice(), "\"];"]));
+                              "[label=\"", &escaped, "\"];"]));
         }
     }
 
@@ -582,7 +582,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
         } else {
             try!(writeln(w, &[source_id.as_slice(),
                               " -> ", target_id.as_slice(),
-                              "[label=\"", escaped_label.as_slice(), "\"];"]));
+                              "[label=\"", &escaped_label, "\"];"]));
         }
     }
 
@@ -746,7 +746,7 @@ mod tests {
     fn test_input(g: LabelledGraph) -> IoResult<String> {
         let mut writer = Vec::new();
         render(&g, &mut writer).unwrap();
-        (&mut writer.as_slice()).read_to_string()
+        (&mut &*writer).read_to_string()
     }
 
     // All of the tests use raw-strings as the format for the expected outputs,
@@ -858,7 +858,7 @@ r#"digraph hasse_diagram {
                  edge(1, 3, ";"),    edge(2, 3, ";"   )));
 
         render(&g, &mut writer).unwrap();
-        let r = (&mut writer.as_slice()).read_to_string();
+        let r = (&mut &*writer).read_to_string();
 
         assert_eq!(r.unwrap(),
 r#"digraph syntax_tree {

@@ -23,7 +23,7 @@ fn add_target_env(cmd: &mut Command, lib_path: &str, aux_path: Option<&str>) {
 
     // Add the new dylib search path var
     let var = DynamicLibrary::envvar();
-    let newpath = DynamicLibrary::create_path(path.as_slice());
+    let newpath = DynamicLibrary::create_path(&path);
     let newpath = String::from_utf8(newpath).unwrap();
     cmd.env(var.to_string(), newpath);
 }

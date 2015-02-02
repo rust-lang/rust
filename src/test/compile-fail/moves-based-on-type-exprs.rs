@@ -95,7 +95,7 @@ fn f110() {
 
 fn f120() {
     let mut x = vec!("hi".to_string(), "ho".to_string());
-    x.as_mut_slice().swap(0, 1);
+    x.swap(0, 1);
     touch(&x[0]);
     touch(&x[1]);
 }

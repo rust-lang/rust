@@ -67,12 +67,12 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
         let klass = match next.tok {
             token::Whitespace => {
-                try!(write!(out, "{}", Escape(snip(next.sp).as_slice())));
+                try!(write!(out, "{}", Escape(&snip(next.sp))));
                 continue
             },
             token::Comment => {
                 try!(write!(out, "<span class='comment'>{}</span>",
-                            Escape(snip(next.sp).as_slice())));
+                            Escape(&snip(next.sp))));
                 continue
             },
             token::Shebang(s) => {
@@ -179,10 +179,10 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
         // stringifying this token
         let snip = sess.span_diagnostic.cm.span_to_snippet(next.sp).unwrap();
         if klass == "" {
-            try!(write!(out, "{}", Escape(snip.as_slice())));
+            try!(write!(out, "{}", Escape(&snip)));
         } else {
             try!(write!(out, "<span class='{}'>{}</span>", klass,
-                          Escape(snip.as_slice())));
+                          Escape(&snip)));
         }
     }
 

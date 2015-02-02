@@ -260,19 +260,19 @@ impl<T: Float + FromPrimitive> Stats<T> for [T] {
 
     fn percentile(&self, pct: T) -> T {
         let mut tmp = self.to_vec();
-        local_sort(tmp.as_mut_slice());
-        percentile_of_sorted(tmp.as_slice(), pct)
+        local_sort(&mut tmp);
+        percentile_of_sorted(&tmp, pct)
     }
 
     fn quartiles(&self) -> (T,T,T) {
         let mut tmp = self.to_vec();
-        local_sort(tmp.as_mut_slice());
+        local_sort(&mut tmp);
         let first = FromPrimitive::from_uint(25).unwrap();
-        let a = percentile_of_sorted(tmp.as_slice(), first);
+        let a = percentile_of_sorted(&tmp, first);
         let secound = FromPrimitive::from_uint(50).unwrap();
-        let b = percentile_of_sorted(tmp.as_slice(), secound);
+        let b = percentile_of_sorted(&tmp, secound);
         let third = FromPrimitive::from_uint(75).unwrap();
-        let c = percentile_of_sorted(tmp.as_slice(), third);
+        let c = percentile_of_sorted(&tmp, third);
         (a,b,c)
     }
 
@@ -317,10 +317,10 @@ fn percentile_of_sorted<T: Float + FromPrimitive>(sorted_samples: &[T],
 /// See: http://en.wikipedia.org/wiki/Winsorising
 pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
     let mut tmp = samples.to_vec();
-    local_sort(tmp.as_mut_slice());
-    let lo = percentile_of_sorted(tmp.as_slice(), pct);
+    local_sort(&mut tmp);
+    let lo = percentile_of_sorted(&tmp, pct);
     let hundred: T = FromPrimitive::from_uint(100).unwrap();
-    let hi = percentile_of_sorted(tmp.as_slice(), hundred-pct);
+    let hi = percentile_of_sorted(&tmp, hundred-pct);
     for samp in samples {
         if *samp > hi {
             *samp = hi

@@ -170,7 +170,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 variants.iter().flat_map(|v| v.fields.iter().map(|f| f.ty)).collect();
 
             regionck::regionck_ensure_component_tys_wf(
-                fcx, item.span, field_tys.as_slice());
+                fcx, item.span, &field_tys);
         });
     }
 
@@ -227,7 +227,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             // There are special rules that apply to drop.
             if
                 fcx.tcx().lang_items.drop_trait() == Some(trait_ref.def_id) &&
-                !attr::contains_name(item.attrs.as_slice(), "unsafe_destructor")
+                !attr::contains_name(&item.attrs, "unsafe_destructor")
             {
                 match self_ty.sty {
                     ty::ty_struct(def_id, _) |

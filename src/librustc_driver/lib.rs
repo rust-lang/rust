@@ -93,7 +93,7 @@ pub mod driver;
 pub mod pretty;
 
 pub fn run(args: Vec<String>) -> int {
-    monitor(move || run_compiler(args.as_slice()));
+    monitor(move || run_compiler(&args));
     0
 }
 
@@ -165,7 +165,7 @@ fn run_compiler(args: &[String]) {
     let pretty = if sess.opts.debugging_opts.unstable_options {
         matches.opt_default("pretty", "normal").map(|a| {
             // stable pretty-print variants only
-            pretty::parse_pretty(&sess, a.as_slice(), false)
+            pretty::parse_pretty(&sess, &a, false)
         })
     } else {
         None
@@ -174,7 +174,7 @@ fn run_compiler(args: &[String]) {
         sess.unstable_options() {
             matches.opt_str("xpretty").map(|a| {
                 // extended with unstable pretty-print variants
-                pretty::parse_pretty(&sess, a.as_slice(), true)
+                pretty::parse_pretty(&sess, &a, true)
             })
         } else {
             pretty
@@ -313,7 +313,7 @@ Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
     -Z help             Print internal options for debugging rustc{}\n",
-              getopts::usage(message.as_slice(), groups.as_slice()),
+              getopts::usage(&message, &groups),
               extra_help);
 }
 
@@ -481,20 +481,20 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
                 // unstable ones.
                 let all_groups : Vec<getopts::OptGroup>
                     = config::rustc_optgroups().into_iter().map(|x|x.opt_group).collect();
-                match getopts::getopts(args.as_slice(), all_groups.as_slice()) {
+                match getopts::getopts(&args, &all_groups) {
                     Ok(m_unstable) => {
                         let r = m_unstable.opt_strs("Z");
                         let include_unstable_options = r.iter().any(|x| *x == "unstable-options");
                         if include_unstable_options {
                             m_unstable
                         } else {
-                            early_error(f_stable_attempt.to_string().as_slice());
+                            early_error(&f_stable_attempt.to_string());
                         }
                     }
                     Err(_) => {
                         // ignore the error from the unstable attempt; just
                         // pass the error we got from the first try.
-                        early_error(f_stable_attempt.to_string().as_slice());
+                        early_error(&f_stable_attempt.to_string());
                     }
                 }
             }
@@ -552,13 +552,13 @@ fn print_crate_info(sess: &Session,
                     Some(input) => input,
                     None => early_error("no input file provided"),
                 };
-                let attrs = attrs.as_ref().unwrap().as_slice();
+                let attrs = attrs.as_ref().unwrap();
                 let t_outputs = driver::build_output_filenames(input,
                                                                odir,
                                                                ofile,
                                                                attrs,
                                                                sess);
-                let id = link::find_crate_name(Some(sess), attrs.as_slice(),
+                let id = link::find_crate_name(Some(sess), attrs,
                                                input);
                 if *req == PrintRequest::CrateName {
                     println!("{}", id);
@@ -569,7 +569,7 @@ fn print_crate_info(sess: &Session,
                 *sess.crate_metadata.borrow_mut() = metadata;
                 for &style in &crate_types {
                     let fname = link::filename_for_input(sess, style,
-                                                         id.as_slice(),
+                                                         &id,
                                                          &t_outputs.with_extension(""));
                     println!("{}", fname.filename_display());
                 }

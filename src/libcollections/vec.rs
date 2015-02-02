@@ -382,7 +382,7 @@ impl<T> Vec<T> {
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         self.shrink_to_fit();
         unsafe {
-            let xs: Box<[T]> = mem::transmute(self.as_mut_slice());
+            let xs: Box<[T]> = mem::transmute(&mut *self);
             mem::forget(self);
             xs
         }
@@ -604,7 +604,7 @@ impl<T> Vec<T> {
         let len = self.len();
         let mut del = 0u;
         {
-            let v = self.as_mut_slice();
+            let v = &mut **self;
 
             for i in 0u..len {
                 if !f(&v[i]) {
@@ -1246,7 +1246,7 @@ unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
 
 #[unstable(feature = "collections")]
 impl<T:Clone> Clone for Vec<T> {
-    fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(self.as_slice()) }
+    fn clone(&self) -> Vec<T> { ::slice::SliceExt::to_vec(&**self) }
 
     fn clone_from(&mut self, other: &Vec<T>) {
         // drop anything in self that will not be overwritten
@@ -1269,7 +1269,7 @@ impl<T:Clone> Clone for Vec<T> {
 impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
-        self.as_slice().hash(state);
+        Hash::hash(&**self, state)
     }
 }
 
@@ -1279,7 +1279,8 @@ impl<T> Index<uint> for Vec<T> {
 
     #[inline]
     fn index<'a>(&'a self, index: &uint) -> &'a T {
-        &self.as_slice()[*index]
+        // NB built-in indexing via `&[T]`
+        &(**self)[*index]
     }
 }
 
@@ -1289,7 +1290,8 @@ impl<T> IndexMut<uint> for Vec<T> {
 
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
-        &mut self.as_mut_slice()[*index]
+        // NB built-in indexing via `&mut [T]`
+        &mut (**self)[*index]
     }
 }
 
@@ -1299,7 +1301,7 @@ impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index(&self, index: &ops::Range<uint>) -> &[T] {
-        self.as_slice().index(index)
+        Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1307,7 +1309,7 @@ impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
-        self.as_slice().index(index)
+        Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1315,7 +1317,7 @@ impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
-        self.as_slice().index(index)
+        Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1332,7 +1334,7 @@ impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
-        self.as_mut_slice().index_mut(index)
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1340,7 +1342,7 @@ impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
-        self.as_mut_slice().index_mut(index)
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1348,7 +1350,7 @@ impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
     type Output = [T];
     #[inline]
     fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
-        self.as_mut_slice().index_mut(index)
+        IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1489,7 +1491,7 @@ impl_eq_for_cowvec! { &'b mut [B] }
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
     fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
-        self.as_slice().partial_cmp(other.as_slice())
+        PartialOrd::partial_cmp(&**self, &**other)
     }
 }
 
@@ -1500,7 +1502,7 @@ impl<T: Eq> Eq for Vec<T> {}
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
-        self.as_slice().cmp(other.as_slice())
+        Ord::cmp(&**self, &**other)
     }
 }
 
@@ -1567,7 +1569,7 @@ impl<T> Default for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: fmt::Debug> fmt::Debug for Vec<T> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(self.as_slice(), f)
+        fmt::Debug::fmt(&**self, f)
     }
 }
 
@@ -1931,7 +1933,7 @@ mod tests {
     #[test]
     fn test_as_vec() {
         let xs = [1u8, 2u8, 3u8];
-        assert_eq!(as_vec(&xs).as_slice(), xs);
+        assert_eq!(&**as_vec(&xs), xs);
     }
 
     #[test]
@@ -2396,7 +2398,7 @@ mod tests {
     fn test_into_boxed_slice() {
         let xs = vec![1u, 2, 3];
         let ys = xs.into_boxed_slice();
-        assert_eq!(ys.as_slice(), [1u, 2, 3]);
+        assert_eq!(ys, [1u, 2, 3]);
     }
 
     #[test]
@@ -2636,7 +2638,7 @@ mod tests {
 
         b.iter(|| {
             let mut dst = dst.clone();
-            dst.push_all(src.as_slice());
+            dst.push_all(&src);
             assert_eq!(dst.len(), dst_len + src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });

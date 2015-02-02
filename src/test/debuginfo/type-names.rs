@@ -283,9 +283,9 @@ fn main() {
     let fixed_size_vec2 = ([0u, 1u, 2u], 0i16);
 
     let vec1 = vec![0u, 2u, 3u];
-    let slice1 = vec1.as_slice();
+    let slice1 = &*vec1;
     let vec2 = vec![Mod1::Variant2_2(Struct1)];
-    let slice2 = vec2.as_slice();
+    let slice2 = &*vec2;
 
     // Trait Objects
     let box_trait = (box 0) as Box<Trait1>;

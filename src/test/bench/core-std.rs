@@ -29,7 +29,7 @@ fn main() {
 
     macro_rules! bench {
         ($id:ident) =>
-            (maybe_run_test(argv.as_slice(),
+            (maybe_run_test(&argv,
                             stringify!($id).to_string(),
                             $id))
     }
@@ -94,7 +94,7 @@ fn vec_plus() {
             v.extend(rv.into_iter());
         } else {
             let mut rv = rv.clone();
-            rv.push_all(v.as_slice());
+            rv.push_all(&v);
             v = rv;
         }
         i += 1;
@@ -110,12 +110,12 @@ fn vec_append() {
         let rv = repeat(i).take(r.gen_range(0u, i + 1)).collect::<Vec<_>>();
         if r.gen() {
             let mut t = v.clone();
-            t.push_all(rv.as_slice());
+            t.push_all(&rv);
             v = t;
         }
         else {
             let mut t = rv.clone();
-            t.push_all(v.as_slice());
+            t.push_all(&v);
             v = t;
         }
         i += 1;
@@ -129,11 +129,11 @@ fn vec_push_all() {
     for i in 0u..1500 {
         let mut rv = repeat(i).take(r.gen_range(0u, i + 1)).collect::<Vec<_>>();
         if r.gen() {
-            v.push_all(rv.as_slice());
+            v.push_all(&rv);
         }
         else {
             swap(&mut v, &mut rv);
-            v.push_all(rv.as_slice());
+            v.push_all(&rv);
         }
     }
 }
@@ -142,7 +142,7 @@ fn is_utf8_ascii() {
     let mut v : Vec<u8> = Vec::new();
     for _ in 0u..20000 {
         v.push('b' as u8);
-        if str::from_utf8(v.as_slice()).is_err() {
+        if str::from_utf8(&v).is_err() {
             panic!("from_utf8 panicked");
         }
     }
@@ -153,7 +153,7 @@ fn is_utf8_multibyte() {
     let mut v : Vec<u8> = Vec::new();
     for _ in 0u..5000 {
         v.push_all(s.as_bytes());
-        if str::from_utf8(v.as_slice()).is_err() {
+        if str::from_utf8(&v).is_err() {
             panic!("from_utf8 panicked");
         }
     }

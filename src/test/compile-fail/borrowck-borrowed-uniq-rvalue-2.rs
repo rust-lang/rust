@@ -30,7 +30,7 @@ fn defer<'r>(x: &'r [&'r str]) -> defer<'r> {
 }
 
 fn main() {
-    let x = defer(vec!("Goodbye", "world!").as_slice());
+    let x = defer(&vec!("Goodbye", "world!"));
     //~^ ERROR borrowed value does not live long enough
     x.x[0];
 }

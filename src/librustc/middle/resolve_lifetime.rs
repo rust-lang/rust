@@ -456,13 +456,13 @@ impl<'a> LifetimeContext<'a> {
                     if let Some((_, lifetime_def)) = search_lifetimes(lifetimes, lifetime) {
                         self.sess.span_warn(
                             lifetime.span,
-                            format!("lifetime name `{}` shadows another \
-                                    lifetime name that is already in scope",
-                                    token::get_name(lifetime.name)).as_slice());
+                            &format!("lifetime name `{}` shadows another \
+                                     lifetime name that is already in scope",
+                                     token::get_name(lifetime.name)));
                         self.sess.span_note(
                             lifetime_def.span,
-                            format!("shadowed lifetime `{}` declared here",
-                                    token::get_name(lifetime.name)).as_slice());
+                            &format!("shadowed lifetime `{}` declared here",
+                                     token::get_name(lifetime.name)));
                         self.sess.span_note(
                             lifetime.span,
                             "shadowed lifetimes are deprecated \

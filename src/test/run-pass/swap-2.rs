@@ -12,7 +12,7 @@ use std::mem::swap;
 
 pub fn main() {
     let mut a: Vec<int> = vec!(0, 1, 2, 3, 4, 5, 6);
-    a.as_mut_slice().swap(2, 4);
+    a.swap(2, 4);
     assert_eq!(a[2], 4);
     assert_eq!(a[4], 2);
     let mut n = 42;

@@ -153,31 +153,31 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
             ObjectSafetyViolation::Method(method, MethodViolationCode::ByValueSelf) => {
                 tcx.sess.span_note(
                     span,
-                    format!("method `{}` has a receiver type of `Self`, \
-                             which cannot be used with a trait object",
-                            method.name.user_string(tcx)).as_slice());
+                    &format!("method `{}` has a receiver type of `Self`, \
+                              which cannot be used with a trait object",
+                             method.name.user_string(tcx)));
             }
 
             ObjectSafetyViolation::Method(method, MethodViolationCode::StaticMethod) => {
                 tcx.sess.span_note(
                     span,
-                    format!("method `{}` has no receiver",
-                            method.name.user_string(tcx)).as_slice());
+                    &format!("method `{}` has no receiver",
+                             method.name.user_string(tcx)));
             }
 
             ObjectSafetyViolation::Method(method, MethodViolationCode::ReferencesSelf) => {
                 tcx.sess.span_note(
                     span,
-                    format!("method `{}` references the `Self` type \
-                             in its arguments or return type",
-                            method.name.user_string(tcx)).as_slice());
+                    &format!("method `{}` references the `Self` type \
+                              in its arguments or return type",
+                             method.name.user_string(tcx)));
             }
 
             ObjectSafetyViolation::Method(method, MethodViolationCode::Generic) => {
                 tcx.sess.span_note(
                     span,
-                    format!("method `{}` has generic type parameters",
-                            method.name.user_string(tcx)).as_slice());
+                    &format!("method `{}` has generic type parameters",
+                             method.name.user_string(tcx)));
             }
         }
     }

@@ -1044,7 +1044,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
-        encode_attributes(rbml_w, item.attrs.as_slice());
+        encode_attributes(rbml_w, &item.attrs);
         encode_inlined_item(ecx, rbml_w, IIItemRef(item));
         encode_visibility(rbml_w, vis);
         encode_stability(rbml_w, stab);
@@ -1307,7 +1307,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         let trait_def = ty::lookup_trait_def(tcx, def_id);
         encode_unsafety(rbml_w, trait_def.unsafety);
         encode_paren_sugar(rbml_w, trait_def.paren_sugar);
-        encode_associated_type_names(rbml_w, trait_def.associated_type_names.as_slice());
+        encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
         encode_generics(rbml_w, ecx, &trait_def.generics, tag_item_generics);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);

@@ -24,7 +24,7 @@ struct RegistrarFinder {
 impl<'v> Visitor<'v> for RegistrarFinder {
     fn visit_item(&mut self, item: &ast::Item) {
         if let ast::ItemFn(..) = item.node {
-            if attr::contains_name(item.attrs.as_slice(),
+            if attr::contains_name(&item.attrs,
                                    "plugin_registrar") {
                 self.registrars.push((item.id, item.span));
             }

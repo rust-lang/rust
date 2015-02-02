@@ -48,7 +48,6 @@ use rustc::middle::stability;
 
 use std::rc::Rc;
 use std::u32;
-use std::str::Str as StrTrait; // Conflicts with Str variant
 use std::old_path::Path as FsPath; // Conflicts with Path struct
 
 use core::DocContext;
@@ -136,7 +135,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
 
         // Figure out the name of this crate
         let input = &cx.input;
-        let name = link::find_crate_name(None, self.attrs.as_slice(), input);
+        let name = link::find_crate_name(None, &self.attrs, input);
 
         // Clean the crate, translating the entire libsyntax AST to one that is
         // understood by rustdoc.
@@ -171,7 +170,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                     ModuleItem(..) => {}
                     _ => continue,
                 }
-                let prim = match PrimitiveType::find(child.attrs.as_slice()) {
+                let prim = match PrimitiveType::find(&child.attrs) {
                     Some(prim) => prim,
                     None => continue,
                 };
@@ -223,7 +222,7 @@ impl Clean<ExternalCrate> for cstore::crate_metadata {
                     _ => return
                 };
                 let attrs = inline::load_attrs(cx, tcx, did);
-                PrimitiveType::find(attrs.as_slice()).map(|prim| primitives.push(prim));
+                PrimitiveType::find(&attrs).map(|prim| primitives.push(prim));
             })
         });
         ExternalCrate {
@@ -257,7 +256,7 @@ impl Item {
         for attr in &self.attrs {
             match *attr {
                 List(ref x, ref list) if "doc" == *x => {
-                    return Some(list.as_slice());
+                    return Some(list);
                 }
                 _ => {}
             }
@@ -271,7 +270,7 @@ impl Item {
         for attr in &self.attrs {
             match *attr {
                 NameValue(ref x, ref v) if "doc" == *x => {
-                    return Some(v.as_slice());
+                    return Some(v);
                 }
                 _ => {}
             }
@@ -433,7 +432,7 @@ impl attr::AttrMetaMethods for Attribute {
     fn name(&self) -> InternedString {
         match *self {
             Word(ref n) | List(ref n, _) | NameValue(ref n, _) => {
-                token::intern_and_get_ident(n.as_slice())
+                token::intern_and_get_ident(n)
             }
         }
     }
@@ -441,7 +440,7 @@ impl attr::AttrMetaMethods for Attribute {
     fn value_str(&self) -> Option<InternedString> {
         match *self {
             NameValue(_, ref v) => {
-                Some(token::intern_and_get_ident(v.as_slice()))
+                Some(token::intern_and_get_ident(v))
             }
             _ => None,
         }
@@ -626,7 +625,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
         let fqn = csearch::get_item_path(tcx, self.def_id);
         let fqn = fqn.into_iter().map(|i| i.to_string())
                      .collect::<Vec<String>>();
-        let path = external_path(cx, fqn.last().unwrap().as_slice(),
+        let path = external_path(cx, fqn.last().unwrap(),
                                  Some(self.def_id), vec![], self.substs);
         cx.external_paths.borrow_mut().as_mut().unwrap().insert(self.def_id,
                                                             (fqn, TypeTrait));
@@ -690,7 +689,7 @@ pub struct Lifetime(String);
 impl Lifetime {
     pub fn get_ref<'a>(&'a self) -> &'a str {
         let Lifetime(ref s) = *self;
-        let s: &'a str = s.as_slice();
+        let s: &'a str = s;
         return s;
     }
 
@@ -952,7 +951,7 @@ impl Clean<Item> for ast::Method {
     fn clean(&self, cx: &DocContext) -> Item {
         let all_inputs = &self.pe_fn_decl().inputs;
         let inputs = match self.pe_explicit_self().node {
-            ast::SelfStatic => all_inputs.as_slice(),
+            ast::SelfStatic => &**all_inputs,
             _ => &all_inputs[1..]
         };
         let decl = FnDecl {
@@ -990,7 +989,7 @@ pub struct TyMethod {
 impl Clean<Item> for ast::TypeMethod {
     fn clean(&self, cx: &DocContext) -> Item {
         let inputs = match self.explicit_self.node {
-            ast::SelfStatic => self.decl.inputs.as_slice(),
+            ast::SelfStatic => &*self.decl.inputs,
             _ => &self.decl.inputs[1..]
         };
         let decl = FnDecl {
@@ -1104,7 +1103,7 @@ impl<'a, 'tcx> Clean<FnDecl> for (ast::DefId, &'a ty::PolyFnSig<'tcx>) {
         } else {
             Vec::new().into_iter()
         }.peekable();
-        if names.peek().map(|s| s.as_slice()) == Some("self") {
+        if names.peek().map(|s| &**s) == Some("self") {
             let _ = names.next();
         }
         FnDecl {
@@ -1397,7 +1396,7 @@ pub enum TypeKind {
 
 impl PrimitiveType {
     fn from_str(s: &str) -> Option<PrimitiveType> {
-        match s.as_slice() {
+        match s {
             "isize" | "int" => Some(Isize),
             "i8" => Some(I8),
             "i16" => Some(I16),
@@ -1428,7 +1427,7 @@ impl PrimitiveType {
             for sub_attr in list {
                 let value = match *sub_attr {
                     NameValue(ref k, ref v)
-                        if *k == "primitive" => v.as_slice(),
+                        if *k == "primitive" => v,
                     _ => continue,
                 };
                 match PrimitiveType::from_str(value) {
@@ -1567,7 +1566,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                     ty::ty_struct(..) => TypeStruct,
                     _ => TypeEnum,
                 };
-                let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
+                let path = external_path(cx, &fqn.last().unwrap().to_string(),
                                          None, vec![], substs);
                 cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, kind));
                 ResolvedPath {
@@ -1581,7 +1580,7 @@ impl<'tcx> Clean<Type> for ty::Ty<'tcx> {
                 let fqn = csearch::get_item_path(cx.tcx(), did);
                 let fqn: Vec<_> = fqn.into_iter().map(|i| i.to_string()).collect();
                 let (typarams, bindings) = bounds.clean(cx);
-                let path = external_path(cx, fqn.last().unwrap().to_string().as_slice(),
+                let path = external_path(cx, &fqn.last().unwrap().to_string(),
                                          Some(did), bindings, principal.substs());
                 cx.external_paths.borrow_mut().as_mut().unwrap().insert(did, (fqn, TypeTrait));
                 ResolvedPath {
@@ -1780,7 +1779,7 @@ impl Clean<Item> for doctree::Variant {
 impl<'tcx> Clean<Item> for ty::VariantInfo<'tcx> {
     fn clean(&self, cx: &DocContext) -> Item {
         // use syntax::parse::token::special_idents::unnamed_field;
-        let kind = match self.arg_names.as_ref().map(|s| s.as_slice()) {
+        let kind = match self.arg_names.as_ref().map(|s| &**s) {
             None | Some([]) if self.args.len() == 0 => CLikeVariant,
             None | Some([]) => {
                 TupleVariant(self.args.clean(cx))
@@ -2132,7 +2131,7 @@ impl Clean<Item> for doctree::Impl {
                             TypeImplItem(i) => i,
                         }
                     }).collect(),
-                derived: detect_derived(self.attrs.as_slice()),
+                derived: detect_derived(&self.attrs),
                 polarity: Some(self.polarity.clean(cx)),
             }),
         }

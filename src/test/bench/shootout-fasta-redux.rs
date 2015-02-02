@@ -124,7 +124,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
         let mut buf = repeat(0u8).take(alu_len + LINE_LEN).collect::<Vec<_>>();
         let alu: &[u8] = self.alu.as_bytes();
 
-        copy_memory(buf.as_mut_slice(), alu);
+        copy_memory(&mut buf, alu);
         let buf_len = buf.len();
         copy_memory(&mut buf[alu_len..buf_len],
                     &alu[..LINE_LEN]);
@@ -209,7 +209,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
+    let args = args;
     let n = if args.len() > 1 {
         args[1].parse::<uint>().unwrap()
     } else {
@@ -226,12 +226,12 @@ fn main() {
 
     out.write_line(">TWO IUB ambiguity codes").unwrap();
     let iub = sum_and_scale(&IUB);
-    let mut random = RandomFasta::new(&mut out, iub.as_slice());
+    let mut random = RandomFasta::new(&mut out, &iub);
     random.make(n * 3).unwrap();
 
     random.out.write_line(">THREE Homo sapiens frequency").unwrap();
     let homo_sapiens = sum_and_scale(&HOMO_SAPIENS);
-    random.lookup = make_lookup(homo_sapiens.as_slice());
+    random.lookup = make_lookup(&homo_sapiens);
     random.make(n * 5).unwrap();
 
     random.out.write_str("\n").unwrap();

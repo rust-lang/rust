@@ -26,12 +26,12 @@ fn test() {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
-    if args.len() > 1 && args[1].as_slice() == "test" {
+    let args = args;
+    if args.len() > 1 && args[1] == "test" {
         return test();
     }
 
-    let mut p = Command::new(args[0].as_slice())
+    let mut p = Command::new(&args[0])
                         .arg("test").spawn().unwrap();
     assert!(p.wait().unwrap().success());
 }

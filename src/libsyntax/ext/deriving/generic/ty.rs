@@ -247,7 +247,7 @@ impl<'a> LifetimeBounds<'a> {
                     mk_ty_param(cx,
                                 span,
                                 *name,
-                                bounds.as_slice(),
+                                bounds,
                                 self_ty,
                                 self_generics)
                 }

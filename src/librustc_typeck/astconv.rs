@@ -272,7 +272,7 @@ pub fn ast_path_substs_for_ty<'tcx>(
         }
     };
 
-    prohibit_projections(this.tcx(), assoc_bindings.as_slice());
+    prohibit_projections(this.tcx(), &assoc_bindings);
 
     create_substs_for_ast_path(this,
                                rscope,
@@ -656,7 +656,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
 
     match projections {
         None => {
-            prohibit_projections(this.tcx(), assoc_bindings.as_slice());
+            prohibit_projections(this.tcx(), &assoc_bindings);
         }
         Some(ref mut v) => {
             for binding in &assoc_bindings {
@@ -960,7 +960,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
         // FIXME(#20300) -- search where clauses, not bounds
         suitable_bounds =
-            traits::transitive_bounds(tcx, ty_param_def.bounds.trait_bounds.as_slice())
+            traits::transitive_bounds(tcx, &ty_param_def.bounds.trait_bounds)
             .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
             .collect();
     }
@@ -1595,11 +1595,11 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
     let region_bound = compute_region_bound(this,
                                             rscope,
                                             span,
-                                            region_bounds.as_slice(),
+                                            &region_bounds,
                                             principal_trait_ref,
                                             builtin_bounds);
 
-    ty::sort_bounds_list(projection_bounds.as_mut_slice());
+    ty::sort_bounds_list(&mut projection_bounds);
 
     ty::ExistentialBounds {
         region_bound: region_bound,

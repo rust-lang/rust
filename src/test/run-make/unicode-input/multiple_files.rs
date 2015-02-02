@@ -34,8 +34,8 @@ fn random_char() -> char {
 
 fn main() {
     let args = os::args();
-    let rustc = args[1].as_slice();
-    let tmpdir = Path::new(args[2].as_slice());
+    let rustc = &args[1];
+    let tmpdir = Path::new(&args[2]);
 
     let main_file = tmpdir.join("unicode_input_multiple_files_main.rs");
     {
@@ -56,12 +56,12 @@ fn main() {
         // can't exec it directly
         let result = Command::new("sh")
                              .arg("-c")
-                             .arg(format!("{} {}",
-                                          rustc,
-                                          main_file.as_str()
-                                                   .unwrap()).as_slice())
+                             .arg(&format!("{} {}",
+                                           rustc,
+                                           main_file.as_str()
+                                                    .unwrap()))
                              .output().unwrap();
-        let err = String::from_utf8_lossy(result.error.as_slice());
+        let err = String::from_utf8_lossy(&result.error);
 
         // positive test so that this test will be updated when the
         // compiler changes.

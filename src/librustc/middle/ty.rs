@@ -2793,7 +2793,7 @@ pub fn mk_trait<'tcx>(cx: &ctxt<'tcx>,
                       bounds: ExistentialBounds<'tcx>)
                       -> Ty<'tcx>
 {
-    assert!(bound_list_is_sorted(bounds.projection_bounds.as_slice()));
+    assert!(bound_list_is_sorted(&bounds.projection_bounds));
 
     let inner = box TyTrait {
         principal: principal,
@@ -3406,8 +3406,8 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 // FIXME(#14449): `borrowed_contents` below assumes `&mut` closure.
                 let param_env = ty::empty_parameter_environment(cx);
                 let upvars = closure_upvars(&param_env, did, substs).unwrap();
-                TypeContents::union(upvars.as_slice(),
-                                    |f| tc_ty(cx, f.ty, cache))
+                TypeContents::union(&upvars,
+                                    |f| tc_ty(cx, &f.ty, cache))
                     | borrowed_contents(*r, MutMutable)
             }
 
@@ -3672,8 +3672,7 @@ pub fn is_instantiable<'tcx>(cx: &ctxt<'tcx>, r_ty: Ty<'tcx>) -> bool {
             ty_closure(..) => {
                 // this check is run on type definitions, so we don't expect to see
                 // inference by-products or closure types
-                cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}",
-                                    ty).as_slice())
+                cx.sess.bug(&format!("requires check invoked on inapplicable type: {:?}", ty))
             }
 
             ty_tup(ref ts) => {
@@ -3766,8 +3765,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
             ty_closure(..) => {
                 // this check is run on type definitions, so we don't expect
                 // to see closure types
-                cx.sess.bug(format!("requires check invoked on inapplicable type: {:?}",
-                                    ty).as_slice())
+                cx.sess.bug(&format!("requires check invoked on inapplicable type: {:?}", ty))
             }
             _ => Representable,
         }
@@ -6365,9 +6363,9 @@ pub fn construct_parameter_environment<'a,'tcx>(
                         _ => {
                             // All named regions are instantiated with free regions.
                             tcx.sess.bug(
-                                format!("record_region_bounds: non free region: {} / {}",
-                                        r_a.repr(tcx),
-                                        r_b.repr(tcx)).as_slice());
+                                &format!("record_region_bounds: non free region: {} / {}",
+                                         r_a.repr(tcx),
+                                         r_b.repr(tcx)));
                         }
                     }
                 }

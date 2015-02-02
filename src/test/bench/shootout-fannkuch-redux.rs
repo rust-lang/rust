@@ -180,7 +180,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
 }
 
 fn main() {
-    let n = std::os::args().as_slice()
+    let n = std::os::args()
         .get(1)
         .and_then(|arg| arg.parse().ok())
         .unwrap_or(2i32);

@@ -156,7 +156,6 @@ use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
 use result::Result::{Err, Ok};
 use sync::{Mutex, Condvar, Arc};
-use str::Str;
 use string::String;
 use rt::{self, unwind};
 use old_io::{Writer, stdio};
@@ -452,7 +451,7 @@ impl Thread {
     /// Get the thread's name.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn name(&self) -> Option<&str> {
-        self.inner.name.as_ref().map(|s| s.as_slice())
+        self.inner.name.as_ref().map(|s| &**s)
     }
 }
 
@@ -574,7 +573,7 @@ mod test {
     fn test_join_success() {
         match Thread::scoped(move|| -> String {
             "Success!".to_string()
-        }).join().as_ref().map(|s| s.as_slice()) {
+        }).join().as_ref().map(|s| &**s) {
             result::Result::Ok("Success!") => (),
             _ => panic!()
         }

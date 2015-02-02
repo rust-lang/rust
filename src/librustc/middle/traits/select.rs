@@ -933,9 +933,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             _ => {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
-                    format!("match_projection_obligation_against_bounds_from_trait() called \
-                             but self-ty not a projection: {}",
-                            skol_trait_predicate.trait_ref.self_ty().repr(self.tcx())).as_slice());
+                    &format!("match_projection_obligation_against_bounds_from_trait() called \
+                              but self-ty not a projection: {}",
+                             skol_trait_predicate.trait_ref.self_ty().repr(self.tcx())));
             }
         };
         debug!("match_projection_obligation_against_bounds_from_trait: \
@@ -1787,9 +1787,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Ok(obligations) => obligations,
             Err(()) => {
                 self.tcx().sess.bug(
-                    format!("Where clause `{}` was applicable to `{}` but now is not",
-                            param.repr(self.tcx()),
-                            obligation.repr(self.tcx())).as_slice());
+                    &format!("Where clause `{}` was applicable to `{}` but now is not",
+                             param.repr(self.tcx()),
+                             obligation.repr(self.tcx())));
             }
         }
     }
@@ -1953,9 +1953,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Some(r) => r,
             None => {
                 self.tcx().sess.span_bug(obligation.cause.span,
-                                         format!("unable to upcast from {} to {}",
-                                                 poly_trait_ref.repr(self.tcx()),
-                                                 obligation_def_id.repr(self.tcx())).as_slice());
+                                         &format!("unable to upcast from {} to {}",
+                                                  poly_trait_ref.repr(self.tcx()),
+                                                  obligation_def_id.repr(self.tcx())));
             }
         };
 

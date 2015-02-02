@@ -37,19 +37,19 @@ fn test_heap_log() {
 fn test_append() {
     let mut s = String::new();
     s.push_str("a");
-    assert_eq!(s.as_slice(), "a");
+    assert_eq!(s, "a");
 
     let mut s = String::from_str("a");
     s.push_str("b");
     println!("{}", s.clone());
-    assert_eq!(s.as_slice(), "ab");
+    assert_eq!(s, "ab");
 
     let mut s = String::from_str("c");
     s.push_str("offee");
-    assert!(s.as_slice() == "coffee");
+    assert!(s == "coffee");
 
     s.push_str("&tea");
-    assert!(s.as_slice() == "coffee&tea");
+    assert!(s == "coffee&tea");
 }
 
 pub fn main() {
