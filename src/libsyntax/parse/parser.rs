@@ -2735,7 +2735,7 @@ impl<'a> Parser<'a> {
                 self.open_braces.pop().unwrap();
 
                 // Expand to cover the entire delimited token tree
-                let span = Span { hi: self.span.hi, ..pre_span };
+                let span = Span { hi: close_span.hi, ..pre_span };
 
                 TtDelimited(span, Rc::new(Delimited {
                     delim: delim,
