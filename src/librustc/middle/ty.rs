@@ -3099,10 +3099,7 @@ pub fn type_is_unsafe_ptr(ty: Ty) -> bool {
 
 pub fn type_is_unique(ty: Ty) -> bool {
     match ty.sty {
-        ty_uniq(_) => match ty.sty {
-            ty_trait(..) => false,
-            _ => true
-        },
+        ty_uniq(_) => true,
         _ => false
     }
 }
