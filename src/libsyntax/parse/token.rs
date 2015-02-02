@@ -625,19 +625,6 @@ impl InternedString {
             string: string,
         }
     }
-
-    #[inline]
-    #[deprecated = "use as_slice() instead"]
-    pub fn get<'a>(&'a self) -> &'a str {
-        &self.string[]
-    }
-}
-
-impl Str for InternedString {
-    #[inline]
-    fn as_slice<'a>(&'a self) -> &'a str {
-        &self.string[]
-    }
 }
 
 impl Deref for InternedString {
@@ -652,7 +639,7 @@ impl BytesContainer for InternedString {
         // of `BytesContainer`, which is itself a workaround for the lack of
         // DST.
         unsafe {
-            let this = self.get();
+            let this = self.deref();
             mem::transmute::<&[u8],&[u8]>(this.container_as_bytes())
         }
     }

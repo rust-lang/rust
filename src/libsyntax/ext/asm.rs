@@ -22,6 +22,8 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
+use std::ops::Deref;
+
 enum State {
     Asm,
     Outputs,
@@ -102,7 +104,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                     // It's the opposite of '=&' which means that the memory
                     // cannot be shared with any other operand (usually when
                     // a register is clobbered early.)
-                    let output = match constraint.get().slice_shift_char() {
+                    let output = match constraint.deref().slice_shift_char() {
                         Some(('=', _)) => None,
                         Some(('+', operand)) => {
                             Some(token::intern_and_get_ident(&format!(
@@ -129,9 +131,9 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
                     let (constraint, _str_style) = p.parse_str();
 
-                    if constraint.get().starts_with("=") {
+                    if constraint.deref().starts_with("=") {
                         cx.span_err(p.last_span, "input operand constraint contains '='");
-                    } else if constraint.get().starts_with("+") {
+                    } else if constraint.deref().starts_with("+") {
                         cx.span_err(p.last_span, "input operand constraint contains '+'");
                     }
 
@@ -213,7 +215,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     MacExpr::new(P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
         node: ast::ExprInlineAsm(ast::InlineAsm {
-            asm: token::intern_and_get_ident(asm.get()),
+            asm: token::intern_and_get_ident(asm.deref()),
             asm_str_style: asm_str_style.unwrap(),
             outputs: outputs,
             inputs: inputs,

@@ -29,6 +29,7 @@ use std::cell::{RefCell, Cell};
 use std::collections::BitvSet;
 use std::collections::HashSet;
 use std::fmt;
+use std::ops::Deref;
 
 thread_local! { static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()) }
 
@@ -44,7 +45,7 @@ pub fn is_used(attr: &Attribute) -> bool {
 
 pub trait AttrMetaMethods {
     fn check_name(&self, name: &str) -> bool {
-        name == self.name().get()
+        name == self.name().deref()
     }
 
     /// Retrieve the name of the meta item, e.g. `foo` in `#[foo]`,
@@ -62,7 +63,7 @@ pub trait AttrMetaMethods {
 
 impl AttrMetaMethods for Attribute {
     fn check_name(&self, name: &str) -> bool {
-        let matches = name == self.name().get();
+        let matches = name == self.name().deref();
         if matches {
             mark_used(self);
         }
@@ -142,7 +143,7 @@ impl AttributeMethods for Attribute {
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(&strip_doc_comment_decoration(
-                        comment.get())[]));
+                        comment.deref())[]));
             if self.node.style == ast::AttrOuter {
                 f(&mk_attr_outer(self.node.id, meta))
             } else {
@@ -209,7 +210,7 @@ pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
 pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
                            hi: BytePos)
                            -> Attribute {
-    let style = doc_comment_style(text.get());
+    let style = doc_comment_style(text.deref());
     let lit = spanned(lo, hi, ast::LitStr(text, ast::CookedStr));
     let attr = Attribute_ {
         id: id,
@@ -326,11 +327,11 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::MetaItem) -> bool {
     match cfg.node {
-        ast::MetaList(ref pred, ref mis) if pred.get() == "any" =>
+        ast::MetaList(ref pred, ref mis) if pred.deref() == "any" =>
             mis.iter().any(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
-        ast::MetaList(ref pred, ref mis) if pred.get() == "all" =>
+        ast::MetaList(ref pred, ref mis) if pred.deref() == "all" =>
             mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
-        ast::MetaList(ref pred, ref mis) if pred.get() == "not" => {
+        ast::MetaList(ref pred, ref mis) if pred.deref() == "not" => {
             if mis.len() != 1 {
                 diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
                 return false;
@@ -382,7 +383,7 @@ fn find_stability_generic<'a,
 
     'outer: for attr in attrs {
         let tag = attr.name();
-        let tag = tag.get();
+        let tag = tag.deref();
         if tag != "deprecated" && tag != "unstable" && tag != "stable" {
             continue // not a stability level
         }
@@ -394,8 +395,8 @@ fn find_stability_generic<'a,
                 let mut feature = None;
                 let mut since = None;
                 let mut reason = None;
-                for meta in metas {
-                    if meta.name().get() == "feature" {
+                for meta in metas.iter() {
+                    if meta.name() == "feature" {
                         match meta.value_str() {
                             Some(v) => feature = Some(v),
                             None => {
@@ -404,7 +405,7 @@ fn find_stability_generic<'a,
                             }
                         }
                     }
-                    if meta.name().get() == "since" {
+                    if meta.name().deref() == "since" {
                         match meta.value_str() {
                             Some(v) => since = Some(v),
                             None => {
@@ -413,7 +414,7 @@ fn find_stability_generic<'a,
                             }
                         }
                     }
-                    if meta.name().get() == "reason" {
+                    if meta.name().deref() == "reason" {
                         match meta.value_str() {
                             Some(v) => reason = Some(v),
                             None => {
@@ -521,11 +522,11 @@ pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAt
             for item in items {
                 match item.node {
                     ast::MetaWord(ref word) => {
-                        let hint = match word.get() {
+                        let hint = match word.deref() {
                             // Can't use "extern" because it's not a lexical identifier.
                             "C" => Some(ReprExtern),
                             "packed" => Some(ReprPacked),
-                            _ => match int_type_of_word(word.get()) {
+                            _ => match int_type_of_word(word.deref()) {
                                 Some(ity) => Some(ReprInt(item.span, ity)),
                                 None => {
                                     // Not a word we recognize

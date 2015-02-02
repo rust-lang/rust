@@ -28,6 +28,7 @@ use fold::Folder;
 
 use std::collections::HashMap;
 use std::rc::Rc;
+use std::ops::Deref;
 
 pub trait ItemDecorator {
     fn expand(&self,
@@ -790,7 +791,7 @@ pub fn get_single_str_from_tts(cx: &mut ExtCtxt,
         cx.span_err(sp, &format!("{} takes 1 argument", name)[]);
     }
     expr_to_string(cx, ret, "argument must be a string literal").map(|(s, _)| {
-        s.get().to_string()
+        s.deref().to_string()
     })
 }
 

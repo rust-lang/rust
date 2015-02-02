@@ -21,6 +21,7 @@ use parse::token::InternedString;
 use parse::token;
 use ptr::P;
 
+use std::ops::Deref;
 
 // Transitional reexports so qquote can find the paths it is looking for
 mod syntax {
@@ -576,7 +577,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     fn expr_field_access(&self, sp: Span, expr: P<ast::Expr>, ident: ast::Ident) -> P<ast::Expr> {
         let field_name = token::get_ident(ident);
         let field_span = Span {
-            lo: sp.lo - Pos::from_usize(field_name.get().len()),
+            lo: sp.lo - Pos::from_usize(field_name.deref().len()),
             hi: sp.hi,
             expn_id: sp.expn_id,
         };
