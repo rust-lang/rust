@@ -589,8 +589,8 @@ The `Writer` trait is cut down to even smaller size:
 ```rust
 trait Write {
     fn write(&mut self, buf: &[u8]) -> Result<uint, Error>;
+    fn flush(&mut self) -> Result<(), Error>;
 
-    fn flush(&mut self) -> Result<(), Error> { .. }
     fn write_all(&mut self, buf: &[u8]) -> Result<(), Error> { .. }
     fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Error> { .. }
 }
@@ -661,7 +661,7 @@ trait ReadExt: Read {
     // ... eliding the methods already described above
 
     // Postfix version of `(&mut self)`
-    fn by_ref<'a>(&'a mut self) -> &mut Self { ... }
+    fn by_ref(&mut self) -> &mut Self { ... }
 
     // Read everything from `self`, then read from `next`
     fn chain<R: Read>(self, next: R) -> Chain<Self, R> { ... }
@@ -731,19 +731,18 @@ types:
 
 ```rust
 pub trait Seek {
-    type Err;
     // returns the new position after seeking
-    fn seek(&mut self, pos: SeekPos) -> Result<u64, Err>;
+    fn seek(&mut self, pos: SeekFrom) -> Result<u64, Error>;
 }
 
-pub enum SeekPos {
-    FromStart(u64),
-    FromEnd(i64),
-    FromCur(i64),
+pub enum SeekFrom {
+    Start(u64),
+    End(i64),
+    Current(i64),
 }
 ```
 
-The old `tell` function can be regained via `seek(SeekPos::FromCur(0))`.
+The old `tell` function can be regained via `seek(SeekFrom::Current(0))`.
 
 #### Buffering
 [Buffering]: #buffering
@@ -788,12 +787,19 @@ strings) and is usually what you want when working with iterators.
 
 The `BufReader`, `BufWriter` and `BufStream` types stay
 essentially as they are today, except that for streams and writers the
-`into_inner` method yields any errors encountered when flushing,
-together with the remaining data:
+`into_inner` method yields the structure back in the case of a flush error:
 
 ```rust
 // If flushing fails, you get the unflushed data back
-fn into_inner(self) -> Result<W, (Self, Error)>;
+fn into_inner(self) -> Result<W, IntoInnerError<Self>>;
+
+pub struct IntoInnerError<W>(W, Error);
+
+impl IntoInnerError<T> {
+    pub fn error(&self) -> &Error { ... }
+    pub fn into_inner(self) -> W { ... }
+}
+impl<W> FromError<IntoInnerError<W>> for Error { ... }
 ```
 
 #### `Cursor`
@@ -804,9 +810,9 @@ or `Write`. This is often useful when composing streams or creating test cases.
 This functionality primarily comes from the following implementations:
 
 ```rust
-impl<'a> Read for &'a [u8] { type Err = Void; ... }
-impl<'a> Write for &'a mut [u8] { type Err = Void; ... }
-impl Write for Vec<u8> { type Err = Void; ... }
+impl<'a> Read for &'a [u8] { ... }
+impl<'a> Write for &'a mut [u8] { ... }
+impl Write for Vec<u8> { ... }
 ```
 
 While efficient, none of these implementations support seeking (via an
@@ -829,20 +835,20 @@ impl<T> Cursor<T> {
 // Error indicating that a negative offset was seeked to.
 pub struct NegativeOffset;
 
-impl Seek for Cursor<Vec<u8>> { type Err = NegativeOffset; ... }
-impl<'a> Seek for Cursor<&'a [u8]> { type Err = NegativeOffset; ... }
-impl<'a> Seek for Cursor<&'a mut [u8]> { type Err = NegativeOffset; ... }
+impl Seek for Cursor<Vec<u8>> { ... }
+impl<'a> Seek for Cursor<&'a [u8]> { ... }
+impl<'a> Seek for Cursor<&'a mut [u8]> { ... }
 
-impl Read for Cursor<Vec<u8>> { type Err = Void; ... }
-impl<'a> Read for Cursor<&'a [u8]> { type Err = Void; ... }
-impl<'a> Read for Cursor<&'a mut [u8]> { type Err = Void; ... }
+impl Read for Cursor<Vec<u8>> { ... }
+impl<'a> Read for Cursor<&'a [u8]> { ... }
+impl<'a> Read for Cursor<&'a mut [u8]> { ... }
 
-impl BufferedRead for Cursor<Vec<u8>> { type Err = Void; ... }
-impl<'a> BufferedRead for Cursor<&'a [u8]> { type Err = Void; ... }
-impl<'a> BufferedRead for Cursor<&'a mut [u8]> { type Err = Void; ... }
+impl BufRead for Cursor<Vec<u8>> { ... }
+impl<'a> BufRead for Cursor<&'a [u8]> { ... }
+impl<'a> BufRead for Cursor<&'a mut [u8]> { ... }
 
-impl<'a> Write for Cursor<&'a mut [u8]> { type Err = Void; ... }
-impl Write for Cursor<Vec<u8>> { type Err = Void; ... }
+impl<'a> Write for Cursor<&'a mut [u8]> { ... }
+impl Write for Cursor<Vec<u8>> { ... }
 ```
 
 A sample implementation can be found in [a gist][cursor-impl]. Using one
