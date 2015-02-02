@@ -38,10 +38,10 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(env)]
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(io)]
-#![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -75,7 +75,7 @@ use std::old_io::{File, ChanReader, ChanWriter};
 use std::old_io;
 use std::iter::repeat;
 use std::num::{Float, Int};
-use std::os;
+use std::env;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::{self, Thread};
 use std::thunk::{Thunk, Invoke};
@@ -388,7 +388,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
-        nocapture = os::getenv("RUST_TEST_NOCAPTURE").is_some();
+        nocapture = env::var("RUST_TEST_NOCAPTURE").is_some();
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
@@ -817,15 +817,15 @@ fn run_tests<F>(opts: &TestOpts,
 
 fn get_concurrency() -> uint {
     use std::rt;
-    match os::getenv("RUST_TEST_TASKS") {
-        Some(s) => {
+    match env::var_string("RUST_TEST_TASKS") {
+        Ok(s) => {
             let opt_n: Option<uint> = s.parse().ok();
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => panic!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
             }
         }
-        None => {
+        Err(..) => {
             rt::default_sched_threads()
         }
     }

@@ -40,6 +40,7 @@
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
+#![feature(env)]
 
 extern crate syntax;
 extern crate serialize;

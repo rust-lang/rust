@@ -10,17 +10,21 @@
 
 //! C definitions used by libnative that don't belong in liblibc
 
-#![allow(overflowing_literals)]
-#![allow(dead_code)]
-#![allow(non_camel_case_types)]
+#![allow(bad_style, dead_code, overflowing_literals)]
 
 use libc;
-use prelude::v1::*;
 
-pub const WSADESCRIPTION_LEN: uint = 256;
-pub const WSASYS_STATUS_LEN: uint = 128;
+pub use self::GET_FILEEX_INFO_LEVELS::*;
+pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
+pub use libc::consts::os::extra::{
+    FILE_ATTRIBUTE_READONLY,
+    FILE_ATTRIBUTE_DIRECTORY,
+};
+
+pub const WSADESCRIPTION_LEN: usize = 256;
+pub const WSASYS_STATUS_LEN: usize = 128;
 pub const FIONBIO: libc::c_long = 0x8004667e;
-pub const FD_SETSIZE: uint = 64;
+pub const FD_SETSIZE: usize = 64;
 pub const MSG_DONTWAIT: libc::c_int = 0;
 pub const ERROR_ILLEGAL_CHARACTER: libc::c_int = 582;
 pub const ENABLE_ECHO_INPUT: libc::DWORD = 0x4;
@@ -32,11 +36,14 @@ pub const ENABLE_QUICK_EDIT_MODE: libc::DWORD = 0x40;
 pub const WSA_INVALID_EVENT: WSAEVENT = 0 as WSAEVENT;
 
 pub const FD_ACCEPT: libc::c_long = 0x08;
-pub const FD_MAX_EVENTS: uint = 10;
+pub const FD_MAX_EVENTS: usize = 10;
 pub const WSA_INFINITE: libc::DWORD = libc::INFINITE;
 pub const WSA_WAIT_TIMEOUT: libc::DWORD = libc::consts::os::extra::WAIT_TIMEOUT;
 pub const WSA_WAIT_EVENT_0: libc::DWORD = libc::consts::os::extra::WAIT_OBJECT_0;
 pub const WSA_WAIT_FAILED: libc::DWORD = libc::consts::os::extra::WAIT_FAILED;
+
+pub const ERROR_NO_MORE_FILES: libc::DWORD = 18;
+pub const TOKEN_READ: libc::DWORD = 0x20008;
 
 #[repr(C)]
 #[cfg(target_arch = "x86")]
@@ -80,7 +87,7 @@ pub struct fd_set {
 }
 
 pub fn fd_set(set: &mut fd_set, s: libc::SOCKET) {
-    set.fd_array[set.fd_count as uint] = s;
+    set.fd_array[set.fd_count as usize] = s;
     set.fd_count += 1;
 }
 
@@ -109,6 +116,69 @@ pub struct CONSOLE_SCREEN_BUFFER_INFO {
     pub dwMaximumWindowSize: COORD,
 }
 pub type PCONSOLE_SCREEN_BUFFER_INFO = *mut CONSOLE_SCREEN_BUFFER_INFO;
+
+#[repr(C)]
+pub struct WIN32_FILE_ATTRIBUTE_DATA {
+    pub dwFileAttributes: libc::DWORD,
+    pub ftCreationTime: libc::FILETIME,
+    pub ftLastAccessTime: libc::FILETIME,
+    pub ftLastWriteTime: libc::FILETIME,
+    pub nFileSizeHigh: libc::DWORD,
+    pub nFileSizeLow: libc::DWORD,
+}
+
+#[repr(C)]
+pub struct BY_HANDLE_FILE_INFORMATION {
+    pub dwFileAttributes: libc::DWORD,
+    pub ftCreationTime: libc::FILETIME,
+    pub ftLastAccessTime: libc::FILETIME,
+    pub ftLastWriteTime: libc::FILETIME,
+    pub dwVolumeSerialNumber: libc::DWORD,
+    pub nFileSizeHigh: libc::DWORD,
+    pub nFileSizeLow: libc::DWORD,
+    pub nNumberOfLinks: libc::DWORD,
+    pub nFileIndexHigh: libc::DWORD,
+    pub nFileIndexLow: libc::DWORD,
+}
+
+pub type LPBY_HANDLE_FILE_INFORMATION = *mut BY_HANDLE_FILE_INFORMATION;
+
+#[repr(C)]
+pub enum GET_FILEEX_INFO_LEVELS {
+    GetFileExInfoStandard,
+    GetFileExMaxInfoLevel
+}
+
+#[repr(C)]
+pub enum FILE_INFO_BY_HANDLE_CLASS {
+    FileBasicInfo                   = 0,
+    FileStandardInfo                = 1,
+    FileNameInfo                    = 2,
+    FileRenameInfo                  = 3,
+    FileDispositionInfo             = 4,
+    FileAllocationInfo              = 5,
+    FileEndOfFileInfo               = 6,
+    FileStreamInfo                  = 7,
+    FileCompressionInfo             = 8,
+    FileAttributeTagInfo            = 9,
+    FileIdBothDirectoryInfo         = 10, // 0xA
+    FileIdBothDirectoryRestartInfo  = 11, // 0xB
+    FileIoPriorityHintInfo          = 12, // 0xC
+    FileRemoteProtocolInfo          = 13, // 0xD
+    FileFullDirectoryInfo           = 14, // 0xE
+    FileFullDirectoryRestartInfo    = 15, // 0xF
+    FileStorageInfo                 = 16, // 0x10
+    FileAlignmentInfo               = 17, // 0x11
+    FileIdInfo                      = 18, // 0x12
+    FileIdExtdDirectoryInfo         = 19, // 0x13
+    FileIdExtdDirectoryRestartInfo  = 20, // 0x14
+    MaximumFileInfoByHandlesClass
+}
+
+#[repr(C)]
+pub struct FILE_END_OF_FILE_INFO {
+    pub EndOfFile: libc::LARGE_INTEGER,
+}
 
 #[link(name = "ws2_32")]
 extern "system" {
@@ -156,31 +226,29 @@ extern "system" {
 }
 
 pub mod compat {
-    use intrinsics::{atomic_store_relaxed, transmute};
-    use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
     use prelude::v1::*;
+
     use ffi::CString;
+    use libc::types::os::arch::extra::{LPCWSTR, HMODULE, LPCSTR, LPVOID};
+    use sync::atomic::{AtomicUsize, Ordering};
 
     extern "system" {
         fn GetModuleHandleW(lpModuleName: LPCWSTR) -> HMODULE;
         fn GetProcAddress(hModule: HMODULE, lpProcName: LPCSTR) -> LPVOID;
     }
 
-    // store_func() is idempotent, so using relaxed ordering for the atomics
-    // should be enough.  This way, calling a function in this compatibility
-    // layer (after it's loaded) shouldn't be any slower than a regular DLL
-    // call.
-    unsafe fn store_func(ptr: *mut uint, module: &str, symbol: &str, fallback: uint) {
+    fn store_func(ptr: &AtomicUsize, module: &str, symbol: &str,
+                  fallback: usize) -> usize {
         let mut module: Vec<u16> = module.utf16_units().collect();
         module.push(0);
         let symbol = CString::from_slice(symbol.as_bytes());
-        let handle = GetModuleHandleW(module.as_ptr());
-        let func: uint = transmute(GetProcAddress(handle, symbol.as_ptr()));
-        atomic_store_relaxed(ptr, if func == 0 {
-            fallback
-        } else {
-            func
-        })
+        let func = unsafe {
+            let handle = GetModuleHandleW(module.as_ptr());
+            GetProcAddress(handle, symbol.as_ptr()) as usize
+        };
+        let value = if func == 0 {fallback} else {func};
+        ptr.store(value, Ordering::SeqCst);
+        value
     }
 
     /// Macro for creating a compatibility fallback for a Windows function
@@ -192,29 +260,36 @@ pub mod compat {
     /// })
     /// ```
     ///
-    /// Note that arguments unused by the fallback implementation should not be called `_` as
-    /// they are used to be passed to the real function if available.
+    /// Note that arguments unused by the fallback implementation should not be
+    /// called `_` as they are used to be passed to the real function if
+    /// available.
     macro_rules! compat_fn {
         ($module:ident::$symbol:ident($($argname:ident: $argtype:ty),*)
                                       -> $rettype:ty { $fallback:expr }) => (
             #[inline(always)]
             pub unsafe fn $symbol($($argname: $argtype),*) -> $rettype {
-                static mut ptr: extern "system" fn($($argname: $argtype),*) -> $rettype = thunk;
+                use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
+                use mem;
 
-                extern "system" fn thunk($($argname: $argtype),*) -> $rettype {
-                    unsafe {
-                        ::sys::c::compat::store_func(&mut ptr as *mut _ as *mut uint,
-                                                    stringify!($module),
-                                                    stringify!($symbol),
-                                                    fallback as uint);
-                        ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
-                    }
+                static PTR: AtomicUsize = ATOMIC_USIZE_INIT;
+
+                fn load() -> usize {
+                    ::sys::c::compat::store_func(&PTR,
+                                                 stringify!($module),
+                                                 stringify!($symbol),
+                                                 fallback as usize)
                 }
 
                 extern "system" fn fallback($($argname: $argtype),*)
                                             -> $rettype { $fallback }
 
-                ::intrinsics::atomic_load_relaxed(&ptr)($($argname),*)
+                let addr = match PTR.load(Ordering::SeqCst) {
+                    0 => load(),
+                    n => n,
+                };
+                let f: extern "system" fn($($argtype),*) -> $rettype =
+                    mem::transmute(addr);
+                f($($argname),*)
             }
         )
     }
@@ -229,10 +304,7 @@ pub mod compat {
         use libc::c_uint;
         use libc::types::os::arch::extra::{DWORD, LPCWSTR, BOOLEAN, HANDLE};
         use libc::consts::os::extra::ERROR_CALL_NOT_IMPLEMENTED;
-
-        extern "system" {
-            fn SetLastError(dwErrCode: DWORD);
-        }
+        use sys::c::SetLastError;
 
         compat_fn! {
             kernel32::CreateSymbolicLinkW(_lpSymlinkFileName: LPCWSTR,
@@ -282,4 +354,42 @@ extern "system" {
         hConsoleOutput: libc::HANDLE,
         lpConsoleScreenBufferInfo: PCONSOLE_SCREEN_BUFFER_INFO,
     ) -> libc::BOOL;
+
+    pub fn GetFileAttributesExW(lpFileName: libc::LPCWSTR,
+                                fInfoLevelId: GET_FILEEX_INFO_LEVELS,
+                                lpFileInformation: libc::LPVOID) -> libc::BOOL;
+    pub fn RemoveDirectoryW(lpPathName: libc::LPCWSTR) -> libc::BOOL;
+    pub fn SetFileAttributesW(lpFileName: libc::LPCWSTR,
+                              dwFileAttributes: libc::DWORD) -> libc::BOOL;
+    pub fn GetFileAttributesW(lpFileName: libc::LPCWSTR) -> libc::DWORD;
+    pub fn GetFileInformationByHandle(hFile: libc::HANDLE,
+                            lpFileInformation: LPBY_HANDLE_FILE_INFORMATION)
+                            -> libc::BOOL;
+
+    pub fn SetLastError(dwErrCode: libc::DWORD);
+    pub fn GetCommandLineW() -> *mut libc::LPCWSTR;
+    pub fn LocalFree(ptr: *mut libc::c_void);
+    pub fn CommandLineToArgvW(lpCmdLine: *mut libc::LPCWSTR,
+                              pNumArgs: *mut libc::c_int) -> *mut *mut u16;
+    pub fn SetFileTime(hFile: libc::HANDLE,
+                       lpCreationTime: *const libc::FILETIME,
+                       lpLastAccessTime: *const libc::FILETIME,
+                       lpLastWriteTime: *const libc::FILETIME) -> libc::BOOL;
+    pub fn SetFileInformationByHandle(hFile: libc::HANDLE,
+                    FileInformationClass: FILE_INFO_BY_HANDLE_CLASS,
+                    lpFileInformation: libc::LPVOID,
+                    dwBufferSize: libc::DWORD) -> libc::BOOL;
+    pub fn GetTempPathW(nBufferLength: libc::DWORD,
+                        lpBuffer: libc::LPCWSTR) -> libc::DWORD;
+    pub fn OpenProcessToken(ProcessHandle: libc::HANDLE,
+                            DesiredAccess: libc::DWORD,
+                            TokenHandle: *mut libc::HANDLE) -> libc::BOOL;
+    pub fn GetCurrentProcess() -> libc::HANDLE;
+}
+
+#[link(name = "userenv")]
+extern "system" {
+    pub fn GetUserProfileDirectoryW(hToken: libc::HANDLE,
+                                    lpProfileDir: libc::LPCWSTR,
+                                    lpcchSize: *mut libc::DWORD) -> libc::BOOL;
 }

@@ -72,18 +72,6 @@ impl Process {
             }
         }
 
-        #[cfg(target_os = "macos")]
-        unsafe fn set_environ(envp: *const c_void) {
-            extern { fn _NSGetEnviron() -> *mut *const c_void; }
-
-            *_NSGetEnviron() = envp;
-        }
-        #[cfg(not(target_os = "macos"))]
-        unsafe fn set_environ(envp: *const c_void) {
-            extern { static mut environ: *const c_void; }
-            environ = envp;
-        }
-
         unsafe fn set_cloexec(fd: c_int) {
             let ret = c::ioctl(fd, c::FIOCLEX);
             assert_eq!(ret, 0);
@@ -269,7 +257,7 @@ impl Process {
                     fail(&mut output);
                 }
                 if !envp.is_null() {
-                    set_environ(envp);
+                    *sys::os::environ() = envp as *const _;
                 }
                 let _ = execvp(*argv, argv as *mut _);
                 fail(&mut output);

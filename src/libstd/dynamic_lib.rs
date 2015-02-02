@@ -19,7 +19,7 @@ use prelude::v1::*;
 
 use ffi::CString;
 use mem;
-use os;
+use env;
 use str;
 
 #[allow(missing_copy_implementations)]
@@ -68,8 +68,8 @@ impl DynamicLibrary {
         let mut search_path = DynamicLibrary::search_path();
         search_path.insert(0, path.clone());
         let newval = DynamicLibrary::create_path(search_path.as_slice());
-        os::setenv(DynamicLibrary::envvar(),
-                   str::from_utf8(newval.as_slice()).unwrap());
+        env::set_var(DynamicLibrary::envvar(),
+                     str::from_utf8(newval.as_slice()).unwrap());
     }
 
     /// From a slice of paths, create a new vector which is suitable to be an
@@ -102,18 +102,10 @@ impl DynamicLibrary {
     /// Returns the current search path for dynamic libraries being used by this
     /// process
     pub fn search_path() -> Vec<Path> {
-        let mut ret = Vec::new();
-        match os::getenv_as_bytes(DynamicLibrary::envvar()) {
-            Some(env) => {
-                for portion in
-                        env.as_slice()
-                           .split(|a| *a == DynamicLibrary::separator()) {
-                    ret.push(Path::new(portion));
-                }
-            }
-            None => {}
+        match env::var(DynamicLibrary::envvar()) {
+            Some(var) => env::split_paths(&var).collect(),
+            None => Vec::new(),
         }
-        return ret;
     }
 
     /// Access the value at the symbol of the dynamic library
