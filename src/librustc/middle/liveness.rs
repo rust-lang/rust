@@ -540,9 +540,9 @@ struct Specials {
     clean_exit_var: Variable
 }
 
-static ACC_READ: uint = 1u;
-static ACC_WRITE: uint = 2u;
-static ACC_USE: uint = 4u;
+static ACC_READ: uint = 1;
+static ACC_WRITE: uint = 2;
+static ACC_USE: uint = 4;
 
 struct Liveness<'a, 'tcx: 'a> {
     ir: &'a mut IrMaps<'a, 'tcx>,
@@ -672,9 +672,9 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn indices2<F>(&mut self, ln: LiveNode, succ_ln: LiveNode, mut op: F) where
         F: FnMut(&mut Liveness<'a, 'tcx>, uint, uint),
     {
-        let node_base_idx = self.idx(ln, Variable(0u));
-        let succ_base_idx = self.idx(succ_ln, Variable(0u));
-        for var_idx in 0u..self.ir.num_vars {
+        let node_base_idx = self.idx(ln, Variable(0));
+        let succ_base_idx = self.idx(succ_ln, Variable(0));
+        for var_idx in 0..self.ir.num_vars {
             op(self, node_base_idx + var_idx, succ_base_idx + var_idx);
         }
     }
@@ -687,7 +687,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         F: FnMut(uint) -> LiveNode,
     {
         let node_base_idx = self.idx(ln, Variable(0));
-        for var_idx in 0u..self.ir.num_vars {
+        for var_idx in 0..self.ir.num_vars {
             let idx = node_base_idx + var_idx;
             if test(idx).is_valid() {
                 try!(write!(wr, " {:?}", Variable(var_idx)));
@@ -847,7 +847,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // hack to skip the loop unless debug! is enabled:
         debug!("^^ liveness computation results for body {} (entry={:?})",
                {
-                   for ln_idx in 0u..self.ir.num_live_nodes {
+                   for ln_idx in 0..self.ir.num_live_nodes {
                        debug!("{:?}", self.ln_str(LiveNode(ln_idx)));
                    }
                    body.id
@@ -1303,7 +1303,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match self.ir.tcx.def_map.borrow()[expr.id].clone() {
           DefLocal(nid) => {
             let ln = self.live_node(expr.id, expr.span);
-            if acc != 0u {
+            if acc != 0 {
                 self.init_from_succ(ln, succ);
                 let var = self.variable(nid, expr.span);
                 self.acc(ln, var, acc);

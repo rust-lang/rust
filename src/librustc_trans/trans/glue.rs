@@ -337,8 +337,8 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             // info points to the vtable and the second entry in the vtable is the
             // dynamic size of the object.
             let info = PointerCast(bcx, info, Type::int(bcx.ccx()).ptr_to());
-            let size_ptr = GEPi(bcx, info, &[1u]);
-            let align_ptr = GEPi(bcx, info, &[2u]);
+            let size_ptr = GEPi(bcx, info, &[1]);
+            let align_ptr = GEPi(bcx, info, &[2]);
             (Load(bcx, size_ptr), Load(bcx, align_ptr))
         }
         ty::ty_vec(_, None) | ty::ty_str => {
@@ -551,7 +551,7 @@ fn make_generic_glue<'a, 'tcx, F>(ccx: &CrateContext<'a, 'tcx>,
 
     update_linkage(ccx, llfn, None, OriginalTranslation);
 
-    ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1u);
+    ccx.stats().n_glues_created.set(ccx.stats().n_glues_created.get() + 1);
     // All glue functions take values passed *by alias*; this is a
     // requirement since in many contexts glue is invoked indirectly and
     // the caller has no idea if it's dealing with something that can be

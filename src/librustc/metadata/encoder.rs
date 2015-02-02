@@ -1060,7 +1060,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs[]);
-        if tps_len > 0u || should_inline(&item.attrs[]) {
+        if tps_len > 0 || should_inline(&item.attrs[]) {
             encode_inlined_item(ecx, rbml_w, IIItemRef(item));
         }
         if tps_len == 0 {

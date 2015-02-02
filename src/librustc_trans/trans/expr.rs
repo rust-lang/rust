@@ -153,11 +153,11 @@ pub fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn get_len(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0u, abi::FAT_PTR_EXTRA])
+    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_EXTRA])
 }
 
 pub fn get_dataptr(bcx: Block, fat_ptr: ValueRef) -> ValueRef {
-    GEPi(bcx, fat_ptr, &[0u, abi::FAT_PTR_ADDR])
+    GEPi(bcx, fat_ptr, &[0, abi::FAT_PTR_ADDR])
 }
 
 /// Helper for trans that apply adjustments from `expr` to `datum`, which should be the unadjusted
@@ -366,7 +366,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 }, info),
             ty::UnsizeLength(..) =>
                 into_fat_ptr(bcx, expr, datum, dest_ty, |bcx, val| {
-                    GEPi(bcx, val, &[0u, 0u])
+                    GEPi(bcx, val, &[0, 0])
                 }, info),
             ty::UnsizeVtable(..) =>
                 into_fat_ptr(bcx, expr, datum, dest_ty, |_bcx, val| {
@@ -1185,7 +1185,7 @@ fn trans_def_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match def {
         def::DefVariant(tid, vid, _) => {
             let variant_info = ty::enum_variant_with_id(bcx.tcx(), tid, vid);
-            if variant_info.args.len() > 0u {
+            if variant_info.args.len() > 0 {
                 // N-ary variant.
                 let llfn = callee::trans_fn_ref(bcx.ccx(), vid,
                                                 ExprId(ref_expr.id),

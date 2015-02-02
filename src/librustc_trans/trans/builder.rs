@@ -61,22 +61,22 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                 // Pass 1: scan table mapping str -> rightmost pos.
                 let mut mm = FnvHashMap();
                 let len = v.len();
-                let mut i = 0u;
+                let mut i = 0;
                 while i < len {
                     mm.insert(v[i], i);
-                    i += 1u;
+                    i += 1;
                 }
 
                 // Pass 2: concat strings for each elt, skipping
                 // forwards over any cycles by advancing to rightmost
                 // occurrence of each element in path.
                 let mut s = String::from_str(".");
-                i = 0u;
+                i = 0;
                 while i < len {
                     i = mm[v[i]];
                     s.push('/');
                     s.push_str(v[i]);
-                    i += 1u;
+                    i += 1;
                 }
 
                 s.push('/');
@@ -84,9 +84,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
 
                 let n = match h.get(&s) {
                     Some(&n) => n,
-                    _ => 0u
+                    _ => 0
                 };
-                h.insert(s, n+1u);
+                h.insert(s, n+1);
             })
         }
     }

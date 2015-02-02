@@ -579,16 +579,16 @@ fn encode_method_callee<'a, 'tcx>(ecx: &e::EncodeContext<'a, 'tcx>,
     use serialize::Encoder;
 
     rbml_w.emit_struct("MethodCallee", 4, |rbml_w| {
-        rbml_w.emit_struct_field("adjustment", 0u, |rbml_w| {
+        rbml_w.emit_struct_field("adjustment", 0, |rbml_w| {
             adjustment.encode(rbml_w)
         });
-        rbml_w.emit_struct_field("origin", 1u, |rbml_w| {
+        rbml_w.emit_struct_field("origin", 1, |rbml_w| {
             Ok(rbml_w.emit_method_origin(ecx, &method.origin))
         });
-        rbml_w.emit_struct_field("ty", 2u, |rbml_w| {
+        rbml_w.emit_struct_field("ty", 2, |rbml_w| {
             Ok(rbml_w.emit_ty(ecx, method.ty))
         });
-        rbml_w.emit_struct_field("substs", 3u, |rbml_w| {
+        rbml_w.emit_struct_field("substs", 3, |rbml_w| {
             Ok(rbml_w.emit_substs(ecx, &method.substs))
         })
     }).unwrap();
@@ -720,30 +720,30 @@ impl<'tcx, 'a> vtable_decoder_helpers<'tcx> for reader::Decoder<'a> {
                 Ok(match i {
                   0 => {
                     ty::vtable_static(
-                        this.read_enum_variant_arg(0u, |this| {
+                        this.read_enum_variant_arg(0, |this| {
                             Ok(this.read_def_id_nodcx(cdata))
                         }).unwrap(),
-                        this.read_enum_variant_arg(1u, |this| {
+                        this.read_enum_variant_arg(1, |this| {
                             Ok(this.read_substs_nodcx(tcx, cdata))
                         }).unwrap(),
-                        this.read_enum_variant_arg(2u, |this| {
+                        this.read_enum_variant_arg(2, |this| {
                             Ok(this.read_vtable_res(tcx, cdata))
                         }).unwrap()
                     )
                   }
                   1 => {
                     ty::vtable_param(
-                        this.read_enum_variant_arg(0u, |this| {
+                        this.read_enum_variant_arg(0, |this| {
                             Decodable::decode(this)
                         }).unwrap(),
-                        this.read_enum_variant_arg(1u, |this| {
+                        this.read_enum_variant_arg(1, |this| {
                             this.read_uint()
                         }).unwrap()
                     )
                   }
                   2 => {
                     ty::vtable_closure(
-                        this.read_enum_variant_arg(0u, |this| {
+                        this.read_enum_variant_arg(0, |this| {
                             Ok(this.read_def_id_nodcx(cdata))
                         }).unwrap()
                     )

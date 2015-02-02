@@ -4479,7 +4479,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             match resolve_expr(tcx, expr) {
                 def::DefVariant(tid, vid, _) => {
                     let variant_info = enum_variant_with_id(tcx, tid, vid);
-                    if variant_info.args.len() > 0u {
+                    if variant_info.args.len() > 0 {
                         // N-ary variant.
                         RvalueDatumExpr
                     } else {
@@ -4643,8 +4643,8 @@ pub fn stmt_node_id(s: &ast::Stmt) -> ast::NodeId {
 
 pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
                      -> uint {
-    let mut i = 0u;
-    for f in fields.iter() { if f.name == name { return i; } i += 1u; }
+    let mut i = 0;
+    for f in fields.iter() { if f.name == name { return i; } i += 1; }
     tcx.sess.bug(&format!(
         "no field named `{}` found in the list of fields `{:?}`",
         token::get_name(name),

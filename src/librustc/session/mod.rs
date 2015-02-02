@@ -260,7 +260,7 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
     }).map(|(a, b)| (a - 1, b));
 
     let mut new_msg = String::new();
-    let mut head = 0u;
+    let mut head = 0;
 
     // Insert `\n` before expected and found.
     for (pos1, pos2) in first.zip(second) {

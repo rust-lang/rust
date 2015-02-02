@@ -88,7 +88,7 @@ pub fn maybe_find_item<'a>(item_id: ast::NodeId,
                            items: rbml::Doc<'a>) -> Option<rbml::Doc<'a>> {
     fn eq_item(bytes: &[u8], item_id: ast::NodeId) -> bool {
         return u64_from_be_bytes(
-            &bytes[0u..4u], 0u, 4u) as ast::NodeId
+            &bytes[0..4], 0, 4) as ast::NodeId
             == item_id;
     }
     lookup_hash(items,
@@ -1164,7 +1164,7 @@ fn get_attributes(md: rbml::Doc) -> Vec<ast::Attribute> {
             let meta_items = get_meta_items(attr_doc);
             // Currently it's only possible to have a single meta item on
             // an attribute
-            assert_eq!(meta_items.len(), 1u);
+            assert_eq!(meta_items.len(), 1);
             let meta_item = meta_items.into_iter().nth(0).unwrap();
             attrs.push(
                 codemap::Spanned {
