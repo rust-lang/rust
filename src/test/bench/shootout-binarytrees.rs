@@ -114,7 +114,7 @@ fn main() {
         Thread::scoped(move || inner(depth, iterations))
     }).collect::<Vec<_>>();
 
-    for message in messages.into_iter() {
+    for message in messages {
         println!("{}", message.join().ok().unwrap());
     }
 

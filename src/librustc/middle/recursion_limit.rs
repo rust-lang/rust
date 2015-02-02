@@ -20,7 +20,7 @@ use syntax::ast;
 use syntax::attr::AttrMetaMethods;
 
 pub fn update_recursion_limit(sess: &Session, krate: &ast::Crate) {
-    for attr in krate.attrs.iter() {
+    for attr in &krate.attrs {
         if !attr.check_name("recursion_limit") {
             continue;
         }

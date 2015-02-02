@@ -1573,7 +1573,7 @@ impl<A: Ord> Ord for RingBuf<A> {
 impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
         }
     }
@@ -1635,7 +1635,7 @@ impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for RingBuf<A> {
-    fn extend<T: Iterator<Item=A>>(&mut self, mut iterator: T) {
+    fn extend<T: Iterator<Item=A>>(&mut self, iterator: T) {
         for elt in iterator {
             self.push_back(elt);
         }
@@ -1856,7 +1856,7 @@ mod tests {
 
         b.iter(|| {
             let mut sum = 0;
-            for &i in ring.iter() {
+            for &i in &ring {
                 sum += i;
             }
             test::black_box(sum);
@@ -1869,7 +1869,7 @@ mod tests {
 
         b.iter(|| {
             let mut sum = 0;
-            for i in ring.iter_mut() {
+            for i in &mut ring {
                 sum += *i;
             }
             test::black_box(sum);

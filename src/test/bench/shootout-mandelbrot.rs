@@ -106,7 +106,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
         })
     }).collect::<Vec<_>>();
 
-    for res in precalc_futures.into_iter() {
+    for res in precalc_futures {
         let (rs, is) = res.join().ok().unwrap();
         precalc_r.extend(rs.into_iter());
         precalc_i.extend(is.into_iter());
@@ -133,7 +133,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
                 (i + 1) * chunk_size
             };
 
-            for &init_i in vec_init_i[start..end].iter() {
+            for &init_i in &vec_init_i[start..end] {
                 write_line(init_i, init_r_slice, &mut res);
             }
 
@@ -142,7 +142,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
     }).collect::<Vec<_>>();
 
     try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
-    for res in data.into_iter() {
+    for res in data {
         try!(out.write(res.join().ok().unwrap().as_slice()));
     }
     out.flush()

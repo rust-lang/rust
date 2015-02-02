@@ -60,7 +60,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
         ret_ty = ArgType::direct(rty, None, None, attr);
     }
 
-    for &t in atys.iter() {
+    for &t in atys {
         let ty = match t.kind() {
             Struct => {
                 let size = llsize_of_alloc(ccx, t);

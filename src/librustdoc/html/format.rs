@@ -212,21 +212,21 @@ impl fmt::Display for clean::PathParameters {
                 if lifetimes.len() > 0 || types.len() > 0 || bindings.len() > 0 {
                     try!(f.write_str("&lt;"));
                     let mut comma = false;
-                    for lifetime in lifetimes.iter() {
+                    for lifetime in lifetimes {
                         if comma {
                             try!(f.write_str(", "));
                         }
                         comma = true;
                         try!(write!(f, "{}", *lifetime));
                     }
-                    for ty in types.iter() {
+                    for ty in types {
                         if comma {
                             try!(f.write_str(", "));
                         }
                         comma = true;
                         try!(write!(f, "{}", *ty));
                     }
-                    for binding in bindings.iter() {
+                    for binding in bindings {
                         if comma {
                             try!(f.write_str(", "));
                         }
@@ -239,7 +239,7 @@ impl fmt::Display for clean::PathParameters {
             clean::PathParameters::Parenthesized { ref inputs, ref output } => {
                 try!(f.write_str("("));
                 let mut comma = false;
-                for ty in inputs.iter() {
+                for ty in inputs {
                     if comma {
                         try!(f.write_str(", "));
                     }
@@ -332,7 +332,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
         match rel_root {
             Some(root) => {
                 let mut root = String::from_str(root.as_slice());
-                for seg in path.segments[..amt].iter() {
+                for seg in &path.segments[..amt] {
                     if "super" == seg.name ||
                             "self" == seg.name {
                         try!(write!(w, "{}::", seg.name));
@@ -347,7 +347,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
                 }
             }
             None => {
-                for seg in path.segments[..amt].iter() {
+                for seg in &path.segments[..amt] {
                     try!(write!(w, "{}::", seg.name));
                 }
             }
@@ -359,7 +359,7 @@ fn path<F, G>(w: &mut fmt::Formatter,
         Some((ref fqp, shortty)) if abs_root.is_some() => {
             let mut url = String::from_str(abs_root.unwrap().as_slice());
             let to_link = &fqp[..fqp.len() - 1];
-            for component in to_link.iter() {
+            for component in to_link {
                 url.push_str(component.as_slice());
                 url.push_str("/");
             }
@@ -440,7 +440,7 @@ fn tybounds(w: &mut fmt::Formatter,
             typarams: &Option<Vec<clean::TyParamBound> >) -> fmt::Result {
     match *typarams {
         Some(ref params) => {
-            for param in params.iter() {
+            for param in params {
                 try!(write!(w, " + "));
                 try!(write!(w, "{}", *param));
             }
@@ -770,7 +770,7 @@ impl fmt::Display for ModuleSummary {
                         (100 * cnt.unmarked) as f64/tot as f64));
             try!(write!(f, "</td></tr>"));
 
-            for submodule in m.submodules.iter() {
+            for submodule in &m.submodules {
                 try!(fmt_inner(f, context, submodule));
             }
             context.pop();

@@ -27,7 +27,7 @@ static OS_TABLE: &'static [(&'static str, &'static str)] = &[
 ];
 
 pub fn get_os(triple: &str) -> &'static str {
-    for &(triple_os, os) in OS_TABLE.iter() {
+    for &(triple_os, os) in OS_TABLE {
         if triple.contains(triple_os) {
             return os
         }

@@ -66,7 +66,7 @@ impl<'a> FileSearch<'a> {
         // Try RUST_PATH
         if !found {
             let rustpath = rust_path();
-            for path in rustpath.iter() {
+            for path in &rustpath {
                 let tlib_path = make_rustpkg_lib_path(
                     self.sysroot, path, self.triple);
                 debug!("is {} in visited_dirs? {}", tlib_path.display(),
@@ -243,8 +243,7 @@ pub fn rust_path() -> Vec<Path> {
         }
         cwd.pop();
     }
-    let h = env::home_dir();
-    for h in h.iter() {
+    if let Some(h) = env::home_dir() {
         let p = h.join(".rust");
         if !env_rust_path.contains(&p) && p.exists() {
             env_rust_path.push(p);

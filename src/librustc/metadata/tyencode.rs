@@ -97,7 +97,7 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         }
         ty::ty_tup(ref ts) => {
             mywrite!(w, "T[");
-            for t in ts.iter() { enc_ty(w, cx, *t); }
+            for t in ts { enc_ty(w, cx, *t); }
             mywrite!(w, "]");
         }
         ty::ty_uniq(typ) => { mywrite!(w, "~"); enc_ty(w, cx, typ); }
@@ -206,9 +206,9 @@ fn enc_vec_per_param_space<'a, 'tcx, T, F>(w: &mut SeekableMemWriter,
                                            mut op: F) where
     F: FnMut(&mut SeekableMemWriter, &ctxt<'a, 'tcx>, &T),
 {
-    for &space in subst::ParamSpace::all().iter() {
+    for &space in &subst::ParamSpace::all() {
         mywrite!(w, "[");
-        for t in v.get_slice(space).iter() {
+        for t in v.get_slice(space) {
             op(w, cx, t);
         }
         mywrite!(w, "]");
@@ -337,7 +337,7 @@ pub fn enc_closure_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
 fn enc_fn_sig<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                         fsig: &ty::PolyFnSig<'tcx>) {
     mywrite!(w, "[");
-    for ty in fsig.0.inputs.iter() {
+    for ty in &fsig.0.inputs {
         enc_ty(w, cx, *ty);
     }
     mywrite!(w, "]");
@@ -357,7 +357,7 @@ fn enc_fn_sig<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
 }
 
 pub fn enc_builtin_bounds(w: &mut SeekableMemWriter, _cx: &ctxt, bs: &ty::BuiltinBounds) {
-    for bound in bs.iter() {
+    for bound in bs {
         match bound {
             ty::BoundSend => mywrite!(w, "S"),
             ty::BoundSized => mywrite!(w, "Z"),
@@ -383,17 +383,17 @@ pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                             bs: &ty::ParamBounds<'tcx>) {
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 
-    for &r in bs.region_bounds.iter() {
+    for &r in &bs.region_bounds {
         mywrite!(w, "R");
         enc_region(w, cx, r);
     }
 
-    for tp in bs.trait_bounds.iter() {
+    for tp in &bs.trait_bounds {
         mywrite!(w, "I");
         enc_trait_ref(w, cx, &*tp.0);
     }
 
-    for tp in bs.projection_bounds.iter() {
+    for tp in &bs.projection_bounds {
         mywrite!(w, "P");
         enc_projection_predicate(w, cx, &tp.0);
     }

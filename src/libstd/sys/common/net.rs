@@ -554,7 +554,7 @@ pub fn await(fds: &[sock_t], deadline: Option<u64>,
              status: SocketStatus) -> IoResult<()> {
     let mut set: c::fd_set = unsafe { mem::zeroed() };
     let mut max = 0;
-    for &fd in fds.iter() {
+    for &fd in fds {
         c::fd_set(&mut set, fd);
         max = cmp::max(max, fd + 1);
     }

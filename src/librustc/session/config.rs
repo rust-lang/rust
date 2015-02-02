@@ -300,13 +300,13 @@ macro_rules! options {
     pub fn $buildfn(matches: &getopts::Matches) -> $struct_name
     {
         let mut op = $defaultfn();
-        for option in matches.opt_strs($prefix).into_iter() {
+        for option in matches.opt_strs($prefix) {
             let mut iter = option.splitn(1, '=');
             let key = iter.next().unwrap();
             let value = iter.next();
             let option_to_lookup = key.replace("-", "_");
             let mut found = false;
-            for &(candidate, setter, opt_type_desc, _) in $stat.iter() {
+            for &(candidate, setter, opt_type_desc, _) in $stat {
                 if option_to_lookup != candidate { continue }
                 if !setter(&mut op, value) {
                     match (value, opt_type_desc) {
@@ -830,8 +830,8 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let mut lint_opts = vec!();
     let mut describe_lints = false;
 
-    for &level in [lint::Allow, lint::Warn, lint::Deny, lint::Forbid].iter() {
-        for lint_name in matches.opt_strs(level.as_str()).into_iter() {
+    for &level in &[lint::Allow, lint::Warn, lint::Deny, lint::Forbid] {
+        for lint_name in matches.opt_strs(level.as_str()) {
             if lint_name == "help" {
                 describe_lints = true;
             } else {
@@ -853,7 +853,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let mut output_types = Vec::new();
     if !debugging_opts.parse_only && !no_trans {
         let unparsed_output_types = matches.opt_strs("emit");
-        for unparsed_output_type in unparsed_output_types.iter() {
+        for unparsed_output_type in &unparsed_output_types {
             for part in unparsed_output_type.split(',') {
                 let output_type = match part.as_slice() {
                     "asm" => OutputTypeAssembly,
@@ -923,7 +923,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
 
     let mut search_paths = SearchPaths::new();
-    for s in matches.opt_strs("L").iter() {
+    for s in &matches.opt_strs("L") {
         search_paths.add_path(&s[]);
     }
 
@@ -997,7 +997,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     };
 
     let mut externs = HashMap::new();
-    for arg in matches.opt_strs("extern").iter() {
+    for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(1, '=');
         let name = match parts.next() {
             Some(s) => s,
@@ -1049,7 +1049,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateType>, String> {
 
     let mut crate_types: Vec<CrateType> = Vec::new();
-    for unparsed_crate_type in list_list.iter() {
+    for unparsed_crate_type in &list_list {
         for part in unparsed_crate_type.split(',') {
             let new_part = match part {
                 "lib"       => default_lib_output(),

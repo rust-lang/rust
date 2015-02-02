@@ -85,7 +85,7 @@ pub type Dependencies = FnvHashMap<config::CrateType, DependencyList>;
 
 pub fn calculate(tcx: &ty::ctxt) {
     let mut fmts = tcx.dependency_formats.borrow_mut();
-    for &ty in tcx.sess.crate_types.borrow().iter() {
+    for &ty in &*tcx.sess.crate_types.borrow() {
         fmts.insert(ty, calculate_type(&tcx.sess, ty));
     }
     tcx.sess.abort_if_errors();
@@ -148,7 +148,7 @@ fn calculate_type(sess: &session::Session,
             debug!("adding dylib: {}", data.name);
             add_library(sess, cnum, cstore::RequireDynamic, &mut formats);
             let deps = csearch::get_dylib_dependency_formats(&sess.cstore, cnum);
-            for &(depnum, style) in deps.iter() {
+            for &(depnum, style) in &deps {
                 debug!("adding {:?}: {}", style,
                        sess.cstore.get_crate_data(depnum).name.clone());
                 add_library(sess, depnum, style, &mut formats);

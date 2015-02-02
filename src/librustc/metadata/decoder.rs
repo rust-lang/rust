@@ -1022,7 +1022,7 @@ pub fn get_methods_if_impl(intr: Rc<IdentInterner>,
     });
 
     let mut impl_methods = Vec::new();
-    for impl_method_id in impl_method_ids.iter() {
+    for impl_method_id in &impl_method_ids {
         let impl_method_doc = lookup_item(impl_method_id.node, cdata.data());
         let family = item_family(impl_method_doc);
         match family {
@@ -1189,7 +1189,7 @@ fn list_crate_attributes(md: rbml::Doc, hash: &Svh,
     try!(write!(out, "=Crate Attributes ({})=\n", *hash));
 
     let r = get_attributes(md);
-    for attr in r.iter() {
+    for attr in &r {
         try!(write!(out, "{}\n", pprust::attribute_to_string(attr)));
     }
 
@@ -1232,7 +1232,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
 
 fn list_crate_deps(data: &[u8], out: &mut old_io::Writer) -> old_io::IoResult<()> {
     try!(write!(out, "=External Dependencies=\n"));
-    for dep in get_crate_deps(data).iter() {
+    for dep in &get_crate_deps(data) {
         try!(write!(out, "{} {}-{}\n", dep.cnum, dep.name, dep.hash));
     }
     try!(write!(out, "\n"));

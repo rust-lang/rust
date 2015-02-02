@@ -37,7 +37,7 @@ pub trait MoveMap<T> {
 
 impl<T> MoveMap<T> for Vec<T> {
     fn move_map<F>(mut self, mut f: F) -> Vec<T> where F: FnMut(T) -> T {
-        for p in self.iter_mut() {
+        for p in &mut self {
             unsafe {
                 // FIXME(#5016) this shouldn't need to zero to be safe.
                 ptr::write(p, f(ptr::read_and_zero(p)));
@@ -1117,7 +1117,7 @@ pub fn noop_fold_crate<T: Folder>(Crate {module, attrs, config, mut exported_mac
         }, vec![], span)
     };
 
-    for def in exported_macros.iter_mut() {
+    for def in &mut exported_macros {
         def.id = folder.new_id(def.id);
     }
 

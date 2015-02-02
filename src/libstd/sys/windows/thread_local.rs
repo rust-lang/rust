@@ -249,7 +249,7 @@ unsafe fn run_dtors() {
             DTOR_LOCK.unlock();
             ret
         };
-        for &(key, dtor) in dtors.iter() {
+        for &(key, dtor) in &dtors {
             let ptr = TlsGetValue(key);
             if !ptr.is_null() {
                 TlsSetValue(key, ptr::null_mut());

@@ -68,8 +68,6 @@ use fmt;
 use iter::IteratorExt;
 use option::Option;
 use option::Option::{None, Some};
-#[cfg(stage0)]
-use ops::FullRange;
 use str;
 use str::StrExt;
 use string::{String, CowString};
@@ -625,11 +623,11 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     fn push_many<T: BytesContainer>(&mut self, paths: &[T]) {
         let t: Option<&T> = None;
         if BytesContainer::is_str(t) {
-            for p in paths.iter() {
+            for p in paths {
                 self.push(p.container_as_str().unwrap())
             }
         } else {
-            for p in paths.iter() {
+            for p in paths {
                 self.push(p.container_as_bytes())
             }
         }

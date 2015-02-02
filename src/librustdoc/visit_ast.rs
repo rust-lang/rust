@@ -147,7 +147,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
         om.vis = vis;
         om.stab = self.stability(id);
         om.id = id;
-        for i in m.items.iter() {
+        for i in &m.items {
             self.visit_item(&**i, None, &mut om);
         }
         om
@@ -211,7 +211,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                 if glob {
                     match it.node {
                         ast::ItemMod(ref m) => {
-                            for i in m.items.iter() {
+                            for i in &m.items {
                                 self.visit_item(&**i, None, om);
                             }
                         }

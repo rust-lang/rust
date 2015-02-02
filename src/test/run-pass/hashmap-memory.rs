@@ -35,7 +35,7 @@ mod map_reduce {
     enum ctrl_proto { find_reducer(Vec<u8>, Sender<int>), mapper_done, }
 
     fn start_mappers(ctrl: Sender<ctrl_proto>, inputs: Vec<String>) {
-        for i in inputs.iter() {
+        for i in &inputs {
             let ctrl = ctrl.clone();
             let i = i.clone();
             Thread::spawn(move|| map_task(ctrl.clone(), i.clone()) );

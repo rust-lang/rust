@@ -65,7 +65,7 @@ pub fn trans_impl(ccx: &CrateContext,
     // items that we need to translate.
     if !generics.ty_params.is_empty() {
         let mut v = TransItemVisitor{ ccx: ccx };
-        for impl_item in impl_items.iter() {
+        for impl_item in impl_items {
             match *impl_item {
                 ast::MethodImplItem(ref method) => {
                     visit::walk_method_helper(&mut v, &**method);
@@ -75,7 +75,7 @@ pub fn trans_impl(ccx: &CrateContext,
         }
         return;
     }
-    for impl_item in impl_items.iter() {
+    for impl_item in impl_items {
         match *impl_item {
             ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0 {

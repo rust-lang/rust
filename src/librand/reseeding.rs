@@ -225,7 +225,7 @@ mod test {
         // To test that `fill_bytes` actually did something, check that the
         // average of `v` is not 0.
         let mut sum = 0.0;
-        for &x in v.iter() {
+        for &x in &v {
             sum += x as f64;
         }
         assert!(sum / v.len() as f64 != 0.0);

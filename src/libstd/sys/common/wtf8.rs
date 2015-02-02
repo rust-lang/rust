@@ -366,7 +366,7 @@ impl FromIterator<CodePoint> for Wtf8Buf {
 /// This replaces surrogate code point pairs with supplementary code points,
 /// like concatenating ill-formed UTF-16 strings effectively would.
 impl Extend<CodePoint> for Wtf8Buf {
-    fn extend<T: Iterator<Item=CodePoint>>(&mut self, mut iterator: T) {
+    fn extend<T: Iterator<Item=CodePoint>>(&mut self, iterator: T) {
         let (low, _high) = iterator.size_hint();
         // Lower bound of one byte per code point (ASCII only)
         self.bytes.reserve(low);
@@ -680,17 +680,6 @@ impl ops::Index<ops::RangeTo<usize>> for Wtf8 {
     }
 }
 
-#[cfg(stage0)]
-impl ops::Index<ops::FullRange> for Wtf8 {
-    type Output = Wtf8;
-
-    #[inline]
-    fn index(&self, _range: &ops::FullRange) -> &Wtf8 {
-        self
-    }
-}
-
-#[cfg(not(stage0))]
 impl ops::Index<ops::RangeFull> for Wtf8 {
     type Output = Wtf8;
 

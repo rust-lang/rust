@@ -924,7 +924,7 @@ impl MemoryMap {
         let mut custom_flags = false;
         let len = round_up(min_len, env::page_size());
 
-        for &o in options.iter() {
+        for &o in options {
             match o {
                 MapReadable => { prot |= libc::PROT_READ; },
                 MapWritable => { prot |= libc::PROT_WRITE; },
@@ -1003,7 +1003,7 @@ impl MemoryMap {
         let mut offset: uint = 0;
         let len = round_up(min_len, env::page_size());
 
-        for &o in options.iter() {
+        for &o in options {
             match o {
                 MapReadable => { readable = true; },
                 MapWritable => { writable = true; },
@@ -1519,7 +1519,7 @@ mod tests {
     fn test_env_getenv() {
         let e = env();
         assert!(e.len() > 0u);
-        for p in e.iter() {
+        for p in &e {
             let (n, v) = (*p).clone();
             debug!("{}", n);
             let v2 = getenv(n.as_slice());
@@ -1574,7 +1574,7 @@ mod tests {
         setenv("HOME", "");
         assert!(os::homedir().is_none());
 
-        for s in oldhome.iter() {
+        if let Some(s) = oldhome {
             setenv("HOME", s.as_slice());
         }
     }
@@ -1603,10 +1603,10 @@ mod tests {
         setenv("USERPROFILE", "/home/PaloAlto");
         assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
-        for s in oldhome.iter() {
+        if let Some(s) = oldhome {
             setenv("HOME", s.as_slice());
         }
-        for s in olduserprofile.iter() {
+        if let Some(s) = olduserprofile {
             setenv("USERPROFILE", s.as_slice());
         }
     }

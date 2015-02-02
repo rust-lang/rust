@@ -499,12 +499,12 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                 // `ty::VariantInfo::from_ast_variant()` ourselves
                 // here, mainly so as to mask the differences between
                 // struct-like enums and so forth.
-                for ast_variant in enum_definition.variants.iter() {
+                for ast_variant in &enum_definition.variants {
                     let variant =
                         ty::VariantInfo::from_ast_variant(tcx,
                                                           &**ast_variant,
                                                           /*discriminant*/ 0);
-                    for arg_ty in variant.args.iter() {
+                    for arg_ty in &variant.args {
                         self.add_constraints_from_ty(generics, *arg_ty, self.covariant);
                     }
                 }
@@ -513,7 +513,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
             ast::ItemStruct(..) => {
                 let generics = &ty::lookup_item_type(tcx, did).generics;
                 let struct_fields = ty::lookup_struct_fields(tcx, did);
-                for field_info in struct_fields.iter() {
+                for field_info in &struct_fields {
                     assert_eq!(field_info.id.krate, ast::LOCAL_CRATE);
                     let field_ty = ty::node_id_to_type(tcx, field_info.id.node);
                     self.add_constraints_from_ty(generics, field_ty, self.covariant);
@@ -522,7 +522,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
 
             ast::ItemTrait(..) => {
                 let trait_items = ty::trait_items(tcx, did);
-                for trait_item in trait_items.iter() {
+                for trait_item in &*trait_items {
                     match *trait_item {
                         ty::MethodTraitItem(ref method) => {
                             self.add_constraints_from_sig(&method.generics,
@@ -759,7 +759,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             }
 
             ty::ty_tup(ref subtys) => {
-                for &subty in subtys.iter() {
+                for &subty in subtys {
                     self.add_constraints_from_ty(generics, subty, variance);
                 }
             }
@@ -821,7 +821,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
 
                 let projections = data.projection_bounds_with_self_ty(self.tcx(),
                                                                       self.tcx().types.err);
-                for projection in projections.iter() {
+                for projection in &projections {
                     self.add_constraints_from_ty(generics, projection.0.ty, self.invariant);
                 }
             }
@@ -866,7 +866,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                    variance: VarianceTermPtr<'a>) {
         debug!("add_constraints_from_substs(def_id={:?})", def_id);
 
-        for p in type_param_defs.iter() {
+        for p in type_param_defs {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id, TypeParam,
                                        p.space, p.index as uint);
@@ -875,7 +875,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             self.add_constraints_from_ty(generics, substs_ty, variance_i);
         }
 
-        for p in region_param_defs.iter() {
+        for p in region_param_defs {
             let variance_decl =
                 self.declared_variance(p.def_id, def_id,
                                        RegionParam, p.space, p.index as uint);
@@ -892,7 +892,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                                 sig: &ty::PolyFnSig<'tcx>,
                                 variance: VarianceTermPtr<'a>) {
         let contra = self.contravariant(variance);
-        for &input in sig.0.inputs.iter() {
+        for &input in &sig.0.inputs {
             self.add_constraints_from_ty(generics, input, contra);
         }
         if let ty::FnConverging(result_type) = sig.0.output {
@@ -990,7 +990,7 @@ impl<'a, 'tcx> SolveContext<'a, 'tcx> {
         while changed {
             changed = false;
 
-            for constraint in self.constraints.iter() {
+            for constraint in &self.constraints {
                 let Constraint { inferred, variance: term } = *constraint;
                 let InferredIndex(inferred) = inferred;
                 let variance = self.evaluate(term);

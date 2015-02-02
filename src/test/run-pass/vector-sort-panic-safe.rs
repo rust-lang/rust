@@ -73,7 +73,7 @@ pub fn main() {
             // ... and then panic on each and every single one.
             for panic_countdown in 0..count {
                 // refresh the counters.
-                for c in drop_counts.iter() {
+                for c in &drop_counts {
                     c.store(0, Ordering::Relaxed);
                 }
 

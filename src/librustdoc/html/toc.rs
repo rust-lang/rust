@@ -185,7 +185,7 @@ impl fmt::Debug for Toc {
 impl fmt::Display for Toc {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "<ul>"));
-        for entry in self.entries.iter() {
+        for entry in &self.entries {
             // recursively format this table of contents (the
             // `{children}` is the key).
             try!(write!(fmt,

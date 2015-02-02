@@ -92,7 +92,7 @@ fn base_port() -> u16 {
 
     let mut final_base = base;
 
-    for &(dir, base) in bases.iter() {
+    for &(dir, base) in &bases {
         if path_s.contains(dir) {
             final_base = base;
             break;

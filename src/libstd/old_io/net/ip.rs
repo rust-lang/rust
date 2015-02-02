@@ -125,7 +125,7 @@ impl<'a> Parser<'a> {
     // Return result of first successful parser
     fn read_or<T>(&mut self, parsers: &mut [Box<FnMut(&mut Parser) -> Option<T>>])
                -> Option<T> {
-        for pf in parsers.iter_mut() {
+        for pf in parsers {
             match self.read_atomically(|p: &mut Parser| pf.call_mut((p,))) {
                 Some(r) => return Some(r),
                 None => {}

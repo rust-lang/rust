@@ -558,7 +558,7 @@ fn with_envp<K,V,T,F>(env: Option<&HashMap<K, V>>,
         Some(env) => {
             let mut tmps = Vec::with_capacity(env.len());
 
-            for pair in env.iter() {
+            for pair in env {
                 let mut kv = Vec::new();
                 kv.push_all(pair.0.container_as_bytes());
                 kv.push('=' as u8);

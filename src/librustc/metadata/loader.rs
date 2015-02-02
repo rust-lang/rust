@@ -425,7 +425,7 @@ impl<'a> Context<'a> {
         // libraries corresponds to the crate id and hash criteria that this
         // search is being performed for.
         let mut libraries = Vec::new();
-        for (_hash, (rlibs, dylibs)) in candidates.into_iter() {
+        for (_hash, (rlibs, dylibs)) in candidates {
             let mut metadata = None;
             let rlib = self.extract_one(rlibs, "rlib", &mut metadata);
             let dylib = self.extract_one(dylibs, "dylib", &mut metadata);
@@ -452,7 +452,7 @@ impl<'a> Context<'a> {
                     &format!("multiple matching crates for `{}`",
                             self.crate_name)[]);
                 self.sess.note("candidates:");
-                for lib in libraries.iter() {
+                for lib in &libraries {
                     match lib.dylib {
                         Some((ref p, _)) => {
                             self.sess.note(&format!("path: {}",
@@ -501,7 +501,7 @@ impl<'a> Context<'a> {
             }
         }
 
-        for (lib, kind) in m.into_iter() {
+        for (lib, kind) in m {
             info!("{} reading metadata from: {}", flavor, lib.display());
             let metadata = match get_metadata_section(self.target.options.is_like_osx,
                                                       &lib) {
@@ -610,7 +610,7 @@ impl<'a> Context<'a> {
         let mut rlibs = HashMap::new();
         let mut dylibs = HashMap::new();
         {
-            let mut locs = locs.iter().map(|l| Path::new(&l[])).filter(|loc| {
+            let locs = locs.iter().map(|l| Path::new(&l[])).filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
                                      self.crate_name, loc.display())[]);

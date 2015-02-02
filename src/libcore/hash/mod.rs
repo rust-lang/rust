@@ -205,7 +205,7 @@ impl<S: Writer + Hasher, T: Hash<S>> Hash<S> for [T] {
     #[inline]
     fn hash(&self, state: &mut S) {
         self.len().hash(state);
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
         }
     }

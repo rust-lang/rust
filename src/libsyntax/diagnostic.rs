@@ -461,7 +461,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         elided = true;
     }
     // Print the offending lines
-    for &line_number in display_lines.iter() {
+    for &line_number in display_lines {
         if let Some(line) = fm.get_line(line_number) {
             try!(write!(&mut err.dst, "{}:{} {}\n", fm.name,
                         line_number + 1, line));
@@ -550,7 +550,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
                         last_line_number + 1, last_line));
         }
     } else {
-        for &line_number in lines.iter() {
+        for &line_number in lines {
             if let Some(line) = fm.get_line(line_number) {
                 try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
                             line_number + 1, line));

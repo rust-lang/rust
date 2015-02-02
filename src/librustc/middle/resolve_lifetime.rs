@@ -187,14 +187,14 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
-        for ty_param in generics.ty_params.iter() {
+        for ty_param in &*generics.ty_params {
             visit::walk_ty_param_bounds_helper(self, &ty_param.bounds);
             match ty_param.default {
                 Some(ref ty) => self.visit_ty(&**ty),
                 None => {}
             }
         }
-        for predicate in generics.where_clause.predicates.iter() {
+        for predicate in &generics.where_clause.predicates {
             match predicate {
                 &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ ref bounded_ty,
                                                                                ref bounds,
@@ -207,7 +207,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                                                                                 .. }) => {
 
                     self.visit_lifetime_ref(lifetime);
-                    for bound in bounds.iter() {
+                    for bound in bounds {
                         self.visit_lifetime_ref(bound);
                     }
                 }
@@ -229,7 +229,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
 
         self.with(LateScope(&trait_ref.bound_lifetimes, self.scope), |old_scope, this| {
             this.check_lifetime_defs(old_scope, &trait_ref.bound_lifetimes);
-            for lifetime in trait_ref.bound_lifetimes.iter() {
+            for lifetime in &trait_ref.bound_lifetimes {
                 this.visit_lifetime_def(lifetime);
             }
             this.visit_trait_ref(&trait_ref.trait_ref)
@@ -408,7 +408,7 @@ impl<'a> LifetimeContext<'a> {
             let lifetime_i = &lifetimes[i];
 
             let special_idents = [special_idents::static_lifetime];
-            for lifetime in lifetimes.iter() {
+            for lifetime in lifetimes {
                 if special_idents.iter().any(|&i| i.name == lifetime.lifetime.name) {
                     span_err!(self.sess, lifetime.lifetime.span, E0262,
                         "illegal lifetime parameter name: `{}`",
@@ -431,7 +431,7 @@ impl<'a> LifetimeContext<'a> {
             // It is a soft error to shadow a lifetime within a parent scope.
             self.check_lifetime_def_for_shadowing(old_scope, &lifetime_i.lifetime);
 
-            for bound in lifetime_i.bounds.iter() {
+            for bound in &lifetime_i.bounds {
                 self.resolve_lifetime_ref(bound);
             }
         }
@@ -535,10 +535,10 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
         let mut collector =
             FreeLifetimeCollector { early_bound: &mut early_bound,
                                     late_bound: &mut late_bound };
-        for ty_param in generics.ty_params.iter() {
+        for ty_param in &*generics.ty_params {
             visit::walk_ty_param_bounds_helper(&mut collector, &ty_param.bounds);
         }
-        for predicate in generics.where_clause.predicates.iter() {
+        for predicate in &generics.where_clause.predicates {
             match predicate {
                 &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ref bounds,
                                                                               ref bounded_ty,
@@ -551,7 +551,7 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
                                                                                 ..}) => {
                     collector.visit_lifetime_ref(lifetime);
 
-                    for bound in bounds.iter() {
+                    for bound in bounds {
                         collector.visit_lifetime_ref(bound);
                     }
                 }
@@ -562,11 +562,11 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
 
     // Any lifetime that either has a bound or is referenced by a
     // bound is early.
-    for lifetime_def in generics.lifetimes.iter() {
+    for lifetime_def in &generics.lifetimes {
         if !lifetime_def.bounds.is_empty() {
             shuffle(&mut early_bound, &mut late_bound,
                     lifetime_def.lifetime.name);
-            for bound in lifetime_def.bounds.iter() {
+            for bound in &lifetime_def.bounds {
                 shuffle(&mut early_bound, &mut late_bound,
                         bound.name);
             }

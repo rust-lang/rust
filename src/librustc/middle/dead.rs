@@ -173,7 +173,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             }
         };
         let fields = ty::lookup_struct_fields(self.tcx, id);
-        for pat in pats.iter() {
+        for pat in pats {
             let field_id = fields.iter()
                 .find(|field| field.name == pat.node.ident.name).unwrap().id;
             self.live_symbols.insert(field_id.node);
@@ -318,7 +318,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     }
 
     let dead_code = lint::builtin::DEAD_CODE.name_lower();
-    for attr in lint::gather_attrs(attrs).into_iter() {
+    for attr in lint::gather_attrs(attrs) {
         match attr {
             Ok((ref name, lint::Allow, _))
                 if name.get() == dead_code => return true,
@@ -356,7 +356,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
                 self.worklist.extend(enum_def.variants.iter().map(|variant| variant.node.id));
             }
             ast::ItemImpl(_, _, _, Some(ref _trait_ref), _, ref impl_items) => {
-                for impl_item in impl_items.iter() {
+                for impl_item in impl_items {
                     match *impl_item {
                         ast::MethodImplItem(ref method) => {
                             self.worklist.push(method.id);
@@ -397,10 +397,10 @@ fn create_and_seed_worklist(tcx: &ty::ctxt,
     // depending on whether a crate is built as bin or lib, and we want
     // the warning to be consistent, we also seed the worklist with
     // exported symbols.
-    for id in exported_items.iter() {
+    for id in exported_items {
         worklist.push(*id);
     }
-    for id in reachable_symbols.iter() {
+    for id in reachable_symbols {
         worklist.push(*id);
     }
 
@@ -499,8 +499,8 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         match self.tcx.inherent_impls.borrow().get(&local_def(id)) {
             None => (),
             Some(impl_list) => {
-                for impl_did in impl_list.iter() {
-                    for item_did in (*impl_items)[*impl_did].iter() {
+                for impl_did in &**impl_list {
+                    for item_did in &(*impl_items)[*impl_did] {
                         if self.live_symbols.contains(&item_did.def_id()
                                                                .node) {
                             return true;
@@ -536,7 +536,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for DeadVisitor<'a, 'tcx> {
         } else {
             match item.node {
                 ast::ItemEnum(ref enum_def, _) => {
-                    for variant in enum_def.variants.iter() {
+                    for variant in &enum_def.variants {
                         if self.should_warn_about_variant(&variant.node) {
                             self.warn_dead_code(variant.node.id, variant.span,
                                                 variant.node.name, "variant");

@@ -84,7 +84,7 @@ pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match inputs[inputs.len() - 1].sty {
         ty::ty_tup(ref tupled_arguments) => {
             debug!("untuple_arguments_if_necessary(): untupling arguments");
-            for &tupled_argument in tupled_arguments.iter() {
+            for &tupled_argument in tupled_arguments {
                 result.push(tupled_argument);
             }
         }

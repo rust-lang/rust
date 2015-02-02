@@ -134,7 +134,7 @@ impl AsciiExt<Vec<u8>> for [u8] {
 impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_uppercase(mut self) -> Vec<u8> {
-        for byte in self.iter_mut() {
+        for byte in &mut self {
             *byte = byte.to_ascii_uppercase();
         }
         self
@@ -142,7 +142,7 @@ impl OwnedAsciiExt for Vec<u8> {
 
     #[inline]
     fn into_ascii_lowercase(mut self) -> Vec<u8> {
-        for byte in self.iter_mut() {
+        for byte in &mut self {
             *byte = byte.to_ascii_lowercase();
         }
         self
@@ -232,7 +232,7 @@ pub fn escape_default<F>(c: u8, mut f: F) where
         _ => {
             f(b'\\');
             f(b'x');
-            for &offset in [4u, 0u].iter() {
+            for &offset in &[4u, 0u] {
                 match ((c as i32) >> offset) & 0xf {
                     i @ 0 ... 9 => f(b'0' + (i as u8)),
                     i => f(b'a' + (i as u8 - 10)),

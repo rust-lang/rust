@@ -547,7 +547,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
                                          exe_file.as_str().unwrap().replace("\\", "\\\\"))[]);
 
             // Add line breakpoints
-            for line in breakpoint_lines.iter() {
+            for line in &breakpoint_lines {
                 script_str.push_str(&format!("break '{}':{}\n",
                                              testfile.filename_display(),
                                              *line)[]);
@@ -683,13 +683,13 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
     script_str.push_str("type category enable Rust\n");
 
     // Set breakpoints on every line that contains the string "#break"
-    for line in breakpoint_lines.iter() {
+    for line in &breakpoint_lines {
         script_str.push_str(format!("breakpoint set --line {}\n",
                                     line).as_slice());
     }
 
     // Append the other commands
-    for line in commands.iter() {
+    for line in &commands {
         script_str.push_str(line.as_slice());
         script_str.push_str("\n");
     }
@@ -847,7 +847,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
             let mut rest = line.trim();
             let mut first = true;
             let mut failed = false;
-            for frag in check_fragments[i].iter() {
+            for frag in &check_fragments[i] {
                 let found = if first {
                     if rest.starts_with(frag.as_slice()) {
                         Some(0)
@@ -915,7 +915,7 @@ fn check_error_patterns(props: &TestProps,
                               missing_patterns[0]).as_slice(),
                       proc_res);
     } else {
-        for pattern in missing_patterns.iter() {
+        for pattern in missing_patterns {
             error(format!("error pattern '{}' not found!",
                           *pattern).as_slice());
         }
@@ -935,7 +935,7 @@ fn check_no_compiler_crash(proc_res: &ProcRes) {
 fn check_forbid_output(props: &TestProps,
                        output_to_check: &str,
                        proc_res: &ProcRes) {
-    for pat in props.forbid_output.iter() {
+    for pat in &props.forbid_output {
         if output_to_check.contains(pat.as_slice()) {
             fatal_proc_rec("forbidden pattern found in compiler output", proc_res);
         }
@@ -1173,7 +1173,7 @@ fn compose_and_run_compiler(
     // FIXME (#9639): This needs to handle non-utf8 paths
     let extra_link_args = vec!("-L".to_string(), aux_dir.as_str().unwrap().to_string());
 
-    for rel_ab in props.aux_builds.iter() {
+    for rel_ab in &props.aux_builds {
         let abs_ab = config.aux_base.join(rel_ab.as_slice());
         let aux_props = header::load_props(&abs_ab);
         let mut crate_type = if aux_props.no_prefer_dynamic {
@@ -1503,14 +1503,14 @@ fn _arm_exec_compiled_test(config: &Config,
 
     // run test via adb_run_wrapper
     runargs.push("shell".to_string());
-    for (key, val) in env.into_iter() {
+    for (key, val) in env {
         runargs.push(format!("{}={}", key, val));
     }
     runargs.push(format!("{}/adb_run_wrapper.sh", config.adb_test_dir));
     runargs.push(format!("{}", config.adb_test_dir));
     runargs.push(format!("{}", prog_short));
 
-    for tv in args.args.iter() {
+    for tv in &args.args {
         runargs.push(tv.to_string());
     }
     procsrv::run("",
@@ -1591,7 +1591,7 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
     let tdir = aux_output_dir_name(config, testfile);
 
     let dirs = fs::readdir(&tdir).unwrap();
-    for file in dirs.iter() {
+    for file in &dirs {
         if file.extension_str() == Some("so") {
             // FIXME (#9639): This needs to handle non-utf8 paths
             let copy_result = procsrv::run("",

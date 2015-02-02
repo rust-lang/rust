@@ -1208,7 +1208,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                     }
                 }
                 Some(&def::DefConst(..)) => {
-                    for subpat in subpats.iter() {
+                    for subpat in subpats {
                         try!(self.cat_pattern_(cmt.clone(), &**subpat, op));
                     }
                 }
@@ -1230,7 +1230,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
           ast::PatStruct(_, ref field_pats, _) => {
             // {f1: p1, ..., fN: pN}
-            for fp in field_pats.iter() {
+            for fp in field_pats {
                 let field_ty = try!(self.pat_ty(&*fp.node.pat)); // see (*2)
                 let cmt_field = self.cat_field(pat, cmt.clone(), fp.node.ident.name, field_ty);
                 try!(self.cat_pattern_(cmt_field, &*fp.node.pat, op));
@@ -1259,15 +1259,15 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
           ast::PatVec(ref before, ref slice, ref after) => {
               let elt_cmt = try!(self.cat_index(pat, try!(self.deref_vec(pat, cmt))));
-              for before_pat in before.iter() {
+              for before_pat in before {
                   try!(self.cat_pattern_(elt_cmt.clone(), &**before_pat, op));
               }
-              for slice_pat in slice.iter() {
+              if let Some(ref slice_pat) = *slice {
                   let slice_ty = try!(self.pat_ty(&**slice_pat));
                   let slice_cmt = self.cat_rvalue_node(pat.id(), pat.span(), slice_ty);
                   try!(self.cat_pattern_(slice_cmt, &**slice_pat, op));
               }
-              for after_pat in after.iter() {
+              for after_pat in after {
                   try!(self.cat_pattern_(elt_cmt.clone(), &**after_pat, op));
               }
           }

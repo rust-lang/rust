@@ -15,7 +15,7 @@ fn foo(c: Vec<int> ) {
 
     match t::none::<int> {
         t::some::<int>(_) => {
-            for _i in c.iter() {
+            for _i in &c {
                 println!("{}", a);
                 let a = 17;
                 b.push(a);

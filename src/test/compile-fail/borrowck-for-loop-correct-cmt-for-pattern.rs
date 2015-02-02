@@ -25,7 +25,7 @@ fn main() {
     let f = Foo {
         a: [box 3, box 4, box 5],
     };
-    for &a in f.a.iter() {  //~ ERROR cannot move out
+    for &a in &f.a {  //~ ERROR cannot move out
     }
 
     let x = Some(box 1);

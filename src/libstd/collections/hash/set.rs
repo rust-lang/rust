@@ -18,7 +18,9 @@ use default::Default;
 use fmt::Debug;
 use fmt;
 use hash::{self, Hash};
-use iter::{Iterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend};
+use iter::{
+    Iterator, IntoIterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend,
+};
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
@@ -634,7 +636,7 @@ impl<T, S, H> Extend<T> for HashSet<T, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    fn extend<I: Iterator<Item=T>>(&mut self, mut iter: I) {
+    fn extend<I: Iterator<Item=T>>(&mut self, iter: I) {
         for k in iter {
             self.insert(k);
         }
@@ -833,6 +835,30 @@ pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>
 }
 
+impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
+    where T: Eq + Hash<H>,
+          S: HashState<Hasher=H>,
+          H: hash::Hasher<Output=u64>
+{
+    type Iter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+impl<T, S, H> IntoIterator for HashSet<T, S>
+    where T: Eq + Hash<H>,
+          S: HashState<Hasher=H>,
+          H: hash::Hasher<Output=u64>
+{
+    type Iter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K> Iterator for Iter<'a, K> {
     type Item = &'a K;
@@ -1007,7 +1033,7 @@ mod test_set {
             assert!(a.insert(i));
         }
         let mut observed: u32 = 0;
-        for k in a.iter() {
+        for k in &a {
             observed |= 1 << *k;
         }
         assert_eq!(observed, 0xFFFF_FFFF);
@@ -1128,7 +1154,7 @@ mod test_set {
 
         let set: HashSet<int> = xs.iter().map(|&x| x).collect();
 
-        for x in xs.iter() {
+        for x in &xs {
             assert!(set.contains(x));
         }
     }
@@ -1214,7 +1240,7 @@ mod test_set {
                 assert_eq!(last_i, 49);
             }
 
-            for _ in s.iter() { panic!("s should be empty!"); }
+            for _ in &s { panic!("s should be empty!"); }
 
             // reset to try again.
             s.extend(1..100);

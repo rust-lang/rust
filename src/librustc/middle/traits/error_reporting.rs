@@ -28,7 +28,7 @@ use util::ppaux::{Repr, UserString};
 
 pub fn report_fulfillment_errors<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                            errors: &Vec<FulfillmentError<'tcx>>) {
-    for error in errors.iter() {
+    for error in errors {
         report_fulfillment_error(infcx, error);
     }
 }
@@ -68,7 +68,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                      span: Span) -> Option<String> {
     let def_id = trait_ref.def_id;
     let mut report = None;
-    for item in ty::get_attrs(infcx.tcx, def_id).iter() {
+    for item in &*ty::get_attrs(infcx.tcx, def_id) {
         if item.check_name("rustc_on_unimplemented") {
             let err_sp = if item.meta().span == DUMMY_SP {
                 span

@@ -499,7 +499,7 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
-    fn extend<Iter: Iterator<Item=T>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=T>>(&mut self, iter: Iter) {
         for elem in iter {
             self.insert(elem);
         }
@@ -791,8 +791,8 @@ mod test {
         let mut set_a = BTreeSet::new();
         let mut set_b = BTreeSet::new();
 
-        for x in a.iter() { assert!(set_a.insert(*x)) }
-        for y in b.iter() { assert!(set_b.insert(*y)) }
+        for x in a { assert!(set_a.insert(*x)) }
+        for y in b { assert!(set_b.insert(*y)) }
 
         let mut i = 0;
         f(&set_a, &set_b, Counter { i: &mut i, expected: expected });
@@ -894,7 +894,7 @@ mod test {
 
         let set: BTreeSet<int> = xs.iter().map(|&x| x).collect();
 
-        for x in xs.iter() {
+        for x in &xs {
             assert!(set.contains(x));
         }
     }

@@ -90,7 +90,7 @@ impl<S: Writer + Hasher, V: Hash<S>> Hash<S> for VecMap<V> {
         // In order to not traverse the `VecMap` twice, count the elements
         // during iteration.
         let mut count: uint = 0;
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
             count += 1;
         }
@@ -562,7 +562,7 @@ impl<'a, T> IntoIterator for &'a mut VecMap<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> Extend<(uint, V)> for VecMap<V> {
-    fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, iter: Iter) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -924,7 +924,7 @@ mod test_map {
         assert!(m.insert(6, 10).is_none());
         assert!(m.insert(10, 11).is_none());
 
-        for (k, v) in m.iter_mut() {
+        for (k, v) in &mut m {
             *v += k as int;
         }
 
@@ -984,7 +984,7 @@ mod test_map {
         let mut m = VecMap::new();
         m.insert(1, box 2);
         let mut called = false;
-        for (k, v) in m.into_iter() {
+        for (k, v) in m {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);
@@ -1112,7 +1112,7 @@ mod test_map {
 
         let map: VecMap<char> = xs.iter().map(|&x| x).collect();
 
-        for &(k, v) in xs.iter() {
+        for &(k, v) in &xs {
             assert_eq!(map.get(&k), Some(&v));
         }
     }

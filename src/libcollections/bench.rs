@@ -73,7 +73,7 @@ pub fn find_rand_n<M, T, I, F>(n: uint,
     let mut keys = (0..n).map(|_| rng.gen::<uint>() % n)
                               .collect::<Vec<_>>();
 
-    for k in keys.iter() {
+    for k in &keys {
         insert(map, *k);
     }
 

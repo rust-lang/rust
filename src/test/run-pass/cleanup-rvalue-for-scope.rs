@@ -61,7 +61,7 @@ impl Drop for AddFlags {
 pub fn main() {
     // The array containing [AddFlags] should not be dropped until
     // after the for loop:
-    for x in [AddFlags(1)].iter() {
+    for x in &[AddFlags(1)] {
         check_flags(0);
     }
     check_flags(1);

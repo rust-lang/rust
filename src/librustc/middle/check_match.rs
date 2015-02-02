@@ -77,7 +77,7 @@ impl<'a> fmt::Debug for Matrix<'a> {
         let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
         let br = repeat('+').take(total_width).collect::<String>();
         try!(write!(f, "{}\n", br));
-        for row in pretty_printed_matrix.into_iter() {
+        for row in pretty_printed_matrix {
             try!(write!(f, "+"));
             for (column, pat_str) in row.into_iter().enumerate() {
                 try!(write!(f, " "));
@@ -157,7 +157,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
     visit::walk_expr(cx, ex);
     match ex.node {
         ast::ExprMatch(ref scrut, ref arms, source) => {
-            for arm in arms.iter() {
+            for arm in arms {
                 // First, check legality of move bindings.
                 check_legality_of_move_bindings(cx,
                                                 arm.guard.is_some(),
@@ -285,8 +285,8 @@ fn check_arms(cx: &MatchCheckCtxt,
               source: ast::MatchSource) {
     let mut seen = Matrix(vec![]);
     let mut printed_if_let_err = false;
-    for &(ref pats, guard) in arms.iter() {
-        for pat in pats.iter() {
+    for &(ref pats, guard) in arms {
+        for pat in pats {
             let v = vec![&**pat];
 
             match is_useful(cx, &seen, &v[], LeaveOutWitness) {
@@ -979,7 +979,7 @@ fn check_fn(cx: &mut MatchCheckCtxt,
 
     visit::walk_fn(cx, kind, decl, body, sp);
 
-    for input in decl.inputs.iter() {
+    for input in &decl.inputs {
         is_refutable(cx, &*input.pat, |pat| {
             span_err!(cx.tcx.sess, input.pat.span, E0006,
                 "refutable pattern in function argument: `{}` not covered",
@@ -1012,7 +1012,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     let tcx = cx.tcx;
     let def_map = &tcx.def_map;
     let mut by_ref_span = None;
-    for pat in pats.iter() {
+    for pat in pats {
         pat_bindings(def_map, &**pat, |bm, _, span, _path| {
             match bm {
                 ast::BindByRef(_) => {
@@ -1039,7 +1039,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
         }
     };
 
-    for pat in pats.iter() {
+    for pat in pats {
         walk_pat(&**pat, |p| {
             if pat_is_binding(def_map, &*p) {
                 match p.node {
