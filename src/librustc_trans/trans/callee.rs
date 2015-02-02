@@ -182,7 +182,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                                             bcx.fcx.param_substs);
 
                 // Nullary variants are not callable
-                assert!(vinfo.args.len() > 0u);
+                assert!(vinfo.args.len() > 0);
 
                 Callee {
                     bcx: bcx,

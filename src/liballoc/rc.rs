@@ -266,12 +266,12 @@ pub fn is_unique<T>(rc: &Rc<T>) -> bool {
 /// ```
 /// use std::rc::{self, Rc};
 ///
-/// let x = Rc::new(3u);
-/// assert_eq!(rc::try_unwrap(x), Ok(3u));
+/// let x = Rc::new(3);
+/// assert_eq!(rc::try_unwrap(x), Ok(3));
 ///
-/// let x = Rc::new(4u);
+/// let x = Rc::new(4);
 /// let _y = x.clone();
-/// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4u)));
+/// assert_eq!(rc::try_unwrap(x), Err(Rc::new(4)));
 /// ```
 #[inline]
 #[unstable(feature = "alloc")]
@@ -300,9 +300,9 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 /// ```
 /// use std::rc::{self, Rc};
 ///
-/// let mut x = Rc::new(3u);
-/// *rc::get_mut(&mut x).unwrap() = 4u;
-/// assert_eq!(*x, 4u);
+/// let mut x = Rc::new(3);
+/// *rc::get_mut(&mut x).unwrap() = 4;
+/// assert_eq!(*x, 4);
 ///
 /// let _y = x.clone();
 /// assert!(rc::get_mut(&mut x).is_none());
@@ -845,7 +845,7 @@ mod tests {
 
     #[test]
     fn is_unique() {
-        let x = Rc::new(3u);
+        let x = Rc::new(3);
         assert!(super::is_unique(&x));
         let y = x.clone();
         assert!(!super::is_unique(&x));
@@ -893,21 +893,21 @@ mod tests {
 
     #[test]
     fn try_unwrap() {
-        let x = Rc::new(3u);
-        assert_eq!(super::try_unwrap(x), Ok(3u));
-        let x = Rc::new(4u);
+        let x = Rc::new(3);
+        assert_eq!(super::try_unwrap(x), Ok(3));
+        let x = Rc::new(4);
         let _y = x.clone();
-        assert_eq!(super::try_unwrap(x), Err(Rc::new(4u)));
-        let x = Rc::new(5u);
+        assert_eq!(super::try_unwrap(x), Err(Rc::new(4)));
+        let x = Rc::new(5);
         let _w = x.downgrade();
-        assert_eq!(super::try_unwrap(x), Err(Rc::new(5u)));
+        assert_eq!(super::try_unwrap(x), Err(Rc::new(5)));
     }
 
     #[test]
     fn get_mut() {
-        let mut x = Rc::new(3u);
-        *super::get_mut(&mut x).unwrap() = 4u;
-        assert_eq!(*x, 4u);
+        let mut x = Rc::new(3);
+        *super::get_mut(&mut x).unwrap() = 4;
+        assert_eq!(*x, 4);
         let y = x.clone();
         assert!(super::get_mut(&mut x).is_none());
         drop(y);
@@ -918,7 +918,7 @@ mod tests {
 
     #[test]
     fn test_cowrc_clone_make_unique() {
-        let mut cow0 = Rc::new(75u);
+        let mut cow0 = Rc::new(75);
         let mut cow1 = cow0.clone();
         let mut cow2 = cow1.clone();
 
@@ -942,7 +942,7 @@ mod tests {
 
     #[test]
     fn test_cowrc_clone_unique2() {
-        let mut cow0 = Rc::new(75u);
+        let mut cow0 = Rc::new(75);
         let cow1 = cow0.clone();
         let cow2 = cow1.clone();
 
@@ -965,7 +965,7 @@ mod tests {
 
     #[test]
     fn test_cowrc_clone_weak() {
-        let mut cow0 = Rc::new(75u);
+        let mut cow0 = Rc::new(75);
         let cow1_weak = cow0.downgrade();
 
         assert!(75 == *cow0);
@@ -979,7 +979,7 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let foo = Rc::new(75u);
+        let foo = Rc::new(75);
         assert_eq!(format!("{:?}", foo), "75");
     }
 

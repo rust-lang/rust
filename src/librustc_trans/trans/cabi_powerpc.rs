@@ -19,7 +19,7 @@ use trans::type_::Type;
 use std::cmp;
 
 fn align_up_to(off: uint, a: uint) -> uint {
-    return (off + a - 1u) / a * a;
+    return (off + a - 1) / a * a;
 }
 
 fn align(off: uint, ty: Type) -> uint {

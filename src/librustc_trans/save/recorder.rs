@@ -272,7 +272,7 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(Variable,
                               span,
                               sub_span,
-                              svec!(id, name, qualname, value, typ, 0u));
+                              svec!(id, name, qualname, value, typ, 0));
     }
 
     // formal parameters
@@ -289,7 +289,7 @@ impl<'a> FmtStrs<'a> {
         self.check_and_record(Variable,
                               span,
                               sub_span,
-                              svec!(id, name, qualname, "", typ, 0u));
+                              svec!(id, name, qualname, "", typ, 0));
     }
 
     // value is the initialising expression of the static if it is not mut, otherwise "".
@@ -520,7 +520,7 @@ impl<'a> FmtStrs<'a> {
                               svec!(base_id.node,
                                     base_id.krate,
                                     deriv_id,
-                                    0u));
+                                    0));
     }
 
     pub fn fn_call_str(&mut self,
@@ -562,7 +562,7 @@ impl<'a> FmtStrs<'a> {
         self.record_with_span(ModRef,
                               span,
                               sub_span,
-                              svec!(0u, 0u, qualname, parent));
+                              svec!(0, 0, qualname, parent));
     }
 
     pub fn typedef_str(&mut self,
@@ -603,7 +603,7 @@ impl<'a> FmtStrs<'a> {
         self.record_with_span(TypeRef,
                               span,
                               sub_span,
-                              svec!(0u, 0u, qualname, 0u));
+                              svec!(0, 0, qualname, 0));
     }
 
     // A slightly generic function for a reference to an item of any kind.

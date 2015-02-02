@@ -94,7 +94,7 @@ impl<'a> SpanUtils<'a> {
         let mut result = None;
 
         let mut toks = self.retokenise_span(span);
-        let mut bracket_count = 0u;
+        let mut bracket_count = 0;
         loop {
             let ts = toks.real_token();
             if ts.tok == token::Eof {
@@ -117,7 +117,7 @@ impl<'a> SpanUtils<'a> {
     // Return the span for the first identifier in the path.
     pub fn span_for_first_ident(&self, span: Span) -> Option<Span> {
         let mut toks = self.retokenise_span(span);
-        let mut bracket_count = 0u;
+        let mut bracket_count = 0;
         loop {
             let ts = toks.real_token();
             if ts.tok == token::Eof {
@@ -143,7 +143,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.real_token();
         let mut result = None;
-        let mut bracket_count = 0u;
+        let mut bracket_count = 0;
         let mut last_span = None;
         while prev.tok != token::Eof {
             last_span = None;
@@ -191,7 +191,7 @@ impl<'a> SpanUtils<'a> {
         let mut toks = self.retokenise_span(span);
         let mut prev = toks.real_token();
         let mut result = None;
-        let mut bracket_count = 0u;
+        let mut bracket_count = 0;
         loop {
             let next = toks.real_token();
 

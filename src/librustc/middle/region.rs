@@ -461,8 +461,8 @@ impl RegionMaps {
 
         let a_ancestors = ancestors_of(self, scope_a);
         let b_ancestors = ancestors_of(self, scope_b);
-        let mut a_index = a_ancestors.len() - 1u;
-        let mut b_index = b_ancestors.len() - 1u;
+        let mut a_index = a_ancestors.len() - 1;
+        let mut b_index = b_ancestors.len() - 1;
 
         // Here, ~[ab]_ancestors is a vector going from narrow to broad.
         // The end of each vector will be the item where the scope is
@@ -479,10 +479,10 @@ impl RegionMaps {
         loop {
             // Loop invariant: a_ancestors[a_index] == b_ancestors[b_index]
             // for all indices between a_index and the end of the array
-            if a_index == 0u { return Some(scope_a); }
-            if b_index == 0u { return Some(scope_b); }
-            a_index -= 1u;
-            b_index -= 1u;
+            if a_index == 0 { return Some(scope_a); }
+            if b_index == 0 { return Some(scope_b); }
+            a_index -= 1;
+            b_index -= 1;
             if a_ancestors[a_index] != b_ancestors[b_index] {
                 return Some(a_ancestors[a_index + 1]);
             }

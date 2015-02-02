@@ -32,7 +32,7 @@
 //!     match foo {
 //!         A => ...,
 //!         B(x) => ...,
-//!         C(1u, 2) => ...,
+//!         C(1, 2) => ...,
 //!         C(_) => ...
 //!     }
 //!
@@ -41,7 +41,7 @@
 //! various options and then compile the code for the case where `foo` is an
 //! `A`, a `B`, and a `C`.  When we generate the code for `C`, we would (1)
 //! drop the two matches that do not match a `C` and (2) expand the other two
-//! into two patterns each.  In the first case, the two patterns would be `1u`
+//! into two patterns each.  In the first case, the two patterns would be `1`
 //! and `2`, and the in the second case the _ pattern would be expanded into
 //! `_` and `_`.  The two values are of course the arguments to `C`.
 //!
@@ -638,8 +638,8 @@ fn bind_subslice_pat(bcx: Block,
                                 ty::mt {ty: vt.unit_ty, mutbl: ast::MutImmutable});
     let scratch = rvalue_scratch_datum(bcx, slice_ty, "");
     Store(bcx, slice_begin,
-          GEPi(bcx, scratch.val, &[0u, abi::FAT_PTR_ADDR]));
-    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0u, abi::FAT_PTR_EXTRA]));
+          GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
+    Store(bcx, slice_len, GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
     scratch.val
 }
 
@@ -742,8 +742,8 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
     fn pat_score(def_map: &DefMap, pat: &ast::Pat) -> uint {
         match pat.node {
             ast::PatIdent(_, _, Some(ref inner)) => pat_score(def_map, &**inner),
-            _ if pat_is_refutable(def_map, pat) => 1u,
-            _ => 0u
+            _ if pat_is_refutable(def_map, pat) => 1,
+            _ => 0
         }
     }
 
@@ -922,7 +922,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _indenter = indenter();
     let _icx = push_ctxt("match::compile_submatch");
     let mut bcx = bcx;
-    if m.len() == 0u {
+    if m.len() == 0 {
         if chk.is_fallible() {
             chk.handle_fail(bcx);
         }
@@ -982,8 +982,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let tcx = bcx.tcx();
     let dm = &tcx.def_map;
 
-    let mut vals_left = vals[0u..col].to_vec();
-    vals_left.push_all(&vals[col + 1u..]);
+    let mut vals_left = vals[0..col].to_vec();
+    vals_left.push_all(&vals[col + 1..]);
     let ccx = bcx.fcx.ccx;
 
     // Find a real id (we're adding placeholder wildcard patterns, but
@@ -1042,7 +1042,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let mut kind = NoBranch;
     let mut test_val = val;
     debug!("test_val={}", bcx.val_to_string(test_val));
-    if opts.len() > 0u {
+    if opts.len() > 0 {
         match opts[0] {
             ConstantValue(_) | ConstantRange(_, _) => {
                 test_val = load_if_immediate(bcx, val, left_ty);
@@ -1082,7 +1082,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
 
     let defaults = enter_default(else_cx, dm, m, col, val);
-    let exhaustive = chk.is_infallible() && defaults.len() == 0u;
+    let exhaustive = chk.is_infallible() && defaults.len() == 0;
     let len = opts.len();
 
     // Compile subtrees for each option
@@ -1157,7 +1157,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             Br(bcx, else_cx.llbb, DebugLoc::None);
         }
 
-        let mut size = 0u;
+        let mut size = 0;
         let mut unpacked = Vec::new();
         match *opt {
             Variant(disr_val, ref repr, _) => {

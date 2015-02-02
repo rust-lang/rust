@@ -31,11 +31,11 @@ struct Test;
 
 #[test]
 fn any_move() {
-    let a = Box::new(8u) as Box<Any>;
+    let a = Box::new(8us) as Box<Any>;
     let b = Box::new(Test) as Box<Any>;
 
     match a.downcast::<uint>() {
-        Ok(a) => { assert!(a == Box::new(8u)); }
+        Ok(a) => { assert!(a == Box::new(8us)); }
         Err(..) => panic!()
     }
     match b.downcast::<Test>() {
@@ -43,7 +43,7 @@ fn any_move() {
         Err(..) => panic!()
     }
 
-    let a = Box::new(8u) as Box<Any>;
+    let a = Box::new(8) as Box<Any>;
     let b = Box::new(Test) as Box<Any>;
 
     assert!(a.downcast::<Box<Test>>().is_err());
@@ -52,14 +52,14 @@ fn any_move() {
 
 #[test]
 fn test_show() {
-    let a = Box::new(8u) as Box<Any>;
+    let a = Box::new(8) as Box<Any>;
     let b = Box::new(Test) as Box<Any>;
     let a_str = format!("{:?}", a);
     let b_str = format!("{:?}", b);
     assert_eq!(a_str, "Box<Any>");
     assert_eq!(b_str, "Box<Any>");
 
-    static EIGHT: usize = 8us;
+    static EIGHT: usize = 8;
     static TEST: Test = Test;
     let a = &EIGHT as &Any;
     let b = &TEST as &Any;

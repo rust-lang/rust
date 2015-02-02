@@ -39,7 +39,7 @@
 //!
 //! let five = Arc::new(5);
 //!
-//! for _ in 0u..10 {
+//! for _ in 0..10 {
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
@@ -56,7 +56,7 @@
 //!
 //! let five = Arc::new(Mutex::new(5));
 //!
-//! for _ in 0u..10 {
+//! for _ in 0..10 {
 //!     let five = five.clone();
 //!
 //!     Thread::spawn(move || {
@@ -101,7 +101,7 @@ use heap::deallocate;
 ///     let numbers: Vec<_> = (0..100u32).map(|i| i as f32).collect();
 ///     let shared_numbers = Arc::new(numbers);
 ///
-///     for _ in 0u..10 {
+///     for _ in 0..10 {
 ///         let child_numbers = shared_numbers.clone();
 ///
 ///         Thread::spawn(move || {
@@ -661,7 +661,7 @@ mod tests {
 
     #[test]
     fn test_cowarc_clone_make_unique() {
-        let mut cow0 = Arc::new(75u);
+        let mut cow0 = Arc::new(75);
         let mut cow1 = cow0.clone();
         let mut cow2 = cow1.clone();
 
@@ -685,7 +685,7 @@ mod tests {
 
     #[test]
     fn test_cowarc_clone_unique2() {
-        let mut cow0 = Arc::new(75u);
+        let mut cow0 = Arc::new(75);
         let cow1 = cow0.clone();
         let cow2 = cow1.clone();
 
@@ -708,7 +708,7 @@ mod tests {
 
     #[test]
     fn test_cowarc_clone_weak() {
-        let mut cow0 = Arc::new(75u);
+        let mut cow0 = Arc::new(75);
         let cow1_weak = cow0.downgrade();
 
         assert!(75 == *cow0);

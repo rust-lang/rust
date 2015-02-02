@@ -68,10 +68,10 @@ impl<'a> fmt::Debug for Matrix<'a> {
                .collect::<Vec<String>>()
         }).collect();
 
-        let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0u);
+        let column_count = m.iter().map(|row| row.len()).max().unwrap_or(0);
         assert!(m.iter().all(|row| row.len() == column_count));
         let column_widths: Vec<uint> = (0..column_count).map(|col| {
-            pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0u)
+            pretty_printed_matrix.iter().map(|row| row[col].len()).max().unwrap_or(0)
         }).collect();
 
         let total_width = column_widths.iter().map(|n| *n).sum() + column_count * 3 + 1;
@@ -588,13 +588,13 @@ fn is_useful(cx: &MatchCheckCtxt,
              -> Usefulness {
     let &Matrix(ref rows) = matrix;
     debug!("{:?}", matrix);
-    if rows.len() == 0u {
+    if rows.len() == 0 {
         return match witness {
             ConstructWitness => UsefulWithWitness(vec!()),
             LeaveOutWitness => Useful
         };
     }
-    if rows[0].len() == 0u {
+    if rows[0].len() == 0 {
         return NotUseful;
     }
     let real_pat = match rows.iter().find(|r| (*r)[0].id != DUMMY_NODE_ID) {
@@ -669,9 +669,9 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, &r[], &ctor, 0u, arity)
+        specialize(cx, &r[], &ctor, 0, arity)
     }).collect());
-    match specialize(cx, v, &ctor, 0u, arity) {
+    match specialize(cx, v, &ctor, 0, arity) {
         Some(v) => is_useful(cx, &matrix, &v[], witness),
         None => NotUseful
     }
@@ -742,20 +742,20 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
 /// This computes the arity of a constructor. The arity of a constructor
 /// is how many subpattern patterns of that constructor should be expanded to.
 ///
-/// For instance, a tuple pattern (_, 42u, Some([])) has the arity of 3.
+/// For instance, a tuple pattern (_, 42, Some([])) has the arity of 3.
 /// A struct pattern's arity is the number of fields it contains, etc.
 pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uint {
     match ty.sty {
         ty::ty_tup(ref fs) => fs.len(),
-        ty::ty_uniq(_) => 1u,
+        ty::ty_uniq(_) => 1,
         ty::ty_rptr(_, ty::mt { ty, .. }) => match ty.sty {
             ty::ty_vec(_, None) => match *ctor {
                 Slice(length) => length,
-                ConstantValue(_) => 0u,
+                ConstantValue(_) => 0,
                 _ => unreachable!()
             },
-            ty::ty_str => 0u,
-            _ => 1u
+            ty::ty_str => 0,
+            _ => 1
         },
         ty::ty_enum(eid, _) => {
             match *ctor {
@@ -765,7 +765,7 @@ pub fn constructor_arity(cx: &MatchCheckCtxt, ctor: &Constructor, ty: Ty) -> uin
         }
         ty::ty_struct(cid, _) => ty::lookup_struct_fields(cx.tcx, cid).len(),
         ty::ty_vec(_, Some(n)) => n,
-        _ => 0u
+        _ => 0
     }
 }
 

@@ -352,7 +352,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
                 let base_index = word_index * uint::BITS;
-                for offset in 0u..uint::BITS {
+                for offset in 0..uint::BITS {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits
@@ -447,7 +447,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
                 changed: true
             };
 
-            let mut temp: Vec<_> = repeat(0u).take(words_per_id).collect();
+            let mut temp: Vec<_> = repeat(0).take(words_per_id).collect();
             while propcx.changed {
                 propcx.changed = false;
                 propcx.reset(temp.as_mut_slice());
@@ -466,7 +466,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
                        blk: &ast::Block) -> old_io::IoResult<()> {
         let mut ps = pprust::rust_printer_annotated(wr, self);
         try!(ps.cbox(pprust::indent_unit));
-        try!(ps.ibox(0u));
+        try!(ps.ibox(0));
         try!(ps.print_block(blk));
         pp::eof(&mut ps.s)
     }
@@ -552,7 +552,7 @@ fn bits_to_string(words: &[uint]) -> String {
 
     for &word in words.iter() {
         let mut v = word;
-        for _ in 0u..uint::BYTES {
+        for _ in 0..uint::BYTES {
             result.push(sep);
             result.push_str(&format!("{:02x}", v & 0xFF)[]);
             v >>= 8;
@@ -593,7 +593,7 @@ fn set_bit(words: &mut [uint], bit: uint) -> bool {
 
 fn bit_str(bit: uint) -> String {
     let byte = bit >> 8;
-    let lobits = 1u << (bit & 0xFF);
+    let lobits = 1 << (bit & 0xFF);
     format!("[{}:{}-{:02x}]", bit, byte, lobits)
 }
 

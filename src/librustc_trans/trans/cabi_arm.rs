@@ -26,7 +26,7 @@ pub enum Flavor {
 type TyAlignFn = fn(ty: Type) -> uint;
 
 fn align_up_to(off: uint, a: uint) -> uint {
-    return (off + a - 1u) / a * a;
+    return (off + a - 1) / a * a;
 }
 
 fn align(off: uint, ty: Type, align_fn: TyAlignFn) -> uint {

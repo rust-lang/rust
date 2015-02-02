@@ -454,7 +454,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
         debug!("cat_expr_autoderefd: autoderefs={}, cmt={}",
                autoderefs,
                cmt.repr(self.tcx()));
-        for deref in 1u..autoderefs + 1 {
+        for deref in 1..autoderefs + 1 {
             cmt = try!(self.cat_deref(expr, cmt, deref));
         }
         return Ok(cmt);
