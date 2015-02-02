@@ -265,9 +265,9 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // Use the minimum integer type we figured out above
             let fields : Vec<_> = cases.iter().map(|c| {
                 let mut ftys = vec!(ty_of_inttype(cx.tcx(), min_ity));
-                ftys.push_all(c.tys.as_slice());
+                ftys.push_all(&c.tys);
                 if dtor { ftys.push(cx.tcx().types.bool); }
-                mk_struct(cx, ftys.as_slice(), false, t)
+                mk_struct(cx, &ftys, false, t)
             }).collect();
 
 
@@ -283,7 +283,7 @@ fn represent_type_uncached<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             // This check is needed to avoid increasing the size of types when
             // the alignment of the first field is smaller than the overall
             // alignment of the type.
-            let (_, align) = union_size_and_align(fields.as_slice());
+            let (_, align) = union_size_and_align(&fields);
             let mut use_align = true;
             for st in &fields {
                 // Get the first non-zero-sized field

@@ -133,7 +133,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                     self.tcx(),
                     &result0,
                     |r, debruijn| generalize_region(self.infcx(), span, snapshot, debruijn,
-                                                    new_vars.as_slice(), &a_map, r));
+                                                    &new_vars, &a_map, r));
 
             debug!("lub({},{}) = {}",
                    a.repr(self.tcx()),
@@ -227,8 +227,8 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                     self.tcx(),
                     &result0,
                     |r, debruijn| generalize_region(self.infcx(), span, snapshot, debruijn,
-                                                    new_vars.as_slice(),
-                                                    &a_map, a_vars.as_slice(), b_vars.as_slice(),
+                                                    &new_vars,
+                                                    &a_map, &a_vars, &b_vars,
                                                     r));
 
             debug!("glb({},{}) = {}",

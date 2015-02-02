@@ -13,7 +13,7 @@ use iter::IteratorExt;
 use libc;
 use mem;
 use ops::Deref;
-use slice::{self, SliceExt, AsSlice};
+use slice::{self, SliceExt};
 use string::String;
 use vec::Vec;
 
@@ -96,12 +96,12 @@ impl CString {
 
     /// Create a view into this C string which includes the trailing nul
     /// terminator at the end of the string.
-    pub fn as_slice_with_nul(&self) -> &[libc::c_char] { self.inner.as_slice() }
+    pub fn as_slice_with_nul(&self) -> &[libc::c_char] { &self.inner }
 
     /// Similar to the `as_slice` method, but returns a `u8` slice instead of a
     /// `libc::c_char` slice.
     pub fn as_bytes(&self) -> &[u8] {
-        unsafe { mem::transmute(self.as_slice()) }
+        unsafe { mem::transmute(&**self) }
     }
 
     /// Equivalent to `as_slice_with_nul` except that the type returned is a
@@ -197,7 +197,7 @@ mod tests {
         assert_eq!(s.as_bytes(), b"1234");
         assert_eq!(s.as_bytes_with_nul(), b"1234\0");
         unsafe {
-            assert_eq!(s.as_slice(),
+            assert_eq!(&*s,
                        mem::transmute::<_, &[libc::c_char]>(b"1234"));
             assert_eq!(s.as_slice_with_nul(),
                        mem::transmute::<_, &[libc::c_char]>(b"1234\0"));

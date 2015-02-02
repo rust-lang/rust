@@ -64,9 +64,9 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 
    let mut buffer = String::new();
    for &(ref k, v) in &pairs_sorted {
-       buffer.push_str(format!("{:?} {:0.3}\n",
-                               k.to_ascii_uppercase(),
-                               v).as_slice());
+       buffer.push_str(&format!("{:?} {:0.3}\n",
+                                k.to_ascii_uppercase(),
+                                v));
    }
 
    return buffer
@@ -122,8 +122,8 @@ fn make_sequence_processor(sz: uint,
        line = from_parent.recv().unwrap();
        if line == Vec::new() { break; }
 
-       carry.push_all(line.as_slice());
-       carry = windows_with_carry(carry.as_slice(), sz, |window| {
+       carry.push_all(&line);
+       carry = windows_with_carry(&carry, sz, |window| {
            update_freq(&mut freqs, window);
            total += 1u;
        });

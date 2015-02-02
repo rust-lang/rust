@@ -32,7 +32,7 @@ fn parfib(n: uint) -> uint {
 fn main() {
 
     let args = os::args();
-    let args = args.as_slice();
+    let args = args;
     let n = if args.len() == 2 {
         args[1].parse::<uint>().unwrap()
     } else {

@@ -169,9 +169,9 @@ impl<'a, 'tcx> AstConv<'tcx> for CollectCtxt<'a, 'tcx> {
                 ty_of_foreign_item(self, &*foreign_item, abi)
             }
             x => {
-                self.tcx.sess.bug(format!("unexpected sort of node \
-                                           in get_item_type_scheme(): {:?}",
-                                          x).as_slice());
+                self.tcx.sess.bug(&format!("unexpected sort of node \
+                                            in get_item_type_scheme(): {:?}",
+                                           x));
             }
         }
     }
@@ -562,7 +562,7 @@ fn convert(ccx: &CollectCtxt, it: &ast::Item) {
             write_ty_to_tcx(tcx, it.id, scheme.ty);
             get_enum_variant_types(ccx,
                                    scheme.ty,
-                                   enum_definition.variants.as_slice(),
+                                   &enum_definition.variants,
                                    generics);
         },
         ast::ItemImpl(_, _,
@@ -846,7 +846,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                        ref generics,
                        ref supertraits,
                        ref items) => {
-            (unsafety, generics, supertraits, items.as_slice())
+            (unsafety, generics, supertraits, items)
         }
         ref s => {
             tcx.sess.span_bug(
@@ -878,7 +878,7 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
 
     let bounds = compute_bounds(ccx,
                                 self_param_ty.to_ty(ccx.tcx),
-                                bounds.as_slice(),
+                                bounds,
                                 SizedByDefault::No,
                                 it.span);
 
@@ -1136,7 +1136,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
 
                 let bounds = compute_bounds(ccx,
                                             assoc_ty,
-                                            assoc_type_def.bounds.as_slice(),
+                                            &*assoc_type_def.bounds,
                                             SizedByDefault::Yes,
                                             assoc_type_def.span);
 
@@ -1448,7 +1448,7 @@ fn conv_param_bounds<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     let astconv::PartitionedBounds { builtin_bounds,
                                      trait_bounds,
                                      region_bounds } =
-        astconv::partition_bounds(ccx.tcx, span, ast_bounds.as_slice());
+        astconv::partition_bounds(ccx.tcx, span, ast_bounds);
 
     let mut projection_bounds = Vec::new();
 
@@ -1701,9 +1701,9 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
             if ty::has_attr(tcx, impl_def_id, "old_impl_check") {
                 tcx.sess.span_warn(
                     ty_param.span,
-                    format!("the type parameter `{}` is not constrained by the \
-                             impl trait, self type, or predicates",
-                            param_ty.user_string(tcx)).as_slice());
+                    &format!("the type parameter `{}` is not constrained by the \
+                              impl trait, self type, or predicates",
+                             param_ty.user_string(tcx)));
             } else {
                 span_err!(tcx.sess, ty_param.span, E0207,
                     "the type parameter `{}` is not constrained by the \
@@ -1711,8 +1711,8 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                             param_ty.user_string(tcx));
                 tcx.sess.span_help(
                     ty_param.span,
-                    format!("you can temporarily opt out of this rule by placing \
-                             the `#[old_impl_check]` attribute on the impl").as_slice());
+                    &format!("you can temporarily opt out of this rule by placing \
+                              the `#[old_impl_check]` attribute on the impl"));
             }
         }
     }

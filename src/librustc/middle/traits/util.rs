@@ -279,7 +279,7 @@ pub fn trait_ref_for_builtin_bound<'tcx>(
             }))
         }
         Err(e) => {
-            tcx.sess.err(e.as_slice());
+            tcx.sess.err(&e);
             Err(ErrorReported)
         }
     }

@@ -34,13 +34,13 @@ pub fn main() {
     assert_eq!((i_value, *i.borrow()), (2, 5));
 
     let s = Rc::new("foo".to_string());
-    assert_eq!(s.as_slice(), "foo");
+    assert_eq!(&**s, "foo");
 
     let mut_s = Rc::new(RefCell::new(String::from_str("foo")));
     mut_s.borrow_mut().push_str("bar");
     // HACK assert_eq! would panic here because it stores the LHS and RHS in two locals.
-    assert!(mut_s.borrow().as_slice() == "foobar");
-    assert!(mut_s.borrow_mut().as_slice() == "foobar");
+    assert!(&**mut_s.borrow() == "foobar");
+    assert!(&**mut_s.borrow_mut() == "foobar");
 
     let p = Rc::new(RefCell::new(Point {x: 1, y: 2}));
     p.borrow_mut().x = 3;

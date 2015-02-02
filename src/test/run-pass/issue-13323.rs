@@ -21,7 +21,7 @@ impl StrWrap {
     }
 
     fn get_s<'a>(&'a self) -> &'a str {
-        self.s.as_slice()
+        &self.s
     }
 }
 

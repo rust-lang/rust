@@ -25,7 +25,7 @@ pub fn expand(cx: &mut ExtCtxt, sp: Span, mi: &ast::MetaItem, it: P<ast::Item>) 
     };
 
     let mut out = (*it).clone();
-    if attr::cfg_matches(&cx.parse_sess.span_diagnostic, cx.cfg.as_slice(), &**cfg) {
+    if attr::cfg_matches(&cx.parse_sess.span_diagnostic, &cx.cfg, &**cfg) {
         out.attrs.push(cx.attribute(attr.span, attr.clone()));
     }
 

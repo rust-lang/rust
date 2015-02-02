@@ -47,7 +47,7 @@ pub fn main() {
     assert_eq!(length(x.clone()), x.len());
     // Call a parameterized function, with type arguments that require
     // a borrow
-    assert_eq!(length::<int, &[int]>(x.as_slice()), x.len());
+    assert_eq!(length::<int, &[int]>(&*x), x.len());
 
     // Now try it with a type that *needs* to be borrowed
     let z = [0,1,2,3];

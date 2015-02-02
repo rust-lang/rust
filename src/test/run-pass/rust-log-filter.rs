@@ -48,8 +48,8 @@ pub fn main() {
         info!("bar foo");
     });
 
-    assert_eq!(rx.recv().unwrap().as_slice(), "foo");
-    assert_eq!(rx.recv().unwrap().as_slice(), "foo bar");
-    assert_eq!(rx.recv().unwrap().as_slice(), "bar foo");
+    assert_eq!(rx.recv().unwrap(), "foo");
+    assert_eq!(rx.recv().unwrap(), "foo bar");
+    assert_eq!(rx.recv().unwrap(), "bar foo");
     assert!(rx.recv().is_err());
 }

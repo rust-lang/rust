@@ -17,7 +17,7 @@ use option::Option::None;
 use result::Result::{Err, Ok};
 use old_io;
 use old_io::{Reader, Writer, Seek, Buffer, IoError, SeekStyle, IoResult};
-use slice::{self, AsSlice, SliceExt};
+use slice::{self, SliceExt};
 use vec::Vec;
 
 const BUF_CAPACITY: uint = 128;
@@ -92,7 +92,7 @@ impl MemWriter {
     /// Acquires an immutable reference to the underlying buffer of this
     /// `MemWriter`.
     #[inline]
-    pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
+    pub fn get_ref<'a>(&'a self) -> &'a [u8] { &self.buf }
 
     /// Unwraps this `MemWriter`, returning the underlying buffer
     #[inline]
@@ -147,7 +147,7 @@ impl MemReader {
     /// No method is exposed for acquiring a mutable reference to the buffer
     /// because it could corrupt the state of this `MemReader`.
     #[inline]
-    pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
+    pub fn get_ref<'a>(&'a self) -> &'a [u8] { &self.buf }
 
     /// Unwraps this `MemReader`, returning the underlying buffer
     #[inline]
@@ -407,7 +407,7 @@ mod test {
         writer.write(&[1, 2, 3]).unwrap();
         writer.write(&[4, 5, 6, 7]).unwrap();
         let b: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7];
-        assert_eq!(writer.as_slice(), b);
+        assert_eq!(writer, b);
     }
 
     #[test]
@@ -511,24 +511,24 @@ mod test {
     #[test]
     fn test_slice_reader() {
         let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        let mut reader = &mut in_buf.as_slice();
+        let mut reader = &mut &*in_buf;
         let mut buf = [];
         assert_eq!(reader.read(&mut buf), Ok(0));
         let mut buf = [0];
         assert_eq!(reader.read(&mut buf), Ok(1));
         assert_eq!(reader.len(), 7);
         let b: &[_] = &[0];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
         let mut buf = [0; 4];
         assert_eq!(reader.read(&mut buf), Ok(4));
         assert_eq!(reader.len(), 3);
         let b: &[_] = &[1, 2, 3, 4];
-        assert_eq!(buf.as_slice(), b);
+        assert_eq!(buf, b);
         assert_eq!(reader.read(&mut buf), Ok(3));
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);
         assert!(reader.read(&mut buf).is_err());
-        let mut reader = &mut in_buf.as_slice();
+        let mut reader = &mut &*in_buf;
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
         assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
         assert!(reader.read(&mut buf).is_err());
@@ -537,7 +537,7 @@ mod test {
     #[test]
     fn test_buf_reader() {
         let in_buf = vec![0, 1, 2, 3, 4, 5, 6, 7];
-        let mut reader = BufReader::new(in_buf.as_slice());
+        let mut reader = BufReader::new(&in_buf);
         let mut buf = [];
         assert_eq!(reader.read(&mut buf), Ok(0));
         assert_eq!(reader.tell(), Ok(0));
@@ -555,7 +555,7 @@ mod test {
         let b: &[_] = &[5, 6, 7];
         assert_eq!(&buf[..3], b);
         assert!(reader.read(&mut buf).is_err());
-        let mut reader = BufReader::new(in_buf.as_slice());
+        let mut reader = BufReader::new(&in_buf);
         assert_eq!(reader.read_until(3).unwrap(), vec!(0, 1, 2, 3));
         assert_eq!(reader.read_until(3).unwrap(), vec!(4, 5, 6, 7));
         assert!(reader.read(&mut buf).is_err());
@@ -664,7 +664,7 @@ mod test {
         b.iter(|| {
             let mut wr = MemWriter::new();
             for _ in 0..times {
-                wr.write(src.as_slice()).unwrap();
+                wr.write(&src).unwrap();
             }
 
             let v = wr.into_inner();
@@ -722,7 +722,7 @@ mod test {
                 for _i in 0u..10 {
                     let mut buf = [0 as u8; 10];
                     rdr.read(&mut buf).unwrap();
-                    assert_eq!(buf.as_slice(), [5; 10].as_slice());
+                    assert_eq!(buf, [5; 10]);
                 }
             }
         });

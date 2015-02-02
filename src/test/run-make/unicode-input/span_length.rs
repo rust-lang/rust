@@ -34,8 +34,8 @@ fn random_char() -> char {
 
 fn main() {
     let args = os::args();
-    let rustc = args[1].as_slice();
-    let tmpdir = Path::new(args[2].as_slice());
+    let rustc = &args[1];
+    let tmpdir = Path::new(&args[2]);
     let main_file = tmpdir.join("span_main.rs");
 
     for _ in 0u..100 {
@@ -52,18 +52,18 @@ fn main() {
         // can't exec it directly
         let result = Command::new("sh")
                              .arg("-c")
-                             .arg(format!("{} {}",
-                                          rustc,
-                                          main_file.as_str()
-                                                   .unwrap()).as_slice())
+                             .arg(&format!("{} {}",
+                                           rustc,
+                                           main_file.as_str()
+                                                    .unwrap()))
                              .output().unwrap();
 
-        let err = String::from_utf8_lossy(result.error.as_slice());
+        let err = String::from_utf8_lossy(&result.error);
 
         // the span should end the line (e.g no extra ~'s)
         let expected_span = format!("^{}\n", repeat("~").take(n - 1)
                                                         .collect::<String>());
-        assert!(err.contains(expected_span.as_slice()));
+        assert!(err.contains(&expected_span));
     }
 
     // Test multi-column characters and tabs

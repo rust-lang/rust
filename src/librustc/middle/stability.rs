@@ -57,7 +57,7 @@ impl<'a> Annotator<'a> {
                    attrs: &Vec<Attribute>, item_sp: Span, f: F, required: bool) where
         F: FnOnce(&mut Annotator),
     {
-        match attr::find_stability(self.sess.diagnostic(), attrs.as_slice(), item_sp) {
+        match attr::find_stability(self.sess.diagnostic(), attrs, item_sp) {
             Some(stab) => {
                 self.index.local.insert(id, stab.clone());
 

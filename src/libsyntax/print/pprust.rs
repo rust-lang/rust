@@ -1485,7 +1485,7 @@ impl<'a> State<'a> {
                     token::Bracket => try!(word(&mut self.s, "[")),
                     token::Brace => try!(self.bopen()),
                 }
-                try!(self.print_tts(tts.as_slice()));
+                try!(self.print_tts(tts));
                 match delim {
                     token::Paren => self.pclose(),
                     token::Bracket => word(&mut self.s, "]"),
@@ -2502,7 +2502,7 @@ impl<'a> State<'a> {
                                                                               ref bounds,
                                                                               ..}) => {
                     try!(self.print_type(&**bounded_ty));
-                    try!(self.print_bounds(":", bounds.as_slice()));
+                    try!(self.print_bounds(":", bounds));
                 }
                 &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
                                                                                 ref bounds,
@@ -2760,7 +2760,7 @@ impl<'a> State<'a> {
                              &format!("-{}", istr)[])
                     }
                     ast::UnsignedIntLit(ut) => {
-                        word(&mut self.s, ast_util::uint_ty_to_string(ut, Some(i)).as_slice())
+                        word(&mut self.s, &ast_util::uint_ty_to_string(ut, Some(i)))
                     }
                     ast::UnsuffixedIntLit(ast::Plus) => {
                         word(&mut self.s, &format!("{}", i)[])
@@ -2937,7 +2937,7 @@ impl<'a> State<'a> {
                                 opt_unsafety: Option<ast::Unsafety>,
                                 abi: abi::Abi,
                                 vis: ast::Visibility) -> IoResult<()> {
-        try!(word(&mut self.s, visibility_qualified(vis, "").as_slice()));
+        try!(word(&mut self.s, &visibility_qualified(vis, "")));
         try!(self.print_opt_unsafety(opt_unsafety));
 
         if abi != abi::Rust {

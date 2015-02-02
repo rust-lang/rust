@@ -300,7 +300,7 @@ mod tests {
         macro_rules! t {
             ($items:expr, $expected:expr) => {{
                 let mut items = $items;
-                let wc = WeightedChoice::new(items.as_mut_slice());
+                let wc = WeightedChoice::new(&mut items);
                 let expected = $expected;
 
                 let mut rng = CountingRng { i: 0 };

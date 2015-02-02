@@ -10,11 +10,11 @@
 
 fn parse_args() -> String {
     let args = ::std::os::args();
-    let args = args.as_slice();
+    let args = args;
     let mut n = 0;
 
     while n < args.len() {
-        match args[n].as_slice() {
+        match &*args[n] {
             "-v" => (),
             s => {
                 return s.to_string();

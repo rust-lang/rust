@@ -51,7 +51,7 @@ impl Buf {
     }
 
     pub fn as_slice(&self) -> &Slice {
-        unsafe { mem::transmute(self.inner.as_slice()) }
+        unsafe { mem::transmute(&*self.inner) }
     }
 
     pub fn into_string(self) -> Result<String, Buf> {

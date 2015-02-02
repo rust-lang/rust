@@ -145,7 +145,7 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
 pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
     fn ignore_target(config: &Config) -> String {
-        format!("ignore-{}", util::get_os(config.target.as_slice()))
+        format!("ignore-{}", util::get_os(&config.target))
     }
     fn ignore_stage(config: &Config) -> String {
         format!("ignore-{}",
@@ -169,8 +169,8 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
                                           .expect("Malformed GDB version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    gdb_version_to_int(actual_version.as_slice()) <
-                        gdb_version_to_int(min_version.as_slice())
+                    gdb_version_to_int(actual_version) <
+                        gdb_version_to_int(min_version)
                 } else {
                     false
                 }
@@ -197,8 +197,8 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
                                           .expect("Malformed lldb version directive");
                     // Ignore if actual version is smaller the minimum required
                     // version
-                    lldb_version_to_int(actual_version.as_slice()) <
-                        lldb_version_to_int(min_version.as_slice())
+                    lldb_version_to_int(actual_version) <
+                        lldb_version_to_int(min_version)
                 } else {
                     false
                 }
@@ -209,8 +209,8 @@ pub fn is_test_ignored(config: &Config, testfile: &Path) -> bool {
 
     let val = iter_header(testfile, |ln| {
         !parse_name_directive(ln, "ignore-test") &&
-        !parse_name_directive(ln, ignore_target(config).as_slice()) &&
-        !parse_name_directive(ln, ignore_stage(config).as_slice()) &&
+        !parse_name_directive(ln, &ignore_target(config)) &&
+        !parse_name_directive(ln, &ignore_stage(config)) &&
         !(config.mode == common::Pretty && parse_name_directive(ln, "ignore-pretty")) &&
         !(config.target != config.host && parse_name_directive(ln, "ignore-cross-compile")) &&
         !ignore_gdb(config, ln) &&
@@ -294,7 +294,7 @@ fn parse_pretty_compare_only(line: &str) -> bool {
 fn parse_exec_env(line: &str) -> Option<(String, String)> {
     parse_name_value_directive(line, "exec-env").map(|nv| {
         // nv is either FOO or FOO=BAR
-        let mut strs: Vec<String> = nv.as_slice()
+        let mut strs: Vec<String> = nv
                                       .splitn(1, '=')
                                       .map(|s| s.to_string())
                                       .collect();
@@ -330,7 +330,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
 pub fn parse_name_value_directive(line: &str, directive: &str)
                                   -> Option<String> {
     let keycolon = format!("{}:", directive);
-    match line.find_str(keycolon.as_slice()) {
+    match line.find_str(&keycolon) {
         Some(colon) => {
             let value = line[(colon + keycolon.len()) .. line.len()].to_string();
             debug!("{}: {}", directive, value);
@@ -344,7 +344,7 @@ pub fn gdb_version_to_int(version_string: &str) -> int {
     let error_string = format!(
         "Encountered GDB version string with unexpected format: {}",
         version_string);
-    let error_string = error_string.as_slice();
+    let error_string = error_string;
 
     let components: Vec<&str> = version_string.trim().split('.').collect();
 
@@ -352,8 +352,8 @@ pub fn gdb_version_to_int(version_string: &str) -> int {
         panic!("{}", error_string);
     }
 
-    let major: int = components[0].parse().ok().expect(error_string);
-    let minor: int = components[1].parse().ok().expect(error_string);
+    let major: int = components[0].parse().ok().expect(&error_string);
+    let minor: int = components[1].parse().ok().expect(&error_string);
 
     return major * 1000 + minor;
 }
@@ -362,7 +362,7 @@ pub fn lldb_version_to_int(version_string: &str) -> int {
     let error_string = format!(
         "Encountered LLDB version string with unexpected format: {}",
         version_string);
-    let error_string = error_string.as_slice();
-    let major: int = version_string.parse().ok().expect(error_string);
+    let error_string = error_string;
+    let major: int = version_string.parse().ok().expect(&error_string);
     return major;
 }

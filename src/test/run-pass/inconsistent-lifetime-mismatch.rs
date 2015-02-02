@@ -15,7 +15,7 @@ fn bad(a: &str, b: &str) {
 }
 
 fn good(a: &str, b: &str) {
-    foo(&[a.as_slice(), b.as_slice()]);
+    foo(&[a, b]);
 }
 
 fn main() {}

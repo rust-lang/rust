@@ -19,7 +19,7 @@ pub fn main() {
 
     match x {
       F {f: ref mut v} => {
-        impure(v.as_slice());
+        impure(v);
       }
     }
 }

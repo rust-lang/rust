@@ -514,16 +514,16 @@ mod test {
     #[test]
     fn test_rng_32_rand_seeded() {
         let s = ::test::rng().gen_iter::<u32>().take(256).collect::<Vec<u32>>();
-        let mut ra: IsaacRng = SeedableRng::from_seed(s.as_slice());
-        let mut rb: IsaacRng = SeedableRng::from_seed(s.as_slice());
+        let mut ra: IsaacRng = SeedableRng::from_seed(&*s);
+        let mut rb: IsaacRng = SeedableRng::from_seed(&*s);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
                               rb.gen_ascii_chars().take(100)));
     }
     #[test]
     fn test_rng_64_rand_seeded() {
         let s = ::test::rng().gen_iter::<u64>().take(256).collect::<Vec<u64>>();
-        let mut ra: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
-        let mut rb: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
+        let mut ra: Isaac64Rng = SeedableRng::from_seed(&*s);
+        let mut rb: Isaac64Rng = SeedableRng::from_seed(&*s);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
                               rb.gen_ascii_chars().take(100)));
     }
@@ -548,10 +548,10 @@ mod test {
     #[test]
     fn test_rng_32_reseed() {
         let s = ::test::rng().gen_iter::<u32>().take(256).collect::<Vec<u32>>();
-        let mut r: IsaacRng = SeedableRng::from_seed(s.as_slice());
+        let mut r: IsaacRng = SeedableRng::from_seed(&*s);
         let string1: String = r.gen_ascii_chars().take(100).collect();
 
-        r.reseed(s.as_slice());
+        r.reseed(&s);
 
         let string2: String = r.gen_ascii_chars().take(100).collect();
         assert_eq!(string1, string2);
@@ -559,10 +559,10 @@ mod test {
     #[test]
     fn test_rng_64_reseed() {
         let s = ::test::rng().gen_iter::<u64>().take(256).collect::<Vec<u64>>();
-        let mut r: Isaac64Rng = SeedableRng::from_seed(s.as_slice());
+        let mut r: Isaac64Rng = SeedableRng::from_seed(&*s);
         let string1: String = r.gen_ascii_chars().take(100).collect();
 
-        r.reseed(s.as_slice());
+        r.reseed(&s);
 
         let string2: String = r.gen_ascii_chars().take(100).collect();
         assert_eq!(string1, string2);

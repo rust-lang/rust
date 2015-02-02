@@ -252,10 +252,10 @@ fn confirm_builtin_call<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                                       call_expr.span,
                                                       expected,
                                                       fn_sig.output,
-                                                      fn_sig.inputs.as_slice());
+                                                      &fn_sig.inputs);
     check_argument_types(fcx,
                          call_expr.span,
-                         fn_sig.inputs.as_slice(),
+                         &fn_sig.inputs,
                          &expected_arg_tys[],
                          arg_exprs,
                          AutorefArgs::No,

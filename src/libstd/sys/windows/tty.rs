@@ -104,7 +104,7 @@ impl TTY {
                 _ => (),
             };
             utf16.truncate(num as uint);
-            let utf8 = match String::from_utf16(utf16.as_slice()) {
+            let utf8 = match String::from_utf16(&utf16) {
                 Ok(utf8) => utf8.into_bytes(),
                 Err(..) => return Err(invalid_encoding()),
             };

@@ -112,14 +112,12 @@ impl<N,E> Graph<N,E> {
 
     #[inline]
     pub fn all_nodes<'a>(&'a self) -> &'a [Node<N>] {
-        let nodes: &'a [Node<N>] = self.nodes.as_slice();
-        nodes
+        &self.nodes
     }
 
     #[inline]
     pub fn all_edges<'a>(&'a self) -> &'a [Edge<E>] {
-        let edges: &'a [Edge<E>] = self.edges.as_slice();
-        edges
+        &self.edges
     }
 
     ///////////////////////////////////////////////////////////////////////////

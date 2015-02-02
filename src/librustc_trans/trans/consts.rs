@@ -582,7 +582,7 @@ fn const_expr_unadjusted(cx: &CrateContext, e: &ast::Expr) -> ValueRef {
               })
           }
           ast::ExprVec(ref es) => {
-            const_vec(cx, e, es.as_slice()).0
+            const_vec(cx, e, es).0
           }
           ast::ExprRepeat(ref elem, ref count) => {
             let vec_ty = ty::expr_ty(cx.tcx(), e);

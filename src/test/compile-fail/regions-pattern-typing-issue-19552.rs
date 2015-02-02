@@ -12,7 +12,7 @@ fn assert_send<T: Send>(_t: T) {}
 
 fn main() {
     let line = String::new();
-    match [line.as_slice()] { //~ ERROR `line` does not live long enough
+    match [&*line] { //~ ERROR `line` does not live long enough
         [ word ] => { assert_send(word); }
     }
 }

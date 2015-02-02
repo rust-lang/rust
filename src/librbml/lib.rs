@@ -1194,7 +1194,7 @@ mod bench {
         b.iter(|| {
             let mut i = 0;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(&data, i).unwrap().val;
                 i += 4;
             }
         });
@@ -1212,7 +1212,7 @@ mod bench {
         b.iter(|| {
             let mut i = 1;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(&data, i).unwrap().val;
                 i += 4;
             }
         });
@@ -1231,7 +1231,7 @@ mod bench {
         b.iter(|| {
             let mut i = 0;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(&data, i).unwrap().val;
                 i += 4;
             }
         });
@@ -1250,7 +1250,7 @@ mod bench {
         b.iter(|| {
             let mut i = 1;
             while i < data.len() {
-                sum += reader::vuint_at(data.as_slice(), i).unwrap().val;
+                sum += reader::vuint_at(&data, i).unwrap().val;
                 i += 4;
             }
         });

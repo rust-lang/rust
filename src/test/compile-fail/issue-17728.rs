@@ -100,7 +100,7 @@ impl TraversesWorld for Player {
 impl Debug for Player {
     fn fmt(&self, formatter: &mut Formatter) -> Result<(), Error> {
         formatter.write_str("Player{ name:");
-        formatter.write_str(self.name.as_slice());
+        formatter.write_str(&self.name);
         formatter.write_str(" }");
         Ok(())
     }

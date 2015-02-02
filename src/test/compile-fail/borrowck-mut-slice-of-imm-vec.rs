@@ -14,5 +14,5 @@ fn write(v: &mut [isize]) {
 
 fn main() {
     let v = vec!(1, 2, 3);
-    write(v.as_mut_slice()); //~ ERROR cannot borrow
+    write(&mut v); //~ ERROR cannot borrow
 }

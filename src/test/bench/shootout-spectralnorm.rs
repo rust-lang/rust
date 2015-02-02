@@ -69,10 +69,10 @@ fn spectralnorm(n: uint) -> f64 {
     let mut v = u.clone();
     let mut tmp = v.clone();
     for _ in 0u..10 {
-        mult_AtAv(u.as_slice(), v.as_mut_slice(), tmp.as_mut_slice());
-        mult_AtAv(v.as_slice(), u.as_mut_slice(), tmp.as_mut_slice());
+        mult_AtAv(&u, &mut v, &mut tmp);
+        mult_AtAv(&v, &mut u, &mut tmp);
     }
-    (dot(u.as_slice(), v.as_slice()) / dot(v.as_slice(), v.as_slice())).sqrt()
+    (dot(&u, &v) / dot(&v, &v)).sqrt()
 }
 
 fn mult_AtAv(v: &[f64], out: &mut [f64], tmp: &mut [f64]) {

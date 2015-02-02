@@ -1726,7 +1726,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                            in this module",
                                           namespace_name,
                                           token::get_name(name).get());
-                        span_err!(self.session, import_directive.span, E0251, "{}", msg.as_slice());
+                        span_err!(self.session, import_directive.span, E0251, "{}", msg);
                     } else {
                         let target = Target::new(containing_module.clone(),
                                                  name_bindings.clone(),
@@ -3756,15 +3756,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         }
                         Some(_) => {
                             self.resolve_error(path.span,
-                                format!("`{}` is not an enum variant, struct or const",
+                                &format!("`{}` is not an enum variant, struct or const",
                                     token::get_ident(
-                                        path.segments.last().unwrap().identifier)).as_slice());
+                                        path.segments.last().unwrap().identifier)));
                         }
                         None => {
                             self.resolve_error(path.span,
-                                format!("unresolved enum variant, struct or const `{}`",
-                                    token::get_ident(
-                                        path.segments.last().unwrap().identifier)).as_slice());
+                                &format!("unresolved enum variant, struct or const `{}`",
+                                    token::get_ident(path.segments.last().unwrap().identifier)));
                         }
                     }
 
@@ -4061,7 +4060,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some((span, msg)) => (span, msg),
                     None => {
                         let msg = format!("Use of undeclared type or module `{}`",
-                                          self.names_to_string(module_path.as_slice()));
+                                          self.names_to_string(&module_path));
                         (path.span, msg)
                     }
                 };
@@ -4163,7 +4162,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let search_result = match namespace {
             ValueNS => {
                 let renamed = mtwt::resolve(ident);
-                self.search_ribs(self.value_ribs.as_slice(), renamed, span)
+                self.search_ribs(&self.value_ribs, renamed, span)
             }
             TypeNS => {
                 let name = ident.name;
@@ -4424,15 +4423,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some((DefVariant(_, _, true), _)) => {
                         let path_name = self.path_names_to_string(path);
                         self.resolve_error(expr.span,
-                                format!("`{}` is a struct variant name, but \
-                                         this expression \
-                                         uses it like a function name",
-                                        path_name).as_slice());
+                                &format!("`{}` is a struct variant name, but \
+                                          this expression \
+                                          uses it like a function name",
+                                         path_name));
 
                         self.session.span_help(expr.span,
-                            format!("Did you mean to write: \
-                                    `{} {{ /* fields */ }}`?",
-                                    path_name).as_slice());
+                            &format!("Did you mean to write: \
+                                     `{} {{ /* fields */ }}`?",
+                                     path_name));
                     }
                     Some(def) => {
                         // Write the result into the def map.
@@ -4452,15 +4451,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             Some((DefTy(struct_id, _), _))
                               if self.structs.contains_key(&struct_id) => {
                                 self.resolve_error(expr.span,
-                                        format!("`{}` is a structure name, but \
-                                                 this expression \
-                                                 uses it like a function name",
-                                                path_name).as_slice());
+                                        &format!("`{}` is a structure name, but \
+                                                  this expression \
+                                                  uses it like a function name",
+                                                 path_name));
 
                                 self.session.span_help(expr.span,
-                                    format!("Did you mean to write: \
-                                            `{} {{ /* fields */ }}`?",
-                                            path_name).as_slice());
+                                    &format!("Did you mean to write: \
+                                             `{} {{ /* fields */ }}`?",
+                                             path_name));
 
                             }
                             _ => {
@@ -4489,7 +4488,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                         NoSuggestion => {
                                             // limit search to 5 to reduce the number
                                             // of stupid suggestions
-                                            self.find_best_match_for_name(path_name.as_slice(), 5)
+                                            self.find_best_match_for_name(&path_name, 5)
                                                                 .map_or("".to_string(),
                                                                         |x| format!("`{}`", x))
                                         }
@@ -4509,9 +4508,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                                     self.resolve_error(
                                         expr.span,
-                                        format!("unresolved name `{}`{}",
-                                                path_name,
-                                                msg).as_slice());
+                                        &format!("unresolved name `{}`{}",
+                                                 path_name,
+                                                 msg));
                                 }
                             }
                         }

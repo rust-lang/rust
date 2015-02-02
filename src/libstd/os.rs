@@ -649,7 +649,7 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 fn real_args() -> Vec<String> {
     real_args_as_bytes().into_iter()
                         .map(|v| {
-                            String::from_utf8_lossy(v.as_slice()).into_owned()
+                            String::from_utf8_lossy(&v).into_owned()
                         }).collect()
 }
 
@@ -1442,7 +1442,7 @@ mod tests {
         let mut rng = rand::thread_rng();
         let n = format!("TEST{}", rng.gen_ascii_chars().take(10u)
                                      .collect::<String>());
-        assert!(getenv(n.as_slice()).is_none());
+        assert!(getenv(&n).is_none());
         n
     }
 
@@ -1454,27 +1454,27 @@ mod tests {
     #[test]
     fn test_setenv() {
         let n = make_rand_name();
-        setenv(n.as_slice(), "VALUE");
-        assert_eq!(getenv(n.as_slice()), Some("VALUE".to_string()));
+        setenv(&n, "VALUE");
+        assert_eq!(getenv(&n), Some("VALUE".to_string()));
     }
 
     #[test]
     fn test_unsetenv() {
         let n = make_rand_name();
-        setenv(n.as_slice(), "VALUE");
-        unsetenv(n.as_slice());
-        assert_eq!(getenv(n.as_slice()), None);
+        setenv(&n, "VALUE");
+        unsetenv(&n);
+        assert_eq!(getenv(&n), None);
     }
 
     #[test]
     #[ignore]
     fn test_setenv_overwrite() {
         let n = make_rand_name();
-        setenv(n.as_slice(), "1");
-        setenv(n.as_slice(), "2");
-        assert_eq!(getenv(n.as_slice()), Some("2".to_string()));
-        setenv(n.as_slice(), "");
-        assert_eq!(getenv(n.as_slice()), Some("".to_string()));
+        setenv(&n, "1");
+        setenv(&n, "2");
+        assert_eq!(getenv(&n), Some("2".to_string()));
+        setenv(&n, "");
+        assert_eq!(getenv(&n), Some("".to_string()));
     }
 
     // Windows GetEnvironmentVariable requires some extra work to make sure
@@ -1489,9 +1489,9 @@ mod tests {
             i += 1;
         }
         let n = make_rand_name();
-        setenv(n.as_slice(), s.as_slice());
+        setenv(&n, &s);
         debug!("{}", s.clone());
-        assert_eq!(getenv(n.as_slice()), Some(s));
+        assert_eq!(getenv(&n), Some(s));
     }
 
     #[test]
@@ -1524,7 +1524,7 @@ mod tests {
         for p in &e {
             let (n, v) = (*p).clone();
             debug!("{}", n);
-            let v2 = getenv(n.as_slice());
+            let v2 = getenv(&n);
             // MingW seems to set some funky environment variables like
             // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
             // from env() but not visible from getenv().
@@ -1536,10 +1536,10 @@ mod tests {
     fn test_env_set_get_huge() {
         let n = make_rand_name();
         let s = repeat("x").take(10000).collect::<String>();
-        setenv(n.as_slice(), s.as_slice());
-        assert_eq!(getenv(n.as_slice()), Some(s));
-        unsetenv(n.as_slice());
-        assert_eq!(getenv(n.as_slice()), None);
+        setenv(&n, &s);
+        assert_eq!(getenv(&n), Some(s));
+        unsetenv(&n);
+        assert_eq!(getenv(&n), None);
     }
 
     #[test]
@@ -1547,7 +1547,7 @@ mod tests {
         let n = make_rand_name();
 
         let mut e = env();
-        setenv(n.as_slice(), "VALUE");
+        setenv(&n, "VALUE");
         assert!(!e.contains(&(n.clone(), "VALUE".to_string())));
 
         e = env();
@@ -1577,7 +1577,7 @@ mod tests {
         assert!(os::homedir().is_none());
 
         if let Some(s) = oldhome {
-            setenv("HOME", s.as_slice());
+            setenv("HOME", s);
         }
     }
 
@@ -1606,10 +1606,10 @@ mod tests {
         assert!(os::homedir() == Some(Path::new("/home/MountainView")));
 
         if let Some(s) = oldhome {
-            setenv("HOME", s.as_slice());
+            setenv("HOME", &s);
         }
         if let Some(s) = olduserprofile {
-            setenv("USERPROFILE", s.as_slice());
+            setenv("USERPROFILE", &s);
         }
     }
 

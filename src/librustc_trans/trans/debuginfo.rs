@@ -1246,7 +1246,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let (ident, fn_decl, generics, top_level_block, span, has_path) = match fnitem {
         ast_map::NodeItem(ref item) => {
-            if contains_nodebug_attribute(item.attrs.as_slice()) {
+            if contains_nodebug_attribute(&item.attrs) {
                 return FunctionDebugContext::FunctionWithoutDebugInfo;
             }
 
@@ -1263,7 +1263,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ast_map::NodeImplItem(ref item) => {
             match **item {
                 ast::MethodImplItem(ref method) => {
-                    if contains_nodebug_attribute(method.attrs.as_slice()) {
+                    if contains_nodebug_attribute(&method.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
@@ -1302,7 +1302,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         ast_map::NodeTraitItem(ref trait_method) => {
             match **trait_method {
                 ast::ProvidedMethod(ref method) => {
-                    if contains_nodebug_attribute(method.attrs.as_slice()) {
+                    if contains_nodebug_attribute(&method.attrs) {
                         return FunctionDebugContext::FunctionWithoutDebugInfo;
                     }
 
@@ -1399,7 +1399,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     };
 
     let scope_map = create_scope_map(cx,
-                                     fn_decl.inputs.as_slice(),
+                                     &fn_decl.inputs,
                                      &*top_level_block,
                                      fn_metadata,
                                      fn_ast_id);
@@ -2483,7 +2483,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         UNKNOWN_LINE_NUMBER,
                         bytes_to_bits(discriminant_size),
                         bytes_to_bits(discriminant_align),
-                        create_DIArray(DIB(cx), enumerators_metadata.as_slice()),
+                        create_DIArray(DIB(cx), &enumerators_metadata),
                         discriminant_base_type_metadata)
                 };
 
@@ -3764,7 +3764,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
             match optional_length {
                 Some(len) => {
-                    output.push_str(format!("; {}", len).as_slice());
+                    output.push_str(&format!("; {}", len));
                 }
                 None => { /* nothing to do */ }
             };
@@ -4070,11 +4070,10 @@ fn get_or_insert_gdb_debug_scripts_section_global(ccx: &CrateContext)
 
 fn needs_gdb_debug_scripts_section(ccx: &CrateContext) -> bool {
     let omit_gdb_pretty_printer_section =
-        attr::contains_name(ccx.tcx()
-                               .map
-                               .krate()
-                               .attrs
-                               .as_slice(),
+        attr::contains_name(&ccx.tcx()
+                                .map
+                                .krate()
+                                .attrs,
                             "omit_gdb_pretty_printer_section");
 
     !omit_gdb_pretty_printer_section &&

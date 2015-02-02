@@ -28,7 +28,7 @@ fn main() {
 unsafe fn test_triangle() -> bool {
     static COUNT : uint = 16;
     let mut ascend = repeat(ptr::null_mut()).take(COUNT).collect::<Vec<_>>();
-    let ascend = ascend.as_mut_slice();
+    let ascend = &mut *ascend;
     static ALIGN : uint = 1;
 
     // Checks that `ascend` forms triangle of ascending size formed
@@ -103,7 +103,7 @@ unsafe fn test_triangle() -> bool {
         }
     }
 
-    sanity_check(ascend.as_slice());
+    sanity_check(&*ascend);
     test_1(ascend); // triangle -> square
     test_2(ascend); // square -> triangle
     test_3(ascend); // triangle -> square
@@ -128,10 +128,10 @@ unsafe fn test_triangle() -> bool {
             assert!(old_size < new_size);
 
             ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
 
             ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
         }
     }
 
@@ -143,10 +143,10 @@ unsafe fn test_triangle() -> bool {
             assert!(new_size < old_size);
 
             ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
 
             ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
         }
     }
 
@@ -158,10 +158,10 @@ unsafe fn test_triangle() -> bool {
             assert!(old_size < new_size);
 
             ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
 
             ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
         }
     }
 
@@ -173,10 +173,10 @@ unsafe fn test_triangle() -> bool {
             assert!(new_size < old_size);
 
             ascend[2*i+1] = reallocate(p1, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
 
             ascend[2*i] = reallocate(p0, old_size, new_size, ALIGN);
-            sanity_check(ascend.as_slice());
+            sanity_check(&*ascend);
         }
     }
 }

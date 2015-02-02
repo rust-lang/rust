@@ -82,5 +82,5 @@ pub fn main() {
     // Check the final states.
     assert_eq!(*n, 2);
     let expected: &[_] = &[1, 2];
-    assert_eq!((*v).as_slice(), expected);
+    assert_eq!((*v), expected);
 }

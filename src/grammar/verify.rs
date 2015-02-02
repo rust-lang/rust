@@ -179,7 +179,7 @@ fn parse_antlr_token(s: &str, tokens: &HashMap<String, token::Token>) -> TokenAn
     let toknum = &s[content_end + 3 .. toknum_end];
 
     let proto_tok = tokens.get(toknum).expect(format!("didn't find token {:?} in the map",
-                                                              toknum).as_slice());
+                                                              toknum));
 
     let nm = parse::token::intern(content);
 
@@ -242,8 +242,8 @@ fn main() {
 
     let args = std::os::args();
 
-    let mut token_file = File::open(&Path::new(args[2].as_slice()));
-    let token_map = parse_token_list(token_file.read_to_string().unwrap().as_slice());
+    let mut token_file = File::open(&Path::new(args[2]));
+    let token_map = parse_token_list(token_file.read_to_string().unwrap());
 
     let mut stdin = std::io::stdin();
     let mut lock = stdin.lock();
@@ -251,7 +251,7 @@ fn main() {
     let mut antlr_tokens = lines.map(|l| parse_antlr_token(l.unwrap().trim(),
                                                                    &token_map));
 
-    let code = File::open(&Path::new(args[1].as_slice())).unwrap().read_to_string().unwrap();
+    let code = File::open(&Path::new(args[1])).unwrap().read_to_string().unwrap();
     let options = config::basic_options();
     let session = session::build_session(options, None,
                                          syntax::diagnostics::registry::Registry::new(&[]));

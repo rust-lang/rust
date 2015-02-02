@@ -50,7 +50,7 @@ pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
             handler.fatal(&msg[]);
         } else {
             let err = ffi::c_str_to_bytes(&cstr);
-            let err = String::from_utf8_lossy(err.as_slice()).to_string();
+            let err = String::from_utf8_lossy(err).to_string();
             libc::free(cstr as *mut _);
             handler.fatal(&format!("{}: {}",
                                   &msg[],
@@ -223,8 +223,8 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let tm = unsafe {
         let triple = CString::from_slice(triple.as_bytes());
         let cpu = match sess.opts.cg.target_cpu {
-            Some(ref s) => s.as_slice(),
-            None => sess.target.target.options.cpu.as_slice()
+            Some(ref s) => &**s,
+            None => &*sess.target.target.options.cpu
         };
         let cpu = CString::from_slice(cpu.as_bytes());
         let features = CString::from_slice(target_feature(sess).as_bytes());
@@ -375,7 +375,7 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
     match llvm::diagnostic::Diagnostic::unpack(info) {
         llvm::diagnostic::InlineAsm(inline) => {
             report_inline_asm(cgcx,
-                              llvm::twine_to_string(inline.message).as_slice(),
+                              &*llvm::twine_to_string(inline.message),
                               inline.cookie);
         }
 
@@ -390,11 +390,11 @@ unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_vo
 
             if enabled {
                 let loc = llvm::debug_loc_to_string(llcx, opt.debug_loc);
-                cgcx.handler.note(format!("optimization {} for {} at {}: {}",
-                                          opt.kind.describe(),
-                                          pass_name,
-                                          if loc.is_empty() { "[unknown]" } else { loc.as_slice() },
-                                          llvm::twine_to_string(opt.message)).as_slice());
+                cgcx.handler.note(&format!("optimization {} for {} at {}: {}",
+                                           opt.kind.describe(),
+                                           pass_name,
+                                           if loc.is_empty() { "[unknown]" } else { &*loc },
+                                           llvm::twine_to_string(opt.message)));
             }
         }
 
@@ -423,7 +423,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
     if config.emit_no_opt_bc {
         let ext = format!("{}.no-opt.bc", name_extra);
-        let out = output_names.with_extension(ext.as_slice());
+        let out = output_names.with_extension(&ext);
         let out = CString::from_slice(out.as_vec());
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
@@ -455,8 +455,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
             for pass in &config.passes {
                 let pass = CString::from_slice(pass.as_bytes());
                 if !llvm::LLVMRustAddPass(mpm, pass.as_ptr()) {
-                    cgcx.handler.warn(format!("unknown pass {:?}, ignoring",
-                                              pass).as_slice());
+                    cgcx.handler.warn(&format!("unknown pass {:?}, ignoring", pass));
                 }
             }
 
@@ -477,7 +476,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
                     if config.emit_lto_bc {
                         let name = format!("{}.lto.bc", name_extra);
-                        let out = output_names.with_extension(name.as_slice());
+                        let out = output_names.with_extension(&name);
                         let out = CString::from_slice(out.as_vec());
                         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
                     }
@@ -511,7 +510,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
 
     if config.emit_bc {
         let ext = format!("{}.bc", name_extra);
-        let out = output_names.with_extension(ext.as_slice());
+        let out = output_names.with_extension(&ext);
         let out = CString::from_slice(out.as_vec());
         llvm::LLVMWriteBitcodeToFile(llmod, out.as_ptr());
     }
@@ -519,7 +518,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
     time(config.time_passes, "codegen passes", (), |()| {
         if config.emit_ir {
             let ext = format!("{}.ll", name_extra);
-            let out = output_names.with_extension(ext.as_slice());
+            let out = output_names.with_extension(&ext);
             let out = CString::from_slice(out.as_vec());
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 llvm::LLVMRustPrintModule(cpm, llmod, out.as_ptr());
@@ -1013,7 +1012,7 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.print_llvm_passes() { add("-debug-pass=Structure"); }
 
         // FIXME #21627 disable faulty FastISel on AArch64 (even for -O0)
-        if sess.target.target.arch.as_slice() == "aarch64" { add("-fast-isel=0"); }
+        if sess.target.target.arch == "aarch64" { add("-fast-isel=0"); }
 
         for arg in &sess.opts.cg.llvm_args {
             add(&(*arg)[]);

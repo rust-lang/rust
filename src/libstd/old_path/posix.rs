@@ -131,25 +131,25 @@ impl GenericPathUnsafe for Path {
                 v.push(SEP_BYTE);
                 v.push_all(filename);
                 // FIXME: this is slow
-                self.repr = Path::normalize(v.as_slice());
+                self.repr = Path::normalize(&v);
             }
             None => {
                 self.repr = Path::normalize(filename);
             }
             Some(idx) if &self.repr[idx+1..] == b".." => {
                 let mut v = Vec::with_capacity(self.repr.len() + 1 + filename.len());
-                v.push_all(self.repr.as_slice());
+                v.push_all(&self.repr);
                 v.push(SEP_BYTE);
                 v.push_all(filename);
                 // FIXME: this is slow
-                self.repr = Path::normalize(v.as_slice());
+                self.repr = Path::normalize(&v);
             }
             Some(idx) => {
                 let mut v = Vec::with_capacity(idx + 1 + filename.len());
                 v.push_all(&self.repr[..idx+1]);
                 v.push_all(filename);
                 // FIXME: this is slow
-                self.repr = Path::normalize(v.as_slice());
+                self.repr = Path::normalize(&v);
             }
         }
         self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
@@ -162,11 +162,11 @@ impl GenericPathUnsafe for Path {
                 self.repr = Path::normalize(path);
             }  else {
                 let mut v = Vec::with_capacity(self.repr.len() + path.len() + 1);
-                v.push_all(self.repr.as_slice());
+                v.push_all(&self.repr);
                 v.push(SEP_BYTE);
                 v.push_all(path);
                 // FIXME: this is slow
-                self.repr = Path::normalize(v.as_slice());
+                self.repr = Path::normalize(&v);
             }
             self.sepidx = self.repr.rposition_elem(&SEP_BYTE);
         }
@@ -176,7 +176,7 @@ impl GenericPathUnsafe for Path {
 impl GenericPath for Path {
     #[inline]
     fn as_vec<'a>(&'a self) -> &'a [u8] {
-        self.repr.as_slice()
+        &self.repr
     }
 
     fn into_vec(self) -> Vec<u8> {
@@ -185,10 +185,10 @@ impl GenericPath for Path {
 
     fn dirname<'a>(&'a self) -> &'a [u8] {
         match self.sepidx {
-            None if b".." == self.repr => self.repr.as_slice(),
+            None if b".." == self.repr => &self.repr,
             None => dot_static,
             Some(0) => &self.repr[..1],
-            Some(idx) if &self.repr[idx+1..] == b".." => self.repr.as_slice(),
+            Some(idx) if &self.repr[idx+1..] == b".." => &self.repr,
             Some(idx) => &self.repr[..idx]
         }
     }
@@ -197,7 +197,7 @@ impl GenericPath for Path {
         match self.sepidx {
             None if b"." == self.repr ||
                 b".." == self.repr => None,
-            None => Some(self.repr.as_slice()),
+            None => Some(&self.repr),
             Some(idx) if &self.repr[idx+1..] == b".." => None,
             Some(0) if self.repr[1..].is_empty() => None,
             Some(idx) => Some(&self.repr[idx+1..])
@@ -382,7 +382,7 @@ impl Path {
     pub fn components<'a>(&'a self) -> Components<'a> {
         let v = if self.repr[0] == SEP_BYTE {
             &self.repr[1..]
-        } else { self.repr.as_slice() };
+        } else { &*self.repr };
         let is_sep_byte: fn(&u8) -> bool = is_sep_byte; // coerce to fn ptr
         let mut ret = v.split(is_sep_byte);
         if v.is_empty() {
@@ -557,14 +557,14 @@ mod tests {
                 {
                     let path = Path::new($path);
                     let mo = path.display().as_cow();
-                    assert_eq!(mo.as_slice(), $exp);
+                    assert_eq!(mo, $exp);
                 }
             );
             ($path:expr, $exp:expr, filename) => (
                 {
                     let path = Path::new($path);
                     let mo = path.filename_display().as_cow();
-                    assert_eq!(mo.as_slice(), $exp);
+                    assert_eq!(mo, $exp);
                 }
             )
         }

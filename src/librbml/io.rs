@@ -71,7 +71,7 @@ impl SeekableMemWriter {
     /// No method is exposed for acquiring a mutable reference to the buffer
     /// because it could corrupt the state of this `MemWriter`.
     #[inline]
-    pub fn get_ref<'a>(&'a self) -> &'a [u8] { self.buf.as_slice() }
+    pub fn get_ref<'a>(&'a self) -> &'a [u8] { &self.buf }
 
     /// Unwraps this `SeekableMemWriter`, returning the underlying buffer
     #[inline]
@@ -190,7 +190,7 @@ mod tests {
         b.iter(|| {
             let mut wr = SeekableMemWriter::new();
             for _ in 0..times {
-                wr.write(src.as_slice()).unwrap();
+                wr.write(&src).unwrap();
             }
 
             let v = wr.unwrap();

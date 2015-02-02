@@ -21,6 +21,6 @@ fn main() {
     // There is currently no safe way to construct a `Box<str>`, so improvise
     let box_arr: Box<[u8]> = box ['h' as u8, 'e' as u8, 'l' as u8, 'l' as u8, 'o' as u8];
     let box_str: Box<str> = unsafe { std::mem::transmute(box_arr) };
-    assert_eq!(box_str.as_slice(), "hello");
+    assert_eq!(&*box_str, "hello");
     f(box_str);
 }

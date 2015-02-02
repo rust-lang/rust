@@ -41,12 +41,12 @@ fn main() {
     // restore original environment
     match old_env {
         None => os::unsetenv("RUN_TEST_NEW_ENV"),
-        Some(val) => os::setenv("RUN_TEST_NEW_ENV", val.as_slice())
+        Some(val) => os::setenv("RUN_TEST_NEW_ENV", val)
     }
 
     let prog = cmd.spawn().unwrap();
     let result = prog.wait_with_output().unwrap();
-    let output = String::from_utf8_lossy(result.output.as_slice());
+    let output = String::from_utf8_lossy(&result.output);
 
     assert!(!output.contains("RUN_TEST_NEW_ENV"),
             "found RUN_TEST_NEW_ENV inside of:\n\n{}", output);

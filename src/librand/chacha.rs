@@ -213,8 +213,8 @@ mod test {
     #[test]
     fn test_rng_rand_seeded() {
         let s = ::test::rng().gen_iter::<u32>().take(8).collect::<Vec<u32>>();
-        let mut ra: ChaChaRng = SeedableRng::from_seed(s.as_slice());
-        let mut rb: ChaChaRng = SeedableRng::from_seed(s.as_slice());
+        let mut ra: ChaChaRng = SeedableRng::from_seed(&*s);
+        let mut rb: ChaChaRng = SeedableRng::from_seed(&*s);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
                               rb.gen_ascii_chars().take(100)));
     }
@@ -231,10 +231,10 @@ mod test {
     #[test]
     fn test_rng_reseed() {
         let s = ::test::rng().gen_iter::<u32>().take(8).collect::<Vec<u32>>();
-        let mut r: ChaChaRng = SeedableRng::from_seed(s.as_slice());
+        let mut r: ChaChaRng = SeedableRng::from_seed(&*s);
         let string1: String = r.gen_ascii_chars().take(100).collect();
 
-        r.reseed(s.as_slice());
+        r.reseed(&s);
 
         let string2: String = r.gen_ascii_chars().take(100).collect();
         assert_eq!(string1, string2);

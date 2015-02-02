@@ -260,7 +260,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
                     &clean::NameValue(ref x, ref s)
                             if "doc" == *x => {
                         avec.push(clean::NameValue("doc".to_string(),
-                                                   unindent(s.as_slice())))
+                                                   unindent(s)))
                     }
                     x => avec.push(x.clone())
                 }
@@ -284,7 +284,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
                 match *attr {
                     clean::NameValue(ref x, ref s)
                             if "doc" == *x => {
-                        docstr.push_str(s.as_slice());
+                        docstr.push_str(s);
                         docstr.push('\n');
                     },
                     _ => ()
@@ -352,14 +352,14 @@ pub fn unindent(s: &str) -> String {
 
     if lines.len() >= 1 {
         let mut unindented = vec![ lines[0].trim().to_string() ];
-        unindented.push_all(lines.tail().iter().map(|&line| {
+        unindented.push_all(&lines.tail().iter().map(|&line| {
             if line.chars().all(|c| c.is_whitespace()) {
                 line.to_string()
             } else {
                 assert!(line.len() >= min_indent);
                 line[min_indent..].to_string()
             }
-        }).collect::<Vec<_>>().as_slice());
+        }).collect::<Vec<_>>());
         unindented.connect("\n")
     } else {
         s.to_string()
@@ -373,14 +373,14 @@ mod unindent_tests {
     #[test]
     fn should_unindent() {
         let s = "    line1\n    line2".to_string();
-        let r = unindent(s.as_slice());
+        let r = unindent(&s);
         assert_eq!(r, "line1\nline2");
     }
 
     #[test]
     fn should_unindent_multiple_paragraphs() {
         let s = "    line1\n\n    line2".to_string();
-        let r = unindent(s.as_slice());
+        let r = unindent(&s);
         assert_eq!(r, "line1\n\nline2");
     }
 
@@ -389,7 +389,7 @@ mod unindent_tests {
         // Line 2 is indented another level beyond the
         // base indentation and should be preserved
         let s = "    line1\n\n        line2".to_string();
-        let r = unindent(s.as_slice());
+        let r = unindent(&s);
         assert_eq!(r, "line1\n\n    line2");
     }
 
@@ -401,14 +401,14 @@ mod unindent_tests {
         // #[doc = "Start way over here
         //          and continue here"]
         let s = "line1\n    line2".to_string();
-        let r = unindent(s.as_slice());
+        let r = unindent(&s);
         assert_eq!(r, "line1\nline2");
     }
 
     #[test]
     fn should_not_ignore_first_line_indent_in_a_single_line_para() {
         let s = "line1\n\n    line2".to_string();
-        let r = unindent(s.as_slice());
+        let r = unindent(&s);
         assert_eq!(r, "line1\n\n    line2");
     }
 }

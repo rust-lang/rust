@@ -11,7 +11,7 @@
 const X: &'static str = "12345";
 
 fn test(s: String) -> bool {
-    match s.as_slice() {
+    match &*s {
         X => true,
         _ => false
     }

@@ -119,10 +119,10 @@ pub fn run_core(search_paths: SearchPaths, cfgs: Vec<String>, externs: Externs,
 
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
 
-    let name = link::find_crate_name(Some(&sess), krate.attrs.as_slice(),
+    let name = link::find_crate_name(Some(&sess), &krate.attrs,
                                      &input);
 
-    let krate = driver::phase_2_configure_and_expand(&sess, krate, name.as_slice(), None)
+    let krate = driver::phase_2_configure_and_expand(&sess, krate, &name, None)
                     .expect("phase_2_configure_and_expand aborted in rustdoc!");
 
     let mut forest = ast_map::Forest::new(krate);

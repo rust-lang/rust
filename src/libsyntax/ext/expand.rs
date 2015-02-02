@@ -664,7 +664,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         id: ast::DUMMY_NODE_ID,
                         span: it.span,
                         imported_from: None,
-                        export: attr::contains_name(it.attrs.as_slice(), "macro_export"),
+                        export: attr::contains_name(&it.attrs, "macro_export"),
                         use_locally: true,
                         body: tts,
                     };

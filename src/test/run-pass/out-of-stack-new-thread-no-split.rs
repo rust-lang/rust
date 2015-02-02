@@ -35,13 +35,13 @@ fn recurse() {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
-    if args.len() > 1 && args[1].as_slice() == "recurse" {
+    let args = args;
+    if args.len() > 1 && args[1] == "recurse" {
         let _t = Thread::scoped(recurse);
     } else {
-        let recurse = Command::new(args[0].as_slice()).arg("recurse").output().unwrap();
+        let recurse = Command::new(&args[0]).arg("recurse").output().unwrap();
         assert!(!recurse.status.success());
-        let error = String::from_utf8_lossy(recurse.error.as_slice());
+        let error = String::from_utf8_lossy(&recurse.error);
         println!("wut");
         println!("`{}`", error);
         assert!(error.contains("has overflowed its stack"));

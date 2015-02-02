@@ -58,12 +58,12 @@ fn main() {
         let p = Command::new(&child_path)
                         .arg(arg)
                         .cwd(&cwd)
-                        .env_set_all(my_env.as_slice())
+                        .env_set_all(&my_env)
                         .spawn().unwrap().wait_with_output().unwrap();
 
         // display the output
-        assert!(old_io::stdout().write(p.output.as_slice()).is_ok());
-        assert!(old_io::stderr().write(p.error.as_slice()).is_ok());
+        assert!(old_io::stdout().write(&p.output).is_ok());
+        assert!(old_io::stderr().write(&p.error).is_ok());
 
         // make sure the child succeeded
         assert!(p.status.success());
@@ -74,7 +74,7 @@ fn main() {
         assert!(my_cwd.ends_with_path(&Path::new(child_dir)));
 
         // check arguments
-        assert_eq!(my_args[1].as_slice(), arg);
+        assert_eq!(&*my_args[1], arg);
 
         // check environment variable
         assert!(my_env.contains(&env));

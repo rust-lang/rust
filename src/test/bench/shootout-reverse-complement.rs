@@ -251,6 +251,6 @@ fn parallel<'a, I, T, F>(iter: I, f: F)
 fn main() {
     let mut data = read_to_end(&mut stdin_raw()).unwrap();
     let tables = &Tables::new();
-    parallel(mut_dna_seqs(data.as_mut_slice()), |seq| reverse_complement(seq, tables));
-    stdout_raw().write(data.as_mut_slice()).unwrap();
+    parallel(mut_dna_seqs(&mut data), |seq| reverse_complement(seq, tables));
+    stdout_raw().write(&data).unwrap();
 }

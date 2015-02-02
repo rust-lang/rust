@@ -94,9 +94,9 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                                     param_ty.user_string(self.tcx));
                             self.tcx.sess.span_note(
                                 item.span,
-                                format!("for a limited time, you can add \
-                                         `#![feature(old_orphan_check)]` to your crate \
-                                         to disable this rule").as_slice());
+                                &format!("for a limited time, you can add \
+                                          `#![feature(old_orphan_check)]` to your crate \
+                                          to disable this rule"));
                         }
                     }
                 }
