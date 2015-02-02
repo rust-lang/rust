@@ -377,7 +377,13 @@ pub enum MetadataType {
     MD_prof = 2,
     MD_fpmath = 3,
     MD_range = 4,
-    MD_tbaa_struct = 5
+    MD_tbaa_struct = 5,
+    MD_invariant_load = 6,
+    MD_alias_scope = 7,
+    MD_noalias = 8,
+    MD_nontemporal = 9,
+    MD_mem_parallel_loop_access = 10,
+    MD_nonnull = 11,
 }
 
 // Inline Asm Dialect
