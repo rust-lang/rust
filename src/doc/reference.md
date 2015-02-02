@@ -1063,7 +1063,7 @@ mod foo {
     extern crate core;
 
     use foo::core::iter; // good: foo is at crate root
-//  use core::iter;      // bad:  native is not at the crate root
+//  use core::iter;      // bad:  core is not at the crate root
     use self::baz::foobaz;  // good: self refers to module 'foo'
     use foo::bar::foobar;   // good: foo is at crate root
 
