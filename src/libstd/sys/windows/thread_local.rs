@@ -233,6 +233,7 @@ unsafe extern "system" fn on_tls_callback(h: LPVOID,
     }
 }
 
+#[allow(dead_code)] // actually called above
 unsafe fn run_dtors() {
     let mut any_run = true;
     for _ in 0..5 {

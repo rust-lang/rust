@@ -24,13 +24,6 @@ unsafe impl Sync for Mutex {}
 pub const MUTEX_INIT: Mutex = Mutex(imp::MUTEX_INIT);
 
 impl Mutex {
-    /// Creates a newly initialized mutex.
-    ///
-    /// Behavior is undefined if the mutex is moved after the first method is
-    /// called on the mutex.
-    #[inline]
-    pub unsafe fn new() -> Mutex { Mutex(imp::Mutex::new()) }
-
     /// Lock the mutex blocking the current thread until it is available.
     ///
     /// Behavior is undefined if the mutex has been moved between this and any

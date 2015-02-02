@@ -34,7 +34,7 @@ use middle::ty::{self, Ty};
 
 use std::cell::Cell;
 use std::old_io::{self, File, fs};
-use std::os;
+use std::env;
 
 use syntax::ast_util::{self, PostExpansionMethod};
 use syntax::ast::{self, NodeId, DefId};
@@ -1551,9 +1551,9 @@ pub fn process_crate(sess: &Session,
     info!("Dumping crate {}", cratename);
 
     // find a path to dump our data to
-    let mut root_path = match os::getenv("DXR_RUST_TEMP_FOLDER") {
-        Some(val) => Path::new(val),
-        None => match odir {
+    let mut root_path = match env::var_string("DXR_RUST_TEMP_FOLDER") {
+        Ok(val) => Path::new(val),
+        Err(..) => match odir {
             Some(val) => val.join("dxr"),
             None => Path::new("dxr-temp"),
         },

@@ -12,7 +12,6 @@
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types)]
 #![feature(core)]
-#![feature(os)]
 
 fn f1(x: isize) {
     //~^ ERROR unused variable: `x`
@@ -98,7 +97,7 @@ fn f5c() {
     for (_, x) in [1, 2, 3].iter().enumerate() {
     //~^ ERROR unused variable: `x`
         continue;
-        std::os::set_exit_status(*x); //~ WARNING unreachable statement
+        drop(*x as i32); //~ WARNING unreachable statement
     }
 }
 

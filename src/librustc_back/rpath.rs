@@ -10,7 +10,7 @@
 
 
 use std::collections::HashSet;
-use std::os;
+use std::env;
 use std::old_io::IoError;
 use syntax::ast;
 
@@ -105,8 +105,6 @@ fn get_rpath_relative_to_output<F, G>(config: &mut RPathConfig<F, G>, lib: &Path
     F: FnOnce() -> Path,
     G: FnMut(&Path) -> Result<Path, IoError>,
 {
-    use std::os;
-
     // Mac doesn't appear to support $ORIGIN
     let prefix = if config.is_like_osx {
         "@loader_path"
@@ -114,9 +112,10 @@ fn get_rpath_relative_to_output<F, G>(config: &mut RPathConfig<F, G>, lib: &Path
         "$ORIGIN"
     };
 
-    let mut lib = (config.realpath)(&os::make_absolute(lib).unwrap()).unwrap();
+    let cwd = env::current_dir().unwrap();
+    let mut lib = (config.realpath)(&cwd.join(lib)).unwrap();
     lib.pop();
-    let mut output = (config.realpath)(&os::make_absolute(&config.out_filename).unwrap()).unwrap();
+    let mut output = (config.realpath)(&cwd.join(&config.out_filename)).unwrap();
     output.pop();
     let relative = lib.path_relative_from(&output);
     let relative = relative.expect("could not create rpath relative to output");
@@ -131,7 +130,7 @@ fn get_install_prefix_rpath<F, G>(config: RPathConfig<F, G>) -> String where
     G: FnMut(&Path) -> Result<Path, IoError>,
 {
     let path = (config.get_install_prefix_lib_path)();
-    let path = os::make_absolute(&path).unwrap();
+    let path = env::current_dir().unwrap().join(&path);
     // FIXME (#9639): This needs to handle non-utf8 paths
     path.as_str().expect("non-utf8 component in rpath").to_string()
 }

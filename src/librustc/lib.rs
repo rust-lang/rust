@@ -32,7 +32,7 @@
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(libc)]
-#![feature(os)]
+#![feature(env)]
 #![feature(path)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
