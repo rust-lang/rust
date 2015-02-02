@@ -21,7 +21,8 @@ pub struct TTY {
 }
 
 #[cfg(any(target_os = "macos",
-          target_os = "freebsd"))]
+          target_os = "freebsd",
+          target_os = "openbsd"))]
 const TIOCGWINSZ: c_ulong = 0x40087468;
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -53,7 +54,8 @@ impl TTY {
     #[cfg(any(target_os = "linux",
               target_os = "android",
               target_os = "macos",
-              target_os = "freebsd"))]
+              target_os = "freebsd",
+              target_os = "openbsd"))]
     pub fn get_winsize(&mut self) -> IoResult<(int, int)> {
         unsafe {
             #[repr(C)]

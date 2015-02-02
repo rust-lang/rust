@@ -59,8 +59,11 @@ ifeq ($(shell uname),Darwin)
 else
 ifeq ($(shell uname),FreeBSD)
 	EXTRACFLAGS := -lm -lpthread -lgcc_s
+ifeq ($(shell uname),OpenBSD)
+	EXTRACFLAGS := -lm -lpthread	
 else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
+endif
 endif
 endif
 endif
