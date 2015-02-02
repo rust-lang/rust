@@ -730,17 +730,17 @@ passing in Rust strings and literals directly, for example).
 
 * `file_attr` (renamed from `stat`). Take `AsPath` bound. Yield a new
   struct, `FileAttr`, with no public fields, but `size`, `kind` and
-  `perm` accessors. The various `os::platform` modules will offer
+  `permissions` accessors. The various `os::platform` modules will offer
   extension methods on this structure.
 
-* `set_perm` (renamed from `chmod`). Take `AsPath` bound, and a
+* `set_permissions` (renamed from `chmod`). Take `AsPath` bound, and a
   `FilePermissions` value. The `FilePermissions` type will be revamped
   as a struct with private implementation; see below.
 
 **Directories**:
 
-* `make_dir` (renamed from `mkdir`). Take `AsPath` bound.
-* `make_dir_all` (renamed from `mkdir_recursive`). Take `AsPath` bound.
+* `create_dir` (renamed from `mkdir`). Take `AsPath` bound.
+* `create_dir_all` (renamed from `mkdir_recursive`). Take `AsPath` bound.
 * `read_dir` (renamed from `readdir`). Take `AsPath` bound. Yield a
   newtypes iterator, which yields a new type `DirEntry` which has an
   accessor for `Path`, but will eventually provide other information
@@ -753,7 +753,7 @@ passing in Rust strings and literals directly, for example).
 **Links**:
 
 * `hard_link` (renamed from `link`). Take `AsPath` bound.
-* `sym_link` (renamed from `symlink`). Take `AsPath` bound.
+* `soft_link` (renamed from `symlink`). Take `AsPath` bound.
 * `read_link` (renamed form `readlink`). Take `AsPath` bound.
 
 #### Files
@@ -765,17 +765,17 @@ use the `AsPath` bound everywhere.
 The `stat` method will be renamed to `attr`, yield a `FileAttr`, and
 take `&self`.
 
-The `fsync` method will be renamed to `flush`, and `datasync` will be
-renamed to `flush_data`. (Although the latter is not available on
+The `fsync` method will be renamed to `sync_all`, and `datasync` will be
+renamed to `sync_data`. (Although the latter is not available on
 Windows, it can be considered an optimization for `flush` and on
-Windows behave identically to `flush`, just as it does on some Unix
+Windows behave identically to `sync_all`, just as it does on some Unix
 filesystems.)
 
 The `path` method wil remain `#[unstable]`, as we do not yet want to
 commit to its API.
 
-The `open_mode` function will take an `OpenOptions` struct, which will
-encompass today's `FileMode` and `FileAccess` and support a
+The `open_opts` function (renamed from `open_mode`) will take an `OpenOptions`
+struct, which will encompass today's `FileMode` and `FileAccess` and support a
 builder-style API.
 
 #### File kinds
