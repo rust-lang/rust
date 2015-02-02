@@ -693,7 +693,8 @@ fn real_args_as_bytes() -> Vec<Vec<u8>> {
 #[cfg(any(target_os = "linux",
           target_os = "android",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 fn real_args_as_bytes() -> Vec<Vec<u8>> {
     use rt;
     rt::args::clone().unwrap_or_else(|| vec![])
@@ -1304,6 +1305,37 @@ pub mod consts {
     /// A string describing the specific operating system in use: in this
     /// case, `dragonfly`.
     pub const SYSNAME: &'static str = "dragonfly";
+
+    /// Specifies the filename prefix used for shared libraries on this
+    /// platform: in this case, `lib`.
+    pub const DLL_PREFIX: &'static str = "lib";
+
+    /// Specifies the filename suffix used for shared libraries on this
+    /// platform: in this case, `.so`.
+    pub const DLL_SUFFIX: &'static str = ".so";
+
+    /// Specifies the file extension used for shared libraries on this
+    /// platform that goes after the dot: in this case, `so`.
+    pub const DLL_EXTENSION: &'static str = "so";
+
+    /// Specifies the filename suffix used for executable binaries on this
+    /// platform: in this case, the empty string.
+    pub const EXE_SUFFIX: &'static str = "";
+
+    /// Specifies the file extension, if any, used for executable binaries
+    /// on this platform: in this case, the empty string.
+    pub const EXE_EXTENSION: &'static str = "";
+}
+
+#[cfg(target_os = "openbsd")]
+pub mod consts {
+    pub use os::arch_consts::ARCH;
+
+    pub const FAMILY: &'static str = "unix";
+
+    /// A string describing the specific operating system in use: in this
+    /// case, `openbsd`.
+    pub const SYSNAME: &'static str = "openbsd";
 
     /// Specifies the filename prefix used for shared libraries on this
     /// platform: in this case, `lib`.

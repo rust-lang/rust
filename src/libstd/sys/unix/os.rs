@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -50,6 +50,16 @@ pub fn errno() -> int {
         }
     }
 
+    #[cfg(target_os = "openbsd")]
+    fn errno_location() -> *const c_int {
+        extern {
+            fn __errno() -> *const c_int;
+        }
+        unsafe {
+            __errno()
+        }
+    }
+
     #[cfg(any(target_os = "linux", target_os = "android"))]
     fn errno_location() -> *const c_int {
         extern {
@@ -71,7 +81,8 @@ pub fn error_string(errno: i32) -> String {
               target_os = "ios",
               target_os = "android",
               target_os = "freebsd",
-              target_os = "dragonfly"))]
+              target_os = "dragonfly",
+              target_os = "openbsd"))]
     fn strerror_r(errnum: c_int, buf: *mut c_char, buflen: libc::size_t)
                   -> c_int {
         extern {
@@ -201,6 +212,28 @@ pub fn load_self() -> Option<Vec<u8>> {
     match old_io::fs::readlink(&Path::new("/proc/curproc/file")) {
         Ok(path) => Some(path.into_vec()),
         Err(..) => None
+    }
+}
+
+#[cfg(target_os = "openbsd")]
+pub fn load_self() -> Option<Vec<u8>> {
+    use sync::{StaticMutex, MUTEX_INIT};
+
+    static LOCK: StaticMutex = MUTEX_INIT;
+
+    extern {
+        fn rust_load_self() -> *const c_char;
+    }
+
+    let _guard = LOCK.lock();
+
+    unsafe {
+        let v = rust_load_self();
+        if v.is_null() {
+            None
+        } else {
+            Some(ffi::c_str_to_bytes(&v).to_vec())
+        }
     }
 }
 

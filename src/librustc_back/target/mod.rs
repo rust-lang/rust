@@ -56,6 +56,7 @@ mod apple_base;
 mod apple_ios_base;
 mod freebsd_base;
 mod dragonfly_base;
+mod openbsd_base;
 
 mod armv7_apple_ios;
 mod armv7s_apple_ios;
@@ -80,6 +81,7 @@ mod x86_64_pc_windows_gnu;
 mod x86_64_unknown_freebsd;
 mod x86_64_unknown_dragonfly;
 mod x86_64_unknown_linux_gnu;
+mod x86_64_unknown_openbsd;
 
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
@@ -351,6 +353,8 @@ impl Target {
 
             i686_unknown_dragonfly,
             x86_64_unknown_dragonfly,
+
+            x86_64_unknown_openbsd,
 
             x86_64_apple_darwin,
             i686_apple_darwin,

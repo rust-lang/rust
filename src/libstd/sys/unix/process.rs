@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -604,7 +604,8 @@ fn translate_status(status: c_int) -> ProcessExit {
     #[cfg(any(target_os = "macos",
               target_os = "ios",
               target_os = "freebsd",
-              target_os = "dragonfly"))]
+              target_os = "dragonfly",
+              target_os = "openbsd"))]
     mod imp {
         pub fn WIFEXITED(status: i32) -> bool { (status & 0x7f) == 0 }
         pub fn WEXITSTATUS(status: i32) -> i32 { status >> 8 }
