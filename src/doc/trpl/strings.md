@@ -36,7 +36,7 @@ s.push_str(", world.");
 println!("{}", s);
 ```
 
-`String`s will coerece into `&str` with an `&`:
+`String`s will coerce into `&str` with an `&`:
 
 ```
 fn takes_slice(slice: &str) {
