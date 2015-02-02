@@ -456,7 +456,7 @@ macro_rules! declare_special_idents_and_keywords {(
         pub use self::Keyword::*;
         use ast;
 
-        #[derive(Copy)]
+        #[derive(Copy, Clone, PartialEq, Eq)]
         pub enum Keyword {
             $( $sk_variant, )*
             $( $rk_variant, )*
