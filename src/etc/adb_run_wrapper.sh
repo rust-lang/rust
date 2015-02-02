@@ -24,8 +24,9 @@ then
     then
         shift
 
+        # The length of binary path (i.e. ./$RUN) should be shorter than 128 characters.
         cd $TEST_PATH
-        TEST_EXEC_ENV=22 LD_LIBRARY_PATH=$TEST_PATH PATH=$BIN_PATH:$TEST_PATH $TEST_PATH/$RUN $@ 1>$TEST_PATH/$RUN.stdout 2>$TEST_PATH/$RUN.stderr
+        TEST_EXEC_ENV=22 LD_LIBRARY_PATH=$TEST_PATH PATH=$BIN_PATH:$TEST_PATH ./$RUN $@ 1>$TEST_PATH/$RUN.stdout 2>$TEST_PATH/$RUN.stderr
         L_RET=$?
 
         echo $L_RET > $TEST_PATH/$RUN.exitcode

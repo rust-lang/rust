@@ -156,7 +156,9 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         android_cross_path: opt_path(matches, "android-cross-path"),
         adb_path: opt_str2(matches.opt_str("adb-path")),
-        adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
+        adb_test_dir: format!("{}/{}",
+            opt_str2(matches.opt_str("adb-test-dir")),
+            opt_str2(matches.opt_str("target"))),
         adb_device_status:
             opt_str2(matches.opt_str("target")).contains("android") &&
             "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&

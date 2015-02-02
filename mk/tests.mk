@@ -111,7 +111,6 @@ $(foreach target,$(CFG_TARGET), \
 # for arm-linux-androidabi
 define DEF_ADB_DEVICE_STATUS
 CFG_ADB_DEVICE_STATUS=$(1)
-CFG_ANDROID_TARGET_TRIPLE=$(2)
 endef
 
 $(foreach target,$(CFG_TARGET), \
@@ -119,7 +118,7 @@ $(foreach target,$(CFG_TARGET), \
     $(if $(findstring adb,$(CFG_ADB)), \
       $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[:_A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info check: android device attached) \
-        $(eval $(call DEF_ADB_DEVICE_STATUS, true, $(target))), \
+        $(eval $(call DEF_ADB_DEVICE_STATUS, true)), \
         $(info check: android device not attached) \
         $(eval $(call DEF_ADB_DEVICE_STATUS, false)) \
       ), \
@@ -136,12 +135,14 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell $(CFG_ADB) remount 1>/dev/null) \
  $(shell $(CFG_ADB) shell rm -r $(CFG_ADB_TEST_DIR) >/dev/null) \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)) \
- $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/tmp) \
  $(shell $(CFG_ADB) push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(foreach crate,$(TARGET_CRATES), \
-    $(shell $(CFG_ADB) push $(TLIB2_T_$(CFG_ANDROID_TARGET_TRIPLE)_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_$(CFG_ANDROID_TARGET_TRIPLE),$(crate)) \
-                    $(CFG_ADB_TEST_DIR))) \
- )
+ $(foreach target,$(CFG_TARGET), \
+  $(if $(or $(findstring $(target),"arm-linux-androideabi"),$(findstring $(target),"aarch64-linux-android")), \
+   $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/$(target)) \
+   $(foreach crate,$(TARGET_CRATES), \
+    $(shell $(CFG_ADB) push $(TLIB2_T_$(target)_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_$(target),$(crate)) \
+                    $(CFG_ADB_TEST_DIR)/$(target))), \
+ )))
 else
 CFG_ADB_TEST_DIR=
 endif
@@ -401,7 +402,7 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$< via adb)
 	$$(Q)$(CFG_ADB) push $$< $(CFG_ADB_TEST_DIR)
-	$$(Q)$(CFG_ADB) shell '(cd $(CFG_ADB_TEST_DIR); LD_LIBRARY_PATH=. \
+	$$(Q)$(CFG_ADB) shell '(cd $(CFG_ADB_TEST_DIR); LD_LIBRARY_PATH=./$(2) \
 		./$$(notdir $$<) \
 		--logfile $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log \
 		$$(call CRATE_TEST_EXTRA_ARGS,$(1),$(2),$(3),$(4)) $(TESTARGS))' \

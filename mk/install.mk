@@ -120,7 +120,7 @@ endef
 $(foreach target,$(CFG_TARGET), \
  $(if $(findstring $(CFG_ADB_DEVICE_STATUS),"true"), \
   $(eval $(call INSTALL_RUNTIME_TARGET_N,$(taget),$(CFG_BUILD))) \
-  $(eval $(call INSTALL_RUNTIME_TARGET_CLEANUP_N,arm-linux-$(target))) \
+  $(eval $(call INSTALL_RUNTIME_TARGET_CLEANUP_N,$(target))) \
   ))
 
 install-runtime-target: \
