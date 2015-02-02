@@ -5,7 +5,7 @@
 # Summary
 
 Remove official support for the `ndebug` config variable, replace the current usage of it with a
-more appropriate 'debug_assertions` compiler-provided config variable.
+more appropriate `debug_assertions` compiler-provided config variable.
 
 # Motivation
 
@@ -23,9 +23,9 @@ a natural consequence.
 
 # Detailed design
 
-The `debug_assertions` variable, the replacement for the `ndebug` variable, will be compiler
-provided based on the value of the `opt-level` codegen flag, including the implied value from `-O`.
-Any value higher than 0 will disable the variable.
+The `debug_assertions` configuration variable, the replacement for the `ndebug` variable, will be
+compiler provided based on the value of the `opt-level` codegen flag, including the implied value
+from `-O`.  Any value higher than 0 will disable the variable.
 
 Another codegen flag `debug-assertions` will override this, forcing it on or off based on the value
 passed to it.
