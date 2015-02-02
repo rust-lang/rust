@@ -32,6 +32,8 @@ use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
 
+use std::ops::Deref;
+
 pub fn expand_type(t: P<ast::Ty>,
                    fld: &mut MacroExpander,
                    impl_ty: Option<P<ast::Ty>>)
@@ -375,7 +377,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                     fld.cx.span_err(
                         pth.span,
                         &format!("macro undefined: '{}!'",
-                                extnamestr.get())[]);
+                                extnamestr.deref())[]);
 
                     // let compilation continue
                     None
@@ -385,7 +387,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         fld.cx.bt_push(ExpnInfo {
                                 call_site: span,
                                 callee: NameAndSpan {
-                                    name: extnamestr.get().to_string(),
+                                    name: extnamestr.deref().to_string(),
                                     format: MacroBang,
                                     span: exp_span,
                                 },
@@ -411,7 +413,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                                 fld.cx.span_err(
                                     pth.span,
                                     &format!("non-expression macro in expression position: {}",
-                                            &extnamestr.get()[]
+                                            &extnamestr.deref()[]
                                             )[]);
                                 return None;
                             }
@@ -422,7 +424,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         fld.cx.span_err(
                             pth.span,
                             &format!("'{}' is not a tt-style macro",
-                                    extnamestr.get())[]);
+                                    extnamestr.deref())[]);
                         None
                     }
                 }
@@ -506,14 +508,14 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
     for attr in &modifiers {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(mname.get())) {
+        match fld.cx.syntax_env.find(&intern(mname.deref())) {
             Some(rc) => match *rc {
                 Modifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            name: mname.get().to_string(),
+                            name: mname.deref().to_string(),
                             format: MacroAttribute,
                             span: None,
                         }
@@ -613,7 +615,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.deref().to_string(),
                             format: MacroBang,
                             span: span
                         }
@@ -626,13 +628,13 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         &format!("macro {}! expects an ident argument",
-                                                extnamestr.get())[]);
+                                                extnamestr.deref())[]);
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.deref().to_string(),
                             format: MacroBang,
                             span: span
                         }
@@ -651,7 +653,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.deref().to_string(),
                             format: MacroBang,
                             span: None,
                         }
@@ -677,7 +679,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                 _ => {
                     fld.cx.span_err(it.span,
                                     &format!("{}! is not legal in item position",
-                                            extnamestr.get())[]);
+                                            extnamestr.deref())[]);
                     return SmallVector::zero();
                 }
             }
@@ -696,7 +698,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
         None => {
             fld.cx.span_err(path_span,
                             &format!("non-item macro in item position: {}",
-                                    extnamestr.get())[]);
+                                    extnamestr.deref())[]);
             return SmallVector::zero();
         }
     };
@@ -950,7 +952,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                     fld.cx.bt_push(ExpnInfo {
                         call_site: span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.deref().to_string(),
                             format: MacroBang,
                             span: tt_span
                         }
@@ -968,7 +970,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                                 pth.span,
                                 &format!(
                                     "non-pattern macro in pattern position: {}",
-                                    extnamestr.get()
+                                    extnamestr.deref()
                                     )[]
                             );
                             return DummyResult::raw_pat(span);
@@ -981,7 +983,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                 _ => {
                     fld.cx.span_err(span,
                                     &format!("{}! is not legal in pattern position",
-                                            extnamestr.get())[]);
+                                            extnamestr.deref())[]);
                     return DummyResult::raw_pat(span);
                 }
             }
@@ -1065,7 +1067,7 @@ fn expand_annotatable(a: Annotatable,
     for attr in a.attrs() {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(mname.get())) {
+        match fld.cx.syntax_env.find(&intern(mname.deref())) {
             Some(rc) => match *rc {
                 Decorator(ref dec) => {
                     let it = match a {
@@ -1079,7 +1081,7 @@ fn expand_annotatable(a: Annotatable,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            name: mname.get().to_string(),
+                            name: mname.deref().to_string(),
                             format: MacroAttribute,
                             span: None
                         }
@@ -1180,7 +1182,7 @@ fn modifiers(attrs: &Vec<ast::Attribute>,
              fld: &MacroExpander)
              -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
     attrs.iter().cloned().partition(|attr| {
-        match fld.cx.syntax_env.find(&intern(attr.name().get())) {
+        match fld.cx.syntax_env.find(&intern(attr.name().deref())) {
             Some(rc) => match *rc {
                 Modifier(_) => true,
                 _ => false
@@ -1195,7 +1197,7 @@ fn multi_modifiers(attrs: &[ast::Attribute],
                    fld: &MacroExpander)
                    -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
     attrs.iter().cloned().partition(|attr| {
-        match fld.cx.syntax_env.find(&intern(attr.name().get())) {
+        match fld.cx.syntax_env.find(&intern(attr.name().deref())) {
             Some(rc) => match *rc {
                 MultiModifier(_) => true,
                 _ => false
@@ -1220,14 +1222,14 @@ fn expand_item_multi_modifier(mut it: Annotatable,
     for attr in &modifiers {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(mname.get())) {
+        match fld.cx.syntax_env.find(&intern(mname.deref())) {
             Some(rc) => match *rc {
                 MultiModifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            name: mname.get().to_string(),
+                            name: mname.deref().to_string(),
                             format: MacroAttribute,
                             span: None,
                         }

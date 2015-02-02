@@ -99,6 +99,7 @@ use std::mem;
 use std::rc::Rc;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Vacant, Occupied};
+use std::ops::Deref;
 
 // To avoid costly uniqueness checks, we require that `MatchSeq` always has
 // a nonempty body.
@@ -229,7 +230,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                         p_s.span_diagnostic
                            .span_fatal(sp,
                                        &format!("duplicated bind name: {}",
-                                               string.get())[])
+                                               string.deref())[])
                     }
                 }
             }
@@ -487,8 +488,8 @@ pub fn parse(sess: &ParseSess,
                     let name_string = token::get_ident(name);
                     let match_cur = ei.match_cur;
                     (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
-                        parse_nt(&mut rust_parser, span, name_string.get()))));
-                    ei.idx += 1;
+                        parse_nt(&mut rust_parser, span, name_string.deref()))));
+                    ei.idx += 1us;
                     ei.match_cur += 1;
                   }
                   _ => panic!()

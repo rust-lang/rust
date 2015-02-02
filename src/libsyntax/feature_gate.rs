@@ -36,6 +36,7 @@ use parse::token::{self, InternedString};
 
 use std::slice;
 use std::ascii::AsciiExt;
+use std::ops::Deref;
 
 // If you change this list without updating src/doc/reference.md, @cmr will be sad
 // Don't ever remove anything from this list; set them to 'Removed'.
@@ -251,7 +252,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
-        if !token::get_name(name).get().is_ascii() {
+        if !token::get_name(name).deref().is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
                               "non-ascii idents are not fully supported.");
         }
@@ -378,7 +379,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
         let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs,
                                                                      "link_name") {
-            Some(val) => val.get().starts_with("llvm."),
+            Some(val) => val.deref().starts_with("llvm."),
             _ => false
         };
         if links_to_llvm {
