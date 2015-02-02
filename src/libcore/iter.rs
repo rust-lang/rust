@@ -124,10 +124,13 @@ pub trait FromIterator<A> {
 }
 
 /// Conversion into an `Iterator`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Iter: Iterator;
 
     /// Consumes `Self` and returns an iterator over it
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::Iter;
 }
 
