@@ -1509,7 +1509,7 @@ fn _arm_exec_compiled_test(config: &Config,
     for (key, val) in env {
         runargs.push(format!("{}={}", key, val));
     }
-    runargs.push(format!("{}/adb_run_wrapper.sh", config.adb_test_dir));
+    runargs.push(format!("{}/../adb_run_wrapper.sh", config.adb_test_dir));
     runargs.push(format!("{}", config.adb_test_dir));
     runargs.push(format!("{}", prog_short));
 
@@ -1605,7 +1605,7 @@ fn _arm_push_aux_shared_library(config: &Config, testfile: &Path) {
                                             file.as_str()
                                                 .unwrap()
                                                 .to_string(),
-                                            config.adb_test_dir.to_string()
+                                            config.adb_test_dir.to_string(),
                                            ],
                                            vec!(("".to_string(),
                                                  "".to_string())),
