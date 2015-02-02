@@ -66,11 +66,11 @@ fn test_partial_min() {
         (1.0f64, NAN, None)
     ];
 
-    for &(a, b, result) in data_integer.iter() {
+    for &(a, b, result) in &data_integer {
         assert!(partial_min(a, b) == result);
     }
 
-    for &(a, b, result) in data_float.iter() {
+    for &(a, b, result) in &data_float {
         assert!(partial_min(a, b) == result);
     }
 }
@@ -99,11 +99,11 @@ fn test_partial_max() {
         (1.0f64, NAN, None)
     ];
 
-    for &(a, b, result) in data_integer.iter() {
+    for &(a, b, result) in &data_integer {
         assert!(partial_max(a, b) == result);
     }
 
-    for &(a, b, result) in data_float.iter() {
+    for &(a, b, result) in &data_float {
         assert!(partial_max(a, b) == result);
     }
 }

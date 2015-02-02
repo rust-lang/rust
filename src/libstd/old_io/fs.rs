@@ -597,7 +597,7 @@ pub fn mkdir_recursive(path: &Path, mode: FilePermission) -> IoResult<()> {
         return Ok(())
     }
 
-    let mut comps = path.components();
+    let comps = path.components();
     let mut curpath = path.root_path().unwrap_or(Path::new("."));
 
     for c in comps {
@@ -649,7 +649,7 @@ pub fn rmdir_recursive(path: &Path) -> IoResult<()> {
 
         // delete all regular files in the way and push subdirs
         // on the stack
-        for child in children.into_iter() {
+        for child in children {
             // FIXME(#12795) we should use lstat in all cases
             let child_type = match cfg!(windows) {
                 true => try!(update_err(stat(&child), path)),
@@ -1110,7 +1110,7 @@ mod test {
         }
         let files = check!(readdir(dir));
         let mut mem = [0u8; 4];
-        for f in files.iter() {
+        for f in &files {
             {
                 let n = f.filestem_str();
                 check!(File::open(f).read(&mut mem));

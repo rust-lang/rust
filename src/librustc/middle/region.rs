@@ -888,14 +888,14 @@ fn resolve_local(visitor: &mut RegionResolutionVisitor, local: &ast::Local) {
                 record_rvalue_scope(visitor, &**subexpr, blk_id);
             }
             ast::ExprStruct(_, ref fields, _) => {
-                for field in fields.iter() {
+                for field in fields {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &*field.expr, blk_id);
                 }
             }
             ast::ExprVec(ref subexprs) |
             ast::ExprTup(ref subexprs) => {
-                for subexpr in subexprs.iter() {
+                for subexpr in subexprs {
                     record_rvalue_scope_if_borrow_expr(
                         visitor, &**subexpr, blk_id);
                 }

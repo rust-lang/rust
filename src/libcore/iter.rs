@@ -174,7 +174,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn last(mut self) -> Option<Self::Item> {
+    fn last(self) -> Option<Self::Item> {
         let mut last = None;
         for x in self { last = Some(x); }
         last
@@ -588,7 +588,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[unstable(feature = "core",
                reason = "recently added as part of collections reform")]
-    fn partition<B, F>(mut self, mut f: F) -> (B, B) where
+    fn partition<B, F>(self, mut f: F) -> (B, B) where
         B: Default + Extend<Self::Item>,
         F: FnMut(&Self::Item) -> bool
     {
@@ -617,7 +617,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn fold<B, F>(mut self, init: B, mut f: F) -> B where
+    fn fold<B, F>(self, init: B, mut f: F) -> B where
         F: FnMut(B, Self::Item) -> B,
     {
         let mut accum = init;
@@ -638,7 +638,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn all<F>(mut self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
+    fn all<F>(self, mut f: F) -> bool where F: FnMut(Self::Item) -> bool {
         for x in self { if !f(x) { return false; } }
         true
     }
@@ -946,7 +946,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert_eq!([2, 4], right);
     /// ```
     #[unstable(feature = "core", reason = "recent addition")]
-    fn unzip<A, B, FromA, FromB>(mut self) -> (FromA, FromB) where
+    fn unzip<A, B, FromA, FromB>(self) -> (FromA, FromB) where
         FromA: Default + Extend<A>,
         FromB: Default + Extend<B>,
         Self: Iterator<Item=(A, B)>,
@@ -2205,7 +2205,7 @@ impl<A, B, I, U, F> Iterator for FlatMap<A, B, I, U, F> where
     #[inline]
     fn next(&mut self) -> Option<B> {
         loop {
-            for inner in self.frontiter.iter_mut() {
+            if let Some(ref mut inner) = self.frontiter {
                 for x in inner.by_ref() {
                     return Some(x)
                 }
@@ -2238,7 +2238,7 @@ impl<A, B, I, U, F> DoubleEndedIterator for FlatMap<A, B, I, U, F> where
     #[inline]
     fn next_back(&mut self) -> Option<B> {
         loop {
-            for inner in self.backiter.iter_mut() {
+            if let Some(ref mut inner) = self.backiter {
                 match inner.next_back() {
                     None => (),
                     y => return y

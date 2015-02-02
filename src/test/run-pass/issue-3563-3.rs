@@ -122,7 +122,7 @@ trait Canvas {
     // Unlike interfaces traits support default implementations.
     // Got an ICE as soon as I added this method.
     fn add_points(&mut self, shapes: &[Point]) {
-        for pt in shapes.iter() {self.add_point(*pt)};
+        for pt in shapes {self.add_point(*pt)};
     }
 }
 

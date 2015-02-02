@@ -333,7 +333,7 @@ pub fn normalize_associated_type<'tcx,T>(tcx: &ty::ctxt<'tcx>, value: &T) -> T
            obligations.repr(tcx));
 
     let mut fulfill_cx = traits::FulfillmentContext::new();
-    for obligation in obligations.into_iter() {
+    for obligation in obligations {
         fulfill_cx.register_predicate_obligation(&infcx, obligation);
     }
     let result = drain_fulfillment_cx(DUMMY_SP, &infcx, &mut fulfill_cx, &result);

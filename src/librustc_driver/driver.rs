@@ -425,7 +425,7 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 diagnostics::plugin::expand_build_diagnostic_array);
         }
 
-        for registrar in registrars.into_iter() {
+        for registrar in registrars {
             registry.args_hidden = Some(registrar.args);
             (registrar.fun)(&mut registry);
         }
@@ -435,11 +435,11 @@ pub fn phase_2_configure_and_expand(sess: &Session,
 
     {
         let mut ls = sess.lint_store.borrow_mut();
-        for pass in lint_passes.into_iter() {
+        for pass in lint_passes {
             ls.register_pass(Some(sess), true, pass);
         }
 
-        for (name, to) in lint_groups.into_iter() {
+        for (name, to) in lint_groups {
             ls.register_group(Some(sess), true, name, to);
         }
     }
@@ -761,11 +761,11 @@ fn write_out_deps(sess: &Session,
                   id: &str) {
 
     let mut out_filenames = Vec::new();
-    for output_type in sess.opts.output_types.iter() {
+    for output_type in &sess.opts.output_types {
         let file = outputs.path(*output_type);
         match *output_type {
             config::OutputTypeExe => {
-                for output in sess.crate_types.borrow().iter() {
+                for output in &*sess.crate_types.borrow() {
                     let p = link::filename_for_input(sess, *output,
                                                      id, &file);
                     out_filenames.push(p);
@@ -801,7 +801,7 @@ fn write_out_deps(sess: &Session,
                                    .map(|fmap| escape_dep_filename(&fmap.name[]))
                                    .collect();
         let mut file = try!(old_io::File::create(&deps_filename));
-        for path in out_filenames.iter() {
+        for path in &out_filenames {
             try!(write!(&mut file as &mut Writer,
                           "{}: {}\n\n", path.display(), files.connect(" ")));
         }

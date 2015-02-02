@@ -353,7 +353,7 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
     // this properly would result in the necessity of computing *type*
     // reachability, which might result in a compile time loss.
     fn mark_destructors_reachable(&mut self) {
-        for (_, destructor_def_id) in self.tcx.destructor_for_type.borrow().iter() {
+        for (_, destructor_def_id) in &*self.tcx.destructor_for_type.borrow() {
             if destructor_def_id.krate == ast::LOCAL_CRATE {
                 self.reachable_symbols.insert(destructor_def_id.node);
             }
@@ -371,7 +371,7 @@ pub fn find_reachable(tcx: &ty::ctxt,
     //         other crates link to us, they're going to expect to be able to
     //         use the lang items, so we need to be sure to mark them as
     //         exported.
-    for id in exported_items.iter() {
+    for id in exported_items {
         reachable_context.worklist.push(*id);
     }
     for (_, item) in tcx.lang_items.items() {

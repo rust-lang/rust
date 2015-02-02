@@ -78,7 +78,7 @@ fn verify(sess: &Session, items: &lang_items::LanguageItems) {
 
     let mut missing = HashSet::new();
     sess.cstore.iter_crate_data(|cnum, _| {
-        for item in csearch::get_missing_lang_items(&sess.cstore, cnum).iter() {
+        for item in &csearch::get_missing_lang_items(&sess.cstore, cnum) {
             missing.insert(*item);
         }
     });

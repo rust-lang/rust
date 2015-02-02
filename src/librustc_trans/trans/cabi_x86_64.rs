@@ -151,7 +151,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     }
 
     fn all_mem(cls: &mut [RegClass]) {
-        for elt in cls.iter_mut() {
+        for elt in cls {
             *elt = Memory;
         }
     }
@@ -195,7 +195,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                        off: uint,
                        packed: bool) {
         let mut field_off = off;
-        for ty in tys.iter() {
+        for ty in tys {
             if !packed {
                 field_off = align(field_off, *ty);
             }
@@ -333,7 +333,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
 fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
     fn llvec_len(cls: &[RegClass]) -> uint {
         let mut len = 1;
-        for c in cls.iter() {
+        for c in cls {
             if *c != SSEUp {
                 break;
             }
@@ -413,7 +413,7 @@ pub fn compute_abi_info(ccx: &CrateContext,
     }
 
     let mut arg_tys = Vec::new();
-    for t in atys.iter() {
+    for t in atys {
         let ty = x86_64_ty(ccx, *t, |cls| cls.is_pass_byval(), ByValAttribute);
         arg_tys.push(ty);
     }

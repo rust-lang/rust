@@ -353,7 +353,7 @@ impl<'f, 'tcx> Coerce<'f, 'tcx> {
                     assert!(ty_substs_a.len() == ty_substs_b.len());
 
                     let mut result = None;
-                    let mut tps = ty_substs_a.iter().zip(ty_substs_b.iter()).enumerate();
+                    let tps = ty_substs_a.iter().zip(ty_substs_b.iter()).enumerate();
                     for (i, (tp_a, tp_b)) in tps {
                         if self.fcx.infcx().try(|_| self.subtype(*tp_a, *tp_b)).is_ok() {
                             continue;

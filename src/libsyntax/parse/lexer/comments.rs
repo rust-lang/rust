@@ -90,7 +90,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let mut i = usize::MAX;
         let mut can_trim = true;
         let mut first = true;
-        for line in lines.iter() {
+        for line in &lines {
             for (j, c) in line.chars().enumerate() {
                 if j > i || !"* \t".contains_char(c) {
                     can_trim = false;
@@ -125,7 +125,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
 
     // one-line comments lose their prefix
     static ONLINERS: &'static [&'static str] = &["///!", "///", "//!", "//"];
-    for prefix in ONLINERS.iter() {
+    for prefix in ONLINERS {
         if comment.starts_with(*prefix) {
             return (&comment[prefix.len()..]).to_string();
         }

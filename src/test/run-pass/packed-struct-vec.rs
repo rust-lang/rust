@@ -28,7 +28,7 @@ pub fn main() {
         assert_eq!(foos[i], Foo { bar: 1, baz: 2});
     }
 
-    for &foo in foos.iter() {
+    for &foo in &foos {
         assert_eq!(foo, Foo { bar: 1, baz: 2 });
     }
 }

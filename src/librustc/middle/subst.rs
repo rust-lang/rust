@@ -241,7 +241,7 @@ pub struct SeparateVecsPerParamSpace<T> {
 impl<T: fmt::Debug> fmt::Debug for VecPerParamSpace<T> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(fmt, "VecPerParamSpace {{"));
-        for space in ParamSpace::all().iter() {
+        for space in &ParamSpace::all() {
             try!(write!(fmt, "{:?}: {:?}, ", *space, self.get_slice(*space)));
         }
         try!(write!(fmt, "}}"));
@@ -317,7 +317,7 @@ impl<T> VecPerParamSpace<T> {
     ///
     /// Unlike the `extend` method in `Vec`, this should not be assumed
     /// to be a cheap operation (even when amortized over many calls).
-    pub fn extend<I:Iterator<Item=T>>(&mut self, space: ParamSpace, mut values: I) {
+    pub fn extend<I:Iterator<Item=T>>(&mut self, space: ParamSpace, values: I) {
         // This could be made more efficient, obviously.
         for item in values {
             self.push(space, item);
@@ -352,7 +352,7 @@ impl<T> VecPerParamSpace<T> {
     pub fn replace(&mut self, space: ParamSpace, elems: Vec<T>) {
         // FIXME (#15435): slow; O(n^2); could enhance vec to make it O(n).
         self.truncate(space, 0);
-        for t in elems.into_iter() {
+        for t in elems {
             self.push(space, t);
         }
     }

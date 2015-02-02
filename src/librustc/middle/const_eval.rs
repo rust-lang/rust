@@ -104,7 +104,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
                             -> Option<&'a Expr> {
     fn variant_expr<'a>(variants: &'a [P<ast::Variant>], id: ast::NodeId)
                         -> Option<&'a Expr> {
-        for variant in variants.iter() {
+        for variant in variants {
             if variant.node.id == id {
                 return variant.node.disr_expr.as_ref().map(|e| &**e);
             }

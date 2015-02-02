@@ -61,11 +61,6 @@ use core::clone::Clone;
 use core::iter::AdditiveIterator;
 use core::iter::{Iterator, IteratorExt};
 use core::ops::Index;
-#[cfg(stage0)]
-use core::ops::FullRange as RangeFull;
-#[cfg(stage0)]
-use core::ops::FullRange;
-#[cfg(not(stage0))]
 use core::ops::RangeFull;
 use core::option::Option::{self, Some, None};
 use core::result::Result;
@@ -104,7 +99,7 @@ impl<S: Str> SliceConcatExt<str, String> for [S] {
         let len = s.iter().map(|s| s.as_slice().len()).sum();
         let mut result = String::with_capacity(len);
 
-        for s in s.iter() {
+        for s in s {
             result.push_str(s.as_slice())
         }
 
@@ -130,7 +125,7 @@ impl<S: Str> SliceConcatExt<str, String> for [S] {
         let mut result = String::with_capacity(len);
         let mut first = true;
 
-        for s in s.iter() {
+        for s in s {
             if first {
                 first = false;
             } else {
@@ -2010,7 +2005,7 @@ mod tests {
         let s = "ศไทย中华Việt Nam";
         let v = vec!['ศ','ไ','ท','ย','中','华','V','i','ệ','t',' ','N','a','m'];
         let mut pos = 0;
-        for ch in v.iter() {
+        for ch in &v {
             assert!(s.char_at(pos) == *ch);
             pos += ch.to_string().len();
         }
@@ -2708,7 +2703,7 @@ mod tests {
             &["\u{378}\u{308}\u{903}"], &["\u{378}\u{308}", "\u{903}"]),
         ];
 
-        for &(s, g) in test_same.iter() {
+        for &(s, g) in &test_same[] {
             // test forward iterator
             assert!(order::equals(s.graphemes(true), g.iter().map(|&x| x)));
             assert!(order::equals(s.graphemes(false), g.iter().map(|&x| x)));
@@ -2718,7 +2713,7 @@ mod tests {
             assert!(order::equals(s.graphemes(false).rev(), g.iter().rev().map(|&x| x)));
         }
 
-        for &(s, gt, gf) in test_diff.iter() {
+        for &(s, gt, gf) in &test_diff {
             // test forward iterator
             assert!(order::equals(s.graphemes(true), gt.iter().map(|&x| x)));
             assert!(order::equals(s.graphemes(false), gf.iter().map(|&x| x)));

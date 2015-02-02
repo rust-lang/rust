@@ -427,7 +427,7 @@ impl<'a> TraitDef<'a> {
             bounds.push(cx.typarambound(trait_path.clone()));
 
             // also add in any bounds from the declaration
-            for declared_bound in ty_param.bounds.iter() {
+            for declared_bound in &*ty_param.bounds {
                 bounds.push((*declared_bound).clone());
             }
 
@@ -974,7 +974,7 @@ impl<'a> MethodDef<'a> {
                     subpats.push(p);
                     idents
                 };
-                for self_arg_name in self_arg_names.tail().iter() {
+                for self_arg_name in self_arg_names.tail() {
                     let (p, idents) = mk_self_pat(cx, &self_arg_name[]);
                     subpats.push(p);
                     self_pats_idents.push(idents);

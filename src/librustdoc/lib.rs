@@ -200,11 +200,11 @@ pub fn main_args(args: &[String]) -> int {
 
     if matches.opt_strs("passes") == ["list"] {
         println!("Available passes for running rustdoc:");
-        for &(name, _, description) in PASSES.iter() {
+        for &(name, _, description) in PASSES {
             println!("{:>20} - {}", name, description);
         }
         println!("{}", "\nDefault passes for rustdoc:"); // FIXME: #9970
-        for &name in DEFAULT_PASSES.iter() {
+        for &name in DEFAULT_PASSES {
             println!("{:>20}", name);
         }
         return 0;
@@ -220,7 +220,7 @@ pub fn main_args(args: &[String]) -> int {
     let input = matches.free[0].as_slice();
 
     let mut libs = SearchPaths::new();
-    for s in matches.opt_strs("L").iter() {
+    for s in &matches.opt_strs("L") {
         libs.add_path(s.as_slice());
     }
     let externs = match parse_externs(&matches) {
@@ -322,7 +322,7 @@ fn acquire_input(input: &str,
 /// error message.
 fn parse_externs(matches: &getopts::Matches) -> Result<core::Externs, String> {
     let mut externs = HashMap::new();
-    for arg in matches.opt_strs("extern").iter() {
+    for arg in &matches.opt_strs("extern") {
         let mut parts = arg.splitn(1, '=');
         let name = match parts.next() {
             Some(s) => s,
@@ -356,7 +356,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
 
     // First, parse the crate and extract all relevant information.
     let mut paths = SearchPaths::new();
-    for s in matches.opt_strs("L").iter() {
+    for s in &matches.opt_strs("L") {
         paths.add_path(s.as_slice());
     }
     let cfgs = matches.opt_strs("cfg");
@@ -386,7 +386,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     // with the passes which we are supposed to run.
     match krate.module.as_ref().unwrap().doc_list() {
         Some(nested) => {
-            for inner in nested.iter() {
+            for inner in nested {
                 match *inner {
                     clean::Word(ref x)
                             if "no_default_passes" == *x => {
@@ -420,7 +420,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let path = matches.opt_str("plugin-path")
                       .unwrap_or("/tmp/rustdoc/plugins".to_string());
     let mut pm = plugins::PluginManager::new(Path::new(path));
-    for pass in passes.iter() {
+    for pass in &passes {
         let plugin = match PASSES.iter()
                                  .position(|&(p, _, _)| {
                                      p == *pass
@@ -434,7 +434,7 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
         pm.add_plugin(plugin);
     }
     info!("loading plugins...");
-    for pname in plugins.into_iter() {
+    for pname in plugins {
         pm.load_plugin(pname);
     }
 

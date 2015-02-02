@@ -673,7 +673,7 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
-    fn extend<Iter: Iterator<Item=T>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=T>>(&mut self, iter: Iter) {
         let (lower, _) = iter.size_hint();
 
         self.reserve(lower);
@@ -696,7 +696,7 @@ mod tests {
         let iterout = [9, 5, 3];
         let heap = BinaryHeap::from_vec(data);
         let mut i = 0;
-        for el in heap.iter() {
+        for el in &heap {
             assert_eq!(*el, iterout[i]);
             i += 1;
         }
@@ -884,7 +884,7 @@ mod tests {
 
         let mut q: BinaryHeap<uint> = xs.iter().rev().map(|&x| x).collect();
 
-        for &x in xs.iter() {
+        for &x in &xs {
             assert_eq!(q.pop().unwrap(), x);
         }
     }

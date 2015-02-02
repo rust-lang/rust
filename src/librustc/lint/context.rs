@@ -116,7 +116,7 @@ impl LintStore {
 
     pub fn register_pass(&mut self, sess: Option<&Session>,
                          from_plugin: bool, pass: LintPassObject) {
-        for &lint in pass.get_lints().iter() {
+        for &lint in pass.get_lints() {
             self.lints.push((*lint, from_plugin));
 
             let id = LintId::of(*lint);
@@ -260,7 +260,7 @@ impl LintStore {
     }
 
     pub fn process_command_line(&mut self, sess: &Session) {
-        for &(ref lint_name, level) in sess.opts.lint_opts.iter() {
+        for &(ref lint_name, level) in &sess.opts.lint_opts {
             match self.find_lint(&lint_name[], sess, None) {
                 Some(lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
@@ -329,7 +329,7 @@ macro_rules! run_lints { ($cx:expr, $f:ident, $($args:expr),*) => ({
     // Move the vector of passes out of `$cx` so that we can
     // iterate over it mutably while passing `$cx` to the methods.
     let mut passes = $cx.lints.passes.take().unwrap();
-    for obj in passes.iter_mut() {
+    for obj in &mut passes {
         obj.$f($cx, $($args),*);
     }
     $cx.lints.passes = Some(passes);
@@ -340,7 +340,7 @@ macro_rules! run_lints { ($cx:expr, $f:ident, $($args:expr),*) => ({
 pub fn gather_attrs(attrs: &[ast::Attribute])
                     -> Vec<Result<(InternedString, Level, Span), Span>> {
     let mut out = vec!();
-    for attr in attrs.iter() {
+    for attr in attrs {
         let level = match Level::from_str(attr.name().get()) {
             None => continue,
             Some(lvl) => lvl,
@@ -357,7 +357,7 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
             }
         };
 
-        for meta in metas.iter() {
+        for meta in metas {
             out.push(match meta.node {
                 ast::MetaWord(ref lint_name) => Ok((lint_name.clone(), level, meta.span)),
                 _ => Err(meta.span),
@@ -417,11 +417,11 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
         _ => sess.bug("impossible level in raw_emit_lint"),
     }
 
-    for note in note.into_iter() {
+    if let Some(note) = note {
         sess.note(&note[]);
     }
 
-    for span in def.into_iter() {
+    if let Some(span) = def {
         sess.span_note(span, "lint level defined here");
     }
 }
@@ -492,7 +492,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
         // specified closure
         let mut pushed = 0;
 
-        for result in gather_attrs(attrs).into_iter() {
+        for result in gather_attrs(attrs) {
             let v = match result {
                 Err(span) => {
                     self.tcx.sess.span_err(span, "malformed lint attribute");
@@ -519,7 +519,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                 }
             };
 
-            for (lint_id, level, span) in v.into_iter() {
+            for (lint_id, level, span) in v {
                 let now = self.lints.get_level_source(lint_id).0;
                 if now == Forbid && level != Forbid {
                     let lint_name = lint_id.as_str();
@@ -727,7 +727,7 @@ impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
         match self.tcx.sess.lints.borrow_mut().remove(&id) {
             None => {}
             Some(lints) => {
-                for (lint_id, span, msg) in lints.into_iter() {
+                for (lint_id, span, msg) in lints {
                     self.span_lint(lint_id.lint, span, &msg[])
                 }
             }
@@ -794,8 +794,8 @@ pub fn check_crate(tcx: &ty::ctxt,
 
     // If we missed any lints added to the session, then there's a bug somewhere
     // in the iteration code.
-    for (id, v) in tcx.sess.lints.borrow().iter() {
-        for &(lint, span, ref msg) in v.iter() {
+    for (id, v) in &*tcx.sess.lints.borrow() {
+        for &(lint, span, ref msg) in v {
             tcx.sess.span_bug(span,
                               format!("unprocessed lint {} at {}: {}",
                                       lint.as_str(), tcx.map.node_to_string(*id), *msg).as_slice())

@@ -956,7 +956,7 @@ pub fn fold<T,
             E,
             F: FnMut(V, T) -> V,
             Iter: Iterator<Item=Result<T, E>>>(
-            mut iterator: Iter,
+            iterator: Iter,
             mut init: V,
             mut f: F)
             -> Result<V, E> {

@@ -82,7 +82,7 @@ fn stress(num_tasks: int) {
             stress_task(i);
         }));
     }
-    for r in results.into_iter() {
+    for r in results {
         let _ = r.join();
     }
 }

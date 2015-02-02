@@ -1164,7 +1164,7 @@ mod test {
                     "impl z { fn a (self: Foo, &myarg: i32) {} }",
                     ];
 
-        for &src in srcs.iter() {
+        for &src in &srcs {
             let spans = get_spans_of_pat_idents(src);
             let Span{ lo, hi, .. } = spans[0];
             assert!("self" == &src[lo.to_usize()..hi.to_usize()],

@@ -64,7 +64,7 @@ fn main() {
              ('c', 'd'),
              ('e', 'f')];
 
-    for &(x,y) in v.iter() {} // should be OK
+    for &(x,y) in &v {} // should be OK
 
     // Make sure none of the errors above were fatal
     let x: char = true; //~  ERROR mismatched types

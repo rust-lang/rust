@@ -464,7 +464,7 @@ mod test {
         // check every remainder mod 8, both in small and big vectors.
         let lengths = [0, 1, 2, 3, 4, 5, 6, 7,
                        80, 81, 82, 83, 84, 85, 86, 87];
-        for &n in lengths.iter() {
+        for &n in &lengths {
             let mut v = repeat(0u8).take(n).collect::<Vec<_>>();
             r.fill_bytes(v.as_mut_slice());
 

@@ -98,9 +98,6 @@ use core::iter::{range_step, MultiplicativeIterator};
 use core::marker::Sized;
 use core::mem::size_of;
 use core::mem;
-#[cfg(stage0)]
-use core::ops::{FnMut, FullRange};
-#[cfg(not(stage0))]
 use core::ops::FnMut;
 use core::option::Option::{self, Some, None};
 use core::ptr::PtrExt;
@@ -1121,7 +1118,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
     fn concat(&self) -> Vec<T> {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
-        for v in self.iter() {
+        for v in self {
             result.push_all(v.as_slice())
         }
         result
@@ -1131,7 +1128,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
         let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
-        for v in self.iter() {
+        for v in self {
             if first { first = false } else { result.push(sep.clone()) }
             result.push_all(v.as_slice())
         }
@@ -1231,7 +1228,7 @@ impl Iterator for ElementSwaps {
                 self.sdir.swap(i, j);
 
                 // Swap the direction of each larger SizeDirection
-                for x in self.sdir.iter_mut() {
+                for x in &mut self.sdir {
                     if x.size > sd.size {
                         x.dir = match x.dir { Pos => Neg, Neg => Pos };
                     }
@@ -1512,9 +1509,6 @@ mod tests {
     use core::prelude::{Some, None, range, Clone};
     use core::prelude::{Iterator, IteratorExt};
     use core::prelude::{AsSlice};
-    #[cfg(stage0)]
-    use core::prelude::{Ord, FullRange};
-    #[cfg(not(stage0))]
     use core::prelude::Ord;
     use core::default::Default;
     use core::mem;
@@ -2362,7 +2356,7 @@ mod tests {
     #[test]
     fn test_mut_iterator() {
         let mut xs = [1, 2, 3, 4, 5];
-        for x in xs.iter_mut() {
+        for x in &mut xs {
             *x += 1;
         }
         assert!(xs == [2, 3, 4, 5, 6])
@@ -2662,7 +2656,7 @@ mod tests {
                 let left: &[_] = left;
                 assert!(left[..left.len()] == [1, 2][]);
             }
-            for p in left.iter_mut() {
+            for p in left {
                 *p += 1;
             }
 
@@ -2670,7 +2664,7 @@ mod tests {
                 let right: &[_] = right;
                 assert!(right[..right.len()] == [3, 4, 5][]);
             }
-            for p in right.iter_mut() {
+            for p in right {
                 *p += 2;
             }
         }
@@ -2687,25 +2681,25 @@ mod tests {
         assert_eq!(v.len(), 3);
         let mut cnt = 0u;
 
-        for f in v.iter() {
+        for f in &v {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 3);
 
-        for f in v[1..3].iter() {
+        for f in &v[1..3] {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 5);
 
-        for f in v.iter_mut() {
+        for f in &mut v {
             assert!(*f == Foo);
             cnt += 1;
         }
         assert_eq!(cnt, 8);
 
-        for f in v.into_iter() {
+        for f in v {
             assert!(f == Foo);
             cnt += 1;
         }
@@ -2713,7 +2707,7 @@ mod tests {
 
         let xs: [Foo; 3] = [Foo, Foo, Foo];
         cnt = 0;
-        for f in xs.iter() {
+        for f in &xs {
             assert!(*f == Foo);
             cnt += 1;
         }
@@ -2802,7 +2796,7 @@ mod tests {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
         assert_eq!(v.chunks_mut(2).len(), 4);
         for (i, chunk) in v.chunks_mut(3).enumerate() {
-            for x in chunk.iter_mut() {
+            for x in chunk {
                 *x = i as u8;
             }
         }
@@ -2814,7 +2808,7 @@ mod tests {
     fn test_mut_chunks_rev() {
         let mut v = [0u8, 1, 2, 3, 4, 5, 6];
         for (i, chunk) in v.chunks_mut(3).rev().enumerate() {
-            for x in chunk.iter_mut() {
+            for x in chunk {
                 *x = i as u8;
             }
         }
@@ -2864,7 +2858,7 @@ mod bench {
 
         b.iter(|| {
             let mut sum = 0;
-            for x in v.iter() {
+            for x in &v {
                 sum += *x;
             }
             // sum == 11806, to stop dead code elimination.
@@ -2878,7 +2872,7 @@ mod bench {
 
         b.iter(|| {
             let mut i = 0;
-            for x in v.iter_mut() {
+            for x in &mut v {
                 *x = i;
                 i += 1;
             }
@@ -3012,7 +3006,7 @@ mod bench {
             unsafe {
                 v.set_len(1024);
             }
-            for x in v.iter_mut() {
+            for x in &mut v {
                 *x = 0;
             }
             v

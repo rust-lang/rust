@@ -170,14 +170,14 @@ fn main() {
         z: true
     };
 
-    for &Struct { x, y, z } in [s].iter() {
+    for &Struct { x, y, z } in &[s] {
         zzz(); // #break
     }
 
     let tuple: (i8, u8, i16, u16, i32, u32, i64, u64, f32, f64) =
         (0x6f, 0x70, -113, 114, -115, 116, -117, 118, 119.5, 120.5);
 
-    for &(_i8, _u8, _i16, _u16, _i32, _u32, _i64, _u64, _f32, _f64) in [tuple].iter() {
+    for &(_i8, _u8, _i16, _u16, _i32, _u32, _i64, _u64, _f32, _f64) in &[tuple] {
         zzz(); // #break
     }
 
@@ -215,7 +215,7 @@ fn main() {
       zzz(); // #break
     }
 
-    for simple_tuple_ident in vec![(34903493u32, 232323i64)].into_iter() {
+    for simple_tuple_ident in vec![(34903493u32, 232323i64)] {
       zzz(); // #break
     }
 }

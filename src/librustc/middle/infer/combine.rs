@@ -116,7 +116,7 @@ pub trait Combine<'tcx> : Sized {
     {
         let mut substs = subst::Substs::empty();
 
-        for &space in subst::ParamSpace::all().iter() {
+        for &space in &subst::ParamSpace::all() {
             let a_tps = a_subst.types.get_slice(space);
             let b_tps = b_subst.types.get_slice(space);
             let tps = try!(self.tps(space, a_tps, b_tps));
@@ -129,7 +129,7 @@ pub trait Combine<'tcx> : Sized {
             }
 
             (&NonerasedRegions(ref a), &NonerasedRegions(ref b)) => {
-                for &space in subst::ParamSpace::all().iter() {
+                for &space in &subst::ParamSpace::all() {
                     let a_regions = a.get_slice(space);
                     let b_regions = b.get_slice(space);
 
@@ -139,7 +139,7 @@ pub trait Combine<'tcx> : Sized {
                             variances.regions.get_slice(space)
                         }
                         None => {
-                            for _ in a_regions.iter() {
+                            for _ in a_regions {
                                 invariance.push(ty::Invariant);
                             }
                             &invariance[]

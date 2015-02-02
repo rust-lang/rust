@@ -729,7 +729,7 @@ impl<'a> FromIterator<&'a str> for String {
 #[unstable(feature = "collections",
            reason = "waiting on Extend stabilization")]
 impl Extend<char> for String {
-    fn extend<I:Iterator<Item=char>>(&mut self, mut iterator: I) {
+    fn extend<I:Iterator<Item=char>>(&mut self, iterator: I) {
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
         for ch in iterator {
@@ -741,7 +741,7 @@ impl Extend<char> for String {
 #[unstable(feature = "collections",
            reason = "waiting on Extend stabilization")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: Iterator<Item=&'a str>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=&'a str>>(&mut self, iterator: I) {
         // A guess that at least one byte per iterator element will be needed.
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
@@ -877,16 +877,6 @@ impl ops::Index<ops::RangeFrom<uint>> for String {
         &self[][*index]
     }
 }
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::FullRange> for String {
-    type Output = str;
-    #[inline]
-    fn index(&self, _index: &ops::FullRange) -> &str {
-        unsafe { mem::transmute(self.vec.as_slice()) }
-    }
-}
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl ops::Index<ops::RangeFull> for String {
     type Output = str;
@@ -1011,8 +1001,6 @@ mod tests {
     use str::Utf8Error;
     use core::iter::repeat;
     use super::{as_string, CowString};
-    #[cfg(stage0)]
-    use core::ops::FullRange;
 
     #[test]
     fn test_as_string() {
@@ -1130,7 +1118,7 @@ mod tests {
              (String::from_str("\u{20000}"),
               vec![0xD840, 0xDC00])];
 
-        for p in pairs.iter() {
+        for p in &pairs {
             let (s, u) = (*p).clone();
             let s_as_utf16 = s.utf16_units().collect::<Vec<u16>>();
             let u_as_string = String::from_utf16(u.as_slice()).unwrap();

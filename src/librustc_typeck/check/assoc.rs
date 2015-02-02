@@ -33,7 +33,7 @@ pub fn normalize_associated_types_in<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
     debug!("normalize_associated_types_in: result={} predicates={}",
            result.repr(infcx.tcx),
            obligations.repr(infcx.tcx));
-    for obligation in obligations.into_iter() {
+    for obligation in obligations {
         fulfillment_cx.register_predicate_obligation(infcx, obligation);
     }
     result

@@ -435,13 +435,13 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
             let mut vals = RawItems::from_parts(ret.vals().as_ptr(), 0);
             let mut edges = RawItems::from_parts(ret.edges().as_ptr(), 0);
 
-            for key in self.keys().iter() {
+            for key in self.keys() {
                 keys.push(key.clone())
             }
-            for val in self.vals().iter() {
+            for val in self.vals() {
                 vals.push(val.clone())
             }
-            for edge in self.edges().iter() {
+            for edge in self.edges() {
                 edges.push(edge.clone())
             }
 

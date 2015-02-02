@@ -80,7 +80,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
         self.record_exports_for_module(&*module_);
         build_reduced_graph::populate_module_if_necessary(self.resolver, &module_);
 
-        for (_, child_name_bindings) in module_.children.borrow().iter() {
+        for (_, child_name_bindings) in &*module_.children.borrow() {
             match child_name_bindings.get_module_if_available() {
                 None => {
                     // Nothing to do.
@@ -91,7 +91,7 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
             }
         }
 
-        for (_, child_module) in module_.anonymous_children.borrow().iter() {
+        for (_, child_module) in &*module_.anonymous_children.borrow() {
             self.record_exports_for_module_subtree(child_module.clone());
         }
     }
@@ -133,12 +133,12 @@ impl<'a, 'b, 'tcx> ExportRecorder<'a, 'b, 'tcx> {
     fn add_exports_for_module(&mut self,
                               exports: &mut Vec<Export>,
                               module_: &Module) {
-        for (name, importresolution) in module_.import_resolutions.borrow().iter() {
+        for (name, importresolution) in &*module_.import_resolutions.borrow() {
             if !importresolution.is_public {
                 continue
             }
             let xs = [TypeNS, ValueNS];
-            for &ns in xs.iter() {
+            for &ns in &xs {
                 match importresolution.target_for_namespace(ns) {
                     Some(target) => {
                         debug!("(computing exports) maybe export '{}'",

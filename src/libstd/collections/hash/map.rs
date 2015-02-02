@@ -20,7 +20,7 @@ use cmp::{max, Eq, PartialEq};
 use default::Default;
 use fmt::{self, Debug};
 use hash::{self, Hash, SipHasher};
-use iter::{self, Iterator, ExactSizeIterator, IteratorExt, FromIterator, Extend, Map};
+use iter::{self, Iterator, ExactSizeIterator, IntoIterator, IteratorExt, FromIterator, Extend, Map};
 use marker::Sized;
 use mem::{self, replace};
 use num::{Int, UnsignedInt};
@@ -1385,6 +1385,42 @@ enum VacantEntryState<K, V, M> {
     NoElem(EmptyBucket<K, V, M>),
 }
 
+impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
+    where K: Eq + Hash<H>,
+          S: HashState<Hasher=H>,
+          H: hash::Hasher<Output=u64>
+{
+    type Iter = Iter<'a, K, V>;
+
+    fn into_iter(self) -> Iter<'a, K, V> {
+        self.iter()
+    }
+}
+
+impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
+    where K: Eq + Hash<H>,
+          S: HashState<Hasher=H>,
+          H: hash::Hasher<Output=u64>
+{
+    type Iter = IterMut<'a, K, V>;
+
+    fn into_iter(mut self) -> IterMut<'a, K, V> {
+        self.iter_mut()
+    }
+}
+
+impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
+    where K: Eq + Hash<H>,
+          S: HashState<Hasher=H>,
+          H: hash::Hasher<Output=u64>
+{
+    type Iter = IntoIter<K, V>;
+
+    fn into_iter(self) -> IntoIter<K, V> {
+        self.into_iter()
+    }
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
@@ -1539,7 +1575,7 @@ impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, mut iter: T) {
+    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -1941,7 +1977,7 @@ mod test_map {
 
         let mut observed: u32 = 0;
 
-        for (k, v) in m.iter() {
+        for (k, v) in &m {
             assert_eq!(*v, *k * 2);
             observed |= 1 << *k;
         }
@@ -2131,7 +2167,7 @@ mod test_map {
 
         let map: HashMap<int, int> = xs.iter().map(|&x| x).collect();
 
-        for &(k, v) in xs.iter() {
+        for &(k, v) in &xs {
             assert_eq!(map.get(&k), Some(&v));
         }
     }

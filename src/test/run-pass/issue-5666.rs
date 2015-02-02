@@ -31,7 +31,7 @@ pub fn main() {
     let bubbles = box Dog{name: "bubbles".to_string()};
     let barker = [snoopy as Box<Barks>, bubbles as Box<Barks>];
 
-    for pup in barker.iter() {
+    for pup in &barker {
         println!("{}", pup.bark());
     }
 }
