@@ -91,8 +91,9 @@ the direction the language is evolving in.
 [When you need to follow this process]: #when-you-need-to-follow-this-process
 
 You need to follow this process if you intend to make "substantial"
-changes to the Rust distribution. What constitutes a "substantial"
-change is evolving based on community norms, but may include the following.
+changes to Rust, Cargo, Crates.io, or the RFC process itself. What constitutes
+a "substantial" change is evolving based on community norms, but may include
+the following.
 
    - Any semantic or syntactic change to the language that is not a bugfix.
    - Removing language features, including those that are feature-gated.
@@ -269,7 +270,7 @@ feel free to ask (e.g. by leaving a comment on the associated issue).
 [RFC Postponement]: #rfc-postponement
 
 Some RFC pull requests are tagged with the 'postponed' label when they
-are closed (as part of the rejection process).  An RFC closed with
+are closed (as part of the rejection process). An RFC closed with
 “postponed” is marked as such because we want neither to think about
 evaluating the proposal nor about implementing the described feature
 until after the next major release, and we believe that we can afford
