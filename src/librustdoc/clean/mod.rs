@@ -355,21 +355,21 @@ impl Clean<Item> for doctree::Module {
         } else {
             "".to_string()
         };
-        let items: Vec<Item> =
-                   self.extern_crates.iter().map(|x| x.clean(cx))
-            .chain(self.imports.iter().flat_map(|x| x.clean(cx).into_iter()))
-            .chain(self.structs.iter().map(|x| x.clean(cx)))
-            .chain(self.enums.iter().map(|x| x.clean(cx)))
-            .chain(self.fns.iter().map(|x| x.clean(cx)))
-            .chain(self.foreigns.iter().flat_map(|x| x.clean(cx).into_iter()))
-            .chain(self.mods.iter().map(|x| x.clean(cx)))
-            .chain(self.typedefs.iter().map(|x| x.clean(cx)))
-            .chain(self.statics.iter().map(|x| x.clean(cx)))
-            .chain(self.constants.iter().map(|x| x.clean(cx)))
-            .chain(self.traits.iter().map(|x| x.clean(cx)))
-            .chain(self.impls.iter().map(|x| x.clean(cx)))
-            .chain(self.macros.iter().map(|x| x.clean(cx)))
-            .collect();
+
+        let mut items: Vec<Item> = vec![];
+        items.extend(self.extern_crates.iter().map(|x| x.clean(cx)));
+        items.extend(self.imports.iter().flat_map(|x| x.clean(cx).into_iter()));
+        items.extend(self.structs.iter().map(|x| x.clean(cx)));
+        items.extend(self.enums.iter().map(|x| x.clean(cx)));
+        items.extend(self.fns.iter().map(|x| x.clean(cx)));
+        items.extend(self.foreigns.iter().flat_map(|x| x.clean(cx).into_iter()));
+        items.extend(self.mods.iter().map(|x| x.clean(cx)));
+        items.extend(self.typedefs.iter().map(|x| x.clean(cx)));
+        items.extend(self.statics.iter().map(|x| x.clean(cx)));
+        items.extend(self.constants.iter().map(|x| x.clean(cx)));
+        items.extend(self.traits.iter().map(|x| x.clean(cx)));
+        items.extend(self.impls.iter().map(|x| x.clean(cx)));
+        items.extend(self.macros.iter().map(|x| x.clean(cx)));
 
         // determine if we should display the inner contents or
         // the outer `mod` item for the source code.
