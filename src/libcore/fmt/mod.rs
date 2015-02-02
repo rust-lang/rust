@@ -13,7 +13,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use any;
-use cell::{Cell, RefCell, Ref, RefMut};
+use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use char::CharExt;
 use iter::{Iterator, IteratorExt};
 use marker::{Copy, Sized};
@@ -973,9 +973,11 @@ impl<T: Copy + Debug> Debug for Cell<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        match self.try_borrow() {
-            Some(val) => write!(f, "RefCell {{ value: {:?} }}", val),
-            None => write!(f, "RefCell {{ <borrowed> }}")
+        match self.borrow_state() {
+            BorrowState::Unused | BorrowState::Reading => {
+                write!(f, "RefCell {{ value: {:?} }}", self.borrow())
+            }
+            BorrowState::Writing => write!(f, "RefCell {{ <borrowed> }}"),
         }
     }
 }
