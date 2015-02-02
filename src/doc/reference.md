@@ -248,10 +248,10 @@ cases mentioned in [Number literals](#number-literals) below.
 | `\\` | Backslash |
 
 ##### Unicode escapes
-|   | Name |
-|---|------|
-| `\u7FFF` | 16-bit character code (exactly 4 digits) |
-| `\U7EEEFFFF` | 32-bit character code (exactly 8 digits) |
+
+Unicode symbols in strings and characters may be written using `\u{7F}` escape syntax. The
+codepoint written between curly brackets must be a valid unicode codepoint and have at most 6 hex
+digits.
 
 ##### Numbers
 
