@@ -196,8 +196,7 @@ raw_string : '"' raw_string_body '"' | '#' raw_string '#' ;
 common_escape : '\x5c'
               | 'n' | 'r' | 't' | '0'
               | 'x' hex_digit 2
-unicode_escape : 'u' hex_digit 4
-               | 'U' hex_digit 8 ;
+unicode_escape : 'u' '{' hex_digit+ 6 '}';
 
 hex_digit : 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
           | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'

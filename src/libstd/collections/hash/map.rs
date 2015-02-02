@@ -1300,18 +1300,13 @@ pub struct IterMut<'a, K: 'a, V: 'a> {
 /// HashMap move iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<K, V> {
-    inner: iter::Map<
-        (SafeHash, K, V),
-        (K, V),
-        table::IntoIter<K, V>,
-        fn((SafeHash, K, V)) -> (K, V),
-    >
+    inner: iter::Map<table::IntoIter<K, V>, fn((SafeHash, K, V)) -> (K, V)>
 }
 
 /// HashMap keys iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
+    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -1326,7 +1321,7 @@ impl<'a, K, V> Clone for Keys<'a, K, V> {
 /// HashMap values iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -1342,12 +1337,7 @@ impl<'a, K, V> Clone for Values<'a, K, V> {
 #[unstable(feature = "std_misc",
            reason = "matches collection reform specification, waiting for dust to settle")]
 pub struct Drain<'a, K: 'a, V: 'a> {
-    inner: iter::Map<
-        (SafeHash, K, V),
-        (K, V),
-        table::Drain<'a, K, V>,
-        fn((SafeHash, K, V)) -> (K, V),
-    >
+    inner: iter::Map<table::Drain<'a, K, V>, fn((SafeHash, K, V)) -> (K, V)>
 }
 
 /// A view into a single occupied location in a HashMap.

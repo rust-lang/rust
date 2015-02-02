@@ -687,7 +687,7 @@ double_ended_iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
 /// An iterator over the keys of a map.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, V: 'a> {
-    iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
+    iter: Map<Iter<'a, V>, fn((uint, &'a V)) -> uint>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -702,7 +702,7 @@ impl<'a, V> Clone for Keys<'a, V> {
 /// An iterator over the values of a map.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, V: 'a> {
-    iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
+    iter: Map<Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -718,8 +718,6 @@ impl<'a, V> Clone for Values<'a, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<V> {
     iter: FilterMap<
-    (uint, Option<V>),
-    (uint, V),
     Enumerate<vec::IntoIter<Option<V>>>,
     fn((uint, Option<V>)) -> Option<(uint, V)>>
 }
@@ -727,8 +725,6 @@ pub struct IntoIter<V> {
 #[unstable(feature = "collections")]
 pub struct Drain<'a, V> {
     iter: FilterMap<
-    (uint, Option<V>),
-    (uint, V),
     Enumerate<vec::Drain<'a, Option<V>>>,
     fn((uint, Option<V>)) -> Option<(uint, V)>>
 }

@@ -2735,7 +2735,7 @@ impl<'a> Parser<'a> {
                 self.open_braces.pop().unwrap();
 
                 // Expand to cover the entire delimited token tree
-                let span = Span { hi: self.span.hi, ..pre_span };
+                let span = Span { hi: close_span.hi, ..pre_span };
 
                 TtDelimited(span, Rc::new(Delimited {
                     delim: delim,
@@ -5912,9 +5912,9 @@ impl<'a> Parser<'a> {
                 self.bump();
 
                 match self.token {
-                  token::Ident(i, _) => {
-                    self.bump();
-                    path.push(i);
+                  token::Ident(..) => {
+                    let ident = self.parse_ident();
+                    path.push(ident);
                   }
 
                   // foo::bar::{a,b,c}
@@ -5952,6 +5952,11 @@ impl<'a> Parser<'a> {
                         }).collect()
                     };
                     return P(spanned(lo, self.span.hi, ViewPathGlob(path)));
+                  }
+
+                  // fall-through for case foo::bar::;
+                  token::Semi => {
+                    self.span_err(self.span, "expected identifier or `{` or `*`, found `;`");
                   }
 
                   _ => break

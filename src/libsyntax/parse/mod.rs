@@ -436,7 +436,7 @@ pub fn str_lit(lit: &str) -> String {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a>(it: &mut iter::Peekable<(usize, char), str::CharIndices<'a>>) {
+    fn eat<'a>(it: &mut iter::Peekable<str::CharIndices<'a>>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
@@ -605,7 +605,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<(usize, u8), I>) {
+    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<I>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
@@ -755,6 +755,7 @@ mod test {
     use ast;
     use abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
+    use parse;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
     use print::pprust::item_to_string;
@@ -1213,5 +1214,27 @@ mod test {
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
         assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
+    }
+
+    #[test]
+    fn ttdelim_span() {
+        let sess = parse::new_parse_sess();
+        let expr = parse::parse_expr_from_source_str("foo".to_string(),
+            "foo!( fn main() { body } )".to_string(), vec![], &sess);
+
+        let tts = match expr.node {
+            ast::ExprMac(ref mac) => {
+                let ast::MacInvocTT(_, ref tts, _) = mac.node;
+                tts.clone()
+            }
+            _ => panic!("not a macro"),
+        };
+
+        let span = tts.iter().rev().next().unwrap().get_span();
+
+        match sess.span_diagnostic.cm.span_to_snippet(span) {
+            Some(s) => assert_eq!(&s[], "{ body }"),
+            None => panic!("could not get snippet"),
+        }
     }
 }
