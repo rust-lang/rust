@@ -28,6 +28,7 @@ use std::ops::Range;
 pub struct Rope {
     root: Node,
     len: usize,
+    src_len: usize,
     // FIXME: Allocation is very dumb at the moment, we always add another buffer for every inserted string and we never resuse or collect old memory
     storage: Vec<Vec<u8>>
 }
@@ -54,6 +55,7 @@ impl Rope {
         Rope {
             root: Node::empty_inner(),
             len: 0,
+            src_len: 0,
             storage: vec![],
         }
     }
@@ -64,7 +66,13 @@ impl Rope {
 
         let mut result = Rope::new();
         result.insert(0, text);
+        result.fix_src();
         result
+    }
+
+    fn fix_src(&mut self) {
+        self.root.fix_src();
+        self.src_len = self.len;
     }
 
     pub fn len(&self) -> usize {
@@ -80,10 +88,10 @@ impl Rope {
 
         let len = text.len();
         let storage = text.into_bytes();
-        let new_node = box Node::new_leaf(&storage[][0] as *const u8, len);
+        let new_node = box Node::new_leaf(&storage[][0] as *const u8, len, 0);
         self.storage.push(storage);
 
-        match self.root.insert(new_node, start) {
+        match self.root.insert(new_node, start, start) {
             NodeAction::Change(n, adj) => {
                 assert!(adj as usize == len);
                 self.root = *n;
@@ -99,6 +107,32 @@ impl Rope {
     pub fn insert_copy(&mut self, start: usize, text: &str) {
         // If we did clever things with allocation, we could do better here
         self.insert(start, text.to_string());
+    }
+
+    pub fn src_insert(&mut self, start: usize, text: String) {
+        // TODO refactor with insert
+        if text.len() == 0 {
+            return;
+        }
+
+        debug_assert!(start <= self.src_len, "insertion out of bounds of rope");
+
+        let len = text.len();
+        let storage = text.into_bytes();
+        let new_node = box Node::new_leaf(&storage[][0] as *const u8, len, 0);
+        self.storage.push(storage);
+
+        match self.root.src_insert(new_node, start, start) {
+            NodeAction::Change(n, adj) => {
+                assert!(adj as usize == len);
+                self.root = *n;
+            }
+            NodeAction::Adjust(adj) => {
+                assert!(adj as usize == len);
+            }
+            _ => panic!("Unexpected action")
+        }
+        self.len += len;
     }
 
     pub fn push(&mut self, text: String) {
@@ -118,7 +152,7 @@ impl Rope {
             return;
         }
 
-        let action = self.root.remove(start, end, 0);
+        let action = self.root.remove(start, end, start);
         match action {
             NodeAction::None => {}
             NodeAction::Remove => {
@@ -132,6 +166,30 @@ impl Rope {
             }
         }
     }
+
+    pub fn src_remove(&mut self, start: usize, end: usize) {
+        // TODO refactor with remove
+        assert!(end >= start);
+        if start == end {
+            return;
+        }
+
+        let action = self.root.src_remove(start, end, start);
+        match action {
+            NodeAction::None => {}
+            NodeAction::Remove => {
+                self.root = Node::empty_inner();
+                self.len = 0;
+            }
+            NodeAction::Adjust(adj) => self.len = (self.len as isize + adj) as usize,
+            NodeAction::Change(node, adj) => {
+                self.root = *node;
+                self.len = (self.len as isize + adj) as usize;
+            }
+        }
+    }
+
+    // TODO src_replace
 
     // This can go horribly wrong if you overwrite a grapheme of different size.
     // It is the callers responsibility to ensure that the grapheme at point start
@@ -150,6 +208,14 @@ impl Rope {
         self.root.replace(start, new_str);
     }
 
+    // Note, this is not necessarily cheap.
+    pub fn col_for_src_loc(&self, src_loc: usize) -> usize {
+        assert!(src_loc <= self.src_len);
+        match self.root.col_for_src_loc(src_loc) {
+            Search::Done(c) | Search::Continue(c) => c
+        }
+    }
+
     pub fn slice(&self, Range { start, end }: Range<usize>) -> RopeSlice {
         debug_assert!(end > start && start <= self.len && end <= self.len);
         if start == end {
@@ -163,6 +229,17 @@ impl Rope {
 
     pub fn full_slice(&self) -> RopeSlice {
         self.slice(0..self.len)
+    }
+
+    pub fn src_slice(&self, Range { start, end }: Range<usize>) -> RopeSlice {
+        debug_assert!(end > start && start <= self.src_len && end <= self.src_len);
+        if start == end {
+            return RopeSlice::empty();
+        }
+
+        let mut result = RopeSlice::empty();
+        self.root.find_src_slice(start, end, &mut result);
+        result
     }
 
     pub fn chars(&self) -> RopeChars {
@@ -242,12 +319,14 @@ impl<'rope> RopeChars<'rope> {
 }
 
 impl ::std::str::FromStr for Rope {
-    fn from_str(text: &str) -> Option<Rope> {
+    type Err = ();
+    fn from_str(text: &str) -> Result<Rope, ()> {
         // TODO should split large texts into segments as we insert
 
         let mut result = Rope::new();
         result.insert_copy(0, text);
-        Some(result)
+        result.fix_src();
+        Ok(result)
     }
 }
 
@@ -325,7 +404,7 @@ impl fmt::Display for Node {
                     Ok(())
                 })
             }
-            Node::LeafNode(Lnode{ ref text, len }) => {
+            Node::LeafNode(Lnode{ ref text, len, .. }) => {
                 unsafe {
                     write!(fmt,
                            "{}",
@@ -339,7 +418,7 @@ impl fmt::Display for Node {
 impl fmt::Debug for Node {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> Result<(), fmt::Error> {
         match *self {
-            Node::InnerNode(Inode { ref left, ref right, weight }) => {
+            Node::InnerNode(Inode { ref left, ref right, weight, .. }) => {
                 try!(write!(fmt, "("));
                 if let Some(ref left) = *left {
                     try!(write!(fmt, "left: {:?}", &**left));
@@ -354,10 +433,10 @@ impl fmt::Debug for Node {
                 }
                 write!(fmt, "; {})", weight)
             }
-            Node::LeafNode(Lnode{ ref text, len }) => {
+            Node::LeafNode(Lnode{ ref text, len, .. }) => {
                 unsafe {
                     write!(fmt,
-                           "\"{}\"; {}",
+                           "(\"{}\"; {})",
                            ::std::str::from_utf8(::std::slice::from_raw_buf(text, len)).unwrap(),
                            len)
                 }
@@ -375,6 +454,7 @@ enum Node {
 #[derive(Clone, Eq, PartialEq)]
 struct Inode {
     weight: usize,
+    src_weight: usize,
     left: Option<Box<Node>>,
     right: Option<Box<Node>>,
 }
@@ -383,6 +463,8 @@ struct Inode {
 struct Lnode {
     text: *const u8,
     len: usize,
+    // text + src_offset = src text (src_offset should always be <= 0)
+    src_offset: isize,
 }
 
 impl Node {
@@ -390,25 +472,29 @@ impl Node {
         Node::InnerNode(Inode {
             left: None,
             right: None,
-            weight: 0
+            weight: 0,
+            src_weight: 0,
         })
     }
 
     fn new_inner(left: Option<Box<Node>>,
                  right: Option<Box<Node>>,
-                 weight: usize)
+                 weight: usize,
+                 src_weight: usize)
     -> Node {
         Node::InnerNode(Inode {
             left: left,
             right: right,
-            weight: weight
+            weight: weight,
+            src_weight: src_weight,
         })
     }
 
-    fn new_leaf(text: *const u8, len: usize) -> Node {
+    fn new_leaf(text: *const u8, len: usize, src_offset: isize) -> Node {
         Node::LeafNode(Lnode {
             text: text,
-            len: len
+            len: len,
+            src_offset: src_offset,
         })
     }
 
@@ -424,23 +510,77 @@ impl Node {
         }
     }
 
-    // precond: start < end
-    fn remove(&mut self, start: usize, end: usize, offset: usize) -> NodeAction {
-        if end < offset {
-            // The span to remove is to the left of this node.
-            return NodeAction::None;
-        }
-
+    fn fix_src(&mut self) {
         match *self {
-            Node::InnerNode(ref mut i) => i.remove(start, end, offset),
-            Node::LeafNode(ref mut l) => l.remove(start, end, offset),
+            Node::InnerNode(ref mut i) => i.fix_src(),
+            Node::LeafNode(ref mut l) => {
+                l.src_offset = 0;
+            },
         }
     }
 
-    fn insert(&mut self, node: Box<Node>, start: usize) -> NodeAction {
+    // All these methods are just doing dynamic dispatch, TODO use a macro
+
+    // precond: start < end
+    fn remove(&mut self, start: usize, end: usize, src_start: usize) -> NodeAction {
         match *self {
-            Node::InnerNode(ref mut i) => i.insert(node, start),
-            Node::LeafNode(ref mut l) => l.insert(node, start),
+            Node::InnerNode(ref mut i) => i.remove(start, end, src_start),
+            Node::LeafNode(ref mut l) => l.remove(start, end, src_start),
+        }
+    }
+
+    fn src_remove(&mut self, start: usize, end: usize, src_start: usize) -> NodeAction {
+        match *self {
+            Node::InnerNode(ref mut i) => i.src_remove(start, end, src_start),
+            Node::LeafNode(ref mut l) => {
+                debug!("src_remove: pre-adjust {}-{}; {}", start, end, l.src_offset);
+                let mut start = start as isize + l.src_offset;
+                if start < 0 {
+                    start = 0;
+                }
+                let mut end = end as isize + l.src_offset;
+                if end < 0 {
+                    end = 0;
+                }
+                // TODO src_start?
+                let mut src_start = src_start as isize + l.src_offset;
+                if src_start < 0 {
+                    src_start = 0;
+                }
+                debug!("src_remove: post-adjust {}-{}, {}", start, end, src_start);
+                if end > start {
+                    l.remove(start as usize, end as usize, src_start as usize)
+                } else {
+                    NodeAction::None
+                }
+            }
+        }
+    }
+
+    fn insert(&mut self, node: Box<Node>, start: usize, src_start: usize) -> NodeAction {
+        match *self {
+            Node::InnerNode(ref mut i) => i.insert(node, start, src_start),
+            Node::LeafNode(ref mut l) => l.insert(node, start, src_start),
+        }
+    }
+
+    fn src_insert(&mut self, node: Box<Node>, start: usize, src_start: usize) -> NodeAction {
+        match *self {
+            Node::InnerNode(ref mut i) => i.src_insert(node, start, src_start),
+            Node::LeafNode(ref mut l) => {
+                debug!("src_insert: pre-adjust {}, {}; {}", start, src_start, l.src_offset);
+                let mut start = start as isize + l.src_offset;
+                if start < 0 {
+                    start = 0;
+                }
+                // TODO src_start?
+                let mut src_start = src_start as isize + l.src_offset;
+                if src_start < 0 {
+                    src_start = 0;
+                }
+                debug!("src_insert: post-adjust {}, {}", start, src_start);
+                l.insert(node, start as usize, src_start as usize)
+            }
         }
     }
 
@@ -451,15 +591,50 @@ impl Node {
         }
     }
 
+    fn find_src_slice<'a>(&'a self, start: usize, end: usize, slice: &mut RopeSlice<'a>) {
+        match *self {
+            Node::InnerNode(ref i) => i.find_src_slice(start, end, slice),
+            Node::LeafNode(ref l) => {
+                debug!("find_src_slice: pre-adjust {}-{}; {}", start, end, l.src_offset);
+                let mut start = start as isize + l.src_offset;
+                if start < 0 {
+                    start = 0;
+                }
+                let mut end = end as isize + l.src_offset;
+                if end < 0 {
+                    end = 0;
+                }
+                debug!("find_src_slice: post-adjust {}-{}", start, end);
+                if end > start {
+                    l.find_slice(start as usize, end as usize, slice);
+                }
+            }
+        }
+    }
+
     fn replace(&mut self, start: usize, new_str: &str) {
         match *self {
             Node::InnerNode(ref mut i) => i.replace(start, new_str),
             Node::LeafNode(ref mut l) => l.replace(start, new_str),
         }        
     }
+
+    fn col_for_src_loc(&self, src_loc: usize) -> Search {
+        match *self {
+            Node::InnerNode(ref i) => i.col_for_src_loc(src_loc),
+            Node::LeafNode(ref l) => l.col_for_src_loc(src_loc),
+        }
+    }
+
+    fn find_last_char(&self, c: char) -> Option<usize> {
+        match *self {
+            Node::InnerNode(ref i) => i.find_last_char(c),
+            Node::LeafNode(ref l) => l.find_last_char(c),
+        }
+    }
 }
 
-#[derive(Show, Clone, Eq, PartialEq)]
+#[derive(Debug, Clone, Eq, PartialEq)]
 enum NodeAction {
     None,
     Remove,
@@ -468,27 +643,39 @@ enum NodeAction {
 }
 
 impl Inode {
-    // precond: start < end && end >= offset
-    fn remove(&mut self, start: usize, end: usize, offset: usize) -> NodeAction {
-        debug!("Inode::remove: {}, {}, {}, {}", start, end, offset, self.weight);
-        if start >= offset + self.weight {
-            // The removal cannot affect our left side.
-            match self.right {
-                Some(_) => {}
-                None => {}
-            }
-        }
+    fn remove(&mut self, start: usize, end: usize, src_start: usize) -> NodeAction {
+        debug!("Inode::remove: {}, {}, {}", start, end, self.weight);
 
-        let left_action = if let Some(ref mut left) = self.left {
-            left.remove(start, end, offset)
+        let left_action = if start <= self.weight {
+            if let Some(ref mut left) = self.left {
+                left.remove(start, end, src_start)
+            } else {
+                panic!();
+            }
         } else {
             NodeAction::None
         };
-        let right_action = if let Some(ref mut right) = self.right {
-            right.remove(start, end, offset + self.weight)
+
+        let right_action = if end > self.weight {
+            if let Some(ref mut right) = self.right {
+                let start = if start < self.weight {
+                    0
+                } else {
+                    start - self.weight
+                };
+                let src_start = if src_start < self.src_weight {
+                    0
+                } else {
+                    src_start - self.src_weight
+                };
+                right.remove(start, end - self.weight, src_start)
+            } else {
+                panic!();
+            }
         } else {
             NodeAction::None
         };
+
 
         if left_action == NodeAction::Remove && right_action == NodeAction::Remove ||
            left_action == NodeAction::Remove && self.right.is_none() ||
@@ -527,11 +714,84 @@ impl Inode {
         return NodeAction::Adjust(total_adj);
     }
 
-    fn insert(&mut self, node: Box<Node>, start: usize) -> NodeAction {
+    fn src_remove(&mut self, start: usize, end: usize, src_start: usize) -> NodeAction {
+        // TODO refactor with remove
+
+        debug!("Inode::src_remove: {}, {}, {}/{}", start, end, self.src_weight, self.weight);
+
+        let left_action = if start <= self.src_weight {
+            if let Some(ref mut left) = self.left {
+                left.src_remove(start, end, src_start)
+            } else {
+                panic!();
+            }
+        } else {
+            NodeAction::None
+        };
+
+        let right_action = if end > self.src_weight {
+            if let Some(ref mut right) = self.right {
+                let start = if start < self.src_weight {
+                    0
+                } else {
+                    start - self.src_weight
+                };
+                let src_start = if src_start < self.src_weight {
+                    0
+                } else {
+                    src_start - self.src_weight
+                };
+                right.src_remove(start, end - self.src_weight, src_start)
+            } else {
+                panic!();
+            }
+        } else {
+            NodeAction::None
+        };
+
+
+        if left_action == NodeAction::Remove && right_action == NodeAction::Remove ||
+           left_action == NodeAction::Remove && self.right.is_none() ||
+           right_action == NodeAction::Remove && self.left.is_none() {
+            return NodeAction::Remove;
+        }
+
+        if left_action == NodeAction::Remove {
+            return NodeAction::Change(self.right.clone().unwrap(),
+                                      -(self.weight as isize));
+        }
+        if right_action == NodeAction::Remove {
+            return NodeAction::Change(self.left.clone().unwrap(),
+                                      -(self.right.as_ref().map(|n| n.len()).unwrap() as isize));
+        }
+
         let mut total_adj = 0;
-        if start < self.weight {
+        if let NodeAction::Change(ref n, adj) = left_action {
+            self.left = Some(n.clone());
+            self.weight = (self.weight as isize + adj) as usize;
+            total_adj += adj;
+        }
+        if let NodeAction::Change(ref n, adj) = right_action {
+            self.right = Some(n.clone());
+            total_adj += adj;
+        }
+
+        if let NodeAction::Adjust(adj) = left_action {
+            self.weight = (self.weight as isize + adj) as usize;
+            total_adj += adj;
+        }
+        if let NodeAction::Adjust(adj) = right_action {
+            total_adj += adj;
+        }
+
+        return NodeAction::Adjust(total_adj);
+    }
+
+    fn insert(&mut self, node: Box<Node>, start: usize, src_start: usize) -> NodeAction {
+        let mut total_adj = 0;
+        if start <= self.weight {
             let action = if let Some(ref mut left) = self.left {
-                left.insert(node, start)
+                left.insert(node, start, src_start)
             } else {
                 assert!(self.weight == 0);
                 let len = node.len() as isize;
@@ -553,7 +813,53 @@ impl Inode {
         } else {
             let action = if let Some(ref mut right) = self.right {
                 assert!(start >= self.weight);
-                right.insert(node, start - self.weight)
+                assert!(src_start >= self.src_weight);
+                right.insert(node, start - self.weight, src_start - self.src_weight)
+            } else {
+                let len = node.len() as isize;
+                NodeAction::Change(node, len)
+            };
+
+            match action {
+                NodeAction::Change(n, adj) => {
+                    self.right = Some(n);
+                    total_adj += adj;
+                }
+                NodeAction::Adjust(adj) => total_adj += adj,
+                _ => panic!("Unexpected action"),
+            }
+        }
+
+        NodeAction::Adjust(total_adj)
+    }
+
+    fn src_insert(&mut self, node: Box<Node>, start: usize, src_start: usize) -> NodeAction {
+        let mut total_adj = 0;
+        if start <= self.src_weight {
+            let action = if let Some(ref mut left) = self.left {
+                left.src_insert(node, start, src_start)
+            } else {
+                let len = node.len() as isize;
+                NodeAction::Change(node, len)
+            };
+
+            match action {
+                NodeAction::Change(n, adj) => {
+                    self.left = Some(n);
+                    self.weight += adj as usize;
+                    total_adj += adj;
+                }
+                NodeAction::Adjust(adj) => {
+                    self.weight += adj as usize;
+                    total_adj += adj;
+                }
+                _ => panic!("Unexpected action"),
+            }
+        } else {
+            let action = if let Some(ref mut right) = self.right {
+                assert!(start >= self.src_weight);
+                assert!(src_start >= self.src_weight);
+                right.src_insert(node, start - self.src_weight, src_start - self.src_weight)
             } else {
                 let len = node.len() as isize;
                 NodeAction::Change(node, len)
@@ -587,6 +893,21 @@ impl Inode {
         }
     }
 
+    fn find_src_slice<'a>(&'a self, start: usize, end: usize, slice: &mut RopeSlice<'a>) {
+        debug!("Inode::find_src_slice: {}, {}, {}", start, end, self.src_weight);
+        if start < self.src_weight && self.left.is_some() {
+            self.left.as_ref().unwrap().find_src_slice(start, end, slice);
+        }
+        if end > self.src_weight && self.right.is_some() {
+            let start = if start < self.src_weight {
+                0
+            } else {
+                start - self.src_weight
+            };
+            self.right.as_ref().unwrap().find_src_slice(start, end - self.src_weight, slice)
+        }
+    }
+
     fn replace(&mut self, start: usize, new_str: &str) {
         debug!("Inode::replace: {}, {}, {}", start, new_str, self.weight);
         let end = start + new_str.len();
@@ -610,52 +931,124 @@ impl Inode {
             }
         }
     }
+
+    fn fix_src(&mut self) {
+        self.src_weight = self.weight;
+        if let Some(ref mut left) = self.left {
+            left.fix_src();
+        }
+        if let Some(ref mut right) = self.right {
+            right.fix_src();
+        }
+    }
+
+    fn col_for_src_loc(&self, src_loc: usize) -> Search {
+        debug!("Inode::col_for_src_loc: {}, {}", src_loc, self.src_weight);
+        let result = if src_loc < self.src_weight {
+            if self.left.is_some() {
+                Some(self.left.as_ref().unwrap().col_for_src_loc(src_loc))
+            } else {
+                None
+            }
+        } else {
+            None
+        };
+        if result.is_none() {
+            if self.right.is_some() {
+                match self.right.as_ref().unwrap().col_for_src_loc(src_loc - self.src_weight) {
+                    Search::Continue(c) if self.left.is_some() => {
+                        // TODO broken - need number of chars, not bytes
+                        match self.left.as_ref().unwrap().find_last_char('\n') {
+                            Some(l) => {
+                                Search::Done((self.weight - l - 1) + c)
+                            }
+                            None => {
+                                Search::Continue(c + self.weight)
+                            }
+                        }
+                    }
+                    result => result,
+                }
+            } else {
+                panic!("Can't look up source location");
+            }
+        } else {
+            // TODO don't do it this way
+            result.unwrap()
+        }
+    }
+
+    fn find_last_char(&self, c: char) -> Option<usize> {
+        // TODO use map or something
+        match self.right {
+            Some(ref right) => match right.find_last_char(c) {
+                Some(x) => return Some(x),
+                None => {},
+            },
+            None => {}
+        }
+        match self.left {
+            Some(ref left) => match left.find_last_char(c) {
+                Some(x) => return Some(x),
+                None => {},
+            },
+            None => {}
+        }
+        None
+    }
 }
 
 impl Lnode {
-    // precond: start < end && end >= offset
-    fn remove(&mut self, start: usize, end: usize, offset: usize) -> NodeAction {
-        debug!("Lnode::remove: {}, {}, {}, {}", start, end, offset, self.len);
-        if start > offset + self.len {
-            // The span to remove is to the right of this node.
-            return NodeAction::None;
-        }
+    fn remove(&mut self, start: usize, end: usize, src_start: usize) -> NodeAction {
+        debug!("Lnode::remove: {}, {}, {}", start, end, self.len);
+        assert!(start <= self.len);
 
-        if start <= offset && end >= offset + self.len {
+        if start == 0 && end >= self.len {
             // The removal span includes us, remove ourselves.
             return NodeAction::Remove;
         }
 
         let old_len = self.len;
-        if start <= offset {
+        if start == 0 {
             // Truncate the left of the node.
-            self.text = (self.text as usize + (end - offset)) as *const u8;
-            self.len = old_len - (end - offset);
-            return NodeAction::Adjust(self.len as isize - old_len as isize);
+            self.text = (self.text as usize + end) as *const u8;
+            self.len = old_len - end;
+            let delta = self.len as isize - old_len as isize;
+            self.src_offset += delta;
+            return NodeAction::Adjust(delta);
         }
 
-        if end >= offset + self.len {
+        if end >= self.len {
             // Truncate the right of the node.
-            self.len = start - offset;
+            self.len = start;
             return NodeAction::Adjust(self.len as isize - old_len as isize);
         }
 
+        let delta = -((end - start) as isize);
         // Split the node (span to remove is in the middle of the node).
         let new_node = Node::new_inner(
-            Some(box Node::new_leaf(self.text, start - offset)),
-            Some(box Node::new_leaf((self.text as usize + (end - offset)) as *const u8,
-                                    old_len - (end - offset))),
-            start - offset);
-        return NodeAction::Change(box new_node, -((end - start) as isize));
+            Some(box Node::new_leaf(self.text, start, self.src_offset)),
+            Some(box Node::new_leaf((self.text as usize + end) as *const u8,
+                                    old_len - end,
+                                    self.src_offset + delta)),
+            start,
+            src_start);
+        return NodeAction::Change(box new_node, delta);
     }
 
-    fn insert(&mut self, node: Box<Node>, start: usize) -> NodeAction {
+    fn insert(&mut self, mut node: Box<Node>, start: usize, src_start: usize) -> NodeAction {
+        match node {
+            box Node::LeafNode(ref mut node) => node.src_offset = self.src_offset,
+            _ => panic!()
+        }
+
         let len = node.len();
         if start == 0 {
             // Insert at the start of the node
             let new_node = box Node::new_inner(Some(node),
                                                Some(box Node::LeafNode(self.clone())),
-                                               len);
+                                               len,
+                                               0);
             return NodeAction::Change(new_node, len as isize)
         }
 
@@ -663,33 +1056,33 @@ impl Lnode {
             // Insert at the end of the node
             let new_node = box Node::new_inner(Some(box Node::LeafNode(self.clone())),
                                                Some(node),
+                                               self.len,
                                                self.len);
             return NodeAction::Change(new_node, len as isize)
         }
 
         // Insert into the middle of the node
-        let left = Some(box Node::new_leaf(self.text, start));
-        let new_left = box Node::new_inner(left, Some(node), start);
+        let left = Some(box Node::new_leaf(self.text, start, self.src_offset));
+        let new_left = box Node::new_inner(left, Some(node), start, src_start);
         let right = Some(box Node::new_leaf((self.text as usize + (start)) as *const u8,
-                                            self.len - (start)));
-        let new_node = box Node::new_inner(Some(new_left), right, start + len);
+                                            self.len - start,
+                                            self.src_offset));
+        let new_node = box Node::new_inner(Some(new_left), right, start + len, src_start);
 
         return NodeAction::Change(new_node, len as isize)        
     }
 
     fn find_slice<'a>(&'a self, start: usize, end: usize, slice: &mut RopeSlice<'a>) {
-        debug!("Lnode::find_slice: {}, {}, {}", start, end, self.len);
+        debug!("Lnode::find_slice: {}, {}, {}, {}", start, end, self.len, self.src_offset);
         debug_assert!(start < self.len, "Shouldn't have called this fn, we're out of bounds");
 
         slice.nodes.push(self);
-        let mut len = end;
+        let mut len = ::std::cmp::min(end, self.len);
         if start > 0 {
             slice.start = start;
             len -= start;
         }
-        if end <= self.len {
-            slice.len = len;
-        }
+        slice.len = len;
     }
 
     fn replace(&mut self, start: usize, new_str: &str) {
@@ -700,4 +1093,62 @@ impl Lnode {
             ::std::intrinsics::copy_nonoverlapping_memory(addr, &new_str.as_bytes()[0], new_str.len());
         }
     }
+
+    fn col_for_src_loc(&self, src_loc: usize) -> Search {
+        debug!("Lnode::col_for_src_loc {}; {}; {}", src_loc, self.len, self.src_offset);
+        let loc = if (src_loc as isize) > (self.len as isize - self.src_offset) {
+            // The source location we are looking up has been removed
+            self.len as isize
+        } else {
+            (src_loc as isize + self.src_offset) 
+        };
+
+        // FIXME if '/n' as u8 is part of a multi-byte grapheme, then this will
+        // cause false positives.
+        let mut i = loc - 1;
+        while i >= 0 {
+            unsafe {
+                let c = *((self.text as usize + i as usize) as *const u8);
+                if c as char == '\n' {
+                    debug!("Lnode::col_for_src_loc, return Done({})", loc - i - 1);
+                    return Search::Done((loc - i - 1) as usize)
+                }
+            }
+            i -= 1;
+        }
+
+        let loc = if loc < 0 {
+            0
+        } else {
+            loc as usize
+        };
+        debug!("Lnode::col_for_src_loc, return Continue({})", loc);
+        Search::Continue(loc)
+    }
+
+    fn find_last_char(&self, needle: char) -> Option<usize> {
+        // FIXME due to multi-byte chars, this will give false positives
+        // I think we must search forwards from the start :-( Perhaps we could
+        // track unicode vs ascii or something (I don't think there is an efficient
+        // way to read unicode backwards, I might be wrong).
+        // std::str::GraphemeIndices can do this!
+        let mut loc = self.len as isize - 1;
+        while loc >= 0 {
+            unsafe {
+                let c = *((self.text as usize + loc as usize) as *const u8);
+                if c as char == needle {
+                    return Some(loc as usize)
+                }
+            }
+            loc -= 1;
+        }
+
+        return None
+    }
+}
+
+//TODO comment etc.
+enum Search {
+    Continue(usize),
+    Done(usize)
 }
