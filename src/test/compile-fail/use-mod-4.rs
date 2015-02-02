@@ -8,22 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use foo::bar::{
-    self,
-//~^ ERROR `self` import can only appear once in the list
-    Bar,
-    self
-//~^ NOTE another `self` import appears here
-};
-
-use {self};
-//~^ ERROR `self` import can only appear in an import list with a non-empty prefix
-
-mod foo {
-    pub mod bar {
-        pub struct Bar;
-        pub struct Baz;
-    }
-}
+use foo::self;
+//~^ ERROR expected identifier, found keyword `self`
 
 fn main() {}
+

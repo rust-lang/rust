@@ -115,7 +115,7 @@ pub fn from_u32(i: u32) -> Option<char> {
 ///
 /// let c = char::from_digit(4, 10);
 ///
-/// assert_eq!(c, '4')
+/// assert_eq!(c, Some('4'));
 /// ```
 #[inline]
 #[unstable(feature = "core", reason = "pending integer conventions")]
@@ -183,9 +183,9 @@ pub trait CharExt {
     /// ```
     /// let c = '1';
     ///
-    /// assert_eq!(1, c.to_digit(10));
+    /// assert_eq!(c.to_digit(10), Some(1));
     ///
-    /// assert_eq!(15, 'f'.to_digit(16));
+    /// assert_eq!('f'.to_digit(16), Some(15));
     /// ```
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
@@ -260,7 +260,7 @@ pub trait CharExt {
     /// ```
     /// let quote: String = '"'.escape_default().collect();
     ///
-    /// assert_eq!(quote, r"\"");
+    /// assert_eq!(quote, "\\\"");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> EscapeDefault;

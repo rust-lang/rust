@@ -11,7 +11,7 @@
 use common::Config;
 
 #[cfg(target_os = "windows")]
-use std::os::getenv;
+use std::env;
 
 /// Conversion table from triple OS name to Rust SYSNAME
 static OS_TABLE: &'static [(&'static str, &'static str)] = &[
@@ -40,11 +40,11 @@ pub fn make_new_path(path: &str) -> String {
 
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
-    match getenv(lib_path_env_var()) {
-      Some(curr) => {
+    match env::var_string(lib_path_env_var()) {
+      Ok(curr) => {
         format!("{}{}{}", path, path_div(), curr)
       }
-      None => path.to_string()
+      Err(..) => path.to_string()
     }
 }
 
