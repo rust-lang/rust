@@ -347,9 +347,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         let num_supplied_types = supplied_method_types.len();
         let num_method_types = pick.method_ty.generics.types.len(subst::FnSpace);
         let method_types = {
-            if num_supplied_types == 0u {
+            if num_supplied_types == 0 {
                 self.fcx.infcx().next_ty_vars(num_method_types)
-            } else if num_method_types == 0u {
+            } else if num_method_types == 0 {
                 span_err!(self.tcx().sess, self.span, E0035,
                     "does not take type parameters");
                 self.fcx.infcx().next_ty_vars(num_method_types)

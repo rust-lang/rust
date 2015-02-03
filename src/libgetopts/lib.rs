@@ -227,8 +227,8 @@ pub type Result = result::Result<Matches, Fail>;
 
 impl Name {
     fn from_str(nm: &str) -> Name {
-        if nm.len() == 1u {
-            Short(nm.char_at(0u))
+        if nm.len() == 1 {
+            Short(nm.char_at(0))
         } else {
             Long(nm.to_string())
         }
@@ -694,7 +694,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
         }
         i += 1;
     }
-    for i in 0u..n_opts {
+    for i in 0..n_opts {
         let n = vals[i].len();
         let occ = opts[i].occur;
         if occ == Req && n == 0 {

@@ -127,7 +127,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
                     span_note!(fcx.sess(), method_span,
                                "candidate #{} is defined in an impl{} for the type `{}`",
-                               idx + 1u,
+                               idx + 1,
                                insertion,
                                impl_ty.user_string(fcx.tcx()));
                 }
@@ -136,7 +136,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     let method_span = fcx.tcx().map.def_id_span(method.def_id, span);
                     span_note!(fcx.sess(), method_span,
                                "candidate #{} is defined in the trait `{}`",
-                               idx + 1u,
+                               idx + 1,
                                ty::item_path_str(fcx.tcx(), trait_did));
                 }
             }

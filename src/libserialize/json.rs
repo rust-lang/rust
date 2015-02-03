@@ -457,8 +457,8 @@ fn spaces(wr: &mut fmt::Writer, mut n: uint) -> EncodeResult {
 fn fmt_number_or_null(v: f64) -> string::String {
     match v.classify() {
         Fp::Nan | Fp::Infinite => string::String::from_str("null"),
-        _ if v.fract() != 0f64 => f64::to_str_digits(v, 6u),
-        _ => f64::to_str_digits(v, 6u) + ".0",
+        _ if v.fract() != 0f64 => f64::to_str_digits(v, 6),
+        _ => f64::to_str_digits(v, 6) + ".0",
     }
 }
 
@@ -1474,10 +1474,10 @@ impl<T: Iterator<Item=char>> Parser<T> {
         self.ch = self.rdr.next();
 
         if self.ch_is('\n') {
-            self.line += 1u;
-            self.col = 1u;
+            self.line += 1;
+            self.col = 1;
         } else {
-            self.col += 1u;
+            self.col += 1;
         }
     }
 
@@ -1614,7 +1614,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
     fn parse_exponent(&mut self, mut res: f64) -> Result<f64, ParserError> {
         self.bump();
 
-        let mut exp = 0u;
+        let mut exp = 0;
         let mut neg_exp = false;
 
         if self.ch_is('+') {
@@ -1652,7 +1652,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
     }
 
     fn decode_hex_escape(&mut self) -> Result<u16, ParserError> {
-        let mut i = 0u;
+        let mut i = 0;
         let mut n = 0u16;
         while i < 4 && !self.eof() {
             self.bump();
@@ -1667,7 +1667,7 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 _ => return self.error(InvalidEscape)
             };
 
-            i += 1u;
+            i += 1;
         }
 
         // Error out if we didn't parse 4 digits.
@@ -2638,7 +2638,7 @@ mod tests {
     fn test_decode_option_some() {
         let s = "{ \"opt\": 10 }";
         let obj: OptionData = super::decode(s).unwrap();
-        assert_eq!(obj, OptionData { opt: Some(10u) });
+        assert_eq!(obj, OptionData { opt: Some(10) });
     }
 
     #[test]
@@ -3092,10 +3092,10 @@ mod tests {
     #[test]
     fn test_decode_tuple() {
         let t: (uint, uint, uint) = super::decode("[1, 2, 3]").unwrap();
-        assert_eq!(t, (1u, 2, 3));
+        assert_eq!(t, (1, 2, 3));
 
         let t: (uint, string::String) = super::decode("[1, \"two\"]").unwrap();
-        assert_eq!(t, (1u, "two".to_string()));
+        assert_eq!(t, (1, "two".to_string()));
     }
 
     #[test]
@@ -3228,7 +3228,7 @@ mod tests {
     #[test]
     fn test_multiline_errors() {
         assert_eq!(from_str("{\n  \"foo\":\n \"bar\""),
-            Err(SyntaxError(EOFWhileParsingObject, 3u, 8u)));
+            Err(SyntaxError(EOFWhileParsingObject, 3, 8)));
     }
 
     #[derive(RustcDecodable)]
@@ -3512,7 +3512,7 @@ mod tests {
         }
 
         // Test up to 4 spaces of indents (more?)
-        for i in 0..4u {
+        for i in 0..4 {
             let mut writer = Vec::new();
             write!(&mut writer, "{}",
                    super::as_pretty_json(&json).indent(i)).unwrap();
@@ -3924,22 +3924,22 @@ mod tests {
         assert_eq!(false.to_json(), Boolean(false));
         assert_eq!("abc".to_json(), String("abc".to_string()));
         assert_eq!("abc".to_string().to_json(), String("abc".to_string()));
-        assert_eq!((1u, 2u).to_json(), array2);
-        assert_eq!((1u, 2u, 3u).to_json(), array3);
-        assert_eq!([1u, 2].to_json(), array2);
-        assert_eq!((&[1u, 2, 3]).to_json(), array3);
-        assert_eq!((vec![1u, 2]).to_json(), array2);
-        assert_eq!(vec!(1u, 2, 3).to_json(), array3);
+        assert_eq!((1us, 2us).to_json(), array2);
+        assert_eq!((1us, 2us, 3us).to_json(), array3);
+        assert_eq!([1us, 2us].to_json(), array2);
+        assert_eq!((&[1us, 2us, 3us]).to_json(), array3);
+        assert_eq!((vec![1us, 2us]).to_json(), array2);
+        assert_eq!(vec!(1us, 2us, 3us).to_json(), array3);
         let mut tree_map = BTreeMap::new();
-        tree_map.insert("a".to_string(), 1u);
+        tree_map.insert("a".to_string(), 1us);
         tree_map.insert("b".to_string(), 2);
         assert_eq!(tree_map.to_json(), object);
         let mut hash_map = HashMap::new();
-        hash_map.insert("a".to_string(), 1u);
+        hash_map.insert("a".to_string(), 1us);
         hash_map.insert("b".to_string(), 2);
         assert_eq!(hash_map.to_json(), object);
         assert_eq!(Some(15).to_json(), I64(15));
-        assert_eq!(Some(15u).to_json(), U64(15));
+        assert_eq!(Some(15us).to_json(), U64(15));
         assert_eq!(None::<int>.to_json(), Null);
     }
 

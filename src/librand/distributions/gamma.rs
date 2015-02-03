@@ -332,7 +332,7 @@ mod test {
     fn test_chi_squared_one() {
         let mut chi = ChiSquared::new(1.0);
         let mut rng = ::test::rng();
-        for _ in 0u..1000 {
+        for _ in 0..1000 {
             chi.sample(&mut rng);
             chi.ind_sample(&mut rng);
         }
@@ -341,7 +341,7 @@ mod test {
     fn test_chi_squared_small() {
         let mut chi = ChiSquared::new(0.5);
         let mut rng = ::test::rng();
-        for _ in 0u..1000 {
+        for _ in 0..1000 {
             chi.sample(&mut rng);
             chi.ind_sample(&mut rng);
         }
@@ -350,7 +350,7 @@ mod test {
     fn test_chi_squared_large() {
         let mut chi = ChiSquared::new(30.0);
         let mut rng = ::test::rng();
-        for _ in 0u..1000 {
+        for _ in 0..1000 {
             chi.sample(&mut rng);
             chi.ind_sample(&mut rng);
         }
@@ -365,7 +365,7 @@ mod test {
     fn test_f() {
         let mut f = FisherF::new(2.0, 32.0);
         let mut rng = ::test::rng();
-        for _ in 0u..1000 {
+        for _ in 0..1000 {
             f.sample(&mut rng);
             f.ind_sample(&mut rng);
         }
@@ -375,7 +375,7 @@ mod test {
     fn test_t() {
         let mut t = StudentT::new(11.0);
         let mut rng = ::test::rng();
-        for _ in 0u..1000 {
+        for _ in 0..1000 {
             t.sample(&mut rng);
             t.ind_sample(&mut rng);
         }
