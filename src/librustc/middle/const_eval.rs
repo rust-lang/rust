@@ -610,7 +610,7 @@ pub fn lit_to_const(lit: &ast::Lit) -> const_val {
         ast::LitInt(n, ast::UnsignedIntLit(_)) => const_uint(n),
         ast::LitFloat(ref n, _) |
         ast::LitFloatUnsuffixed(ref n) => {
-            const_float(n.get().parse::<f64>().unwrap() as f64)
+            const_float(n.parse::<f64>().unwrap() as f64)
         }
         ast::LitBool(b) => const_bool(b)
     }

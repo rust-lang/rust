@@ -333,7 +333,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
     fn variable_name(&self, var: Variable) -> String {
         match self.var_kinds[var.get()] {
             Local(LocalInfo { ident: nm, .. }) | Arg(_, nm) => {
-                token::get_ident(nm).get().to_string()
+                token::get_ident(nm).to_string()
             },
             ImplicitRet => "<implicit-ret>".to_string(),
             CleanExit => "<clean-exit>".to_string()

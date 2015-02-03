@@ -1543,7 +1543,7 @@ impl<'tcx> Repr<'tcx> for InteriorKind {
     fn repr(&self, _tcx: &ty::ctxt) -> String {
         match *self {
             InteriorField(NamedField(fld)) => {
-                token::get_name(fld).get().to_string()
+                token::get_name(fld).to_string()
             }
             InteriorField(PositionalField(i)) => format!("#{}", i),
             InteriorElement(_) => "[]".to_string(),
