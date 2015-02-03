@@ -139,9 +139,7 @@ ifeq ($$(CFG_WINDOWSY_$(1)), 1)
   JEMALLOC_ARGS_$(1) := --enable-lazy-lock
 else ifeq ($(OSTYPE_$(1)), apple-ios)
   JEMALLOC_ARGS_$(1) := --disable-tls
-else ifeq ($(OSTYPE_$(1)), linux-androideabi)
-  JEMALLOC_ARGS_$(1) := --disable-tls
-else ifeq ($(OSTYPE_$(1)), linux-android)
+else ifeq ($(findstring android, $(OSTYPE_$(1))), android)
   JEMALLOC_ARGS_$(1) := --disable-tls
 endif
 

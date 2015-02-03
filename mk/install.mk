@@ -58,14 +58,13 @@ tmp/empty_dir:
 # Android runtime setup
 # FIXME: This probably belongs somewhere else
 
-# target platform specific variables
-# for arm-linux-androidabi
+# target platform specific variables for android
 define DEF_ADB_DEVICE_STATUS
 CFG_ADB_DEVICE_STATUS=$(1)
 endef
 
 $(foreach target,$(CFG_TARGET), \
-  $(if $(or $(findstring $(target),"arm-linux-androideabi"),$(findstring $(target),"aarch64-linux-android")), \
+  $(if $(findstring android, $(target)), \
     $(if $(findstring adb,$(CFG_ADB)), \
       $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[_A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info install: install-runtime-target for $(target) enabled \
