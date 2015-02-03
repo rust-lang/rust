@@ -277,8 +277,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     /// the argument types can only be helpful to the user, because
     /// once they patch up the kind of closure that is expected, the
     /// argment types won't really change.
-    fn consider_unification_despite_ambiguity(&mut self, obligation: &TraitObligation<'tcx>)
-    {
+    fn consider_unification_despite_ambiguity(&mut self, obligation: &TraitObligation<'tcx>) {
         // Is this a `C : FnFoo(...)` trait reference for some trait binding `FnFoo`?
         match self.tcx().lang_items.fn_trait_kind(obligation.predicate.0.def_id()) {
             Some(_) => { }
