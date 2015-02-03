@@ -18,7 +18,7 @@ use result::Result;
 use option::Option;
 use mem;
 
-#[derive(Clone)]
+#[derive(Clone, Hash)]
 pub struct Buf {
     pub inner: Wtf8Buf
 }

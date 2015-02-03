@@ -25,7 +25,7 @@ use old_io::{IoResult, IoError};
 use old_io;
 use libc;
 use os;
-use path::BytesContainer;
+use old_path::BytesContainer;
 use sync::mpsc::{channel, Receiver};
 use sys::fs::FileDesc;
 use sys::process::Process as ProcessImp;

@@ -20,7 +20,7 @@ use old_io::{self, IoResult, IoError, EndOfFile};
 use libc::{self, pid_t, c_void, c_int};
 use mem;
 use os;
-use path::BytesContainer;
+use old_path::BytesContainer;
 use ptr;
 use sync::mpsc::{channel, Sender, Receiver};
 use sys::fs::FileDesc;

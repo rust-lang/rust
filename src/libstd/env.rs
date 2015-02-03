@@ -57,7 +57,7 @@ pub fn current_dir() -> IoResult<Path> {
 ///
 /// ```rust
 /// use std::env;
-/// use std::path::Path;
+/// use std::old_path::Path;
 ///
 /// let root = Path::new("/");
 /// assert!(env::set_current_dir(&root).is_ok());

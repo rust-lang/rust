@@ -23,7 +23,7 @@ use old_io::process::{ProcessExit, ExitStatus};
 use old_io::{IoResult, IoError};
 use old_io;
 use os;
-use path::BytesContainer;
+use old_path::BytesContainer;
 use ptr;
 use str;
 use sync::{StaticMutex, MUTEX_INIT};

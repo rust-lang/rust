@@ -48,7 +48,7 @@ use old_io::{IoResult, IoError};
 use ops::{Drop, FnOnce};
 use option::Option::{Some, None};
 use option::Option;
-use path::{Path, GenericPath, BytesContainer};
+use old_path::{Path, GenericPath, BytesContainer};
 use ptr::PtrExt;
 use ptr;
 use result::Result::{Err, Ok};
@@ -267,7 +267,7 @@ pub fn split_paths<T: BytesContainer>(unparsed: T) -> Vec<Path> {
 ///
 /// ```rust
 /// use std::os;
-/// use std::path::Path;
+/// use std::old_path::Path;
 ///
 /// let key = "PATH";
 /// let mut paths = os::getenv_as_bytes(key).map_or(Vec::new(), os::split_paths);
@@ -470,7 +470,7 @@ pub fn tmpdir() -> Path {
 /// # Example
 /// ```rust
 /// use std::os;
-/// use std::path::Path;
+/// use std::old_path::Path;
 ///
 /// // Assume we're in a path like /home/someuser
 /// let rel_path = Path::new("..");
@@ -500,7 +500,7 @@ pub fn make_absolute(p: &Path) -> IoResult<Path> {
 /// # Example
 /// ```rust
 /// use std::os;
-/// use std::path::Path;
+/// use std::old_path::Path;
 ///
 /// let root = Path::new("/");
 /// assert!(os::change_dir(&root).is_ok());
