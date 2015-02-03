@@ -44,7 +44,7 @@ pub struct Index {
 // A private tree-walker for producing an Index.
 struct Annotator<'a> {
     sess: &'a Session,
-    index: Index,
+    index: &'a mut Index,
     parent: Option<Stability>
 }
 
@@ -146,7 +146,20 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
 
 impl Index {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(sess: &Session, krate: &Crate) -> Index {
+    pub fn build(&mut self, sess: &Session, krate: &Crate) {
+        if !self.staged_api {
+            return;
+        }
+        let mut annotator = Annotator {
+            sess: sess,
+            index: self,
+            parent: None
+        };
+        annotator.annotate(ast::CRATE_NODE_ID, true, &krate.attrs, krate.span,
+                           |v| visit::walk_crate(v, krate));
+    }
+
+    pub fn new(krate: &Crate) -> Index {
         let mut staged_api = false;
         for attr in &krate.attrs {
             if attr.name().get() == "staged_api" {
@@ -159,22 +172,11 @@ impl Index {
                 }
             }
         }
-        let index = Index {
+        Index {
             staged_api: staged_api,
             local: NodeMap(),
             extern_cache: DefIdMap()
-        };
-        if !staged_api {
-            return index;
         }
-        let mut annotator = Annotator {
-            sess: sess,
-            index: index,
-            parent: None
-        };
-        annotator.annotate(ast::CRATE_NODE_ID, true, &krate.attrs, krate.span,
-                           |v| visit::walk_crate(v, krate));
-        annotator.index
     }
 }
 
