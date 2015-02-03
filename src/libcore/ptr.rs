@@ -89,6 +89,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use mem;
+use nonzero::NonZero;
 use clone::Clone;
 use intrinsics;
 use option::Option::{self, Some, None};
@@ -267,6 +268,11 @@ pub trait PtrExt: Sized {
                          to tie the return lifetime to a borrow of the raw pointer")]
     unsafe fn as_ref<'a>(&self) -> Option<&'a Self::Target>;
 
+    /// Returns `None` if the pointer is null, or else return the non-zero
+    /// pointer wrapped in `Some`.
+    #[unstable]
+    fn as_nonzero(self) -> Option<NonZero<Self>>;
+
     /// Calculates the offset from a pointer. `count` is in units of T; e.g. a
     /// `count` of 3 represents a pointer offset of `3 * sizeof::<T>()` bytes.
     ///
@@ -322,6 +328,16 @@ impl<T> PtrExt for *const T {
             Some(&**self)
         }
     }
+
+    #[inline]
+    #[unstable]
+    fn as_nonzero(self) -> Option<NonZero<*const T>> {
+        if self.is_null() {
+            None
+        } else {
+            Some(NonZero::new(self))
+        }
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -347,6 +363,16 @@ impl<T> PtrExt for *mut T {
             None
         } else {
             Some(&**self)
+        }
+    }
+
+    #[inline]
+    #[unstable]
+    fn as_nonzero(self) -> Option<NonZero<*mut T>> {
+        if self.is_null() {
+            None
+        } else {
+            Some(NonZero::new(self))
         }
     }
 }
