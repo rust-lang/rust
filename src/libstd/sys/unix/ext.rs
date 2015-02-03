@@ -31,11 +31,14 @@
 
 #![unstable(feature = "std_misc")]
 
-use vec::Vec;
-use sys::os_str::Buf;
-use sys_common::{AsInner, IntoInner, FromInner};
 use ffi::{OsStr, OsString};
+use fs::{Permissions, OpenOptions};
+use fs;
 use libc;
+use mem;
+use sys::os_str::Buf;
+use sys_common::{AsInner, AsInnerMut, IntoInner, FromInner};
+use vec::Vec;
 
 use old_io;
 
@@ -51,6 +54,12 @@ pub trait AsRawFd {
 impl AsRawFd for old_io::fs::File {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
+    }
+}
+
+impl AsRawFd for fs::File {
+    fn as_raw_fd(&self) -> Fd {
+        self.as_inner().fd().raw()
     }
 }
 
@@ -123,12 +132,42 @@ impl OsStringExt for OsString {
 
 // Unix-specific extensions to `OsStr`.
 pub trait OsStrExt {
+    fn from_byte_slice(slice: &[u8]) -> &OsStr;
     fn as_byte_slice(&self) -> &[u8];
 }
 
 impl OsStrExt for OsStr {
+    fn from_byte_slice(slice: &[u8]) -> &OsStr {
+        unsafe { mem::transmute(slice) }
+    }
     fn as_byte_slice(&self) -> &[u8] {
         &self.as_inner().inner
+    }
+}
+
+// Unix-specific extensions to `Permissions`
+pub trait PermissionsExt {
+    fn set_mode(&mut self, mode: i32);
+}
+
+impl PermissionsExt for Permissions {
+    fn set_mode(&mut self, mode: i32) {
+        *self = FromInner::from_inner(FromInner::from_inner(mode));
+    }
+}
+
+// Unix-specific extensions to `OpenOptions`
+pub trait OpenOptionsExt {
+    /// Set the mode bits that a new file will be created with.
+    ///
+    /// If a new file is created as part of a `File::open_opts` call then this
+    /// specified `mode` will be used as the permission bits for the new file.
+    fn mode(&mut self, mode: i32) -> &mut Self;
+}
+
+impl OpenOptionsExt for OpenOptions {
+    fn mode(&mut self, mode: i32) -> &mut OpenOptions {
+        self.as_inner_mut().mode(mode); self
     }
 }
 
@@ -136,5 +175,6 @@ impl OsStrExt for OsStr {
 ///
 /// Includes all extension traits, and some important type definitions.
 pub mod prelude {
-    pub use super::{Fd, AsRawFd};
+    #[doc(no_inline)]
+    pub use super::{Fd, AsRawFd, OsStrExt, OsStringExt, PermissionsExt};
 }

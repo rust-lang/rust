@@ -23,6 +23,7 @@ use libc;
 use num::{Int, SignedInt};
 use num;
 use old_io::{self, IoResult, IoError};
+use io;
 use str;
 use sys_common::mkerr_libc;
 
@@ -39,9 +40,11 @@ macro_rules! helper_init { (static $name:ident: Helper<$m:ty>) => (
 
 pub mod backtrace;
 pub mod c;
-pub mod ext;
 pub mod condvar;
-pub mod fs;
+pub mod ext;
+pub mod fd;
+pub mod fs;  // support for std::old_io
+pub mod fs2; // support for std::fs
 pub mod helper_signal;
 pub mod mutex;
 pub mod os;
@@ -173,6 +176,26 @@ pub fn retry<T, F> (mut f: F) -> T where
         let n = f();
         if n == -one && os::errno() == libc::EINTR as i32 { }
         else { return n }
+    }
+}
+
+pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
+    let one: T = Int::one();
+    if t == -one {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(t)
+    }
+}
+
+pub fn cvt_r<T, F>(mut f: F) -> io::Result<T>
+    where T: SignedInt, F: FnMut() -> T
+{
+    loop {
+        match cvt(f()) {
+            Err(ref e) if e.kind() == ErrorKind::Interrupted => {}
+            other => return other,
+        }
     }
 }
 
