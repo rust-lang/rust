@@ -118,7 +118,7 @@ impl<'cx, 'tcx, 'v> Visitor<'v> for WritebackCx<'cx, 'tcx> {
                                     MethodCall::expr(e.id));
 
         match e.node {
-            ast::ExprClosure(_, _, ref decl, _) => {
+            ast::ExprClosure(_, ref decl, _) => {
                 for input in &decl.inputs {
                     let _ = self.visit_node_id(ResolvingExpr(e.span),
                                                input.id);
