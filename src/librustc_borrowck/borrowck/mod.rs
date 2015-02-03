@@ -907,7 +907,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
         match loan_path.kind {
             LpUpvar(ty::UpvarId{ var_id: id, closure_expr_id: _ }) |
             LpVar(id) => {
-                out.push_str(ty::local_var_name_str(self.tcx, id).get());
+                out.push_str(&ty::local_var_name_str(self.tcx, id)[]);
             }
 
             LpDowncast(ref lp_base, variant_def_id) => {
@@ -924,7 +924,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 match fname {
                     mc::NamedField(fname) => {
                         out.push('.');
-                        out.push_str(token::get_name(fname).get());
+                        out.push_str(&token::get_name(fname)[]);
                     }
                     mc::PositionalField(idx) => {
                         out.push('.');
