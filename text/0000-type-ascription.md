@@ -9,7 +9,8 @@ Add type ascription to expressions and patterns.
 Type ascription on expression has already been implemented. Type ascription on
 patterns can probably wait until post-1.0.
 
-See also discussion on #354 and [issue 10502](https://github.com/rust-lang/rust/issues/10502).
+See also discussion on [#354](https://github.com/rust-lang/rfcs/issues/354) and
+[rust issue 10502](https://github.com/rust-lang/rust/issues/10502).
 
 
 # Motivation
