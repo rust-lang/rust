@@ -1262,7 +1262,7 @@ good shape, modulo a few tweaks:
   command to detached mode).
 
 The `stdin`, `stdout`, `stderr` methods will undergo a more
-significant change. By default, the corresponding options we be
+significant change. By default, the corresponding options will be
 considered "unset", the interpretation of which depends on how the
 process is launched:
 
@@ -1284,20 +1284,18 @@ more general notion of non-child `Process` later on (every
 `Child` will be able to give you a `Process`).
 
 * `stdin`, `stdout` and `stderr` will be retained as public fields,
-  but their types will change to `Box<Reader+Send>` or
-  `Box<Writer+Send>` as appropriate. This effectively hides the internal
+  but their types will change to newtyped readers and writers to hide the internal
   pipe infrastructure.
 * The `kill` method is dropped, and `id` and `signal` will move to `os::platform` extension traits.
 * `signal_exit`, `signal_kill`, `wait`, and `forget` will all stay as they are.
-* `wait_with_output` will take `&self`.
 * `set_timeout` will be changed to use the `with_deadline` infrastructure.
 
 There are also a few other related changes to the module:
 
-* Rename `ProcessOuptput` to `Output`
+* Rename `ProcessOutput` to `Output`
 * Rename `ProcessExit` to `ExitStatus`, and hide its
   representation. Remove `matches_exit_status`, and add a `status`
-  method yielding an `Option<i32>
+  method yielding an `Option<i32>`
 * Remove `MustDieSignal`, `PleaseExitSignal`.
 * Remove `EnvMap` (which should never have been exposed).
 
