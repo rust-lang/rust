@@ -162,7 +162,7 @@ impl fmt::Debug for CString {
 /// ```
 pub unsafe fn c_str_to_bytes<'a>(raw: &'a *const libc::c_char) -> &'a [u8] {
     let len = libc::strlen(*raw);
-    slice::from_raw_buf(&*(raw as *const _ as *const *const u8), len as uint)
+    slice::from_raw_parts(*(raw as *const _ as *const *const u8), len as usize)
 }
 
 /// Interpret a C string as a byte slice with the nul terminator.
@@ -171,7 +171,7 @@ pub unsafe fn c_str_to_bytes<'a>(raw: &'a *const libc::c_char) -> &'a [u8] {
 /// will include the nul terminator of the string.
 pub unsafe fn c_str_to_bytes_with_nul<'a>(raw: &'a *const libc::c_char) -> &'a [u8] {
     let len = libc::strlen(*raw) + 1;
-    slice::from_raw_buf(&*(raw as *const _ as *const *const u8), len as uint)
+    slice::from_raw_parts(*(raw as *const _ as *const *const u8), len as usize)
 }
 
 #[cfg(test)]

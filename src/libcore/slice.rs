@@ -1359,6 +1359,52 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 
 /// Forms a slice from a pointer and a length.
 ///
+/// The `len` argument is the number of **elements**, not the number of bytes.
+///
+/// This function is unsafe as there is no guarantee that the given pointer is
+/// valid for `len` elements, nor whether the lifetime inferred is a suitable
+/// lifetime for the returned slice.
+///
+/// # Caveat
+///
+/// The lifetime for the returned slice is inferred from its usage. To
+/// prevent accidental misuse, it's suggested to tie the lifetime to whichever
+/// source lifetime is safe in the context, such as by providing a helper
+/// function taking the lifetime of a host value for the slice, or by explicit
+/// annotation.
+///
+/// # Example
+///
+/// ```rust
+/// use std::slice;
+///
+/// // manifest a slice out of thin air!
+/// let ptr = 0x1234 as *const uint;
+/// let amt = 10;
+/// unsafe {
+///     let slice = slice::from_raw_parts(ptr, amt);
+/// }
+/// ```
+#[inline]
+#[unstable(feature = "core")]
+pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: uint) -> &'a [T] {
+    transmute(RawSlice { data: p, len: len })
+}
+
+/// Performs the same functionality as `from_raw_parts`, except that a mutable
+/// slice is returned.
+///
+/// This function is unsafe for the same reasons as `from_raw_parts`, as well
+/// as not being able to provide a non-aliasing guarantee of the returned
+/// mutable slice.
+#[inline]
+#[unstable(feature = "core")]
+pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: uint) -> &'a mut [T] {
+    transmute(RawSlice { data: p, len: len })
+}
+
+/// Forms a slice from a pointer and a length.
+///
 /// The pointer given is actually a reference to the base of the slice. This
 /// reference is used to give a concrete lifetime to tie the returned slice to.
 /// Typically this should indicate that the slice is valid for as long as the
@@ -1383,8 +1429,9 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 /// }
 /// ```
 #[inline]
-#[unstable(feature = "core",
-           reason = "should be renamed to from_raw_parts")]
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
+             reason = "use from_raw_parts")]
 pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
     transmute(RawSlice { data: *p, len: len })
 }
@@ -1396,8 +1443,9 @@ pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
 /// not being able to provide a non-aliasing guarantee of the returned mutable
 /// slice.
 #[inline]
-#[unstable(feature = "core",
-           reason = "should be renamed to from_raw_parts_mut")]
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
+             reason = "use from_raw_parts_mut")]
 pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
     transmute(RawSlice { data: *p, len: len })
 }
