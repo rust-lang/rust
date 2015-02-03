@@ -14,9 +14,9 @@
 #![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
-struct A { a: Box<int> }
+struct A { a: Box<isize> }
 
-fn foo() -> Box<FnMut() -> int + 'static> {
+fn foo() -> Box<FnMut() -> isize + 'static> {
     let k = box 22;
     let _u = A {a: k.clone()};
     let result  = |&mut:| 22;
