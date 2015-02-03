@@ -194,7 +194,8 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // a different region or mutability, but we don't care here. It might
                 // also be just in case we need to unsize. But if there are no nested
                 // adjustments then it should be a no-op).
-                Some(ty::AutoPtr(_, _, None)) if adj.autoderefs == 1 => {
+                Some(ty::AutoPtr(_, _, None)) |
+                Some(ty::AutoUnsafe(_, None)) if adj.autoderefs == 1 => {
                     match datum.ty.sty {
                         // Don't skip a conversion from Box<T> to &T, etc.
                         ty::ty_rptr(..) => {
