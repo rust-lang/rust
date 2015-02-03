@@ -19,7 +19,6 @@ use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
 use rustc::middle::dataflow::DataFlowOperator;
 use rustc::middle::expr_use_visitor as euv;
-use rustc::middle::mem_categorization as mc;
 use rustc::middle::ty;
 use rustc::util::nodemap::{FnvHashMap, NodeSet};
 use rustc::util::ppaux::Repr;
@@ -193,9 +192,13 @@ fn loan_path_is_precise(loan_path: &LoanPath) -> bool {
         LpVar(_) | LpUpvar(_) => {
             true
         }
-        LpExtend(_, _, LpInterior(mc::InteriorElement(_))) => {
-            // Paths involving element accesses do not refer to a unique
+        LpExtend(_, _, LpInterior(InteriorKind::InteriorElement(..))) => {
+            // Paths involving element accesses a[i] do not refer to a unique
             // location, as there is no accurate tracking of the indices.
+            //
+            // (Paths involving element accesses via slice pattern bindings
+            // can in principle be tracked precisely, but that is future
+            // work. For now, continue claiming that they are imprecise.)
             false
         }
         LpDowncast(ref lp_base, _) |
