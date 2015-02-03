@@ -20,7 +20,7 @@
 #![staged_api]
 
 #[macro_use]
-extern crate lint_stability; //~ ERROR: use of unmarked library feature
+extern crate lint_stability;
 
 mod cross_crate {
     extern crate stability_cfg1;
@@ -61,10 +61,6 @@ mod cross_crate {
         foo.method_unstable_text(); //~ WARNING use of unstable library feature 'test_feature': text
         foo.trait_unstable_text(); //~ WARNING use of unstable library feature 'test_feature': text
 
-        unmarked(); //~ ERROR use of unmarked library feature
-        foo.method_unmarked(); //~ ERROR use of unmarked library feature
-        foo.trait_unmarked(); //~ ERROR use of unmarked library feature
-
         stable();
         foo.method_stable();
         foo.trait_stable();
@@ -77,28 +73,24 @@ mod cross_crate {
         let _ = DeprecatedUnstableStruct { i: 0 }; //~ ERROR use of deprecated item
         //~^ WARNING use of unstable library feature
         let _ = UnstableStruct { i: 0 }; //~ WARNING use of unstable library feature
-        let _ = UnmarkedStruct { i: 0 }; //~ ERROR use of unmarked library feature
         let _ = StableStruct { i: 0 };
 
         let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item
         let _ = DeprecatedUnstableUnitStruct; //~ ERROR use of deprecated item
         //~^ WARNING use of unstable library feature
         let _ = UnstableUnitStruct; //~ WARNING use of unstable library feature
-        let _ = UnmarkedUnitStruct; //~ ERROR use of unmarked library feature
         let _ = StableUnitStruct;
 
         let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item
         let _ = Enum::DeprecatedUnstableVariant; //~ ERROR use of deprecated item
         //~^ WARNING use of unstable library feature
         let _ = Enum::UnstableVariant; //~ WARNING use of unstable library feature
-        let _ = Enum::UnmarkedVariant; //~ ERROR use of unmarked library feature
         let _ = Enum::StableVariant;
 
         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
         let _ = DeprecatedUnstableTupleStruct (1); //~ ERROR use of deprecated item
         //~^ WARNING use of unstable library feature
         let _ = UnstableTupleStruct (1); //~ WARNING use of unstable library feature
-        let _ = UnmarkedTupleStruct (1); //~ ERROR use of unmarked library feature
         let _ = StableTupleStruct (1);
 
         // At the moment, the lint checker only checks stability in
@@ -123,7 +115,6 @@ mod cross_crate {
         //~^ WARNING use of unstable library feature
         foo.trait_unstable(); //~ WARNING use of unstable library feature
         foo.trait_unstable_text(); //~ WARNING use of unstable library feature 'test_feature': text
-        foo.trait_unmarked(); //~ ERROR use of unmarked library feature
         foo.trait_stable();
     }
 
@@ -136,7 +127,6 @@ mod cross_crate {
         //~^ WARNING use of unstable library feature
         foo.trait_unstable(); //~ WARNING use of unstable library feature
         foo.trait_unstable_text(); //~ WARNING use of unstable library feature 'test_feature': text
-        foo.trait_unmarked(); //~ ERROR use of unmarked library feature
         foo.trait_stable();
     }
 
@@ -183,8 +173,6 @@ mod this_crate {
     #[unstable(feature = "test_feature", reason = "text")]
     pub fn unstable_text() {}
 
-    pub fn unmarked() {}
-
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn stable() {}
     #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
@@ -206,8 +194,6 @@ mod this_crate {
         #[unstable(feature = "test_feature", reason = "text")]
         pub fn method_unstable_text(&self) {}
 
-        pub fn method_unmarked(&self) {}
-
         #[stable(feature = "rust1", since = "1.0.0")]
         pub fn method_stable(&self) {}
         #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
@@ -227,8 +213,6 @@ mod this_crate {
         #[unstable(feature = "test_feature", reason = "text")]
         fn trait_unstable_text(&self) {}
 
-        fn trait_unmarked(&self) {}
-
         #[stable(feature = "rust1", since = "1.0.0")]
         fn trait_stable(&self) {}
         #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
@@ -242,7 +226,6 @@ mod this_crate {
     pub struct DeprecatedStruct { i: isize }
     #[unstable(feature = "test_feature")]
     pub struct UnstableStruct { i: isize }
-    pub struct UnmarkedStruct { i: isize }
     #[stable(feature = "rust1", since = "1.0.0")]
     pub struct StableStruct { i: isize }
 
@@ -251,7 +234,6 @@ mod this_crate {
     pub struct DeprecatedUnitStruct;
     #[unstable(feature = "test_feature")]
     pub struct UnstableUnitStruct;
-    pub struct UnmarkedUnitStruct;
     #[stable(feature = "rust1", since = "1.0.0")]
     pub struct StableUnitStruct;
 
@@ -262,7 +244,6 @@ mod this_crate {
         #[unstable(feature = "test_feature")]
         UnstableVariant,
 
-        UnmarkedVariant,
         #[stable(feature = "rust1", since = "1.0.0")]
         StableVariant,
     }
@@ -272,7 +253,6 @@ mod this_crate {
     pub struct DeprecatedTupleStruct(isize);
     #[unstable(feature = "test_feature")]
     pub struct UnstableTupleStruct(isize);
-    pub struct UnmarkedTupleStruct(isize);
     #[stable(feature = "rust1", since = "1.0.0")]
     pub struct StableTupleStruct(isize);
 
@@ -299,10 +279,6 @@ mod this_crate {
         foo.method_unstable_text();
         foo.trait_unstable_text();
 
-        unmarked();
-        foo.method_unmarked();
-        foo.trait_unmarked();
-
         stable();
         foo.method_stable();
         foo.trait_stable();
@@ -313,22 +289,18 @@ mod this_crate {
 
         let _ = DeprecatedStruct { i: 0 }; //~ ERROR use of deprecated item
         let _ = UnstableStruct { i: 0 };
-        let _ = UnmarkedStruct { i: 0 };
         let _ = StableStruct { i: 0 };
 
         let _ = DeprecatedUnitStruct; //~ ERROR use of deprecated item
         let _ = UnstableUnitStruct;
-        let _ = UnmarkedUnitStruct;
         let _ = StableUnitStruct;
 
         let _ = Enum::DeprecatedVariant; //~ ERROR use of deprecated item
         let _ = Enum::UnstableVariant;
-        let _ = Enum::UnmarkedVariant;
         let _ = Enum::StableVariant;
 
         let _ = DeprecatedTupleStruct (1); //~ ERROR use of deprecated item
         let _ = UnstableTupleStruct (1);
-        let _ = UnmarkedTupleStruct (1);
         let _ = StableTupleStruct (1);
     }
 
@@ -337,7 +309,6 @@ mod this_crate {
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
         foo.trait_unstable();
         foo.trait_unstable_text();
-        foo.trait_unmarked();
         foo.trait_stable();
     }
 
@@ -346,7 +317,6 @@ mod this_crate {
         foo.trait_deprecated_text(); //~ ERROR use of deprecated item: text
         foo.trait_unstable();
         foo.trait_unstable_text();
-        foo.trait_unmarked();
         foo.trait_stable();
     }
 
