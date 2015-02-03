@@ -101,16 +101,11 @@ pub trait Iterator {
     fn size_hint(&self) -> (usize, Option<usize>) { (0, None) }
 }
 
-impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        (**self).next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (**self).size_hint()
-    }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
+    type Item = I::Item;
+    fn next(&mut self) -> Option<I::Item> { (**self).next() }
+    fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
 }
 
 /// Conversion from an `Iterator`
@@ -548,9 +543,7 @@ pub trait IteratorExt: Iterator + Sized {
     /// assert!(it.next() == Some(5));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn by_ref<'r>(&'r mut self) -> ByRef<'r, Self> {
-        ByRef{iter: self}
-    }
+    fn by_ref(&mut self) -> &mut Self { self }
 
     /// Loops through the entire iterator, collecting all of the elements into
     /// a container implementing `FromIterator`.
@@ -1017,13 +1010,20 @@ impl<I> IteratorExt for I where I: Iterator {}
 
 /// A range iterator able to yield elements from both ends
 ///
-/// A `DoubleEndedIterator` can be thought of as a deque in that `next()` and `next_back()` exhaust
-/// elements from the *same* range, and do not work independently of each other.
+/// A `DoubleEndedIterator` can be thought of as a deque in that `next()` and
+/// `next_back()` exhaust elements from the *same* range, and do not work
+/// independently of each other.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait DoubleEndedIterator: Iterator {
-    /// Yield an element from the end of the range, returning `None` if the range is empty.
+    /// Yield an element from the end of the range, returning `None` if the
+    /// range is empty.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn next_back(&mut self) -> Option<Self::Item>;
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for &'a mut I {
+    fn next_back(&mut self) -> Option<I::Item> { (**self).next_back() }
 }
 
 /// An object implementing random access indexing by `usize`
@@ -1064,6 +1064,9 @@ pub trait ExactSizeIterator: Iterator {
         lower
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, I: ExactSizeIterator + ?Sized> ExactSizeIterator for &'a mut I {}
 
 // All adaptors that preserve the size of the wrapped iterator are fine
 // Adaptors that may overflow in `size_hint` are not, i.e. `Chain`.
@@ -1116,32 +1119,6 @@ impl<I> RandomAccessIterator for Rev<I> where I: DoubleEndedIterator + RandomAcc
         self.iter.idx(amt - index - 1)
     }
 }
-
-/// A mutable reference to an iterator
-#[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub struct ByRef<'a, I:'a> {
-    iter: &'a mut I,
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I> Iterator for ByRef<'a, I> where I: 'a + Iterator {
-    type Item = <I as Iterator>::Item;
-
-    #[inline]
-    fn next(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next() }
-    #[inline]
-    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I> DoubleEndedIterator for ByRef<'a, I> where I: 'a + DoubleEndedIterator {
-    #[inline]
-    fn next_back(&mut self) -> Option<<I as Iterator>::Item> { self.iter.next_back() }
-}
-
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, I> ExactSizeIterator for ByRef<'a, I> where I: 'a + ExactSizeIterator {}
 
 /// A trait for iterators over elements which can be added together
 #[unstable(feature = "core",
