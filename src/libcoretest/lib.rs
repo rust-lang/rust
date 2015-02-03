@@ -12,6 +12,7 @@
 #![feature(int_uint)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor, slicing_syntax)]
+#![allow(deprecated)] // rand
 
 extern crate core;
 extern crate test;

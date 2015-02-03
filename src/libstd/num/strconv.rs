@@ -459,6 +459,7 @@ mod tests {
 
 #[cfg(test)]
 mod bench {
+    #![allow(deprecated)] // rand
     extern crate test;
 
     mod uint {
