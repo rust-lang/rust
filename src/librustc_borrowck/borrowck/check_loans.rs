@@ -279,7 +279,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         let loan_path = owned_ptr_base_path(loan_path);
         let cont = self.each_in_scope_loan(scope, |loan| {
             let mut ret = true;
-            for restr_path in loan.restricted_paths.iter() {
+            for restr_path in &loan.restricted_paths {
                 if **restr_path == *loan_path {
                     if !op(loan) {
                         ret = false;
@@ -361,7 +361,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         debug!("new_loan_indices = {:?}", new_loan_indices);
 
         self.each_issued_loan(scope, |issued_loan| {
-            for &new_loan_index in new_loan_indices.iter() {
+            for &new_loan_index in &new_loan_indices {
                 let new_loan = &self.all_loans[new_loan_index];
                 self.report_error_if_loans_conflict(issued_loan, new_loan);
             }
@@ -370,7 +370,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
 
         for (i, &x) in new_loan_indices.iter().enumerate() {
             let old_loan = &self.all_loans[x];
-            for &y in new_loan_indices[(i+1) ..].iter() {
+            for &y in &new_loan_indices[(i+1) ..] {
                 let new_loan = &self.all_loans[y];
                 self.report_error_if_loans_conflict(old_loan, new_loan);
             }
@@ -416,7 +416,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
         }
 
         let loan2_base_path = owned_ptr_base_path_rc(&loan2.loan_path);
-        for restr_path in loan1.restricted_paths.iter() {
+        for restr_path in &loan1.restricted_paths {
             if *restr_path != loan2_base_path { continue; }
 
             // If new_loan is something like `x.a`, and old_loan is something like `x.b`, we would

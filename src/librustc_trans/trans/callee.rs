@@ -1045,7 +1045,7 @@ pub fn trans_args<'a, 'blk, 'tcx>(cx: Block<'blk, 'tcx>,
             }));
 
             assert_eq!(arg_tys.len(), 1 + rhs.len());
-            for (rhs, rhs_id) in rhs.into_iter() {
+            for (rhs, rhs_id) in rhs {
                 llargs.push(unpack_result!(bcx, {
                     trans_arg_datum(bcx, arg_tys[1], rhs,
                                     arg_cleanup_scope,

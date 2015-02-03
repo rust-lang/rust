@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -24,6 +24,7 @@ pub enum Os {
     OsFreebsd,
     OsiOS,
     OsDragonfly,
+    OsOpenbsd,
 }
 
 #[derive(PartialEq, Eq, Hash, RustcEncodable, RustcDecodable, Clone, Copy, Debug)]
@@ -134,7 +135,8 @@ impl fmt::Display for Os {
             OsiOS => "ios".fmt(f),
             OsAndroid => "android".fmt(f),
             OsFreebsd => "freebsd".fmt(f),
-            OsDragonfly => "dragonfly".fmt(f)
+            OsDragonfly => "dragonfly".fmt(f),
+            OsOpenbsd => "openbsd".fmt(f),
         }
     }
 }

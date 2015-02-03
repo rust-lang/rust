@@ -947,28 +947,11 @@ pub trait IndexMut<Index: ?Sized> {
 }
 
 /// An unbounded range.
-#[cfg(stage0)]
-#[derive(Copy, Clone, PartialEq, Eq)]
-#[lang="full_range"]
-#[unstable(feature = "core", reason  = "may be renamed to RangeFull")]
-pub struct FullRange;
-
-/// An unbounded range.
-#[cfg(not(stage0))]
 #[derive(Copy, Clone, PartialEq, Eq)]
 #[lang="range_full"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RangeFull;
 
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Debug for FullRange {
-    fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt("..", fmt)
-    }
-}
-
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Debug for RangeFull {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {

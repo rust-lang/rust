@@ -431,7 +431,7 @@ impl CodeMap {
         let lo = self.lookup_char_pos(sp.lo);
         let hi = self.lookup_char_pos(sp.hi);
         let mut lines = Vec::new();
-        for i in lo.line - 1us..hi.line as usize {
+        for i in lo.line - 1..hi.line as usize {
             lines.push(i);
         };
         FileLines {file: lo.file, lines: lines}
@@ -453,7 +453,7 @@ impl CodeMap {
     }
 
     pub fn get_filemap(&self, filename: &str) -> Rc<FileMap> {
-        for fm in self.files.borrow().iter() {
+        for fm in &*self.files.borrow() {
             if filename == fm.name {
                 return fm.clone();
             }
@@ -477,7 +477,7 @@ impl CodeMap {
         // The number of extra bytes due to multibyte chars in the FileMap
         let mut total_extra_bytes = 0;
 
-        for mbc in map.multibyte_chars.borrow().iter() {
+        for mbc in &*map.multibyte_chars.borrow() {
             debug!("{}-byte char at {:?}", mbc.bytes, mbc.pos);
             if mbc.pos < bpos {
                 // every character is at least one byte, so we only
@@ -499,10 +499,10 @@ impl CodeMap {
         let files = self.files.borrow();
         let files = &*files;
         let len = files.len();
-        let mut a = 0us;
+        let mut a = 0;
         let mut b = len;
-        while b - a > 1us {
-            let m = (a + b) / 2us;
+        while b - a > 1 {
+            let m = (a + b) / 2;
             if files[m].start_pos > pos {
                 b = m;
             } else {
@@ -538,12 +538,12 @@ impl CodeMap {
 
         let files = self.files.borrow();
         let f = (*files)[idx].clone();
-        let mut a = 0us;
+        let mut a = 0;
         {
             let lines = f.lines.borrow();
             let mut b = lines.len();
-            while b - a > 1us {
-                let m = (a + b) / 2us;
+            while b - a > 1 {
+                let m = (a + b) / 2;
                 if (*lines)[m] > pos { b = m; } else { a = m; }
             }
         }
@@ -552,7 +552,7 @@ impl CodeMap {
 
     fn lookup_pos(&self, pos: BytePos) -> Loc {
         let FileMapAndLine {fm: f, line: a} = self.lookup_line(pos);
-        let line = a + 1us; // Line numbers start at 1
+        let line = a + 1; // Line numbers start at 1
         let chpos = self.bytepos_to_file_charpos(pos);
         let linebpos = (*f.lines.borrow())[a];
         let linechpos = self.bytepos_to_file_charpos(linebpos);
@@ -763,7 +763,7 @@ mod test {
 
         assert_eq!(file_lines.file.name, "blork.rs");
         assert_eq!(file_lines.lines.len(), 1);
-        assert_eq!(file_lines.lines[0], 1us);
+        assert_eq!(file_lines.lines[0], 1);
     }
 
     #[test]

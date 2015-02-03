@@ -404,7 +404,7 @@ mod test {
         }
 
         // start all the tasks
-        for tx in txs.iter() {
+        for tx in &txs {
             tx.send(()).unwrap();
         }
     }

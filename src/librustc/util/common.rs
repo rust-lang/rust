@@ -163,7 +163,7 @@ pub fn can_reach<T, S>(edges_map: &HashMap<T, Vec<T>, S>, source: T,
     while i < queue.len() {
         match edges_map.get(&queue[i]) {
             Some(edges) => {
-                for target in edges.iter() {
+                for target in edges {
                     if *target == destination {
                         return true;
                     }

@@ -227,7 +227,7 @@ impl LintPass for TypeLimits {
                                 if (negative && v > (min.abs() as u64)) ||
                                    (!negative && v > (max.abs() as u64)) {
                                     cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                                 "literal out of range for its type");
+                                                 &*format!("literal out of range for {:?}", t));
                                     return;
                                 }
                             }
@@ -246,7 +246,7 @@ impl LintPass for TypeLimits {
                         };
                         if  lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         "literal out of range for its type");
+                                         &*format!("literal out of range for {:?}", t));
                         }
                     },
                     ty::ty_float(t) => {
@@ -263,7 +263,7 @@ impl LintPass for TypeLimits {
                         };
                         if lit_val < min || lit_val > max {
                             cx.span_lint(OVERFLOWING_LITERALS, e.span,
-                                         "literal out of range for its type");
+                                         &*format!("literal out of range for {:?}", t));
                         }
                     },
                     _ => ()
@@ -459,7 +459,7 @@ impl LintPass for ImproperCTypes {
         }
 
         fn check_foreign_fn(cx: &Context, decl: &ast::FnDecl) {
-            for input in decl.inputs.iter() {
+            for input in &decl.inputs {
                 check_ty(cx, &*input.ty);
             }
             if let ast::Return(ref ret_ty) = decl.output {
@@ -469,7 +469,7 @@ impl LintPass for ImproperCTypes {
 
         match it.node {
             ast::ItemForeignMod(ref nmod) if nmod.abi != abi::RustIntrinsic => {
-                for ni in nmod.items.iter() {
+                for ni in &nmod.items {
                     match ni.node {
                         ast::ForeignItemFn(ref decl, _) => check_foreign_fn(cx, &**decl),
                         ast::ForeignItemStatic(ref t, _) => check_ty(cx, &**t)
@@ -532,7 +532,7 @@ impl LintPass for BoxPointers {
         // If it's a struct, we also have to check the fields' types
         match it.node {
             ast::ItemStruct(ref struct_def, _) => {
-                for struct_field in struct_def.fields.iter() {
+                for struct_field in &struct_def.fields {
                     self.check_heap_type(cx, struct_field.span,
                                          ty::node_id_to_type(cx.tcx, struct_field.node.id));
                 }
@@ -592,7 +592,15 @@ impl LintPass for RawPointerDerive {
             return
         }
         let did = match item.node {
-            ast::ItemImpl(..) => {
+            ast::ItemImpl(_, _, _, ref t_ref_opt, _, _) => {
+                // Deriving the Copy trait does not cause a warning
+                if let &Some(ref trait_ref) = t_ref_opt {
+                    let def_id = ty::trait_ref_to_def_id(cx.tcx, trait_ref);
+                    if Some(def_id) == cx.tcx.lang_items.copy_trait() {
+                        return
+                    }
+                }
+
                 match ty::node_id_to_type(cx.tcx, item.id).sty {
                     ty::ty_enum(did, _) => did,
                     ty::ty_struct(did, _) => did,
@@ -683,7 +691,7 @@ impl LintPass for UnusedAttributes {
             "no_builtins",
         ];
 
-        for &name in ATTRIBUTE_WHITELIST.iter() {
+        for &name in ATTRIBUTE_WHITELIST {
             if attr.check_name(name) {
                 break;
             }
@@ -785,7 +793,7 @@ impl LintPass for UnusedResults {
         }
 
         fn check_must_use(cx: &Context, attrs: &[ast::Attribute], sp: Span) -> bool {
-            for attr in attrs.iter() {
+            for attr in attrs {
                 if attr.check_name("must_use") {
                     let mut msg = "unused result which must be used".to_string();
                     // check for #[must_use="..."]
@@ -869,7 +877,7 @@ impl LintPass for NonCamelCaseTypes {
             ast::ItemEnum(ref enum_definition, _) => {
                 if has_extern_repr { return }
                 self.check_case(cx, "type", it.ident, it.span);
-                for variant in enum_definition.variants.iter() {
+                for variant in &enum_definition.variants {
                     self.check_case(cx, "variant", variant.node.name, variant.span);
                 }
             }
@@ -878,7 +886,7 @@ impl LintPass for NonCamelCaseTypes {
     }
 
     fn check_generics(&mut self, cx: &Context, it: &ast::Generics) {
-        for gen in it.ty_params.iter() {
+        for gen in &*it.ty_params {
             self.check_case(cx, "type parameter", gen.ident, gen.span);
         }
     }
@@ -1048,7 +1056,7 @@ impl LintPass for NonSnakeCase {
 
     fn check_struct_def(&mut self, cx: &Context, s: &ast::StructDef,
             _: ast::Ident, _: &ast::Generics, _: ast::NodeId) {
-        for sf in s.fields.iter() {
+        for sf in &s.fields {
             if let ast::StructField_ { kind: ast::NamedField(ident, _), .. } = sf.node {
                 self.check_snake_case(cx, "structure field", ident, sf.span);
             }
@@ -1346,7 +1354,7 @@ impl UnusedMut {
         // avoid false warnings in match arms with multiple patterns
 
         let mut mutables = FnvHashMap();
-        for p in pats.iter() {
+        for p in pats {
             pat_util::pat_bindings(&cx.tcx.def_map, &**p, |mode, id, _, path1| {
                 let ident = path1.node;
                 if let ast::BindByValue(ast::MutMutable) = mode {
@@ -1361,7 +1369,7 @@ impl UnusedMut {
         }
 
         let used_mutables = cx.tcx.used_mut_nodes.borrow();
-        for (_, v) in mutables.iter() {
+        for (_, v) in &mutables {
             if !v.iter().any(|e| used_mutables.contains(e)) {
                 cx.span_lint(UNUSED_MUT, cx.tcx.map.span(v[0]),
                              "variable does not need to be mutable");
@@ -1377,7 +1385,7 @@ impl LintPass for UnusedMut {
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if let ast::ExprMatch(_, ref arms, _) = e.node {
-            for a in arms.iter() {
+            for a in arms {
                 self.check_unused_mut_pat(cx, &a.pats[])
             }
         }
@@ -1394,7 +1402,7 @@ impl LintPass for UnusedMut {
     fn check_fn(&mut self, cx: &Context,
                 _: visit::FnKind, decl: &ast::FnDecl,
                 _: &ast::Block, _: Span, _: ast::NodeId) {
-        for a in decl.inputs.iter() {
+        for a in &decl.inputs {
             self.check_unused_mut_pat(cx, slice::ref_slice(&a.pat));
         }
     }
@@ -1871,7 +1879,7 @@ impl LintPass for UnconditionalRecursion {
             if cx.current_level(UNCONDITIONAL_RECURSION) != Level::Allow {
                 let sess = cx.sess();
                 // offer some help to the programmer.
-                for call in self_call_spans.iter() {
+                for call in &self_call_spans {
                     sess.span_note(*call, "recursive call site")
                 }
                 sess.span_help(sp, "a `loop` may express intention better if this is on purpose")
@@ -2006,7 +2014,7 @@ declare_lint! {
 
 declare_lint! {
     pub UNUSED_FEATURES,
-    Deny,
+    Warn,
     "unused or unknown features found in crate-level #[feature] directives"
 }
 

@@ -406,12 +406,12 @@ mod test {
         let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::MAX];
 
         let mut writer = Vec::new();
-        for i in uints.iter() {
+        for i in &uints {
             writer.write_le_u64(*i).unwrap();
         }
 
         let mut reader = MemReader::new(writer);
-        for i in uints.iter() {
+        for i in &uints {
             assert!(reader.read_le_u64().unwrap() == *i);
         }
     }
@@ -422,12 +422,12 @@ mod test {
         let uints = [0, 1, 2, 42, 10_123, 100_123_456, ::u64::MAX];
 
         let mut writer = Vec::new();
-        for i in uints.iter() {
+        for i in &uints {
             writer.write_be_u64(*i).unwrap();
         }
 
         let mut reader = MemReader::new(writer);
-        for i in uints.iter() {
+        for i in &uints {
             assert!(reader.read_be_u64().unwrap() == *i);
         }
     }
@@ -437,12 +437,12 @@ mod test {
         let ints = [::i32::MIN, -123456, -42, -5, 0, 1, ::i32::MAX];
 
         let mut writer = Vec::new();
-        for i in ints.iter() {
+        for i in &ints {
             writer.write_be_i32(*i).unwrap();
         }
 
         let mut reader = MemReader::new(writer);
-        for i in ints.iter() {
+        for i in &ints {
             // this tests that the sign extension is working
             // (comparing the values as i32 would not test this)
             assert!(reader.read_be_int_n(4).unwrap() == *i as i64);

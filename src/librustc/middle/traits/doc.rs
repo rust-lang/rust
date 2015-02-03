@@ -35,7 +35,7 @@ provide an impl. To see what I mean, consider the body of `clone_slice`:
 
     fn clone_slice<T:Clone>(x: &[T]) -> Vec<T> {
         let mut v = Vec::new();
-        for e in x.iter() {
+        for e in &x {
             v.push((*e).clone()); // (*)
         }
     }

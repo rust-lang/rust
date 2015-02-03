@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -42,7 +42,8 @@ pub fn clone() -> Option<Vec<Vec<u8>>> { imp::clone() }
 #[cfg(any(target_os = "linux",
           target_os = "android",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 mod imp {
     use prelude::v1::*;
 

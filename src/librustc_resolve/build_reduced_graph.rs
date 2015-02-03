@@ -223,8 +223,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                              token::get_name(name))[]);
                     {
                         let r = child.span_for_namespace(ns);
-                        for sp in r.iter() {
-                            self.session.span_note(*sp,
+                        if let Some(sp) = r {
+                            self.session.span_note(sp,
                                  &format!("first definition of {} `{}` here",
                                       namespace_error_to_string(duplicate_type),
                                       token::get_name(name))[]);
@@ -238,7 +238,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
     fn block_needs_anonymous_module(&mut self, block: &Block) -> bool {
         // Check each statement.
-        for statement in block.stmts.iter() {
+        for statement in &block.stmts {
             match statement.node {
                 StmtDecl(ref declaration, _) => {
                     match declaration.node {
@@ -338,7 +338,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             }
                         }
 
-                        for source_item in source_items.iter() {
+                        for source_item in source_items {
                             let (module_path, name) = match source_item.node {
                                 PathListIdent { name, .. } =>
                                     (module_path.clone(), name.name),
@@ -477,7 +477,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 let module = name_bindings.get_module();
 
-                for variant in (*enum_definition).variants.iter() {
+                for variant in &(*enum_definition).variants {
                     self.build_reduced_graph_for_variant(
                         &**variant,
                         local_def(item.id),
@@ -591,7 +591,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 };
 
                 // For each implementation item...
-                for impl_item in impl_items.iter() {
+                for impl_item in impl_items {
                     match *impl_item {
                         MethodImplItem(ref method) => {
                             // Add the method to the module.
@@ -675,7 +675,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 let def_id = local_def(item.id);
 
                 // Add the names of all the items to the trait info.
-                for trait_item in items.iter() {
+                for trait_item in items {
                     let (name, kind) = match *trait_item {
                         ast::RequiredMethod(_) |
                         ast::ProvidedMethod(_) => {
@@ -926,7 +926,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
               let trait_item_def_ids =
                 csearch::get_trait_item_def_ids(&self.session.cstore, def_id);
-              for trait_item_def_id in trait_item_def_ids.iter() {
+              for trait_item_def_id in &trait_item_def_ids {
                   let (trait_item_name, trait_item_kind) =
                       csearch::get_trait_item_name_and_kind(
                           &self.session.cstore,
@@ -1082,7 +1082,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                                 // Add each static method to the module.
                                 let new_parent = type_module;
-                                for method_info in methods.iter() {
+                                for method_info in methods {
                                     let name = method_info.name;
                                     debug!("(building reduced graph for \
                                              external crate) creating \

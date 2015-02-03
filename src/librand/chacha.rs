@@ -194,7 +194,7 @@ impl<'a> SeedableRng<&'a [u32]> for ChaChaRng {
 impl Rand for ChaChaRng {
     fn rand<R: Rng>(other: &mut R) -> ChaChaRng {
         let mut key : [u32; KEY_WORDS] = [0; KEY_WORDS];
-        for word in key.iter_mut() {
+        for word in &mut key {
             *word = other.gen();
         }
         SeedableRng::from_seed(key.as_slice())

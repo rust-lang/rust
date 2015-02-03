@@ -253,7 +253,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &ast::Item) {
-        for attr in i.attrs.iter() {
+        for attr in &i.attrs {
             if attr.name() == "thread_local" {
                 self.gate_feature("thread_local", i.span,
                                   "`#[thread_local]` is an experimental feature, and does not \
@@ -508,7 +508,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
 
     let mut unknown_features = Vec::new();
 
-    for attr in krate.attrs.iter() {
+    for attr in &krate.attrs {
         if !attr.check_name("feature") {
             continue
         }
@@ -519,7 +519,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
                                                   expected #![feature(...)]");
             }
             Some(list) => {
-                for mi in list.iter() {
+                for mi in list {
                     let name = match mi.node {
                         ast::MetaWord(ref word) => (*word).clone(),
                         _ => {

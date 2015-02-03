@@ -100,7 +100,7 @@ impl SharedEmitter {
 
     fn dump(&mut self, handler: &Handler) {
         let mut buffer = self.buffer.lock().unwrap();
-        for diag in buffer.iter() {
+        for diag in &*buffer {
             match diag.code {
                 Some(ref code) => {
                     handler.emit_with_code(None,
@@ -452,7 +452,7 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
                                      config.no_builtins);
             }
 
-            for pass in config.passes.iter() {
+            for pass in &config.passes {
                 let pass = CString::from_slice(pass.as_bytes());
                 if !llvm::LLVMRustAddPass(mpm, pass.as_ptr()) {
                     cgcx.handler.warn(format!("unknown pass {:?}, ignoring",
@@ -597,7 +597,7 @@ pub fn run_passes(sess: &Session,
         modules_config.emit_bc = true;
     }
 
-    for output_type in output_types.iter() {
+    for output_type in output_types {
         match *output_type {
             config::OutputTypeBitcode => { modules_config.emit_bc = true; },
             config::OutputTypeLlvmAssembly => { modules_config.emit_ir = true; },
@@ -761,7 +761,7 @@ pub fn run_passes(sess: &Session,
     // Otherwise, we produced it only as a temporary output, and will need
     // to get rid of it.
     let mut user_wants_bitcode = false;
-    for output_type in output_types.iter() {
+    for output_type in output_types {
         match *output_type {
             config::OutputTypeBitcode => {
                 user_wants_bitcode = true;
@@ -941,7 +941,7 @@ fn run_work_multithreaded(sess: &Session,
     }
 
     let mut panicked = false;
-    for rx in futures.into_iter() {
+    for rx in futures {
         match rx.recv() {
             Ok(()) => {},
             Err(_) => {
@@ -1015,7 +1015,7 @@ unsafe fn configure_llvm(sess: &Session) {
         // FIXME #21627 disable faulty FastISel on AArch64 (even for -O0)
         if sess.target.target.arch.as_slice() == "aarch64" { add("-fast-isel=0"); }
 
-        for arg in sess.opts.cg.llvm_args.iter() {
+        for arg in &sess.opts.cg.llvm_args {
             add(&(*arg)[]);
         }
     }

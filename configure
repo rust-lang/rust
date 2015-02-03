@@ -374,6 +374,10 @@ case $CFG_OSTYPE in
         CFG_OSTYPE=unknown-dragonfly
         ;;
 
+    OpenBSD)
+	CFG_OSTYPE=unknown-openbsd
+       ;;
+
     Darwin)
         CFG_OSTYPE=apple-darwin
         ;;

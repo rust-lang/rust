@@ -53,14 +53,18 @@ endif
 
 # Extra flags needed to compile a working executable with the standard library
 ifdef IS_WINDOWS
-	EXTRACFLAGS := -lws2_32
+	EXTRACFLAGS := -lws2_32 -luserenv
 else
 ifeq ($(shell uname),Darwin)
 else
 ifeq ($(shell uname),FreeBSD)
 	EXTRACFLAGS := -lm -lpthread -lgcc_s
 else
+ifeq ($(shell uname),OpenBSD)
+	EXTRACFLAGS := -lm -lpthread
+else
 	EXTRACFLAGS := -lm -lrt -ldl -lpthread
+endif
 endif
 endif
 endif

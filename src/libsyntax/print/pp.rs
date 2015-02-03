@@ -132,15 +132,15 @@ pub fn buf_str(toks: &[Token],
     let mut i = left;
     let mut l = lim;
     let mut s = string::String::from_str("[");
-    while i != right && l != 0us {
-        l -= 1us;
+    while i != right && l != 0 {
+        l -= 1;
         if i != left {
             s.push_str(", ");
         }
         s.push_str(&format!("{}={}",
                            szs[i],
                            tok_str(&toks[i]))[]);
-        i += 1us;
+        i += 1;
         i %= n;
     }
     s.push(']');
@@ -326,8 +326,8 @@ impl Printer {
             if self.scan_stack_empty {
                 self.left_total = 1;
                 self.right_total = 1;
-                self.left = 0us;
-                self.right = 0us;
+                self.left = 0;
+                self.right = 0;
             } else { self.advance_right(); }
             debug!("pp Begin({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
@@ -355,8 +355,8 @@ impl Printer {
             if self.scan_stack_empty {
                 self.left_total = 1;
                 self.right_total = 1;
-                self.left = 0us;
-                self.right = 0us;
+                self.left = 0;
+                self.right = 0;
             } else { self.advance_right(); }
             debug!("pp Break({})/buffer ~[{},{}]",
                    b.offset, self.left, self.right);
@@ -410,7 +410,7 @@ impl Printer {
         if self.scan_stack_empty {
             self.scan_stack_empty = false;
         } else {
-            self.top += 1us;
+            self.top += 1;
             self.top %= self.buf_len;
             assert!((self.top != self.bottom));
         }
@@ -422,7 +422,7 @@ impl Printer {
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else {
-            self.top += self.buf_len - 1us; self.top %= self.buf_len;
+            self.top += self.buf_len - 1; self.top %= self.buf_len;
         }
         return x;
     }
@@ -436,12 +436,12 @@ impl Printer {
         if self.top == self.bottom {
             self.scan_stack_empty = true;
         } else {
-            self.bottom += 1us; self.bottom %= self.buf_len;
+            self.bottom += 1; self.bottom %= self.buf_len;
         }
         return x;
     }
     pub fn advance_right(&mut self) {
-        self.right += 1us;
+        self.right += 1;
         self.right %= self.buf_len;
         assert!((self.right != self.left));
     }
@@ -471,7 +471,7 @@ impl Printer {
                 break;
             }
 
-            self.left += 1us;
+            self.left += 1;
             self.left %= self.buf_len;
 
             left_size = self.size[self.left];
@@ -520,7 +520,7 @@ impl Printer {
     pub fn get_top(&mut self) -> PrintStackElem {
         let print_stack = &mut self.print_stack;
         let n = print_stack.len();
-        if n != 0us {
+        if n != 0 {
             (*print_stack)[n - 1]
         } else {
             PrintStackElem {
@@ -565,7 +565,7 @@ impl Printer {
           Token::End => {
             debug!("print End -> pop End");
             let print_stack = &mut self.print_stack;
-            assert!((print_stack.len() != 0us));
+            assert!((print_stack.len() != 0));
             print_stack.pop().unwrap();
             Ok(())
           }
@@ -667,11 +667,11 @@ pub fn spaces(p: &mut Printer, n: usize) -> old_io::IoResult<()> {
 }
 
 pub fn zerobreak(p: &mut Printer) -> old_io::IoResult<()> {
-    spaces(p, 0us)
+    spaces(p, 0)
 }
 
 pub fn space(p: &mut Printer) -> old_io::IoResult<()> {
-    spaces(p, 1us)
+    spaces(p, 1)
 }
 
 pub fn hardbreak(p: &mut Printer) -> old_io::IoResult<()> {

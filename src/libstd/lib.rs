@@ -120,14 +120,13 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![cfg_attr(not(stage0), feature(macro_reexport))]
+#![feature(macro_reexport)]
 #![cfg_attr(test, feature(test))]
 
 // Don't link to std. We are std.
 #![no_std]
 
 #![deny(missing_docs)]
-#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
 
 #[cfg(test)]
 #[macro_use]
@@ -250,6 +249,7 @@ pub mod ffi;
 pub mod fmt;
 pub mod old_io;
 pub mod os;
+pub mod env;
 pub mod path;
 pub mod rand;
 pub mod time;

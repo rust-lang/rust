@@ -162,7 +162,7 @@ impl<'a> CrateReader<'a> {
             dump_crates(&self.sess.cstore);
         }
 
-        for &(ref name, kind) in self.sess.opts.libs.iter() {
+        for &(ref name, kind) in &self.sess.opts.libs {
             register_native_lib(self.sess, None, name.clone(), kind);
         }
     }
@@ -235,7 +235,7 @@ impl<'a> CrateReader<'a> {
                         None
                     })
                     .collect::<Vec<&ast::Attribute>>();
-                for m in link_args.iter() {
+                for m in &link_args {
                     match m.value_str() {
                         Some(linkarg) => self.sess.cstore.add_used_link_args(linkarg.get()),
                         None => { /* fallthrough */ }
@@ -250,7 +250,7 @@ impl<'a> CrateReader<'a> {
                         None
                     })
                     .collect::<Vec<&ast::Attribute>>();
-                for m in link_args.iter() {
+                for m in &link_args {
                     match m.meta_item_list() {
                         Some(items) => {
                             let kind = items.iter().find(|k| {
@@ -330,6 +330,7 @@ impl<'a> CrateReader<'a> {
                 if found {
                     ret = Some(cnum);
                 }
+                return
             }
 
             // Alright, so we've gotten this far which means that `data` has the

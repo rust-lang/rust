@@ -233,6 +233,7 @@ unsafe extern "system" fn on_tls_callback(h: LPVOID,
     }
 }
 
+#[allow(dead_code)] // actually called above
 unsafe fn run_dtors() {
     let mut any_run = true;
     for _ in 0..5 {
@@ -248,7 +249,7 @@ unsafe fn run_dtors() {
             DTOR_LOCK.unlock();
             ret
         };
-        for &(key, dtor) in dtors.iter() {
+        for &(key, dtor) in &dtors {
             let ptr = TlsGetValue(key);
             if !ptr.is_null() {
                 TlsSetValue(key, ptr::null_mut());

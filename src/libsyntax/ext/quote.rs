@@ -694,7 +694,7 @@ fn mk_tt(cx: &ExtCtxt, tt: &ast::TokenTree) -> Vec<P<ast::Stmt>> {
 
 fn mk_tts(cx: &ExtCtxt, tts: &[ast::TokenTree]) -> Vec<P<ast::Stmt>> {
     let mut ss = Vec::new();
-    for tt in tts.iter() {
+    for tt in tts {
         ss.extend(mk_tt(cx, tt).into_iter());
     }
     ss
@@ -709,7 +709,7 @@ fn expand_tts(cx: &ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     // try removing it when enough of them are gone.
 
     let mut p = cx.new_parser_from_tts(tts);
-    p.quote_depth += 1us;
+    p.quote_depth += 1;
 
     let cx_expr = p.parse_expr();
     if !p.eat(&token::Comma) {

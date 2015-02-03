@@ -373,7 +373,7 @@ fn create_substs_for_ast_path<'tcx>(
         }
     }
 
-    for param in ty_param_defs[supplied_ty_param_count..].iter() {
+    for param in &ty_param_defs[supplied_ty_param_count..] {
         match param.default {
             Some(default) => {
                 // This is a default type parameter.
@@ -537,7 +537,7 @@ pub fn instantiate_poly_trait_ref<'tcx>(
         instantiate_trait_ref(this, &shifted_rscope, &ast_trait_ref.trait_ref,
                               self_ty, Some(&mut projections));
 
-    for projection in projections.into_iter() {
+    for projection in projections {
         poly_projections.push(ty::Binder(projection));
     }
 
@@ -659,7 +659,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
             prohibit_projections(this.tcx(), assoc_bindings.as_slice());
         }
         Some(ref mut v) => {
-            for binding in assoc_bindings.iter() {
+            for binding in &assoc_bindings {
                 match ast_type_binding_to_projection_predicate(this, trait_ref.clone(),
                                                                self_ty, binding) {
                     Ok(pp) => { v.push(pp); }
@@ -733,7 +733,7 @@ fn ast_type_binding_to_projection_predicate<'tcx>(
     // If converting for an object type, then remove the dummy-ty from `Self` now.
     // Yuckety yuck.
     if self_ty.is_none() {
-        for candidate in candidates.iter_mut() {
+        for candidate in &mut candidates {
             let mut dummy_substs = candidate.0.substs.clone();
             assert!(dummy_substs.self_ty() == Some(dummy_self_ty));
             dummy_substs.types.pop(SelfSpace);
@@ -979,7 +979,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                   token::get_name(assoc_name),
                                   token::get_name(ty_param_name));
 
-        for suitable_bound in suitable_bounds.iter() {
+        for suitable_bound in &suitable_bounds {
             span_note!(this.tcx().sess, ast_ty.span,
                        "associated type `{}` could derive from `{}`",
                        token::get_name(ty_param_name),
@@ -1710,7 +1710,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     let mut region_bounds = Vec::new();
     let mut trait_bounds = Vec::new();
     let mut trait_def_ids = DefIdMap();
-    for ast_bound in ast_bounds.iter() {
+    for ast_bound in ast_bounds {
         match *ast_bound {
             ast::TraitTyParamBound(ref b, ast::TraitBoundModifier::None) => {
                 match ::lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {

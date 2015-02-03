@@ -15,7 +15,7 @@ use metadata::creader::{CrateOrString, CrateReader};
 use plugin::registry::Registry;
 
 use std::mem;
-use std::os;
+use std::env;
 use std::dynamic_lib::DynamicLibrary;
 use std::collections::HashSet;
 use syntax::ast;
@@ -73,7 +73,7 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
     // We need to error on `#[macro_use] extern crate` when it isn't at the
     // crate root, because `$crate` won't work properly. Identify these by
     // spans, because the crate map isn't set up yet.
-    for item in krate.module.items.iter() {
+    for item in &krate.module.items {
         if let ast::ItemExternCrate(_) = item.node {
             loader.span_whitelist.insert(item.span);
         }
@@ -82,7 +82,7 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
     visit::walk_crate(&mut loader, krate);
 
     if let Some(plugins) = addl_plugins {
-        for plugin in plugins.iter() {
+        for plugin in &plugins {
             loader.load_plugin(CrateOrString::Str(plugin.as_slice()),
                                                   None, None, None)
         }
@@ -107,7 +107,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         let mut plugin_attr = None;
         let mut macro_selection = Some(HashSet::new());  // None => load all
         let mut reexport = HashSet::new();
-        for attr in item.attrs.iter() {
+        for attr in &item.attrs {
             let mut used = true;
             match attr.name().get() {
                 "phase" => {
@@ -127,7 +127,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                         macro_selection = None;
                     }
                     if let (Some(sel), Some(names)) = (macro_selection.as_mut(), names) {
-                        for name in names.iter() {
+                        for name in names {
                             if let ast::MetaWord(ref name) = name.node {
                                 sel.insert(name.clone());
                             } else {
@@ -145,7 +145,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                         }
                     };
 
-                    for name in names.iter() {
+                    for name in names {
                         if let ast::MetaWord(ref name) = name.node {
                             reexport.insert(name.clone());
                         } else {
@@ -204,7 +204,7 @@ impl<'a> PluginLoader<'a> {
             }
         }
 
-        for mut def in macros.into_iter() {
+        for mut def in macros {
             let name = token::get_ident(def.ident);
             def.use_locally = match macro_selection.as_ref() {
                 None => true,
@@ -233,7 +233,7 @@ impl<'a> PluginLoader<'a> {
                         path: Path,
                         symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
-        let path = os::make_absolute(&path).unwrap();
+        let path = env::current_dir().unwrap().join(&path);
 
         let lib = match DynamicLibrary::open(Some(&path)) {
             Ok(lib) => lib,

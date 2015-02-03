@@ -250,8 +250,7 @@ cases mentioned in [Number literals](#number-literals) below.
 ##### Unicode escapes
 |   | Name |
 |---|------|
-| `\u7FFF` | 16-bit character code (exactly 4 digits) |
-| `\U7EEEFFFF` | 32-bit character code (exactly 8 digits) |
+| `\u{7FFF}` | 24-bit Unicode character code (up to 6 digits) |
 
 ##### Numbers
 
@@ -286,8 +285,8 @@ raw_string : '"' raw_string_body '"' | '#' raw_string '#' ;
 common_escape : '\x5c'
               | 'n' | 'r' | 't' | '0'
               | 'x' hex_digit 2
-unicode_escape : 'u' hex_digit 4
-               | 'U' hex_digit 8 ;
+
+unicode_escape : 'u' '{' hex_digit+ 6 '}';
 
 hex_digit : 'a' | 'b' | 'c' | 'd' | 'e' | 'f'
           | 'A' | 'B' | 'C' | 'D' | 'E' | 'F'
@@ -320,12 +319,9 @@ following forms:
 * An _8-bit codepoint escape_ escape starts with `U+0078` (`x`) and is
   followed by exactly two _hex digits_. It denotes the Unicode codepoint
   equal to the provided hex value.
-* A _16-bit codepoint escape_ starts with `U+0075` (`u`) and is followed
-  by exactly four _hex digits_. It denotes the Unicode codepoint equal to
-  the provided hex value.
-* A _32-bit codepoint escape_ starts with `U+0055` (`U`) and is followed
-  by exactly eight _hex digits_. It denotes the Unicode codepoint equal to
-  the provided hex value.
+* A _24-bit codepoint escape_ starts with `U+0075` (`u`) and is followed
+  by up to six _hex digits_ surrounded by braces `U+007B` (`{`) and `U+007D`
+  (`}`). It denotes the Unicode codepoint equal to the provided hex value.
 * A _whitespace escape_ is one of the characters `U+006E` (`n`), `U+0072`
   (`r`), or `U+0074` (`t`), denoting the unicode values `U+000A` (LF),
   `U+000D` (CR) or `U+0009` (HT) respectively.
@@ -1063,7 +1059,7 @@ mod foo {
     extern crate core;
 
     use foo::core::iter; // good: foo is at crate root
-//  use core::iter;      // bad:  native is not at the crate root
+//  use core::iter;      // bad:  core is not at the crate root
     use self::baz::foobaz;  // good: self refers to module 'foo'
     use foo::bar::foobar;   // good: foo is at crate root
 
@@ -2197,7 +2193,8 @@ The following configurations must be defined by the implementation:
   `"unix"` or `"windows"`. The value of this configuration option is defined
   as a configuration itself, like `unix` or `windows`.
 * `target_os = "..."`. Operating system of the target, examples include
-  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"` or `"dragonfly"`.
+  `"win32"`, `"macos"`, `"linux"`, `"android"`, `"freebsd"`, `"dragonfly"` or
+  `"openbsd"`.
 * `target_word_size = "..."`. Target word size in bits. This is set to `"32"`
   for targets with 32-bit pointers, and likewise set to `"64"` for 64-bit
   pointers.

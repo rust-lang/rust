@@ -35,7 +35,7 @@ pub fn alist_get<A:Clone + 'static,
                  -> B {
     let eq_fn = lst.eq_fn;
     let data = lst.data.borrow();
-    for entry in (*data).iter() {
+    for entry in &(*data) {
         if eq_fn(entry.key.clone(), k.clone()) {
             return entry.value.clone();
         }

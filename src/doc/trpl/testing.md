@@ -552,9 +552,7 @@ extern crate test;
 # struct X;
 # impl X { fn iter<T, F>(&self, _: F) where F: FnMut() -> T {} } let b = X;
 b.iter(|| {
-    let mut n = 1000_u32;
-
-    test::black_box(&mut n); // pretend to modify `n`
+    let n = test::black_box(1000);
 
     range(0, n).fold(0, |a, b| a ^ b)
 })
@@ -569,7 +567,7 @@ Performing either of the above changes gives the following benchmarking results
 
 ```text
 running 1 test
-test bench_xor_1000_ints ... bench:       1 ns/iter (+/- 0)
+test bench_xor_1000_ints ... bench:       131 ns/iter (+/- 3)
 
 test result: ok. 0 passed; 0 failed; 0 ignored; 1 measured
 ```

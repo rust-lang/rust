@@ -34,7 +34,7 @@ use middle::ty::{self, Ty};
 
 use std::cell::Cell;
 use std::old_io::{self, File, fs};
-use std::os;
+use std::env;
 
 use syntax::ast_util::{self, PostExpansionMethod};
 use syntax::ast::{self, NodeId, DefId};
@@ -113,7 +113,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             error!("Mis-calculated spans for path '{}'. \
                     Found {} spans, expected {}. Found spans:",
                    path_to_string(path), spans.len(), path.segments.len());
-            for s in spans.iter() {
+            for s in &spans {
                 let loc = self.sess.codemap().lookup_char_pos(s.lo);
                 error!("    '{}' in {}, line {}",
                        self.span.snippet(*s), loc.file.name, loc.line);
@@ -204,7 +204,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             return;
         }
         let sub_paths = &sub_paths[..len-2];
-        for &(ref span, ref qualname) in sub_paths.iter() {
+        for &(ref span, ref qualname) in sub_paths {
             self.fmt.sub_mod_ref_str(path.span,
                                      *span,
                                      &qualname[],
@@ -264,13 +264,13 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     }
 
     fn process_formals(&mut self, formals: &Vec<ast::Arg>, qualname: &str) {
-        for arg in formals.iter() {
+        for arg in formals {
             assert!(self.collected_paths.len() == 0 && !self.collecting);
             self.collecting = true;
             self.visit_pat(&*arg.pat);
             self.collecting = false;
             let span_utils = self.span.clone();
-            for &(id, ref p, _, _) in self.collected_paths.iter() {
+            for &(id, ref p, _, _) in &self.collected_paths {
                 let typ = ppaux::ty_to_string(&self.analysis.ty_cx,
                     (*self.analysis.ty_cx.node_types.borrow())[id]);
                 // get the span only for the name of the variable (I hope the path is only ever a
@@ -389,7 +389,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         self.process_formals(&method.pe_fn_decl().inputs, qualname);
 
         // walk arg and return types
-        for arg in method.pe_fn_decl().inputs.iter() {
+        for arg in &method.pe_fn_decl().inputs {
             self.visit_ty(&*arg.ty);
         }
 
@@ -493,7 +493,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         self.process_formals(&decl.inputs, &qualname[]);
 
         // walk arg and return types
-        for arg in decl.inputs.iter() {
+        for arg in &decl.inputs {
             self.visit_ty(&*arg.ty);
         }
 
@@ -580,7 +580,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             &val[]);
 
         // fields
-        for field in def.fields.iter() {
+        for field in &def.fields {
             self.process_struct_field_def(field, &qualname[], item.id);
             self.visit_ty(&*field.node.ty);
         }
@@ -605,7 +605,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                        &format!("Could not find subspan for enum {}",
                                                enum_name)[]),
         }
-        for variant in enum_definition.variants.iter() {
+        for variant in &enum_definition.variants {
             let name = get_ident(variant.node.name);
             let name = name.get();
             let mut qualname = enum_name.clone();
@@ -623,7 +623,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                &enum_name[],
                                                &val[],
                                                item.id);
-                    for arg in args.iter() {
+                    for arg in args {
                         self.visit_ty(&*arg.ty);
                     }
                 }
@@ -642,7 +642,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         &val[],
                         item.id);
 
-                    for field in struct_def.fields.iter() {
+                    for field in &struct_def.fields {
                         self.process_struct_field_def(field, qualname.as_slice(), variant.node.id);
                         self.visit_ty(&*field.node.ty);
                     }
@@ -701,7 +701,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
 
         self.process_generic_params(type_parameters, item.span, "", item.id);
-        for impl_item in impl_items.iter() {
+        for impl_item in impl_items {
             match *impl_item {
                 ast::MethodImplItem(ref method) => {
                     visit::walk_method_helper(self, &**method)
@@ -729,7 +729,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                            &val[]);
 
         // super-traits
-        for super_bound in trait_refs.iter() {
+        for super_bound in &**trait_refs {
             let trait_ref = match *super_bound {
                 ast::TraitTyParamBound(ref trait_ref, _) => {
                     trait_ref
@@ -759,7 +759,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
         // walk generics and methods
         self.process_generic_params(generics, item.span, &qualname[], item.id);
-        for method in methods.iter() {
+        for method in methods {
             self.visit_trait_item(method)
         }
     }
@@ -912,11 +912,11 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             _ => None
         };
 
-        for field in fields.iter() {
+        for field in fields {
             match struct_def {
                 Some(struct_def) => {
                     let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
-                    for f in fields.iter() {
+                    for f in &fields {
                         if generated_code(field.ident.span) {
                             continue;
                         }
@@ -1010,10 +1010,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                    self.span.snippet(p.span))[]);
                     }
                 };
-                for &Spanned { node: ref field, span } in fields.iter() {
+                for &Spanned { node: ref field, span } in fields {
                     let sub_span = self.span.span_for_first_ident(span);
                     let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
-                    for f in fields.iter() {
+                    for f in fields {
                         if f.name == field.ident.name {
                             self.fmt.ref_str(recorder::VarRef,
                                              span,
@@ -1104,7 +1104,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         let glob_map = &self.analysis.glob_map;
                         let glob_map = glob_map.as_ref().unwrap();
                         if glob_map.contains_key(&item.id) {
-                            for n in glob_map[item.id].iter() {
+                            for n in &glob_map[item.id] {
                                 if name_string.len() > 0 {
                                     name_string.push_str(", ");
                                 }
@@ -1122,7 +1122,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         self.write_sub_paths(path, true);
                     }
                     ast::ViewPathList(ref path, ref list) => {
-                        for plid in list.iter() {
+                        for plid in list {
                             match plid.node {
                                 ast::PathListIdent { id, .. } => {
                                     match self.lookup_type_ref(id) {
@@ -1208,8 +1208,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
     }
 
     fn visit_generics(&mut self, generics: &ast::Generics) {
-        for param in generics.ty_params.iter() {
-            for bound in param.bounds.iter() {
+        for param in &*generics.ty_params {
+            for bound in &*param.bounds {
                 if let ast::TraitTyParamBound(ref trait_ref, _) = *bound {
                     self.process_trait_ref(&trait_ref.trait_ref);
                 }
@@ -1270,7 +1270,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                          scope_id);
 
                 // walk arg and return types
-                for arg in method_type.decl.inputs.iter() {
+                for arg in &method_type.decl.inputs {
                     self.visit_ty(&*arg.ty);
                 }
 
@@ -1349,7 +1349,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 match *ty {
                     ty::ty_struct(def_id, _) => {
                         let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, def_id);
-                        for f in fields.iter() {
+                        for f in &fields {
                             if f.name == ident.node.name {
                                 let sub_span = self.span.span_for_last_ident(ex.span);
                                 self.fmt.ref_str(recorder::VarRef,
@@ -1404,7 +1404,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 self.process_formals(&decl.inputs, &id[]);
 
                 // walk arg and return types
-                for arg in decl.inputs.iter() {
+                for arg in &decl.inputs {
                     self.visit_ty(&*arg.ty);
                 }
 
@@ -1435,7 +1435,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
     fn visit_arm(&mut self, arm: &ast::Arm) {
         assert!(self.collected_paths.len() == 0 && !self.collecting);
         self.collecting = true;
-        for pattern in arm.pats.iter() {
+        for pattern in &arm.pats {
             // collect paths from the arm's patterns
             self.visit_pat(&**pattern);
         }
@@ -1443,7 +1443,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         // This is to get around borrow checking, because we need mut self to call process_path.
         let mut paths_to_process = vec![];
         // process collected paths
-        for &(id, ref p, ref immut, ref_kind) in self.collected_paths.iter() {
+        for &(id, ref p, ref immut, ref_kind) in &self.collected_paths {
             let def_map = self.analysis.ty_cx.def_map.borrow();
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(p.span,
@@ -1477,7 +1477,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                             *def)
             }
         }
-        for &(id, ref path, ref_kind) in paths_to_process.iter() {
+        for &(id, ref path, ref_kind) in &paths_to_process {
             self.process_path(id, path.span, path, ref_kind);
         }
         self.collecting = false;
@@ -1508,7 +1508,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
 
         let value = self.span.snippet(l.span);
 
-        for &(id, ref p, ref immut, _) in self.collected_paths.iter() {
+        for &(id, ref p, ref immut, _) in &self.collected_paths {
             let value = if *immut { value.to_string() } else { "<mutable>".to_string() };
             let types = self.analysis.ty_cx.node_types.borrow();
             let typ = ppaux::ty_to_string(&self.analysis.ty_cx, (*types)[id]);
@@ -1551,9 +1551,9 @@ pub fn process_crate(sess: &Session,
     info!("Dumping crate {}", cratename);
 
     // find a path to dump our data to
-    let mut root_path = match os::getenv("DXR_RUST_TEMP_FOLDER") {
-        Some(val) => Path::new(val),
-        None => match odir {
+    let mut root_path = match env::var_string("DXR_RUST_TEMP_FOLDER") {
+        Ok(val) => Path::new(val),
+        Err(..) => match odir {
             Some(val) => val.join("dxr"),
             None => Path::new("dxr-temp"),
         },

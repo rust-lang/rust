@@ -46,7 +46,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for CheckCrateVisitor<'a, 'tcx> {
             }
             ast::ItemEnum(ref enum_definition, _) => {
                 self.inside_const(|v| {
-                    for var in enum_definition.variants.iter() {
+                    for var in &enum_definition.variants {
                         if let Some(ref ex) = var.node.disr_expr {
                             v.visit_expr(&**ex);
                         }
@@ -137,7 +137,7 @@ fn check_expr(v: &mut CheckCrateVisitor, e: &ast::Expr) {
         }
         ast::ExprBlock(ref block) => {
             // Check all statements in the block
-            for stmt in block.stmts.iter() {
+            for stmt in &block.stmts {
                 let block_span_err = |&: span|
                     span_err!(v.tcx.sess, span, E0016,
                               "blocks in constants are limited to items and \

@@ -64,7 +64,7 @@ impl PluginManager {
     pub fn run_plugins(&self, krate: clean::Crate) -> (clean::Crate, Vec<PluginJson> ) {
         let mut out_json = Vec::new();
         let mut krate = krate;
-        for &callback in self.callbacks.iter() {
+        for &callback in &self.callbacks {
             let (c, res) = callback(krate);
             krate = c;
             out_json.push(res);

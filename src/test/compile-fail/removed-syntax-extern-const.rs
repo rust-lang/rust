@@ -9,5 +9,6 @@
 // except according to those terms.
 
 extern {
-    const i: isize; //~ ERROR unexpected token: `const`
+    const i: isize;
+    //~^ ERROR expected one of `fn`, `pub`, `static`, `unsafe`, or `}`, found `const`
 }

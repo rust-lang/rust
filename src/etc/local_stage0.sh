@@ -1,5 +1,5 @@
 #!/bin/sh
-# Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -18,7 +18,7 @@ LIB_PREFIX=lib
 
 OS=`uname -s`
 case $OS in
-    ("Linux"|"FreeBSD"|"DragonFly")
+    ("Linux"|"FreeBSD"|"DragonFly"|"OpenBSD")
     BIN_SUF=
     LIB_SUF=.so
     ;;

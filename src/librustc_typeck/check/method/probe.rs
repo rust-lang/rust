@@ -134,7 +134,7 @@ pub fn probe<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Create a list of simplified self types, if we can.
     let mut simplified_steps = Vec::new();
-    for step in steps.iter() {
+    for step in &steps {
         match fast_reject::simplify_type(fcx.tcx(), step.self_ty, true) {
             None => { break; }
             Some(simplified_type) => { simplified_steps.push(simplified_type); }
@@ -236,7 +236,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
     fn assemble_inherent_candidates(&mut self) {
         let steps = self.steps.clone();
-        for step in steps.iter() {
+        for step in &*steps {
             self.assemble_probe(step.self_ty);
         }
     }
@@ -268,8 +268,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // metadata if necessary.
         ty::populate_implementations_for_type_if_necessary(self.tcx(), def_id);
 
-        for impl_infos in self.tcx().inherent_impls.borrow().get(&def_id).iter() {
-            for &impl_def_id in impl_infos.iter() {
+        if let Some(impl_infos) = self.tcx().inherent_impls.borrow().get(&def_id) {
+            for &impl_def_id in &***impl_infos {
                 self.assemble_inherent_impl_probe(impl_def_id);
             }
         }
@@ -448,8 +448,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     {
         let mut duplicates = HashSet::new();
         let opt_applicable_traits = self.fcx.ccx.trait_map.get(&expr_id);
-        for applicable_traits in opt_applicable_traits.into_iter() {
-            for &trait_did in applicable_traits.iter() {
+        if let Some(applicable_traits) = opt_applicable_traits {
+            for &trait_did in applicable_traits {
                 if duplicates.insert(trait_did) {
                     try!(self.assemble_extension_candidates_for_trait(trait_did));
                 }
@@ -530,7 +530,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             Some(impls) => impls,
         };
 
-        for &impl_def_id in impl_def_ids.borrow().iter() {
+        for &impl_def_id in &*impl_def_ids.borrow() {
             debug!("assemble_extension_candidates_for_trait_impl: trait_def_id={} impl_def_id={}",
                    trait_def_id.repr(self.tcx()),
                    impl_def_id.repr(self.tcx()));
@@ -601,7 +601,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         // Check if there is an unboxed-closure self-type in the list of receivers.
         // If so, add "synthetic impls".
         let steps = self.steps.clone();
-        for step in steps.iter() {
+        for step in &*steps {
             let (closure_def_id, _, _) = match step.self_ty.sty {
                 ty::ty_closure(a, b, ref c) => (a, b, c),
                 _ => continue,
@@ -653,7 +653,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                method.repr(self.tcx()),
                method_index);
 
-        for step in self.steps.iter() {
+        for step in &*self.steps {
             debug!("assemble_projection_candidates: step={}",
                    step.repr(self.tcx()));
 

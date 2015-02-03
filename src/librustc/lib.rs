@@ -23,8 +23,6 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
-
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
@@ -32,7 +30,7 @@
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(libc)]
-#![feature(os)]
+#![feature(env)]
 #![feature(path)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

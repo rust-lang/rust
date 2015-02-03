@@ -52,7 +52,7 @@ fn d<F>(c: char, i: &mut F, k: bool) where F: FnMut(char) {
     // First check the canonical decompositions
     match bsearch_table(c, canonical_table) {
         Some(canon) => {
-            for x in canon.iter() {
+            for x in canon {
                 d(*x, i, k);
             }
             return;
@@ -66,7 +66,7 @@ fn d<F>(c: char, i: &mut F, k: bool) where F: FnMut(char) {
     // Then check the compatibility decompositions
     match bsearch_table(c, compatibility_table) {
         Some(compat) => {
-            for x in compat.iter() {
+            for x in compat {
                 d(*x, i, k);
             }
             return;

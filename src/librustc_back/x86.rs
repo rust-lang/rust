@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -49,6 +49,9 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os)
             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
           }
           abi::OsDragonfly => {
+            "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
+          }
+          abi::OsOpenbsd => {
             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
           }
 

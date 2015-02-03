@@ -67,10 +67,10 @@ pub struct GroupedMoveErrors<'tcx> {
 fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                 errors: &Vec<MoveError<'tcx>>) {
     let grouped_errors = group_errors_with_same_origin(errors);
-    for error in grouped_errors.iter() {
+    for error in &grouped_errors {
         report_cannot_move_out_of(bccx, error.move_from.clone());
         let mut is_first_note = true;
-        for move_to in error.move_to_places.iter() {
+        for move_to in &error.move_to_places {
             note_move_destination(bccx, move_to.span,
                                   &move_to.ident, is_first_note);
             is_first_note = false;
@@ -81,7 +81,7 @@ fn report_move_errors<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
 fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
                                        -> Vec<GroupedMoveErrors<'tcx>> {
     let mut grouped_errors = Vec::new();
-    for error in errors.iter() {
+    for error in errors {
         append_to_grouped_errors(&mut grouped_errors, error)
     }
     return grouped_errors;
@@ -95,7 +95,7 @@ fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
         } else {
             Vec::new()
         };
-        for ge in grouped_errors.iter_mut() {
+        for ge in &mut *grouped_errors {
             if move_from_id == ge.move_from.id && error.move_to.is_some() {
                 debug!("appending move_to to list");
                 ge.move_to_places.extend(move_to.into_iter());

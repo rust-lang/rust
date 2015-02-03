@@ -515,7 +515,7 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
                        -> Block<'a, 'tcx> {
         let out = self.new_id_block("join", id);
         let mut reachable = false;
-        for bcx in in_cxs.iter() {
+        for bcx in in_cxs {
             if !bcx.unreachable.get() {
                 build::Br(*bcx, out.llbb, DebugLoc::None);
                 reachable = true;
@@ -776,10 +776,6 @@ pub fn C_bool(ccx: &CrateContext, val: bool) -> ValueRef {
 
 pub fn C_i32(ccx: &CrateContext, i: i32) -> ValueRef {
     C_integral(Type::i32(ccx), i as u64, true)
-}
-
-pub fn C_i64(ccx: &CrateContext, i: i64) -> ValueRef {
-    C_integral(Type::i64(ccx), i as u64, true)
 }
 
 pub fn C_u64(ccx: &CrateContext, i: u64) -> ValueRef {

@@ -9,4 +9,4 @@
 // except according to those terms.
 
 
-pub fn main() { let x: Vec<int> = Vec::new(); for _ in x.iter() { panic!("moop"); } }
+pub fn main() { let x: Vec<int> = Vec::new(); for _ in &x { panic!("moop"); } }

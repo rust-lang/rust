@@ -147,7 +147,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
     }
 
     pub fn create_region_hierarchy(&self, rh: &RH) {
-        for child_rh in rh.sub.iter() {
+        for child_rh in rh.sub {
             self.create_region_hierarchy(child_rh);
             self.infcx.tcx.region_maps.record_encl_scope(
                 CodeExtent::from_node_id(child_rh.id),
@@ -181,7 +181,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                       names: &[String])
                       -> Option<ast::NodeId> {
             assert!(idx < names.len());
-            for item in m.items.iter() {
+            for item in &m.items {
                 if item.ident.user_string(this.infcx.tcx) == names[idx] {
                     return search(this, &**item, idx+1, names);
                 }

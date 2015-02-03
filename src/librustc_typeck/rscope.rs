@@ -165,7 +165,7 @@ impl<'r> RegionScope for ShiftedRscope<'r> {
     {
         match self.base_scope.anon_regions(span, count) {
             Ok(mut v) => {
-                for r in v.iter_mut() {
+                for r in &mut v {
                     *r = ty_fold::shift_region(*r, 1);
                 }
                 Ok(v)

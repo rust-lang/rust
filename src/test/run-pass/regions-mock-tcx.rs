@@ -66,7 +66,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     }
 
     fn add_type(&mut self, s: TypeStructure<'tcx>) -> Type<'tcx> {
-        for &ty in self.types.iter() {
+        for &ty in &self.types {
             if *ty == s {
                 return ty;
             }

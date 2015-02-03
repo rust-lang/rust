@@ -26,6 +26,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(env)]
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(libc)]
@@ -74,7 +75,7 @@ use rustc::util::common::time;
 use std::cmp::Ordering::Equal;
 use std::old_io;
 use std::iter::repeat;
-use std::os;
+use std::env;
 use std::sync::mpsc::channel;
 use std::thread;
 
@@ -252,7 +253,7 @@ pub fn get_unstable_features_setting() -> UnstableFeatures {
     // subverting the unstable features lints
     let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
     // The matching key to the above, only known by the build system
-    let bootstrap_provided_key = os::getenv("RUSTC_BOOTSTRAP_KEY");
+    let bootstrap_provided_key = env::var_string("RUSTC_BOOTSTRAP_KEY").ok();
     match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
         (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
         (true, _, _) => UnstableFeatures::Disallow,
@@ -373,7 +374,7 @@ Available lint options:
     println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
 
     let print_lints = |&: lints: Vec<&Lint>| {
-        for lint in lints.into_iter() {
+        for lint in lints {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
                      padded(&name[]), lint.default_level.as_str(), lint.desc);
@@ -400,7 +401,7 @@ Available lint options:
     println!("    {}  {}", padded("----"), "---------");
 
     let print_lint_groups = |&: lints: Vec<(&'static str, Vec<lint::LintId>)>| {
-        for (name, to) in lints.into_iter() {
+        for (name, to) in lints {
             let name = name.chars().map(|x| x.to_lowercase())
                            .collect::<String>().replace("_", "-");
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
@@ -435,7 +436,7 @@ Available lint options:
 
 fn describe_debug_flags() {
     println!("\nAvailable debug options:\n");
-    for &(name, _, opt_type_desc, desc) in config::DB_OPTIONS.iter() {
+    for &(name, _, opt_type_desc, desc) in config::DB_OPTIONS {
         let (width, extra) = match opt_type_desc {
             Some(..) => (21, "=val"),
             None => (25, "")
@@ -447,7 +448,7 @@ fn describe_debug_flags() {
 
 fn describe_codegen_flags() {
     println!("\nAvailable codegen options:\n");
-    for &(name, _, opt_type_desc, desc) in config::CG_OPTIONS.iter() {
+    for &(name, _, opt_type_desc, desc) in config::CG_OPTIONS {
         let (width, extra) = match opt_type_desc {
             Some(..) => (21, "=val"),
             None => (25, "")
@@ -542,7 +543,7 @@ fn print_crate_info(sess: &Session,
     if sess.opts.prints.len() == 0 { return false }
 
     let attrs = input.map(|input| parse_crate_attrs(sess, input));
-    for req in sess.opts.prints.iter() {
+    for req in &sess.opts.prints {
         match *req {
             PrintRequest::Sysroot => println!("{}", sess.sysroot().display()),
             PrintRequest::FileNames |
@@ -566,7 +567,7 @@ fn print_crate_info(sess: &Session,
                 let crate_types = driver::collect_crate_types(sess, attrs);
                 let metadata = driver::collect_crate_metadata(sess, attrs);
                 *sess.crate_metadata.borrow_mut() = metadata;
-                for &style in crate_types.iter() {
+                for &style in &crate_types {
                     let fname = link::filename_for_input(sess, style,
                                                          id.as_slice(),
                                                          &t_outputs.with_extension(""));
@@ -618,7 +619,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
 
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
-    if os::getenv("RUST_MIN_STACK").is_none() {
+    if env::var("RUST_MIN_STACK").is_none() {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
@@ -645,7 +646,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
                             BUG_REPORT_URL),
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
-                for note in xs.iter() {
+                for note in &xs {
                     emitter.emit(None, &note[], None, diagnostic::Note)
                 }
 
@@ -682,8 +683,8 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
 }
 
 pub fn main() {
-    let args = std::os::args();
-    let result = run(args);
-    std::os::set_exit_status(result);
+    let args = env::args().map(|s| s.into_string().unwrap());
+    let result = run(args.collect());
+    std::env::set_exit_status(result as i32);
 }
 

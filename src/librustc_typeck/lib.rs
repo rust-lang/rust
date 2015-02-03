@@ -73,7 +73,6 @@ This API is completely unstable and subject to change.
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![allow(non_camel_case_types)]
-#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
 
 #![feature(box_syntax)]
 #![feature(collections)]

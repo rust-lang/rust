@@ -116,13 +116,13 @@ pub struct IntoIter<K, V> {
 /// An iterator over a BTreeMap's keys.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a K, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
+    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a K>
 }
 
 /// An iterator over a BTreeMap's values.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, K: 'a, V: 'a> {
-    inner: Map<(&'a K, &'a V), &'a V, Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
+    inner: Map<Iter<'a, K, V>, fn((&'a K, &'a V)) -> &'a V>
 }
 
 /// An iterator over a sub-range of BTreeMap's entries.
@@ -197,7 +197,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     pub fn clear(&mut self) {
         let b = self.b;
         // avoid recursive destructors by manually traversing the tree
-        for _ in mem::replace(self, BTreeMap::with_b(b)).into_iter() {};
+        for _ in mem::replace(self, BTreeMap::with_b(b)) {};
     }
 
     // Searching in a B-Tree is pretty straightforward.
@@ -846,7 +846,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, mut iter: T) {
+    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -856,7 +856,7 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Hasher, K: Hash<S>, V: Hash<S>> Hash<S> for BTreeMap<K, V> {
     fn hash(&self, state: &mut S) {
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
         }
     }
@@ -1946,7 +1946,7 @@ mod bench {
         }
 
         b.iter(|| {
-            for entry in map.iter() {
+            for entry in &map {
                 black_box(entry);
             }
         });

@@ -266,6 +266,18 @@ pub struct RefCell<T> {
     borrow: Cell<BorrowFlag>,
 }
 
+/// An enumeration of values returned from the `state` method on a `RefCell<T>`.
+#[derive(Copy, Clone, PartialEq, Debug)]
+#[unstable(feature = "std_misc")]
+pub enum BorrowState {
+    /// The cell is currently being read, there is at least one active `borrow`.
+    Reading,
+    /// The cell is currently being written to, there is an active `borrow_mut`.
+    Writing,
+    /// There are no outstanding borrows on this cell.
+    Unused,
+}
+
 // Values [1, MAX-1] represent the number of `Ref` active
 // (will not outgrow its range since `uint` is the size of the address space)
 type BorrowFlag = uint;
@@ -310,6 +322,19 @@ impl<T> RefCell<T> {
         unsafe { self.value.into_inner() }
     }
 
+    /// Query the current state of this `RefCell`
+    ///
+    /// The returned value can be dispatched on to determine if a call to
+    /// `borrow` or `borrow_mut` would succeed.
+    #[unstable(feature = "std_misc")]
+    pub fn borrow_state(&self) -> BorrowState {
+        match self.borrow.get() {
+            WRITING => BorrowState::Writing,
+            UNUSED => BorrowState::Unused,
+            _ => BorrowState::Reading,
+        }
+    }
+
     /// Attempts to immutably borrow the wrapped value.
     ///
     /// The borrow lasts until the returned `Ref` exits scope. Multiple
@@ -317,6 +342,8 @@ impl<T> RefCell<T> {
     ///
     /// Returns `None` if the value is currently mutably borrowed.
     #[unstable(feature = "core", reason = "may be renamed or removed")]
+    #[deprecated(since = "1.0.0",
+                 reason = "dispatch on `cell.borrow_state()` instead")]
     pub fn try_borrow<'a>(&'a self) -> Option<Ref<'a, T>> {
         match BorrowRef::new(&self.borrow) {
             Some(b) => Some(Ref { _value: unsafe { &*self.value.get() }, _borrow: b }),
@@ -326,8 +353,8 @@ impl<T> RefCell<T> {
 
     /// Immutably borrows the wrapped value.
     ///
-    /// The borrow lasts until the returned `Ref` exits scope. Multiple immutable borrows can be
-    /// taken out at the same time.
+    /// The borrow lasts until the returned `Ref` exits scope. Multiple
+    /// immutable borrows can be taken out at the same time.
     ///
     /// # Panics
     ///
@@ -361,9 +388,12 @@ impl<T> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn borrow<'a>(&'a self) -> Ref<'a, T> {
-        match self.try_borrow() {
-            Some(ptr) => ptr,
-            None => panic!("RefCell<T> already mutably borrowed")
+        match BorrowRef::new(&self.borrow) {
+            Some(b) => Ref {
+                _value: unsafe { &*self.value.get() },
+                _borrow: b,
+            },
+            None => panic!("RefCell<T> already mutably borrowed"),
         }
     }
 
@@ -374,6 +404,8 @@ impl<T> RefCell<T> {
     ///
     /// Returns `None` if the value is currently borrowed.
     #[unstable(feature = "core", reason = "may be renamed or removed")]
+    #[deprecated(since = "1.0.0",
+                 reason = "dispatch on `cell.borrow_state()` instead")]
     pub fn try_borrow_mut<'a>(&'a self) -> Option<RefMut<'a, T>> {
         match BorrowRefMut::new(&self.borrow) {
             Some(b) => Some(RefMut { _value: unsafe { &mut *self.value.get() }, _borrow: b }),
@@ -383,8 +415,8 @@ impl<T> RefCell<T> {
 
     /// Mutably borrows the wrapped value.
     ///
-    /// The borrow lasts until the returned `RefMut` exits scope. The value cannot be borrowed
-    /// while this borrow is active.
+    /// The borrow lasts until the returned `RefMut` exits scope. The value
+    /// cannot be borrowed while this borrow is active.
     ///
     /// # Panics
     ///
@@ -417,9 +449,12 @@ impl<T> RefCell<T> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn borrow_mut<'a>(&'a self) -> RefMut<'a, T> {
-        match self.try_borrow_mut() {
-            Some(ptr) => ptr,
-            None => panic!("RefCell<T> already borrowed")
+        match BorrowRefMut::new(&self.borrow) {
+            Some(b) => RefMut {
+                _value: unsafe { &mut *self.value.get() },
+                _borrow: b,
+            },
+            None => panic!("RefCell<T> already borrowed"),
         }
     }
 

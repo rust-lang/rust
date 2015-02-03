@@ -352,7 +352,7 @@ impl UnixStream {
 
     fn cancel_io(&self) -> IoResult<()> {
         match unsafe { c::CancelIoEx(self.handle(), ptr::null_mut()) } {
-            0 if os::errno() == libc::ERROR_NOT_FOUND as uint => {
+            0 if os::errno() == libc::ERROR_NOT_FOUND as i32 => {
                 Ok(())
             }
             0 => Err(super::last_error()),
@@ -374,7 +374,7 @@ impl UnixStream {
         // acquire the lock.
         //
         // See comments in close_read() about why this lock is necessary.
-        let guard = unsafe { self.inner.lock.lock() };
+        let guard = self.inner.lock.lock();
         if self.read_closed() {
             return Err(eof())
         }
@@ -392,7 +392,7 @@ impl UnixStream {
 
         // If our errno doesn't say that the I/O is pending, then we hit some
         // legitimate error and return immediately.
-        if os::errno() != libc::ERROR_IO_PENDING as uint {
+        if os::errno() != libc::ERROR_IO_PENDING as i32 {
             return Err(super::last_error())
         }
 
@@ -417,7 +417,7 @@ impl UnixStream {
             // If we succeeded, or we failed for some reason other than
             // CancelIoEx, return immediately
             if ret != 0 { return Ok(bytes_read as uint) }
-            if os::errno() != libc::ERROR_OPERATION_ABORTED as uint {
+            if os::errno() != libc::ERROR_OPERATION_ABORTED as i32 {
                 return Err(super::last_error())
             }
 
@@ -450,7 +450,7 @@ impl UnixStream {
             // going after we woke up.
             //
             // See comments in close_read() about why this lock is necessary.
-            let guard = unsafe { self.inner.lock.lock() };
+            let guard = self.inner.lock.lock();
             if self.write_closed() {
                 return Err(epipe())
             }
@@ -465,7 +465,7 @@ impl UnixStream {
             drop(guard);
 
             if ret == 0 {
-                if err != libc::ERROR_IO_PENDING as uint {
+                if err != libc::ERROR_IO_PENDING as i32 {
                     return Err(decode_error_detailed(err as i32))
                 }
                 // Process a timeout if one is pending
@@ -481,7 +481,7 @@ impl UnixStream {
                 // aborted, then check to see if the write half was actually
                 // closed or whether we woke up from the read half closing.
                 if ret == 0 {
-                    if os::errno() != libc::ERROR_OPERATION_ABORTED as uint {
+                    if os::errno() != libc::ERROR_OPERATION_ABORTED as i32 {
                         return Err(super::last_error())
                     }
                     if !wait_succeeded.is_ok() {
@@ -525,14 +525,14 @@ impl UnixStream {
         // close_read() between steps 1 and 2. By atomically executing steps 1
         // and 2 with a lock with respect to close_read(), we're guaranteed that
         // no thread will erroneously sit in a read forever.
-        let _guard = unsafe { self.inner.lock.lock() };
+        let _guard = self.inner.lock.lock();
         self.inner.read_closed.store(true, Ordering::SeqCst);
         self.cancel_io()
     }
 
     pub fn close_write(&mut self) -> IoResult<()> {
         // see comments in close_read() for why this lock is necessary
-        let _guard = unsafe { self.inner.lock.lock() };
+        let _guard = self.inner.lock.lock();
         self.inner.write_closed.store(true, Ordering::SeqCst);
         self.cancel_io()
     }

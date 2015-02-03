@@ -14,7 +14,7 @@ use std::old_io::fs::PathExtensions;
 use std::old_io::process::{Command, ProcessOutput};
 use std::old_io::{fs, TempDir};
 use std::old_io;
-use std::os;
+use std::env;
 use std::str;
 use syntax::diagnostic::Handler as ErrorHandler;
 
@@ -99,7 +99,7 @@ pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
     let oslibname = format!("{}{}{}", osprefix, name, ossuffix);
     let unixlibname = format!("lib{}.a", name);
 
-    for path in search_paths.iter() {
+    for path in search_paths {
         debug!("looking for {} inside {:?}", name, path.display());
         let test = path.join(&oslibname[]);
         if test.exists() { return test }
@@ -224,7 +224,7 @@ impl<'a> ArchiveBuilder<'a> {
     pub fn build(self) -> Archive<'a> {
         // Get an absolute path to the destination, so `ar` will work even
         // though we run it from `self.work_dir`.
-        let abs_dst = os::getcwd().unwrap().join(&self.archive.dst);
+        let abs_dst = env::current_dir().unwrap().join(&self.archive.dst);
         assert!(!abs_dst.is_relative());
         let mut args = vec![&abs_dst];
         let mut total_len = abs_dst.as_vec().len();
@@ -244,7 +244,7 @@ impl<'a> ArchiveBuilder<'a> {
         // 32,768, and we leave a bit of extra space for the program name.
         static ARG_LENGTH_LIMIT: uint = 32000;
 
-        for member_name in self.members.iter() {
+        for member_name in &self.members {
             let len = member_name.as_vec().len();
 
             // `len + 1` to account for the space that's inserted before each
@@ -283,7 +283,7 @@ impl<'a> ArchiveBuilder<'a> {
         // First, extract the contents of the archive to a temporary directory.
         // We don't unpack directly into `self.work_dir` due to the possibility
         // of filename collisions.
-        let archive = os::make_absolute(archive).unwrap();
+        let archive = env::current_dir().unwrap().join(archive);
         run_ar(self.archive.handler, &self.archive.maybe_ar_prog,
                "x", Some(loc.path()), &[&archive]);
 
@@ -297,7 +297,7 @@ impl<'a> ArchiveBuilder<'a> {
         // all SYMDEF files as these are just magical placeholders which get
         // re-created when we make a new archive anyway.
         let files = try!(fs::readdir(loc.path()));
-        for file in files.iter() {
+        for file in &files {
             let filename = file.filename_str().unwrap();
             if skip(filename) { continue }
             if filename.contains(".SYMDEF") { continue }

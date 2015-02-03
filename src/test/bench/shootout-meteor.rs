@@ -116,9 +116,9 @@ fn transform(piece: Vec<(i32, i32)> , all: bool) -> Vec<Vec<(i32, i32)>> {
         }).collect();
 
     // translating to (0, 0) as minimum coordinates.
-    for cur_piece in res.iter_mut() {
+    for cur_piece in &mut res {
         let (dy, dx) = *cur_piece.iter().min_by(|e| *e).unwrap();
-        for &mut (ref mut y, ref mut x) in cur_piece.iter_mut() {
+        for &mut (ref mut y, ref mut x) in cur_piece {
             *y -= dy; *x -= dx;
         }
     }
@@ -135,7 +135,7 @@ fn transform(piece: Vec<(i32, i32)> , all: bool) -> Vec<Vec<(i32, i32)>> {
 // dx) is on the board.
 fn mask(dy: i32, dx: i32, id: usize, p: &Vec<(i32, i32)>) -> Option<u64> {
     let mut m = 1 << (50 + id);
-    for &(y, x) in p.iter() {
+    for &(y, x) in p {
         let x = x + dx + (y + (dy % 2)) / 2;
         if x < 0 || x > 4 {return None;}
         let y = y + dy;
@@ -184,7 +184,7 @@ fn is_board_unfeasible(board: u64, masks: &Vec<Vec<Vec<u64>>>) -> bool {
         if board & 1 << i != 0 { continue; }
         for (cur_id, pos_masks) in masks_at.iter().enumerate() {
             if board & 1 << (50 + cur_id) != 0 { continue; }
-            for &cur_m in pos_masks.iter() {
+            for &cur_m in pos_masks {
                 if cur_m & board != 0 { continue; }
                 coverable |= cur_m;
                 // if every coordinates can be covered and every

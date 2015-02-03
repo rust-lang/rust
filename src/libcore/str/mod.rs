@@ -478,7 +478,7 @@ impl<'a> DoubleEndedIterator for CharIndices<'a> {
 /// Created with `StrExt::bytes`
 #[stable(feature = "rust1", since = "1.0.0")]
 #[derive(Clone)]
-pub struct Bytes<'a>(Map<&'a u8, u8, slice::Iter<'a, u8>, BytesDeref>);
+pub struct Bytes<'a>(Map<slice::Iter<'a, u8>, BytesDeref>);
 delegate_iter!{exact u8 : Bytes<'a>}
 
 /// A temporary fn new type that ensures that the `Bytes` iterator
@@ -526,7 +526,7 @@ pub struct Lines<'a> {
 /// An iterator over the lines of a string, separated by either `\n` or (`\r\n`).
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct LinesAny<'a> {
-    inner: Map<&'a str, &'a str, Lines<'a>, fn(&str) -> &str>,
+    inner: Map<Lines<'a>, fn(&str) -> &str>,
 }
 
 impl<'a, Sep> CharSplits<'a, Sep> {
@@ -1266,16 +1266,6 @@ mod traits {
         }
     }
 
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl ops::Index<ops::FullRange> for str {
-        type Output = str;
-        #[inline]
-        fn index(&self, _index: &ops::FullRange) -> &str {
-            self
-        }
-    }
-    #[cfg(not(stage0))]
     #[stable(feature = "rust1", since = "1.0.0")]
     impl ops::Index<ops::RangeFull> for str {
         type Output = str;

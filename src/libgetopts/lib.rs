@@ -315,7 +315,7 @@ impl Matches {
 
     /// Returns true if any of several options were matched.
     pub fn opts_present(&self, names: &[String]) -> bool {
-        for nm in names.iter() {
+        for nm in names {
             match find_opt(self.opts.as_slice(), Name::from_str(&nm[])) {
                 Some(id) if !self.vals[id].is_empty() => return true,
                 _ => (),
@@ -326,7 +326,7 @@ impl Matches {
 
     /// Returns the string argument supplied to one of several matching options or `None`.
     pub fn opts_str(&self, names: &[String]) -> Option<String> {
-        for nm in names.iter() {
+        for nm in names {
             match self.opt_val(&nm[]) {
                 Some(Val(ref s)) => return Some(s.clone()),
                 _ => ()
@@ -342,7 +342,7 @@ impl Matches {
     pub fn opt_strs(&self, nm: &str) -> Vec<String> {
         let mut acc: Vec<String> = Vec::new();
         let r = self.opt_vals(nm);
-        for v in r.iter() {
+        for v in &r {
             match *v {
                 Val(ref s) => acc.push((*s).clone()),
                 _ => ()
@@ -395,7 +395,7 @@ fn find_opt(opts: &[Opt], nm: Name) -> Option<uint> {
     }
 
     // Search in aliases.
-    for candidate in opts.iter() {
+    for candidate in opts {
         if candidate.aliases.iter().position(|opt| opt.name == nm).is_some() {
             return opts.iter().position(|opt| opt.name == candidate.name);
         }
@@ -648,7 +648,7 @@ pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
                 }
             }
             let mut name_pos = 0;
-            for nm in names.iter() {
+            for nm in &names {
                 name_pos += 1;
                 let optid = match find_opt(opts.as_slice(), (*nm).clone()) {
                   Some(id) => id,

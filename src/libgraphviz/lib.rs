@@ -548,7 +548,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
               options: &[RenderOption]) -> old_io::IoResult<()>
 {
     fn writeln<W:Writer>(w: &mut W, arg: &[&str]) -> old_io::IoResult<()> {
-        for &s in arg.iter() { try!(w.write_str(s)); }
+        for &s in arg { try!(w.write_str(s)); }
         w.write_char('\n')
     }
 
@@ -557,7 +557,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
     }
 
     try!(writeln(w, &["digraph ", g.graph_id().as_slice(), " {"]));
-    for n in g.nodes().iter() {
+    for n in &*g.nodes() {
         try!(indent(w));
         let id = g.node_id(n);
         if options.contains(&RenderOption::NoNodeLabels) {
@@ -569,7 +569,7 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
         }
     }
 
-    for e in g.edges().iter() {
+    for e in &*g.edges() {
         let escaped_label = g.edge_label(e).escape();
         try!(indent(w));
         let source = g.source(e);

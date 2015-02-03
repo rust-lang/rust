@@ -557,7 +557,7 @@ mod tests {
 
     fn test_hash<D: Digest>(sh: &mut D, tests: &[Test]) {
         // Test that it works when accepting the message all at once
-        for t in tests.iter() {
+        for t in tests {
             sh.reset();
             sh.input_str(t.input.as_slice());
             let out_str = sh.result_str();
@@ -565,7 +565,7 @@ mod tests {
         }
 
         // Test that it works when accepting the message in pieces
-        for t in tests.iter() {
+        for t in tests {
             sh.reset();
             let len = t.input.len();
             let mut left = len;
