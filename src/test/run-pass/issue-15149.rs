@@ -11,7 +11,7 @@
 use std::slice::SliceExt;
 use std::old_io::{Command, fs, USER_RWX};
 use std::os;
-use std::path::BytesContainer;
+use std::old_path::BytesContainer;
 use std::rand::random;
 
 fn main() {

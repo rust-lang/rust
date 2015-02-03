@@ -306,7 +306,7 @@ impl Target {
         use std::env;
         use std::ffi::OsString;
         use std::old_io::File;
-        use std::path::Path;
+        use std::old_path::Path;
         use serialize::json;
 
         fn load_file(path: &Path) -> Result<Target, String> {
