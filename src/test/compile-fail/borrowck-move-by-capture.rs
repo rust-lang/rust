@@ -8,11 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+#![feature(box_syntax,unboxed_closures)]
+
+fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
+fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 
 pub fn main() {
     let bar = box 3;
-    let _g = |&mut:| {
-        let _h = move |:| -> isize { *bar }; //~ ERROR cannot move out of captured outer variable
-    };
+    let _g = to_fn_mut(|| {
+        let _h = to_fn_once(move || -> isize { *bar }); //~ ERROR cannot move out of
+    });
 }
