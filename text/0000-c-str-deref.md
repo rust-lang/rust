@@ -130,12 +130,18 @@ The described changes are implemented in crate
 
 # Drawbacks
 
-The change of the deref type is another breaking change to `CString`.
+The change of the deref target is another breaking change to `CString`.
 In practice the main purpose of borrowing from `CString` is to obtain a
 raw pointer with `.as_ptr()`; for code which only does this and does not
 expose the slice in type annotations, parameter signatures and so on,
 the change should not be breaking since `CStr` also provides
 this method.
+
+Making the deref target practically unsized throws away the length information
+intrinsic to `CString` and makes it less useful as a container for bytes.
+This is countered by the fact that there are general purpose byte containers
+in the core libraries, whereas `CString` addresses the specific need to
+convey string data from Rust to C-style APIs.
 
 While it's not possible outside of unsafe code to unintentionally copy out
 or modify the nominal value of `CStr` under an immutable reference, some
