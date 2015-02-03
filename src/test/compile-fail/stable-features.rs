@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(
-    foo_bar_baz,
-    foo(bar),
-    foo = "baz"
-)]
-//~^^^ ERROR: malformed feature
-//~^^^ ERROR: malformed feature
+// Testing that the stable_features lint catches use of stable
+// language and lib features.
 
-#![feature] //~ ERROR: malformed feature
-#![feature = "foo"] //~ ERROR: malformed feature
+#![deny(stable_features)]
+#![feature(test_accepted_feature)] //~ ERROR this feature is stable
+#![feature(rust1)] //~ ERROR this feature is stable
 
-#![feature(test_removed_feature)] //~ ERROR: feature has been removed
+fn main() {
+    let _foo: Vec<()> = Vec::new();
+}
