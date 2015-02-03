@@ -21,6 +21,7 @@ impl Handle {
     pub fn new(handle: HANDLE) -> Handle {
         Handle(handle)
     }
+    pub fn raw(&self) -> HANDLE { self.0 }
 }
 
 impl Drop for Handle {

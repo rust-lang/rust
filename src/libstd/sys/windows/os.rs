@@ -191,7 +191,7 @@ impl<'a> Iterator for SplitPaths<'a> {
     }
 }
 
-#[derive(Show)]
+#[derive(Debug)]
 pub struct JoinPathsError;
 
 pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
