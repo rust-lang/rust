@@ -23,20 +23,24 @@ fn main() {
 
 The type `std::ffi::CString` is used to prepare string data for passing
 as null-terminated strings to FFI functions. This type dereferences to a
-DST, `[libc::c_char]`. The DST, however, is a poor choice for representing
-borrowed C string data, since:
+DST, `[libc::c_char]`. The slice type, however, is a poor choice for
+representing borrowed C string data, since:
 
-1. The slice does not enforce the C string invariant at compile time.
+1. A slice does not express the C string invariant at compile time.
    Safe interfaces wrapping FFI functions cannot take slice references as is
    without dynamic checks (when null-terminated slices are expected) or
    building a temporary `CString` internally (in this case plain Rust slices
-   must be passed with no interior NULs). `CString`, for its part, is an
-   owning container and is not convenient for passing by reference. A string
-   literal, for example, would require a `CString` constructed from it at
-   runtime to pass into a function expecting `&CString`.
-2. The primary consumers of the borrowed pointers, FFI functions, do not care
-   about the 'sized' aspect of the DST. The borrowed reference is
-   therefore needlessly 'fat' for its primary purpose.
+   must be passed with no interior NULs).
+2. An allocated `CString` buffer is not the only desired source for
+   borrowed C string data. Specifically, it should be possible to interpret
+   a raw pointer, unsafely and at zero overhead, as a reference to a
+   null-terminated string, so that the reference can then be used safely.
+   However, in order to construct a slice (or a dynamically sized newtype
+   wrapping a slice), its length has to be determined, which is unnecessary
+   for the consuming FFI function that will only receive a thin pointer.
+   Another likely data source are string and byte string literals: provided
+   that a static string is null-terminated, there should be a way to pass it
+   to FFI functions without an intermediate allocation in `CString`.
 
 As a pattern of owned/borrowed type pairs has been established
 thoughout other modules (see e.g.
