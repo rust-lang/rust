@@ -1253,9 +1253,9 @@ following interface:
 
 impl TcpStream {
     fn connect<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpStream>;
-    fn peer_addr(&mut self) -> io::Result<SocketAddr>;
-    fn socket_addr(&mut self) -> io::Result<SocketAddr>;
-    fn shutdown(&mut self, how: Shutdown) -> io::Result<()>;
+    fn peer_addr(&self) -> io::Result<SocketAddr>;
+    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn shutdown(&self, how: Shutdown) -> io::Result<()>;
     fn duplicate(&self) -> io::Result<TcpStream>;
 }
 
@@ -1284,7 +1284,8 @@ impl<'a> Write for &'a TcpStream { ... }
   write from a `TcpStream`
 
 Various other options such as `nodelay` and `keepalive` will be left
-`#[unstable]` for now.
+`#[unstable]` for now. The `TcpStream` structure will also adhere to both `Send`
+and `Sync`.
 
 The `TcpAcceptor` struct will be removed and all functionality will be folded
 into the `TcpListener` structure. Specifically, this will be the resulting API:
@@ -1292,7 +1293,7 @@ into the `TcpListener` structure. Specifically, this will be the resulting API:
 ```rust
 impl TcpListener {
     fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpListener>;
-    fn socket_addr(&mut self) -> io::Result<SocketAddr>;
+    fn socket_addr(&self) -> io::Result<SocketAddr>;
     fn duplicate(&self) -> io::Result<TcpListener>;
     fn accept(&self) -> io::Result<(TcpStream, SocketAddr)>;
     fn incoming(&self) -> Incoming;
@@ -1323,11 +1324,13 @@ Some major changes from today's API include:
   happen concurrently.
 * For convenience the iterator does not yield the `SocketAddr` from `accept`.
 
+The `TcpListener` type will also adhere to `Send` and `Sync`.
+
 #### UDP
 [UDP]: #udp
 
-The UDP infrastructre will receive a similar face-lift as the TCP infrastructure
-will:
+The UDP infrastructure will receive a similar face-lift as the TCP
+infrastructure will:
 
 ```rust
 impl UdpSocket {
@@ -1351,6 +1354,8 @@ Some important points of note are:
 * All timeout support is removed. This may come back in the form of `setsockopt`
   (as with TCP streams) or with a more general implementation of `select`.
 * `clone` functionality has been replaced with `duplicate`.
+
+The `UdpSocket` type will adhere to both `Send` and `Sync`.
 
 #### Sockets
 [Sockets]: #sockets
