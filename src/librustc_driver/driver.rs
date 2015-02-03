@@ -594,9 +594,6 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     time(time_passes, "loop checking", (), |_|
          middle::check_loop::check_crate(&sess, krate));
 
-    let stability_index = time(time_passes, "stability index", (), |_|
-                               stability::Index::build(&sess, krate));
-
     time(time_passes, "static item recursion checking", (), |_|
          middle::check_static_recursion::check_crate(&sess, krate, &def_map, &ast_map));
 
@@ -608,7 +605,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                             freevars,
                             region_map,
                             lang_items,
-                            stability_index);
+                            stability::Index::new(krate));
 
     // passes are timed inside typeck
     typeck::check_crate(&ty_cx, trait_map);
@@ -627,6 +624,10 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     let (exported_items, public_items) =
             time(time_passes, "privacy checking", maps, |(a, b)|
                  rustc_privacy::check_crate(&ty_cx, &export_map, a, b));
+
+    // Do not move this check past lint
+    time(time_passes, "stability index", (), |_|
+         ty_cx.stability.borrow_mut().build(&ty_cx.sess, krate, &public_items));
 
     time(time_passes, "intrinsic checking", (), |_|
          middle::intrinsicck::check_crate(&ty_cx));
