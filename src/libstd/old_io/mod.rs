@@ -547,26 +547,6 @@ pub trait Reader {
         Ok(buf[0])
     }
 
-    /// Reads up to `len` bytes and appends them to a vector.
-    /// Returns the number of bytes read. The number of bytes read may be
-    /// less than the number requested, even 0. Returns Err on EOF.
-    ///
-    /// # Error
-    ///
-    /// If an error occurs during this I/O operation, then it is returned
-    /// as `Err(IoError)`. See `read()` for more details.
-    fn push(&mut self, len: uint, buf: &mut Vec<u8>) -> IoResult<uint> {
-        let start_len = buf.len();
-        buf.reserve(len);
-
-        let n = {
-            let s = unsafe { slice_vec_capacity(buf, start_len, start_len + len) };
-            try!(self.read(s))
-        };
-        unsafe { buf.set_len(start_len + n) };
-        Ok(n)
-    }
-
     /// Reads at least `min` bytes, but no more than `len`, and appends them to
     /// a vector.
     /// Returns the number of bytes read.
