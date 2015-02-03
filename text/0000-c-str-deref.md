@@ -14,7 +14,8 @@ fn safe_puts(s: &CStr) {
 }
 
 fn main() {
-    safe_puts(c_str!("Look ma, a `&'static CStr` from a literal!"));
+    let s = CString::from_slice("A Rust string");
+    safe_puts(s);
 }
 ```
 
@@ -89,24 +90,6 @@ to ensure that the static data does not contain any unintended interior NULs
 (the program will not crash, but the string will be interpreted up to the
 first `'\0'` encountered). For non-literal data, `CStrBuf::from_bytes` or
 `CStrBuf::from_vec` should be preferred.
-
-## c_str!
-
-For added convenience in passing literal string data to FFI functions,
-a macro is provided that appends a literal with `"\0"` and returns it
-as `&'static CStr`:
-```rust
-#[macro_export]
-macro_rules! c_str {
-    ($lit:expr) => {
-        $crate::ffi::CStr::from_static_str(concat!($lit, "\0"))
-    }
-}
-```
-Going forward, it would be good to make `c_str!` also accept byte strings
-on input, through a [byte string concatenation
-macro](https://github.com/rust-lang/rfcs/pull/566). Ultimately, it could be
-made workable in static expressions through a compiler plugin.
 
 ## Returning C strings
 
