@@ -64,7 +64,10 @@ follow-up PRs against this RFC.
             * [stdin, stdout, stderr]
         * [std::env]
         * [std::fs] (stub)
-        * [std::net] (stub)
+        * [std::net]
+            * [TCP]
+            * [UDP]
+            * [Addresses]
         * [std::process] (stub)
         * [std::os]
     * [Odds and ends]
@@ -1234,7 +1237,124 @@ This brings the constants into line with our naming conventions elsewhere.
 ### `std::net`
 [std::net]: #stdnet
 
-> To be added in a follow-up PR.
+The contents of `std::io::net` submodules `tcp`, `udp`, `ip` and
+`addrinfo` will be retained but moved into a single `std::net` module;
+the other modules are being moved or removed and are described
+elsewhere.
+
+#### TCP
+[TCP]: #tcp
+
+For `TcpStream`, the changes are most easily expressed by giving the signatures directly:
+
+```rust
+// TcpStream, which contains both a reader and a writer
+
+impl TcpStream {
+    fn connect<A: ToSocketAddr>(addr: A) -> IoResult<TcpStreama>;
+    fn connect_deadline<A, D>(addr: A, deadline: D) -> IoResult<TcpStreama> where
+        A: ToSocketAddr, D: IntoDeadline;
+
+    fn reader(&mut self) -> &mut TcpReader;
+    fn writer(&mut self) -> &mut TcpWriter;
+    fn split(self) -> (TcpReader, TcpWriter);
+
+    fn peer_addr(&mut self) -> IoResult<SocketAddr>;
+    fn socket_addr(&mut self) -> IoResult<SocketAddr>;
+}
+
+impl Reader for TcpStream { ... }
+impl Writer for TcpStream { ... }
+
+impl Reader for Deadlined<TcpStream> { ... }
+impl Writer for Deadlined<TcpStream> { ... }
+
+// TcpReader
+
+impl Reader for TcpReader { ... }
+impl Reader for Deadlined<TcpReader> { ... }
+
+impl TcpReader {
+    fn peer_addr(&mut self) -> IoResult<SocketAddr>;
+    fn socket_addr(&mut self) -> IoResult<SocketAddr>;
+
+    fn shutdown_token(&mut self) -> ShutdownToken;
+}
+
+// TcpWriter
+
+impl Writer for TcpWriter { ... }
+impl Writer for Deadlined<TcpWriter> { ... }
+
+impl TcpWriter {
+    fn peer_addr(&mut self) -> IoResult<SocketAddr>;
+    fn socket_addr(&mut self) -> IoResult<SocketAddr>;
+
+    fn shutdown_token(&mut self) -> ShutdownToken;
+}
+
+// ShutdownToken
+
+impl ShutdownToken {
+    fn shutdown(self);
+}
+
+impl Clone for ShutdownToken { ... }
+```
+
+The idea is that a `TcpStream` provides both a reader and a writer,
+and can be used directly as such, just as it can today. However, the
+two sides can also be broken apart via the `split` method, which
+allows them to be shipped off to separate threads. Moreover, each side
+can yield a `ShutdownToken`, a `Clone` and `Send` value that can be
+used to shut down that side of the socket, cancelling any in-progress
+blocking operations, much like e.g. `close_read` does today.
+
+The implementation of the `ShutdownToken` infrastructure should ensure
+that there is essentially no cost imposed when the feature is not used
+-- in particular, if a `ShutdownToken` has not been requested, a
+single `read` or `write` should correspond to a single syscall.
+
+For `TcpListener`, the only change is to rename `socket_name` to
+`socket_addr`.
+
+For `TcpAcceptor` we will:
+
+* Add a `socket_addr` method.
+* Possibly provide a convenience constructor for `bind`.
+* Replace `close_accept` with `cancel_token()`.
+* Remove `Clone`.
+* Rename `IncomingConnecitons` to `Incoming`.
+
+#### UDP
+[UDP]: #udp
+
+The UDP infrastructure should change to use the new deadline
+infrastructure, but should not provide `Clone`, `ShutdownToken`s, or a
+reader/writer split. In addition:
+
+* `recv_from` should become `recv`.
+* `send_to` should become `send`.
+* `socket_name` should become `socket_addr`.
+
+Methods like `multicast` and `ttl` are left as `#[experimental]` for
+now (they are derived from libuv's design).
+
+#### Addresses
+[Addresses]: #addresses
+
+For the current `addrinfo` module:
+
+* The `get_host_addresses` should be renamed to `lookup_host`.
+* All other contents should be removed.
+
+For the current `ip` module:
+
+* The `ToSocketAddr` trait should become `ToSocketAddrs`
+* The default `to_socket_addr_all` method should be removed.
+
+The actual address structures could use some scrutiny, but any
+revisions there are left as an unresolved question.
 
 ### `std::process`
 [std::process]: #stdprocess
