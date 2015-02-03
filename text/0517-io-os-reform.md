@@ -1253,7 +1253,7 @@ the module.
 The `Command` type is a builder API for processes, and is largely in
 good shape, modulo a few tweaks:
 
-* Replace `ToCCstr` bounds with `IntoOsStrBuf`.
+* Replace `ToCStr` bounds with `AsOsStr`.
 * Replace `env_set_all` with `env_clear`
 * Rename `cwd` to `current_dir`, take `AsPath`.
 * Rename `spawn` to `run`
