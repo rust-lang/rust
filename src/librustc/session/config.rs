@@ -36,8 +36,8 @@ use syntax::parse::token::InternedString;
 use getopts;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
+use std::env;
 use std::fmt;
-use std::os;
 
 use llvm;
 
