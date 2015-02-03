@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:unexpected token
 extern {
-    f();
+    f(); //~ ERROR expected one of `fn`, `pub`, `static`, `unsafe`, or `}`, found `f`
 }
 
 fn main() {

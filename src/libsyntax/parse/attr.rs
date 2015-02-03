@@ -13,7 +13,7 @@ use ast;
 use codemap::{spanned, Spanned, mk_sp, Span};
 use parse::common::*; //resolve bug?
 use parse::token;
-use parse::parser::Parser;
+use parse::parser::{Parser, TokenType};
 use ptr::P;
 
 /// A parser that can parse attributes.
@@ -69,7 +69,9 @@ impl<'a> ParserAttr for Parser<'a> {
                 let lo = self.span.lo;
                 self.bump();
 
-                let style = if self.eat(&token::Not) {
+                if permit_inner { self.expected_tokens.push(TokenType::Token(token::Not)); }
+                let style = if self.token == token::Not {
+                    self.bump();
                     if !permit_inner {
                         let span = self.span;
                         self.span_err(span,
@@ -96,7 +98,8 @@ impl<'a> ParserAttr for Parser<'a> {
             }
         };
 
-        if permit_inner && self.eat(&token::Semi) {
+        if permit_inner && self.token == token::Semi {
+            self.bump();
             self.span_warn(span, "this inner attribute syntax is deprecated. \
                            The new syntax is `#![foo]`, with a bang and no semicolon");
             style = ast::AttrInner;

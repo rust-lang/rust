@@ -19,7 +19,7 @@ use std::collections::HashMap;
 pub fn main() {
     let mut h = HashMap::new();
     let kvs = [(1, 10), (2, 20), (3, 30)];
-    for &(k,v) in kvs.iter() {
+    for &(k,v) in &kvs {
         h.insert(k,v);
     }
     let mut x = 0;

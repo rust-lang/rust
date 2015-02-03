@@ -13,9 +13,9 @@
 pub use self::FileMatch::*;
 
 use std::collections::HashSet;
+use std::env;
 use std::old_io::fs::PathExtensions;
 use std::old_io::fs;
-use std::os;
 
 use util::fs as myfs;
 use session::search_paths::{SearchPaths, PathKind};
@@ -66,7 +66,7 @@ impl<'a> FileSearch<'a> {
         // Try RUST_PATH
         if !found {
             let rustpath = rust_path();
-            for path in rustpath.iter() {
+            for path in &rustpath {
                 let tlib_path = make_rustpkg_lib_path(
                     self.sysroot, path, self.triple);
                 debug!("is {} in visited_dirs? {}", tlib_path.display(),
@@ -194,7 +194,7 @@ pub fn get_or_default_sysroot() -> Path {
             })
     }
 
-    match canonicalize(os::self_exe_name()) {
+    match canonicalize(env::current_exe().ok()) {
         Some(mut p) => { p.pop(); p.pop(); p }
         None => panic!("can't determine value for sysroot")
     }
@@ -207,7 +207,7 @@ static PATH_ENTRY_SEPARATOR: &'static str = ":";
 
 /// Returns RUST_PATH as a string, without default paths added
 pub fn get_rust_path() -> Option<String> {
-    os::getenv("RUST_PATH").map(|x| x.to_string())
+    env::var_string("RUST_PATH").ok()
 }
 
 /// Returns the value of RUST_PATH, as a list
@@ -224,7 +224,7 @@ pub fn rust_path() -> Vec<Path> {
         }
         None => Vec::new()
     };
-    let mut cwd = os::getcwd().unwrap();
+    let mut cwd = env::current_dir().unwrap();
     // now add in default entries
     let cwd_dot_rust = cwd.join(".rust");
     if !env_rust_path.contains(&cwd_dot_rust) {
@@ -243,8 +243,7 @@ pub fn rust_path() -> Vec<Path> {
         }
         cwd.pop();
     }
-    let h = os::homedir();
-    for h in h.iter() {
+    if let Some(h) = env::home_dir() {
         let p = h.join(".rust");
         if !env_rust_path.contains(&p) && p.exists() {
             env_rust_path.push(p);

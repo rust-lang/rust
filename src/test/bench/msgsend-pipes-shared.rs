@@ -75,7 +75,7 @@ fn run(args: &[String]) {
             server(&from_parent, &to_parent);
         });
 
-        for r in worker_results.into_iter() {
+        for r in worker_results {
             let _ = r.join();
         }
 

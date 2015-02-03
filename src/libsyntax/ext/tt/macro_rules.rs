@@ -259,7 +259,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(def.span, "wrong-structured lhs")
     };
 
-    for lhs in lhses.iter() {
+    for lhs in &lhses {
         check_lhs_nt_follows(cx, &**lhs, def.span);
     }
 

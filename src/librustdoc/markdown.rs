@@ -47,7 +47,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
     output.set_extension("html");
 
     let mut css = String::new();
-    for name in matches.opt_strs("markdown-css").iter() {
+    for name in &matches.opt_strs("markdown-css") {
         let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
         css.push_str(s.as_slice())
     }

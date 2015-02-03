@@ -19,9 +19,6 @@ use foo::bar::{
 use {self};
 //~^ ERROR `self` import can only appear in an import list with a non-empty prefix
 
-use foo::self;
-//~^ ERROR `self` imports are only allowed within a { } list
-
 mod foo {
     pub mod bar {
         pub struct Bar;

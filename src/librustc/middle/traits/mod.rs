@@ -438,7 +438,7 @@ pub fn normalize_param_env<'a,'tcx>(param_env: &ty::ParameterEnvironment<'a,'tcx
         let mut fulfill_cx = FulfillmentContext::new();
         let Normalized { value: predicates, obligations } =
             project::normalize(selcx, cause, &param_env.caller_bounds);
-        for obligation in obligations.into_iter() {
+        for obligation in obligations {
             fulfill_cx.register_predicate_obligation(selcx.infcx(), obligation);
         }
         try!(fulfill_cx.select_all_or_error(selcx.infcx(), param_env));

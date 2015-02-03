@@ -194,7 +194,7 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
     symbol_hasher.input_str(&link_meta.crate_name[]);
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
-    for meta in tcx.sess.crate_metadata.borrow().iter() {
+    for meta in &*tcx.sess.crate_metadata.borrow() {
         symbol_hasher.input_str(&meta[]);
     }
     symbol_hasher.input_str("-");
@@ -265,7 +265,7 @@ pub fn sanitize(s: &str) -> String {
     return result;
 }
 
-pub fn mangle<PI: Iterator<Item=PathElem>>(mut path: PI,
+pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
                                       hash: Option<&str>) -> String {
     // Follow C++ namespace-mangling style, see
     // http://en.wikipedia.org/wiki/Name_mangling for more info.
@@ -370,7 +370,7 @@ pub fn link_binary(sess: &Session,
                    outputs: &OutputFilenames,
                    crate_name: &str) -> Vec<Path> {
     let mut out_filenames = Vec::new();
-    for &crate_type in sess.crate_types.borrow().iter() {
+    for &crate_type in &*sess.crate_types.borrow() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
                              crate_type, sess.opts.target_triple)[]);
@@ -535,7 +535,7 @@ fn link_rlib<'a>(sess: &'a Session,
     let mut ab = ArchiveBuilder::create(config);
     ab.add_file(obj_filename).unwrap();
 
-    for &(ref l, kind) in sess.cstore.get_used_libraries().borrow().iter() {
+    for &(ref l, kind) in &*sess.cstore.get_used_libraries().borrow() {
         match kind {
             cstore::NativeStatic => {
                 ab.add_native_library(&l[]).unwrap();
@@ -721,7 +721,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
     let mut all_native_libs = vec![];
 
-    for &(cnum, ref path) in crates.iter() {
+    for &(cnum, ref path) in &crates {
         let ref name = sess.cstore.get_crate_data(cnum).name;
         let p = match *path {
             Some(ref p) => p.clone(), None => {
@@ -740,13 +740,13 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
     let _ = ab.build();
 
     if !all_native_libs.is_empty() {
-        sess.warn("link against the following native artifacts when linking against \
+        sess.note("link against the following native artifacts when linking against \
                   this static library");
         sess.note("the order and any duplication can be significant on some platforms, \
                   and so may need to be preserved");
     }
 
-    for &(kind, ref lib) in all_native_libs.iter() {
+    for &(kind, ref lib) in &all_native_libs {
         let name = match kind {
             cstore::NativeStatic => "static library",
             cstore::NativeUnknown => "library",
@@ -1055,10 +1055,10 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
     let libs = sess.cstore.get_used_libraries();
     let libs = libs.borrow();
 
-    let mut staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
+    let staticlibs = libs.iter().filter_map(|&(ref l, kind)| {
         if kind == cstore::NativeStatic {Some(l)} else {None}
     });
-    let mut others = libs.iter().filter(|&&(_, kind)| {
+    let others = libs.iter().filter(|&&(_, kind)| {
         kind != cstore::NativeStatic
     });
 
@@ -1133,7 +1133,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
     // crates.
     let deps = sess.cstore.get_used_crates(cstore::RequireDynamic);
 
-    for &(cnum, _) in deps.iter() {
+    for &(cnum, _) in &deps {
         // We may not pass all crates through to the linker. Some crates may
         // appear statically in an existing dylib, meaning we'll pick up all the
         // symbols from the dylib.
@@ -1275,9 +1275,9 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
     // we're just getting an ordering of crate numbers, we're not worried about
     // the paths.
     let crates = sess.cstore.get_used_crates(cstore::RequireStatic);
-    for (cnum, _) in crates.into_iter() {
+    for (cnum, _) in crates {
         let libs = csearch::get_native_libraries(&sess.cstore, cnum);
-        for &(kind, ref lib) in libs.iter() {
+        for &(kind, ref lib) in &libs {
             match kind {
                 cstore::NativeUnknown => {
                     cmd.arg(format!("-l{}", *lib));

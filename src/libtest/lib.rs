@@ -16,7 +16,7 @@
 //! benchmarks themselves) should be done via the `#[test]` and
 //! `#[bench]` attributes.
 //!
-//! See the [Testing Guide](../guide-testing.html) for more details.
+//! See the [Testing Chapter](../book/testing.html) of the book for more details.
 
 // Currently, not much of this is meant for users. It is intended to
 // support the simplest interface possible for representing and
@@ -32,16 +32,14 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![cfg_attr(not(stage0), allow(unused_mut))] // NOTE: remove after stage0 snap
-
 #![feature(asm, slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
+#![feature(env)]
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(io)]
-#![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -75,7 +73,7 @@ use std::old_io::{File, ChanReader, ChanWriter};
 use std::old_io;
 use std::iter::repeat;
 use std::num::{Float, Int};
-use std::os;
+use std::env;
 use std::sync::mpsc::{channel, Sender};
 use std::thread::{self, Thread};
 use std::thunk::{Thunk, Invoke};
@@ -388,7 +386,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
-        nocapture = os::getenv("RUST_TEST_NOCAPTURE").is_some();
+        nocapture = env::var("RUST_TEST_NOCAPTURE").is_some();
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
@@ -576,7 +574,7 @@ impl<T: Writer> ConsoleTestState<T> {
         try!(self.write_plain("\nfailures:\n"));
         let mut failures = Vec::new();
         let mut fail_out = String::new();
-        for &(ref f, ref stdout) in self.failures.iter() {
+        for &(ref f, ref stdout) in &self.failures {
             failures.push(f.name.to_string());
             if stdout.len() > 0 {
                 fail_out.push_str(format!("---- {} stdout ----\n\t",
@@ -593,7 +591,7 @@ impl<T: Writer> ConsoleTestState<T> {
 
         try!(self.write_plain("\nfailures:\n"));
         failures.sort();
-        for name in failures.iter() {
+        for name in &failures {
             try!(self.write_plain(format!("    {}\n",
                                           name.as_slice()).as_slice()));
         }
@@ -652,7 +650,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io:
                     TrMetrics(mm) => {
                         let tname = test.name.as_slice();
                         let MetricMap(mm) = mm;
-                        for (k,v) in mm.iter() {
+                        for (k,v) in &mm {
                             st.metrics
                               .insert_metric(format!("{}.{}",
                                                      tname,
@@ -806,7 +804,7 @@ fn run_tests<F>(opts: &TestOpts,
 
     // All benchmarks run at the end, in serial.
     // (this includes metric fns)
-    for b in filtered_benchs_and_metrics.into_iter() {
+    for b in filtered_benchs_and_metrics {
         try!(callback(TeWait(b.desc.clone(), b.testfn.padding())));
         run_test(opts, !opts.run_benchmarks, b, tx.clone());
         let (test, result, stdout) = rx.recv().unwrap();
@@ -817,15 +815,15 @@ fn run_tests<F>(opts: &TestOpts,
 
 fn get_concurrency() -> uint {
     use std::rt;
-    match os::getenv("RUST_TEST_TASKS") {
-        Some(s) => {
+    match env::var_string("RUST_TEST_TASKS") {
+        Ok(s) => {
             let opt_n: Option<uint> = s.parse().ok();
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => panic!("RUST_TEST_TASKS is `{}`, should be a positive integer.", s)
             }
         }
-        None => {
+        Err(..) => {
             rt::default_sched_threads()
         }
     }
@@ -1060,7 +1058,7 @@ impl Bencher {
 
             let loop_run = Duration::span(|| {
 
-                for p in samples.iter_mut() {
+                for p in &mut *samples {
                     self.bench_n(n, |x| f(x));
                     *p = self.ns_per_iter() as f64;
                 };
@@ -1068,7 +1066,7 @@ impl Bencher {
                 stats::winsorize(samples, 5.0);
                 summ = Some(stats::Summary::new(samples));
 
-                for p in samples.iter_mut() {
+                for p in &mut *samples {
                     self.bench_n(5 * n, |x| f(x));
                     *p = self.ns_per_iter() as f64;
                 };
@@ -1299,7 +1297,7 @@ mod tests {
         {
             fn testfn() { }
             let mut tests = Vec::new();
-            for name in names.iter() {
+            for name in &names {
                 let test = TestDescAndFn {
                     desc: TestDesc {
                         name: DynTestName((*name).clone()),

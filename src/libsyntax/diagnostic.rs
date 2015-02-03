@@ -25,7 +25,7 @@ use term::WriterWrapper;
 use term;
 
 /// maximum number of lines we will print for each error; arbitrary.
-static MAX_LINES: usize = 6us;
+static MAX_LINES: usize = 6;
 
 #[derive(Clone, Copy)]
 pub enum RenderSpan {
@@ -155,19 +155,19 @@ impl Handler {
         self.bump_err_count();
     }
     pub fn bump_err_count(&self) {
-        self.err_count.set(self.err_count.get() + 1us);
+        self.err_count.set(self.err_count.get() + 1);
     }
     pub fn err_count(&self) -> usize {
         self.err_count.get()
     }
     pub fn has_errors(&self) -> bool {
-        self.err_count.get() > 0us
+        self.err_count.get() > 0
     }
     pub fn abort_if_errors(&self) {
         let s;
         match self.err_count.get() {
-          0us => return,
-          1us => s = "aborting due to previous error".to_string(),
+          0 => return,
+          1 => s = "aborting due to previous error".to_string(),
           _   => {
             s = format!("aborting due to {} previous errors",
                         self.err_count.get());
@@ -457,43 +457,43 @@ fn highlight_lines(err: &mut EmitterWriter,
     let mut elided = false;
     let mut display_lines = &lines.lines[];
     if display_lines.len() > MAX_LINES {
-        display_lines = &display_lines[0us..MAX_LINES];
+        display_lines = &display_lines[0..MAX_LINES];
         elided = true;
     }
     // Print the offending lines
-    for &line_number in display_lines.iter() {
+    for &line_number in display_lines {
         if let Some(line) = fm.get_line(line_number) {
             try!(write!(&mut err.dst, "{}:{} {}\n", fm.name,
                         line_number + 1, line));
         }
     }
     if elided {
-        let last_line = display_lines[display_lines.len() - 1us];
-        let s = format!("{}:{} ", fm.name, last_line + 1us);
+        let last_line = display_lines[display_lines.len() - 1];
+        let s = format!("{}:{} ", fm.name, last_line + 1);
         try!(write!(&mut err.dst, "{0:1$}...\n", "", s.len()));
     }
 
     // FIXME (#3260)
     // If there's one line at fault we can easily point to the problem
-    if lines.lines.len() == 1us {
+    if lines.lines.len() == 1 {
         let lo = cm.lookup_char_pos(sp.lo);
-        let mut digits = 0us;
-        let mut num = (lines.lines[0] + 1us) / 10us;
+        let mut digits = 0;
+        let mut num = (lines.lines[0] + 1) / 10;
 
         // how many digits must be indent past?
-        while num > 0us { num /= 10us; digits += 1us; }
+        while num > 0 { num /= 10; digits += 1; }
 
         // indent past |name:## | and the 0-offset column location
-        let left = fm.name.len() + digits + lo.col.to_usize() + 3us;
+        let left = fm.name.len() + digits + lo.col.to_usize() + 3;
         let mut s = String::new();
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
-        let skip = fm.name.len() + digits + 3us;
+        let skip = fm.name.len() + digits + 3;
         for _ in 0..skip {
             s.push(' ');
         }
         if let Some(orig) = fm.get_line(lines.lines[0]) {
-            for pos in 0us..left - skip {
+            for pos in 0..left - skip {
                 let cur_char = orig.as_bytes()[pos] as char;
                 // Whenever a tab occurs on the previous line, we insert one on
                 // the error-point-squiggly-line as well (instead of a space).
@@ -511,7 +511,7 @@ fn highlight_lines(err: &mut EmitterWriter,
         let hi = cm.lookup_char_pos(sp.hi);
         if hi.col != lo.col {
             // the ^ already takes up one space
-            let num_squigglies = hi.col.to_usize() - lo.col.to_usize() - 1us;
+            let num_squigglies = hi.col.to_usize() - lo.col.to_usize() - 1;
             for _ in 0..num_squigglies {
                 s.push('~');
             }
@@ -550,7 +550,7 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
                         last_line_number + 1, last_line));
         }
     } else {
-        for &line_number in lines.iter() {
+        for &line_number in lines {
             if let Some(line) = fm.get_line(line_number) {
                 try!(write!(&mut w.dst, "{}:{} {}\n", fm.name,
                             line_number + 1, line));

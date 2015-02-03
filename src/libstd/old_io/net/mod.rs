@@ -36,7 +36,7 @@ fn with_addresses<A, T, F>(addr: A, mut action: F) -> IoResult<T> where
 
     let addresses = try!(addr.to_socket_addr_all());
     let mut err = DEFAULT_ERROR;
-    for addr in addresses.into_iter() {
+    for addr in addresses {
         match action(addr) {
             Ok(r) => return Ok(r),
             Err(e) => err = e

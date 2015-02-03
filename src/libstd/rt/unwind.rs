@@ -160,7 +160,7 @@ pub fn panicking() -> bool {
 // An uninlined, unmangled function upon which to slap yer breakpoints
 #[inline(never)]
 #[no_mangle]
-#[cfg_attr(not(stage0), allow(private_no_mangle_fns))]
+#[allow(private_no_mangle_fns)]
 fn rust_panic(cause: Box<Any + Send>) -> ! {
     rtdebug!("begin_unwind()");
 
@@ -238,7 +238,7 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
-    #[cfg_attr(not(stage0), allow(private_no_mangle_fns))]
+    #[allow(private_no_mangle_fns)]
     extern fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,
@@ -551,7 +551,7 @@ fn begin_unwind_inner(msg: Box<Any + Send>, file_line: &(&'static str, uint)) ->
         let amt = CALLBACK_CNT.load(Ordering::SeqCst);
         &CALLBACKS[..cmp::min(amt, MAX_CALLBACKS)]
     };
-    for cb in callbacks.iter() {
+    for cb in callbacks {
         match cb.load(Ordering::SeqCst) {
             0 => {}
             n => {

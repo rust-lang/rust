@@ -13,7 +13,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use any;
-use cell::{Cell, RefCell, Ref, RefMut};
+use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use char::CharExt;
 use iter::{Iterator, IteratorExt};
 use marker::{Copy, Sized};
@@ -38,7 +38,6 @@ mod float;
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(hidden)]
 pub mod rt {
-    #[cfg(stage0)] pub use self::v1::*;
     pub mod v1;
 }
 
@@ -191,20 +190,6 @@ impl<'a> Arguments<'a> {
         }
     }
 
-    /// When using the format_args!() macro, this function is used to generate the
-    /// Arguments structure.
-    #[doc(hidden)] #[inline]
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(pieces: &'a [&'a str],
-               args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
-        Arguments {
-            pieces: pieces,
-            fmt: None,
-            args: args
-        }
-    }
-
     /// This function is used to specify nonstandard formatting parameters.
     /// The `pieces` array must be at least as long as `fmt` to construct
     /// a valid Arguments structure. Also, any `Count` within `fmt` that is
@@ -212,25 +197,6 @@ impl<'a> Arguments<'a> {
     /// created with `argumentuint`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
-    #[cfg(stage0)]
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_placeholders(pieces: &'a [&'a str],
-                             fmt: &'a [rt::v1::Argument],
-                             args: &'a [ArgumentV1<'a>]) -> Arguments<'a> {
-        Arguments {
-            pieces: pieces,
-            fmt: Some(fmt),
-            args: args
-        }
-    }
-    /// This function is used to specify nonstandard formatting parameters.
-    /// The `pieces` array must be at least as long as `fmt` to construct
-    /// a valid Arguments structure. Also, any `Count` within `fmt` that is
-    /// `CountIsParam` or `CountIsNextParam` has to point to an argument
-    /// created with `argumentuint`. However, failing to do so doesn't cause
-    /// unsafety, but will ignore invalid .
-    #[doc(hidden)] #[inline]
-    #[cfg(not(stage0))]
     pub fn new_v1_formatted(pieces: &'a [&'a str],
                             args: &'a [ArgumentV1<'a>],
                             fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
@@ -516,7 +482,7 @@ impl<'a> Formatter<'a> {
 
         // Writes the sign if it exists, and then the prefix if it was requested
         let write_prefix = |&: f: &mut Formatter| {
-            for c in sign.into_iter() {
+            if let Some(c) = sign {
                 let mut b = [0; 4];
                 let n = c.encode_utf8(&mut b).unwrap_or(0);
                 let b = unsafe { str::from_utf8_unchecked(&b[..n]) };
@@ -682,25 +648,6 @@ impl Display for Error {
     fn fmt(&self, f: &mut Formatter) -> Result {
         Display::fmt("an error occurred when formatting an argument", f)
     }
-}
-
-/// This is a function which calls are emitted to by the compiler itself to
-/// create the Argument structures that are passed into the `format` function.
-#[doc(hidden)] #[inline]
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub fn argument<'a, T>(f: fn(&T, &mut Formatter) -> Result,
-                       t: &'a T) -> ArgumentV1<'a> {
-    ArgumentV1::new(t, f)
-}
-
-/// When the compiler determines that the type of an argument *must* be a uint
-/// (such as for width and precision), then it invokes this method.
-#[doc(hidden)] #[inline]
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-pub fn argumentuint<'a>(s: &'a uint) -> ArgumentV1<'a> {
-    ArgumentV1::from_uint(s)
 }
 
 // Implementations of the core formatting traits
@@ -941,7 +888,7 @@ impl<T: Debug> Debug for [T] {
             try!(write!(f, "["));
         }
         let mut is_first = true;
-        for x in self.iter() {
+        for x in self {
             if is_first {
                 is_first = false;
             } else {
@@ -973,9 +920,11 @@ impl<T: Copy + Debug> Debug for Cell<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for RefCell<T> {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        match self.try_borrow() {
-            Some(val) => write!(f, "RefCell {{ value: {:?} }}", val),
-            None => write!(f, "RefCell {{ <borrowed> }}")
+        match self.borrow_state() {
+            BorrowState::Unused | BorrowState::Reading => {
+                write!(f, "RefCell {{ value: {:?} }}", self.borrow())
+            }
+            BorrowState::Writing => write!(f, "RefCell {{ <borrowed> }}"),
         }
     }
 }

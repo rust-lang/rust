@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -240,7 +240,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
 
 #[cfg(not(any(target_os = "macos", target_os = "ios")))]
 fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
-    use os;
+    use env;
     use ptr;
 
     ////////////////////////////////////////////////////////////////////////
@@ -318,8 +318,9 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         static mut LAST_FILENAME: [libc::c_char; 256] = [0; 256];
         if !STATE.is_null() { return STATE }
         let selfname = if cfg!(target_os = "freebsd") ||
-                          cfg!(target_os = "dragonfly") {
-            os::self_exe_name()
+                          cfg!(target_os = "dragonfly") ||
+                          cfg!(target_os = "openbsd") {
+            env::current_exe().ok()
         } else {
             None
         };

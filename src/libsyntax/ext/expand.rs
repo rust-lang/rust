@@ -362,7 +362,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
         // in this file.
         // Token-tree macros:
         MacInvocTT(pth, tts, _) => {
-            if pth.segments.len() > 1us {
+            if pth.segments.len() > 1 {
                 fld.cx.span_err(pth.span,
                                 "expected macro name without module \
                                 separators");
@@ -504,7 +504,7 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
         return it.expect_item();
     }
 
-    for attr in modifiers.iter() {
+    for attr in &modifiers {
         let mname = attr.name();
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
@@ -552,7 +552,7 @@ fn expand_item_underscore(item: ast::Item_, fld: &mut MacroExpander) -> ast::Ite
 
 // does this attribute list contain "macro_use" ?
 fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool {
-    for attr in attrs.iter() {
+    for attr in attrs {
         let mut is_use = attr.check_name("macro_use");
         if attr.check_name("macro_escape") {
             fld.cx.span_warn(attr.span, "macro_escape is a deprecated synonym for macro_use");
@@ -853,7 +853,7 @@ impl<'v> Visitor<'v> for PatIdentFinder {
             ast::Pat { id: _, node: ast::PatIdent(_, ref path1, ref inner), span: _ } => {
                 self.ident_accumulator.push(path1.node);
                 // visit optional subpattern of PatIdent:
-                for subpat in inner.iter() {
+                if let Some(ref subpat) = *inner {
                     self.visit_pat(&**subpat)
                 }
             }
@@ -873,7 +873,7 @@ fn pattern_bindings(pat: &ast::Pat) -> Vec<ast::Ident> {
 /// find the PatIdent paths in a
 fn fn_decl_arg_bindings(fn_decl: &ast::FnDecl) -> Vec<ast::Ident> {
     let mut pat_idents = PatIdentFinder{ident_accumulator:Vec::new()};
-    for arg in fn_decl.inputs.iter() {
+    for arg in &fn_decl.inputs {
         pat_idents.visit_pat(&*arg.pat);
     }
     pat_idents.ident_accumulator
@@ -931,7 +931,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
             },
             _ => unreachable!()
         };
-        if pth.segments.len() > 1us {
+        if pth.segments.len() > 1 {
             fld.cx.span_err(pth.span, "expected macro name without module separators");
             return DummyResult::raw_pat(span);
         }
@@ -1063,7 +1063,7 @@ fn expand_annotatable(a: Annotatable,
 
     let mut decorator_items = SmallVector::zero();
     let mut new_attrs = Vec::new();
-    for attr in a.attrs().iter() {
+    for attr in a.attrs() {
         let mname = attr.name();
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
@@ -1218,7 +1218,7 @@ fn expand_item_multi_modifier(mut it: Annotatable,
         return it
     }
 
-    for attr in modifiers.iter() {
+    for attr in &modifiers {
         let mname = attr.name();
 
         match fld.cx.syntax_env.find(&intern(mname.get())) {
@@ -1420,11 +1420,11 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
     let mut expander = MacroExpander::new(&mut cx);
 
-    for def in imported_macros.into_iter() {
+    for def in imported_macros {
         expander.cx.insert_macro(def);
     }
 
-    for (name, extension) in user_exts.into_iter() {
+    for (name, extension) in user_exts {
         expander.cx.syntax_env.insert(name, extension);
     }
 

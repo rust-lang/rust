@@ -10,28 +10,27 @@
 
 use prelude::v1::*;
 
+use collections::hash_map::Hasher;
 use collections;
+use env;
 use ffi::CString;
 use hash::Hash;
-use collections::hash_map::Hasher;
-use old_io::fs::PathExtensions;
-use old_io::process::{ProcessExit, ExitStatus, ExitSignal};
-use old_io::{IoResult, IoError};
-use old_io;
-use libc::{pid_t, c_void, c_int};
+use libc::{pid_t, c_void};
 use libc;
 use mem;
+use old_io::fs::PathExtensions;
+use old_io::process::{ProcessExit, ExitStatus};
+use old_io::{IoResult, IoError};
+use old_io;
 use os;
 use path::BytesContainer;
 use ptr;
 use str;
-use sys::fs::FileDesc;
 use sync::{StaticMutex, MUTEX_INIT};
+use sys::fs::FileDesc;
 
-use sys::fs;
-use sys::{self, retry, c, wouldblock, set_nonblocking, ms_to_timeval, timer};
-use sys_common::helper_thread::Helper;
-use sys_common::{AsInner, mkerr_libc, timeout};
+use sys::timer;
+use sys_common::{AsInner, timeout};
 
 pub use sys_common::ProcessConfig;
 
@@ -106,6 +105,7 @@ impl Process {
         return ret;
     }
 
+    #[allow(deprecated)]
     pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
@@ -128,7 +128,7 @@ impl Process {
         use libc::funcs::extra::msvcrt::get_osfhandle;
 
         use mem;
-        use iter::{Iterator, IteratorExt};
+        use iter::IteratorExt;
         use str::StrExt;
 
         if cfg.gid().is_some() || cfg.uid().is_some() {
@@ -142,14 +142,14 @@ impl Process {
         // To have the spawning semantics of unix/windows stay the same, we need to
         // read the *child's* PATH if one is provided. See #15149 for more details.
         let program = cfg.env().and_then(|env| {
-            for (key, v) in env.iter() {
+            for (key, v) in env {
                 if b"PATH" != key.container_as_bytes() { continue }
 
                 // Split the value and test each path to see if the
                 // program exists.
-                for path in os::split_paths(v.container_as_bytes()).into_iter() {
+                for path in os::split_paths(v.container_as_bytes()) {
                     let path = path.join(cfg.program().as_bytes())
-                                   .with_extension(os::consts::EXE_EXTENSION);
+                                   .with_extension(env::consts::EXE_EXTENSION);
                     if path.exists() {
                         return Some(CString::from_slice(path.as_vec()))
                     }
@@ -372,7 +372,7 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     let mut cmd = String::new();
     append_arg(&mut cmd, str::from_utf8(prog.as_bytes()).ok()
                              .expect("expected program name to be utf-8 encoded"));
-    for arg in args.iter() {
+    for arg in args {
         cmd.push(' ');
         append_arg(&mut cmd, str::from_utf8(arg.as_bytes()).ok()
                                 .expect("expected argument to be utf-8 encoded"));
@@ -437,7 +437,7 @@ fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T
         Some(env) => {
             let mut blk = Vec::new();
 
-            for pair in env.iter() {
+            for pair in env {
                 let kv = format!("{}={}",
                                  pair.0.container_as_str().unwrap(),
                                  pair.1.container_as_str().unwrap());

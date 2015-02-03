@@ -48,7 +48,7 @@ pub fn find_plugin_registrar(diagnostic: &diagnostic::SpanHandler,
         },
         _ => {
             diagnostic.handler().err("multiple plugin registration functions found");
-            for &(_, span) in finder.registrars.iter() {
+            for &(_, span) in &finder.registrars {
                 diagnostic.span_note(span, "one is here");
             }
             diagnostic.handler().abort_if_errors();

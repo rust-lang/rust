@@ -105,7 +105,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
                                already instantiated")
         };
 
-        for &(dir, vid) in relations.iter() {
+        for &(dir, vid) in &relations {
             stack.push((ty, dir, vid));
         }
 
@@ -165,7 +165,7 @@ impl<'tcx> TypeVariableTable<'tcx> {
         let mut escaping_types = Vec::new();
         let actions_since_snapshot = self.values.actions_since_snapshot(&s.snapshot);
         debug!("actions_since_snapshot.len() = {}", actions_since_snapshot.len());
-        for action in actions_since_snapshot.iter() {
+        for action in actions_since_snapshot {
             match *action {
                 sv::UndoLog::NewElem(index) => {
                     // if any new variables were created during the

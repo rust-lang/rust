@@ -170,7 +170,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                             errors: &Vec<RegionResolutionError<'tcx>>) {
         let p_errors = self.process_errors(errors);
         let errors = if p_errors.is_empty() { errors } else { &p_errors };
-        for error in errors.iter() {
+        for error in errors {
             match error.clone() {
                 ConcreteFailure(origin, sub, sup) => {
                     self.report_concrete_failure(origin, sub, sup);
@@ -222,7 +222,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         let mut trace_origins = Vec::new();
         let mut same_regions = Vec::new();
         let mut processed_errors = Vec::new();
-        for error in errors.iter() {
+        for error in errors {
             match error.clone() {
                 ConcreteFailure(origin, sub, sup) => {
                     debug!("processing ConcreteFailure");
@@ -257,7 +257,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         }
         if !same_regions.is_empty() {
             let common_scope_id = same_regions[0].scope_id;
-            for sr in same_regions.iter() {
+            for sr in &same_regions {
                 // Since ProcessedErrors is used to reconstruct the function
                 // declaration, we want to make sure that they are, in fact,
                 // from the same scope
@@ -335,7 +335,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                   same_frs: &FreeRegionsFromSameFn) {
             let scope_id = same_frs.scope_id;
             let (sub_fr, sup_fr) = (same_frs.sub_fr, same_frs.sup_fr);
-            for sr in same_regions.iter_mut() {
+            for sr in &mut *same_regions {
                 if sr.contains(&sup_fr.bound_region)
                    && scope_id == sr.scope_id {
                     sr.push(sub_fr.bound_region);
@@ -796,11 +796,11 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                var_origins: &[RegionVariableOrigin],
                                trace_origins: &[(TypeTrace<'tcx>, ty::type_err<'tcx>)],
                                same_regions: &[SameRegions]) {
-        for vo in var_origins.iter() {
+        for vo in var_origins {
             self.report_inference_failure(vo.clone());
         }
         self.give_suggestion(same_regions);
-        for &(ref trace, terr) in trace_origins.iter() {
+        for &(ref trace, terr) in trace_origins {
             self.report_type_error(trace.clone(), &terr);
         }
     }
@@ -916,7 +916,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
         let mut ty_params = self.generics.ty_params.clone();
         let where_clause = self.generics.where_clause.clone();
         let mut kept_lifetimes = HashSet::new();
-        for sr in self.same_regions.iter() {
+        for sr in self.same_regions {
             self.cur_anon.set(0);
             self.offset_cur_anon();
             let (anon_nums, region_names) =
@@ -958,7 +958,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             // vector of string and then sort them. However, it makes the
             // choice of lifetime name deterministic and thus easier to test.
             let mut names = Vec::new();
-            for rn in region_names.iter() {
+            for rn in region_names {
                 let lt_name = token::get_name(*rn).get().to_string();
                 names.push(lt_name);
             }
@@ -973,7 +973,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                    -> (HashSet<u32>, HashSet<ast::Name>) {
         let mut anon_nums = HashSet::new();
         let mut region_names = HashSet::new();
-        for br in same_regions.regions.iter() {
+        for br in &same_regions.regions {
             match *br {
                 ty::BrAnon(i) => {
                     anon_nums.insert(i);
@@ -989,8 +989,8 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
 
     fn extract_all_region_names(&self) -> HashSet<ast::Name> {
         let mut all_region_names = HashSet::new();
-        for sr in self.same_regions.iter() {
-            for br in sr.regions.iter() {
+        for sr in self.same_regions {
+            for br in &sr.regions {
                 match *br {
                     ty::BrNamed(_, name) => {
                         all_region_names.insert(name);
@@ -1123,11 +1123,11 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         where_clause: ast::WhereClause)
                         -> ast::Generics {
         let mut lifetimes = Vec::new();
-        for lt in add.iter() {
+        for lt in add {
             lifetimes.push(ast::LifetimeDef { lifetime: *lt,
                                               bounds: Vec::new() });
         }
-        for lt in generics.lifetimes.iter() {
+        for lt in &generics.lifetimes {
             if keep.contains(&lt.lifetime.name) ||
                 !remove.contains(&lt.lifetime.name) {
                 lifetimes.push((*lt).clone());
@@ -1147,7 +1147,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                        region_names: &HashSet<ast::Name>)
                        -> Vec<ast::Arg> {
         let mut new_inputs = Vec::new();
-        for arg in inputs.iter() {
+        for arg in inputs {
             let new_ty = self.rebuild_arg_ty_or_output(&*arg.ty, lifetime,
                                                        anon_nums, region_names);
             let possibly_new_arg = ast::Arg {
@@ -1729,7 +1729,7 @@ struct LifeGiver {
 impl LifeGiver {
     fn with_taken(taken: &[ast::LifetimeDef]) -> LifeGiver {
         let mut taken_ = HashSet::new();
-        for lt in taken.iter() {
+        for lt in taken {
             let lt_name = token::get_name(lt.lifetime.name).get().to_string();
             taken_.insert(lt_name);
         }

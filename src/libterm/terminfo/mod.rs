@@ -12,7 +12,7 @@
 
 use std::collections::HashMap;
 use std::old_io::IoResult;
-use std::os;
+use std::env;
 
 use attr;
 use color;
@@ -172,9 +172,9 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
     /// Returns `None` whenever the terminal cannot be created for some
     /// reason.
     pub fn new(out: T) -> Option<Box<Terminal<T>+Send+'static>> {
-        let term = match os::getenv("TERM") {
-            Some(t) => t,
-            None => {
+        let term = match env::var_string("TERM") {
+            Ok(t) => t,
+            Err(..) => {
                 debug!("TERM environment variable not defined");
                 return None;
             }
@@ -182,7 +182,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
 
         let entry = open(&term[]);
         if entry.is_err() {
-            if os::getenv("MSYSCON").map_or(false, |s| {
+            if env::var_string("MSYSCON").ok().map_or(false, |s| {
                     "mintty.exe" == s
                 }) {
                 // msys terminal

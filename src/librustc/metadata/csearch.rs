@@ -382,7 +382,7 @@ pub fn get_stability(cstore: &cstore::CStore,
 pub fn is_staged_api(cstore: &cstore::CStore, def: ast::DefId) -> bool {
     let cdata = cstore.get_crate_data(def.krate);
     let attrs = decoder::get_crate_attributes(cdata.data());
-    for attr in attrs.iter() {
+    for attr in &attrs {
         if attr.name().get() == "staged_api" {
             match attr.node.value.node { ast::MetaWord(_) => return true, _ => (/*pass*/) }
         }

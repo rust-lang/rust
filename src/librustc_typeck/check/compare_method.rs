@@ -248,7 +248,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     let mut selcx = traits::SelectionContext::new(&infcx, &trait_param_env);
 
-    for predicate in impl_pred.fns.into_iter() {
+    for predicate in impl_pred.fns {
         let traits::Normalized { value: predicate, .. } =
             traits::normalize(&mut selcx, normalize_cause.clone(), &predicate);
 

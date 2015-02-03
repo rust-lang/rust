@@ -147,15 +147,15 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                                                         item.span,
                                                         region::CodeExtent::from_node_id(item.id),
                                                         Some(&mut this.cache));
-            for variant in variants.iter() {
-                for field in variant.fields.iter() {
+            for variant in &variants {
+                for field in &variant.fields {
                     // Regions are checked below.
                     bounds_checker.check_traits_in_ty(field.ty);
                 }
 
                 // For DST, all intermediate types must be sized.
                 if variant.fields.len() > 0 {
-                    for field in variant.fields.init().iter() {
+                    for field in variant.fields.init() {
                         fcx.register_builtin_bound(
                             field.ty,
                             ty::BoundSized,
@@ -268,10 +268,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 let selcx = &mut traits::SelectionContext::new(fcx.infcx(), fcx);
                 traits::normalize(selcx, cause.clone(), &predicates)
             };
-            for predicate in predicates.value.into_iter() {
+            for predicate in predicates.value {
                 fcx.register_predicate(traits::Obligation::new(cause.clone(), predicate));
             }
-            for obligation in predicates.obligations.into_iter() {
+            for obligation in predicates.obligations {
                 fcx.register_predicate(obligation);
             }
         });
@@ -323,7 +323,7 @@ fn reject_shadowing_type_parameters<'tcx>(tcx: &ty::ctxt<'tcx>,
     let impl_params = generics.types.get_slice(subst::TypeSpace).iter()
         .map(|tp| tp.name).collect::<HashSet<_>>();
 
-    for method_param in generics.types.get_slice(subst::FnSpace).iter() {
+    for method_param in generics.types.get_slice(subst::FnSpace) {
         if impl_params.contains(&method_param.name) {
             span_err!(tcx.sess, span, E0194,
                 "type parameter `{}` shadows another type parameter of the same name",

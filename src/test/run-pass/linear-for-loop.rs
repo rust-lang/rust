@@ -13,7 +13,7 @@
 pub fn main() {
     let x = vec!(1, 2, 3);
     let mut y = 0;
-    for i in x.iter() { println!("{}", *i); y += *i; }
+    for i in &x { println!("{}", *i); y += *i; }
     println!("{}", y);
     assert_eq!(y, 6);
     let s = "hello there".to_string();

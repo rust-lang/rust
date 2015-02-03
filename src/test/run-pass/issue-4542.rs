@@ -11,7 +11,7 @@
 use std::os;
 
 pub fn main() {
-    for arg in os::args().iter() {
+    for arg in &os::args() {
         match (*arg).clone() {
             _s => { }
         }

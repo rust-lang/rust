@@ -65,7 +65,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     use prelude::v1::*;
 
     use mem;
-    use os;
+    use env;
     use rt;
     use sys_common::thread_info::{self, NewThread};
     use sys_common;
@@ -131,7 +131,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
     if failed {
         rt::DEFAULT_ERROR_CODE
     } else {
-        os::get_exit_status()
+        env::get_exit_status() as isize
     }
 }
 

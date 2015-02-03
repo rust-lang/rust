@@ -90,7 +90,7 @@ impl<S: Writer + Hasher, V: Hash<S>> Hash<S> for VecMap<V> {
         // In order to not traverse the `VecMap` twice, count the elements
         // during iteration.
         let mut count: uint = 0;
-        for elt in self.iter() {
+        for elt in self {
             elt.hash(state);
             count += 1;
         }
@@ -562,7 +562,7 @@ impl<'a, T> IntoIterator for &'a mut VecMap<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> Extend<(uint, V)> for VecMap<V> {
-    fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, mut iter: Iter) {
+    fn extend<Iter: Iterator<Item=(uint, V)>>(&mut self, iter: Iter) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -687,7 +687,7 @@ double_ended_iterator! { impl IterMut -> (uint, &'a mut V), as_mut }
 /// An iterator over the keys of a map.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Keys<'a, V: 'a> {
-    iter: Map<(uint, &'a V), uint, Iter<'a, V>, fn((uint, &'a V)) -> uint>
+    iter: Map<Iter<'a, V>, fn((uint, &'a V)) -> uint>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -702,7 +702,7 @@ impl<'a, V> Clone for Keys<'a, V> {
 /// An iterator over the values of a map.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Values<'a, V: 'a> {
-    iter: Map<(uint, &'a V), &'a V, Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
+    iter: Map<Iter<'a, V>, fn((uint, &'a V)) -> &'a V>
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -718,8 +718,6 @@ impl<'a, V> Clone for Values<'a, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<V> {
     iter: FilterMap<
-    (uint, Option<V>),
-    (uint, V),
     Enumerate<vec::IntoIter<Option<V>>>,
     fn((uint, Option<V>)) -> Option<(uint, V)>>
 }
@@ -727,8 +725,6 @@ pub struct IntoIter<V> {
 #[unstable(feature = "collections")]
 pub struct Drain<'a, V> {
     iter: FilterMap<
-    (uint, Option<V>),
-    (uint, V),
     Enumerate<vec::Drain<'a, Option<V>>>,
     fn((uint, Option<V>)) -> Option<(uint, V)>>
 }
@@ -924,7 +920,7 @@ mod test_map {
         assert!(m.insert(6, 10).is_none());
         assert!(m.insert(10, 11).is_none());
 
-        for (k, v) in m.iter_mut() {
+        for (k, v) in &mut m {
             *v += k as int;
         }
 
@@ -984,7 +980,7 @@ mod test_map {
         let mut m = VecMap::new();
         m.insert(1, box 2);
         let mut called = false;
-        for (k, v) in m.into_iter() {
+        for (k, v) in m {
             assert!(!called);
             called = true;
             assert_eq!(k, 1);
@@ -1112,7 +1108,7 @@ mod test_map {
 
         let map: VecMap<char> = xs.iter().map(|&x| x).collect();
 
-        for &(k, v) in xs.iter() {
+        for &(k, v) in &xs {
             assert_eq!(map.get(&k), Some(&v));
         }
     }

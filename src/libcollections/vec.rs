@@ -1318,16 +1318,6 @@ impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
         self.as_slice().index(index)
     }
 }
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Index<ops::FullRange> for Vec<T> {
-    type Output = [T];
-    #[inline]
-    fn index(&self, _index: &ops::FullRange) -> &[T] {
-        self.as_slice()
-    }
-}
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::Index<ops::RangeFull> for Vec<T> {
     type Output = [T];
@@ -1361,16 +1351,6 @@ impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
         self.as_mut_slice().index_mut(index)
     }
 }
-#[cfg(stage0)]
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::IndexMut<ops::FullRange> for Vec<T> {
-    type Output = [T];
-    #[inline]
-    fn index_mut(&mut self, _index: &ops::FullRange) -> &mut [T] {
-        self.as_mut_slice()
-    }
-}
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
     type Output = [T];
@@ -1395,7 +1375,7 @@ impl<T> ops::DerefMut for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
+    fn from_iter<I:Iterator<Item=T>>(iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
         for element in iterator {
@@ -1432,7 +1412,7 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 #[unstable(feature = "collections", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
-    fn extend<I: Iterator<Item=T>>(&mut self, mut iterator: I) {
+    fn extend<I: Iterator<Item=T>>(&mut self, iterator: I) {
         let (lower, _) = iterator.size_hint();
         self.reserve(lower);
         for element in iterator {
@@ -1567,7 +1547,7 @@ impl<T> Drop for Vec<T> {
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
         if self.cap != 0 {
             unsafe {
-                for x in self.iter() {
+                for x in &*self {
                     ptr::read(x);
                 }
                 dealloc(*self.ptr, self.cap)
@@ -1934,8 +1914,6 @@ mod tests {
     use prelude::*;
     use core::mem::size_of;
     use core::iter::repeat;
-    #[cfg(stage0)]
-    use core::ops::FullRange;
     use test::Bencher;
     use super::as_vec;
 
@@ -2044,7 +2022,7 @@ mod tests {
         {
             let slice = &mut values[2 ..];
             assert!(slice == [3, 4, 5]);
-            for p in slice.iter_mut() {
+            for p in slice {
                 *p += 2;
             }
         }
@@ -2058,7 +2036,7 @@ mod tests {
         {
             let slice = &mut values[.. 2];
             assert!(slice == [1, 2]);
-            for p in slice.iter_mut() {
+            for p in slice {
                 *p += 1;
             }
         }
@@ -2075,7 +2053,7 @@ mod tests {
                 let left: &[_] = left;
                 assert!(&left[..left.len()] == &[1, 2][]);
             }
-            for p in left.iter_mut() {
+            for p in left {
                 *p += 1;
             }
 
@@ -2083,7 +2061,7 @@ mod tests {
                 let right: &[_] = right;
                 assert!(&right[..right.len()] == &[3, 4, 5][]);
             }
-            for p in right.iter_mut() {
+            for p in right {
                 *p += 2;
             }
         }
@@ -2151,7 +2129,7 @@ mod tests {
         v.push(());
         assert_eq!(v.iter().count(), 2);
 
-        for &() in v.iter() {}
+        for &() in &v {}
 
         assert_eq!(v.iter_mut().count(), 2);
         v.push(());
@@ -2159,7 +2137,7 @@ mod tests {
         v.push(());
         assert_eq!(v.iter_mut().count(), 4);
 
-        for &mut () in v.iter_mut() {}
+        for &mut () in &mut v {}
         unsafe { v.set_len(0); }
         assert_eq!(v.iter_mut().count(), 0);
     }
@@ -2355,7 +2333,7 @@ mod tests {
     fn test_move_items() {
         let vec = vec![1, 2, 3];
         let mut vec2 : Vec<i32> = vec![];
-        for i in vec.into_iter() {
+        for i in vec {
             vec2.push(i);
         }
         assert!(vec2 == vec![1, 2, 3]);
@@ -2375,7 +2353,7 @@ mod tests {
     fn test_move_items_zero_sized() {
         let vec = vec![(), (), ()];
         let mut vec2 : Vec<()> = vec![];
-        for i in vec.into_iter() {
+        for i in vec {
             vec2.push(i);
         }
         assert!(vec2 == vec![(), (), ()]);

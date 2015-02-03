@@ -22,6 +22,7 @@
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unicode)]
+#![feature(env)]
 
 #![deny(warnings)]
 
@@ -31,7 +32,7 @@ extern crate getopts;
 #[macro_use]
 extern crate log;
 
-use std::os;
+use std::env;
 use std::old_io;
 use std::old_io::fs;
 use std::thunk::Thunk;
@@ -48,7 +49,7 @@ pub mod common;
 pub mod errors;
 
 pub fn main() {
-    let args = os::args();
+    let args = env::args().map(|s| s.into_string().unwrap()).collect();;
     let config = parse_config(args);
 
     if config.valgrind_path.is_none() && config.force_valgrind {
@@ -224,7 +225,7 @@ pub fn run_tests(config: &Config) {
         //arm-linux-androideabi debug-info test uses remote debugger
         //so, we test 1 task at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
-        os::setenv("RUST_TEST_TASKS","1");
+        env::set_var("RUST_TEST_TASKS","1");
     }
 
     match config.mode {
@@ -232,7 +233,7 @@ pub fn run_tests(config: &Config) {
             // Some older versions of LLDB seem to have problems with multiple
             // instances running in parallel, so only run one test task at a
             // time.
-            os::setenv("RUST_TEST_TASKS", "1");
+            env::set_var("RUST_TEST_TASKS", "1");
         }
         _ => { /* proceed */ }
     }
@@ -245,7 +246,7 @@ pub fn run_tests(config: &Config) {
     old_io::test::raise_fd_limit();
     // Prevent issue #21352 UAC blocking .exe containing 'patch' etc. on Windows
     // If #11207 is resolved (adding manifest to .exe) this becomes unnecessary
-    os::setenv("__COMPAT_LAYER", "RunAsInvoker");
+    env::set_var("__COMPAT_LAYER", "RunAsInvoker");
     let res = test::run_tests_console(&opts, tests.into_iter().collect());
     match res {
         Ok(true) => {}
@@ -276,7 +277,7 @@ pub fn make_tests(config: &Config) -> Vec<test::TestDescAndFn> {
            config.src_base.display());
     let mut tests = Vec::new();
     let dirs = fs::readdir(&config.src_base).unwrap();
-    for file in dirs.iter() {
+    for file in &dirs {
         let file = file.clone();
         debug!("inspecting file {:?}", file.display());
         if is_test(config, &file) {
@@ -304,13 +305,13 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
 
     let mut valid = false;
 
-    for ext in valid_extensions.iter() {
+    for ext in &valid_extensions {
         if name.ends_with(ext.as_slice()) {
             valid = true;
         }
     }
 
-    for pre in invalid_prefixes.iter() {
+    for pre in &invalid_prefixes {
         if name.starts_with(pre.as_slice()) {
             valid = false;
         }

@@ -56,7 +56,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
         debug!("dataflow_for({:?}, id={}) {:?}", e, id, self.variants);
         let mut sets = "".to_string();
         let mut seen_one = false;
-        for &variant in self.variants.iter() {
+        for &variant in &self.variants {
             if seen_one { sets.push_str(" "); } else { seen_one = true; }
             sets.push_str(variant.short_name());
             sets.push_str(": ");

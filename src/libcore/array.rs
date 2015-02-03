@@ -20,9 +20,6 @@ use fmt;
 use hash::{Hash, Hasher, self};
 use iter::IntoIterator;
 use marker::Copy;
-#[cfg(stage0)]
-use ops::{Deref, FullRange};
-#[cfg(not(stage0))]
 use ops::Deref;
 use option::Option;
 use slice::{Iter, IterMut, SliceExt};

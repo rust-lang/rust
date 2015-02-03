@@ -14,7 +14,7 @@
 
 use prelude::v1::*;
 
-use os;
+use env;
 use sync::atomic::{self, Ordering};
 
 pub use sys::backtrace::write;
@@ -29,7 +29,7 @@ pub fn log_enabled() -> bool {
         _ => {}
     }
 
-    let val = match os::getenv("RUST_BACKTRACE") {
+    let val = match env::var("RUST_BACKTRACE") {
         Some(..) => 2,
         None => 1,
     };

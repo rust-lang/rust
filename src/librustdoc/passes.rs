@@ -255,7 +255,7 @@ pub fn unindent_comments(krate: clean::Crate) -> plugins::PluginResult {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
             let mut i = i;
             let mut avec: Vec<clean::Attribute> = Vec::new();
-            for attr in i.attrs.iter() {
+            for attr in &i.attrs {
                 match attr {
                     &clean::NameValue(ref x, ref s)
                             if "doc" == *x => {
@@ -280,7 +280,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
         fn fold_item(&mut self, i: Item) -> Option<Item> {
             let mut docstr = String::new();
             let mut i = i;
-            for attr in i.attrs.iter() {
+            for attr in &i.attrs {
                 match *attr {
                     clean::NameValue(ref x, ref s)
                             if "doc" == *x => {

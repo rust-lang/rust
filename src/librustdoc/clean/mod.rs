@@ -166,7 +166,7 @@ impl<'a, 'tcx> Clean<Crate> for visit_ast::RustdocVisitor<'a, 'tcx> {
                 _ => unreachable!(),
             };
             let mut tmp = Vec::new();
-            for child in m.items.iter_mut() {
+            for child in &mut m.items {
                 match child.inner {
                     ModuleItem(..) => {}
                     _ => continue,
@@ -254,7 +254,7 @@ impl Item {
     /// Finds the `doc` attribute as a List and returns the list of attributes
     /// nested inside.
     pub fn doc_list<'a>(&'a self) -> Option<&'a [Attribute]> {
-        for attr in self.attrs.iter() {
+        for attr in &self.attrs {
             match *attr {
                 List(ref x, ref list) if "doc" == *x => {
                     return Some(list.as_slice());
@@ -268,7 +268,7 @@ impl Item {
     /// Finds the `doc` attribute as a NameValue and returns the corresponding
     /// value found.
     pub fn doc_value<'a>(&'a self) -> Option<&'a str> {
-        for attr in self.attrs.iter() {
+        for attr in &self.attrs {
             match *attr {
                 NameValue(ref x, ref v) if "doc" == *x => {
                     return Some(v.as_slice());
@@ -281,8 +281,8 @@ impl Item {
 
     pub fn is_hidden_from_doc(&self) -> bool {
         match self.doc_list() {
-            Some(ref l) => {
-                for innerattr in l.iter() {
+            Some(l) => {
+                for innerattr in l {
                     match *innerattr {
                         Word(ref s) if "hidden" == *s => {
                             return true
@@ -508,12 +508,12 @@ impl<'tcx> Clean<(Vec<TyParamBound>, Vec<TypeBinding>)> for ty::ExistentialBound
     fn clean(&self, cx: &DocContext) -> (Vec<TyParamBound>, Vec<TypeBinding>) {
         let mut tp_bounds = vec![];
         self.region_bound.clean(cx).map(|b| tp_bounds.push(RegionBound(b)));
-        for bb in self.builtin_bounds.iter() {
+        for bb in &self.builtin_bounds {
             tp_bounds.push(bb.clean(cx));
         }
 
         let mut bindings = vec![];
-        for &ty::Binder(ref pb) in self.projection_bounds.iter() {
+        for &ty::Binder(ref pb) in &self.projection_bounds {
             bindings.push(TypeBinding {
                 name: pb.projection_ty.item_name.clean(cx),
                 ty: pb.ty.clean(cx)
@@ -636,10 +636,10 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
 
         // collect any late bound regions
         let mut late_bounds = vec![];
-        for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace).iter() {
+        for &ty_s in self.substs.types.get_slice(ParamSpace::TypeSpace) {
             use rustc::middle::ty::{Region, sty};
             if let sty::ty_tup(ref ts) = ty_s.sty {
-                for &ty_s in ts.iter() {
+                for &ty_s in ts {
                     if let sty::ty_rptr(ref reg, _) = ty_s.sty {
                         if let &Region::ReLateBound(_, _) = *reg {
                             debug!("  hit an ReLateBound {:?}", reg);
@@ -662,7 +662,7 @@ impl<'tcx> Clean<TyParamBound> for ty::TraitRef<'tcx> {
 impl<'tcx> Clean<Vec<TyParamBound>> for ty::ParamBounds<'tcx> {
     fn clean(&self, cx: &DocContext) -> Vec<TyParamBound> {
         let mut v = Vec::new();
-        for t in self.trait_bounds.iter() {
+        for t in &self.trait_bounds {
             v.push(t.clean(cx));
         }
         for r in self.region_bounds.iter().filter_map(|r| r.clean(cx)) {
@@ -872,7 +872,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
                     Some(did) => did,
                     None => return false
                 };
-                for bound in bounds.iter() {
+                for bound in bounds {
                     if let TyParamBound::TraitBound(PolyTrait {
                         trait_: Type::ResolvedPath { did, .. }, ..
                     }, TBM::None) = *bound {
@@ -915,7 +915,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
         }).collect::<Vec<_>>();
         // Finally, run through the type parameters again and insert a ?Sized unbound for
         // any we didn't find to be Sized.
-        for tp in stripped_typarams.iter() {
+        for tp in &stripped_typarams {
             if !sized_params.contains(&tp.name) {
                 let mut sized_bound = ty::BuiltinBound::BoundSized.clean(cx);
                 if let TyParamBound::TraitBound(_, ref mut tbm) = sized_bound {
@@ -1420,12 +1420,12 @@ impl PrimitiveType {
     }
 
     fn find(attrs: &[Attribute]) -> Option<PrimitiveType> {
-        for attr in attrs.iter() {
+        for attr in attrs {
             let list = match *attr {
                 List(ref k, ref l) if *k == "doc" => l,
                 _ => continue,
             };
-            for sub_attr in list.iter() {
+            for sub_attr in list {
                 let value = match *sub_attr {
                     NameValue(ref k, ref v)
                         if *k == "primitive" => v.as_slice(),
@@ -2175,7 +2175,7 @@ impl Clean<Vec<Item>> for doctree::Import {
                 let mut ret = vec![];
                 let remaining = if !denied {
                     let mut remaining = vec![];
-                    for path in list.iter() {
+                    for path in list {
                         match inline::try_inline(cx, path.node.id(), None) {
                             Some(items) => {
                                 ret.extend(items.into_iter());

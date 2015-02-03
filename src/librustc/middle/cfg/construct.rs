@@ -68,7 +68,7 @@ fn add_initial_dummy_node(g: &mut CFGGraph) -> CFGIndex {
 impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn block(&mut self, blk: &ast::Block, pred: CFGIndex) -> CFGIndex {
         let mut stmts_exit = pred;
-        for stmt in blk.stmts.iter() {
+        for stmt in &blk.stmts {
             stmts_exit = self.stmt(&**stmt, stmts_exit);
         }
 
@@ -166,7 +166,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             self.pat(&*pats[0], pred)
         } else {
             let collect = self.add_dummy_node(&[]);
-            for pat in pats.iter() {
+            for pat in pats {
                 let pat_exit = self.pat(&**pat, pred);
                 self.add_contained_edge(pat_exit, collect);
             }
@@ -325,7 +325,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
                 let expr_exit = self.add_node(expr.id, &[]);
                 let mut cond_exit = discr_exit;
-                for arm in arms.iter() {
+                for arm in arms {
                     cond_exit = self.add_dummy_node(&[cond_exit]);        // 2
                     let pats_exit = self.pats_any(&arm.pats[],
                                                   cond_exit);            // 3
@@ -522,7 +522,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             assert!(!self.exit_map.contains_key(&id));
             self.exit_map.insert(id, node);
         }
-        for &pred in preds.iter() {
+        for &pred in preds {
             self.add_contained_edge(pred, node);
         }
         node
@@ -574,7 +574,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             Some(_) => {
                 match self.tcx.def_map.borrow().get(&expr.id) {
                     Some(&def::DefLabel(loop_id)) => {
-                        for l in self.loop_scopes.iter() {
+                        for l in &self.loop_scopes {
                             if l.loop_id == loop_id {
                                 return *l;
                             }

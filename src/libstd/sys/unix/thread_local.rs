@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -42,13 +42,15 @@ pub unsafe fn destroy(key: Key) {
 type pthread_key_t = ::libc::c_ulong;
 
 #[cfg(any(target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 type pthread_key_t = ::libc::c_int;
 
 #[cfg(not(any(target_os = "macos",
               target_os = "ios",
               target_os = "freebsd",
-              target_os = "dragonfly")))]
+              target_os = "dragonfly",
+              target_os = "openbsd")))]
 type pthread_key_t = ::libc::c_uint;
 
 extern {

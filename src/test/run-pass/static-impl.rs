@@ -47,10 +47,10 @@ trait vec_utils<T> {
 
 impl<T> vec_utils<T> for Vec<T> {
     fn length_(&self) -> uint { self.len() }
-    fn iter_<F>(&self, mut f: F) where F: FnMut(&T) { for x in self.iter() { f(x); } }
+    fn iter_<F>(&self, mut f: F) where F: FnMut(&T) { for x in self { f(x); } }
     fn map_<U, F>(&self, mut f: F) -> Vec<U> where F: FnMut(&T) -> U {
         let mut r = Vec::new();
-        for elt in self.iter() {
+        for elt in self {
             r.push(f(elt));
         }
         r

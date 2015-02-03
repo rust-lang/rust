@@ -94,7 +94,7 @@ fn main() {
 
     let x = 1000000; // wan meeeljen doollaars!
 
-    for &x in range.iter() {
+    for &x in &range {
         zzz(); // #break
         sentinel();
 

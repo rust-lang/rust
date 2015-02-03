@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn each<T, F>(x: &[T], mut f: F) where F: FnMut(&T) {
-    for val in x.iter() {
+    for val in x {
         f(val)
     }
 }

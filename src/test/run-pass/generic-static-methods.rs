@@ -16,7 +16,7 @@ trait vec_utils<T> {
 impl<T> vec_utils<T> for Vec<T> {
     fn map_<U, F>(x: &Vec<T> , mut f: F) -> Vec<U> where F: FnMut(&T) -> U {
         let mut r = Vec::new();
-        for elt in x.iter() {
+        for elt in x {
             r.push(f(elt));
         }
         r

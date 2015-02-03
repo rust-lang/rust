@@ -181,7 +181,7 @@ pub fn parse_tts_from_source_str(name: String,
         name,
         source
     );
-    p.quote_depth += 1us;
+    p.quote_depth += 1;
     // right now this is re-creating the token trees from ... token trees.
     maybe_aborted(p.parse_all_token_trees(),p)
 }
@@ -324,7 +324,7 @@ pub mod with_hygiene {
             name,
             source
         );
-        p.quote_depth += 1us;
+        p.quote_depth += 1;
         // right now this is re-creating the token trees from ... token trees.
         maybe_aborted(p.parse_all_token_trees(),p)
     }
@@ -436,7 +436,7 @@ pub fn str_lit(lit: &str) -> String {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a>(it: &mut iter::Peekable<(usize, char), str::CharIndices<'a>>) {
+    fn eat<'a>(it: &mut iter::Peekable<str::CharIndices<'a>>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(' ') | Some('\n') | Some('\r') | Some('\t') => {
@@ -605,7 +605,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
-    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<(usize, u8), I>) {
+    fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<I>) {
         loop {
             match it.peek().map(|x| x.1) {
                 Some(b' ') | Some(b'\n') | Some(b'\r') | Some(b'\t') => {
@@ -683,9 +683,9 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     match suffix {
         Some(suf) if looks_like_width_suffix(&['f'], suf) => {
             match base {
-                16us => sd.span_err(sp, "hexadecimal float literal is not supported"),
-                8us => sd.span_err(sp, "octal float literal is not supported"),
-                2us => sd.span_err(sp, "binary float literal is not supported"),
+                16 => sd.span_err(sp, "hexadecimal float literal is not supported"),
+                8 => sd.span_err(sp, "octal float literal is not supported"),
+                2 => sd.span_err(sp, "binary float literal is not supported"),
                 _ => ()
             }
             let ident = token::intern_and_get_ident(&*s);
@@ -755,6 +755,7 @@ mod test {
     use ast;
     use abi;
     use attr::{first_attr_value_str_by_name, AttrMetaMethods};
+    use parse;
     use parse::parser::Parser;
     use parse::token::{str_to_ident};
     use print::pprust::item_to_string;
@@ -1163,7 +1164,7 @@ mod test {
                     "impl z { fn a (self: Foo, &myarg: i32) {} }",
                     ];
 
-        for &src in srcs.iter() {
+        for &src in &srcs {
             let spans = get_spans_of_pat_idents(src);
             let Span{ lo, hi, .. } = spans[0];
             assert!("self" == &src[lo.to_usize()..hi.to_usize()],
@@ -1213,5 +1214,27 @@ mod test {
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(item.attrs.as_slice(), "doc").unwrap();
         assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
+    }
+
+    #[test]
+    fn ttdelim_span() {
+        let sess = parse::new_parse_sess();
+        let expr = parse::parse_expr_from_source_str("foo".to_string(),
+            "foo!( fn main() { body } )".to_string(), vec![], &sess);
+
+        let tts = match expr.node {
+            ast::ExprMac(ref mac) => {
+                let ast::MacInvocTT(_, ref tts, _) = mac.node;
+                tts.clone()
+            }
+            _ => panic!("not a macro"),
+        };
+
+        let span = tts.iter().rev().next().unwrap().get_span();
+
+        match sess.span_diagnostic.cm.span_to_snippet(span) {
+            Some(s) => assert_eq!(&s[], "{ body }"),
+            None => panic!("could not get snippet"),
+        }
     }
 }

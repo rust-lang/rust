@@ -22,7 +22,7 @@ impl<'a, T, S> Set<&'a [T]> for S where
     }
 
     fn set(&mut self, bits: &[T]) {
-        for &bit in bits.iter() {
+        for &bit in bits {
             self.set(bit)
         }
     }

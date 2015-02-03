@@ -55,13 +55,14 @@
 #![feature(core)]
 #![feature(int_uint)]
 #![feature(io)]
-#![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
+#![feature(env)]
+#![cfg_attr(windows, feature(libc))]
 
 #[macro_use] extern crate log;
 

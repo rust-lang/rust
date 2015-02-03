@@ -17,7 +17,7 @@ type Iterator = int;
 
 pub fn main() {
     let x = [ 3, 3, 3 ];
-    for i in x.iter() {
+    for i in &x {
         assert_eq!(*i, 3);
     }
 }

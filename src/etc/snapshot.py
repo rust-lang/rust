@@ -1,4 +1,4 @@
-# Copyright 2011-2014 The Rust Project Developers. See the COPYRIGHT
+# Copyright 2011-2015 The Rust Project Developers. See the COPYRIGHT
 # file at the top-level directory of this distribution and at
 # http://rust-lang.org/COPYRIGHT.
 #
@@ -46,6 +46,7 @@ snapshot_files = {
         "winnt": ["bin/rustc.exe"],
         "freebsd": ["bin/rustc"],
         "dragonfly": ["bin/rustc"],
+        "openbsd": ["bin/rustc"],
         }
 
 winnt_runtime_deps_32 = ["libgcc_s_dw2-1.dll", "libstdc++-6.dll"]
@@ -100,6 +101,8 @@ def get_kernel(triple):
         return "freebsd"
     if os_name == "dragonfly":
         return "dragonfly"
+    if os_name == "openbsd":
+        return "openbsd"
     return "linux"
 
 

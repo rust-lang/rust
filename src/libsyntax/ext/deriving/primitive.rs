@@ -93,7 +93,7 @@ fn cs_from(name: &str, cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure
 
             let mut arms = Vec::new();
 
-            for variant in enum_def.variants.iter() {
+            for variant in &enum_def.variants {
                 match variant.node.kind {
                     ast::TupleVariantKind(ref args) => {
                         if !args.is_empty() {

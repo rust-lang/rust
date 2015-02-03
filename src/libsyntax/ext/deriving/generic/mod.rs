@@ -427,7 +427,7 @@ impl<'a> TraitDef<'a> {
             bounds.push(cx.typarambound(trait_path.clone()));
 
             // also add in any bounds from the declaration
-            for declared_bound in ty_param.bounds.iter() {
+            for declared_bound in &*ty_param.bounds {
                 bounds.push((*declared_bound).clone());
             }
 
@@ -770,7 +770,7 @@ impl<'a> MethodDef<'a> {
         let mut raw_fields = Vec::new(); // ~[[fields of self],
                                  // [fields of next Self arg], [etc]]
         let mut patterns = Vec::new();
-        for i in 0us..self_args.len() {
+        for i in 0..self_args.len() {
             let struct_path= cx.path(DUMMY_SP, vec!( type_ident ));
             let (pat, ident_expr) =
                 trait_.create_struct_pattern(cx,
@@ -859,8 +859,8 @@ impl<'a> MethodDef<'a> {
     ///             (&A2(ref __self_0),
     ///              &A2(ref __arg_1_0)) => (*__self_0).eq(&(*__arg_1_0)),
     ///             _ => {
-    ///                 let __self_vi = match *self { A1(..) => 0us, A2(..) => 1us };
-    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0us, A2(..) => 1us };
+    ///                 let __self_vi = match *self { A1(..) => 0, A2(..) => 1 };
+    ///                 let __arg_1_vi = match *__arg_1 { A1(..) => 0, A2(..) => 1 };
     ///                 false
     ///             }
     ///         }
@@ -904,8 +904,8 @@ impl<'a> MethodDef<'a> {
     ///   (Variant2, Variant2, Variant2) => ... // delegate Matching on Variant2
     ///   ...
     ///   _ => {
-    ///     let __this_vi = match this { Variant1 => 0us, Variant2 => 1us, ... };
-    ///     let __that_vi = match that { Variant1 => 0us, Variant2 => 1us, ... };
+    ///     let __this_vi = match this { Variant1 => 0, Variant2 => 1, ... };
+    ///     let __that_vi = match that { Variant1 => 0, Variant2 => 1, ... };
     ///     ... // catch-all remainder can inspect above variant index values.
     ///   }
     /// }
@@ -974,7 +974,7 @@ impl<'a> MethodDef<'a> {
                     subpats.push(p);
                     idents
                 };
-                for self_arg_name in self_arg_names.tail().iter() {
+                for self_arg_name in self_arg_names.tail() {
                     let (p, idents) = mk_self_pat(cx, &self_arg_name[]);
                     subpats.push(p);
                     self_pats_idents.push(idents);
@@ -1067,13 +1067,13 @@ impl<'a> MethodDef<'a> {
             //
             // ```
             // let __self0_vi = match   self {
-            //     A => 0us, B(..) => 1us, C(..) => 2us
+            //     A => 0, B(..) => 1, C(..) => 2
             // };
             // let __self1_vi = match __arg1 {
-            //     A => 0us, B(..) => 1us, C(..) => 2us
+            //     A => 0, B(..) => 1, C(..) => 2
             // };
             // let __self2_vi = match __arg2 {
-            //     A => 0us, B(..) => 1us, C(..) => 2us
+            //     A => 0, B(..) => 1, C(..) => 2
             // };
             // ```
             let mut index_let_stmts: Vec<P<ast::Stmt>> = Vec::new();

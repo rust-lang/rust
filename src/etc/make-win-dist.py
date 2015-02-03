@@ -87,6 +87,7 @@ def make_win_dist(rust_root, gcc_root, target_triple):
                     "libsetupapi.a",
                     "libshell32.a",
                     "libuser32.a",
+                    "libuserenv.a",
                     "libuuid.a",
                     "libwinhttp.a",
                     "libwinmm.a",

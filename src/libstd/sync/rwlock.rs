@@ -508,7 +508,7 @@ mod tests {
         }
 
         // Wait for children to pass their asserts
-        for r in children.into_iter() {
+        for r in children {
             assert!(r.join().is_ok());
         }
 

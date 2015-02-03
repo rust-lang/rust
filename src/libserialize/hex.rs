@@ -42,7 +42,7 @@ impl ToHex for [u8] {
     /// ```
     fn to_hex(&self) -> String {
         let mut v = Vec::with_capacity(self.len() * 2);
-        for &byte in self.iter() {
+        for &byte in self {
             v.push(CHARS[(byte >> 4) as uint]);
             v.push(CHARS[(byte & 0xf) as uint]);
         }

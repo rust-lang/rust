@@ -48,12 +48,12 @@ use std::simd::f64x2;
 use std::sync::Arc;
 use std::thread::Thread;
 
-const ITER: int = 50;
+const ITER: usize = 50;
 const LIMIT: f64 = 2.0;
-const WORKERS: uint = 16;
+const WORKERS: usize = 16;
 
 #[inline(always)]
-fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
+fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
     assert!(WORKERS % 2 == 0);
 
     // Ensure w and h are multiples of 8.
@@ -106,7 +106,7 @@ fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
         })
     }).collect::<Vec<_>>();
 
-    for res in precalc_futures.into_iter() {
+    for res in precalc_futures {
         let (rs, is) = res.join().ok().unwrap();
         precalc_r.extend(rs.into_iter());
         precalc_i.extend(is.into_iter());
@@ -133,7 +133,7 @@ fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
                 (i + 1) * chunk_size
             };
 
-            for &init_i in vec_init_i[start..end].iter() {
+            for &init_i in &vec_init_i[start..end] {
                 write_line(init_i, init_r_slice, &mut res);
             }
 
@@ -142,7 +142,7 @@ fn mandelbrot<W: old_io::Writer>(w: uint, mut out: W) -> old_io::IoResult<()> {
     }).collect::<Vec<_>>();
 
     try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
-    for res in data.into_iter() {
+    for res in data {
         try!(out.write(res.join().ok().unwrap().as_slice()));
     }
     out.flush()
@@ -198,7 +198,6 @@ fn write_line(init_i: f64, vec_init_r: &[f64], res: &mut Vec<u8>) {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
     let res = if args.len() < 2 {
         println!("Test mode: do not dump the image because it's not utf8, \
                   which interferes with the test runner.");

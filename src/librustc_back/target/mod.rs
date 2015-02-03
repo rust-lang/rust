@@ -56,6 +56,7 @@ mod apple_base;
 mod apple_ios_base;
 mod freebsd_base;
 mod dragonfly_base;
+mod openbsd_base;
 
 mod armv7_apple_ios;
 mod armv7s_apple_ios;
@@ -80,6 +81,7 @@ mod x86_64_pc_windows_gnu;
 mod x86_64_unknown_freebsd;
 mod x86_64_unknown_dragonfly;
 mod x86_64_unknown_linux_gnu;
+mod x86_64_unknown_openbsd;
 
 /// Everything `rustc` knows about how to compile for a specific target.
 ///
@@ -301,7 +303,8 @@ impl Target {
     /// The error string could come from any of the APIs called, including filesystem access and
     /// JSON decoding.
     pub fn search(target: &str) -> Result<Target, String> {
-        use std::os;
+        use std::env;
+        use std::ffi::OsString;
         use std::old_io::File;
         use std::path::Path;
         use serialize::json;
@@ -352,6 +355,8 @@ impl Target {
             i686_unknown_dragonfly,
             x86_64_unknown_dragonfly,
 
+            x86_64_unknown_openbsd,
+
             x86_64_apple_darwin,
             i686_apple_darwin,
 
@@ -379,12 +384,12 @@ impl Target {
             Path::new(target)
         };
 
-        let target_path = os::getenv("RUST_TARGET_PATH").unwrap_or(String::new());
+        let target_path = env::var("RUST_TARGET_PATH")
+                              .unwrap_or(OsString::from_str(""));
 
-        let paths = os::split_paths(&target_path[]);
         // FIXME 16351: add a sane default search path?
 
-        for dir in paths.iter() {
+        for dir in env::split_paths(&target_path) {
             let p =  dir.join(path.clone());
             if p.is_file() {
                 return load_file(&p);

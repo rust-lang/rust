@@ -475,13 +475,13 @@ impl<'tcx> MoveData<'tcx> {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
-        for assignment in self.path_assignments.borrow().iter() {
+        for assignment in &*self.path_assignments.borrow() {
             self.kill_moves(assignment.path, assignment.id, dfcx_moves);
         }
 
         // Kill all moves related to a variable `x` when
         // it goes out of scope:
-        for path in self.paths.borrow().iter() {
+        for path in &*self.paths.borrow() {
             match path.loan_path.kind {
                 LpVar(..) | LpUpvar(..) | LpDowncast(..) => {
                     let kill_scope = path.loan_path.kill_scope(tcx);
@@ -633,11 +633,11 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
         //! Returns the kind of a move of `loan_path` by `id`, if one exists.
 
         let mut ret = None;
-        for loan_path_index in self.move_data.path_map.borrow().get(&*loan_path).iter() {
+        if let Some(loan_path_index) = self.move_data.path_map.borrow().get(&*loan_path) {
             self.dfcx_moves.each_gen_bit(id, |move_index| {
                 let the_move = self.move_data.moves.borrow();
                 let the_move = (*the_move)[move_index];
-                if the_move.path == **loan_path_index {
+                if the_move.path == *loan_path_index {
                     ret = Some(the_move.kind);
                     false
                 } else {
@@ -688,7 +688,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                     ret = false;
                 }
             } else {
-                for &loan_path_index in opt_loan_path_index.iter() {
+                if let Some(loan_path_index) = opt_loan_path_index {
                     let cont = self.move_data.each_base_path(moved_path, |p| {
                         if p == loan_path_index {
                             // Scenario 3: some extension of `loan_path`
@@ -699,7 +699,7 @@ impl<'a, 'tcx> FlowedMoveData<'a, 'tcx> {
                             true
                         }
                     });
-                    if !cont { ret = false; break }
+                    if !cont { ret = false; }
                 }
             }
             ret

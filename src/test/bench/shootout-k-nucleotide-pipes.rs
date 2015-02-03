@@ -56,14 +56,14 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
    let mut pairs = Vec::new();
 
    // map -> [(k,%)]
-   for (key, &val) in mm.iter() {
+   for (key, &val) in mm {
       pairs.push(((*key).clone(), pct(val, total)));
    }
 
    let pairs_sorted = sortKV(pairs);
 
    let mut buffer = String::new();
-   for &(ref k, v) in pairs_sorted.iter() {
+   for &(ref k, v) in &pairs_sorted {
        buffer.push_str(format!("{:?} {:0.3}\n",
                                k.to_ascii_uppercase(),
                                v).as_slice());

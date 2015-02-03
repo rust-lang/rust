@@ -998,8 +998,8 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
                     mk_msg(resolved_expected.map(|t| self.ty_to_string(t)), actual_ty),
                     error_str)[]);
 
-                for err in err.iter() {
-                    ty::note_and_explain_type_err(self.tcx, *err)
+                if let Some(err) = err {
+                    ty::note_and_explain_type_err(self.tcx, err)
                 }
             }
         }

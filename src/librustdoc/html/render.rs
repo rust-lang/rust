@@ -283,7 +283,7 @@ pub fn run(mut krate: clean::Crate,
     let default: &[_] = &[];
     match krate.module.as_ref().map(|m| m.doc_list().unwrap_or(default)) {
         Some(attrs) => {
-            for attr in attrs.iter() {
+            for attr in attrs {
                 match *attr {
                     clean::NameValue(ref x, ref s)
                             if "html_favicon_url" == *x => {
@@ -353,7 +353,7 @@ pub fn run(mut krate: clean::Crate,
     krate = cache.fold_crate(krate);
 
     // Cache where all our extern crates are located
-    for &(n, ref e) in krate.externs.iter() {
+    for &(n, ref e) in &krate.externs {
         cache.extern_locations.insert(n, extern_location(e, &cx.dst));
         let did = ast::DefId { krate: n, node: ast::CRATE_NODE_ID };
         cache.paths.insert(did, (vec![e.name.to_string()], ItemType::Module));
@@ -364,11 +364,11 @@ pub fn run(mut krate: clean::Crate,
     // Favor linking to as local extern as possible, so iterate all crates in
     // reverse topological order.
     for &(n, ref e) in krate.externs.iter().rev() {
-        for &prim in e.primitives.iter() {
+        for &prim in &e.primitives {
             cache.primitive_locations.insert(prim, n);
         }
     }
-    for &prim in krate.primitives.iter() {
+    for &prim in &krate.primitives {
         cache.primitive_locations.insert(prim, ast::LOCAL_CRATE);
     }
 
@@ -402,7 +402,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<Stri
 
         // Attach all orphan methods to the type's definition if the type
         // has since been learned.
-        for &(pid, ref item) in orphan_methods.iter() {
+        for &(pid, ref item) in orphan_methods {
             let did = ast_util::local_def(pid);
             match paths.get(&did) {
                 Some(&(ref fqp, _)) => {
@@ -420,7 +420,7 @@ fn build_index(krate: &clean::Crate, cache: &mut Cache) -> old_io::IoResult<Stri
 
         // Reduce `NodeId` in paths into smaller sequential numbers,
         // and prune the paths that do not appear in the index.
-        for item in search_index.iter() {
+        for item in &*search_index {
             match item.parent {
                 Some(nodeid) => {
                     if !nodeid_to_pathid.contains_key(&nodeid) {
@@ -542,7 +542,7 @@ fn write_shared(cx: &Context,
     let mut w = try!(File::create(&dst));
     try!(writeln!(&mut w, "var searchIndex = {{}};"));
     try!(writeln!(&mut w, "{}", search_index));
-    for index in all_indexes.iter() {
+    for index in &all_indexes {
         try!(writeln!(&mut w, "{}", *index));
     }
     try!(writeln!(&mut w, "initSearch(searchIndex);"));
@@ -550,7 +550,7 @@ fn write_shared(cx: &Context,
     // Update the list of all implementors for traits
     let dst = cx.dst.join("implementors");
     try!(mkdir(&dst));
-    for (&did, imps) in cache.implementors.iter() {
+    for (&did, imps) in &cache.implementors {
         // Private modules can leak through to this phase of rustdoc, which
         // could contain implementations for otherwise private types. In some
         // rare cases we could find an implementation for an item which wasn't
@@ -564,7 +564,7 @@ fn write_shared(cx: &Context,
         };
 
         let mut mydst = dst.clone();
-        for part in remote_path[..remote_path.len() - 1].iter() {
+        for part in &remote_path[..remote_path.len() - 1] {
             mydst.push(part.as_slice());
             try!(mkdir(&mydst));
         }
@@ -578,12 +578,12 @@ fn write_shared(cx: &Context,
         let mut f = BufferedWriter::new(try!(File::create(&mydst)));
         try!(writeln!(&mut f, "(function() {{var implementors = {{}};"));
 
-        for implementor in all_implementors.iter() {
+        for implementor in &all_implementors {
             try!(write!(&mut f, "{}", *implementor));
         }
 
         try!(write!(&mut f, r"implementors['{}'] = [", krate.name));
-        for imp in imps.iter() {
+        for imp in imps {
             // If the trait and implementation are in the same crate, then
             // there's no need to emit information about it (there's inlining
             // going on). If they're in different crates then the crate defining
@@ -679,10 +679,10 @@ fn extern_location(e: &clean::ExternalCrate, dst: &Path) -> ExternalLocation {
 
     // Failing that, see if there's an attribute specifying where to find this
     // external crate
-    for attr in e.attrs.iter() {
+    for attr in &e.attrs {
         match *attr {
             clean::List(ref x, ref list) if "doc" == *x => {
-                for attr in list.iter() {
+                for attr in list {
                     match *attr {
                         clean::NameValue(ref x, ref s)
                                 if "html_root_url" == *x => {
@@ -1043,7 +1043,7 @@ impl DocFolder for Cache {
 
 impl<'a> Cache {
     fn generics(&mut self, generics: &clean::Generics) {
-        for typ in generics.type_params.iter() {
+        for typ in &generics.type_params {
             self.typarams.insert(typ.did, typ.name.clone());
         }
     }
@@ -1190,7 +1190,7 @@ impl Context {
                                            .collect::<String>();
                 match cache().paths.get(&it.def_id) {
                     Some(&(ref names, _)) => {
-                        for name in (&names[..names.len() - 1]).iter() {
+                        for name in &names[..names.len() - 1] {
                             url.push_str(name.as_slice());
                             url.push_str("/");
                         }
@@ -1231,7 +1231,7 @@ impl Context {
                         _ => unreachable!()
                     };
                     this.sidebar = this.build_sidebar(&m);
-                    for item in m.items.into_iter() {
+                    for item in m.items {
                         f(this,item);
                     }
                     Ok(())
@@ -1252,7 +1252,7 @@ impl Context {
 
     fn build_sidebar(&self, m: &clean::Module) -> HashMap<String, Vec<NameDoc>> {
         let mut map = HashMap::new();
-        for item in m.items.iter() {
+        for item in &m.items {
             if self.ignore_private_item(item) { continue }
 
             // avoid putting foreign items to the sidebar.
@@ -1270,7 +1270,7 @@ impl Context {
             v.push(NameDoc(myname, Some(shorter_line(item.doc_value()))));
         }
 
-        for (_, items) in map.iter_mut() {
+        for (_, items) in &mut map {
             items.sort();
         }
         return map;
@@ -1536,7 +1536,7 @@ fn item_module(w: &mut fmt::Formatter, cx: &Context,
 
     debug!("{:?}", indices);
     let mut curty = None;
-    for &idx in indices.iter() {
+    for &idx in &indices {
         let myitem = &items[idx];
 
         let myty = Some(shortty(myitem));
@@ -1696,7 +1696,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "{{ }}"));
     } else {
         try!(write!(w, "{{\n"));
-        for t in types.iter() {
+        for t in &types {
             try!(write!(w, "    "));
             try!(render_method(w, t.item()));
             try!(write!(w, ";\n"));
@@ -1704,7 +1704,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         if types.len() > 0 && required.len() > 0 {
             try!(w.write_str("\n"));
         }
-        for m in required.iter() {
+        for m in &required {
             try!(write!(w, "    "));
             try!(render_method(w, m.item()));
             try!(write!(w, ";\n"));
@@ -1712,7 +1712,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         if required.len() > 0 && provided.len() > 0 {
             try!(w.write_str("\n"));
         }
-        for m in provided.iter() {
+        for m in &provided {
             try!(write!(w, "    "));
             try!(render_method(w, m.item()));
             try!(write!(w, " {{ ... }}\n"));
@@ -1741,7 +1741,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <h2 id='associated-types'>Associated Types</h2>
             <div class='methods'>
         "));
-        for t in types.iter() {
+        for t in &types {
             try!(trait_item(w, *t));
         }
         try!(write!(w, "</div>"));
@@ -1753,7 +1753,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <h2 id='required-methods'>Required Methods</h2>
             <div class='methods'>
         "));
-        for m in required.iter() {
+        for m in &required {
             try!(trait_item(w, *m));
         }
         try!(write!(w, "</div>"));
@@ -1763,7 +1763,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
             <h2 id='provided-methods'>Provided Methods</h2>
             <div class='methods'>
         "));
-        for m in provided.iter() {
+        for m in &provided {
             try!(trait_item(w, *m));
         }
         try!(write!(w, "</div>"));
@@ -1776,7 +1776,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     "));
     match cache.implementors.get(&it.def_id) {
         Some(implementors) => {
-            for i in implementors.iter() {
+            for i in implementors {
                 try!(writeln!(w, "<li>{}<code>impl{} {} for {}{}</code></li>",
                               ConciseStability(&i.stability),
                               i.generics, i.trait_, i.for_, WhereClause(&i.generics)));
@@ -1890,7 +1890,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
         try!(write!(w, " {{}}"));
     } else {
         try!(write!(w, " {{\n"));
-        for v in e.variants.iter() {
+        for v in &e.variants {
             try!(write!(w, "    "));
             let name = v.name.as_ref().unwrap().as_slice();
             match v.inner {
@@ -1933,7 +1933,7 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
     try!(document(w, it));
     if e.variants.len() > 0 {
         try!(write!(w, "<h2 class='variants'>Variants</h2>\n<table>"));
-        for variant in e.variants.iter() {
+        for variant in &e.variants {
             try!(write!(w, "<tr><td id='variant.{name}'>{stab}<code>{name}</code></td><td>",
                           stab = ConciseStability(&variant.stability),
                           name = variant.name.as_ref().unwrap().as_slice()));
@@ -1996,7 +1996,7 @@ fn render_struct(w: &mut fmt::Formatter, it: &clean::Item,
         doctree::Plain => {
             try!(write!(w, " {{\n{}", tab));
             let mut fields_stripped = false;
-            for field in fields.iter() {
+            for field in fields {
                 match field.inner {
                     clean::StructFieldItem(clean::HiddenStructField) => {
                         fields_stripped = true;
@@ -2049,7 +2049,7 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
                 .partition(|i| i.impl_.trait_.is_none());
             if non_trait.len() > 0 {
                 try!(write!(w, "<h2 id='methods'>Methods</h2>"));
-                for i in non_trait.iter() {
+                for i in &non_trait {
                     try!(render_impl(w, i));
                 }
             }
@@ -2058,13 +2058,13 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
                                   Implementations</h2>"));
                 let (derived, manual): (Vec<_>, _) = traits.into_iter()
                     .partition(|i| i.impl_.derived);
-                for i in manual.iter() {
+                for i in &manual {
                     try!(render_impl(w, i));
                 }
                 if derived.len() > 0 {
                     try!(write!(w, "<h3 id='derived_implementations'>Derived Implementations \
                                 </h3>"));
-                    for i in derived.iter() {
+                    for i in &derived {
                         try!(render_impl(w, i));
                     }
                 }
@@ -2137,14 +2137,14 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
     }
 
     try!(write!(w, "<div class='impl-items'>"));
-    for trait_item in i.impl_.items.iter() {
+    for trait_item in &i.impl_.items {
         try!(doctraititem(w, trait_item, true));
     }
 
     fn render_default_methods(w: &mut fmt::Formatter,
                               t: &clean::Trait,
                               i: &clean::Impl) -> fmt::Result {
-        for trait_item in t.items.iter() {
+        for trait_item in &t.items {
             let n = trait_item.item().name.clone();
             match i.items.iter().find(|m| { m.name == n }) {
                 Some(..) => continue,
@@ -2209,7 +2209,7 @@ impl<'a> fmt::Display for Sidebar<'a> {
                 None => return Ok(())
             };
             try!(write!(w, "<div class='block {}'><h2>{}</h2>", short, longty));
-            for &NameDoc(ref name, ref doc) in items.iter() {
+            for &NameDoc(ref name, ref doc) in items {
                 let curty = shortty(cur).to_static_str();
                 let class = if cur.name.as_ref().unwrap() == name &&
                                short == curty { "current" } else { "" };

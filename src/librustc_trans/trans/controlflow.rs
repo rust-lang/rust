@@ -96,7 +96,7 @@ pub fn trans_block<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         debuginfo::get_cleanup_debug_loc_for_ast_node(bcx.ccx(), b.id, b.span, true);
     fcx.push_ast_cleanup_scope(cleanup_debug_loc);
 
-    for s in b.stmts.iter() {
+    for s in &b.stmts {
         bcx = trans_stmt(bcx, &**s);
     }
 

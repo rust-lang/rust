@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use libc::{BOOL, DWORD, c_void, LPVOID, c_ulong};
+use libc::{BOOL, DWORD, LPVOID, c_ulong};
 use libc::types::os::arch::extra::BOOLEAN;
 
 pub type PCONDITION_VARIABLE = *mut CONDITION_VARIABLE;

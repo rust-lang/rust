@@ -12,8 +12,8 @@
 
 use prelude::v1::*;
 
+use env;
 use libc;
-use os;
 use std::old_io::net::ip::*;
 use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 
@@ -41,7 +41,7 @@ fn next_test_unix_socket() -> String {
 pub fn next_test_unix() -> Path {
     let string = next_test_unix_socket();
     if cfg!(unix) {
-        os::tmpdir().join(string)
+        env::temp_dir().join(string)
     } else {
         Path::new(format!("{}{}", r"\\.\pipe\", string))
     }
@@ -87,12 +87,12 @@ fn base_port() -> u16 {
     ];
 
     // FIXME (#9639): This needs to handle non-utf8 paths
-    let path = os::getcwd().unwrap();
+    let path = env::current_dir().unwrap();
     let path_s = path.as_str().unwrap();
 
     let mut final_base = base;
 
-    for &(dir, base) in bases.iter() {
+    for &(dir, base) in &bases {
         if path_s.contains(dir) {
             final_base = base;
             break;

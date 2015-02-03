@@ -13,6 +13,7 @@
 use prelude::v1::*;
 
 use cmp;
+use env;
 use fmt;
 use intrinsics;
 use libc::{self, uintptr_t};
@@ -51,7 +52,7 @@ pub fn min_stack() -> uint {
         0 => {}
         n => return n - 1,
     }
-    let amt = os::getenv("RUST_MIN_STACK").and_then(|s| s.parse().ok());
+    let amt = env::var_string("RUST_MIN_STACK").ok().and_then(|s| s.parse().ok());
     let amt = amt.unwrap_or(2 * 1024 * 1024);
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
@@ -62,15 +63,15 @@ pub fn min_stack() -> uint {
 /// Get's the number of scheduler threads requested by the environment
 /// either `RUST_THREADS` or `num_cpus`.
 pub fn default_sched_threads() -> uint {
-    match os::getenv("RUST_THREADS") {
-        Some(nstr) => {
+    match env::var_string("RUST_THREADS") {
+        Ok(nstr) => {
             let opt_n: Option<uint> = nstr.parse().ok();
             match opt_n {
                 Some(n) if n > 0 => n,
                 _ => panic!("`RUST_THREADS` is `{}`, should be a positive integer", nstr)
             }
         }
-        None => {
+        Err(..) => {
             if limit_thread_creation_due_to_osx_and_valgrind() {
                 1
             } else {
