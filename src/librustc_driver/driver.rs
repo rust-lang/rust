@@ -627,7 +627,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
 
     // Do not move this check past lint
     time(time_passes, "stability index", (), |_|
-         ty_cx.stability.borrow_mut().build(&ty_cx.sess, krate));
+         ty_cx.stability.borrow_mut().build(&ty_cx.sess, krate, &public_items));
 
     time(time_passes, "intrinsic checking", (), |_|
          middle::intrinsicck::check_crate(&ty_cx));
