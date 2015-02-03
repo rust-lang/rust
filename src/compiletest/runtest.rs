@@ -230,9 +230,9 @@ fn run_pretty_test(config: &Config, props: &TestProps, testfile: &Path) {
             let s = File::open(&filepath).read_to_end().unwrap();
             String::from_utf8(s).unwrap()
         }
-        None => { srcs[srcs.len() - 2u].clone() }
+        None => { srcs[srcs.len() - 2].clone() }
     };
-    let mut actual = srcs[srcs.len() - 1u].clone();
+    let mut actual = srcs[srcs.len() - 1].clone();
 
     if props.pp_exact.is_some() {
         // Now we have to care about line endings
@@ -842,7 +842,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
             }).collect();
         // check if each line in props.check_lines appears in the
         // output (in order)
-        let mut i = 0u;
+        let mut i = 0;
         for line in debugger_run_result.stdout.lines() {
             let mut rest = line.trim();
             let mut first = true;
@@ -869,7 +869,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
                 first = false;
             }
             if !failed && rest.len() == 0 {
-                i += 1u;
+                i += 1;
             }
             if i == num_check_lines {
                 // all lines checked
@@ -892,13 +892,13 @@ fn check_error_patterns(props: &TestProps,
         fatal(format!("no error pattern specified in {:?}",
                       testfile.display()).as_slice());
     }
-    let mut next_err_idx = 0u;
+    let mut next_err_idx = 0;
     let mut next_err_pat = &props.error_patterns[next_err_idx];
     let mut done = false;
     for line in output_to_check.lines() {
         if line.contains(next_err_pat.as_slice()) {
             debug!("found error pattern {}", next_err_pat);
-            next_err_idx += 1u;
+            next_err_idx += 1;
             if next_err_idx == props.error_patterns.len() {
                 debug!("found all error patterns");
                 done = true;
@@ -910,7 +910,7 @@ fn check_error_patterns(props: &TestProps,
     if done { return; }
 
     let missing_patterns = &props.error_patterns[next_err_idx..];
-    if missing_patterns.len() == 1u {
+    if missing_patterns.len() == 1 {
         fatal_proc_rec(format!("error pattern '{}' not found!",
                               missing_patterns[0]).as_slice(),
                       proc_res);
@@ -1025,7 +1025,7 @@ fn check_expected_errors(expected_errors: Vec<errors::ExpectedError> ,
 }
 
 fn is_compiler_error_or_warning(line: &str) -> bool {
-    let mut i = 0u;
+    let mut i = 0;
     return
         scan_until_char(line, ':', &mut i) &&
         scan_char(line, ':', &mut i) &&
@@ -1084,7 +1084,7 @@ fn scan_integer(haystack: &str, idx: &mut uint) -> bool {
 
 fn scan_string(haystack: &str, needle: &str, idx: &mut uint) -> bool {
     let mut haystack_i = *idx;
-    let mut needle_i = 0u;
+    let mut needle_i = 0;
     while needle_i < needle.len() {
         if haystack_i >= haystack.len() {
             return false;

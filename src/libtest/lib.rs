@@ -464,14 +464,14 @@ impl<T: Writer> ConsoleTestState<T> {
             out: out,
             log_out: log_out,
             use_color: use_color(opts),
-            total: 0u,
-            passed: 0u,
-            failed: 0u,
-            ignored: 0u,
-            measured: 0u,
+            total: 0,
+            passed: 0,
+            failed: 0,
+            ignored: 0,
+            measured: 0,
             metrics: MetricMap::new(),
             failures: Vec::new(),
-            max_name_len: 0u,
+            max_name_len: 0,
         })
     }
 
@@ -601,7 +601,7 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_run_finish(&mut self) -> old_io::IoResult<bool> {
         assert!(self.passed + self.failed + self.ignored + self.measured == self.total);
 
-        let success = self.failed == 0u;
+        let success = self.failed == 0;
         if !success {
             try!(self.write_failures());
         }
@@ -679,7 +679,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io:
     let mut st = try!(ConsoleTestState::new(opts, None::<StdWriter>));
     fn len_if_padded(t: &TestDescAndFn) -> uint {
         match t.testfn.padding() {
-            PadNone => 0u,
+            PadNone => 0,
             PadOnLeft | PadOnRight => t.desc.name.as_slice().len(),
         }
     }
@@ -712,12 +712,12 @@ fn should_sort_failures_before_printing_them() {
         log_out: None,
         out: Raw(Vec::new()),
         use_color: false,
-        total: 0u,
-        passed: 0u,
-        failed: 0u,
-        ignored: 0u,
-        measured: 0u,
-        max_name_len: 10u,
+        total: 0,
+        passed: 0,
+        failed: 0,
+        ignored: 0,
+        measured: 0,
+        max_name_len: 10,
         metrics: MetricMap::new(),
         failures: vec!((test_b, Vec::new()), (test_a, Vec::new()))
     };

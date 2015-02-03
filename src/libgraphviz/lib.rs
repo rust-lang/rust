@@ -715,7 +715,7 @@ mod tests {
 
     impl<'a> GraphWalk<'a, Node, &'a Edge> for LabelledGraph {
         fn nodes(&'a self) -> Nodes<'a,Node> {
-            (0u..self.node_labels.len()).collect()
+            (0..self.node_labels.len()).collect()
         }
         fn edges(&'a self) -> Edges<'a,&'a Edge> {
             self.edges.iter().collect()

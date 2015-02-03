@@ -153,7 +153,7 @@ impl<'a> Iterator for Graphemes<'a> {
     #[inline]
     fn size_hint(&self) -> (uint, Option<uint>) {
         let slen = self.string.len();
-        (cmp::min(slen, 1u), Some(slen))
+        (cmp::min(slen, 1), Some(slen))
     }
 
     #[inline]

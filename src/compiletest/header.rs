@@ -300,8 +300,8 @@ fn parse_exec_env(line: &str) -> Option<(String, String)> {
                                       .collect();
 
         match strs.len() {
-          1u => (strs.pop().unwrap(), "".to_string()),
-          2u => {
+          1 => (strs.pop().unwrap(), "".to_string()),
+          2 => {
               let end = strs.pop().unwrap();
               (strs.pop().unwrap(), end)
           }

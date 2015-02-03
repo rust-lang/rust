@@ -24,7 +24,7 @@
 /// fn main() {
 ///     log!(log::WARN, "this is a warning {}", "message");
 ///     log!(log::DEBUG, "this is a debug message");
-///     log!(6, "this is a custom logging level: {level}", level=6u);
+///     log!(6, "this is a custom logging level: {level}", level=6);
 /// }
 /// ```
 ///
@@ -70,7 +70,7 @@ macro_rules! log {
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
-///     let error = 3u;
+///     let error = 3;
 ///     error!("the build has failed with error code: {}", error);
 /// }
 /// ```
@@ -95,7 +95,7 @@ macro_rules! error {
 /// #[macro_use] extern crate log;
 ///
 /// fn main() {
-///     let code = 3u;
+///     let code = 3;
 ///     warn!("you may like to know that a process exited with: {}", code);
 /// }
 /// ```
