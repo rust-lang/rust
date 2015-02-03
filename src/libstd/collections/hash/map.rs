@@ -1566,6 +1566,7 @@ pub struct RandomState {
 impl RandomState {
     /// Construct a new `RandomState` that is initialized with random keys.
     #[inline]
+    #[allow(deprecated)]
     pub fn new() -> RandomState {
         let mut r = rand::thread_rng();
         RandomState { k0: r.gen(), k1: r.gen() }

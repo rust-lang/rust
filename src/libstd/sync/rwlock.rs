@@ -383,6 +383,8 @@ impl<'a, T> Drop for RwLockWriteGuard<'a, T> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(deprecated)] // rand
+
     use prelude::v1::*;
 
     use rand::{self, Rng};

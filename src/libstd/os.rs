@@ -1425,6 +1425,8 @@ mod arch_consts {
 
 #[cfg(test)]
 mod tests {
+    #![allow(deprecated)] // rand
+
     use prelude::v1::*;
 
     use iter::repeat;
