@@ -42,7 +42,9 @@ follow-up PRs against this RFC.
             * [Relation to the system-level APIs]
             * [Platform-specific opt-in]
         * [Proposed organization]
-    * [Revising `Reader` and `Writer`] (stub)
+    * [Revising `Reader` and `Writer`]
+        * [Read]
+        * [Write]
     * [String handling]
         * [Key observations]
         * [The design: `os_str`]
@@ -50,8 +52,16 @@ follow-up PRs against this RFC.
     * [Deadlines] (stub)
     * [Splitting streams and cancellation] (stub)
     * [Modules]
-        * [core::io] (stub)
-        * [The std::io facade] (stub)
+        * [core::io]
+            * [Adapters]
+            * [Free functions]
+            * [Seeking]
+            * [Buffering]
+            * [Cursor]
+        * [The std::io facade]
+            * [Errors]
+            * [Channel adapters]
+            * [stdin, stdout, stderr]
         * [std::env]
         * [std::fs] (stub)
         * [std::net] (stub)
@@ -96,9 +106,9 @@ The `Writer` trait suffers from a more fundamental problem, since its primary
 method, `write`, may actually involve several calls to the underlying system --
 and if a failure occurs, there is no indication of how much was written.
 
-Existing blocking APIs all have to deal with this problem, and Rust can and
-should follow the existing tradition here. See [Revising `Reader` and `Writer`] for the proposed
-solution.
+Existing blocking APIs all have to deal with this problem, and Rust
+can and should follow the existing tradition here. See
+[Revising `Reader` and `Writer`] for the proposed solution.
 
 ## Timeouts
 [Timeouts]: #timeouts
@@ -450,7 +460,165 @@ counts, arguments to `main`, and so on).
 ## Revising `Reader` and `Writer`
 [Revising `Reader` and `Writer`]: #revising-reader-and-writer
 
-> To be added in a follow-up PR.
+The `Reader` and `Writer` traits are the backbone of IO, representing
+the ability to (respectively) pull bytes from and push bytes to an IO
+object. The core operations provided by these traits follows a very
+long tradition for blocking IO, but they are still surprisingly subtle
+-- and they need to be revised.
+
+* **Atomicity and data loss**. As discussed
+  [above](#atomicity-and-the-reader-writer-traits), the `Reader` and
+  `Writer` traits currently expose methods that involve multiple
+  actual reads or writes, and data is lost when an error occurs after
+  some (but not all) operations have completed.
+
+  The proposed strategy for `Reader` operations is to (1) separate out
+  various deserialization methods into a distinct framework, (2)
+  *never* have the internal `read` implementations loop on errors, (3)
+  cut down on the number of non-atomic read operations and (4) adjust
+  the remaining operations to provide more flexibility when possible.
+
+  For writers, the main
+  change is to make `write` only perform a single underlying write
+  (returning the number of bytes written on success), and provide a
+  separate `write_all` method.
+
+* **Parsing/serialization**. The `Reader` and `Writer` traits
+  currently provide a large number of default methods for
+  (de)serialization of various integer types to bytes with a given
+  endianness. Unfortunately, these operations pose atomicity problems
+  as well (e.g., a read could fail after reading two of the bytes
+  needed for a `u32` value).
+
+  Rather than complicate the signatures of these methods, the
+  (de)serialization infrastructure is removed entirely -- in favor of
+  instead eventually introducing a much richer
+  parsing/formatting/(de)serialization framework that works seamlessly
+  with `Reader` and `Writer`.
+
+  Such a framework is out of scope for this RFC, but the
+  endian-sensitive functionality will be provided elsewhere
+  (likely out of tree).
+
+With those general points out of the way, let's look at the details.
+
+### `Read`
+[Read]: #read
+
+The updated `Reader` trait (and its extension) is as follows:
+
+```rust
+trait Read {
+    fn read(&mut self, buf: &mut [u8]) -> Result<usize, Error>;
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> Result<(), Error> { ... }
+    fn read_to_string(&self, buf: &mut String) -> Result<(), Error> { ... }
+}
+
+// extension trait needed for object safety
+trait ReadExt: Read {
+    fn bytes(&mut self) -> Bytes<Self> { ... }
+
+    ... // more to come later in the RFC
+}
+impl<R: Read> ReadExt for R {}
+```
+
+Following the
+[trait naming conventions](https://github.com/rust-lang/rfcs/pull/344),
+the trait is renamed to `Read` reflecting the clear primary method it
+provides.
+
+The `read` method should not involve internal looping (even over
+errors like `EINTR`). It is intended to faithfully represent a single
+call to an underlying system API.
+
+The `read_to_end` and `read_to_string` methods now take explicit
+buffers as input. This has multiple benefits:
+
+* Performance. When it is known that reading will involve some large
+  number of bytes, the buffer can be preallocated in advance.
+
+* "Atomicity" concerns. For `read_to_end`, it's possible to use this
+  API to retain data collected so far even when a `read` fails in the
+  middle. For `read_to_string`, this is not the case, because UTF-8
+  validity cannot be ensured in such cases; but if intermediate
+  results are wanted, one can use `read_to_end` and convert to a
+  `String` only at the end.
+
+Convenience methods like these will retry on `EINTR`. This is partly
+under the assumption that in practice, EINTR will *most often* arise
+when interfacing with other code that changes a signal handler. Due to
+the global nature of these interactions, such a change can suddenly
+cause your own code to get an error irrelevant to it, and the code
+should probably just retry in those cases. In the case where you are
+using EINTR explicitly, `read` and `write` will be available to handle
+it (and you can always build your own abstractions on top).
+
+#### Removed methods
+
+The proposed `Read` trait is much slimmer than today's `Reader`. The vast
+majority of removed methods are parsing/deserialization, which were
+discussed above.
+
+The remaining methods (`read_exact`, `read_at_least`, `push`,
+`push_at_least`) were removed for various reasons:
+
+* `read_exact`, `read_at_least`: these are somewhat more obscure
+  conveniences that are not particularly robust due to lack of
+  atomicity.
+
+* `push`, `push_at_least`: these are special-cases for working with
+  `Vec`, which this RFC proposes to replace with a more general
+  mechanism described next.
+
+To provide some of this functionality in a more composition way,
+extend `Vec<T>` with an unsafe method:
+
+```rust
+unsafe fn with_extra(&mut self, n: uint) -> &mut [T];
+```
+
+This method is equivalent to calling `reserve(n)` and then providing a
+slice to the memory starting just after `len()` entries. Using this
+method, clients of `Read` can easily recover the `push` method.
+
+### `Write`
+[Write]: #write
+
+The `Writer` trait is cut down to even smaller size:
+
+```rust
+trait Write {
+    fn write(&mut self, buf: &[u8]) -> Result<uint, Error>;
+    fn flush(&mut self) -> Result<(), Error>;
+
+    fn write_all(&mut self, buf: &[u8]) -> Result<(), Error> { .. }
+    fn write_fmt(&mut self, fmt: &fmt::Arguments) -> Result<(), Error> { .. }
+}
+```
+
+The biggest change here is to the semantics of `write`. Instead of
+repeatedly writing to the underlying IO object until all of `buf` is
+written, it attempts a *single* write and on success returns the
+number of bytes written. This follows the long tradition of blocking
+IO, and is a more fundamental building block than the looping write we
+currently have. Like `read`, it will propagate EINTR.
+
+For convenience, `write_all` recovers the behavior of today's `write`,
+looping until either the entire buffer is written or an error
+occurs. To meaningfully recover from an intermediate error and keep
+writing, code should work with `write` directly. Like the `Read`
+conveniences, `EINTR` results in a retry.
+
+The `write_fmt` method, like `write_all`, will loop until its entire
+input is written or an error occurs.
+
+The other methods include endian conversions (covered by
+serialization) and a few conveniences like `write_str` for other basic
+types. The latter, at least, is already uniformly (and extensibly)
+covered via the `write!` macro. The other helpers, as with `Read`,
+should migrate into a more general (de)serialization library.
 
 ## String handling
 [String handling]: #string-handling
@@ -693,10 +861,289 @@ throughout IO, we can go on to explore the modules in detail.
 ### `core::io`
 [core::io]: #coreio
 
-> To be added in a follow-up PR.
+Ideally, the `io` module will be split into the parts that can live in
+`libcore` (most of it) and the parts that are added in the `std::io`
+facade. This part of the organization is non-normative, since it
+requires changes to today's `IoError` (which currently references
+`String`); if these changes cannot be performed, everything here will
+live in `std::io`.
+
+#### Adapters
+[Adapters]: #adapters
+
+The current `std::io::util` module offers a number of `Reader` and
+`Writer` "adapters". This RFC refactors the design to more closely
+follow `std::iter`. Along the way, it generalizes the `by_ref` adapter:
+
+```rust
+trait ReadExt: Read {
+    // ... eliding the methods already described above
+
+    // Postfix version of `(&mut self)`
+    fn by_ref(&mut self) -> &mut Self { ... }
+
+    // Read everything from `self`, then read from `next`
+    fn chain<R: Read>(self, next: R) -> Chain<Self, R> { ... }
+
+    // Adapt `self` to yield only the first `limit` bytes
+    fn take(self, limit: u64) -> Take<Self> { ... }
+
+    // Whenever reading from `self`, push the bytes read to `out`
+    #[unstable] // uncertain semantics of errors "halfway through the operation"
+    fn tee<W: Write>(self, out: W) -> Tee<Self, W> { ... }
+}
+
+trait WriteExt: Write {
+    // Postfix version of `(&mut self)`
+    fn by_ref<'a>(&'a mut self) -> &mut Self { ... }
+
+    // Whenever bytes are written to `self`, write them to `other` as well
+    #[unstable] // uncertain semantics of errors "halfway through the operation"
+    fn broadcast<W: Write>(self, other: W) -> Broadcast<Self, W> { ... }
+}
+
+// An adaptor converting an `Iterator<u8>` to `Read`.
+pub struct IterReader<T> { ... }
+```
+
+As with `std::iter`, these adapters are object unsafe and hence placed
+in an extension trait with a blanket `impl`.
+
+#### Free functions
+[Free functions]: #free-functions
+
+The current `std::io::util` module also includes a number of primitive
+readers and writers, as well as `copy`. These are updated as follows:
+
+```rust
+// A reader that yields no bytes
+fn empty() -> Empty; // in theory just returns `impl Read`
+
+impl Read for Empty { ... }
+
+// A reader that yields `byte` repeatedly (generalizes today's ZeroReader)
+fn repeat(byte: u8) -> Repeat;
+
+impl Read for Repeat { ... }
+
+// A writer that ignores the bytes written to it (/dev/null)
+fn sink() -> Sink;
+
+impl Write for Sink { ... }
+
+// Copies all data from a `Read` to a `Write`, returning the amount of data
+// copied.
+pub fn copy<R, W>(r: &mut R, w: &mut W) -> Result<u64, Error>
+```
+
+Like `write_all`, the `copy` method will discard the amount of data already
+written on any error and also discard any partially read data on a `write`
+error. This method is intended to be a convenience and `write` should be used
+directly if this is not desirable.
+
+#### Seeking
+[Seeking]: #seeking
+
+The seeking infrastructure is largely the same as today's, except that
+`tell` is removed and the `seek` signature is refactored with more precise
+types:
+
+```rust
+pub trait Seek {
+    // returns the new position after seeking
+    fn seek(&mut self, pos: SeekFrom) -> Result<u64, Error>;
+}
+
+pub enum SeekFrom {
+    Start(u64),
+    End(i64),
+    Current(i64),
+}
+```
+
+The old `tell` function can be regained via `seek(SeekFrom::Current(0))`.
+
+#### Buffering
+[Buffering]: #buffering
+
+The current `Buffer` trait will be renamed to `BufRead` for
+clarity (and to open the door to `BufWrite` at some later
+point):
+
+```rust
+pub trait BufRead: Read {
+    fn fill_buf(&mut self) -> Result<&[u8], Error>;
+    fn consume(&mut self, amt: uint);
+
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> Result<(), Error> { ... }
+    fn read_line(&mut self, buf: &mut String) -> Result<(), Error> { ... }
+}
+
+pub trait BufReadExt: BufRead {
+    // Split is an iterator over Result<Vec<u8>, Error>
+    fn split(&mut self, byte: u8) -> Split<Self> { ... }
+
+    // Lines is an iterator over Result<String, Error>
+    fn lines(&mut self) -> Lines<Self> { ... };
+
+    // Chars is an iterator over Result<char, Error>
+    fn chars(&mut self) -> Chars<Self> { ... }
+}
+```
+
+The `read_until` and `read_line` methods are changed to take explicit,
+mutable buffers, for similar reasons to `read_to_end`. (Note that
+buffer reuse is particularly common for `read_line`). These functions
+include the delimiters in the strings they produce, both for easy
+cross-platform compatibility (in the case of `read_line`) and for ease
+in copying data without loss (in particular, distinguishing whether
+the last line included a final delimiter).
+
+The `split` and `lines` methods provide iterator-based versions of
+`read_until` and `read_line`, and *do not* include the delimiter in
+their output. This matches conventions elsewhere (like `split` on
+strings) and is usually what you want when working with iterators.
+
+The `BufReader`, `BufWriter` and `BufStream` types stay
+essentially as they are today, except that for streams and writers the
+`into_inner` method yields the structure back in the case of a flush error:
+
+```rust
+// If flushing fails, you get the unflushed data back
+fn into_inner(self) -> Result<W, IntoInnerError<Self>>;
+
+pub struct IntoInnerError<W>(W, Error);
+
+impl IntoInnerError<T> {
+    pub fn error(&self) -> &Error { ... }
+    pub fn into_inner(self) -> W { ... }
+}
+impl<W> FromError<IntoInnerError<W>> for Error { ... }
+```
+
+#### `Cursor`
+[Cursor]: #cursor
+
+Many applications want to view in-memory data as either an implementor of `Read`
+or `Write`. This is often useful when composing streams or creating test cases.
+This functionality primarily comes from the following implementations:
+
+```rust
+impl<'a> Read for &'a [u8] { ... }
+impl<'a> Write for &'a mut [u8] { ... }
+impl Write for Vec<u8> { ... }
+```
+
+While efficient, none of these implementations support seeking (via an
+implementation of the `Seek` trait). The implementations of `Read` and `Write`
+for these types is not quite as efficient when `Seek` needs to be used, so the
+`Seek`-ability will be opted-in to with a new `Cursor` structure with the
+following API:
+
+```rust
+pub struct Cursor<T> {
+    pos: u64,
+    inner: T,
+}
+impl<T> Cursor<T> {
+    pub fn new(inner: T) -> Cursor<T>;
+    pub fn into_inner(self) -> T;
+    pub fn get_ref(&self) -> &T;
+}
+
+// Error indicating that a negative offset was seeked to.
+pub struct NegativeOffset;
+
+impl Seek for Cursor<Vec<u8>> { ... }
+impl<'a> Seek for Cursor<&'a [u8]> { ... }
+impl<'a> Seek for Cursor<&'a mut [u8]> { ... }
+
+impl Read for Cursor<Vec<u8>> { ... }
+impl<'a> Read for Cursor<&'a [u8]> { ... }
+impl<'a> Read for Cursor<&'a mut [u8]> { ... }
+
+impl BufRead for Cursor<Vec<u8>> { ... }
+impl<'a> BufRead for Cursor<&'a [u8]> { ... }
+impl<'a> BufRead for Cursor<&'a mut [u8]> { ... }
+
+impl<'a> Write for Cursor<&'a mut [u8]> { ... }
+impl Write for Cursor<Vec<u8>> { ... }
+```
+
+A sample implementation can be found in [a gist][cursor-impl]. Using one
+`Cursor` structure allows to emphasize that the only ability added is an
+implementation of `Seek` while still allowing all possible I/O operations for
+various types of buffers.
+
+[cursor-impl]: https://gist.github.com/alexcrichton/8224f57ed029929447bd
+
+It is not currently proposed to unify these implementations via a trait. For
+example a `Cursor<Rc<[u8]>>` is a reasonable instance to have, but it will not
+have an implementation listed in the standard library to start out. It is
+considered a backwards-compatible addition to unify these various `impl` blocks
+with a trait.
+
+The following types will be removed from the standard library and replaced as
+follows:
+
+* `MemReader` -> `Cursor<Vec<u8>>`
+* `MemWriter` -> `Cursor<Vec<u8>>`
+* `BufReader` -> `Cursor<&[u8]>` or `Cursor<&mut [u8]>`
+* `BufWriter` -> `Cursor<&mut [u8]>`
 
 ### The `std::io` facade
 [The std::io facade]: #the-stdio-facade
+
+The `std::io` module will largely be a facade over `core::io`, but it
+will add some functionality that can live only in `std`.
+
+#### `Errors`
+[Errors]: #error
+
+The `IoError` type will be renamed to `std::io::Error`, following our
+[non-prefixing convention](https://github.com/rust-lang/rfcs/pull/356).
+It will remain largely as it is today, but its fields will be made
+private. It may eventually grow a field to track the underlying OS
+error code.
+
+The `std::io::IoErrorKind` type will become `std::io::ErrorKind`, and
+`ShortWrite` will be dropped (it is no longer needed with the new
+`Write` semantics), which should decrease its footprint. The
+`OtherIoError` variant will become `Other` now that `enum`s are
+namespaced. Other variants may be added over time, such as `Interrupted`,
+as more errors are classified from the system.
+
+The `EndOfFile` variant will be removed in favor of returning `Ok(0)`
+from `read` on end of file (or `write` on an empty slice for example). This
+approach clarifies the meaning of the return value of `read`, matches Posix
+APIs, and makes it easier to use `try!` in the case that a "real" error should
+be bubbled out. (The main downside is that higher-level operations that might
+use `Result<T, IoError>` with some `T != usize` may need to wrap `IoError` in a
+further enum if they wish to forward unexpected EOF.)
+
+#### Channel adapters
+[Channel adapters]: #channel-adapters
+
+The `ChanReader` and `ChanWriter` adapters will be left as they are today, and
+they will remain `#[unstable]`. The channel adapters currently suffer from a few
+problems today, some of which are inherent to the design:
+
+* Construction is somewhat unergonomic. First a `mpsc` channel pair must be
+  created and then each half of the reader/writer needs to be created.
+* Each call to `write` involves moving memory onto the heap to be sent, which
+  isn't necessarily efficient.
+* The design of `std::sync::mpsc` allows for growing more channels in the
+  future, but it's unclear if we'll want to continue to provide a reader/writer
+  adapter for each channel we add to `std::sync`.
+
+These types generally feel as if they're from a different era of Rust (which
+they are!) and may take some time to fit into the current standard library. They
+can be reconsidered for stabilization after the dust settles from the I/O
+redesign as well as the recent `std::sync` redesign. At this time, however, this
+RFC recommends they remain unstable.
+
+#### `stdin`, `stdout`, `stderr`
+[stdin, stdout, stderr]: #stdin-stdout-stderr
 
 > To be added in a follow-up PR.
 
