@@ -1245,100 +1245,131 @@ elsewhere.
 #### TCP
 [TCP]: #tcp
 
-For `TcpStream`, the changes are most easily expressed by giving the signatures directly:
+The current `TcpStream` struct will be pared back from where it is today to the
+following interface:
 
 ```rust
 // TcpStream, which contains both a reader and a writer
 
 impl TcpStream {
-    fn connect<A: ToSocketAddr>(addr: A) -> IoResult<TcpStreama>;
-    fn connect_deadline<A, D>(addr: A, deadline: D) -> IoResult<TcpStreama> where
-        A: ToSocketAddr, D: IntoDeadline;
-
-    fn reader(&mut self) -> &mut TcpReader;
-    fn writer(&mut self) -> &mut TcpWriter;
-    fn split(self) -> (TcpReader, TcpWriter);
-
-    fn peer_addr(&mut self) -> IoResult<SocketAddr>;
-    fn socket_addr(&mut self) -> IoResult<SocketAddr>;
+    fn connect<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpStream>;
+    fn peer_addr(&mut self) -> io::Result<SocketAddr>;
+    fn socket_addr(&mut self) -> io::Result<SocketAddr>;
+    fn shutdown(&mut self, how: Shutdown) -> io::Result<()>;
+    fn duplicate(&self) -> io::Result<TcpStream>;
 }
 
-impl Reader for TcpStream { ... }
-impl Writer for TcpStream { ... }
-
-impl Reader for Deadlined<TcpStream> { ... }
-impl Writer for Deadlined<TcpStream> { ... }
-
-// TcpReader
-
-impl Reader for TcpReader { ... }
-impl Reader for Deadlined<TcpReader> { ... }
-
-impl TcpReader {
-    fn peer_addr(&mut self) -> IoResult<SocketAddr>;
-    fn socket_addr(&mut self) -> IoResult<SocketAddr>;
-
-    fn shutdown_token(&mut self) -> ShutdownToken;
-}
-
-// TcpWriter
-
-impl Writer for TcpWriter { ... }
-impl Writer for Deadlined<TcpWriter> { ... }
-
-impl TcpWriter {
-    fn peer_addr(&mut self) -> IoResult<SocketAddr>;
-    fn socket_addr(&mut self) -> IoResult<SocketAddr>;
-
-    fn shutdown_token(&mut self) -> ShutdownToken;
-}
-
-// ShutdownToken
-
-impl ShutdownToken {
-    fn shutdown(self);
-}
-
-impl Clone for ShutdownToken { ... }
+impl Read for TcpStream { ... }
+impl Write for TcpStream { ... }
+impl<'a> Read for &'a TcpStream { ... }
+impl<'a> Write for &'a TcpStream { ... }
+#[cfg(unix)]    impl AsRawFd for TcpStream { ... }
+#[cfg(windows)] impl AsRawSocket for TcpStream { ... }
 ```
 
-The idea is that a `TcpStream` provides both a reader and a writer,
-and can be used directly as such, just as it can today. However, the
-two sides can also be broken apart via the `split` method, which
-allows them to be shipped off to separate threads. Moreover, each side
-can yield a `ShutdownToken`, a `Clone` and `Send` value that can be
-used to shut down that side of the socket, cancelling any in-progress
-blocking operations, much like e.g. `close_read` does today.
+* `clone` has been replaced with a `duplicate` function. The implementation of
+  `duplicate` will map to using `dup` on Unix platforms and
+  `WSADuplicateSocket` on Windows platforms. The `TcpStream` itself will no
+   longer be reference counted itself under the hood.
+* `close_{read,write}` are both removed in favor of binding the `shutdown`
+  function directly on sockets. This will map to the `shutdown` function on both
+  Unix and Windows.
+* `set_timeout` has been removed for now (as well as other timeout-related
+  functions). It is likely that this may come back soon as a binding to
+  `setsockopt` to the `SO_RCVTIMEO` and `SO_SNDTIMEO` options. This RFC does not
+  currently proposed adding them just yet, however.
+* Implementations of `Read` and `Write` are provided for `&TcpStream`. These
+  implementations are not necessarily ergonomic to call (requires taking an
+  explicit reference), but they express the ability to concurrently read and
+  write from a `TcpStream`
 
-The implementation of the `ShutdownToken` infrastructure should ensure
-that there is essentially no cost imposed when the feature is not used
--- in particular, if a `ShutdownToken` has not been requested, a
-single `read` or `write` should correspond to a single syscall.
+Various other options such as `nodelay` and `keepalive` will be left
+`#[unstable]` for now.
 
-For `TcpListener`, the only change is to rename `socket_name` to
-`socket_addr`.
+The `TcpAcceptor` struct will be removed and all functionality will be folded
+into the `TcpListener` structure. Specifically, this will be the resulting API:
 
-For `TcpAcceptor` we will:
+```rust
+impl TcpListener {
+    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpListener>;
+    fn socket_addr(&mut self) -> io::Result<SocketAddr>;
+    fn duplicate(&self) -> io::Result<TcpListener>;
+    fn accept(&self) -> io::Result<(TcpStream, SocketAddr)>;
+    fn incoming(&self) -> Incoming;
+}
 
-* Add a `socket_addr` method.
-* Possibly provide a convenience constructor for `bind`.
-* Replace `close_accept` with `cancel_token()`.
-* Remove `Clone`.
-* Rename `IncomingConnecitons` to `Incoming`.
+impl<'a> Iterator for Incoming<'a> {
+    type Item = io::Result<TcpStream>;
+    ...
+}
+#[cfg(unix)]    impl AsRawFd for TcpListener { ... }
+#[cfg(windows)] impl AsRawSocket for TcpListener { ... }
+```
+
+Some major changes from today's API include:
+
+* The static distinction between `TcpAcceptor` and `TcpListener` has been
+  removed (more on this in the [socket][Sockets] section).
+* The `clone` functionality has been removed in favor of `duplicate` (same
+  caveats as `TcpStream`).
+* The `close_accept` functionality is removed entirely. This is not currently
+  implemented via `shutdown` (not supported well across platforms) and is
+  instead implemented via `select`. This functionality can return at a later
+  date with a more robust interface.
+* The `set_timeout` functionality has also been removed in favor of returning at
+  a later date in a more robust fashion with `select`.
+* The `accept` function no longer takes `&mut self` and returns `SocketAddr`.
+  The change in mutability is done to express that multiple `accept` calls can
+  happen concurrently.
+* For convenience the iterator does not yield the `SocketAddr` from `accept`.
 
 #### UDP
 [UDP]: #udp
 
-The UDP infrastructure should change to use the new deadline
-infrastructure, but should not provide `Clone`, `ShutdownToken`s, or a
-reader/writer split. In addition:
+The UDP infrastructre will receive a similar face-lift as the TCP infrastructure
+will:
 
-* `recv_from` should become `recv`.
-* `send_to` should become `send`.
-* `socket_name` should become `socket_addr`.
+```rust
+impl UdpSocket {
+    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<UdpSocket>;
+    fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)>;
+    fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
+    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn duplicate(&self) -> io::Result<UdpSocket>;
+}
 
-Methods like `multicast` and `ttl` are left as `#[experimental]` for
-now (they are derived from libuv's design).
+#[cfg(unix)]    impl AsRawFd for UdpSocket { ... }
+#[cfg(windows)] impl AsRawSocket for UdpSocket { ... }
+```
+
+Some important points of note are:
+
+* The `send` and `recv` function take `&self` instead of `&mut self` to indicate
+  that they may be called safely in concurrent contexts.
+* All configuration options such as `multicast` and `ttl` are left as
+  `#[unstable]` for now.
+* All timeout support is removed. This may come back in the form of `setsockopt`
+  (as with TCP streams) or with a more general implementation of `select`.
+* `clone` functionality has been replaced with `duplicate`.
+
+#### Sockets
+[Sockets]: #sockets
+
+The current constructors for `TcpStream`, `TcpListener`, and `UdpSocket` are
+largely "convenience constructors" as they do not expose the underlying details
+that a socket can be configured before it is bound, connected, or listened on.
+One of the more frequent configuration options is `SO_REUSEADDR` which is set by
+default for `TcpListener` currently.
+
+This RFC leaves it as an open question how best to implement this
+pre-configuration. The constructors today will likely remain no matter what as
+convenience constructors and a new structure would implement consuming methods
+to transform itself to each of the various `TcpStream`, `TcpListener`, and
+`UdpSocket`.
+
+This RFC does, however, recommend not adding multiple constructors to the
+various types to set various configuration options. This pattern is best
+expressed via a flexible socket type to be added at a future date.
 
 #### Addresses
 [Addresses]: #addresses
