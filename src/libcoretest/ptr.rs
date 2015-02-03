@@ -46,7 +46,7 @@ fn test() {
                  v1[1] == 32001u16 &&
                  v1[2] == 0u16));
         copy_memory(v1.as_mut_ptr().offset(2),
-                    v0.as_ptr(), 1u);
+                    v0.as_ptr(), 1);
         assert!((v1[0] == 32002u16 &&
                  v1[1] == 32001u16 &&
                  v1[2] == 32000u16));
