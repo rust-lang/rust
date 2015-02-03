@@ -9,13 +9,30 @@
 // except according to those terms.
 
 #![unstable(feature = "std_misc")]
-#![doc(hidden)]
 
+/// (Almost) assert_eq!() for floats.
+/// Succeeds if `abs(a - b) < 10^-6` or if `abs(a/b - 1) < 10^-6`.
+///
+/// # Example
+///
+/// ```
+/// assert_approx_eq!(5.0, 5.0);
+/// assert_approx_eq!(1000000.0, 1000000.9);
+/// assert_approx_eq!(0.0, 0.0000009);
+/// ```
+///
+/// ```should_fail
+/// assert_approx_eq!(1.0, 2.0);
+/// assert_approx_eq!(1000000.0, 1000001.0);
+/// assert_approx_eq!(0.0, 0.000001);
+/// ```
+#[macro_export]
 macro_rules! assert_approx_eq {
     ($a:expr, $b:expr) => ({
-        use num::Float;
+        use ::std::num::Float;
         let (a, b) = (&$a, &$b);
-        assert!((*a - *b).abs() < 1.0e-6,
-                "{} is not approximately equal to {}", *a, *b);
+        let abs_okay = (*a - *b).abs() < 1.0e-6;
+        let rel_okay = (*a / *b - 1.0).abs()  < 1.0e-6;
+        assert!(abs_okay || rel_okay, "{} is not approximately equal to {}", *a, *b);
     })
 }
