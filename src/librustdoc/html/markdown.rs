@@ -165,6 +165,13 @@ extern {
 
 }
 
+// hoedown_buffer helpers
+impl hoedown_buffer {
+    fn as_bytes(&self) -> &[u8] {
+        unsafe { slice::from_raw_parts(self.data, self.size as usize) }
+    }
+}
+
 /// Returns Some(code) if `s` is a line that should be stripped from
 /// documentation but used in example code. `code` is the portion of
 /// `s` that should be used in tests. (None for lines that should be
@@ -194,15 +201,13 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
 
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let my_opaque: &MyOpaque = &*((*opaque).opaque as *const MyOpaque);
-            let text = slice::from_raw_buf(&(*orig_text).data,
-                                           (*orig_text).size as uint);
+            let text = (*orig_text).as_bytes();
             let origtext = str::from_utf8(text).unwrap();
             debug!("docblock: ==============\n{:?}\n=======", text);
             let rendered = if lang.is_null() {
                 false
             } else {
-                let rlang = slice::from_raw_buf(&(*lang).data,
-                                                (*lang).size as uint);
+                let rlang = (*lang).as_bytes();
                 let rlang = str::from_utf8(rlang).unwrap();
                 if !LangString::parse(rlang).rust {
                     (my_opaque.dfltblk)(ob, orig_text, lang,
@@ -248,9 +253,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         let s = if text.is_null() {
             "".to_string()
         } else {
-            let s = unsafe {
-                slice::from_raw_buf(&(*text).data, (*text).size as uint)
-            };
+            let s = unsafe { (*text).as_bytes() };
             str::from_utf8(s).unwrap().to_string()
         };
 
@@ -323,7 +326,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
         };
 
         if ret.is_ok() {
-            let buf = slice::from_raw_buf(&(*ob).data, (*ob).size as uint);
+            let buf = (*ob).as_bytes();
             ret = w.write_str(str::from_utf8(buf).unwrap());
         }
         hoedown_buffer_free(ob);
@@ -341,13 +344,12 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             let block_info = if lang.is_null() {
                 LangString::all_false()
             } else {
-                let lang = slice::from_raw_buf(&(*lang).data,
-                                               (*lang).size as uint);
+                let lang = (*lang).as_bytes();
                 let s = str::from_utf8(lang).unwrap();
                 LangString::parse(s)
             };
             if !block_info.rust { return }
-            let text = slice::from_raw_buf(&(*text).data, (*text).size as uint);
+            let text = (*text).as_bytes();
             let opaque = opaque as *mut hoedown_html_renderer_state;
             let tests = &mut *((*opaque).opaque as *mut ::test::Collector);
             let text = str::from_utf8(text).unwrap();
@@ -370,7 +372,7 @@ pub fn find_testable_code(doc: &str, tests: &mut ::test::Collector) {
             if text.is_null() {
                 tests.register_header("", level as u32);
             } else {
-                let text = slice::from_raw_buf(&(*text).data, (*text).size as uint);
+                let text = (*text).as_bytes();
                 let text = str::from_utf8(text).unwrap();
                 tests.register_header(text, level as u32);
             }
@@ -510,7 +512,7 @@ pub fn plain_summary_line(md: &str) -> String {
         hoedown_document_render(document, ob, md.as_ptr(),
                                 md.len() as libc::size_t);
         hoedown_document_free(document);
-        let plain_slice = slice::from_raw_buf(&(*ob).data, (*ob).size as uint);
+        let plain_slice = (*ob).as_bytes();
         let plain = match str::from_utf8(plain_slice) {
             Ok(s) => s.to_string(),
             Err(_) => "".to_string(),

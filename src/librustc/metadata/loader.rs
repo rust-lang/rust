@@ -744,8 +744,8 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         while llvm::LLVMIsSectionIteratorAtEnd(of.llof, si.llsi) == False {
             let mut name_buf = ptr::null();
             let name_len = llvm::LLVMRustGetSectionName(si.llsi, &mut name_buf);
-            let name = slice::from_raw_buf(&(name_buf as *const u8),
-                                           name_len as uint).to_vec();
+            let name = slice::from_raw_parts(name_buf as *const u8,
+                                             name_len as uint).to_vec();
             let name = String::from_utf8(name).unwrap();
             debug!("get_metadata_section: name {}", name);
             if read_meta_section_name(is_osx) == name {
@@ -756,7 +756,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
                 debug!("checking {} bytes of metadata-version stamp",
                        vlen);
                 let minsz = cmp::min(vlen, csz);
-                let buf0 = slice::from_raw_buf(&cvbuf, minsz);
+                let buf0 = slice::from_raw_parts(cvbuf, minsz);
                 let version_ok = buf0 == encoder::metadata_encoding_version;
                 if !version_ok {
                     return Err((format!("incompatible metadata version found: '{}'",
@@ -766,7 +766,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
                 let cvbuf1 = cvbuf.offset(vlen as int);
                 debug!("inflating {} bytes of compressed metadata",
                        csz - vlen);
-                let bytes = slice::from_raw_buf(&cvbuf1, csz-vlen);
+                let bytes = slice::from_raw_parts(cvbuf1, csz - vlen);
                 match flate::inflate_bytes(bytes) {
                     Some(inflated) => return Ok(MetadataVec(inflated)),
                     None => {}
