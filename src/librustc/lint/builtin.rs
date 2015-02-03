@@ -2066,6 +2066,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    PRIVATE_NO_MANGLE_STATICS,
+    Warn,
+    "statics marked #[no_mangle] should be exported"
+}
+
+declare_lint! {
     NO_MANGLE_CONST_ITEMS,
     Deny,
     "const items will not have their symbols exported"
@@ -2077,6 +2083,7 @@ pub struct InvalidNoMangleItems;
 impl LintPass for InvalidNoMangleItems {
     fn get_lints(&self) -> LintArray {
         lint_array!(PRIVATE_NO_MANGLE_FNS,
+                    PRIVATE_NO_MANGLE_STATICS,
                     NO_MANGLE_CONST_ITEMS)
     }
 
@@ -2088,6 +2095,14 @@ impl LintPass for InvalidNoMangleItems {
                     let msg = format!("function {} is marked #[no_mangle], but not exported",
                                       it.ident);
                     cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg.as_slice());
+                }
+            },
+            ast::ItemStatic(..) => {
+                if attr::contains_name(it.attrs.as_slice(), "no_mangle") &&
+                       !cx.exported_items.contains(&it.id) {
+                    let msg = format!("static {} is marked #[no_mangle], but not exported",
+                                      it.ident);
+                    cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg.as_slice());
                 }
             },
             ast::ItemConst(..) => {
