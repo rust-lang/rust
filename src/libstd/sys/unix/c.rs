@@ -143,6 +143,7 @@ extern {
     pub fn sigdelset(set: *mut sigset_t, signum: libc::c_int) -> libc::c_int;
     pub fn sigemptyset(set: *mut sigset_t) -> libc::c_int;
 
+    #[cfg(not(target_os = "ios"))]
     pub fn getpwuid_r(uid: libc::uid_t,
                       pwd: *mut passwd,
                       buf: *mut libc::c_char,
