@@ -405,7 +405,7 @@ impl<'cx, 'tcx> Resolver<'cx, 'tcx> {
                     let span = self.reason.span(self.tcx);
                     span_err!(self.tcx.sess, span, E0104,
                         "cannot resolve lifetime for captured variable `{}`: {}",
-                        ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_string(),
+                        ty::local_var_name_str(self.tcx, upvar_id.var_id).to_string(),
                         infer::fixup_err_to_string(e));
                 }
 
