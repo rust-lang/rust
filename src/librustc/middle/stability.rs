@@ -75,7 +75,8 @@ impl<'a> Annotator<'a> {
                     if let Some(stab) = self.parent.clone() {
                         self.index.local.insert(id, stab);
                     } else if self.index.staged_api && required
-                           && self.export_map.contains(&id) {
+                           && self.export_map.contains(&id)
+                           && !self.sess.opts.test {
                         self.sess.span_err(item_sp,
                                            "This node does not have a stability attribute");
                     }
