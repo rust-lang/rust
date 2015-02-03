@@ -37,8 +37,6 @@ use {ast, ast_util};
 use ptr::P;
 use util::small_vector::SmallVector;
 
-use std::ops::Deref;
-
 enum ShouldFail {
     No,
     Yes(Option<InternedString>),
@@ -514,7 +512,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
     });
     let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
         // building `use <ident> = __test::main`
-        let reexport_ident = token::str_to_ident(s.deref());
+        let reexport_ident = token::str_to_ident(&s[]);
 
         let use_path =
             nospan(ast::ViewPathSimple(reexport_ident,
@@ -577,7 +575,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(&krate.attrs[]) {
-        Some(ref s) if "test" == &s.deref()[] => true,
+        Some(ref s) if "test" == &s[] => true,
         _ => false
     }
 }

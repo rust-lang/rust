@@ -23,12 +23,11 @@ use visit;
 
 use std::cmp;
 use std::u32;
-use std::ops::Deref;
 
 pub fn path_name_i(idents: &[Ident]) -> String {
     // FIXME: Bad copies (#2543 -- same for everything else that says "bad")
     idents.iter().map(|i| {
-        token::get_ident(*i).deref().to_string()
+        token::get_ident(*i).to_string()
     }).collect::<Vec<String>>().connect("::")
 }
 

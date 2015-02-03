@@ -15,7 +15,6 @@ use ext::build::AstBuilder;
 use parse::token;
 
 use std::string::String;
-use std::ops::Deref;
 
 pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                          sp: codemap::Span,
@@ -33,7 +32,7 @@ pub fn expand_syntax_ext(cx: &mut base::ExtCtxt,
                     ast::LitStr(ref s, _) |
                     ast::LitFloat(ref s, _) |
                     ast::LitFloatUnsuffixed(ref s) => {
-                        accumulator.push_str(s.deref());
+                        accumulator.push_str(&s[]);
                     }
                     ast::LitChar(c) => {
                         accumulator.push(c);

@@ -22,7 +22,6 @@ use util::small_vector::SmallVector;
 
 use std::old_io::File;
 use std::rc::Rc;
-use std::ops::Deref;
 
 // These macros all relate to the file system; they either return
 // the column/row/filename of the expression, or they include
@@ -74,7 +73,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     base::check_zero_tts(cx, sp, tts, "module_path!");
     let string = cx.mod_path()
                    .iter()
-                   .map(|x| token::get_ident(*x).deref().to_string())
+                   .map(|x| token::get_ident(*x).to_string())
                    .collect::<Vec<String>>()
                    .connect("::");
     base::MacExpr::new(cx.expr_str(

@@ -25,8 +25,6 @@ use ptr::P;
 ///  as antiquotes (splices).
 
 pub mod rt {
-    use std::ops::Deref;
-
     use ast;
     use codemap::Spanned;
     use ext::base::ExtCtxt;
@@ -163,7 +161,7 @@ pub mod rt {
 
     impl ToSource for ast::Ident {
         fn to_source(&self) -> String {
-            token::get_ident(*self).deref().to_string()
+            token::get_ident(*self).to_string()
         }
     }
 

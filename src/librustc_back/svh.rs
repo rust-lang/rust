@@ -329,7 +329,7 @@ mod svh_visitor {
             // macro invocations, namely macro_rules definitions,
             // *can* appear as items, even in the expanded crate AST.
 
-            if macro_name(mac).get() == "macro_rules" {
+            if &macro_name(mac)[] == "macro_rules" {
                 // Pretty-printing definition to a string strips out
                 // surface artifacts (currently), such as the span
                 // information, yielding a content-based hash.

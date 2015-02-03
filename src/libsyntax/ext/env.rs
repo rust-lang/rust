@@ -23,7 +23,6 @@ use parse::token;
 
 use std::env;
 use std::os;
-use std::ops::Deref;
 
 pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                               -> Box<base::MacResult+'cx> {
@@ -103,9 +102,9 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     }
 
-    let e = match os::getenv(var.deref()) {
+    let e = match os::getenv(&var[]) {
         None => {
-            cx.span_err(sp, msg.deref());
+            cx.span_err(sp, &msg[]);
             cx.expr_usize(sp, 0)
         }
         Some(s) => cx.expr_str(sp, token::intern_and_get_ident(&s[]))
