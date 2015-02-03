@@ -10,6 +10,8 @@
 
 // Test that the CompilerCalls interface to the compiler works.
 
+// ignore-android
+
 #![feature(rustc_private)]
 #![feature(core)]
 
@@ -20,7 +22,7 @@ extern crate syntax;
 
 use rustc::session::Session;
 use rustc::session::config::{self, Input};
-use rustc_driver::{driver, CompilerCalls};
+use rustc_driver::{driver, CompilerCalls, Compilation};
 use syntax::diagnostics;
 
 
@@ -32,9 +34,9 @@ impl<'a> CompilerCalls<'a> for TestCalls {
     fn early_callback(&mut self,
                       _: &getopts::Matches,
                       _: &diagnostics::registry::Registry)
-                      -> bool {
+                      -> Compilation {
         self.count *= 2;
-        false
+        Compilation::Continue
     }
 
     fn late_callback(&mut self,
@@ -43,9 +45,9 @@ impl<'a> CompilerCalls<'a> for TestCalls {
                      _: &Input,
                      _: &Option<Path>,
                      _: &Option<Path>)
-                     -> bool {
+                     -> Compilation {
         self.count *= 3;
-        true
+        Compilation::Stop
     }
 
     fn some_input(&mut self, input: Input, input_path: Option<Path>) -> (Input, Option<Path>) {

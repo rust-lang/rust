@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -108,8 +108,9 @@ pub fn run(args: Vec<String>) -> int {
 pub fn run_compiler<'a>(args: &[String],
                         callbacks: &mut CompilerCalls<'a>) {
     macro_rules! do_or_return {($expr: expr) => {
-        if $expr {
-            return;
+        match $expr {
+            Compilation::Stop => return,
+            Compilation::Continue => {}
         }
     }}
 
@@ -144,7 +145,7 @@ pub fn run_compiler<'a>(args: &[String],
     // It is somewhat unfortunate that this is hardwired in - this is forced by
     // the fact that pretty_print_input requires the session by value.
     let pretty = callbacks.parse_pretty(&sess, &matches);
-        match pretty.into_iter().next() {
+    match pretty {
         Some((ppm, opt_uii)) => {
             pretty::pretty_print_input(sess, cfg, &input, ppm, opt_uii, ofile);
             return;
@@ -180,26 +181,43 @@ fn make_input(free_matches: &[String]) -> Option<(Input, Option<Path>)> {
     }
 }
 
+// Whether to stop or continue compilation.
+#[derive(Copy, Debug, Eq, PartialEq)]
+pub enum Compilation {
+    Stop,
+    Continue,
+}
+
+impl Compilation {
+    pub fn and_then<F: FnOnce() -> Compilation>(self, next: F) -> Compilation {
+        match self {
+            Compilation::Stop => Compilation::Stop,
+            Compilation::Continue => next()
+        }
+    }
+}
+
 // A trait for customising the compilation process. Offers a number of hooks for
 // executing custom code or customising input.
 pub trait CompilerCalls<'a> {
     // Hook for a callback early in the process of handling arguments. This will
     // be called straight after options have been parsed but before anything
-    // else (e.g., selecting input and output). Return true to terminate compilation,
-    // false to continue.
-    fn early_callback(&mut self, &getopts::Matches, &diagnostics::registry::Registry) -> bool;
+    // else (e.g., selecting input and output).
+    fn early_callback(&mut self,
+                      &getopts::Matches,
+                      &diagnostics::registry::Registry)
+                      -> Compilation;
 
     // Hook for a callback late in the process of handling arguments. This will
     // be called just before actual compilation starts (and before build_controller
-    // is called), after all arguments etc. have been completely handled. Return
-    // true to terminate compilation, false to continue.
+    // is called), after all arguments etc. have been completely handled.
     fn late_callback(&mut self,
                      &getopts::Matches,
                      &Session,
                      &Input,
                      &Option<Path>,
                      &Option<Path>)
-                     -> bool;
+                     -> Compilation;
 
     // Called after we extract the input from the arguments. Gives the implementer
     // an opportunity to change the inputs or to add some custom input handling.
@@ -253,7 +271,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
     fn early_callback(&mut self,
                       matches: &getopts::Matches,
                       descriptions: &diagnostics::registry::Registry)
-                      -> bool {
+                      -> Compilation {
         match matches.opt_str("explain") {
             Some(ref code) => {
                 match descriptions.find_description(&code[]) {
@@ -264,12 +282,12 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         early_error(&format!("no extended information for {}", code)[]);
                     }
                 }
-                return true;
+                return Compilation::Stop;
             },
             None => ()
         }
 
-        return false;
+        return Compilation::Continue;
     }
 
     fn no_input(&mut self,
@@ -288,7 +306,8 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                     return None;
                 }
                 let sess = build_session(sopts.clone(), None, descriptions.clone());
-                if RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile) {
+                let should_stop = RustcDefaultCalls::print_crate_info(&sess, None, odir, ofile);
+                if should_stop == Compilation::Stop {
                     return None;
                 }
                 early_error("no input filename given");
@@ -328,9 +347,9 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                      input: &Input,
                      odir: &Option<Path>,
                      ofile: &Option<Path>)
-                     -> bool {
-        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile) ||
-            RustcDefaultCalls::list_metadata(sess, matches, input)
+                     -> Compilation {
+        RustcDefaultCalls::print_crate_info(sess, Some(input), odir, ofile).and_then(
+            || RustcDefaultCalls::list_metadata(sess, matches, input))
     }
 
     fn build_controller(&mut self, sess: &Session) -> CompileController<'a> {
@@ -339,19 +358,19 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         if sess.opts.parse_only ||
            sess.opts.show_span.is_some() ||
            sess.opts.debugging_opts.ast_json_noexpand {
-            control.after_parse.stop = true;
+            control.after_parse.stop = Compilation::Stop;
         }
 
         if sess.opts.no_analysis || sess.opts.debugging_opts.ast_json {
-            control.after_write_deps.stop = true;
+            control.after_write_deps.stop = Compilation::Stop;
         }
 
         if sess.opts.no_trans {
-            control.after_analysis.stop = true;
+            control.after_analysis.stop = Compilation::Stop;
         }
 
         if !sess.opts.output_types.iter().any(|&i| i == config::OutputTypeExe) {
-            control.after_llvm.stop = true;
+            control.after_llvm.stop = Compilation::Stop;
         }
 
         if sess.opts.debugging_opts.save_analysis {
@@ -373,7 +392,7 @@ impl RustcDefaultCalls {
     pub fn list_metadata(sess: &Session,
                          matches: &getopts::Matches,
                          input: &Input)
-                         -> bool {
+                         -> Compilation {
         let r = matches.opt_strs("Z");
         if r.contains(&("ls".to_string())) {
             match input {
@@ -388,10 +407,10 @@ impl RustcDefaultCalls {
                     early_error("cannot list metadata for stdin");
                 }
             }
-            return true;
+            return Compilation::Stop;
         }
 
-        return false;
+        return Compilation::Continue;
     }
 
 
@@ -399,9 +418,9 @@ impl RustcDefaultCalls {
                         input: Option<&Input>,
                         odir: &Option<Path>,
                         ofile: &Option<Path>)
-                        -> bool {
+                        -> Compilation {
         if sess.opts.prints.len() == 0 {
-            return false
+            return Compilation::Continue;
         }
 
         let attrs = input.map(|input| parse_crate_attrs(sess, input));
@@ -440,7 +459,7 @@ impl RustcDefaultCalls {
                 }
             }
         }
-        return true;
+        return Compilation::Stop;
     }
 }
 
