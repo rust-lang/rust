@@ -1163,7 +1163,7 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        // SNAP a45e117
+        // SNAP 474b324
         // Enable these obsolete errors after snapshot:
         // let span = mk_sp(lo, self.span.hi);
         // self.obsolete(span, ObsoleteSyntax::ClosureKind);
