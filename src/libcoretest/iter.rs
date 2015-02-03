@@ -79,8 +79,8 @@ fn test_counter_from_iter() {
 
 #[test]
 fn test_iterator_chain() {
-    let xs = [0u, 1, 2, 3, 4, 5];
-    let ys = [30u, 40, 50, 60];
+    let xs = [0, 1, 2, 3, 4, 5];
+    let ys = [30, 40, 50, 60];
     let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
     let mut it = xs.iter().chain(ys.iter());
     let mut i = 0;
@@ -90,7 +90,7 @@ fn test_iterator_chain() {
     }
     assert_eq!(i, expected.len());
 
-    let ys = count(30u, 10).take(4);
+    let ys = count(30, 10).take(4);
     let mut it = xs.iter().map(|&x| x).chain(ys);
     let mut i = 0;
     for x in it {
@@ -102,14 +102,14 @@ fn test_iterator_chain() {
 
 #[test]
 fn test_filter_map() {
-    let it = count(0u, 1u).take(10)
+    let it = count(0, 1).take(10)
         .filter_map(|x| if x % 2 == 0 { Some(x*x) } else { None });
     assert!(it.collect::<Vec<uint>>() == vec![0*0, 2*2, 4*4, 6*6, 8*8]);
 }
 
 #[test]
 fn test_iterator_enumerate() {
-    let xs = [0u, 1, 2, 3, 4, 5];
+    let xs = [0, 1, 2, 3, 4, 5];
     let mut it = xs.iter().enumerate();
     for (i, &x) in it {
         assert_eq!(i, x);
@@ -118,7 +118,7 @@ fn test_iterator_enumerate() {
 
 #[test]
 fn test_iterator_peekable() {
-    let xs = vec![0u, 1, 2, 3, 4, 5];
+    let xs = vec![0, 1, 2, 3, 4, 5];
     let mut it = xs.iter().map(|&x|x).peekable();
 
     assert_eq!(it.len(), 6);
@@ -150,9 +150,9 @@ fn test_iterator_peekable() {
 
 #[test]
 fn test_iterator_take_while() {
-    let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
-    let ys = [0u, 1, 2, 3, 5, 13];
-    let mut it = xs.iter().take_while(|&x| *x < 15u);
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+    let ys = [0, 1, 2, 3, 5, 13];
+    let mut it = xs.iter().take_while(|&x| *x < 15);
     let mut i = 0;
     for x in it {
         assert_eq!(*x, ys[i]);
@@ -163,9 +163,9 @@ fn test_iterator_take_while() {
 
 #[test]
 fn test_iterator_skip_while() {
-    let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
     let ys = [15, 16, 17, 19];
-    let mut it = xs.iter().skip_while(|&x| *x < 15u);
+    let mut it = xs.iter().skip_while(|&x| *x < 15);
     let mut i = 0;
     for x in it {
         assert_eq!(*x, ys[i]);
@@ -176,7 +176,7 @@ fn test_iterator_skip_while() {
 
 #[test]
 fn test_iterator_skip() {
-    let xs = [0u, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19, 20, 30];
     let ys = [13, 15, 16, 17, 19, 20, 30];
     let mut it = xs.iter().skip(5);
     let mut i = 0;
@@ -191,8 +191,8 @@ fn test_iterator_skip() {
 
 #[test]
 fn test_iterator_take() {
-    let xs = [0us, 1, 2, 3, 5, 13, 15, 16, 17, 19];
-    let ys = [0us, 1, 2, 3, 5];
+    let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
+    let ys = [0, 1, 2, 3, 5];
     let mut it = xs.iter().take(5);
     let mut i = 0;
     assert_eq!(it.len(), 5);
@@ -207,8 +207,8 @@ fn test_iterator_take() {
 
 #[test]
 fn test_iterator_take_short() {
-    let xs = [0us, 1, 2, 3];
-    let ys = [0us, 1, 2, 3];
+    let xs = [0, 1, 2, 3];
+    let ys = [0, 1, 2, 3];
     let mut it = xs.iter().take(5);
     let mut i = 0;
     assert_eq!(it.len(), 4);
@@ -228,7 +228,7 @@ fn test_iterator_scan() {
         *old += *new as int;
         Some(*old as f64)
     }
-    let xs = [0u, 1, 2, 3, 4];
+    let xs = [0, 1, 2, 3, 4];
     let ys = [0f64, 1.0, 3.0, 6.0, 10.0];
 
     let mut it = xs.iter().scan(0, add);
@@ -242,8 +242,8 @@ fn test_iterator_scan() {
 
 #[test]
 fn test_iterator_flat_map() {
-    let xs = [0u, 3, 6];
-    let ys = [0u, 1, 2, 3, 4, 5, 6, 7, 8];
+    let xs = [0, 3, 6];
+    let ys = [0, 1, 2, 3, 4, 5, 6, 7, 8];
     let mut it = xs.iter().flat_map(|&x| count(x, 1).take(3));
     let mut i = 0;
     for x in it {
@@ -255,8 +255,8 @@ fn test_iterator_flat_map() {
 
 #[test]
 fn test_inspect() {
-    let xs = [1u, 2, 3, 4];
-    let mut n = 0u;
+    let xs = [1, 2, 3, 4];
+    let mut n = 0;
 
     let ys = xs.iter()
                .map(|&x| x)
@@ -291,13 +291,13 @@ fn test_unfoldr() {
 #[test]
 fn test_cycle() {
     let cycle_len = 3;
-    let it = count(0u, 1).take(cycle_len).cycle();
+    let it = count(0, 1).take(cycle_len).cycle();
     assert_eq!(it.size_hint(), (uint::MAX, None));
     for (i, x) in it.take(100).enumerate() {
         assert_eq!(i % cycle_len, x);
     }
 
-    let mut it = count(0u, 1).take(0).cycle();
+    let mut it = count(0, 1).take(0).cycle();
     assert_eq!(it.size_hint(), (0, Some(0)));
     assert_eq!(it.next(), None);
 }
@@ -305,7 +305,7 @@ fn test_cycle() {
 #[test]
 fn test_iterator_nth() {
     let v: &[_] = &[0, 1, 2, 3, 4];
-    for i in 0u..v.len() {
+    for i in 0..v.len() {
         assert_eq!(v.iter().nth(i).unwrap(), &v[i]);
     }
     assert_eq!(v.iter().nth(v.len()), None);
@@ -574,7 +574,7 @@ fn test_rposition() {
     fn g(xy: &(int, char)) -> bool { let (_x, y) = *xy; y == 'd' }
     let v = [(0, 'a'), (1, 'b'), (2, 'c'), (3, 'b')];
 
-    assert_eq!(v.iter().rposition(f), Some(3u));
+    assert_eq!(v.iter().rposition(f), Some(3));
     assert!(v.iter().rposition(g).is_none());
 }
 
@@ -601,7 +601,7 @@ fn check_randacc_iter<A, T>(a: T, len: uint) where
 {
     let mut b = a.clone();
     assert_eq!(len, b.indexable());
-    let mut n = 0u;
+    let mut n = 0;
     for (i, elt) in a.enumerate() {
         assert!(Some(elt) == b.idx(i));
         n += 1;
@@ -618,8 +618,8 @@ fn check_randacc_iter<A, T>(a: T, len: uint) where
 
 #[test]
 fn test_double_ended_flat_map() {
-    let u = [0u,1];
-    let v = [5u,6,7,8];
+    let u = [0,1];
+    let v = [5,6,7,8];
     let mut it = u.iter().flat_map(|x| v[*x..v.len()].iter());
     assert_eq!(it.next_back().unwrap(), &8);
     assert_eq!(it.next().unwrap(),      &5);
@@ -849,30 +849,30 @@ fn test_min_max_result() {
 
 #[test]
 fn test_iterate() {
-    let mut it = iterate(1u, |x| x * 2);
-    assert_eq!(it.next(), Some(1u));
-    assert_eq!(it.next(), Some(2u));
-    assert_eq!(it.next(), Some(4u));
-    assert_eq!(it.next(), Some(8u));
+    let mut it = iterate(1, |x| x * 2);
+    assert_eq!(it.next(), Some(1));
+    assert_eq!(it.next(), Some(2));
+    assert_eq!(it.next(), Some(4));
+    assert_eq!(it.next(), Some(8));
 }
 
 #[test]
 fn test_repeat() {
-    let mut it = repeat(42u);
-    assert_eq!(it.next(), Some(42u));
-    assert_eq!(it.next(), Some(42u));
-    assert_eq!(it.next(), Some(42u));
+    let mut it = repeat(42);
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
+    assert_eq!(it.next(), Some(42));
 }
 
 #[test]
 fn test_fuse() {
-    let mut it = 0us..3;
+    let mut it = 0..3;
     assert_eq!(it.len(), 3);
-    assert_eq!(it.next(), Some(0us));
+    assert_eq!(it.next(), Some(0));
     assert_eq!(it.len(), 2);
-    assert_eq!(it.next(), Some(1us));
+    assert_eq!(it.next(), Some(1));
     assert_eq!(it.len(), 1);
-    assert_eq!(it.next(), Some(2us));
+    assert_eq!(it.next(), Some(2));
     assert_eq!(it.len(), 0);
     assert_eq!(it.next(), None);
     assert_eq!(it.len(), 0);
@@ -884,7 +884,7 @@ fn test_fuse() {
 
 #[bench]
 fn bench_rposition(b: &mut Bencher) {
-    let it: Vec<uint> = (0u..300).collect();
+    let it: Vec<uint> = (0..300).collect();
     b.iter(|| {
         it.iter().rposition(|&x| x <= 150);
     });
@@ -893,7 +893,7 @@ fn bench_rposition(b: &mut Bencher) {
 #[bench]
 fn bench_skip_while(b: &mut Bencher) {
     b.iter(|| {
-        let it = 0u..100;
+        let it = 0..100;
         let mut sum = 0;
         it.skip_while(|&x| { sum += x; sum < 4000 }).all(|_| true);
     });
@@ -901,10 +901,10 @@ fn bench_skip_while(b: &mut Bencher) {
 
 #[bench]
 fn bench_multiple_take(b: &mut Bencher) {
-    let mut it = (0u..42).cycle();
+    let mut it = (0..42).cycle();
     b.iter(|| {
         let n = it.next().unwrap();
-        for _ in 0u..n {
+        for _ in 0..n {
             it.clone().take(it.next().unwrap()).all(|_| true);
         }
     });
