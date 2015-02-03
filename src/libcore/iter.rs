@@ -724,11 +724,12 @@ pub trait IteratorExt: Iterator + Sized {
         P: FnMut(Self::Item) -> bool,
         Self: ExactSizeIterator + DoubleEndedIterator
     {
-        let len = self.len();
-        for i in (0..len).rev() {
-            if predicate(self.next_back().expect("rposition: incorrect ExactSizeIterator")) {
+        let mut i = self.len() - 1;
+        while let Some(v) = self.next_back() {
+            if predicate(v) {
                 return Some(i);
             }
+            i -= 1;
         }
         None
     }
