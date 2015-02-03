@@ -99,22 +99,24 @@ it might be preferable to wrap the returned string safely as a 'thin'
 conversion from a raw pointer should be added:
 ```rust
 impl CStr {
-    pub unsafe fn from_raw_ptr<'a>(ptr: *const libc::c_char) -> &'a CStr
-    { ... }
+    pub unsafe fn from_raw<'a>(ptr: *const libc::c_char) -> &'a CStr {
+        ...
+    }
 }
 ```
 
-For getting a slice out of a `CStr` reference, method `parse_as_bytes` is
-provided. The name is chosen to reflect the linear cost of calculating the
-length.
+For getting a slice out of a `CStr` reference, method `to_bytes` is
+provided. The name is preferred over `as_bytes` to reflect the linear cost
+of calculating the length.
 ```rust
 impl CStr {
-    pub fn parse_as_bytes(&self) -> &[u8] { ... }
+    pub fn to_bytes(&self) -> &[u8] { ... }
+    pub fn to_bytes_with_nul(&self) -> &[u8] { ... }
 }
 ```
 
-An odd consequence is that it is valid, if wasteful, to call
-`parse_as_bytes` on `CString` via auto-dereferencing.
+An odd consequence is that it is valid, if wasteful, to call `to_bytes` on
+`CString` via auto-dereferencing.
 
 ## Proof of concept
 
