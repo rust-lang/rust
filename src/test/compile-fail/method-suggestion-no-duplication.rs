@@ -10,7 +10,9 @@
 
 // issue #21405
 
-fn foo<F>(f: F) where F: FnMut(usize) {}
+struct Foo;
+
+fn foo<F>(f: F) where F: FnMut(Foo) {}
 
 fn main() {
     foo(|s| s.is_empty());
