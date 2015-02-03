@@ -15,8 +15,6 @@ use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
 use ptr::P;
 
-use std::ops::Deref;
-
 pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
                                 span: Span,
                                 mitem: &MetaItem,
@@ -26,7 +24,7 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
 {
     let name = match mitem.node {
         MetaWord(ref tname) => {
-            match tname.deref() {
+            match &tname[] {
                 "Copy" => "Copy",
                 "Send" | "Sync" => {
                     return cx.span_err(span,

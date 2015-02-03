@@ -16,8 +16,6 @@ use parse::token;
 use parse::token::{str_to_ident};
 use ptr::P;
 
-use std::ops::Deref;
-
 pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                               -> Box<base::MacResult+'cx> {
     let mut res_str = String::new();
@@ -33,7 +31,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
         } else {
             match *e {
                 ast::TtToken(_, token::Ident(ident, _)) => {
-                    res_str.push_str(token::get_ident(ident).deref())
+                    res_str.push_str(&token::get_ident(ident)[])
                 },
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");

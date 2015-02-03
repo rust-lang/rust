@@ -189,7 +189,6 @@ use self::StructType::*;
 
 use std::cell::RefCell;
 use std::vec;
-use std::ops::Deref;
 
 use abi::Abi;
 use abi;
@@ -364,7 +363,7 @@ impl<'a> TraitDef<'a> {
         // generated implementations are linted
         let mut attrs = newitem.attrs.clone();
         attrs.extend(item.attrs.iter().filter(|a| {
-            match a.name().deref() {
+            match &a.name()[] {
                 "allow" | "warn" | "deny" | "forbid" => true,
                 _ => false,
             }
