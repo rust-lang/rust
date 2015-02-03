@@ -13,6 +13,8 @@
 
 #![allow(missing_docs)]
 
+pub use self::Entry::*;
+
 use core::prelude::*;
 
 use core::cmp::Ordering;
@@ -64,6 +66,32 @@ use vec::Vec;
 /// ```
 pub struct VecMap<V> {
     v: Vec<Option<V>>,
+}
+
+/// A view into a single entry in a map, which may either be vacant or occupied.
+#[unstable(feature = "collections",
+           reason = "precise API still under development")]
+pub enum Entry<'a, V:'a> {
+    /// A vacant Entry
+    Vacant(VacantEntry<'a, V>),
+    /// An occupied Entry
+    Occupied(OccupiedEntry<'a, V>),
+}
+
+/// A vacant Entry.
+#[unstable(feature = "collections",
+           reason = "precise API still under development")]
+pub struct VacantEntry<'a, V:'a> {
+    map: &'a mut VecMap<V>,
+    index: usize,
+}
+
+/// An occupied Entry.
+#[unstable(feature = "collections",
+           reason = "precise API still under development")]
+pub struct OccupiedEntry<'a, V:'a> {
+    map: &'a mut VecMap<V>,
+    index: usize,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -485,6 +513,119 @@ impl<V> VecMap<V> {
         let result = &mut self.v[*key];
         result.take()
     }
+
+    /// Gets the given key's corresponding entry in the map for in-place manipulation.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    /// use std::collections::vec_map::Entry;
+    ///
+    /// let mut count: VecMap<u32> = VecMap::new();
+    ///
+    /// // count the number of occurrences of numbers in the vec
+    /// for x in vec![1, 2, 1, 2, 3, 4, 1, 2, 4].iter() {
+    ///     match count.entry(*x) {
+    ///         Entry::Vacant(view) => {
+    ///             view.insert(1);
+    ///         },
+    ///         Entry::Occupied(mut view) => {
+    ///             let v = view.get_mut();
+    ///             *v += 1;
+    ///         },
+    ///     }
+    /// }
+    ///
+    /// assert_eq!(count[1], 3);
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "precise API still under development")]
+    pub fn entry(&mut self, key: usize) -> Entry<V> {
+        // FIXME(Gankro): this is basically the dumbest implementation of
+        // entry possible, because weird non-lexical borrows issues make it
+        // completely insane to do any other way. That said, Entry is a border-line
+        // useless construct on VecMap, so it's hardly a big loss.
+        if self.contains_key(&key) {
+            Occupied(OccupiedEntry {
+                map: self,
+                index: key,
+            })
+        } else {
+            Vacant(VacantEntry {
+                map: self,
+                index: key,
+            })
+        }
+    }
+}
+
+
+impl<'a, V> Entry<'a, V> {
+    #[unstable(feature = "collections",
+               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    /// Returns a mutable reference to the entry if occupied, or the VacantEntry if vacant
+    pub fn get(self) -> Result<&'a mut V, VacantEntry<'a, V>> {
+        match self {
+            Occupied(entry) => Ok(entry.into_mut()),
+            Vacant(entry) => Err(entry),
+        }
+    }
+}
+
+impl<'a, V> VacantEntry<'a, V> {
+    /// Sets the value of the entry with the VacantEntry's key,
+    /// and returns a mutable reference to it.
+    #[unstable(feature = "collections",
+               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    pub fn insert(self, value: V) -> &'a mut V {
+        let index = self.index;
+        self.map.insert(index, value);
+        &mut self.map[index]
+    }
+}
+
+impl<'a, V> OccupiedEntry<'a, V> {
+    /// Gets a reference to the value in the entry.
+    #[unstable(feature = "collections",
+               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    pub fn get(&self) -> &V {
+        let index = self.index;
+        &self.map[index]
+    }
+
+    /// Gets a mutable reference to the value in the entry.
+    #[unstable(feature = "collections",
+               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    pub fn get_mut(&mut self) -> &mut V {
+        let index = self.index;
+        &mut self.map[index]
+    }
+
+    /// Converts the entry into a mutable reference to its value.
+    #[unstable(feature = "collections",
+               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    pub fn into_mut(self) -> &'a mut V {
+        let index = self.index;
+        &mut self.map[index]
+    }
+
+    /// Sets the value of the entry with the OccupiedEntry's key,
+    /// and returns the entry's old value.
+    #[unstable(feature = "collections",
+               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    pub fn insert(&mut self, value: V) -> V {
+        let index = self.index;
+        self.map.insert(index, value).unwrap()
+    }
+
+    /// Takes the value of the entry out of the map, and returns it.
+    #[unstable(feature = "collections",
+               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    pub fn remove(self) -> V {
+        let index = self.index;
+        self.map.remove(&index).unwrap()
+    }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -783,7 +924,7 @@ mod test_map {
     use prelude::*;
     use core::hash::{hash, SipHasher};
 
-    use super::VecMap;
+    use super::{VecMap, Occupied, Vacant};
 
     #[test]
     fn test_get_mut() {
@@ -1134,6 +1275,57 @@ mod test_map {
         map.insert(3, 4);
 
         map[4];
+    }
+
+    #[test]
+    fn test_entry(){
+        let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
+
+        let mut map: VecMap<i32> = xs.iter().map(|&x| x).collect();
+
+        // Existing key (insert)
+        match map.entry(1) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                assert_eq!(view.get(), &10);
+                assert_eq!(view.insert(100), 10);
+            }
+        }
+        assert_eq!(map.get(&1).unwrap(), &100);
+        assert_eq!(map.len(), 6);
+
+
+        // Existing key (update)
+        match map.entry(2) {
+            Vacant(_) => unreachable!(),
+            Occupied(mut view) => {
+                let v = view.get_mut();
+                *v *= 10;
+            }
+        }
+        assert_eq!(map.get(&2).unwrap(), &200);
+        assert_eq!(map.len(), 6);
+
+        // Existing key (take)
+        match map.entry(3) {
+            Vacant(_) => unreachable!(),
+            Occupied(view) => {
+                assert_eq!(view.remove(), 30);
+            }
+        }
+        assert_eq!(map.get(&3), None);
+        assert_eq!(map.len(), 5);
+
+
+        // Inexistent key (insert)
+        match map.entry(10) {
+            Occupied(_) => unreachable!(),
+            Vacant(view) => {
+                assert_eq!(*view.insert(1000), 1000);
+            }
+        }
+        assert_eq!(map.get(&10).unwrap(), &1000);
+        assert_eq!(map.len(), 6);
     }
 }
 
