@@ -2107,7 +2107,10 @@ impl LintPass for InvalidNoMangleItems {
             },
             ast::ItemConst(..) => {
                 if attr::contains_name(it.attrs.as_slice(), "no_mangle") {
-                    let msg = "const items should never be #[no_mangle]";
+                    // Const items do not refer to a particular location in memory, and therefore
+                    // don't have anything to attach a symbol to
+                    let msg = "const items should never be #[no_mangle], consider instead using \
+                        `pub static`";
                     cx.span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
                 }
             }
