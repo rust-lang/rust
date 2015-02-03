@@ -154,6 +154,9 @@ is established.
 
 # Unresolved questions
 
+The present function `c_str_to_bytes(&ptr)` may be deprecated in favor of
+the more composable `CStr::from_raw(ptr).to_bytes()`.
+
 `CStr` can be made a
 [truly unsized type](https://github.com/rust-lang/rfcs/issues/709),
 pending on that proposal's approval.
