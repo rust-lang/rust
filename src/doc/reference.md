@@ -2432,6 +2432,8 @@ The currently implemented features of the reference compiler are:
 * `simd` - Allows use of the `#[simd]` attribute, which is overly simple and
            not the SIMD interface we want to expose in the long term.
 
+* `staged_api` - Allows usage of stability markers and `#![staged_api]` in a crate
+
 * `struct_inherit` - Allows using struct inheritance, which is barely
                      implemented and will probably be removed. Don't use this.
 
@@ -2458,6 +2460,11 @@ The currently implemented features of the reference compiler are:
 * `unsafe_destructor` - Allows use of the `#[unsafe_destructor]` attribute,
                         which is considered wildly unsafe and will be
                         obsoleted by language improvements.
+
+* `unmarked_api` - Allows use of items within a `#![staged_api]` crate
+                   which have not been marked with a stability marker.
+                   Such items should not be allowed by the compiler to exist,
+                   so if you need this there probably is a compiler bug.
 
 * `associated_types` - Allows type aliases in traits. Experimental.
 
