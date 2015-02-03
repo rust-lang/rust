@@ -10,6 +10,8 @@
 
 use borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::mem_categorization::Typer;
+use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::middle::ty;
 use rustc::util::ppaux::UserString;
 use std::cell::RefCell;
@@ -110,6 +112,7 @@ fn group_errors_with_same_origin<'tcx>(errors: &Vec<MoveError<'tcx>>)
     }
 }
 
+// (keep in sync with gather_moves::check_and_get_illegal_move_origin )
 fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                        move_from: mc::cmt<'tcx>) {
     match move_from.cat {
@@ -121,8 +124,18 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                   move_from.descriptive_string(bccx.tcx))[]);
         }
 
+        mc::cat_interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
+            let expr = bccx.tcx.map.expect_expr(move_from.id);
+            if let ast::ExprIndex(..) = expr.node {
+                bccx.span_err(move_from.span,
+                              &format!("cannot move out of type `{}`, \
+                                        a non-copy fixed-size array",
+                                       b.ty.user_string(bccx.tcx))[]);
+            }
+        }
+
         mc::cat_downcast(ref b, _) |
-        mc::cat_interior(ref b, _) => {
+        mc::cat_interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
                 ty::ty_struct(did, _) |
                 ty::ty_enum(did, _) if ty::has_dtor(bccx.tcx, did) => {
