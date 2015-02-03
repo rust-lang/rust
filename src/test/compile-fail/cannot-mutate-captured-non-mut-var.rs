@@ -8,12 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(unboxed_closures)]
+
+fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
+
 fn main() {
     let x = 1;
-    move|:| { x = 2; };
+    to_fn_once(move|:| { x = 2; });
     //~^ ERROR: cannot assign to immutable captured outer variable
 
     let s = std::old_io::stdin();
-    move|:| { s.read_to_end(); };
+    to_fn_once(move|:| { s.read_to_end(); });
     //~^ ERROR: cannot borrow immutable captured outer variable
 }

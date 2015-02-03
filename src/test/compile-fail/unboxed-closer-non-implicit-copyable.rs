@@ -10,8 +10,10 @@
 
 #![feature(unboxed_closures)]
 
+fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
+
 fn main() {
-    let f = move|:| ();
+    let f = to_fn_once(move|| ());
     f();
     f(); //~ ERROR use of moved value
 }
