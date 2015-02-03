@@ -1095,7 +1095,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprVec(..) | ast::ExprRepeat(..) => {
             tvec::trans_fixed_vstore(bcx, expr, dest)
         }
-        ast::ExprClosure(_, _, ref decl, ref body) => {
+        ast::ExprClosure(_, ref decl, ref body) => {
             closure::trans_closure_expr(bcx, &**decl, &**body, expr.id, dest)
         }
         ast::ExprCall(ref f, ref args) => {

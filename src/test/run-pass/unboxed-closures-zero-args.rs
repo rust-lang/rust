@@ -11,7 +11,7 @@
 #![feature(unboxed_closures)]
 
 fn main() {
-    let mut zero = |&mut:| {};
-    let () = zero.call_mut(());
+    let mut zero = || {};
+    let () = zero();
 }
 

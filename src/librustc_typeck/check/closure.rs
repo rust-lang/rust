@@ -25,7 +25,6 @@ use util::ppaux::Repr;
 pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
                                    expr: &ast::Expr,
                                    _capture: ast::CaptureClause,
-                                   opt_kind: Option<ast::ClosureKind>,
                                    decl: &'tcx ast::FnDecl,
                                    body: &'tcx ast::Block,
                                    expected: Expectation<'tcx>) {
@@ -33,38 +32,14 @@ pub fn check_expr_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
            expr.repr(fcx.tcx()),
            expected.repr(fcx.tcx()));
 
-    let expected_sig_and_kind = expected.to_option(fcx).and_then(|ty| {
-        deduce_expectations_from_expected_type(fcx, ty)
-    });
-
-    match opt_kind {
-        None => {
-            // If users didn't specify what sort of closure they want,
-            // examine the expected type. For now, if we see explicit
-            // evidence than an unboxed closure is desired, we'll use
-            // that. Otherwise, we leave it unspecified, to be filled
-            // in by upvar inference.
-            match expected_sig_and_kind {
-                None => { // don't have information about the kind, request explicit annotation
-                    check_closure(fcx, expr, None, decl, body, None);
-                },
-                Some((sig, kind)) => {
-                    check_closure(fcx, expr, Some(kind), decl, body, Some(sig));
-                }
-            }
-        }
-
-        Some(kind) => {
-            let kind = match kind {
-                ast::FnClosureKind => ty::FnClosureKind,
-                ast::FnMutClosureKind => ty::FnMutClosureKind,
-                ast::FnOnceClosureKind => ty::FnOnceClosureKind,
-            };
-
-            let expected_sig = expected_sig_and_kind.map(|t| t.0);
-            check_closure(fcx, expr, Some(kind), decl, body, expected_sig);
-        }
-    }
+    // It's always helpful for inference if we know the kind of
+    // closure sooner rather than later, so first examine the expected
+    // type, and see if can glean a closure kind from there.
+    let (expected_sig,expected_kind) = match expected.to_option(fcx) {
+        Some(ty) => deduce_expectations_from_expected_type(fcx, ty),
+        None => (None, None)
+    };
+    check_closure(fcx, expr, expected_kind, decl, body, expected_sig)
 }
 
 fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
@@ -133,21 +108,30 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
 fn deduce_expectations_from_expected_type<'a,'tcx>(
     fcx: &FnCtxt<'a,'tcx>,
     expected_ty: Ty<'tcx>)
-    -> Option<(ty::FnSig<'tcx>,ty::ClosureKind)>
+    -> (Option<ty::FnSig<'tcx>>,Option<ty::ClosureKind>)
 {
+    debug!("deduce_expectations_from_expected_type(expected_ty={})",
+           expected_ty.repr(fcx.tcx()));
+
     match expected_ty.sty {
         ty::ty_trait(ref object_type) => {
             let proj_bounds = object_type.projection_bounds_with_self_ty(fcx.tcx(),
                                                                          fcx.tcx().types.err);
-            proj_bounds.iter()
-                       .filter_map(|pb| deduce_expectations_from_projection(fcx, pb))
-                       .next()
+            let expectations =
+                proj_bounds.iter()
+                           .filter_map(|pb| deduce_expectations_from_projection(fcx, pb))
+                           .next();
+
+            match expectations {
+                Some((sig, kind)) => (Some(sig), Some(kind)),
+                None => (None, None)
+            }
         }
         ty::ty_infer(ty::TyVar(vid)) => {
             deduce_expectations_from_obligations(fcx, vid)
         }
         _ => {
-            None
+            (None, None)
         }
     }
 }
@@ -155,33 +139,61 @@ fn deduce_expectations_from_expected_type<'a,'tcx>(
 fn deduce_expectations_from_obligations<'a,'tcx>(
     fcx: &FnCtxt<'a,'tcx>,
     expected_vid: ty::TyVid)
-    -> Option<(ty::FnSig<'tcx>, ty::ClosureKind)>
+    -> (Option<ty::FnSig<'tcx>>, Option<ty::ClosureKind>)
 {
     let fulfillment_cx = fcx.inh.fulfillment_cx.borrow();
     // Here `expected_ty` is known to be a type inference variable.
 
-    fulfillment_cx.pending_obligations()
-                  .iter()
-                  .filter_map(|obligation| {
-                      match obligation.predicate {
-                          ty::Predicate::Projection(ref proj_predicate) => {
-                              let trait_ref = proj_predicate.to_poly_trait_ref();
-                              let self_ty = fcx.infcx().shallow_resolve(trait_ref.self_ty());
-                              match self_ty.sty {
-                                  ty::ty_infer(ty::TyVar(v)) if expected_vid == v => {
-                                      deduce_expectations_from_projection(fcx, proj_predicate)
-                                  }
-                                  _ => {
-                                      None
-                                  }
-                              }
-                          }
-                          _ => {
-                              None
-                          }
-                      }
-                  })
-                  .next()
+    let expected_sig_and_kind =
+        fulfillment_cx
+        .pending_obligations()
+        .iter()
+        .filter_map(|obligation| {
+            debug!("deduce_expectations_from_obligations: obligation.predicate={}",
+                   obligation.predicate.repr(fcx.tcx()));
+
+            match obligation.predicate {
+                // Given a Projection predicate, we can potentially infer
+                // the complete signature.
+                ty::Predicate::Projection(ref proj_predicate) => {
+                    let trait_ref = proj_predicate.to_poly_trait_ref();
+                    self_type_matches_expected_vid(fcx, trait_ref, expected_vid)
+                        .and_then(|_| deduce_expectations_from_projection(fcx, proj_predicate))
+                }
+                _ => {
+                    None
+                }
+            }
+        })
+        .next();
+
+    match expected_sig_and_kind {
+        Some((sig, kind)) => { return (Some(sig), Some(kind)); }
+        None => { }
+    }
+
+    // Even if we can't infer the full signature, we may be able to
+    // infer the kind. This can occur if there is a trait-reference
+    // like `F : Fn<A>`.
+    let expected_kind =
+        fulfillment_cx
+        .pending_obligations()
+        .iter()
+        .filter_map(|obligation| {
+            let opt_trait_ref = match obligation.predicate {
+                ty::Predicate::Projection(ref data) => Some(data.to_poly_trait_ref()),
+                ty::Predicate::Trait(ref data) => Some(data.to_poly_trait_ref()),
+                ty::Predicate::Equate(..) => None,
+                ty::Predicate::RegionOutlives(..) => None,
+                ty::Predicate::TypeOutlives(..) => None,
+            };
+            opt_trait_ref
+                .and_then(|trait_ref| self_type_matches_expected_vid(fcx, trait_ref, expected_vid))
+                .and_then(|trait_ref| fcx.tcx().lang_items.fn_trait_kind(trait_ref.def_id()))
+        })
+        .next();
+
+    (None, expected_kind)
 }
 
 /// Given a projection like "<F as Fn(X)>::Result == Y", we can deduce
@@ -228,4 +240,21 @@ fn deduce_expectations_from_projection<'a,'tcx>(
 
     return Some((fn_sig, kind));
 }
+
+fn self_type_matches_expected_vid<'a,'tcx>(
+    fcx: &FnCtxt<'a,'tcx>,
+    trait_ref: ty::PolyTraitRef<'tcx>,
+    expected_vid: ty::TyVid)
+    -> Option<ty::PolyTraitRef<'tcx>>
+{
+    let self_ty = fcx.infcx().shallow_resolve(trait_ref.self_ty());
+    debug!("self_type_matches_expected_vid(trait_ref={}, self_ty={})",
+           trait_ref.repr(fcx.tcx()),
+           self_ty.repr(fcx.tcx()));
+    match self_ty.sty {
+        ty::ty_infer(ty::TyVar(v)) if expected_vid == v => Some(trait_ref),
+        _ => None,
+    }
+}
+
 

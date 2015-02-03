@@ -15,31 +15,35 @@
 // if the upvar is captured by ref or the closure takes self by
 // reference.
 
+fn to_fn<A,F:Fn<A>>(f: F) -> F { f }
+fn to_fn_mut<A,F:FnMut<A>>(f: F) -> F { f }
+fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
+
 fn main() {
     // By-ref cases
     {
         let x = box 0us;
-        let f = |&:| drop(x); //~ ERROR cannot move
+        let f = to_fn(|| drop(x)); //~ ERROR cannot move
     }
     {
         let x = box 0us;
-        let f = |&mut:| drop(x); //~ ERROR cannot move
+        let f = to_fn_mut(|| drop(x)); //~ ERROR cannot move
     }
     {
         let x = box 0us;
-        let f = |:| drop(x); // OK -- FnOnce
+        let f = to_fn_once(|| drop(x)); // OK -- FnOnce
     }
     // By-value cases
     {
         let x = box 0us;
-        let f = move |&:| drop(x); //~ ERROR cannot move
+        let f = to_fn(move || drop(x)); //~ ERROR cannot move
     }
     {
         let x = box 0us;
-        let f = move |&mut:| drop(x); //~ ERROR cannot move
+        let f = to_fn_mut(move || drop(x)); //~ ERROR cannot move
     }
     {
         let x = box 0us;
-        let f = move |:| drop(x); // this one is ok
+        let f = to_fn_once(move || drop(x)); // this one is ok
     }
 }
