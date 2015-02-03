@@ -8,12 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// compile-flags:-F private_no_mangle_fns
+// compile-flags:-F private_no_mangle_fns -F no_mangle_const_items
 
 // FIXME(#19495) no_mangle'ing main ICE's.
 #[no_mangle]
 fn foo() { //~ ERROR function foo is marked #[no_mangle], but not exported
 }
+
+#[allow(dead_code)]
+#[no_mangle]
+const FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
+
+#[no_mangle]
+pub const PUB_FOO: u64 = 1; //~ ERROR const items should never be #[no_mangle]
 
 #[no_mangle]
 pub fn bar()  {

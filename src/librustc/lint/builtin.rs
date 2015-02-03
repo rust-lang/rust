@@ -2065,12 +2065,19 @@ declare_lint! {
     "functions marked #[no_mangle] should be exported"
 }
 
-#[derive(Copy)]
-pub struct PrivateNoMangleFns;
+declare_lint! {
+    NO_MANGLE_CONST_ITEMS,
+    Deny,
+    "const items will not have their symbols exported"
+}
 
-impl LintPass for PrivateNoMangleFns {
+#[derive(Copy)]
+pub struct InvalidNoMangleItems;
+
+impl LintPass for InvalidNoMangleItems {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PRIVATE_NO_MANGLE_FNS)
+        lint_array!(PRIVATE_NO_MANGLE_FNS,
+                    NO_MANGLE_CONST_ITEMS)
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
@@ -2083,6 +2090,12 @@ impl LintPass for PrivateNoMangleFns {
                     cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, msg.as_slice());
                 }
             },
+            ast::ItemConst(..) => {
+                if attr::contains_name(it.attrs.as_slice(), "no_mangle") {
+                    let msg = "const items should never be #[no_mangle]";
+                    cx.span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
+                }
+            }
             _ => {},
         }
     }
