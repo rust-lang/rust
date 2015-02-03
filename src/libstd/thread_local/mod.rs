@@ -45,6 +45,7 @@ pub mod scoped;
 
 // Sure wish we had macro hygiene, no?
 #[doc(hidden)]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub mod __impl {
     pub use super::imp::Key as KeyInner;
     pub use super::imp::destroy_value;
