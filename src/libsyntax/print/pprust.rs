@@ -11,11 +11,9 @@
 pub use self::AnnNode::*;
 
 use abi;
-use ast::{self, FnClosureKind, FnMutClosureKind};
-use ast::{FnOnceClosureKind};
+use ast;
 use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
-use ast::{ClosureKind};
 use ast_util;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
@@ -350,7 +348,7 @@ pub fn method_to_string(p: &ast::Method) -> String {
 }
 
 pub fn fn_block_to_string(p: &ast::FnDecl) -> String {
-    $to_string(|s| s.print_fn_block_args(p, None))
+    $to_string(|s| s.print_fn_block_args(p))
 }
 
 pub fn path_to_string(p: &ast::Path) -> String {
@@ -1747,10 +1745,10 @@ impl<'a> State<'a> {
                 }
                 try!(self.bclose_(expr.span, indent_unit));
             }
-            ast::ExprClosure(capture_clause, opt_kind, ref decl, ref body) => {
+            ast::ExprClosure(capture_clause, ref decl, ref body) => {
                 try!(self.print_capture_clause(capture_clause));
 
-                try!(self.print_fn_block_args(&**decl, opt_kind));
+                try!(self.print_fn_block_args(&**decl));
                 try!(space(&mut self.s));
 
                 if !body.stmts.is_empty() || !body.expr.is_some() {
@@ -2350,16 +2348,9 @@ impl<'a> State<'a> {
 
     pub fn print_fn_block_args(
             &mut self,
-            decl: &ast::FnDecl,
-            closure_kind: Option<ClosureKind>)
+            decl: &ast::FnDecl)
             -> IoResult<()> {
         try!(word(&mut self.s, "|"));
-        match closure_kind {
-            None => {}
-            Some(FnClosureKind) => try!(self.word_space("&:")),
-            Some(FnMutClosureKind) => try!(self.word_space("&mut:")),
-            Some(FnOnceClosureKind) => try!(self.word_space(":")),
-        }
         try!(self.print_fn_args(decl, None));
         try!(word(&mut self.s, "|"));
 

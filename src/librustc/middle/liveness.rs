@@ -959,7 +959,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
               self.propagate_through_expr(&**e, succ)
           }
 
-          ast::ExprClosure(_, _, _, ref blk) => {
+          ast::ExprClosure(_, _, ref blk) => {
               debug!("{} is an ExprClosure",
                      expr_to_string(expr));
 

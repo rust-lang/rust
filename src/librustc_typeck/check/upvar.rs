@@ -83,7 +83,7 @@ struct SeedBorrowKind<'a,'tcx:'a> {
 impl<'a, 'tcx, 'v> Visitor<'v> for SeedBorrowKind<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
         match expr.node {
-            ast::ExprClosure(cc, _, _, ref body) => {
+            ast::ExprClosure(cc, _, ref body) => {
                 self.check_closure(expr, cc, &**body);
             }
 

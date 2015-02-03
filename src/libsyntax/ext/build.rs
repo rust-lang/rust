@@ -876,14 +876,14 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn lambda_fn_decl(&self, span: Span,
                       fn_decl: P<ast::FnDecl>, blk: P<ast::Block>) -> P<ast::Expr> {
-        self.expr(span, ast::ExprClosure(ast::CaptureByRef, None, fn_decl, blk))
+        self.expr(span, ast::ExprClosure(ast::CaptureByRef, fn_decl, blk))
     }
     fn lambda(&self, span: Span, ids: Vec<ast::Ident>, blk: P<ast::Block>) -> P<ast::Expr> {
         let fn_decl = self.fn_decl(
             ids.iter().map(|id| self.arg(span, *id, self.ty_infer(span))).collect(),
             self.ty_infer(span));
 
-        self.expr(span, ast::ExprClosure(ast::CaptureByRef, None, fn_decl, blk))
+        self.expr(span, ast::ExprClosure(ast::CaptureByRef, fn_decl, blk))
     }
     fn lambda0(&self, span: Span, blk: P<ast::Block>) -> P<ast::Expr> {
         self.lambda(span, Vec::new(), blk)
