@@ -78,17 +78,18 @@ impl Deref for CString {
 
 ## Static C strings
 
-A way to create `CStr` references from static Rust expressions asserted as
-null-terminated string or byte slices is provided by a couple of functions:
+An important special case is producing `CStr` references from static Rust
+data, primarily from literals. To avoid copying the data, it is required that
+the source slice is null-terminated. The conversion function is otherwise
+safe:
 
 ```rust
 impl CStr {
     pub fn from_static_bytes(bytes: &'static [u8]) -> &'static CStr { ... }
-    pub fn from_static_str(s: &'static str) -> &'static CStr { ... }
 }
 ```
 
-As these functions mostly work with literals, they only assert that the
+As this function mostly works with literal data, it only asserts that the
 slice is terminated by a zero byte. It's the responsibility of the programmer
 to ensure that the static data does not contain any unintended interior NULs
 (the program will not crash, but the string will be interpreted up to the
@@ -126,7 +127,7 @@ An odd consequence is that it is valid, if wasteful, to call `to_bytes` on
 ## Proof of concept
 
 The described changes are implemented in crate
-[c_string](https://github.com/mzabaluev/rust-c-str/tree/v0.3.0).
+[c_string](https://github.com/mzabaluev/rust-c-str).
 
 # Drawbacks
 
