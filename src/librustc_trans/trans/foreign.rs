@@ -118,7 +118,7 @@ pub fn register_static(ccx: &CrateContext,
         // static and call it a day. Some linkages (like weak) will make it such
         // that the static actually has a null value.
         Some(name) => {
-            let linkage = match llvm_linkage_by_name(&name[]) {
+            let linkage = match llvm_linkage_by_name(&name) {
                 Some(linkage) => linkage,
                 None => {
                     ccx.sess().span_fatal(foreign_item.span,
@@ -146,7 +146,7 @@ pub fn register_static(ccx: &CrateContext,
                 // `extern_with_linkage_foo` will instead be initialized to
                 // zero.
                 let mut real_name = "_rust_extern_with_linkage_".to_string();
-                real_name.push_str(&ident[]);
+                real_name.push_str(&ident);
                 let real_name = CString::from_vec(real_name.into_bytes());
                 let g2 = llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(),
                                              real_name.as_ptr());
@@ -468,7 +468,7 @@ pub fn trans_foreign_mod(ccx: &CrateContext, foreign_mod: &ast::ForeignMod) {
                     }
 
                     register_foreign_item_fn(ccx, abi, ty,
-                                             &lname[]);
+                                             &lname);
                     // Unlike for other items, we shouldn't call
                     // `base::update_linkage` here.  Foreign items have
                     // special linkage requirements, which are handled

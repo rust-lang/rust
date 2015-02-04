@@ -355,7 +355,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             },
         };
 
-        let qualname = format!("{}::{}", qualname, &get_ident(method.pe_ident())[]);
+        let qualname = format!("{}::{}", qualname, &get_ident(method.pe_ident()));
         let qualname = &qualname[];
 
         // record the decl for this def (if it has one)
@@ -525,7 +525,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         self.fmt.static_str(item.span,
                             sub_span,
                             item.id,
-                            &get_ident(item.ident)[],
+                            &get_ident(item.ident),
                             &qualname[],
                             &value[],
                             &ty_to_string(&*typ)[],
@@ -548,7 +548,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         self.fmt.static_str(item.span,
                             sub_span,
                             item.id,
-                            &get_ident(item.ident)[],
+                            &get_ident(item.ident),
                             &qualname[],
                             "",
                             &ty_to_string(&*typ)[],
@@ -607,7 +607,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
         for variant in &enum_definition.variants {
             let name = get_ident(variant.node.name);
-            let name = &name[];
+            let name = &name;
             let mut qualname = enum_name.clone();
             qualname.push_str("::");
             qualname.push_str(name);
@@ -1094,7 +1094,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                                sub_span,
                                                item.id,
                                                mod_id,
-                                               &get_ident(ident)[],
+                                               &get_ident(ident),
                                                self.cur_scope);
                         self.write_sub_paths_truncated(path, true);
                     }
@@ -1149,7 +1149,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             }
             ast::ItemExternCrate(ref s) => {
                 let name = get_ident(item.ident);
-                let name = &name[];
+                let name = &name;
                 let location = match *s {
                     Some((ref s, _)) => s.to_string(),
                     None => name.to_string(),
@@ -1259,7 +1259,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                     },
                 };
 
-                qualname.push_str(&get_ident(method_type.ident)[]);
+                qualname.push_str(&get_ident(method_type.ident));
                 let qualname = &qualname[];
 
                 let sub_span = self.span.sub_span_after_keyword(method_type.span, keywords::Fn);

@@ -375,7 +375,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                     fld.cx.span_err(
                         pth.span,
                         &format!("macro undefined: '{}!'",
-                                &extnamestr[])[]);
+                                &extnamestr)[]);
 
                     // let compilation continue
                     None
@@ -422,7 +422,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         fld.cx.span_err(
                             pth.span,
                             &format!("'{}' is not a tt-style macro",
-                                    &extnamestr[])[]);
+                                    &extnamestr)[]);
                         None
                     }
                 }
@@ -506,7 +506,7 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
     for attr in &modifiers {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(&mname[])) {
+        match fld.cx.syntax_env.find(&intern(&mname)) {
             Some(rc) => match *rc {
                 Modifier(ref mac) => {
                     attr::mark_used(attr);
@@ -626,7 +626,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         &format!("macro {}! expects an ident argument",
-                                                &extnamestr[])[]);
+                                                &extnamestr)[]);
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -677,7 +677,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                 _ => {
                     fld.cx.span_err(it.span,
                                     &format!("{}! is not legal in item position",
-                                            &extnamestr[])[]);
+                                            &extnamestr)[]);
                     return SmallVector::zero();
                 }
             }
@@ -696,7 +696,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
         None => {
             fld.cx.span_err(path_span,
                             &format!("non-item macro in item position: {}",
-                                    &extnamestr[])[]);
+                                    &extnamestr)[]);
             return SmallVector::zero();
         }
     };
@@ -968,7 +968,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                                 pth.span,
                                 &format!(
                                     "non-pattern macro in pattern position: {}",
-                                    &extnamestr[]
+                                    &extnamestr
                                     )[]
                             );
                             return DummyResult::raw_pat(span);
@@ -981,7 +981,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                 _ => {
                     fld.cx.span_err(span,
                                     &format!("{}! is not legal in pattern position",
-                                            &extnamestr[])[]);
+                                            &extnamestr)[]);
                     return DummyResult::raw_pat(span);
                 }
             }
@@ -1065,7 +1065,7 @@ fn expand_annotatable(a: Annotatable,
     for attr in a.attrs() {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(&mname[])) {
+        match fld.cx.syntax_env.find(&intern(&mname)) {
             Some(rc) => match *rc {
                 Decorator(ref dec) => {
                     let it = match a {
@@ -1180,7 +1180,7 @@ fn modifiers(attrs: &Vec<ast::Attribute>,
              fld: &MacroExpander)
              -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
     attrs.iter().cloned().partition(|attr| {
-        match fld.cx.syntax_env.find(&intern(&attr.name()[])) {
+        match fld.cx.syntax_env.find(&intern(&attr.name())) {
             Some(rc) => match *rc {
                 Modifier(_) => true,
                 _ => false
@@ -1195,7 +1195,7 @@ fn multi_modifiers(attrs: &[ast::Attribute],
                    fld: &MacroExpander)
                    -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
     attrs.iter().cloned().partition(|attr| {
-        match fld.cx.syntax_env.find(&intern(&attr.name()[])) {
+        match fld.cx.syntax_env.find(&intern(&attr.name())) {
             Some(rc) => match *rc {
                 MultiModifier(_) => true,
                 _ => false
@@ -1220,7 +1220,7 @@ fn expand_item_multi_modifier(mut it: Annotatable,
     for attr in &modifiers {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(&mname[])) {
+        match fld.cx.syntax_env.find(&intern(&mname)) {
             Some(rc) => match *rc {
                 MultiModifier(ref mac) => {
                     attr::mark_used(attr);

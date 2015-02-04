@@ -110,7 +110,7 @@ impl<'a, 'v> Visitor<'v> for Context<'a> {
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
         match lang_items::extract(&i.attrs) {
             None => {}
-            Some(lang_item) => self.register(&lang_item[], i.span),
+            Some(lang_item) => self.register(&lang_item, i.span),
         }
         visit::walk_foreign_item(self, i)
     }

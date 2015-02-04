@@ -277,7 +277,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         match ident {
             Some(i) => {
                 s.push(' ');
-                s.push_str(&token::get_ident(i)[]);
+                s.push_str(&token::get_ident(i));
             }
             _ => { }
         }

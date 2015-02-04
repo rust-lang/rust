@@ -1164,8 +1164,7 @@ pub fn ast_ty_to_ty<'tcx>(
                                                       path.segments
                                                           .last()
                                                           .unwrap()
-                                                          .identifier)
-                                                  []);
+                                                          .identifier));
                         this.tcx().types.err
                     }
                     def::DefAssociatedPath(provenance, assoc_ident) => {

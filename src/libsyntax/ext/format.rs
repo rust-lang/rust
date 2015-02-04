@@ -673,7 +673,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         None => return DummyResult::raw_expr(sp)
     };
 
-    let mut parser = parse::Parser::new(&fmt[]);
+    let mut parser = parse::Parser::new(&fmt);
 
     loop {
         match parser.next() {

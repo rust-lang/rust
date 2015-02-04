@@ -58,13 +58,13 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
             }
         }
         ast::LitFloat(ref fs, t) => {
-            C_floating(&fs[], Type::float_from_ty(cx, t))
+            C_floating(&fs, Type::float_from_ty(cx, t))
         }
         ast::LitFloatUnsuffixed(ref fs) => {
             let lit_float_ty = ty::node_id_to_type(cx.tcx(), e.id);
             match lit_float_ty.sty {
                 ty::ty_float(t) => {
-                    C_floating(&fs[], Type::float_from_ty(cx, t))
+                    C_floating(&fs, Type::float_from_ty(cx, t))
                 }
                 _ => {
                     cx.sess().span_bug(lit.span,

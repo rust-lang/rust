@@ -1439,7 +1439,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             }
             infer::BoundRegionInCoherence(name) => {
                 format!(" for lifetime parameter `{}` in coherence check",
-                        &token::get_name(name)[])
+                        &token::get_name(name))
             }
             infer::UpvarRegion(ref upvar_id, _) => {
                 format!(" for capture of `{}` by closure",

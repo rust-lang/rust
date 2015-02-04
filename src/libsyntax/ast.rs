@@ -118,7 +118,7 @@ impl fmt::Debug for Name {
 
 impl fmt::Display for Name {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&token::get_name(*self)[], f)
+        fmt::Display::fmt(&token::get_name(*self), f)
     }
 }
 
@@ -174,7 +174,7 @@ impl Name {
     pub fn as_str<'a>(&'a self) -> &'a str {
         unsafe {
             // FIXME #12938: can't use copy_lifetime since &str isn't a &T
-            ::std::mem::transmute::<&str,&str>(&token::get_name(*self)[])
+            ::std::mem::transmute::<&str,&str>(&token::get_name(*self))
         }
     }
 
@@ -193,7 +193,7 @@ pub type Mrk = u32;
 
 impl Encodable for Ident {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&token::get_ident(*self)[])
+        s.emit_str(&token::get_ident(*self))
     }
 }
 

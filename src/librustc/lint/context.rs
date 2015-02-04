@@ -341,7 +341,7 @@ pub fn gather_attrs(attrs: &[ast::Attribute])
                     -> Vec<Result<(InternedString, Level, Span), Span>> {
     let mut out = vec!();
     for attr in attrs {
-        let level = match Level::from_str(&attr.name()[]) {
+        let level = match Level::from_str(&attr.name()) {
             None => continue,
             Some(lvl) => lvl,
         };
@@ -499,7 +499,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                     continue;
                 }
                 Ok((lint_name, level, span)) => {
-                    match self.lints.find_lint(&lint_name[], &self.tcx.sess, Some(span)) {
+                    match self.lints.find_lint(&lint_name, &self.tcx.sess, Some(span)) {
                         Some(lint_id) => vec![(lint_id, level, span)],
                         None => {
                             match self.lints.lint_groups.get(&lint_name[]) {

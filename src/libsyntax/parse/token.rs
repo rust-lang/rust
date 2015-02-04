@@ -639,7 +639,7 @@ impl BytesContainer for InternedString {
         // of `BytesContainer`, which is itself a workaround for the lack of
         // DST.
         unsafe {
-            let this = &self[];
+            let this = &self;
             mem::transmute::<&[u8],&[u8]>(this.container_as_bytes())
         }
     }

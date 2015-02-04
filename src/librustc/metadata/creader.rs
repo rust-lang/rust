@@ -170,7 +170,7 @@ impl<'a> CrateReader<'a> {
     fn process_crate(&self, c: &ast::Crate) {
         for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
             match a.value_str() {
-                Some(ref linkarg) => self.sess.cstore.add_used_link_args(&linkarg[]),
+                Some(ref linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
                 None => { /* fallthrough */ }
             }
         }
@@ -237,7 +237,7 @@ impl<'a> CrateReader<'a> {
                     .collect::<Vec<&ast::Attribute>>();
                 for m in &link_args {
                     match m.value_str() {
-                        Some(linkarg) => self.sess.cstore.add_used_link_args(&linkarg[]),
+                        Some(linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
                         None => { /* fallthrough */ }
                     }
                 }

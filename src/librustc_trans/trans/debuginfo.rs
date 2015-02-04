@@ -1350,7 +1350,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     // Get_template_parameters() will append a `<...>` clause to the function
     // name if necessary.
-    let mut function_name = String::from_str(&token::get_ident(ident)[]);
+    let mut function_name = String::from_str(&token::get_ident(ident));
     let template_parameters = get_template_parameters(cx,
                                                       generics,
                                                       param_substs,
@@ -2237,13 +2237,13 @@ impl<'tcx> EnumMemberDescriptionFactory<'tcx> {
                                                       .get_unique_type_id_of_enum_variant(
                                                           cx,
                                                           self.enum_type,
-                                                          &non_null_variant_name[]);
+                                                          &non_null_variant_name);
 
                 // Now we can create the metadata of the artificial struct
                 let artificial_struct_metadata =
                     composite_type_metadata(cx,
                                             artificial_struct_llvm_type,
-                                            &non_null_variant_name[],
+                                            &non_null_variant_name,
                                             unique_type_id,
                                             &[sole_struct_member_description],
                                             self.containing_scope,
@@ -2373,7 +2373,7 @@ fn describe_enum_variant<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     // Could do some consistency checks here: size, align, field count, discr type
 
     let variant_name = token::get_name(variant_info.name);
-    let variant_name = &variant_name[];
+    let variant_name = &variant_name;
     let unique_type_id = debug_context(cx).type_map
                                           .borrow_mut()
                                           .get_unique_type_id_of_enum_variant(
@@ -3847,7 +3847,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let mut path_element_count = 0;
                 for path_element in path {
                     let name = token::get_name(path_element.name());
-                    output.push_str(&name[]);
+                    output.push_str(&name);
                     output.push_str("::");
                     path_element_count += 1;
                 }
@@ -3862,7 +3862,7 @@ fn push_debuginfo_type_name<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let name = token::get_name(path.last()
                                                .expect("debuginfo: Empty item path?")
                                                .name());
-                output.push_str(&name[]);
+                output.push_str(&name);
             }
         });
     }
@@ -3913,7 +3913,7 @@ impl NamespaceTreeNode {
             }
             let string = token::get_name(node.name);
             output.push_str(&format!("{}", string.len())[]);
-            output.push_str(&string[]);
+            output.push_str(&string);
         }
 
         let mut name = String::from_str("_ZN");

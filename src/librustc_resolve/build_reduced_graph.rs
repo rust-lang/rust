@@ -1020,7 +1020,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         self.handle_external_def(def,
                                                  def_visibility,
                                                  &*child_name_bindings,
-                                                 &token::get_name(name)[],
+                                                 &token::get_name(name),
                                                  name,
                                                  root);
                     }

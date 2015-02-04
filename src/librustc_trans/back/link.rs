@@ -293,7 +293,7 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
 
     // First, connect each component with <len, name> pairs.
     for e in path {
-        push(&mut n, &token::get_name(e.name())[])
+        push(&mut n, &token::get_name(e.name()))
     }
 
     match hash {

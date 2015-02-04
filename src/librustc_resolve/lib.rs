@@ -1093,7 +1093,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             } else {
                 result.push_str("::")
             }
-            result.push_str(&token::get_name(*name)[]);
+            result.push_str(&token::get_name(*name));
         };
         result
     }
@@ -1708,7 +1708,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         debug!("(resolving glob import) writing resolution `{}` in `{}` \
                to `{}`",
-               &token::get_name(name)[],
+               &token::get_name(name),
                self.module_to_string(&*containing_module),
                self.module_to_string(module_));
 
@@ -1725,7 +1725,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let msg = format!("a {} named `{}` has already been imported \
                                            in this module",
                                           namespace_name,
-                                          &token::get_name(name)[]);
+                                          &token::get_name(name));
                         span_err!(self.session, import_directive.span, E0251, "{}", msg);
                     } else {
                         let target = Target::new(containing_module.clone(),
@@ -1757,7 +1757,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     name: Name,
                                     namespace: Namespace) {
         debug!("check_for_conflicting_import: {}; target exists: {}",
-               &token::get_name(name)[],
+               &token::get_name(name),
                target.is_some());
 
         match *target {
@@ -1768,7 +1768,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     TypeNS => "type",
                                     ValueNS => "value",
                                   },
-                                  &token::get_name(name)[]);
+                                  &token::get_name(name));
                 span_err!(self.session, import_span, E0252, "{}", &msg[]);
             }
             Some(_) | None => {}
@@ -1804,7 +1804,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     let msg = format!("import `{0}` conflicts with imported \
                                        crate in this module \
                                        (maybe you meant `use {0}::*`?)",
-                                      &token::get_name(name)[]);
+                                      &token::get_name(name));
                     span_err!(self.session, import_span, E0254, "{}", &msg[]);
                 }
                 Some(_) | None => {}
@@ -1826,7 +1826,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 if let Some(ref value) = *name_bindings.value_def.borrow() {
                     let msg = format!("import `{}` conflicts with value \
                                        in this module",
-                                      &token::get_name(name)[]);
+                                      &token::get_name(name));
                     span_err!(self.session, import_span, E0255, "{}", &msg[]);
                     if let Some(span) = value.value_span {
                         self.session.span_note(span,
@@ -1844,7 +1844,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None => {
                             let msg = format!("import `{}` conflicts with type in \
                                                this module",
-                                              &token::get_name(name)[]);
+                                              &token::get_name(name));
                             span_err!(self.session, import_span, E0256, "{}", &msg[]);
                             if let Some(span) = ty.type_span {
                                 self.session.span_note(span,
@@ -1866,7 +1866,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 _ => {
                                     let msg = format!("import `{}` conflicts with existing \
                                                        submodule",
-                                                      &token::get_name(name)[]);
+                                                      &token::get_name(name));
                                     span_err!(self.session, import_span, E0258, "{}", &msg[]);
                                     if let Some(span) = ty.type_span {
                                         self.session.span_note(span,
@@ -1892,7 +1892,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 span_err!(self.session, span, E0259,
                           "an external crate named `{}` has already \
                                    been imported into this module",
-                                  &token::get_name(name)[]);
+                                  &token::get_name(name));
         }
     }
 
@@ -1906,7 +1906,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                           "the name `{}` conflicts with an external \
                                    crate that has been imported into this \
                                    module",
-                                  &token::get_name(name)[]);
+                                  &token::get_name(name));
         }
     }
 
@@ -2417,7 +2417,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                               allow_private_imports: bool)
                               -> ResolveResult<(Target, bool)> {
         debug!("(resolving name in module) resolving `{}` in `{}`",
-               &token::get_name(name)[],
+               &token::get_name(name),
                self.module_to_string(&*module_));
 
         // First, check the direct children of the module.
@@ -2493,7 +2493,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // We're out of luck.
         debug!("(resolving name in module) failed to resolve `{}`",
-               &token::get_name(name)[]);
+               &token::get_name(name));
         return Failed(None);
     }
 
@@ -4372,7 +4372,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         let mut smallest = 0;
         for (i, other) in maybes.iter().enumerate() {
-            values[i] = lev_distance(name, &other[]);
+            values[i] = lev_distance(name, &other);
 
             if values[i] <= values[smallest] {
                 smallest = i;
