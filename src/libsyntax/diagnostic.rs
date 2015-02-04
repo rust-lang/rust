@@ -483,42 +483,61 @@ fn highlight_lines(err: &mut EmitterWriter,
         // how many digits must be indent past?
         while num > 0 { num /= 10; digits += 1; }
 
-        // indent past |name:## | and the 0-offset column location
-        let left = fm.name.len() + digits + lo.col.to_usize() + 3;
         let mut s = String::new();
         // Skip is the number of characters we need to skip because they are
         // part of the 'filename:line ' part of the previous line.
-        let skip = fm.name.len() + digits + 3;
+        let skip = fm.name.width(false) + digits + 3;
         for _ in 0..skip {
             s.push(' ');
         }
         if let Some(orig) = fm.get_line(lines.lines[0]) {
-            for pos in 0..left - skip {
-                let cur_char = orig.as_bytes()[pos] as char;
+            let mut col = skip;
+            let mut lastc = ' ';
+            let mut iter = orig.chars().enumerate();
+            for (pos, ch) in iter.by_ref() {
+                lastc = ch;
+                if pos >= lo.col.to_usize() { break; }
                 // Whenever a tab occurs on the previous line, we insert one on
                 // the error-point-squiggly-line as well (instead of a space).
                 // That way the squiggly line will usually appear in the correct
                 // position.
-                match cur_char {
-                    '\t' => s.push('\t'),
-                    _ => s.push(' '),
-                };
+                match ch {
+                    '\t' => {
+                        col += 8 - col%8;
+                        s.push('\t');
+                    },
+                    c => for _ in 0..c.width(false).unwrap_or(0) {
+                        col += 1;
+                        s.push(' ');
+                    },
+                }
             }
-        }
 
-        try!(write!(&mut err.dst, "{}", s));
-        let mut s = String::from_str("^");
-        let hi = cm.lookup_char_pos(sp.hi);
-        if hi.col != lo.col {
-            // the ^ already takes up one space
-            let num_squigglies = hi.col.to_usize() - lo.col.to_usize() - 1;
-            for _ in 0..num_squigglies {
-                s.push('~');
+            try!(write!(&mut err.dst, "{}", s));
+            let mut s = String::from_str("^");
+            let count = match lastc {
+                // Most terminals have a tab stop every eight columns by default
+                '\t' => 8 - col%8,
+                _ => lastc.width(false).unwrap_or(1),
+            };
+            col += count;
+            s.extend(::std::iter::repeat('~').take(count - 1));
+            let hi = cm.lookup_char_pos(sp.hi);
+            if hi.col != lo.col {
+                for (pos, ch) in iter {
+                    if pos >= hi.col.to_usize() { break; }
+                    let count = match ch {
+                        '\t' => 8 - col%8,
+                        _ => ch.width(false).unwrap_or(0),
+                    };
+                    col += count;
+                    s.extend(::std::iter::repeat('~').take(count));
+                }
             }
+            try!(print_maybe_styled(err,
+                                    &format!("{}\n", s)[],
+                                    term::attr::ForegroundColor(lvl.color())));
         }
-        try!(print_maybe_styled(err,
-                                &format!("{}\n", s)[],
-                                term::attr::ForegroundColor(lvl.color())));
     }
     Ok(())
 }
@@ -559,11 +578,27 @@ fn custom_highlight_lines(w: &mut EmitterWriter,
     }
     let last_line_start = format!("{}:{} ", fm.name, lines[lines.len()-1]+1);
     let hi = cm.lookup_char_pos(sp.hi);
-    // Span seems to use half-opened interval, so subtract 1
-    let skip = last_line_start.len() + hi.col.to_usize() - 1;
+    let skip = last_line_start.width(false);
     let mut s = String::new();
     for _ in 0..skip {
         s.push(' ');
+    }
+    if let Some(orig) = fm.get_line(lines[0]) {
+        let iter = orig.chars().enumerate();
+        for (pos, ch) in iter {
+            // Span seems to use half-opened interval, so subtract 1
+            if pos >= hi.col.to_usize() - 1 { break; }
+            // Whenever a tab occurs on the previous line, we insert one on
+            // the error-point-squiggly-line as well (instead of a space).
+            // That way the squiggly line will usually appear in the correct
+            // position.
+            match ch {
+                '\t' => s.push('\t'),
+                c => for _ in 0..c.width(false).unwrap_or(0) {
+                    s.push(' ');
+                },
+            }
+        }
     }
     s.push('^');
     s.push('\n');
