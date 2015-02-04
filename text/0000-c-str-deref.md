@@ -76,26 +76,6 @@ impl Deref for CString {
 }
 ```
 
-## Static C strings
-
-An important special case is producing `CStr` references from static Rust
-data, primarily from literals. To avoid copying the data, it is required that
-the source slice is null-terminated. The conversion function is otherwise
-safe:
-
-```rust
-impl CStr {
-    pub fn from_static_bytes(bytes: &'static [u8]) -> &'static CStr { ... }
-}
-```
-
-As this function mostly works with literal data, it only asserts that the
-slice is terminated by a zero byte. It's the responsibility of the programmer
-to ensure that the static data does not contain any unintended interior NULs
-(the program will not crash, but the string will be interpreted up to the
-first `'\0'` encountered). For non-literal data, `CStrBuf::from_bytes` or
-`CStrBuf::from_vec` should be preferred.
-
 ## Returning C strings
 
 In cases when an FFI function returns a pointer to a non-owned C string,
