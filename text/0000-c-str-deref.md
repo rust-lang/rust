@@ -104,6 +104,13 @@ impl CStr {
 An odd consequence is that it is valid, if wasteful, to call `to_bytes` on
 `CString` via auto-dereferencing.
 
+## Remove c_str_to_bytes
+
+The functions `c_str_to_bytes` and `c_str_to_bytes_with_nul`, with their
+problematic lifetime semantics, are deprecated and eventually removed
+in favor of composition of the functions described above:
+`c_str_to_bytes(&ptr)` becomes `CStr::from_ptr(ptr).to_bytes()`.
+
 ## Proof of concept
 
 The described changes are implemented in crate
@@ -144,9 +151,6 @@ incompatible helper types in public APIs until a dominant de-facto solution
 is established.
 
 # Unresolved questions
-
-The present function `c_str_to_bytes(&ptr)` may be deprecated in favor of
-the more composable `CStr::from_ptr(ptr).to_bytes()`.
 
 `CStr` can be made a
 [truly unsized type](https://github.com/rust-lang/rfcs/issues/709),
