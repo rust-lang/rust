@@ -10,7 +10,7 @@
 
 // compile-flags: --crate-type lib
 #![deny(missing_debug_implementations)]
-#![allow(unused, missing_copy_implementations)]
+#![allow(unused)]
 
 use std::fmt;
 

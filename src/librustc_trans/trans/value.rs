@@ -150,7 +150,6 @@ impl Use {
 }
 
 /// Iterator for the users of a value
-#[allow(missing_copy_implementations)]
 pub struct Users {
     next: Option<Use>
 }

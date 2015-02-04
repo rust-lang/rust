@@ -46,7 +46,6 @@ pub struct SnapshotVec<D:SnapshotVecDelegate> {
 }
 
 // Snapshots are tokens that should be created/consumed linearly.
-#[allow(missing_copy_implementations)]
 pub struct Snapshot {
     // Length of the undo log at the time the snapshot was taken.
     length: uint,

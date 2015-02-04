@@ -12,7 +12,6 @@
 // injected intrinsics by the compiler.
 #![deny(missing_docs)]
 #![allow(dead_code)]
-#![allow(missing_copy_implementations)]
 
 //! Some garbage docs for the crate here
 #![doc="More garbage"]

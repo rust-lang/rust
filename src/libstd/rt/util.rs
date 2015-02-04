@@ -88,7 +88,6 @@ pub fn default_sched_threads() -> uint {
 pub const ENFORCE_SANITY: bool = true || !cfg!(rtopt) || cfg!(rtdebug) ||
                                   cfg!(rtassert);
 
-#[allow(missing_copy_implementations)]
 pub struct Stdio(libc::c_int);
 
 #[allow(non_upper_case_globals)]
