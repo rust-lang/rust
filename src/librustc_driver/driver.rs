@@ -914,7 +914,7 @@ pub fn build_output_filenames(input: &Input,
 
             // If a crate name is present, we use it as the link name
             let stem = sess.opts.crate_name.clone().or_else(|| {
-                attr::find_crate_name(attrs).map(|n| n.get().to_string())
+                attr::find_crate_name(attrs).map(|n| n.to_string())
             }).unwrap_or(input.filestem());
 
             OutputFilenames {
