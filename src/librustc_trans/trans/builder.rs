@@ -22,6 +22,7 @@ use util::nodemap::FnvHashMap;
 use libc::{c_uint, c_char};
 
 use std::ffi::CString;
+use std::ptr;
 use syntax::codemap::Span;
 
 pub struct Builder<'a, 'tcx: 'a> {
@@ -493,6 +494,16 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
                                   llvm::LLVMMDNodeInContext(self.ccx.llcx(),
                                                             v.as_ptr(),
                                                             v.len() as c_uint));
+        }
+
+        value
+    }
+
+    pub fn load_nonnull(&self, ptr: ValueRef) -> ValueRef {
+        let value = self.load(ptr);
+        unsafe {
+            llvm::LLVMSetMetadata(value, llvm::MD_nonnull as c_uint,
+                                  llvm::LLVMMDNodeInContext(self.ccx.llcx(), ptr::null(), 0));
         }
 
         value
