@@ -86,7 +86,7 @@ pub struct EncodeContext<'a, 'tcx: 'a> {
 }
 
 fn encode_name(rbml_w: &mut Encoder, name: ast::Name) {
-    rbml_w.wr_tagged_str(tag_paths_data_name, &token::get_name(name)[]);
+    rbml_w.wr_tagged_str(tag_paths_data_name, &token::get_name(name));
 }
 
 fn encode_impl_type_basename(rbml_w: &mut Encoder, name: ast::Ident) {
@@ -372,7 +372,7 @@ fn encode_path<PI: Iterator<Item=PathElem>>(rbml_w: &mut Encoder, path: PI) {
             ast_map::PathMod(_) => tag_path_elem_mod,
             ast_map::PathName(_) => tag_path_elem_name
         };
-        rbml_w.wr_tagged_str(tag, &token::get_name(pe.name())[]);
+        rbml_w.wr_tagged_str(tag, &token::get_name(pe.name()));
     }
     rbml_w.end_tag();
 }
@@ -1695,7 +1695,7 @@ fn encode_paren_sugar(rbml_w: &mut Encoder, paren_sugar: bool) {
 fn encode_associated_type_names(rbml_w: &mut Encoder, names: &[ast::Name]) {
     rbml_w.start_tag(tag_associated_type_names);
     for &name in names {
-        rbml_w.wr_tagged_str(tag_associated_type_name, &token::get_name(name)[]);
+        rbml_w.wr_tagged_str(tag_associated_type_name, &token::get_name(name));
     }
     rbml_w.end_tag();
 }

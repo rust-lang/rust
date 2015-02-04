@@ -83,7 +83,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
                                      .connect(",");
 
     let mut clobbers = ia.clobbers.iter()
-                                  .map(|s| format!("~{{{}}}", &s[]))
+                                  .map(|s| format!("~{{{}}}", &s))
                                   .collect::<Vec<String>>()
                                   .connect(",");
     let more_clobbers = get_clobbers();

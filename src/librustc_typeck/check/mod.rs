@@ -805,7 +805,7 @@ fn check_trait_on_unimplemented<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         a.check_name("rustc_on_unimplemented")
     }) {
         if let Some(ref istring) = attr.value_str() {
-            let parser = Parser::new(&istring[]);
+            let parser = Parser::new(&istring);
             let types = &*generics.ty_params;
             for token in parser {
                 match token {
@@ -3104,7 +3104,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                  tcx : &ty::ctxt<'tcx>,
                                  skip : Vec<&str>) {
         let ident = token::get_ident(field.node);
-        let name = &ident[];
+        let name = &ident;
         // only find fits with at least one matching letter
         let mut best_dist = name.len();
         let fields = ty::lookup_struct_fields(tcx, id);
@@ -3286,7 +3286,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                     let (_, seen) = class_field_map[name];
                     if !seen {
                         missing_fields.push(
-                            format!("`{}`", &token::get_name(name)[]))
+                            format!("`{}`", &token::get_name(name)))
                     }
                 }
 

@@ -1313,7 +1313,7 @@ impl<'a> State<'a> {
         try!(self.hardbreak_if_not_bol());
         try!(self.maybe_print_comment(attr.span.lo));
         if attr.node.is_sugared_doc {
-            word(&mut self.s, &attr.value_str().unwrap()[])
+            word(&mut self.s, &attr.value_str().unwrap())
         } else {
             match attr.node.style {
                 ast::AttrInner => try!(word(&mut self.s, "#![")),
@@ -1847,7 +1847,7 @@ impl<'a> State<'a> {
             ast::ExprInlineAsm(ref a) => {
                 try!(word(&mut self.s, "asm!"));
                 try!(self.popen());
-                try!(self.print_string(&a.asm[], a.asm_str_style));
+                try!(self.print_string(&a.asm, a.asm_str_style));
                 try!(self.word_space(":"));
 
                 try!(self.commasep(Inconsistent, &a.outputs[],
@@ -1857,7 +1857,7 @@ impl<'a> State<'a> {
                             try!(s.print_string(&format!("+{}", operand)[],
                                                 ast::CookedStr))
                         }
-                        _ => try!(s.print_string(&co[], ast::CookedStr))
+                        _ => try!(s.print_string(&co, ast::CookedStr))
                     }
                     try!(s.popen());
                     try!(s.print_expr(&**o));
@@ -1869,7 +1869,7 @@ impl<'a> State<'a> {
 
                 try!(self.commasep(Inconsistent, &a.inputs[],
                                    |s, &(ref co, ref o)| {
-                    try!(s.print_string(&co[], ast::CookedStr));
+                    try!(s.print_string(&co, ast::CookedStr));
                     try!(s.popen());
                     try!(s.print_expr(&**o));
                     try!(s.pclose());
@@ -1880,7 +1880,7 @@ impl<'a> State<'a> {
 
                 try!(self.commasep(Inconsistent, &a.clobbers[],
                                    |s, co| {
-                    try!(s.print_string(&co[], ast::CookedStr));
+                    try!(s.print_string(&co, ast::CookedStr));
                     Ok(())
                 }));
 
@@ -1954,7 +1954,7 @@ impl<'a> State<'a> {
             let encoded = ident.encode_with_hygiene();
             try!(word(&mut self.s, &encoded[]))
         } else {
-            try!(word(&mut self.s, &token::get_ident(ident)[]))
+            try!(word(&mut self.s, &token::get_ident(ident)))
         }
         self.ann.post(self, NodeIdent(&ident))
     }
@@ -1964,7 +1964,7 @@ impl<'a> State<'a> {
     }
 
     pub fn print_name(&mut self, name: ast::Name) -> IoResult<()> {
-        try!(word(&mut self.s, &token::get_name(name)[]));
+        try!(word(&mut self.s, &token::get_name(name)));
         self.ann.post(self, NodeName(&name))
     }
 
@@ -2532,7 +2532,7 @@ impl<'a> State<'a> {
         try!(self.ibox(indent_unit));
         match item.node {
             ast::MetaWord(ref name) => {
-                try!(word(&mut self.s, &name[]));
+                try!(word(&mut self.s, &name));
             }
             ast::MetaNameValue(ref name, ref value) => {
                 try!(self.word_space(&name[]));
@@ -2540,7 +2540,7 @@ impl<'a> State<'a> {
                 try!(self.print_literal(value));
             }
             ast::MetaList(ref name, ref items) => {
-                try!(word(&mut self.s, &name[]));
+                try!(word(&mut self.s, &name));
                 try!(self.popen());
                 try!(self.commasep(Consistent,
                                    &items[],
@@ -2731,7 +2731,7 @@ impl<'a> State<'a> {
             _ => ()
         }
         match lit.node {
-            ast::LitStr(ref st, style) => self.print_string(&st[], style),
+            ast::LitStr(ref st, style) => self.print_string(&st, style),
             ast::LitByte(byte) => {
                 let mut res = String::from_str("b'");
                 ascii::escape_default(byte, |c| res.push(c as char));
@@ -2772,7 +2772,7 @@ impl<'a> State<'a> {
                 word(&mut self.s,
                      &format!(
                          "{}{}",
-                         &f[],
+                         &f,
                          &ast_util::float_ty_to_string(t)[])[])
             }
             ast::LitFloatUnsuffixed(ref f) => word(&mut self.s, &f[]),

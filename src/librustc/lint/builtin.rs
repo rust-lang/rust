@@ -801,10 +801,10 @@ impl LintPass for UnusedResults {
                         None => {}
                         Some(s) => {
                             msg.push_str(": ");
-                            msg.push_str(&s[]);
+                            msg.push_str(&s);
                         }
                     }
-                    cx.span_lint(UNUSED_MUST_USE, sp, &msg[]);
+                    cx.span_lint(UNUSED_MUST_USE, sp, &msg);
                     return true;
                 }
             }
@@ -844,7 +844,7 @@ impl NonCamelCaseTypes {
         let s = token::get_ident(ident);
 
         if !is_camel_case(ident) {
-            let c = to_camel_case(&s[]);
+            let c = to_camel_case(&s);
             let m = if c.is_empty() {
                 format!("{} `{}` should have a camel case name such as `CamelCase`", sort, s)
             } else {
@@ -996,7 +996,7 @@ impl NonSnakeCase {
         let s = token::get_ident(ident);
 
         if !is_snake_case(ident) {
-            let sc = NonSnakeCase::to_snake_case(&s[]);
+            let sc = NonSnakeCase::to_snake_case(&s);
             if sc != &s[] {
                 cx.span_lint(NON_SNAKE_CASE, span,
                     &*format!("{} `{}` should have a snake case name such as `{}`",
@@ -1078,7 +1078,7 @@ impl NonUpperCaseGlobals {
         let s = token::get_ident(ident);
 
         if s.chars().any(|c| c.is_lowercase()) {
-            let uc: String = NonSnakeCase::to_snake_case(&s[]).chars()
+            let uc: String = NonSnakeCase::to_snake_case(&s).chars()
                                            .map(|c| c.to_uppercase()).collect();
             if uc != &s[] {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS, span,
@@ -1241,7 +1241,7 @@ impl LintPass for UnusedImportBraces {
                             match items[0].node {
                                 ast::PathListIdent {ref name, ..} => {
                                     let m = format!("braces around {} is unnecessary",
-                                                    &token::get_ident(*name)[]);
+                                                    &token::get_ident(*name));
                                     cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
                                                  &m[]);
                                 },

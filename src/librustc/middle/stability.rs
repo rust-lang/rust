@@ -239,12 +239,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 if !self.active_features.contains(feature) {
                     let msg = match *reason {
                         Some(ref r) => format!("use of unstable library feature '{}': {}",
-                                               &feature[], &r[]),
-                        None => format!("use of unstable library feature '{}'", &feature[])
+                                               &feature, &r),
+                        None => format!("use of unstable library feature '{}'", &feature)
                     };
 
                     emit_feature_warn(&self.tcx.sess.parse_sess.span_diagnostic,
-                                      &feature[], span, &msg[]);
+                                      &feature, span, &msg);
                 }
             }
             Some(..) => {

@@ -142,7 +142,7 @@ impl AttributeMethods for Attribute {
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(&strip_doc_comment_decoration(
-                        &comment[])[]));
+                        &comment)[]));
             if self.node.style == ast::AttrOuter {
                 f(&mk_attr_outer(self.node.id, meta))
             } else {
@@ -209,7 +209,7 @@ pub fn mk_attr_outer(id: AttrId, item: P<MetaItem>) -> Attribute {
 pub fn mk_sugared_doc_attr(id: AttrId, text: InternedString, lo: BytePos,
                            hi: BytePos)
                            -> Attribute {
-    let style = doc_comment_style(&text[]);
+    let style = doc_comment_style(&text);
     let lit = spanned(lo, hi, ast::LitStr(text, ast::CookedStr));
     let attr = Attribute_ {
         id: id,
@@ -525,7 +525,7 @@ pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAt
                             // Can't use "extern" because it's not a lexical identifier.
                             "C" => Some(ReprExtern),
                             "packed" => Some(ReprPacked),
-                            _ => match int_type_of_word(&word[]) {
+                            _ => match int_type_of_word(&word) {
                                 Some(ity) => Some(ReprInt(item.span, ity)),
                                 None => {
                                     // Not a word we recognize

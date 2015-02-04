@@ -2248,7 +2248,7 @@ pub fn update_linkage(ccx: &CrateContext,
         let item = ccx.tcx().map.get(id);
         if let ast_map::NodeItem(i) = item {
             if let Some(name) = attr::first_attr_value_str_by_name(&i.attrs, "linkage") {
-                if let Some(linkage) = llvm_linkage_by_name(&name[]) {
+                if let Some(linkage) = llvm_linkage_by_name(&name) {
                     llvm::SetLinkage(llval, linkage);
                 } else {
                     ccx.sess().span_fatal(i.span, "invalid linkage specified");
@@ -2824,9 +2824,9 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match attr::first_attr_value_str_by_name(&i.attrs[],
                                                      "link_section") {
                 Some(sect) => {
-                    if contains_null(&sect[]) {
+                    if contains_null(&sect) {
                         ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`",
-                                                 &sect[])[]);
+                                                 &sect)[]);
                     }
                     unsafe {
                         let buf = CString::from_slice(sect.as_bytes());
@@ -2869,7 +2869,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
-                    foreign::register_foreign_item_fn(ccx, abi, ty, &name[])
+                    foreign::register_foreign_item_fn(ccx, abi, ty, &name)
                 }
                 ast::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, &*ni)
