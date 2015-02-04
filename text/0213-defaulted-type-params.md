@@ -1,6 +1,6 @@
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- Start Date: 2015-02-04
+- RFC PR: https://github.com/rust-lang/rfcs/pull/213
+- Rust Issue: https://github.com/rust-lang/rust/issues/21939
 
 # Summary
 
@@ -19,7 +19,7 @@ parameters:
      a suitable type variable will be used.
    - Outside of a fn body, only defaulted type parameters can be
      omitted, and the specified default is then used.
-   
+
 Points 2 and 4 extend the current behavior of type parameter defaults,
 aiming to address some shortcomings of the current implementation.
 
@@ -34,7 +34,7 @@ Defaulted type parameters are very useful in two main scenarios:
 1. Extended a type without breaking existing clients.
 2. Allowing customization in ways that many or most users do not care
    about.
-   
+
 Often, these two scenarios occur at the same time. A classic
 historical example is the `HashMap` type from Rust's standard
 library. This type now supports the ability to specify custom
@@ -58,7 +58,7 @@ a single `range()` function that is defined generically over all
     pub fn range<A:Enumerable>(start: A, stop: A) -> Range<A> {
         Range{state: start, stop: stop, one: One::one()}
     }
-    
+
 This version is often more convenient to use, particularly in a
 generic context.
 
@@ -80,7 +80,7 @@ default (`uint`, for example):
     pub fn range<A:Enumerable=uint>(start: A, stop: A) -> Range<A> {
         Range{state: start, stop: stop, one: One::one()}
     }
-    
+
 Using this definition, a call like `range(0, 10)` is perfectly legal.
 If it turns out that the type argument is not other constraint, `uint`
 will be used instead.
@@ -135,7 +135,7 @@ type parameters declared *before* `X` in the list of type parameters:
     // ERROR. Default value of `B` refers to `C`, which comes AFTER
     // `B` in the list of parameters.
     fn foo<A,B=C,C=uint>() { .. }
-    
+
 ## Instantiating defaults
 
 This section specifies how to interpret a reference to a generic
@@ -154,13 +154,13 @@ as follows:
   - *Motivation:* This is consistent with Rust tradition, which
     generally requires explicit types or a mechanical defaulting
     process outside of `fn` bodies.
-    
+
 ### References to generic types
 
 We begin with examples of references to the generic type `Foo`:
 
     struct Foo<A,B,C=DefaultHasher,D=C> { ... }
-    
+
 `Foo` defines four type parameters, the final two of which are
 defaulted. First, let us consider what happens outside of a fn
 body. It is mandatory to supply explicit values for all non-defaulted
@@ -168,37 +168,37 @@ type parameters:
 
     // ERROR: 2 parameters required, 0 provided.
     fn f(_: &Foo) { ... }
-    
+
 Defaulted type parameters are filled in based on the defaults given:
-    
+
     // Legal: Equivalent to `Foo<int,uint,DefaultHasher,DefaultHasher>`
     fn f(_: &Foo<int,uint>) { ... }
 
 Naturally it is legal to specify explicit values for the defaulted
 type parameters if desired:
-    
+
     // Legal: Equivalent to `Foo<int,uint,uint,char,u8>`
     fn f(_: &Foo<int,uint,char,u8>) { ... }
 
 It is also legal to provide just one of the defaulted type parameters
 and not the other:
-    
+
     // Legal: Equivalent to `Foo<int,uint,char,char>`
     fn f(_: &Foo<int,uint,char>) { ... }
-    
+
 If the user wishes to supply the value of the type parameter `D`
 explicitly, but not `C`, then `_` can be used to request the default:
-    
+
     // Legal: Equivalent to `Foo<int,uint,DefaultHasher,uint>`
     fn f(_: &Foo<int,uint,_,uint>) { ... }
 
 Note that, outside of a fn body, `_` can *only* be used with
 defaulted type parameters:
-    
+
     // ERROR: outside of a fn body, `_` cannot be
     // used for a non-defaulted type parameter
     fn f(_: &Foo<int,_>) { ... }
-    
+
 Inside a fn body, the rules are much the same, except that `_` is
 legal everywhere. Every reference to `_` creates a fresh type
 variable `$n`. If the type parameter whose value is omitted has an
@@ -217,7 +217,7 @@ information). Here are some examples:
         let x: Foo<_,_> = ...;
         let x: Foo<_,_,_> = ...;
         let x: Foo<_,_,_,_> = ...;
-        
+
         // Results in a type `Foo<int,uint,$0,char>` where `$0`
         // has a fallback of `DefaultHasher`.
         let x: Foo<int,uint,_,char> = ...;
@@ -248,7 +248,7 @@ except that it is legal to omit values for all type parameters if
 desired. In that case, the behavior is the same as it would be if `_`
 were used as the value for every type parameter. Note that functions
 can only be referenced from within a fn body.
-    
+
 ### References to generic impls
 
 Users never explicitly "reference" an impl. Rather, the trait matching
@@ -275,7 +275,7 @@ fn foo<A,B=A>(a: A, b: B) { ... }
 fn bar() {
     // Here, the values of the type parameters are given explicitly.
     let f: fn(uint, uint) = foo::<uint, uint>;
-    
+
     // Here the value of the first type parameter is given explicitly,
     // but not the second. Because the second specifies a default, this
     // is permitted. The type checker will create a fresh variable `$0`
@@ -359,17 +359,17 @@ do not loop over each type variable, check whether it is unbound, and
 apply the default only if it is unbound. The reason for this is that
 it can happen that there are contradictory defaults and we want to
 ensure that this results in an error:
-  
+
     fn foo<F:Default=uint>() -> F { }
     fn bar<B=int>(b: B) { }
     fn baz() {
         // Here, F is instantiated with $0=uint
         let x: $0 = foo();
-        
+
         // Here, B is instantiated with $1=uint, and constraint $0 <: $1 is added.
         bar(x);
     }
-  
+
 In this example, two type variables are created. `$0` is the value of
 `F` in the call to `foo()` and `$1` is the value of `B` in the call to
 `bar()`. The fact that `x`, which has type `$0`, is passed as an
@@ -395,17 +395,17 @@ defaults, and processing defaults created trait obligations:
 
     trait Foo { }
     trait Bar { }
-    
+
     impl<T:Bar=uint> Foo for Vec<T> { } // Impl 1
     impl Bar for uint { } // Impl 2
-    
+
     fn takes_foo<F:Foo>(f: F) { }
-    
+
     fn main() {
         let x = Vec::new(); // x: Vec<$0>
         takes_foo(x); // adds oblig Vec<$0> : Foo
     }
-    
+
 When we finish type checking `main`, we are left with a variable `$0`
 and a trait obligation `Vec<$0> : Foo`. Processing the trait
 obligation selects the impl 1 as the way to fulfill this trait
@@ -438,17 +438,17 @@ The next example does 2 full iterations of the loop.
     trait Foo { }
     trait Bar<U> { }
     trait Baz { }
-    
+
     impl<U,T:Bar<U>=Vec<U>> Foo for Vec<T> { } // Impl 1
     impl<V=uint> Bar for Vec<V> { } // Impl 2
-    
+
     fn takes_foo<F:Foo>(f: F) { }
-    
+
     fn main() {
         let x = Vec::new(); // x: Vec<$0>
         takes_foo(x); // adds oblig Vec<$0> : Foo
     }
-    
+
 Here the process is as follows:
 
 1. Trait resolution executed to resolve `Vec<$0> : Foo`. The result is
