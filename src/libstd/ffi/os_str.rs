@@ -41,7 +41,7 @@ use string::{String, CowString};
 use ops;
 use cmp;
 use hash::{Hash, Hasher, Writer};
-use path::{Path, GenericPath};
+use old_path::{Path, GenericPath};
 
 use sys::os_str::{Buf, Slice};
 use sys_common::{AsInner, IntoInner, FromInner};

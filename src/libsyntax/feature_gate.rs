@@ -119,6 +119,9 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows use of #[staged_api]
     ("staged_api", "1.0.0", Active),
+
+    // Allows using items which are missing stability attributes
+    ("unmarked_api", "1.0.0", Active)
 ];
 
 enum Status {
@@ -145,6 +148,7 @@ pub struct Features {
     pub quote: bool,
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
+    pub unmarked_api: bool,
     pub lib_features: Vec<(InternedString, Span)>
 }
 
@@ -157,6 +161,7 @@ impl Features {
             quote: false,
             old_orphan_check: false,
             simd_ffi: false,
+            unmarked_api: false,
             lib_features: Vec::new()
         }
     }
@@ -566,6 +571,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         quote: cx.has_feature("quote"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
+        unmarked_api: cx.has_feature("unmarked_api"),
         lib_features: unknown_features
     }
 }

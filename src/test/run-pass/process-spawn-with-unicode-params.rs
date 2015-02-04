@@ -20,7 +20,7 @@ use std::old_io;
 use std::old_io::fs;
 use std::old_io::Command;
 use std::os;
-use std::path::Path;
+use std::old_path::Path;
 
 fn main() {
     let my_args = os::args();

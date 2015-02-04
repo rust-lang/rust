@@ -638,7 +638,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
-        ast::ExprClosure(_, _, _, ref body) => {
+        ast::ExprClosure(_, _, ref body) => {
             check_expr_fn_block(rcx, expr, &**body);
         }
 

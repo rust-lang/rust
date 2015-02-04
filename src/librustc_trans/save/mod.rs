@@ -1394,7 +1394,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                                       type, found {:?}", ty)[]),
                 }
             },
-            ast::ExprClosure(_, _, ref decl, ref body) => {
+            ast::ExprClosure(_, ref decl, ref body) => {
                 if generated_code(body.span) {
                     return
                 }

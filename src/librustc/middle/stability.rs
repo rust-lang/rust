@@ -14,6 +14,7 @@
 use session::Session;
 use lint;
 use middle::ty;
+use middle::privacy::PublicItems;
 use metadata::csearch;
 use syntax::parse::token::InternedString;
 use syntax::codemap::{Span, DUMMY_SP};
@@ -44,15 +45,16 @@ pub struct Index {
 // A private tree-walker for producing an Index.
 struct Annotator<'a> {
     sess: &'a Session,
-    index: Index,
-    parent: Option<Stability>
+    index: &'a mut Index,
+    parent: Option<Stability>,
+    export_map: &'a PublicItems,
 }
 
 impl<'a> Annotator<'a> {
     // Determine the stability for a node based on its attributes and inherited
     // stability. The stability is recorded in the index and used as the parent.
     fn annotate<F>(&mut self, id: NodeId, use_parent: bool,
-                   attrs: &Vec<Attribute>, item_sp: Span, f: F) where
+                   attrs: &Vec<Attribute>, item_sp: Span, f: F, required: bool) where
         F: FnOnce(&mut Annotator),
     {
         match attr::find_stability(self.sess.diagnostic(), attrs.as_slice(), item_sp) {
@@ -70,7 +72,14 @@ impl<'a> Annotator<'a> {
             }
             None => {
                 if use_parent {
-                    self.parent.clone().map(|stab| self.index.local.insert(id, stab));
+                    if let Some(stab) = self.parent.clone() {
+                        self.index.local.insert(id, stab);
+                    } else if self.index.staged_api && required
+                           && self.export_map.contains(&id)
+                           && !self.sess.opts.test {
+                        self.sess.span_err(item_sp,
+                                           "This node does not have a stability attribute");
+                    }
                 }
                 f(self);
             }
@@ -93,11 +102,19 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
             _ => true,
         };
 
-        self.annotate(i.id, use_parent, &i.attrs, i.span, |v| visit::walk_item(v, i));
+        // In case of a `pub use <mod>;`, we should not error since the stability
+        // is inherited from the module itself
+        let required = match i.node {
+            ast::ItemUse(_) => i.vis != ast::Public,
+            _ => true
+        };
+
+        self.annotate(i.id, use_parent, &i.attrs, i.span,
+                      |v| visit::walk_item(v, i), required);
 
         if let ast::ItemStruct(ref sd, _) = i.node {
             sd.ctor_id.map(|id| {
-                self.annotate(id, true, &i.attrs, i.span, |_| {})
+                self.annotate(id, true, &i.attrs, i.span, |_| {}, true)
             });
         }
     }
@@ -106,7 +123,7 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
                 _: &'v Block, sp: Span, _: NodeId) {
         if let FkMethod(_, _, meth) = fk {
             // Methods are not already annotated, so we annotate it
-            self.annotate(meth.id, true, &meth.attrs, sp, |_| {});
+            self.annotate(meth.id, true, &meth.attrs, sp, |_| {}, true);
         }
         // Items defined in a function body have no reason to have
         // a stability attribute, so we don't recurse.
@@ -126,27 +143,41 @@ impl<'a, 'v> Visitor<'v> for Annotator<'a> {
             TypeTraitItem(ref typedef) => (typedef.ty_param.id, &typedef.attrs,
                                            typedef.ty_param.span),
         };
-        self.annotate(id, true, attrs, sp, |v| visit::walk_trait_item(v, t));
+        self.annotate(id, true, attrs, sp, |v| visit::walk_trait_item(v, t), true);
     }
 
     fn visit_variant(&mut self, var: &Variant, g: &'v Generics) {
         self.annotate(var.node.id, true, &var.node.attrs, var.span,
-                      |v| visit::walk_variant(v, var, g))
+                      |v| visit::walk_variant(v, var, g), true)
     }
 
     fn visit_struct_field(&mut self, s: &StructField) {
         self.annotate(s.node.id, true, &s.node.attrs, s.span,
-                      |v| visit::walk_struct_field(v, s));
+                      |v| visit::walk_struct_field(v, s), true);
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        self.annotate(i.id, true, &i.attrs, i.span, |_| {});
+        self.annotate(i.id, true, &i.attrs, i.span, |_| {}, true);
     }
 }
 
 impl Index {
     /// Construct the stability index for a crate being compiled.
-    pub fn build(sess: &Session, krate: &Crate) -> Index {
+    pub fn build(&mut self, sess: &Session, krate: &Crate, export_map: &PublicItems) {
+        if !self.staged_api {
+            return;
+        }
+        let mut annotator = Annotator {
+            sess: sess,
+            index: self,
+            parent: None,
+            export_map: export_map,
+        };
+        annotator.annotate(ast::CRATE_NODE_ID, true, &krate.attrs, krate.span,
+                           |v| visit::walk_crate(v, krate), true);
+    }
+
+    pub fn new(krate: &Crate) -> Index {
         let mut staged_api = false;
         for attr in &krate.attrs {
             if attr.name().get() == "staged_api" {
@@ -159,22 +190,11 @@ impl Index {
                 }
             }
         }
-        let index = Index {
+        Index {
             staged_api: staged_api,
             local: NodeMap(),
             extern_cache: DefIdMap()
-        };
-        if !staged_api {
-            return index;
         }
-        let mut annotator = Annotator {
-            sess: sess,
-            index: index,
-            parent: None
-        };
-        annotator.annotate(ast::CRATE_NODE_ID, true, &krate.attrs, krate.span,
-                           |v| visit::walk_crate(v, krate));
-        annotator.index
     }
 }
 
@@ -234,10 +254,19 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
             None => {
                 // This is an 'unmarked' API, which should not exist
                 // in the standard library.
-                self.tcx.sess.span_err(span, "use of unmarked library feature");
-                self.tcx.sess.span_note(span, "this is either a bug in the library you are \
-                                               using or a bug in the compiler - there is \
-                                               no way to use this feature");
+                if self.tcx.sess.features.borrow().unmarked_api {
+                    self.tcx.sess.span_warn(span, "use of unmarked library feature");
+                    self.tcx.sess.span_note(span, "this is either a bug in the library you are \
+                                                   using and a bug in the compiler - please \
+                                                   report it in both places");
+                } else {
+                    self.tcx.sess.span_err(span, "use of unmarked library feature");
+                    self.tcx.sess.span_note(span, "this is either a bug in the library you are \
+                                                   using and a bug in the compiler - please \
+                                                   report it in both places");
+                    self.tcx.sess.span_note(span, "use #![feature(unmarked_api)] in the \
+                                                   crate attributes to override this");
+                }
             }
         }
     }

@@ -18,10 +18,11 @@
 use prelude::v1::*;
 
 use ffi;
-use old_io::{self, IoResult, IoError};
+use io::ErrorKind;
 use libc;
 use num::{Int, SignedInt};
 use num;
+use old_io::{self, IoResult, IoError};
 use str;
 use sys_common::mkerr_libc;
 
@@ -131,6 +132,35 @@ pub fn decode_error_detailed(errno: i32) -> IoError {
     let mut err = decode_error(errno);
     err.detail = Some(os::error_string(errno));
     err
+}
+
+pub fn decode_error_kind(errno: i32) -> ErrorKind {
+    match errno as libc::c_int {
+        libc::ECONNREFUSED => ErrorKind::ConnectionRefused,
+        libc::ECONNRESET => ErrorKind::ConnectionReset,
+        libc::EPERM | libc::EACCES => ErrorKind::PermissionDenied,
+        libc::EPIPE => ErrorKind::BrokenPipe,
+        libc::ENOTCONN => ErrorKind::NotConnected,
+        libc::ECONNABORTED => ErrorKind::ConnectionAborted,
+        libc::EADDRNOTAVAIL => ErrorKind::ConnectionRefused,
+        libc::EADDRINUSE => ErrorKind::ConnectionRefused,
+        libc::ENOENT => ErrorKind::FileNotFound,
+        libc::EISDIR => ErrorKind::InvalidInput,
+        libc::EINTR => ErrorKind::Interrupted,
+        libc::EINVAL => ErrorKind::InvalidInput,
+        libc::ENOTTY => ErrorKind::MismatchedFileTypeForOperation,
+        libc::ETIMEDOUT => ErrorKind::TimedOut,
+        libc::ECANCELED => ErrorKind::TimedOut,
+        libc::consts::os::posix88::EEXIST => ErrorKind::PathAlreadyExists,
+
+        // These two constants can have the same value on some systems,
+        // but different values on others, so we can't use a match
+        // clause
+        x if x == libc::EAGAIN || x == libc::EWOULDBLOCK =>
+            ErrorKind::ResourceUnavailable,
+
+        _ => ErrorKind::Other,
+    }
 }
 
 #[inline]

@@ -14,7 +14,7 @@
 Core encoding and decoding interfaces.
 */
 
-use std::path;
+use std::old_path;
 use std::rc::Rc;
 use std::cell::{Cell, RefCell};
 use std::sync::Arc;
@@ -538,29 +538,29 @@ macro_rules! tuple {
 
 tuple! { T0, T1, T2, T3, T4, T5, T6, T7, T8, T9, T10, T11, }
 
-impl Encodable for path::posix::Path {
+impl Encodable for old_path::posix::Path {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         self.as_vec().encode(e)
     }
 }
 
-impl Decodable for path::posix::Path {
-    fn decode<D: Decoder>(d: &mut D) -> Result<path::posix::Path, D::Error> {
+impl Decodable for old_path::posix::Path {
+    fn decode<D: Decoder>(d: &mut D) -> Result<old_path::posix::Path, D::Error> {
         let bytes: Vec<u8> = try!(Decodable::decode(d));
-        Ok(path::posix::Path::new(bytes))
+        Ok(old_path::posix::Path::new(bytes))
     }
 }
 
-impl Encodable for path::windows::Path {
+impl Encodable for old_path::windows::Path {
     fn encode<S: Encoder>(&self, e: &mut S) -> Result<(), S::Error> {
         self.as_vec().encode(e)
     }
 }
 
-impl Decodable for path::windows::Path {
-    fn decode<D: Decoder>(d: &mut D) -> Result<path::windows::Path, D::Error> {
+impl Decodable for old_path::windows::Path {
+    fn decode<D: Decoder>(d: &mut D) -> Result<old_path::windows::Path, D::Error> {
         let bytes: Vec<u8> = try!(Decodable::decode(d));
-        Ok(path::windows::Path::new(bytes))
+        Ok(old_path::windows::Path::new(bytes))
     }
 }
 

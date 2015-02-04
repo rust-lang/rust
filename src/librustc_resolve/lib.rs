@@ -4521,7 +4521,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 visit::walk_expr(self, expr);
             }
 
-            ExprClosure(_, _, ref fn_decl, ref block) => {
+            ExprClosure(_, ref fn_decl, ref block) => {
                 self.resolve_function(ClosureRibKind(expr.id),
                                       Some(&**fn_decl), NoTypeParameters,
                                       &**block);

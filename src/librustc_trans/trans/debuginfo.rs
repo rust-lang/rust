@@ -1283,7 +1283,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         ast_map::NodeExpr(ref expr) => {
             match expr.node {
-                ast::ExprClosure(_, _, ref fn_decl, ref top_level_block) => {
+                ast::ExprClosure(_, ref fn_decl, ref top_level_block) => {
                     let name = format!("fn{}", token::gensym("fn"));
                     let name = token::str_to_ident(&name[]);
                     (name, &**fn_decl,
@@ -1590,7 +1590,7 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                     Some(ref p) if p.is_relative() => {
                         // prepend "./" if necessary
                         let dotdot = b"..";
-                        let prefix: &[u8] = &[dotdot[0], ::std::path::SEP_BYTE];
+                        let prefix: &[u8] = &[dotdot[0], ::std::old_path::SEP_BYTE];
                         let mut path_bytes = p.as_vec().to_vec();
 
                         if &path_bytes[..2] != prefix &&
@@ -3595,7 +3595,7 @@ fn create_scope_map(cx: &CrateContext,
                 })
             }
 
-            ast::ExprClosure(_, _, ref decl, ref block) => {
+            ast::ExprClosure(_, ref decl, ref block) => {
                 with_new_scope(cx,
                                block.span,
                                scope_stack,

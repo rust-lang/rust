@@ -8,12 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+#![feature(box_syntax, unboxed_closures)]
+
+fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 
 fn main() {
     let r = {
         let x = box 42;
-        let f = move|:| &x; //~ ERROR: `x` does not live long enough
+        let f = to_fn_once(move|| &x); //~ ERROR: `x` does not live long enough
         f()
     };
 

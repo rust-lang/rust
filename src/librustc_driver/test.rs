@@ -125,7 +125,6 @@ fn test_env<F>(source_string: &str,
         resolve::resolve_crate(&sess, &ast_map, &lang_items, krate, resolve::MakeGlobMap::No);
     let named_region_map = resolve_lifetime::krate(&sess, krate, &def_map);
     let region_map = region::resolve_crate(&sess, krate);
-    let stability_index = stability::Index::build(&sess, krate);
     let tcx = ty::mk_ctxt(sess,
                           &arenas,
                           def_map,
@@ -134,7 +133,7 @@ fn test_env<F>(source_string: &str,
                           freevars,
                           region_map,
                           lang_items,
-                          stability_index);
+                          stability::Index::new(krate));
     let infcx = infer::new_infer_ctxt(&tcx);
     body(Env { infcx: &infcx });
     infcx.resolve_regions_and_report_errors(ast::CRATE_NODE_ID);
