@@ -80,7 +80,7 @@ pub use core::str::{Lines, LinesAny, MatchIndices, SplitStr, CharRange};
 pub use core::str::{Split, SplitTerminator};
 pub use core::str::{SplitN, RSplitN};
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices, Bytes};
-pub use core::str::{from_utf8_unchecked, from_c_str};
+pub use core::str::{from_utf8_unchecked, from_c_str, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
 
 /*
