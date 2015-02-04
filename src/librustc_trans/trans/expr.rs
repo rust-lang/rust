@@ -586,7 +586,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let contents_ty = expr_ty(bcx, &**contents);
             match box_ty.sty {
                 ty::ty_uniq(..) => {
-                    trans_uniq_expr(bcx, box_ty, &**contents, contents_ty)
+                    trans_uniq_expr(bcx, expr, box_ty, &**contents, contents_ty)
                 }
                 _ => bcx.sess().span_bug(expr.span,
                                          "expected unique box")
@@ -787,7 +787,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                 index_expr.debug_loc());
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
-                                                     index_expr.span,
+                                                     expr_info(index_expr),
                                                      ix_val,
                                                      len)
             });
@@ -1574,7 +1574,7 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             immediate_rvalue_bcx(bcx, llneg, un_ty).to_expr_datumblock()
         }
         ast::UnUniq => {
-            trans_uniq_expr(bcx, un_ty, sub_expr, expr_ty(bcx, sub_expr))
+            trans_uniq_expr(bcx, expr, un_ty, sub_expr, expr_ty(bcx, sub_expr))
         }
         ast::UnDeref => {
             let datum = unpack_datum!(bcx, trans(bcx, sub_expr));
@@ -1584,6 +1584,7 @@ fn trans_unary<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                               box_expr: &ast::Expr,
                                box_ty: Ty<'tcx>,
                                contents: &ast::Expr,
                                contents_ty: Ty<'tcx>)
@@ -1595,7 +1596,12 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let size = llsize_of(bcx.ccx(), llty);
     let align = C_uint(bcx.ccx(), type_of::align_of(bcx.ccx(), contents_ty));
     let llty_ptr = llty.ptr_to();
-    let Result { bcx, val } = malloc_raw_dyn(bcx, llty_ptr, box_ty, size, align);
+    let Result { bcx, val } = malloc_raw_dyn(bcx,
+                                             llty_ptr,
+                                             box_ty,
+                                             size,
+                                             align,
+                                             box_expr.debug_loc());
     // Unique boxes do not allocate for zero-size types. The standard library
     // may assume that `free` is never called on the pointer returned for
     // `Box<ZeroSizeType>`.
@@ -1697,8 +1703,12 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             FDiv(bcx, lhs, rhs, binop_debug_loc)
         } else {
             // Only zero-check integers; fp /0 is NaN
-            bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
-                                                  op, lhs, rhs, rhs_t);
+            bcx = base::fail_if_zero_or_overflows(bcx,
+                                                  expr_info(binop_expr),
+                                                  op,
+                                                  lhs,
+                                                  rhs,
+                                                  rhs_t);
             if is_signed {
                 SDiv(bcx, lhs, rhs, binop_debug_loc)
             } else {
@@ -1711,7 +1721,8 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             FRem(bcx, lhs, rhs, binop_debug_loc)
         } else {
             // Only zero-check integers; fp %0 is NaN
-            bcx = base::fail_if_zero_or_overflows(bcx, binop_expr.span,
+            bcx = base::fail_if_zero_or_overflows(bcx,
+                                                  expr_info(binop_expr),
                                                   op, lhs, rhs, rhs_t);
             if is_signed {
                 SRem(bcx, lhs, rhs, binop_debug_loc)
@@ -1845,7 +1856,7 @@ fn trans_overloaded_op<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                    -> Result<'blk, 'tcx> {
     let method_ty = (*bcx.tcx().method_map.borrow())[method_call].ty;
     callee::trans_call_inner(bcx,
-                             Some(expr_info(expr)),
+                             expr.debug_loc(),
                              monomorphize_type(bcx, method_ty),
                              |bcx, arg_cleanup_scope| {
                                 meth::trans_method_callee(bcx,
@@ -1872,7 +1883,7 @@ fn trans_overloaded_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     all_args.extend(args.iter().map(|e| &**e));
     unpack_result!(bcx,
                    callee::trans_call_inner(bcx,
-                                            Some(expr_info(expr)),
+                                            expr.debug_loc(),
                                             monomorphize_type(bcx,
                                                               method_type),
                                             |bcx, arg_cleanup_scope| {

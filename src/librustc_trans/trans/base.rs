@@ -57,7 +57,7 @@ use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, ExternMap, FunctionContext};
-use trans::common::{Result};
+use trans::common::{Result, NodeIdAndSpan};
 use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{tydesc_info, type_is_immediate};
 use trans::common::{type_is_zero_size, val_ty};
@@ -379,7 +379,8 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   llty_ptr: Type,
                                   info_ty: Ty<'tcx>,
                                   size: ValueRef,
-                                  align: ValueRef)
+                                  align: ValueRef,
+                                  debug_loc: DebugLoc)
                                   -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("malloc_raw_exchange");
 
@@ -387,7 +388,8 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let r = callee::trans_lang_call(bcx,
         require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem),
         &[size, align],
-        None);
+        None,
+        debug_loc);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
@@ -851,7 +853,7 @@ pub fn cast_shift_rhs<F, G>(op: ast::BinOp,
 
 pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
                                 cx: Block<'blk, 'tcx>,
-                                span: Span,
+                                call_info: NodeIdAndSpan,
                                 divrem: ast::BinOp,
                                 lhs: ValueRef,
                                 rhs: ValueRef,
@@ -879,7 +881,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
-        controlflow::trans_fail(bcx, span, InternedString::new(zero_text))
+        controlflow::trans_fail(bcx, call_info, InternedString::new(zero_text))
     });
 
     // To quote LLVM's documentation for the sdiv instruction:
@@ -913,7 +915,8 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
             let is_min = ICmp(bcx, llvm::IntEQ, lhs,
                               C_integral(llty, min, true));
             with_cond(bcx, is_min, |bcx| {
-                controlflow::trans_fail(bcx, span,
+                controlflow::trans_fail(bcx,
+                                        call_info,
                                         InternedString::new(overflow_text))
             })
         })
