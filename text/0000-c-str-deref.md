@@ -105,7 +105,7 @@ conversion from a raw pointer should be added (with an inferred lifetime
 as per another proposed [RFC](https://github.com/rust-lang/rfcs/pull/556)):
 ```rust
 impl CStr {
-    pub unsafe fn from_raw<'a>(ptr: *const libc::c_char) -> &'a CStr {
+    pub unsafe fn from_ptr<'a>(ptr: *const libc::c_char) -> &'a CStr {
         ...
     }
 }
@@ -166,7 +166,7 @@ is established.
 # Unresolved questions
 
 The present function `c_str_to_bytes(&ptr)` may be deprecated in favor of
-the more composable `CStr::from_raw(ptr).to_bytes()`.
+the more composable `CStr::from_ptr(ptr).to_bytes()`.
 
 `CStr` can be made a
 [truly unsized type](https://github.com/rust-lang/rfcs/issues/709),
