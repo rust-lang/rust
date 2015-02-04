@@ -34,15 +34,6 @@ pub fn test_move_array_into_recv(a: [D; 3], recv: &mut [D; 3]) {
 }
 
 #[rustc_move_fragments]
-pub fn test_extract_array_elem(a: [D; 3], i: usize) -> D {
-    //~^ ERROR                 parent_of_fragments: `$(local a)`
-    //~| ERROR                  assigned_leaf_path: `$(local i)`
-    //~| ERROR                     moved_leaf_path: `$(local a).[]`
-    //~| ERROR                    unmoved_fragment: `$(allbutone $(local a).[])`
-    a[i]
-}
-
-#[rustc_move_fragments]
 pub fn test_overwrite_array_elem(mut a: [D; 3], i: usize, d: D) {
     //~^ ERROR                 parent_of_fragments: `$(local mut a)`
     //~| ERROR                  assigned_leaf_path: `$(local i)`
@@ -51,50 +42,6 @@ pub fn test_overwrite_array_elem(mut a: [D; 3], i: usize, d: D) {
     //~| ERROR                  assigned_leaf_path: `$(local mut a).[]`
     //~| ERROR                    unmoved_fragment: `$(allbutone $(local mut a).[])`
     a[i] = d;
-}
-
-// FIXME (pnkfelix): Both test_move_array_then_overwrite_elem1 and
-// test_move_array_then_overwrite_elem2 illustrate a behavior that
-// we need to make illegal if we want to get rid of drop-flags.
-// See RFC PR 320 for more discussion.
-
-#[rustc_move_fragments]
-pub fn test_move_array_then_overwrite_elem1(mut a: [D; 3], i: usize, recv: &mut [D; 3], d: D) {
-    //~^ ERROR                 parent_of_fragments: `$(local mut a)`
-    //~| ERROR                 parent_of_fragments: `$(local recv)`
-    //~| ERROR                  assigned_leaf_path: `$(local recv).*`
-    //~| ERROR                  assigned_leaf_path: `$(local i)`
-    //~| ERROR                  assigned_leaf_path: `$(local d)`
-    //~| ERROR                     moved_leaf_path: `$(local d)`
-    //~| ERROR                  assigned_leaf_path: `$(local mut a).[]`
-    //~| ERROR                    unmoved_fragment: `$(allbutone $(local mut a).[])`
-
-    // This test covers the case where the array contents have been all moved away, but
-    // we still need to deal with new initializing writes into the array.
-    *recv = a;
-    a[i] = d;
-}
-
-#[rustc_move_fragments]
-pub fn test_move_array_then_overwrite_elem2(mut a: [D; 3], i: usize, j: usize,
-                                            recv: &mut [D; 3], d1: D, d2: D) {
-    //~^^ ERROR                parent_of_fragments: `$(local mut a)`
-    //~| ERROR                 parent_of_fragments: `$(local recv)`
-    //~| ERROR                  assigned_leaf_path: `$(local recv).*`
-    //~| ERROR                  assigned_leaf_path: `$(local i)`
-    //~| ERROR                  assigned_leaf_path: `$(local j)`
-    //~| ERROR                  assigned_leaf_path: `$(local d1)`
-    //~| ERROR                  assigned_leaf_path: `$(local d2)`
-    //~| ERROR                     moved_leaf_path: `$(local d1)`
-    //~| ERROR                     moved_leaf_path: `$(local d2)`
-    //~| ERROR                  assigned_leaf_path: `$(local mut a).[]`
-    //~| ERROR                    unmoved_fragment: `$(allbutone $(local mut a).[])`
-
-    // This test covers the case where the array contents have been all moved away, but
-    // we still need to deal with new initializing writes into the array.
-    *recv = a;
-    a[i] = d1;
-    a[j] = d2;
 }
 
 pub fn main() { }

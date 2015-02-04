@@ -14,6 +14,8 @@ fn main() {
         [1, 2, tail..] => tail,
         _ => unreachable!()
     };
-    a[0] = 0; //~ ERROR cannot assign to `a[..]` because it is borrowed
+    println!("t[0]: {}", t[0]);
+    a[2] = 0; //~ ERROR cannot assign to `a[..]` because it is borrowed
+    println!("t[0]: {}", t[0]);
     t[0];
 }
