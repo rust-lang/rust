@@ -1033,6 +1033,8 @@ pub fn load_ty<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         // for this leads to bad optimizations, so its arg type is an appropriately sized integer
         // and we have to convert it
         Load(cx, BitCast(cx, ptr, type_of::arg_type_of(cx.ccx(), t).ptr_to()))
+    } else if ty::type_is_region_ptr(t) || ty::type_is_unique(t) {
+        LoadNonNull(cx, ptr)
     } else if ty::type_is_char(t) {
         // a char is a Unicode codepoint, and so takes values from 0
         // to 0x10FFFF inclusive only.
