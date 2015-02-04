@@ -56,6 +56,7 @@ the direction the language is evolving in.
 * [0438-precedence-of-plus.md](text/0438-precedence-of-plus.md)
 * [0439-cmp-ops-reform.md](text/0439-cmp-ops-reform.md)
 * [0446--es6-unicode-escapes.md](text/0446-es6-unicode-escapes.md)
+* [0469-feature-gate-box-patterns.md](text/0469-feature-gate-box-patterns.md)
 * [0450-un-feature-gate-some-more-gates.md](text/0450-un-feature-gate-some-more-gates.md)
 * [0453-macro-reform.md](text/0453-macro-reform.md)
 * [0459-disallow-shadowing.md](text/0459-disallow-shadowing.md)
