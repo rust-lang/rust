@@ -528,6 +528,7 @@ static H256: [u32; 8] = [
 
 #[cfg(test)]
 mod tests {
+    #![allow(deprecated)]
     extern crate rand;
 
     use self::rand::Rng;

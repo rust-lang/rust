@@ -220,6 +220,9 @@
 //! ```
 
 #![unstable(feature = "rand")]
+#![deprecated(reason = "use the crates.io `rand` library instead",
+              since = "1.0.0-alpha")]
+#![allow(deprecated)]
 
 use cell::RefCell;
 use clone::Clone;

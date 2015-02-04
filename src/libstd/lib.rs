@@ -140,7 +140,7 @@ extern crate core;
 #[macro_reexport(vec)]
 extern crate "collections" as core_collections;
 
-extern crate "rand" as core_rand;
+#[allow(deprecated)] extern crate "rand" as core_rand;
 extern crate alloc;
 extern crate unicode;
 extern crate libc;

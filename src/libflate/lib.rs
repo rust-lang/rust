@@ -130,6 +130,7 @@ pub fn inflate_bytes_zlib(bytes: &[u8]) -> Option<Bytes> {
 
 #[cfg(test)]
 mod tests {
+    #![allow(deprecated)]
     use super::{inflate_bytes, deflate_bytes};
     use std::rand;
     use std::rand::Rng;
