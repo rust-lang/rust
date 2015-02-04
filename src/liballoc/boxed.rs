@@ -57,7 +57,8 @@ use core::hash::{self, Hash};
 use core::iter::Iterator;
 use core::marker::{Copy, Sized};
 use core::mem;
-use core::ops::{Deref, DerefMut, Drop, Placer, PlacementAgent};
+use core::ops::{Deref, DerefMut, Drop};
+use core::ops::{Placer, Boxed, Place, InPlace};
 use core::option::Option;
 use core::ptr::PtrExt;
 use core::ptr::Unique;
@@ -120,38 +121,51 @@ pub struct IntermediateBox<T: ?Sized>{
     align: uint,
 }
 
-impl<T: ?Sized> PlacementAgent<T> for IntermediateBox<T> {
-    type Owner = Box<T>;
-
+impl<T: ?Sized> Place<T> for IntermediateBox<T> {
     fn pointer(&mut self) -> *mut T { self.ptr as *mut T }
+}
 
-    unsafe fn finalize(self) -> Box<T> {
-        let p = self.ptr as *mut T;
-        mem::forget(self);
-        mem::transmute(p)
-    }
+unsafe fn finalize<T>(b: IntermediateBox<T>) -> Box<T> {
+    let p = b.ptr as *mut T;
+    mem::forget(b);
+    mem::transmute(p)
+}
+
+fn make_place<T>() -> IntermediateBox<T> {
+    let size = mem::size_of::<T>();
+    let align = mem::align_of::<T>();
+
+    let p = if size == 0 {
+        heap::EMPTY as *mut u8
+    } else {
+        let p = unsafe {
+            heap::allocate(size, align)
+        };
+        if p.is_null() {
+            panic!("Box make_place allocation failure.");
+        }
+        p
+    };
+
+    IntermediateBox { ptr: p, size: size, align: align }
+}
+
+impl<T> InPlace<T> for IntermediateBox<T> {
+    type Owner = Box<T>;
+    unsafe fn finalize(self) -> Box<T> { finalize(self) }
+}
+
+impl<T> Boxed for Box<T> {
+    type Data = T;
+    type Place = IntermediateBox<T>;
+    unsafe fn finalize(b: IntermediateBox<T>) -> Box<T> { finalize(b) }
 }
 
 impl<T> Placer<T> for ExchangeHeapSingleton {
-    type Interim = IntermediateBox<T>;
-    
+    type Place = IntermediateBox<T>;
+
     fn make_place(self) -> IntermediateBox<T> {
-        let size = mem::size_of::<T>();
-        let align = mem::align_of::<T>();
-
-        let p = if size == 0 {
-            heap::EMPTY as *mut u8
-        } else {
-            let p = unsafe {
-                heap::allocate(size, align)
-            };
-            if p.is_null() {
-                panic!("Box make_place allocation failure.");
-            }
-            p
-        };
-
-        IntermediateBox { ptr: p, size: size, align: align }
+        make_place()
     }
 }
 

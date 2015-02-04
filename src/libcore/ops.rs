@@ -1149,45 +1149,113 @@ impl<F,A,R> FnOnce<A,R> for F
     }
 }
 
-/// Interface to user-implementations of `box (<placer_expr>) <value_expr>`.
+/// Both `in (PLACE) EXPR` and `box EXPR` desugar into expressions
+/// that allocate an intermediate "place" that holds uninitialized
+/// state.  The desugaring evaluates EXPR, and writes the result at
+/// the address returned by the `pointer` method of this trait.
 ///
-/// `box (P) V` effectively expands into:
-/// `{ let b = P.make_place();
-///    let raw_place = b.pointer();
-///    let v = V;
-///    unsafe { ptr::write(raw_place, v); b.finalize() }
-///  }`
-///
-/// An instance of `Interim` is transient mutable value; an instance
-/// of `Placer` may *also* be some transient mutable value, but the
-/// placer could also be an immutable constant that implements `Copy`.
-pub trait Placer<Data: ?Sized> {
-    type Interim: PlacementAgent<Data>;
-    /// Allocates a place for the data to live, returning an
-    /// intermediate agent to negotiate build-up or tear-down.
-    fn make_place(self) -> Self::Interim;
-}
-
-/// Helper trait for expansion of `box (P) V`.
-///
-/// A placement agent can be thought of as a special representation
-/// for a hypothetical `&uninit` reference (which Rust cannot
-/// currently express directly). That is, it represents a pointer to
+/// A `Place` can be thought of as a special representation for a
+/// hypothetical `&uninit` reference (which Rust cannot currently
+/// express directly). That is, it represents a pointer to
 /// uninitialized storage.
 ///
 /// The client is responsible for two steps: First, initializing the
-/// payload (it can access its address via the `pointer()`
-/// method). Second, converting the agent to an instance of the owning
-/// pointer, via the `finalize()` method.
+/// payload (it can access its address via `pointer`). Second,
+/// converting the agent to an instance of the owning pointer, via the
+/// appropriate `finalize` method (see the `InPlace`.
 ///
-/// See also `Placer`.
-pub trait PlacementAgent<Data: ?Sized> {
+/// If evaluating EXPR fails, then the destructor for the
+/// implementation of Place to clean up any intermediate state
+/// (e.g. deallocate box storage, pop a stack, etc).
+pub trait Place<Data: ?Sized> {
+    /// Returns the address where the input value will be written.
+    /// Note that the data at this address is generally uninitialized,
+    /// and thus one should use `ptr::write` for initializing it.
+    fn pointer(&mut self) -> *mut Data;
+}
+
+/// Interface to implementations of  `in (PLACE) EXPR`.
+///
+/// `in (PLACE) EXPR` effectively desugars into:
+///
+/// ```
+/// let p = PLACE;
+/// let mut place = Placer::make_place(p);
+/// let raw_place = Place::pointer(&mut place);
+/// let value = EXPR;
+/// unsafe {
+///     std::ptr::write(raw_place, value);
+///     InPlace::finalize(place)
+/// }
+/// ```
+///
+/// The type of `in (PLACE) EXPR` is derived from the type of `PLACE`;
+/// if the type of `PLACE` is `P`, then the final type of the whole
+/// expression is `P::Place::Owner` (see the `InPlace` and `Boxed`
+/// traits).
+///
+/// Values for types implementing this trait usually are transient
+/// intermediate values (e.g. the return value of `Vec::emplace_back`)
+/// or `Copy`, since the `make_place` method takes `self` by value.
+pub trait Placer<Data: ?Sized> {
+    /// `Place` is the intermedate agent guarding the
+    /// uninitialized state for `Data`.
+    type Place: InPlace<Data>;
+
+    /// Creates a fresh place from `self`.
+    fn make_place(self) -> Self::Place;
+}
+
+/// Specialization of `Place` trait supporting `in (PLACE) EXPR`.
+pub trait InPlace<Data: ?Sized>: Place<Data> {
+    /// `Owner` is the type of the end value of `in (PLACE) EXPR`
+    ///
+    /// Note that when `in (PLACE) EXPR` is solely used for
+    /// side-effecting an existing data-structure,
+    /// e.g. `Vec::emplace_back`, then `Owner` need not carry any
+    /// information at all (e.g. it can be the unit type `()` in that
+    /// case).
     type Owner;
 
-    /// Returns a pointer to the offset in the place where the data lives.
-    fn pointer(&mut self) -> *mut Data;
-
-    /// Converts this intermediate agent into owning pointer for the data,
-    /// forgetting self in the process.
+    /// Converts self into the final value, shifting
+    /// deallocation/cleanup responsibilities (if any remain), over to
+    /// the returned instance of `Owner` and forgetting self.
     unsafe fn finalize(self) -> Self::Owner;
+}
+
+/// Core trait for the `box EXPR` form.
+///
+/// `box EXPR` effectively desugars into:
+///
+/// ```
+/// let mut place = BoxPlace::make_place();
+/// let raw_place = Place::pointer(&mut place);
+/// let value = $value;
+/// unsafe {
+///     ::std::ptr::write(raw_place, value);
+///     Boxed::finalize(place)
+/// }
+/// ```
+///
+/// The type of `box EXPR` is supplied from its surrounding
+/// context; in the above expansion, the result type `T` is used
+/// to determine which implementation of `Boxed` to use, and that
+/// `<T as Boxed>` in turn dictates determines which
+/// implementation of `BoxPlace` to use, namely:
+/// `<<T as Boxed>::Place as BoxPlace>`.
+pub trait Boxed {
+    /// The kind of data that is stored in this kind of box.
+    type Data;  /* (`Data` unused b/c cannot yet express below bound.) */
+    type Place; /* should be bounded by BoxPlace<Self::Data> */
+
+    /// Converts filled place into final owning value, shifting
+    /// deallocation/cleanup responsibilities (if any remain), over to
+    /// returned instance of `Self` and forgetting `filled`.
+    unsafe fn finalize(filled: Self::Place) -> Self;
+}
+
+/// Specialization of `Place` trait supporting `box EXPR`.
+pub trait BoxPlace<Data: ?Sized> : Place<Data> {
+    /// Creates a globally fresh place.
+    fn make_place() -> Self;
 }

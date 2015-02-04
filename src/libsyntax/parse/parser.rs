@@ -56,7 +56,7 @@ use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
 use ast::{TyFixedLengthVec, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
 use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
-use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
+use ast::{TyRptr, TyTup, TyU32, TyVec};
 use ast::{TypeImplItem, TypeTraitItem, Typedef, ClosureKind};
 use ast::{UnnamedField, UnsafeBlock};
 use ast::{ViewPath, ViewPathGlob, ViewPathList, ViewPathSimple};
@@ -2801,12 +2801,14 @@ impl<'a> Parser<'a> {
                 self.abort_if_errors();
               }
               if !is_in {
-                let box_span = mk_sp(lo, self.last_span.hi);
-                self.span_warn(
-                    box_span,
-                    "deprecated syntax; use the `in` keyword now \
-                           (e.g. change `box (<expr>) <expr>` to \
-                                        `in (<expr>) <expr>`)");
+                // SNAP 9006c3c
+                // Enable this warning after snapshot
+                // let box_span = mk_sp(lo, self.last_span.hi);
+                // self.span_warn(
+                //     box_span,
+                //     "deprecated syntax; use the `in` keyword now \
+                //            (e.g. change `box (<expr>) <expr>` to \
+                //                         `in (<expr>) <expr>`)");
               }
               let subexpression = self.parse_prefix_expr();
               hi = subexpression.span.hi;
@@ -2816,10 +2818,7 @@ impl<'a> Parser<'a> {
                 // Otherwise, we use the unique pointer default.
                 let subexpression = self.parse_prefix_expr();
                 hi = subexpression.span.hi;
-                // FIXME (pnkfelix): After working out kinks with box
-                // desugaring, should be `ExprBox(None, subexpression)`
-                // instead.
-                ex = self.mk_unary(UnUniq, subexpression);
+                ex = ExprBox(None, subexpression);
             }
           }
           _ => return self.parse_dot_or_call_expr()
