@@ -827,9 +827,13 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                          abi);
         fcx.scopes.borrow_mut().last_mut().unwrap().drop_non_lifetime_clean();
 
-        bcx = foreign::trans_native_call(bcx, callee_ty,
-                                         llfn, opt_llretslot.unwrap(),
-                                         &llargs[], arg_tys);
+        bcx = foreign::trans_native_call(bcx,
+                                         callee_ty,
+                                         llfn,
+                                         opt_llretslot.unwrap(),
+                                         &llargs[],
+                                         arg_tys,
+                                         debug_loc);
     }
 
     fcx.pop_and_trans_custom_cleanup_scope(bcx, arg_cleanup_scope);

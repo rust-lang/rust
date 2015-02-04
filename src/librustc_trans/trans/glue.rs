@@ -342,7 +342,11 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             // Return the sum of sizes and max of aligns.
             let size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
             let align = Select(bcx,
-                               ICmp(bcx, llvm::IntULT, sized_align, unsized_align),
+                               ICmp(bcx,
+                                    llvm::IntULT,
+                                    sized_align,
+                                    unsized_align,
+                                    DebugLoc::None),
                                sized_align,
                                unsized_align);
             (size, align)
