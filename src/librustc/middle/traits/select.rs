@@ -1918,7 +1918,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             Err(ErrorReported) => Vec::new()
         };
 
-        let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
         debug!("vtable_default_impl_data: obligations={}", obligations.repr(self.tcx()));
 
         VtableDefaultTraitData {

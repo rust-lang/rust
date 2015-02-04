@@ -265,7 +265,7 @@ pub struct VtableImplData<'tcx, N> {
 #[derive(Debug,Clone)]
 pub struct VtableDefaultTraitData<N> {
     pub trait_def_id: ast::DefId,
-    pub nested: subst::VecPerParamSpace<N>
+    pub nested: Vec<N>
 }
 
 #[derive(Debug,Clone)]
@@ -594,7 +594,7 @@ impl<N> VtableDefaultTraitData<N> {
     {
         VtableDefaultTraitData {
             trait_def_id: self.trait_def_id,
-            nested: self.nested.map(op)
+            nested: self.nested.iter().map(op).collect()
         }
     }
 
@@ -604,7 +604,7 @@ impl<N> VtableDefaultTraitData<N> {
         let VtableDefaultTraitData { trait_def_id, nested } = self;
         VtableDefaultTraitData {
             trait_def_id: trait_def_id,
-            nested: nested.map_move(op)
+            nested: nested.into_iter().map(op).collect()
         }
     }
 }
