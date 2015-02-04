@@ -10,8 +10,6 @@
 
 // #![warn(deprecated_mode)]
 
-pub use self::WfConstraint::*;
-
 use middle::infer::GenericKind;
 use middle::subst::{ParamSpace, Subst, Substs};
 use middle::ty::{self, Ty};
@@ -23,37 +21,37 @@ use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
 
-pub enum WfConstraint<'tcx> {
-    RegionSubRegionConstraint(Option<Ty<'tcx>>, ty::Region, ty::Region),
-    RegionSubGenericConstraint(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
+pub enum Implication<'tcx> {
+    RegionSubRegion(Option<Ty<'tcx>>, ty::Region, ty::Region),
+    RegionSubGeneric(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
 }
 
-struct Wf<'a, 'tcx: 'a> {
+struct Implicator<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     stack: Vec<(ty::Region, Option<Ty<'tcx>>)>,
-    out: Vec<WfConstraint<'tcx>>,
+    out: Vec<Implication<'tcx>>,
 }
 
 /// This routine computes the well-formedness constraints that must hold for the type `ty` to
 /// appear in a context with lifetime `outer_region`
-pub fn region_wf_constraints<'tcx>(
+pub fn implications<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     ty: Ty<'tcx>,
     outer_region: ty::Region)
-    -> Vec<WfConstraint<'tcx>>
+    -> Vec<Implication<'tcx>>
 {
     let mut stack = Vec::new();
     stack.push((outer_region, None));
-    let mut wf = Wf { tcx: tcx,
+    let mut wf = Implicator { tcx: tcx,
                       stack: stack,
                       out: Vec::new() };
     wf.accumulate_from_ty(ty);
     wf.out
 }
 
-impl<'a, 'tcx> Wf<'a, 'tcx> {
+impl<'a, 'tcx> Implicator<'a, 'tcx> {
     fn accumulate_from_ty(&mut self, ty: Ty<'tcx>) {
-        debug!("Wf::accumulate_from_ty(ty={})",
+        debug!("accumulate_from_ty(ty={})",
                ty.repr(self.tcx));
 
         match ty.sty {
@@ -196,7 +194,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                                   opt_ty: Option<Ty<'tcx>>,
                                   r_a: ty::Region,
                                   r_b: ty::Region) {
-        self.out.push(RegionSubRegionConstraint(opt_ty, r_a, r_b));
+        self.out.push(Implication::RegionSubRegion(opt_ty, r_a, r_b));
     }
 
     /// Pushes a constraint that `param_ty` must outlive the top region on the stack.
@@ -210,7 +208,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
     fn push_projection_constraint_from_top(&mut self,
                                            projection_ty: &ty::ProjectionTy<'tcx>) {
         let &(region, opt_ty) = self.stack.last().unwrap();
-        self.out.push(RegionSubGenericConstraint(
+        self.out.push(Implication::RegionSubGeneric(
             opt_ty, region, GenericKind::Projection(projection_ty.clone())));
     }
 
@@ -219,7 +217,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                              region: ty::Region,
                              opt_ty: Option<Ty<'tcx>>,
                              param_ty: ty::ParamTy) {
-        self.out.push(RegionSubGenericConstraint(
+        self.out.push(Implication::RegionSubGeneric(
             opt_ty, region, GenericKind::Param(param_ty)));
     }
 
@@ -371,22 +369,22 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         for &r_d in &required_region_bounds {
             // Each of these is an instance of the `'c <= 'b`
             // constraint above
-            self.out.push(RegionSubRegionConstraint(Some(ty), r_d, r_c));
+            self.out.push(Implication::RegionSubRegion(Some(ty), r_d, r_c));
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for WfConstraint<'tcx> {
+impl<'tcx> Repr<'tcx> for Implication<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
-            RegionSubRegionConstraint(_, ref r_a, ref r_b) => {
-                format!("RegionSubRegionConstraint({}, {})",
+            Implication::RegionSubRegion(_, ref r_a, ref r_b) => {
+                format!("RegionSubRegion({}, {})",
                         r_a.repr(tcx),
                         r_b.repr(tcx))
             }
 
-            RegionSubGenericConstraint(_, ref r, ref p) => {
-                format!("RegionSubGenericConstraint({}, {})",
+            Implication::RegionSubGeneric(_, ref r, ref p) => {
+                format!("RegionSubGeneric({}, {})",
                         r.repr(tcx),
                         p.repr(tcx))
             }

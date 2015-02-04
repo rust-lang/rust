@@ -335,25 +335,21 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             debug!("relate_free_regions(t={})", ty.repr(tcx));
             let body_scope = CodeExtent::from_node_id(body_id);
             let body_scope = ty::ReScope(body_scope);
-            let constraints =
-                implicator::region_wf_constraints(
-                    tcx,
-                    ty,
-                    body_scope);
-            for constraint in &constraints {
-                debug!("constraint: {}", constraint.repr(tcx));
-                match *constraint {
-                    implicator::RegionSubRegionConstraint(_,
+            let implications = implicator::implications(tcx, ty, body_scope);
+            for implication in implications {
+                debug!("implication: {}", implication.repr(tcx));
+                match implication {
+                    implicator::Implication::RegionSubRegion(_,
                                               ty::ReFree(free_a),
                                               ty::ReFree(free_b)) => {
                         tcx.region_maps.relate_free_regions(free_a, free_b);
                     }
-                    implicator::RegionSubRegionConstraint(_,
+                    implicator::Implication::RegionSubRegion(_,
                                               ty::ReFree(free_a),
                                               ty::ReInfer(ty::ReVar(vid_b))) => {
                         self.fcx.inh.infcx.add_given(free_a, vid_b);
                     }
-                    implicator::RegionSubRegionConstraint(..) => {
+                    implicator::Implication::RegionSubRegion(..) => {
                         // In principle, we could record (and take
                         // advantage of) every relationship here, but
                         // we are also free not to -- it simply means
@@ -364,8 +360,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                         // relationship that arises here, but
                         // presently we do not.)
                     }
-                    implicator::RegionSubGenericConstraint(_, r_a, ref generic_b) => {
-                        debug!("RegionSubGenericConstraint: {} <= {}",
+                    implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
+                        debug!("RegionSubGeneric: {} <= {}",
                                r_a.repr(tcx), generic_b.repr(tcx));
 
                         self.region_bound_pairs.push((r_a, generic_b.clone()));
@@ -1481,25 +1477,21 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            ty.repr(rcx.tcx()),
            region.repr(rcx.tcx()));
 
-    let constraints =
-        implicator::region_wf_constraints(
-            rcx.tcx(),
-            ty,
-            region);
-    for constraint in &constraints {
-        debug!("constraint: {}", constraint.repr(rcx.tcx()));
-        match *constraint {
-            implicator::RegionSubRegionConstraint(None, r_a, r_b) => {
+    let implications = implicator::implications(rcx.tcx(), ty, region);
+    for implication in implications {
+        debug!("implication: {}", implication.repr(rcx.tcx()));
+        match implication {
+            implicator::Implication::RegionSubRegion(None, r_a, r_b) => {
                 rcx.fcx.mk_subr(origin.clone(), r_a, r_b);
             }
-            implicator::RegionSubRegionConstraint(Some(ty), r_a, r_b) => {
+            implicator::Implication::RegionSubRegion(Some(ty), r_a, r_b) => {
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
                 rcx.fcx.mk_subr(o1, r_a, r_b);
             }
-            implicator::RegionSubGenericConstraint(None, r_a, ref generic_b) => {
+            implicator::Implication::RegionSubGeneric(None, r_a, ref generic_b) => {
                 generic_must_outlive(rcx, origin.clone(), r_a, generic_b);
             }
-            implicator::RegionSubGenericConstraint(Some(ty), r_a, ref generic_b) => {
+            implicator::Implication::RegionSubGeneric(Some(ty), r_a, ref generic_b) => {
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
                 generic_must_outlive(rcx, o1, r_a, generic_b);
             }
