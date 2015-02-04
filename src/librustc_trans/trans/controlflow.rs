@@ -28,7 +28,6 @@ use util::ppaux::Repr;
 use syntax::ast;
 use syntax::ast::Ident;
 use syntax::ast_util;
-use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
 use syntax::visit::Visitor;
@@ -361,31 +360,32 @@ pub fn trans_ret<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 }
 
 pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                              sp: Span,
+                              call_info: NodeIdAndSpan,
                               fail_str: InternedString)
                               -> Block<'blk, 'tcx> {
     let ccx = bcx.ccx();
     let _icx = push_ctxt("trans_fail_value");
 
     let v_str = C_str_slice(ccx, fail_str);
-    let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
+    let loc = bcx.sess().codemap().lookup_char_pos(call_info.span.lo);
     let filename = token::intern_and_get_ident(&loc.file.name[]);
     let filename = C_str_slice(ccx, filename);
     let line = C_uint(ccx, loc.line);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
     let expr_file_line = consts::const_addr_of(ccx, expr_file_line_const, ast::MutImmutable);
     let args = vec!(expr_file_line);
-    let did = langcall(bcx, Some(sp), "", PanicFnLangItem);
+    let did = langcall(bcx, Some(call_info.span), "", PanicFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
                                       &args[],
-                                      Some(expr::Ignore)).bcx;
+                                      Some(expr::Ignore),
+                                      call_info.debug_loc()).bcx;
     Unreachable(bcx);
     return bcx;
 }
 
 pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                           sp: Span,
+                                           call_info: NodeIdAndSpan,
                                            index: ValueRef,
                                            len: ValueRef)
                                            -> Block<'blk, 'tcx> {
@@ -393,7 +393,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_fail_bounds_check");
 
     // Extract the file/line from the span
-    let loc = bcx.sess().codemap().lookup_char_pos(sp.lo);
+    let loc = bcx.sess().codemap().lookup_char_pos(call_info.span.lo);
     let filename = token::intern_and_get_ident(&loc.file.name[]);
 
     // Invoke the lang item
@@ -402,11 +402,12 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let file_line_const = C_struct(ccx, &[filename, line], false);
     let file_line = consts::const_addr_of(ccx, file_line_const, ast::MutImmutable);
     let args = vec!(file_line, index, len);
-    let did = langcall(bcx, Some(sp), "", PanicBoundsCheckFnLangItem);
+    let did = langcall(bcx, Some(call_info.span), "", PanicBoundsCheckFnLangItem);
     let bcx = callee::trans_lang_call(bcx,
                                       did,
                                       &args[],
-                                      Some(expr::Ignore)).bcx;
+                                      Some(expr::Ignore),
+                                      call_info.debug_loc()).bcx;
     Unreachable(bcx);
     return bcx;
 }

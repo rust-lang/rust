@@ -77,7 +77,11 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 with_cond(bcx, not_empty, |bcx| {
                     let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty));
                     let size = Mul(bcx, C_uint(ccx, unit_size), len, DebugLoc::None);
-                    glue::trans_exchange_free_dyn(bcx, dataptr, size, llalign)
+                    glue::trans_exchange_free_dyn(bcx,
+                                                  dataptr,
+                                                  size,
+                                                  llalign,
+                                                  DebugLoc::None)
                 })
             } else {
                 bcx

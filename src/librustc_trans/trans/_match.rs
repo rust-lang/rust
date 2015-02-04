@@ -244,25 +244,29 @@ impl<'a> ConstantExpr<'a> {
 // An option identifying a branch (either a literal, an enum variant or a range)
 #[derive(Debug)]
 enum Opt<'a, 'tcx> {
-    ConstantValue(ConstantExpr<'a>),
-    ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>),
-    Variant(ty::Disr, Rc<adt::Repr<'tcx>>, ast::DefId),
-    SliceLengthEqual(uint),
-    SliceLengthGreaterOrEqual(/* prefix length */ uint, /* suffix length */ uint),
+    ConstantValue(ConstantExpr<'a>, DebugLoc),
+    ConstantRange(ConstantExpr<'a>, ConstantExpr<'a>, DebugLoc),
+    Variant(ty::Disr, Rc<adt::Repr<'tcx>>, ast::DefId, DebugLoc),
+    SliceLengthEqual(uint, DebugLoc),
+    SliceLengthGreaterOrEqual(/* prefix length */ uint,
+                              /* suffix length */ uint,
+                              DebugLoc),
 }
 
 impl<'a, 'tcx> Opt<'a, 'tcx> {
     fn eq(&self, other: &Opt<'a, 'tcx>, tcx: &ty::ctxt<'tcx>) -> bool {
         match (self, other) {
-            (&ConstantValue(a), &ConstantValue(b)) => a.eq(b, tcx),
-            (&ConstantRange(a1, a2), &ConstantRange(b1, b2)) => {
+            (&ConstantValue(a, _), &ConstantValue(b, _)) => a.eq(b, tcx),
+            (&ConstantRange(a1, a2, _), &ConstantRange(b1, b2, _)) => {
                 a1.eq(b1, tcx) && a2.eq(b2, tcx)
             }
-            (&Variant(a_disr, ref a_repr, a_def), &Variant(b_disr, ref b_repr, b_def)) => {
+            (&Variant(a_disr, ref a_repr, a_def, _),
+             &Variant(b_disr, ref b_repr, b_def, _)) => {
                 a_disr == b_disr && *a_repr == *b_repr && a_def == b_def
             }
-            (&SliceLengthEqual(a), &SliceLengthEqual(b)) => a == b,
-            (&SliceLengthGreaterOrEqual(a1, a2), &SliceLengthGreaterOrEqual(b1, b2)) => {
+            (&SliceLengthEqual(a, _), &SliceLengthEqual(b, _)) => a == b,
+            (&SliceLengthGreaterOrEqual(a1, a2, _),
+             &SliceLengthGreaterOrEqual(b1, b2, _)) => {
                 a1 == b1 && a2 == b2
             }
             _ => false
@@ -273,27 +277,37 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
         let _icx = push_ctxt("match::trans_opt");
         let ccx = bcx.ccx();
         match *self {
-            ConstantValue(ConstantExpr(lit_expr)) => {
+            ConstantValue(ConstantExpr(lit_expr), _) => {
                 let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
                 let (llval, _) = consts::const_expr(ccx, &*lit_expr);
                 let lit_datum = immediate_rvalue(llval, lit_ty);
                 let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
                 SingleResult(Result::new(bcx, lit_datum.val))
             }
-            ConstantRange(ConstantExpr(ref l1), ConstantExpr(ref l2)) => {
+            ConstantRange(ConstantExpr(ref l1), ConstantExpr(ref l2), _) => {
                 let (l1, _) = consts::const_expr(ccx, &**l1);
                 let (l2, _) = consts::const_expr(ccx, &**l2);
                 RangeResult(Result::new(bcx, l1), Result::new(bcx, l2))
             }
-            Variant(disr_val, ref repr, _) => {
+            Variant(disr_val, ref repr, _, _) => {
                 adt::trans_case(bcx, &**repr, disr_val)
             }
-            SliceLengthEqual(length) => {
+            SliceLengthEqual(length, _) => {
                 SingleResult(Result::new(bcx, C_uint(ccx, length)))
             }
-            SliceLengthGreaterOrEqual(prefix, suffix) => {
+            SliceLengthGreaterOrEqual(prefix, suffix, _) => {
                 LowerBound(Result::new(bcx, C_uint(ccx, prefix + suffix)))
             }
+        }
+    }
+
+    fn debug_loc(&self) -> DebugLoc {
+        match *self {
+            ConstantValue(_,debug_loc)                 |
+            ConstantRange(_, _, debug_loc)             |
+            Variant(_, _, _, debug_loc)                |
+            SliceLengthEqual(_, debug_loc)             |
+            SliceLengthGreaterOrEqual(_, _, debug_loc) => debug_loc
         }
     }
 }
@@ -527,18 +541,18 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
     let _indenter = indenter();
 
     let ctor = match opt {
-        &ConstantValue(ConstantExpr(expr)) => check_match::ConstantValue(
+        &ConstantValue(ConstantExpr(expr), _) => check_match::ConstantValue(
             const_eval::eval_const_expr(bcx.tcx(), &*expr)
         ),
-        &ConstantRange(ConstantExpr(lo), ConstantExpr(hi)) => check_match::ConstantRange(
+        &ConstantRange(ConstantExpr(lo), ConstantExpr(hi), _) => check_match::ConstantRange(
             const_eval::eval_const_expr(bcx.tcx(), &*lo),
             const_eval::eval_const_expr(bcx.tcx(), &*hi)
         ),
-        &SliceLengthEqual(n) =>
+        &SliceLengthEqual(n, _) =>
             check_match::Slice(n),
-        &SliceLengthGreaterOrEqual(before, after) =>
+        &SliceLengthGreaterOrEqual(before, after, _) =>
             check_match::SliceWithSubslice(before, after),
-        &Variant(_, _, def_id) =>
+        &Variant(_, _, def_id, _) =>
             check_match::Constructor::Variant(def_id)
     };
 
@@ -563,27 +577,34 @@ fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let mut found: Vec<Opt> = vec![];
     for br in m {
         let cur = br.pats[col];
+        let debug_loc = DebugLoc::At(cur.id, cur.span);
+
         let opt = match cur.node {
-            ast::PatLit(ref l) => ConstantValue(ConstantExpr(&**l)),
+            ast::PatLit(ref l) => {
+                ConstantValue(ConstantExpr(&**l), debug_loc)
+            }
             ast::PatIdent(..) | ast::PatEnum(..) | ast::PatStruct(..) => {
                 // This is either an enum variant or a variable binding.
                 let opt_def = tcx.def_map.borrow().get(&cur.id).cloned();
                 match opt_def {
                     Some(def::DefVariant(enum_id, var_id, _)) => {
                         let variant = ty::enum_variant_with_id(tcx, enum_id, var_id);
-                        Variant(variant.disr_val, adt::represent_node(bcx, cur.id), var_id)
+                        Variant(variant.disr_val,
+                                adt::represent_node(bcx, cur.id),
+                                var_id,
+                                debug_loc)
                     }
                     _ => continue
                 }
             }
             ast::PatRange(ref l1, ref l2) => {
-                ConstantRange(ConstantExpr(&**l1), ConstantExpr(&**l2))
+                ConstantRange(ConstantExpr(&**l1), ConstantExpr(&**l2), debug_loc)
             }
             ast::PatVec(ref before, None, ref after) => {
-                SliceLengthEqual(before.len() + after.len())
+                SliceLengthEqual(before.len() + after.len(), debug_loc)
             }
             ast::PatVec(ref before, Some(_), ref after) => {
-                SliceLengthGreaterOrEqual(before.len(), after.len())
+                SliceLengthGreaterOrEqual(before.len(), after.len(), debug_loc)
             }
             _ => continue
         };
@@ -779,19 +800,21 @@ fn pick_column_to_specialize(def_map: &DefMap, m: &[Match]) -> Option<uint> {
 fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                               lhs: ValueRef,
                               rhs: ValueRef,
-                              rhs_t: Ty<'tcx>)
+                              rhs_t: Ty<'tcx>,
+                              debug_loc: DebugLoc)
                               -> Result<'blk, 'tcx> {
     fn compare_str<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                lhs: ValueRef,
                                rhs: ValueRef,
-                               rhs_t: Ty<'tcx>)
+                               rhs_t: Ty<'tcx>,
+                               debug_loc: DebugLoc)
                                -> Result<'blk, 'tcx> {
         let did = langcall(cx,
                            None,
                            &format!("comparison of `{}`",
                                    cx.ty_to_string(rhs_t))[],
                            StrEqFnLangItem);
-        callee::trans_lang_call(cx, did, &[lhs, rhs], None)
+        callee::trans_lang_call(cx, did, &[lhs, rhs], None, debug_loc)
     }
 
     let _icx = push_ctxt("compare_values");
@@ -802,7 +825,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     match rhs_t.sty {
         ty::ty_rptr(_, mt) => match mt.ty.sty {
-            ty::ty_str => compare_str(cx, lhs, rhs, rhs_t),
+            ty::ty_str => compare_str(cx, lhs, rhs, rhs_t, debug_loc),
             ty::ty_vec(ty, _) => match ty.sty {
                 ty::ty_uint(ast::TyU8) => {
                     // NOTE: cast &[u8] to &str and abuse the str_eq lang item,
@@ -812,7 +835,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                              ast::MutImmutable);
                     let lhs = BitCast(cx, lhs, type_of::type_of(cx.ccx(), t).ptr_to());
                     let rhs = BitCast(cx, rhs, type_of::type_of(cx.ccx(), t).ptr_to());
-                    compare_str(cx, lhs, rhs, rhs_t)
+                    compare_str(cx, lhs, rhs, rhs_t, debug_loc)
                 },
                 _ => cx.sess().bug("only byte strings supported in compare_values"),
             },
@@ -1044,7 +1067,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     debug!("test_val={}", bcx.val_to_string(test_val));
     if opts.len() > 0 {
         match opts[0] {
-            ConstantValue(_) | ConstantRange(_, _) => {
+            ConstantValue(..) | ConstantRange(..) => {
                 test_val = load_if_immediate(bcx, val, left_ty);
                 kind = if ty::type_is_integral(left_ty) {
                     Switch
@@ -1052,12 +1075,12 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     Compare
                 };
             }
-            Variant(_, ref repr, _) => {
+            Variant(_, ref repr, _, _) => {
                 let (the_kind, val_opt) = adt::trans_switch(bcx, &**repr, val);
                 kind = the_kind;
                 if let Some(tval) = val_opt { test_val = tval; }
             }
-            SliceLengthEqual(_) | SliceLengthGreaterOrEqual(_, _) => {
+            SliceLengthEqual(..) | SliceLengthGreaterOrEqual(..) => {
                 let (_, len) = tvec::get_base_and_len(bcx, val, left_ty);
                 test_val = len;
                 kind = Switch;
@@ -1066,8 +1089,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     }
     for o in &opts {
         match *o {
-            ConstantRange(_, _) => { kind = Compare; break },
-            SliceLengthGreaterOrEqual(_, _) => { kind = CompareSliceLength; break },
+            ConstantRange(..) => { kind = Compare; break },
+            SliceLengthGreaterOrEqual(..) => { kind = CompareSliceLength; break },
             _ => ()
         }
     }
@@ -1093,10 +1116,12 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         // for the current conditional branch.
         let mut branch_chk = None;
         let mut opt_cx = else_cx;
+        let debug_loc = opt.debug_loc();
+
         if !exhaustive || i + 1 < len {
             opt_cx = bcx.fcx.new_temp_block("match_case");
             match kind {
-                Single => Br(bcx, opt_cx.llbb, DebugLoc::None),
+                Single => Br(bcx, opt_cx.llbb, debug_loc),
                 Switch => {
                     match opt.trans(bcx) {
                         SingleResult(r) => {
@@ -1119,7 +1144,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     let Result { bcx: after_cx, val: matches } = {
                         match opt.trans(bcx) {
                             SingleResult(Result { bcx, val }) => {
-                                compare_values(bcx, test_val, val, t)
+                                compare_values(bcx, test_val, val, t, debug_loc)
                             }
                             RangeResult(Result { val: vbegin, .. },
                                         Result { bcx, val: vend }) => {
@@ -1131,7 +1156,7 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                     compare_scalar_types(
                                     bcx, test_val, vend,
                                     t, ast::BiLe);
-                                Result::new(bcx, And(bcx, llge, llle, DebugLoc::None))
+                                Result::new(bcx, And(bcx, llge, llle, debug_loc))
                             }
                             LowerBound(Result { bcx, val }) => {
                                 compare_scalar_types(bcx, test_val, val, t, ast::BiGe)
@@ -1149,37 +1174,37 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                     if i + 1 < len && (guarded || multi_pats || kind == CompareSliceLength) {
                         branch_chk = Some(JumpToBasicBlock(bcx.llbb));
                     }
-                    CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb, DebugLoc::None);
+                    CondBr(after_cx, matches, opt_cx.llbb, bcx.llbb, debug_loc);
                 }
                 _ => ()
             }
         } else if kind == Compare || kind == CompareSliceLength {
-            Br(bcx, else_cx.llbb, DebugLoc::None);
+            Br(bcx, else_cx.llbb, debug_loc);
         }
 
         let mut size = 0;
         let mut unpacked = Vec::new();
         match *opt {
-            Variant(disr_val, ref repr, _) => {
+            Variant(disr_val, ref repr, _, _) => {
                 let ExtractedBlock {vals: argvals, bcx: new_bcx} =
                     extract_variant_args(opt_cx, &**repr, disr_val, val);
                 size = argvals.len();
                 unpacked = argvals;
                 opt_cx = new_bcx;
             }
-            SliceLengthEqual(len) => {
+            SliceLengthEqual(len, _) => {
                 let args = extract_vec_elems(opt_cx, left_ty, len, 0, val);
                 size = args.vals.len();
                 unpacked = args.vals.clone();
                 opt_cx = args.bcx;
             }
-            SliceLengthGreaterOrEqual(before, after) => {
+            SliceLengthGreaterOrEqual(before, after, _) => {
                 let args = extract_vec_elems(opt_cx, left_ty, before, after, val);
                 size = args.vals.len();
                 unpacked = args.vals.clone();
                 opt_cx = args.bcx;
             }
-            ConstantValue(_) | ConstantRange(_, _) => ()
+            ConstantValue(..) | ConstantRange(..) => ()
         }
         let opt_ms = enter_opt(opt_cx, pat_id, dm, m, opt, col, size, val);
         let mut opt_vals = unpacked;
