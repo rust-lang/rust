@@ -4,7 +4,7 @@
 
 # Summary
 
-Forbid the identifier `Self` for definitions.
+Make `Self` a keyword.
 
 # Motivation
 
@@ -29,23 +29,14 @@ the signature `fn(&Foo, Foo)`.
 So in this case it is not possible to define a method on `Foo` that takes the
 actual type `Self` without renaming it or creating a renamed alias.
 
-Apart from that, it would also be highly unidiomatic to actually name the type `Self`
-for a custom type, so preventing it outright does not seem like an issue.
+It would also be highly unidiomatic to actually name the type `Self`
+for a custom type, precisely because of this ambiguity, so preventing it outright seems like the right thing to do.
 
-Because the current situation does not cause broken code,
-only unexpected type errors at most, its not really necessary to make
-such a definition an hard error, so anything from making `Self` a keyword
-to adding a warn-only lint would improve the situation.
+Making the identifier `Self` an keyword would prevent this situation because the user could not use it freely for custom definitions.
 
 # Detailed design
 
-Implement either of:
-
-- Make `Self` a keyword.
-- Make a definition using the the identifier `Self` a hard error.
-- Make a definition using the the identifier `Self` a hard warning.
-- Add a error-per default lint about definitions named `Self`
-- Add a warn-per default lint about definitions named `Self`
+Make the identifier `Self` a keyword that is only legal to use inside a trait definition or impl to refer to the `Self` type.
 
 # Drawbacks
 
