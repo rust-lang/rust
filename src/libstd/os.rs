@@ -513,8 +513,8 @@ pub fn change_dir(p: &Path) -> IoResult<()> {
 }
 
 /// Returns the platform-specific value of errno
-pub fn errno() -> uint {
-    sys::os::errno() as uint
+pub fn errno() -> i32 {
+    sys::os::errno() as i32
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
@@ -524,15 +524,15 @@ pub fn errno() -> uint {
 /// use std::os;
 ///
 /// // Same as println!("{}", last_os_error());
-/// println!("{}", os::error_string(os::errno() as uint));
+/// println!("{}", os::error_string(os::errno() as i32));
 /// ```
-pub fn error_string(errnum: uint) -> String {
+pub fn error_string(errnum: i32) -> String {
     return sys::os::error_string(errnum as i32);
 }
 
 /// Get a string representing the platform-dependent last error
 pub fn last_os_error() -> String {
-    error_string(errno() as uint)
+    error_string(errno() as i32)
 }
 
 /// Sets the process exit code

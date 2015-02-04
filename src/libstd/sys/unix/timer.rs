@@ -198,7 +198,7 @@ fn helper(input: libc::c_int, messages: Receiver<Req>, _: ()) {
                 assert_eq!(fd.read(&mut buf).ok().unwrap(), 1);
             }
 
-            -1 if os::errno() == libc::EINTR as uint => {}
+            -1 if os::errno() == libc::EINTR as i32 => {}
             n => panic!("helper thread failed in select() with error: {} ({})",
                        n, os::last_os_error())
         }
