@@ -32,6 +32,7 @@
 #![feature(unicode)]
 #![feature(unsafe_destructor, slicing_syntax)]
 #![cfg_attr(test, feature(test))]
+#![cfg_attr(test, allow(deprecated))] // rand
 
 #![no_std]
 

@@ -822,6 +822,7 @@ fn access_string(access: FileAccess) -> &'static str {
 #[allow(unused_imports)]
 #[allow(unused_variables)]
 #[allow(unused_mut)]
+#[allow(deprecated)] // rand
 mod test {
     use prelude::v1::*;
     use old_io::{SeekSet, SeekCur, SeekEnd, Read, Open, ReadWrite, FileType};

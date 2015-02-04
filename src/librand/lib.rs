@@ -28,6 +28,10 @@
 #![feature(staged_api)]
 #![staged_api]
 #![feature(core)]
+#![deprecated(reason = "use the crates.io `rand` library instead",
+              since = "1.0.0-alpha")]
+
+#![allow(deprecated)]
 
 #[macro_use]
 extern crate core;

@@ -15,7 +15,6 @@
 #![feature(trace_macros, concat_idents)]
 
 #[derive(Default, //~ ERROR
-           Rand, //~ ERROR
            Zero)] //~ ERROR
 enum CantDeriveThose {}
 

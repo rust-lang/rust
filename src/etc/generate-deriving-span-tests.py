@@ -114,8 +114,7 @@ traits = {
     'Encodable': (0, [], 0), # FIXME: quoting gives horrible spans
 }
 
-for (trait, supers, errs) in [('Rand', [], 1),
-                              ('Clone', [], 1),
+for (trait, supers, errs) in [('Clone', [], 1),
                               ('PartialEq', [], 2),
                               ('PartialOrd', ['PartialEq'], 8),
                               ('Eq', ['PartialEq'], 1),

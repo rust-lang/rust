@@ -9,6 +9,7 @@
 // except according to those terms.
 
 //! Temporary files and directories
+#![allow(deprecated)] // rand
 
 use env;
 use iter::{IteratorExt};
