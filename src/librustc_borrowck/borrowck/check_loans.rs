@@ -743,13 +743,14 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
             }
-            LpExtend(ref lp_base, _, LpInterior(_)) => {
+            LpExtend(ref lp_base, _, LpInterior(mc::InteriorField(_))) => {
                 // assigning to `P.f` is ok if assigning to `P` is ok
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
             }
+            LpExtend(ref lp_base, _, LpInterior(mc::InteriorElement(_))) |
             LpExtend(ref lp_base, _, LpDeref(_)) => {
-                // assigning to `(*P)` requires that `P` be initialized
+                // assigning to `(*P)` or `P[i]` requires `P` is initialized
                 self.check_if_path_is_moved(id, span,
                                             use_kind, lp_base);
             }

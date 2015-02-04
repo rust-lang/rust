@@ -924,13 +924,13 @@ impl TokenTree {
                 let v = [TtToken(sp, token::Dollar),
                          TtToken(sp, token::Ident(token::str_to_ident(var.as_str()),
                                                   token::Plain))];
-                v[index]
+                v[index].clone()
             }
             (&TtToken(sp, token::MatchNt(name, kind, name_st, kind_st)), _) => {
                 let v = [TtToken(sp, token::SubstNt(name, name_st)),
                          TtToken(sp, token::Colon),
                          TtToken(sp, token::Ident(kind, kind_st))];
-                v[index]
+                v[index].clone()
             }
             (&TtSequence(_, ref seq), _) => {
                 seq.tts[index].clone()

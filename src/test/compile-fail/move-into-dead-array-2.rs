@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,12 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn test() {
-    let w: &mut [isize];
-    w[5] = 0; //~ ERROR use of possibly uninitialized variable: `*w`
+// Ensure that we cannot move into an uninitialized fixed-size array.
 
-    let mut w: &mut [isize];
-    w[5] = 0; //~ ERROR use of possibly uninitialized variable: `*w`
+struct D { _x: u8 }
+
+fn d() -> D { D { _x: 0 } }
+
+fn main() {
+    foo([d(), d(), d(), d()], 1);
+    foo([d(), d(), d(), d()], 3);
 }
 
-fn main() { test(); }
+fn foo(mut a: [D; 4], i: usize) {
+    drop(a);
+    a[i] = d(); //~ ERROR use of moved value: `a`
+}

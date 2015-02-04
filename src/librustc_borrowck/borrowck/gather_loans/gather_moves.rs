@@ -16,10 +16,12 @@ use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use borrowck::move_data::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::mem_categorization::Typer;
 use rustc::middle::ty;
 use rustc::util::ppaux::Repr;
 use std::rc::Rc;
 use syntax::ast;
+use syntax::ast_map;
 use syntax::codemap::Span;
 
 struct GatherMoveInfo<'tcx> {
@@ -156,6 +158,7 @@ pub fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              mode);
 }
 
+// (keep in sync with move_error::report_cannot_move_out_of )
 fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                cmt: &mc::cmt<'tcx>)
                                                -> Option<mc::cmt<'tcx>> {
@@ -174,7 +177,7 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         }
 
         mc::cat_downcast(ref b, _) |
-        mc::cat_interior(ref b, _) => {
+        mc::cat_interior(ref b, mc::InteriorField(_)) => {
             match b.ty.sty {
                 ty::ty_struct(did, _) | ty::ty_enum(did, _) => {
                     if ty::has_dtor(bccx.tcx, did) {
@@ -186,6 +189,24 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                 _ => {
                     check_and_get_illegal_move_origin(bccx, b)
                 }
+            }
+        }
+
+        mc::cat_interior(ref b, mc::InteriorElement(_)) => {
+            // We allow `fn f([a, b, c]: [T; 3]) { ... }`, but
+            // forbid `fn f(arr: [T; 3]) { ... arr[i] ... }`.
+            //
+            // Both use the same kind of cmt, so lookup its cmt.id
+            // in the ast map.
+            let node = bccx.tcx.map.find(cmt.id);
+            if let Some(ast_map::NodeExpr(expr)) = node {
+                if let ast::ExprIndex(..) = expr.node {
+                    Some(cmt.clone())
+                } else {
+                    check_and_get_illegal_move_origin(bccx, b)
+                }
+            } else {
+                check_and_get_illegal_move_origin(bccx, b)
             }
         }
 
