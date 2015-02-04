@@ -156,7 +156,7 @@ mod platform {
         None
     }
 
-    #[derive(Copy, Clone, Show, Hash, PartialEq, Eq)]
+    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
     pub struct Prefix<'a>;
 
     impl<'a> Prefix<'a> {
@@ -177,9 +177,10 @@ mod platform {
 mod platform {
     use core::prelude::*;
 
-    use super::{Path, os_str_as_u8_slice, u8_slice_as_os_str};
-    use ffi::OsStr;
+    use char::CharExt as UnicodeCharExt;
+    use super::{os_str_as_u8_slice, u8_slice_as_os_str};
     use ascii::*;
+    use ffi::OsStr;
 
     #[inline]
     pub fn is_sep(b: u8) -> bool {
@@ -299,7 +300,7 @@ mod platform {
         pub fn len(&self) -> usize {
             use self::Prefix::*;
             fn os_str_len(s: &OsStr) -> usize {
-                unsafe { os_str_as_u8_slice(s).len() }
+                os_str_as_u8_slice(s).len()
             }
             match *self {
                 Verbatim(x) => 4 + os_str_len(x),
@@ -339,12 +340,12 @@ mod platform {
         }
     }
 
-    impl<'a> ops::PartialEq for Prefix<'a> {
+    impl<'a> PartialEq for Prefix<'a> {
         fn eq(&self, other: &Prefix<'a>) -> bool {
             use self::Prefix::*;
             match (*self, *other) {
                 (Verbatim(x), Verbatim(y)) => x == y,
-                (VerbatimUNC(x1, x2), Verbatim(y1, y2)) => x1 == y1 && x2 == y2,
+                (VerbatimUNC(x1, x2), VerbatimUNC(y1, y2)) => x1 == y1 && x2 == y2,
                 (VerbatimDisk(x), VerbatimDisk(y)) =>
                     os_str_as_u8_slice(x).eq_ignore_ascii_case(os_str_as_u8_slice(y)),
                 (DeviceNS(x), DeviceNS(y)) => x == y,
@@ -457,7 +458,7 @@ fn split_file_at_dot(file: &OsStr) -> (Option<&OsStr>, Option<&OsStr>) {
 /// Going front to back, a path is made up of a prefix, a root component, a body
 /// (of normal components), and a suffix/emptycomponent (normalized `.` or ``
 /// for a path ending with the separator)
-#[derive(Copy, Clone, PartialEq, PartialOrd, Show)]
+#[derive(Copy, Clone, PartialEq, PartialOrd, Debug)]
 enum State {
     Prefix = 0,         // c:
     Root = 1,           // /
@@ -470,7 +471,7 @@ enum State {
 ///
 /// See the module documentation for an in-depth explanation of components and
 /// their role in the API.
-#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Show)]
+#[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Component<'a> {
     /// A Windows path prefix, e.g. `C:` or `\server\share`
     Prefix(&'a OsStr),
@@ -2434,12 +2435,21 @@ mod tests {
         tfn!("foo", "bar", "bar");
         tfn!("foo", "", "");
         tfn!("", "foo", "foo");
-        tfn!(".", "foo", "./foo");
-        tfn!("foo/", "bar", "foo/bar");
-        tfn!("foo/.", "bar", "foo/./bar");
-        tfn!("..", "foo", "../foo");
-        tfn!("foo/..", "bar", "foo/../bar");
-        tfn!("/", "foo", "/foo");
+        if cfg!(unix) {
+            tfn!(".", "foo", "./foo");
+            tfn!("foo/", "bar", "foo/bar");
+            tfn!("foo/.", "bar", "foo/./bar");
+            tfn!("..", "foo", "../foo");
+            tfn!("foo/..", "bar", "foo/../bar");
+            tfn!("/", "foo", "/foo");
+        } else {
+            tfn!(".", "foo", r".\foo");
+            tfn!(r"foo\", "bar", r"foo\bar");
+            tfn!(r"foo\.", "bar", r"foo\.\bar");
+            tfn!("..", "foo", r"..\foo");
+            tfn!(r"foo\..", "bar", r"foo\..\bar");
+            tfn!(r"\", "foo", r"\foo");
+        }
     }
 
     #[test]
