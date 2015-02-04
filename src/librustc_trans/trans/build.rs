@@ -856,22 +856,32 @@ pub fn FPCast(cx: Block, val: ValueRef, dest_ty: Type) -> ValueRef {
 
 
 /* Comparisons */
-pub fn ICmp(cx: Block, op: IntPredicate, lhs: ValueRef, rhs: ValueRef)
-     -> ValueRef {
+pub fn ICmp(cx: Block,
+            op: IntPredicate,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            debug_loc: DebugLoc)
+            -> ValueRef {
     unsafe {
         if cx.unreachable.get() {
             return llvm::LLVMGetUndef(Type::i1(cx.ccx()).to_ref());
         }
+        debug_loc.apply(cx.fcx);
         B(cx).icmp(op, lhs, rhs)
     }
 }
 
-pub fn FCmp(cx: Block, op: RealPredicate, lhs: ValueRef, rhs: ValueRef)
-     -> ValueRef {
+pub fn FCmp(cx: Block,
+            op: RealPredicate,
+            lhs: ValueRef,
+            rhs: ValueRef,
+            debug_loc: DebugLoc)
+            -> ValueRef {
     unsafe {
         if cx.unreachable.get() {
             return llvm::LLVMGetUndef(Type::i1(cx.ccx()).to_ref());
         }
+        debug_loc.apply(cx.fcx);
         B(cx).fcmp(op, lhs, rhs)
     }
 }
@@ -941,9 +951,17 @@ pub fn Call(cx: Block,
     B(cx).call(fn_, args, attributes)
 }
 
-pub fn CallWithConv(cx: Block, fn_: ValueRef, args: &[ValueRef], conv: CallConv,
-                    attributes: Option<AttrBuilder>) -> ValueRef {
-    if cx.unreachable.get() { return _UndefReturn(cx, fn_); }
+pub fn CallWithConv(cx: Block,
+                    fn_: ValueRef,
+                    args: &[ValueRef],
+                    conv: CallConv,
+                    attributes: Option<AttrBuilder>,
+                    debug_loc: DebugLoc)
+                    -> ValueRef {
+    if cx.unreachable.get() {
+        return _UndefReturn(cx, fn_);
+    }
+    debug_loc.apply(cx.fcx);
     B(cx).call_with_conv(fn_, args, conv, attributes)
 }
 

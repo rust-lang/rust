@@ -18,6 +18,7 @@ use trans::base;
 use trans::build::*;
 use trans::cabi;
 use trans::common::*;
+use trans::debuginfo::DebugLoc;
 use trans::machine;
 use trans::monomorphize;
 use trans::type_::Type;
@@ -218,7 +219,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      llfn: ValueRef,
                                      llretptr: ValueRef,
                                      llargs_rust: &[ValueRef],
-                                     passed_arg_tys: Vec<Ty<'tcx>>)
+                                     passed_arg_tys: Vec<Ty<'tcx>>,
+                                     call_debug_loc: DebugLoc)
                                      -> Block<'blk, 'tcx>
 {
     let ccx = bcx.ccx();
@@ -370,7 +372,8 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                         llfn,
                                         &llargs_foreign[],
                                         cc,
-                                        Some(attrs));
+                                        Some(attrs),
+                                        call_debug_loc);
 
     // If the function we just called does not use an outpointer,
     // store the result into the rust outpointer. Cast the outpointer

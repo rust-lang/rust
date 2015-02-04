@@ -819,7 +819,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("compare_values");
     if ty::type_is_scalar(rhs_t) {
-        let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq);
+        let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq, debug_loc);
         return Result::new(rs.bcx, rs.val);
     }
 
@@ -1149,17 +1149,28 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             RangeResult(Result { val: vbegin, .. },
                                         Result { bcx, val: vend }) => {
                                 let Result { bcx, val: llge } =
-                                    compare_scalar_types(
-                                    bcx, test_val,
-                                    vbegin, t, ast::BiGe);
+                                    compare_scalar_types(bcx,
+                                                         test_val,
+                                                         vbegin,
+                                                         t,
+                                                         ast::BiGe,
+                                                         debug_loc);
                                 let Result { bcx, val: llle } =
-                                    compare_scalar_types(
-                                    bcx, test_val, vend,
-                                    t, ast::BiLe);
+                                    compare_scalar_types(bcx,
+                                                         test_val,
+                                                         vend,
+                                                         t,
+                                                         ast::BiLe,
+                                                         debug_loc);
                                 Result::new(bcx, And(bcx, llge, llle, debug_loc))
                             }
                             LowerBound(Result { bcx, val }) => {
-                                compare_scalar_types(bcx, test_val, val, t, ast::BiGe)
+                                compare_scalar_types(bcx,
+                                                     test_val,
+                                                     val,
+                                                     t,
+                                                     ast::BiGe,
+                                                     debug_loc)
                             }
                         }
                     };

@@ -696,6 +696,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let ccx = bcx.ccx();
     let mut bcx = bcx;
 
+    let index_expr_debug_loc = index_expr.debug_loc();
+
     // Check for overloaded index.
     let method_ty = ccx.tcx()
                        .method_map
@@ -778,13 +780,17 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             debug!("trans_index: base {}", bcx.val_to_string(base));
             debug!("trans_index: len {}", bcx.val_to_string(len));
 
-            let bounds_check = ICmp(bcx, llvm::IntUGE, ix_val, len);
+            let bounds_check = ICmp(bcx,
+                                    llvm::IntUGE,
+                                    ix_val,
+                                    len,
+                                    index_expr_debug_loc);
             let expect = ccx.get_intrinsic(&("llvm.expect.i1"));
             let expected = Call(bcx,
                                 expect,
                                 &[bounds_check, C_bool(ccx, false)],
                                 None,
-                                index_expr.debug_loc());
+                                index_expr_debug_loc);
             bcx = with_cond(bcx, expected, |bcx| {
                 controlflow::trans_fail_bounds_check(bcx,
                                                      expr_info(index_expr),
@@ -1744,9 +1750,21 @@ fn trans_eager_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
       }
       ast::BiEq | ast::BiNe | ast::BiLt | ast::BiGe | ast::BiLe | ast::BiGt => {
         if ty::type_is_scalar(rhs_t) {
-            unpack_result!(bcx, base::compare_scalar_types(bcx, lhs, rhs, rhs_t, op.node))
+            unpack_result!(bcx,
+                           base::compare_scalar_types(bcx,
+                                                      lhs,
+                                                      rhs,
+                                                      rhs_t,
+                                                      op.node,
+                                                      binop_debug_loc))
         } else if is_simd {
-            base::compare_simd_types(bcx, lhs, rhs, intype, ty::simd_size(tcx, lhs_t), op)
+            base::compare_simd_types(bcx,
+                                     lhs,
+                                     rhs,
+                                     intype,
+                                     ty::simd_size(tcx, lhs_t),
+                                     op.node,
+                                     binop_debug_loc)
         } else {
             bcx.tcx().sess.span_bug(binop_expr.span, "comparison operator unsupported for type")
         }
