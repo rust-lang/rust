@@ -738,7 +738,8 @@ pub fn rustc_short_optgroups() -> Vec<RustcOptGroup> {
     vec![
         opt::flag("h", "help", "Display this message"),
         opt::multi("", "cfg", "Configure the compilation environment", "SPEC"),
-        opt::multi("L", "",   "Add a directory to the library search path", "PATH"),
+        opt::multi("L", "",   "Add a directory to the library search path",
+                   "[KIND=]PATH"),
         opt::multi("l", "",   "Link the generated crate(s) to the specified native
                              library NAME. The optional KIND can be one of,
                              static, dylib, or framework. If omitted, dylib is
