@@ -107,9 +107,8 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
                     // see src/librustc/back/link.rs for these mappings
                     demangle! (
                         "$SP$", => "@",
-                        "$UP$", => "Box",
-                        "$RP$", => "*",
-                        "$BP$", => "&",
+                        "$BP$", => "*",
+                        "$RF$", => "&",
                         "$LT$", => "<",
                         "$GT$", => ">",
                         "$LP$", => "(",
@@ -118,10 +117,11 @@ pub fn demangle(writer: &mut Writer, s: &str) -> IoResult<()> {
 
                         // in theory we can demangle any Unicode code point, but
                         // for simplicity we just catch the common ones.
-                        "$u{20}", => " ",
-                        "$u{27}", => "'",
-                        "$u{5b}", => "[",
-                        "$u{5d}", => "]"
+                        "$u7e$", => "~",
+                        "$u20$", => " ",
+                        "$u27$", => "'",
+                        "$u5b$", => "[",
+                        "$u5d$", => "]"
                     )
                 } else {
                     let idx = match rest.find('$') {
