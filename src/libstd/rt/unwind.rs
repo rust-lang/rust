@@ -98,8 +98,8 @@ thread_local! { static PANICKING: Cell<bool> = Cell::new(false) }
 
 /// Invoke a closure, capturing the cause of panic if one occurs.
 ///
-/// This function will return `None` if the closure did not panic, and will
-/// return `Some(cause)` if the closure panics. The `cause` returned is the
+/// This function will return `Ok(())` if the closure did not panic, and will
+/// return `Err(cause)` if the closure panics. The `cause` returned is the
 /// object with which panic was originally invoked.
 ///
 /// This function also is unsafe for a variety of reasons:
