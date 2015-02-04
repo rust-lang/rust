@@ -739,7 +739,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             };
 
             match fn_expr.node {
-                ast::ExprClosure(_, _, _, ref body) => body.id,
+                ast::ExprClosure(_, _, ref body) => body.id,
                 _ => unreachable!()
             }
         };

@@ -45,22 +45,18 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use core::prelude::*;
+
 use core::any::Any;
-use core::clone::Clone;
-use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
+use core::cmp::Ordering;
 use core::default::Default;
 use core::error::{Error, FromError};
 use core::fmt;
 use core::hash::{self, Hash};
-use core::iter::Iterator;
-use core::marker::Sized;
 use core::mem;
 use core::ops::{Deref, DerefMut};
-use core::option::Option;
 use core::ptr::Unique;
 use core::raw::TraitObject;
-use core::result::Result::{Ok, Err};
-use core::result::Result;
 
 /// A value that represents the heap. This is the default place that the `box` keyword allocates
 /// into when no place is supplied.
@@ -296,18 +292,20 @@ impl<T: ?Sized> DerefMut for Box<T> {
     fn deref_mut(&mut self) -> &mut T { &mut **self }
 }
 
-impl<'a, T> Iterator for Box<Iterator<Item=T> + 'a> {
-    type Item = T;
-
-    fn next(&mut self) -> Option<T> {
-        (**self).next()
-    }
-
-    fn size_hint(&self) -> (usize, Option<usize>) {
-        (**self).size_hint()
-    }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: Iterator + ?Sized> Iterator for Box<I> {
+    type Item = I::Item;
+    fn next(&mut self) -> Option<I::Item> { (**self).next() }
+    fn size_hint(&self) -> (usize, Option<usize>) { (**self).size_hint() }
 }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: DoubleEndedIterator + ?Sized> DoubleEndedIterator for Box<I> {
+    fn next_back(&mut self) -> Option<I::Item> { (**self).next_back() }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<I: ExactSizeIterator + ?Sized> ExactSizeIterator for Box<I> {}
 
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E: Error + 'a> FromError<E> for Box<Error + 'a> {
     fn from_error(err: E) -> Box<Error + 'a> {
         Box::new(err)

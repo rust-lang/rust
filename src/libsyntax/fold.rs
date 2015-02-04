@@ -1325,9 +1325,8 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                         arms.move_map(|x| folder.fold_arm(x)),
                         source)
             }
-            ExprClosure(capture_clause, opt_kind, decl, body) => {
+            ExprClosure(capture_clause, decl, body) => {
                 ExprClosure(capture_clause,
-                            opt_kind,
                             folder.fold_fn_decl(decl),
                             folder.fold_block(body))
             }

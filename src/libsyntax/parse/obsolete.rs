@@ -27,6 +27,7 @@ pub enum ObsoleteSyntax {
     ProcType,
     ProcExpr,
     ClosureType,
+    ClosureKind,
 }
 
 pub trait ParserObsoleteMethods {
@@ -64,6 +65,10 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ObsoleteSyntax::ClosureType => (
                 "`|usize| -> bool` closure type syntax",
                 "use unboxed closures instead, no type annotation needed"
+            ),
+            ObsoleteSyntax::ClosureKind => (
+                "`:`, `&mut:`, or `&:` syntax",
+                "rely on inference instead"
             ),
             ObsoleteSyntax::Sized => (
                 "`Sized? T` syntax for removing the `Sized` bound",

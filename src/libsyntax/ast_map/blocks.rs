@@ -218,7 +218,7 @@ impl<'a> FnLikeNode<'a> {
                 }
             }
             ast_map::NodeExpr(e) => match e.node {
-                ast::ExprClosure(_, _, ref decl, ref block) =>
+                ast::ExprClosure(_, ref decl, ref block) =>
                     closure(ClosureParts::new(&**decl, &**block, e.id, e.span)),
                 _ => panic!("expr FnLikeNode that is not fn-like"),
             },

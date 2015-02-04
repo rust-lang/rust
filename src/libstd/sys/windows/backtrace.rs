@@ -32,7 +32,7 @@ use libc;
 use mem;
 use ops::Drop;
 use option::Option::{Some};
-use path::Path;
+use old_path::Path;
 use ptr;
 use result::Result::{Ok, Err};
 use slice::SliceExt;

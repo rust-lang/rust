@@ -25,7 +25,7 @@ use serialize::{Decodable, Decoder, Encodable, Encoder};
 use std::fmt;
 use std::mem;
 use std::ops::Deref;
-use std::path::BytesContainer;
+use std::old_path::BytesContainer;
 use std::rc::Rc;
 
 #[allow(non_camel_case_types)]

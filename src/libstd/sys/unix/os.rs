@@ -307,23 +307,23 @@ pub fn args() -> Args {
     let mut res = Vec::new();
 
     unsafe {
-        let processInfoSel = sel_registerName("processInfo\0".as_ptr());
-        let argumentsSel = sel_registerName("arguments\0".as_ptr());
-        let utf8Sel = sel_registerName("UTF8String\0".as_ptr());
-        let countSel = sel_registerName("count\0".as_ptr());
-        let objectAtSel = sel_registerName("objectAtIndex:\0".as_ptr());
+        let process_info_sel = sel_registerName("processInfo\0".as_ptr());
+        let arguments_sel = sel_registerName("arguments\0".as_ptr());
+        let utf8_sel = sel_registerName("UTF8String\0".as_ptr());
+        let count_sel = sel_registerName("count\0".as_ptr());
+        let object_at_sel = sel_registerName("objectAtIndex:\0".as_ptr());
 
         let klass = objc_getClass("NSProcessInfo\0".as_ptr());
-        let info = objc_msgSend(klass, processInfoSel);
-        let args = objc_msgSend(info, argumentsSel);
+        let info = objc_msgSend(klass, process_info_sel);
+        let args = objc_msgSend(info, arguments_sel);
 
-        let cnt: int = mem::transmute(objc_msgSend(args, countSel));
+        let cnt: int = mem::transmute(objc_msgSend(args, count_sel));
         for i in range(0, cnt) {
-            let tmp = objc_msgSend(args, objectAtSel, i);
+            let tmp = objc_msgSend(args, object_at_sel, i);
             let utf_c_str: *const libc::c_char =
-                mem::transmute(objc_msgSend(tmp, utf8Sel));
-            let bytes = ffi::c_str_to_bytes(&utf_c_str).to_vec();
-            res.push(OsString::from_vec(bytes))
+                mem::transmute(objc_msgSend(tmp, utf8_sel));
+            let bytes = ffi::c_str_to_bytes(&utf_c_str);
+            res.push(OsString::from_str(str::from_utf8(bytes).unwrap()))
         }
     }
 
@@ -455,9 +455,11 @@ pub fn home_dir() -> Option<Path> {
         Path::new(os.into_vec())
     });
 
-    #[cfg(target_os = "android")]
+    #[cfg(any(target_os = "android",
+              target_os = "ios"))]
     unsafe fn fallback() -> Option<OsString> { None }
-    #[cfg(not(target_os = "android"))]
+    #[cfg(not(any(target_os = "android",
+                  target_os = "ios")))]
     unsafe fn fallback() -> Option<OsString> {
         let mut amt = match libc::sysconf(c::_SC_GETPW_R_SIZE_MAX) {
             n if n < 0 => 512 as usize,

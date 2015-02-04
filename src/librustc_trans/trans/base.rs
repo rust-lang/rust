@@ -1340,7 +1340,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
         }
         Some(ast_map::NodeExpr(e)) => {
             match e.node {
-                ast::ExprClosure(_, _, _, ref blk) => {
+                ast::ExprClosure(_, _, ref blk) => {
                     blk
                 }
                 _ => tcx.sess.bug("unexpected expr variant in has_nested_returns")
