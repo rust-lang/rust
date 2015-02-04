@@ -444,7 +444,7 @@ pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: Val
 
     for attr in attrs {
         let mut used = true;
-        match attr.name().get() {
+        match &attr.name()[] {
             "no_stack_check" => unset_split_stack(llfn),
             "no_split_stack" => {
                 unset_split_stack(llfn);
@@ -2248,7 +2248,7 @@ pub fn update_linkage(ccx: &CrateContext,
         let item = ccx.tcx().map.get(id);
         if let ast_map::NodeItem(i) = item {
             if let Some(name) = attr::first_attr_value_str_by_name(&i.attrs, "linkage") {
-                if let Some(linkage) = llvm_linkage_by_name(name.get()) {
+                if let Some(linkage) = llvm_linkage_by_name(&name[]) {
                     llvm::SetLinkage(llval, linkage);
                 } else {
                     ccx.sess().span_fatal(i.span, "invalid linkage specified");
@@ -2721,7 +2721,7 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
 
     match attr::first_attr_value_str_by_name(attrs, "export_name") {
         // Use provided name
-        Some(name) => name.get().to_string(),
+        Some(name) => name.to_string(),
 
         _ => ccx.tcx().map.with_path(id, |path| {
             if attr::contains_name(attrs, "no_mangle") {
@@ -2729,7 +2729,7 @@ fn exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, id: ast::NodeId,
                 path.last().unwrap().to_string()
             } else {
                 match weak_lang_items::link_name(attrs) {
-                    Some(name) => name.get().to_string(),
+                    Some(name) => name.to_string(),
                     None => {
                         // Usual name mangling
                         mangle_exported_name(ccx, path, ty, id)
@@ -2824,12 +2824,12 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             match attr::first_attr_value_str_by_name(&i.attrs[],
                                                      "link_section") {
                 Some(sect) => {
-                    if contains_null(sect.get()) {
+                    if contains_null(&sect[]) {
                         ccx.sess().fatal(&format!("Illegal null byte in link_section value: `{}`",
-                                                 sect.get())[]);
+                                                 &sect[])[]);
                     }
                     unsafe {
-                        let buf = CString::from_slice(sect.get().as_bytes());
+                        let buf = CString::from_slice(sect.as_bytes());
                         llvm::LLVMSetSection(v, buf.as_ptr());
                     }
                 },
@@ -2869,7 +2869,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     let abi = ccx.tcx().map.get_foreign_abi(id);
                     let ty = ty::node_id_to_type(ccx.tcx(), ni.id);
                     let name = foreign::link_name(&*ni);
-                    foreign::register_foreign_item_fn(ccx, abi, ty, &name.get()[])
+                    foreign::register_foreign_item_fn(ccx, abi, ty, &name[])
                 }
                 ast::ForeignItemStatic(..) => {
                     foreign::register_static(ccx, &*ni)
