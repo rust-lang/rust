@@ -29,7 +29,7 @@ pub use core::num::{from_int, from_i8, from_i16, from_i32, from_i64};
 pub use core::num::{from_uint, from_u8, from_u16, from_u32, from_u64};
 pub use core::num::{from_f32, from_f64};
 pub use core::num::{FromStrRadix, from_str_radix};
-pub use core::num::{FpCategory};
+pub use core::num::{FpCategory, ParseIntError, ParseFloatError};
 
 use option::Option;
 
