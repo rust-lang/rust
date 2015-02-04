@@ -1580,7 +1580,6 @@ impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
 /// `Hasher`, but the hashers created by two different `RandomState`
 /// instances are unlikely to produce the same result for the same values.
 #[derive(Clone)]
-#[allow(missing_copy_implementations)]
 #[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 pub struct RandomState {
@@ -1622,7 +1621,6 @@ impl Default for RandomState {
 /// This is the default hasher used in a `HashMap` to hash keys. Types do not
 /// typically declare an ability to explicitly hash into this particular type,
 /// but rather in a `H: hash::Writer` type parameter.
-#[allow(missing_copy_implementations)]
 #[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 pub struct Hasher { inner: SipHasher }

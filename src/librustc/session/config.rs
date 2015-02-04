@@ -132,7 +132,6 @@ pub enum UnstableFeatures {
 }
 
 #[derive(Clone, PartialEq, Eq)]
-#[allow(missing_copy_implementations)]
 pub enum PrintRequest {
     FileNames,
     Sysroot,
@@ -290,7 +289,6 @@ macro_rules! options {
      $($opt:ident : $t:ty = ($init:expr, $parse:ident, $desc:expr)),* ,) =>
 (
     #[derive(Clone)]
-    #[allow(missing_copy_implementations)]
     pub struct $struct_name { $(pub $opt: $t),* }
 
     pub fn $defaultfn() -> $struct_name {

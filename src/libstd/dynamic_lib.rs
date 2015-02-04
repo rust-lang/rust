@@ -22,7 +22,6 @@ use mem;
 use env;
 use str;
 
-#[allow(missing_copy_implementations)]
 pub struct DynamicLibrary {
     handle: *mut u8
 }

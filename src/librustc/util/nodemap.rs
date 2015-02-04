@@ -46,7 +46,6 @@ pub fn DefIdSet() -> DefIdSet { FnvHashSet() }
 ///
 /// This uses FNV hashing, as described here:
 /// http://en.wikipedia.org/wiki/Fowler%E2%80%93Noll%E2%80%93Vo_hash_function
-#[allow(missing_copy_implementations)]
 pub struct FnvHasher(u64);
 
 impl Default for FnvHasher {

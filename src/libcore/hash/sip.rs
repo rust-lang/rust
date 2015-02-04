@@ -30,7 +30,6 @@ use super::{Hasher, Writer};
 /// strong, this implementation has not been reviewed for such purposes.
 /// As such, all cryptographic uses of this implementation are strongly
 /// discouraged.
-#[allow(missing_copy_implementations)]
 pub struct SipHasher {
     k0: u64,
     k1: u64,
