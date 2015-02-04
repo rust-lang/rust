@@ -1591,8 +1591,6 @@ impl<A> Index<usize> for RingBuf<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> IndexMut<usize> for RingBuf<A> {
-    type Output = A;
-
     #[inline]
     fn index_mut(&mut self, i: &usize) -> &mut A {
         self.get_mut(*i).expect("Out of bounds access")

@@ -712,8 +712,6 @@ impl<V> Index<usize> for VecMap<V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> IndexMut<usize> for VecMap<V> {
-    type Output = V;
-
     #[inline]
     fn index_mut<'a>(&'a mut self, i: &usize) -> &'a mut V {
         self.get_mut(i).expect("key not present")
