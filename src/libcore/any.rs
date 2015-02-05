@@ -27,7 +27,7 @@
 //! # Examples
 //!
 //! Consider a situation where we want to log out a value passed to a function.
-//! We know the value we're working on implements Show, but we don't know its
+//! We know the value we're working on implements Debug, but we don't know its
 //! concrete type.  We want to give special treatment to certain types: in this
 //! case printing out the length of String values prior to their value.
 //! We don't know the concrete type of our value at compile time, so we need to

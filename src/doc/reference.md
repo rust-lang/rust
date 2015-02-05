@@ -2354,8 +2354,8 @@ Supported traits for `derive` are:
 * `FromPrimitive`, to create an instance from a numeric primitive.
 * `Hash`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
-* `Show`, to format a value using the `{}` formatter.
-* `Zero`, to create a zero instance of a numeric data type.
+* `Debug`, to format a value using the `{:?}` formatter.
+* `Copy`, for "Plain Old Data" types which can be copied by simply moving bits.
 
 ### Compiler Features
 

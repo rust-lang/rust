@@ -1032,7 +1032,7 @@ pub fn as_pretty_json<T>(t: &T) -> AsPrettyJson<T> {
 
 impl Json {
     /// Borrow this json object as a pretty object to generate a pretty
-    /// representation for it via `Show`.
+    /// representation for it via `Display`.
     pub fn pretty(&self) -> PrettyJson {
         PrettyJson { inner: self }
     }
@@ -3540,7 +3540,7 @@ mod tests {
     fn test_hashmap_with_enum_key() {
         use std::collections::HashMap;
         use json;
-        #[derive(RustcEncodable, Eq, Hash, PartialEq, RustcDecodable, Show)]
+        #[derive(RustcEncodable, Eq, Hash, PartialEq, RustcDecodable, Debug)]
         enum Enum {
             Foo,
             #[allow(dead_code)]
