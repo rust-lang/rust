@@ -160,6 +160,7 @@ use core::option::Option::{Some, None};
 use core::ptr::{self, PtrExt};
 use core::result::Result;
 use core::result::Result::{Ok, Err};
+use core::intrinsics::assume;
 
 use heap::deallocate;
 
@@ -769,12 +770,34 @@ trait RcBoxPtr<T> {
 
 impl<T> RcBoxPtr<T> for Rc<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> { unsafe { &(**self._ptr) } }
+    fn inner(&self) -> &RcBox<T> {
+        unsafe {
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway.
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
+            if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
+                assume(!self._ptr.is_null());
+            }
+            &(**self._ptr)
+        }
+    }
 }
 
 impl<T> RcBoxPtr<T> for Weak<T> {
     #[inline(always)]
-    fn inner(&self) -> &RcBox<T> { unsafe { &(**self._ptr) } }
+    fn inner(&self) -> &RcBox<T> {
+        unsafe {
+            // Safe to assume this here, as if it weren't true, we'd be breaking
+            // the contract anyway.
+            // This allows the null check to be elided in the destructor if we
+            // manipulated the reference count in the same function.
+            if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
+                assume(!self._ptr.is_null());
+            }
+            &(**self._ptr)
+        }
+    }
 }
 
 #[cfg(test)]
