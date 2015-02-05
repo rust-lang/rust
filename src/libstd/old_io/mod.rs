@@ -353,7 +353,7 @@ impl IoError {
     /// operating system) between the call(s) for which errors are
     /// being checked and the call of this function.
     pub fn last_error() -> IoError {
-        IoError::from_errno(os::errno() as i32, true)
+        IoError::from_errno(os::errno(), true)
     }
 }
 
