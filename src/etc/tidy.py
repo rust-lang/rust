@@ -91,6 +91,7 @@ try:
             'src/llvm',
             'src/gyp',
             'src/libbacktrace',
+            'src/libuv',
             'src/compiler-rt',
             'src/rt/hoedown',
             'src/rustllvm',
