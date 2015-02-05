@@ -17,26 +17,44 @@
 use middle::def;
 use middle::ty::{self, Ty};
 use syntax::ast;
+use syntax::codemap::Span;
 use util::ppaux::Repr;
 
 pub const NO_REGIONS: uint = 1;
 pub const NO_TPS: uint = 2;
 
 pub fn check_path_args(tcx: &ty::ctxt,
-                       path: &ast::Path,
+                       span: Span,
+                       segments: &[ast::PathSegment],
                        flags: uint) {
     if (flags & NO_TPS) != 0 {
-        if path.segments.iter().any(|s| s.parameters.has_types()) {
-            span_err!(tcx.sess, path.span, E0109,
+        if segments.iter().any(|s| s.parameters.has_types()) {
+            span_err!(tcx.sess, span, E0109,
                 "type parameters are not allowed on this type");
         }
     }
 
     if (flags & NO_REGIONS) != 0 {
-        if path.segments.iter().any(|s| s.parameters.has_lifetimes()) {
-            span_err!(tcx.sess, path.span, E0110,
+        if segments.iter().any(|s| s.parameters.has_lifetimes()) {
+            span_err!(tcx.sess, span, E0110,
                 "lifetime parameters are not allowed on this type");
         }
+    }
+}
+
+pub fn prim_ty_to_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
+                           span: Span,
+                           segments: &[ast::PathSegment],
+                           nty: ast::PrimTy)
+                           -> Ty<'tcx> {
+    check_path_args(tcx, span, segments, NO_TPS | NO_REGIONS);
+    match nty {
+        ast::TyBool => tcx.types.bool,
+        ast::TyChar => tcx.types.char,
+        ast::TyInt(it) => ty::mk_mach_int(tcx, it),
+        ast::TyUint(uit) => ty::mk_mach_uint(tcx, uit),
+        ast::TyFloat(ft) => ty::mk_mach_float(tcx, ft),
+        ast::TyStr => ty::mk_str(tcx)
     }
 }
 
@@ -51,15 +69,7 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
             Some(&d) => d
         };
         if let def::DefPrimTy(nty) = def {
-            check_path_args(tcx, path, NO_TPS | NO_REGIONS);
-            Some(match nty {
-                ast::TyBool => tcx.types.bool,
-                ast::TyChar => tcx.types.char,
-                ast::TyInt(it) => ty::mk_mach_int(tcx, it),
-                ast::TyUint(uit) => ty::mk_mach_uint(tcx, uit),
-                ast::TyFloat(ft) => ty::mk_mach_float(tcx, ft),
-                ast::TyStr => ty::mk_str(tcx)
-            })
+            Some(prim_ty_to_ty(tcx, path.span, &path.segments[], nty))
         } else {
             None
         }

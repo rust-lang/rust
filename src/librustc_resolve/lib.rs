@@ -935,6 +935,7 @@ struct Resolver<'a, 'tcx:'a> {
     primitive_type_table: PrimitiveTypeTable,
 
     def_map: DefMap,
+    partial_def_map: PartialDefMap,
     freevars: RefCell<FreevarMap>,
     freevars_seen: RefCell<NodeMap<NodeSet>>,
     export_map: ExportMap,
@@ -1008,6 +1009,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             primitive_type_table: PrimitiveTypeTable::new(),
 
             def_map: RefCell::new(NodeMap()),
+            partial_def_map: RefCell::new(NodeMap()),
             freevars: RefCell::new(NodeMap()),
             freevars_seen: RefCell::new(NodeMap()),
             export_map: NodeMap(),
@@ -2988,13 +2990,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                id: NodeId,
                                trait_path: &Path,
                                path_depth: usize)
-                               -> Result<(Def, LastPrivate), ()> {
+                               -> Result<(Def, LastPrivate, usize), ()> {
         match self.resolve_path(id, trait_path, path_depth, TypeNS, true) {
-            Some(def @ (DefTrait(_), _)) => {
+            Some(def @ (DefTrait(_), _, _)) => {
                 debug!("(resolving trait) found trait def: {:?}", def);
                 Ok(def)
             }
-            Some((def, _)) => {
+            Some((def, _, _)) => {
                 self.resolve_error(trait_path.span,
                     &format!("`{}` is not a trait",
                              self.path_names_to_string(trait_path, path_depth)));
@@ -3025,8 +3027,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 &ast::WherePredicate::RegionPredicate(_) => {}
                 &ast::WherePredicate::EqPredicate(ref eq_pred) => {
                     match self.resolve_path(eq_pred.id, &eq_pred.path, 0, TypeNS, true) {
-                        Some((def @ DefTyParam(..), last_private)) => {
-                            self.record_def(eq_pred.id, (def, last_private));
+                        Some(def @ (DefTyParam(..), _, _)) => {
+                            self.record_def(eq_pred.id, def);
                         }
                         _ => {
                             self.resolve_error(eq_pred.path.span,
@@ -3121,30 +3123,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             });
         });
-
-        // Check that the current type is indeed a type, if we have an anonymous impl
-        if opt_trait_reference.is_none() {
-            match self_type.node {
-                // TyPath is the only thing that we handled in `build_reduced_graph_for_item`,
-                // where we created a module with the name of the type in order to implement
-                // an anonymous trait. In the case that the path does not resolve to an actual
-                // type, the result will be that the type name resolves to a module but not
-                // a type (shadowing any imported modules or types with this name), leading
-                // to weird user-visible bugs. So we ward this off here. See #15060.
-                TyPath(ref path) => {
-                    match self.def_map.borrow().get(&self_type.id) {
-                        // FIXME: should we catch other options and give more precise errors?
-                        Some(&DefMod(_)) => {
-                            self.resolve_error(path.span, "inherent implementations are not \
-                                                           allowed for types not defined in \
-                                                           the current module");
-                        }
-                        _ => {}
-                    }
-                }
-                _ => { }
-            }
-        }
     }
 
     fn check_trait_item(&self, name: Name, span: Span) {
@@ -3304,14 +3282,31 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // on whether the path has multiple elements in it or not.
 
             TyPath(ref path) | TyQPath(ast::QPath { ref path, .. }) => {
-                if let TyQPath(_) = ty.node {
+                let max_assoc_types = if let TyQPath(_) = ty.node {
                     // Make sure the trait is valid.
-                    self.resolve_trait_reference(ty.id, path, 1);
+                    let _ = self.resolve_trait_reference(ty.id, path, 1);
+                    1
+                } else {
+                    path.segments.len()
+                };
+
+                let mut result = None;
+                for depth in 0..max_assoc_types {
+                    self.with_no_errors(|this| {
+                        result = this.resolve_path(ty.id, path, depth, TypeNS, true);
+                    });
+                    if result.is_some() {
+                        break;
+                    }
+                }
+                if let Some((DefMod(_), _, _)) = result {
+                    // A module is not a valid type.
+                    result = None;
                 }
 
                 // This is a path in the type namespace. Walk through scopes
                 // looking for it.
-                match self.resolve_path(ty.id, path, 0, TypeNS, true) {
+                match result {
                     Some(def) => {
                         // Write the result into the def map.
                         debug!("(resolving type) writing resolution for `{}` \
@@ -3321,6 +3316,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.record_def(ty.id, def);
                     }
                     None => {
+                        // Keep reporting some errors even if they're ignored above.
+                        self.resolve_path(ty.id, path, 0, TypeNS, true);
+
                         let kind = match ty.node {
                             TyQPath(_) => "associated type",
                             _ => "type name"
@@ -3371,7 +3369,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 pattern,
                                 binding_mode,
                                 "an enum variant");
-                            self.record_def(pattern.id, (def, lp));
+                            self.record_def(pattern.id, (def, lp, 0));
                         }
                         FoundStructOrEnumVariant(..) => {
                             self.resolve_error(
@@ -3390,7 +3388,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 pattern,
                                 binding_mode,
                                 "a constant");
-                            self.record_def(pattern.id, (def, lp));
+                            self.record_def(pattern.id, (def, lp, 0));
                         }
                         FoundConst(..) => {
                             self.resolve_error(pattern.span,
@@ -3407,7 +3405,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             // will be able to distinguish variants from
                             // locals in patterns.
 
-                            self.record_def(pattern.id, (def, LastMod(AllPublic)));
+                            self.record_def(pattern.id, (def, LastMod(AllPublic), 0));
 
                             // Add the binding to the local ribs, if it
                             // doesn't already exist in the bindings list. (We
@@ -3451,12 +3449,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 PatEnum(ref path, _) => {
                     // This must be an enum variant, struct or const.
                     match self.resolve_path(pat_id, path, 0, ValueNS, false) {
-                        Some(def @ (DefVariant(..), _)) |
-                        Some(def @ (DefStruct(..), _))  |
-                        Some(def @ (DefConst(..), _)) => {
+                        Some(def @ (DefVariant(..), _, _)) |
+                        Some(def @ (DefStruct(..), _, _))  |
+                        Some(def @ (DefConst(..), _, _)) => {
                             self.record_def(pattern.id, def);
                         }
-                        Some((DefStatic(..), _)) => {
+                        Some((DefStatic(..), _, _)) => {
                             self.resolve_error(path.span,
                                                "static variables cannot be \
                                                 referenced in a pattern, \
@@ -3573,40 +3571,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     path: &Path,
                     path_depth: usize,
                     namespace: Namespace,
-                    check_ribs: bool) -> Option<(Def, LastPrivate)> {
+                    check_ribs: bool) -> Option<(Def, LastPrivate, usize)> {
         let span = path.span;
         let segments = &path.segments[..path.segments.len()-path_depth];
 
-        // A special case for sugared associated type paths `T::A` where `T` is
-        // a type parameter and `A` is an associated type on some bound of `T`.
-        if namespace == TypeNS && segments.len() == 2 {
-            match self.resolve_identifier(segments[0].identifier,
-                                          TypeNS,
-                                          true,
-                                          span) {
-                Some((def, last_private)) => {
-                    match def {
-                        DefTyParam(_, _, did, _) => {
-                            let def = DefAssociatedPath(TyParamProvenance::FromParam(did),
-                                                        segments.last()
-                                                            .unwrap().identifier);
-                            return Some((def, last_private));
-                        }
-                        DefSelfTy(nid) => {
-                            let def = DefAssociatedPath(TyParamProvenance::FromSelf(local_def(nid)),
-                                                        segments.last()
-                                                            .unwrap().identifier);
-                            return Some((def, last_private));
-                        }
-                        _ => {}
-                    }
-                }
-                _ => {}
-            }
-        }
-
         if path.global {
-            return self.resolve_crate_relative_path(span, segments, namespace);
+            let def = self.resolve_crate_relative_path(span, segments, namespace);
+            return def.map(|(def, lp)| (def, lp, path_depth));
         }
 
         // Try to find a path to an item in a module.
@@ -3628,10 +3599,10 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 _ => ()
             }
 
-            return def;
+            def.map(|(def, lp)| (def, lp, path_depth))
+        } else {
+            unqualified_def.map(|(def, lp)| (def, lp, path_depth))
         }
-
-        unqualified_def
     }
 
     // resolve a single identifier (used as a varref)
@@ -4105,14 +4076,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             ExprPath(ref path) | ExprQPath(ast::QPath { ref path, .. }) => {
                 if let ExprQPath(_) = expr.node {
                     // Make sure the trait is valid.
-                    self.resolve_trait_reference(expr.id, path, 1);
+                    let _ = self.resolve_trait_reference(expr.id, path, 1);
                 }
 
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
                 match self.resolve_path(expr.id, path, 0, ValueNS, true) {
                     // Check if struct variant
-                    Some((DefVariant(_, _, true), _)) => {
+                    Some((DefVariant(_, _, true), _, _)) => {
                         let path_name = self.path_names_to_string(path, 0);
                         self.resolve_error(expr.span,
                                 &format!("`{}` is a struct variant name, but \
@@ -4140,7 +4111,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         let path_name = self.path_names_to_string(path, 0);
                         match self.with_no_errors(|this|
                             this.resolve_path(expr.id, path, 0, TypeNS, false)) {
-                            Some((DefTy(struct_id, _), _))
+                            Some((DefTy(struct_id, _), _, 0))
                               if self.structs.contains_key(&struct_id) => {
                                 self.resolve_error(expr.span,
                                         &format!("`{}` is a structure name, but \
@@ -4252,7 +4223,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     }
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.
-                        self.record_def(expr.id, (def, LastMod(AllPublic)))
+                        self.record_def(expr.id, (def, LastMod(AllPublic), 0))
                     }
                     Some(_) => {
                         self.session.span_bug(expr.span,
@@ -4372,18 +4343,31 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn record_def(&mut self,
                   node_id: NodeId,
-                  (def, lp): (Def, LastPrivate)) {
+                  (def, lp, depth): (Def, LastPrivate, usize)) {
         debug!("(recording def) recording {:?} for {}, last private {:?}",
                 def, node_id, lp);
         assert!(match lp {LastImport{..} => false, _ => true},
                 "Import should only be used for `use` directives");
         self.last_private.insert(node_id, lp);
 
-        if let Some(prev_def) = self.def_map.borrow_mut().insert(node_id, def) {
-            let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
-            self.session.span_bug(span, &format!("path resolved multiple times \
-                                                  ({:?} before, {:?} now)",
-                                                  prev_def, def));
+        if depth == 0 {
+            if let Some(prev_def) = self.def_map.borrow_mut().insert(node_id, def) {
+                let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
+                self.session.span_bug(span, &format!("path resolved multiple times \
+                                                      ({:?} before, {:?} now)",
+                                                     prev_def, def));
+            }
+        } else {
+            let def = PartialDef {
+                base_type: def,
+                extra_associated_types: (depth - 1) as u32
+            };
+            if let Some(prev_def) = self.partial_def_map.borrow_mut().insert(node_id, def) {
+                let span = self.ast_map.opt_span(node_id).unwrap_or(codemap::DUMMY_SP);
+                self.session.span_bug(span, &format!("path resolved multiple times \
+                                                      ({:?} before, {:?} now)",
+                                                     prev_def, def));
+            }
         }
     }
 
@@ -4474,6 +4458,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
 pub struct CrateMap {
     pub def_map: DefMap,
+    pub partial_def_map: PartialDefMap,
     pub freevars: RefCell<FreevarMap>,
     pub export_map: ExportMap,
     pub trait_map: TraitMap,
@@ -4513,6 +4498,7 @@ pub fn resolve_crate<'a, 'tcx>(session: &'a Session,
 
     CrateMap {
         def_map: resolver.def_map,
+        partial_def_map: resolver.partial_def_map,
         freevars: resolver.freevars,
         export_map: resolver.export_map,
         trait_map: resolver.trait_map,

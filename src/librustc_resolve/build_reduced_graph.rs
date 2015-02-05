@@ -940,7 +940,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                   is_public,
                                                   DUMMY_SP)
           }
-          DefTy(..) | DefAssociatedTy(..) | DefAssociatedPath(..) => {
+          DefTy(..) | DefAssociatedTy(..) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 

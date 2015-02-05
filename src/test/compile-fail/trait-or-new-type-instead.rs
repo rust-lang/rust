@@ -8,9 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-
-impl<T> Option<T> { //~ERROR inherent implementations are not allowed for types not defined in the current module
+// FIXME(eddyb/UFCS) This should have a nicer error, but that's not possible just yet.
+impl<T> Option<T> { //~ ERROR use of undeclared type name `Option`
     pub fn foo(&self) { }
 }
 

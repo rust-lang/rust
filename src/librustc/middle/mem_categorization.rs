@@ -582,7 +582,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
           def::DefTyParam(..) | def::DefRegion(_) |
           def::DefLabel(_) | def::DefSelfTy(..) |
-          def::DefAssociatedTy(..) | def::DefAssociatedPath(..)=> {
+          def::DefAssociatedTy(..) => {
               Ok(Rc::new(cmt_ {
                   id:id,
                   span:span,

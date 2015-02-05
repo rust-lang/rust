@@ -46,7 +46,7 @@ use metadata::csearch;
 use middle;
 use middle::check_const;
 use middle::const_eval;
-use middle::def::{self, DefMap, ExportMap};
+use middle::def::{self, DefMap, ExportMap, PartialDefMap};
 use middle::dependency_format;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
@@ -682,6 +682,7 @@ pub struct ctxt<'tcx> {
 
     pub sess: Session,
     pub def_map: DefMap,
+    pub partial_def_map: PartialDefMap,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -2423,7 +2424,8 @@ impl<'tcx> CommonTypes<'tcx> {
 
 pub fn mk_ctxt<'tcx>(s: Session,
                      arenas: &'tcx CtxtArenas<'tcx>,
-                     dm: DefMap,
+                     def_map: DefMap,
+                     partial_def_map: PartialDefMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
                      freevars: RefCell<FreevarMap>,
@@ -2445,7 +2447,8 @@ pub fn mk_ctxt<'tcx>(s: Session,
         item_variance_map: RefCell::new(DefIdMap()),
         variance_computed: Cell::new(false),
         sess: s,
-        def_map: dm,
+        def_map: def_map,
+        partial_def_map: partial_def_map,
         region_maps: region_maps,
         node_types: RefCell::new(FnvHashMap()),
         item_substs: RefCell::new(NodeMap()),
