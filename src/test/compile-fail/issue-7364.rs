@@ -12,7 +12,7 @@
 
 use std::cell::RefCell;
 
-// Regresion test for issue 7364
+// Regression test for issue 7364
 static boxed: Box<RefCell<isize>> = box RefCell::new(0);
 //~^ ERROR statics are not allowed to have custom pointers
 //~| ERROR: the trait `core::marker::Sync` is not implemented for the type
