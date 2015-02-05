@@ -11,12 +11,12 @@
 use middle::subst::{Substs, VecPerParamSpace};
 use middle::infer::InferCtxt;
 use middle::ty::{self, Ty, AsPredicate, ToPolyTraitRef};
-use std::collections::HashSet;
 use std::fmt;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::Span;
 use util::common::ErrorReported;
+use util::nodemap::FnvHashSet;
 use util::ppaux::Repr;
 
 use super::{Obligation, ObligationCause, PredicateObligation,
@@ -36,7 +36,7 @@ use super::{Obligation, ObligationCause, PredicateObligation,
 pub struct Elaborator<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
     stack: Vec<StackEntry<'tcx>>,
-    visited: HashSet<ty::Predicate<'tcx>>,
+    visited: FnvHashSet<ty::Predicate<'tcx>>,
 }
 
 struct StackEntry<'tcx> {
@@ -65,14 +65,11 @@ pub fn elaborate_trait_refs<'cx, 'tcx>(
 
 pub fn elaborate_predicates<'cx, 'tcx>(
     tcx: &'cx ty::ctxt<'tcx>,
-    predicates: Vec<ty::Predicate<'tcx>>)
+    mut predicates: Vec<ty::Predicate<'tcx>>)
     -> Elaborator<'cx, 'tcx>
 {
-    let visited: HashSet<ty::Predicate<'tcx>> =
-        predicates.iter()
-                  .map(|b| (*b).clone())
-                  .collect();
-
+    let mut visited = FnvHashSet();
+    predicates.retain(|pred| visited.insert(pred.clone()));
     let entry = StackEntry { position: 0, predicates: predicates };
     Elaborator { tcx: tcx, stack: vec![entry], visited: visited }
 }
