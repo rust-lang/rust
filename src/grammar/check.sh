@@ -1,5 +1,7 @@
 #!/bin/sh
 
+# ignore-license
+
 # Run the reference lexer against libsyntax and compare the tokens and spans.
 # If "// ignore-lexer-test" is present in the file, it will be ignored.
 

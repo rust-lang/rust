@@ -1,3 +1,4 @@
+// ignore-license
 #include <stdio.h>
 #include <stdint.h>
 
