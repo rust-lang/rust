@@ -469,7 +469,7 @@ impl String {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
             let slice = RawSlice {
-                data: self.vec.as_ptr().offset(cur_len as int),
+                data: self.vec.as_ptr().offset(cur_len as isize),
                 len: 4,
             };
             let used = ch.encode_utf8(mem::transmute(slice)).unwrap_or(0);
@@ -569,8 +569,8 @@ impl String {
 
         let CharRange { ch, next } = self.char_range_at(idx);
         unsafe {
-            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as int),
-                             self.vec.as_ptr().offset(next as int),
+            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as isize),
+                             self.vec.as_ptr().offset(next as isize),
                              len - next);
             self.vec.set_len(len - (next - idx));
         }
@@ -599,10 +599,10 @@ impl String {
         let amt = ch.encode_utf8(&mut bits).unwrap();
 
         unsafe {
-            ptr::copy_memory(self.vec.as_mut_ptr().offset((idx + amt) as int),
-                             self.vec.as_ptr().offset(idx as int),
+            ptr::copy_memory(self.vec.as_mut_ptr().offset((idx + amt) as isize),
+                             self.vec.as_ptr().offset(idx as isize),
                              len - idx);
-            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as int),
+            ptr::copy_memory(self.vec.as_mut_ptr().offset(idx as isize),
                              bits.as_ptr(),
                              amt);
             self.vec.set_len(len + amt);

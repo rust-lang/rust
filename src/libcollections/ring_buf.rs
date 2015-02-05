@@ -32,8 +32,8 @@ use std::cmp;
 
 use alloc::heap;
 
-static INITIAL_CAPACITY: usize = 7u; // 2^3 - 1
-static MINIMUM_CAPACITY: usize = 1u; // 2 - 1
+static INITIAL_CAPACITY: usize = 7; // 2^3 - 1
+static MINIMUM_CAPACITY: usize = 1; // 2 - 1
 
 /// `RingBuf` is a circular buffer, which can be used as a double-ended queue efficiently.
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -1116,7 +1116,7 @@ pub trait SliceConcatExt<T: ?Sized, U> {
 
 impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
     fn concat(&self) -> Vec<T> {
-        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let size = self.iter().fold(0, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size);
         for v in self {
             result.push_all(v.as_slice())
@@ -1125,7 +1125,7 @@ impl<T: Clone, V: AsSlice<T>> SliceConcatExt<T, Vec<T>> for [V] {
     }
 
     fn connect(&self, sep: &T) -> Vec<T> {
-        let size = self.iter().fold(0u, |acc, v| acc + v.as_slice().len());
+        let size = self.iter().fold(0, |acc, v| acc + v.as_slice().len());
         let mut result = Vec::with_capacity(size + self.len());
         let mut first = true;
         for v in self {
@@ -1301,7 +1301,7 @@ impl<T: Clone> Iterator for Permutations<T> {
 ////////////////////////////////////////////////////////////////////////////////
 
 fn insertion_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Ordering {
-    let len = v.len() as int;
+    let len = v.len() as isize;
     let buf_v = v.as_mut_ptr();
 
     // 1 <= i < len;
@@ -1371,7 +1371,7 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
     let mut working_space = Vec::with_capacity(2 * len);
     // these both are buffers of length `len`.
     let mut buf_dat = working_space.as_mut_ptr();
-    let mut buf_tmp = unsafe {buf_dat.offset(len as int)};
+    let mut buf_tmp = unsafe {buf_dat.offset(len as isize)};
 
     // length `len`.
     let buf_v = v.as_ptr();
@@ -1387,17 +1387,17 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
         // start <= i < len;
         for i in start..cmp::min(start + insertion, len) {
             // j satisfies: start <= j <= i;
-            let mut j = i as int;
+            let mut j = i as isize;
             unsafe {
                 // `i` is in bounds.
-                let read_ptr = buf_v.offset(i as int);
+                let read_ptr = buf_v.offset(i as isize);
 
                 // find where to insert, we need to do strict <,
                 // rather than <=, to maintain stability.
 
                 // start <= j - 1 < len, so .offset(j - 1) is in
                 // bounds.
-                while j > start as int &&
+                while j > start as isize &&
                         compare(&*read_ptr, &*buf_dat.offset(j - 1)) == Less {
                     j -= 1;
                 }
@@ -1431,24 +1431,24 @@ fn merge_sort<T, F>(v: &mut [T], mut compare: F) where F: FnMut(&T, &T) -> Order
                 // the end of the first run & start of the
                 // second. Offset of `len` is defined, since this is
                 // precisely one byte past the end of the object.
-                let right_start = buf_dat.offset(cmp::min(start + width, len) as int);
+                let right_start = buf_dat.offset(cmp::min(start + width, len) as isize);
                 // end of the second. Similar reasoning to the above re safety.
                 let right_end_idx = cmp::min(start + 2 * width, len);
-                let right_end = buf_dat.offset(right_end_idx as int);
+                let right_end = buf_dat.offset(right_end_idx as isize);
 
                 // the pointers to the elements under consideration
                 // from the two runs.
 
                 // both of these are in bounds.
-                let mut left = buf_dat.offset(start as int);
+                let mut left = buf_dat.offset(start as isize);
                 let mut right = right_start;
 
                 // where we're putting the results, it is a run of
                 // length `2*width`, so we step it once for each step
                 // of either `left` or `right`.  `buf_tmp` has length
                 // `len`, so these are in bounds.
-                let mut out = buf_tmp.offset(start as int);
-                let out_end = buf_tmp.offset(right_end_idx as int);
+                let mut out = buf_tmp.offset(start as isize);
+                let out_end = buf_tmp.offset(right_end_idx as isize);
 
                 while out < out_end {
                     // Either the left or the right run are exhausted,
@@ -2373,7 +2373,7 @@ mod tests {
 
     #[test]
     fn test_mut_rev_iterator() {
-        let mut xs = [1u, 2, 3, 4, 5];
+        let mut xs = [1, 2, 3, 4, 5];
         for (i,x) in xs.iter_mut().rev().enumerate() {
             *x += i;
         }
@@ -2382,13 +2382,13 @@ mod tests {
 
     #[test]
     fn test_move_iterator() {
-        let xs = vec![1u,2,3,4,5];
+        let xs = vec![1,2,3,4,5];
         assert_eq!(xs.into_iter().fold(0, |a: usize, b: usize| 10*a + b), 12345);
     }
 
     #[test]
     fn test_move_rev_iterator() {
-        let xs = vec![1u,2,3,4,5];
+        let xs = vec![1,2,3,4,5];
         assert_eq!(xs.into_iter().rev().fold(0, |a: usize, b: usize| 10*a + b), 54321);
     }
 
@@ -2592,7 +2592,7 @@ mod tests {
         test_show_vec!(empty, "[]");
         test_show_vec!(vec![1], "[1]");
         test_show_vec!(vec![1, 2, 3], "[1, 2, 3]");
-        test_show_vec!(vec![vec![], vec![1u], vec![1u, 1u]],
+        test_show_vec!(vec![vec![], vec![1], vec![1, 1]],
                        "[[], [1], [1, 1]]");
 
         let empty_mut: &mut [i32] = &mut[];
@@ -2601,7 +2601,7 @@ mod tests {
         test_show_vec!(v, "[1]");
         let v = &mut[1, 2, 3];
         test_show_vec!(v, "[1, 2, 3]");
-        let v: &mut[&mut[_]] = &mut[&mut[], &mut[1u], &mut[1u, 1u]];
+        let v: &mut[&mut[_]] = &mut[&mut[], &mut[1], &mut[1, 1]];
         test_show_vec!(v, "[[], [1], [1, 1]]");
     }
 
@@ -2677,7 +2677,7 @@ mod tests {
     fn test_iter_zero_sized() {
         let mut v = vec![Foo, Foo, Foo];
         assert_eq!(v.len(), 3);
-        let mut cnt = 0u;
+        let mut cnt = 0;
 
         for f in &v {
             assert!(*f == Foo);
@@ -3016,7 +3016,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v: Vec<_> = repeat((0, 0)).take(30).collect();
-            for _ in 0u..100 {
+            for _ in 0..100 {
                 let l = v.len();
                 v.insert(rng.gen::<usize>() % (l + 1),
                          (1, 1));
@@ -3028,7 +3028,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v: Vec<_> = repeat((0, 0)).take(130).collect();
-            for _ in 0u..100 {
+            for _ in 0..100 {
                 let l = v.len();
                 v.remove(rng.gen::<usize>() % l);
             }
