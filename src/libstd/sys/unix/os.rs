@@ -47,13 +47,9 @@ pub fn errno() -> i32 {
     }
 
     #[cfg(target_os = "openbsd")]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __errno() -> *const c_int;
-        }
-        unsafe {
-            __errno()
-        }
+    unsafe fn errno_location() -> *const c_int {
+        extern { fn __errno() -> *const c_int; }
+        __errno()
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
