@@ -527,12 +527,12 @@ pub fn errno() -> i32 {
 /// println!("{}", os::error_string(os::errno() as i32));
 /// ```
 pub fn error_string(errnum: i32) -> String {
-    return sys::os::error_string(errnum as i32);
+    return sys::os::error_string(errnum);
 }
 
 /// Get a string representing the platform-dependent last error
 pub fn last_os_error() -> String {
-    error_string(errno() as i32)
+    error_string(errno())
 }
 
 /// Sets the process exit code
