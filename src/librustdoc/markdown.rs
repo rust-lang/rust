@@ -49,7 +49,7 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
     let mut css = String::new();
     for name in &matches.opt_strs("markdown-css") {
         let s = format!("<link rel=\"stylesheet\" type=\"text/css\" href=\"{}\">\n", name);
-        css.push_str(s.as_slice())
+        css.push_str(&s)
     }
 
     let input_str = load_or_return!(input, 1, 2);
@@ -69,13 +69,13 @@ pub fn render(input: &str, mut output: Path, matches: &getopts::Matches,
         Ok(f) => f
     };
 
-    let (metadata, text) = extract_leading_metadata(input_str.as_slice());
+    let (metadata, text) = extract_leading_metadata(&input_str);
     if metadata.len() == 0 {
         let _ = writeln!(&mut old_io::stderr(),
                          "invalid markdown file: expecting initial line with `% ...TITLE...`");
         return 5;
     }
-    let title = metadata[0].as_slice();
+    let title = metadata[0];
 
     reset_headers();
 
@@ -141,8 +141,8 @@ pub fn test(input: &str, libs: SearchPaths, externs: core::Externs,
     let input_str = load_or_return!(input, 1, 2);
 
     let mut collector = Collector::new(input.to_string(), libs, externs, true);
-    find_testable_code(input_str.as_slice(), &mut collector);
+    find_testable_code(&input_str, &mut collector);
     test_args.insert(0, "rustdoctest".to_string());
-    testing::test_main(test_args.as_slice(), collector.tests);
+    testing::test_main(&test_args, collector.tests);
     0
 }

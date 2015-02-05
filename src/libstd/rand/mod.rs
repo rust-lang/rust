@@ -469,7 +469,7 @@ mod test {
                        80, 81, 82, 83, 84, 85, 86, 87];
         for &n in &lengths {
             let mut v = repeat(0u8).take(n).collect::<Vec<_>>();
-            r.fill_bytes(v.as_mut_slice());
+            r.fill_bytes(&mut v);
 
             // use this to get nicer error messages.
             for (i, &byte) in v.iter().enumerate() {
@@ -619,8 +619,8 @@ mod test {
     #[test]
     fn test_std_rng_seeded() {
         let s = thread_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
-        let mut ra: StdRng = SeedableRng::from_seed(s.as_slice());
-        let mut rb: StdRng = SeedableRng::from_seed(s.as_slice());
+        let mut ra: StdRng = SeedableRng::from_seed(&*s);
+        let mut rb: StdRng = SeedableRng::from_seed(&*s);
         assert!(order::equals(ra.gen_ascii_chars().take(100),
                               rb.gen_ascii_chars().take(100)));
     }
@@ -628,10 +628,10 @@ mod test {
     #[test]
     fn test_std_rng_reseed() {
         let s = thread_rng().gen_iter::<uint>().take(256).collect::<Vec<uint>>();
-        let mut r: StdRng = SeedableRng::from_seed(s.as_slice());
+        let mut r: StdRng = SeedableRng::from_seed(&*s);
         let string1 = r.gen_ascii_chars().take(100).collect::<String>();
 
-        r.reseed(s.as_slice());
+        r.reseed(&s);
 
         let string2 = r.gen_ascii_chars().take(100).collect::<String>();
         assert_eq!(string1, string2);

@@ -127,10 +127,10 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
             ty::ty_infer(ty::FreshIntTy(c)) => {
                 if c >= self.freshen_count {
                     self.tcx().sess.bug(
-                        format!("Encountered a freshend type with id {} \
-                                 but our counter is only at {}",
-                                c,
-                                self.freshen_count).as_slice());
+                        &format!("Encountered a freshend type with id {} \
+                                  but our counter is only at {}",
+                                 c,
+                                 self.freshen_count));
                 }
                 t
             }

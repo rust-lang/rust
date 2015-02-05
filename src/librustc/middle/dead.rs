@@ -287,7 +287,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
         let def_map = &self.tcx.def_map;
         match pat.node {
             ast::PatStruct(_, ref fields, _) => {
-                self.handle_field_pattern_match(pat, fields.as_slice());
+                self.handle_field_pattern_match(pat, fields);
             }
             _ if pat_util::pat_is_const(def_map, pat) => {
                 // it might be the only use of a const
@@ -313,7 +313,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
 }
 
 fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
-    if attr::contains_name(attrs.as_slice(), "lang") {
+    if attr::contains_name(attrs, "lang") {
         return true;
     }
 
@@ -347,7 +347,7 @@ struct LifeSeeder {
 
 impl<'v> Visitor<'v> for LifeSeeder {
     fn visit_item(&mut self, item: &ast::Item) {
-        let allow_dead_code = has_allow_dead_code_or_lang_attr(item.attrs.as_slice());
+        let allow_dead_code = has_allow_dead_code_or_lang_attr(&item.attrs);
         if allow_dead_code {
             self.worklist.push(item.id);
         }
@@ -376,7 +376,7 @@ impl<'v> Visitor<'v> for LifeSeeder {
         // Check for method here because methods are not ast::Item
         match fk {
             visit::FkMethod(_, _, method) => {
-                if has_allow_dead_code_or_lang_attr(method.attrs.as_slice()) {
+                if has_allow_dead_code_or_lang_attr(&method.attrs) {
                     self.worklist.push(id);
                 }
             }
@@ -467,12 +467,12 @@ impl<'a, 'tcx> DeadVisitor<'a, 'tcx> {
         is_named
             && !self.symbol_is_live(node.id, None)
             && !is_marker_field
-            && !has_allow_dead_code_or_lang_attr(node.attrs.as_slice())
+            && !has_allow_dead_code_or_lang_attr(&node.attrs)
     }
 
     fn should_warn_about_variant(&mut self, variant: &ast::Variant_) -> bool {
         !self.symbol_is_live(variant.id, None)
-            && !has_allow_dead_code_or_lang_attr(variant.attrs.as_slice())
+            && !has_allow_dead_code_or_lang_attr(&variant.attrs)
     }
 
     // id := node id of an item's definition.

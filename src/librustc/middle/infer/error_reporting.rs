@@ -1707,7 +1707,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
             Some(node) => match node {
                 ast_map::NodeItem(item) => match item.node {
                     ast::ItemImpl(_, _, ref gen, _, _, _) => {
-                        taken.push_all(gen.lifetimes.as_slice());
+                        taken.push_all(&gen.lifetimes);
                     }
                     _ => ()
                 },

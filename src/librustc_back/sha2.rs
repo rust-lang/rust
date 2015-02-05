@@ -259,7 +259,7 @@ pub trait Digest {
     /// newly allocated vec of bytes.
     fn result_bytes(&mut self) -> Vec<u8> {
         let mut buf: Vec<u8> = repeat(0u8).take((self.output_bits()+7)/8).collect();
-        self.result(buf.as_mut_slice());
+        self.result(&mut buf);
         buf
     }
 
@@ -560,7 +560,7 @@ mod tests {
         // Test that it works when accepting the message all at once
         for t in tests {
             sh.reset();
-            sh.input_str(t.input.as_slice());
+            sh.input_str(&t.input);
             let out_str = sh.result_str();
             assert!(out_str == t.output_str);
         }
@@ -606,7 +606,7 @@ mod tests {
 
         let mut sh = box Sha256::new();
 
-        test_hash(&mut *sh, tests.as_slice());
+        test_hash(&mut *sh, &tests);
     }
 
     /// Feed 1,000,000 'a's into the digest with varying input sizes and check that the result is
@@ -630,7 +630,7 @@ mod tests {
         let result_str = digest.result_str();
         let result_bytes = digest.result_bytes();
 
-        assert_eq!(expected, result_str.as_slice());
+        assert_eq!(expected, result_str);
 
         let expected_vec: Vec<u8> = expected.from_hex()
                                             .unwrap()

@@ -19,7 +19,7 @@ impl Index<String> for Foo {
     type Output = isize;
 
     fn index<'a>(&'a self, z: &String) -> &'a isize {
-        if z.as_slice() == "x" {
+        if *z == "x" {
             &self.x
         } else {
             &self.y
@@ -31,7 +31,7 @@ impl IndexMut<String> for Foo {
     type Output = isize;
 
     fn index_mut<'a>(&'a mut self, z: &String) -> &'a mut isize {
-        if z.as_slice() == "x" {
+        if *z == "x" {
             &mut self.x
         } else {
             &mut self.y

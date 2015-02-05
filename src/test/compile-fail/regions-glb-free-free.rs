@@ -35,5 +35,5 @@ mod argparse {
 fn main () {
     let f : argparse::Flag = argparse::flag("flag", "My flag");
     let updated_flag = f.set_desc("My new flag");
-    assert_eq!(updated_flag.desc.as_slice(), "My new flag");
+    assert_eq!(updated_flag.desc, "My new flag");
 }

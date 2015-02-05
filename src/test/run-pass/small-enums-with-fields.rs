@@ -20,8 +20,8 @@ macro_rules! check {
             static S: $t = $e;
             let v: $t = $e;
             assert_eq!(S, v);
-            assert_eq!(format!("{:?}", v).as_slice(), $s);
-            assert_eq!(format!("{:?}", S).as_slice(), $s);
+            assert_eq!(format!("{:?}", v), $s);
+            assert_eq!(format!("{:?}", S), $s);
         });*
     }}
 }

@@ -20,5 +20,5 @@ fn both<'r>(v: &'r [uint]) -> &'r [uint] {
 
 pub fn main() {
     let v = vec!(1,2,3);
-    both(v.as_slice());
+    both(&v);
 }

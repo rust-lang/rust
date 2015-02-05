@@ -11,15 +11,15 @@
 pub fn main() {
     let v: Vec<isize> = vec!(0, 1, 2, 3, 4, 5);
     let s: String = "abcdef".to_string();
-    v.as_slice()[3us];
-    v.as_slice()[3];
-    v.as_slice()[3u8];  //~ERROR the trait `core::ops::Index<u8>` is not implemented
+    v[3us];
+    v[3];
+    v[3u8];  //~ERROR the trait `core::ops::Index<u8>` is not implemented
     //~^ ERROR the trait `core::ops::Index<u8>` is not implemented
-    v.as_slice()[3i8];  //~ERROR the trait `core::ops::Index<i8>` is not implemented
+    v[3i8];  //~ERROR the trait `core::ops::Index<i8>` is not implemented
     //~^ ERROR the trait `core::ops::Index<i8>` is not implemented
-    v.as_slice()[3u32]; //~ERROR the trait `core::ops::Index<u32>` is not implemented
+    v[3u32]; //~ERROR the trait `core::ops::Index<u32>` is not implemented
     //~^ ERROR the trait `core::ops::Index<u32>` is not implemented
-    v.as_slice()[3i32]; //~ERROR the trait `core::ops::Index<i32>` is not implemented
+    v[3i32]; //~ERROR the trait `core::ops::Index<i32>` is not implemented
     //~^ ERROR the trait `core::ops::Index<i32>` is not implemented
     s.as_bytes()[3us];
     s.as_bytes()[3];

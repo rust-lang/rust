@@ -44,7 +44,7 @@ pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
     rdr.lines().enumerate().filter_map(|(line_no, ln)| {
         parse_expected(last_nonfollow_error,
                        line_no + 1,
-                       ln.unwrap().as_slice())
+                       &ln.unwrap())
             .map(|(which, error)| {
                 match which {
                     FollowPrevious(_) => {}

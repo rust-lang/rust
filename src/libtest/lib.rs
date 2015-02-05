@@ -105,7 +105,7 @@ impl TestName {
     fn as_slice<'a>(&'a self) -> &'a str {
         match *self {
             StaticTestName(s) => s,
-            DynTestName(ref s) => s.as_slice()
+            DynTestName(ref s) => s
         }
     }
 }
@@ -130,11 +130,11 @@ impl TestDesc {
         match align {
             PadNone => name,
             PadOnLeft => {
-                pad.push_str(name.as_slice());
+                pad.push_str(&name);
                 pad
             }
             PadOnRight => {
-                name.push_str(pad.as_slice());
+                name.push_str(&pad);
                 name
             }
         }
@@ -354,20 +354,19 @@ Test Attributes:
                      test, then the test runner will ignore these tests during
                      normal test runs. Running with --ignored will run these
                      tests."#,
-             usage = getopts::usage(message.as_slice(),
-                                    optgroups().as_slice()));
+             usage = getopts::usage(&message, &optgroups()));
 }
 
 // Parses command line arguments into test options
 pub fn parse_opts(args: &[String]) -> Option<OptRes> {
     let args_ = args.tail();
     let matches =
-        match getopts::getopts(args_.as_slice(), optgroups().as_slice()) {
+        match getopts::getopts(args_, &optgroups()) {
           Ok(m) => m,
           Err(f) => return Some(Err(f.to_string()))
         };
 
-    if matches.opt_present("h") { usage(args[0].as_slice()); return None; }
+    if matches.opt_present("h") { usage(&args[0]); return None; }
 
     let filter = if matches.free.len() > 0 {
         Some(matches.free[0].clone())
@@ -389,7 +388,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
         nocapture = env::var("RUST_TEST_NOCAPTURE").is_some();
     }
 
-    let color = match matches.opt_str("color").as_ref().map(|s| s.as_slice()) {
+    let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
         Some("auto") | None => AutoColor,
         Some("always") => AlwaysColor,
         Some("never") => NeverColor,
@@ -523,13 +522,13 @@ impl<T: Writer> ConsoleTestState<T> {
     pub fn write_run_start(&mut self, len: uint) -> old_io::IoResult<()> {
         self.total = len;
         let noun = if len != 1 { "tests" } else { "test" };
-        self.write_plain(format!("\nrunning {} {}\n", len, noun).as_slice())
+        self.write_plain(&format!("\nrunning {} {}\n", len, noun))
     }
 
     pub fn write_test_start(&mut self, test: &TestDesc,
                             align: NamePadding) -> old_io::IoResult<()> {
         let name = test.padded_name(self.max_name_len, align);
-        self.write_plain(format!("test {} ... ", name).as_slice())
+        self.write_plain(&format!("test {} ... ", name))
     }
 
     pub fn write_result(&mut self, result: &TestResult) -> old_io::IoResult<()> {
@@ -539,13 +538,12 @@ impl<T: Writer> ConsoleTestState<T> {
             TrIgnored => self.write_ignored(),
             TrMetrics(ref mm) => {
                 try!(self.write_metric());
-                self.write_plain(format!(": {}", mm.fmt_metrics()).as_slice())
+                self.write_plain(&format!(": {}", mm.fmt_metrics()))
             }
             TrBench(ref bs) => {
                 try!(self.write_bench());
 
-                try!(self.write_plain(format!(": {}",
-                                              fmt_bench_samples(bs)).as_slice()));
+                try!(self.write_plain(&format!(": {}", fmt_bench_samples(bs))));
 
                 Ok(())
             }
@@ -564,7 +562,7 @@ impl<T: Writer> ConsoleTestState<T> {
                         TrIgnored => "ignored".to_string(),
                         TrMetrics(ref mm) => mm.fmt_metrics(),
                         TrBench(ref bs) => fmt_bench_samples(bs)
-                    }, test.name.as_slice());
+                    }, test.name);
                 o.write_all(s.as_bytes())
             }
         }
@@ -577,23 +575,21 @@ impl<T: Writer> ConsoleTestState<T> {
         for &(ref f, ref stdout) in &self.failures {
             failures.push(f.name.to_string());
             if stdout.len() > 0 {
-                fail_out.push_str(format!("---- {} stdout ----\n\t",
-                                          f.name.as_slice()).as_slice());
-                let output = String::from_utf8_lossy(stdout.as_slice());
-                fail_out.push_str(output.as_slice());
+                fail_out.push_str(&format!("---- {} stdout ----\n\t", f.name));
+                let output = String::from_utf8_lossy(stdout);
+                fail_out.push_str(&output);
                 fail_out.push_str("\n");
             }
         }
         if fail_out.len() > 0 {
             try!(self.write_plain("\n"));
-            try!(self.write_plain(fail_out.as_slice()));
+            try!(self.write_plain(&fail_out));
         }
 
         try!(self.write_plain("\nfailures:\n"));
         failures.sort();
         for name in &failures {
-            try!(self.write_plain(format!("    {}\n",
-                                          name.as_slice()).as_slice()));
+            try!(self.write_plain(&format!("    {}\n", name)));
         }
         Ok(())
     }
@@ -615,7 +611,7 @@ impl<T: Writer> ConsoleTestState<T> {
         }
         let s = format!(". {} passed; {} failed; {} ignored; {} measured\n\n",
                         self.passed, self.failed, self.ignored, self.measured);
-        try!(self.write_plain(s.as_slice()));
+        try!(self.write_plain(&s));
         return Ok(success);
     }
 }
@@ -648,13 +644,13 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io:
                     TrOk => st.passed += 1,
                     TrIgnored => st.ignored += 1,
                     TrMetrics(mm) => {
-                        let tname = test.name.as_slice();
+                        let tname = test.name;
                         let MetricMap(mm) = mm;
                         for (k,v) in &mm {
                             st.metrics
-                              .insert_metric(format!("{}.{}",
-                                                     tname,
-                                                     k).as_slice(),
+                              .insert_metric(&format!("{}.{}",
+                                                      tname,
+                                                      k),
                                              v.value,
                                              v.noise);
                         }
@@ -686,7 +682,7 @@ pub fn run_tests_console(opts: &TestOpts, tests: Vec<TestDescAndFn> ) -> old_io:
     match tests.iter().max_by(|t|len_if_padded(*t)) {
         Some(t) => {
             let n = t.desc.name.as_slice();
-            st.max_name_len = n.len();
+            st.max_name_len = n.as_slice().len();
         },
         None => {}
     }
@@ -1237,7 +1233,7 @@ mod tests {
         let args = vec!("progname".to_string(),
                         "filter".to_string(),
                         "--ignored".to_string());
-        let opts = match parse_opts(args.as_slice()) {
+        let opts = match parse_opts(&args) {
             Some(Ok(o)) => o,
             _ => panic!("Malformed arg in parse_ignored_flag")
         };

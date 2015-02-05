@@ -113,7 +113,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let mut atys: Vec<Type> = Vec::new();
 
     // First, munge the inputs, if this has the `rust-call` ABI.
-    let inputs = untuple_arguments_if_necessary(cx, sig.inputs.as_slice(), abi);
+    let inputs = untuple_arguments_if_necessary(cx, &sig.inputs, abi);
 
     // Arg 0: Output pointer.
     // (if the output type is non-immediate)

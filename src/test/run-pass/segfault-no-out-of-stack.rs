@@ -13,13 +13,12 @@ use std::os;
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
-    if args.len() > 1 && args[1].as_slice() == "segfault" {
+    if args.len() > 1 && args[1] == "segfault" {
         unsafe { *(0 as *mut int) = 1 }; // trigger a segfault
     } else {
-        let segfault = Command::new(args[0].as_slice()).arg("segfault").output().unwrap();
+        let segfault = Command::new(&args[0]).arg("segfault").output().unwrap();
         assert!(!segfault.status.success());
-        let error = String::from_utf8_lossy(segfault.error.as_slice());
+        let error = String::from_utf8_lossy(&segfault.error);
         assert!(!error.contains("has overflowed its stack"));
     }
 }

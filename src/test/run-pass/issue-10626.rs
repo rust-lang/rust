@@ -17,8 +17,8 @@ use std::old_io::process;
 
 pub fn main () {
     let args = os::args();
-    let args = args.as_slice();
-    if args.len() > 1 && args[1].as_slice() == "child" {
+    let args = args;
+    if args.len() > 1 && args[1] == "child" {
         for _ in 0..1000 {
             println!("hello?");
         }
@@ -28,7 +28,7 @@ pub fn main () {
         return;
     }
 
-    let mut p = process::Command::new(args[0].as_slice());
+    let mut p = process::Command::new(&args[0]);
     p.arg("child").stdout(process::Ignored).stderr(process::Ignored);
     println!("{:?}", p.spawn().unwrap().wait());
 }

@@ -638,7 +638,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     let target = match Target::search(&opts.target_triple[]) {
         Ok(t) => t,
         Err(e) => {
-            sp.handler().fatal((format!("Error loading target specification: {}", e)).as_slice());
+            sp.handler().fatal(&format!("Error loading target specification: {}", e));
     }
     };
 
@@ -856,7 +856,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         let unparsed_output_types = matches.opt_strs("emit");
         for unparsed_output_type in &unparsed_output_types {
             for part in unparsed_output_type.split(',') {
-                let output_type = match part.as_slice() {
+                let output_type = match part {
                     "asm" => OutputTypeAssembly,
                     "llvm-ir" => OutputTypeLlvmAssembly,
                     "llvm-bc" => OutputTypeBitcode,
@@ -897,9 +897,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 Some(2) => Default,
                 Some(3) => Aggressive,
                 Some(arg) => {
-                    early_error(format!("optimization level needs to be \
-                                         between 0-3 (instead was `{}`)",
-                                        arg).as_slice());
+                    early_error(&format!("optimization level needs to be \
+                                          between 0-3 (instead was `{}`)",
+                                         arg));
                 }
             }
         }
@@ -916,9 +916,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
             Some(1) => LimitedDebugInfo,
             Some(2) => FullDebugInfo,
             Some(arg) => {
-                early_error(format!("debug info level needs to be between \
-                                     0-2 (instead was `{}`)",
-                                    arg).as_slice());
+                early_error(&format!("debug info level needs to be between \
+                                      0-2 (instead was `{}`)",
+                                     arg));
             }
         }
     };
@@ -937,9 +937,9 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                 "framework" => cstore::NativeFramework,
                 "static" => cstore::NativeStatic,
                 s => {
-                    early_error(format!("unknown library kind `{}`, expected \
-                                         one of dylib, framework, or static",
-                                        s).as_slice());
+                    early_error(&format!("unknown library kind `{}`, expected \
+                                          one of dylib, framework, or static",
+                                         s));
                 }
             };
             return (name.to_string(), kind)
@@ -968,12 +968,12 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let write_dependency_info = (output_types.contains(&OutputTypeDepInfo), None);
 
     let prints = matches.opt_strs("print").into_iter().map(|s| {
-        match s.as_slice() {
+        match &*s {
             "crate-name" => PrintRequest::CrateName,
             "file-names" => PrintRequest::FileNames,
             "sysroot" => PrintRequest::Sysroot,
             req => {
-                early_error(format!("unknown print request `{}`", req).as_slice())
+                early_error(&format!("unknown print request `{}`", req))
             }
         }
     }).collect::<Vec<_>>();

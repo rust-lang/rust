@@ -63,7 +63,7 @@ impl Sudoku {
                           .take(10).collect::<Vec<_>>();
         for line in reader.lines() {
             let line = line.unwrap();
-            let comps: Vec<&str> = line.as_slice()
+            let comps: Vec<&str> = line
                                        .trim()
                                        .split(',')
                                        .collect();

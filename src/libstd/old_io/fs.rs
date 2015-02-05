@@ -840,7 +840,7 @@ mod test {
     macro_rules! error { ($e:expr, $s:expr) => (
         match $e {
             Ok(_) => panic!("Unexpected success. Should've been: {:?}", $s),
-            Err(ref err) => assert!(err.to_string().contains($s.as_slice()),
+            Err(ref err) => assert!(err.to_string().contains($s),
                                     format!("`{}` did not contain `{}`", err, $s))
         }
     ) }
@@ -892,7 +892,7 @@ mod test {
                 -1|0 => panic!("shouldn't happen"),
                 n => str::from_utf8(&read_buf[..n]).unwrap().to_string()
             };
-            assert_eq!(read_str.as_slice(), message);
+            assert_eq!(read_str, message);
         }
         check!(unlink(filename));
     }
@@ -907,7 +907,7 @@ mod test {
         if cfg!(unix) {
             error!(result, "no such file or directory");
         }
-        error!(result, format!("path={}; mode=open; access=read", filename.display()));
+        error!(result, &format!("path={}; mode=open; access=read", filename.display()));
     }
 
     #[test]
@@ -921,7 +921,7 @@ mod test {
         if cfg!(unix) {
             error!(result, "no such file or directory");
         }
-        error!(result, format!("path={}", filename.display()));
+        error!(result, &format!("path={}", filename.display()));
     }
 
     #[test]
@@ -1120,7 +1120,7 @@ mod test {
                     None|Some("") => panic!("really shouldn't happen.."),
                     Some(n) => format!("{}{}", prefix, n),
                 };
-                assert_eq!(expected.as_slice(), read_str);
+                assert_eq!(expected, read_str);
             }
             check!(unlink(f));
         }
@@ -1189,7 +1189,7 @@ mod test {
         error!(result, "couldn't recursively mkdir");
         error!(result, "couldn't create directory");
         error!(result, "mode=0700");
-        error!(result, format!("path={}", file.display()));
+        error!(result, &format!("path={}", file.display()));
     }
 
     #[test]
@@ -1255,9 +1255,9 @@ mod test {
         let to = Path::new("test/other-bogus-path");
 
         error!(copy(&from, &to),
-            format!("couldn't copy path (the source path is not an \
-                    existing file; from={:?}; to={:?})",
-                    from.display(), to.display()));
+            &format!("couldn't copy path (the source path is not an \
+                     existing file; from={:?}; to={:?})",
+                     from.display(), to.display()));
 
         match copy(&from, &to) {
             Ok(..) => panic!(),
@@ -1277,7 +1277,7 @@ mod test {
         check!(File::create(&input).write(b"hello"));
         check!(copy(&input, &out));
         let contents = check!(File::open(&out).read_to_end());
-        assert_eq!(contents.as_slice(), b"hello");
+        assert_eq!(contents, b"hello");
 
         assert_eq!(check!(input.stat()).perm, check!(out.stat()).perm);
     }

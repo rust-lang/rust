@@ -159,7 +159,7 @@ fn coerce_to_int(ccx: &CrateContext, size: uint) -> Vec<Type> {
 
 fn struct_ty(ccx: &CrateContext, ty: Type) -> Type {
     let size = ty_size(ty) * 8;
-    Type::struct_(ccx, coerce_to_int(ccx, size).as_slice(), false)
+    Type::struct_(ccx, &coerce_to_int(ccx, size), false)
 }
 
 pub fn compute_abi_info(ccx: &CrateContext,

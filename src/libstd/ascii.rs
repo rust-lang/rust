@@ -421,7 +421,7 @@ mod tests {
             let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
                         else { c };
             assert!((from_u32(i).unwrap()).to_string().eq_ignore_ascii_case(
-                    (from_u32(lower).unwrap()).to_string().as_slice()));
+                    &from_u32(lower).unwrap().to_string()));
             i += 1;
         }
     }

@@ -31,7 +31,7 @@ macro_rules! demo {
             }
             assert_eq!((x,y), (1,1));
             let b: &[_] = &["out", "in"];
-            assert_eq!(history.as_slice(), b);
+            assert_eq!(history, b);
         }
     }
 }

@@ -208,8 +208,8 @@ pub trait Combine<'tcx> : Sized {
         }
 
         let inputs = try!(argvecs(self,
-                                  a.inputs.as_slice(),
-                                  b.inputs.as_slice()));
+                                  &a.inputs,
+                                  &b.inputs));
 
         let output = try!(match (a.output, b.output) {
             (ty::FnConverging(a_ty), ty::FnConverging(b_ty)) =>

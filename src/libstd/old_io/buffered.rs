@@ -97,7 +97,7 @@ impl<R: Reader> BufferedReader<R> {
 impl<R: Reader> Buffer for BufferedReader<R> {
     fn fill_buf<'a>(&'a mut self) -> IoResult<&'a [u8]> {
         if self.pos == self.cap {
-            self.cap = try!(self.inner.read(self.buf.as_mut_slice()));
+            self.cap = try!(self.inner.read(&mut self.buf));
             self.pos = 0;
         }
         Ok(&self.buf[self.pos..self.cap])

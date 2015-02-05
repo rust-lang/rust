@@ -592,7 +592,7 @@ pub fn noop_fold_mac<T: Folder>(Spanned {node, span}: Mac, fld: &mut T) -> Mac {
     Spanned {
         node: match node {
             MacInvocTT(p, tts, ctxt) => {
-                MacInvocTT(fld.fold_path(p), fld.fold_tts(tts.as_slice()), ctxt)
+                MacInvocTT(fld.fold_path(p), fld.fold_tts(&tts), ctxt)
             }
         },
         span: fld.new_span(span)
@@ -629,7 +629,7 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
                             Delimited {
                                 delim: delimed.delim,
                                 open_span: delimed.open_span,
-                                tts: fld.fold_tts(delimed.tts.as_slice()),
+                                tts: fld.fold_tts(&delimed.tts),
                                 close_span: delimed.close_span,
                             }
                         ))
@@ -637,7 +637,7 @@ pub fn noop_fold_tt<T: Folder>(tt: &TokenTree, fld: &mut T) -> TokenTree {
         TtSequence(span, ref seq) =>
             TtSequence(span,
                        Rc::new(SequenceRepetition {
-                           tts: fld.fold_tts(seq.tts.as_slice()),
+                           tts: fld.fold_tts(&seq.tts),
                            separator: seq.separator.clone().map(|tok| fld.fold_token(tok)),
                            ..**seq
                        })),
@@ -1441,7 +1441,7 @@ mod test {
     // this version doesn't care about getting comments or docstrings in.
     fn fake_print_crate(s: &mut pprust::State,
                         krate: &ast::Crate) -> old_io::IoResult<()> {
-        s.print_mod(&krate.module, krate.attrs.as_slice())
+        s.print_mod(&krate.module, &krate.attrs)
     }
 
     // change every identifier to "zz"
@@ -1463,7 +1463,7 @@ mod test {
                 let pred_val = $pred;
                 let a_val = $a;
                 let b_val = $b;
-                if !(pred_val(a_val.as_slice(),b_val.as_slice())) {
+                if !(pred_val(&a_val, &b_val)) {
                     panic!("expected args satisfying {}, got {} and {}",
                           $predname, a_val, b_val);
                 }

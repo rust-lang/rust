@@ -27,5 +27,5 @@ pub fn main() {
     }).join();
 
     let s = x.err().unwrap().downcast::<&'static str>().ok().unwrap();
-    assert_eq!(s.as_slice(), "This panic should happen.");
+    assert_eq!(&**s, "This panic should happen.");
 }

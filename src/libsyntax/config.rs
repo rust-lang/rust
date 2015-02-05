@@ -27,7 +27,7 @@ struct Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
 // any items that do not belong in the current configuration
 pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate) -> ast::Crate {
     let config = krate.config.clone();
-    strip_items(krate, |attrs| in_cfg(diagnostic, config.as_slice(), attrs))
+    strip_items(krate, |attrs| in_cfg(diagnostic, &config, attrs))
 }
 
 impl<F> fold::Folder for Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
@@ -132,7 +132,7 @@ fn fold_item_underscore<F>(cx: &mut Context<F>, item: ast::Item_) -> ast::Item_ 
         }
         ast::ItemEnum(def, generics) => {
             let variants = def.variants.into_iter().filter_map(|v| {
-                if !(cx.in_cfg)(v.node.attrs.as_slice()) {
+                if !(cx.in_cfg)(&v.node.attrs) {
                     None
                 } else {
                     Some(v.map(|Spanned {node: ast::Variant_ {id, name, attrs, kind,
@@ -172,7 +172,7 @@ fn fold_struct<F>(cx: &mut Context<F>, def: P<ast::StructDef>) -> P<ast::StructD
     def.map(|ast::StructDef { fields, ctor_id }| {
         ast::StructDef {
             fields: fields.into_iter().filter(|m| {
-                (cx.in_cfg)(m.node.attrs.as_slice())
+                (cx.in_cfg)(&m.node.attrs)
             }).collect(),
             ctor_id: ctor_id,
         }
@@ -223,7 +223,7 @@ fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
             node: match node {
                 ast::ExprMatch(m, arms, source) => {
                     ast::ExprMatch(m, arms.into_iter()
-                                        .filter(|a| (cx.in_cfg)(a.attrs.as_slice()))
+                                        .filter(|a| (cx.in_cfg)(&a.attrs))
                                         .collect(), source)
                 }
                 _ => node
@@ -236,22 +236,22 @@ fn fold_expr<F>(cx: &mut Context<F>, expr: P<ast::Expr>) -> P<ast::Expr> where
 fn item_in_cfg<F>(cx: &mut Context<F>, item: &ast::Item) -> bool where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    return (cx.in_cfg)(item.attrs.as_slice());
+    return (cx.in_cfg)(&item.attrs);
 }
 
 fn foreign_item_in_cfg<F>(cx: &mut Context<F>, item: &ast::ForeignItem) -> bool where
     F: FnMut(&[ast::Attribute]) -> bool
 {
-    return (cx.in_cfg)(item.attrs.as_slice());
+    return (cx.in_cfg)(&item.attrs);
 }
 
 fn trait_method_in_cfg<F>(cx: &mut Context<F>, meth: &ast::TraitItem) -> bool where
     F: FnMut(&[ast::Attribute]) -> bool
 {
     match *meth {
-        ast::RequiredMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
-        ast::ProvidedMethod(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
-        ast::TypeTraitItem(ref typ) => (cx.in_cfg)(typ.attrs.as_slice()),
+        ast::RequiredMethod(ref meth) => (cx.in_cfg)(&meth.attrs),
+        ast::ProvidedMethod(ref meth) => (cx.in_cfg)(&meth.attrs),
+        ast::TypeTraitItem(ref typ) => (cx.in_cfg)(&typ.attrs),
     }
 }
 
@@ -259,8 +259,8 @@ fn impl_item_in_cfg<F>(cx: &mut Context<F>, impl_item: &ast::ImplItem) -> bool w
     F: FnMut(&[ast::Attribute]) -> bool
 {
     match *impl_item {
-        ast::MethodImplItem(ref meth) => (cx.in_cfg)(meth.attrs.as_slice()),
-        ast::TypeImplItem(ref typ) => (cx.in_cfg)(typ.attrs.as_slice()),
+        ast::MethodImplItem(ref meth) => (cx.in_cfg)(&meth.attrs),
+        ast::TypeImplItem(ref typ) => (cx.in_cfg)(&typ.attrs),
     }
 }
 

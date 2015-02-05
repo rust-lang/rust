@@ -164,7 +164,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_enum(pcx, pat, path, subpats, expected);
         }
         ast::PatStruct(ref path, ref fields, etc) => {
-            check_pat_struct(pcx, pat, path, fields.as_slice(), etc, expected);
+            check_pat_struct(pcx, pat, path, fields, etc, expected);
         }
         ast::PatTup(ref elements) => {
             let element_tys: Vec<_> =
@@ -480,7 +480,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
         .unwrap_or_else(|| Substs::empty());
 
     let struct_fields = ty::struct_fields(tcx, variant_def_id, &item_substs);
-    check_struct_pat_fields(pcx, pat.span, fields, struct_fields.as_slice(),
+    check_struct_pat_fields(pcx, pat.span, fields, &struct_fields,
                             variant_def_id, etc);
 }
 

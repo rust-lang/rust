@@ -31,5 +31,5 @@ pub fn main() {
     sb.append("Hello, ");
     sb.append("World!");
     let str = to_string(sb);
-    assert_eq!(str.as_slice(), "Hello, World!");
+    assert_eq!(str, "Hello, World!");
 }

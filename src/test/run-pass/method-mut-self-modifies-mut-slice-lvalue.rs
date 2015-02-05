@@ -41,7 +41,7 @@ fn main() {
     let mut buf = [0_u8; 6];
 
     {
-        let mut writer = buf.as_mut_slice();
+        let mut writer: &mut [_] = &mut buf;
         writer.my_write(&[0, 1, 2]).unwrap();
         writer.my_write(&[3, 4, 5]).unwrap();
     }

@@ -195,7 +195,7 @@ fn build_struct(cx: &DocContext, tcx: &ty::ctxt, did: ast::DefId) -> clean::Stru
     let fields = ty::lookup_struct_fields(tcx, did);
 
     clean::Struct {
-        struct_type: match fields.as_slice() {
+        struct_type: match &*fields {
             [] => doctree::Unit,
             [ref f] if f.name == unnamed_field.name => doctree::Newtype,
             [ref f, ..] if f.name == unnamed_field.name => doctree::Tuple,
@@ -340,7 +340,7 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
     let polarity = csearch::get_impl_polarity(tcx, did);
     return Some(clean::Item {
         inner: clean::ImplItem(clean::Impl {
-            derived: clean::detect_derived(attrs.as_slice()),
+            derived: clean::detect_derived(&attrs),
             trait_: associated_trait.clean(cx).map(|bound| {
                 match bound {
                     clean::TraitBound(polyt, _) => polyt.trait_,

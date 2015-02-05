@@ -41,7 +41,7 @@ fn start(argc: int, argv: *const *const u8) -> int {
             ffi::c_str_to_bytes(&ptr).to_vec()
         }).collect::<Vec<_>>()
     };
-    let me = args[0].as_slice();
+    let me = &*args[0];
 
     let x: &[u8] = &[1u8];
     pass(Command::new(me).arg(x).output().unwrap());
@@ -59,7 +59,7 @@ fn start(argc: int, argv: *const *const u8) -> int {
 
 fn pass(output: ProcessOutput) {
     if !output.status.success() {
-        println!("{:?}", str::from_utf8(output.output.as_slice()));
-        println!("{:?}", str::from_utf8(output.error.as_slice()));
+        println!("{:?}", str::from_utf8(&output.output));
+        println!("{:?}", str::from_utf8(&output.error));
     }
 }

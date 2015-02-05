@@ -68,7 +68,7 @@ pub fn main() {
             // work out the total number of comparisons required to sort
             // this array...
             let mut count = 0us;
-            main.clone().as_mut_slice().sort_by(|a, b| { count += 1; a.cmp(b) });
+            main.clone().sort_by(|a, b| { count += 1; a.cmp(b) });
 
             // ... and then panic on each and every single one.
             for panic_countdown in 0..count {
@@ -82,7 +82,7 @@ pub fn main() {
                 let _ = Thread::scoped(move|| {
                     let mut v = v;
                     let mut panic_countdown = panic_countdown;
-                    v.as_mut_slice().sort_by(|a, b| {
+                    v.sort_by(|a, b| {
                         if panic_countdown == 0 {
                             panic!()
                         }

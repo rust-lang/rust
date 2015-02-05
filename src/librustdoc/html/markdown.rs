@@ -224,15 +224,13 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                     let test = origtext.lines().map(|l| {
                         stripped_filtered_line(l).unwrap_or(l)
                     }).collect::<Vec<&str>>().connect("\n");
-                    let krate = krate.as_ref().map(|s| s.as_slice());
-                    let test = test::maketest(test.as_slice(), krate, false, false);
-                    s.push_str(format!("<span class='rusttest'>{}</span>",
-                                         Escape(test.as_slice())).as_slice());
+                    let krate = krate.as_ref().map(|s| &**s);
+                    let test = test::maketest(&test, krate, false, false);
+                    s.push_str(&format!("<span class='rusttest'>{}</span>", Escape(&test)));
                 });
-                s.push_str(highlight::highlight(text.as_slice(),
-                                                None,
-                                                Some("rust-example-rendered"))
-                             .as_slice());
+                s.push_str(&highlight::highlight(&text,
+                                                 None,
+                                                 Some("rust-example-rendered")));
                 let output = CString::from_vec(s.into_bytes());
                 hoedown_buffer_puts(ob, output.as_ptr());
             })
@@ -459,14 +457,14 @@ impl<'a> fmt::Display for Markdown<'a> {
         let Markdown(md) = *self;
         // This is actually common enough to special-case
         if md.len() == 0 { return Ok(()) }
-        render(fmt, md.as_slice(), false)
+        render(fmt, md, false)
     }
 }
 
 impl<'a> fmt::Display for MarkdownWithToc<'a> {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         let MarkdownWithToc(md) = *self;
-        render(fmt, md.as_slice(), true)
+        render(fmt, md, true)
     }
 }
 
@@ -555,7 +553,7 @@ mod tests {
     #[test]
     fn issue_17736() {
         let markdown = "# title";
-        format!("{}", Markdown(markdown.as_slice()));
+        format!("{}", Markdown(markdown));
     }
 
     #[test]

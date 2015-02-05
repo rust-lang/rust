@@ -39,7 +39,7 @@ impl fmt::Display for C {
 }
 
 macro_rules! t {
-    ($a:expr, $b:expr) => { assert_eq!($a.as_slice(), $b) }
+    ($a:expr, $b:expr) => { assert_eq!($a, $b) }
 }
 
 pub fn main() {

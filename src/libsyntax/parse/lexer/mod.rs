@@ -360,7 +360,7 @@ impl<'a> StringReader<'a> {
 
     pub fn nextnextch(&self) -> Option<char> {
         let offset = self.byte_offset(self.pos).to_usize();
-        let s = self.filemap.src.as_slice();
+        let s = &*self.filemap.src;
         if offset >= s.len() { return None }
         let str::CharRange { next, .. } = s.char_range_at(offset);
         if next < s.len() {

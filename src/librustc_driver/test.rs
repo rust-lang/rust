@@ -56,7 +56,7 @@ fn remove_message(e: &mut ExpectErrorEmitter, msg: &str, lvl: Level) {
     }
 
     debug!("Error: {}", msg);
-    match e.messages.iter().position(|m| msg.contains(m.as_slice())) {
+    match e.messages.iter().position(|m| msg.contains(m)) {
         Some(i) => {
             e.messages.remove(i);
         }

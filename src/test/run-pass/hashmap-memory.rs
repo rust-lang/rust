@@ -84,8 +84,7 @@ mod map_reduce {
               ctrl_proto::mapper_done => { num_mappers -= 1; }
               ctrl_proto::find_reducer(k, cc) => {
                 let mut c;
-                match reducers.get(&str::from_utf8(
-                        k.as_slice()).unwrap().to_string()) {
+                match reducers.get(&str::from_utf8(&k).unwrap().to_string()) {
                   Some(&_c) => { c = _c; }
                   None => { c = 0; }
                 }

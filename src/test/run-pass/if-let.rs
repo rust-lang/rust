@@ -50,7 +50,7 @@ pub fn main() {
     } else if let Foo::Two(_x) = foo {
         panic!("bad pattern match");
     } else if let Foo::Three(s, _) = foo {
-        assert_eq!(s.as_slice(), "three");
+        assert_eq!(s, "three");
     } else {
         panic!("bad else");
     }

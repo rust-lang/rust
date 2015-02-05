@@ -116,7 +116,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
             region::CodeExtent::Remainder(r) => {
                 new_string = format!("block suffix following statement {}",
                                      r.first_statement_index);
-                new_string.as_slice()
+                &*new_string
             }
         };
         explain_span(cx, scope_decorated_tag, span)
@@ -263,7 +263,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         match unsafety {
             ast::Unsafety::Normal => {}
             ast::Unsafety::Unsafe => {
-                s.push_str(unsafety.to_string().as_slice());
+                s.push_str(&unsafety.to_string());
                 s.push(' ');
             }
         };
@@ -315,7 +315,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             .iter()
             .map(|a| ty_to_string(cx, *a))
             .collect::<Vec<_>>();
-        s.push_str(strs.connect(", ").as_slice());
+        s.push_str(&strs.connect(", "));
         if sig.0.variadic {
             s.push_str(", ...");
         }
@@ -392,7 +392,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         ty_enum(did, substs) | ty_struct(did, substs) => {
             let base = ty::item_path_str(cx, did);
             let generics = ty::lookup_item_type(cx, did).generics;
-            parameterized(cx, base.as_slice(), substs, &generics, did, &[])
+            parameterized(cx, &base, substs, &generics, did, &[])
         }
         ty_trait(ref data) => {
             data.user_string(cx)
@@ -643,7 +643,7 @@ impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
         let base = ty::item_path_str(tcx, trait_ref.def_id);
         let trait_def = ty::lookup_trait_def(tcx, trait_ref.def_id);
         parameterized(tcx,
-                      base.as_slice(),
+                      &base,
                       trait_ref.substs,
                       &trait_def.generics,
                       trait_ref.def_id,
@@ -780,7 +780,7 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
         format!("TraitRef({}, {})",
                 self.substs.self_ty().repr(tcx),
-                parameterized(tcx, base.as_slice(), self.substs,
+                parameterized(tcx, &base, self.substs,
                               &trait_def.generics, self.def_id, &[]))
     }
 }
@@ -1235,7 +1235,7 @@ impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         let path_str = ty::item_path_str(tcx, self.def_id);
         let trait_def = ty::lookup_trait_def(tcx, self.def_id);
-        parameterized(tcx, path_str.as_slice(), self.substs,
+        parameterized(tcx, &path_str, self.substs,
                       &trait_def.generics, self.def_id, &[])
     }
 }

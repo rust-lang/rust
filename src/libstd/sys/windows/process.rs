@@ -389,7 +389,7 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
         }
         let argvec: Vec<char> = arg.chars().collect();
         for i in 0u..argvec.len() {
-            append_char_at(cmd, argvec.as_slice(), i);
+            append_char_at(cmd, &argvec, i);
         }
         if quote {
             cmd.push('"');
@@ -485,10 +485,9 @@ mod tests {
     fn test_make_command_line() {
         fn test_wrapper(prog: &str, args: &[&str]) -> String {
             make_command_line(&CString::from_slice(prog.as_bytes()),
-                              args.iter()
-                                  .map(|a| CString::from_slice(a.as_bytes()))
-                                  .collect::<Vec<CString>>()
-                                  .as_slice())
+                              &args.iter()
+                                   .map(|a| CString::from_slice(a.as_bytes()))
+                                   .collect::<Vec<CString>>())
         }
 
         assert_eq!(

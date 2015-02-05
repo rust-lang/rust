@@ -38,7 +38,7 @@ impl TTMacroExpander for Expander {
 
         let attr = ecx.attribute(sp, self.args.clone());
         let src = pprust::attribute_to_string(&attr);
-        let interned = token::intern_and_get_ident(src.as_slice());
+        let interned = token::intern_and_get_ident(&src);
         MacExpr::new(ecx.expr_str(sp, interned))
     }
 }

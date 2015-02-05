@@ -115,7 +115,7 @@ pub fn with_insn_ctxt<F>(blk: F) where
     F: FnOnce(&[&'static str]),
 {
     TASK_LOCAL_INSN_KEY.with(move |slot| {
-        slot.borrow().as_ref().map(move |s| blk(s.as_slice()));
+        slot.borrow().as_ref().map(move |s| blk(s));
     })
 }
 
@@ -1354,8 +1354,8 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
         // glue, shims, etc
         None if id == ast::DUMMY_NODE_ID => return (ast::DUMMY_NODE_ID, None),
 
-        _ => tcx.sess.bug(format!("unexpected variant in has_nested_returns: {}",
-                                  tcx.map.path_to_string(id)).as_slice())
+        _ => tcx.sess.bug(&format!("unexpected variant in has_nested_returns: {}",
+                                   tcx.map.path_to_string(id)))
     };
 
     (blk.id, Some(cfg::CFG::new(tcx, &**blk)))
@@ -2247,7 +2247,7 @@ pub fn update_linkage(ccx: &CrateContext,
     if let Some(id) = id {
         let item = ccx.tcx().map.get(id);
         if let ast_map::NodeItem(i) = item {
-            if let Some(name) = attr::first_attr_value_str_by_name(i.attrs.as_slice(), "linkage") {
+            if let Some(name) = attr::first_attr_value_str_by_name(&i.attrs, "linkage") {
                 if let Some(linkage) = llvm_linkage_by_name(name.get()) {
                     llvm::SetLinkage(llval, linkage);
                 } else {
@@ -2987,10 +2987,10 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     let encode_parms = crate_ctxt_to_encode_parms(cx, encode_inlined_item);
     let metadata = encoder::encode_metadata(encode_parms, krate);
     let mut compressed = encoder::metadata_encoding_version.to_vec();
-    compressed.push_all(match flate::deflate_bytes(metadata.as_slice()) {
+    compressed.push_all(&match flate::deflate_bytes(&metadata) {
         Some(compressed) => compressed,
         None => cx.sess().fatal("failed to compress metadata"),
-    }.as_slice());
+    });
     let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[]);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
     let name = format!("rust_metadata_{}_{}",
@@ -3062,7 +3062,7 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                 let name = ffi::c_str_to_bytes(&llvm::LLVMGetValueName(val))
                                .to_vec();
                 if !declared.contains(&name) &&
-                   !reachable.contains(str::from_utf8(name.as_slice()).unwrap()) {
+                   !reachable.contains(str::from_utf8(&name).unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);
                 }
             }
