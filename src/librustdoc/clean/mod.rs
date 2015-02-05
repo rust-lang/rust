@@ -2301,8 +2301,8 @@ impl ToSource for syntax::codemap::Span {
     fn to_src(&self, cx: &DocContext) -> String {
         debug!("converting span {:?} to snippet", self.clean(cx));
         let sn = match cx.sess().codemap().span_to_snippet(*self) {
-            Some(x) => x.to_string(),
-            None    => "".to_string()
+            Ok(x) => x.to_string(),
+            Err(_) => "".to_string()
         };
         debug!("got snippet {}", sn);
         sn

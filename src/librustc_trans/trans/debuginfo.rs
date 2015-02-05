@@ -1094,7 +1094,7 @@ pub fn get_cleanup_debug_loc_for_ast_node<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         // bodies), in which case we also just want to return the span of the
         // whole expression.
         let code_snippet = cx.sess().codemap().span_to_snippet(node_span);
-        if let Some(code_snippet) = code_snippet {
+        if let Ok(code_snippet) = code_snippet {
             let bytes = code_snippet.as_bytes();
 
             if bytes.len() > 0 && &bytes[bytes.len()-1..] == b"}" {
