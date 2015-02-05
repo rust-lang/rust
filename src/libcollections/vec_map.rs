@@ -13,7 +13,7 @@
 
 #![allow(missing_docs)]
 
-pub use self::Entry::*;
+use self::Entry::*;
 
 use core::prelude::*;
 
@@ -539,8 +539,7 @@ impl<V> VecMap<V> {
     ///
     /// assert_eq!(count[1], 3);
     /// ```
-    #[unstable(feature = "collections",
-               reason = "precise API still under development")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, key: usize) -> Entry<V> {
         // FIXME(Gankro): this is basically the dumbest implementation of
         // entry possible, because weird non-lexical borrows issues make it
@@ -576,8 +575,7 @@ impl<'a, V> Entry<'a, V> {
 impl<'a, V> VacantEntry<'a, V> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         let index = self.index;
         self.map.insert(index, value);
@@ -587,24 +585,21 @@ impl<'a, V> VacantEntry<'a, V> {
 
 impl<'a, V> OccupiedEntry<'a, V> {
     /// Gets a reference to the value in the entry.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
         let index = self.index;
         &self.map[index]
     }
 
     /// Gets a mutable reference to the value in the entry.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
         let index = self.index;
         &mut self.map[index]
     }
 
     /// Converts the entry into a mutable reference to its value.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
         let index = self.index;
         &mut self.map[index]
@@ -612,16 +607,14 @@ impl<'a, V> OccupiedEntry<'a, V> {
 
     /// Sets the value of the entry with the OccupiedEntry's key,
     /// and returns the entry's old value.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, value: V) -> V {
         let index = self.index;
         self.map.insert(index, value).unwrap()
     }
 
     /// Takes the value of the entry out of the map, and returns it.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
         let index = self.index;
         self.map.remove(&index).unwrap()

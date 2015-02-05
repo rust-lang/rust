@@ -929,10 +929,8 @@ impl<K, V, S, H> HashMap<K, V, S>
     }
 
     /// Gets the given key's corresponding entry in the map for in-place manipulation.
-    #[unstable(feature = "std_misc",
-               reason = "precise API still being fleshed out")]
-    pub fn entry<'a>(&'a mut self, key: K) -> Entry<'a, K, V>
-    {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn entry(&mut self, key: K) -> Entry<K, V> {
         // Gotta resize now.
         self.reserve(1);
 
@@ -1496,26 +1494,28 @@ impl<'a, K, V> Entry<'a, K, V> {
     }
 }
 
-#[unstable(feature = "std_misc",
-           reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the value in the entry.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
         self.elem.read().1
     }
 
     /// Gets a mutable reference to the value in the entry.
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
         self.elem.read_mut().1
     }
 
     /// Converts the OccupiedEntry into a mutable reference to the value in the entry
     /// with a lifetime bound to the map itself
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
         self.elem.into_mut_refs().1
     }
 
     /// Sets the value of the entry, and returns the entry's old value
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, mut value: V) -> V {
         let old_value = self.get_mut();
         mem::swap(&mut value, old_value);
@@ -1523,16 +1523,16 @@ impl<'a, K, V> OccupiedEntry<'a, K, V> {
     }
 
     /// Takes the value out of the entry, and returns it
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
         pop_internal(self.elem).1
     }
 }
 
-#[unstable(feature = "std_misc",
-           reason = "matches collection reform v2 specification, waiting for dust to settle")]
 impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         match self.elem {
             NeqElem(bucket, ib) => {
