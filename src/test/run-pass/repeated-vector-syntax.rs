@@ -13,9 +13,9 @@ pub fn main() {
     let y = [ 0; 1 ];
 
     print!("[");
-    for xi in &x[] {
-        print!("{:?}, ", &xi[]);
+    for xi in &x[..] {
+        print!("{:?}, ", &xi[..]);
     }
     println!("]");
-    println!("{:?}", &y[]);
+    println!("{:?}", &y[..]);
 }

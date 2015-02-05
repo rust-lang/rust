@@ -180,7 +180,7 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
 
     fn nextc(&mut self) -> u8 {
         let r = self.rng(1.0);
-        for a in &self.lookup[] {
+        for a in &self.lookup[..] {
             if a.p >= r {
                 return a.c;
             }

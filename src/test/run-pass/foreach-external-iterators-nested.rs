@@ -13,8 +13,8 @@ pub fn main() {
     let y = [2; 100];
     let mut p = 0;
     let mut q = 0;
-    for i in &x[] {
-        for j in &y[] {
+    for i in &x[..] {
+        for j in &y[..] {
             p += *j;
         }
         q += *i + p;
