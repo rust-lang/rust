@@ -437,18 +437,35 @@ impl CodeMap {
         FileLines {file: lo.file, lines: lines}
     }
 
-    pub fn span_to_snippet(&self, sp: Span) -> Option<String> {
+    pub fn span_to_snippet(&self, sp: Span) -> Result<String, SpanSnippetError> {
+        if sp.lo > sp.hi {
+            return Err(SpanSnippetError::IllFormedSpan(sp));
+        }
+
         let begin = self.lookup_byte_offset(sp.lo);
         let end = self.lookup_byte_offset(sp.hi);
 
-        // FIXME #8256: this used to be an assert but whatever precondition
-        // it's testing isn't true for all spans in the AST, so to allow the
-        // caller to not have to panic (and it can't catch it since the CodeMap
-        // isn't sendable), return None
         if begin.fm.start_pos != end.fm.start_pos {
-            None
+            return Err(SpanSnippetError::DistinctSources(DistinctSources {
+                begin: (begin.fm.name.clone(),
+                        begin.fm.start_pos),
+                end: (end.fm.name.clone(),
+                      end.fm.start_pos)
+            }));
         } else {
-            Some((&begin.fm.src[begin.pos.to_usize()..end.pos.to_usize()]).to_string())
+            let start = begin.pos.to_usize();
+            let limit = end.pos.to_usize();
+            if start > limit || limit > begin.fm.src.len() {
+                return Err(SpanSnippetError::MalformedForCodemap(
+                    MalformedCodemapPositions {
+                        name: begin.fm.name.clone(),
+                        source_len: begin.fm.src.len(),
+                        begin_pos: begin.pos,
+                        end_pos: end.pos,
+                    }));
+            }
+
+            return Ok((&begin.fm.src[start..limit]).to_string())
         }
     }
 
@@ -622,6 +639,27 @@ impl CodeMap {
     }
 }
 
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub enum SpanSnippetError {
+    IllFormedSpan(Span),
+    DistinctSources(DistinctSources),
+    MalformedForCodemap(MalformedCodemapPositions),
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct DistinctSources {
+    begin: (String, BytePos),
+    end: (String, BytePos)
+}
+
+#[derive(Clone, PartialEq, Eq, Debug)]
+pub struct MalformedCodemapPositions {
+    name: String,
+    source_len: usize,
+    begin_pos: BytePos,
+    end_pos: BytePos
+}
+
 #[cfg(test)]
 mod test {
     use super::*;
@@ -773,7 +811,7 @@ mod test {
         let span = Span {lo: BytePos(12), hi: BytePos(23), expn_id: NO_EXPANSION};
         let snippet = cm.span_to_snippet(span);
 
-        assert_eq!(snippet, Some("second line".to_string()));
+        assert_eq!(snippet, Ok("second line".to_string()));
     }
 
     #[test]

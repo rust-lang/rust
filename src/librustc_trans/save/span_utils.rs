@@ -69,8 +69,8 @@ impl<'a> SpanUtils<'a> {
 
     pub fn snippet(&self, span: Span) -> String {
         match self.sess.codemap().span_to_snippet(span) {
-            Some(s) => s,
-            None => String::new(),
+            Ok(s) => s,
+            Err(_) => String::new(),
         }
     }
 

@@ -1233,8 +1233,8 @@ mod test {
         let span = tts.iter().rev().next().unwrap().get_span();
 
         match sess.span_diagnostic.cm.span_to_snippet(span) {
-            Some(s) => assert_eq!(&s[], "{ body }"),
-            None => panic!("could not get snippet"),
+            Ok(s) => assert_eq!(&s[], "{ body }"),
+            Err(_) => panic!("could not get snippet"),
         }
     }
 }
