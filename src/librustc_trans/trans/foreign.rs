@@ -431,7 +431,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 // ABIs are handled at all correctly.
 fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
     if !tcx.sess.features.borrow().simd_ffi {
-        let check = |&: ast_ty: &ast::Ty, ty: ty::Ty| {
+        let check = |ast_ty: &ast::Ty, ty: ty::Ty| {
             if ty::type_is_simd(tcx, ty) {
                 tcx.sess.span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
@@ -649,7 +649,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // Array for the arguments we will pass to the rust function.
         let mut llrust_args = Vec::new();
         let mut next_foreign_arg_counter: c_uint = 0;
-        let mut next_foreign_arg = |&mut : pad: bool| -> c_uint {
+        let mut next_foreign_arg = |pad: bool| -> c_uint {
             next_foreign_arg_counter += if pad {
                 2
             } else {

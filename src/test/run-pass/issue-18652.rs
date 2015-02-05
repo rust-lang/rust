@@ -17,5 +17,5 @@
 fn main() {
     let x = 2u8;
     let y = 3u8;
-    assert_eq!((move |:| x + y)(), 5);
+    assert_eq!((move || x + y)(), 5);
 }

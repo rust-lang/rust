@@ -49,15 +49,15 @@ fn test5(f: &mut Test) {
 }
 
 fn test6() {
-    let mut f = |&mut:| {};
-    (|&mut:| {
+    let mut f = || {};
+    (|| {
         f();
     })();
 }
 
 fn test7() {
     fn foo<F>(_: F) where F: FnMut(Box<FnMut(isize)>, isize) {}
-    let mut f = |&mut: g: Box<FnMut(isize)>, b: isize| {};
+    let mut f = |g: Box<FnMut(isize)>, b: isize| {};
     f(box |a| {
         foo(f);
         //~^ ERROR cannot move `f` into closure because it is borrowed

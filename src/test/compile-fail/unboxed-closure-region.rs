@@ -15,6 +15,6 @@
 fn main() {
     let _f = {
         let x = 0us;
-        |:| x //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
+        || x //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
     };
 }

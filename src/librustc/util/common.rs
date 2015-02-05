@@ -187,8 +187,8 @@ pub fn can_reach<T, S>(edges_map: &HashMap<T, Vec<T>, S>, source: T,
 /// ```
 /// pub fn memoized<T: Clone, U: Clone, M: MutableMap<T, U>>(
 ///    cache: &RefCell<M>,
-///    f: &|&: T| -> U
-/// ) -> impl |&: T| -> U {
+///    f: &|T| -> U
+/// ) -> impl |T| -> U {
 /// ```
 /// but currently it is not possible.
 ///

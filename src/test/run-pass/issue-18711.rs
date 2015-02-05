@@ -17,5 +17,5 @@
 extern crate "issue-18711" as issue;
 
 fn main() {
-    (|:| issue::inner(()))();
+    (|| issue::inner(()))();
 }

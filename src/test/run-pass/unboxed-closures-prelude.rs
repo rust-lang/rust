@@ -15,13 +15,13 @@
 #![feature(unboxed_closures)]
 
 fn main() {
-    let task: Box<Fn(int) -> int> = box |&: x| x;
+    let task: Box<Fn(int) -> int> = box |x| x;
     task.call((0, ));
 
-    let mut task: Box<FnMut(int) -> int> = box |&mut: x| x;
+    let mut task: Box<FnMut(int) -> int> = box |x| x;
     task(0);
 
-    call(|:x| x, 22);
+    call(|x| x, 22);
 }
 
 fn call<F:FnOnce(int) -> int>(f: F, x: int) -> int {

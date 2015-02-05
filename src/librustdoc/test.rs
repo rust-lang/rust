@@ -148,7 +148,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let w1 = old_io::ChanWriter::new(tx);
     let w2 = w1.clone();
     let old = old_io::stdio::set_stderr(box w1);
-    Thread::spawn(move |:| {
+    Thread::spawn(move || {
         let mut p = old_io::ChanReader::new(rx);
         let mut err = match old {
             Some(old) => {

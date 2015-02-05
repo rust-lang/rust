@@ -342,7 +342,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
             }
         }
         let cstore = &ccx.tcx.sess.cstore;
-        cstore.iter_crate_data(|&mut: cnum, _| {
+        cstore.iter_crate_data(|cnum, _| {
             csearch::each_top_level_item_of_crate(cstore, cnum, |dl, _, _| {
                 handle_external_def(&mut traits, ccx, cstore, dl)
             })

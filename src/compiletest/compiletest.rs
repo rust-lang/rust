@@ -359,7 +359,7 @@ pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::Test
     let config = (*config).clone();
     // FIXME (#9639): This needs to handle non-utf8 paths
     let testfile = testfile.as_str().unwrap().to_string();
-    test::DynMetricFn(box move |: mm: &mut test::MetricMap| {
+    test::DynMetricFn(box move |mm: &mut test::MetricMap| {
         runtest::run_metrics(config, testfile, mm)
     })
 }

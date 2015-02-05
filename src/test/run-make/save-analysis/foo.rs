@@ -269,7 +269,7 @@ fn hello<X: SomeTrait>((z, a) : (u32, String), ex: X) {
     s4.provided_method();
     s2.prov(45);
 
-    let closure = |&: x: u32, s: &SomeTrait| {
+    let closure = |x: u32, s: &SomeTrait| {
         s.Method(23);
         return x + y;
     };

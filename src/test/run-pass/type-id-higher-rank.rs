@@ -56,8 +56,8 @@ fn main() {
     // Note that every unboxed closure has its own anonymous type,
     // so no two IDs should equal each other, even when compatible
     {
-        let a = id(|&: _: &int, _: &int| {});
-        let b = id(|&: _: &int, _: &int| {});
+        let a = id(|_: &int, _: &int| {});
+        let b = id(|_: &int, _: &int| {});
         assert!(a != b);
     }
 

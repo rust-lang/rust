@@ -21,7 +21,7 @@ fn test05_start<F:FnOnce(int)>(f: F) {
 
 fn test05() {
     let three = box 3;
-    let fn_to_send = move|: n:int| {
+    let fn_to_send = move|n:int| {
         println!("{}", *three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };

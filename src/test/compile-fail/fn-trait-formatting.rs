@@ -14,20 +14,20 @@
 fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
 
 fn main() {
-    let _: () = (box |:_: isize| {}) as Box<FnOnce(isize)>;
+    let _: () = (box |_: isize| {}) as Box<FnOnce(isize)>;
     //~^ ERROR object-safe
     //~| ERROR mismatched types
     //~| expected `()`
     //~| found `Box<core::ops::FnOnce(isize)>`
     //~| expected ()
     //~| found box
-    let _: () = (box |&:_: isize, isize| {}) as Box<Fn(isize, isize)>;
+    let _: () = (box |_: isize, isize| {}) as Box<Fn(isize, isize)>;
     //~^ ERROR mismatched types
     //~| expected `()`
     //~| found `Box<core::ops::Fn(isize, isize)>`
     //~| expected ()
     //~| found box
-    let _: () = (box |&mut:| -> isize unimplemented!()) as Box<FnMut() -> isize>;
+    let _: () = (box || -> isize unimplemented!()) as Box<FnMut() -> isize>;
     //~^ ERROR mismatched types
     //~| expected `()`
     //~| found `Box<core::ops::FnMut() -> isize>`

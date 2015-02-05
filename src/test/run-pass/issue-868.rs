@@ -20,5 +20,5 @@ pub fn main() {
     let _: () = f(| | { });
     // empty block with no type info should compile too
     let _ = f(||{});
-    let _ = (|&:|{});
+    let _ = (||{});
 }

@@ -1139,7 +1139,7 @@ impl<'a> Parser<'a> {
 
     /// Parses an obsolete closure kind (`&:`, `&mut:`, or `:`).
     pub fn parse_obsolete_closure_kind(&mut self) {
-        // let lo = self.span.lo;
+         let lo = self.span.lo;
         if
             self.check(&token::BinOp(token::And)) &&
             self.look_ahead(1, |t| t.is_keyword(keywords::Mut)) &&
@@ -1163,10 +1163,8 @@ impl<'a> Parser<'a> {
             return;
         }
 
-        // SNAP 474b324
-        // Enable these obsolete errors after snapshot:
-        // let span = mk_sp(lo, self.span.hi);
-        // self.obsolete(span, ObsoleteSyntax::ClosureKind);
+         let span = mk_sp(lo, self.span.hi);
+         self.obsolete(span, ObsoleteSyntax::ClosureKind);
     }
 
     pub fn parse_ty_bare_fn_or_ty_closure(&mut self, lifetime_defs: Vec<LifetimeDef>) -> Ty_ {

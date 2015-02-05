@@ -15,5 +15,5 @@ fn with_int(f: &mut FnMut(&isize)) {
 
 fn main() {
     let mut x: Option<&isize> = None;
-    with_int(&mut |&mut: y| x = Some(y));   //~ ERROR cannot infer
+    with_int(&mut |y| x = Some(y));   //~ ERROR cannot infer
 }

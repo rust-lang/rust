@@ -61,7 +61,7 @@ fn main() {
 
     let owned = box 5;
 
-    let closure = move |:| {
+    let closure = move || {
         zzz(); // #break
         do_something(&constant, &a_struct.a, &*owned);
     };
@@ -73,7 +73,7 @@ fn main() {
     // The `self` argument of the following closure should be passed by value
     // to FnOnce::call_once(self, args), which gets translated a bit differently
     // than the regular case. Let's make sure this is supported too.
-    let immedate_env = move |:| {
+    let immedate_env = move || {
         zzz(); // #break
         return constant2;
     };

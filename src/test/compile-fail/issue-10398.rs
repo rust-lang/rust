@@ -12,7 +12,7 @@
 
 fn main() {
     let x = box 1;
-    let f = move|:| {
+    let f = move|| {
         let _a = x;
         drop(x);
         //~^ ERROR: use of moved value: `x`

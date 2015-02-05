@@ -18,5 +18,5 @@ fn foo<F:Fn(&int)>(f: F) {
 }
 
 fn main() {
-    foo(|&: x: &int| println!("{}", *x));
+    foo(|x: &int| println!("{}", *x));
 }

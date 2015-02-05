@@ -322,8 +322,8 @@ fn main() {
     // how that maps to rustc's internal representation of these forms.
     // Once closures have reached their 1.0 form, the tests below should
     // probably be expanded.
-    let closure1 = (|&: x:isize| {}, 0u);
-    let closure2 = (|&: x:i8, y: f32| { (x as f32) + y }, 0u);
+    let closure1 = (|x:isize| {}, 0u);
+    let closure2 = (|x:i8, y: f32| { (x as f32) + y }, 0u);
 
     zzz(); // #break
 }

@@ -15,6 +15,6 @@
 
 fn main() {
     let mut x = 0us;
-    let f = |:| x += 1;
+    let f = || x += 1;
     let _y = x; //~ ERROR cannot use `x` because it was mutably borrowed
 }

@@ -126,7 +126,7 @@ impl<A:Send> Future<A> {
          * waiting for the result to be received on the port.
          */
 
-        Future::from_fn(move |:| {
+        Future::from_fn(move || {
             rx.recv().unwrap()
         })
     }
@@ -143,7 +143,7 @@ impl<A:Send> Future<A> {
 
         let (tx, rx) = channel();
 
-        Thread::spawn(move |:| {
+        Thread::spawn(move || {
             // Don't panic if the other end has hung up
             let _ = tx.send(blk());
         });

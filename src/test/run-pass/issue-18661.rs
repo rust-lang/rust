@@ -20,7 +20,7 @@ pub fn inside<F: Fn()>(c: F) {
 // Use different number of type parameters and closure type to trigger
 // an obvious ICE when param environments are mixed up
 pub fn outside<A,B>() {
-    inside(|&:| {});
+    inside(|| {});
 }
 
 fn main() {
