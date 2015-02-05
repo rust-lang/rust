@@ -1044,8 +1044,11 @@ fn link_args(cmd: &mut Command,
 // in the current crate. Upstream crates with native library dependencies
 // may have their native library pulled in above.
 fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
-    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, _| {
-        cmd.arg("-L").arg(path);
+    sess.target_filesearch(PathKind::All).for_each_lib_search_path(|path, k| {
+        match k {
+            PathKind::Framework => { cmd.arg("-F").arg(path); }
+            _ => { cmd.arg("-L").arg(path); }
+        }
         FileDoesntMatch
     });
 
