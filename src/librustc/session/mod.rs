@@ -332,7 +332,7 @@ pub fn build_session_(sopts: config::Options,
         Ok(t) => t,
         Err(e) => {
             span_diagnostic.handler()
-                .fatal((format!("Error loading host specification: {}", e)).as_slice());
+                .fatal(&format!("Error loading host specification: {}", e));
     }
     };
     let target_cfg = config::build_target_config(&sopts, &span_diagnostic);

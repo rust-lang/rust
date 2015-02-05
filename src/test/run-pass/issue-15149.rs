@@ -17,7 +17,7 @@ use std::rand::random;
 fn main() {
     // If we're the child, make sure we were invoked correctly
     let args = os::args();
-    if args.len() > 1 && args[1].as_slice() == "child" {
+    if args.len() > 1 && args[1] == "child" {
         // FIXME: This should check the whole `args[0]` instead of just
         // checking that it ends_with the executable name. This
         // is needed because of Windows, which has a different behavior.
@@ -45,9 +45,9 @@ fn test() {
     // Append the new directory to our own PATH.
     let mut path = os::split_paths(os::getenv("PATH").unwrap_or(String::new()));
     path.push(child_dir.clone());
-    let path = os::join_paths(path.as_slice()).unwrap();
+    let path = os::join_paths(&path).unwrap();
 
-    let child_output = Command::new("mytest").env("PATH", path.as_slice())
+    let child_output = Command::new("mytest").env("PATH", path)
                                              .arg("child")
                                              .output().unwrap();
 

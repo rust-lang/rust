@@ -125,7 +125,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     let r = InlineAsmCall(bcx,
                           asm.as_ptr(),
                           constraints.as_ptr(),
-                          inputs.as_slice(),
+                          &inputs,
                           output_type,
                           ia.volatile,
                           ia.alignstack,

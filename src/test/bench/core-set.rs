@@ -180,7 +180,7 @@ fn empty_results() -> Results {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
+    let args = args;
     let num_keys = {
         if args.len() == 2 {
             args[1].parse::<uint>().unwrap()

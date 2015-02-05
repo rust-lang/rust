@@ -60,6 +60,6 @@ fn main() {
     }
     unsafe {
         let expected: &[_] = &[1, 2, 3];
-        assert_eq!(expected, ORDER.as_slice());
+        assert_eq!(expected, ORDER);
     }
 }

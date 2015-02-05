@@ -104,7 +104,7 @@ fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
 
 fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
     let args = os::args();
-    let args = args.as_slice();
+    let args = args;
     let n = if os::getenv("RUST_BENCH").is_some() {
         25000000
     } else if args.len() <= 1u {

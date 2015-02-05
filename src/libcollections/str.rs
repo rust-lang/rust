@@ -203,7 +203,7 @@ impl<'a> Iterator for Decompositions<'a> {
                         let class =
                             unicode::char::canonical_combining_class(d);
                         if class == 0 && !*sorted {
-                            canonical_sort(buffer.as_mut_slice());
+                            canonical_sort(buffer);
                             *sorted = true;
                         }
                         buffer.push((d, class));
@@ -224,7 +224,7 @@ impl<'a> Iterator for Decompositions<'a> {
         }
 
         if !self.sorted {
-            canonical_sort(self.buffer.as_mut_slice());
+            canonical_sort(&mut self.buffer);
             self.sorted = true;
         }
 
@@ -1480,7 +1480,7 @@ mod tests {
     fn test_concat_for_different_types() {
         test_concat!("ab", vec![s("a"), s("b")]);
         test_concat!("ab", vec!["a", "b"]);
-        test_concat!("ab", vec!["a", "b"].as_slice());
+        test_concat!("ab", vec!["a", "b"]);
         test_concat!("ab", vec![s("a"), s("b")]);
     }
 
@@ -1506,9 +1506,9 @@ mod tests {
     fn test_connect_for_different_types() {
         test_connect!("a-b", ["a", "b"], "-");
         let hyphen = "-".to_string();
-        test_connect!("a-b", [s("a"), s("b")], hyphen.as_slice());
-        test_connect!("a-b", vec!["a", "b"], hyphen.as_slice());
-        test_connect!("a-b", vec!["a", "b"].as_slice(), "-");
+        test_connect!("a-b", [s("a"), s("b")], &*hyphen);
+        test_connect!("a-b", vec!["a", "b"], &*hyphen);
+        test_connect!("a-b", &*vec!["a", "b"], "-");
         test_connect!("a-b", vec![s("a"), s("b")], "-");
     }
 
@@ -1960,7 +1960,7 @@ mod tests {
         let s1: String = String::from_str("All mimsy were the borogoves");
 
         let v: Vec<u8> = s1.as_bytes().to_vec();
-        let s2: String = String::from_str(from_utf8(v.as_slice()).unwrap());
+        let s2: String = String::from_str(from_utf8(&v).unwrap());
         let mut i: uint = 0u;
         let n1: uint = s1.len();
         let n2: uint = v.len();
@@ -2791,11 +2791,11 @@ mod tests {
 
         let s = String::from_str("01234");
         assert_eq!(5, sum_len(&["012", "", "34"]));
-        assert_eq!(5, sum_len(&[String::from_str("01").as_slice(),
-                                String::from_str("2").as_slice(),
-                                String::from_str("34").as_slice(),
-                                String::from_str("").as_slice()]));
-        assert_eq!(5, sum_len(&[s.as_slice()]));
+        assert_eq!(5, sum_len(&[&String::from_str("01"),
+                                &String::from_str("2"),
+                                &String::from_str("34"),
+                                &String::from_str("")]));
+        assert_eq!(5, sum_len(&[&s]));
     }
 
     #[test]

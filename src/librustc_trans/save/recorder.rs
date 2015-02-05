@@ -229,8 +229,8 @@ impl<'a> FmtStrs<'a> {
 
         if !needs_span {
             self.span.sess.span_bug(span,
-                                    format!("Called record_with_span for '{}' \
-                                             which does not require a span", label).as_slice());
+                                    &format!("Called record_with_span for '{}' \
+                                              which does not require a span", label));
         }
 
         let values_str = match self.make_values_str(label, fields, values, span) {

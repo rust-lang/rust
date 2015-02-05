@@ -605,8 +605,8 @@ fn assemble_candidates_from_object_type<'cx,'tcx>(
         _ => {
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
-                format!("assemble_candidates_from_object_type called with non-object: {}",
-                        object_ty.repr(selcx.tcx())).as_slice());
+                &format!("assemble_candidates_from_object_type called with non-object: {}",
+                         object_ty.repr(selcx.tcx())));
         }
     };
     let projection_bounds = data.projection_bounds_with_self_ty(selcx.tcx(), object_ty);
@@ -693,8 +693,8 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             // These traits have no associated types.
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
-                format!("Cannot project an associated type from `{}`",
-                        vtable.repr(selcx.tcx())).as_slice());
+                &format!("Cannot project an associated type from `{}`",
+                         vtable.repr(selcx.tcx())));
         }
     }
 
@@ -813,10 +813,10 @@ fn confirm_param_env_candidate<'cx,'tcx>(
         Err(e) => {
             selcx.tcx().sess.span_bug(
                 obligation.cause.span,
-                format!("Failed to unify `{}` and `{}` in projection: {}",
-                        obligation.repr(selcx.tcx()),
-                        projection.repr(selcx.tcx()),
-                        ty::type_err_to_str(selcx.tcx(), &e)).as_slice());
+                &format!("Failed to unify `{}` and `{}` in projection: {}",
+                         obligation.repr(selcx.tcx()),
+                         projection.repr(selcx.tcx()),
+                         ty::type_err_to_str(selcx.tcx(), &e)));
         }
     }
 

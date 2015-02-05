@@ -13,7 +13,7 @@ struct A {
 }
 
 fn borrow<'a>(binding: &'a A) -> &'a str {
-    match binding.a.as_slice() {
+    match &*binding.a {
         "in" => "in_",
         "ref" => "ref_",
         ident => ident

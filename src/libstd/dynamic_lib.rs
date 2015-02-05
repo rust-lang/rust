@@ -67,9 +67,9 @@ impl DynamicLibrary {
     pub fn prepend_search_path(path: &Path) {
         let mut search_path = DynamicLibrary::search_path();
         search_path.insert(0, path.clone());
-        let newval = DynamicLibrary::create_path(search_path.as_slice());
+        let newval = DynamicLibrary::create_path(&search_path);
         env::set_var(DynamicLibrary::envvar(),
-                     str::from_utf8(newval.as_slice()).unwrap());
+                     str::from_utf8(&newval).unwrap());
     }
 
     /// From a slice of paths, create a new vector which is suitable to be an

@@ -26,13 +26,13 @@ fn call_g<G:FnMut(String,String) -> String>(mut g: G, x: String, y: String)
 }
 
 fn g(mut x: String, y: String) -> String {
-    x.push_str(y.as_slice());
+    x.push_str(&y);
     x
 }
 
 fn main() {
     call_f(f);
-    assert_eq!(call_g(g, "foo".to_string(), "bar".to_string()).as_slice(),
+    assert_eq!(call_g(g, "foo".to_string(), "bar".to_string()),
                "foobar");
 }
 

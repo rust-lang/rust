@@ -394,8 +394,8 @@ impl<'a> Context<'a> {
                     file.ends_with(".rlib") {
                 (&file[(rlib_prefix.len()) .. (file.len() - ".rlib".len())],
                  true)
-            } else if file.starts_with(dylib_prefix.as_slice()) &&
-                      file.ends_with(dypair.1.as_slice()) {
+            } else if file.starts_with(&dylib_prefix) &&
+                      file.ends_with(&dypair.1) {
                 (&file[(dylib_prefix.len()) .. (file.len() - dypair.1.len())],
                  false)
             } else {

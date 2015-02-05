@@ -2061,7 +2061,7 @@ pub fn from_reader(rdr: &mut old_io::Reader) -> Result<Json, BuilderError> {
         Ok(c)  => c,
         Err(e) => return Err(io_error_to_error(e))
     };
-    let s = match str::from_utf8(contents.as_slice()).ok() {
+    let s = match str::from_utf8(&contents).ok() {
         Some(s) => s,
         _       => return Err(SyntaxError(NotUtf8, 0, 0))
     };
@@ -3550,7 +3550,7 @@ mod tests {
         map.insert(Enum::Foo, 0);
         let result = json::encode(&map).unwrap();
         assert_eq!(&result[], r#"{"Foo":0}"#);
-        let decoded: HashMap<Enum, _> = json::decode(result.as_slice()).unwrap();
+        let decoded: HashMap<Enum, _> = json::decode(&result).unwrap();
         assert_eq!(map, decoded);
     }
 
@@ -3591,7 +3591,7 @@ mod tests {
                 None => { break; }
             };
             let (ref expected_evt, ref expected_stack) = expected[i];
-            if !parser.stack().is_equal_to(expected_stack.as_slice()) {
+            if !parser.stack().is_equal_to(expected_stack) {
                 panic!("Parser stack is not equal to {:?}", expected_stack);
             }
             assert_eq!(&evt, expected_evt);
@@ -4022,6 +4022,6 @@ mod tests {
     #[bench]
     fn bench_large(b: &mut Bencher) {
         let src = big_json();
-        b.iter( || { let _ = from_str(src.as_slice()); });
+        b.iter( || { let _ = from_str(&src); });
     }
 }

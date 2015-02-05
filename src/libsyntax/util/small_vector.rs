@@ -65,7 +65,7 @@ impl<T> SmallVector<T> {
                 result
             }
             One(ref v) => slice::ref_slice(v),
-            Many(ref vs) => vs.as_slice()
+            Many(ref vs) => vs
         }
     }
 

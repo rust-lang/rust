@@ -15,7 +15,7 @@
 pub fn opt_str0<'a>(maybestr: &'a Option<String>) -> &'a str {
     match *maybestr {
         Some(ref s) => {
-            let s: &'a str = s.as_slice();
+            let s: &'a str = s;
             s
         }
         None => "(none)",
@@ -26,7 +26,7 @@ pub fn opt_str1<'a>(maybestr: &'a Option<String>) -> &'a str {
     match *maybestr {
         None => "(none)",
         Some(ref s) => {
-            let s: &'a str = s.as_slice();
+            let s: &'a str = s;
             s
         }
     }
@@ -36,7 +36,7 @@ pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
     match *maybestr {
         None => "(none)",
         Some(ref s) => {
-            let s: &'a str = s.as_slice();
+            let s: &'a str = s;
             s
             //~^ ERROR cannot infer an appropriate lifetime
         }
@@ -46,7 +46,7 @@ pub fn opt_str2<'a>(maybestr: &'a Option<String>) -> &'static str {
 pub fn opt_str3<'a>(maybestr: &'a Option<String>) -> &'static str {
     match *maybestr {
         Some(ref s) => {
-            let s: &'a str = s.as_slice();
+            let s: &'a str = s;
             s
             //~^ ERROR cannot infer an appropriate lifetime
         }

@@ -788,7 +788,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         debug!("calling llrustfn = {}, t = {}",
                ccx.tn().val_to_string(llrustfn), t.repr(ccx.tcx()));
         let attributes = base::get_fn_llvm_attributes(ccx, t);
-        let llrust_ret_val = builder.call(llrustfn, llrust_args.as_slice(), Some(attributes));
+        let llrust_ret_val = builder.call(llrustfn, &llrust_args, Some(attributes));
 
         // Get the return value where the foreign fn expects it.
         let llforeign_ret_ty = match tys.fn_ty.ret_ty.cast {
@@ -898,7 +898,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => ccx.sess().bug("foreign_types_for_fn_ty called on non-function type")
     };
     let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
-    let llsig = foreign_signature(ccx, &fn_sig, fn_sig.inputs.as_slice());
+    let llsig = foreign_signature(ccx, &fn_sig, &fn_sig.inputs);
     let fn_ty = cabi::compute_abi_info(ccx,
                                        &llsig.llarg_tys[],
                                        llsig.llret_ty,
@@ -911,7 +911,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            ty.repr(ccx.tcx()),
            ccx.tn().types_to_str(&llsig.llarg_tys[]),
            ccx.tn().type_to_string(llsig.llret_ty),
-           ccx.tn().types_to_str(fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>().as_slice()),
+           ccx.tn().types_to_str(&fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>()),
            ccx.tn().type_to_string(fn_ty.ret_ty.ty),
            llsig.ret_def);
 
@@ -959,7 +959,7 @@ fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> T
     }
 
     if tys.fn_sig.variadic {
-        Type::variadic_func(llargument_tys.as_slice(), &llreturn_ty)
+        Type::variadic_func(&llargument_tys, &llreturn_ty)
     } else {
         Type::func(&llargument_tys[], &llreturn_ty)
     }

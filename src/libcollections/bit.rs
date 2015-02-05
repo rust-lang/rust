@@ -1910,7 +1910,7 @@ mod tests {
     fn test_0_elements() {
         let act = Bitv::new();
         let exp = Vec::new();
-        assert!(act.eq_vec(exp.as_slice()));
+        assert!(act.eq_vec(&exp));
         assert!(act.none() && act.all());
     }
 

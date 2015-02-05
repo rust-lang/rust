@@ -567,8 +567,8 @@ pub fn trans_object_shim<'a, 'tcx>(
                 data.principal_trait_ref_with_self_ty(tcx, object_ty)
             }
             _ => {
-                tcx.sess.bug(format!("trans_object_shim() called on non-object: {}",
-                                     object_ty.repr(tcx)).as_slice());
+                tcx.sess.bug(&format!("trans_object_shim() called on non-object: {}",
+                                      object_ty.repr(tcx)));
             }
         };
 
@@ -595,7 +595,7 @@ pub fn trans_object_shim<'a, 'tcx>(
     let function_name =
         link::mangle_internal_name_by_type_and_seq(ccx, method_bare_fn_ty, "object_shim");
     let llfn =
-        decl_internal_rust_fn(ccx, method_bare_fn_ty, function_name.as_slice());
+        decl_internal_rust_fn(ccx, method_bare_fn_ty, &function_name);
 
     let sig = ty::erase_late_bound_regions(ccx.tcx(), &fty.sig);
 
@@ -624,11 +624,11 @@ pub fn trans_object_shim<'a, 'tcx>(
             RustCall => {
                 // unpack the tuple to extract the input type arguments:
                 match sig.inputs[1].sty {
-                    ty::ty_tup(ref tys) => tys.as_slice(),
+                    ty::ty_tup(ref tys) => &**tys,
                     _ => {
                         bcx.sess().bug(
-                            format!("rust-call expects a tuple not {}",
-                                    sig.inputs[1].repr(tcx)).as_slice());
+                            &format!("rust-call expects a tuple not {}",
+                                     sig.inputs[1].repr(tcx)));
                     }
                 }
             }
@@ -673,7 +673,7 @@ pub fn trans_object_shim<'a, 'tcx>(
                                                                   method_bare_fn_ty,
                                                                   method_offset_in_vtable,
                                                                   llobject),
-                           ArgVals(llargs.as_slice()),
+                           ArgVals(&llargs),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
@@ -744,8 +744,8 @@ pub fn get_vtable<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // an object type; this cannot happen because we
                 // cannot cast an unsized type into a trait object
                 bcx.sess().bug(
-                    format!("cannot get vtable for an object type: {}",
-                            data.repr(bcx.tcx())).as_slice());
+                    &format!("cannot get vtable for an object type: {}",
+                             data.repr(bcx.tcx())));
             }
             traits::VtableParam(..) => {
                 bcx.sess().bug(

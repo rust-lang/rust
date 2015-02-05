@@ -16,7 +16,7 @@ fn want_slice(v: &[int]) -> int {
 }
 
 fn has_mut_vec(v: Vec<int> ) -> int {
-    want_slice(v.as_slice())
+    want_slice(&v)
 }
 
 pub fn main() {

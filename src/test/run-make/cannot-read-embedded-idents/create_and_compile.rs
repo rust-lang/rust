@@ -17,8 +17,8 @@ use std::old_io::{File, Command};
 
 fn main() {
     let args = os::args();
-    let rustc = args[1].as_slice();
-    let tmpdir = Path::new(args[2].as_slice());
+    let rustc = &args[1];
+    let tmpdir = Path::new(&args[2]);
 
     let main_file = tmpdir.join("broken.rs");
     let _ = File::create(&main_file).unwrap()
@@ -31,12 +31,12 @@ fn main() {
     // can't exec it directly
     let result = Command::new("sh")
         .arg("-c")
-        .arg(format!("{} {}",
-                     rustc,
-                     main_file.as_str()
-                     .unwrap()).as_slice())
+        .arg(&format!("{} {}",
+                      rustc,
+                      main_file.as_str()
+                      .unwrap()))
         .output().unwrap();
-    let err = String::from_utf8_lossy(result.error.as_slice());
+    let err = String::from_utf8_lossy(&result.error);
 
     // positive test so that this test will be updated when the
     // compiler changes.

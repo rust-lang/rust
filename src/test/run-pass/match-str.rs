@@ -18,8 +18,8 @@ pub fn main() {
 
     match t::tag1("test".to_string()) {
       t::tag2 => panic!(),
-      t::tag1(ref s) if "test" != s.as_slice() => panic!(),
-      t::tag1(ref s) if "test" == s.as_slice() => (),
+      t::tag1(ref s) if "test" != &**s => panic!(),
+      t::tag1(ref s) if "test" == &**s => (),
       _ => panic!()
     }
 

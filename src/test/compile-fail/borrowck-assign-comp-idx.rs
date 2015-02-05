@@ -33,7 +33,7 @@ fn b() {
     let mut p = vec!(1);
 
     borrow(
-        p.as_slice(),
+        &p,
         || p[0] = 5); //~ ERROR cannot borrow `p` as mutable
 }
 
@@ -41,7 +41,7 @@ fn c() {
     // Legal because the scope of the borrow does not include the
     // modification:
     let mut p = vec!(1);
-    borrow(p.as_slice(), ||{});
+    borrow(&p, ||{});
     p[0] = 5;
 }
 

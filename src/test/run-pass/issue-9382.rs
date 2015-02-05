@@ -34,7 +34,7 @@ pub fn main() {
         bar: box 32,
     };
     Thing1 {
-        baz: Vec::new().as_slice(),
+        baz: &Vec::new(),
         bar: box 32,
     };
     let _t2_fixed = Thing2 {
@@ -42,7 +42,7 @@ pub fn main() {
         bar: 32,
     };
     Thing2 {
-        baz: Vec::new().as_slice(),
+        baz: &Vec::new(),
         bar: 32,
     };
 }

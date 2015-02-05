@@ -237,7 +237,7 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
                 unify(cls, ix + off / 8, SSEDs);
             }
             Struct => {
-                classify_struct(ty.field_types().as_slice(), cls, ix, off, ty.is_packed());
+                classify_struct(&ty.field_types(), cls, ix, off, ty.is_packed());
             }
             Array => {
                 let len = ty.array_length();
@@ -322,11 +322,11 @@ fn classify_ty(ty: Type) -> Vec<RegClass> {
     let words = (ty_size(ty) + 7) / 8;
     let mut cls: Vec<_> = repeat(NoClass).take(words).collect();
     if words > 4 {
-        all_mem(cls.as_mut_slice());
+        all_mem(&mut cls);
         return cls;
     }
-    classify(ty, cls.as_mut_slice(), 0, 0);
-    fixup(ty, cls.as_mut_slice());
+    classify(ty, &mut cls, 0, 0);
+    fixup(ty, &mut cls);
     return cls;
 }
 
@@ -381,7 +381,7 @@ fn llreg_ty(ccx: &CrateContext, cls: &[RegClass]) -> Type {
         // if the type contains only a vector, pass it as that vector.
         tys[0]
     } else {
-        Type::struct_(ccx, tys.as_slice(), false)
+        Type::struct_(ccx, &tys, false)
     }
 }
 
@@ -398,11 +398,11 @@ pub fn compute_abi_info(ccx: &CrateContext,
     {
         if !ty.is_reg_ty() {
             let cls = classify_ty(ty);
-            if is_mem_cls(cls.as_slice()) {
+            if is_mem_cls(&cls) {
                 ArgType::indirect(ty, Some(ind_attr))
             } else {
                 ArgType::direct(ty,
-                                Some(llreg_ty(ccx, cls.as_slice())),
+                                Some(llreg_ty(ccx, &cls)),
                                 None,
                                 None)
             }

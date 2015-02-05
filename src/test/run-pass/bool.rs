@@ -53,9 +53,9 @@ fn main() {
     assert_eq!(!false, true);
 
     let s = false.to_string();
-    assert_eq!(s.as_slice(), "false");
+    assert_eq!(s, "false");
     let s = true.to_string();
-    assert_eq!(s.as_slice(), "true");
+    assert_eq!(s, "true");
 
     assert!(true > false);
     assert!(!(false > true));

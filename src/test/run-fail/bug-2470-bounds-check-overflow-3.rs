@@ -29,12 +29,12 @@ fn main() {
            idx as uint);
 
     // This should panic.
-    println!("ov3 0x%x",  x.as_slice()[idx]);
+    println!("ov3 0x%x",  x[idx]);
 }
 
 #[cfg(any(target_arch="x86_64", target_arch = "aarch64"))]
 fn main() {
     // This version just panics anyways, for symmetry on 64-bit hosts.
     let x = vec!(1u,2u,3u);
-    error!("ov3 0x%x",  x.as_slice()[200]);
+    error!("ov3 0x%x",  x[200]);
 }

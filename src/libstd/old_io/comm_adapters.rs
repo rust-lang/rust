@@ -191,14 +191,14 @@ mod test {
         let a: &[u8] = &[7,8,6];
         assert_eq!(a, buf);
 
-        match reader.read(buf.as_mut_slice()) {
+        match reader.read(&mut buf) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }
         assert_eq!(a, buf);
 
         // Ensure it continues to panic in the same way.
-        match reader.read(buf.as_mut_slice()) {
+        match reader.read(&mut buf) {
             Ok(..) => panic!(),
             Err(e) => assert_eq!(e.kind, old_io::EndOfFile),
         }

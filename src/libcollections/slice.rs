@@ -1528,7 +1528,7 @@ mod tests {
         // Test on-stack from_fn.
         let mut v = (0u..3).map(square).collect::<Vec<_>>();
         {
-            let v = v.as_slice();
+            let v = v;
             assert_eq!(v.len(), 3u);
             assert_eq!(v[0], 0u);
             assert_eq!(v[1], 1u);
@@ -1538,7 +1538,7 @@ mod tests {
         // Test on-heap from_fn.
         v = (0u..5).map(square).collect::<Vec<_>>();
         {
-            let v = v.as_slice();
+            let v = v;
             assert_eq!(v.len(), 5u);
             assert_eq!(v[0], 0u);
             assert_eq!(v[1], 1u);
@@ -1553,7 +1553,7 @@ mod tests {
         // Test on-stack from_elem.
         let mut v = vec![10u, 10u];
         {
-            let v = v.as_slice();
+            let v = v;
             assert_eq!(v.len(), 2u);
             assert_eq!(v[0], 10u);
             assert_eq!(v[1], 10u);
@@ -1562,7 +1562,7 @@ mod tests {
         // Test on-heap from_elem.
         v = vec![20u, 20u, 20u, 20u, 20u, 20u];
         {
-            let v = v.as_slice();
+            let v = v;
             assert_eq!(v[0], 20u);
             assert_eq!(v[1], 20u);
             assert_eq!(v[2], 20u);
@@ -1715,7 +1715,7 @@ mod tests {
         let vec_fixed = [1, 2, 3, 4];
         let v_a = vec_fixed[1u..vec_fixed.len()].to_vec();
         assert_eq!(v_a.len(), 3u);
-        let v_a = v_a.as_slice();
+        let v_a = v_a;
         assert_eq!(v_a[0], 2);
         assert_eq!(v_a[1], 3);
         assert_eq!(v_a[2], 4);
@@ -1724,7 +1724,7 @@ mod tests {
         let vec_stack: &[_] = &[1, 2, 3];
         let v_b = vec_stack[1u..3u].to_vec();
         assert_eq!(v_b.len(), 2u);
-        let v_b = v_b.as_slice();
+        let v_b = v_b;
         assert_eq!(v_b[0], 2);
         assert_eq!(v_b[1], 3);
 
@@ -1732,7 +1732,7 @@ mod tests {
         let vec_unique = vec![1, 2, 3, 4, 5, 6];
         let v_d = vec_unique[1u..6u].to_vec();
         assert_eq!(v_d.len(), 5u);
-        let v_d = v_d.as_slice();
+        let v_d = v_d;
         assert_eq!(v_d[0], 2);
         assert_eq!(v_d[1], 3);
         assert_eq!(v_d[2], 4);
@@ -1813,20 +1813,20 @@ mod tests {
         let mut v = vec![];
         v.push(1);
         assert_eq!(v.len(), 1u);
-        assert_eq!(v.as_slice()[0], 1);
+        assert_eq!(v[0], 1);
 
         // Test on-heap push().
         v.push(2);
         assert_eq!(v.len(), 2u);
-        assert_eq!(v.as_slice()[0], 1);
-        assert_eq!(v.as_slice()[1], 2);
+        assert_eq!(v[0], 1);
+        assert_eq!(v[1], 2);
     }
 
     #[test]
     fn test_truncate() {
         let mut v = vec![box 6,box 5,box 4];
         v.truncate(1);
-        let v = v.as_slice();
+        let v = v;
         assert_eq!(v.len(), 1);
         assert_eq!(*(v[0]), 6);
         // If the unsafe block didn't drop things properly, we blow up here.
@@ -2587,7 +2587,7 @@ mod tests {
             ($x:expr, $x_str:expr) => ({
                 let (x, x_str) = ($x, $x_str);
                 assert_eq!(format!("{:?}", x), x_str);
-                assert_eq!(format!("{:?}", x.as_slice()), x_str);
+                assert_eq!(format!("{:?}", x), x_str);
             })
         }
         let empty: Vec<int> = vec![];
@@ -2910,7 +2910,7 @@ mod bench {
     fn starts_with_same_vector(b: &mut Bencher) {
         let vec: Vec<uint> = (0u..100).collect();
         b.iter(|| {
-            vec.starts_with(vec.as_slice())
+            vec.starts_with(&vec)
         })
     }
 
@@ -2918,7 +2918,7 @@ mod bench {
     fn starts_with_single_element(b: &mut Bencher) {
         let vec: Vec<uint> = vec![0];
         b.iter(|| {
-            vec.starts_with(vec.as_slice())
+            vec.starts_with(&vec)
         })
     }
 
@@ -2928,7 +2928,7 @@ mod bench {
         let mut match_vec: Vec<uint> = (0u..99).collect();
         match_vec.push(0);
         b.iter(|| {
-            vec.starts_with(match_vec.as_slice())
+            vec.starts_with(&match_vec)
         })
     }
 
@@ -2936,7 +2936,7 @@ mod bench {
     fn ends_with_same_vector(b: &mut Bencher) {
         let vec: Vec<uint> = (0u..100).collect();
         b.iter(|| {
-            vec.ends_with(vec.as_slice())
+            vec.ends_with(&vec)
         })
     }
 
@@ -2944,7 +2944,7 @@ mod bench {
     fn ends_with_single_element(b: &mut Bencher) {
         let vec: Vec<uint> = vec![0];
         b.iter(|| {
-            vec.ends_with(vec.as_slice())
+            vec.ends_with(&vec)
         })
     }
 
@@ -2952,9 +2952,9 @@ mod bench {
     fn ends_with_diff_one_element_at_beginning(b: &mut Bencher) {
         let vec: Vec<uint> = (0u..100).collect();
         let mut match_vec: Vec<uint> = (0u..100).collect();
-        match_vec.as_mut_slice()[0] = 200;
+        match_vec[0] = 200;
         b.iter(|| {
-            vec.starts_with(match_vec.as_slice())
+            vec.starts_with(&match_vec)
         })
     }
 
@@ -3042,7 +3042,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(5).collect::<Vec<u64>>();
-            v.as_mut_slice().sort();
+            v.sort();
         });
         b.bytes = 5 * mem::size_of::<u64>() as u64;
     }
@@ -3052,7 +3052,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(100).collect::<Vec<u64>>();
-            v.as_mut_slice().sort();
+            v.sort();
         });
         b.bytes = 100 * mem::size_of::<u64>() as u64;
     }
@@ -3062,7 +3062,7 @@ mod bench {
         let mut rng = weak_rng();
         b.iter(|| {
             let mut v = rng.gen_iter::<u64>().take(10000).collect::<Vec<u64>>();
-            v.as_mut_slice().sort();
+            v.sort();
         });
         b.bytes = 10000 * mem::size_of::<u64>() as u64;
     }

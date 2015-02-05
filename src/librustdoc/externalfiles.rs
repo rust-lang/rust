@@ -36,7 +36,7 @@ impl ExternalHtml {
 pub fn load_string(input: &Path) -> old_io::IoResult<Option<String>> {
     let mut f = try!(old_io::File::open(input));
     let d = try!(f.read_to_end());
-    Ok(str::from_utf8(d.as_slice()).map(|s| s.to_string()).ok())
+    Ok(str::from_utf8(&d).map(|s| s.to_string()).ok())
 }
 
 macro_rules! load_or_return {
@@ -63,7 +63,7 @@ macro_rules! load_or_return {
 pub fn load_external_files(names: &[String]) -> Option<String> {
     let mut out = String::new();
     for name in names {
-        out.push_str(load_or_return!(name.as_slice(), None, None).as_slice());
+        out.push_str(&*load_or_return!(&name, None, None));
         out.push('\n');
     }
     Some(out)

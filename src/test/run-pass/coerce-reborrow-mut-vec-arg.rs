@@ -21,6 +21,6 @@ fn bar(v: &mut [uint]) {
 
 pub fn main() {
     let mut the_vec = vec!(1, 2, 3, 100);
-    bar(the_vec.as_mut_slice());
+    bar(&mut the_vec);
     assert_eq!(the_vec, vec!(100, 3, 2, 1));
 }

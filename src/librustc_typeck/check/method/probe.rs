@@ -368,7 +368,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             })
             .collect();
 
-        self.elaborate_bounds(bounds.as_slice(), |this, poly_trait_ref, m, method_num| {
+        self.elaborate_bounds(&bounds, |this, poly_trait_ref, m, method_num| {
             let trait_ref =
                 this.erase_late_bound_regions(&poly_trait_ref);
 

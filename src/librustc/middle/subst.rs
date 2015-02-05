@@ -406,7 +406,7 @@ impl<T> VecPerParamSpace<T> {
     }
 
     pub fn as_slice(&self) -> &[T] {
-        self.content.as_slice()
+        &self.content
     }
 
     pub fn into_vec(self) -> Vec<T> {

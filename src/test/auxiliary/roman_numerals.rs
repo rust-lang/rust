@@ -46,7 +46,7 @@ fn expand_rn(cx: &mut ExtCtxt, sp: Span, args: &[TokenTree])
         }
     };
 
-    let mut text = text.as_slice();
+    let mut text = &*text;
     let mut total = 0u;
     while !text.is_empty() {
         match NUMERALS.iter().find(|&&(rn, _)| text.starts_with(rn)) {

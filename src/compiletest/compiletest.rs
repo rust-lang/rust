@@ -97,22 +97,22 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     assert!(!args.is_empty());
     let argv0 = args[0].clone();
     let args_ = args.tail();
-    if args[1].as_slice() == "-h" || args[1].as_slice() == "--help" {
+    if args[1] == "-h" || args[1] == "--help" {
         let message = format!("Usage: {} [OPTIONS] [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(message.as_slice(), groups.as_slice()));
+        println!("{}", getopts::usage(&message, &groups));
         println!("");
         panic!()
     }
 
     let matches =
-        &match getopts::getopts(args_.as_slice(), groups.as_slice()) {
+        &match getopts::getopts(args_, &groups) {
           Ok(m) => m,
           Err(f) => panic!("{:?}", f)
         };
 
     if matches.opt_present("h") || matches.opt_present("help") {
         let message = format!("Usage: {} [OPTIONS]  [TESTNAME...]", argv0);
-        println!("{}", getopts::usage(message.as_slice(), groups.as_slice()));
+        println!("{}", getopts::usage(&message, &groups));
         println!("");
         panic!()
     }
@@ -156,9 +156,9 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
         adb_device_status:
             "arm-linux-androideabi" ==
-                opt_str2(matches.opt_str("target")).as_slice() &&
+                opt_str2(matches.opt_str("target")) &&
             "(none)" !=
-                opt_str2(matches.opt_str("adb-test-dir")).as_slice() &&
+                opt_str2(matches.opt_str("adb-test-dir")) &&
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
@@ -201,7 +201,7 @@ pub fn log_config(config: &Config) {
 pub fn opt_str<'a>(maybestr: &'a Option<String>) -> &'a str {
     match *maybestr {
         None => "(none)",
-        Some(ref s) => s.as_slice(),
+        Some(ref s) => s,
     }
 }
 
@@ -213,7 +213,7 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 }
 
 pub fn run_tests(config: &Config) {
-    if config.target.as_slice() == "arm-linux-androideabi" {
+    if config.target == "arm-linux-androideabi" {
         match config.mode {
             DebugInfoGdb => {
                 println!("arm-linux-androideabi debug-info \
@@ -306,13 +306,13 @@ pub fn is_test(config: &Config, testfile: &Path) -> bool {
     let mut valid = false;
 
     for ext in &valid_extensions {
-        if name.ends_with(ext.as_slice()) {
+        if name.ends_with(ext) {
             valid = true;
         }
     }
 
     for pre in &invalid_prefixes {
-        if name.starts_with(pre.as_slice()) {
+        if name.starts_with(pre) {
             valid = false;
         }
     }

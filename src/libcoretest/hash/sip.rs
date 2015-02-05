@@ -110,7 +110,7 @@ fn test_siphash() {
     fn to_hex_str(r: &[u8; 8]) -> String {
         let mut s = String::new();
         for b in r {
-            s.push_str(format!("{}", fmt::radix(*b, 16)).as_slice());
+            s.push_str(format!("{}", fmt::radix(*b, 16)));
         }
         s
     }
@@ -131,7 +131,7 @@ fn test_siphash() {
         let r = result_bytes(h);
         let mut s = String::new();
         for b in &r {
-            s.push_str(format!("{}", fmt::radix(*b, 16)).as_slice());
+            s.push_str(format!("{}", fmt::radix(*b, 16)));
         }
         s
     }
@@ -139,12 +139,12 @@ fn test_siphash() {
     while t < 64 {
         debug!("siphash test {}: {}", t, buf);
         let vec = u8to64_le!(vecs[t], 0);
-        let out = hash_with_keys(k0, k1, &Bytes(buf.as_slice()));
+        let out = hash_with_keys(k0, k1, &Bytes(buf));
         debug!("got {}, expected {}", out, vec);
         assert_eq!(vec, out);
 
         state_full.reset();
-        state_full.write(buf.as_slice());
+        state_full.write(buf);
         let f = result_str(state_full.result());
         let i = result_str(state_inc.result());
         let v = to_hex_str(&vecs[t]);

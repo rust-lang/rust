@@ -118,25 +118,25 @@ pub fn check_intrinsics(ccx: &CrateContext) {
             if transmute_restriction.original_from != transmute_restriction.substituted_from {
                 ccx.sess().span_err(
                     transmute_restriction.span,
-                    format!("transmute called on types with potentially different sizes: \
-                             {} (could be {} bit{}) to {} (could be {} bit{})",
-                            ty_to_string(ccx.tcx(), transmute_restriction.original_from),
-                            from_type_size as uint,
-                            if from_type_size == 1 {""} else {"s"},
-                            ty_to_string(ccx.tcx(), transmute_restriction.original_to),
-                            to_type_size as uint,
-                            if to_type_size == 1 {""} else {"s"}).as_slice());
+                    &format!("transmute called on types with potentially different sizes: \
+                              {} (could be {} bit{}) to {} (could be {} bit{})",
+                             ty_to_string(ccx.tcx(), transmute_restriction.original_from),
+                             from_type_size as uint,
+                             if from_type_size == 1 {""} else {"s"},
+                             ty_to_string(ccx.tcx(), transmute_restriction.original_to),
+                             to_type_size as uint,
+                             if to_type_size == 1 {""} else {"s"}));
             } else {
                 ccx.sess().span_err(
                     transmute_restriction.span,
-                    format!("transmute called on types with different sizes: \
-                             {} ({} bit{}) to {} ({} bit{})",
-                            ty_to_string(ccx.tcx(), transmute_restriction.original_from),
-                            from_type_size as uint,
-                            if from_type_size == 1 {""} else {"s"},
-                            ty_to_string(ccx.tcx(), transmute_restriction.original_to),
-                            to_type_size as uint,
-                            if to_type_size == 1 {""} else {"s"}).as_slice());
+                    &format!("transmute called on types with different sizes: \
+                              {} ({} bit{}) to {} ({} bit{})",
+                             ty_to_string(ccx.tcx(), transmute_restriction.original_from),
+                             from_type_size as uint,
+                             if from_type_size == 1 {""} else {"s"},
+                             ty_to_string(ccx.tcx(), transmute_restriction.original_to),
+                             to_type_size as uint,
+                             if to_type_size == 1 {""} else {"s"}));
             }
         }
     }
@@ -309,7 +309,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let simple = get_simple_intrinsic(ccx, &*foreign_item);
     let llval = match (simple, name.get()) {
         (Some(llfn), _) => {
-            Call(bcx, llfn, llargs.as_slice(), None, call_debug_location)
+            Call(bcx, llfn, &llargs, None, call_debug_location)
         }
         (_, "breakpoint") => {
             let llfn = ccx.get_intrinsic(&("llvm.debugtrap"));

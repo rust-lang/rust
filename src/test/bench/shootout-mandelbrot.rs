@@ -124,7 +124,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
 
         Thread::scoped(move|| {
             let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
-            let init_r_slice = vec_init_r.as_slice();
+            let init_r_slice = vec_init_r;
 
             let start = i * chunk_size;
             let end = if i == (WORKERS - 1) {
@@ -134,7 +134,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
             };
 
             for &init_i in &vec_init_i[start..end] {
-                write_line(init_i, init_r_slice, &mut res);
+                write_line(init_i, &init_r_slice, &mut res);
             }
 
             res
@@ -143,7 +143,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
 
     try!(writeln!(&mut out as &mut Writer, "P4\n{} {}", w, h));
     for res in data {
-        try!(out.write(res.join().ok().unwrap().as_slice()));
+        try!(out.write(&res.join().ok().unwrap()));
     }
     out.flush()
 }

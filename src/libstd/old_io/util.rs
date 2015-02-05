@@ -101,7 +101,7 @@ impl Reader for ZeroReader {
 impl Buffer for ZeroReader {
     fn fill_buf<'a>(&'a mut self) -> old_io::IoResult<&'a [u8]> {
         static DATA: [u8; 64] = [0; 64];
-        Ok(DATA.as_slice())
+        Ok(&DATA)
     }
 
     fn consume(&mut self, _amt: uint) {}
@@ -321,7 +321,7 @@ mod test {
     fn test_null_writer() {
         let mut s = NullWriter;
         let buf = vec![0, 0, 0];
-        s.write_all(buf.as_slice()).unwrap();
+        s.write_all(&buf).unwrap();
         s.flush().unwrap();
     }
 
@@ -329,7 +329,7 @@ mod test {
     fn test_zero_reader() {
         let mut s = ZeroReader;
         let mut buf = vec![1, 2, 3];
-        assert_eq!(s.read(buf.as_mut_slice()), Ok(3));
+        assert_eq!(s.read(&mut buf), Ok(3));
         assert_eq!(vec![0, 0, 0], buf);
     }
 
@@ -337,7 +337,7 @@ mod test {
     fn test_null_reader() {
         let mut r = NullReader;
         let mut buf = vec![0];
-        assert!(r.read(buf.as_mut_slice()).is_err());
+        assert!(r.read(&mut buf).is_err());
     }
 
     #[test]

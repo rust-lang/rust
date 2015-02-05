@@ -1076,7 +1076,7 @@ pub trait Writer {
     #[inline]
     fn write_char(&mut self, c: char) -> IoResult<()> {
         let mut buf = [0u8; 4];
-        let n = c.encode_utf8(buf.as_mut_slice()).unwrap_or(0);
+        let n = c.encode_utf8(&mut buf).unwrap_or(0);
         self.write_all(&buf[..n])
     }
 
@@ -1870,7 +1870,7 @@ mod tests {
                     // fall back on good
                     return r.read(buf);
                 }
-                match behavior.as_mut_slice()[0] {
+                match (&mut **behavior)[0] {
                     GoodBehavior(0) => (),
                     GoodBehavior(ref mut x) => {
                         *x -= 1;

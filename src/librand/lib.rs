@@ -504,6 +504,7 @@ mod std {
     pub use core::marker;
     // for-loops
     pub use core::iter;
+    pub use core::ops; // slicing syntax
 }
 
 #[cfg(test)]

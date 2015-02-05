@@ -36,7 +36,7 @@ impl<'a, A, B, Lhs> MyEq<[B; 0]> for Lhs
     where A: MyEq<B>, Lhs: Deref<Target=[A]>
 {
     fn eq(&self, other: &[B; 0]) -> bool {
-        MyEq::eq(&**self, other.as_slice())
+        MyEq::eq(&**self, other)
     }
 }
 

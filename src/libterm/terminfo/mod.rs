@@ -80,10 +80,10 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                                .strings
                                .get("setaf")
                                .unwrap()
-                               .as_slice(),
+                               ,
                            &[Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write_all(s.unwrap().as_slice()));
+                try!(self.out.write_all(&s.unwrap()));
                 return Ok(true)
             }
         }
@@ -97,10 +97,10 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                                .strings
                                .get("setab")
                                .unwrap()
-                               .as_slice(),
+                               ,
                            &[Number(color as int)], &mut Variables::new());
             if s.is_ok() {
-                try!(self.out.write_all(s.unwrap().as_slice()));
+                try!(self.out.write_all(&s.unwrap()));
                 return Ok(true)
             }
         }
@@ -115,11 +115,11 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
                 let cap = cap_for_attr(attr);
                 let parm = self.ti.strings.get(cap);
                 if parm.is_some() {
-                    let s = expand(parm.unwrap().as_slice(),
+                    let s = expand(parm.unwrap(),
                                    &[],
                                    &mut Variables::new());
                     if s.is_ok() {
-                        try!(self.out.write_all(s.unwrap().as_slice()));
+                        try!(self.out.write_all(&s.unwrap()));
                         return Ok(true)
                     }
                 }
@@ -151,10 +151,10 @@ impl<T: Writer+Send> Terminal<T> for TerminfoTerminal<T> {
             }
         }
         let s = cap.map_or(Err("can't find terminfo capability `sgr0`".to_string()), |op| {
-            expand(op.as_slice(), &[], &mut Variables::new())
+            expand(op, &[], &mut Variables::new())
         });
         if s.is_ok() {
-            return self.out.write_all(s.unwrap().as_slice())
+            return self.out.write_all(&s.unwrap())
         }
         Ok(())
     }

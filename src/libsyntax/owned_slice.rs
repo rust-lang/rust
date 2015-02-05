@@ -72,7 +72,7 @@ impl<T> Default for OwnedSlice<T> {
 
 impl<T: Clone> Clone for OwnedSlice<T> {
     fn clone(&self) -> OwnedSlice<T> {
-        OwnedSlice::from_vec(self.as_slice().to_vec())
+        OwnedSlice::from_vec(self.to_vec())
     }
 }
 
@@ -84,7 +84,7 @@ impl<T> FromIterator<T> for OwnedSlice<T> {
 
 impl<T: Encodable> Encodable for OwnedSlice<T> {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-       self.as_slice().encode(s)
+        Encodable::encode(&**self, s)
     }
 }
 

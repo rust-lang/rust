@@ -102,7 +102,7 @@ fn vector<M: MutableMap>(map: &mut M, n_keys: uint, dist: &[uint]) {
 
 fn main() {
     let args = os::args();
-    let args = args.as_slice();
+    let args = args;
     let n_keys = {
         if args.len() == 2 {
             args[1].parse::<uint>().unwrap()
@@ -143,7 +143,7 @@ fn main() {
     {
         println!(" Random integers:");
         let mut map: BTreeMap<uint,uint> = BTreeMap::new();
-        vector(&mut map, n_keys, rand.as_slice());
+        vector(&mut map, n_keys, &rand);
     }
 
     // FIXME: #9970
@@ -162,6 +162,6 @@ fn main() {
     {
         println!(" Random integers:");
         let mut map: HashMap<uint,uint> = HashMap::new();
-        vector(&mut map, n_keys, rand.as_slice());
+        vector(&mut map, n_keys, &rand);
     }
 }
