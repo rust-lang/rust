@@ -7,9 +7,9 @@ Summary
 
 Change array/slice patterns in the following ways:
 
-- Make them only match on arrays (`[T, ..n]` and `[T]`), not slices;
-- Make subslice matching yield a value of type `[T, ..n]` or `[T]`, not `&[T]`
-  or `&mut [T]`;
+- Make them only match on arrays (`[T; n]` and `[T]`), not slices;
+- Make subslice matching yield a value of type `[T; n]` or `[T]`, not `&[T]` or
+  `&mut [T]`;
 - Allow multiple mutable references to be made to different parts of the same
   array or slice in array patterns (resolving rust-lang/rust [issue
   #8636](https://github.com/rust-lang/rust/issues/8636)).
@@ -21,9 +21,9 @@ Before DST (and after the removal of `~[T]`), there were only two types based on
 `[T]`: `&[T]` and `&mut [T]`. With DST, we can have many more types based on
 `[T]`, `Box<[T]>` in particular, but theoretically any pointer type around a
 `[T]` could be used. However, array patterns still match on `&[T]`, `&mut [T]`,
-and `[T, ..n]` only, meaning that to match on a `Box<[T]>`, one must first
-convert it to a slice, which disallows moves. This may prove to significantly
-limit the amount of useful code that can be written using array patterns.
+and `[T; n]` only, meaning that to match on a `Box<[T]>`, one must first convert
+it to a slice, which disallows moves. This may prove to significantly limit the
+amount of useful code that can be written using array patterns.
 
 Another problem with today’s array patterns is in subslice matching, which
 specifies that the rest of a slice not matched on already in the pattern should
@@ -66,7 +66,7 @@ multiple mutable borrows to the same value (which is not the case).
 Detailed design
 ===============
 
-- Make array patterns match only on arrays (`[T, ..n]` and `[T]`). For example,
+- Make array patterns match only on arrays (`[T; n]` and `[T]`). For example,
   the following code:
 
   ```rust
@@ -89,7 +89,7 @@ Detailed design
 
   This change makes slice patterns mirror slice expressions much more closely.
 
-- Make subslice matching in array patterns yield a value of type `[T, ..n]` (if
+- Make subslice matching in array patterns yield a value of type `[T; n]` (if
   the array is of fixed size) or `[T]` (if not). This means changing most code
   that looks like this:
 
@@ -112,8 +112,8 @@ Detailed design
   ```
 
   It should be noted that if a fixed-size array is matched on using subslice
-  matching, and `ref` is used, the type of the binding will be `&[T, ..n]`,
-  *not* `&[T]`.
+  matching, and `ref` is used, the type of the binding will be `&[T; n]`, *not*
+  `&[T]`.
 
 - Improve the compiler’s analysis of multiple mutable references to the same
   value within array patterns. This would be done by allowing multiple mutable
