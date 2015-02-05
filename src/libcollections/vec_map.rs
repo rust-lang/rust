@@ -1060,7 +1060,7 @@ mod test_map {
         assert!(m.insert(10, 11).is_none());
 
         for (k, v) in &mut m {
-            *v += k as int;
+            *v += k as isize;
         }
 
         let mut it = m.iter();
@@ -1102,7 +1102,7 @@ mod test_map {
         assert!(m.insert(10, 11).is_none());
 
         for (k, v) in m.iter_mut().rev() {
-            *v += k as int;
+            *v += k as isize;
         }
 
         let mut it = m.iter();
