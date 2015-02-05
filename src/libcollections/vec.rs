@@ -234,7 +234,7 @@ impl<T> Vec<T> {
     ///         mem::forget(v);
     ///
     ///         // Overwrite memory with 4, 5, 6
-    ///         for i in 0..len as int {
+    ///         for i in 0..len as isize {
     ///             ptr::write(p.offset(i), 4 + i);
     ///         }
     ///
@@ -457,7 +457,7 @@ impl<T> Vec<T> {
             let end = if mem::size_of::<T>() == 0 {
                 (ptr as usize + self.len()) as *const T
             } else {
-                ptr.offset(self.len() as int) as *const T
+                ptr.offset(self.len() as isize) as *const T
             };
             mem::forget(self);
             IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
@@ -473,7 +473,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut v = vec![1u, 2, 3, 4];
+    /// let mut v = vec![1, 2, 3, 4];
     /// unsafe {
     ///     v.set_len(1);
     /// }
@@ -539,7 +539,7 @@ impl<T> Vec<T> {
         unsafe { // infallible
             // The spot to put the new value
             {
-                let p = self.as_mut_ptr().offset(index as int);
+                let p = self.as_mut_ptr().offset(index as isize);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
                 ptr::copy_memory(p.offset(1), &*p, len - index);
@@ -573,7 +573,7 @@ impl<T> Vec<T> {
             let ret;
             {
                 // the place we are taking from.
-                let ptr = self.as_mut_ptr().offset(index as int);
+                let ptr = self.as_mut_ptr().offset(index as isize);
                 // copy it out, unsafely having a copy of the value on
                 // the stack and in the vector at the same time.
                 ret = ptr::read(ptr);
@@ -655,7 +655,7 @@ impl<T> Vec<T> {
         }
 
         unsafe {
-            let end = (*self.ptr).offset(self.len as int);
+            let end = (*self.ptr).offset(self.len as isize);
             ptr::write(&mut *end, value);
             self.len += 1;
         }
@@ -743,7 +743,7 @@ impl<T> Vec<T> {
             let end = if mem::size_of::<T>() == 0 {
                 (*self.ptr as usize + self.len()) as *const T
             } else {
-                (*self.ptr).offset(self.len() as int) as *const T
+                (*self.ptr).offset(self.len() as isize) as *const T
             };
             self.set_len(0);
             Drain {
@@ -835,7 +835,7 @@ impl<T> Vec<T> {
             // types are passed to the allocator by `Vec`.
             assert!(mem::min_align_of::<T>() == mem::min_align_of::<U>());
 
-            // This `as int` cast is safe, because the size of the elements of the
+            // This `as isize` cast is safe, because the size of the elements of the
             // vector is not 0, and:
             //
             // 1) If the size of the elements in the vector is 1, the `int` may
@@ -852,7 +852,7 @@ impl<T> Vec<T> {
             //
             // 2) If the size of the elements in the vector is >1, the `usize` ->
             //    `int` conversion can't overflow.
-            let offset = vec.len() as int;
+            let offset = vec.len() as isize;
             let start = vec.as_mut_ptr();
 
             let mut pv = PartialVecNonZeroSized {
@@ -1179,8 +1179,8 @@ impl<T: PartialEq> Vec<T> {
             let mut w = 1;
 
             while r < ln {
-                let p_r = p.offset(r as int);
-                let p_wm1 = p.offset((w - 1) as int);
+                let p_r = p.offset(r as isize);
+                let p_wm1 = p.offset((w - 1) as isize);
                 if *p_r != *p_wm1 {
                     if r != w {
                         let p_w = p_wm1.offset(1);
@@ -1648,7 +1648,7 @@ impl<T> Iterator for IntoIter<T> {
                     self.ptr = mem::transmute(self.ptr as usize + 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(mem::transmute(1u)))
+                    Some(ptr::read(EMPTY as *mut T))
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -1681,7 +1681,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
                     self.end = mem::transmute(self.end as usize - 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(mem::transmute(1u)))
+                    Some(ptr::read(EMPTY as *mut T))
                 } else {
                     self.end = self.end.offset(-1);
 
@@ -1736,7 +1736,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
                     self.ptr = mem::transmute(self.ptr as usize + 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(mem::transmute(1u)))
+                    Some(ptr::read(EMPTY as *mut T))
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -1769,7 +1769,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
                     self.end = mem::transmute(self.end as usize - 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(mem::transmute(1u)))
+                    Some(ptr::read(EMPTY as *mut T))
                 } else {
                     self.end = self.end.offset(-1);
 
