@@ -410,12 +410,12 @@ pub enum Attribute {
 impl Clean<Attribute> for ast::MetaItem {
     fn clean(&self, cx: &DocContext) -> Attribute {
         match self.node {
-            ast::MetaWord(ref s) => Word(s.get().to_string()),
+            ast::MetaWord(ref s) => Word(s.to_string()),
             ast::MetaList(ref s, ref l) => {
-                List(s.get().to_string(), l.clean(cx))
+                List(s.to_string(), l.clean(cx))
             }
             ast::MetaNameValue(ref s, ref v) => {
-                NameValue(s.get().to_string(), lit_to_string(v))
+                NameValue(s.to_string(), lit_to_string(v))
             }
         }
     }
@@ -700,19 +700,19 @@ impl Lifetime {
 
 impl Clean<Lifetime> for ast::Lifetime {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        Lifetime(token::get_name(self.name).get().to_string())
+        Lifetime(token::get_name(self.name).to_string())
     }
 }
 
 impl Clean<Lifetime> for ast::LifetimeDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        Lifetime(token::get_name(self.lifetime.name).get().to_string())
+        Lifetime(token::get_name(self.lifetime.name).to_string())
     }
 }
 
 impl Clean<Lifetime> for ty::RegionParameterDef {
     fn clean(&self, _: &DocContext) -> Lifetime {
-        Lifetime(token::get_name(self.name).get().to_string())
+        Lifetime(token::get_name(self.name).to_string())
     }
 }
 
@@ -721,7 +721,7 @@ impl Clean<Option<Lifetime>> for ty::Region {
         match *self {
             ty::ReStatic => Some(Lifetime::statik()),
             ty::ReLateBound(_, ty::BrNamed(_, name)) =>
-                Some(Lifetime(token::get_name(name).get().to_string())),
+                Some(Lifetime(token::get_name(name).to_string())),
             ty::ReEarlyBound(_, _, _, name) => Some(Lifetime(name.clean(cx))),
 
             ty::ReLateBound(..) |
@@ -1953,20 +1953,20 @@ fn path_to_string(p: &ast::Path) -> String {
         } else {
             first = false;
         }
-        s.push_str(i.get());
+        s.push_str(&i);
     }
     s
 }
 
 impl Clean<String> for ast::Ident {
     fn clean(&self, _: &DocContext) -> String {
-        token::get_ident(*self).get().to_string()
+        token::get_ident(*self).to_string()
     }
 }
 
 impl Clean<String> for ast::Name {
     fn clean(&self, _: &DocContext) -> String {
-        token::get_name(*self).get().to_string()
+        token::get_name(*self).to_string()
     }
 }
 
@@ -2158,7 +2158,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
         let denied = self.vis != ast::Public || self.attrs.iter().any(|a| {
-            a.name().get() == "doc" && match a.meta_item_list() {
+            &a.name()[] == "doc" && match a.meta_item_list() {
                 Some(l) => attr::contains_name(l, "no_inline"),
                 None => false,
             }
@@ -2311,7 +2311,7 @@ impl ToSource for syntax::codemap::Span {
 
 fn lit_to_string(lit: &ast::Lit) -> String {
     match lit.node {
-        ast::LitStr(ref st, _) => st.get().to_string(),
+        ast::LitStr(ref st, _) => st.to_string(),
         ast::LitBinary(ref data) => format!("{:?}", data),
         ast::LitByte(b) => {
             let mut res = String::from_str("b'");
@@ -2323,8 +2323,8 @@ fn lit_to_string(lit: &ast::Lit) -> String {
         },
         ast::LitChar(c) => format!("'{}'", c),
         ast::LitInt(i, _t) => i.to_string(),
-        ast::LitFloat(ref f, _t) => f.get().to_string(),
-        ast::LitFloatUnsuffixed(ref f) => f.get().to_string(),
+        ast::LitFloat(ref f, _t) => f.to_string(),
+        ast::LitFloatUnsuffixed(ref f) => f.to_string(),
         ast::LitBool(b) => b.to_string(),
     }
 }
@@ -2336,7 +2336,7 @@ fn name_from_pat(p: &ast::Pat) -> String {
     match p.node {
         PatWild(PatWildSingle) => "_".to_string(),
         PatWild(PatWildMulti) => "..".to_string(),
-        PatIdent(_, ref p, _) => token::get_ident(p.node).get().to_string(),
+        PatIdent(_, ref p, _) => token::get_ident(p.node).to_string(),
         PatEnum(ref p, _) => path_to_string(p),
         PatStruct(ref name, ref fields, etc) => {
             format!("{} {{ {}{} }}", path_to_string(name),
@@ -2486,11 +2486,11 @@ impl Clean<Stability> for attr::Stability {
     fn clean(&self, _: &DocContext) -> Stability {
         Stability {
             level: self.level,
-            feature: self.feature.get().to_string(),
+            feature: self.feature.to_string(),
             since: self.since.as_ref().map_or("".to_string(),
-                                              |interned| interned.get().to_string()),
+                                              |interned| interned.to_string()),
             reason: self.reason.as_ref().map_or("".to_string(),
-                                                |interned| interned.get().to_string()),
+                                                |interned| interned.to_string()),
         }
     }
 }

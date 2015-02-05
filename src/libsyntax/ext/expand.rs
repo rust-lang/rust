@@ -1862,7 +1862,7 @@ mod test {
                         .collect();
                     println!("varref #{}: {:?}, resolves to {}",idx, varref_idents, varref_name);
                     let string = token::get_ident(final_varref_ident);
-                    println!("varref's first segment's string: \"{}\"", string.get());
+                    println!("varref's first segment's string: \"{}\"", &string[]);
                     println!("binding #{}: {}, resolves to {}",
                              binding_idx, bindings[binding_idx], binding_name);
                     mtwt::with_sctable(|x| mtwt::display_sctable(x));
@@ -1915,7 +1915,7 @@ foo_module!();
         let cxbinds: Vec<&ast::Ident> =
             bindings.iter().filter(|b| {
                 let ident = token::get_ident(**b);
-                let string = ident.get();
+                let string = &ident[];
                 "xx" == string
             }).collect();
         let cxbinds: &[&ast::Ident] = &cxbinds[];
@@ -1929,7 +1929,7 @@ foo_module!();
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p| {
             p.segments.len() == 1
-            && "xx" == token::get_ident(p.segments[0].identifier).get()
+            && "xx" == &token::get_ident(p.segments[0].identifier)[]
         }).enumerate() {
             if mtwt::resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");

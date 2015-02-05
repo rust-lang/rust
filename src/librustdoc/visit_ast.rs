@@ -237,7 +237,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
             ast::ItemExternCrate(ref p) => {
                 let path = match *p {
                     None => None,
-                    Some((ref x, _)) => Some(x.get().to_string()),
+                    Some((ref x, _)) => Some(x.to_string()),
                 };
                 om.extern_crates.push(ExternCrate {
                     name: name,
@@ -253,7 +253,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
                             Some(list) => {
-                                list.iter().any(|i| i.name().get() == "inline")
+                                list.iter().any(|i| &i.name()[] == "inline")
                             }
                             None => false,
                         }
