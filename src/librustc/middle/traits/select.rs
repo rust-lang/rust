@@ -1335,25 +1335,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // the where clauses are in scope.
                 true
             }
-            (&ParamCandidate(ref bound1), &ParamCandidate(ref bound2)) => {
-                self.infcx.probe(|_| {
-                    let bound1 =
-                        project::normalize_with_depth(self,
-                                                      stack.obligation.cause.clone(),
-                                                      stack.obligation.recursion_depth+1,
-                                                      bound1);
-                    let bound2 =
-                        project::normalize_with_depth(self,
-                                                      stack.obligation.cause.clone(),
-                                                      stack.obligation.recursion_depth+1,
-                                                      bound2);
-                    let origin =
-                        infer::RelateOutputImplTypes(stack.obligation.cause.span);
-                    self.infcx
-                        .sub_poly_trait_refs(false, origin, bound1.value, bound2.value)
-                        .is_ok()
-                })
-            }
             _ => {
                 false
             }
