@@ -464,7 +464,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "this functionality may be moved to libunicode")]
-    fn nfd_chars<'a>(&'a self) -> Decompositions<'a> {
+    fn nfd_chars(&self) -> Decompositions {
         Decompositions {
             iter: self[].chars(),
             buffer: Vec::new(),
@@ -478,7 +478,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "this functionality may be moved to libunicode")]
-    fn nfkd_chars<'a>(&'a self) -> Decompositions<'a> {
+    fn nfkd_chars(&self) -> Decompositions {
         Decompositions {
             iter: self[].chars(),
             buffer: Vec::new(),
@@ -492,7 +492,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "this functionality may be moved to libunicode")]
-    fn nfc_chars<'a>(&'a self) -> Recompositions<'a> {
+    fn nfc_chars(&self) -> Recompositions {
         Recompositions {
             iter: self.nfd_chars(),
             state: Composing,
@@ -507,7 +507,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "this functionality may be moved to libunicode")]
-    fn nfkc_chars<'a>(&'a self) -> Recompositions<'a> {
+    fn nfkc_chars(&self) -> Recompositions {
         Recompositions {
             iter: self.nfkd_chars(),
             state: Composing,

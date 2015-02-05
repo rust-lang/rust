@@ -708,7 +708,7 @@ mod tests {
         let iterout = vec![3, 5, 9];
         let pq = BinaryHeap::from_vec(data);
 
-        let v: Vec<_> = pq.iter().rev().map(|&x| x).collect();
+        let v: Vec<_> = pq.iter().rev().cloned().collect();
         assert_eq!(v, iterout);
     }
 

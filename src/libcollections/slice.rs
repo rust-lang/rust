@@ -812,27 +812,27 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn slice<'a>(&'a self, start: usize, end: usize) -> &'a [T] {
+    fn slice(&self, start: usize, end: usize) -> &[T] {
         &self[start .. end]
     }
 
     #[inline]
-    fn slice_from<'a>(&'a self, start: usize) -> &'a [T] {
+    fn slice_from(&self, start: usize) -> &[T] {
         &self[start ..]
     }
 
     #[inline]
-    fn slice_to<'a>(&'a self, end: usize) -> &'a [T] {
+    fn slice_to(&self, end: usize) -> &[T] {
         &self[.. end]
     }
 
     #[inline]
-    fn split_at<'a>(&'a self, mid: usize) -> (&'a [T], &'a [T]) {
+    fn split_at(&self, mid: usize) -> (&[T], &[T]) {
         core_slice::SliceExt::split_at(self, mid)
     }
 
     #[inline]
-    fn iter<'a>(&'a self) -> Iter<'a, T> {
+    fn iter(&self) -> Iter<T> {
         core_slice::SliceExt::iter(self)
     }
 
@@ -855,42 +855,42 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn windows<'a>(&'a self, size: usize) -> Windows<'a, T> {
+    fn windows(&self, size: usize) -> Windows<T> {
         core_slice::SliceExt::windows(self, size)
     }
 
     #[inline]
-    fn chunks<'a>(&'a self, size: usize) -> Chunks<'a, T> {
+    fn chunks(&self, size: usize) -> Chunks<T> {
         core_slice::SliceExt::chunks(self, size)
     }
 
     #[inline]
-    fn get<'a>(&'a self, index: usize) -> Option<&'a T> {
+    fn get(&self, index: usize) -> Option<&T> {
         core_slice::SliceExt::get(self, index)
     }
 
     #[inline]
-    fn first<'a>(&'a self) -> Option<&'a T> {
+    fn first(&self) -> Option<&T> {
         core_slice::SliceExt::first(self)
     }
 
     #[inline]
-    fn tail<'a>(&'a self) -> &'a [T] {
+    fn tail(&self) -> &[T] {
         core_slice::SliceExt::tail(self)
     }
 
     #[inline]
-    fn init<'a>(&'a self) -> &'a [T] {
+    fn init(&self) -> &[T] {
         core_slice::SliceExt::init(self)
     }
 
     #[inline]
-    fn last<'a>(&'a self) -> Option<&'a T> {
+    fn last(&self) -> Option<&T> {
         core_slice::SliceExt::last(self)
     }
 
     #[inline]
-    unsafe fn get_unchecked<'a>(&'a self, index: usize) -> &'a T {
+    unsafe fn get_unchecked(&self, index: usize) -> &T {
         core_slice::SliceExt::get_unchecked(self, index)
     }
 
@@ -916,52 +916,52 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn get_mut<'a>(&'a mut self, index: usize) -> Option<&'a mut T> {
+    fn get_mut(&mut self, index: usize) -> Option<&mut T> {
         core_slice::SliceExt::get_mut(self, index)
     }
 
     #[inline]
-    fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
+    fn as_mut_slice(&mut self) -> &mut [T] {
         core_slice::SliceExt::as_mut_slice(self)
     }
 
     #[inline]
-    fn slice_mut<'a>(&'a mut self, start: usize, end: usize) -> &'a mut [T] {
+    fn slice_mut(&mut self, start: usize, end: usize) -> &mut [T] {
         &mut self[start .. end]
     }
 
     #[inline]
-    fn slice_from_mut<'a>(&'a mut self, start: usize) -> &'a mut [T] {
+    fn slice_from_mut(&mut self, start: usize) -> &mut [T] {
         &mut self[start ..]
     }
 
     #[inline]
-    fn slice_to_mut<'a>(&'a mut self, end: usize) -> &'a mut [T] {
+    fn slice_to_mut(&mut self, end: usize) -> &mut [T] {
         &mut self[.. end]
     }
 
     #[inline]
-    fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+    fn iter_mut(&mut self) -> IterMut<T> {
         core_slice::SliceExt::iter_mut(self)
     }
 
     #[inline]
-    fn first_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+    fn first_mut(&mut self) -> Option<&mut T> {
         core_slice::SliceExt::first_mut(self)
     }
 
     #[inline]
-    fn tail_mut<'a>(&'a mut self) -> &'a mut [T] {
+    fn tail_mut(&mut self) -> &mut [T] {
         core_slice::SliceExt::tail_mut(self)
     }
 
     #[inline]
-    fn init_mut<'a>(&'a mut self) -> &'a mut [T] {
+    fn init_mut(&mut self) -> &mut [T] {
         core_slice::SliceExt::init_mut(self)
     }
 
     #[inline]
-    fn last_mut<'a>(&'a mut self) -> Option<&'a mut T> {
+    fn last_mut(&mut self) -> Option<&mut T> {
         core_slice::SliceExt::last_mut(self)
     }
 
@@ -984,7 +984,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn chunks_mut<'a>(&'a mut self, chunk_size: usize) -> ChunksMut<'a, T> {
+    fn chunks_mut(&mut self, chunk_size: usize) -> ChunksMut<T> {
         core_slice::SliceExt::chunks_mut(self, chunk_size)
     }
 
@@ -994,7 +994,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    fn split_at_mut<'a>(&'a mut self, mid: usize) -> (&'a mut [T], &'a mut [T]) {
+    fn split_at_mut(&mut self, mid: usize) -> (&mut [T], &mut [T]) {
         core_slice::SliceExt::split_at_mut(self, mid)
     }
 
@@ -1004,7 +1004,7 @@ impl<T> SliceExt for [T] {
     }
 
     #[inline]
-    unsafe fn get_unchecked_mut<'a>(&'a mut self, index: usize) -> &'a mut T {
+    unsafe fn get_unchecked_mut(&mut self, index: usize) -> &mut T {
         core_slice::SliceExt::get_unchecked_mut(self, index)
     }
 
