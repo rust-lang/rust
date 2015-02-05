@@ -288,7 +288,7 @@ pub fn select_all_fcx_obligations_and_apply_defaults(fcx: &FnCtxt) {
 pub fn select_all_fcx_obligations_or_error(fcx: &FnCtxt) {
     debug!("select_all_fcx_obligations_or_error");
 
-    // upvar inference should have ensured that all deferrred call
+    // upvar inference should have ensured that all deferred call
     // resolutions are handled by now.
     assert!(fcx.inh.deferred_call_resolutions.borrow().is_empty());
 

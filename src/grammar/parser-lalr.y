@@ -1195,7 +1195,7 @@ maybe_stmts
 //
 // There are also two other expr subtypes: first, nonparen_expr
 // disallows exprs surrounded by parens (including tuple expressions),
-// this is neccesary for BOX (place) expressions, so a parens expr
+// this is necessary for BOX (place) expressions, so a parens expr
 // following the BOX is always parsed as the place. There is also
 // expr_norange used in index_expr, which disallows '..' in
 // expressions as that has special meaning inside of brackets.

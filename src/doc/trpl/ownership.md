@@ -523,7 +523,7 @@ fn print<'a>(s: &'a str); // expanded
 fn debug(lvl: u32, s: &str); // elided
 fn debug<'a>(lvl: u32, s: &'a str); // expanded
 
-// In the preceeding example, `lvl` doesn't need a lifetime because it's not a
+// In the preceding example, `lvl` doesn't need a lifetime because it's not a
 // reference (`&`). Only things relating to references (such as a `struct`
 // which contains a reference) need lifetimes.
 

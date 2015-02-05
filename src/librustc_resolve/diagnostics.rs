@@ -20,7 +20,7 @@ register_diagnostics! {
     E0254, // import conflicts with imported crate in this module
     E0255, // import conflicts with value in this module
     E0256, // import conflicts with type in this module
-    E0257, // inherent implementations are only allowen on types defined in the current module
+    E0257, // inherent implementations are only allowed on types defined in the current module
     E0258, // import conflicts with existing submodule
     E0259, // an extern crate has already been imported into this module
     E0260 // name conflicts with an external crate that has been imported into this module
