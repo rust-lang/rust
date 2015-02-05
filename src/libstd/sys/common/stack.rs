@@ -195,12 +195,6 @@ pub unsafe fn record_sp_limit(limit: uint) {
         asm!("movq $0, %fs:32" :: "r"(limit) :: "volatile")
     }
 
-    #[cfg(target_os = "bitrig")]
-    #[inline(always)]
-    unsafe fn target_record_sp_limit(_: uint) {
-        // segmented stacks are disabled
-    }
-
     // x86
     #[cfg(all(target_arch = "x86",
               any(target_os = "macos", target_os = "ios")))]
@@ -240,6 +234,7 @@ pub unsafe fn record_sp_limit(limit: uint) {
     #[cfg(any(target_arch = "aarch64",
               target_arch = "powerpc",
               all(target_arch = "arm", target_os = "ios"),
+              target_os = "bitrig",
               target_os = "openbsd"))]
     unsafe fn target_record_sp_limit(_: uint) {
     }
@@ -290,12 +285,6 @@ pub unsafe fn get_sp_limit() -> uint {
         asm!("movq %fs:32, $0" : "=r"(limit) ::: "volatile");
         return limit;
     }
-    #[cfg(target_os = "bitrig")]
-    #[inline(always)]
-    unsafe fn target_get_sp_limit() -> uint {
-      return 2048;
-    }
-
 
     // x86
     #[cfg(all(target_arch = "x86",
@@ -344,6 +333,7 @@ pub unsafe fn get_sp_limit() -> uint {
     #[cfg(any(target_arch = "aarch64",
               target_arch = "powerpc",
               all(target_arch = "arm", target_os = "ios"),
+              target_os = "bitrig",
               target_os = "openbsd"))]
     #[inline(always)]
     unsafe fn target_get_sp_limit() -> uint {
