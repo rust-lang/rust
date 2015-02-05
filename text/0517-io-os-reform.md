@@ -63,7 +63,11 @@ follow-up PRs against this RFC.
             * [Channel adapters]
             * [stdin, stdout, stderr]
         * [std::env]
-        * [std::fs] (stub)
+        * [std::fs]
+            * [Free functions]
+            * [Files]
+            * [File kinds]
+            * [File permissions]
         * [std::net] (stub)
         * [std::process] (stub)
         * [std::os]
@@ -1229,7 +1233,128 @@ This brings the constants into line with our naming conventions elsewhere.
 ### `std::fs`
 [std::fs]: #stdfs
 
-> To be added in a follow-up PR.
+The `fs` module will provide most of the functionality it does today,
+but with a stronger cross-platform orientation.
+
+Note that all path-consuming functions will now take an
+`AsPath`-bounded parameter for ergonomic reasons (this will allow
+passing in Rust strings and literals directly, for example).
+
+#### Free functions
+[Free functions]: #free-functions
+
+**Files**:
+
+* `copy`. Take `AsPath` bound.
+* `rename`. Take `AsPath` bound.
+* `remove_file` (renamed from `unlink`). Take `AsPath` bound.
+
+* `metadata` (renamed from `stat`). Take `AsPath` bound. Yield a new
+  struct, `Metadata`, with no public fields, but `len`, `is_dir`,
+  `is_file`, `perms`, `accessed` and `modified` accessors. The various
+  `os::platform` modules will offer extension methods on this
+  structure.
+
+* `set_perms` (renamed from `chmod`). Take `AsPath` bound, and a
+  `Perms` value. The `Perms` type will be revamped
+  as a struct with private implementation; see below.
+
+**Directories**:
+
+* `create_dir` (renamed from `mkdir`). Take `AsPath` bound.
+* `create_dir_all` (renamed from `mkdir_recursive`). Take `AsPath` bound.
+* `read_dir` (renamed from `readdir`). Take `AsPath` bound. Yield a
+  newtypes iterator, which yields a new type `DirEntry` which has an
+  accessor for `Path`, but will eventually provide other information
+  as well (possibly via platform-specific extensions).
+* `remove_dir` (renamed from `rmdir`). Take `AsPath` bound.
+* `remove_dir_all` (renamed from `rmdir_recursive`). Take
+  `AsPath` bound.
+* `walk_dir`. Take `AsPath` bound. Yield an iterator over `IoResult<DirEntry>`.
+
+**Links**:
+
+* `hard_link` (renamed from `link`). Take `AsPath` bound.
+* `soft_link` (renamed from `symlink`). Take `AsPath` bound.
+* `read_link` (renamed form `readlink`). Take `AsPath` bound.
+
+#### Files
+[Files]: #files
+
+The `File` type will largely stay as it is today, except that it will
+use the `AsPath` bound everywhere.
+
+The `stat` method will be renamed to `metadata`, yield a `Metadata`
+structure (as described above), and take `&self`.
+
+The `fsync` method will be renamed to `sync_all`, and `datasync` will be
+renamed to `sync_data`. (Although the latter is not available on
+Windows, it can be considered an optimization for `flush` and on
+Windows behave identically to `sync_all`, just as it does on some Unix
+filesystems.)
+
+The `path` method wil remain `#[unstable]`, as we do not yet want to
+commit to its API.
+
+The `open_mode` function will be removed in favor of and will take an
+`OpenOptions` struct, which will encompass today's `FileMode` and
+`FileAccess` and support a builder-style API.
+
+#### File kinds
+[File kinds]: #file-kinds
+
+The `FileType` type will be removed. As mentioned above, `is_file` and
+`is_dir` will be provided directly on `Meatadata`; the other types
+need to be audited for compatibility across
+platforms. Platform-specific kinds will be relegated to extension
+traits in `std::os::platform`.
+
+It's possible that an
+[extensible](https://github.com/rust-lang/rfcs/pull/757) `Kind` will
+be added in the future.
+
+#### File permissions
+[File permissions]: #file-permissions
+
+The permission models on Unix and Windows vary greatly -- even between
+different filesystems within the same OS. Rather than offer an API
+that has no meaning on some platforms, we will initially provide a
+very limited `Perms` structure in `std::fs`, and then rich
+extension traits in `std::os::unix` and `std::os::windows`. Over time,
+if clear cross-platform patterns emerge for richer permissions, we can
+grow the `Perms` structure.
+
+On the Unix side, the constructors and accessors for `Perms`
+will resemble the flags we have today; details are left to the implementation.
+
+On the Windows side, initially there will be no extensions, as Windows
+has a very complex permissions model that will take some time to build
+out.
+
+For `std::fs` itself, `Perms` will provide constructors and
+accessors for "world readable" -- and that is all. At the moment, that
+is all that is known to be compatible across the platforms that Rust
+supports.
+
+#### `PathExt`
+[PathExt]: #pathext
+
+This trait will essentially remain stay as it is (renamed from
+`PathExtensions`), following the same changes made to `fs` free functions.
+
+#### Items to move to `os::platform`
+
+* `lstat` will move to `os::unix` and remain `#[unstable]` *for now*
+  since it is not yet implemented for Windows.
+
+* `chown` will move to `os::unix` (it currently does *nothing* on
+  Windows), and eventually `os::windows` will grow support for
+  Windows's permission model. If at some point a reasonable
+  intersection is found, we will re-introduce a cross-platform
+  function in `std::fs`.
+
+* In general, offer all of the `stat` fields as an extension trait on
+  `Metadata` (e.g. `os::unix::MetadataExt`).
 
 ### `std::net`
 [std::net]: #stdnet
