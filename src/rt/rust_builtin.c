@@ -47,7 +47,8 @@ extern char **environ;
 #endif
 #endif
 
-#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || defined(__DragonFly__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) \
+  || defined(__DragonFly__) || defined(__OpenBSD__)
 extern char **environ;
 #endif
 
@@ -235,7 +236,7 @@ const char * rust_load_self() {
 
         /* get realpath if possible */
         if ((argv[0] != NULL) && ((*argv[0] == '.') || (*argv[0] == '/')
-				|| (strstr(argv[0], "/") != NULL)))
+                                || (strstr(argv[0], "/") != NULL)))
 
             self = realpath(argv[0], NULL);
         else
