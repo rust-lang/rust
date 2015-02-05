@@ -1704,7 +1704,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         try!(write!(w, "{{\n"));
         for t in types.iter() {
             try!(write!(w, "    "));
-            try!(render_method(w, t.item()));
+            try!(render_method(w, t.item(), cx.current.connect(",").as_slice()));
             try!(write!(w, ";\n"));
         }
         if types.len() > 0 && required.len() > 0 {
@@ -1712,7 +1712,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in required.iter() {
             try!(write!(w, "    "));
-            try!(render_method(w, m.item()));
+            try!(render_method(w, m.item(), cx.current.connect(",").as_slice()));
             try!(write!(w, ";\n"));
         }
         if required.len() > 0 && provided.len() > 0 {
@@ -1720,7 +1720,7 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
         }
         for m in provided.iter() {
             try!(write!(w, "    "));
-            try!(render_method(w, m.item()));
+            try!(render_method(w, m.item(), cx.current.connect(",").as_slice()));
             try!(write!(w, " {{ ... }}\n"));
         }
         try!(write!(w, "}}"));
@@ -1732,11 +1732,16 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
 
     fn trait_item(w: &mut fmt::Formatter, m: &clean::TraitMethod)
                   -> fmt::Result {
+        let ctx_s: &str = match m.item().name {
+            Some(ref name) => name.as_slice(),
+            None => ""
+        };
+        
         try!(write!(w, "<h3 id='{}.{}' class='method'>{}<code>",
                     shortty(m.item()),
                     *m.item().name.as_ref().unwrap(),
                     ConciseStability(&m.item().stability)));
-        try!(render_method(w, m.item()));
+        try!(render_method(w, m.item(), ctx_s));
         try!(write!(w, "</code></h3>"));
         try!(document(w, m.item()));
         Ok(())
@@ -1806,7 +1811,8 @@ fn item_trait(w: &mut fmt::Formatter, cx: &Context, it: &clean::Item,
     Ok(())
 }
 
-fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
+fn assoc_type(w: &mut fmt::Formatter,
+              it: &clean::Item,
               typ: &clean::TyParam) -> fmt::Result {
     try!(write!(w, "type {}", it.name.as_ref().unwrap()));
     if typ.bounds.len() > 0 {
@@ -1843,7 +1849,7 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item, ctx_s: &str) -> fmt
             method(w, meth, ctx_s, m.unsafety, &m.generics, &m.self_, &m.decl)
         }
         clean::AssociatedTypeItem(ref typ) => {
-            assoc_type(w, meth, ctx_s, typ)
+            assoc_type(w, meth, typ)
         }
         _ => panic!("render_method called on non-method")
     }
@@ -2083,17 +2089,16 @@ fn render_methods(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
 }
 
 fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
-    let mut method_context: &str = "";
-    
     try!(write!(w, "<h3 class='impl'>{}<code>impl{} ",
                 ConciseStability(&i.stability),
                 i.impl_.generics));
-    match i.impl_.trait_ {
-        Some(ref ty) => {method_context = format!("{}", *ty).as_slice();
-                         try!(write!(w, "{} for ", *ty))},
-        None => {}
-    }
-    method_context = format!("{}:{}", i.impl_.for_, method_context).as_slice();
+    let method_context = format!("{}:{}",
+                                 i.impl_.for_,
+                                 match i.impl_.trait_ {
+                                     Some(ref ty) => {try!(write!(w, "{} for ", *ty));
+                                                      format!("{}", *ty)},
+                                     None => String::from_str("")
+                                 });
     try!(write!(w, "{}{}</code></h3>", i.impl_.for_, WhereClause(&i.impl_.generics)));
     match i.dox {
         Some(ref dox) => {
@@ -2103,8 +2108,10 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
         None => {}
     }
 
-    fn doctraititem(w: &mut fmt::Formatter, item: &clean::Item, dox: bool)
-                    -> fmt::Result {
+    fn doctraititem(w:              &mut fmt::Formatter,
+                    item:           &clean::Item,
+                    dox:            bool,
+                    method_context: &str) -> fmt::Result {
         match item.inner {
             clean::MethodItem(..) | clean::TyMethodItem(..) => {
                 try!(write!(w, "<h4 id='{}:method.{}' class='{}'>{}<code>",
@@ -2146,12 +2153,13 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
 
     try!(write!(w, "<div class='impl-items'>"));
     for trait_item in i.impl_.items.iter() {
-        try!(doctraititem(w, trait_item, true));
+        try!(doctraititem(w, trait_item, true, method_context.as_slice()));
     }
 
-    fn render_default_methods(w: &mut fmt::Formatter,
-                              t: &clean::Trait,
-                              i: &clean::Impl) -> fmt::Result {
+    fn render_default_methods(w:               &mut fmt::Formatter,
+                              t:              &clean::Trait,
+                              i:              &clean::Impl,
+                              method_context: &str) -> fmt::Result {
         for trait_item in t.items.iter() {
             let n = trait_item.item().name.clone();
             match i.items.iter().find(|m| { m.name == n }) {
@@ -2159,7 +2167,7 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
                 None => {}
             }
 
-            try!(doctraititem(w, trait_item.item(), false));
+            try!(doctraititem(w, trait_item.item(), false, method_context.as_slice()));
         }
         Ok(())
     }
@@ -2172,7 +2180,10 @@ fn render_impl(w: &mut fmt::Formatter, i: &Impl) -> fmt::Result {
         Some(clean::ResolvedPath { did, .. }) => {
             try!({
                 match cache().traits.get(&did) {
-                    Some(t) => try!(render_default_methods(w, t, &i.impl_)),
+                    Some(t) => try!(render_default_methods(w,
+                                                           t,
+                                                           &i.impl_,
+                                                           method_context.as_slice())),
                     None => {}
                 }
                 Ok(())
