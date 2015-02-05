@@ -213,7 +213,7 @@ use trans::expr::{self, Dest};
 use trans::tvec;
 use trans::type_of;
 use middle::ty::{self, Ty};
-use session::config::FullDebugInfo;
+use session::config::{NoDebugInfo, FullDebugInfo};
 use util::common::indenter;
 use util::nodemap::FnvHashMap;
 use util::ppaux::{Repr, vec_map_to_string};
@@ -222,7 +222,7 @@ use std;
 use std::iter::AdditiveIterator;
 use std::rc::Rc;
 use syntax::ast;
-use syntax::ast::{DUMMY_NODE_ID, Ident};
+use syntax::ast::{DUMMY_NODE_ID, Ident, NodeId};
 use syntax::codemap::Span;
 use syntax::fold::Folder;
 use syntax::ptr::P;
@@ -366,6 +366,9 @@ struct Match<'a, 'p: 'a, 'blk: 'a, 'tcx: 'blk> {
     pats: Vec<&'p ast::Pat>,
     data: &'a ArmData<'p, 'blk, 'tcx>,
     bound_ptrs: Vec<(Ident, ValueRef)>,
+    // Thread along renamings done by the check_match::StaticInliner, so we can
+    // map back to original NodeIds
+    pat_renaming_map: Option<&'a FnvHashMap<(NodeId, Span), NodeId>>
 }
 
 impl<'a, 'p, 'blk, 'tcx> Repr<'tcx> for Match<'a, 'p, 'blk, 'tcx> {
@@ -419,7 +422,8 @@ fn expand_nested_bindings<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         Match {
             pats: pats,
             data: &*br.data,
-            bound_ptrs: bound_ptrs
+            bound_ptrs: bound_ptrs,
+            pat_renaming_map: br.pat_renaming_map,
         }
     }).collect()
 }
@@ -463,7 +467,8 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
             Match {
                 pats: pats,
                 data: br.data,
-                bound_ptrs: bound_ptrs
+                bound_ptrs: bound_ptrs,
+                pat_renaming_map: br.pat_renaming_map,
             }
         })
     }).collect()
@@ -570,14 +575,23 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
 // needs to be conditionally matched at runtime; for example, the discriminant
 // on a set of enum variants or a literal.
 fn get_branches<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                    m: &[Match<'a, 'p, 'blk, 'tcx>], col: uint)
+                                    m: &[Match<'a, 'p, 'blk, 'tcx>],
+                                    col: uint)
                                     -> Vec<Opt<'p, 'tcx>> {
     let tcx = bcx.tcx();
 
     let mut found: Vec<Opt> = vec![];
     for br in m {
         let cur = br.pats[col];
-        let debug_loc = DebugLoc::At(cur.id, cur.span);
+        let debug_loc = match br.pat_renaming_map {
+            Some(pat_renaming_map) => {
+                match pat_renaming_map.get(&(cur.id, cur.span)) {
+                    Some(&id) => DebugLoc::At(id, cur.span),
+                    None => DebugLoc::At(cur.id, cur.span),
+                }
+            }
+            None => DebugLoc::None
+        };
 
         let opt = match cur.node {
             ast::PatLit(ref l) => {
@@ -1419,16 +1433,27 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         bindings_map: create_bindings_map(bcx, &*arm.pats[0], discr_expr, &*arm.body)
     }).collect();
 
-    let mut static_inliner = StaticInliner::new(scope_cx.tcx());
-    let arm_pats: Vec<Vec<P<ast::Pat>>> = arm_datas.iter().map(|arm_data| {
-        arm_data.arm.pats.iter().map(|p| static_inliner.fold_pat((*p).clone())).collect()
-    }).collect();
+    let mut pat_renaming_map = if scope_cx.sess().opts.debuginfo != NoDebugInfo {
+        Some(FnvHashMap())
+    } else {
+        None
+    };
+
+    let arm_pats: Vec<Vec<P<ast::Pat>>> = {
+        let mut static_inliner = StaticInliner::new(scope_cx.tcx(),
+                                                    pat_renaming_map.as_mut());
+        arm_datas.iter().map(|arm_data| {
+            arm_data.arm.pats.iter().map(|p| static_inliner.fold_pat((*p).clone())).collect()
+        }).collect()
+    };
+
     let mut matches = Vec::new();
     for (arm_data, pats) in arm_datas.iter().zip(arm_pats.iter()) {
         matches.extend(pats.iter().map(|p| Match {
             pats: vec![&**p],
             data: arm_data,
             bound_ptrs: Vec::new(),
+            pat_renaming_map: pat_renaming_map.as_ref()
         }));
     }
 
