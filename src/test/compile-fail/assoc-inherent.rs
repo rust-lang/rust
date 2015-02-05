@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test associated types are forbidden in inherant impls.
+// Test associated types are forbidden in inherent impls.
 
 struct Foo;
 

@@ -90,12 +90,12 @@ impl Tables {
         }
     }
 
-    /// Retreives the complement for `i`.
+    /// Retrieves the complement for `i`.
     fn cpl8(&self, i: u8) -> u8 {
         self.table8[i as uint]
     }
 
-    /// Retreives the complement for `i`.
+    /// Retrieves the complement for `i`.
     fn cpl16(&self, i: u16) -> u16 {
         self.table16[i as uint]
     }
