@@ -1478,7 +1478,7 @@ impl<'tcx> PolyTraitRef<'tcx> {
 /// compiler's representation for things like `for<'a> Fn(&'a int)`
 /// (which would be represented by the type `PolyTraitRef ==
 /// Binder<TraitRef>`). Note that when we skolemize, instantiate,
-/// erase, or otherwise "discharge" these bound reons, we change the
+/// erase, or otherwise "discharge" these bound regions, we change the
 /// type from `Binder<T>` to just `T` (see
 /// e.g. `liberate_late_bound_regions`).
 #[derive(Clone, PartialEq, Eq, Hash, Debug)]

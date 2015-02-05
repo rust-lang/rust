@@ -45,8 +45,8 @@ pub enum DefRegion {
                   /* lifetime decl */ ast::NodeId),
 }
 
-// maps the id of each lifetime reference to the lifetime decl
-// that it corresponds to
+// Maps the id of each lifetime reference to the lifetime decl
+// that it corresponds to.
 pub type NamedRegionMap = NodeMap<DefRegion>;
 
 struct LifetimeContext<'a> {
@@ -54,6 +54,22 @@ struct LifetimeContext<'a> {
     named_region_map: &'a mut NamedRegionMap,
     scope: Scope<'a>,
     def_map: &'a DefMap,
+    // Deep breath. Our representation for poly trait refs contains a single
+    // binder and thus we only allow a single level of quantification. However,
+    // the syntax of Rust permits quantification in two places, e.g., `T: for <'a> Foo<'a>`
+    // and `for <'a, 'b> &'b T: Foo<'a>`. In order to get the de Bruijn indices
+    // correct when representing these constraints, we should only introduce one
+    // scope. However, we want to support both locations for the quantifier and
+    // during lifetime resolution we want precise information (so we can't
+    // desugar in an earlier phase).
+
+    // SO, if we encounter a quantifier at the outer scope, we set
+    // trait_ref_hack to true (and introduce a scope), and then if we encounter
+    // a quantifier at the inner scope, we error. If trait_ref_hack is false,
+    // then we introduce the scope at the inner quantifier.
+
+    // I'm sorry.
+    trait_ref_hack: bool,
 }
 
 enum ScopeChain<'a> {
@@ -80,6 +96,7 @@ pub fn krate(sess: &Session, krate: &ast::Crate, def_map: &DefMap) -> NamedRegio
         named_region_map: &mut named_region_map,
         scope: &ROOT_SCOPE,
         def_map: def_map,
+        trait_ref_hack: false,
     }, krate);
     sess.abort_if_errors();
     named_region_map
@@ -198,9 +215,22 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
             match predicate {
                 &ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{ ref bounded_ty,
                                                                                ref bounds,
+                                                                               ref bound_lifetimes,
                                                                                .. }) => {
-                    self.visit_ty(&**bounded_ty);
-                    visit::walk_ty_param_bounds_helper(self, bounds);
+                    if bound_lifetimes.len() > 0 {
+                        self.trait_ref_hack = true;
+                        let result = self.with(LateScope(bound_lifetimes, self.scope),
+                                               |old_scope, this| {
+                            this.check_lifetime_defs(old_scope, bound_lifetimes);
+                            this.visit_ty(&**bounded_ty);
+                            visit::walk_ty_param_bounds_helper(this, bounds);
+                        });
+                        self.trait_ref_hack = false;
+                        result
+                    } else {
+                        self.visit_ty(&**bounded_ty);
+                        visit::walk_ty_param_bounds_helper(self, bounds);
+                    }
                 }
                 &ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate{ref lifetime,
                                                                                 ref bounds,
@@ -222,18 +252,27 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
         }
     }
 
-    fn visit_poly_trait_ref(&mut self, trait_ref:
-                            &ast::PolyTraitRef,
+    fn visit_poly_trait_ref(&mut self,
+                            trait_ref: &ast::PolyTraitRef,
                             _modifier: &ast::TraitBoundModifier) {
         debug!("visit_poly_trait_ref trait_ref={:?}", trait_ref);
 
-        self.with(LateScope(&trait_ref.bound_lifetimes, self.scope), |old_scope, this| {
-            this.check_lifetime_defs(old_scope, &trait_ref.bound_lifetimes);
-            for lifetime in &trait_ref.bound_lifetimes {
-                this.visit_lifetime_def(lifetime);
+        if !self.trait_ref_hack || trait_ref.bound_lifetimes.len() > 0 {
+            if self.trait_ref_hack {
+                println!("{:?}", trait_ref.span);
+                span_err!(self.sess, trait_ref.span, E0316,
+                          "nested quantification of lifetimes");
             }
-            this.visit_trait_ref(&trait_ref.trait_ref)
-        })
+            self.with(LateScope(&trait_ref.bound_lifetimes, self.scope), |old_scope, this| {
+                this.check_lifetime_defs(old_scope, &trait_ref.bound_lifetimes);
+                for lifetime in &trait_ref.bound_lifetimes {
+                    this.visit_lifetime_def(lifetime);
+                }
+                this.visit_trait_ref(&trait_ref.trait_ref)
+            })
+        } else {
+            self.visit_trait_ref(&trait_ref.trait_ref)
+        }
     }
 
     fn visit_trait_ref(&mut self, trait_ref: &ast::TraitRef) {
@@ -251,6 +290,7 @@ impl<'a> LifetimeContext<'a> {
             named_region_map: *named_region_map,
             scope: &wrap_scope,
             def_map: self.def_map,
+            trait_ref_hack: self.trait_ref_hack,
         };
         debug!("entering scope {:?}", this.scope);
         f(self.scope, &mut this);

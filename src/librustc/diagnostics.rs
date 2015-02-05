@@ -126,7 +126,8 @@ register_diagnostics! {
     E0312, // lifetime of reference outlives lifetime of borrowed content
     E0313, // lifetime of borrowed pointer outlives lifetime of captured variable
     E0314, // closure outlives stack frame
-    E0315 // cannot invoke closure outside of its lifetime
+    E0315, // cannot invoke closure outside of its lifetime
+    E0316 // nested quantification of lifetimes
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
