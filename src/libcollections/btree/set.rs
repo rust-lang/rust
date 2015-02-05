@@ -890,7 +890,7 @@ mod test {
     fn test_from_iter() {
         let xs = [1, 2, 3, 4, 5, 6, 7, 8, 9];
 
-        let set: BTreeSet<int> = xs.iter().map(|&x| x).collect();
+        let set: BTreeSet<_> = xs.iter().cloned().collect();
 
         for x in &xs {
             assert!(set.contains(x));
@@ -899,8 +899,8 @@ mod test {
 
     #[test]
     fn test_show() {
-        let mut set: BTreeSet<int> = BTreeSet::new();
-        let empty: BTreeSet<int> = BTreeSet::new();
+        let mut set = BTreeSet::new();
+        let empty = BTreeSet::<i32>::new();
 
         set.insert(1);
         set.insert(2);
