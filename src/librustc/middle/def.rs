@@ -33,11 +33,6 @@ pub enum Def {
     DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
     DefTy(ast::DefId, bool /* is_enum */),
     DefAssociatedTy(ast::DefId /* trait */, ast::DefId),
-    // A partially resolved path to an associated type `T::U` where `T` is a concrete
-    // type (indicated by the DefId) which implements a trait which has an associated
-    // type `U` (indicated by the Ident).
-    // FIXME(#20301) -- should use Name
-    DefAssociatedPath(TyParamProvenance, ast::Ident),
     DefTrait(ast::DefId),
     DefPrimTy(ast::PrimTy),
     DefTyParam(ParamSpace, u32, ast::DefId, ast::Name),
@@ -59,8 +54,24 @@ pub enum Def {
     DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
 }
 
+/// The result of resolving the prefix of a path to a type:
+///
+///     module::Type::AssocA::AssocB::AssocC::MethodOrAssocType
+///     ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~
+///     base_type     extra_associated_types
+///
+///     <T as Trait>::AssocA::AssocB::AssocC::MethodOrAssocType
+///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~
+///           base_type       extra_associated_types
+#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
+pub struct PartialDef {
+    pub base_type: Def,
+    pub extra_associated_types: u32,
+}
+
 // Definition mapping
 pub type DefMap = RefCell<NodeMap<Def>>;
+pub type PartialDefMap = RefCell<NodeMap<PartialDef>>;
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
@@ -77,12 +88,6 @@ pub enum MethodProvenance {
     FromImpl(ast::DefId),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TyParamProvenance {
-    FromSelf(ast::DefId),
-    FromParam(ast::DefId),
-}
-
 impl MethodProvenance {
     pub fn map<F>(self, f: F) -> MethodProvenance where
         F: FnOnce(ast::DefId) -> ast::DefId,
@@ -90,15 +95,6 @@ impl MethodProvenance {
         match self {
             FromTrait(did) => FromTrait(f(did)),
             FromImpl(did) => FromImpl(f(did))
-        }
-    }
-}
-
-impl TyParamProvenance {
-    pub fn def_id(&self) -> ast::DefId {
-        match *self {
-            TyParamProvenance::FromSelf(ref did) => did.clone(),
-            TyParamProvenance::FromParam(ref did) => did.clone(),
         }
     }
 }
@@ -135,9 +131,7 @@ impl Def {
             DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id, _, _) | DefConst(id) |
-            DefAssociatedPath(TyParamProvenance::FromSelf(id), _) |
-            DefAssociatedPath(TyParamProvenance::FromParam(id), _) => {
+            DefMethod(id, _, _) | DefConst(id) => {
                 id
             }
             DefLocal(id) |
