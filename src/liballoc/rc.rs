@@ -382,7 +382,7 @@ impl<T> Drop for Rc<T> {
     ///
     ///     // stuff
     ///
-    ///     drop(five); // explict drop
+    ///     drop(five); // explicit drop
     /// }
     /// {
     ///     let five = Rc::new(5);
@@ -687,7 +687,7 @@ impl<T> Drop for Weak<T> {
     ///
     ///     // stuff
     ///
-    ///     drop(weak_five); // explict drop
+    ///     drop(weak_five); // explicit drop
     /// }
     /// {
     ///     let five = Rc::new(5);

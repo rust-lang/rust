@@ -775,7 +775,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                      -> bool
     {
         // In general, it's a good idea to cache results, even
-        // ambigious ones, to save us some trouble later. But we have
+        // ambiguous ones, to save us some trouble later. But we have
         // to be careful not to cache results that could be
         // invalidated later by advances in inference. Normally, this
         // is not an issue, because any inference variables whose
@@ -1273,7 +1273,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     ///
     /// - The impl is conditional, in which case we may not have winnowed it out
     ///   because we don't know if the conditions apply, but the where clause is basically
-    ///   telling us taht there is some impl, though not necessarily the one we see.
+    ///   telling us that there is some impl, though not necessarily the one we see.
     ///
     /// In both cases we prefer to take the where clause, which is
     /// essentially harmless.  See issue #18453 for more details of

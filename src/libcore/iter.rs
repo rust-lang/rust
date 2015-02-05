@@ -260,7 +260,7 @@ pub trait IteratorExt: Iterator + Sized {
     }
 
     /// Creates an iterator that applies the predicate to each element returned
-    /// by this iterator. The only elements that will be yieled are those that
+    /// by this iterator. The only elements that will be yielded are those that
     /// make the predicate evaluate to `true`.
     ///
     /// # Examples

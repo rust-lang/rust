@@ -109,7 +109,7 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // int and uint are now deprecated
     ("int_uint", "1.0.0", Active),
 
-    // macro reexport needs more discusion and stabilization
+    // macro reexport needs more discussion and stabilization
     ("macro_reexport", "1.0.0", Active),
 
     // These are used to test this portion of the compiler, they don't actually
