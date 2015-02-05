@@ -74,7 +74,7 @@ pub mod guard {
     static mut PAGE_SIZE: uint = 0;
     static mut GUARD_PAGE: uint = 0;
 
-    #[cfg(any(target_os = "macos", 
+    #[cfg(any(target_os = "macos",
               target_os = "bitrig",
               target_os = "openbsd"))]
     unsafe fn get_stack_start() -> *mut libc::c_void {
