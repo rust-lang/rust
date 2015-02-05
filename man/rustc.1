@@ -18,10 +18,15 @@ Display the help message
 \fB\-\-cfg\fR SPEC
 Configure the compilation environment
 .TP
-\fB\-L\fR PATH
-Add a directory to the library search path
+\fB\-L\fR [KIND=]PATH
+Add a directory to the library search path. The optional KIND can be one of:
+    dependency = only lookup transitive dependencies here
+    crate = only lookup local `extern crate` directives here
+    native = only lookup native libraries here
+    framework = only look for OSX frameworks here
+    all = look for anything here (the default)
 .TP
-\fB\-l\fR NAME[:KIND]
+\fB\-l\fR [KIND=]NAME
 Link the generated crate(s) to the specified native library NAME. The optional
 KIND can be one of, static, dylib, or framework. If omitted, dylib is assumed.
 .TP
