@@ -22,7 +22,6 @@ use ext::build::AstBuilder;
 use parse::token;
 
 use std::env;
-use std::os;
 
 pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                               -> Box<base::MacResult+'cx> {
@@ -102,12 +101,12 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     }
 
-    let e = match os::getenv(&var) {
-        None => {
+    let e = match env::var_string(&var[]) {
+        Err(_) => {
             cx.span_err(sp, &msg);
             cx.expr_usize(sp, 0)
         }
-        Some(s) => cx.expr_str(sp, token::intern_and_get_ident(&s))
+        Ok(s) => cx.expr_str(sp, token::intern_and_get_ident(&s))
     };
     MacExpr::new(e)
 }
