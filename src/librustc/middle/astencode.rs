@@ -456,9 +456,6 @@ impl tr for def::Def {
           }
           def::DefStruct(did) => def::DefStruct(did.tr(dcx)),
           def::DefRegion(nid) => def::DefRegion(dcx.tr_id(nid)),
-          def::DefTyParamBinder(nid) => {
-            def::DefTyParamBinder(dcx.tr_id(nid))
-          }
           def::DefLabel(nid) => def::DefLabel(dcx.tr_id(nid))
         }
     }

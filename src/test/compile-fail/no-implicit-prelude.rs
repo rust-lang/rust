@@ -17,11 +17,11 @@
 // fail with the same error message).
 
 struct Test;
-impl Add for Test {} //~ ERROR: attempt to implement a nonexistent trait
-impl Clone for Test {} //~ ERROR: attempt to implement a nonexistent trait
-impl Iterator for Test {} //~ ERROR: attempt to implement a nonexistent trait
-impl ToString for Test {} //~ ERROR: attempt to implement a nonexistent trait
-impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
+impl Add for Test {} //~ ERROR: use of undeclared trait
+impl Clone for Test {} //~ ERROR: use of undeclared trait
+impl Iterator for Test {} //~ ERROR: use of undeclared trait
+impl ToString for Test {} //~ ERROR: use of undeclared trait
+impl Writer for Test {} //~ ERROR: use of undeclared trait
 
 fn main() {
     drop(2) //~ ERROR: unresolved name

@@ -54,7 +54,6 @@ pub enum Def {
     /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
     ///   it to a def whose id is the StructDef.ctor_id.
     DefStruct(ast::DefId),
-    DefTyParamBinder(ast::NodeId), /* struct, impl or trait with ty params */
     DefRegion(ast::NodeId),
     DefLabel(ast::NodeId),
     DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
@@ -145,7 +144,6 @@ impl Def {
             DefSelfTy(id) |
             DefUpvar(id, _) |
             DefRegion(id) |
-            DefTyParamBinder(id) |
             DefLabel(id) => {
                 local_def(id)
             }

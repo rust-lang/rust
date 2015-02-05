@@ -1344,8 +1344,6 @@ pub enum Type {
         typarams: Option<Vec<TyParamBound>>,
         did: ast::DefId,
     },
-    // I have no idea how to usefully use this.
-    TyParamBinder(ast::NodeId),
     /// For parameterized types, so the consumer of the JSON don't go
     /// looking for types which don't exist anywhere.
     Generic(String),
@@ -2416,7 +2414,6 @@ fn resolve_type(cx: &DocContext,
             ast::TyFloat(ast::TyF64) => return Primitive(F64),
         },
         def::DefTyParam(_, _, _, n) => return Generic(token::get_name(n).to_string()),
-        def::DefTyParamBinder(i) => return TyParamBinder(i),
         _ => {}
     };
     let did = register_def(&*cx, def);

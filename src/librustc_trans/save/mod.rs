@@ -250,7 +250,6 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
             def::DefSelfTy(_) |
             def::DefRegion(_) |
-            def::DefTyParamBinder(_) |
             def::DefLabel(_) |
             def::DefStaticMethod(..) |
             def::DefTyParam(..) |
