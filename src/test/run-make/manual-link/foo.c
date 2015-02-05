@@ -1,1 +1,2 @@
+// ignore-license
 void bar() {}

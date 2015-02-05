@@ -15,6 +15,10 @@ import sys
 import os
 import re
 
+if len(sys.argv) < 2:
+    print "usage: errorck.py <src-dir>"
+    sys.exit(1)
+
 src_dir = sys.argv[1]
 errcode_map = {}
 error_re = re.compile("(E\d\d\d\d)")
@@ -54,8 +58,10 @@ for errcode, entries in errcode_map.items():
             print("{1}: {2}\n{3}".format(*entry))
         errors = True
 
-print("{0} error codes".format(len(errcode_map)))
-print("highest error code: " + max(all_errors))
+print
+print("* {0} error codes".format(len(errcode_map)))
+print("* highest error code: " + max(all_errors))
+print
 
 if errors:
     sys.exit(1)

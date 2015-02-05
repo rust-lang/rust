@@ -22,11 +22,6 @@ u"""(#|//) Copyright .* The Rust Project Developers. See the COPYRIGHT
 \\1 except according to those terms.""")
 
 exceptions = [
-    "rt/rust_android_dummy.cpp", # BSD, chromium
-    "rt/rust_android_dummy.h", # BSD, chromium
-    "rt/isaac/randport.cpp", # public domain
-    "rt/isaac/rand.h", # public domain
-    "rt/isaac/standard.h", # public domain
     "libstd/sync/mpsc/mpsc_queue.rs", # BSD
     "libstd/sync/mpsc/spsc_queue.rs", # BSD
     "test/bench/shootout-binarytrees.rs", # BSD

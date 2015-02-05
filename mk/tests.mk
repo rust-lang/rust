@@ -162,7 +162,8 @@ $(foreach file,$(wildcard $(S)src/doc/trpl/*.md), \
 ######################################################################
 
 # The main testing target. Tests lots of stuff.
-check: cleantmptestlogs cleantestlibs check-notidy tidy
+check: cleantmptestlogs cleantestlibs all check-stage2 tidy
+	$(Q)$(CFG_PYTHON) $(S)src/etc/check-summary.py tmp/*.log
 
 # As above but don't bother running tidy.
 check-notidy: cleantmptestlogs cleantestlibs all check-stage2
@@ -235,57 +236,24 @@ cleantestlibs:
 ######################################################################
 
 ifdef CFG_NOTIDY
+.PHONY: tidy
 tidy:
 else
 
-ALL_CS := $(wildcard $(S)src/rt/*.cpp \
-                     $(S)src/rt/*/*.cpp \
-                     $(S)src/rt/*/*/*.cpp \
-                     $(S)src/rustllvm/*.cpp)
-ALL_CS := $(filter-out $(S)src/rt/miniz.cpp \
-		       $(wildcard $(S)src/rt/hoedown/src/*.c) \
-		       $(wildcard $(S)src/rt/hoedown/bin/*.c) \
-	,$(ALL_CS))
-ALL_HS := $(wildcard $(S)src/rt/*.h \
-                     $(S)src/rt/*/*.h \
-                     $(S)src/rt/*/*/*.h \
-                     $(S)src/rustllvm/*.h)
-ALL_HS := $(filter-out $(S)src/rt/valgrind/valgrind.h \
-                       $(S)src/rt/valgrind/memcheck.h \
-                       $(S)src/rt/msvc/typeof.h \
-                       $(S)src/rt/msvc/stdint.h \
-                       $(S)src/rt/msvc/inttypes.h \
-		       $(wildcard $(S)src/rt/hoedown/src/*.h) \
-		       $(wildcard $(S)src/rt/hoedown/bin/*.h) \
-	,$(ALL_HS))
-
 # Run the tidy script in multiple parts to avoid huge 'echo' commands
-tidy:
+.PHONY: tidy
+tidy: tidy-basic tidy-binaries tidy-errors tidy-features
+
+endif
+
+.PHONY: tidy-basic
+tidy-basic:
 		@$(call E, check: formatting)
-		$(Q)find $(S)src -name '*.r[sc]' \
-		    -and -not -regex '^$(S)src/jemalloc.*' \
-		    -and -not -regex '^$(S)src/libuv.*' \
-		    -and -not -regex '^$(S)src/llvm.*' \
-		    -and -not -regex '^$(S)src/gyp.*' \
-		    -and -not -regex '^$(S)src/libbacktrace.*' \
-		    -print0 \
-		| xargs -0 -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src/etc -name '*.py' \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src/doc -name '*.js' \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src/etc -name '*.sh' \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src/etc -name '*.pl' \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src/etc -name '*.c' \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)find $(S)src/etc -name '*.h' \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)echo $(ALL_CS) \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
-		$(Q)echo $(ALL_HS) \
-		| xargs -n 10 $(CFG_PYTHON) $(S)src/etc/tidy.py
+		$(Q) $(CFG_PYTHON) $(S)src/etc/tidy.py $(S)src/
+
+.PHONY: tidy-binaries
+tidy-binaries:
+		@$(call E, check: binaries)
 		$(Q)find $(S)src -type f -perm +a+x \
 		    -not -name '*.rs' -and -not -name '*.py' \
 		    -and -not -name '*.sh' \
@@ -300,11 +268,16 @@ tidy:
 		| grep '^$(S)src/libbacktrace' -v \
 		| grep '^$(S)src/rust-installer' -v \
 		| xargs $(CFG_PYTHON) $(S)src/etc/check-binaries.py
+
+.PHONY: tidy-errors
+tidy-errors:
+		@$(call E, check: extended errors)
 		$(Q) $(CFG_PYTHON) $(S)src/etc/errorck.py $(S)src/
+
+.PHONY: tidy-features
+tidy-features:
+		@$(call E, check: feature sanity)
 		$(Q) $(CFG_PYTHON) $(S)src/etc/featureck.py $(S)src/
-
-
-endif
 
 
 ######################################################################
@@ -639,7 +612,6 @@ CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) := \
 
 ifdef CFG_VALGRIND_RPASS
 ifdef GOOD_VALGRIND_$(2)
-$(info cfg: valgrind-path set to $(CFG_VALGRIND_RPASS))
 CTEST_COMMON_ARGS$(1)-T-$(2)-H-$(3) += --valgrind-path "$(CFG_VALGRIND_RPASS)"
 endif
 endif
