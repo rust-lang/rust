@@ -728,13 +728,14 @@ passing in Rust strings and literals directly, for example).
 * `rename`. Take `AsPath` bound.
 * `remove_file` (renamed from `unlink`). Take `AsPath` bound.
 
-* `file_attr` (renamed from `stat`). Take `AsPath` bound. Yield a new
-  struct, `FileAttr`, with no public fields, but `size`, `kind` and
-  `permissions` accessors. The various `os::platform` modules will offer
-  extension methods on this structure.
+* `metadata` (renamed from `stat`). Take `AsPath` bound. Yield a new
+  struct, `Metadata`, with no public fields, but `len`, `is_dir`,
+  `is_file`, `perms`, `accessed` and `modified` accessors. The various
+  `os::platform` modules will offer extension methods on this
+  structure.
 
-* `set_permissions` (renamed from `chmod`). Take `AsPath` bound, and a
-  `FilePermissions` value. The `FilePermissions` type will be revamped
+* `set_perms` (renamed from `chmod`). Take `AsPath` bound, and a
+  `Perms` value. The `Perms` type will be revamped
   as a struct with private implementation; see below.
 
 **Directories**:
@@ -762,8 +763,8 @@ passing in Rust strings and literals directly, for example).
 The `File` type will largely stay as it is today, except that it will
 use the `AsPath` bound everywhere.
 
-The `stat` method will be renamed to `attr`, yield a `FileAttr`, and
-take `&self`.
+The `stat` method will be renamed to `metadata`, yield a `Metadata`
+structure (as described above), and take `&self`.
 
 The `fsync` method will be renamed to `sync_all`, and `datasync` will be
 renamed to `sync_data`. (Although the latter is not available on
@@ -774,19 +775,22 @@ filesystems.)
 The `path` method wil remain `#[unstable]`, as we do not yet want to
 commit to its API.
 
-The `open_opts` function (renamed from `open_mode`) will take an `OpenOptions`
-struct, which will encompass today's `FileMode` and `FileAccess` and support a
-builder-style API.
+The `open_mode` function will be removed in favor of and will take an
+`OpenOptions` struct, which will encompass today's `FileMode` and
+`FileAccess` and support a builder-style API.
 
 #### File kinds
 [File kinds]: #file-kinds
 
-The `FileType` module will be renamed to `FileKind`, and the
-underlying `enum` will be hidden (to allow for platform differences
-and growth). It will expose at least `is_file` and `is_dir`; the other
-methods need to be audited for compatibility across
+The `FileType` type will be removed. As mentioned above, `is_file` and
+`is_dir` will be provided directly on `Meatadata`; the other types
+need to be audited for compatibility across
 platforms. Platform-specific kinds will be relegated to extension
 traits in `std::os::platform`.
+
+It's possible that an
+[extensible](https://github.com/rust-lang/rfcs/pull/757) `Kind` will
+be added in the future.
 
 #### File permissions
 [File permissions]: #file-permissions
@@ -794,19 +798,19 @@ traits in `std::os::platform`.
 The permission models on Unix and Windows vary greatly -- even between
 different filesystems within the same OS. Rather than offer an API
 that has no meaning on some platforms, we will initially provide a
-very limited `FilePermissions` structure in `std::fs`, and then rich
+very limited `Perms` structure in `std::fs`, and then rich
 extension traits in `std::os::unix` and `std::os::windows`. Over time,
 if clear cross-platform patterns emerge for richer permissions, we can
-grow the `FilePermissions` structure.
+grow the `Perms` structure.
 
-On the Unix side, the constructors and accessors for `FilePermissions`
+On the Unix side, the constructors and accessors for `Perms`
 will resemble the flags we have today; details are left to the implementation.
 
 On the Windows side, initially there will be no extensions, as Windows
 has a very complex permissions model that will take some time to build
 out.
 
-For `std::fs` itself, `FilePermissions` will provide constructors and
+For `std::fs` itself, `Perms` will provide constructors and
 accessors for "world readable" -- and that is all. At the moment, that
 is all that is known to be compatible across the platforms that Rust
 supports.
@@ -819,11 +823,6 @@ This trait will essentially remain stay as it is (renamed from
 
 #### Items to move to `os::platform`
 
-* `change_file_times` will move to `os::unix` and remain `#[unstable]`
-  *for now* (cf `SetFileTime` on Windows). Eventually we will add back
-  a cross-platform function, when we have grown a notion of time in
-  `std` and have a good compatibility story across all platforms.
-
 * `lstat` will move to `os::unix` and remain `#[unstable]` *for now*
   since it is not yet implemented for Windows.
 
@@ -834,7 +833,7 @@ This trait will essentially remain stay as it is (renamed from
   function in `std::fs`.
 
 * In general, offer all of the `stat` fields as an extension trait on
-  `FileAttr` (e.g. `os::unix::FileAttrExt`).
+  `Metadata` (e.g. `os::unix::MetadataExt`).
 
 ### `std::net`
 [std::net]: #stdnet
