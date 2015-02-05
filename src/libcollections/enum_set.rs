@@ -26,7 +26,7 @@ use core::ops::{Sub, BitOr, BitAnd, BitXor};
 pub struct EnumSet<E> {
     // We must maintain the invariant that no bits are set
     // for which no variant exists
-    bits: uint
+    bits: usize
 }
 
 impl<E> Copy for EnumSet<E> {}
@@ -47,37 +47,37 @@ impl<E:CLike + fmt::Debug> fmt::Debug for EnumSet<E> {
     }
 }
 
-/// An interface for casting C-like enum to uint and back.
+/// An interface for casting C-like enum to usize and back.
 /// A typically implementation is as below.
 ///
 /// ```{rust,ignore}
-/// #[repr(uint)]
+/// #[repr(usize)]
 /// enum Foo {
 ///     A, B, C
 /// }
 ///
 /// impl CLike for Foo {
-///     fn to_uint(&self) -> uint {
-///         *self as uint
+///     fn to_usize(&self) -> usize {
+///         *self as usize
 ///     }
 ///
-///     fn from_uint(v: uint) -> Foo {
+///     fn from_usize(v: usize) -> Foo {
 ///         unsafe { mem::transmute(v) }
 ///     }
 /// }
 /// ```
 pub trait CLike {
-    /// Converts a C-like enum to a `uint`.
-    fn to_uint(&self) -> uint;
-    /// Converts a `uint` to a C-like enum.
-    fn from_uint(uint) -> Self;
+    /// Converts a C-like enum to a `usize`.
+    fn to_usize(&self) -> usize;
+    /// Converts a `usize` to a C-like enum.
+    fn from_usize(usize) -> Self;
 }
 
-fn bit<E:CLike>(e: &E) -> uint {
-    use core::uint;
-    let value = e.to_uint();
-    assert!(value < uint::BITS,
-            "EnumSet only supports up to {} variants.", uint::BITS - 1);
+fn bit<E:CLike>(e: &E) -> usize {
+    use core::usize;
+    let value = e.to_usize();
+    assert!(value < usize::BITS,
+            "EnumSet only supports up to {} variants.", usize::BITS - 1);
     1 << value
 }
 
@@ -92,7 +92,7 @@ impl<E:CLike> EnumSet<E> {
     /// Returns the number of elements in the given `EnumSet`.
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         self.bits.count_ones()
     }
 
@@ -205,8 +205,8 @@ impl<E:CLike> BitXor for EnumSet<E> {
 
 /// An iterator over an EnumSet
 pub struct Iter<E> {
-    index: uint,
-    bits: uint,
+    index: usize,
+    bits: usize,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -220,7 +220,7 @@ impl<E> Clone for Iter<E> {
 }
 
 impl<E:CLike> Iter<E> {
-    fn new(bits: uint) -> Iter<E> {
+    fn new(bits: usize) -> Iter<E> {
         Iter { index: 0, bits: bits }
     }
 }
@@ -237,13 +237,13 @@ impl<E:CLike> Iterator for Iter<E> {
             self.index += 1;
             self.bits >>= 1;
         }
-        let elem = CLike::from_uint(self.index);
+        let elem = CLike::from_usize(self.index);
         self.index += 1;
         self.bits >>= 1;
         Some(elem)
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let exact = self.bits.count_ones();
         (exact, Some(exact))
     }
@@ -282,17 +282,17 @@ mod test {
     use super::{EnumSet, CLike};
 
     #[derive(Copy, PartialEq, Debug)]
-    #[repr(uint)]
+    #[repr(usize)]
     enum Foo {
         A, B, C
     }
 
     impl CLike for Foo {
-        fn to_uint(&self) -> uint {
-            *self as uint
+        fn to_usize(&self) -> usize {
+            *self as usize
         }
 
-        fn from_uint(v: uint) -> Foo {
+        fn from_usize(v: usize) -> Foo {
             unsafe { mem::transmute(v) }
         }
     }
@@ -486,7 +486,7 @@ mod test {
     fn test_overflow() {
         #[allow(dead_code)]
         #[derive(Copy)]
-        #[repr(uint)]
+        #[repr(usize)]
         enum Bar {
             V00, V01, V02, V03, V04, V05, V06, V07, V08, V09,
             V10, V11, V12, V13, V14, V15, V16, V17, V18, V19,
@@ -498,11 +498,11 @@ mod test {
         }
 
         impl CLike for Bar {
-            fn to_uint(&self) -> uint {
-                *self as uint
+            fn to_usize(&self) -> usize {
+                *self as usize
             }
 
-            fn from_uint(v: uint) -> Bar {
+            fn from_usize(v: usize) -> Bar {
                 unsafe { mem::transmute(v) }
             }
         }
