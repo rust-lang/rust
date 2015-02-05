@@ -14,12 +14,6 @@ follows:
 
     unsafe impl<'a, T> Send for &'a T where T: Sync + 'a {}
     ```
-*   Add an `Own` trait that is basically `Send + 'static` for convenience:
-
-    ```rust
-    trait Own : Send + 'static { }
-    impl<T:Send+'static> Own for T { }
-    ```
 *   Evaluate each `Send` bound currently in `libstd` and either leave it as-is, add an
     explicit `'static` bound, or bound it with another lifetime parameter.
 
@@ -99,8 +93,6 @@ create unsafe `'static` and `'static mut` references.  But unsafe types like the
 guaranteed to be threadsafe by Rust's type system.
 
 Another important note is that with this definition, `Send` will fulfill the proposed role of `Sync` in a fork-join concurrency library.  At present, to use `Sync` in a fork-join library one must make the implicit assumption that if `T` is `Sync`, `T` is `Send`.  One might be tempted to codify this by making `Sync` a subtype of `Send`.  Unfortunately, this is not always the case, though it should be most of the time.  A type can be created with `&mut` methods that are not thread safe, but no `&`-methods that are not thread safe.  An example would be a version of `Rc` called `RcMut`.  `RcMut` would have a `clone_mut()` method that took `&mut self` and no other `clone()` method.  `RcMut` could be thread-safely shared provided that a `&mut RcMut` was not sent to another thread.  As long as that invariant was upheld, `RcMut` could only be cloned in its original thread and could not be dropped while shared (hence, `RcMut` is `Sync`) but a mutable reference could not be thread-safely shared, nor could it be moved into another thread (hence, `&mut RcMut` is not `Send`, which means that `RcMut` is not `Send`).  Because `&T` is Send if `T` is Sync (per the new definition), adding a `Send` bound will guarantee that only shared pointers of this type are moved between threads, so our new definition of `Send` preserves thread safety in the presence of such types.
-
-Thirdly, we'd add an `Own` trait as specified above.  This would be used mostly as a convenience in user and library code for the current cases where `Send` is being used as a proxy for `Send + 'static`.
 
 Finally, we'd hunt through existing instances of `Send` in Rust libraries and replace them with
 sensible defaults.  For example, the `spawn()` APIs should all have `'static` bounds,
@@ -195,7 +187,7 @@ impl<T> Deref<T> for RcMut<T> {
 
 # Drawbacks
 
-Libraries get a bit more complicated to write, since you may have to write `Send + 'static` where previously you just wrote `Send`.  Also, code that is currently using `Send` as a proxy for `'static` may need to be updated backwards incompatibly to use `Own`.  With the `Own` type, I don't think this will be a huge issue going forward, though.
+Libraries get a bit more complicated to write, since you may have to write `Send + 'static` where previously you just wrote `Send`.   
 
 # Alternatives
 
