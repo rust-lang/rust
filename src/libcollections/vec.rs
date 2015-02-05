@@ -425,7 +425,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_mut_slice<'a>(&'a mut self) -> &'a mut [T] {
+    pub fn as_mut_slice(&mut self) -> &mut [T] {
         unsafe {
             mem::transmute(RawSlice {
                 data: *self.ptr,
@@ -737,7 +737,7 @@ impl<T> Vec<T> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn drain<'a>(&'a mut self) -> Drain<'a, T> {
+    pub fn drain(&mut self) -> Drain<T> {
         unsafe {
             let begin = *self.ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
@@ -1278,7 +1278,7 @@ impl<T> Index<usize> for Vec<T> {
     type Output = T;
 
     #[inline]
-    fn index<'a>(&'a self, index: &usize) -> &'a T {
+    fn index(&self, index: &usize) -> &T {
         // NB built-in indexing via `&[T]`
         &(**self)[*index]
     }
@@ -1289,7 +1289,7 @@ impl<T> IndexMut<usize> for Vec<T> {
     type Output = T;
 
     #[inline]
-    fn index_mut<'a>(&'a mut self, index: &usize) -> &'a mut T {
+    fn index_mut(&mut self, index: &usize) -> &mut T {
         // NB built-in indexing via `&mut [T]`
         &mut (**self)[*index]
     }
@@ -1366,12 +1366,12 @@ impl<T> ops::IndexMut<ops::RangeFull> for Vec<T> {
 impl<T> ops::Deref for Vec<T> {
     type Target = [T];
 
-    fn deref<'a>(&'a self) -> &'a [T] { self.as_slice() }
+    fn deref(&self) -> &[T] { self.as_slice() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> ops::DerefMut for Vec<T> {
-    fn deref_mut<'a>(&'a mut self) -> &'a mut [T] { self.as_mut_slice() }
+    fn deref_mut(&mut self) -> &mut [T] { self.as_mut_slice() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1519,7 +1519,7 @@ impl<T> AsSlice<T> for Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn as_slice<'a>(&'a self) -> &'a [T] {
+    fn as_slice(&self) -> &[T] {
         unsafe {
             mem::transmute(RawSlice {
                 data: *self.ptr,
@@ -1636,7 +1636,7 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     #[inline]
-    fn next<'a>(&'a mut self) -> Option<T> {
+    fn next(&mut self) -> Option<T> {
         unsafe {
             if self.ptr == self.end {
                 None
@@ -1671,7 +1671,7 @@ impl<T> Iterator for IntoIter<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
     #[inline]
-    fn next_back<'a>(&'a mut self) -> Option<T> {
+    fn next_back(&mut self) -> Option<T> {
         unsafe {
             if self.end == self.ptr {
                 None

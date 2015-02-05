@@ -488,7 +488,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn as_bytes<'a>(&'a self) -> &'a [u8] {
+    pub fn as_bytes(&self) -> &[u8] {
         &self.vec
     }
 
@@ -627,7 +627,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn as_mut_vec<'a>(&'a mut self) -> &'a mut Vec<u8> {
+    pub unsafe fn as_mut_vec(&mut self) -> &mut Vec<u8> {
         &mut self.vec
     }
 
@@ -803,7 +803,7 @@ impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
 impl Str for String {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn as_slice<'a>(&'a self) -> &'a str {
+    fn as_slice(&self) -> &str {
         unsafe { mem::transmute(&*self.vec) }
     }
 }
@@ -891,7 +891,7 @@ impl ops::Deref for String {
     type Target = str;
 
     #[inline]
-    fn deref<'a>(&'a self) -> &'a str {
+    fn deref(&self) -> &str {
         unsafe { mem::transmute(&self.vec[]) }
     }
 }

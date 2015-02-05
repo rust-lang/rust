@@ -529,13 +529,13 @@ impl<T> RingBuf<T> {
     /// assert_eq!(&buf.iter_mut().collect::<Vec<&mut i32>>()[], b);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn iter_mut<'a>(&'a mut self) -> IterMut<'a, T> {
+    pub fn iter_mut(&mut self) -> IterMut<T> {
         IterMut {
             tail: self.tail,
             head: self.head,
             cap: self.cap,
             ptr: self.ptr,
-            marker: marker::ContravariantLifetime::<'a>,
+            marker: marker::ContravariantLifetime,
         }
     }
 
@@ -552,7 +552,7 @@ impl<T> RingBuf<T> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn as_slices<'a>(&'a self) -> (&'a [T], &'a [T]) {
+    pub fn as_slices(&self) -> (&[T], &[T]) {
         unsafe {
             let contiguous = self.is_contiguous();
             let buf = self.buffer_as_slice();
@@ -572,7 +572,7 @@ impl<T> RingBuf<T> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
-    pub fn as_mut_slices<'a>(&'a mut self) -> (&'a mut [T], &'a mut [T]) {
+    pub fn as_mut_slices(&mut self) -> (&mut [T], &mut [T]) {
         unsafe {
             let contiguous = self.is_contiguous();
             let head = self.head;
@@ -1584,7 +1584,7 @@ impl<A> Index<usize> for RingBuf<A> {
     type Output = A;
 
     #[inline]
-    fn index<'a>(&'a self, i: &usize) -> &'a A {
+    fn index(&self, i: &usize) -> &A {
         self.get(*i).expect("Out of bounds access")
     }
 }
@@ -1594,7 +1594,7 @@ impl<A> IndexMut<usize> for RingBuf<A> {
     type Output = A;
 
     #[inline]
-    fn index_mut<'a>(&'a mut self, i: &usize) -> &'a mut A {
+    fn index_mut(&mut self, i: &usize) -> &mut A {
         self.get_mut(*i).expect("Out of bounds access")
     }
 }
