@@ -297,7 +297,7 @@ fn mkstat(stat: &libc::stat) -> FileStat {
     }
     #[cfg(not(target_os = "bitrig"))]
     fn ctime(stat: &libc::stat) -> u64 {
-      mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64) 
+      mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64)
     }
 
     #[cfg(target_os = "bitrig")]
