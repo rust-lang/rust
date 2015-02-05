@@ -129,6 +129,26 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   some integration with `box` pattern syntax that would motivate using
   the `box` keyword for placement.
 
+* A number of other syntaxes for placement have been proposed in the
+  past; see for example discussion on [RFC PR 405] as well as
+  [the previous placement RFC][RFC Surface Syntax Discussion].
+
+  The main constraints I want to meet are:
+  1. Do not introduce ambiguity into the grammar for Rust
+  2. Maintain left-to-right evaluation order (so the place should
+     appear to the left of the value expression in the text).
+
+  But otherwise I am not particularly attached to any single
+  syntax.
+
+  One particular alternative that might placate those who object
+  to placement-`in`'s `box`-free form would be:
+  `box (in <place-expr>) <expr>`.
+
+[RFC PR 405]: https://github.com/rust-lang/rfcs/issues/405
+
+[RFC Surface Syntax Discussion]: https://github.com/pnkfelix/rfcs/blob/fsk-placement-box-rfc/text/0000-placement-box.md#same-semantics-but-different-surface-syntax
+
 * Do nothing. I.e. do not even accept an unstable libstd-only protocol
   for placement-`in` and overloaded-`box`. This would be okay, but
   unfortunate, since in the past some users have identified
