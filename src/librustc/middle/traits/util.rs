@@ -22,6 +22,47 @@ use util::ppaux::Repr;
 use super::{Obligation, ObligationCause, PredicateObligation,
             VtableImpl, VtableParam, VtableImplData};
 
+struct PredicateSet<'a,'tcx:'a> {
+    tcx: &'a ty::ctxt<'tcx>,
+    set: FnvHashSet<ty::Predicate<'tcx>>,
+}
+
+impl<'a,'tcx> PredicateSet<'a,'tcx> {
+    fn new(tcx: &'a ty::ctxt<'tcx>) -> PredicateSet<'a,'tcx> {
+        PredicateSet { tcx: tcx, set: FnvHashSet() }
+    }
+
+    fn insert(&mut self, pred: &ty::Predicate<'tcx>) -> bool {
+        // We have to be careful here because we want
+        //
+        //    for<'a> Foo<&'a int>
+        //
+        // and
+        //
+        //    for<'b> Foo<&'b int>
+        //
+        // to be considered equivalent. So normalize all late-bound
+        // regions before we throw things into the underlying set.
+        let normalized_pred = match *pred {
+            ty::Predicate::Trait(ref data) =>
+                ty::Predicate::Trait(ty::anonymize_late_bound_regions(self.tcx, data)),
+
+            ty::Predicate::Equate(ref data) =>
+                ty::Predicate::Equate(ty::anonymize_late_bound_regions(self.tcx, data)),
+
+            ty::Predicate::RegionOutlives(ref data) =>
+                ty::Predicate::RegionOutlives(ty::anonymize_late_bound_regions(self.tcx, data)),
+
+            ty::Predicate::TypeOutlives(ref data) =>
+                ty::Predicate::TypeOutlives(ty::anonymize_late_bound_regions(self.tcx, data)),
+
+            ty::Predicate::Projection(ref data) =>
+                ty::Predicate::Projection(ty::anonymize_late_bound_regions(self.tcx, data)),
+        };
+        self.set.insert(normalized_pred)
+    }
+}
+
 ///////////////////////////////////////////////////////////////////////////
 // `Elaboration` iterator
 ///////////////////////////////////////////////////////////////////////////
@@ -36,7 +77,7 @@ use super::{Obligation, ObligationCause, PredicateObligation,
 pub struct Elaborator<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
     stack: Vec<StackEntry<'tcx>>,
-    visited: FnvHashSet<ty::Predicate<'tcx>>,
+    visited: PredicateSet<'cx,'tcx>,
 }
 
 struct StackEntry<'tcx> {
@@ -68,8 +109,8 @@ pub fn elaborate_predicates<'cx, 'tcx>(
     mut predicates: Vec<ty::Predicate<'tcx>>)
     -> Elaborator<'cx, 'tcx>
 {
-    let mut visited = FnvHashSet();
-    predicates.retain(|pred| visited.insert(pred.clone()));
+    let mut visited = PredicateSet::new(tcx);
+    predicates.retain(|pred| visited.insert(pred));
     let entry = StackEntry { position: 0, predicates: predicates };
     Elaborator { tcx: tcx, stack: vec![entry], visited: visited }
 }
@@ -91,7 +132,7 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 // recursion in some cases.  One common case is when
                 // people define `trait Sized: Sized { }` rather than `trait
                 // Sized { }`.
-                predicates.retain(|r| self.visited.insert(r.clone()));
+                predicates.retain(|r| self.visited.insert(r));
 
                 self.stack.push(StackEntry { position: 0,
                                              predicates: predicates });
