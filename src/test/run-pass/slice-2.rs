@@ -13,7 +13,6 @@
 fn main() {
     let x: &[int] = &[1, 2, 3, 4, 5];
     let cmp: &[int] = &[1, 2, 3, 4, 5];
-    assert!(&x[] == cmp);
     assert!(&x[..] == cmp);
     let cmp: &[int] = &[3, 4, 5];
     assert!(&x[2..] == cmp);
@@ -24,7 +23,7 @@ fn main() {
 
     let x: Vec<int> = vec![1, 2, 3, 4, 5];
     let cmp: &[int] = &[1, 2, 3, 4, 5];
-    assert!(&x[] == cmp);
+    assert!(&x[..] == cmp);
     let cmp: &[int] = &[3, 4, 5];
     assert!(&x[2..] == cmp);
     let cmp: &[int] = &[1, 2, 3];
@@ -35,7 +34,6 @@ fn main() {
     let x: &mut [int] = &mut [1, 2, 3, 4, 5];
     {
         let cmp: &mut [int] = &mut [1, 2, 3, 4, 5];
-        assert!(&mut x[] == cmp);
         assert!(&mut x[..] == cmp);
     }
     {
@@ -54,7 +52,6 @@ fn main() {
     let mut x: Vec<int> = vec![1, 2, 3, 4, 5];
     {
         let cmp: &mut [int] = &mut [1, 2, 3, 4, 5];
-        assert!(&mut x[] == cmp);
         assert!(&mut x[..] == cmp);
     }
     {
