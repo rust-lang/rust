@@ -443,6 +443,7 @@ pub enum WherePredicate {
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub struct WhereBoundPredicate {
     pub span: Span,
+    pub bound_lifetimes: Vec<LifetimeDef>,
     pub bounded_ty: P<Ty>,
     pub bounds: OwnedSlice<TyParamBound>,
 }
@@ -1535,6 +1536,8 @@ pub struct PolyTraitRef {
 
     /// The `Foo<&'a T>` in `<'a> Foo<&'a T>`
     pub trait_ref: TraitRef,
+
+    pub span: Span,
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]

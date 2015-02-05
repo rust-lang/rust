@@ -443,6 +443,7 @@ impl<'a> TraitDef<'a> {
                 ast::WherePredicate::BoundPredicate(ref wb) => {
                     ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
                         span: self.span,
+                        bound_lifetimes: wb.bound_lifetimes.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
                         bounds: OwnedSlice::from_vec(wb.bounds.iter().map(|b| b.clone()).collect())
                     })

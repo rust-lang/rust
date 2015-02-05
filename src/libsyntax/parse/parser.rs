@@ -1036,6 +1036,8 @@ impl<'a> Parser<'a> {
         */
 
         // parse <'lt>
+        let lo = self.span.lo;
+
         let lifetime_defs = self.parse_late_bound_lifetime_defs();
 
         // examine next token to decide to do
@@ -1047,9 +1049,11 @@ impl<'a> Parser<'a> {
                   self.token.is_ident() ||
                   self.token.is_path()
         {
+            let hi = self.span.hi;
             let trait_ref = self.parse_trait_ref();
             let poly_trait_ref = ast::PolyTraitRef { bound_lifetimes: lifetime_defs,
-                                                     trait_ref: trait_ref };
+                                                     trait_ref: trait_ref,
+                                                     span: mk_sp(lo, hi)};
             let other_bounds = if self.eat(&token::BinOp(token::Plus)) {
                 self.parse_ty_param_bounds(BoundParsingMode::Bare)
             } else {
@@ -4070,7 +4074,8 @@ impl<'a> Parser<'a> {
         if let Some(unbound) = unbound {
             let mut bounds_as_vec = bounds.into_vec();
             bounds_as_vec.push(TraitTyParamBound(PolyTraitRef { bound_lifetimes: vec![],
-                                                                trait_ref: unbound },
+                                                                trait_ref: unbound,
+                                                                span: span },
                                                  TraitBoundModifier::Maybe));
             bounds = OwnedSlice::from_vec(bounds_as_vec);
         };
@@ -4223,6 +4228,16 @@ impl<'a> Parser<'a> {
                 }
 
                 _ => {
+                    let bound_lifetimes = if self.eat_keyword(keywords::For) {
+                        // Higher ranked constraint.
+                        self.expect(&token::Lt);
+                        let lifetime_defs = self.parse_lifetime_defs();
+                        self.expect_gt();
+                        lifetime_defs
+                    } else {
+                        vec![]
+                    };
+
                     let bounded_ty = self.parse_ty();
 
                     if self.eat(&token::Colon) {
@@ -4233,12 +4248,13 @@ impl<'a> Parser<'a> {
                         if bounds.len() == 0 {
                             self.span_err(span,
                                           "each predicate in a `where` clause must have \
-                                   at least one bound in it");
+                                           at least one bound in it");
                         }
 
                         generics.where_clause.predicates.push(ast::WherePredicate::BoundPredicate(
                                 ast::WhereBoundPredicate {
                                     span: span,
+                                    bound_lifetimes: bound_lifetimes,
                                     bounded_ty: bounded_ty,
                                     bounds: bounds,
                         }));
@@ -4674,8 +4690,12 @@ impl<'a> Parser<'a> {
 
     /// Parse trait Foo { ... }
     fn parse_item_trait(&mut self, unsafety: Unsafety) -> ItemInfo {
+
         let ident = self.parse_ident();
         let mut tps = self.parse_generics();
+        // This is not very accurate, but since unbound only exists to catch
+        // obsolete syntax, the span is unlikely to ever be used.
+        let unbound_span = self.span;
         let unbound = self.parse_for_sized();
 
         // Parse supertrait bounds.
@@ -4684,7 +4704,8 @@ impl<'a> Parser<'a> {
         if let Some(unbound) = unbound {
             let mut bounds_as_vec = bounds.into_vec();
             bounds_as_vec.push(TraitTyParamBound(PolyTraitRef { bound_lifetimes: vec![],
-                                                                trait_ref: unbound },
+                                                                trait_ref: unbound,
+                                                                span:  unbound_span },
                                                  TraitBoundModifier::Maybe));
             bounds = OwnedSlice::from_vec(bounds_as_vec);
         };
@@ -4803,11 +4824,13 @@ impl<'a> Parser<'a> {
 
     /// Parse for<'l> a::B<String,i32>
     fn parse_poly_trait_ref(&mut self) -> PolyTraitRef {
+        let lo = self.span.lo;
         let lifetime_defs = self.parse_late_bound_lifetime_defs();
 
         ast::PolyTraitRef {
             bound_lifetimes: lifetime_defs,
-            trait_ref: self.parse_trait_ref()
+            trait_ref: self.parse_trait_ref(),
+            span: mk_sp(lo, self.last_span.hi),
         }
     }
 
