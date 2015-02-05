@@ -120,6 +120,12 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   nightly release channel, which will not have the same stability
   restrictions.
 
+* The currently-implemented desugaring does not infer that in an
+  expression like `box <expr> as Box<Trait>`, the use of `box <expr>`
+  should evaluate to some `Box<_>`. This may be due to a weakness
+  in the current desugaring, though pnkfelix suspects that it is
+  probably due to a weakness in compiler itself.
+
 # Alternatives
 
 * We could keep the `box (<place-expr>) <expr>` syntax. It is hard
