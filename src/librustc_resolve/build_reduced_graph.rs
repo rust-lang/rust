@@ -23,10 +23,8 @@ use Namespace::{TypeNS, ValueNS};
 use NameBindings;
 use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
-use RibKind::*;
 use Shadowable;
 use TypeNsDef;
-use TypeParameters::HasTypeParameters;
 
 use self::DuplicateCheckingMode::*;
 use self::NamespaceError::*;
@@ -34,7 +32,6 @@ use self::NamespaceError::*;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
-use rustc::middle::subst::FnSpace;
 
 use syntax::ast::{Block, Crate};
 use syntax::ast::{DeclItem, DefId};
@@ -773,12 +770,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item<F>(&mut self,
-                                               foreign_item: &ForeignItem,
-                                               parent: &Rc<Module>,
-                                               f: F) where
-        F: FnOnce(&mut Resolver),
-    {
+    fn build_reduced_graph_for_foreign_item(&mut self,
+                                            foreign_item: &ForeignItem,
+                                            parent: &Rc<Module>) {
         let name = foreign_item.ident.name;
         let is_public = foreign_item.vis == ast::Public;
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
@@ -786,25 +780,15 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
 
-        match foreign_item.node {
-            ForeignItemFn(_, ref generics) => {
-                let def = DefFn(local_def(foreign_item.id), false);
-                name_bindings.define_value(def, foreign_item.span, modifiers);
-
-                self.with_type_parameter_rib(
-                    HasTypeParameters(generics,
-                                      FnSpace,
-                                      foreign_item.id,
-                                      NormalRibKind),
-                    f);
+        let def = match foreign_item.node {
+            ForeignItemFn(..) => {
+                DefFn(local_def(foreign_item.id), false)
             }
             ForeignItemStatic(_, m) => {
-                let def = DefStatic(local_def(foreign_item.id), m);
-                name_bindings.define_value(def, foreign_item.span, modifiers);
-
-                f(self.resolver)
+                DefStatic(local_def(foreign_item.id), m)
             }
-        }
+        };
+        name_bindings.define_value(def, foreign_item.span, modifiers);
     }
 
     fn build_reduced_graph_for_block(&mut self, block: &Block, parent: &Rc<Module>) -> Rc<Module> {
@@ -980,7 +964,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
           }
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
-          DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
+          DefLabel(..) | DefSelfTy(..) => {
             panic!("didn't expect `{:?}`", def);
           }
         }
@@ -1241,16 +1225,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
-        let parent = &self.parent;
-        self.builder.build_reduced_graph_for_foreign_item(foreign_item,
-                                                          parent,
-                                                          |r| {
-            let mut v = BuildReducedGraphVisitor {
-                builder: GraphBuilder { resolver: r },
-                parent: parent.clone()
-            };
-            visit::walk_foreign_item(&mut v, foreign_item);
-        })
+        self.builder.build_reduced_graph_for_foreign_item(foreign_item, &self.parent);
     }
 
     fn visit_block(&mut self, block: &Block) {

@@ -4729,7 +4729,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefSelfTy(..) |
         def::DefStruct(..) |
         def::DefVariant(..) |
-        def::DefTyParamBinder(..) |
         def::DefTy(..) |
         def::DefAssociatedTy(..) |
         def::DefAssociatedPath(..) |

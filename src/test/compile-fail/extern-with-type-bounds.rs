@@ -24,7 +24,7 @@ extern "rust-intrinsic" {
 
     // Unresolved bounds should still error.
     fn align_of<T: NoSuchTrait>() -> usize;
-    //~^ ERROR attempt to bound type parameter with a nonexistent trait `NoSuchTrait`
+    //~^ ERROR use of undeclared trait name `NoSuchTrait`
 }
 
 fn main() {}
