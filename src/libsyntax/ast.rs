@@ -64,7 +64,6 @@ use parse::token;
 use ptr::P;
 
 use std::fmt;
-use std::fmt::Show;
 use std::num::Int;
 use std::rc::Rc;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
