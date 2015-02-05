@@ -1,6 +1,6 @@
 - Start Date: 2014-12-19
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#533](https://github.com/rust-lang/rfcs/pull/533)
+- Rust Issue: [rust-lang/rust#21963](https://github.com/rust-lang/rust/issues/21963)
 
 # Summary
 

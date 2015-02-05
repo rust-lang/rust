@@ -69,6 +69,7 @@ the direction the language is evolving in.
 * [0520-new-array-repeat-syntax.md](text/0520-new-array-repeat-syntax.md)
 * [0522-self-impl.md](text/0522-self-impl.md)
 * [0532-self-in-use.md](text/0532-self-in-use.md)
+* [0533-no-array-elem-moves.md](text/0533-no-array-elem-moves.md)
 * [0534-deriving2derive.md](text/0534-deriving2derive.md)
 * [0546-Self-not-sized-by-default.md](text/0546-Self-not-sized-by-default.md)
 * [0550-macro-future-proofing.md](text/0550-macro-future-proofing.md)
