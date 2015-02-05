@@ -66,7 +66,7 @@ use core::ops;
 use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::slice;
-use core::uint;
+use core::usize;
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
@@ -138,8 +138,8 @@ use core::uint;
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
     ptr: NonZero<*mut T>,
-    len: uint,
-    cap: uint,
+    len: usize,
+    cap: usize,
 }
 
 unsafe impl<T: Send> Send for Vec<T> { }
@@ -196,9 +196,9 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(capacity: uint) -> Vec<T> {
+    pub fn with_capacity(capacity: usize) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
-            Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: uint::MAX }
+            Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: usize::MAX }
         } else if capacity == 0 {
             Vec::new()
         } else {
@@ -245,8 +245,8 @@ impl<T> Vec<T> {
     /// }
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(ptr: *mut T, length: uint,
-                                 capacity: uint) -> Vec<T> {
+    pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
+                                 capacity: usize) -> Vec<T> {
         Vec { ptr: NonZero::new(ptr), len: length, cap: capacity }
     }
 
@@ -258,7 +258,7 @@ impl<T> Vec<T> {
     #[inline]
     #[unstable(feature = "collections",
                reason = "may be better expressed via composition")]
-    pub unsafe fn from_raw_buf(ptr: *const T, elts: uint) -> Vec<T> {
+    pub unsafe fn from_raw_buf(ptr: *const T, elts: usize) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
         ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);
@@ -276,7 +276,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> uint {
+    pub fn capacity(&self) -> usize {
         self.cap
     }
 
@@ -285,7 +285,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `uint`.
+    /// Panics if the new capacity overflows `usize`.
     ///
     /// # Examples
     ///
@@ -295,9 +295,9 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: uint) {
+    pub fn reserve(&mut self, additional: usize) {
         if self.cap - self.len < additional {
-            let err_msg = "Vec::reserve: `uint` overflow";
+            let err_msg = "Vec::reserve: `usize` overflow";
             let new_cap = self.len.checked_add(additional).expect(err_msg)
                 .checked_next_power_of_two().expect(err_msg);
             self.grow_capacity(new_cap);
@@ -314,7 +314,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `uint`.
+    /// Panics if the new capacity overflows `usize`.
     ///
     /// # Examples
     ///
@@ -324,10 +324,10 @@ impl<T> Vec<T> {
     /// assert!(vec.capacity() >= 11);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: uint) {
+    pub fn reserve_exact(&mut self, additional: usize) {
         if self.cap - self.len < additional {
             match self.len.checked_add(additional) {
-                None => panic!("Vec::reserve: `uint` overflow"),
+                None => panic!("Vec::reserve: `usize` overflow"),
                 Some(new_cap) => self.grow_capacity(new_cap)
             }
         }
@@ -401,7 +401,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, len: uint) {
+    pub fn truncate(&mut self, len: usize) {
         unsafe {
             // drop any extra elements
             while len < self.len {
@@ -455,7 +455,7 @@ impl<T> Vec<T> {
             let cap = self.cap;
             let begin = ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as uint + self.len()) as *const T
+                (ptr as usize + self.len()) as *const T
             } else {
                 ptr.offset(self.len() as int) as *const T
             };
@@ -480,7 +480,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn set_len(&mut self, len: uint) {
+    pub unsafe fn set_len(&mut self, len: usize) {
         self.len = len;
     }
 
@@ -506,7 +506,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn swap_remove(&mut self, index: uint) -> T {
+    pub fn swap_remove(&mut self, index: usize) -> T {
         let length = self.len();
         self.swap(index, length - 1);
         self.pop().unwrap()
@@ -530,7 +530,7 @@ impl<T> Vec<T> {
     /// assert_eq!(vec, vec![1, 4, 2, 3, 5]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, index: uint, element: T) {
+    pub fn insert(&mut self, index: usize, element: T) {
         let len = self.len();
         assert!(index <= len);
         // space for the new element
@@ -566,7 +566,7 @@ impl<T> Vec<T> {
     /// assert_eq!(v, vec![1, 3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(&mut self, index: uint) -> T {
+    pub fn remove(&mut self, index: usize) -> T {
         let len = self.len();
         assert!(index < len);
         unsafe { // infallible
@@ -602,11 +602,11 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn retain<F>(&mut self, mut f: F) where F: FnMut(&T) -> bool {
         let len = self.len();
-        let mut del = 0u;
+        let mut del = 0;
         {
             let v = &mut **self;
 
-            for i in 0u..len {
+            for i in 0..len {
                 if !f(&v[i]) {
                     del += 1;
                 } else if del > 0 {
@@ -623,7 +623,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the number of elements in the vector overflows a `uint`.
+    /// Panics if the number of elements in the vector overflows a `usize`.
     ///
     /// # Examples
     ///
@@ -687,7 +687,7 @@ impl<T> Vec<T> {
     ///
     /// # Panics
     ///
-    /// Panics if the number of elements in the vector overflows a `uint`.
+    /// Panics if the number of elements in the vector overflows a `usize`.
     ///
     /// # Examples
     /// ```rust
@@ -741,7 +741,7 @@ impl<T> Vec<T> {
         unsafe {
             let begin = *self.ptr as *const T;
             let end = if mem::size_of::<T>() == 0 {
-                (*self.ptr as uint + self.len()) as *const T
+                (*self.ptr as usize + self.len()) as *const T
             } else {
                 (*self.ptr).offset(self.len() as int) as *const T
             };
@@ -781,7 +781,7 @@ impl<T> Vec<T> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> uint { self.len }
+    pub fn len(&self) -> usize { self.len }
 
     /// Returns `true` if the vector contains no elements.
     ///
@@ -808,7 +808,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let v = vec![0u, 1, 2];
+    /// let v = vec![0, 1, 2];
     /// let w = v.map_in_place(|i| i + 3);
     /// assert_eq!(w.as_slice(), [3, 4, 5].as_slice());
     ///
@@ -850,7 +850,7 @@ impl<T> Vec<T> {
             //        After `array.offset(offset)`: 0x9.
             //        (0x1 + 0x8 = 0x1 - 0x8)
             //
-            // 2) If the size of the elements in the vector is >1, the `uint` ->
+            // 2) If the size of the elements in the vector is >1, the `usize` ->
             //    `int` conversion can't overflow.
             let offset = vec.len() as int;
             let start = vec.as_mut_ptr();
@@ -977,8 +977,8 @@ impl<T> Vec<T> {
                     let u = f(t);
 
                     // Forget the `U` and increment `num_u`. This increment
-                    // cannot overflow the `uint` as we only do this for a
-                    // number of times that fits into a `uint` (and start with
+                    // cannot overflow the `usize` as we only do this for a
+                    // number of times that fits into a `usize` (and start with
                     // `0`). Again, we should not panic between these steps.
                     mem::forget(u);
                     pv.num_u += 1;
@@ -1052,7 +1052,7 @@ impl<T: Clone> Vec<T> {
     /// ```
     #[unstable(feature = "collections",
                reason = "matches collection reform specification; waiting for dust to settle")]
-    pub fn resize(&mut self, new_len: uint, value: T) {
+    pub fn resize(&mut self, new_len: usize, value: T) {
         let len = self.len();
 
         if new_len > len {
@@ -1205,7 +1205,7 @@ impl<T> Vec<T> {
     ///
     /// If the capacity for `self` is already equal to or greater than the
     /// requested capacity, then no action is taken.
-    fn grow_capacity(&mut self, capacity: uint) {
+    fn grow_capacity(&mut self, capacity: usize) {
         if mem::size_of::<T>() == 0 { return }
 
         if capacity > self.cap {
@@ -1223,7 +1223,7 @@ impl<T> Vec<T> {
 
 // FIXME: #13996: need a way to mark the return value as `noalias`
 #[inline(never)]
-unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: uint, size: uint) -> *mut T {
+unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: usize, size: usize) -> *mut T {
     if old_size == 0 {
         allocate(size, mem::min_align_of::<T>()) as *mut T
     } else {
@@ -1232,7 +1232,7 @@ unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: uint, size: uint) -> *mut T
 }
 
 #[inline]
-unsafe fn dealloc<T>(ptr: *mut T, len: uint) {
+unsafe fn dealloc<T>(ptr: *mut T, len: usize) {
     if mem::size_of::<T>() != 0 {
         deallocate(ptr as *mut u8,
                    len * mem::size_of::<T>(),
@@ -1274,22 +1274,22 @@ impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Index<uint> for Vec<T> {
+impl<T> Index<usize> for Vec<T> {
     type Output = T;
 
     #[inline]
-    fn index<'a>(&'a self, index: &uint) -> &'a T {
+    fn index<'a>(&'a self, index: &usize) -> &'a T {
         // NB built-in indexing via `&[T]`
         &(**self)[*index]
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> IndexMut<uint> for Vec<T> {
+impl<T> IndexMut<usize> for Vec<T> {
     type Output = T;
 
     #[inline]
-    fn index_mut<'a>(&'a mut self, index: &uint) -> &'a mut T {
+    fn index_mut<'a>(&'a mut self, index: &usize) -> &'a mut T {
         // NB built-in indexing via `&mut [T]`
         &mut (**self)[*index]
     }
@@ -1297,26 +1297,26 @@ impl<T> IndexMut<uint> for Vec<T> {
 
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Index<ops::Range<uint>> for Vec<T> {
+impl<T> ops::Index<ops::Range<usize>> for Vec<T> {
     type Output = [T];
     #[inline]
-    fn index(&self, index: &ops::Range<uint>) -> &[T] {
+    fn index(&self, index: &ops::Range<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Index<ops::RangeTo<uint>> for Vec<T> {
+impl<T> ops::Index<ops::RangeTo<usize>> for Vec<T> {
     type Output = [T];
     #[inline]
-    fn index(&self, index: &ops::RangeTo<uint>) -> &[T] {
+    fn index(&self, index: &ops::RangeTo<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::Index<ops::RangeFrom<uint>> for Vec<T> {
+impl<T> ops::Index<ops::RangeFrom<usize>> for Vec<T> {
     type Output = [T];
     #[inline]
-    fn index(&self, index: &ops::RangeFrom<uint>) -> &[T] {
+    fn index(&self, index: &ops::RangeFrom<usize>) -> &[T] {
         Index::index(&**self, index)
     }
 }
@@ -1330,26 +1330,26 @@ impl<T> ops::Index<ops::RangeFull> for Vec<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::IndexMut<ops::Range<uint>> for Vec<T> {
+impl<T> ops::IndexMut<ops::Range<usize>> for Vec<T> {
     type Output = [T];
     #[inline]
-    fn index_mut(&mut self, index: &ops::Range<uint>) -> &mut [T] {
+    fn index_mut(&mut self, index: &ops::Range<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::IndexMut<ops::RangeTo<uint>> for Vec<T> {
+impl<T> ops::IndexMut<ops::RangeTo<usize>> for Vec<T> {
     type Output = [T];
     #[inline]
-    fn index_mut(&mut self, index: &ops::RangeTo<uint>) -> &mut [T] {
+    fn index_mut(&mut self, index: &ops::RangeTo<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> ops::IndexMut<ops::RangeFrom<uint>> for Vec<T> {
+impl<T> ops::IndexMut<ops::RangeFrom<usize>> for Vec<T> {
     type Output = [T];
     #[inline]
-    fn index_mut(&mut self, index: &ops::RangeFrom<uint>) -> &mut [T] {
+    fn index_mut(&mut self, index: &ops::RangeFrom<usize>) -> &mut [T] {
         IndexMut::index_mut(&mut **self, index)
     }
 }
@@ -1609,7 +1609,7 @@ impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
     allocation: *mut T, // the block of memory allocated for the vector
-    cap: uint, // the capacity of the vector
+    cap: usize, // the capacity of the vector
     ptr: *const T,
     end: *const T
 }
@@ -1645,7 +1645,7 @@ impl<T> Iterator for IntoIter<T> {
                     // purposefully don't use 'ptr.offset' because for
                     // vectors with 0-size elements this would return the
                     // same pointer.
-                    self.ptr = mem::transmute(self.ptr as uint + 1);
+                    self.ptr = mem::transmute(self.ptr as usize + 1);
 
                     // Use a non-null pointer value
                     Some(ptr::read(mem::transmute(1u)))
@@ -1660,8 +1660,8 @@ impl<T> Iterator for IntoIter<T> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        let diff = (self.end as uint) - (self.ptr as uint);
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let diff = (self.end as usize) - (self.ptr as usize);
         let size = mem::size_of::<T>();
         let exact = diff / (if size == 0 {1} else {size});
         (exact, Some(exact))
@@ -1678,7 +1678,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
             } else {
                 if mem::size_of::<T>() == 0 {
                     // See above for why 'ptr.offset' isn't used
-                    self.end = mem::transmute(self.end as uint - 1);
+                    self.end = mem::transmute(self.end as usize - 1);
 
                     // Use a non-null pointer value
                     Some(ptr::read(mem::transmute(1u)))
@@ -1733,7 +1733,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
                     // purposefully don't use 'ptr.offset' because for
                     // vectors with 0-size elements this would return the
                     // same pointer.
-                    self.ptr = mem::transmute(self.ptr as uint + 1);
+                    self.ptr = mem::transmute(self.ptr as usize + 1);
 
                     // Use a non-null pointer value
                     Some(ptr::read(mem::transmute(1u)))
@@ -1748,8 +1748,8 @@ impl<'a, T> Iterator for Drain<'a, T> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
-        let diff = (self.end as uint) - (self.ptr as uint);
+    fn size_hint(&self) -> (usize, Option<usize>) {
+        let diff = (self.end as usize) - (self.ptr as usize);
         let size = mem::size_of::<T>();
         let exact = diff / (if size == 0 {1} else {size});
         (exact, Some(exact))
@@ -1766,7 +1766,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
             } else {
                 if mem::size_of::<T>() == 0 {
                     // See above for why 'ptr.offset' isn't used
-                    self.end = mem::transmute(self.end as uint - 1);
+                    self.end = mem::transmute(self.end as usize - 1);
 
                     // Use a non-null pointer value
                     Some(ptr::read(mem::transmute(1u)))
@@ -1862,8 +1862,8 @@ struct PartialVecNonZeroSized<T,U> {
 /// When the destructor of this struct runs, all `num_t` `T`s and `num_u` `U`s
 /// are destructed.
 struct PartialVecZeroSized<T,U> {
-    num_t: uint,
-    num_u: uint,
+    num_t: usize,
+    num_u: usize,
     marker_t: InvariantType<T>,
     marker_u: InvariantType<U>,
 }
@@ -1920,7 +1920,7 @@ mod tests {
     use super::as_vec;
 
     struct DropCounter<'a> {
-        count: &'a mut int
+        count: &'a mut u32
     }
 
     #[unsafe_destructor]
@@ -1949,7 +1949,7 @@ mod tests {
 
     #[test]
     fn test_small_vec_struct() {
-        assert!(size_of::<Vec<u8>>() == size_of::<uint>() * 3);
+        assert!(size_of::<Vec<u8>>() == size_of::<usize>() * 3);
     }
 
     #[test]
@@ -2020,7 +2020,7 @@ mod tests {
 
     #[test]
     fn test_slice_from_mut() {
-        let mut values = vec![1u8,2,3,4,5];
+        let mut values = vec![1, 2, 3, 4, 5];
         {
             let slice = &mut values[2 ..];
             assert!(slice == [3, 4, 5]);
@@ -2034,7 +2034,7 @@ mod tests {
 
     #[test]
     fn test_slice_to_mut() {
-        let mut values = vec![1u8,2,3,4,5];
+        let mut values = vec![1, 2, 3, 4, 5];
         {
             let slice = &mut values[.. 2];
             assert!(slice == [1, 2]);
@@ -2048,7 +2048,7 @@ mod tests {
 
     #[test]
     fn test_split_at_mut() {
-        let mut values = vec![1u8,2,3,4,5];
+        let mut values = vec![1, 2, 3, 4, 5];
         {
             let (left, right) = values.split_at_mut(2);
             {
@@ -2068,12 +2068,12 @@ mod tests {
             }
         }
 
-        assert!(values == vec![2u8, 3, 5, 6, 7]);
+        assert!(values == vec![2, 3, 5, 6, 7]);
     }
 
     #[test]
     fn test_clone() {
-        let v: Vec<int> = vec!();
+        let v: Vec<i32> = vec![];
         let w = vec!(1, 2, 3);
 
         assert_eq!(v, v.clone());
@@ -2108,9 +2108,9 @@ mod tests {
 
     #[test]
     fn test_retain() {
-        let mut vec = vec![1u, 2, 3, 4];
+        let mut vec = vec![1, 2, 3, 4];
         vec.retain(|&x| x % 2 == 0);
-        assert!(vec == vec![2u, 4]);
+        assert!(vec == vec![2, 4]);
     }
 
     #[test]
@@ -2169,20 +2169,20 @@ mod tests {
             // Test on-stack copy-from-buf.
             let a = [1, 2, 3];
             let ptr = a.as_ptr();
-            let b = Vec::from_raw_buf(ptr, 3u);
+            let b = Vec::from_raw_buf(ptr, 3);
             assert_eq!(b, vec![1, 2, 3]);
 
             // Test on-heap copy-from-buf.
             let c = vec![1, 2, 3, 4, 5];
             let ptr = c.as_ptr();
-            let d = Vec::from_raw_buf(ptr, 5u);
+            let d = Vec::from_raw_buf(ptr, 5);
             assert_eq!(d, vec![1, 2, 3, 4, 5]);
         }
     }
 
     #[test]
     fn test_vec_truncate_drop() {
-        static mut drops: uint = 0;
+        static mut drops: u32 = 0;
         struct Elem(int);
         impl Drop for Elem {
             fn drop(&mut self) {
@@ -2201,7 +2201,7 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_vec_truncate_fail() {
-        struct BadElem(int);
+        struct BadElem(i32);
         impl Drop for BadElem {
             fn drop(&mut self) {
                 let BadElem(ref mut x) = *self;
@@ -2217,62 +2217,62 @@ mod tests {
 
     #[test]
     fn test_index() {
-        let vec = vec!(1, 2, 3);
+        let vec = vec![1, 2, 3];
         assert!(vec[1] == 2);
     }
 
     #[test]
     #[should_fail]
     fn test_index_out_of_bounds() {
-        let vec = vec!(1, 2, 3);
+        let vec = vec![1, 2, 3];
         let _ = vec[3];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_1() {
-        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        let x = vec![1, 2, 3, 4, 5];
         &x[-1..];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_2() {
-        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        let x = vec![1, 2, 3, 4, 5];
         &x[..6];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_3() {
-        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        let x = vec![1, 2, 3, 4, 5];
         &x[-1..4];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_4() {
-        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        let x = vec![1, 2, 3, 4, 5];
         &x[1..6];
     }
 
     #[test]
     #[should_fail]
     fn test_slice_out_of_bounds_5() {
-        let x: Vec<int> = vec![1, 2, 3, 4, 5];
+        let x = vec![1, 2, 3, 4, 5];
         &x[3..2];
     }
 
     #[test]
     #[should_fail]
     fn test_swap_remove_empty() {
-        let mut vec: Vec<uint> = vec!();
+        let mut vec= Vec::<i32>::new();
         vec.swap_remove(0);
     }
 
     #[test]
     fn test_move_iter_unwrap() {
-        let mut vec: Vec<uint> = Vec::with_capacity(7);
+        let mut vec = Vec::with_capacity(7);
         vec.push(1);
         vec.push(2);
         let ptr = vec.as_ptr();
@@ -2285,14 +2285,14 @@ mod tests {
     #[test]
     #[should_fail]
     fn test_map_in_place_incompatible_types_fail() {
-        let v = vec![0u, 1, 2];
+        let v = vec![0, 1, 2];
         v.map_in_place(|_| ());
     }
 
     #[test]
     fn test_map_in_place() {
-        let v = vec![0u, 1, 2];
-        assert_eq!(v.map_in_place(|i: uint| i as int - 1), [-1, 0, 1]);
+        let v = vec![0, 1, 2];
+        assert_eq!(v.map_in_place(|i: u32| i as i32 - 1), [-1, 0, 1]);
     }
 
     #[test]
@@ -2318,7 +2318,7 @@ mod tests {
                 DROP_COUNTER.fetch_add(1, Ordering::Relaxed);
             }
         }
-        const NUM_ELEMENTS: uint = 2;
+        const NUM_ELEMENTS: usize = 2;
         static DROP_COUNTER: AtomicUsize = ATOMIC_USIZE_INIT;
 
         let v = repeat(Nothing).take(NUM_ELEMENTS).collect::<Vec<_>>();
@@ -2334,7 +2334,7 @@ mod tests {
     #[test]
     fn test_move_items() {
         let vec = vec![1, 2, 3];
-        let mut vec2 : Vec<i32> = vec![];
+        let mut vec2 = vec![];
         for i in vec {
             vec2.push(i);
         }
@@ -2344,7 +2344,7 @@ mod tests {
     #[test]
     fn test_move_items_reverse() {
         let vec = vec![1, 2, 3];
-        let mut vec2 : Vec<i32> = vec![];
+        let mut vec2 = vec![];
         for i in vec.into_iter().rev() {
             vec2.push(i);
         }
@@ -2354,7 +2354,7 @@ mod tests {
     #[test]
     fn test_move_items_zero_sized() {
         let vec = vec![(), (), ()];
-        let mut vec2 : Vec<()> = vec![];
+        let mut vec2 = vec![];
         for i in vec {
             vec2.push(i);
         }
@@ -2364,7 +2364,7 @@ mod tests {
     #[test]
     fn test_drain_items() {
         let mut vec = vec![1, 2, 3];
-        let mut vec2: Vec<i32> = vec![];
+        let mut vec2 = vec![];
         for i in vec.drain() {
             vec2.push(i);
         }
@@ -2375,18 +2375,18 @@ mod tests {
     #[test]
     fn test_drain_items_reverse() {
         let mut vec = vec![1, 2, 3];
-        let mut vec2: Vec<i32> = vec![];
+        let mut vec2 = vec![];
         for i in vec.drain().rev() {
             vec2.push(i);
         }
         assert_eq!(vec, []);
-        assert_eq!(vec2, [ 3, 2, 1 ]);
+        assert_eq!(vec2, [3, 2, 1]);
     }
 
     #[test]
     fn test_drain_items_zero_sized() {
         let mut vec = vec![(), (), ()];
-        let mut vec2: Vec<()> = vec![];
+        let mut vec2 = vec![];
         for i in vec.drain() {
             vec2.push(i);
         }
@@ -2396,9 +2396,9 @@ mod tests {
 
     #[test]
     fn test_into_boxed_slice() {
-        let xs = vec![1u, 2, 3];
+        let xs = vec![1, 2, 3];
         let ys = xs.into_boxed_slice();
-        assert_eq!(ys, [1u, 2, 3]);
+        assert_eq!(ys, [1, 2, 3]);
     }
 
     #[test]
@@ -2421,17 +2421,17 @@ mod tests {
     #[bench]
     fn bench_new(b: &mut Bencher) {
         b.iter(|| {
-            let v: Vec<uint> = Vec::new();
+            let v: Vec<u32> = Vec::new();
             assert_eq!(v.len(), 0);
             assert_eq!(v.capacity(), 0);
         })
     }
 
-    fn do_bench_with_capacity(b: &mut Bencher, src_len: uint) {
+    fn do_bench_with_capacity(b: &mut Bencher, src_len: usize) {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let v: Vec<uint> = Vec::with_capacity(src_len);
+            let v: Vec<u32> = Vec::with_capacity(src_len);
             assert_eq!(v.len(), 0);
             assert_eq!(v.capacity(), src_len);
         })
@@ -2457,7 +2457,7 @@ mod tests {
         do_bench_with_capacity(b, 1000)
     }
 
-    fn do_bench_from_fn(b: &mut Bencher, src_len: uint) {
+    fn do_bench_from_fn(b: &mut Bencher, src_len: usize) {
         b.bytes = src_len as u64;
 
         b.iter(|| {
@@ -2487,11 +2487,11 @@ mod tests {
         do_bench_from_fn(b, 1000)
     }
 
-    fn do_bench_from_elem(b: &mut Bencher, src_len: uint) {
+    fn do_bench_from_elem(b: &mut Bencher, src_len: usize) {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst: Vec<uint> = repeat(5).take(src_len).collect();
+            let dst: Vec<usize> = repeat(5).take(src_len).collect();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().all(|x| *x == 5));
         })
@@ -2517,8 +2517,8 @@ mod tests {
         do_bench_from_elem(b, 1000)
     }
 
-    fn do_bench_from_slice(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
+    fn do_bench_from_slice(b: &mut Bencher, src_len: usize) {
+        let src: Vec<_> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2549,13 +2549,13 @@ mod tests {
         do_bench_from_slice(b, 1000)
     }
 
-    fn do_bench_from_iter(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
+    fn do_bench_from_iter(b: &mut Bencher, src_len: usize) {
+        let src: Vec<_> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst: Vec<uint> = FromIterator::from_iter(src.clone().into_iter());
+            let dst: Vec<_> = FromIterator::from_iter(src.clone().into_iter());
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });
@@ -2581,9 +2581,9 @@ mod tests {
         do_bench_from_iter(b, 1000)
     }
 
-    fn do_bench_extend(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(0..dst_len);
-        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
+    fn do_bench_extend(b: &mut Bencher, dst_len: usize, src_len: usize) {
+        let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
+        let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2630,9 +2630,9 @@ mod tests {
         do_bench_extend(b, 1000, 1000)
     }
 
-    fn do_bench_push_all(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(0..dst_len);
-        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
+    fn do_bench_push_all(b: &mut Bencher, dst_len: usize, src_len: usize) {
+        let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
+        let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2679,9 +2679,9 @@ mod tests {
         do_bench_push_all(b, 1000, 1000)
     }
 
-    fn do_bench_push_all_move(b: &mut Bencher, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(0u..dst_len);
-        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
+    fn do_bench_push_all_move(b: &mut Bencher, dst_len: usize, src_len: usize) {
+        let dst: Vec<_> = FromIterator::from_iter(0..dst_len);
+        let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = src_len as u64;
 
@@ -2728,8 +2728,8 @@ mod tests {
         do_bench_push_all_move(b, 1000, 1000)
     }
 
-    fn do_bench_clone(b: &mut Bencher, src_len: uint) {
-        let src: Vec<uint> = FromIterator::from_iter(0..src_len);
+    fn do_bench_clone(b: &mut Bencher, src_len: usize) {
+        let src: Vec<usize> = FromIterator::from_iter(0..src_len);
 
         b.bytes = src_len as u64;
 
@@ -2760,9 +2760,9 @@ mod tests {
         do_bench_clone(b, 1000)
     }
 
-    fn do_bench_clone_from(b: &mut Bencher, times: uint, dst_len: uint, src_len: uint) {
-        let dst: Vec<uint> = FromIterator::from_iter(0..src_len);
-        let src: Vec<uint> = FromIterator::from_iter(dst_len..dst_len + src_len);
+    fn do_bench_clone_from(b: &mut Bencher, times: usize, dst_len: usize, src_len: usize) {
+        let dst: Vec<_> = FromIterator::from_iter(0..src_len);
+        let src: Vec<_> = FromIterator::from_iter(dst_len..dst_len + src_len);
 
         b.bytes = (times * src_len) as u64;
 

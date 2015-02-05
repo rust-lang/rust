@@ -80,7 +80,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn with_capacity(capacity: uint) -> String {
+    pub fn with_capacity(capacity: usize) -> String {
         String {
             vec: Vec::with_capacity(capacity),
         }
@@ -157,10 +157,10 @@ impl String {
         static TAG_CONT_U8: u8 = 128u8;
         static REPLACEMENT: &'static [u8] = b"\xEF\xBF\xBD"; // U+FFFD in UTF-8
         let total = v.len();
-        fn unsafe_get(xs: &[u8], i: uint) -> u8 {
+        fn unsafe_get(xs: &[u8], i: usize) -> u8 {
             unsafe { *xs.get_unchecked(i) }
         }
-        fn safe_get(xs: &[u8], i: uint, total: uint) -> u8 {
+        fn safe_get(xs: &[u8], i: usize, total: usize) -> u8 {
             if i >= total {
                 0
             } else {
@@ -319,7 +319,7 @@ impl String {
     /// * We assume that the `Vec` contains valid UTF-8.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub unsafe fn from_raw_parts(buf: *mut u8, length: uint, capacity: uint) -> String {
+    pub unsafe fn from_raw_parts(buf: *mut u8, length: usize, capacity: usize) -> String {
         String {
             vec: Vec::from_raw_parts(buf, length, capacity),
         }
@@ -375,7 +375,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn capacity(&self) -> uint {
+    pub fn capacity(&self) -> usize {
         self.vec.capacity()
     }
 
@@ -385,7 +385,7 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `uint`.
+    /// Panics if the new capacity overflows `usize`.
     ///
     /// # Examples
     ///
@@ -396,7 +396,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve(&mut self, additional: uint) {
+    pub fn reserve(&mut self, additional: usize) {
         self.vec.reserve(additional)
     }
 
@@ -410,7 +410,7 @@ impl String {
     ///
     /// # Panics
     ///
-    /// Panics if the new capacity overflows `uint`.
+    /// Panics if the new capacity overflows `usize`.
     ///
     /// # Examples
     ///
@@ -421,7 +421,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn reserve_exact(&mut self, additional: uint) {
+    pub fn reserve_exact(&mut self, additional: usize) {
         self.vec.reserve_exact(additional)
     }
 
@@ -508,7 +508,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn truncate(&mut self, new_len: uint) {
+    pub fn truncate(&mut self, new_len: usize) {
         assert!(self.is_char_boundary(new_len));
         self.vec.truncate(new_len)
     }
@@ -563,7 +563,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove(&mut self, idx: uint) -> char {
+    pub fn remove(&mut self, idx: usize) -> char {
         let len = self.len();
         assert!(idx <= len);
 
@@ -590,7 +590,7 @@ impl String {
     /// this function will panic.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn insert(&mut self, idx: uint, ch: char) {
+    pub fn insert(&mut self, idx: usize, ch: char) {
         let len = self.len();
         assert!(idx <= len);
         assert!(self.is_char_boundary(idx));
@@ -641,7 +641,7 @@ impl String {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> uint { self.vec.len() }
+    pub fn len(&self) -> usize { self.vec.len() }
 
     /// Returns true if the string contains no bytes
     ///
@@ -854,26 +854,26 @@ impl<'a> Add<&'a str> for String {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::Range<uint>> for String {
+impl ops::Index<ops::Range<usize>> for String {
     type Output = str;
     #[inline]
-    fn index(&self, index: &ops::Range<uint>) -> &str {
+    fn index(&self, index: &ops::Range<usize>) -> &str {
         &self[][*index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeTo<uint>> for String {
+impl ops::Index<ops::RangeTo<usize>> for String {
     type Output = str;
     #[inline]
-    fn index(&self, index: &ops::RangeTo<uint>) -> &str {
+    fn index(&self, index: &ops::RangeTo<usize>) -> &str {
         &self[][*index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
-impl ops::Index<ops::RangeFrom<uint>> for String {
+impl ops::Index<ops::RangeFrom<usize>> for String {
     type Output = str;
     #[inline]
-    fn index(&self, index: &ops::RangeFrom<uint>) -> &str {
+    fn index(&self, index: &ops::RangeFrom<usize>) -> &str {
         &self[][*index]
     }
 }
@@ -1298,7 +1298,7 @@ mod tests {
     fn test_simple_types() {
         assert_eq!(1.to_string(), "1");
         assert_eq!((-1).to_string(), "-1");
-        assert_eq!(200u.to_string(), "200");
+        assert_eq!(200.to_string(), "200");
         assert_eq!(2u8.to_string(), "2");
         assert_eq!(true.to_string(), "true");
         assert_eq!(false.to_string(), "false");
@@ -1307,7 +1307,7 @@ mod tests {
 
     #[test]
     fn test_vectors() {
-        let x: Vec<int> = vec![];
+        let x: Vec<i32> = vec![];
         assert_eq!(format!("{:?}", x), "[]");
         assert_eq!(format!("{:?}", vec![1]), "[1]");
         assert_eq!(format!("{:?}", vec![1, 2, 3]), "[1, 2, 3]");

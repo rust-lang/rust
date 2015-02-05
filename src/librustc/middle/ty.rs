@@ -1591,10 +1591,10 @@ pub fn region_existential_bound<'tcx>(r: ty::Region) -> ExistentialBounds<'tcx> 
 }
 
 impl CLike for BuiltinBound {
-    fn to_uint(&self) -> uint {
+    fn to_usize(&self) -> uint {
         *self as uint
     }
-    fn from_uint(v: uint) -> BuiltinBound {
+    fn from_usize(v: uint) -> BuiltinBound {
         unsafe { mem::transmute(v) }
     }
 }

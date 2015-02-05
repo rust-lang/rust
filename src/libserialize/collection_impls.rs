@@ -136,7 +136,7 @@ impl<
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
         let mut bits = 0;
         for item in self {
-            bits |= item.to_uint();
+            bits |= item.to_usize();
         }
         s.emit_uint(bits)
     }
@@ -150,7 +150,7 @@ impl<
         let mut set = EnumSet::new();
         for bit in 0..uint::BITS {
             if bits & (1 << bit) != 0 {
-                set.insert(CLike::from_uint(1 << bit));
+                set.insert(CLike::from_usize(1 << bit));
             }
         }
         Ok(set)
