@@ -1117,12 +1117,11 @@ then
     msg "git: submodule status"
     "${CFG_GIT}" submodule status --recursive
 
-    # don't clobber so that our patches won't get removed
-    #msg "git: submodule clobber"
-    #"${CFG_GIT}" submodule foreach --recursive git clean -dxf
-    #need_ok "git failed"
-    #"${CFG_GIT}" submodule foreach --recursive git checkout .
-    #need_ok "git failed"
+    msg "git: submodule clobber"
+    "${CFG_GIT}" submodule foreach --recursive git clean -dxf
+    need_ok "git failed"
+    "${CFG_GIT}" submodule foreach --recursive git checkout .
+    need_ok "git failed"
 
     cd ${CFG_BUILD_DIR}
 fi
