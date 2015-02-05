@@ -1575,7 +1575,7 @@ mod tests {
 
     #[test]
     fn test_is_empty() {
-        let xs: [int; 0] = [];
+        let xs: [i32; 0] = [];
         assert!(xs.is_empty());
         assert!(![0].is_empty());
     }
@@ -1913,7 +1913,7 @@ mod tests {
     #[test]
     fn test_permutations() {
         {
-            let v: [int; 0] = [];
+            let v: [i32; 0] = [];
             let mut it = v.permutations();
             let (min_size, max_opt) = it.size_hint();
             assert_eq!(min_size, 1);

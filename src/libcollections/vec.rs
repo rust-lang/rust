@@ -2146,10 +2146,10 @@ mod tests {
 
     #[test]
     fn test_partition() {
-        assert_eq!(vec![].into_iter().partition(|x: &int| *x < 3), (vec![], vec![]));
-        assert_eq!(vec![1, 2, 3].into_iter().partition(|x: &int| *x < 4), (vec![1, 2, 3], vec![]));
-        assert_eq!(vec![1, 2, 3].into_iter().partition(|x: &int| *x < 2), (vec![1], vec![2, 3]));
-        assert_eq!(vec![1, 2, 3].into_iter().partition(|x: &int| *x < 0), (vec![], vec![1, 2, 3]));
+        assert_eq!(vec![].into_iter().partition(|x: &i32| *x < 3), (vec![], vec![]));
+        assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 4), (vec![1, 2, 3], vec![]));
+        assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 2), (vec![1], vec![2, 3]));
+        assert_eq!(vec![1, 2, 3].into_iter().partition(|x| *x < 0), (vec![], vec![1, 2, 3]));
     }
 
     #[test]
@@ -2183,7 +2183,7 @@ mod tests {
     #[test]
     fn test_vec_truncate_drop() {
         static mut drops: u32 = 0;
-        struct Elem(int);
+        struct Elem(i32);
         impl Drop for Elem {
             fn drop(&mut self) {
                 unsafe { drops += 1; }
