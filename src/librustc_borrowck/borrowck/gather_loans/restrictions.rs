@@ -58,7 +58,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 cmt: mc::cmt<'tcx>) -> RestrictionResult<'tcx> {
         debug!("restrict(cmt={})", cmt.repr(self.bccx.tcx));
 
-        let new_lp = |&: v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
+        let new_lp = |v: LoanPathKind<'tcx>| Rc::new(LoanPath::new(v, cmt.ty));
 
         match cmt.cat.clone() {
             mc::cat_rvalue(..) => {

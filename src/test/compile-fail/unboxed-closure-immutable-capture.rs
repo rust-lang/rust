@@ -18,14 +18,14 @@ fn set(x: &mut usize) { *x = 0; }
 
 fn main() {
     let x = 0us;
-    move |&mut:| x = 1; //~ ERROR cannot assign
-    move |&mut:| set(&mut x); //~ ERROR cannot borrow
-    move |:| x = 1; //~ ERROR cannot assign
-    move |:| set(&mut x); //~ ERROR cannot borrow
-    |&mut:| x = 1; //~ ERROR cannot assign
+    move || x = 1; //~ ERROR cannot assign
+    move || set(&mut x); //~ ERROR cannot borrow
+    move || x = 1; //~ ERROR cannot assign
+    move || set(&mut x); //~ ERROR cannot borrow
+    || x = 1; //~ ERROR cannot assign
     // FIXME: this should be `cannot borrow` (issue #18330)
-    |&mut:| set(&mut x); //~ ERROR cannot assign
-    |:| x = 1; //~ ERROR cannot assign
+    || set(&mut x); //~ ERROR cannot assign
+    || x = 1; //~ ERROR cannot assign
     // FIXME: this should be `cannot borrow` (issue #18330)
-    |:| set(&mut x); //~ ERROR cannot assign
+    || set(&mut x); //~ ERROR cannot assign
 }

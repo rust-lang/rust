@@ -66,7 +66,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
         [ref state_expr] => state_expr,
         _ => cx.span_bug(trait_span, "incorrect number of arguments in `derive(Hash)`")
     };
-    let call_hash = |&: span, thing_expr| {
+    let call_hash = |span, thing_expr| {
         let hash_path = {
             let strs = vec![
                 cx.ident_of("std"),

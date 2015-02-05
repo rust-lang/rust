@@ -24,7 +24,7 @@ impl<R> Thunk<(),R> {
     pub fn new<F>(func: F) -> Thunk<(),R>
         where F : FnOnce() -> R, F : Send
     {
-        Thunk::with_arg(move|: ()| func())
+        Thunk::with_arg(move|()| func())
     }
 }
 

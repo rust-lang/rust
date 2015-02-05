@@ -597,7 +597,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
         // parameter (by inspecting parent of its binding declaration
         // to see if it is introduced by a type or by a fn/impl).
 
-        let check_result = |&: this:&ConstraintContext| -> bool {
+        let check_result = |this:&ConstraintContext| -> bool {
             let tcx = this.terms_cx.tcx;
             let decl_id = this.find_binding_for_lifetime(param_id);
             // Currently only called on lifetimes; double-checking that.

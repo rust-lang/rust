@@ -84,8 +84,8 @@ impl Process {
             mem::transmute::<&ProcessConfig<K,V>,&'static ProcessConfig<K,V>>(cfg)
         };
 
-        with_envp(cfg.env(), move|: envp: *const c_void| {
-            with_argv(cfg.program(), cfg.args(), move|: argv: *const *const libc::c_char| unsafe {
+        with_envp(cfg.env(), move|envp: *const c_void| {
+            with_argv(cfg.program(), cfg.args(), move|argv: *const *const libc::c_char| unsafe {
                 let (input, mut output) = try!(sys::os::pipe());
 
                 // We may use this in the child, so perform allocations before the
@@ -185,7 +185,7 @@ impl Process {
                 // up /dev/null into that file descriptor. Otherwise, the first file
                 // descriptor opened up in the child would be numbered as one of the
                 // stdio file descriptors, which is likely to wreak havoc.
-                let setup = |&: src: Option<P>, dst: c_int| {
+                let setup = |src: Option<P>, dst: c_int| {
                     let src = match src {
                         None => {
                             let flags = if dst == libc::STDIN_FILENO {

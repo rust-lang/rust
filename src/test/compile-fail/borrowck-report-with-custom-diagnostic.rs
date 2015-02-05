@@ -32,7 +32,7 @@ fn foo() {
 
 fn bar() {
     // Original borrow ends at end of closure
-    |&:| {
+    || {
         let mut x = 1us;
         let y = &mut x;
         let z = &mut x; //~ ERROR cannot borrow

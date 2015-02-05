@@ -86,7 +86,7 @@ pub fn explain_region_and_span(cx: &ctxt, region: ty::Region)
     return match region {
       ReScope(scope) => {
         let new_string;
-        let on_unknown_scope = |&:| {
+        let on_unknown_scope = || {
           (format!("unknown scope: {:?}.  Please report a bug.", scope), None)
         };
         let span = match scope.span(&cx.map) {

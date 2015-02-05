@@ -2453,7 +2453,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         })
         .collect();
 
-    let discriminant_type_metadata = |&: inttype| {
+    let discriminant_type_metadata = |inttype| {
         // We can reuse the type of the discriminant for all monomorphized
         // instances of an enum because it doesn't depend on any type parameters.
         // The def_id, uniquely identifying the enum's polytype acts as key in

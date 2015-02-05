@@ -14,7 +14,7 @@
 fn id<T>(t: T) -> T { t }
 
 fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-    id(box |&mut:| *v) //~ ERROR cannot infer
+    id(box || *v) //~ ERROR cannot infer
 }
 
 fn main() {

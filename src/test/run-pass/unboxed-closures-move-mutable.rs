@@ -21,18 +21,18 @@ fn set(x: &mut uint) { *x = 42; }
 fn main() {
     {
         let mut x = 0u;
-        move |&mut:| x += 1;
+        move || x += 1;
     }
     {
         let mut x = 0u;
-        move |:| x += 1;
+        move || x += 1;
     }
     {
         let mut x = 0u;
-        move |&mut:| set(&mut x);
+        move || set(&mut x);
     }
     {
         let mut x = 0u;
-        move |:| set(&mut x);
+        move || set(&mut x);
     }
 }

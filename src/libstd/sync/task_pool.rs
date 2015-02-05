@@ -112,7 +112,7 @@ impl TaskPool {
 }
 
 fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
-    Thread::spawn(move |:| {
+    Thread::spawn(move || {
         // Will spawn a new thread on panic unless it is cancelled.
         let sentinel = Sentinel::new(&jobs);
 

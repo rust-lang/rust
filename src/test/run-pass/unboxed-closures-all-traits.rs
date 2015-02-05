@@ -24,8 +24,8 @@ fn c<F:FnOnce(int, int) -> int>(f: F) -> int {
 
 fn main() {
     let z: int = 7;
-    assert_eq!(a(move |&: x: int, y| x + y + z), 10);
-    assert_eq!(b(move |&mut: x: int, y| x + y + z), 14);
-    assert_eq!(c(move |: x: int, y| x + y + z), 18);
+    assert_eq!(a(move |x: int, y| x + y + z), 10);
+    assert_eq!(b(move |x: int, y| x + y + z), 14);
+    assert_eq!(c(move |x: int, y| x + y + z), 18);
 }
 

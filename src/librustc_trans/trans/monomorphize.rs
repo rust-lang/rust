@@ -139,7 +139,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     // This shouldn't need to option dance.
     let mut hash_id = Some(hash_id);
-    let mut mk_lldecl = |&mut : abi: abi::Abi| {
+    let mut mk_lldecl = |abi: abi::Abi| {
         let lldecl = if abi != abi::Rust {
             foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s[])
         } else {
@@ -149,7 +149,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
         lldecl
     };
-    let setup_lldecl = |&: lldecl, attrs: &[ast::Attribute]| {
+    let setup_lldecl = |lldecl, attrs: &[ast::Attribute]| {
         base::update_linkage(ccx, lldecl, None, base::OriginalTranslation);
         set_llvm_fn_attrs(ccx, attrs, lldecl);
 

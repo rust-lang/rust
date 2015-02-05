@@ -48,7 +48,7 @@ fn match_on_binding() {
 
 fn match_on_upvar() {
     let mut foo = Some(box 8i32);
-    let f = move|:| {
+    let f = move|| {
         match foo {
             None => {},
             Some(x) => {

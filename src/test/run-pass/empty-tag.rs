@@ -23,6 +23,6 @@ fn wrapper3(i: chan) {
 }
 
 pub fn main() {
-    let wrapped = {|&:|wrapper3(chan::chan_t)};
+    let wrapped = {||wrapper3(chan::chan_t)};
     wrapped();
 }

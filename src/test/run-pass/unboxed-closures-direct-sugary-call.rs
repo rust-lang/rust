@@ -11,7 +11,7 @@
 #![feature(unboxed_closures)]
 
 fn main() {
-    let mut unboxed = |&mut:| {};
+    let mut unboxed = || {};
     unboxed();
 }
 

@@ -12,6 +12,6 @@ use std::sync::Arc;
 
 fn main() {
     let x = 5us;
-    let command = Arc::new(Box::new(|&:| { x*2 }));
+    let command = Arc::new(Box::new(|| { x*2 }));
     assert_eq!(command(), 10);
 }

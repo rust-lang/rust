@@ -17,7 +17,7 @@
 
 fn main(){
     fn bar<'a, T:Clone+'a> (t: T) -> Box<FnMut()->T + 'a> {
-        box move |&mut:| t.clone()
+        box move || t.clone()
     }
 
     let mut f = bar(42_u32);

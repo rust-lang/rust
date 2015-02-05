@@ -13,6 +13,6 @@ fn force<F>(f: F) -> int where F: FnOnce() -> int { return f(); }
 pub fn main() {
     fn f() -> int { return 7; }
     assert_eq!(force(f), 7);
-    let g = {|&:|force(f)};
+    let g = {||force(f)};
     assert_eq!(g(), 7);
 }

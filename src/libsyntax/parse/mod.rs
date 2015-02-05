@@ -244,7 +244,7 @@ pub fn new_parser_from_tts<'a>(sess: &'a ParseSess,
 /// add the path to the session's codemap and return the new filemap.
 pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
     -> Rc<FileMap> {
-    let err = |&: msg: &str| {
+    let err = |msg: &str| {
         match spanopt {
             Some(sp) => sess.span_diagnostic.span_fatal(sp, msg),
             None => sess.span_diagnostic.handler().fatal(msg),
@@ -406,7 +406,7 @@ pub fn char_lit(lit: &str) -> (char, isize) {
         .map(|x| (x, len as isize))
     }
 
-    let unicode_escape = |&: | -> Option<(char, isize)>
+    let unicode_escape = || -> Option<(char, isize)>
         if lit.as_bytes()[2] == b'{' {
             let idx = lit.find('}').expect(msg2);
             let subslice = &lit[3..idx];
@@ -433,7 +433,7 @@ pub fn str_lit(lit: &str) -> String {
     let mut res = String::with_capacity(lit.len());
 
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
-    let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
+    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
     fn eat<'a>(it: &mut iter::Peekable<str::CharIndices<'a>>) {
@@ -568,7 +568,7 @@ pub fn float_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) -> a
 
 /// Parse a string representing a byte literal into its final form. Similar to `char_lit`
 pub fn byte_lit(lit: &str) -> (u8, usize) {
-    let err = |&: i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
+    let err = |i| format!("lexer accepted invalid byte literal {} step {}", lit, i);
 
     if lit.len() == 1 {
         (lit.as_bytes()[0], 1)
@@ -602,7 +602,7 @@ pub fn binary_lit(lit: &str) -> Rc<Vec<u8>> {
     let mut res = Vec::with_capacity(lit.len());
 
     // FIXME #8372: This could be a for-loop if it didn't borrow the iterator
-    let error = |&: i| format!("lexer should have rejected {} at {}", lit, i);
+    let error = |i| format!("lexer should have rejected {} at {}", lit, i);
 
     /// Eat everything up to a non-whitespace
     fn eat<'a, I: Iterator<Item=(usize, u8)>>(it: &mut iter::Peekable<I>) {

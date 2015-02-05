@@ -93,7 +93,7 @@ pub mod driver;
 pub mod pretty;
 
 pub fn run(args: Vec<String>) -> int {
-    monitor(move |:| run_compiler(args.as_slice()));
+    monitor(move || run_compiler(args.as_slice()));
     0
 }
 
@@ -362,7 +362,7 @@ Available lint options:
     let max_name_len = plugin.iter().chain(builtin.iter())
         .map(|&s| s.name.width(true))
         .max().unwrap_or(0);
-    let padded = |&: x: &str| {
+    let padded = |x: &str| {
         let mut s = repeat(" ").take(max_name_len - x.chars().count())
                                .collect::<String>();
         s.push_str(x);
@@ -373,7 +373,7 @@ Available lint options:
     println!("    {}  {:7.7}  {}", padded("name"), "default", "meaning");
     println!("    {}  {:7.7}  {}", padded("----"), "-------", "-------");
 
-    let print_lints = |&: lints: Vec<&Lint>| {
+    let print_lints = |lints: Vec<&Lint>| {
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
@@ -389,7 +389,7 @@ Available lint options:
     let max_name_len = plugin_groups.iter().chain(builtin_groups.iter())
         .map(|&(s, _)| s.width(true))
         .max().unwrap_or(0);
-    let padded = |&: x: &str| {
+    let padded = |x: &str| {
         let mut s = repeat(" ").take(max_name_len - x.chars().count())
                                .collect::<String>();
         s.push_str(x);
@@ -400,7 +400,7 @@ Available lint options:
     println!("    {}  {}", padded("name"), "sub-lints");
     println!("    {}  {}", padded("----"), "---------");
 
-    let print_lint_groups = |&: lints: Vec<(&'static str, Vec<lint::LintId>)>| {
+    let print_lint_groups = |lints: Vec<(&'static str, Vec<lint::LintId>)>| {
         for (name, to) in lints {
             let name = name.chars().map(|x| x.to_lowercase())
                            .collect::<String>().replace("_", "-");

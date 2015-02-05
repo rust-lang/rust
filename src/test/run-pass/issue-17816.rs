@@ -12,7 +12,7 @@
 
 fn main() {
     struct Symbol<'a, F: Fn(Vec<&'a str>) -> &'a str> { function: F }
-    let f = |&: x: Vec<&str>| -> &str "foobar";
+    let f = |x: Vec<&str>| -> &str "foobar";
     let sym = Symbol { function: f };
     (sym.function)(vec![]);
 }

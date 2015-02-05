@@ -6087,7 +6087,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
         macro_rules! byte { ($b:expr) => { ($b as u8).hash(state) } }
         macro_rules! hash { ($e:expr) => { $e.hash(state) }  }
 
-        let region = |&: state: &mut SipHasher, r: Region| {
+        let region = |state: &mut SipHasher, r: Region| {
             match r {
                 ReStatic => {}
                 ReLateBound(db, BrAnon(i)) => {
@@ -6104,7 +6104,7 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
                 }
             }
         };
-        let did = |&: state: &mut SipHasher, did: DefId| {
+        let did = |state: &mut SipHasher, did: DefId| {
             let h = if ast_util::is_local(did) {
                 svh.clone()
             } else {
@@ -6113,10 +6113,10 @@ pub fn hash_crate_independent<'tcx>(tcx: &ctxt<'tcx>, ty: Ty<'tcx>, svh: &Svh) -
             h.as_str().hash(state);
             did.node.hash(state);
         };
-        let mt = |&: state: &mut SipHasher, mt: mt| {
+        let mt = |state: &mut SipHasher, mt: mt| {
             mt.mutbl.hash(state);
         };
-        let fn_sig = |&: state: &mut SipHasher, sig: &Binder<FnSig<'tcx>>| {
+        let fn_sig = |state: &mut SipHasher, sig: &Binder<FnSig<'tcx>>| {
             let sig = anonymize_late_bound_regions(tcx, sig).0;
             for a in &sig.inputs { helper(tcx, *a, svh, state); }
             if let ty::FnConverging(output) = sig.output {

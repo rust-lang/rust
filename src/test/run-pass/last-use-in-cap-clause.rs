@@ -19,7 +19,8 @@ struct A { a: Box<isize> }
 fn foo() -> Box<FnMut() -> isize + 'static> {
     let k = box 22;
     let _u = A {a: k.clone()};
-    let result  = |&mut:| 22;
+    // FIXME(#16640) suffix in `22i` suffix shouldn't be necessary
+    let result  = || 22i;
     box result
 }
 

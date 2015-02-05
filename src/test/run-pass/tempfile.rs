@@ -37,7 +37,7 @@ fn test_tempdir() {
 
 fn test_rm_tempdir() {
     let (tx, rx) = channel();
-    let f = move|:| -> () {
+    let f = move|| -> () {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         tx.send(tmp.path().clone()).unwrap();
         panic!("panic to unwind past `tmp`");
@@ -48,7 +48,7 @@ fn test_rm_tempdir() {
 
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
     let path = tmp.path().clone();
-    let f = move|:| -> () {
+    let f = move|| -> () {
         let _tmp = tmp;
         panic!("panic to unwind past `tmp`");
     };
@@ -57,10 +57,11 @@ fn test_rm_tempdir() {
 
     let path;
     {
-        let f = move|:| {
+        let f = move || {
             TempDir::new("test_rm_tempdir").unwrap()
         };
-        let tmp = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
+        // FIXME(#16640) `: TempDir` annotation shouldn't be necessary
+        let tmp: TempDir = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
         assert!(path.exists());
     }
@@ -78,7 +79,7 @@ fn test_rm_tempdir() {
 
 fn test_rm_tempdir_close() {
     let (tx, rx) = channel();
-    let f = move|:| -> () {
+    let f = move|| -> () {
         let tmp = TempDir::new("test_rm_tempdir").unwrap();
         tx.send(tmp.path().clone()).unwrap();
         tmp.close();
@@ -90,7 +91,7 @@ fn test_rm_tempdir_close() {
 
     let tmp = TempDir::new("test_rm_tempdir").unwrap();
     let path = tmp.path().clone();
-    let f = move|:| -> () {
+    let f = move|| -> () {
         let tmp = tmp;
         tmp.close();
         panic!("panic when unwinding past `tmp`");
@@ -100,10 +101,11 @@ fn test_rm_tempdir_close() {
 
     let path;
     {
-        let f = move|:| {
+        let f = move || {
             TempDir::new("test_rm_tempdir").unwrap()
         };
-        let tmp = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
+        // FIXME(#16640) `: TempDir` annotation shouldn't be necessary
+        let tmp: TempDir = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
         path = tmp.path().clone();
         assert!(path.exists());
         tmp.close();
