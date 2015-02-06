@@ -58,7 +58,7 @@ use core::iter::Iterator;
 use core::marker::{Copy, Sized};
 use core::mem;
 use core::ops::{Deref, DerefMut, Drop};
-use core::ops::{Placer, Boxed, Place, InPlace};
+use core::ops::{Placer, Boxed, Place, InPlace, BoxPlace};
 use core::option::Option;
 use core::ptr::PtrExt;
 use core::ptr::Unique;
@@ -148,6 +148,10 @@ fn make_place<T>() -> IntermediateBox<T> {
     };
 
     IntermediateBox { ptr: p, size: size, align: align }
+}
+
+impl<T> BoxPlace<T> for IntermediateBox<T> {
+    fn make_place() -> IntermediateBox<T> { make_place() }
 }
 
 impl<T> InPlace<T> for IntermediateBox<T> {
