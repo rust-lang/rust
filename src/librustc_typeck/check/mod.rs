@@ -1338,23 +1338,19 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     }
 
     /// Apply "fallbacks" to some types
-    /// ! gets replaced with (), unconstrained ints with i32, and unconstrained floats with f64.
+    /// Unconstrained ints gets replaced with i32, and unconstrained floats with f64.
     pub fn default_type_parameters(&self) {
         use middle::ty::UnconstrainedNumeric::{UnconstrainedInt, UnconstrainedFloat, Neither};
         for (_, &mut ref ty) in &mut *self.inh.node_types.borrow_mut() {
             let resolved = self.infcx().resolve_type_vars_if_possible(ty);
-            if self.infcx().type_var_diverges(resolved) {
-                demand::eqtype(self, codemap::DUMMY_SP, *ty, ty::mk_nil(self.tcx()));
-            } else {
-                match self.infcx().type_is_unconstrained_numeric(resolved) {
-                    UnconstrainedInt => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
-                    },
-                    UnconstrainedFloat => {
-                        demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
-                    }
-                    Neither => { }
+            match self.infcx().type_is_unconstrained_numeric(resolved) {
+                UnconstrainedInt => {
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.i32)
+                },
+                UnconstrainedFloat => {
+                    demand::eqtype(self, codemap::DUMMY_SP, *ty, self.tcx().types.f64)
                 }
+                Neither => { }
             }
         }
     }

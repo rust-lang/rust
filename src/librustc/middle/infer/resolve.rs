@@ -82,8 +82,13 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
             let t = self.infcx.shallow_resolve(t);
             match t.sty {
                 ty::ty_infer(ty::TyVar(vid)) => {
-                    self.err = Some(unresolved_ty(vid));
-                    self.tcx().types.err
+                    if self.infcx.type_var_diverges(t) {
+                        // Apply type fallbacks: ! gets replaced with ()
+                        ty::mk_nil(self.tcx())
+                    } else {
+                        self.err = Some(unresolved_ty(vid));
+                        self.tcx().types.err
+                    }
                 }
                 ty::ty_infer(ty::IntVar(vid)) => {
                     self.err = Some(unresolved_int_ty(vid));
