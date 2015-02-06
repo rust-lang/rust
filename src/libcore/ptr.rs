@@ -190,7 +190,7 @@ pub unsafe fn replace<T>(dest: *mut T, mut src: T) -> T {
     src
 }
 
-/// Reads the value from `src` without dropping it. This leaves the
+/// Reads the value from `src` without moving it. This leaves the
 /// memory in `src` unchanged.
 ///
 /// # Safety
