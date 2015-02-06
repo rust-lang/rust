@@ -10,6 +10,7 @@
 
 //! Terminfo database interface.
 
+use std::boxed::HEAP;
 use std::collections::HashMap;
 use std::io::IoResult;
 use std::os;
@@ -186,7 +187,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
                     "mintty.exe" == s
                 }) {
                 // msys terminal
-                return Some(box TerminfoTerminal {out: out,
+                return Some(box (HEAP) TerminfoTerminal {out: out,
                                                   ti: msys_terminfo(),
                                                   num_colors: 8} as Box<Terminal<T>+Send>);
             }
@@ -207,7 +208,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
                      inf.numbers.get("colors").map_or(0, |&n| n)
                  } else { 0 };
 
-        return Some(box TerminfoTerminal {out: out,
+        return Some(box (HEAP) TerminfoTerminal {out: out,
                                           ti: inf,
                                           num_colors: nc} as Box<Terminal<T>+Send>);
     }
