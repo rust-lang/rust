@@ -1,7 +1,6 @@
 - Start Date: 2014-06-30
-- RFC PR #: (leave this empty)
-- Rust Issue #: (leave this empty)
-
+- RFC PR #: https://github.com/rust-lang/rfcs/pull/560
+- Rust Issue #: https://github.com/rust-lang/rust/issues/22020
 
 # Summary
 
@@ -44,7 +43,7 @@ The RFC has several major goals:
 4. To the extent possible, leave room in the future to move towards
    universal overflow checking if it becomes feasible. This may require
    opt-in from end-users.
-   
+
 To that end the RFC proposes two mechanisms:
 
 1. Optional, dynamic overflow checking. Ordinary arithmetic operations
@@ -56,7 +55,7 @@ To that end the RFC proposes two mechanisms:
    (`debug_assert!`). It can be seen as analogous to a debug
    assertion: an important safety check that is too expensive to
    perform on all code.
-   
+
 We expect that additional and finer-grained mechanisms for enabling
 overflows will be added in the future. One easy option is a
 command-line switch to enable overflow checking universally or within
@@ -192,7 +191,7 @@ pub trait WrappingOps {
     fn wrapping_as_u32(self, rhs: Self) -> u32
     fn wrapping_as_u64(self, rhs: Self) -> u64;
     fn wrapping_as_usize(self, rhs: Self) -> usize;
-    
+
     fn wrapping_as_i8(self, rhs: Self) -> i8;
     fn wrapping_as_i16(self, rhs: Self) -> i16;
     fn wrapping_as_i32(self, rhs: Self) -> i32
@@ -536,4 +535,3 @@ Further credit is due to the commenters in the [GitHub discussion thread][GH].
 [JM24]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010596.html
 [LB24]: https://mail.mozilla.org/pipermail/rust-dev/2014-June/010579.html
 [GH]: https://github.com/rust-lang/rfcs/pull/146
-
