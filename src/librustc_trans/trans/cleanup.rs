@@ -262,9 +262,9 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
     fn schedule_lifetime_end(&self,
                              cleanup_scope: ScopeId,
                              val: ValueRef) {
-        let drop = box LifetimeEnd {
+        let drop = Box::new(LifetimeEnd {
             ptr: val,
-        };
+        });
 
         debug!("schedule_lifetime_end({:?}, val={})",
                cleanup_scope,
@@ -279,13 +279,13 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                          val: ValueRef,
                          ty: Ty<'tcx>) {
         if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
-        let drop = box DropValue {
+        let drop = Box::new(DropValue {
             is_immediate: false,
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             zero: false
-        };
+        });
 
         debug!("schedule_drop_mem({:?}, val={}, ty={})",
                cleanup_scope,
@@ -301,13 +301,13 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                   val: ValueRef,
                                   ty: Ty<'tcx>) {
         if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
-        let drop = box DropValue {
+        let drop = Box::new(DropValue {
             is_immediate: false,
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             zero: true
-        };
+        });
 
         debug!("schedule_drop_and_zero_mem({:?}, val={}, ty={}, zero={})",
                cleanup_scope,
@@ -325,13 +325,13 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                                ty: Ty<'tcx>) {
 
         if !common::type_needs_drop(self.ccx.tcx(), ty) { return; }
-        let drop = box DropValue {
+        let drop = Box::new(DropValue {
             is_immediate: true,
             must_unwind: common::type_needs_unwind_cleanup(self.ccx, ty),
             val: val,
             ty: ty,
             zero: false
-        };
+        });
 
         debug!("schedule_drop_immediate({:?}, val={}, ty={:?})",
                cleanup_scope,
@@ -347,7 +347,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            val: ValueRef,
                            heap: Heap,
                            content_ty: Ty<'tcx>) {
-        let drop = box FreeValue { ptr: val, heap: heap, content_ty: content_ty };
+        let drop = Box::new(FreeValue { ptr: val, heap: heap, content_ty: content_ty });
 
         debug!("schedule_free_value({:?}, val={}, heap={:?})",
                cleanup_scope,
@@ -364,7 +364,7 @@ impl<'blk, 'tcx> CleanupMethods<'blk, 'tcx> for FunctionContext<'blk, 'tcx> {
                            size: ValueRef,
                            align: ValueRef,
                            heap: Heap) {
-        let drop = box FreeSlice { ptr: val, size: size, align: align, heap: heap };
+        let drop = Box::new(FreeSlice { ptr: val, size: size, align: align, heap: heap });
 
         debug!("schedule_free_slice({:?}, val={}, heap={:?})",
                cleanup_scope,

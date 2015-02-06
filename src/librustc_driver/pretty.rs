@@ -548,11 +548,11 @@ pub fn pretty_print_input(sess: Session,
     let mut rdr = MemReader::new(src);
 
     let out = match ofile {
-        None => box io::stdout() as Box<Writer+'static>,
+        None => Box::new(io::stdout()) as Box<Writer+'static>,
         Some(p) => {
             let r = io::File::create(&p);
             match r {
-                Ok(w) => box w as Box<Writer+'static>,
+                Ok(w) => Box::new(w) as Box<Writer+'static>,
                 Err(e) => panic!("print-print failed to open {} due to {}",
                                 p.display(), e),
             }

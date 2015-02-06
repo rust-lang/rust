@@ -46,9 +46,9 @@ pub fn expand_deriving_from_primitive<F>(cx: &mut ExtCtxt,
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs.clone(),
-                combine_substructure: combine_substructure(box |c, s, sub| {
+                combine_substructure: combine_substructure(Box::new( |c, s, sub| {
                     cs_from("i64", c, s, sub)
-                }),
+                })),
             },
             MethodDef {
                 name: "from_u64",
@@ -62,9 +62,9 @@ pub fn expand_deriving_from_primitive<F>(cx: &mut ExtCtxt,
                                            true)),
                 // #[inline] liable to cause code-bloat
                 attributes: attrs,
-                combine_substructure: combine_substructure(box |c, s, sub| {
+                combine_substructure: combine_substructure(Box::new( |c, s, sub| {
                     cs_from("u64", c, s, sub)
-                }),
+                })),
             })
     };
 

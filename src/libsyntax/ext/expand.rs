@@ -1212,7 +1212,7 @@ fn expand_annotatable(a: Annotatable,
                     // but that double-mut-borrows fld
                     let mut items: SmallVector<P<ast::Item>> = SmallVector::zero();
                     dec.expand(fld.cx, attr.span, &*attr.node.value, &**it,
-                               box |&mut: item| items.push(item));
+                               Box::new( |&mut: item| items.push(item)));
                     decorator_items.extend(items.into_iter()
                         .flat_map(|item| expand_item(item, fld).into_iter()));
 

@@ -224,13 +224,13 @@ fn build_controller<'a>(sess: &Session) -> CompileController<'a> {
     }
 
     if sess.opts.debugging_opts.save_analysis {
-        control.after_analysis.callback = box |state| {
+        control.after_analysis.callback = Box::new(|state| {
             time(state.session.time_passes(), "save analysis", state.krate.unwrap(), |krate|
                  save::process_crate(state.session,
                                      krate,
                                      state.analysis.unwrap(),
                                      state.out_dir));
-        };
+        });
         control.make_glob_map = resolve::MakeGlobMap::Yes;
     }
 
@@ -614,7 +614,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.scoped(move || { std::io::stdio::set_stderr(box w); f() }).join() {
+    match cfg.scoped(move || { std::io::stdio::set_stderr(Box::new(w)); f() }).join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
@@ -656,7 +656,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
             // Panic so the process returns a failure code, but don't pollute the
             // output with some unnecessary panic messages, we've already
             // printed everything that we needed to.
-            io::stdio::set_stderr(box io::util::NullWriter);
+            io::stdio::set_stderr(Box::new(io::util::NullWriter));
             panic!();
         }
     }

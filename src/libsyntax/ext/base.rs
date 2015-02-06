@@ -265,7 +265,7 @@ pub struct MacExpr {
 }
 impl MacExpr {
     pub fn new(e: P<ast::Expr>) -> Box<MacResult+'static> {
-        box MacExpr { e: e } as Box<MacResult+'static>
+        Box::new(MacExpr { e: e }) as Box<MacResult+'static>
     }
 }
 impl MacResult for MacExpr {
@@ -289,7 +289,7 @@ pub struct MacPat {
 }
 impl MacPat {
     pub fn new(p: P<ast::Pat>) -> Box<MacResult+'static> {
-        box MacPat { p: p } as Box<MacResult+'static>
+        Box::new(MacPat { p: p }) as Box<MacResult+'static>
     }
 }
 impl MacResult for MacPat {
@@ -304,7 +304,7 @@ pub struct MacItems {
 
 impl MacItems {
     pub fn new<I: Iterator<Item=P<ast::Item>>>(it: I) -> Box<MacResult+'static> {
-        box MacItems { items: it.collect() } as Box<MacResult+'static>
+        Box::new(MacItems { items: it.collect() }) as Box<MacResult+'static>
     }
 }
 
@@ -328,7 +328,7 @@ impl DummyResult {
     /// Use this as a return value after hitting any errors and
     /// calling `span_err`.
     pub fn any(sp: Span) -> Box<MacResult+'static> {
-        box DummyResult { expr_only: false, span: sp } as Box<MacResult+'static>
+        Box::new(DummyResult { expr_only: false, span: sp }) as Box<MacResult+'static>
     }
 
     /// Create a default MacResult that can only be an expression.
@@ -337,7 +337,7 @@ impl DummyResult {
     /// if an error is encountered internally, the user will receive
     /// an error that they also used it in the wrong place.
     pub fn expr(sp: Span) -> Box<MacResult+'static> {
-        box DummyResult { expr_only: true, span: sp } as Box<MacResult+'static>
+        Box::new(DummyResult { expr_only: true, span: sp }) as Box<MacResult+'static>
     }
 
     /// A plain dummy expression.
@@ -442,7 +442,7 @@ impl BlockInfo {
 fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
-        NormalTT(box f, None)
+        NormalTT(Box::new(f), None)
     }
 
     let mut syntax_expanders = SyntaxEnv::new();
@@ -466,9 +466,9 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
                             builtin_normal_expander(
                                     ext::log_syntax::expand_syntax_ext));
     syntax_expanders.insert(intern("derive"),
-                            Decorator(box ext::deriving::expand_meta_derive));
+                            Decorator(Box::new(ext::deriving::expand_meta_derive)));
     syntax_expanders.insert(intern("deriving"),
-                            Decorator(box ext::deriving::expand_deprecated_deriving));
+                            Decorator(Box::new(ext::deriving::expand_deprecated_deriving)));
 
     if ecfg.enable_quotes {
         // Quasi-quoting expanders
@@ -529,7 +529,7 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg));
     syntax_expanders.insert(intern("cfg_attr"),
-                            Modifier(box ext::cfg_attr::expand));
+                            Modifier(Box::new(ext::cfg_attr::expand)));
     syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));

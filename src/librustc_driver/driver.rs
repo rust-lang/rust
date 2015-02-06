@@ -213,7 +213,7 @@ impl<'a> PhaseController<'a> {
     pub fn basic() -> PhaseController<'a> {
         PhaseController {
             stop: false,
-            callback: box |&: _| {},
+            callback: Box::new(|&: _| {}),
         }
     }
 }

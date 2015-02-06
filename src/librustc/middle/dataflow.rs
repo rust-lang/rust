@@ -457,7 +457,7 @@ impl<'a, 'tcx, O:DataFlowOperator+Clone+'static> DataFlowContext<'a, 'tcx, O> {
 
         debug!("Dataflow result for {}:", self.analysis_name);
         debug!("{}", {
-            self.pretty_print_to(box io::stderr(), blk).unwrap();
+            self.pretty_print_to(Box::new(io::stderr()), blk).unwrap();
             ""
         });
     }

@@ -40,9 +40,9 @@ pub fn expand_deriving_default<F>(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self,
                 attributes: attrs,
-                combine_substructure: combine_substructure(box |a, b, c| {
+                combine_substructure: combine_substructure(Box::new( |a, b, c| {
                     default_substructure(a, b, c)
-                })
+                }))
             })
     };
     trait_def.expand(cx, mitem, item, push)

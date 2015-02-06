@@ -171,7 +171,7 @@ impl LintStore {
         macro_rules! add_builtin {
             ($sess:ident, $($name:ident),*,) => (
                 {$(
-                    self.register_pass($sess, false, box builtin::$name as LintPassObject);
+                    self.register_pass($sess, false, Box::new(builtin::$name) as LintPassObject);
                 )*}
             )
         }
@@ -179,7 +179,7 @@ impl LintStore {
         macro_rules! add_builtin_with_new {
             ($sess:ident, $($name:ident),*,) => (
                 {$(
-                    self.register_pass($sess, false, box builtin::$name::new() as LintPassObject);
+                    self.register_pass($sess, false, Box::new(builtin::$name::new()) as LintPassObject);
                 )*}
             )
         }
@@ -231,7 +231,7 @@ impl LintStore {
                         UNUSED_UNSAFE, PATH_STATEMENTS);
 
         // We have one lint pass defined in this module.
-        self.register_pass(sess, false, box GatherNodeLevels as LintPassObject);
+        self.register_pass(sess, false, Box::new(GatherNodeLevels) as LintPassObject);
 
         // Insert temporary renamings for a one-time deprecation
         self.register_renamed("raw_pointer_deriving", "raw_pointer_derive");

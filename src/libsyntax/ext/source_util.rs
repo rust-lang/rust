@@ -121,7 +121,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree
         }
     }
 
-    box ExpandResult { p: p }
+    Box::new(ExpandResult { p: p })
 }
 
 // include_str! : read the given file, insert it as a literal string expr
