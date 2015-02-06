@@ -66,20 +66,22 @@ src_dir = sys.argv[1]
 try:
     count_lines = 0
     count_non_blank_lines = 0
+    count_other_linted_files = 0
 
     interesting_files = ['.rs', '.py', '.js', '.sh', '.c', '.h']
 
     file_counts = {ext: 0 for ext in interesting_files}
-    file_counts['other'] = 0
 
     def update_counts(current_name):
         global file_counts
+        global count_other_linted_files
+
         _, ext = os.path.splitext(current_name)
 
-        if ext in file_counts:
+        if ext in interesting_files:
             file_counts[ext] += 1
         else:
-            file_counts['other'] += 1
+            count_other_linted_files += 1
 
     all_paths = set()
 
@@ -196,10 +198,11 @@ except UnicodeDecodeError as e:
     report_err("UTF-8 decoding error " + str(e))
 
 print
-for ext in file_counts:
-    print "* linted " + str(file_counts[ext]) + " " + ext + " files"
-print "* total lines of code: " + str(count_lines)
-print "* total non-blank lines of code: " + str(count_non_blank_lines)
+for ext in sorted(file_counts, key=file_counts.get, reverse=True):
+    print "* linted {} {} files".format(file_counts[ext], ext)
+print "* linted {} other files".format(count_other_linted_files)
+print "* total lines of code: {}".format(count_lines)
+print "* total non-blank lines of code: {}".format(count_non_blank_lines)
 print
 
 sys.exit(err)
