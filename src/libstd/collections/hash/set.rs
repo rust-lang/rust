@@ -81,10 +81,10 @@ use super::state::HashState;
 ///
 /// let mut vikings = HashSet::new();
 ///
-/// vikings.insert(Viking { name: "Einar", power: 9u });
-/// vikings.insert(Viking { name: "Einar", power: 9u });
-/// vikings.insert(Viking { name: "Olaf", power: 4u });
-/// vikings.insert(Viking { name: "Harald", power: 8u });
+/// vikings.insert(Viking { name: "Einar", power: 9 });
+/// vikings.insert(Viking { name: "Einar", power: 9 });
+/// vikings.insert(Viking { name: "Olaf", power: 4 });
+/// vikings.insert(Viking { name: "Harald", power: 8 });
 ///
 /// // Use derived implementation to print the vikings.
 /// for x in vikings.iter() {
@@ -146,7 +146,7 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// let s = RandomState::new();
     /// let mut set = HashSet::with_hash_state(s);
-    /// set.insert(2u);
+    /// set.insert(2);
     /// ```
     #[inline]
     #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
@@ -169,7 +169,7 @@ impl<T, S, H> HashSet<T, S>
     /// use std::collections::hash_map::RandomState;
     ///
     /// let s = RandomState::new();
-    /// let mut set = HashSet::with_capacity_and_hash_state(10u, s);
+    /// let mut set = HashSet::with_capacity_and_hash_state(10, s);
     /// set.insert(1);
     /// ```
     #[inline]
@@ -398,7 +398,7 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// let mut v = HashSet::new();
     /// assert_eq!(v.len(), 0);
-    /// v.insert(1u);
+    /// v.insert(1);
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -413,7 +413,7 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// let mut v = HashSet::new();
     /// assert!(v.is_empty());
-    /// v.insert(1u);
+    /// v.insert(1);
     /// assert!(!v.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -438,7 +438,7 @@ impl<T, S, H> HashSet<T, S>
     /// use std::collections::HashSet;
     ///
     /// let mut v = HashSet::new();
-    /// v.insert(1u);
+    /// v.insert(1);
     /// v.clear();
     /// assert!(v.is_empty());
     /// ```
@@ -545,7 +545,7 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// let mut set = HashSet::new();
     ///
-    /// assert_eq!(set.insert(2u), true);
+    /// assert_eq!(set.insert(2), true);
     /// assert_eq!(set.insert(2), false);
     /// assert_eq!(set.len(), 1);
     /// ```
@@ -566,7 +566,7 @@ impl<T, S, H> HashSet<T, S>
     ///
     /// let mut set = HashSet::new();
     ///
-    /// set.insert(2u);
+    /// set.insert(2);
     /// assert_eq!(set.remove(&2), true);
     /// assert_eq!(set.remove(&2), false);
     /// ```

@@ -90,7 +90,7 @@ impl DefaultResizePolicy {
 fn test_resize_policy() {
     use prelude::v1::*;
     let rp = DefaultResizePolicy;
-    for n in 0u..1000 {
+    for n in 0..1000 {
         assert!(rp.min_capacity(rp.usable_capacity(n)) <= n);
         assert!(rp.usable_capacity(rp.min_capacity(n)) <= n);
     }
@@ -287,9 +287,9 @@ fn test_resize_policy() {
 /// // Use a HashMap to store the vikings' health points.
 /// let mut vikings = HashMap::new();
 ///
-/// vikings.insert(Viking::new("Einar", "Norway"), 25u);
-/// vikings.insert(Viking::new("Olaf", "Denmark"), 24u);
-/// vikings.insert(Viking::new("Harald", "Iceland"), 12u);
+/// vikings.insert(Viking::new("Einar", "Norway"), 25);
+/// vikings.insert(Viking::new("Olaf", "Denmark"), 24);
+/// vikings.insert(Viking::new("Harald", "Iceland"), 12);
 ///
 /// // Use derived implementation to print the status of the vikings.
 /// for (viking, health) in vikings.iter() {
@@ -537,7 +537,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_hash_state(s);
-    /// map.insert(1, 2u);
+    /// map.insert(1, 2);
     /// ```
     #[inline]
     #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
@@ -565,7 +565,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///
     /// let s = RandomState::new();
     /// let mut map = HashMap::with_capacity_and_hash_state(10, s);
-    /// map.insert(1, 2u);
+    /// map.insert(1, 2);
     /// ```
     #[inline]
     #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
@@ -947,7 +947,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///
     /// let mut a = HashMap::new();
     /// assert_eq!(a.len(), 0);
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -962,7 +962,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     ///
     /// let mut a = HashMap::new();
     /// assert!(a.is_empty());
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// assert!(!a.is_empty());
     /// ```
     #[inline]
@@ -978,8 +978,8 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// use std::collections::HashMap;
     ///
     /// let mut a = HashMap::new();
-    /// a.insert(1u, "a");
-    /// a.insert(2u, "b");
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
     ///
     /// for (k, v) in a.drain().take(1) {
     ///     assert!(k == 1 || k == 2);
@@ -1009,7 +1009,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// use std::collections::HashMap;
     ///
     /// let mut a = HashMap::new();
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
@@ -1031,7 +1031,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.get(&1), Some(&"a"));
     /// assert_eq!(map.get(&2), None);
     /// ```
@@ -1054,7 +1054,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
@@ -1077,7 +1077,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// match map.get_mut(&1) {
     ///     Some(x) => *x = "b",
     ///     None => (),
@@ -1100,7 +1100,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// assert_eq!(map.insert(37u, "a"), None);
+    /// assert_eq!(map.insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
@@ -1132,7 +1132,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// use std::collections::HashMap;
     ///
     /// let mut map = HashMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```

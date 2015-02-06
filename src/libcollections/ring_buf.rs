@@ -388,7 +388,7 @@ impl<T> RingBuf<T> {
     /// use std::collections::RingBuf;
     ///
     /// let mut buf = RingBuf::with_capacity(15);
-    /// buf.extend(0u..4);
+    /// buf.extend(0..4);
     /// assert_eq!(buf.capacity(), 15);
     /// buf.shrink_to_fit();
     /// assert!(buf.capacity() >= 4);
