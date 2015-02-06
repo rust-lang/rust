@@ -306,13 +306,14 @@ fn build_impl(cx: &DocContext, tcx: &ty::ctxt,
                 let mut item = method.clean(cx);
                 item.inner = match item.inner.clone() {
                     clean::TyMethodItem(clean::TyMethod {
-                        unsafety, decl, self_, generics
+                        unsafety, decl, self_, generics, abi
                     }) => {
                         clean::MethodItem(clean::Method {
                             unsafety: unsafety,
                             decl: decl,
                             self_: self_,
                             generics: generics,
+                            abi: abi
                         })
                     }
                     _ => panic!("not a tymethod"),
