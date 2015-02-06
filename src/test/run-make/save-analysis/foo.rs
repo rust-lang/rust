@@ -17,7 +17,6 @@ extern crate graphviz;
 
 extern crate "flate" as myflate;
 
-use graphviz::maybe_owned_vec::MaybeOwnedVector;
 use std::collections::{HashMap,HashSet};
 use std::cell::RefCell;
 use std::old_io::stdio::println;
@@ -35,7 +34,7 @@ use std::mem::size_of;
 static uni: &'static str = "Les Miséééééééérables";
 static yy: usize = 25us;
 
-static bob: Option<graphviz::maybe_owned_vec::MaybeOwnedVector<'static, isize>> = None;
+static bob: Option<std::vec::CowVec<'static, isize>> = None;
 
 // buglink test - see issue #1337.
 

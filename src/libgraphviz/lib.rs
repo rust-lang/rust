@@ -278,7 +278,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(io)]
-#![feature(path)]
 
 use self::LabelText::*;
 
@@ -286,8 +285,6 @@ use std::borrow::IntoCow;
 use std::old_io;
 use std::string::CowString;
 use std::vec::CowVec;
-
-pub mod maybe_owned_vec;
 
 /// The text for a graphviz label on a node or edge.
 pub enum LabelText<'a> {
