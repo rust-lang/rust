@@ -65,6 +65,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![feature(no_std)]
 #![no_std]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]

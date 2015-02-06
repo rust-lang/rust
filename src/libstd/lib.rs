@@ -124,6 +124,7 @@
 #![cfg_attr(test, feature(test))]
 
 // Don't link to std. We are std.
+#![feature(no_std)]
 #![no_std]
 
 #![deny(missing_docs)]

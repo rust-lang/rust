@@ -10,7 +10,7 @@
 
 // error-pattern: requires `copy` lang_item
 
-#![feature(lang_items, start)]
+#![feature(lang_items, start, no_std)]
 #![no_std]
 
 #[lang = "sized"]

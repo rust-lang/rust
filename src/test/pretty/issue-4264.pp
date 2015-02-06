@@ -1,3 +1,4 @@
+#![feature(no_std)]
 #![no_std]
 #[prelude_import]
 use std::prelude::v1::*;

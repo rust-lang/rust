@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 
+#![feature(no_std)]
 #![no_std]
 #![feature(lang_items)]
 

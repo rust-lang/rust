@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items)]
+#![feature(lang_items, no_std)]
 #![no_std]
 
 #[lang="sized"] pub trait Sized {}

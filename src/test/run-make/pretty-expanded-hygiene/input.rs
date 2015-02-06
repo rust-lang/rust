@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // minimal junk
+#![feature(no_std)]
 #![no_std]
 
 macro_rules! foo {

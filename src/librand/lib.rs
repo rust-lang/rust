@@ -23,6 +23,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 #![feature(int_uint)]
+#![feature(no_std)]
 #![no_std]
 #![unstable(feature = "rand")]
 #![feature(staged_api)]

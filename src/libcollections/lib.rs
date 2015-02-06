@@ -33,6 +33,7 @@
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
+#![feature(no_std)]
 #![no_std]
 
 #[macro_use]
