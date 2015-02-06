@@ -284,11 +284,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         }
         match i.node {
             ast::ItemExternCrate(_) => {
-                if attr::contains_name(&i.attrs[], "plugin") {
-                    self.gate_feature("plugin", i.span,
-                                      "compiler plugins are experimental \
-                                       and possibly buggy");
-                } else if attr::contains_name(&i.attrs[], "macro_reexport") {
+                if attr::contains_name(&i.attrs[], "macro_reexport") {
                     self.gate_feature("macro_reexport", i.span,
                                       "macros reexports are experimental \
                                        and possibly buggy");
@@ -462,6 +458,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         if attr.check_name("staged_api") {
             self.gate_feature("staged_api", attr.span,
                               "staged_api is for use by rustc only");
+        } else if attr.check_name("plugin") {
+            self.gate_feature("plugin", attr.span,
+                              "compiler plugins are experimental \
+                               and possibly buggy");
         }
 
         if attr::contains_name(slice::ref_slice(attr), "lang") {

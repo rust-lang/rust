@@ -13,9 +13,7 @@
 // ignore-pretty
 
 #![feature(plugin)]
-
-#[plugin] #[no_link]
-extern crate lint_group_plugin_test;
+#![plugin(lint_group_plugin_test)]
 
 fn lintme() { } //~ WARNING item is named 'lintme'
 fn pleaselintme() { } //~ WARNING item is named 'pleaselintme'

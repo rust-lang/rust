@@ -69,7 +69,6 @@ use rustc::session::config::{Input, PrintRequest, UnstableFeatures};
 use rustc::lint::Lint;
 use rustc::lint;
 use rustc::metadata;
-use rustc::metadata::creader::CrateOrString::Str;
 use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;

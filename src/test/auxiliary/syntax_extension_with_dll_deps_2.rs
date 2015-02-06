@@ -13,7 +13,7 @@
 #![crate_type = "dylib"]
 #![feature(plugin_registrar, quote)]
 
-extern crate "syntax-extension-with-dll-deps-1" as other;
+extern crate "syntax_extension_with_dll_deps_1" as other;
 extern crate syntax;
 extern crate rustc;
 

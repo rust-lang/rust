@@ -15,7 +15,7 @@
 // ignore-cross-compile gives a different error message
 
 #![feature(plugin)]
-#[plugin] #[no_link] extern crate rlib_crate_test;
+#![plugin(rlib_crate_test)]
 //~^ ERROR: plugin crate `rlib_crate_test` only found in rlib format, but must be available in dylib format
 
 fn main() {}

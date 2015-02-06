@@ -37,7 +37,7 @@ pub struct Registry<'a> {
     pub sess: &'a Session,
 
     #[doc(hidden)]
-    pub args_hidden: Option<P<ast::MetaItem>>,
+    pub args_hidden: Option<Vec<P<ast::MetaItem>>>,
 
     #[doc(hidden)]
     pub krate_span: Span,
@@ -65,11 +65,14 @@ impl<'a> Registry<'a> {
         }
     }
 
-    /// Get the `#[plugin]` attribute used to load this plugin.
+    /// Get the plugin's arguments, if any.
     ///
-    /// This gives access to arguments passed via `#[plugin=...]` or
-    /// `#[plugin(...)]`.
-    pub fn args<'b>(&'b self) -> &'b P<ast::MetaItem> {
+    /// These are specified inside the `plugin` crate attribute as
+    ///
+    /// ```no_run
+    /// #![plugin(my_plugin_name(... args ...))]
+    /// ```
+    pub fn args<'b>(&'b self) -> &'b Vec<P<ast::MetaItem>> {
         self.args_hidden.as_ref().expect("args not set")
     }
 

@@ -8,12 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:plugin_args.rs
-// ignore-stage1
+#![plugin="bleh"] //~ ERROR malformed plugin attribute
 
-#![feature(plugin)]
-#![plugin(plugin_args(hello(there), how(are="you")))]
-
-fn main() {
-    assert_eq!(plugin_args!(), "hello(there), how(are = \"you\")");
-}
+fn main() {}

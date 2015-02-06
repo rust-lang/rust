@@ -11,7 +11,7 @@
 // aux-build:macro_crate_test.rs
 // ignore-stage1
 
-#[plugin] #[no_link] extern crate macro_crate_test;
+#![plugin(macro_crate_test)]
 //~^ ERROR compiler plugins are experimental and possibly buggy
 
 fn main() {}

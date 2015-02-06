@@ -27,7 +27,7 @@ use syntax::ptr::P;
 use rustc::plugin::Registry;
 
 struct Expander {
-    args: P<ast::MetaItem>,
+    args: Vec<P<ast::MetaItem>>,
 }
 
 impl TTMacroExpander for Expander {
@@ -35,10 +35,9 @@ impl TTMacroExpander for Expander {
                    ecx: &'cx mut ExtCtxt,
                    sp: Span,
                    _: &[ast::TokenTree]) -> Box<MacResult+'cx> {
-
-        let attr = ecx.attribute(sp, self.args.clone());
-        let src = pprust::attribute_to_string(&attr);
-        let interned = token::intern_and_get_ident(&src);
+        let args = self.args.iter().map(|i| pprust::meta_item_to_string(&*i))
+            .collect::<Vec<_>>().connect(", ");
+        let interned = token::intern_and_get_ident(&args[]);
         MacExpr::new(ecx.expr_str(sp, interned))
     }
 }
