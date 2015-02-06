@@ -560,7 +560,7 @@ fn filtered_float_lit(data: token::InternedString, suffix: Option<&str>,
 }
 pub fn float_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) -> ast::Lit_ {
     debug!("float_lit: {:?}, {:?}", s, suffix);
-    // FIXME #2252: bounds checking float literals is defered until trans
+    // FIXME #2252: bounds checking float literals is deferred until trans
     let s = s.chars().filter(|&c| c != '_').collect::<String>();
     let data = token::intern_and_get_ident(&*s);
     filtered_float_lit(data, suffix, sd, sp)

@@ -311,7 +311,7 @@ impl<T: Sync + Send> Drop for Arc<T> {
     ///
     ///     // stuff
     ///
-    ///     drop(five); // explict drop
+    ///     drop(five); // explicit drop
     /// }
     /// {
     ///     let five = Arc::new(5);
@@ -441,7 +441,7 @@ impl<T: Sync + Send> Drop for Weak<T> {
     ///
     ///     // stuff
     ///
-    ///     drop(weak_five); // explict drop
+    ///     drop(weak_five); // explicit drop
     /// }
     /// {
     ///     let five = Arc::new(5);

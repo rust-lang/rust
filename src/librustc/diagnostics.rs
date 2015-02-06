@@ -14,9 +14,9 @@ register_long_diagnostics! {
     E0001: r##"
     This error suggests that the expression arm corresponding to the noted pattern
     will never be reached as for all possible values of the expression being matched,
-    one of the preceeding patterns will match.
+    one of the preceding patterns will match.
 
-    This means that perhaps some of the preceeding patterns are too general, this
+    This means that perhaps some of the preceding patterns are too general, this
     one is too specific or the ordering is incorrect.
 "##,
 

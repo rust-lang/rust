@@ -313,7 +313,7 @@
 //!
 //! assert_eq!(count.get(&'s'), Some(&8));
 //!
-//! println!("Number of occurences of each character");
+//! println!("Number of occurrences of each character");
 //! for (char, count) in count.iter() {
 //!     println!("{}: {}", char, count);
 //! }

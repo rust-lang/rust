@@ -2520,7 +2520,7 @@ impl FlagComputation {
     fn add_bound_computation(&mut self, computation: &FlagComputation) {
         self.add_flags(computation.flags);
 
-        // The types that contributed to `computation` occured within
+        // The types that contributed to `computation` occurred within
         // a region binder, so subtract one from the region depth
         // within when adding the depth to `self`.
         let depth = computation.depth;
