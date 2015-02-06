@@ -258,6 +258,7 @@ pub mod os;
 pub mod env;
 pub mod path;
 pub mod old_path;
+pub mod process;
 pub mod rand;
 pub mod time;
 
