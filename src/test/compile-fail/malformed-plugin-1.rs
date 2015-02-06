@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[plugin]
-#[plugin]  //~ ERROR #[plugin] specified multiple times
-extern crate std;
+#![plugin] //~ ERROR malformed plugin attribute
 
 fn main() {}

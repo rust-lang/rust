@@ -26,7 +26,7 @@ use syntax::ast;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{COMMAND_LINE_SP, Span, mk_sp};
+use syntax::codemap::{Span, mk_sp};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -457,13 +457,13 @@ impl<'a> CrateReader<'a> {
             CrateOrString::Krate(c) => {
                 (self.extract_crate_info(c).unwrap(), c.span)
             }
-            CrateOrString::Str(s) => {
+            CrateOrString::Str(sp, s) => {
                 (CrateInfo {
                      name: s.to_string(),
                      ident: s.to_string(),
                      id: ast::DUMMY_NODE_ID,
                      should_link: true,
-                 }, COMMAND_LINE_SP)
+                 }, sp)
             }
         };
         let target_triple = &self.sess.opts.target_triple[];
@@ -531,7 +531,7 @@ impl<'a> CrateReader<'a> {
 #[derive(Copy)]
 pub enum CrateOrString<'a> {
     Krate(&'a ast::Item),
-    Str(&'a str)
+    Str(Span, &'a str)
 }
 
 impl<'a> PluginMetadata<'a> {

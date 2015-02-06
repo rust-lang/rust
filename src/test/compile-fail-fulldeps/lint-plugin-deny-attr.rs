@@ -12,10 +12,8 @@
 // ignore-stage1
 
 #![feature(plugin)]
+#![plugin(lint_plugin_test)]
 #![deny(test_lint)]
-
-#[plugin] #[no_link]
-extern crate lint_plugin_test;
 
 fn lintme() { } //~ ERROR item is named 'lintme'
 
