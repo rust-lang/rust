@@ -17,31 +17,55 @@ body {
     max-width:none;
 }
 
-#toc {
-    position: absolute;
-    left: 0px;
-    top: 0px;
-    bottom: 0px;
-    width: 250px;
-    overflow-y: auto;
-    border-right: 1px solid rgba(0, 0, 0, 0.07);
-    padding: 10px 10px;
-    font-size: 16px;
-    background: none repeat scroll 0% 0% #FFF;
-    box-sizing: border-box;
-    -webkit-overflow-scrolling: touch;
+@media only screen {
+    #toc {
+        position: absolute;
+        left: 0px;
+        top: 0px;
+        bottom: 0px;
+        width: 250px;
+        overflow-y: auto;
+        border-right: 1px solid rgba(0, 0, 0, 0.07);
+        padding: 10px 10px;
+        font-size: 16px;
+        background: none repeat scroll 0% 0% #FFF;
+        box-sizing: border-box;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    #page-wrapper {
+        position: absolute;
+        overflow-y: auto;
+        left: 260px;
+        right: 0px;
+        top: 0px;
+        bottom: 0px;
+        box-sizing: border-box;
+        background: none repeat scroll 0% 0% #FFF;
+        -webkit-overflow-scrolling: touch;
+    }
 }
 
-#page-wrapper {
-    position: absolute;
-    overflow-y: auto;
-    left: 260px;
-    right: 0px;
-    top: 0px;
-    bottom: 0px;
-    box-sizing: border-box;
-    background: none repeat scroll 0% 0% #FFF;
-    -webkit-overflow-scrolling: touch;
+@media only print {
+    #toc, #nav {
+        display: none;
+    }
+}
+
+@media only screen and (max-width: 1060px) {
+    #toc {
+        width: 100%;
+        margin-right: 0;
+        top: 40px;
+    }
+    #page-wrapper {
+        top: 40px;
+        left: 15px;
+        padding-right: 15px;
+    }
+    .mobile-hidden {
+        display: none;
+    }
 }
 
 #page {
@@ -72,23 +96,6 @@ body {
 .chapter li a {
     color: #000000;
 }
-
-@media only screen and (max-width: 1060px) {
-    #toc {
-        width: 100%;
-        margin-right: 0;
-        top: 40px;
-    }
-    #page-wrapper {
-        top: 40px;
-        left: 15px;
-        padding-right: 15px;
-    }
-    .mobile-hidden {
-        display: none;
-    }
-}
-
 
 #toggle-nav {
     height: 20px;
@@ -133,5 +140,4 @@ body {
 .right {
     float: right;
 }
-
 "#;
