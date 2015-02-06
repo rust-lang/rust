@@ -250,6 +250,7 @@ pub mod ffi;
 pub mod old_io;
 pub mod io;
 pub mod fs;
+pub mod net;
 pub mod os;
 pub mod env;
 pub mod path;

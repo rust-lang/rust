@@ -18,12 +18,11 @@
 use prelude::v1::*;
 
 use ffi;
-use io::ErrorKind;
+use io::{self, ErrorKind};
 use libc;
 use num::{Int, SignedInt};
 use num;
 use old_io::{self, IoResult, IoError};
-use io;
 use str;
 use sys_common::mkerr_libc;
 
@@ -47,6 +46,7 @@ pub mod fs;  // support for std::old_io
 pub mod fs2; // support for std::fs
 pub mod helper_signal;
 pub mod mutex;
+pub mod net;
 pub mod os;
 pub mod os_str;
 pub mod pipe;
