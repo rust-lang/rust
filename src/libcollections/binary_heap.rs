@@ -183,7 +183,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::new();
-    /// heap.push(4u);
+    /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BinaryHeap<T> { BinaryHeap { data: vec![] } }
@@ -198,7 +198,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// ```
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::with_capacity(10);
-    /// heap.push(4u);
+    /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> BinaryHeap<T> {
@@ -292,7 +292,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// use std::collections::BinaryHeap;
     /// let mut heap = BinaryHeap::with_capacity(100);
     /// assert!(heap.capacity() >= 100);
-    /// heap.push(4u);
+    /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn capacity(&self) -> usize { self.data.capacity() }
@@ -315,7 +315,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// let mut heap = BinaryHeap::new();
     /// heap.reserve_exact(100);
     /// assert!(heap.capacity() >= 100);
-    /// heap.push(4u);
+    /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve_exact(&mut self, additional: usize) {
@@ -336,7 +336,7 @@ impl<T: Ord> BinaryHeap<T> {
     /// let mut heap = BinaryHeap::new();
     /// heap.reserve(100);
     /// assert!(heap.capacity() >= 100);
-    /// heap.push(4u);
+    /// heap.push(4);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn reserve(&mut self, additional: usize) {

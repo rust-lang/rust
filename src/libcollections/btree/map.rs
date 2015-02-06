@@ -173,7 +173,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
@@ -203,7 +203,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.get(&1), Some(&"a"));
     /// assert_eq!(map.get(&2), None);
     /// ```
@@ -235,7 +235,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
@@ -255,7 +255,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// match map.get_mut(&1) {
     ///     Some(x) => *x = "b",
     ///     None => (),
@@ -317,7 +317,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// assert_eq!(map.insert(37u, "a"), None);
+    /// assert_eq!(map.insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
@@ -429,7 +429,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
@@ -1170,16 +1170,16 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
-    /// map.insert(2u, "b");
-    /// map.insert(3u, "c");
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// map.insert(3, "c");
     ///
     /// for (key, value) in map.iter() {
     ///     println!("{}: {}", key, value);
     /// }
     ///
     /// let (first_key, first_value) = map.iter().next().unwrap();
-    /// assert_eq!((*first_key, *first_value), (1u, "a"));
+    /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<K, V> {
@@ -1203,9 +1203,9 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert("a", 1u);
-    /// map.insert("b", 2u);
-    /// map.insert("c", 3u);
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
     ///
     /// // add 10 to the value if the key isn't "a"
     /// for (key, value) in map.iter_mut() {
@@ -1235,9 +1235,9 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
-    /// map.insert(2u, "b");
-    /// map.insert(3u, "c");
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// map.insert(3, "c");
     ///
     /// for (key, value) in map.into_iter() {
     ///     println!("{}: {}", key, value);
@@ -1264,11 +1264,11 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
-    /// a.insert(1u, "a");
-    /// a.insert(2u, "b");
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
     ///
     /// let keys: Vec<usize> = a.keys().cloned().collect();
-    /// assert_eq!(keys, vec![1u,2,]);
+    /// assert_eq!(keys, vec![1,2,]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
@@ -1286,8 +1286,8 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
-    /// a.insert(1u, "a");
-    /// a.insert(2u, "b");
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
     ///
     /// let values: Vec<&str> = a.values().cloned().collect();
     /// assert_eq!(values, vec!["a","b"]);
@@ -1309,7 +1309,7 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// let mut a = BTreeMap::new();
     /// assert_eq!(a.len(), 0);
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1324,7 +1324,7 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// let mut a = BTreeMap::new();
     /// assert!(a.is_empty());
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// assert!(!a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1474,13 +1474,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::Bound::{Included, Unbounded};
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(3u, "a");
-    /// map.insert(5u, "b");
-    /// map.insert(8u, "c");
+    /// map.insert(3, "a");
+    /// map.insert(5, "b");
+    /// map.insert(8, "c");
     /// for (&key, &value) in map.range(Included(&4), Included(&8)) {
     ///     println!("{}: {}", key, value);
     /// }
-    /// assert_eq!(Some((&5u, &"b")), map.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
     /// ```
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
@@ -1539,7 +1539,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///     }
     /// }
     ///
-    /// assert_eq!(count["a"], 3u);
+    /// assert_eq!(count["a"], 3);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn entry(&mut self, mut key: K) -> Entry<K, V> {

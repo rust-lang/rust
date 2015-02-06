@@ -306,7 +306,7 @@
 //!
 //! for c in message.chars() {
 //!     match count.entry(c) {
-//!         Entry::Vacant(entry) => { entry.insert(1u); },
+//!         Entry::Vacant(entry) => { entry.insert(1); },
 //!         Entry::Occupied(mut entry) => *entry.get_mut() += 1,
 //!     }
 //! }

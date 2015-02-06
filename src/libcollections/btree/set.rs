@@ -114,14 +114,14 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<usize> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// for x in set.iter() {
     ///     println!("{}", x);
     /// }
     ///
     /// let v: Vec<usize> = set.iter().map(|&x| x).collect();
-    /// assert_eq!(v, vec![1u,2,3,4]);
+    /// assert_eq!(v, vec![1,2,3,4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<T> {
@@ -135,10 +135,10 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<usize> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let set: BTreeSet<usize> = [1, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// let v: Vec<usize> = set.into_iter().collect();
-    /// assert_eq!(v, vec![1u,2,3,4]);
+    /// assert_eq!(v, vec![1,2,3,4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
@@ -162,13 +162,13 @@ impl<T: Ord> BTreeSet<T> {
     /// use std::collections::Bound::{Included, Unbounded};
     ///
     /// let mut set = BTreeSet::new();
-    /// set.insert(3u);
-    /// set.insert(5u);
-    /// set.insert(8u);
+    /// set.insert(3);
+    /// set.insert(5);
+    /// set.insert(8);
     /// for &elem in set.range(Included(&4), Included(&8)) {
     ///     println!("{}", elem);
     /// }
-    /// assert_eq!(Some(&5u), set.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some(&5), set.range(Included(&4), Unbounded).next());
     /// ```
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
@@ -189,15 +189,15 @@ impl<T: Ord> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
-    /// a.insert(1u);
-    /// a.insert(2u);
+    /// a.insert(1);
+    /// a.insert(2);
     ///
     /// let mut b = BTreeSet::new();
-    /// b.insert(2u);
-    /// b.insert(3u);
+    /// b.insert(2);
+    /// b.insert(3);
     ///
     /// let diff: Vec<usize> = a.difference(&b).cloned().collect();
-    /// assert_eq!(diff, vec![1u]);
+    /// assert_eq!(diff, vec![1]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn difference<'a>(&'a self, other: &'a BTreeSet<T>) -> Difference<'a, T> {
@@ -212,15 +212,15 @@ impl<T: Ord> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
-    /// a.insert(1u);
-    /// a.insert(2u);
+    /// a.insert(1);
+    /// a.insert(2);
     ///
     /// let mut b = BTreeSet::new();
-    /// b.insert(2u);
-    /// b.insert(3u);
+    /// b.insert(2);
+    /// b.insert(3);
     ///
     /// let sym_diff: Vec<usize> = a.symmetric_difference(&b).cloned().collect();
-    /// assert_eq!(sym_diff, vec![1u,3]);
+    /// assert_eq!(sym_diff, vec![1,3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn symmetric_difference<'a>(&'a self, other: &'a BTreeSet<T>)
@@ -236,15 +236,15 @@ impl<T: Ord> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
-    /// a.insert(1u);
-    /// a.insert(2u);
+    /// a.insert(1);
+    /// a.insert(2);
     ///
     /// let mut b = BTreeSet::new();
-    /// b.insert(2u);
-    /// b.insert(3u);
+    /// b.insert(2);
+    /// b.insert(3);
     ///
     /// let intersection: Vec<usize> = a.intersection(&b).cloned().collect();
-    /// assert_eq!(intersection, vec![2u]);
+    /// assert_eq!(intersection, vec![2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn intersection<'a>(&'a self, other: &'a BTreeSet<T>)
@@ -260,13 +260,13 @@ impl<T: Ord> BTreeSet<T> {
     /// use std::collections::BTreeSet;
     ///
     /// let mut a = BTreeSet::new();
-    /// a.insert(1u);
+    /// a.insert(1);
     ///
     /// let mut b = BTreeSet::new();
-    /// b.insert(2u);
+    /// b.insert(2);
     ///
     /// let union: Vec<usize> = a.union(&b).cloned().collect();
-    /// assert_eq!(union, vec![1u,2]);
+    /// assert_eq!(union, vec![1,2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn union<'a>(&'a self, other: &'a BTreeSet<T>) -> Union<'a, T> {
