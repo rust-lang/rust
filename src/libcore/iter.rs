@@ -967,10 +967,9 @@ pub trait IteratorExt: Iterator + Sized {
     /// Creates an iterator that clones the elements it yields. Useful for converting an
     /// Iterator<&T> to an Iterator<T>.
     #[unstable(feature = "core", reason = "recent addition")]
-    fn cloned<T, D>(self) -> Cloned<Self> where
-        Self: Iterator<Item=D>,
-        D: Deref<Target=T>,
-        T: Clone,
+    fn cloned(self) -> Cloned<Self> where
+        Self::Item: Deref,
+        <Self::Item as Deref>::Output: Clone,
     {
         Cloned { it: self }
     }
