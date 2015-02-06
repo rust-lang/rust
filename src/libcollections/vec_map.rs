@@ -915,7 +915,8 @@ mod test_map {
     use prelude::*;
     use core::hash::{hash, SipHasher};
 
-    use super::{VecMap, Occupied, Vacant};
+    use super::VecMap;
+    use super::Entry::{Occupied, Vacant};
 
     #[test]
     fn test_get_mut() {
