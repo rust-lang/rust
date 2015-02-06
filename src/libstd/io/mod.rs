@@ -24,7 +24,6 @@ use error::Error as StdError;
 use fmt;
 use iter::Iterator;
 use marker::Sized;
-use mem;
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
 use ptr::PtrExt;
@@ -69,8 +68,8 @@ fn with_end_to_cap<F>(v: &mut Vec<u8>, f: F) -> Result<usize>
     unsafe {
         let n = try!(f({
             let base = v.as_mut_ptr().offset(v.len() as isize);
-            black_box(slice::from_raw_mut_buf(mem::copy_lifetime(v, &base),
-                                              v.capacity() - v.len()))
+            black_box(slice::from_raw_parts_mut(base,
+                                                v.capacity() - v.len()))
         }));
 
         // If the closure (typically a `read` implementation) reported that it
