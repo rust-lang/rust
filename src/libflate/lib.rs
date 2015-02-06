@@ -45,7 +45,7 @@ pub struct Bytes {
 impl Deref for Bytes {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
-        unsafe { slice::from_raw_mut_buf(&self.ptr.0, self.len) }
+        unsafe { slice::from_raw_parts_mut(self.ptr.0, self.len) }
     }
 }
 
