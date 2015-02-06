@@ -163,7 +163,7 @@ The syntax `$(...)*` on the left-hand side of the `=>` in a macro definition
 accepts zero or more occurrences of its contents. It works much
 like the `*` operator in regular expressions. It also supports a
 separator token (a comma-separated list could be written `$(...),*`), and `+`
-instead of `*` to mean "at least one".
+instead of `*` to mean "at least one."
 
 ~~~~
 # enum T { SpecialA(u32), SpecialB(u32), SpecialC(u32), SpecialD(u32) }
@@ -195,7 +195,7 @@ As the above example demonstrates, `$(...)*` is also valid on the right-hand
 side of a macro definition. The behavior of `*` in transcription,
 especially in cases where multiple `*`s are nested, and multiple different
 names are involved, can seem somewhat magical and unintuitive at first. The
-system that interprets them is called "Macro By Example". The two rules to
+system that interprets them is called "Macro By Example." The two rules to
 keep in mind are (1) the behavior of `$(...)*` is to walk through one "layer"
 of repetitions for all of the `$name`s it contains in lockstep, and (2) each
 `$name` must be under at least as many `$(...)*`s as it was matched against.
@@ -309,7 +309,7 @@ there is a solution.
 
 A macro may accept multiple different input grammars. The first one to
 successfully match the actual argument to a macro invocation is the one that
-"wins".
+"wins."
 
 In the case of the example above, we want to write a recursive macro to
 process the semicolon-terminated lines, one-by-one. So, we want the following
