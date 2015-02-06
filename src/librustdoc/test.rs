@@ -147,7 +147,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let (tx, rx) = channel();
     let w1 = io::ChanWriter::new(tx);
     let w2 = w1.clone();
-    let old = io::stdio::set_stderr(box w1);
+    let old = io::stdio::set_stderr(Box::new(w1));
     Thread::spawn(move |:| {
         let mut p = io::ChanReader::new(rx);
         let mut err = match old {
@@ -156,15 +156,15 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
                 let old: Box<Writer> = old;
                 old
             }
-            None => box io::stderr() as Box<Writer>,
+            None => Box::new(io::stderr()) as Box<Writer>,
         };
         io::util::copy(&mut p, &mut err).unwrap();
     });
-    let emitter = diagnostic::EmitterWriter::new(box w2, None);
+    let emitter = diagnostic::EmitterWriter::new(Box::new(w2), None);
 
     // Compile the code
     let codemap = CodeMap::new();
-    let diagnostic_handler = diagnostic::mk_handler(box emitter);
+    let diagnostic_handler = diagnostic::mk_handler(Box::new(emitter));
     let span_diagnostic_handler =
         diagnostic::mk_span_handler(diagnostic_handler, codemap);
 
