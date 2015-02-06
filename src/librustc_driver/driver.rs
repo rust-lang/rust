@@ -668,8 +668,8 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
         time(time_passes, "stability checking", (), |_|
              stability::check_unstable_api_usage(&ty_cx));
 
-    time(time_passes, "unused feature checking", (), |_|
-         stability::check_unused_features(
+    time(time_passes, "unused lib feature checking", (), |_|
+         stability::check_unused_or_stable_features(
              &ty_cx.sess, lib_features_used));
 
     time(time_passes, "lint checking", (), |_|
