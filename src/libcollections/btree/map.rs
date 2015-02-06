@@ -15,7 +15,7 @@
 // writing (August 2014) freely licensed under the following Creative Commons Attribution
 // License: [CC BY 2.5 CA](http://creativecommons.org/licenses/by/2.5/ca/).
 
-pub use self::Entry::*;
+use self::Entry::*;
 
 use core::prelude::*;
 
@@ -1137,8 +1137,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         self.stack.insert(self.key, value)
     }
@@ -1146,38 +1145,33 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the value in the entry.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
         self.stack.peek()
     }
 
     /// Gets a mutable reference to the value in the entry.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
         self.stack.peek_mut()
     }
 
     /// Converts the entry into a mutable reference to its value.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
         self.stack.into_top()
     }
 
     /// Sets the value of the entry with the OccupiedEntry's key,
     /// and returns the entry's old value.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, mut value: V) -> V {
         mem::swap(self.stack.peek_mut(), &mut value);
         value
     }
 
     /// Takes the value of the entry out of the map, and returns it.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
         self.stack.remove()
     }
@@ -1563,10 +1557,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///
     /// assert_eq!(count["a"], 3u);
     /// ```
-    /// The key must have the same ordering before or after `.to_owned()` is called.
-    #[unstable(feature = "collections",
-               reason = "precise API still under development")]
-    pub fn entry<'a>(&'a mut self, mut key: K) -> Entry<'a, K, V> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn entry(&mut self, mut key: K) -> Entry<K, V> {
         // same basic logic of `swap` and `pop`, blended together
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
