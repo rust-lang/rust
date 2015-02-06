@@ -15,17 +15,19 @@ use ast;
 use ast::{MethodImplItem, RegionTyParamBound, TraitTyParamBound, TraitBoundModifier};
 use ast::{RequiredMethod, ProvidedMethod, TypeImplItem, TypeTraitItem};
 use ast_util;
+use attr;
 use owned_slice::OwnedSlice;
 use attr::{AttrMetaMethods, AttributeMethods};
 use codemap::{self, CodeMap, BytePos};
 use diagnostic;
-use parse::token::{self, BinOpToken, Token};
+use parse::token::{self, BinOpToken, Token, InternedString};
 use parse::lexer::comments;
 use parse;
 use print::pp::{self, break_offset, word, space, zerobreak, hardbreak};
 use print::pp::{Breaks, eof};
 use print::pp::Breaks::{Consistent, Inconsistent};
 use ptr::P;
+use std_inject;
 
 use std::{ascii, mem};
 use std::old_io::{self, IoResult};
@@ -113,6 +115,25 @@ pub fn print_crate<'a>(cm: &'a CodeMap,
                                       out,
                                       ann,
                                       is_expanded);
+    if is_expanded && std_inject::use_std(krate) {
+        // We need to print `#![no_std]` (and its feature gate) so that
+        // compiling pretty-printed source won't inject libstd again.
+        // However we don't want these attributes in the AST because
+        // of the feature gate, so we fake them up here.
+
+        let no_std_meta = attr::mk_word_item(InternedString::new("no_std"));
+
+        // #![feature(no_std)]
+        let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(),
+                                            attr::mk_list_item(InternedString::new("feature"),
+                                                               vec![no_std_meta.clone()]));
+        try!(s.print_attribute(&fake_attr));
+
+        // #![no_std]
+        let fake_attr = attr::mk_attr_inner(attr::mk_attr_id(), no_std_meta);
+        try!(s.print_attribute(&fake_attr));
+    }
+
     try!(s.print_mod(&krate.module, &krate.attrs[]));
     try!(s.print_remaining_comments());
     eof(&mut s.s)
