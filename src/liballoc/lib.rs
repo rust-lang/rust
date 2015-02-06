@@ -73,7 +73,9 @@
 #![feature(unboxed_closures)]
 #![feature(core)]
 #![feature(hash)]
-#![feature(libc)]
+#![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
+            feature(libc))]
+
 
 #[macro_use]
 extern crate core;
