@@ -49,8 +49,7 @@ languages.
 
 A *vector* is a dynamic or "growable" array, implemented as the standard
 library type [`Vec<T>`](../std/vec/) (we'll talk about what the `<T>` means
-later). Vectors are to arrays what `String` is to `&str`. You can create them
-with the `vec!` macro:
+later). You can create them with the `vec!` macro:
 
 ```{rust}
 let v = vec![1, 2, 3]; // v: Vec<i32>
@@ -59,6 +58,16 @@ let v = vec![1, 2, 3]; // v: Vec<i32>
 (Notice that unlike the `println!` macro we've used in the past, we use square
 brackets `[]` with `vec!`. Rust allows you to use either in either situation,
 this is just convention.)
+
+Vectors are to arrays what `String` is to `&str`. While the arrays are
+allocated on the stack (unless we explicitly box them during allocation),
+Vectors are always allocated on the heap.
+
+```{rust}
+let x = [0; 3]; // regular array, allocated on the stack
+let y: Box<[isize; 3]> = Box::new([1, 2, 3]); // boxed array, heap allocated
+let v = vec![1, 2, 3]; // vector, heap allocated
+```
 
 You can get the length of, iterate over, and subscript vectors just like
 arrays. In addition, (mutable) vectors can grow automatically:
