@@ -308,6 +308,20 @@ impl<T: ?Sized> Clone for ContravariantType<T> {
 ///
 /// For more information about variance, refer to this Wikipedia
 /// article <http://en.wikipedia.org/wiki/Variance_%28computer_science%29>.
+///
+/// # Example
+///
+/// The Cell type is an example of an `InvariantType` which uses unsafe
+/// code to achieve "interior" mutability:
+///
+/// ```
+/// struct Cell<T> { value: T }
+/// ```
+///
+/// The type system would infer that `value` is only read here
+/// and never written, but in fact `Cell` uses unsafe code to achieve
+/// interior mutability. In order to get correct behavior, the
+/// `InvariantType` marker must be applied.
 #[unstable(feature = "core",
            reason = "likely to change with new variance strategy")]
 #[lang="invariant_type"]
