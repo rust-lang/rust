@@ -460,7 +460,8 @@ impl fmt::Display for clean::Type {
                 f.write_str(name)
             }
             clean::ResolvedPath{ did, ref typarams, ref path } => {
-                try!(resolved_path(f, did, path, false));
+                // Paths like Self::Output should be rendered with all segments
+                try!(resolved_path(f, did, path, path.segments[0].name == "Self"));
                 tybounds(f, typarams)
             }
             clean::Infer => write!(f, "_"),
