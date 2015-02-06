@@ -139,7 +139,7 @@ impl Drop for ReadDir {
 
 impl DirEntry {
     pub fn path(&self) -> PathBuf {
-        self.root.join(<OsStr as OsStrExt>::from_byte_slice(self.name_bytes()))
+        self.root.join(<OsStr as OsStrExt>::from_bytes(self.name_bytes()))
     }
 
     fn name_bytes(&self) -> &[u8] {
@@ -269,7 +269,7 @@ impl File {
 }
 
 fn cstr(path: &Path) -> CString {
-    CString::from_slice(path.as_os_str().as_byte_slice())
+    CString::from_slice(path.as_os_str().as_bytes())
 }
 
 pub fn mkdir(p: &Path) -> io::Result<()> {

@@ -32,6 +32,12 @@ pub use sys_common::ProcessConfig;
 
 helper_init! { static HELPER: Helper<Req> }
 
+/// Unix-specific extensions to the Command builder
+pub struct CommandExt {
+    uid: Option<u32>,
+    gid: Option<u32>,
+}
+
 /// The unique id of the process (this should never be negative).
 pub struct Process {
     pub pid: pid_t
