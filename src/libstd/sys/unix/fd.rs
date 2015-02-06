@@ -15,8 +15,7 @@ use io;
 use libc::{self, c_int, size_t, c_void};
 use mem;
 use sys::cvt;
-
-pub type fd_t = c_int;
+use sys_common::AsInner;
 
 pub struct FileDesc {
     fd: c_int,
@@ -53,6 +52,10 @@ impl FileDesc {
         }));
         Ok(ret as usize)
     }
+}
+
+impl AsInner<c_int> for FileDesc {
+    fn as_inner(&self) -> &c_int { &self.fd }
 }
 
 impl Drop for FileDesc {
