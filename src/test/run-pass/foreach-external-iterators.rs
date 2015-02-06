@@ -11,7 +11,7 @@
 pub fn main() {
     let x = [1; 100];
     let mut y = 0;
-    for i in &x[] {
+    for i in &x[..] {
         y += *i
     }
     assert!(y == 100);

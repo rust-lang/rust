@@ -2527,16 +2527,7 @@ impl<'a> Parser<'a> {
                 let bracket_pos = self.span.lo;
                 self.bump();
 
-                let mut found_dotdot = false;
-                if self.token == token::DotDot &&
-                   self.look_ahead(1, |t| t == &token::CloseDelim(token::Bracket)) {
-                    // Using expr[..], which is a mistake, should be expr[]
-                    self.bump();
-                    self.bump();
-                    found_dotdot = true;
-                }
-
-                if found_dotdot || self.eat(&token::CloseDelim(token::Bracket)) {
+                if self.eat(&token::CloseDelim(token::Bracket)) {
                     // No expression, expand to a RangeFull
                     // FIXME(#20516) It would be better to use a lang item or
                     // something for RangeFull.
@@ -2560,7 +2551,11 @@ impl<'a> Parser<'a> {
                     let range = ExprStruct(path, vec![], None);
                     let ix = self.mk_expr(bracket_pos, hi, range);
                     let index = self.mk_index(e, ix);
-                    e = self.mk_expr(lo, hi, index)
+                    e = self.mk_expr(lo, hi, index);
+                    // Enable after snapshot.
+                    // self.span_warn(e.span, "deprecated slicing syntax: `[]`");
+                    // self.span_note(e.span,
+                    //               "use `&expr[..]` to construct a slice of the whole of expr");
                 } else {
                     let ix = self.parse_expr();
                     hi = self.span.hi;
@@ -2569,11 +2564,6 @@ impl<'a> Parser<'a> {
                     e = self.mk_expr(lo, hi, index)
                 }
 
-                if found_dotdot {
-                    self.span_err(e.span, "incorrect slicing expression: `[..]`");
-                    self.span_note(e.span,
-                                   "use `&expr[]` to construct a slice of the whole of expr");
-                }
               }
               _ => return e
             }
@@ -2934,9 +2924,14 @@ impl<'a> Parser<'a> {
             // with the postfix-form 'expr..'
             let lo = self.span.lo;
             self.bump();
-            let rhs = self.parse_binops();
-            let hi = rhs.span.hi;
-            let ex = self.mk_range(None, Some(rhs));
+            let opt_end = if self.is_at_start_of_range_notation_rhs() {
+                let end = self.parse_binops();
+                Some(end)
+            } else {
+                None
+            };
+            let hi = self.span.hi;
+            let ex = self.mk_range(None, opt_end);
             self.mk_expr(lo, hi, ex)
           }
           _ => {

@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test slicing expr[..] is an error and gives a helpful error message.
+// Test slicing &expr[] is deprecated and gives a helpful error message.
+//
+// ignore-test
 
 struct Foo;
 
 fn main() {
     let x = Foo;
-    &x[..]; //~ ERROR incorrect slicing expression: `[..]`
-    //~^ NOTE use `&expr[]` to construct a slice of the whole of expr
+    &x[]; //~ WARNING deprecated slicing syntax: `[]`
+          //~^ NOTE use `&expr[..]` to construct a slice of the whole of expr
+          //~^^ ERROR cannot index a value of type `Foo`
 }
