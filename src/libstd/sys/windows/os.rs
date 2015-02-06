@@ -109,7 +109,7 @@ impl Iterator for Env {
                 len += 1;
             }
             let p = p as *const u16;
-            let s = slice::from_raw_buf(&p, len as usize);
+            let s = slice::from_raw_parts(p, len as usize);
             self.cur = self.cur.offset(len + 1);
 
             let (k, v) = match s.iter().position(|&b| b == '=' as u16) {
@@ -296,7 +296,7 @@ impl Iterator for Args {
 
             // Push it onto the list.
             let ptr = ptr as *const u16;
-            let buf = slice::from_raw_buf(&ptr, len as usize);
+            let buf = slice::from_raw_parts(ptr, len as usize);
             OsStringExt::from_wide(buf)
         })
     }

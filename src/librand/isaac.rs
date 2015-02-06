@@ -246,7 +246,7 @@ impl Rand for IsaacRng {
         unsafe {
             let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
-            let slice = slice::from_raw_mut_buf(&ptr, (RAND_SIZE * 4) as uint);
+            let slice = slice::from_raw_parts_mut(ptr, (RAND_SIZE * 4) as uint);
             other.fill_bytes(slice);
         }
         ret.cnt = 0;
@@ -489,7 +489,7 @@ impl Rand for Isaac64Rng {
         unsafe {
             let ptr = ret.rsl.as_mut_ptr() as *mut u8;
 
-            let slice = slice::from_raw_mut_buf(&ptr, (RAND_SIZE_64 * 8) as uint);
+            let slice = slice::from_raw_parts_mut(ptr, (RAND_SIZE_64 * 8) as uint);
             other.fill_bytes(slice);
         }
         ret.cnt = 0;
