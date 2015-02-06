@@ -74,6 +74,8 @@ pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 70;
 #[cfg(any(target_os = "macos",
           target_os = "freebsd"))]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 71;
+#[cfg(target_os = "openbsd")]
+pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 101;
 #[cfg(target_os = "android")]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 0x0048;
 
@@ -91,7 +93,8 @@ pub struct passwd {
 
 #[repr(C)]
 #[cfg(any(target_os = "macos",
-          target_os = "freebsd"))]
+          target_os = "freebsd",
+          target_os = "openbsd"))]
 pub struct passwd {
     pub pw_name: *mut libc::c_char,
     pub pw_passwd: *mut libc::c_char,

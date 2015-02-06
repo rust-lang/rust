@@ -1289,6 +1289,8 @@ pub mod consts {
 }
 
 #[cfg(target_os = "openbsd")]
+#[deprecated(since = "1.0.0", reason = "renamed to env::consts")]
+#[unstable(feature = "os")]
 pub mod consts {
     pub use os::arch_consts::ARCH;
 

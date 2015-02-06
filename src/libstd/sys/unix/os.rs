@@ -47,13 +47,9 @@ pub fn errno() -> i32 {
     }
 
     #[cfg(target_os = "openbsd")]
-    fn errno_location() -> *const c_int {
-        extern {
-            fn __errno() -> *const c_int;
-        }
-        unsafe {
-            __errno()
-        }
+    unsafe fn errno_location() -> *const c_int {
+        extern { fn __errno() -> *const c_int; }
+        __errno()
     }
 
     #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -197,23 +193,23 @@ pub fn current_exe() -> IoResult<Path> {
 }
 
 #[cfg(target_os = "openbsd")]
-pub fn load_self() -> Option<Vec<u8>> {
+pub fn current_exe() -> IoResult<Path> {
     use sync::{StaticMutex, MUTEX_INIT};
 
     static LOCK: StaticMutex = MUTEX_INIT;
 
     extern {
-        fn rust_load_self() -> *const c_char;
+        fn rust_current_exe() -> *const c_char;
     }
 
     let _guard = LOCK.lock();
 
     unsafe {
-        let v = rust_load_self();
+        let v = rust_current_exe();
         if v.is_null() {
-            None
+            Err(IoError::last_error())
         } else {
-            Some(ffi::c_str_to_bytes(&v).to_vec())
+            Ok(Path::new(ffi::c_str_to_bytes(&v).to_vec()))
         }
     }
 }
@@ -333,7 +329,8 @@ pub fn args() -> Args {
 #[cfg(any(target_os = "linux",
           target_os = "android",
           target_os = "freebsd",
-          target_os = "dragonfly"))]
+          target_os = "dragonfly",
+          target_os = "openbsd"))]
 pub fn args() -> Args {
     use rt;
     let bytes = rt::args::clone().unwrap_or(Vec::new());
