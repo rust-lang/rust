@@ -101,7 +101,7 @@ impl<T: Ord> BTreeSet<T> {
     /// B cannot be less than 2.
     #[unstable(feature = "collections",
                reason = "probably want this to be on the type, eventually")]
-    pub fn with_b(b: uint) -> BTreeSet<T> {
+    pub fn with_b(b: usize) -> BTreeSet<T> {
         BTreeSet { map: BTreeMap::with_b(b) }
     }
 }
@@ -114,13 +114,13 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<uint> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let set: BTreeSet<usize> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
     ///
     /// for x in set.iter() {
     ///     println!("{}", x);
     /// }
     ///
-    /// let v: Vec<uint> = set.iter().map(|&x| x).collect();
+    /// let v: Vec<usize> = set.iter().map(|&x| x).collect();
     /// assert_eq!(v, vec![1u,2,3,4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -135,9 +135,9 @@ impl<T> BTreeSet<T> {
     /// ```
     /// use std::collections::BTreeSet;
     ///
-    /// let set: BTreeSet<uint> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
+    /// let set: BTreeSet<usize> = [1u, 2, 3, 4].iter().map(|&x| x).collect();
     ///
-    /// let v: Vec<uint> = set.into_iter().collect();
+    /// let v: Vec<usize> = set.into_iter().collect();
     /// assert_eq!(v, vec![1u,2,3,4]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -196,7 +196,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(2u);
     /// b.insert(3u);
     ///
-    /// let diff: Vec<uint> = a.difference(&b).cloned().collect();
+    /// let diff: Vec<usize> = a.difference(&b).cloned().collect();
     /// assert_eq!(diff, vec![1u]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -219,7 +219,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(2u);
     /// b.insert(3u);
     ///
-    /// let sym_diff: Vec<uint> = a.symmetric_difference(&b).cloned().collect();
+    /// let sym_diff: Vec<usize> = a.symmetric_difference(&b).cloned().collect();
     /// assert_eq!(sym_diff, vec![1u,3]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -243,7 +243,7 @@ impl<T: Ord> BTreeSet<T> {
     /// b.insert(2u);
     /// b.insert(3u);
     ///
-    /// let intersection: Vec<uint> = a.intersection(&b).cloned().collect();
+    /// let intersection: Vec<usize> = a.intersection(&b).cloned().collect();
     /// assert_eq!(intersection, vec![2u]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -265,7 +265,7 @@ impl<T: Ord> BTreeSet<T> {
     /// let mut b = BTreeSet::new();
     /// b.insert(2u);
     ///
-    /// let union: Vec<uint> = a.union(&b).cloned().collect();
+    /// let union: Vec<usize> = a.union(&b).cloned().collect();
     /// assert_eq!(union, vec![1u,2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -286,7 +286,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(v.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> uint { self.map.len() }
+    pub fn len(&self) -> usize { self.map.len() }
 
     /// Returns true if the set contains no elements
     ///
@@ -625,7 +625,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     type Item = &'a T;
 
     fn next(&mut self) -> Option<&'a T> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> DoubleEndedIterator for Iter<'a, T> {
@@ -640,7 +640,7 @@ impl<T> Iterator for IntoIter<T> {
     type Item = T;
 
     fn next(&mut self) -> Option<T> { self.iter.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.iter.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> DoubleEndedIterator for IntoIter<T> {
@@ -770,23 +770,23 @@ mod test {
     }
 
     struct Counter<'a, 'b> {
-        i: &'a mut uint,
-        expected: &'b [int],
+        i: &'a mut usize,
+        expected: &'b [i32],
     }
 
-    impl<'a, 'b, 'c> FnMut<(&'c int,)> for Counter<'a, 'b> {
+    impl<'a, 'b, 'c> FnMut<(&'c i32,)> for Counter<'a, 'b> {
         type Output = bool;
 
-        extern "rust-call" fn call_mut(&mut self, (&x,): (&'c int,)) -> bool {
+        extern "rust-call" fn call_mut(&mut self, (&x,): (&'c i32,)) -> bool {
             assert_eq!(x, self.expected[*self.i]);
             *self.i += 1;
             true
         }
     }
 
-    fn check<F>(a: &[int], b: &[int], expected: &[int], f: F) where
+    fn check<F>(a: &[i32], b: &[i32], expected: &[i32], f: F) where
         // FIXME Replace Counter with `Box<FnMut(_) -> _>`
-        F: FnOnce(&BTreeSet<int>, &BTreeSet<int>, Counter) -> bool,
+        F: FnOnce(&BTreeSet<i32>, &BTreeSet<i32>, Counter) -> bool,
     {
         let mut set_a = BTreeSet::new();
         let mut set_b = BTreeSet::new();
@@ -801,7 +801,7 @@ mod test {
 
     #[test]
     fn test_intersection() {
-        fn check_intersection(a: &[int], b: &[int], expected: &[int]) {
+        fn check_intersection(a: &[i32], b: &[i32], expected: &[i32]) {
             check(a, b, expected, |x, y, f| x.intersection(y).all(f))
         }
 
@@ -817,7 +817,7 @@ mod test {
 
     #[test]
     fn test_difference() {
-        fn check_difference(a: &[int], b: &[int], expected: &[int]) {
+        fn check_difference(a: &[i32], b: &[i32], expected: &[i32]) {
             check(a, b, expected, |x, y, f| x.difference(y).all(f))
         }
 
@@ -834,8 +834,7 @@ mod test {
 
     #[test]
     fn test_symmetric_difference() {
-        fn check_symmetric_difference(a: &[int], b: &[int],
-                                      expected: &[int]) {
+        fn check_symmetric_difference(a: &[i32], b: &[i32], expected: &[i32]) {
             check(a, b, expected, |x, y, f| x.symmetric_difference(y).all(f))
         }
 
@@ -849,8 +848,7 @@ mod test {
 
     #[test]
     fn test_union() {
-        fn check_union(a: &[int], b: &[int],
-                                      expected: &[int]) {
+        fn check_union(a: &[i32], b: &[i32], expected: &[i32]) {
             check(a, b, expected, |x, y, f| x.union(y).all(f))
         }
 
@@ -865,9 +863,9 @@ mod test {
     #[test]
     fn test_zip() {
         let mut x = BTreeSet::new();
-        x.insert(5u);
-        x.insert(12u);
-        x.insert(11u);
+        x.insert(5);
+        x.insert(12);
+        x.insert(11);
 
         let mut y = BTreeSet::new();
         y.insert("foo");
@@ -878,13 +876,13 @@ mod test {
         let mut z = x.iter().zip(y.iter());
 
         // FIXME: #5801: this needs a type hint to compile...
-        let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&5u, &("bar")));
+        let result: Option<(&usize, & &'static str)> = z.next();
+        assert_eq!(result.unwrap(), (&5, &("bar")));
 
-        let result: Option<(&uint, & &'static str)> = z.next();
-        assert_eq!(result.unwrap(), (&11u, &("foo")));
+        let result: Option<(&usize, & &'static str)> = z.next();
+        assert_eq!(result.unwrap(), (&11, &("foo")));
 
-        let result: Option<(&uint, & &'static str)> = z.next();
+        let result: Option<(&usize, & &'static str)> = z.next();
         assert!(result.is_none());
     }
 
