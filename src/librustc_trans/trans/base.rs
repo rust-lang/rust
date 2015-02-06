@@ -2490,29 +2490,15 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
         if type_of::return_uses_outptr(ccx, ret_ty) {
             let llret_sz = llsize_of_real(ccx, type_of::type_of(ccx, ret_ty));
 
-            // The outptr can be noalias and nocapture because it's entirely
-            // invisible to the program. We also know it's nonnull as well
-            // as how many bytes we can dereference
+            // The outptr can be nocapture because it's entirely invisible to the program. We also
+            // know it's nonnull as well as how many bytes we can dereference
             attrs.arg(1, llvm::StructRetAttribute)
-                 .arg(1, llvm::NoAliasAttribute)
                  .arg(1, llvm::NoCaptureAttribute)
                  .arg(1, llvm::DereferenceableAttribute(llret_sz));
 
             // Add one more since there's an outptr
             first_arg_offset += 1;
         } else {
-            // The `noalias` attribute on the return value is useful to a
-            // function ptr caller.
-            match ret_ty.sty {
-                // `~` pointer return values never alias because ownership
-                // is transferred
-                ty::ty_uniq(it) if !common::type_is_sized(ccx.tcx(), it) => {}
-                ty::ty_uniq(_) => {
-                    attrs.ret(llvm::NoAliasAttribute);
-                }
-                _ => {}
-            }
-
             // We can also mark the return value as `dereferenceable` in certain cases
             match ret_ty.sty {
                 // These are not really pointers but pairs, (pointer, len)
