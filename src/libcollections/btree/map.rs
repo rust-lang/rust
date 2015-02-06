@@ -463,7 +463,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
 }
 
 impl<K, V> IntoIterator for BTreeMap<K, V> {
-    type Iter = IntoIter<K, V>;
+    type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> IntoIter<K, V> {
         self.into_iter()
@@ -471,7 +471,7 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 }
 
 impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
-    type Iter = Iter<'a, K, V>;
+    type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Iter<'a, K, V> {
         self.iter()
@@ -479,7 +479,7 @@ impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
 }
 
 impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
-    type Iter = IterMut<'a, K, V>;
+    type IntoIter = IterMut<'a, K, V>;
 
     fn into_iter(mut self) -> IterMut<'a, K, V> {
         self.iter_mut()

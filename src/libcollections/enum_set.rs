@@ -258,7 +258,7 @@ impl<E:CLike> FromIterator<E> for EnumSet<E> {
 }
 
 impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
-    type Iter = Iter<E>;
+    type IntoIter = Iter<E>;
 
     fn into_iter(self) -> Iter<E> {
         self.iter()

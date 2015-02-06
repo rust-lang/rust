@@ -831,7 +831,7 @@ impl<A> FromIterator<A> for DList<A> {
 }
 
 impl<T> IntoIterator for DList<T> {
-    type Iter = IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> IntoIter<T> {
         self.into_iter()
@@ -839,7 +839,7 @@ impl<T> IntoIterator for DList<T> {
 }
 
 impl<'a, T> IntoIterator for &'a DList<T> {
-    type Iter = Iter<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
@@ -847,7 +847,7 @@ impl<'a, T> IntoIterator for &'a DList<T> {
 }
 
 impl<'a, T> IntoIterator for &'a mut DList<T> {
-    type Iter = IterMut<'a, T>;
+    type IntoIter = IterMut<'a, T>;
 
     fn into_iter(mut self) -> IterMut<'a, T> {
         self.iter_mut()
