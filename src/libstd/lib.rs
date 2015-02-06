@@ -292,6 +292,7 @@ mod std {
     pub use thread_local; // used for thread_local!
     pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
+    pub use ptr; // necessary for box <expr>
 
     // The test runner calls ::std::os::args() but really wants realstd
     #[cfg(test)] pub use realstd::os as os;

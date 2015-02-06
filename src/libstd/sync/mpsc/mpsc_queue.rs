@@ -44,7 +44,7 @@ pub use self::PopResult::*;
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
+use alloc::boxed::{Box, HEAP};
 use core::mem;
 use core::ptr;
 use core::cell::UnsafeCell;
@@ -82,7 +82,9 @@ unsafe impl<T:Send> Sync for Queue<T> { }
 
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
-        mem::transmute(box Node {
+        // SNAP 9006c3c
+        // Change `box (HEAP)` to `in (HEAP) ..` after snapshot.
+        mem::transmute(box (HEAP) Node {
             next: AtomicPtr::new(ptr::null_mut()),
             value: v,
         })
@@ -161,12 +163,13 @@ mod tests {
     use super::{Queue, Data, Empty, Inconsistent};
     use sync::Arc;
     use thread::Thread;
+    use alloc::boxed::{HEAP};
 
     #[test]
     fn test_full() {
         let q = Queue::new();
-        q.push(box 1i);
-        q.push(box 2i);
+        q.push(box (HEAP) 1i);
+        q.push(box (HEAP) 2i);
     }
 
     #[test]

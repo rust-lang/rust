@@ -22,6 +22,7 @@
 
 use prelude::v1::*;
 
+use boxed::{HEAP};
 use cell::UnsafeCell;
 use mem;
 use ptr;
@@ -88,7 +89,9 @@ impl<M: Send> Helper<M> {
             let _guard = self.lock.lock().unwrap();
             if !*self.initialized.get() {
                 let (tx, rx) = channel();
-                *self.chan.get() = mem::transmute(box tx);
+                // SNAP 9006c3c
+                // Change `box (HEAP)` to `in (HEAP) ..` after snapshot.
+                *self.chan.get() = mem::transmute(box (HEAP) tx);
                 let (receive, send) = helper_signal::new();
                 *self.signal.get() = send as uint;
 

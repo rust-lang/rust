@@ -106,6 +106,8 @@ mod std {
     pub use core::cmp;      // derive(Eq, Ord, etc.)
     pub use core::marker;  // derive(Copy)
     pub use core::hash;     // derive(Hash)
+    pub use core::ops;      // necessary for box <expr>
+    pub use core::ptr;      // necessary for box <expr>
 }
 
 #[cfg(test)]

@@ -172,6 +172,7 @@
 #![allow(unstable)]
 #![deny(missing_docs)]
 
+use std::boxed::HEAP;
 use std::cell::RefCell;
 use std::fmt;
 use std::io::LineBufferedWriter;
@@ -294,7 +295,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     let mut logger = LOCAL_LOGGER.with(|s| {
         s.borrow_mut().take()
     }).unwrap_or_else(|| {
-        box DefaultLogger { handle: io::stderr() } as Box<Logger + Send>
+        box (HEAP) DefaultLogger { handle: io::stderr() } as Box<Logger + Send>
     });
     logger.log(&LogRecord {
         level: LogLevel(level),
@@ -416,12 +417,12 @@ fn init() {
 
         assert!(FILTER.is_null());
         match filter {
-            Some(f) => FILTER = mem::transmute(box f),
+            Some(f) => FILTER = mem::transmute(box (HEAP) f),
             None => {}
         }
 
         assert!(DIRECTIVES.is_null());
-        DIRECTIVES = mem::transmute(box directives);
+        DIRECTIVES = mem::transmute(box (HEAP) directives);
 
         // Schedule the cleanup for the globals for when the runtime exits.
         rt::at_exit(move |:| {

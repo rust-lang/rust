@@ -31,8 +31,9 @@ impl<A,R> Thunk<A,R> {
     pub fn with_arg<F>(func: F) -> Thunk<A,R>
         where F : FnOnce(A) -> R, F : Send
     {
+        let func: Box<_> = box func;
         Thunk {
-            invoke: box func
+            invoke: func
         }
     }
 

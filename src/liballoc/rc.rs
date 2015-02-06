@@ -161,6 +161,7 @@ use core::ptr::{self, PtrExt};
 use core::result::Result;
 use core::result::Result::{Ok, Err};
 
+use boxed::HEAP;
 use heap::deallocate;
 
 struct RcBox<T> {
@@ -202,7 +203,10 @@ impl<T> Rc<T> {
                 // there is an implicit weak pointer owned by all the strong pointers, which
                 // ensures that the weak destructor never frees the allocation while the strong
                 // destructor is running, even if the weak pointer is stored inside the strong one.
-                _ptr: NonZero::new(transmute(box RcBox {
+                //
+                // SNAP 9006c3c
+                // Change `box (HEAP)` to `in (HEAP)` after snapshot.
+                _ptr: NonZero::new(transmute(box (HEAP) RcBox {
                     value: value,
                     strong: Cell::new(1),
                     weak: Cell::new(1)

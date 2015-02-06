@@ -37,7 +37,7 @@
 
 use core::prelude::*;
 
-use alloc::boxed::Box;
+use alloc::boxed::{Box, HEAP};
 use core::mem;
 use core::ptr;
 use core::cell::UnsafeCell;
@@ -81,7 +81,9 @@ unsafe impl<T: Send> Sync for Queue<T> { }
 impl<T: Send> Node<T> {
     fn new() -> *mut Node<T> {
         unsafe {
-            mem::transmute(box Node {
+            // SNAP 9006c3c
+            // Change `box (HEAP)` to `in (HEAP) ..` after snapshot.
+            mem::transmute(box (HEAP) Node {
                 value: None,
                 next: AtomicPtr::new(ptr::null_mut::<Node<T>>()),
             })
@@ -244,6 +246,7 @@ impl<T: Send> Drop for Queue<T> {
 mod test {
     use prelude::v1::*;
 
+    use alloc::boxed::{HEAP};
     use sync::Arc;
     use super::Queue;
     use thread::Thread;
@@ -290,8 +293,8 @@ mod test {
     fn drop_full() {
         unsafe {
             let q = Queue::new(0);
-            q.push(box 1i);
-            q.push(box 2i);
+            q.push(box (HEAP) 1i);
+            q.push(box (HEAP) 2i);
         }
     }
 

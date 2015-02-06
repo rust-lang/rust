@@ -81,6 +81,7 @@ use core::nonzero::NonZero;
 use core::ops::Deref;
 use core::ptr;
 use core::hash::{Hash, Hasher};
+use boxed::Box;
 use heap::deallocate;
 
 /// An atomically reference counted wrapper for shared state.
@@ -160,7 +161,7 @@ impl<T> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x = box ArcInner {
+        let x : Box<_> = box ArcInner {
             strong: atomic::AtomicUsize::new(1),
             weak: atomic::AtomicUsize::new(1),
             data: data,

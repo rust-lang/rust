@@ -10,7 +10,7 @@
 
 use core::prelude::*;
 
-use boxed::Box;
+use boxed::{Box, HEAP};
 use cmp;
 use mem;
 use ptr;
@@ -194,7 +194,9 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
         },
     };
 
-    let arg: *mut libc::c_void = mem::transmute(box p); // must box since sizeof(p)=2*uint
+    // SNAP 9006c3c
+    // Change `box (HEAP)` to `in (HEAP)` after snapshot.
+    let arg: *mut libc::c_void = mem::transmute(box (HEAP) p); // must box since sizeof(p)=2*uint
     let ret = pthread_create(&mut native, &attr, thread_start, arg);
     assert_eq!(pthread_attr_destroy(&mut attr), 0);
 

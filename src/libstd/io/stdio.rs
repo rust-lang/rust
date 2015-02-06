@@ -27,7 +27,7 @@
 
 use self::StdSource::*;
 
-use boxed::Box;
+use boxed::{Box, HEAP};
 use cell::RefCell;
 use clone::Clone;
 use failure::LOCAL_STDERR;
@@ -234,7 +234,7 @@ pub fn stdin() -> StdinReader {
             let stdin = StdinReader {
                 inner: Arc::new(Mutex::new(RaceBox(stdin)))
             };
-            STDIN = mem::transmute(box stdin);
+            STDIN = mem::transmute(box (HEAP) stdin);
 
             // Make sure to free it at exit
             rt::at_exit(|| {
@@ -341,7 +341,9 @@ fn with_task_stdout<F>(f: F) where F: FnOnce(&mut Writer) -> IoResult<()> {
     let mut my_stdout = LOCAL_STDOUT.with(|slot| {
         slot.borrow_mut().take()
     }).unwrap_or_else(|| {
-        box stdout() as Box<Writer + Send>
+        // SNAP 9006c3c
+        // Change `Box::new(..)` to `in (HEAP) ..` after snapshot.
+        box (HEAP) stdout() as Box<Writer + Send>
     });
     let result = f(&mut *my_stdout);
     let mut var = Some(my_stdout);
