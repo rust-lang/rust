@@ -1811,9 +1811,7 @@ impl<'a> State<'a> {
                 if let &Some(ref e) = start {
                     try!(self.print_expr(&**e));
                 }
-                if start.is_some() || end.is_some() {
-                    try!(word(&mut self.s, ".."));
-                }
+                try!(word(&mut self.s, ".."));
                 if let &Some(ref e) = end {
                     try!(self.print_expr(&**e));
                 }

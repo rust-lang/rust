@@ -80,11 +80,11 @@ impl IndexMut<RangeFull> for Foo {
 
 fn main() {
     let mut x = Foo;
-    &x[];
+    &x[..];
     &x[Foo..];
     &x[..Foo];
     &x[Foo..Foo];
-    &mut x[];
+    &mut x[..];
     &mut x[Foo..];
     &mut x[..Foo];
     &mut x[Foo..Foo];
