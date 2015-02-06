@@ -1608,7 +1608,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
 }
 
 impl<T> IntoIterator for RingBuf<T> {
-    type Iter = IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> IntoIter<T> {
         self.into_iter()
@@ -1616,7 +1616,7 @@ impl<T> IntoIterator for RingBuf<T> {
 }
 
 impl<'a, T> IntoIterator for &'a RingBuf<T> {
-    type Iter = Iter<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
@@ -1624,7 +1624,7 @@ impl<'a, T> IntoIterator for &'a RingBuf<T> {
 }
 
 impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
-    type Iter = IterMut<'a, T>;
+    type IntoIter = IterMut<'a, T>;
 
     fn into_iter(mut self) -> IterMut<'a, T> {
         self.iter_mut()

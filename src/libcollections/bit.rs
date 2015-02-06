@@ -1071,7 +1071,7 @@ impl<'a> RandomAccessIterator for Iter<'a> {
 }
 
 impl<'a> IntoIterator for &'a Bitv {
-    type Iter = Iter<'a>;
+    type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Iter<'a> {
         self.iter()
@@ -1883,7 +1883,7 @@ impl<'a> Iterator for SymmetricDifference<'a> {
 }
 
 impl<'a> IntoIterator for &'a BitvSet {
-    type Iter = SetIter<'a>;
+    type IntoIter = SetIter<'a>;
 
     fn into_iter(self) -> SetIter<'a> {
         self.iter()

@@ -49,7 +49,7 @@ macro_rules! array_impls {
             }
 
             impl<'a, T> IntoIterator for &'a [T; $N] {
-                type Iter = Iter<'a, T>;
+                type IntoIter = Iter<'a, T>;
 
                 fn into_iter(self) -> Iter<'a, T> {
                     self.iter()
@@ -57,7 +57,7 @@ macro_rules! array_impls {
             }
 
             impl<'a, T> IntoIterator for &'a mut [T; $N] {
-                type Iter = IterMut<'a, T>;
+                type IntoIter = IterMut<'a, T>;
 
                 fn into_iter(self) -> IterMut<'a, T> {
                     self.iter_mut()

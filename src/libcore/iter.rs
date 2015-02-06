@@ -120,14 +120,14 @@ pub trait FromIterator<A> {
 
 /// Conversion into an `Iterator`
 pub trait IntoIterator {
-    type Iter: Iterator;
+    type IntoIter: Iterator;
 
     /// Consumes `Self` and returns an iterator over it
-    fn into_iter(self) -> Self::Iter;
+    fn into_iter(self) -> Self::IntoIter;
 }
 
 impl<I> IntoIterator for I where I: Iterator {
-    type Iter = I;
+    type IntoIter = I;
 
     fn into_iter(self) -> I {
         self
