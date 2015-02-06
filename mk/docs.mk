@@ -85,26 +85,15 @@ else
 HTML_DEPS :=
 endif
 
-# Check for the various external utilities for the EPUB/PDF docs:
+# Check for xelatex
 
-ifeq ($(CFG_LUALATEX),)
-  $(info cfg: no lualatex found, deferring to xelatex)
-  ifeq ($(CFG_XELATEX),)
-    $(info cfg: no xelatex found, deferring to pdflatex)
-    ifeq ($(CFG_PDFLATEX),)
-      $(info cfg: no pdflatex found, disabling LaTeX docs)
-      NO_PDF_DOCS = 1
-	else
-      CFG_LATEX := $(CFG_PDFLATEX)
-    endif
-  else
+ifeq ($(CFG_XELATEX),)
     CFG_LATEX := $(CFG_XELATEX)
     XELATEX = 1
-  endif
-else
-  CFG_LATEX := $(CFG_LUALATEX)
+  else
+    $(info cfg: no xelatex found, disabling LaTeX docs)
+    NO_PDF_DOCS = 1
 endif
-
 
 ifeq ($(CFG_PANDOC),)
 $(info cfg: no pandoc found, omitting PDF and EPUB docs)
