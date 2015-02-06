@@ -436,73 +436,50 @@ pub enum DiagnosticKind {
 }
 
 // Opaque pointer types
-#[allow(missing_copy_implementations)]
 pub enum Module_opaque {}
 pub type ModuleRef = *mut Module_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Context_opaque {}
 pub type ContextRef = *mut Context_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Type_opaque {}
 pub type TypeRef = *mut Type_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Value_opaque {}
 pub type ValueRef = *mut Value_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Metadata_opaque {}
 pub type MetadataRef = *mut Metadata_opaque;
-#[allow(missing_copy_implementations)]
 pub enum BasicBlock_opaque {}
 pub type BasicBlockRef = *mut BasicBlock_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Builder_opaque {}
 pub type BuilderRef = *mut Builder_opaque;
-#[allow(missing_copy_implementations)]
 pub enum ExecutionEngine_opaque {}
 pub type ExecutionEngineRef = *mut ExecutionEngine_opaque;
-#[allow(missing_copy_implementations)]
 pub enum RustJITMemoryManager_opaque {}
 pub type RustJITMemoryManagerRef = *mut RustJITMemoryManager_opaque;
-#[allow(missing_copy_implementations)]
 pub enum MemoryBuffer_opaque {}
 pub type MemoryBufferRef = *mut MemoryBuffer_opaque;
-#[allow(missing_copy_implementations)]
 pub enum PassManager_opaque {}
 pub type PassManagerRef = *mut PassManager_opaque;
-#[allow(missing_copy_implementations)]
 pub enum PassManagerBuilder_opaque {}
 pub type PassManagerBuilderRef = *mut PassManagerBuilder_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Use_opaque {}
 pub type UseRef = *mut Use_opaque;
-#[allow(missing_copy_implementations)]
 pub enum TargetData_opaque {}
 pub type TargetDataRef = *mut TargetData_opaque;
-#[allow(missing_copy_implementations)]
 pub enum ObjectFile_opaque {}
 pub type ObjectFileRef = *mut ObjectFile_opaque;
-#[allow(missing_copy_implementations)]
 pub enum SectionIterator_opaque {}
 pub type SectionIteratorRef = *mut SectionIterator_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Pass_opaque {}
 pub type PassRef = *mut Pass_opaque;
-#[allow(missing_copy_implementations)]
 pub enum TargetMachine_opaque {}
 pub type TargetMachineRef = *mut TargetMachine_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Archive_opaque {}
 pub type ArchiveRef = *mut Archive_opaque;
-#[allow(missing_copy_implementations)]
 pub enum Twine_opaque {}
 pub type TwineRef = *mut Twine_opaque;
-#[allow(missing_copy_implementations)]
 pub enum DiagnosticInfo_opaque {}
 pub type DiagnosticInfoRef = *mut DiagnosticInfo_opaque;
-#[allow(missing_copy_implementations)]
 pub enum DebugLoc_opaque {}
 pub type DebugLocRef = *mut DebugLoc_opaque;
-#[allow(missing_copy_implementations)]
 pub enum SMDiagnostic_opaque {}
 pub type SMDiagnosticRef = *mut SMDiagnostic_opaque;
 
@@ -513,7 +490,6 @@ pub mod debuginfo {
     pub use self::DIDescriptorFlags::*;
     use super::{MetadataRef};
 
-    #[allow(missing_copy_implementations)]
     pub enum DIBuilder_opaque {}
     pub type DIBuilderRef = *mut DIBuilder_opaque;
 
@@ -2215,7 +2191,6 @@ pub fn get_param(llfn: ValueRef, index: c_uint) -> ValueRef {
     }
 }
 
-#[allow(missing_copy_implementations)]
 pub enum RustString_opaque {}
 pub type RustStringRef = *mut RustString_opaque;
 type RustStringRepr = *mut RefCell<Vec<u8>>;

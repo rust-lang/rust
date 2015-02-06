@@ -46,7 +46,6 @@ struct BarrierState {
 ///
 /// Currently this opaque structure only has one method, `.is_leader()`. Only
 /// one thread will receive a result that will return `true` from this function.
-#[allow(missing_copy_implementations)]
 pub struct BarrierWaitResult(bool);
 
 impl Barrier {

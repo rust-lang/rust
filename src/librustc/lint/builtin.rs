@@ -2038,7 +2038,7 @@ declare_lint! {
 
 declare_lint! {
     pub MISSING_COPY_IMPLEMENTATIONS,
-    Warn,
+    Allow,
     "detects potentially-forgotten implementations of `Copy`"
 }
 

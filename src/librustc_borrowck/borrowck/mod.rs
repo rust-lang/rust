@@ -464,7 +464,6 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 
 // Errors that can occur
 #[derive(PartialEq)]
-#[allow(missing_copy_implementations)]
 pub enum bckerr_code {
     err_mutbl,
     err_out_of_scope(ty::Region, ty::Region), // superscope, subscope

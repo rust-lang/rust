@@ -224,7 +224,6 @@ pub struct RegionVarBindings<'a, 'tcx: 'a> {
 }
 
 #[derive(Debug)]
-#[allow(missing_copy_implementations)]
 pub struct RegionSnapshot {
     length: uint,
     skolemization_count: u32,

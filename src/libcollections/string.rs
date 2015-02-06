@@ -49,7 +49,6 @@ pub struct FromUtf8Error {
 
 /// A possible error value from the `String::from_utf16` function.
 #[stable(feature = "rust1", since = "1.0.0")]
-#[allow(missing_copy_implementations)]
 #[derive(Debug)]
 pub struct FromUtf16Error(());
 
