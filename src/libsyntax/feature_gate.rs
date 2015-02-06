@@ -122,7 +122,10 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("staged_api", "1.0.0", Active),
 
     // Allows using items which are missing stability attributes
-    ("unmarked_api", "1.0.0", Active)
+    ("unmarked_api", "1.0.0", Active),
+
+    // Allows using #![no_std]
+    ("no_std", "1.0.0", Active),
 ];
 
 enum Status {
@@ -465,6 +468,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             self.gate_feature("lang_items",
                               attr.span,
                               "language items are subject to change");
+        }
+
+        if attr.check_name("no_std") {
+            self.gate_feature("no_std", attr.span,
+                              "no_std is experimental");
         }
     }
 

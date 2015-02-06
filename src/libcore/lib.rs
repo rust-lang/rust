@@ -56,6 +56,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
+#![feature(no_std)]
 #![no_std]
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]

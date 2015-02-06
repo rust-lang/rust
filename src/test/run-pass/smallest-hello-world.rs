@@ -12,8 +12,8 @@
 
 // Smallest "hello world" with a libc runtime
 
+#![feature(intrinsics, lang_items, start, no_std)]
 #![no_std]
-#![feature(intrinsics, lang_items, start)]
 
 extern crate libc;
 

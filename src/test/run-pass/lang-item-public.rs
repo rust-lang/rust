@@ -12,8 +12,8 @@
 // ignore-android
 // ignore-windows #13361
 
+#![feature(lang_items, start, no_std)]
 #![no_std]
-#![feature(lang_items, start)]
 
 extern crate "lang-item-public" as lang_lib;
 

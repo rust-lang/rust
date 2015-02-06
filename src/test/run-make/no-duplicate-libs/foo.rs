@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(lang_items, no_std)]
 #![no_std]
-#![feature(lang_items)]
 #![crate_type = "dylib"]
 
 extern crate libc;

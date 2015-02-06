@@ -12,6 +12,7 @@
 #![crate_type = "lib"]
 // we can compile to a variety of platforms, because we don't need
 // cross-compiled standard libraries.
+#![feature(no_std)]
 #![no_std]
 
 #![feature(simd, simd_ffi, link_llvm_intrinsics, lang_items)]

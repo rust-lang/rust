@@ -12,6 +12,7 @@
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
+#![feature(no_std)]
 #![no_std]
 #![unstable(feature = "rustc_private")]
 

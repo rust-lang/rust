@@ -2467,6 +2467,12 @@ The currently implemented features of the reference compiler are:
 
 * `associated_types` - Allows type aliases in traits. Experimental.
 
+* `no_std` - Allows the `#![no_std]` crate attribute, which disables the implicit
+             `extern crate std`. This typically requires use of the unstable APIs
+             behind the libstd "facade", such as libcore and libcollections. It
+             may also cause problems when using syntax extensions, including
+             `#[derive]`.
+
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
 the new feature (because the directive is no longer necessary). However, if a
