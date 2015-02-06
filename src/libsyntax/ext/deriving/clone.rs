@@ -29,7 +29,7 @@ pub fn expand_deriving_clone<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "clone", "Clone")),
+        path: path_std!(cx, core::clone::Clone),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(
@@ -58,7 +58,7 @@ fn cs_clone(
     let ctor_path;
     let all_fields;
     let fn_path = vec![
-        cx.ident_of("std"),
+        cx.ident_of_std("core"),
         cx.ident_of("clone"),
         cx.ident_of("Clone"),
         cx.ident_of("clone"),

@@ -125,6 +125,12 @@ fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
                                     krate: &'static str) where
     F: FnOnce(P<Item>),
 {
+    if !cx.use_std {
+        // FIXME(#21880): lift this requirement.
+        cx.span_err(span, "this trait cannot be derived with #![no_std]");
+        return;
+    }
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
@@ -144,7 +150,7 @@ fn expand_deriving_encodable_imp<F>(cx: &mut ExtCtxt,
                 args: vec!(Ptr(box Literal(Path::new_local("__S")),
                             Borrowed(None, MutMutable))),
                 ret_ty: Literal(Path::new_(
-                    vec!("std", "result", "Result"),
+                    pathvec_std!(cx, core::result::Result),
                     None,
                     vec!(box Tuple(Vec::new()), box Literal(Path::new_(
                         vec!["__S", "Error"], None, vec![], false

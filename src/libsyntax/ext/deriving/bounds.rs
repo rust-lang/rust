@@ -45,10 +45,16 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
         }
     };
 
+    let path = Path::new(vec![
+        if cx.use_std { "std" } else { "core" },
+        "marker",
+        name
+    ]);
+
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "marker", name)),
+        path: path,
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: Vec::new(),

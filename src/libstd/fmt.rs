@@ -403,8 +403,6 @@
 
 #![unstable(feature = "std_misc")]
 
-use string;
-
 pub use core::fmt::{Formatter, Result, Writer, rt};
 pub use core::fmt::{Show, String, Octal, Binary};
 pub use core::fmt::{Display, Debug};
@@ -413,24 +411,4 @@ pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;
 pub use core::fmt::{ArgumentV1, Arguments, write, radix, Radix, RadixFmt};
 
-/// The format function takes a precompiled format string and a list of
-/// arguments, to return the resulting formatted string.
-///
-/// # Arguments
-///
-///   * args - a structure of arguments generated via the `format_args!` macro.
-///
-/// # Example
-///
-/// ```rust
-/// use std::fmt;
-///
-/// let s = fmt::format(format_args!("Hello, {}!", "world"));
-/// assert_eq!(s, "Hello, world!".to_string());
-/// ```
-#[stable(feature = "rust1", since = "1.0.0")]
-pub fn format(args: Arguments) -> string::String {
-    let mut output = string::String::new();
-    let _ = write!(&mut output, "{}", args);
-    output
-}
+pub use core_collections::fmt::format;
