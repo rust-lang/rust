@@ -15,8 +15,8 @@ pub struct Alpha;
 // @matches foo/struct.Bravo.html '//pre' "pub struct Bravo<B>"
 pub struct Bravo<B>;
 
-// @matches foo/struct.Alpha.html '//*[@class="impl"]//code' "impl !.*Send.* for .*Alpha"
+// @matches foo/struct.Alpha.html '//*[@class="impl"]//code' "impl !Send for Alpha"
 impl !Send for Alpha {}
 
-// @matches foo/struct.Bravo.html '//*[@class="impl"]//code' "impl<B> !.*Send.* for .*Bravo.*<B>"
+// @matches foo/struct.Bravo.html '//*[@class="impl"]//code' "impl<B> !Send for Bravo<B>"
 impl<B> !Send for Bravo<B> {}
