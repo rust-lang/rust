@@ -23,7 +23,7 @@ struct Test;
 
 pub fn parse_cmd(name: &str) -> Option<Box<Subcommand>> {
     if name == "test" {
-        Some(box Test as Box<Subcommand>)
+        Some(Box::new(Test) as Box<Subcommand>)
     } else {
         None
     }
@@ -52,13 +52,13 @@ impl Subcommand for Test {
                                 term.err(&format!("{}\n{}",
                                          String::from_utf8_lossy(&output.output[]),
                                          String::from_utf8_lossy(&output.error[]))[]);
-                                return Err(box "Some tests failed." as Box<Error>);
+                                return Err(Box::new("Some tests failed.") as Box<Error>);
                             }
 
                         }
                         Err(e) => {
                             let message = format!("Could not execute `rustdoc`: {}", e);
-                            return Err(box message as Box<Error>);
+                            return Err(Box::new(message) as Box<Error>);
                         }
                     }
                 }
@@ -67,7 +67,7 @@ impl Subcommand for Test {
                 for err in errors.into_iter() {
                     term.err(&err[]);
                 }
-                return Err(box "There was an error." as Box<Error>);
+                return Err(Box::new("There was an error.") as Box<Error>);
             }
         }
         Ok(()) // lol

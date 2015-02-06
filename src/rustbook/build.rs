@@ -28,7 +28,7 @@ struct Build;
 
 pub fn parse_cmd(name: &str) -> Option<Box<Subcommand>> {
     if name == "build" {
-        Some(box Build as Box<Subcommand>)
+        Some(Box::new(Build) as Box<Subcommand>)
     } else {
         None
     }
@@ -134,7 +134,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         if output_result != 0 {
             let message = format!("Could not execute `rustdoc` with {:?}: {}",
                                   rustdoc_args, output_result);
-            return Err(box message as Box<Error>);
+            return Err(Box::new(message) as Box<Error>);
         }
     }
 
@@ -181,7 +181,7 @@ impl Subcommand for Build {
                     term.err(&format!("error: {}", err)[]);
                 }
 
-                Err(box format!("{} errors occurred", n) as Box<Error>)
+                Err(Box::new(format!("{} errors occurred", n)) as Box<Error>)
             }
         }
     }

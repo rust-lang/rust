@@ -40,7 +40,7 @@ impl Show for Box<Error + 'static> {
 
 impl<E: Error + 'static> FromError<E> for Box<Error + 'static> {
     fn from_err(err: E) -> Box<Error + 'static> {
-        box err as Box<Error>
+        Box::new(err) as Box<Error>
     }
 }
 
