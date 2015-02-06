@@ -886,8 +886,8 @@ pub fn run_test(opts: &TestOpts,
             if nocapture {
                 drop((stdout, stderr));
             } else {
-                cfg = cfg.stdout(box stdout as Box<Writer + Send>);
-                cfg = cfg.stderr(box stderr as Box<Writer + Send>);
+                cfg = cfg.stdout(Box::new(stdout) as Box<Writer + Send>);
+                cfg = cfg.stderr(Box::new(stderr) as Box<Writer + Send>);
             }
 
             let result_guard = cfg.scoped(move || { testfn.invoke(()) });
