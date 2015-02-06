@@ -354,7 +354,7 @@ use std::sync::mpsc;
 fn main() {
     let (tx, rx) = mpsc::channel();
 
-    for _ in range(0, 10) {
+    for _ in 0..10 {
         let tx = tx.clone();
 
         Thread::spawn(move || {
