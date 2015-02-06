@@ -669,7 +669,7 @@ impl<'a, K: 'a, V: 'a> Handle<&'a mut Node<K, V>, handle::Edge, handle::Internal
 
 impl<K, V, NodeRef: Deref<Target=Node<K, V>>> Handle<NodeRef, handle::Edge, handle::Internal> {
     // This doesn't exist because there are no uses for it,
-    // but is fine to add, analagous to edge_mut.
+    // but is fine to add, analogous to edge_mut.
     //
     // /// Returns a reference to the edge pointed-to by this handle. This should not be
     // /// confused with `node`, which references the parent node of what is returned here.

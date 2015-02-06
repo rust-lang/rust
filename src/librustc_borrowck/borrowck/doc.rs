@@ -142,7 +142,7 @@
 //! which contains an empty set of actions, still has a purpose---it
 //! prevents moves from `LV`. I chose not to make `MOVE` a fourth kind of
 //! action because that would imply that sometimes moves are permitted
-//! from restrictived values, which is not the case.
+//! from restricted values, which is not the case.
 //!
 //! #### Example
 //!
