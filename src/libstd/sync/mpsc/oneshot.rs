@@ -45,7 +45,7 @@ use core::mem;
 use sync::atomic::{AtomicUsize, Ordering};
 
 // Various states you can find a port in.
-const EMPTY: uint = 0;          // initial state: no data, no blocked reciever
+const EMPTY: uint = 0;          // initial state: no data, no blocked receiver
 const DATA: uint = 1;           // data ready for receiver to take
 const DISCONNECTED: uint = 2;   // channel is disconnected OR upgraded
 // Any other value represents a pointer to a SignalToken value. The

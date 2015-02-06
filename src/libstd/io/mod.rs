@@ -96,7 +96,7 @@ fn with_end_to_cap<F>(v: &mut Vec<u8>, f: F) -> Result<usize>
 //
 // To this end, we use an RAII guard (to protect against panics) which updates
 // the length of the string when it is dropped. This guard initially truncates
-// the string to the prior length and only afer we've validated that the
+// the string to the prior length and only after we've validated that the
 // new contents are valid UTF-8 do we allow it to set a longer length.
 //
 // The unsafety in this function is twofold:
@@ -663,7 +663,7 @@ impl<T> Take<T> {
     ///
     /// # Note
     ///
-    /// This instance may reach EOF after reading fewer bytes than indiccated by
+    /// This instance may reach EOF after reading fewer bytes than indicated by
     /// this method if the underlying `Read` instance reaches EOF.
     pub fn limit(&self) -> u64 { self.limit }
 }

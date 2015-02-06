@@ -63,15 +63,15 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
                 "use a `move ||` expression instead",
             ),
             ObsoleteSyntax::ClosureType => (
-                "`|usize| -> bool` closure type syntax",
+                "`|usize| -> bool` closure type",
                 "use unboxed closures instead, no type annotation needed"
             ),
             ObsoleteSyntax::ClosureKind => (
-                "`:`, `&mut:`, or `&:` syntax",
+                "`:`, `&mut:`, or `&:`",
                 "rely on inference instead"
             ),
             ObsoleteSyntax::Sized => (
-                "`Sized? T` syntax for removing the `Sized` bound",
+                "`Sized? T` for removing the `Sized` bound",
                 "write `T: ?Sized` instead"
             ),
         };

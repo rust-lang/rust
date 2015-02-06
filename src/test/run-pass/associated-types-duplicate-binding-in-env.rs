@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,20 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(
-    foo_bar_baz,
-    foo(bar),
-    foo = "baz"
-)]
-//~^^^ ERROR: malformed feature
-//~^^^ ERROR: malformed feature
+// Check that we do not report ambiguities when the same predicate
+// appears in the environment twice. Issue #21965.
 
-#![feature] //~ ERROR: malformed feature
-#![feature = "foo"] //~ ERROR: malformed feature
+trait Foo {
+    type B;
 
-#![feature(test_removed_feature)] //~ ERROR: feature has been removed
+    fn get() -> Self::B;
+}
+
+fn foo<T>() -> ()
+    where T : Foo<B=()>, T : Foo<B=()>
+{
+    <T as Foo>::get()
+}
+
+fn main() {
+}

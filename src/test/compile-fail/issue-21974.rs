@@ -8,14 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+// Test that (for now) we report an ambiguity error here, because
+// specific trait relationships are ignored for the purposes of trait
+// matching. This behavior should likely be improved such that this
+// test passes. See #21974 for more details.
 
-use std::cell::RefCell;
+trait Foo {
+    fn foo(self);
+}
 
-// Regression test for issue 7364
-static boxed: Box<RefCell<isize>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::marker::Sync` is not implemented for the type
-//~| ERROR: the trait `core::marker::Sync` is not implemented for the type
+fn foo<'a,'b,T>(x: &'a T, y: &'b T)
+    where &'a T : Foo,
+          &'b T : Foo
+{
+    x.foo(); //~ ERROR type annotations required
+    y.foo();
+}
 
 fn main() { }

@@ -84,7 +84,7 @@ impl CodePoint {
 
     /// Create a new `CodePoint` from a `char`.
     ///
-    /// Since all Unicode scalar values are code points, this always succeds.
+    /// Since all Unicode scalar values are code points, this always succeeds.
     #[inline]
     pub fn from_char(value: char) -> CodePoint {
         CodePoint { value: value as u32 }

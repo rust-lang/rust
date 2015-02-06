@@ -1081,6 +1081,12 @@ pub fn with_cond<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     F: FnOnce(Block<'blk, 'tcx>) -> Block<'blk, 'tcx>,
 {
     let _icx = push_ctxt("with_cond");
+
+    if bcx.unreachable.get() ||
+            (common::is_const(val) && common::const_to_uint(val) == 0) {
+        return bcx;
+    }
+
     let fcx = bcx.fcx;
     let next_cx = fcx.new_temp_block("next");
     let cond_cx = fcx.new_temp_block("cond");

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regresion test for issue 7660
+// Regression test for issue 7660
 // rvalue lifetime too short when equivalent `match` works
 
 extern crate collections;

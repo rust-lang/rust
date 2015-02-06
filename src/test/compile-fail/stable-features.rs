@@ -8,14 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+// Testing that the stable_features lint catches use of stable
+// language and lib features.
 
-use std::cell::RefCell;
+#![deny(stable_features)]
+#![feature(test_accepted_feature)] //~ ERROR this feature is stable
+#![feature(rust1)] //~ ERROR this feature is stable
 
-// Regression test for issue 7364
-static boxed: Box<RefCell<isize>> = box RefCell::new(0);
-//~^ ERROR statics are not allowed to have custom pointers
-//~| ERROR: the trait `core::marker::Sync` is not implemented for the type
-//~| ERROR: the trait `core::marker::Sync` is not implemented for the type
-
-fn main() { }
+fn main() {
+    let _foo: Vec<()> = Vec::new();
+}

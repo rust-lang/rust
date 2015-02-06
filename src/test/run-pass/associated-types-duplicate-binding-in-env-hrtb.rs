@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(
-    foo_bar_baz,
-    foo(bar),
-    foo = "baz"
-)]
-//~^^^ ERROR: malformed feature
-//~^^^ ERROR: malformed feature
+// Check that we do not report ambiguities when equivalent predicates
+// (modulo bound lifetime names) appears in the environment
+// twice. Issue #21965.
 
-#![feature] //~ ERROR: malformed feature
-#![feature = "foo"] //~ ERROR: malformed feature
+fn foo<T>(t: T) -> i32
+    where T : for<'a> Fn(&'a u8) -> i32,
+          T : for<'b> Fn(&'b u8) -> i32,
+{
+    t(&3)
+}
 
-#![feature(test_removed_feature)] //~ ERROR: feature has been removed
+fn main() {
+}

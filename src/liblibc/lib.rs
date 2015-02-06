@@ -332,15 +332,12 @@ pub mod types {
             /// variants, because the compiler complains about the repr attribute
             /// otherwise.
             #[repr(u8)]
-            #[allow(missing_copy_implementations)]
             pub enum c_void {
                 __variant1,
                 __variant2,
             }
 
-            #[allow(missing_copy_implementations)]
             pub enum FILE {}
-            #[allow(missing_copy_implementations)]
             pub enum fpos_t {}
         }
         pub mod c99 {
@@ -354,9 +351,7 @@ pub mod types {
             pub type uint64_t = u64;
         }
         pub mod posix88 {
-            #[allow(missing_copy_implementations)]
             pub enum DIR {}
-            #[allow(missing_copy_implementations)]
             pub enum dirent_t {}
         }
         pub mod posix01 {}

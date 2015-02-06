@@ -15,7 +15,7 @@
 // writing (August 2014) freely licensed under the following Creative Commons Attribution
 // License: [CC BY 2.5 CA](http://creativecommons.org/licenses/by/2.5/ca/).
 
-pub use self::Entry::*;
+use self::Entry::*;
 
 use core::prelude::*;
 
@@ -63,36 +63,20 @@ use super::node::{self, Node, Found, GoDown};
 /// would like to further explore choosing the optimal search strategy based on the choice of B,
 /// and possibly other factors. Using linear search, searching for a random element is expected
 /// to take O(B log<sub>B</sub>n) comparisons, which is generally worse than a BST. In practice,
-/// however, performance is excellent. `BTreeMap` is able to readily outperform `TreeMap` under
-/// many workloads, and is competitive where it doesn't. BTreeMap also generally *scales* better
-/// than TreeMap, making it more appropriate for large datasets.
-///
-/// However, `TreeMap` may still be more appropriate to use in many contexts. If elements are very
-/// large or expensive to compare, `TreeMap` may be more appropriate. It won't allocate any
-/// more space than is needed, and will perform the minimal number of comparisons necessary.
-/// `TreeMap` also provides much better performance stability guarantees. Generally, very few
-/// changes need to be made to update a BST, and two updates are expected to take about the same
-/// amount of time on roughly equal sized BSTs. However a B-Tree's performance is much more
-/// amortized. If a node is overfull, it must be split into two nodes. If a node is underfull, it
-/// may be merged with another. Both of these operations are relatively expensive to perform, and
-/// it's possible to force one to occur at every single level of the tree in a single insertion or
-/// deletion. In fact, a malicious or otherwise unlucky sequence of insertions and deletions can
-/// force this degenerate behaviour to occur on every operation. While the total amount of work
-/// done on each operation isn't *catastrophic*, and *is* still bounded by O(B log<sub>B</sub>n),
-/// it is certainly much slower when it does.
+/// however, performance is excellent.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct BTreeMap<K, V> {
     root: Node<K, V>,
-    length: uint,
-    depth: uint,
-    b: uint,
+    length: usize,
+    depth: usize,
+    b: usize,
 }
 
 /// An abstract base over-which all other BTree iterators are built.
 struct AbsIter<T> {
     traversals: RingBuf<T>,
-    size: uint,
+    size: usize,
 }
 
 /// An iterator over a BTreeMap's entries.
@@ -171,7 +155,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// Makes a new empty BTreeMap with the given B.
     ///
     /// B cannot be less than 2.
-    pub fn with_b(b: uint) -> BTreeMap<K, V> {
+    pub fn with_b(b: usize) -> BTreeMap<K, V> {
         assert!(b > 1, "B must be greater than 1");
         BTreeMap {
             length: 0,
@@ -189,7 +173,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// a.clear();
     /// assert!(a.is_empty());
     /// ```
@@ -219,7 +203,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.get(&1), Some(&"a"));
     /// assert_eq!(map.get(&2), None);
     /// ```
@@ -251,7 +235,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.contains_key(&1), true);
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
@@ -271,7 +255,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// match map.get_mut(&1) {
     ///     Some(x) => *x = "b",
     ///     None => (),
@@ -333,7 +317,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// assert_eq!(map.insert(37u, "a"), None);
+    /// assert_eq!(map.insert(37, "a"), None);
     /// assert_eq!(map.is_empty(), false);
     ///
     /// map.insert(37, "b");
@@ -445,7 +429,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
+    /// map.insert(1, "a");
     /// assert_eq!(map.remove(&1), Some("a"));
     /// assert_eq!(map.remove(&1), None);
     /// ```
@@ -1001,7 +985,7 @@ impl<K, V, E, T> Iterator for AbsIter<T> where
         }
     }
 
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         (self.size, Some(self.size))
     }
 }
@@ -1038,7 +1022,7 @@ impl<'a, K, V> Iterator for Iter<'a, K, V> {
     type Item = (&'a K, &'a V);
 
     fn next(&mut self) -> Option<(&'a K, &'a V)> { self.inner.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Iter<'a, K, V> {
@@ -1052,7 +1036,7 @@ impl<'a, K, V> Iterator for IterMut<'a, K, V> {
     type Item = (&'a K, &'a mut V);
 
     fn next(&mut self) -> Option<(&'a K, &'a mut V)> { self.inner.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for IterMut<'a, K, V> {
@@ -1066,7 +1050,7 @@ impl<K, V> Iterator for IntoIter<K, V> {
     type Item = (K, V);
 
     fn next(&mut self) -> Option<(K, V)> { self.inner.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> DoubleEndedIterator for IntoIter<K, V> {
@@ -1080,7 +1064,7 @@ impl<'a, K, V> Iterator for Keys<'a, K, V> {
     type Item = &'a K;
 
     fn next(&mut self) -> Option<(&'a K)> { self.inner.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Keys<'a, K, V> {
@@ -1095,7 +1079,7 @@ impl<'a, K, V> Iterator for Values<'a, K, V> {
     type Item = &'a V;
 
     fn next(&mut self) -> Option<(&'a V)> { self.inner.next() }
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> DoubleEndedIterator for Values<'a, K, V> {
@@ -1137,8 +1121,7 @@ impl<'a, K: Ord, V> Entry<'a, K, V> {
 impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
     /// Sets the value of the entry with the VacantEntry's key,
     /// and returns a mutable reference to it.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(self, value: V) -> &'a mut V {
         self.stack.insert(self.key, value)
     }
@@ -1146,38 +1129,33 @@ impl<'a, K: Ord, V> VacantEntry<'a, K, V> {
 
 impl<'a, K: Ord, V> OccupiedEntry<'a, K, V> {
     /// Gets a reference to the value in the entry.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get(&self) -> &V {
         self.stack.peek()
     }
 
     /// Gets a mutable reference to the value in the entry.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut(&mut self) -> &mut V {
         self.stack.peek_mut()
     }
 
     /// Converts the entry into a mutable reference to its value.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_mut(self) -> &'a mut V {
         self.stack.into_top()
     }
 
     /// Sets the value of the entry with the OccupiedEntry's key,
     /// and returns the entry's old value.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn insert(&mut self, mut value: V) -> V {
         mem::swap(self.stack.peek_mut(), &mut value);
         value
     }
 
     /// Takes the value of the entry out of the map, and returns it.
-    #[unstable(feature = "collections",
-               reason = "matches collection reform v2 specification, waiting for dust to settle")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove(self) -> V {
         self.stack.remove()
     }
@@ -1192,16 +1170,16 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
-    /// map.insert(2u, "b");
-    /// map.insert(3u, "c");
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// map.insert(3, "c");
     ///
     /// for (key, value) in map.iter() {
     ///     println!("{}: {}", key, value);
     /// }
     ///
     /// let (first_key, first_value) = map.iter().next().unwrap();
-    /// assert_eq!((*first_key, *first_value), (1u, "a"));
+    /// assert_eq!((*first_key, *first_value), (1, "a"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter(&self) -> Iter<K, V> {
@@ -1225,9 +1203,9 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert("a", 1u);
-    /// map.insert("b", 2u);
-    /// map.insert("c", 3u);
+    /// map.insert("a", 1);
+    /// map.insert("b", 2);
+    /// map.insert("c", 3);
     ///
     /// // add 10 to the value if the key isn't "a"
     /// for (key, value) in map.iter_mut() {
@@ -1257,9 +1235,9 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(1u, "a");
-    /// map.insert(2u, "b");
-    /// map.insert(3u, "c");
+    /// map.insert(1, "a");
+    /// map.insert(2, "b");
+    /// map.insert(3, "c");
     ///
     /// for (key, value) in map.into_iter() {
     ///     println!("{}: {}", key, value);
@@ -1286,11 +1264,11 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
-    /// a.insert(1u, "a");
-    /// a.insert(2u, "b");
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
     ///
-    /// let keys: Vec<uint> = a.keys().cloned().collect();
-    /// assert_eq!(keys, vec![1u,2,]);
+    /// let keys: Vec<usize> = a.keys().cloned().collect();
+    /// assert_eq!(keys, vec![1,2,]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
@@ -1308,8 +1286,8 @@ impl<K, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     ///
     /// let mut a = BTreeMap::new();
-    /// a.insert(1u, "a");
-    /// a.insert(2u, "b");
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
     ///
     /// let values: Vec<&str> = a.values().cloned().collect();
     /// assert_eq!(values, vec!["a","b"]);
@@ -1331,11 +1309,11 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// let mut a = BTreeMap::new();
     /// assert_eq!(a.len(), 0);
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// assert_eq!(a.len(), 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn len(&self) -> uint { self.length }
+    pub fn len(&self) -> usize { self.length }
 
     /// Return true if the map contains no elements.
     ///
@@ -1346,7 +1324,7 @@ impl<K, V> BTreeMap<K, V> {
     ///
     /// let mut a = BTreeMap::new();
     /// assert!(a.is_empty());
-    /// a.insert(1u, "a");
+    /// a.insert(1, "a");
     /// assert!(!a.is_empty());
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -1496,13 +1474,13 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::Bound::{Included, Unbounded};
     ///
     /// let mut map = BTreeMap::new();
-    /// map.insert(3u, "a");
-    /// map.insert(5u, "b");
-    /// map.insert(8u, "c");
+    /// map.insert(3, "a");
+    /// map.insert(5, "b");
+    /// map.insert(8, "c");
     /// for (&key, &value) in map.range(Included(&4), Included(&8)) {
     ///     println!("{}: {}", key, value);
     /// }
-    /// assert_eq!(Some((&5u, &"b")), map.range(Included(&4), Unbounded).next());
+    /// assert_eq!(Some((&5, &"b")), map.range(Included(&4), Unbounded).next());
     /// ```
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
@@ -1546,7 +1524,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// use std::collections::BTreeMap;
     /// use std::collections::btree_map::Entry;
     ///
-    /// let mut count: BTreeMap<&str, uint> = BTreeMap::new();
+    /// let mut count: BTreeMap<&str, usize> = BTreeMap::new();
     ///
     /// // count the number of occurrences of letters in the vec
     /// for x in vec!["a","b","a","c","a","b"].iter() {
@@ -1561,12 +1539,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     ///     }
     /// }
     ///
-    /// assert_eq!(count["a"], 3u);
+    /// assert_eq!(count["a"], 3);
     /// ```
-    /// The key must have the same ordering before or after `.to_owned()` is called.
-    #[unstable(feature = "collections",
-               reason = "precise API still under development")]
-    pub fn entry<'a>(&'a mut self, mut key: K) -> Entry<'a, K, V> {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn entry(&mut self, mut key: K) -> Entry<K, V> {
         // same basic logic of `swap` and `pop`, blended together
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
@@ -1616,13 +1592,14 @@ mod test {
     use prelude::*;
     use std::iter::range_inclusive;
 
-    use super::{BTreeMap, Occupied, Vacant};
+    use super::BTreeMap;
+    use super::Entry::{Occupied, Vacant};
     use Bound::{self, Included, Excluded, Unbounded};
 
     #[test]
     fn test_basic_large() {
         let mut map = BTreeMap::new();
-        let size = 10000u;
+        let size = 10000;
         assert_eq!(map.len(), 0);
 
         for i in 0..size {
@@ -1669,7 +1646,7 @@ mod test {
         let mut map = BTreeMap::new();
         assert_eq!(map.remove(&1), None);
         assert_eq!(map.get(&1), None);
-        assert_eq!(map.insert(1u, 1u), None);
+        assert_eq!(map.insert(1, 1), None);
         assert_eq!(map.get(&1), Some(&1));
         assert_eq!(map.insert(1, 2), Some(1));
         assert_eq!(map.get(&1), Some(&2));
@@ -1682,12 +1659,12 @@ mod test {
 
     #[test]
     fn test_iter() {
-        let size = 10000u;
+        let size = 10000;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-        fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
+        fn test<T>(size: usize, mut iter: T) where T: Iterator<Item=(usize, usize)> {
             for i in 0..size {
                 assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
                 assert_eq!(iter.next().unwrap(), (i, i));
@@ -1702,12 +1679,12 @@ mod test {
 
     #[test]
     fn test_iter_rev() {
-        let size = 10000u;
+        let size = 10000;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-        fn test<T>(size: uint, mut iter: T) where T: Iterator<Item=(uint, uint)> {
+        fn test<T>(size: usize, mut iter: T) where T: Iterator<Item=(usize, usize)> {
             for i in 0..size {
                 assert_eq!(iter.size_hint(), (size - i, Some(size - i)));
                 assert_eq!(iter.next().unwrap(), (size - i - 1, size - i - 1));
@@ -1722,13 +1699,13 @@ mod test {
 
     #[test]
     fn test_iter_mixed() {
-        let size = 10000u;
+        let size = 10000;
 
         // Forwards
-        let mut map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
+        let mut map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-        fn test<T>(size: uint, mut iter: T)
-                where T: Iterator<Item=(uint, uint)> + DoubleEndedIterator {
+        fn test<T>(size: usize, mut iter: T)
+                where T: Iterator<Item=(usize, usize)> + DoubleEndedIterator {
             for i in 0..size / 4 {
                 assert_eq!(iter.size_hint(), (size - i * 2, Some(size - i * 2)));
                 assert_eq!(iter.next().unwrap(), (i, i));
@@ -1748,13 +1725,13 @@ mod test {
 
     #[test]
     fn test_range_small() {
-        let size = 5u;
+        let size = 5;
 
         // Forwards
-        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
+        let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-        let mut j = 0u;
-        for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(2u..size) {
+        let mut j = 0;
+        for ((&k, &v), i) in map.range(Included(&2), Unbounded).zip(2..size) {
             assert_eq!(k, i);
             assert_eq!(v, i);
             j += 1;
@@ -1764,10 +1741,10 @@ mod test {
 
     #[test]
     fn test_range_1000() {
-        let size = 1000u;
-        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
+        let size = 1000;
+        let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
-        fn test(map: &BTreeMap<uint, uint>, size: uint, min: Bound<&uint>, max: Bound<&uint>) {
+        fn test(map: &BTreeMap<u32, u32>, size: u32, min: Bound<&u32>, max: Bound<&u32>) {
             let mut kvs = map.range(min, max).map(|(&k, &v)| (k, v));
             let mut pairs = (0..size).map(|i| (i, i));
 
@@ -1787,8 +1764,8 @@ mod test {
 
     #[test]
     fn test_range() {
-        let size = 200u;
-        let map: BTreeMap<uint, uint> = (0..size).map(|i| (i, i)).collect();
+        let size = 200;
+        let map: BTreeMap<_, _> = (0..size).map(|i| (i, i)).collect();
 
         for i in 0..size {
             for j in i..size {
@@ -1808,7 +1785,7 @@ mod test {
     fn test_entry(){
         let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
-        let mut map: BTreeMap<int, int> = xs.iter().map(|&x| x).collect();
+        let mut map: BTreeMap<_, _> = xs.iter().map(|&x| x).collect();
 
         // Existing key (insert)
         match map.entry(1) {
@@ -1872,7 +1849,7 @@ mod bench {
 
     #[bench]
     pub fn insert_rand_100(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         insert_rand_n(100, &mut m, b,
                       |m, i| { m.insert(i, 1); },
                       |m, i| { m.remove(&i); });
@@ -1880,7 +1857,7 @@ mod bench {
 
     #[bench]
     pub fn insert_rand_10_000(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         insert_rand_n(10_000, &mut m, b,
                       |m, i| { m.insert(i, 1); },
                       |m, i| { m.remove(&i); });
@@ -1889,7 +1866,7 @@ mod bench {
     // Insert seq
     #[bench]
     pub fn insert_seq_100(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         insert_seq_n(100, &mut m, b,
                      |m, i| { m.insert(i, 1); },
                      |m, i| { m.remove(&i); });
@@ -1897,7 +1874,7 @@ mod bench {
 
     #[bench]
     pub fn insert_seq_10_000(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         insert_seq_n(10_000, &mut m, b,
                      |m, i| { m.insert(i, 1); },
                      |m, i| { m.remove(&i); });
@@ -1906,7 +1883,7 @@ mod bench {
     // Find rand
     #[bench]
     pub fn find_rand_100(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         find_rand_n(100, &mut m, b,
                     |m, i| { m.insert(i, 1); },
                     |m, i| { m.get(&i); });
@@ -1914,7 +1891,7 @@ mod bench {
 
     #[bench]
     pub fn find_rand_10_000(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         find_rand_n(10_000, &mut m, b,
                     |m, i| { m.insert(i, 1); },
                     |m, i| { m.get(&i); });
@@ -1923,7 +1900,7 @@ mod bench {
     // Find seq
     #[bench]
     pub fn find_seq_100(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         find_seq_n(100, &mut m, b,
                    |m, i| { m.insert(i, 1); },
                    |m, i| { m.get(&i); });
@@ -1931,14 +1908,14 @@ mod bench {
 
     #[bench]
     pub fn find_seq_10_000(b: &mut Bencher) {
-        let mut m : BTreeMap<uint,uint> = BTreeMap::new();
+        let mut m = BTreeMap::new();
         find_seq_n(10_000, &mut m, b,
                    |m, i| { m.insert(i, 1); },
                    |m, i| { m.get(&i); });
     }
 
-    fn bench_iter(b: &mut Bencher, size: uint) {
-        let mut map = BTreeMap::<uint, uint>::new();
+    fn bench_iter(b: &mut Bencher, size: i32) {
+        let mut map = BTreeMap::<i32, i32>::new();
         let mut rng = weak_rng();
 
         for _ in 0..size {

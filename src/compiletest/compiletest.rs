@@ -118,7 +118,10 @@ pub fn parse_config(args: Vec<String> ) -> Config {
     }
 
     fn opt_path(m: &getopts::Matches, nm: &str) -> Path {
-        Path::new(m.opt_str(nm).unwrap())
+        match m.opt_str(nm) {
+            Some(s) => Path::new(s),
+            None => panic!("no option (=path) found for {}", nm),
+        }
     }
 
     let filter = if !matches.free.is_empty() {

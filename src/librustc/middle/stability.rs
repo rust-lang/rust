@@ -201,8 +201,9 @@ impl Index {
 /// Cross-references the feature names of unstable APIs with enabled
 /// features and possibly prints errors. Returns a list of all
 /// features used.
-pub fn check_unstable_api_usage(tcx: &ty::ctxt) -> FnvHashSet<InternedString> {
-    let ref active_lib_features = tcx.sess.features.borrow().lib_features;
+pub fn check_unstable_api_usage(tcx: &ty::ctxt)
+                                -> FnvHashMap<InternedString, attr::StabilityLevel> {
+    let ref active_lib_features = tcx.sess.features.borrow().declared_lib_features;
 
     // Put the active features into a map for quick lookup
     let active_features = active_lib_features.iter().map(|&(ref s, _)| s.clone()).collect();
@@ -210,7 +211,7 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt) -> FnvHashSet<InternedString> {
     let mut checker = Checker {
         tcx: tcx,
         active_features: active_features,
-        used_features: FnvHashSet()
+        used_features: FnvHashMap()
     };
 
     let krate = tcx.map.krate();
@@ -223,7 +224,7 @@ pub fn check_unstable_api_usage(tcx: &ty::ctxt) -> FnvHashSet<InternedString> {
 struct Checker<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     active_features: FnvHashSet<InternedString>,
-    used_features: FnvHashSet<InternedString>
+    used_features: FnvHashMap<InternedString, attr::StabilityLevel>
 }
 
 impl<'a, 'tcx> Checker<'a, 'tcx> {
@@ -234,7 +235,7 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
         match *stab {
             Some(Stability { level: attr::Unstable, ref feature, ref reason, .. }) => {
-                self.used_features.insert(feature.clone());
+                self.used_features.insert(feature.clone(), attr::Unstable);
 
                 if !self.active_features.contains(feature) {
                     let msg = match *reason {
@@ -247,7 +248,9 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                                       feature.get(), span, &msg[]);
                 }
             }
-            Some(..) => {
+            Some(Stability { level, ref feature, .. }) => {
+                self.used_features.insert(feature.clone(), level);
+
                 // Stable APIs are always ok to call and deprecated APIs are
                 // handled by a lint.
             }
@@ -433,17 +436,37 @@ pub fn lookup(tcx: &ty::ctxt, id: DefId) -> Option<Stability> {
 /// Given the list of enabled features that were not language features (i.e. that
 /// were expected to be library features), and the list of features used from
 /// libraries, identify activated features that don't exist and error about them.
-pub fn check_unused_features(sess: &Session,
-                             used_lib_features: &FnvHashSet<InternedString>) {
-    let ref lib_features = sess.features.borrow().lib_features;
-    let mut active_lib_features: FnvHashMap<InternedString, Span>
-        = lib_features.clone().into_iter().collect();
+pub fn check_unused_or_stable_features(sess: &Session,
+                                       lib_features_used: &FnvHashMap<InternedString,
+                                                                      attr::StabilityLevel>) {
+    let ref declared_lib_features = sess.features.borrow().declared_lib_features;
+    let mut remaining_lib_features: FnvHashMap<InternedString, Span>
+        = declared_lib_features.clone().into_iter().collect();
 
-    for used_feature in used_lib_features {
-        active_lib_features.remove(used_feature);
+    let stable_msg = "this feature is stable. attribute no longer needed";
+
+    for &span in sess.features.borrow().declared_stable_lang_features.iter() {
+        sess.add_lint(lint::builtin::STABLE_FEATURES,
+                      ast::CRATE_NODE_ID,
+                      span,
+                      stable_msg.to_string());
     }
 
-    for (_, &span) in &active_lib_features {
+    for (used_lib_feature, level) in lib_features_used.iter() {
+        match remaining_lib_features.remove(used_lib_feature) {
+            Some(span) => {
+                if *level == attr::Stable {
+                    sess.add_lint(lint::builtin::STABLE_FEATURES,
+                                  ast::CRATE_NODE_ID,
+                                  span,
+                                  stable_msg.to_string());
+                }
+            }
+            None => ( /* used but undeclared, handled during the previous ast visit */ )
+        }
+    }
+
+    for (_, &span) in remaining_lib_features.iter() {
         sess.add_lint(lint::builtin::UNUSED_FEATURES,
                       ast::CRATE_NODE_ID,
                       span,

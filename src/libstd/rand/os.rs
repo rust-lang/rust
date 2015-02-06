@@ -206,7 +206,6 @@ mod imp {
     /// - iOS: calls SecRandomCopyBytes as /dev/(u)random is sandboxed.
     ///
     /// This does not block.
-    #[allow(missing_copy_implementations)]
     pub struct OsRng {
         // dummy field to ensure that this struct cannot be constructed outside of this module
         _dummy: (),

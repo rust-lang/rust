@@ -232,7 +232,7 @@ impl Duration {
         secs_part.checked_add(nanos_part as i64)
     }
 
-    /// Add two durations, returning `None` if overflow occured.
+    /// Add two durations, returning `None` if overflow occurred.
     #[unstable(feature = "std_misc")]
     pub fn checked_add(&self, rhs: &Duration) -> Option<Duration> {
         let mut secs = try_opt!(self.secs.checked_add(rhs.secs));
@@ -247,7 +247,7 @@ impl Duration {
         if d < MIN || d > MAX { None } else { Some(d) }
     }
 
-    /// Subtract two durations, returning `None` if overflow occured.
+    /// Subtract two durations, returning `None` if overflow occurred.
     #[unstable(feature = "std_misc")]
     pub fn checked_sub(&self, rhs: &Duration) -> Option<Duration> {
         let mut secs = try_opt!(self.secs.checked_sub(rhs.secs));

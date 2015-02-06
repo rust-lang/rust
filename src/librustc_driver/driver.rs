@@ -171,7 +171,7 @@ pub fn source_name(input: &Input) -> String {
 /// CompileController is used to customise compilation, it allows compilation to
 /// be stopped and/or to call arbitrary code at various points in compilation.
 /// It also allows for various flags to be set to influence what information gets
-/// colelcted during compilation.
+/// collected during compilation.
 ///
 /// This is a somewhat higher level controller than a Session - the Session
 /// controls what happens in each phase, whereas the CompileController controls
@@ -668,8 +668,8 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
         time(time_passes, "stability checking", (), |_|
              stability::check_unstable_api_usage(&ty_cx));
 
-    time(time_passes, "unused feature checking", (), |_|
-         stability::check_unused_features(
+    time(time_passes, "unused lib feature checking", (), |_|
+         stability::check_unused_or_stable_features(
              &ty_cx.sess, lib_features_used));
 
     time(time_passes, "lint checking", (), |_|

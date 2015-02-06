@@ -21,7 +21,7 @@ extern crate libc;
 
 use TypeStructure::{TypeInt, TypeFunction};
 use AstKind::{ExprInt, ExprVar, ExprLambda};
-use arena::Arena;
+use arena::TypedArena;
 use std::collections::HashMap;
 use std::mem;
 
@@ -45,17 +45,20 @@ impl<'tcx> PartialEq for TypeStructure<'tcx> {
 
 impl<'tcx> Eq for TypeStructure<'tcx> {}
 
+type TyArena<'tcx> = TypedArena<TypeStructure<'tcx>>;
+type AstArena<'ast> = TypedArena<AstStructure<'ast>>;
+
 struct TypeContext<'tcx, 'ast> {
-    ty_arena: &'tcx Arena,
+    ty_arena: &'tcx TyArena<'tcx>,
     types: Vec<Type<'tcx>> ,
     type_table: HashMap<NodeId, Type<'tcx>>,
 
-    ast_arena: &'ast Arena,
+    ast_arena: &'ast AstArena<'ast>,
     ast_counter: uint,
 }
 
 impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
-    fn new(ty_arena: &'tcx Arena, ast_arena: &'ast Arena)
+    fn new(ty_arena: &'tcx TyArena<'tcx>, ast_arena: &'ast AstArena<'ast>)
            -> TypeContext<'tcx, 'ast> {
         TypeContext { ty_arena: ty_arena,
                       types: Vec::new(),
@@ -72,7 +75,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
             }
         }
 
-        let ty = self.ty_arena.alloc(|| s);
+        let ty = self.ty_arena.alloc(s);
         self.types.push(ty);
         ty
     }
@@ -85,7 +88,7 @@ impl<'tcx,'ast> TypeContext<'tcx, 'ast> {
     fn ast(&mut self, a: AstKind<'ast>) -> Ast<'ast> {
         let id = self.ast_counter;
         self.ast_counter += 1;
-        self.ast_arena.alloc(|| AstStructure { id: NodeId {id:id}, kind: a })
+        self.ast_arena.alloc(AstStructure { id: NodeId {id:id}, kind: a })
     }
 }
 
@@ -127,8 +130,8 @@ fn compute_types<'tcx,'ast>(tcx: &mut TypeContext<'tcx,'ast>,
 }
 
 pub fn main() {
-    let ty_arena = arena::Arena::new();
-    let ast_arena = arena::Arena::new();
+    let ty_arena = TypedArena::new();
+    let ast_arena = TypedArena::new();
     let mut tcx = TypeContext::new(&ty_arena, &ast_arena);
     let ast = tcx.ast(ExprInt);
     let ty = compute_types(&mut tcx, ast);
