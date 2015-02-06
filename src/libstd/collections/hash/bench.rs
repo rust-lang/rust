@@ -21,7 +21,7 @@ fn new_drop(b : &mut Bencher) {
     use super::map::HashMap;
 
     b.iter(|| {
-        let m : HashMap<int, int> = HashMap::new();
+        let m : HashMap<i32, i32> = HashMap::new();
         assert_eq!(m.len(), 0);
     })
 }

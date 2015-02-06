@@ -209,7 +209,7 @@
 //! all the contents of the collection.
 //!
 //! ```
-//! let vec = vec![1u, 2, 3, 4];
+//! let vec = vec![1, 2, 3, 4];
 //! for x in vec.iter() {
 //!    println!("vec contained {}", x);
 //! }
@@ -219,7 +219,7 @@
 //! This is great for mutating all the contents of the collection.
 //!
 //! ```
-//! let mut vec = vec![1u, 2, 3, 4];
+//! let mut vec = vec![1, 2, 3, 4];
 //! for x in vec.iter_mut() {
 //!    *x += 1;
 //! }
@@ -234,15 +234,15 @@
 //! previous section to do this as efficiently as possible.
 //!
 //! ```
-//! let mut vec1 = vec![1u, 2, 3, 4];
-//! let vec2 = vec![10u, 20, 30, 40];
+//! let mut vec1 = vec![1, 2, 3, 4];
+//! let vec2 = vec![10, 20, 30, 40];
 //! vec1.extend(vec2.into_iter());
 //! ```
 //!
 //! ```
 //! use std::collections::RingBuf;
 //!
-//! let vec = vec![1u, 2, 3, 4];
+//! let vec = vec![1, 2, 3, 4];
 //! let buf: RingBuf<uint> = vec.into_iter().collect();
 //! ```
 //!
@@ -253,7 +253,7 @@
 //! iterators as the way to iterate over them in reverse order.
 //!
 //! ```
-//! let vec = vec![1u, 2, 3, 4];
+//! let vec = vec![1, 2, 3, 4];
 //! for x in vec.iter().rev() {
 //!    println!("vec contained {}", x);
 //! }
@@ -299,21 +299,21 @@
 //! #### Counting the number of times each character in a string occurs
 //!
 //! ```
-//! use std::collections::btree_map::{BTreeMap, Occupied, Vacant};
+//! use std::collections::btree_map::{BTreeMap, Entry};
 //!
 //! let mut count = BTreeMap::new();
 //! let message = "she sells sea shells by the sea shore";
 //!
 //! for c in message.chars() {
 //!     match count.entry(c) {
-//!         Vacant(entry) => { entry.insert(1u); },
-//!         Occupied(mut entry) => *entry.get_mut() += 1,
+//!         Entry::Vacant(entry) => { entry.insert(1); },
+//!         Entry::Occupied(mut entry) => *entry.get_mut() += 1,
 //!     }
 //! }
 //!
 //! assert_eq!(count.get(&'s'), Some(&8));
 //!
-//! println!("Number of occurences of each character");
+//! println!("Number of occurrences of each character");
 //! for (char, count) in count.iter() {
 //!     println!("{}: {}", char, count);
 //! }
@@ -326,7 +326,7 @@
 //! #### Tracking the inebriation of customers at a bar
 //!
 //! ```
-//! use std::collections::btree_map::{BTreeMap, Occupied, Vacant};
+//! use std::collections::btree_map::{BTreeMap, Entry};
 //!
 //! // A client of the bar. They have an id and a blood alcohol level.
 //! struct Person { id: u32, blood_alcohol: f32 };
@@ -341,8 +341,8 @@
 //!     // If this is the first time we've seen this customer, initialize them
 //!     // with no blood alcohol. Otherwise, just retrieve them.
 //!     let person = match blood_alcohol.entry(id) {
-//!         Vacant(entry) => entry.insert(Person{id: id, blood_alcohol: 0.0}),
-//!         Occupied(entry) => entry.into_mut(),
+//!         Entry::Vacant(entry) => entry.insert(Person{id: id, blood_alcohol: 0.0}),
+//!         Entry::Occupied(entry) => entry.into_mut(),
 //!     };
 //!
 //!     // Reduce their blood alcohol level. It takes time to order and drink a beer!

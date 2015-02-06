@@ -2019,6 +2019,12 @@ declare_lint! {
 }
 
 declare_lint! {
+    pub STABLE_FEATURES,
+    Warn,
+    "stable features found in #[feature] directive"
+}
+
+declare_lint! {
     pub UNKNOWN_CRATE_TYPES,
     Deny,
     "unknown crate type found in #[crate_type] directive"
@@ -2038,7 +2044,7 @@ declare_lint! {
 
 declare_lint! {
     pub MISSING_COPY_IMPLEMENTATIONS,
-    Warn,
+    Allow,
     "detects potentially-forgotten implementations of `Copy`"
 }
 
@@ -2060,6 +2066,7 @@ impl LintPass for HardwiredLints {
             UNREACHABLE_CODE,
             WARNINGS,
             UNUSED_FEATURES,
+            STABLE_FEATURES,
             UNKNOWN_CRATE_TYPES,
             VARIANT_SIZE_DIFFERENCES,
             FAT_PTR_TRANSMUTES

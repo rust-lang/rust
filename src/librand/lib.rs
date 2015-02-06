@@ -387,7 +387,6 @@ pub trait SeedableRng<Seed>: Rng {
 /// [1]: Marsaglia, George (July 2003). ["Xorshift
 /// RNGs"](http://www.jstatsoft.org/v08/i14/paper). *Journal of
 /// Statistical Software*. Vol. 8 (Issue 14).
-#[allow(missing_copy_implementations)]
 #[derive(Clone)]
 pub struct XorShiftRng {
     x: u32,

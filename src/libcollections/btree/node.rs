@@ -65,7 +65,7 @@ pub struct Node<K, V> {
     //
     // Note: instead of accessing this field directly, please call the `len()` method, which should
     // be more stable in the face of representation changes.
-    _len: uint,
+    _len: usize,
 
     // FIXME(gereeter) It shouldn't be necessary to store the capacity in every node, as it should
     // be constant throughout the tree. Once a solution to this is found, it might be possible to
@@ -74,7 +74,7 @@ pub struct Node<K, V> {
     //
     // Note: instead of accessing this field directly, please call the `capacity()` method, which
     // should be more stable in the face of representation changes.
-    _capacity: uint,
+    _capacity: usize,
 }
 
 struct NodeSlice<'a, K: 'a, V: 'a> {
@@ -102,7 +102,7 @@ struct MutNodeSlice<'a, K: 'a, V: 'a> {
 ///
 /// Fails if `target_alignment` is not a power of two.
 #[inline]
-fn round_up_to_next(unrounded: uint, target_alignment: uint) -> uint {
+fn round_up_to_next(unrounded: usize, target_alignment: usize) -> usize {
     assert!(num::UnsignedInt::is_power_of_two(target_alignment));
     (unrounded + target_alignment - 1) & !(target_alignment - 1)
 }
@@ -120,10 +120,10 @@ fn test_rounding() {
 // Returns a tuple of (val_offset, edge_offset),
 // from the start of a mallocated array.
 #[inline]
-fn calculate_offsets(keys_size: uint,
-                     vals_size: uint, vals_align: uint,
-                     edges_align: uint)
-                     -> (uint, uint) {
+fn calculate_offsets(keys_size: usize,
+                     vals_size: usize, vals_align: usize,
+                     edges_align: usize)
+                     -> (usize, usize) {
     let vals_offset = round_up_to_next(keys_size, vals_align);
     let end_of_vals = vals_offset + vals_size;
 
@@ -135,10 +135,10 @@ fn calculate_offsets(keys_size: uint,
 // Returns a tuple of (minimum required alignment, array_size),
 // from the start of a mallocated array.
 #[inline]
-fn calculate_allocation(keys_size: uint, keys_align: uint,
-                        vals_size: uint, vals_align: uint,
-                        edges_size: uint, edges_align: uint)
-                        -> (uint, uint) {
+fn calculate_allocation(keys_size: usize, keys_align: usize,
+                        vals_size: usize, vals_align: usize,
+                        edges_size: usize, edges_align: usize)
+                        -> (usize, usize) {
     let (_, edges_offset) = calculate_offsets(keys_size,
                                               vals_size, vals_align,
                                                          edges_align);
@@ -159,7 +159,7 @@ fn test_offset_calculation() {
     assert_eq!(calculate_offsets(6, 12, 4, 8), (8, 24));
 }
 
-fn calculate_allocation_generic<K, V>(capacity: uint, is_leaf: bool) -> (uint, uint) {
+fn calculate_allocation_generic<K, V>(capacity: usize, is_leaf: bool) -> (usize, usize) {
     let (keys_size, keys_align) = (capacity * mem::size_of::<K>(), mem::min_align_of::<K>());
     let (vals_size, vals_align) = (capacity * mem::size_of::<V>(), mem::min_align_of::<V>());
     let (edges_size, edges_align) = if is_leaf {
@@ -175,7 +175,7 @@ fn calculate_allocation_generic<K, V>(capacity: uint, is_leaf: bool) -> (uint, u
     )
 }
 
-fn calculate_offsets_generic<K, V>(capacity: uint, is_leaf: bool) -> (uint, uint) {
+fn calculate_offsets_generic<K, V>(capacity: usize, is_leaf: bool) -> (usize, usize) {
     let keys_size = capacity * mem::size_of::<K>();
     let vals_size = capacity * mem::size_of::<V>();
     let vals_align = mem::min_align_of::<V>();
@@ -203,16 +203,16 @@ impl<T> RawItems<T> {
         RawItems::from_parts(slice.as_ptr(), slice.len())
     }
 
-    unsafe fn from_parts(ptr: *const T, len: uint) -> RawItems<T> {
+    unsafe fn from_parts(ptr: *const T, len: usize) -> RawItems<T> {
         if mem::size_of::<T>() == 0 {
             RawItems {
                 head: ptr,
-                tail: (ptr as uint + len) as *const T,
+                tail: (ptr as usize + len) as *const T,
             }
         } else {
             RawItems {
                 head: ptr,
-                tail: ptr.offset(len as int),
+                tail: ptr.offset(len as isize),
             }
         }
     }
@@ -221,7 +221,7 @@ impl<T> RawItems<T> {
         ptr::write(self.tail as *mut T, val);
 
         if mem::size_of::<T>() == 0 {
-            self.tail = (self.tail as uint + 1) as *const T;
+            self.tail = (self.tail as usize + 1) as *const T;
         } else {
             self.tail = self.tail.offset(1);
         }
@@ -239,7 +239,7 @@ impl<T> Iterator for RawItems<T> {
                 let ret = Some(ptr::read(self.head));
 
                 if mem::size_of::<T>() == 0 {
-                    self.head = (self.head as uint + 1) as *const T;
+                    self.head = (self.head as usize + 1) as *const T;
                 } else {
                     self.head = self.head.offset(1);
                 }
@@ -257,7 +257,7 @@ impl<T> DoubleEndedIterator for RawItems<T> {
         } else {
             unsafe {
                 if mem::size_of::<T>() == 0 {
-                    self.tail = (self.tail as uint - 1) as *const T;
+                    self.tail = (self.tail as usize - 1) as *const T;
                 } else {
                     self.tail = self.tail.offset(-1);
                 }
@@ -299,7 +299,7 @@ impl<K, V> Drop for Node<K, V> {
 impl<K, V> Node<K, V> {
     /// Make a new internal node. The caller must initialize the result to fix the invariant that
     /// there are `len() + 1` edges.
-    unsafe fn new_internal(capacity: uint) -> Node<K, V> {
+    unsafe fn new_internal(capacity: usize) -> Node<K, V> {
         let (alignment, size) = calculate_allocation_generic::<K, V>(capacity, false);
 
         let buffer = heap::allocate(size, alignment);
@@ -309,15 +309,15 @@ impl<K, V> Node<K, V> {
 
         Node {
             keys: Unique(buffer as *mut K),
-            vals: Unique(buffer.offset(vals_offset as int) as *mut V),
-            edges: Unique(buffer.offset(edges_offset as int) as *mut Node<K, V>),
+            vals: Unique(buffer.offset(vals_offset as isize) as *mut V),
+            edges: Unique(buffer.offset(edges_offset as isize) as *mut Node<K, V>),
             _len: 0,
             _capacity: capacity,
         }
     }
 
     /// Make a new leaf node
-    fn new_leaf(capacity: uint) -> Node<K, V> {
+    fn new_leaf(capacity: usize) -> Node<K, V> {
         let (alignment, size) = calculate_allocation_generic::<K, V>(capacity, true);
 
         let buffer = unsafe { heap::allocate(size, alignment) };
@@ -327,7 +327,7 @@ impl<K, V> Node<K, V> {
 
         Node {
             keys: Unique(buffer as *mut K),
-            vals: Unique(unsafe { buffer.offset(vals_offset as int) as *mut V }),
+            vals: Unique(unsafe { buffer.offset(vals_offset as isize) as *mut V }),
             edges: Unique(ptr::null_mut()),
             _len: 0,
             _capacity: capacity,
@@ -479,15 +479,15 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 ///
 /// ```rust,ignore
 /// struct Nasty<'a> {
-///     first: &'a Node<uint, uint>,
-///     second: &'a Node<uint, uint>,
+///     first: &'a Node<usize, usize>,
+///     second: &'a Node<usize, usize>,
 ///     flag: &'a Cell<bool>,
 /// }
 ///
 /// impl<'a> Deref for Nasty<'a> {
-///     type Target = Node<uint, uint>;
+///     type Target = Node<usize, usize>;
 ///
-///     fn deref(&self) -> &Node<uint, uint> {
+///     fn deref(&self) -> &Node<usize, usize> {
 ///         if self.flag.get() {
 ///             &*self.second
 ///         } else {
@@ -524,7 +524,7 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 #[derive(Copy)]
 pub struct Handle<NodeRef, Type, NodeType> {
     node: NodeRef,
-    index: uint
+    index: usize
 }
 
 pub mod handle {
@@ -546,7 +546,7 @@ impl<K: Ord, V> Node<K, V> {
                   -> SearchResult<NodeRef> where Q: BorrowFrom<K> + Ord {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
         // For the B configured as of this writing (B = 6), binary search was *significantly*
-        // worse for uints.
+        // worse for usizes.
         match node.as_slices_internal().search_linear(key) {
             (index, true) => Found(Handle { node: node, index: index }),
             (index, false) => GoDown(Handle { node: node, index: index }),
@@ -557,12 +557,12 @@ impl<K: Ord, V> Node<K, V> {
 // Public interface
 impl <K, V> Node<K, V> {
     /// Make a leaf root from scratch
-    pub fn make_leaf_root(b: uint) -> Node<K, V> {
+    pub fn make_leaf_root(b: usize) -> Node<K, V> {
         Node::new_leaf(capacity_from_b(b))
     }
 
     /// Make an internal root and swap it with an old root
-    pub fn make_internal_root(left_and_out: &mut Node<K,V>, b: uint, key: K, value: V,
+    pub fn make_internal_root(left_and_out: &mut Node<K,V>, b: usize, key: K, value: V,
             right: Node<K,V>) {
         let node = mem::replace(left_and_out, unsafe { Node::new_internal(capacity_from_b(b)) });
         left_and_out._len = 1;
@@ -575,12 +575,12 @@ impl <K, V> Node<K, V> {
     }
 
     /// How many key-value pairs the node contains
-    pub fn len(&self) -> uint {
+    pub fn len(&self) -> usize {
         self._len
     }
 
     /// How many key-value pairs the node can fit
-    pub fn capacity(&self) -> uint {
+    pub fn capacity(&self) -> usize {
         self._capacity
     }
 
@@ -669,7 +669,7 @@ impl<'a, K: 'a, V: 'a> Handle<&'a mut Node<K, V>, handle::Edge, handle::Internal
 
 impl<K, V, NodeRef: Deref<Target=Node<K, V>>> Handle<NodeRef, handle::Edge, handle::Internal> {
     // This doesn't exist because there are no uses for it,
-    // but is fine to add, analagous to edge_mut.
+    // but is fine to add, analogous to edge_mut.
     //
     // /// Returns a reference to the edge pointed-to by this handle. This should not be
     // /// confused with `node`, which references the parent node of what is returned here.
@@ -1038,7 +1038,7 @@ impl<K, V> Node<K, V> {
     /// # Panics (in debug build)
     ///
     /// Panics if the given index is out of bounds.
-    pub fn kv_handle(&mut self, index: uint) -> Handle<&mut Node<K, V>, handle::KV,
+    pub fn kv_handle(&mut self, index: usize) -> Handle<&mut Node<K, V>, handle::KV,
                                                        handle::LeafOrInternal> {
         // Necessary for correctness, but in a private module
         debug_assert!(index < self.len(), "kv_handle index out of bounds");
@@ -1114,15 +1114,15 @@ impl<K, V> Node<K, V> {
 
     // This must be followed by insert_edge on an internal node.
     #[inline]
-    unsafe fn insert_kv(&mut self, index: uint, key: K, val: V) -> &mut V {
+    unsafe fn insert_kv(&mut self, index: usize, key: K, val: V) -> &mut V {
         ptr::copy_memory(
-            self.keys_mut().as_mut_ptr().offset(index as int + 1),
-            self.keys().as_ptr().offset(index as int),
+            self.keys_mut().as_mut_ptr().offset(index as isize + 1),
+            self.keys().as_ptr().offset(index as isize),
             self.len() - index
         );
         ptr::copy_memory(
-            self.vals_mut().as_mut_ptr().offset(index as int + 1),
-            self.vals().as_ptr().offset(index as int),
+            self.vals_mut().as_mut_ptr().offset(index as isize + 1),
+            self.vals().as_ptr().offset(index as isize),
             self.len() - index
         );
 
@@ -1136,10 +1136,10 @@ impl<K, V> Node<K, V> {
 
     // This can only be called immediately after a call to insert_kv.
     #[inline]
-    unsafe fn insert_edge(&mut self, index: uint, edge: Node<K, V>) {
+    unsafe fn insert_edge(&mut self, index: usize, edge: Node<K, V>) {
         ptr::copy_memory(
-            self.edges_mut().as_mut_ptr().offset(index as int + 1),
-            self.edges().as_ptr().offset(index as int),
+            self.edges_mut().as_mut_ptr().offset(index as isize + 1),
+            self.edges().as_ptr().offset(index as isize),
             self.len() - index
         );
         ptr::write(self.edges_mut().get_unchecked_mut(index), edge);
@@ -1166,18 +1166,18 @@ impl<K, V> Node<K, V> {
 
     // This must be followed by remove_edge on an internal node.
     #[inline]
-    unsafe fn remove_kv(&mut self, index: uint) -> (K, V) {
+    unsafe fn remove_kv(&mut self, index: usize) -> (K, V) {
         let key = ptr::read(self.keys().get_unchecked(index));
         let val = ptr::read(self.vals().get_unchecked(index));
 
         ptr::copy_memory(
-            self.keys_mut().as_mut_ptr().offset(index as int),
-            self.keys().as_ptr().offset(index as int + 1),
+            self.keys_mut().as_mut_ptr().offset(index as isize),
+            self.keys().as_ptr().offset(index as isize + 1),
             self.len() - index - 1
         );
         ptr::copy_memory(
-            self.vals_mut().as_mut_ptr().offset(index as int),
-            self.vals().as_ptr().offset(index as int + 1),
+            self.vals_mut().as_mut_ptr().offset(index as isize),
+            self.vals().as_ptr().offset(index as isize + 1),
             self.len() - index - 1
         );
 
@@ -1188,12 +1188,12 @@ impl<K, V> Node<K, V> {
 
     // This can only be called immediately after a call to remove_kv.
     #[inline]
-    unsafe fn remove_edge(&mut self, index: uint) -> Node<K, V> {
+    unsafe fn remove_edge(&mut self, index: usize) -> Node<K, V> {
         let edge = ptr::read(self.edges().get_unchecked(index));
 
         ptr::copy_memory(
-            self.edges_mut().as_mut_ptr().offset(index as int),
-            self.edges().as_ptr().offset(index as int + 1),
+            self.edges_mut().as_mut_ptr().offset(index as isize),
+            self.edges().as_ptr().offset(index as isize + 1),
             self.len() - index + 1
         );
 
@@ -1220,18 +1220,18 @@ impl<K, V> Node<K, V> {
             let right_offset = self.len() - right.len();
             ptr::copy_nonoverlapping_memory(
                 right.keys_mut().as_mut_ptr(),
-                self.keys().as_ptr().offset(right_offset as int),
+                self.keys().as_ptr().offset(right_offset as isize),
                 right.len()
             );
             ptr::copy_nonoverlapping_memory(
                 right.vals_mut().as_mut_ptr(),
-                self.vals().as_ptr().offset(right_offset as int),
+                self.vals().as_ptr().offset(right_offset as isize),
                 right.len()
             );
             if !self.is_leaf() {
                 ptr::copy_nonoverlapping_memory(
                     right.edges_mut().as_mut_ptr(),
-                    self.edges().as_ptr().offset(right_offset as int),
+                    self.edges().as_ptr().offset(right_offset as isize),
                     right.len() + 1
                 );
             }
@@ -1260,18 +1260,18 @@ impl<K, V> Node<K, V> {
             ptr::write(self.vals_mut().get_unchecked_mut(old_len), val);
 
             ptr::copy_nonoverlapping_memory(
-                self.keys_mut().as_mut_ptr().offset(old_len as int + 1),
+                self.keys_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.keys().as_ptr(),
                 right.len()
             );
             ptr::copy_nonoverlapping_memory(
-                self.vals_mut().as_mut_ptr().offset(old_len as int + 1),
+                self.vals_mut().as_mut_ptr().offset(old_len as isize + 1),
                 right.vals().as_ptr(),
                 right.len()
             );
             if !self.is_leaf() {
                 ptr::copy_nonoverlapping_memory(
-                    self.edges_mut().as_mut_ptr().offset(old_len as int + 1),
+                    self.edges_mut().as_mut_ptr().offset(old_len as isize + 1),
                     right.edges().as_ptr(),
                     right.len() + 1
                 );
@@ -1284,12 +1284,12 @@ impl<K, V> Node<K, V> {
 }
 
 /// Get the capacity of a node from the order of the parent B-Tree
-fn capacity_from_b(b: uint) -> uint {
+fn capacity_from_b(b: usize) -> usize {
     2 * b - 1
 }
 
 /// Get the minimum load of a node from its capacity
-fn min_load_from_capacity(cap: uint) -> uint {
+fn min_load_from_capacity(cap: usize) -> usize {
     // B - 1
     cap / 2
 }
@@ -1334,7 +1334,7 @@ struct MoveTraversalImpl<K, V> {
 
     // For deallocation when we are done iterating.
     ptr: *mut u8,
-    capacity: uint,
+    capacity: usize,
     is_leaf: bool
 }
 
@@ -1490,7 +1490,7 @@ macro_rules! node_slice_impl {
      $as_slices_internal:ident, $index:ident, $iter:ident) => {
         impl<'a, K: Ord + 'a, V: 'a> $NodeSlice<'a, K, V> {
             /// Performs linear search in a slice. Returns a tuple of (index, is_exact_match).
-            fn search_linear<Q: ?Sized>(&self, key: &Q) -> (uint, bool)
+            fn search_linear<Q: ?Sized>(&self, key: &Q) -> (usize, bool)
                     where Q: BorrowFrom<K> + Ord {
                 for (i, k) in self.keys.iter().enumerate() {
                     match key.cmp(BorrowFrom::borrow_from(k)) {

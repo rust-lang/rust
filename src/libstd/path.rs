@@ -922,7 +922,7 @@ impl PathBuf {
     ///
     /// If `self.file_name()` is `None`, does nothing and returns `false`.
     ///
-    /// Otherwise, returns `tru`; if `self.exension()` is `None`, the extension
+    /// Otherwise, returns `true`; if `self.extension()` is `None`, the extension
     /// is added; otherwise it is replaced.
     pub fn set_extension<S: ?Sized + AsOsStr>(&mut self, extension: &S) -> bool {
         if self.file_name().is_none() { return false; }
@@ -1062,7 +1062,7 @@ impl Path {
         PathBuf::new(self)
     }
 
-    /// A path is *absolute* if it is indepedent of the current directory.
+    /// A path is *absolute* if it is independent of the current directory.
     ///
     /// * On Unix, a path is absolute if it starts with the root, so
     /// `is_absolute` and `has_root` are equivalent.

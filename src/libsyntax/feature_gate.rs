@@ -109,7 +109,7 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // int and uint are now deprecated
     ("int_uint", "1.0.0", Active),
 
-    // macro reexport needs more discusion and stabilization
+    // macro reexport needs more discussion and stabilization
     ("macro_reexport", "1.0.0", Active),
 
     // These are used to test this portion of the compiler, they don't actually
@@ -149,7 +149,10 @@ pub struct Features {
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
-    pub lib_features: Vec<(InternedString, Span)>
+    /// spans of #![feature] attrs for stable language features. for error reporting
+    pub declared_stable_lang_features: Vec<Span>,
+    /// #![feature] attrs for non-language (library) features
+    pub declared_lib_features: Vec<(InternedString, Span)>
 }
 
 impl Features {
@@ -162,7 +165,8 @@ impl Features {
             old_orphan_check: false,
             simd_ffi: false,
             unmarked_api: false,
-            lib_features: Vec::new()
+            declared_stable_lang_features: Vec::new(),
+            declared_lib_features: Vec::new()
         }
     }
 }
@@ -511,6 +515,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         cm: cm,
     };
 
+    let mut accepted_features = Vec::new();
     let mut unknown_features = Vec::new();
 
     for attr in &krate.attrs {
@@ -550,8 +555,7 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
                             span_handler.span_err(mi.span, "feature has been removed");
                         }
                         Some(&(_, _, Accepted)) => {
-                            span_handler.span_warn(mi.span, "feature has been added to Rust, \
-                                                             directive not necessary");
+                            accepted_features.push(mi.span);
                         }
                         None => {
                             unknown_features.push((name, mi.span));
@@ -572,7 +576,8 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
-        lib_features: unknown_features
+        declared_stable_lang_features: accepted_features,
+        declared_lib_features: unknown_features
     }
 }
 

@@ -159,11 +159,11 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // vs 'b).  However, the normal subtyping rules on fn types handle
     // this kind of equivalency just fine.
     //
-    // We now use these subsititions to ensure that all declared bounds are
+    // We now use these substitutions to ensure that all declared bounds are
     // satisfied by the implementation's method.
     //
     // We do this by creating a parameter environment which contains a
-    // substition corresponding to impl_to_skol_substs. We then build
+    // substitution corresponding to impl_to_skol_substs. We then build
     // trait_to_skol_substs and use it to convert the predicates contained
     // in the trait_m.generics to the skolemized form.
     //

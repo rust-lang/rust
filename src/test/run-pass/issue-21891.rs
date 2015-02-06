@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(
-    foo_bar_baz,
-    foo(bar),
-    foo = "baz"
-)]
-//~^^^ ERROR: malformed feature
-//~^^^ ERROR: malformed feature
+static foo: [uint; 3] = [1, 2, 3];
 
-#![feature] //~ ERROR: malformed feature
-#![feature = "foo"] //~ ERROR: malformed feature
+static slice_1: &'static [uint] = &foo;
+static slice_2: &'static [uint] = &foo;
 
-#![feature(test_removed_feature)] //~ ERROR: feature has been removed
+fn main() {}

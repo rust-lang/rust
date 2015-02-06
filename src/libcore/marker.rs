@@ -396,7 +396,6 @@ pub struct InvariantLifetime<'a>;
            reason = "likely to change with new variance strategy")]
 #[lang="no_copy_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[allow(missing_copy_implementations)]
 pub struct NoCopy;
 
 /// A type which is considered managed by the GC. This is typically
@@ -405,5 +404,4 @@ pub struct NoCopy;
            reason = "likely to change with new variance strategy")]
 #[lang="managed_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
-#[allow(missing_copy_implementations)]
 pub struct Managed;
