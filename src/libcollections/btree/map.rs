@@ -1592,7 +1592,8 @@ mod test {
     use prelude::*;
     use std::iter::range_inclusive;
 
-    use super::{BTreeMap, Occupied, Vacant};
+    use super::BTreeMap;
+    use super::Entry::{Occupied, Vacant};
     use Bound::{self, Included, Excluded, Unbounded};
 
     #[test]
