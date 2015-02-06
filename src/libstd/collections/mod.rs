@@ -299,15 +299,15 @@
 //! #### Counting the number of times each character in a string occurs
 //!
 //! ```
-//! use std::collections::btree_map::{BTreeMap, Occupied, Vacant};
+//! use std::collections::btree_map::{BTreeMap, Entry};
 //!
 //! let mut count = BTreeMap::new();
 //! let message = "she sells sea shells by the sea shore";
 //!
 //! for c in message.chars() {
 //!     match count.entry(c) {
-//!         Vacant(entry) => { entry.insert(1u); },
-//!         Occupied(mut entry) => *entry.get_mut() += 1,
+//!         Entry::Vacant(entry) => { entry.insert(1u); },
+//!         Entry::Occupied(mut entry) => *entry.get_mut() += 1,
 //!     }
 //! }
 //!
