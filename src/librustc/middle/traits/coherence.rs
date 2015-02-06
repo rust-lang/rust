@@ -59,7 +59,6 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
             |o| selcx.evaluate_obligation(o))
 }
 
-#[allow(missing_copy_implementations)]
 pub enum OrphanCheckErr<'tcx> {
     NoLocalInputType,
     UncoveredTy(Ty<'tcx>),
