@@ -181,6 +181,7 @@ pub use core::error;
 #[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;
 
+pub use core_collections::fmt;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
@@ -246,7 +247,6 @@ pub mod thread_local;
 
 pub mod dynamic_lib;
 pub mod ffi;
-pub mod fmt;
 pub mod old_io;
 pub mod io;
 pub mod os;
