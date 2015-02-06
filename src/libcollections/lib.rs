@@ -68,6 +68,7 @@ mod bit;
 mod btree;
 pub mod dlist;
 pub mod enum_set;
+mod format_helpers;
 pub mod ring_buf;
 pub mod slice;
 pub mod str;

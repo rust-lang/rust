@@ -32,6 +32,8 @@ use core::iter::{self, FromIterator};
 use core::mem;
 use core::ptr;
 
+use format_helpers::*;
+
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct DList<T> {
@@ -875,26 +877,17 @@ impl<A: Clone> Clone for DList<A> {
     }
 }
 
-macro_rules! fmt_dlist {
-    ($($Trait:ident),*) => {
-        $(
-            impl<A: fmt::$Trait> fmt::$Trait for DList<A> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    try!(write!(f, "DList ["));
-
-                    for (i, e) in self.iter().enumerate() {
-                        if i != 0 { try!(write!(f, ", ")); }
-                        try!(fmt::$Trait::fmt(e, f));
-                    }
-
-                    write!(f, "]")
-                }
-            }
-        )*
-    }
+impl_seq_fmt! {
+    DList, "DList",
+    Debug    => seq_fmt_debug,
+    Display  => seq_fmt_display,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
-
-fmt_dlist! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for DList<A> {

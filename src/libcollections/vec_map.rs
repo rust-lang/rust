@@ -26,6 +26,7 @@ use core::ops::{Index, IndexMut};
 
 use {vec, slice};
 use vec::Vec;
+use format_helpers::*;
 
 // FIXME(conventions): capacity management???
 
@@ -513,27 +514,15 @@ impl<V: Ord> Ord for VecMap<V> {
     }
 }
 
-macro_rules! fmt_vec_map {
-    ($($Trait:ident),*) => {
-        $(
-            impl<V: fmt::$Trait> fmt::$Trait for VecMap<V> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    try!(write!(f, "VecMap {{"));
-
-                    for (i, (k, v)) in self.iter().enumerate() {
-                        if i != 0 { try!(write!(f, ", ")); }
-                        try!(write!(f, "{}: ", k));
-                        try!(fmt::$Trait::fmt(v, f));
-                    }
-
-                    write!(f, "}}")
-                }
-            }
-        )*
-    }
+impl_map_fmt! {
+    Fixed VecMap, "VecMap",
+    Debug    => map_fmt_debug,
+    Display  => map_fmt_display,
+    Octal    => map_fmt_octal,
+    Binary   => map_fmt_binary,
+    LowerHex => map_fmt_lower_hex,
+    UpperHex => map_fmt_upper_hex
 }
-
-fmt_vec_map! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> FromIterator<(uint, V)> for VecMap<V> {

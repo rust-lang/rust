@@ -67,6 +67,8 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::uint;
 
+use format_helpers::*;
+
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
 /// # Examples
@@ -1539,19 +1541,17 @@ impl<T> Default for Vec<T> {
     }
 }
 
-macro_rules! fmt_vec {
-    ($($Trait:ident),*) => {
-        $(
-            impl<T: fmt::$Trait> fmt::$Trait for Vec<T> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::$Trait::fmt(self.as_slice(), f)
-                }
-            }
-        )*
-    }
+impl_seq_fmt! {
+    Vec,
+    Debug    => seq_fmt_debug,
+    Display  => seq_fmt_display,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
-
-fmt_vec! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 impl<'a> fmt::Writer for Vec<u8> {
     fn write_str(&mut self, s: &str) -> fmt::Result {

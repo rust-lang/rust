@@ -30,6 +30,7 @@ use core::{iter, fmt, mem};
 use Bound::{self, Included, Excluded, Unbounded};
 
 use ring_buf::RingBuf;
+use format_helpers::*;
 
 use self::Continuation::{Continue, Finished};
 use self::StackOp::*;
@@ -873,29 +874,17 @@ impl<K: Ord, V: Ord> Ord for BTreeMap<K, V> {
     }
 }
 
-macro_rules! fmt_btree_map {
-    ($($Trait:ident),*) => {
-        $(
-            impl<K: fmt::$Trait, V: fmt::$Trait> fmt::$Trait for BTreeMap<K, V> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    try!(write!(f, "BTreeMap {{"));
-
-                    for (i, (k, v)) in self.iter().enumerate() {
-                        if i != 0 { try!(write!(f, ", ")); }
-                        try!(fmt::$Trait::fmt(k, f));
-                        try!(write!(f, ": "));
-                        try!(fmt::$Trait::fmt(v, f));
-                    }
-
-                    write!(f, "}}")
-                }
-            }
-        )*
-    }
+impl_map_fmt! {
+    BTreeMap, "BTreeMap",
+    Debug    => map_fmt_debug,
+    Display  => map_fmt_display,
+    Octal    => map_fmt_octal,
+    Binary   => map_fmt_binary,
+    LowerHex => map_fmt_lower_hex,
+    UpperHex => map_fmt_upper_hex,
+    LowerExp => map_fmt_lower_exp,
+    UpperExp => map_fmt_upper_exp
 }
-
-
-fmt_btree_map! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, Q: ?Sized, V> Index<Q> for BTreeMap<K, V>
