@@ -241,8 +241,10 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, e: &ast::Expr)
                                         ty::ty_vec(unit_ty, Some(len)) => {
                                             let llunitty = type_of::type_of(cx, unit_ty);
                                             let llptr = ptrcast(llconst, llunitty.ptr_to());
-                                            assert!(cx.const_globals().borrow_mut()
-                                                      .insert(llptr as int, llconst).is_none());
+                                            let prev_const = cx.const_globals().borrow_mut()
+                                                             .insert(llptr as int, llconst);
+                                            assert!(prev_const.is_none() ||
+                                                    prev_const == Some(llconst));
                                             assert_eq!(abi::FAT_PTR_ADDR, 0);
                                             assert_eq!(abi::FAT_PTR_EXTRA, 1);
                                             llconst = C_struct(cx, &[
