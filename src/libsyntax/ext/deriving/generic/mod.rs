@@ -363,7 +363,7 @@ impl<'a> TraitDef<'a> {
         // generated implementations are linted
         let mut attrs = newitem.attrs.clone();
         attrs.extend(item.attrs.iter().filter(|a| {
-            match a.name().get() {
+            match &a.name()[] {
                 "allow" | "warn" | "deny" | "forbid" => true,
                 _ => false,
             }

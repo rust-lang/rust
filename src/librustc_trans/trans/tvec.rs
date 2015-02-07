@@ -209,7 +209,7 @@ pub fn trans_lit_str<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     match dest {
         Ignore => bcx,
         SaveIn(lldest) => {
-            let bytes = str_lit.get().len();
+            let bytes = str_lit.len();
             let llbytes = C_uint(bcx.ccx(), bytes);
             let llcstr = C_cstr(bcx.ccx(), str_lit, false);
             let llcstr = consts::ptrcast(llcstr, Type::i8p(bcx.ccx()));
@@ -242,7 +242,7 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                     match dest {
                         Ignore => return bcx,
                         SaveIn(lldest) => {
-                            let bytes = s.get().len();
+                            let bytes = s.len();
                             let llbytes = C_uint(bcx.ccx(), bytes);
                             let llcstr = C_cstr(bcx.ccx(), (*s).clone(), false);
                             base::call_memcpy(bcx,
@@ -343,7 +343,7 @@ pub fn elements_required(bcx: Block, content_expr: &ast::Expr) -> uint {
     match content_expr.node {
         ast::ExprLit(ref lit) => {
             match lit.node {
-                ast::LitStr(ref s, _) => s.get().len(),
+                ast::LitStr(ref s, _) => s.len(),
                 _ => {
                     bcx.tcx().sess.span_bug(content_expr.span,
                                             "unexpected evec content")

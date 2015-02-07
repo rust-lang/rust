@@ -101,12 +101,12 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     }
 
-    let e = match env::var_string(var.get()) {
-        Err(..) => {
-            cx.span_err(sp, msg.get());
+    let e = match env::var_string(&var[]) {
+        Err(_) => {
+            cx.span_err(sp, &msg);
             cx.expr_usize(sp, 0)
         }
-        Ok(s) => cx.expr_str(sp, token::intern_and_get_ident(&s[]))
+        Ok(s) => cx.expr_str(sp, token::intern_and_get_ident(&s))
     };
     MacExpr::new(e)
 }

@@ -375,7 +375,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                     fld.cx.span_err(
                         pth.span,
                         &format!("macro undefined: '{}!'",
-                                extnamestr.get())[]);
+                                &extnamestr)[]);
 
                     // let compilation continue
                     None
@@ -385,7 +385,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         fld.cx.bt_push(ExpnInfo {
                                 call_site: span,
                                 callee: NameAndSpan {
-                                    name: extnamestr.get().to_string(),
+                                    name: extnamestr.to_string(),
                                     format: MacroBang,
                                     span: exp_span,
                                 },
@@ -411,7 +411,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                                 fld.cx.span_err(
                                     pth.span,
                                     &format!("non-expression macro in expression position: {}",
-                                            &extnamestr.get()[]
+                                            &extnamestr[]
                                             )[]);
                                 return None;
                             }
@@ -422,7 +422,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         fld.cx.span_err(
                             pth.span,
                             &format!("'{}' is not a tt-style macro",
-                                    extnamestr.get())[]);
+                                    &extnamestr)[]);
                         None
                     }
                 }
@@ -506,14 +506,14 @@ fn expand_item_modifiers(mut it: P<ast::Item>, fld: &mut MacroExpander)
     for attr in &modifiers {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(mname.get())) {
+        match fld.cx.syntax_env.find(&intern(&mname)) {
             Some(rc) => match *rc {
                 Modifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            name: mname.get().to_string(),
+                            name: mname.to_string(),
                             format: MacroAttribute,
                             span: None,
                         }
@@ -613,7 +613,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.to_string(),
                             format: MacroBang,
                             span: span
                         }
@@ -626,13 +626,13 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         &format!("macro {}! expects an ident argument",
-                                                extnamestr.get())[]);
+                                                &extnamestr)[]);
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.to_string(),
                             format: MacroBang,
                             span: span
                         }
@@ -651,7 +651,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: it.span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.to_string(),
                             format: MacroBang,
                             span: None,
                         }
@@ -677,7 +677,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                 _ => {
                     fld.cx.span_err(it.span,
                                     &format!("{}! is not legal in item position",
-                                            extnamestr.get())[]);
+                                            &extnamestr)[]);
                     return SmallVector::zero();
                 }
             }
@@ -696,7 +696,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
         None => {
             fld.cx.span_err(path_span,
                             &format!("non-item macro in item position: {}",
-                                    extnamestr.get())[]);
+                                    &extnamestr)[]);
             return SmallVector::zero();
         }
     };
@@ -950,7 +950,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                     fld.cx.bt_push(ExpnInfo {
                         call_site: span,
                         callee: NameAndSpan {
-                            name: extnamestr.get().to_string(),
+                            name: extnamestr.to_string(),
                             format: MacroBang,
                             span: tt_span
                         }
@@ -968,7 +968,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                                 pth.span,
                                 &format!(
                                     "non-pattern macro in pattern position: {}",
-                                    extnamestr.get()
+                                    &extnamestr
                                     )[]
                             );
                             return DummyResult::raw_pat(span);
@@ -981,7 +981,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                 _ => {
                     fld.cx.span_err(span,
                                     &format!("{}! is not legal in pattern position",
-                                            extnamestr.get())[]);
+                                            &extnamestr)[]);
                     return DummyResult::raw_pat(span);
                 }
             }
@@ -1065,7 +1065,7 @@ fn expand_annotatable(a: Annotatable,
     for attr in a.attrs() {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(mname.get())) {
+        match fld.cx.syntax_env.find(&intern(&mname)) {
             Some(rc) => match *rc {
                 Decorator(ref dec) => {
                     let it = match a {
@@ -1079,7 +1079,7 @@ fn expand_annotatable(a: Annotatable,
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            name: mname.get().to_string(),
+                            name: mname.to_string(),
                             format: MacroAttribute,
                             span: None
                         }
@@ -1180,7 +1180,7 @@ fn modifiers(attrs: &Vec<ast::Attribute>,
              fld: &MacroExpander)
              -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
     attrs.iter().cloned().partition(|attr| {
-        match fld.cx.syntax_env.find(&intern(attr.name().get())) {
+        match fld.cx.syntax_env.find(&intern(&attr.name())) {
             Some(rc) => match *rc {
                 Modifier(_) => true,
                 _ => false
@@ -1195,7 +1195,7 @@ fn multi_modifiers(attrs: &[ast::Attribute],
                    fld: &MacroExpander)
                    -> (Vec<ast::Attribute>, Vec<ast::Attribute>) {
     attrs.iter().cloned().partition(|attr| {
-        match fld.cx.syntax_env.find(&intern(attr.name().get())) {
+        match fld.cx.syntax_env.find(&intern(&attr.name())) {
             Some(rc) => match *rc {
                 MultiModifier(_) => true,
                 _ => false
@@ -1220,14 +1220,14 @@ fn expand_item_multi_modifier(mut it: Annotatable,
     for attr in &modifiers {
         let mname = attr.name();
 
-        match fld.cx.syntax_env.find(&intern(mname.get())) {
+        match fld.cx.syntax_env.find(&intern(&mname)) {
             Some(rc) => match *rc {
                 MultiModifier(ref mac) => {
                     attr::mark_used(attr);
                     fld.cx.bt_push(ExpnInfo {
                         call_site: attr.span,
                         callee: NameAndSpan {
-                            name: mname.get().to_string(),
+                            name: mname.to_string(),
                             format: MacroAttribute,
                             span: None,
                         }
@@ -1862,7 +1862,7 @@ mod test {
                         .collect();
                     println!("varref #{}: {:?}, resolves to {}",idx, varref_idents, varref_name);
                     let string = token::get_ident(final_varref_ident);
-                    println!("varref's first segment's string: \"{}\"", string.get());
+                    println!("varref's first segment's string: \"{}\"", &string[]);
                     println!("binding #{}: {}, resolves to {}",
                              binding_idx, bindings[binding_idx], binding_name);
                     mtwt::with_sctable(|x| mtwt::display_sctable(x));
@@ -1915,7 +1915,7 @@ foo_module!();
         let cxbinds: Vec<&ast::Ident> =
             bindings.iter().filter(|b| {
                 let ident = token::get_ident(**b);
-                let string = ident.get();
+                let string = &ident[];
                 "xx" == string
             }).collect();
         let cxbinds: &[&ast::Ident] = &cxbinds[];
@@ -1929,7 +1929,7 @@ foo_module!();
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p| {
             p.segments.len() == 1
-            && "xx" == token::get_ident(p.segments[0].identifier).get()
+            && "xx" == &token::get_ident(p.segments[0].identifier)[]
         }).enumerate() {
             if mtwt::resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");

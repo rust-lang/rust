@@ -217,7 +217,7 @@ pub fn region_to_string(cx: &ctxt, prefix: &str, space: bool, region: Region) ->
     match region {
         ty::ReScope(_) => prefix.to_string(),
         ty::ReEarlyBound(_, _, _, name) => {
-            token::get_name(name).get().to_string()
+            token::get_name(name).to_string()
         }
         ty::ReLateBound(_, br) => bound_region_to_string(cx, prefix, space, br),
         ty::ReFree(ref fr) => bound_region_to_string(cx, prefix, space, fr.bound_region),
@@ -277,7 +277,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         match ident {
             Some(i) => {
                 s.push(' ');
-                s.push_str(token::get_ident(i).get());
+                s.push_str(&token::get_ident(i));
             }
             _ => { }
         }
@@ -1020,19 +1020,19 @@ impl<'tcx> Repr<'tcx> for ty::Method<'tcx> {
 
 impl<'tcx> Repr<'tcx> for ast::Name {
     fn repr(&self, _tcx: &ctxt) -> String {
-        token::get_name(*self).get().to_string()
+        token::get_name(*self).to_string()
     }
 }
 
 impl<'tcx> UserString<'tcx> for ast::Name {
     fn user_string(&self, _tcx: &ctxt) -> String {
-        token::get_name(*self).get().to_string()
+        token::get_name(*self).to_string()
     }
 }
 
 impl<'tcx> Repr<'tcx> for ast::Ident {
     fn repr(&self, _tcx: &ctxt) -> String {
-        token::get_ident(*self).get().to_string()
+        token::get_ident(*self).to_string()
     }
 }
 
@@ -1220,7 +1220,7 @@ impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
                 }
             })
         });
-        let names: Vec<_> = names.iter().map(|s| s.get()).collect();
+        let names: Vec<_> = names.iter().map(|s| &s[]).collect();
 
         let value_str = unbound_value.user_string(tcx);
         if names.len() == 0 {
@@ -1248,7 +1248,7 @@ impl<'tcx> UserString<'tcx> for Ty<'tcx> {
 
 impl<'tcx> UserString<'tcx> for ast::Ident {
     fn user_string(&self, _tcx: &ctxt) -> String {
-        token::get_name(self.name).get().to_string()
+        token::get_name(self.name).to_string()
     }
 }
 

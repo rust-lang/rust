@@ -512,7 +512,7 @@ fn mk_test_module(cx: &mut TestCtxt) -> (P<ast::Item>, Option<P<ast::Item>>) {
     });
     let reexport = cx.reexport_test_harness_main.as_ref().map(|s| {
         // building `use <ident> = __test::main`
-        let reexport_ident = token::str_to_ident(s.get());
+        let reexport_ident = token::str_to_ident(&s);
 
         let use_path =
             nospan(ast::ViewPathSimple(reexport_ident,
@@ -575,7 +575,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(&krate.attrs[]) {
-        Some(ref s) if "test" == &s.get()[] => true,
+        Some(ref s) if "test" == &s[] => true,
         _ => false
     }
 }

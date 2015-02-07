@@ -307,8 +307,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     ViewPathSimple(binding, ref full_path) => {
                         let source_name =
                             full_path.segments.last().unwrap().identifier.name;
-                        if token::get_name(source_name).get() == "mod" ||
-                           token::get_name(source_name).get() == "self" {
+                        if &token::get_name(source_name)[] == "mod" ||
+                           &token::get_name(source_name)[] == "self" {
                             self.resolve_error(view_path.span,
                                 "`self` imports are only allowed within a { } list");
                         }
@@ -1020,7 +1020,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         self.handle_external_def(def,
                                                  def_visibility,
                                                  &*child_name_bindings,
-                                                 token::get_name(name).get(),
+                                                 &token::get_name(name),
                                                  name,
                                                  root);
                     }

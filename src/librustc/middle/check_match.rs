@@ -249,11 +249,11 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
                             span_warn!(cx.tcx.sess, p.span, E0170,
                                 "pattern binding `{}` is named the same as one \
                                  of the variants of the type `{}`",
-                                token::get_ident(ident.node).get(), ty_to_string(cx.tcx, pat_ty));
+                                &token::get_ident(ident.node), ty_to_string(cx.tcx, pat_ty));
                             span_help!(cx.tcx.sess, p.span,
                                 "if you meant to match on a variant, \
                                  consider making the path in the pattern qualified: `{}::{}`",
-                                ty_to_string(cx.tcx, pat_ty), token::get_ident(ident.node).get());
+                                ty_to_string(cx.tcx, pat_ty), &token::get_ident(ident.node));
                         }
                     }
                 }

@@ -180,7 +180,7 @@ impl Index {
     pub fn new(krate: &Crate) -> Index {
         let mut staged_api = false;
         for attr in &krate.attrs {
-            if attr.name().get() == "staged_api" {
+            if &attr.name()[] == "staged_api" {
                 match attr.node.value.node {
                     ast::MetaWord(_) => {
                         attr::mark_used(attr);
@@ -240,12 +240,12 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
                 if !self.active_features.contains(feature) {
                     let msg = match *reason {
                         Some(ref r) => format!("use of unstable library feature '{}': {}",
-                                               feature.get(), r.get()),
-                        None => format!("use of unstable library feature '{}'", feature.get())
+                                               &feature, &r),
+                        None => format!("use of unstable library feature '{}'", &feature)
                     };
 
                     emit_feature_warn(&self.tcx.sess.parse_sess.span_diagnostic,
-                                      feature.get(), span, &msg[]);
+                                      &feature, span, &msg);
                 }
             }
             Some(Stability { level, ref feature, .. }) => {
