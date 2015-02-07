@@ -8,6 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::{isize, usize};
+
+#[inline(always)]
+fn check_size_and_alignment(size: usize, align: usize) {
+    debug_assert!(size != 0);
+    debug_assert!(size <= isize::MAX as usize, "Tried to allocate too much: {} bytes", size);
+    debug_assert!(usize::is_power_of_two(align), "Invalid alignment of allocation: {}", align);
+}
+
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
 
 /// Return a pointer to `size` bytes of memory aligned to `align`.
@@ -19,6 +28,7 @@
 /// size on the platform.
 #[inline]
 pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
+    check_size_and_alignment(size, align);
     imp::allocate(size, align)
 }
 
@@ -38,6 +48,7 @@ pub unsafe fn allocate(size: usize, align: usize) -> *mut u8 {
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
 pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usize) -> *mut u8 {
+    check_size_and_alignment(size, align);
     imp::reallocate(ptr, old_size, size, align)
 }
 
@@ -56,6 +67,7 @@ pub unsafe fn reallocate(ptr: *mut u8, old_size: usize, size: usize, align: usiz
 #[inline]
 pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: usize, size: usize,
                                  align: usize) -> usize {
+    check_size_and_alignment(size, align);
     imp::reallocate_inplace(ptr, old_size, size, align)
 }
 
