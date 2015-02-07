@@ -3205,17 +3205,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 }
                 &ast::WherePredicate::RegionPredicate(_) => {}
                 &ast::WherePredicate::EqPredicate(ref eq_pred) => {
-                    match self.resolve_path(eq_pred.id, &eq_pred.path, TypeNS, true) {
-                        Some((def @ DefTyParam(..), last_private)) => {
-                            self.record_def(eq_pred.id, (def, last_private));
-                        }
-                        _ => {
-                            self.resolve_error(eq_pred.path.span,
-                                               "undeclared associated type");
-                        }
-                    }
-
-                    self.resolve_type(&*eq_pred.ty);
+                    self.resolve_type(&*eq_pred.ty_left);
+                    self.resolve_type(&*eq_pred.ty_right);
                 }
             }
         }

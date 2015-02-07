@@ -458,8 +458,8 @@ pub struct WhereRegionPredicate {
 pub struct WhereEqPredicate {
     pub id: NodeId,
     pub span: Span,
-    pub path: Path,
-    pub ty: P<Ty>,
+    pub ty_left: P<Ty>,
+    pub ty_right: P<Ty>,
 }
 
 /// The set of MetaItems that define the compilation environment of the crate,

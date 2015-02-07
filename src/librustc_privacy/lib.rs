@@ -1453,7 +1453,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                 }
                 &ast::WherePredicate::RegionPredicate(_) => {}
                 &ast::WherePredicate::EqPredicate(ref eq_pred) => {
-                    self.visit_ty(&*eq_pred.ty);
+                    self.visit_ty(&*eq_pred.ty_left);
+                    self.visit_ty(&*eq_pred.ty_right);
                 }
             }
         }

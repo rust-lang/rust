@@ -597,12 +597,11 @@ pub fn walk_generics<'v, V: Visitor<'v>>(visitor: &mut V, generics: &'v Generics
                     visitor.visit_lifetime_ref(bound);
                 }
             }
-            &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{id,
-                                                                    ref path,
-                                                                    ref ty,
+            &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref ty_left,
+                                                                    ref ty_right,
                                                                     ..}) => {
-                visitor.visit_path(path, id);
-                visitor.visit_ty(&**ty);
+                visitor.visit_ty(&**ty_left);
+                visitor.visit_ty(&**ty_right);
             }
         }
     }
