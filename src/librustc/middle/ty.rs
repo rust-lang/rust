@@ -758,7 +758,7 @@ pub struct ctxt<'tcx> {
     pub trait_impls: RefCell<DefIdMap<Rc<RefCell<Vec<ast::DefId>>>>>,
 
     /// Maps a trait onto a list of *default* trait implementations
-    pub default_trait_impls: RefCell<DefIdSet>,
+    default_trait_impls: RefCell<DefIdSet>,
 
     /// Maps a DefId of a type to a list of its inherent impls.
     /// Contains implementations of methods that are inherent to a type.
@@ -5997,6 +5997,10 @@ pub fn item_variances(tcx: &ctxt, item_id: ast::DefId) -> Rc<ItemVariances> {
     lookup_locally_or_in_crate_store(
         "item_variance_map", item_id, &mut *tcx.item_variance_map.borrow_mut(),
         || Rc::new(csearch::get_item_variances(&tcx.sess.cstore, item_id)))
+}
+
+pub fn trait_has_default_impl(tcx: &ctxt, trait_def_id: DefId) -> bool {
+    tcx.default_trait_impls.borrow().contains(&trait_def_id)
 }
 
 /// Records a trait-to-implementation mapping.
