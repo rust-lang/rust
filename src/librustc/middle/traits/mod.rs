@@ -222,6 +222,9 @@ pub enum Vtable<'tcx, N> {
     VtableImpl(VtableImplData<'tcx, N>),
 
     /// Vtable for default trait implementations
+    /// This carries the information and nested obligations with regards
+    /// to a default implementation for a trait `Trait`. The nested obligations
+    /// ensure the trait implementation holds for all the constituent types.
     VtableDefaultImpl(VtableDefaultImplData<N>),
 
     /// Successful resolution to an obligation provided by the caller
