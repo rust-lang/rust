@@ -13,7 +13,7 @@
 fn main() {
     let mut foo = Vec::new();
     'foo: for i in &[1, 2, 3] {
-        foo.push(i);
+        foo.push(*i);
     }
 }
 
