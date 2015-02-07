@@ -434,87 +434,11 @@ attached to the `ParameterEnvironment` and the global cache attached
 to the `tcx`. We use the local cache whenever the result might depend
 on the where clauses that are in scope. The determination of which
 cache to use is done by the method `pick_candidate_cache` in
-`select.rs`.
-
-There are two cases where we currently use the local cache. The
-current rules are probably more conservative than necessary.
-
-### Trait references that involve parameter types
-
-The most obvious case where you need the local environment is
-when the trait reference includes parameter types. For example,
-consider the following function:
-
-    impl<T> Vec<T> {
-        fn foo(x: T)
-            where T : Foo
-        { ... }
-
-        fn bar(x: T)
-        { ... }
-    }
-
-If there is an obligation `T : Foo`, or `int : Bar<T>`, or whatever,
-clearly the results from `foo` and `bar` are potentially different,
-since the set of where clauses in scope are different.
-
-### Trait references with unbound variables when where clauses are in scope
-
-There is another less obvious interaction which involves unbound variables
-where *only* where clauses are in scope (no impls). This manifested as
-issue #18209 (`run-pass/trait-cache-issue-18209.rs`). Consider
-this snippet:
-
-```
-pub trait Foo {
-    fn load_from() -> Box<Self>;
-    fn load() -> Box<Self> {
-        Foo::load_from()
-    }
-}
-```
-
-The default method will incur an obligation `$0 : Foo` from the call
-to `load_from`. If there are no impls, this can be eagerly resolved to
-`VtableParam(Self : Foo)` and cached. Because the trait reference
-doesn't involve any parameters types (only the resolution does), this
-result was stored in the global cache, causing later calls to
-`Foo::load_from()` to get nonsense.
-
-To fix this, we always use the local cache if there are unbound
-variables and where clauses in scope. This is more conservative than
-necessary as far as I can tell. However, it still seems to be a simple
-rule and I observe ~99% hit rate on rustc, so it doesn't seem to hurt
-us in particular.
-
-Here is an example of the kind of subtle case that I would be worried
-about with a more complex rule (although this particular case works
-out ok). Imagine the trait reference doesn't directly reference a
-where clause, but the where clause plays a role in the winnowing
-phase. Something like this:
-
-```
-pub trait Foo<T> { ... }
-pub trait Bar { ... }
-impl<U,T:Bar> Foo<U> for T { ... } // Impl A
-impl Foo<char> for uint { ... }    // Impl B
-```
-
-Now, in some function, we have no where clauses in scope, and we have
-an obligation `$1 : Foo<$0>`. We might then conclude that `$0=char`
-and `$1=uint`: this is because for impl A to apply, `uint:Bar` would
-have to hold, and we know it does not or else the coherence check
-would have failed.  So we might enter into our global cache: `$1 :
-Foo<$0> => Impl B`.  Then we come along in a different scope, where a
-generic type `A` is around with the bound `A:Bar`. Now suddenly the
-impl is viable.
-
-The flaw in this imaginary DOOMSDAY SCENARIO is that we would not
-currently conclude that `$1 : Foo<$0>` implies that `$0 == uint` and
-`$1 == char`, even though it is true that (absent type parameters)
-there is no other type the user could enter. However, it is not
-*completely* implausible that we *could* draw this conclusion in the
-future; we wouldn't have to guess types, in particular, we could be
-led by the impls.
+`select.rs`. At the moment, we use a very simple, conservative rule:
+if there are any where-clauses in scope, then we use the local cache.
+We used to try and draw finer-grained distinctions, but that led to a
+serious of annoying and weird bugs like #22019 and #18290. This simple
+rule seems to be pretty clearly safe and also still retains a very
+high hit rate (~95% when compiling rustc).
 
 */
