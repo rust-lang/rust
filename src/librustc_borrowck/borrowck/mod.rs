@@ -18,6 +18,8 @@ pub use self::bckerr_code::*;
 pub use self::AliasableViolationKind::*;
 pub use self::MovedValueUseKind::*;
 
+use self::InteriorKind::*;
+
 use rustc::middle::cfg;
 use rustc::middle::dataflow::DataFlowContext;
 use rustc::middle::dataflow::BitwiseOperator;
@@ -314,10 +316,30 @@ impl<'tcx> LoanPath<'tcx> {
 //     b2b39e8700e37ad32b486b9a8409b50a8a53aa51#commitcomment-7892003
 static DOWNCAST_PRINTED_OPERATOR : &'static str = " as ";
 
+// A local, "cleaned" version of `mc::InteriorKind` that drops
+// information that is not relevant to loan-path analysis. (In
+// particular, the distinction between how precisely a array-element
+// is tracked is irrelevant here.)
+#[derive(Clone, Copy, PartialEq, Eq, Hash, Debug)]
+pub enum InteriorKind {
+    InteriorField(mc::FieldName),
+    InteriorElement(mc::ElementKind),
+}
+
+trait ToInteriorKind { fn cleaned(self) -> InteriorKind; }
+impl ToInteriorKind for mc::InteriorKind {
+    fn cleaned(self) -> InteriorKind {
+        match self {
+            mc::InteriorField(name) => InteriorField(name),
+            mc::InteriorElement(_, elem_kind) => InteriorElement(elem_kind),
+        }
+    }
+}
+
 #[derive(Copy, PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathElem {
     LpDeref(mc::PointerKind),    // `*LV` in doc.rs
-    LpInterior(mc::InteriorKind) // `LV.f` in doc.rs
+    LpInterior(InteriorKind),    // `LV.f` in doc.rs
 }
 
 pub fn closure_to_block(closure_id: ast::NodeId,
@@ -446,7 +468,7 @@ pub fn opt_loan_path<'tcx>(cmt: &mc::cmt<'tcx>) -> Option<Rc<LoanPath<'tcx>>> {
 
         mc::cat_interior(ref cmt_base, ik) => {
             opt_loan_path(cmt_base).map(|lp| {
-                new_lp(LpExtend(lp, cmt.mutbl, LpInterior(ik)))
+                new_lp(LpExtend(lp, cmt.mutbl, LpInterior(ik.cleaned())))
             })
         }
 
@@ -918,7 +940,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
             }
 
 
-            LpExtend(ref lp_base, _, LpInterior(mc::InteriorField(fname))) => {
+            LpExtend(ref lp_base, _, LpInterior(InteriorField(fname))) => {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 match fname {
                     mc::NamedField(fname) => {
@@ -932,7 +954,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 }
             }
 
-            LpExtend(ref lp_base, _, LpInterior(mc::InteriorElement(_))) => {
+            LpExtend(ref lp_base, _, LpInterior(InteriorElement(..))) => {
                 self.append_autoderefd_loan_path_to_string(&**lp_base, out);
                 out.push_str("[..]");
             }
@@ -1003,6 +1025,17 @@ impl DataFlowOperator for LoanDataFlowOperator {
     #[inline]
     fn initial_value(&self) -> bool {
         false // no loans in scope by default
+    }
+}
+
+impl<'tcx> Repr<'tcx> for InteriorKind {
+    fn repr(&self, _tcx: &ty::ctxt<'tcx>) -> String {
+        match *self {
+            InteriorField(mc::NamedField(fld)) =>
+                format!("{}", token::get_name(fld)),
+            InteriorField(mc::PositionalField(i)) => format!("#{}", i),
+            InteriorElement(..) => "[]".to_string(),
+        }
     }
 }
 

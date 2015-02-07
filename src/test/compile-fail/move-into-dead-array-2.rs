@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Ensure that we cannot move into an uninitialized fixed-size array.
+
+struct D { _x: u8 }
+
+fn d() -> D { D { _x: 0 } }
+
 fn main() {
-    let mut a = [1, 2, 3, 4];
-    let t = match a {
-        [1, 2, tail..] => tail,
-        _ => unreachable!()
-    };
-    println!("t[0]: {}", t[0]);
-    a[2] = 0; //~ ERROR cannot assign to `a[..]` because it is borrowed
-    println!("t[0]: {}", t[0]);
-    t[0];
+    foo([d(), d(), d(), d()], 1);
+    foo([d(), d(), d(), d()], 3);
+}
+
+fn foo(mut a: [D; 4], i: usize) {
+    drop(a);
+    a[i] = d(); //~ ERROR use of moved value: `a`
 }

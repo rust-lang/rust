@@ -19,6 +19,7 @@
 use self::UseError::*;
 
 use borrowck::*;
+use borrowck::InteriorKind::{InteriorElement, InteriorField};
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
 use rustc::middle::region;
@@ -743,15 +744,16 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
             }
-            LpExtend(ref lp_base, _, LpInterior(_)) => {
+            LpExtend(ref lp_base, _, LpInterior(InteriorField(_))) => {
                 // assigning to `P.f` is ok if assigning to `P` is ok
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
             }
+            LpExtend(ref lp_base, _, LpInterior(InteriorElement(..))) |
             LpExtend(ref lp_base, _, LpDeref(_)) => {
-                // assigning to `(*P)` requires that `P` be initialized
-                self.check_if_path_is_moved(id, span,
-                                            use_kind, lp_base);
+                // assigning to `P[i]` requires `P` is initialized
+                // assigning to `(*P)` requires `P` is initialized
+                self.check_if_path_is_moved(id, span, use_kind, lp_base);
             }
         }
     }
