@@ -1644,7 +1644,7 @@ pub enum Item_ {
 
     // Default trait implementations
     // `impl Trait for ..`
-    ItemDefTrait(Unsafety, TraitRef),
+    ItemDefaultImpl(Unsafety, TraitRef),
     ItemImpl(Unsafety,
              ImplPolarity,
              Generics,
@@ -1671,7 +1671,7 @@ impl Item_ {
             ItemTrait(..) => "trait",
             ItemMac(..) |
             ItemImpl(..) |
-            ItemDefTrait(..) => "item"
+            ItemDefaultImpl(..) => "item"
         }
     }
 }

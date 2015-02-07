@@ -20,7 +20,7 @@ use util::nodemap::FnvHashSet;
 use util::ppaux::Repr;
 
 use super::{Obligation, ObligationCause, PredicateObligation,
-            VtableImpl, VtableParam, VtableImplData, VtableDefaultTraitData};
+            VtableImpl, VtableParam, VtableImplData, VtableDefaultImplData};
 
 struct PredicateSet<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -469,7 +469,7 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
             super::VtableImpl(ref v) =>
                 v.repr(tcx),
 
-            super::VtableDefaultTrait(ref t) =>
+            super::VtableDefaultImpl(ref t) =>
                 t.repr(tcx),
 
             super::VtableClosure(ref d, ref s) =>
@@ -511,9 +511,9 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableBuiltinData<N> {
     }
 }
 
-impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableDefaultTraitData<N> {
+impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableDefaultImplData<N> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
-        format!("VtableDefaultTraitData(trait_def_id={}, nested={})",
+        format!("VtableDefaultImplData(trait_def_id={}, nested={})",
                 self.trait_def_id.repr(tcx),
                 self.nested.repr(tcx))
     }

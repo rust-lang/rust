@@ -39,7 +39,7 @@ pub struct Module {
     pub vis: ast::Visibility,
     pub stab: Option<attr::Stability>,
     pub impls: Vec<Impl>,
-    pub def_traits: Vec<DefaultTrait>,
+    pub def_traits: Vec<DefaultImpl>,
     pub foreigns: Vec<ast::ForeignMod>,
     pub macros: Vec<Macro>,
     pub is_crate: bool,
@@ -198,7 +198,7 @@ pub struct Impl {
     pub id: ast::NodeId,
 }
 
-pub struct DefaultTrait {
+pub struct DefaultImpl {
     pub unsafety: ast::Unsafety,
     pub trait_: ast::TraitRef,
     pub id: ast::NodeId,

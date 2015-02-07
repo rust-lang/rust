@@ -26,8 +26,8 @@ use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch
 use super::{Selection};
 use super::{SelectionResult};
 use super::{VtableBuiltin, VtableImpl, VtableParam, VtableClosure,
-            VtableFnPointer, VtableObject, VtableDefaultTrait};
-use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableDefaultTraitData};
+            VtableFnPointer, VtableObject, VtableDefaultImpl};
+use super::{VtableImplData, VtableObjectData, VtableBuiltinData, VtableDefaultImplData};
 use super::object_safety;
 use super::{util};
 
@@ -136,7 +136,7 @@ enum SelectionCandidate<'tcx> {
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(ast::DefId),
-    DefaultTraitCandidate(ast::DefId),
+    DefaultImplCandidate(ast::DefId),
 
     /// This is a trait matching with a projected type as `Self`, and
     /// we found an applicable bound in the trait definition.
@@ -1150,7 +1150,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         if ty::trait_has_default_impl(self.tcx(), def_id) {
-            candidates.vec.push(DefaultTraitCandidate(def_id.clone()))
+            candidates.vec.push(DefaultImplCandidate(def_id.clone()))
         }
 
         Ok(())
@@ -1275,7 +1275,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // #18453.
                 true
             }
-            (&DefaultTraitCandidate(_), _) => {
+            (&DefaultImplCandidate(_), _) => {
                 // Prefer other candidates over default implementations.
                 true
             }
@@ -1728,9 +1728,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(VtableParam(obligations))
             }
 
-            DefaultTraitCandidate(trait_def_id) => {
+            DefaultImplCandidate(trait_def_id) => {
                 let data = try!(self.confirm_default_impl_candidate(obligation, trait_def_id));
-                Ok(VtableDefaultTrait(data))
+                Ok(VtableDefaultImpl(data))
             }
 
             ImplCandidate(impl_def_id) => {
@@ -1868,7 +1868,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     fn confirm_default_impl_candidate(&mut self,
                               obligation: &TraitObligation<'tcx>,
                               impl_def_id: ast::DefId)
-                              -> Result<VtableDefaultTraitData<PredicateObligation<'tcx>>,
+                              -> Result<VtableDefaultImplData<PredicateObligation<'tcx>>,
                                         SelectionError<'tcx>>
     {
         debug!("confirm_default_impl_candidate({}, {})",
@@ -1884,7 +1884,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            obligation: &TraitObligation<'tcx>,
                            trait_def_id: ast::DefId,
                            nested: Vec<Ty<'tcx>>)
-                           -> VtableDefaultTraitData<PredicateObligation<'tcx>>
+                           -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
         let derived_cause = self.derived_cause(obligation, ImplDerivedObligation);
         let obligations = nested.iter().map(|&nested_ty| {
@@ -1920,7 +1920,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         debug!("vtable_default_impl_data: obligations={}", obligations.repr(self.tcx()));
 
-        VtableDefaultTraitData {
+        VtableDefaultImplData {
             trait_def_id: trait_def_id,
             nested: obligations
         }
@@ -2456,7 +2456,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
             BuiltinCandidate(b) => format!("BuiltinCandidate({:?})", b),
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
-            DefaultTraitCandidate(t) => format!("DefaultTraitCandidate({:?})", t),
+            DefaultImplCandidate(t) => format!("DefaultImplCandidate({:?})", t),
             ProjectionCandidate => format!("ProjectionCandidate"),
             FnPointerCandidate => format!("FnPointerCandidate"),
             ObjectCandidate => {

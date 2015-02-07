@@ -435,7 +435,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
 
     let def = tcx.def_map.borrow()[pat.id].clone();
     let (enum_def_id, variant_def_id) = match def {
-        def::DefTrait(_) => {
+        def::DefaultImpl(_) => {
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, pat.span, E0168,
                 "use of trait `{}` in a struct pattern", name);
