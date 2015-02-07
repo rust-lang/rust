@@ -2646,13 +2646,7 @@ impl<A: Int> Iterator for RangeStepInclusive<A> {
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl ExactSizeIterator for ::ops::Range<$t> {
-            #[inline]
-            fn len(&self) -> usize {
-                debug_assert!(self.end >= self.start);
-                (self.end - self.start) as usize
-            }
-        }
+        impl ExactSizeIterator for ::ops::Range<$t> { }
     )*)
 }
 
@@ -2673,9 +2667,12 @@ impl<A: Int> Iterator for ::ops::Range<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        debug_assert!(self.end >= self.start);
-        let hint = (self.end - self.start).to_uint();
-        (hint.unwrap_or(0), hint)
+        if self.start >= self.end {
+            (0, Some(0))
+        } else {
+            let length = (self.end - self.start).to_uint();
+            (length.unwrap_or(0), length)
+        }
     }
 }
 
