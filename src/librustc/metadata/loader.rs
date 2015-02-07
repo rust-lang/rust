@@ -370,9 +370,8 @@ impl<'a> Context<'a> {
         // must be loaded via -L plus some filtering.
         if self.hash.is_none() {
             self.should_match_name = false;
-            match self.find_commandline_library() {
-                Some(l) => return Some(l),
-                None => {}
+            if let Some(s) = self.sess.opts.externs.get(self.crate_name) {
+                return self.find_commandline_library(s);
             }
             self.should_match_name = true;
         }
@@ -619,12 +618,7 @@ impl<'a> Context<'a> {
         (t.options.dll_prefix.clone(), t.options.dll_suffix.clone())
     }
 
-    fn find_commandline_library(&mut self) -> Option<Library> {
-        let locs = match self.sess.opts.externs.get(self.crate_name) {
-            Some(s) => s,
-            None => return None,
-        };
-
+    fn find_commandline_library(&mut self, locs: &[String]) -> Option<Library> {
         // First, filter out all libraries that look suspicious. We only accept
         // files which actually exist that have the correct naming scheme for
         // rlibs/dylibs.
