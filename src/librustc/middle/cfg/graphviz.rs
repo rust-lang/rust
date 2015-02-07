@@ -60,19 +60,52 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
         dot::Id::new(format!("N{}", i.node_id())).ok().unwrap()
     }
 
-    fn node_label(&'a self, &(i, n): &Node<'a>) -> dot::LabelText<'a> {
-        if i == self.cfg.entry {
-            dot::LabelText::LabelStr("entry".into_cow())
-        } else if i == self.cfg.exit {
-            dot::LabelText::LabelStr("exit".into_cow())
-        } else if n.data.id == ast::DUMMY_NODE_ID {
-            dot::LabelText::LabelStr("(dummy_node)".into_cow())
-        } else {
-            let s = self.ast_map.node_to_string(n.data.id);
-            // left-aligns the lines
-            let s = replace_newline_with_backslash_l(s);
-            dot::LabelText::EscStr(s.into_cow())
+    fn node_label(&'a self, &(_, n): &Node<'a>) -> dot::LabelText<'a> {
+        match n.data {
+            cfg::CFGNodeData::Entry => dot::LabelText::LabelStr("<entry>".into_cow()),
+            cfg::CFGNodeData::Exit => dot::LabelText::LabelStr("<exit>".into_cow()),
+            cfg::CFGNodeData::Dummy => dot::LabelText::LabelStr("".into_cow()),
+            cfg::CFGNodeData::Unreachable => dot::LabelText::LabelStr("<unreachable>".into_cow()),
+            cfg::CFGNodeData::AST(id) if id == ast::DUMMY_NODE_ID => {
+                dot::LabelText::LabelStr("".into_cow())
+            }
+            cfg::CFGNodeData::AST(id) => {
+                let s = self.ast_map.node_to_string(id);
+                // left-aligns the lines
+                let s = replace_newline_with_backslash_l(s);
+                dot::LabelText::EscStr(s.into_cow())
+            }
         }
+    }
+
+    fn node_attrs(&self, &(_, n): &Node) -> dot::NodeAttributes {
+        let mut attrs = dot::NodeAttributes::default();
+
+        match n.data {
+            cfg::CFGNodeData::Entry |
+            cfg::CFGNodeData::Exit => {
+                attrs.shape = dot::NodeShape::Diamond;
+            }
+            cfg::CFGNodeData::Dummy => {
+                attrs.shape = dot::NodeShape::Circle;
+                attrs.style = dot::NodeStyle::Filled;
+                attrs.color = "blue";
+            }
+            cfg::CFGNodeData::Unreachable => {
+                attrs.color = "red";
+                attrs.fontcolor = "red";
+            }
+            cfg::CFGNodeData::AST(id) if id == ast::DUMMY_NODE_ID => {
+                attrs.shape = dot::NodeShape::Circle;
+                attrs.style = dot::NodeStyle::Filled;
+                attrs.color = "blue";
+            }
+            cfg::CFGNodeData::AST(_) => {
+                attrs.shape = dot::NodeShape::Box;
+            }
+        }
+
+        attrs
     }
 
     fn edge_label(&self, e: &Edge<'a>) -> dot::LabelText<'a> {
@@ -124,4 +157,3 @@ impl<'a, 'ast> dot::GraphWalk<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast>
     fn source(&'a self, edge: &Edge<'a>) -> Node<'a> { self.cfg.source(edge) }
     fn target(&'a self, edge: &Edge<'a>) -> Node<'a> { self.cfg.target(edge) }
 }
-

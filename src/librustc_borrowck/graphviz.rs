@@ -20,7 +20,7 @@ use rustc::middle::cfg::graphviz as cfg_dot;
 use borrowck;
 use borrowck::{BorrowckCtxt, LoanPath};
 use dot;
-use rustc::middle::cfg::{CFGIndex};
+use rustc::middle::cfg::{self, CFGIndex};
 use rustc::middle::dataflow::{DataFlowOperator, DataFlowContext, EntryOrExit};
 use rustc::middle::dataflow;
 use std::rc::Rc;
@@ -52,15 +52,16 @@ pub struct DataflowLabeller<'a, 'tcx: 'a> {
 
 impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
     fn dataflow_for(&self, e: EntryOrExit, n: &Node<'a>) -> String {
-        let id = n.1.data.id;
-        debug!("dataflow_for({:?}, id={}) {:?}", e, id, self.variants);
         let mut sets = "".to_string();
-        let mut seen_one = false;
-        for &variant in &self.variants {
-            if seen_one { sets.push_str(" "); } else { seen_one = true; }
-            sets.push_str(variant.short_name());
-            sets.push_str(": ");
-            sets.push_str(&self.dataflow_for_variant(e, n, variant)[]);
+        if let cfg::CFGNodeData::AST(id) = n.1.data {
+            debug!("dataflow_for({:?}, id={}) {:?}", e, id, self.variants);
+            let mut seen_one = false;
+            for &variant in &self.variants {
+                if seen_one { sets.push_str(" "); } else { seen_one = true; }
+                sets.push_str(variant.short_name());
+                sets.push_str(": ");
+                sets.push_str(&self.dataflow_for_variant(e, n, variant)[]);
+            }
         }
         sets
     }
@@ -140,6 +141,9 @@ impl<'a, 'tcx> dot::Labeller<'a, Node<'a>, Edge<'a>> for DataflowLabeller<'a, 't
         inner_label
             .prefix_line(dot::LabelText::LabelStr(prefix.into_cow()))
             .suffix_line(dot::LabelText::LabelStr(suffix.into_cow()))
+    }
+    fn node_attrs(&self, n: &Node<'a>) -> dot::NodeAttributes {
+        self.inner.node_attrs(n)
     }
     fn edge_label(&'a self, e: &Edge<'a>) -> dot::LabelText<'a> { self.inner.edge_label(e) }
 }
