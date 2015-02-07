@@ -172,7 +172,7 @@ struct RcBox<T> {
 
 /// An immutable reference-counted pointer type.
 ///
-/// See the [module level documentation](../index.html) for more details.
+/// See the [module level documentation](./index.html) for more details.
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Rc<T> {
@@ -624,7 +624,7 @@ impl<T: fmt::Debug> fmt::Debug for Rc<T> {
 ///
 /// Weak references do not count when determining if the inner value should be dropped.
 ///
-/// See the [module level documentation](../index.html) for more.
+/// See the [module level documentation](./index.html) for more.
 #[unsafe_no_drop_flag]
 #[unstable(feature = "alloc",
            reason = "Weak pointers may not belong in this module.")]
