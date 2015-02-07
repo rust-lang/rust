@@ -67,6 +67,7 @@ use core::result::Result;
 use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
+use alloc::boxed::Box;
 
 use ring_buf::RingBuf;
 use slice::SliceExt;
@@ -1322,6 +1323,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     fn trim_right(&self) -> &str {
         UnicodeStr::trim_right(&self[])
     }
+
+    /// Converts `self` into a `String` without allocating.
+    #[unstable(feature = "collections")]
+    fn into_string(self: Box<Self>) -> String;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1336,6 +1341,13 @@ impl StrExt for str {
 
     fn slice_to(&self, end: usize) -> &str {
         &self[..end]
+    }
+
+    fn into_string(self: Box<str>) -> String {
+        unsafe {
+            let slice: Box<[u8]> = ::core::mem::transmute(self);
+            String::from_utf8_unchecked(slice.into_vec())
+        }
     }
 }
 

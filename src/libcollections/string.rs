@@ -28,6 +28,7 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
+use alloc::boxed::Box;
 
 use str::{self, CharRange, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
@@ -489,6 +490,17 @@ impl String {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_bytes(&self) -> &[u8] {
         &self.vec
+    }
+
+    /// Converts a string into a `Box<str>`.
+    ///
+    /// Note that this will drop any excess capacity. Calling this and converting back to a
+    /// `String` with `into_string()` is equivalent to calling `shrink_to_fit()`.
+    #[inline]
+    #[unstable(feature = "collections")]
+    pub fn into_boxed_slice(self) -> Box<str> {
+        let v: Box<[u8]> = self.vec.into_boxed_slice();
+        unsafe { mem::transmute(v) }
     }
 
     /// Shortens a string to the specified length.
@@ -1333,6 +1345,14 @@ mod tests {
         let mut d = t.to_string();
         d.extend(vec![u].into_iter());
         assert_eq!(s, d);
+    }
+
+    #[test]
+    fn test_into_boxed_slice() {
+        let orig = "📥 🍕";
+        let xs = orig.to_string();
+        let ys = xs.into_boxed_slice();
+        assert_eq!(&*ys, orig);
     }
 
     #[bench]
