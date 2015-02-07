@@ -28,8 +28,6 @@ impl Index<String> for Foo {
 }
 
 impl IndexMut<String> for Foo {
-    type Output = isize;
-
     fn index_mut<'a>(&'a mut self, z: &String) -> &'a mut isize {
         if *z == "x" {
             &mut self.x

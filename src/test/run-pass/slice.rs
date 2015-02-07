@@ -49,28 +49,24 @@ impl Index<RangeFull> for Foo {
 }
 
 impl IndexMut<Range<Foo>> for Foo {
-    type Output = Foo;
     fn index_mut(&mut self, index: &Range<Foo>) -> &mut Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
 impl IndexMut<RangeTo<Foo>> for Foo {
-    type Output = Foo;
     fn index_mut(&mut self, index: &RangeTo<Foo>) -> &mut Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
 impl IndexMut<RangeFrom<Foo>> for Foo {
-    type Output = Foo;
     fn index_mut(&mut self, index: &RangeFrom<Foo>) -> &mut Foo {
         unsafe { COUNT += 1; }
         self
     }
 }
 impl IndexMut<RangeFull> for Foo {
-    type Output = Foo;
     fn index_mut(&mut self, _index: &RangeFull) -> &mut Foo {
         unsafe { COUNT += 1; }
         self

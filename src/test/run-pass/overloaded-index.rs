@@ -28,8 +28,6 @@ impl Index<int> for Foo {
 }
 
 impl IndexMut<int> for Foo {
-    type Output = int;
-
     fn index_mut(&mut self, z: &int) -> &mut int {
         if *z == 0 {
             &mut self.x
