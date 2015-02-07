@@ -323,8 +323,8 @@ pub fn trait_ref_for_builtin_bound<'tcx>(
     }
 }
 
+
 pub fn predicate_for_trait_ref<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
     cause: ObligationCause<'tcx>,
     trait_ref: Rc<ty::TraitRef<'tcx>>,
     recursion_depth: uint)
@@ -349,7 +349,7 @@ pub fn predicate_for_default_trait_impl<'tcx>(
         def_id: trait_def_id,
         substs: tcx.mk_substs(Substs::empty().with_self_ty(param_ty))
     });
-    predicate_for_trait_ref(tcx, cause, trait_ref, recursion_depth)
+    predicate_for_trait_ref(cause, trait_ref, recursion_depth)
 }
 
 pub fn predicate_for_builtin_bound<'tcx>(
@@ -361,7 +361,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
     let trait_ref = try!(trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
-    predicate_for_trait_ref(tcx, cause, trait_ref, recursion_depth)
+    predicate_for_trait_ref(cause, trait_ref, recursion_depth)
 }
 
 /// Cast a trait reference into a reference to one of its super
