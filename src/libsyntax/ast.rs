@@ -1596,6 +1596,12 @@ pub struct StructDef {
     pub ctor_id: Option<NodeId>,
 }
 
+impl StructDef {
+    pub fn is_tuple_like(&self) -> bool {
+        self.fields.len() > 0 && self.fields[0].node.kind.is_unnamed()
+    }
+}
+
 /*
   FIXME (#3300): Should allow items to be anonymous. Right now
   we just use dummy names for anon items.

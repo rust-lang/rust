@@ -2103,6 +2103,30 @@ impl LintPass for PrivateNoMangleFns {
     }
 }
 
+#[derive(Copy)]
+pub struct UsingTupleStructs;
+
+declare_lint!(USING_TUPLE_STRUCTS, Allow,
+              "detects tuple-like structures");
+
+impl LintPass for UsingTupleStructs {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(USING_TUPLE_STRUCTS)
+    }
+
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+        if it.vis == ast::Visibility::Public {
+            if let ast::ItemStruct(ref def, _) = it.node {
+                if def.is_tuple_like() {
+                    cx.span_lint(USING_TUPLE_STRUCTS, it.span,
+                        "standard library should not use tuple-like structures; \
+                         it hampers backward compatibility")
+                }
+            }
+        }
+    }
+}
+
 /// Forbids using the `#[feature(...)]` attribute
 #[derive(Copy)]
 pub struct UnstableFeatures;
