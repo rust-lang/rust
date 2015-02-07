@@ -1521,7 +1521,6 @@ pub mod types {
                 use types::os::arch::posix88::{dev_t, gid_t};
                 use types::os::arch::posix88::{mode_t, off_t};
                 use types::os::arch::posix88::{uid_t};
-                use types::os::common::posix01::{timespec};
 
                 pub type nlink_t = uint32_t;
                 pub type blksize_t = uint32_t;
