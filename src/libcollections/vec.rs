@@ -690,7 +690,8 @@ impl<T> Vec<T> {
     /// Panics if the number of elements in the vector overflows a `usize`.
     ///
     /// # Examples
-    /// ```rust
+    ///
+    /// ```
     /// let mut vec = vec![1, 2, 3];
     /// let mut vec2 = vec![4, 5, 6];
     /// vec.append(&mut vec2);
@@ -1002,8 +1003,13 @@ impl<T> Vec<T> {
     ///
     /// Note that the capacity of `self` does not change.
     ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`.
+    ///
     /// # Examples
-    /// ```rust
+    ///
+    /// ```
     /// let mut vec = vec![1,2,3];
     /// let vec2 = vec.split_off(1);
     /// assert_eq!(vec, vec![1]);
@@ -1013,7 +1019,7 @@ impl<T> Vec<T> {
     #[unstable(feature = "collections",
                reason = "new API, waiting for dust to settle")]
     pub fn split_off(&mut self, at: usize) -> Self {
-        assert!(at < self.len(), "`at` out of bounds");
+        assert!(at <= self.len(), "`at` out of bounds");
 
         let other_len = self.len - at;
         let mut other = Vec::with_capacity(other_len);
