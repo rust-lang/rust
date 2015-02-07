@@ -336,11 +336,9 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     if fn_type.ret_ty.is_indirect() {
         let llret_sz = machine::llsize_of_real(ccx, fn_type.ret_ty.ty);
 
-        // The outptr can be noalias and nocapture because it's entirely
-        // invisible to the program. We also know it's nonnull as well
-        // as how many bytes we can dereference
-        attrs.arg(1, llvm::NoAliasAttribute)
-             .arg(1, llvm::NoCaptureAttribute)
+        // The outptr can be nocapture because it's entirely invisible to the program. We also know
+        // it's nonnull as well as how many bytes we can dereference
+        attrs.arg(1, llvm::NoCaptureAttribute)
              .arg(1, llvm::DereferenceableAttribute(llret_sz));
     };
 
