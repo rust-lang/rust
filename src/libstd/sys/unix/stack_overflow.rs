@@ -219,10 +219,7 @@ mod imp {
 
         #[cfg(target_os = "macos")]
         pub const SIGSTKSZ: libc::size_t = 131072;
-        #[cfg(target_os = "openbsd")]
-        pub const SIGSTKSZ: libc::size_t = 40960;
-
-        #[cfg(target_os = "bitrig")]
+        #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
         pub const SIGSTKSZ: libc::size_t = 40960;
 
         pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
