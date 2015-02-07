@@ -390,7 +390,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             Callee { bcx: bcx, data: Fn(llfn) }
         }
         traits::VtableBuiltin(..) |
-        traits::VtableDefaultTrait(..) |
+        traits::VtableDefaultImpl(..) |
         traits::VtableParam(..) => {
             bcx.sess().bug(
                 &format!("resolved vtable bad vtable {} in trans",
@@ -716,7 +716,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         let vtable = fulfill_obligation(ccx, DUMMY_SP, trait_ref.clone());
         match vtable {
             // Should default trait error here?
-            traits::VtableDefaultTrait(_) |
+            traits::VtableDefaultImpl(_) |
             traits::VtableBuiltin(_) => {
                 Vec::new().into_iter()
             }

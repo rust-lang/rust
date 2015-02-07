@@ -5175,7 +5175,7 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                 &None => None
                             }
                         }
-                        ast::ItemDefTrait(_, ref ast_trait_ref) => {
+                        ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
                             Some(ty::node_id_to_trait_ref(cx, ast_trait_ref.ref_id))
                         }
                         _ => None

@@ -96,7 +96,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                     }
                 }
             }
-            ast::ItemDefTrait(_, ref ast_trait_ref) => {
+            ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}", item.repr(self.tcx));
                 let trait_ref = ty::node_id_to_trait_ref(self.tcx, ast_trait_ref.ref_id);

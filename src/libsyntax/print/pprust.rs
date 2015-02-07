@@ -926,7 +926,7 @@ impl<'a> State<'a> {
                 try!(self.print_struct(&**struct_def, generics, item.ident, item.span));
             }
 
-            ast::ItemDefTrait(unsafety, ref trait_ref) => {
+            ast::ItemDefaultImpl(unsafety, ref trait_ref) => {
                 try!(self.head(""));
                 try!(self.print_visibility(item.vis));
                 try!(self.print_unsafety(unsafety));

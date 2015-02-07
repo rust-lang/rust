@@ -1044,7 +1044,7 @@ fn node_id_to_string(map: &Map, id: NodeId, include_id: bool) -> String {
                 ItemStruct(..) => "struct",
                 ItemTrait(..) => "trait",
                 ItemImpl(..) => "impl",
-                ItemDefTrait(..) => "default impl",
+                ItemDefaultImpl(..) => "default impl",
                 ItemMac(..) => "macro"
             };
             format!("{} {}{}", item_str, path_str, id_str)

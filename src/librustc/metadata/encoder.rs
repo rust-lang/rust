@@ -1201,7 +1201,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
             None => {}
         }
       }
-      ast::ItemDefTrait(unsafety, ref ast_trait_ref) => {
+      ast::ItemDefaultImpl(unsafety, ref ast_trait_ref) => {
           add_to_index(item, rbml_w, index);
           rbml_w.start_tag(tag_items_data_item);
           encode_def_id(rbml_w, def_id);

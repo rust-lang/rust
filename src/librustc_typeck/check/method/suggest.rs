@@ -330,7 +330,7 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
                                cstore: &cstore::CStore,
                                dl: decoder::DefLike) {
             match dl {
-                decoder::DlDef(def::DefTrait(did)) => {
+                decoder::DlDef(def::DefaultImpl(did)) => {
                     traits.push(TraitInfo::new(did));
                 }
                 decoder::DlDef(def::DefMod(did)) => {

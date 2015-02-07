@@ -31,7 +31,7 @@ use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
-use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefTrait};
+use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
@@ -4843,7 +4843,7 @@ impl<'a> Parser<'a> {
             self.expect(&token::OpenDelim(token::Brace));
             self.expect(&token::CloseDelim(token::Brace));
             (ast_util::impl_pretty_name(&opt_trait, None),
-             ItemDefTrait(unsafety, opt_trait.unwrap()), None)
+             ItemDefaultImpl(unsafety, opt_trait.unwrap()), None)
         } else {
             if opt_trait.is_some() {
                 ty = self.parse_ty_sum();
