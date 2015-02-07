@@ -1149,7 +1149,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
         }
 
-        if self.tcx().default_trait_impls.borrow().contains(&def_id) {
+        if ty::trait_has_default_impl(self.tcx(), def_id) {
             candidates.vec.push(DefaultTraitCandidate(def_id.clone()))
         }
 
