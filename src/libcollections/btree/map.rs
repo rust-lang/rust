@@ -910,8 +910,6 @@ impl<K: Ord, Q: ?Sized, V> Index<Q> for BTreeMap<K, V>
 impl<K: Ord, Q: ?Sized, V> IndexMut<Q> for BTreeMap<K, V>
     where Q: BorrowFrom<K> + Ord
 {
-    type Output = V;
-
     fn index_mut(&mut self, key: &Q) -> &mut V {
         self.get_mut(key).expect("no entry found for key")
     }

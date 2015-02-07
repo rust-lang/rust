@@ -897,14 +897,14 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 /// }
 /// ```
 #[lang="index"]
-#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Index}`"]
+#[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait Index<Index: ?Sized> {
+pub trait Index<Idx: ?Sized> {
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn index<'a>(&'a self, index: &Index) -> &'a Self::Output;
+    fn index<'a>(&'a self, index: &Idx) -> &'a Self::Output;
 }
 
 /// The `IndexMut` trait is used to specify the functionality of indexing
@@ -916,15 +916,21 @@ pub trait Index<Index: ?Sized> {
 /// calling `index_mut`, and therefore, `main` prints `Indexing!`.
 ///
 /// ```
-/// use std::ops::IndexMut;
+/// use std::ops::{Index, IndexMut};
 ///
 /// #[derive(Copy)]
 /// struct Foo;
 /// struct Bar;
 ///
-/// impl IndexMut<Bar> for Foo {
+/// impl Index<Bar> for Foo {
 ///     type Output = Foo;
 ///
+///     fn index<'a>(&'a self, _index: &Bar) -> &'a Foo {
+///         self
+///     }
+/// }
+///
+/// impl IndexMut<Bar> for Foo {
 ///     fn index_mut<'a>(&'a mut self, _index: &Bar) -> &'a mut Foo {
 ///         println!("Indexing!");
 ///         self
@@ -936,14 +942,12 @@ pub trait Index<Index: ?Sized> {
 /// }
 /// ```
 #[lang="index_mut"]
-#[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Index}`"]
+#[rustc_on_unimplemented = "the type `{Self}` cannot be mutably indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub trait IndexMut<Index: ?Sized> {
-    type Output: ?Sized;
-
+pub trait IndexMut<Idx: ?Sized>: Index<Idx> {
     /// The method for the indexing (`Foo[Bar]`) operation
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn index_mut<'a>(&'a mut self, index: &Index) -> &'a mut Self::Output;
+    fn index_mut<'a>(&'a mut self, index: &Idx) -> &'a mut Self::Output;
 }
 
 /// An unbounded range.
