@@ -862,7 +862,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             attrs: vec!(),
             pats: pats,
             guard: None,
-            body: expr
+            body: expr,
         }
     }
 
