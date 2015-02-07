@@ -1302,7 +1302,10 @@ impl<T> RingBuf<T> {
     /// Panics if `at > len`
     ///
     /// # Examples
-    /// ```rust
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
     /// let mut buf: RingBuf<_> = vec![1,2,3].into_iter().collect();
     /// let buf2 = buf.split_off(1);
     /// // buf = [1], buf2 = [2, 3]
@@ -1352,6 +1355,31 @@ impl<T> RingBuf<T> {
         other.head = other.wrap_index(other_len);
 
         other
+    }
+
+    /// Moves all the elements of `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new number of elements in self overflows a `usize`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf: RingBuf<_> = vec![1, 2, 3].into_iter().collect();
+    /// let mut buf2: RingBuf<_> = vec![4, 5, 6].into_iter().collect();
+    /// buf.append(&mut buf2);
+    /// assert_eq!(buf.len(), 6);
+    /// assert_eq!(buf2.len(), 0);
+    /// ```
+    #[inline]
+    #[unstable(feature = "collections",
+               reason = "new API, waiting for dust to settle")]
+    pub fn append(&mut self, other: &mut Self) {
+        // naive impl
+        self.extend(other.drain());
     }
 }
 
@@ -2812,5 +2840,26 @@ mod tests {
                 }
             }
         }
+    }
+
+    #[test]
+    fn test_append() {
+        let mut a: RingBuf<_> = vec![1, 2, 3].into_iter().collect();
+        let mut b: RingBuf<_> = vec![4, 5, 6].into_iter().collect();
+
+        // normal append
+        a.append(&mut b);
+        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect(), vec![]);
+
+        // append nothing to something
+        a.append(&mut b);
+        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect(), vec![]);
+
+        // append something to nothing
+        b.append(&mut a);
+        assert_eq!(b.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(a.iter().cloned().collect(), vec![]);
     }
 }
