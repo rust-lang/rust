@@ -406,7 +406,7 @@ int rust_get_argv_zero(void* p, size_t* sz)
   return 0;
 }
 
-const char * rust_load_self()
+const char * rust_current_exe()
 {
   static char *self = NULL;
   char *argv0;
