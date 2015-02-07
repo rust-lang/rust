@@ -307,8 +307,7 @@ mod signal {
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "openbsd"))]
+          target_os = "dragonfly"))]
 mod signal {
     use libc;
 
@@ -322,8 +321,7 @@ mod signal {
     pub const SIGCHLD: libc::c_int = 20;
 
     #[cfg(any(target_os = "macos",
-              target_os = "ios",
-              target_os = "openbsd"))]
+              target_os = "ios"))]
     pub type sigset_t = u32;
     #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     #[repr(C)]
@@ -351,7 +349,7 @@ mod signal {
     }
 }
 
-#[cfg(target_os = "bitrig")]
+#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
 mod signal {
     use libc;
 
