@@ -234,7 +234,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
             ast_map::NodeImplItem(impl_item) => {
                 match *impl_item {
                     ast::MethodImplItem(ref method) => {
-                        visit::walk_block(self, method.pe_body());
+                        visit::walk_method_helper(self, method);
                     }
                     ast::TypeImplItem(_) => {}
                 }
