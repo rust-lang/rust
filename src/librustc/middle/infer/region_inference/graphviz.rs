@@ -19,12 +19,14 @@
 use graphviz as dot;
 
 use middle::ty;
+use middle::region::CodeExtent;
 use super::Constraint;
 use middle::infer::SubregionOrigin;
 use middle::infer::region_inference::RegionVarBindings;
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux::Repr;
 
+use std::borrow::Cow;
 use std::collections::hash_map::Entry::Vacant;
 use std::old_io::{self, File};
 use std::env;
@@ -120,13 +122,18 @@ struct ConstraintGraph<'a, 'tcx: 'a> {
     node_ids: FnvHashMap<Node, uint>,
 }
 
-#[derive(Clone, Hash, PartialEq, Eq, Debug)]
+#[derive(Clone, Hash, PartialEq, Eq, Debug, Copy)]
 enum Node {
     RegionVid(ty::RegionVid),
     Region(ty::Region),
 }
 
-type Edge = Constraint;
+// type Edge = Constraint;
+#[derive(Clone, PartialEq, Eq, Debug, Copy)]
+enum Edge {
+    Constraint(Constraint),
+    EnclScope(CodeExtent, CodeExtent),
+}
 
 impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
     fn new(tcx: &'a ty::ctxt<'tcx>,
@@ -146,6 +153,11 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
                 add_node(n1);
                 add_node(n2);
             }
+
+            tcx.region_maps.each_encl_scope(|sub, sup| {
+                add_node(Node::Region(ty::ReScope(*sub)));
+                add_node(Node::Region(ty::ReScope(*sup)));
+            });
         }
 
         ConstraintGraph { tcx: tcx,
@@ -160,7 +172,17 @@ impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
         dot::Id::new(&*self.graph_name).ok().unwrap()
     }
     fn node_id(&self, n: &Node) -> dot::Id {
-        dot::Id::new(format!("node_{}", self.node_ids.get(n).unwrap())).ok().unwrap()
+        let node_id = match self.node_ids.get(n) {
+            Some(node_id) => node_id,
+            None => panic!("no node_id found for node: {:?}", n),
+        };
+        let name = || format!("node_{}", node_id);
+        match dot::Id::new(name()) {
+            Ok(id) => id,
+            Err(_) => {
+                panic!("failed to create graphviz node identified by {}", name());
+            }
+        }
     }
     fn node_label(&self, n: &Node) -> dot::LabelText {
         match *n {
@@ -171,7 +193,12 @@ impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
         }
     }
     fn edge_label(&self, e: &Edge) -> dot::LabelText {
-        dot::LabelText::label(format!("{}", self.map.get(e).unwrap().repr(self.tcx)))
+        match *e {
+            Edge::Constraint(ref c) =>
+                dot::LabelText::label(format!("{}", self.map.get(c).unwrap().repr(self.tcx))),
+            Edge::EnclScope(..) =>
+                dot::LabelText::label(format!("(enclosed)")),
+        }
     }
 }
 
@@ -186,28 +213,40 @@ fn constraint_to_nodes(c: &Constraint) -> (Node, Node) {
     }
 }
 
+fn edge_to_nodes(e: &Edge) -> (Node, Node) {
+    match *e {
+        Edge::Constraint(ref c) => constraint_to_nodes(c),
+        Edge::EnclScope(sub, sup) => {
+            (Node::Region(ty::ReScope(sub)), Node::Region(ty::ReScope(sup)))
+        }
+    }
+}
+
 impl<'a, 'tcx> dot::GraphWalk<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     fn nodes(&self) -> dot::Nodes<Node> {
         let mut set = FnvHashSet();
-        for constraint in self.map.keys() {
-            let (n1, n2) = constraint_to_nodes(constraint);
-            set.insert(n1);
-            set.insert(n2);
+        for node in self.node_ids.keys() {
+            set.insert(*node);
         }
         debug!("constraint graph has {} nodes", set.len());
         set.into_iter().collect()
     }
     fn edges(&self) -> dot::Edges<Edge> {
         debug!("constraint graph has {} edges", self.map.len());
-        self.map.keys().map(|e|*e).collect()
+        let mut v : Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
+        self.tcx.region_maps.each_encl_scope(|sub, sup| {
+            v.push(Edge::EnclScope(*sub, *sup))
+        });
+        debug!("region graph has {} edges", v.len());
+        Cow::Owned(v)
     }
     fn source(&self, edge: &Edge) -> Node {
-        let (n1, _) = constraint_to_nodes(edge);
+        let (n1, _) = edge_to_nodes(edge);
         debug!("edge {:?} has source {:?}", edge, n1);
         n1
     }
     fn target(&self, edge: &Edge) -> Node {
-        let (_, n2) = constraint_to_nodes(edge);
+        let (_, n2) = edge_to_nodes(edge);
         debug!("edge {:?} has target {:?}", edge, n2);
         n2
     }
