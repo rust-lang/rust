@@ -154,7 +154,7 @@ impl<'a, 'tcx> ConstraintGraph<'a, 'tcx> {
                 add_node(n2);
             }
 
-            tcx.region_maps.each_encl_scope(|&mut: sub, sup| {
+            tcx.region_maps.each_encl_scope(|sub, sup| {
                 add_node(Node::Region(ty::ReScope(*sub)));
                 add_node(Node::Region(ty::ReScope(*sup)));
             });
@@ -176,7 +176,7 @@ impl<'a, 'tcx> dot::Labeller<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
             Some(node_id) => node_id,
             None => panic!("no node_id found for node: {:?}", n),
         };
-        let name = |&:| format!("node_{}", node_id);
+        let name = || format!("node_{}", node_id);
         match dot::Id::new(name()) {
             Ok(id) => id,
             Err(_) => {
@@ -234,7 +234,7 @@ impl<'a, 'tcx> dot::GraphWalk<'a, Node, Edge> for ConstraintGraph<'a, 'tcx> {
     fn edges(&self) -> dot::Edges<Edge> {
         debug!("constraint graph has {} edges", self.map.len());
         let mut v : Vec<_> = self.map.keys().map(|e| Edge::Constraint(*e)).collect();
-        self.tcx.region_maps.each_encl_scope(|&mut: sub, sup| {
+        self.tcx.region_maps.each_encl_scope(|sub, sup| {
             v.push(Edge::EnclScope(*sub, *sup))
         });
         debug!("region graph has {} edges", v.len());
