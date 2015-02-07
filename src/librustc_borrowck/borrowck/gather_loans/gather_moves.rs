@@ -16,6 +16,8 @@ use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use borrowck::move_data::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
+use rustc::middle::mem_categorization::Typer;
+use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::middle::ty;
 use rustc::util::ppaux::Repr;
 use std::rc::Rc;
@@ -156,6 +158,7 @@ pub fn gather_assignment<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                              mode);
 }
 
+// (keep in sync with move_error::report_cannot_move_out_of )
 fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                                cmt: &mc::cmt<'tcx>)
                                                -> Option<mc::cmt<'tcx>> {
@@ -174,7 +177,8 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         }
 
         mc::cat_downcast(ref b, _) |
-        mc::cat_interior(ref b, _) => {
+        mc::cat_interior(ref b, mc::InteriorField(_)) |
+        mc::cat_interior(ref b, mc::InteriorElement(Kind::Pattern, _)) => {
             match b.ty.sty {
                 ty::ty_struct(did, _) | ty::ty_enum(did, _) => {
                     if ty::has_dtor(bccx.tcx, did) {
@@ -187,6 +191,11 @@ fn check_and_get_illegal_move_origin<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                     check_and_get_illegal_move_origin(bccx, b)
                 }
             }
+        }
+
+        mc::cat_interior(_, mc::InteriorElement(Kind::Index, _)) => {
+            // Forbid move of arr[i] for arr: [T; 3]; see RFC 533.
+            Some(cmt.clone())
         }
 
         mc::cat_deref(ref b, _, mc::Unique) => {

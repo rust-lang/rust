@@ -10,10 +10,10 @@
 
 fn test() {
     let w: &mut [isize];
-    w[5] = 0; //~ ERROR use of possibly uninitialized variable: `w`
+    w[5] = 0; //~ ERROR use of possibly uninitialized variable: `*w`
 
     let mut w: &mut [isize];
-    w[5] = 0; //~ ERROR use of possibly uninitialized variable: `w`
+    w[5] = 0; //~ ERROR use of possibly uninitialized variable: `*w`
 }
 
 fn main() { test(); }

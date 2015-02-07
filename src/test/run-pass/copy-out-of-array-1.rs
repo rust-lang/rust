@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
+// Ensure that we can copy out of a fixed-size array.
+//
+// (Compare with compile-fail/move-out-of-array-1.rs)
 
-fn f() {
-    let mut a = [box 0, box 1];
-    drop(a[0]);
-    a[1] = box 2;
-    drop(a[0]); //~ ERROR use of moved value: `a[..]`
-}
+struct C { _x: u8 }
+
+impl Copy for C { }
 
 fn main() {
-    f();
+    fn d() -> C { C { _x: 0 } }
+
+    let _d1 = foo([d(), d(), d(), d()], 1);
+    let _d3 = foo([d(), d(), d(), d()], 3);
 }
 
+fn foo(a: [C; 4], i: usize) -> C {
+    a[i]
+}

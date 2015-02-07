@@ -19,6 +19,8 @@ use rustc::middle::ty;
 use rustc::util::ppaux::Repr;
 use syntax::codemap::Span;
 
+use borrowck::ToInteriorKind;
+
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -96,7 +98,7 @@ impl<'a, 'tcx> RestrictionsContext<'a, 'tcx> {
                 // the memory, so no additional restrictions are
                 // needed.
                 let result = self.restrict(cmt_base);
-                self.extend(result, &cmt, LpInterior(i))
+                self.extend(result, &cmt, LpInterior(i.cleaned()))
             }
 
             mc::cat_static_item(..) => {

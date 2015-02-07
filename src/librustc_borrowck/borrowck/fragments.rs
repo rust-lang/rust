@@ -14,6 +14,7 @@
 
 use self::Fragment::*;
 
+use borrowck::InteriorKind::{InteriorField, InteriorElement};
 use borrowck::{LoanPath};
 use borrowck::LoanPathKind::{LpVar, LpUpvar, LpDowncast, LpExtend};
 use borrowck::LoanPathElem::{LpDeref, LpInterior};
@@ -300,12 +301,16 @@ fn add_fragment_siblings<'tcx>(this: &MoveData<'tcx>,
         LpExtend(_, _, LpDeref(mc::Implicit(..)))    |
         LpExtend(_, _, LpDeref(mc::BorrowedPtr(..))) => {}
 
-        // FIXME(pnkfelix): LV[j] should be tracked, at least in the
+        // FIXME (pnkfelix): LV[j] should be tracked, at least in the
         // sense of we will track the remaining drop obligation of the
         // rest of the array.
         //
-        // LV[j] is not tracked precisely
-        LpExtend(_, _, LpInterior(mc::InteriorElement(_))) => {
+        // Well, either that or LV[j] should be made illegal.
+        // But even then, we will need to deal with destructuring
+        // bind.
+        //
+        // Anyway, for now: LV[j] is not tracked precisely
+        LpExtend(_, _, LpInterior(InteriorElement(..))) => {
             let mp = this.move_path(tcx, lp.clone());
             gathered_fragments.push(AllButOneFrom(mp));
         }
@@ -313,7 +318,7 @@ fn add_fragment_siblings<'tcx>(this: &MoveData<'tcx>,
         // field access LV.x and tuple access LV#k are the cases
         // we are interested in
         LpExtend(ref loan_parent, mc,
-                 LpInterior(mc::InteriorField(ref field_name))) => {
+                 LpInterior(InteriorField(ref field_name))) => {
             let enum_variant_info = match loan_parent.kind {
                 LpDowncast(ref loan_parent_2, variant_def_id) =>
                     Some((variant_def_id, loan_parent_2.clone())),
@@ -452,7 +457,7 @@ fn add_fragment_sibling_core<'tcx>(this: &MoveData<'tcx>,
         LpVar(..) | LpUpvar(..) | LpExtend(..) => enum_variant_did,
     };
 
-    let loan_path_elem = LpInterior(mc::InteriorField(new_field_name));
+    let loan_path_elem = LpInterior(InteriorField(new_field_name));
     let new_lp_type = match new_field_name {
         mc::NamedField(ast_name) =>
             ty::named_element_ty(tcx, parent.to_type(), ast_name, opt_variant_did),
