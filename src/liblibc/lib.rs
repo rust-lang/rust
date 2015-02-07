@@ -4149,7 +4149,7 @@ pub mod consts {
             pub const _SC_THREAD_THREADS_MAX : c_int = 90;
             pub const _SC_THREADS : c_int = 91;
             pub const _SC_TTY_NAME_MAX : c_int = 107;
-            pub const _SC_ATEXIT_MAX : c_int = 146;
+            pub const _SC_ATEXIT_MAX : c_int = 46;
             pub const _SC_XOPEN_CRYPT : c_int = 117;
             pub const _SC_XOPEN_ENH_I18N : c_int = 118;
             pub const _SC_XOPEN_LEGACY : c_int = 119;
