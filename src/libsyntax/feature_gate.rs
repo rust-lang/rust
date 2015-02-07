@@ -21,6 +21,7 @@
 //! For the purpose of future feature-tracking, once code for detection of feature
 //! gate usage is added, *do not remove it again* even once the feature
 //! becomes stable.
+
 use self::Status::*;
 
 use abi::RustIntrinsic;
@@ -255,7 +256,7 @@ impl<'a> PostExpansionVisitor<'a> {
 
 impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_name(&mut self, sp: Span, name: ast::Name) {
-        if !token::get_name(name).get().is_ascii() {
+        if !token::get_name(name).is_ascii() {
             self.gate_feature("non_ascii_idents", sp,
                               "non-ascii idents are not fully supported.");
         }
@@ -382,7 +383,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
         let links_to_llvm = match attr::first_attr_value_str_by_name(&i.attrs,
                                                                      "link_name") {
-            Some(val) => val.get().starts_with("llvm."),
+            Some(val) => val.starts_with("llvm."),
             _ => false
         };
         if links_to_llvm {

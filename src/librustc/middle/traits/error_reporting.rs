@@ -86,7 +86,7 @@ fn report_on_unimplemented<'a, 'tcx>(infcx: &InferCtxt<'a, 'tcx>,
                                               }).collect::<HashMap<String, String>>();
                 generic_map.insert("Self".to_string(),
                                    trait_ref.self_ty().user_string(infcx.tcx));
-                let parser = Parser::new(istring.get());
+                let parser = Parser::new(&istring);
                 let mut errored = false;
                 let err: String = parser.filter_map(|p| {
                     match p {

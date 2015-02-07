@@ -72,7 +72,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
         }
     };
 
-    let mut format_string = String::from_str(token::get_ident(name).get());
+    let mut format_string = String::from_str(&token::get_ident(name));
     // the internal fields we're actually formatting
     let mut exprs = Vec::new();
 
@@ -107,7 +107,7 @@ fn show_substructure(cx: &mut ExtCtxt, span: Span,
 
                     let name = token::get_ident(field.name.unwrap());
                     format_string.push_str(" ");
-                    format_string.push_str(name.get());
+                    format_string.push_str(&name);
                     format_string.push_str(": {:?}");
 
                     exprs.push(field.self_.clone());

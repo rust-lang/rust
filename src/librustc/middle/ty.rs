@@ -4644,7 +4644,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         "no field named `{}` found in the list of fields `{:?}`",
         token::get_name(name),
         fields.iter()
-              .map(|f| token::get_name(f.name).get().to_string())
+              .map(|f| token::get_name(f.name).to_string())
               .collect::<Vec<String>>())[]);
 }
 

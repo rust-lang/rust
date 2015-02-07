@@ -109,7 +109,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         let mut reexport = HashSet::new();
         for attr in &item.attrs {
             let mut used = true;
-            match attr.name().get() {
+            match &attr.name()[] {
                 "phase" => {
                     self.sess.span_err(attr.span, "#[phase] is deprecated; use \
                                        #[macro_use], #[plugin], and/or #[no_link]");

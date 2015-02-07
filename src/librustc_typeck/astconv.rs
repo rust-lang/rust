@@ -1160,12 +1160,11 @@ pub fn ast_ty_to_ty<'tcx>(
                                                    using the syntax `<Type \
                                                    as {}>::{}`",
                                                   path_str,
-                                                  token::get_ident(
+                                                  &token::get_ident(
                                                       path.segments
                                                           .last()
                                                           .unwrap()
-                                                          .identifier)
-                                                  .get());
+                                                          .identifier));
                         this.tcx().types.err
                     }
                     def::DefAssociatedPath(provenance, assoc_ident) => {

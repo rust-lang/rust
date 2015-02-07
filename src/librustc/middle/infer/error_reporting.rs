@@ -514,7 +514,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                             lifetime of captured variable `{}`...",
                             ty::local_var_name_str(self.tcx,
                                                    upvar_id.var_id)
-                                .get()
                                 .to_string());
                 note_and_explain_region(
                     self.tcx,
@@ -526,7 +525,6 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!("...but `{}` is only valid for ",
                             ty::local_var_name_str(self.tcx,
                                                    upvar_id.var_id)
-                                .get()
                                 .to_string())[],
                     sup,
                     "");
@@ -570,8 +568,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!("captured variable `{}` does not \
                             outlive the enclosing closure",
                             ty::local_var_name_str(self.tcx,
-                                                   id).get()
-                                                      .to_string())[]);
+                                                   id).to_string())[]);
                 note_and_explain_region(
                     self.tcx,
                     "captured variable is valid for ",
@@ -959,7 +956,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             // choice of lifetime name deterministic and thus easier to test.
             let mut names = Vec::new();
             for rn in region_names {
-                let lt_name = token::get_name(*rn).get().to_string();
+                let lt_name = token::get_name(*rn).to_string();
                 names.push(lt_name);
             }
             names.sort();
@@ -1438,15 +1435,15 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             }
             infer::EarlyBoundRegion(_, name) => {
                 format!(" for lifetime parameter `{}`",
-                        token::get_name(name).get())
+                        &token::get_name(name))
             }
             infer::BoundRegionInCoherence(name) => {
                 format!(" for lifetime parameter `{}` in coherence check",
-                        token::get_name(name).get())
+                        &token::get_name(name))
             }
             infer::UpvarRegion(ref upvar_id, _) => {
                 format!(" for capture of `{}` by closure",
-                        ty::local_var_name_str(self.tcx, upvar_id.var_id).get().to_string())
+                        ty::local_var_name_str(self.tcx, upvar_id.var_id).to_string())
             }
         };
 
@@ -1527,7 +1524,6 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!(
                         "...so that closure can access `{}`",
                         ty::local_var_name_str(self.tcx, upvar_id.var_id)
-                            .get()
                             .to_string())[])
             }
             infer::InfStackClosure(span) => {
@@ -1553,7 +1549,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                             does not outlive the enclosing closure",
                             ty::local_var_name_str(
                                 self.tcx,
-                                id).get().to_string())[]);
+                                id).to_string())[]);
             }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_note(
@@ -1730,7 +1726,7 @@ impl LifeGiver {
     fn with_taken(taken: &[ast::LifetimeDef]) -> LifeGiver {
         let mut taken_ = HashSet::new();
         for lt in taken {
-            let lt_name = token::get_name(lt.lifetime.name).get().to_string();
+            let lt_name = token::get_name(lt.lifetime.name).to_string();
             taken_.insert(lt_name);
         }
         LifeGiver {

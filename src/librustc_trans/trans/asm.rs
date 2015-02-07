@@ -77,13 +77,13 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
     fcx.pop_custom_cleanup_scope(temp_scope);
 
     let mut constraints = constraints.iter()
-                                     .map(|s| s.get().to_string())
+                                     .map(|s| s.to_string())
                                      .chain(ext_constraints.into_iter())
                                      .collect::<Vec<String>>()
                                      .connect(",");
 
     let mut clobbers = ia.clobbers.iter()
-                                  .map(|s| format!("~{{{}}}", s.get()))
+                                  .map(|s| format!("~{{{}}}", &s))
                                   .collect::<Vec<String>>()
                                   .connect(",");
     let more_clobbers = get_clobbers();
@@ -120,7 +120,7 @@ pub fn trans_inline_asm<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ia: &ast::InlineAsm)
         ast::AsmIntel => llvm::AD_Intel
     };
 
-    let asm = CString::from_slice(ia.asm.get().as_bytes());
+    let asm = CString::from_slice(ia.asm.as_bytes());
     let constraints = CString::from_slice(constraints.as_bytes());
     let r = InlineAsmCall(bcx,
                           asm.as_ptr(),

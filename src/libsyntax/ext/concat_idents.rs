@@ -31,7 +31,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
         } else {
             match *e {
                 ast::TtToken(_, token::Ident(ident, _)) => {
-                    res_str.push_str(token::get_ident(ident).get())
+                    res_str.push_str(&token::get_ident(ident))
                 },
                 _ => {
                     cx.span_err(sp, "concat_idents! requires ident args.");

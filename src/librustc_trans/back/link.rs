@@ -141,7 +141,7 @@ pub fn find_crate_name(sess: Option<&Session>,
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {
             if let Some((attr, ref name)) = attr_crate_name {
-                if *s != name.get() {
+                if *s != &name[] {
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
@@ -153,7 +153,7 @@ pub fn find_crate_name(sess: Option<&Session>,
     }
 
     if let Some((attr, s)) = attr_crate_name {
-        return validate(s.get().to_string(), Some(attr.span));
+        return validate(s.to_string(), Some(attr.span));
     }
     if let Input::File(ref path) = *input {
         if let Some(s) = path.filestem_str() {
@@ -293,7 +293,7 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
 
     // First, connect each component with <len, name> pairs.
     for e in path {
-        push(&mut n, &token::get_name(e.name()).get()[])
+        push(&mut n, &token::get_name(e.name()))
     }
 
     match hash {

@@ -161,7 +161,7 @@ pub mod rt {
 
     impl ToSource for ast::Ident {
         fn to_source(&self) -> String {
-            token::get_ident(*self).get().to_string()
+            token::get_ident(*self).to_string()
         }
     }
 

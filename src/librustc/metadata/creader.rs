@@ -170,7 +170,7 @@ impl<'a> CrateReader<'a> {
     fn process_crate(&self, c: &ast::Crate) {
         for a in c.attrs.iter().filter(|m| m.name() == "link_args") {
             match a.value_str() {
-                Some(ref linkarg) => self.sess.cstore.add_used_link_args(linkarg.get()),
+                Some(ref linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
                 None => { /* fallthrough */ }
             }
         }
@@ -184,15 +184,15 @@ impl<'a> CrateReader<'a> {
                        ident, path_opt);
                 let name = match *path_opt {
                     Some((ref path_str, _)) => {
-                        let name = path_str.get().to_string();
+                        let name = path_str.to_string();
                         validate_crate_name(Some(self.sess), &name[],
                                             Some(i.span));
                         name
                     }
-                    None => ident.get().to_string(),
+                    None => ident.to_string(),
                 };
                 Some(CrateInfo {
-                    ident: ident.get().to_string(),
+                    ident: ident.to_string(),
                     name: name,
                     id: i.id,
                     should_link: should_link(i),
@@ -237,7 +237,7 @@ impl<'a> CrateReader<'a> {
                     .collect::<Vec<&ast::Attribute>>();
                 for m in &link_args {
                     match m.value_str() {
-                        Some(linkarg) => self.sess.cstore.add_used_link_args(linkarg.get()),
+                        Some(linkarg) => self.sess.cstore.add_used_link_args(&linkarg),
                         None => { /* fallthrough */ }
                     }
                 }
@@ -289,7 +289,7 @@ impl<'a> CrateReader<'a> {
                                 }
                             };
                             register_native_lib(self.sess, Some(m.span),
-                                                n.get().to_string(), kind);
+                                                n.to_string(), kind);
                         }
                         None => {}
                     }

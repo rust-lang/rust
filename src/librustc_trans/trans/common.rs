@@ -590,7 +590,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
     pub fn sess(&self) -> &'blk Session { self.fcx.ccx.sess() }
 
     pub fn ident(&self, ident: Ident) -> String {
-        token::get_ident(ident).get().to_string()
+        token::get_ident(ident).to_string()
     }
 
     pub fn node_id_to_string(&self, id: ast::NodeId) -> String {
@@ -834,8 +834,8 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
         }
 
         let sc = llvm::LLVMConstStringInContext(cx.llcx(),
-                                                s.get().as_ptr() as *const c_char,
-                                                s.get().len() as c_uint,
+                                                s.as_ptr() as *const c_char,
+                                                s.len() as c_uint,
                                                 !null_terminated as Bool);
 
         let gsym = token::gensym("str");
@@ -853,7 +853,7 @@ pub fn C_cstr(cx: &CrateContext, s: InternedString, null_terminated: bool) -> Va
 // NB: Do not use `do_spill_noroot` to make this into a constant string, or
 // you will be kicked off fast isel. See issue #4352 for an example of this.
 pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
-    let len = s.get().len();
+    let len = s.len();
     let cs = consts::ptrcast(C_cstr(cx, s, false), Type::i8p(cx));
     C_named_struct(cx.tn().find_type("str_slice").unwrap(), &[cs, C_uint(cx, len)])
 }

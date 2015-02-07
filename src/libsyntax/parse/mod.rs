@@ -1201,19 +1201,19 @@ mod test {
         let source = "/// doc comment\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(doc.get(), "/// doc comment");
+        assert_eq!(&doc[], "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
-        let docs = item.attrs.iter().filter(|a| a.name().get() == "doc")
-                    .map(|a| a.value_str().unwrap().get().to_string()).collect::<Vec<_>>();
+        let docs = item.attrs.iter().filter(|a| &a.name()[] == "doc")
+                    .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
         let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
         assert_eq!(&docs[], b);
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(doc.get(), "/** doc comment\n *  with CRLF */");
+        assert_eq!(&doc[], "/** doc comment\n *  with CRLF */");
     }
 
     #[test]

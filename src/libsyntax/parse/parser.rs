@@ -5133,7 +5133,7 @@ impl<'a> Parser<'a> {
                 outer_attrs, "path") {
             Some(d) => (dir_path.join(d), true),
             None => {
-                let mod_name = mod_string.get().to_string();
+                let mod_name = mod_string.to_string();
                 let default_path_str = format!("{}.rs", mod_name);
                 let secondary_path_str = format!("{}/mod.rs", mod_name);
                 let default_path = dir_path.join(&default_path_str[]);
@@ -5145,7 +5145,7 @@ impl<'a> Parser<'a> {
                     self.span_err(id_sp,
                                   "cannot declare a new module at this location");
                     let this_module = match self.mod_path_stack.last() {
-                        Some(name) => name.get().to_string(),
+                        Some(name) => name.to_string(),
                         None => self.root_module_name.as_ref().unwrap().clone(),
                     };
                     self.span_note(id_sp,
@@ -5191,7 +5191,7 @@ impl<'a> Parser<'a> {
         };
 
         self.eval_src_mod_from_path(file_path, owns_directory,
-                                    mod_string.get().to_string(), id_sp)
+                                    mod_string.to_string(), id_sp)
     }
 
     fn eval_src_mod_from_path(&mut self,
