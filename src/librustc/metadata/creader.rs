@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -419,6 +419,7 @@ impl<'a> CrateReader<'a> {
                     root: root,
                     rejected_via_hash: vec!(),
                     rejected_via_triple: vec!(),
+                    rejected_via_kind: vec!(),
                     should_match_name: true,
                 };
                 let library = load_ctxt.load_library_crate();
@@ -483,6 +484,7 @@ impl<'a> CrateReader<'a> {
             root: &None,
             rejected_via_hash: vec!(),
             rejected_via_triple: vec!(),
+            rejected_via_kind: vec!(),
             should_match_name: true,
         };
         let library = match load_ctxt.maybe_load_library_crate() {
