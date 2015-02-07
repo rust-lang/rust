@@ -756,6 +756,7 @@ fn test_range() {
     // this test is only meaningful when sizeof uint < sizeof u64
     assert_eq!((uint::MAX - 1..uint::MAX).size_hint(), (1, Some(1)));
     assert_eq!((-10..-1).size_hint(), (9, Some(9)));
+    assert_eq!((-1..-10).size_hint(), (0, Some(0)));
 }
 
 #[test]
