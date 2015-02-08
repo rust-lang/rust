@@ -10,6 +10,6 @@ OUT=$(TMPDIR)/lib.s
 all:
 	$(RUSTC) lib.rs --emit=asm --crate-type=staticlib
 	# just check for symbol declarations with the names we're expecting.
-	grep 'str[0-9]\+:' $(OUT)
-	grep 'binary[0-9]\+:' $(OUT)
-	grep 'vtable[0-9]\+' $(OUT)
+	grep 'str[0-9][0-9]*:' $(OUT)
+	grep 'binary[0-9][0-9]*:' $(OUT)
+	grep 'vtable[0-9][0-9]*' $(OUT)
