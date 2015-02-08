@@ -23,7 +23,7 @@ impl Flag {
     pub fn borrow(&self) -> LockResult<Guard> {
         let ret = Guard { panicking: Thread::panicking() };
         if unsafe { *self.failed.get() } {
-            Err(new_poison_error(ret))
+            Err(PoisonError::new(ret))
         } else {
             Ok(ret)
         }
@@ -110,6 +110,12 @@ impl<T> Error for PoisonError<T> {
 }
 
 impl<T> PoisonError<T> {
+    /// Create a `PoisonError`.
+    #[unstable(feature = "std_misc")]
+    pub fn new(guard: T) -> PoisonError<T> {
+        PoisonError { guard: guard }
+    }
+
     /// Consumes this error indicating that a lock is poisoned, returning the
     /// underlying guard to allow access regardless.
     #[unstable(feature = "std_misc")]
@@ -171,15 +177,11 @@ impl<T> Error for TryLockError<T> {
     }
 }
 
-pub fn new_poison_error<T>(guard: T) -> PoisonError<T> {
-    PoisonError { guard: guard }
-}
-
 pub fn map_result<T, U, F>(result: LockResult<T>, f: F)
                            -> LockResult<U>
                            where F: FnOnce(T) -> U {
     match result {
         Ok(t) => Ok(f(t)),
-        Err(PoisonError { guard }) => Err(new_poison_error(f(guard)))
+        Err(PoisonError { guard }) => Err(PoisonError::new(f(guard)))
     }
 }
