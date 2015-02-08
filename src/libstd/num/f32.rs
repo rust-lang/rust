@@ -173,7 +173,7 @@ impl Float for f32 {
     #[inline]
     fn exp(self) -> f32 { num::Float::exp(self) }
     #[inline]
-    fn exp2(self) -> f32 { num::Float::exp(self) }
+    fn exp2(self) -> f32 { num::Float::exp2(self) }
     #[inline]
     fn ln(self) -> f32 { num::Float::ln(self) }
     #[inline]
@@ -552,6 +552,33 @@ mod tests {
         assert_approx_eq!((-1.3f32).fract(), -0.3f32);
         assert_approx_eq!((-1.5f32).fract(), -0.5f32);
         assert_approx_eq!((-1.7f32).fract(), -0.7f32);
+    }
+
+    #[test]
+    fn test_exp() {
+        assert_eq!(1.0, 0.0f32.exp());
+        assert_approx_eq!(2.718282, 1.0f32.exp());
+        assert_approx_eq!(148.413162, 5.0f32.exp());
+
+        let inf: f32 = Float::infinity();
+        let neg_inf: f32 = Float::neg_infinity();
+        let nan: f32 = Float::nan();
+        assert_eq!(inf, inf.exp());
+        assert_eq!(0.0, neg_inf.exp());
+        assert!(nan.exp().is_nan());
+    }
+
+    #[test]
+    fn test_exp2() {
+        assert_eq!(32.0, 5.0f32.exp2());
+        assert_eq!(1.0, 0.0f32.exp2());
+
+        let inf: f32 = Float::infinity();
+        let neg_inf: f32 = Float::neg_infinity();
+        let nan: f32 = Float::nan();
+        assert_eq!(inf, inf.exp2());
+        assert_eq!(0.0, neg_inf.exp2());
+        assert!(nan.exp2().is_nan());
     }
 
     #[test]
