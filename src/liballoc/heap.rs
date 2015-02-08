@@ -15,7 +15,8 @@ use core::ptr::PtrExt;
 #[inline(always)]
 fn check_size_and_alignment(size: uint, align: uint) {
     debug_assert!(size != 0);
-    debug_assert!(align.is_power_of_two(), "Invalid alignment of {}", align);
+    debug_assert!(size <= int::MAX, "Tried to allocate too much: {} bytes", size);
+    debug_assert!(align.is_power_of_two(), "Invalid alignment of allocation: {}", align);
 }
 
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
