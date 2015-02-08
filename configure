@@ -653,9 +653,7 @@ probe CFG_GRUN             grun
 probe CFG_FLEX             flex
 probe CFG_BISON            bison
 probe CFG_PANDOC           pandoc
-probe CFG_PDFLATEX         pdflatex
 probe CFG_XELATEX          xelatex
-probe CFG_LUALATEX         lualatex
 probe CFG_GDB              gdb
 probe CFG_LLDB             lldb
 
