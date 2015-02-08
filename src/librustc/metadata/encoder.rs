@@ -1466,7 +1466,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
     encode_def_id(rbml_w, local_def(nitem.id));
     encode_visibility(rbml_w, nitem.vis);
     match nitem.node {
-      ast::ForeignItemFn(..) => {
+      ast::ForeignItemFn(ref fndecl, _) => {
         encode_family(rbml_w, FN_FAMILY);
         encode_bounds_and_type(rbml_w, ecx,
                                &lookup_item_type(ecx.tcx,local_def(nitem.id)));
@@ -1478,6 +1478,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         let stab = stability::lookup(ecx.tcx, ast_util::local_def(nitem.id));
         encode_stability(rbml_w, stab);
         encode_symbol(ecx, rbml_w, nitem.id);
+        encode_method_argument_names(rbml_w, &*fndecl);
       }
       ast::ForeignItemStatic(_, mutbl) => {
         if mutbl {

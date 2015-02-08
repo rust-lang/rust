@@ -50,6 +50,7 @@ use externalfiles::ExternalHtml;
 
 use serialize::json;
 use serialize::json::ToJson;
+use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
 use rustc::util::nodemap::NodeSet;
@@ -1809,14 +1810,21 @@ fn assoc_type(w: &mut fmt::Formatter, it: &clean::Item,
 }
 
 fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
-    fn method(w: &mut fmt::Formatter, it: &clean::Item, unsafety: ast::Unsafety,
-           g: &clean::Generics, selfty: &clean::SelfTy,
-           d: &clean::FnDecl) -> fmt::Result {
-        write!(w, "{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
+    fn method(w: &mut fmt::Formatter, it: &clean::Item,
+              unsafety: ast::Unsafety, abi: abi::Abi,
+              g: &clean::Generics, selfty: &clean::SelfTy,
+              d: &clean::FnDecl) -> fmt::Result {
+        use syntax::abi::Abi;
+
+        write!(w, "{}{}fn <a href='#{ty}.{name}' class='fnname'>{name}</a>\
                    {generics}{decl}{where_clause}",
                match unsafety {
                    ast::Unsafety::Unsafe => "unsafe ",
                    _ => "",
+               },
+               match abi {
+                   Abi::Rust => String::new(),
+                   a => format!("extern {} ", a.to_string())
                },
                ty = shortty(it),
                name = it.name.as_ref().unwrap(),
@@ -1826,10 +1834,10 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
     }
     match meth.inner {
         clean::TyMethodItem(ref m) => {
-            method(w, meth, m.unsafety, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl)
         }
         clean::MethodItem(ref m) => {
-            method(w, meth, m.unsafety, &m.generics, &m.self_, &m.decl)
+            method(w, meth, m.unsafety, m.abi, &m.generics, &m.self_, &m.decl)
         }
         clean::AssociatedTypeItem(ref typ) => {
             assoc_type(w, meth, typ)
