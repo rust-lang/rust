@@ -381,11 +381,13 @@ character (`\`), or a single _escape_. It is equivalent to a `u8` unsigned
 
 ##### Byte string literals
 
-A _byte string literal_ is a sequence of ASCII characters and _escapes_
-enclosed within two `U+0022` (double-quote) characters, with the exception of
-`U+0022` itself, which must be _escaped_ by a preceding `U+005C` character
-(`\`), or a _raw byte string literal_. It is equivalent to a `&'static [u8]`
-borrowed array of unsigned 8-bit integers.
+A non-raw _byte string literal_ is a sequence of ASCII characters and _escapes_,
+preceded by the characters `U+0062` (`b`) and `U+0022` (double-quote), and
+followed by the character `U+0022`. If the character `U+0022` is present within
+the literal, it must be _escaped_ by a preceding `U+005C` (`\`) character.
+Alternatively, a byte string literal can be a _raw byte string literal_, defined
+below. A byte string literal is equivalent to a `&'static [u8]` borrowed array
+of unsigned 8-bit integers.
 
 Some additional _escapes_ are available in either byte or non-raw byte string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of the
