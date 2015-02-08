@@ -173,7 +173,7 @@ impl Float for f32 {
     #[inline]
     fn exp(self) -> f32 { num::Float::exp(self) }
     #[inline]
-    fn exp2(self) -> f32 { num::Float::exp(self) }
+    fn exp2(self) -> f32 { num::Float::exp2(self) }
     #[inline]
     fn ln(self) -> f32 { num::Float::ln(self) }
     #[inline]
