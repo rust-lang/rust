@@ -70,6 +70,7 @@ macro_rules! panic {
 /// format!("hello {}", "world!");
 /// format!("x = {}, y = {y}", 10, y = 30);
 /// ```
+#[cfg(stage0)] // NOTE: remove after snapshot
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! format {

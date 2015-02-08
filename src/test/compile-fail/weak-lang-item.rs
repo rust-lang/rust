@@ -13,6 +13,7 @@
 // error-pattern: language item required, but not found: `stack_exhausted`
 // error-pattern: language item required, but not found: `eh_personality`
 
+#![feature(no_std)]
 #![no_std]
 
 extern crate core;

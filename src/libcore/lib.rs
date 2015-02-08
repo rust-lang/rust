@@ -56,6 +56,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
+#![feature(no_std)]
 #![no_std]
 #![allow(raw_pointer_derive)]
 #![deny(missing_docs)]
@@ -148,17 +149,25 @@ mod array;
 mod core {
     pub use panicking;
     pub use fmt;
+    #[cfg(not(stage0))] pub use clone;
+    #[cfg(not(stage0))] pub use cmp;
+    #[cfg(not(stage0))] pub use hash;
+    #[cfg(not(stage0))] pub use marker;
+    #[cfg(not(stage0))] pub use option;
+    #[cfg(not(stage0))] pub use iter;
 }
 
 #[doc(hidden)]
 mod std {
-    pub use clone;
-    pub use cmp;
-    pub use fmt;
-    pub use hash;
-    pub use marker;
+    // NOTE: remove after next snapshot
+    #[cfg(stage0)] pub use clone;
+    #[cfg(stage0)] pub use cmp;
+    #[cfg(stage0)] pub use hash;
+    #[cfg(stage0)] pub use marker;
+    #[cfg(stage0)] pub use option;
+    #[cfg(stage0)] pub use fmt;
+    #[cfg(stage0)] pub use iter;
+
+    // range syntax
     pub use ops;
-    pub use option;
-    // for-loops
-    pub use iter;
 }

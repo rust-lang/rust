@@ -29,6 +29,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
+#![feature(no_std)]
 #![no_std]
 #![feature(slicing_syntax)]
 #![feature(int_uint)]
@@ -78,7 +79,9 @@ pub mod str {
     pub use u_str::{utf16_items, Utf16Encoder};
 }
 
+// NOTE: remove after next snapshot
 // this lets us use #[derive(..)]
+#[cfg(stage0)]
 mod std {
     pub use core::clone;
     pub use core::cmp;

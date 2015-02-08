@@ -16,6 +16,7 @@
 // This tests that libraries built with #[no_std] can be linked to crates with
 // #[no_std] and actually run.
 
+#![feature(no_std)]
 #![no_std]
 
 extern crate no_std_crate;

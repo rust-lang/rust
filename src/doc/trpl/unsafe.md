@@ -433,6 +433,7 @@ attribute attached to the crate.
 ```ignore
 // a minimal library
 #![crate_type="lib"]
+#![feature(no_std)]
 #![no_std]
 # // fn main() {} tricked you, rustdoc!
 ```
@@ -446,8 +447,8 @@ The function marked `#[start]` is passed the command line parameters
 in the same format as C:
 
 ```
+#![feature(lang_items, start, no_std)]
 #![no_std]
-#![feature(lang_items, start)]
 
 // Pull in the system libc library for what crt0.o likely requires
 extern crate libc;
@@ -473,6 +474,7 @@ correct ABI and the correct name, which requires overriding the
 compiler's name mangling too:
 
 ```ignore
+#![feature(no_std)]
 #![no_std]
 #![no_main]
 #![feature(lang_items, start)]
@@ -528,8 +530,8 @@ As an example, here is a program that will calculate the dot product of two
 vectors provided from C, using idiomatic Rust practices.
 
 ```
+#![feature(lang_items, start, no_std)]
 #![no_std]
-#![feature(lang_items, start)]
 
 # extern crate libc;
 extern crate core;
@@ -576,10 +578,6 @@ extern fn panic_fmt(args: &core::fmt::Arguments,
 #[lang = "eh_personality"] extern fn eh_personality() {}
 # #[start] fn start(argc: isize, argv: *const *const u8) -> isize { 0 }
 # fn main() {}
-# mod std {  // for-loops
-#     pub use core::iter;
-#     pub use core::option;
-# }
 ```
 
 Note that there is one extra lang item here which differs from the examples
@@ -656,8 +654,8 @@ and one for deallocation. A freestanding program that uses the `Box`
 sugar for dynamic allocations via `malloc` and `free`:
 
 ```
+#![feature(lang_items, box_syntax, start, no_std)]
 #![no_std]
-#![feature(lang_items, box_syntax, start)]
 
 extern crate libc;
 

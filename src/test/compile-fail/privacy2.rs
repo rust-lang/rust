@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(start)]
+#![feature(start, no_std)]
 #![no_std] // makes debugging this test *a lot* easier (during resolve)
 
 // Test to make sure that globs don't leak in regular `use` statements.

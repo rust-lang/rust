@@ -302,7 +302,7 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     fn rtpath(ecx: &ExtCtxt, s: &str) -> Vec<ast::Ident> {
-        vec![ecx.ident_of("std"), ecx.ident_of("fmt"), ecx.ident_of("rt"),
+        vec![ecx.ident_of_std("core"), ecx.ident_of("fmt"), ecx.ident_of("rt"),
              ecx.ident_of("v1"), ecx.ident_of(s)]
     }
 
@@ -576,7 +576,7 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         self.ecx.expr_call_global(self.fmtsp, vec!(
-                self.ecx.ident_of("std"),
+                self.ecx.ident_of_std("core"),
                 self.ecx.ident_of("fmt"),
                 self.ecx.ident_of("Arguments"),
                 self.ecx.ident_of(fn_name)), fn_args)
@@ -607,7 +607,7 @@ impl<'a, 'b> Context<'a, 'b> {
             }
             Unsigned => {
                 return ecx.expr_call_global(sp, vec![
-                        ecx.ident_of("std"),
+                        ecx.ident_of_std("core"),
                         ecx.ident_of("fmt"),
                         ecx.ident_of("ArgumentV1"),
                         ecx.ident_of("from_uint")], vec![arg])
@@ -615,12 +615,12 @@ impl<'a, 'b> Context<'a, 'b> {
         };
 
         let format_fn = ecx.path_global(sp, vec![
-                ecx.ident_of("std"),
+                ecx.ident_of_std("core"),
                 ecx.ident_of("fmt"),
                 ecx.ident_of(trait_),
                 ecx.ident_of("fmt")]);
         ecx.expr_call_global(sp, vec![
-                ecx.ident_of("std"),
+                ecx.ident_of_std("core"),
                 ecx.ident_of("fmt"),
                 ecx.ident_of("ArgumentV1"),
                 ecx.ident_of("new")], vec![arg, ecx.expr_path(format_fn)])

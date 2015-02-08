@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,15 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(lang_items, no_std)]
+#![feature(lang_items, start, no_std)]
 #![no_std]
-#![crate_type = "dylib"]
 
-extern crate libc;
+extern crate "std" as other;
 
-#[no_mangle]
-pub extern fn bar() {}
+#[macro_use] extern crate core;
+#[macro_use] extern crate collections;
 
-#[lang = "stack_exhausted"] fn stack_exhausted() {}
-#[lang = "eh_personality"] fn eh_personality() {}
-#[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
+use core::slice::SliceExt;
+
+#[start]
+fn start(_argc: int, _argv: *const *const u8) -> int {
+    for _ in [1,2,3].iter() { }
+    0
+}

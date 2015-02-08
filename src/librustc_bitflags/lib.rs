@@ -12,6 +12,7 @@
 #![feature(staged_api)]
 #![staged_api]
 #![crate_type = "rlib"]
+#![feature(no_std)]
 #![no_std]
 #![unstable(feature = "rustc_private")]
 
@@ -279,6 +280,13 @@ macro_rules! bitflags {
             }
         }
     };
+}
+
+// This is a no_std crate. So the test code's invocation of #[derive] etc, via
+// bitflags!, will use names from the underlying crates.
+#[cfg(test)]
+mod core {
+    pub use std::{fmt, hash, clone, cmp, marker, option};
 }
 
 #[cfg(test)]

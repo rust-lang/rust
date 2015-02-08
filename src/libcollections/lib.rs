@@ -33,6 +33,7 @@
 #![cfg_attr(test, feature(test))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
+#![feature(no_std)]
 #![no_std]
 
 #[macro_use]
@@ -68,6 +69,7 @@ mod bit;
 mod btree;
 pub mod dlist;
 pub mod enum_set;
+pub mod fmt;
 pub mod ring_buf;
 pub mod slice;
 pub mod str;
@@ -107,15 +109,16 @@ pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
 #[cfg(not(test))]
 mod std {
-    pub use core::fmt;      // necessary for panic!()
-    pub use core::option;   // necessary for panic!()
-    pub use core::clone;    // derive(Clone)
-    pub use core::cmp;      // derive(Eq, Ord, etc.)
-    pub use core::marker;   // derive(Copy)
-    pub use core::hash;     // derive(Hash)
+    // NOTE: remove after next snapshot
+    #[cfg(stage0)] pub use core::clone;    // derive(Clone)
+    #[cfg(stage0)] pub use core::cmp;      // derive(Eq, Ord, etc.)
+    #[cfg(stage0)] pub use core::marker;   // derive(Copy)
+    #[cfg(stage0)] pub use core::hash;     // derive(Hash)
+    #[cfg(stage0)] pub use core::iter;
+    #[cfg(stage0)] pub use core::fmt;      // necessary for panic!()
+    #[cfg(stage0)] pub use core::option;   // necessary for panic!()
+
     pub use core::ops;      // RangeFull
-    // for-loops
-    pub use core::iter;
 }
 
 #[cfg(test)]

@@ -70,7 +70,7 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(borrowed_self()),
-                ret_ty: Literal(Path::new(vec!("bool"))),
+                ret_ty: Literal(path!(bool)),
                 attributes: attrs,
                 combine_substructure: combine_substructure(box |a, b, c| {
                     $f(a, b, c)
@@ -82,7 +82,7 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "cmp", "PartialEq")),
+        path: path_std!(cx, core::cmp::PartialEq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(

@@ -37,7 +37,7 @@ pub fn maybe_inject_prelude(krate: ast::Crate) -> ast::Crate {
     }
 }
 
-fn use_std(krate: &ast::Crate) -> bool {
+pub fn use_std(krate: &ast::Crate) -> bool {
     !attr::contains_name(&krate.attrs[], "no_std")
 }
 
@@ -69,9 +69,6 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
             span: DUMMY_SP
         }));
 
-        // don't add #![no_std] here, that will block the prelude injection later.
-        // Add it during the prelude injection instead.
-
         krate
     }
 }
@@ -87,16 +84,6 @@ struct PreludeInjector<'a>;
 
 impl<'a> fold::Folder for PreludeInjector<'a> {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
-        // Add #![no_std] here, so we don't re-inject when compiling pretty-printed source.
-        // This must happen here and not in StandardLibraryInjector because this
-        // fold happens second.
-
-        let no_std_attr = attr::mk_attr_inner(attr::mk_attr_id(),
-                                              attr::mk_word_item(InternedString::new("no_std")));
-        // std_inject runs after feature checking so manually mark this attr
-        attr::mark_used(&no_std_attr);
-        krate.attrs.push(no_std_attr);
-
         // only add `use std::prelude::*;` if there wasn't a
         // `#![no_implicit_prelude]` at the crate level.
         // fold_mod() will insert glob path.

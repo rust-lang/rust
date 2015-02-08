@@ -1,3 +1,4 @@
+#![feature(no_std)]
 #![no_std]
 #[prelude_import]
 use std::prelude::v1::*;
@@ -41,41 +42,41 @@ pub fn bar() {
 
 
     ((::std::fmt::format as
-         fn(core::fmt::Arguments<'_>) -> collections::string::String {std::fmt::format})(((::std::fmt::Arguments::new_v1
-                                                                                              as
-                                                                                              fn(&[&str], &[core::fmt::ArgumentV1<'_>]) -> core::fmt::Arguments<'_> {core::fmt::Arguments<'a>::new_v1})(({
-                                                                                                                                                                                                             static __STATIC_FMTSTR:
-                                                                                                                                                                                                                    &'static [&'static str]
-                                                                                                                                                                                                                    =
-                                                                                                                                                                                                                 (&([("test"
+         fn(core::fmt::Arguments<'_>) -> collections::string::String {collections::fmt::format})(((::std::fmt::Arguments::new_v1
+                                                                                                      as
+                                                                                                      fn(&[&str], &[core::fmt::ArgumentV1<'_>]) -> core::fmt::Arguments<'_> {core::fmt::Arguments<'a>::new_v1})(({
+                                                                                                                                                                                                                     static __STATIC_FMTSTR:
+                                                                                                                                                                                                                            &'static [&'static str]
+                                                                                                                                                                                                                            =
+                                                                                                                                                                                                                         (&([("test"
+                                                                                                                                                                                                                                 as
+                                                                                                                                                                                                                                 &'static str)]
+                                                                                                                                                                                                                               as
+                                                                                                                                                                                                                               [&'static str; 1])
+                                                                                                                                                                                                                             as
+                                                                                                                                                                                                                             &'static [&'static str; 1]);
+                                                                                                                                                                                                                     (__STATIC_FMTSTR
                                                                                                                                                                                                                          as
-                                                                                                                                                                                                                         &'static str)]
-                                                                                                                                                                                                                       as
-                                                                                                                                                                                                                       [&'static str; 1])
-                                                                                                                                                                                                                     as
-                                                                                                                                                                                                                     &'static [&'static str; 1]);
-                                                                                                                                                                                                             (__STATIC_FMTSTR
-                                                                                                                                                                                                                 as
-                                                                                                                                                                                                                 &'static [&'static str])
-                                                                                                                                                                                                         }
-                                                                                                                                                                                                            as
-                                                                                                                                                                                                            &[&str]),
-                                                                                                                                                                                                        (&(match (()
-                                                                                                                                                                                                                     as
-                                                                                                                                                                                                                     ())
-                                                                                                                                                                                                               {
-                                                                                                                                                                                                               ()
-                                                                                                                                                                                                               =>
-                                                                                                                                                                                                               ([]
-                                                                                                                                                                                                                   as
-                                                                                                                                                                                                                   [core::fmt::ArgumentV1<'_>; 0]),
-                                                                                                                                                                                                           }
-                                                                                                                                                                                                              as
-                                                                                                                                                                                                              [core::fmt::ArgumentV1<'_>; 0])
-                                                                                                                                                                                                            as
-                                                                                                                                                                                                            &[core::fmt::ArgumentV1<'_>; 0]))
-                                                                                             as
-                                                                                             core::fmt::Arguments<'_>))
+                                                                                                                                                                                                                         &'static [&'static str])
+                                                                                                                                                                                                                 }
+                                                                                                                                                                                                                    as
+                                                                                                                                                                                                                    &[&str]),
+                                                                                                                                                                                                                (&(match (()
+                                                                                                                                                                                                                             as
+                                                                                                                                                                                                                             ())
+                                                                                                                                                                                                                       {
+                                                                                                                                                                                                                       ()
+                                                                                                                                                                                                                       =>
+                                                                                                                                                                                                                       ([]
+                                                                                                                                                                                                                           as
+                                                                                                                                                                                                                           [core::fmt::ArgumentV1<'_>; 0]),
+                                                                                                                                                                                                                   }
+                                                                                                                                                                                                                      as
+                                                                                                                                                                                                                      [core::fmt::ArgumentV1<'_>; 0])
+                                                                                                                                                                                                                    as
+                                                                                                                                                                                                                    &[core::fmt::ArgumentV1<'_>; 0]))
+                                                                                                     as
+                                                                                                     core::fmt::Arguments<'_>))
         as collections::string::String);
 }
 pub type Foo = [i32; (3us as usize)];

@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(no_std)]
 #![no_std]
 #![allow(unused_variables)]
 #![allow(non_camel_case_types)]

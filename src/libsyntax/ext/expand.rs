@@ -31,6 +31,7 @@ use ptr::P;
 use util::small_vector::SmallVector;
 use visit;
 use visit::Visitor;
+use std_inject;
 
 pub fn expand_type(t: P<ast::Ty>,
                    fld: &mut MacroExpander,
@@ -278,7 +279,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let match_expr = {
                 let next_path = {
                     let strs = vec![
-                        fld.cx.ident_of("std"),
+                        fld.cx.ident_of_std("core"),
                         fld.cx.ident_of("iter"),
                         fld.cx.ident_of("Iterator"),
                         fld.cx.ident_of("next"),
@@ -311,7 +312,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             let into_iter_expr = {
                 let into_iter_path = {
                     let strs = vec![
-                        fld.cx.ident_of("std"),
+                        fld.cx.ident_of_std("core"),
                         fld.cx.ident_of("iter"),
                         fld.cx.ident_of("IntoIterator"),
                         fld.cx.ident_of("into_iter"),
@@ -1429,6 +1430,8 @@ pub fn expand_crate(parse_sess: &parse::ParseSess,
                     user_exts: Vec<NamedSyntaxExtension>,
                     c: Crate) -> Crate {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
+    cx.use_std = std_inject::use_std(&c);
+
     let mut expander = MacroExpander::new(&mut cx);
 
     for def in imported_macros {
