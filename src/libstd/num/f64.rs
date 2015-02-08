@@ -183,7 +183,7 @@ impl Float for f64 {
     #[inline]
     fn exp(self) -> f64 { num::Float::exp(self) }
     #[inline]
-    fn exp2(self) -> f64 { num::Float::exp(self) }
+    fn exp2(self) -> f64 { num::Float::exp2(self) }
     #[inline]
     fn ln(self) -> f64 { num::Float::ln(self) }
     #[inline]
