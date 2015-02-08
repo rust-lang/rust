@@ -27,6 +27,7 @@ pub use self::FunctionRetTy::*;
 pub use self::TraitMethod::*;
 
 use syntax;
+use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ast_util::PostExpansionMethod;
@@ -945,6 +946,7 @@ pub struct Method {
     pub self_: SelfTy,
     pub unsafety: ast::Unsafety,
     pub decl: FnDecl,
+    pub abi: abi::Abi
 }
 
 impl Clean<Item> for ast::Method {
@@ -973,6 +975,7 @@ impl Clean<Item> for ast::Method {
                 self_: self.pe_explicit_self().node.clean(cx),
                 unsafety: self.pe_unsafety().clone(),
                 decl: decl,
+                abi: self.pe_abi()
             }),
         }
     }
@@ -984,6 +987,7 @@ pub struct TyMethod {
     pub decl: FnDecl,
     pub generics: Generics,
     pub self_: SelfTy,
+    pub abi: abi::Abi
 }
 
 impl Clean<Item> for ast::TypeMethod {
@@ -1011,6 +1015,7 @@ impl Clean<Item> for ast::TypeMethod {
                 decl: decl,
                 self_: self.explicit_self.node.clean(cx),
                 generics: self.generics.clean(cx),
+                abi: self.abi
             }),
         }
     }
@@ -1301,6 +1306,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
                 generics: (&self.generics, subst::FnSpace).clean(cx),
                 self_: self_,
                 decl: (self.def_id, &sig).clean(cx),
+                abi: self.fty.abi
             })
         }
     }
