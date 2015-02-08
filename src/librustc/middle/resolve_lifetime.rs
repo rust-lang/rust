@@ -554,7 +554,12 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
                         collector.visit_lifetime_ref(bound);
                     }
                 }
-                &ast::WherePredicate::EqPredicate(_) => unimplemented!()
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref ty_left,
+                                                                        ref ty_right,
+                                                                        ..}) => {
+                    collector.visit_ty(&**ty_left);
+                    collector.visit_ty(&**ty_right);
+                }
             }
         }
     }
