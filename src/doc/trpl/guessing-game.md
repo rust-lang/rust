@@ -127,7 +127,7 @@ use std::rand;
 fn main() {
     println!("Guess the number!");
 
-    let secret_number = (rand::random() % 100) + 1; // secret_number: i32
+    let secret_number = (rand::random::<i32>() % 100) + 1; // secret_number: i32
 
     println!("The secret number is: {}", secret_number);
 
