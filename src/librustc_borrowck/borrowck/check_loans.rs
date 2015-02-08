@@ -745,6 +745,26 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                                      use_kind, lp_base);
             }
             LpExtend(ref lp_base, _, LpInterior(InteriorField(_))) => {
+                match lp_base.to_type().sty {
+                    ty::ty_struct(def_id, _) | ty::ty_enum(def_id, _) => {
+                        if ty::has_dtor(self.tcx(), def_id) {
+                            // In the case where the owner implements drop, then
+                            // the path must be initialized to prevent a case of
+                            // partial reinitialization
+                            let loan_path = owned_ptr_base_path_rc(lp_base);
+                            self.move_data.each_move_of(id, &loan_path, |_, _| {
+                                self.bccx
+                                    .report_partial_reinitialization_of_uninitialized_structure(
+                                        span,
+                                        &*loan_path);
+                                false
+                            });
+                            return;
+                        }
+                    },
+                    _ => {},
+                }
+
                 // assigning to `P.f` is ok if assigning to `P` is ok
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
@@ -772,21 +792,10 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                 if mode != euv::Init {
                     check_for_assignment_to_borrowed_path(
                         self, assignment_id, assignment_span, assignee_cmt.clone());
-                    mark_variable_as_used_mut(self, assignee_cmt.clone());
+                    mark_variable_as_used_mut(self, assignee_cmt);
                 }
             }
 
-            // Check for partial reinitialization of a fully uninitialized structure.
-            match assignee_cmt.cat {
-                mc::cat_interior(ref container_cmt, _) | mc::cat_downcast(ref container_cmt) => {
-                    check_for_illegal_initialization(self,
-                                                     assignment_id,
-                                                     assignment_span,
-                                                     container_cmt);
-                }
-                mc::cat_rvalue(_) | mc::cat_static_item | mc::cat_upvar(_) | mc::cat_local(_) |
-                mc::cat_deref(_, _, _) => {}
-            }
             return;
         }
 
@@ -959,39 +968,6 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
             let scope = region::CodeExtent::from_node_id(assignment_id);
             this.each_in_scope_loan_affecting_path(scope, &*loan_path, |loan| {
                 this.report_illegal_mutation(assignment_span, &*loan_path, loan);
-                false
-            });
-        }
-
-        fn check_for_illegal_initialization(this: &CheckLoanCtxt,
-                                            assignment_id: ast::NodeId,
-                                            span: Span,
-                                            assignee_cmt: &mc::cmt) {
-            let local_id = match assignee_cmt.cat {
-                mc::cat_interior(ref container_cmt, _) | mc::cat_downcast(ref container_cmt) => {
-                    return check_for_illegal_initialization(this,
-                                                            assignment_id,
-                                                            span,
-                                                            container_cmt)
-                }
-                mc::cat_local(local_id) => local_id,
-                mc::cat_rvalue(_) | mc::cat_static_item | mc::cat_upvar(_) |
-                mc::cat_deref(..) => return,
-            };
-
-            let struct_id = match ty::get(assignee_cmt.ty).sty {
-                ty::ty_struct(def_id, _) => def_id,
-                _ => return,
-            };
-            if !ty::has_dtor(this.tcx(), struct_id) {
-                return
-            }
-
-            let loan_path = Rc::new(LpVar(local_id));
-            this.move_data.each_move_of(assignment_id, &loan_path, |_, _| {
-                this.bccx.report_partial_reinitialization_of_uninitialized_structure(
-                    span,
-                    &*loan_path);
                 false
             });
         }

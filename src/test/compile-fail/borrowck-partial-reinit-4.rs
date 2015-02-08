@@ -1,4 +1,4 @@
-// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,27 +8,26 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Test {
-    a: isize,
-    b: Option<Box<Test>>,
-}
+struct Test;
+
+struct Test2(Option<Test>);
 
 impl Drop for Test {
     fn drop(&mut self) {
-        println!("Dropping {}", self.a);
+        println!("dropping!");
     }
 }
 
+impl Drop for Test2 {
+    fn drop(&mut self) {}
+}
+
 fn stuff() {
-    let mut t = Test { a: 1, b: None};
-    let mut u = Test { a: 2, b: Some(Box::new(t))};
-    t.b = Some(Box::new(u));
-    //~^ ERROR partial reinitialization of uninitialized structure `t`
-    println!("done");
+    let mut x : (Test2, Test2);
+    (x.0).0 = Some(Test);
+    //~^ ERROR partial reinitialization of uninitialized structure `x.0`
 }
 
 fn main() {
-    stuff();
-    println!("Hello, world!")
+    stuff()
 }
-

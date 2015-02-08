@@ -689,7 +689,7 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
     pub fn report_partial_reinitialization_of_uninitialized_structure(
             &self,
             span: Span,
-            lp: &LoanPath) {
+            lp: &LoanPath<'tcx>) {
         self.tcx
             .sess
             .span_err(span,
