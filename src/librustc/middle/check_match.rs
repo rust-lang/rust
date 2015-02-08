@@ -28,7 +28,7 @@ use std::iter::{range_inclusive, AdditiveIterator, FromIterator, repeat};
 use std::num::Float;
 use std::slice;
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId, Pat};
-use syntax::ast_util::walk_pat;
+use syntax::ast_util;
 use syntax::codemap::{Span, Spanned, DUMMY_SP};
 use syntax::fold::{Folder, noop_fold_pat};
 use syntax::print::pprust::pat_to_string;
@@ -36,6 +36,7 @@ use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor, FnKind};
 use util::ppaux::ty_to_string;
+use util::nodemap::FnvHashMap;
 
 pub const DUMMY_WILD_PAT: &'static Pat = &Pat {
     id: DUMMY_NODE_ID,
@@ -171,7 +172,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 }
             }
 
-            let mut static_inliner = StaticInliner::new(cx.tcx);
+            let mut static_inliner = StaticInliner::new(cx.tcx, None);
             let inlined_arms = arms.iter().map(|arm| {
                 (arm.pats.iter().map(|pat| {
                     static_inliner.fold_pat((*pat).clone())
@@ -235,7 +236,7 @@ fn is_expr_const_nan(tcx: &ty::ctxt, expr: &ast::Expr) -> bool {
 }
 
 fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat) {
-    walk_pat(pat, |p| {
+    ast_util::walk_pat(pat, |p| {
         match p.node {
             ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
                 let pat_ty = ty::pat_ty(cx.tcx, p);
@@ -266,7 +267,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
 
 // Check that we do not match against a static NaN (#6804)
 fn check_for_static_nan(cx: &MatchCheckCtxt, pat: &Pat) {
-    walk_pat(pat, |p| {
+    ast_util::walk_pat(pat, |p| {
         match p.node {
             ast::PatLit(ref expr) if is_expr_const_nan(cx.tcx, &**expr) => {
                 span_warn!(cx.tcx.sess, p.span, E0003,
@@ -399,28 +400,50 @@ fn const_val_to_expr(value: &const_val) -> P<ast::Expr> {
 
 pub struct StaticInliner<'a, 'tcx: 'a> {
     pub tcx: &'a ty::ctxt<'tcx>,
-    pub failed: bool
+    pub failed: bool,
+    pub renaming_map: Option<&'a mut FnvHashMap<(NodeId, Span), NodeId>>,
 }
 
 impl<'a, 'tcx> StaticInliner<'a, 'tcx> {
-    pub fn new<'b>(tcx: &'b ty::ctxt<'tcx>) -> StaticInliner<'b, 'tcx> {
+    pub fn new<'b>(tcx: &'b ty::ctxt<'tcx>,
+                   renaming_map: Option<&'b mut FnvHashMap<(NodeId, Span), NodeId>>)
+                   -> StaticInliner<'b, 'tcx> {
         StaticInliner {
             tcx: tcx,
-            failed: false
+            failed: false,
+            renaming_map: renaming_map
         }
+    }
+}
+
+struct RenamingRecorder<'map> {
+    substituted_node_id: NodeId,
+    origin_span: Span,
+    renaming_map: &'map mut FnvHashMap<(NodeId, Span), NodeId>
+}
+
+impl<'map> ast_util::IdVisitingOperation for RenamingRecorder<'map> {
+    fn visit_id(&mut self, node_id: NodeId) {
+        let key = (node_id, self.origin_span);
+        self.renaming_map.insert(key, self.substituted_node_id);
     }
 }
 
 impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
-        match pat.node {
+        return match pat.node {
             ast::PatIdent(..) | ast::PatEnum(..) => {
                 let def = self.tcx.def_map.borrow().get(&pat.id).cloned();
                 match def {
                     Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did) {
                         Some(const_expr) => {
-                            const_expr_to_pat(self.tcx, const_expr).map(|mut new_pat| {
-                                new_pat.span = pat.span;
+                            const_expr_to_pat(self.tcx, const_expr, pat.span).map(|new_pat| {
+
+                                if let Some(ref mut renaming_map) = self.renaming_map {
+                                    // Record any renamings we do here
+                                    record_renamings(const_expr, &pat, renaming_map);
+                                }
+
                                 new_pat
                             })
                         }
@@ -435,6 +458,24 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
                 }
             }
             _ => noop_fold_pat(pat, self)
+        };
+
+        fn record_renamings(const_expr: &ast::Expr,
+                            substituted_pat: &ast::Pat,
+                            renaming_map: &mut FnvHashMap<(NodeId, Span), NodeId>) {
+            let mut renaming_recorder = RenamingRecorder {
+                substituted_node_id: substituted_pat.id,
+                origin_span: substituted_pat.span,
+                renaming_map: renaming_map,
+            };
+
+            let mut id_visitor = ast_util::IdVisitor {
+                operation: &mut renaming_recorder,
+                pass_through_items: true,
+                visited_outermost: false,
+            };
+
+            id_visitor.visit_expr(const_expr);
         }
     }
 }
@@ -953,7 +994,7 @@ fn check_local(cx: &mut MatchCheckCtxt, loc: &ast::Local) {
         ast::LocalFor => "`for` loop"
     };
 
-    let mut static_inliner = StaticInliner::new(cx.tcx);
+    let mut static_inliner = StaticInliner::new(cx.tcx, None);
     is_refutable(cx, &*static_inliner.fold_pat(loc.pat.clone()), |pat| {
         span_err!(cx.tcx.sess, loc.pat.span, E0005,
             "refutable pattern in {} binding: `{}` not covered",
@@ -1040,7 +1081,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
     };
 
     for pat in pats {
-        walk_pat(&**pat, |p| {
+        ast_util::walk_pat(&**pat, |p| {
             if pat_is_binding(def_map, &*p) {
                 match p.node {
                     ast::PatIdent(ast::BindByValue(_), _, ref sub) => {

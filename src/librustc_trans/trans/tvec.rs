@@ -73,11 +73,19 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let unit_size = llsize_of_alloc(ccx, llty);
             if unit_size != 0 {
                 let len = get_len(bcx, vptr);
-                let not_empty = ICmp(bcx, llvm::IntNE, len, C_uint(ccx, 0us));
+                let not_empty = ICmp(bcx,
+                                     llvm::IntNE,
+                                     len,
+                                     C_uint(ccx, 0us),
+                                     DebugLoc::None);
                 with_cond(bcx, not_empty, |bcx| {
                     let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty));
                     let size = Mul(bcx, C_uint(ccx, unit_size), len, DebugLoc::None);
-                    glue::trans_exchange_free_dyn(bcx, dataptr, size, llalign)
+                    glue::trans_exchange_free_dyn(bcx,
+                                                  dataptr,
+                                                  size,
+                                                  llalign,
+                                                  DebugLoc::None)
                 })
             } else {
                 bcx
@@ -439,7 +447,7 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     { // i < count
         let lhs = Load(cond_bcx, loop_counter);
         let rhs = count;
-        let cond_val = ICmp(cond_bcx, llvm::IntULT, lhs, rhs);
+        let cond_val = ICmp(cond_bcx, llvm::IntULT, lhs, rhs, DebugLoc::None);
 
         CondBr(cond_bcx, cond_val, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
     }
@@ -493,7 +501,7 @@ pub fn iter_vec_raw<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         let data_ptr =
             Phi(header_bcx, val_ty(data_ptr), &[data_ptr], &[bcx.llbb]);
         let not_yet_at_end =
-            ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr);
+            ICmp(header_bcx, llvm::IntULT, data_ptr, data_end_ptr, DebugLoc::None);
         let body_bcx = fcx.new_temp_block("iter_vec_loop_body");
         let next_bcx = fcx.new_temp_block("iter_vec_next");
         CondBr(header_bcx, not_yet_at_end, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);

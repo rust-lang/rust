@@ -57,7 +57,7 @@ use trans::closure;
 use trans::common::{Block, C_bool, C_bytes_in_context, C_i32, C_integral};
 use trans::common::{C_null, C_struct_in_context, C_u64, C_u8, C_undef};
 use trans::common::{CrateContext, ExternMap, FunctionContext};
-use trans::common::{Result};
+use trans::common::{Result, NodeIdAndSpan};
 use trans::common::{node_id_type, return_type_is_void};
 use trans::common::{tydesc_info, type_is_immediate};
 use trans::common::{type_is_zero_size, val_ty};
@@ -66,7 +66,7 @@ use trans::consts;
 use trans::context::SharedCrateContext;
 use trans::controlflow;
 use trans::datum;
-use trans::debuginfo::{self, DebugLoc};
+use trans::debuginfo::{self, DebugLoc, ToDebugLoc};
 use trans::expr;
 use trans::foreign;
 use trans::glue;
@@ -379,7 +379,8 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                   llty_ptr: Type,
                                   info_ty: Ty<'tcx>,
                                   size: ValueRef,
-                                  align: ValueRef)
+                                  align: ValueRef,
+                                  debug_loc: DebugLoc)
                                   -> Result<'blk, 'tcx> {
     let _icx = push_ctxt("malloc_raw_exchange");
 
@@ -387,7 +388,8 @@ pub fn malloc_raw_dyn<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let r = callee::trans_lang_call(bcx,
         require_alloc_fn(bcx, info_ty, ExchangeMallocFnLangItem),
         &[size, align],
-        None);
+        None,
+        debug_loc);
 
     Result::new(r.bcx, PointerCast(r.bcx, r.val, llty_ptr))
 }
@@ -538,9 +540,10 @@ pub fn compare_scalar_types<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                         lhs: ValueRef,
                                         rhs: ValueRef,
                                         t: Ty<'tcx>,
-                                        op: ast::BinOp_)
+                                        op: ast::BinOp_,
+                                        debug_loc: DebugLoc)
                                         -> Result<'blk, 'tcx> {
-    let f = |a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op));
+    let f = |a| Result::new(cx, compare_scalar_values(cx, lhs, rhs, a, op, debug_loc));
 
     match t.sty {
         ty::ty_tup(ref tys) if tys.is_empty() => f(nil_type),
@@ -559,7 +562,8 @@ pub fn compare_scalar_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                                          lhs: ValueRef,
                                          rhs: ValueRef,
                                          nt: scalar_type,
-                                         op: ast::BinOp_)
+                                         op: ast::BinOp_,
+                                         debug_loc: DebugLoc)
                                          -> ValueRef {
     let _icx = push_ctxt("compare_scalar_values");
     fn die(cx: Block) -> ! {
@@ -586,7 +590,7 @@ pub fn compare_scalar_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
           ast::BiGe => llvm::RealOGE,
           _ => die(cx)
         };
-        return FCmp(cx, cmp, lhs, rhs);
+        return FCmp(cx, cmp, lhs, rhs, debug_loc);
       }
       signed_int => {
         let cmp = match op {
@@ -598,7 +602,7 @@ pub fn compare_scalar_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
           ast::BiGe => llvm::IntSGE,
           _ => die(cx)
         };
-        return ICmp(cx, cmp, lhs, rhs);
+        return ICmp(cx, cmp, lhs, rhs, debug_loc);
       }
       unsigned_int => {
         let cmp = match op {
@@ -610,7 +614,7 @@ pub fn compare_scalar_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
           ast::BiGe => llvm::IntUGE,
           _ => die(cx)
         };
-        return ICmp(cx, cmp, lhs, rhs);
+        return ICmp(cx, cmp, lhs, rhs, debug_loc);
       }
     }
 }
@@ -621,7 +625,8 @@ pub fn compare_simd_types<'blk, 'tcx>(
                     rhs: ValueRef,
                     t: Ty<'tcx>,
                     size: uint,
-                    op: ast::BinOp)
+                    op: ast::BinOp_,
+                    debug_loc: DebugLoc)
                     -> ValueRef {
     let cmp = match t.sty {
         ty::ty_float(_) => {
@@ -632,7 +637,7 @@ pub fn compare_simd_types<'blk, 'tcx>(
             cx.sess().bug("compare_simd_types: comparison operators \
                            not supported for floating point SIMD types")
         },
-        ty::ty_uint(_) => match op.node {
+        ty::ty_uint(_) => match op {
             ast::BiEq => llvm::IntEQ,
             ast::BiNe => llvm::IntNE,
             ast::BiLt => llvm::IntULT,
@@ -641,7 +646,7 @@ pub fn compare_simd_types<'blk, 'tcx>(
             ast::BiGe => llvm::IntUGE,
             _ => cx.sess().bug("compare_simd_types: must be a comparison operator"),
         },
-        ty::ty_int(_) => match op.node {
+        ty::ty_int(_) => match op {
             ast::BiEq => llvm::IntEQ,
             ast::BiNe => llvm::IntNE,
             ast::BiLt => llvm::IntSLT,
@@ -657,7 +662,7 @@ pub fn compare_simd_types<'blk, 'tcx>(
     // to get the correctly sized type. This will compile to a single instruction
     // once the IR is converted to assembly if the SIMD instruction is supported
     // by the target architecture.
-    SExt(cx, ICmp(cx, cmp, lhs, rhs), return_ty)
+    SExt(cx, ICmp(cx, cmp, lhs, rhs, debug_loc), return_ty)
 }
 
 // Iterates through the elements of a structural type.
@@ -851,7 +856,7 @@ pub fn cast_shift_rhs<F, G>(op: ast::BinOp,
 
 pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
                                 cx: Block<'blk, 'tcx>,
-                                span: Span,
+                                call_info: NodeIdAndSpan,
                                 divrem: ast::BinOp,
                                 lhs: ValueRef,
                                 rhs: ValueRef,
@@ -864,14 +869,16 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         ("attempted remainder with a divisor of zero",
          "attempted remainder with overflow")
     };
+    let debug_loc = call_info.debug_loc();
+
     let (is_zero, is_signed) = match rhs_t.sty {
         ty::ty_int(t) => {
             let zero = C_integral(Type::int_from_ty(cx.ccx(), t), 0u64, false);
-            (ICmp(cx, llvm::IntEQ, rhs, zero), true)
+            (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), true)
         }
         ty::ty_uint(t) => {
             let zero = C_integral(Type::uint_from_ty(cx.ccx(), t), 0u64, false);
-            (ICmp(cx, llvm::IntEQ, rhs, zero), false)
+            (ICmp(cx, llvm::IntEQ, rhs, zero, debug_loc), false)
         }
         _ => {
             cx.sess().bug(&format!("fail-if-zero on unexpected type: {}",
@@ -879,7 +886,7 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
         }
     };
     let bcx = with_cond(cx, is_zero, |bcx| {
-        controlflow::trans_fail(bcx, span, InternedString::new(zero_text))
+        controlflow::trans_fail(bcx, call_info, InternedString::new(zero_text))
     });
 
     // To quote LLVM's documentation for the sdiv instruction:
@@ -908,12 +915,13 @@ pub fn fail_if_zero_or_overflows<'blk, 'tcx>(
             _ => unreachable!(),
         };
         let minus_one = ICmp(bcx, llvm::IntEQ, rhs,
-                             C_integral(llty, -1, false));
+                             C_integral(llty, -1, false), debug_loc);
         with_cond(bcx, minus_one, |bcx| {
             let is_min = ICmp(bcx, llvm::IntEQ, lhs,
-                              C_integral(llty, min, true));
+                              C_integral(llty, min, true), debug_loc);
             with_cond(bcx, is_min, |bcx| {
-                controlflow::trans_fail(bcx, span,
+                controlflow::trans_fail(bcx,
+                                        call_info,
                                         InternedString::new(overflow_text))
             })
         })

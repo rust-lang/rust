@@ -45,25 +45,39 @@ use std::ffi::CString;
 use syntax::ast;
 use syntax::parse::token;
 
-pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
-                                           size: ValueRef, align: ValueRef)
+pub fn trans_exchange_free_dyn<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                           v: ValueRef,
+                                           size: ValueRef,
+                                           align: ValueRef,
+                                           debug_loc: DebugLoc)
                                            -> Block<'blk, 'tcx> {
     let _icx = push_ctxt("trans_exchange_free");
     let ccx = cx.ccx();
     callee::trans_lang_call(cx,
         langcall(cx, None, "", ExchangeFreeFnLangItem),
         &[PointerCast(cx, v, Type::i8p(ccx)), size, align],
-        Some(expr::Ignore)).bcx
+        Some(expr::Ignore),
+        debug_loc).bcx
 }
 
-pub fn trans_exchange_free<'blk, 'tcx>(cx: Block<'blk, 'tcx>, v: ValueRef,
-                                       size: u64, align: u32) -> Block<'blk, 'tcx> {
-    trans_exchange_free_dyn(cx, v, C_uint(cx.ccx(), size),
-                                   C_uint(cx.ccx(), align))
+pub fn trans_exchange_free<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
+                                       v: ValueRef,
+                                       size: u64,
+                                       align: u32,
+                                       debug_loc: DebugLoc)
+                                       -> Block<'blk, 'tcx> {
+    trans_exchange_free_dyn(cx,
+                            v,
+                            C_uint(cx.ccx(), size),
+                            C_uint(cx.ccx(), align),
+                            debug_loc)
 }
 
-pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ptr: ValueRef,
-                                          content_ty: Ty<'tcx>) -> Block<'blk, 'tcx> {
+pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                          ptr: ValueRef,
+                                          content_ty: Ty<'tcx>,
+                                          debug_loc: DebugLoc)
+                                          -> Block<'blk, 'tcx> {
     assert!(type_is_sized(bcx.ccx().tcx(), content_ty));
     let sizing_type = sizing_type_of(bcx.ccx(), content_ty);
     let content_size = llsize_of_alloc(bcx.ccx(), sizing_type);
@@ -71,7 +85,7 @@ pub fn trans_exchange_free_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, ptr: ValueRef,
     // `Box<ZeroSizeType>` does not allocate.
     if content_size != 0 {
         let content_align = align_of(bcx.ccx(), content_ty);
-        trans_exchange_free(bcx, ptr, content_size, content_align)
+        trans_exchange_free(bcx, ptr, content_size, content_align, debug_loc)
     } else {
         bcx
     }
@@ -328,7 +342,11 @@ fn size_and_align_of_dst<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, t: Ty<'tcx>, info: 
             // Return the sum of sizes and max of aligns.
             let size = Add(bcx, sized_size, unsized_size, DebugLoc::None);
             let align = Select(bcx,
-                               ICmp(bcx, llvm::IntULT, sized_align, unsized_align),
+                               ICmp(bcx,
+                                    llvm::IntULT,
+                                    sized_align,
+                                    unsized_align,
+                                    DebugLoc::None),
                                sized_align,
                                unsized_align);
             (size, align)
@@ -394,7 +412,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                         let info = GEPi(bcx, v0, &[0, abi::FAT_PTR_EXTRA]);
                         let info = Load(bcx, info);
                         let (llsize, llalign) = size_and_align_of_dst(bcx, content_ty, info);
-                        trans_exchange_free_dyn(bcx, llbox, llsize, llalign)
+                        trans_exchange_free_dyn(bcx, llbox, llsize, llalign, DebugLoc::None)
                     })
                 }
                 _ => {
@@ -404,7 +422,7 @@ fn make_drop_glue<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, v0: ValueRef, t: Ty<'tcx>)
                     let not_null = IsNotNull(bcx, llbox);
                     with_cond(bcx, not_null, |bcx| {
                         let bcx = drop_ty(bcx, llbox, content_ty, DebugLoc::None);
-                        trans_exchange_free_ty(bcx, llbox, content_ty)
+                        trans_exchange_free_ty(bcx, llbox, content_ty, DebugLoc::None)
                     })
                 }
             }
