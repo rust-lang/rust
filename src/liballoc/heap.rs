@@ -12,6 +12,7 @@ use core::num::UnsignedInt;
 #[cfg(not(test))]
 use core::ptr::PtrExt;
 
+#[inline(always)]
 fn check_size_and_alignment(size: uint, align: uint) {
     debug_assert!(size != 0);
     debug_assert!(align.is_power_of_two(), "Invalid alignment of {}", align);
