@@ -17,7 +17,9 @@ but it tries to motivate and clarify them.
 
 # Detailed design
 
-There are a number of indivudal guidelines:
+There are a number of individual guidelines. Most of these guidelines are for
+any Rust project, but some are specific to documenting `rustc` itself and the
+standard library. These are called out specifically in the text itself.
 
 ## Use line comments
 
@@ -37,7 +39,25 @@ Instead of:
  */
 ```
 
-Only use inner doc comments //! to write crate and module-level documentation, nothing else.
+Only use inner doc comments //! to write crate and module-level documentation,
+nothing else. When using `mod` blocks, prefer `///` outside of the block:
+
+```rust
+/// This module contains tests
+mod test {
+    // ...
+}
+```
+
+over
+
+```rust
+mod test {
+    //! This module contains tests
+
+    // ...
+}
+```
 
 ## Formatting
 
@@ -45,9 +65,8 @@ The first line in any doc comment should be a single-line short sentence
 providing a summary of the code. This line is used as a summary description
 throughout Rustdoc's output, so it's a good idea to keep it short.
 
-All doc comments, including the summary line, should begin with a capital
-letter and end with a period, question mark, or exclamation point. Prefer full
-sentences to fragments.
+All doc comments, including the summary line, should be property punctuated.
+Prefer full sentences to fragments.
 
 The summary line should be written in third person singular present indicative
 form. Basically, this means write "Returns" instead of "Return".
@@ -91,21 +110,23 @@ being explicit, so that it highlights syntax in places that do not, like GitHub.
 Rustdoc is able to test all Rust examples embedded inside of documentation, so
 it's important to mark what is not Rust so your tests don't fail.
 
-References and citation should be linked inline. Prefer
+References and citation should be linked 'reference style.' Prefer
 
 ```
-[some paper](http://www.foo.edu/something.pdf)
+[some paper][something]
+
+[something]: http://www.foo.edu/something.pdf)
 ```
 
 to
 
 ```
-some paper[1]
-
-1: http://www.foo.edu/something.pdf
+[some paper][http://www.foo.edu/something.pdf]
 ```
 
 ## English
+
+This section applies to `rustc` and the standard library.
 
 All documentation is standardized on American English, with regards to
 spelling, grammar, and punctuation conventions. Language changes over time,
