@@ -2516,7 +2516,9 @@ impl<'a> State<'a> {
                         }
                     }
                 }
-                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref ty_left, ref ty_right, ..}) => {
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref ty_left,
+                                                                        ref ty_right,
+                                                                        ..}) => {
                     try!(self.print_type(&**ty_left));
                     try!(space(&mut self.s));
                     try!(self.word_space("="));

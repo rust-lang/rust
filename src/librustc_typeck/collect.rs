@@ -1295,7 +1295,9 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
             &ast::WherePredicate::EqPredicate(ref eq_pred) => {
                 let ty_left = ast_ty_to_ty(ccx, &ExplicitRscope, &*eq_pred.ty_left);
                 let ty_right = ast_ty_to_ty(ccx, &ExplicitRscope, &*eq_pred.ty_right);
-                result.predicates.push(space, ty::Predicate::Equate(ty::Binder(ty::EquatePredicate(ty_left, ty_right))));
+                result.predicates.push(space, ty::Predicate::Equate(
+                    ty::Binder(ty::EquatePredicate(ty_left, ty_right))
+                ));
             }
         }
     }
