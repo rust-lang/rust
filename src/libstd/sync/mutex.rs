@@ -228,6 +228,17 @@ impl<T: Send> Mutex<T> {
             Err(TryLockError::WouldBlock)
         }
     }
+
+    /// Determine whether the lock is poisoned.
+    ///
+    /// If another thread is active, the lock can still become poisoned at any
+    /// time.  You should not trust a `false` value for program correctness
+    /// without additional synchronization.
+    #[inline]
+    #[unstable(feature = "std_misc")]
+    pub fn is_poisoned(&self) -> bool {
+        self.inner.poison.get()
+    }
 }
 
 #[unsafe_destructor]
@@ -458,12 +469,14 @@ mod test {
     #[test]
     fn test_mutex_arc_poison() {
         let arc = Arc::new(Mutex::new(1));
+        assert!(!arc.is_poisoned());
         let arc2 = arc.clone();
         let _ = Thread::scoped(move|| {
             let lock = arc2.lock().unwrap();
             assert_eq!(*lock, 2);
         }).join();
         assert!(arc.lock().is_err());
+        assert!(arc.is_poisoned());
     }
 
     #[test]
