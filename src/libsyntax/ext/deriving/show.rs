@@ -29,13 +29,13 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
     F: FnOnce(P<Item>),
 {
     // &mut ::std::fmt::Formatter
-    let fmtr = Ptr(box Literal(Path::new(vec!("std", "fmt", "Formatter"))),
+    let fmtr = Ptr(box Literal(path_std!(cx, core::fmt::Formatter)),
                    Borrowed(None, ast::MutMutable));
 
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!["std", "fmt", "Debug"]),
+        path: path_std!(cx, core::fmt::Debug),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec![
@@ -44,7 +44,7 @@ pub fn expand_deriving_show<F>(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(fmtr),
-                ret_ty: Literal(Path::new(vec!("std", "fmt", "Result"))),
+                ret_ty: Literal(path_std!(cx, core::fmt::Result)),
                 attributes: Vec::new(),
                 combine_substructure: combine_substructure(box |a, b, c| {
                     show_substructure(a, b, c)

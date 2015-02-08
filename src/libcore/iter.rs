@@ -67,7 +67,7 @@ use num::{ToPrimitive, Int};
 use ops::{Add, Deref, FnMut};
 use option::Option;
 use option::Option::{Some, None};
-use std::marker::Sized;
+use marker::Sized;
 use usize;
 
 /// An interface for dealing with "external iterators". These types of iterators

@@ -386,7 +386,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             self.path_all(DUMMY_SP,
                           true,
                           vec!(
-                              self.ident_of("std"),
+                              self.ident_of_std("core"),
                               self.ident_of("option"),
                               self.ident_of("Option")
                           ),
@@ -656,7 +656,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
     fn expr_vec_ng(&self, sp: Span) -> P<ast::Expr> {
         self.expr_call_global(sp,
-                              vec!(self.ident_of("std"),
+                              vec!(self.ident_of_std("collections"),
                                    self.ident_of("vec"),
                                    self.ident_of("Vec"),
                                    self.ident_of("new")),
@@ -676,7 +676,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_some(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let some = vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("option"),
             self.ident_of("Option"),
             self.ident_of("Some"));
@@ -685,7 +685,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_none(&self, sp: Span) -> P<ast::Expr> {
         let none = self.path_global(sp, vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("option"),
             self.ident_of("Option"),
             self.ident_of("None")));
@@ -712,7 +712,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         self.expr_call_global(
             span,
             vec!(
-                self.ident_of("std"),
+                self.ident_of_std("core"),
                 self.ident_of("rt"),
                 self.ident_of("begin_unwind")),
             vec!(
@@ -728,7 +728,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_ok(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let ok = vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("result"),
             self.ident_of("Result"),
             self.ident_of("Ok"));
@@ -737,7 +737,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_err(&self, sp: Span, expr: P<ast::Expr>) -> P<ast::Expr> {
         let err = vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("result"),
             self.ident_of("Result"),
             self.ident_of("Err"));
@@ -745,10 +745,20 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_try(&self, sp: Span, head: P<ast::Expr>) -> P<ast::Expr> {
-        let ok = self.ident_of("Ok");
-        let ok_path = self.path_ident(sp, ok);
-        let err = self.ident_of("Err");
-        let err_path = self.path_ident(sp, err);
+        let ok = vec![
+            self.ident_of_std("core"),
+            self.ident_of("result"),
+            self.ident_of("Result"),
+            self.ident_of("Ok")
+        ];
+        let ok_path = self.path_global(sp, ok);
+        let err = vec![
+            self.ident_of_std("core"),
+            self.ident_of("result"),
+            self.ident_of("Result"),
+            self.ident_of("Err")
+        ];
+        let err_path = self.path_global(sp, err);
 
         let binding_variable = self.ident_of("__try_var");
         let binding_pat = self.pat_ident(sp, binding_variable);
@@ -758,8 +768,9 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         let ok_pat = self.pat_enum(sp, ok_path, vec!(binding_pat.clone()));
 
         // Err(__try_var)  (pattern and expression resp.)
-        let err_pat = self.pat_enum(sp, err_path, vec!(binding_pat));
-        let err_inner_expr = self.expr_call_ident(sp, err, vec!(binding_expr.clone()));
+        let err_pat = self.pat_enum(sp, err_path.clone(), vec!(binding_pat));
+        let err_inner_expr = self.expr_call(sp, self.expr_path(err_path),
+                                            vec!(binding_expr.clone()));
         // return Err(__try_var)
         let err_expr = self.expr(sp, ast::ExprRet(Some(err_inner_expr)));
 
@@ -808,7 +819,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn pat_some(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
         let some = vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("option"),
             self.ident_of("Option"),
             self.ident_of("Some"));
@@ -818,7 +829,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn pat_none(&self, span: Span) -> P<ast::Pat> {
         let some = vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("option"),
             self.ident_of("Option"),
             self.ident_of("None"));
@@ -828,7 +839,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn pat_ok(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
         let some = vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("result"),
             self.ident_of("Result"),
             self.ident_of("Ok"));
@@ -838,7 +849,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn pat_err(&self, span: Span, pat: P<ast::Pat>) -> P<ast::Pat> {
         let some = vec!(
-            self.ident_of("std"),
+            self.ident_of_std("core"),
             self.ident_of("result"),
             self.ident_of("Result"),
             self.ident_of("Err"));

@@ -10,7 +10,7 @@
 // except according to those terms.
 
 #![allow(unused_imports)]
-#![feature(start)]
+#![feature(start, no_std)]
 #![no_std]
 
 extern crate std;

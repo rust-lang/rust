@@ -8,15 +8,29 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern: requires `copy` lang_item
-
 #![feature(lang_items, start, no_std)]
 #![no_std]
 
-#[lang = "sized"]
-trait Sized {}
+extern crate "std" as other;
+
+#[macro_use] extern crate core;
+#[macro_use] extern crate collections;
+
+use collections::string::ToString;
 
 #[start]
-fn main(_: int, _: *const *const u8) -> int {
+fn start(_argc: int, _argv: *const *const u8) -> int {
+    let s = format!("{}", 1i);
+    assert_eq!(s, "1".to_string());
+
+    let s = format!("test");
+    assert_eq!(s, "test".to_string());
+
+    let s = format!("{test}", test=3i);
+    assert_eq!(s, "3".to_string());
+
+    let s = format!("hello {}", "world");
+    assert_eq!(s, "hello world".to_string());
+
     0
 }

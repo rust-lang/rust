@@ -65,6 +65,7 @@
        html_favicon_url = "http://www.rust-lang.org/favicon.ico",
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
+#![feature(no_std)]
 #![no_std]
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
@@ -126,7 +127,8 @@ pub fn oom() -> ! {
 #[doc(hidden)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
-#[cfg(not(test))]
+// NOTE: remove after next snapshot
+#[cfg(all(stage0, not(test)))]
 #[doc(hidden)]
 mod std {
     pub use core::fmt;

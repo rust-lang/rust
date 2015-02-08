@@ -9,8 +9,8 @@
 // except according to those terms.
 
 #![crate_type = "rlib"]
+#![feature(no_std, core)]
 #![no_std]
-#![feature(core)]
 extern crate core;
 
 

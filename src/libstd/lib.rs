@@ -124,6 +124,7 @@
 #![cfg_attr(test, feature(test))]
 
 // Don't link to std. We are std.
+#![feature(no_std)]
 #![no_std]
 
 #![deny(missing_docs)]
@@ -137,7 +138,7 @@
 extern crate core;
 
 #[macro_use]
-#[macro_reexport(vec)]
+#[macro_reexport(vec, format)]
 extern crate "collections" as core_collections;
 
 #[allow(deprecated)] extern crate "rand" as core_rand;
@@ -180,6 +181,7 @@ pub use core::error;
 #[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;
 
+pub use core_collections::fmt;
 pub use core_collections::slice;
 pub use core_collections::str;
 pub use core_collections::string;
@@ -245,7 +247,6 @@ pub mod thread_local;
 
 pub mod dynamic_lib;
 pub mod ffi;
-pub mod fmt;
 pub mod old_io;
 pub mod io;
 pub mod os;
@@ -285,11 +286,12 @@ mod tuple;
 // can be resolved within libstd.
 #[doc(hidden)]
 mod std {
+    // NOTE: remove after next snapshot
     // mods used for deriving
-    pub use clone;
-    pub use cmp;
-    pub use hash;
-    pub use default;
+    #[cfg(stage0)] pub use clone;
+    #[cfg(stage0)] pub use cmp;
+    #[cfg(stage0)] pub use hash;
+    #[cfg(stage0)] pub use default;
 
     pub use sync; // used for select!()
     pub use error; // used for try!()
@@ -312,5 +314,6 @@ mod std {
 
     pub use boxed; // used for vec![]
     // for-loops
-    pub use iter;
+    // NOTE: remove after next snapshot
+    #[cfg(stage0)] pub use iter;
 }

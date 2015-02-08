@@ -46,7 +46,7 @@ pub fn expand_deriving_totaleq<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
-        path: Path::new(vec!("std", "cmp", "Eq")),
+        path: path_std!(cx, core::cmp::Eq),
         additional_bounds: Vec::new(),
         generics: LifetimeBounds::empty(),
         methods: vec!(

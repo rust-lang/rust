@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -134,7 +134,7 @@
 //! * `E` ⇒ `UpperExp`
 //!
 //! What this means is that any type of argument which implements the
-//! `std::fmt::Binary` trait can then be formatted with `{:b}`. Implementations
+//! `fmt::Binary` trait can then be formatted with `{:b}`. Implementations
 //! are provided for these traits for a number of primitive types by the
 //! standard library as well. If no format is specified (as in `{}` or `{:6}`),
 //! then the format trait used is the `Display` trait.
@@ -146,7 +146,7 @@
 //! # use std::fmt;
 //! # struct Foo; // our custom type
 //! # impl fmt::Display for Foo {
-//! fn fmt(&self, f: &mut std::fmt::Formatter) -> fmt::Result {
+//! fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
 //! # write!(f, "testing, testing")
 //! # } }
 //! ```
@@ -403,8 +403,6 @@
 
 #![unstable(feature = "std_misc")]
 
-use string;
-
 pub use core::fmt::{Formatter, Result, Writer, rt};
 pub use core::fmt::{Show, String, Octal, Binary};
 pub use core::fmt::{Display, Debug};
@@ -412,6 +410,8 @@ pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
 pub use core::fmt::Error;
 pub use core::fmt::{ArgumentV1, Arguments, write, radix, Radix, RadixFmt};
+
+use string;
 
 /// The format function takes a precompiled format string and a list of
 /// arguments, to return the resulting formatted string.
@@ -433,4 +433,16 @@ pub fn format(args: Arguments) -> string::String {
     let mut output = string::String::new();
     let _ = write!(&mut output, "{}", args);
     output
+}
+
+#[cfg(test)]
+mod tests {
+    use prelude::*;
+    use fmt;
+
+    #[test]
+    fn test_format() {
+        let s = fmt::format(format_args!("Hello, {}!", "world"));
+        assert_eq!(s.as_slice(), "Hello, world!");
+    }
 }

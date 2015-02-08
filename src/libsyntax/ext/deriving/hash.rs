@@ -25,13 +25,13 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
     F: FnOnce(P<Item>),
 {
 
-    let path = Path::new_(vec!("std", "hash", "Hash"), None,
+    let path = Path::new_(pathvec_std!(cx, core::hash::Hash), None,
                           vec!(box Literal(Path::new_local("__S"))), true);
     let generics = LifetimeBounds {
         lifetimes: Vec::new(),
         bounds: vec!(("__S",
-                      vec!(Path::new(vec!("std", "hash", "Writer")),
-                           Path::new(vec!("std", "hash", "Hasher"))))),
+                      vec!(path_std!(cx, core::hash::Writer),
+                           path_std!(cx, core::hash::Hasher)))),
     };
     let args = Path::new_local("__S");
     let inline = cx.meta_word(span, InternedString::new("inline"));
@@ -69,7 +69,7 @@ fn hash_substructure(cx: &mut ExtCtxt, trait_span: Span, substr: &Substructure) 
     let call_hash = |span, thing_expr| {
         let hash_path = {
             let strs = vec![
-                cx.ident_of("std"),
+                cx.ident_of_std("core"),
                 cx.ident_of("hash"),
                 cx.ident_of("Hash"),
                 cx.ident_of("hash"),

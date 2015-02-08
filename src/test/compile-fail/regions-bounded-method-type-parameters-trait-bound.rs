@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(lang_items, no_std)]
 #![no_std]
-#![feature(lang_items)]
 
 // Check that explicit region bounds are allowed on the various
 // nominal types (but not on other types) and that they are type

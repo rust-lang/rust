@@ -36,7 +36,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(borrowed_self()),
-                ret_ty: Literal(Path::new(vec!("bool"))),
+                ret_ty: Literal(path!(bool)),
                 attributes: attrs,
                 combine_substructure: combine_substructure(box |cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
@@ -45,8 +45,8 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
         } }
     }
 
-    let ordering_ty = Literal(Path::new(vec!["std", "cmp", "Ordering"]));
-    let ret_ty = Literal(Path::new_(vec!["std", "option", "Option"],
+    let ordering_ty = Literal(path_std!(cx, core::cmp::Ordering));
+    let ret_ty = Literal(Path::new_(pathvec_std!(cx, core::option::Option),
                                     None,
                                     vec![box ordering_ty],
                                     true));
@@ -69,7 +69,7 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
     let trait_def = TraitDef {
         span: span,
         attributes: vec![],
-        path: Path::new(vec!["std", "cmp", "PartialOrd"]),
+        path: path_std!(cx, core::cmp::PartialOrd),
         additional_bounds: vec![],
         generics: LifetimeBounds::empty(),
         methods: vec![
@@ -107,7 +107,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
               substr: &Substructure) -> P<Expr> {
     let test_id = cx.ident_of("__test");
     let ordering = cx.path_global(span,
-                                  vec!(cx.ident_of("std"),
+                                  vec!(cx.ident_of_std("core"),
                                        cx.ident_of("cmp"),
                                        cx.ident_of("Ordering"),
                                        cx.ident_of("Equal")));
@@ -115,7 +115,7 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
     let equals_expr = cx.expr_some(span, ordering);
 
     let partial_cmp_path = vec![
-        cx.ident_of("std"),
+        cx.ident_of_std("core"),
         cx.ident_of("cmp"),
         cx.ident_of("PartialOrd"),
         cx.ident_of("partial_cmp"),
