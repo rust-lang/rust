@@ -940,11 +940,12 @@ impl<'tcx> Cleanup<'tcx> for FreeValue<'tcx> {
                    bcx: Block<'blk, 'tcx>,
                    debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
-        debug_loc.apply(bcx.fcx);
-
         match self.heap {
             HeapExchange => {
-                glue::trans_exchange_free_ty(bcx, self.ptr, self.content_ty)
+                glue::trans_exchange_free_ty(bcx,
+                                             self.ptr,
+                                             self.content_ty,
+                                             debug_loc)
             }
         }
     }
@@ -975,11 +976,13 @@ impl<'tcx> Cleanup<'tcx> for FreeSlice {
                    bcx: Block<'blk, 'tcx>,
                    debug_loc: DebugLoc)
                    -> Block<'blk, 'tcx> {
-        debug_loc.apply(bcx.fcx);
-
         match self.heap {
             HeapExchange => {
-                glue::trans_exchange_free_dyn(bcx, self.ptr, self.size, self.align)
+                glue::trans_exchange_free_dyn(bcx,
+                                              self.ptr,
+                                              self.size,
+                                              self.align,
+                                              debug_loc)
             }
         }
     }

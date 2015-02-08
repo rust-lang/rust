@@ -22,6 +22,7 @@ use middle::astconv_util::{ast_ty_to_prim_ty};
 use util::nodemap::DefIdMap;
 
 use syntax::ast::{self, Expr};
+use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::visit::{self, Visitor};
@@ -304,10 +305,10 @@ pub enum const_val {
     const_bool(bool)
 }
 
-pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
+pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat> {
     let pat = match expr.node {
         ast::ExprTup(ref exprs) =>
-            ast::PatTup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr)).collect()),
+            ast::PatTup(exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr, span)).collect()),
 
         ast::ExprCall(ref callee, ref args) => {
             let def = tcx.def_map.borrow()[callee.id].clone();
@@ -319,7 +320,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
                 def::DefVariant(_, variant_did, _) => def_to_path(tcx, variant_did),
                 _ => unreachable!()
             };
-            let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &**expr)).collect();
+            let pats = args.iter().map(|expr| const_expr_to_pat(tcx, &**expr, span)).collect();
             ast::PatEnum(path, Some(pats))
         }
 
@@ -328,7 +329,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
                 span: codemap::DUMMY_SP,
                 node: ast::FieldPat {
                     ident: field.ident.node,
-                    pat: const_expr_to_pat(tcx, &*field.expr),
+                    pat: const_expr_to_pat(tcx, &*field.expr, span),
                     is_shorthand: false,
                 },
             }).collect();
@@ -336,7 +337,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
         }
 
         ast::ExprVec(ref exprs) => {
-            let pats = exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr)).collect();
+            let pats = exprs.iter().map(|expr| const_expr_to_pat(tcx, &**expr, span)).collect();
             ast::PatVec(pats, None, vec![])
         }
 
@@ -349,7 +350,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
                     ast::PatEnum(path.clone(), None),
                 _ => {
                     match lookup_const(tcx, expr) {
-                        Some(actual) => return const_expr_to_pat(tcx, actual),
+                        Some(actual) => return const_expr_to_pat(tcx, actual, span),
                         _ => unreachable!()
                     }
                 }
@@ -358,14 +359,14 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr) -> P<ast::Pat> {
 
         ast::ExprQPath(_) => {
             match lookup_const(tcx, expr) {
-                Some(actual) => return const_expr_to_pat(tcx, actual),
+                Some(actual) => return const_expr_to_pat(tcx, actual, span),
                 _ => unreachable!()
             }
         }
 
         _ => ast::PatLit(P(expr.clone()))
     };
-    P(ast::Pat { id: expr.id, node: pat, span: expr.span })
+    P(ast::Pat { id: expr.id, node: pat, span: span })
 }
 
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {

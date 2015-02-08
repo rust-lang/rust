@@ -667,7 +667,7 @@ pub fn trans_object_shim<'a, 'tcx>(
            method_offset_in_vtable);
 
     bcx = trans_call_inner(bcx,
-                           None,
+                           DebugLoc::None,
                            method_bare_fn_ty,
                            |bcx, _| trans_trait_callee_from_llval(bcx,
                                                                   method_bare_fn_ty,

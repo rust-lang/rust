@@ -751,7 +751,7 @@ pub fn trans_get_discr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, r: &Repr<'tcx>,
         RawNullablePointer { nndiscr, nnty, .. } =>  {
             let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
             let llptrty = type_of::sizing_type_of(bcx.ccx(), nnty);
-            val = ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty));
+            val = ICmp(bcx, cmp, Load(bcx, scrutinee), C_null(llptrty), DebugLoc::None);
             signed = false;
         }
         StructWrappedNullablePointer { nndiscr, ref discrfield, .. } => {
@@ -770,7 +770,7 @@ fn struct_wrapped_nullable_bitdiscr(bcx: Block, nndiscr: Disr, discrfield: &Disc
     let llptrptr = GEPi(bcx, scrutinee, &discrfield[]);
     let llptr = Load(bcx, llptrptr);
     let cmp = if nndiscr == 0 { IntEQ } else { IntNE };
-    ICmp(bcx, cmp, llptr, C_null(val_ty(llptr)))
+    ICmp(bcx, cmp, llptr, C_null(val_ty(llptr)), DebugLoc::None)
 }
 
 /// Helper for cases where the discriminant is simply loaded.
