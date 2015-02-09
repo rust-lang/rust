@@ -146,6 +146,10 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   This may also be due to weakness in the compiler, but that is not
   immediately obvious.
 
+  [Appendix B] has a complete code snippet (using a desugaring much like
+  the one found in the other appendix) that illustrates two cases of
+  interest where this weakness arises.
+
 [Rust PR 22012]: https://github.com/rust-lang/rust/pull/22012
 
 # Alternatives
@@ -570,3 +574,96 @@ fn main() {
     println!("b6: {}", b6);
 }
 ```
+
+## Appendix B: examples of interaction between desugaring, type-inference, and coercion
+[Appendix B]: #appendix-b-examples-of-interaction-between-desugaring-type-inference-and-coercion
+
+The following code works with the current version of `box` syntax in Rust, but needs some sort
+of type annotation in Rust as it stands today for the desugaring of `box` to work out.
+
+(The following code uses `cfg` attributes to make it easy to switch between slight variations
+on the portions that expose the weakness.)
+
+```
+#![feature(box_syntax)]
+
+// NOTE: Scroll down to "START HERE"
+
+fn main() { }
+
+macro_rules! box_ {
+    ($value:expr) => { {
+        let mut place = ::BoxPlace::make();
+        let raw_place = ::Place::pointer(&mut place);
+        let value = $value;
+        unsafe { ::std::ptr::write(raw_place, value); ::Boxed::fin(place) }
+    } }
+}
+
+// (Support traits and impls for examples below.)
+
+pub trait BoxPlace<Data: ?Sized> : Place<Data> { fn make() -> Self; }
+pub trait Place<Data: ?Sized> { fn pointer(&mut self) -> *mut Data; }
+pub trait Boxed { type Place; fn fin(filled: Self::Place) -> Self; }
+
+struct BP<T: ?Sized> { _fake_box: Option<Box<T>> }
+
+impl<T> BoxPlace<T> for BP<T> { fn make() -> BP<T> { make_pl() } }
+impl<T: ?Sized> Place<T> for BP<T> { fn pointer(&mut self) -> *mut T { pointer(self) } }
+impl<T: ?Sized> Boxed for Box<T> { type Place = BP<T>; fn fin(x: BP<T>) -> Self { finaliz(x) } }
+
+fn make_pl<T>() -> BP<T> { loop { } }
+fn finaliz<T: ?Sized>(mut _filled: BP<T>) -> Box<T> { loop { } }
+fn pointer<T: ?Sized>(_p: &mut BP<T>) -> *mut T { loop { } }
+
+// START HERE
+
+pub type BoxFn<'a> = Box<Fn() + 'a>;
+
+#[cfg(all(not(coerce_works1),not(coerce_works2),not(coerce_works3)))]
+pub fn coerce<'a, F>(f: F) -> BoxFn<'a> where F: Fn(), F: 'a { box_!( f ) }
+
+#[cfg(coerce_works1)]
+pub fn coerce<'a, F>(f: F) -> BoxFn<'a> where F: Fn(), F: 'a {   box  f   }
+
+#[cfg(coerce_works2)]
+pub fn coerce<'a, F>(f: F) -> BoxFn<'a> where F: Fn(), F: 'a { let b: Box<_> = box_!( f ); b }
+
+#[cfg(coerce_works3)] // (This one assumes PR 22012 has landed)
+pub fn coerce<'a, F>(f: F) -> BoxFn<'a> where F: Fn(), F: 'a { box_!( f ) as BoxFn }
+
+
+trait Duh { fn duh() -> Self; }
+
+#[cfg(all(not(duh_works1),not(duh_works2)))]
+impl<T> Duh for Box<[T]> { fn duh() -> Box<[T]> { box_!( [] ) } }
+
+#[cfg(duh_works1)]
+impl<T> Duh for Box<[T]> { fn duh() -> Box<[T]> {   box  [] } }
+
+#[cfg(duh_works2)]
+impl<T> Duh for Box<[T]> { fn duh() -> Box<[T]> { let b: Box<[_; 0]> =  box_!( [] ); b } }
+```
+
+You can pass `--cfg duh_worksN` and `--cfg coerce_worksM` for suitable
+`N` and `M` to see them compile.  The point I want to get across is
+this: It looks like both of these cases can be worked around via
+explicit type ascription.  Whether or not this is an acceptable cost
+is a reasonable question.
+
+The `fn coerce` example comes from uses of the `fn combine_structure` function in the
+`libsyntax` crate.
+
+The `fn duh` example comes from the implementation of the `Default`
+trait for `Box<[T]>`.
+
+Both examples are instances of coercion; the `fn coerce` example is
+trying to express a coercion of a `Box<Type>` to a `Box<Trait>`
+(i.e. making a trait-object), and the `fn duh` example is trying to
+express a coercion of a `Box<[T; k]>` (specifically `[T; 0]`) to a
+`Box<[T]>`.  Both are going from a pointer-to-sized to a
+pointer-to-unsized.
+
+(Maybe there is a way to handle both of these cases in a generic
+fashion; pnkfelix is not sufficiently familiar with how coercions
+currently interact with type-inference in the first place.)
