@@ -404,26 +404,9 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
                all_substs.repr(self.tcx()));
 
         // Instantiate the bounds on the method with the
-        // type/early-bound-regions substitutions performed.  The only
-        // late-bound-regions that can appear in bounds are from the
-        // impl, and those were already instantiated above.
-        //
-        // FIXME(DST). Super hack. For a method on a trait object
-        // `Trait`, the generic signature requires that
-        // `Self:Trait`. Since, for an object, we bind `Self` to the
-        // type `Trait`, this leads to an obligation
-        // `Trait:Trait`. Until such time we DST is fully implemented,
-        // that obligation is not necessarily satisfied. (In the
-        // future, it would be.) But we know that the true `Self` DOES implement
-        // the trait. So we just delete this requirement. Hack hack hack.
-        let mut method_predicates = pick.method_ty.predicates.instantiate(self.tcx(), &all_substs);
-        match pick.kind {
-            probe::ObjectPick(..) => {
-                assert_eq!(method_predicates.predicates.get_slice(subst::SelfSpace).len(), 1);
-                method_predicates.predicates.pop(subst::SelfSpace);
-            }
-            _ => { }
-        }
+        // type/early-bound-regions substitutions performed. There can
+        // be no late-bound regions appearing here.
+        let method_predicates = pick.method_ty.predicates.instantiate(self.tcx(), &all_substs);
         let method_predicates = self.fcx.normalize_associated_types_in(self.span,
                                                                        &method_predicates);
 
