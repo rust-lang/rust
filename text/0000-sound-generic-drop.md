@@ -283,7 +283,7 @@ Condition (A.) ensures that a type like `Sneetch<'a>`
 from [the Sneetch example] will only be
 assigned to an expression `s` where `'a` strictly outlives `s`.
 
-Condition (B.) is catch cases like `Zook<B<'a>>` from
+Condition (B.) catches cases like `Zook<B<'a>>` from
 [the Zook example], where the destructor's interaction with borrowed
 data is hidden behind a method call in the `fn drop`.
 
