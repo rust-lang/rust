@@ -27,6 +27,7 @@
     * [Iterators](iterators.md)
     * [Generics](generics.md)
     * [Traits](traits.md)
+    * [Static and Dynamic Dispatch](static-and-dynamic-dispatch.md)
     * [Concurrency](concurrency.md)
     * [Error Handling](error-handling.md)
     * [Documentation](documentation.md)
