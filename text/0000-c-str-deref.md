@@ -82,7 +82,7 @@ In cases when an FFI function returns a pointer to a non-owned C string,
 it might be preferable to wrap the returned string safely as a 'thin'
 `&CStr` rather than scan it into a slice up front. To facilitate this,
 conversion from a raw pointer should be added (with an inferred lifetime
-as per another proposed [RFC](https://github.com/rust-lang/rfcs/pull/556)):
+as per [the established convention](https://github.com/rust-lang/rfcs/pull/556)):
 ```rust
 impl CStr {
     pub unsafe fn from_ptr<'a>(ptr: *const libc::c_char) -> &'a CStr {
