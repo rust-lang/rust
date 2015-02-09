@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #[plugin]  //~ ERROR #[plugin] on `extern crate` is deprecated
+//~^ HELP use a crate attribute instead, i.e. #![plugin(std)]
 extern crate std;
 
 fn main() {}
