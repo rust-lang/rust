@@ -174,6 +174,7 @@ tandem with types provided by the stdlib, such as `Box<T>`.
 * We could use the `in (<place-expr>) <expr>` syntax. An earlier
   version of this RFC used this alternative. It is easier to implement
   on the current code base, but I do not know of any other benefits.
+  (Well, maybe parentheses are less "heavyweight" than curly-braces?)
 
 * A number of other syntaxes for placement have been proposed in the
   past; see for example discussion on [RFC PR 405] as well as
