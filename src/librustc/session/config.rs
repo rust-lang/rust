@@ -1061,7 +1061,9 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                                        part));
                 }
             };
-            crate_types.push(new_part)
+            if !crate_types.contains(&new_part) {
+                crate_types.push(new_part)
+            }
         }
     }
 
