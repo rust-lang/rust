@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn baz(a: &'self isize) { } //~ ERROR invalid lifetime name: 'self is no longer a special lifetime
 
 fn main() { }

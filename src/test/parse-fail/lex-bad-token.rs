@@ -8,4 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 ● //~ ERROR: unknown start of token

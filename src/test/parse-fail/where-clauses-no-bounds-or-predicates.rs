@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn equal1<T>(_: &T, _: &T) -> bool where {
 //~^ ERROR a `where` clause must have at least one predicate in it
     true

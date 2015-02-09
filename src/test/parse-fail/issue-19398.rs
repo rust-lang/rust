@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 trait T {
     extern "Rust" unsafe fn foo(); //~ ERROR expected `fn`, found `unsafe`
 }

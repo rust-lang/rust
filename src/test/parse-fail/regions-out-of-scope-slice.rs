@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // ignore-test blk region isn't supported in the front-end
 
 fn foo(cond: bool) {

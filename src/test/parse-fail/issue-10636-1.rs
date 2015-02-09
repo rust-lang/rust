@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 struct Obj { //~ NOTE: unclosed delimiter
     member: usize
 ) //~ ERROR: incorrect close delimiter

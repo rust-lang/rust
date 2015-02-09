@@ -8,4 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 pure fn f() {} //~ ERROR expected item, found `pure`

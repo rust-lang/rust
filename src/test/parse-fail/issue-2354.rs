@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn foo() { //~ HELP did you mean to close this delimiter?
   match Some(x) {
       Some(y) { panic!(); }

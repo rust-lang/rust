@@ -52,11 +52,11 @@ pub fn compile_input(sess: Session,
                      output: &Option<PathBuf>,
                      addl_plugins: Option<Vec<String>>,
                      control: CompileController) {
-    macro_rules! controller_entry_point{($point: ident, $make_state: expr) => ({
-        {
-            let state = $make_state;
-            (control.$point.callback)(state);
-        }
+    macro_rules! controller_entry_point{($point: ident, $tsess: expr, $make_state: expr) => ({
+        let state = $make_state;
+        (control.$point.callback)(state);
+
+        $tsess.abort_if_errors();
         if control.$point.stop == Compilation::Stop {
             return;
         }
@@ -70,6 +70,7 @@ pub fn compile_input(sess: Session,
             let krate = phase_1_parse_input(&sess, cfg, input);
 
             controller_entry_point!(after_parse,
+                                    sess,
                                     CompileState::state_after_parse(input,
                                                                     &sess,
                                                                     outdir,
@@ -96,6 +97,7 @@ pub fn compile_input(sess: Session,
         };
 
         controller_entry_point!(after_expand,
+                                sess,
                                 CompileState::state_after_expand(input,
                                                                  &sess,
                                                                  outdir,
@@ -109,6 +111,7 @@ pub fn compile_input(sess: Session,
         write_out_deps(&sess, input, &outputs, &id[..]);
 
         controller_entry_point!(after_write_deps,
+                                sess,
                                 CompileState::state_after_write_deps(input,
                                                                      &sess,
                                                                      outdir,
@@ -123,6 +126,7 @@ pub fn compile_input(sess: Session,
                                                    control.make_glob_map);
 
         controller_entry_point!(after_analysis,
+                                analysis.ty_cx.sess,
                                 CompileState::state_after_analysis(input,
                                                                    &analysis.ty_cx.sess,
                                                                    outdir,
@@ -149,6 +153,7 @@ pub fn compile_input(sess: Session,
     phase_5_run_llvm_passes(&sess, &trans, &outputs);
 
     controller_entry_point!(after_llvm,
+                            sess,
                             CompileState::state_after_llvm(input,
                                                            &sess,
                                                            outdir,

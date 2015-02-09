@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 static s: &'static str =
     r#"
       "## //~ ERROR expected one of `.`, `;`, or an operator, found `#`
