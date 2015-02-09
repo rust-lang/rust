@@ -768,10 +768,33 @@ thread '<main>' panicked at 'assertion failed: neighbor.usable', ../src/test/com
 This is unsound. It should not be possible to express such a
 scenario without using `unsafe` code.
 
-This RFC suggests is that we deprecate the `Arena` type (which is not
-marked as stable anyway). We might also attempt find a way to revise
-its API to not allow a case like the above, but that is out of scope
-for this RFC.
+This RFC suggests that we revise the `Arena` API by adding a phantom
+lifetime parameter to its type, and bound the values the arena
+allocates by that phantom lifetime, like so:
+```rust
+pub struct Arena<'longer_than_self> {
+    _invariant: marker::InvariantLifetime<'longer_than_self>,
+    ...
+}
+
+impl<'longer_than_self> Arena<'longer_than_self> {
+    pub fn alloc<T:'longer_than_self, F>(&self, op: F) -> &mut T
+        where F: FnOnce() -> T {
+        ...
+    }
+}
+```
+Admittedly, this is a severe limitation, since it forces the data
+allocated by the Arena to store only references to data that strictly
+outlives the arena, regardless of whether the allocated data itself
+even has a destructor. (I.e., `Arena` would become much weaker than
+`TypedArena` when attempting to work with cyclic structures).
+(pnkfelix knows of no way to fix this without adding further extensions
+to the language, e.g. some way to express "this type's destructor accesses
+none of its borrowed data", which is out of scope for this RFC.)
+
+Alternatively, we could just deprecate the `Arena` API, (which is not
+marked as stable anyway.
 
 The example given here can be adapted to other kinds of backing
 storage structures, in order to double-check whether the API is likely
@@ -788,15 +811,24 @@ remove `#[unsafe_destructor]`!
 
 # Drawbacks
 
-The Drop-Check rule is a little complex, and does disallow some
-sound code that would compile today.
+* The Drop-Check rule is a little complex, and does disallow some
+  sound code that would compile today.
 
-The change proposed in this RFC places restrictions on uses of types
-with attached destructors, but provides no way for a type `Foo<'a>` to
-state as part of its public interface that its drop implementation
-will not read from any borrowed data of lifetime `'a`. (Extending the
-language with such a feature is potential future work, but is out of
-scope for this RFC.)
+* The change proposed in this RFC places restrictions on uses of types
+  with attached destructors, but provides no way for a type `Foo<'a>` to
+  state as part of its public interface that its drop implementation
+  will not read from any borrowed data of lifetime `'a`. (Extending the
+  language with such a feature is potential future work, but is out of
+  scope for this RFC.)
+
+* Some useful interfaces are going to be disallowed by this RFC.
+  For example, the RFC recommends that the current `arena::Arena`
+  be revised or simply deprecated, due to its unsoundness.
+  (If desired, we could add an `UnsafeArena` that continues
+  to support the current `Arena` API with the caveat that its users need to
+  *manually* enforce the constraint that the destructors do not access
+  data that has been already dropped. But again, that decision is out
+  of scope for this RFC.)
 
 # Alternatives
 
