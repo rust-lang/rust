@@ -21,9 +21,9 @@ use std::thunk::Thunk;
 use std::collections::{HashSet, HashMap};
 use testing;
 use rustc::session::{self, config};
+use rustc::session::config::get_unstable_features_setting;
 use rustc::session::search_paths::{SearchPaths, PathKind};
-use rustc_driver::get_unstable_features_setting;
-use rustc_driver::driver;
+use rustc_driver::{driver, Compilation};
 use syntax::ast;
 use syntax::codemap::{CodeMap, dummy_spanned};
 use syntax::diagnostic;
@@ -178,7 +178,7 @@ fn runtest(test: &str, cratename: &str, libs: SearchPaths,
     let libdir = sess.target_filesearch(PathKind::All).get_lib_path();
     let mut control = driver::CompileController::basic();
     if no_run {
-        control.after_analysis.stop = true;
+        control.after_analysis.stop = Compilation::Stop;
     }
     driver::compile_input(sess, cfg, &input, &out, &None, None, control);
 

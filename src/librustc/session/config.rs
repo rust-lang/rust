@@ -33,9 +33,10 @@ use syntax::diagnostic::{ColorConfig, Auto, Always, Never, SpanHandler};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 
+use getopts;
 use std::collections::HashMap;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use getopts;
+use std::env;
 use std::fmt;
 
 use llvm;
@@ -821,7 +822,6 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
 }
 
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
-
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
         .unwrap_or_else(|e| early_error(&e[]));
@@ -1041,7 +1041,22 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
         crate_name: crate_name,
         alt_std_name: None,
         libs: libs,
-        unstable_features: UnstableFeatures::Disallow
+        unstable_features: get_unstable_features_setting(),
+    }
+}
+
+pub fn get_unstable_features_setting() -> UnstableFeatures {
+    // Whether this is a feature-staged build, i.e. on the beta or stable channel
+    let disable_unstable_features = option_env!("CFG_DISABLE_UNSTABLE_FEATURES").is_some();
+    // The secret key needed to get through the rustc build itself by
+    // subverting the unstable features lints
+    let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
+    // The matching key to the above, only known by the build system
+    let bootstrap_provided_key = env::var_string("RUSTC_BOOTSTRAP_KEY").ok();
+    match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
+        (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
+        (true, _, _) => UnstableFeatures::Disallow,
+        (false, _, _) => UnstableFeatures::Default
     }
 }
 
