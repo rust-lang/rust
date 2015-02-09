@@ -96,7 +96,6 @@ pub mod ext {
     pub mod base;
     pub mod build;
     pub mod cfg;
-    pub mod cfg_attr;
     pub mod concat;
     pub mod concat_idents;
     pub mod deriving;
