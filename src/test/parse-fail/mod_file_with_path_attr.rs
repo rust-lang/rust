@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 #[path = "not_a_real_file.rs"]
 mod m; //~ ERROR not_a_real_file.rs
 

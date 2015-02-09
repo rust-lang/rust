@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // ignore-test
 // ignored because the first error does not show up.
 
@@ -20,6 +22,8 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
+// compile-flags: -Z parse-only
 
 fn of<T>() -> |T| { panic!(); }
 fn subtype<T>(x: |T|) { panic!(); }

@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // ignore-test: this is an auxiliary file for circular-modules-main.rs
 
 mod circular_modules_main;

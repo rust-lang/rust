@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 fn f() {
     let a_box = box mut 42;
     //~^  ERROR expected identifier, found keyword `mut`

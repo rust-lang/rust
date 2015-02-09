@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // error-pattern: cannot declare a new module at this location
 
 mod mod_file_not_owning_aux1;

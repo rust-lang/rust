@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// compile-flags: -Z parse-only
+
 // Testing that semicolon tokens are printed correctly in errors
 
 fn main()
