@@ -1,3 +1,4 @@
+- Feature Name: box_syntax, placement_in_syntax
 - Start Date: 2015-02-04
 - RFC PR: (leave this empty)
 - Rust Issue: (leave this empty)
@@ -5,7 +6,7 @@
 # Summary
 
   * Change placement-new syntax from: `box (<place-expr>) <expr>` instead
-    to: `in <place-expr> { <block> }`.  
+    to: `in <place-expr> { <block> }`.
 
   * Change `box <expr>` to an overloaded operator that chooses its
     implementation based on the expected type.
@@ -14,6 +15,10 @@
     libstd can provide support for the overloaded operators; the
     traits are unstable so that the language designers are free to
     revise the underlying protocol in the future post 1.0.
+
+  * Feature-gate the placement-`in` syntax via the feature name `placement_in_syntax`.
+
+  * The overloaded `box <expr>` will reuse the `box_syntax` feature name.
 
 (Note that `<block>` here denotes the interior of a block expression; i.e.:
 ```
@@ -119,6 +124,11 @@ tandem with types provided by the stdlib, such as `Box<T>`.
 
   (A sample implementation illustrating how to support the operators
   on other types is given in [Appendix A].)
+
+* Feature-gate the two syntaxes under separate feature identifiers, so that we
+  have the option of removing the gate for one syntax without the other.
+  (I.e. we already have much experience with non-overloaded `box <expr>`,
+   but we have nearly no experience with placement-`in` as described here).
 
 # Drawbacks
 
