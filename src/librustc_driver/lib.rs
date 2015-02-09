@@ -134,9 +134,22 @@ pub fn run_compiler<'a>(args: &[String],
     };
 
     let mut sess = build_session(sopts, input_file_path, descriptions);
+
     if sess.unstable_options() {
         sess.opts.show_span = matches.opt_str("show-span");
+
+        let complete_at = matches.opt_str("complete-at").and_then(|s| {
+            let parts: Vec<&str> = s.splitn(1, ':').collect();
+            if let [filename, bytepos] = &*parts {
+                if let Ok(bytepos) = bytepos.parse() {
+                    return Some((filename.to_string(), bytepos));
+                }
+            }
+            None
+        });
+        sess.set_complete_at(complete_at);
     }
+
     let cfg = config::build_configuration(&sess);
 
     do_or_return!(callbacks.late_callback(&matches, &sess, &input, &odir, &ofile));

@@ -86,7 +86,7 @@ impl<'a> SpanUtils<'a> {
         let filemap = self.sess.codemap().new_filemap(String::from_str("<anon-dxr>"),
                                                       self.snippet(span));
         let s = self.sess;
-        lexer::StringReader::new(s.diagnostic(), filemap)
+        lexer::StringReader::new(s.diagnostic(), filemap, None)
     }
 
     // Re-parses a path and returns the span for the last identifier in the path

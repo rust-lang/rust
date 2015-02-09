@@ -11,7 +11,7 @@
 //! The main parser interface
 
 use ast;
-use codemap::{Span, CodeMap, FileMap};
+use codemap::{Span, CodeMap, FileMap, BytePos};
 use diagnostic::{SpanHandler, mk_span_handler, default_handler, Auto};
 use parse::attr::ParserAttr;
 use parse::parser::Parser;
@@ -38,6 +38,7 @@ pub mod obsolete;
 /// Info about a parsing session.
 pub struct ParseSess {
     pub span_diagnostic: SpanHandler, // better be the same as the one in the reader!
+    pub complete_at: RefCell<Option<(String, u32)>>,
     /// Used to determine and report recursive mod inclusions
     included_mod_stack: RefCell<Vec<Path>>,
     pub node_id: Cell<ast::NodeId>,
@@ -46,6 +47,7 @@ pub struct ParseSess {
 pub fn new_parse_sess() -> ParseSess {
     ParseSess {
         span_diagnostic: mk_span_handler(default_handler(Auto, None, true), CodeMap::new()),
+        complete_at: RefCell::new(None),
         included_mod_stack: RefCell::new(Vec::new()),
         node_id: Cell::new(1),
     }
@@ -54,6 +56,7 @@ pub fn new_parse_sess() -> ParseSess {
 pub fn new_parse_sess_special_handler(sh: SpanHandler) -> ParseSess {
     ParseSess {
         span_diagnostic: sh,
+        complete_at: RefCell::new(None),
         included_mod_stack: RefCell::new(Vec::new()),
         node_id: Cell::new(1),
     }
@@ -285,7 +288,14 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     // it appears to me that the cfg doesn't matter here... indeed,
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = Vec::new();
-    let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
+    let complete_at = match *sess.complete_at.borrow() {
+        Some((ref filename, bytepos)) if filemap.name == *filename => {
+            Some(filemap.start_pos + BytePos(bytepos))
+        }
+        _ => None
+    };
+    let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap,
+                                        complete_at);
     let mut p1 = Parser::new(sess, cfg, box srdr);
     p1.parse_all_token_trees()
 }

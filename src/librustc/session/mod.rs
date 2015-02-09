@@ -182,6 +182,9 @@ impl Session {
     pub fn codemap<'a>(&'a self) -> &'a codemap::CodeMap {
         &self.parse_sess.span_diagnostic.cm
     }
+    pub fn set_complete_at(&self, complete_at: Option<(String, u32)>) {
+        *self.parse_sess.complete_at.borrow_mut() = complete_at;
+    }
     // This exists to help with refactoring to eliminate impossible
     // cases later on
     pub fn impossible_case(&self, sp: Span, msg: &str) -> ! {
