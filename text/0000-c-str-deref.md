@@ -134,7 +134,7 @@ convey string data from Rust to C-style APIs.
 While it's not possible outside of unsafe code to unintentionally copy out
 or modify the nominal value of `CStr` under an immutable reference, some
 unforeseen trouble or confusion can arise due to the structure having a
-bogus size. A separate [RFC PR](https://github.com/rust-lang/rfcs/issues/709),
+bogus size. A separate [RFC](https://github.com/rust-lang/rfcs/issues/813),
 if accepted, will solve this by opting out of `Sized`.
 
 # Alternatives
@@ -153,7 +153,7 @@ is established.
 # Unresolved questions
 
 `CStr` can be made a
-[truly unsized type](https://github.com/rust-lang/rfcs/issues/709),
+[truly unsized type](https://github.com/rust-lang/rfcs/issues/813),
 pending on that proposal's approval.
 
 Need a `Cow`?
