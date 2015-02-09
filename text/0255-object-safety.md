@@ -18,7 +18,7 @@ is stronger due to part of the DST changes.
 Part of the planned, in progress DST work is to allow trait objects where a
 trait is expected. Example:
 
-```
+```rust
 fn foo<Sized? T: SomeTrait>(y: &T) { ... }
 
 fn bar(x: &SomeTrait) {
@@ -40,7 +40,7 @@ safe, then we say `T` is object-safe.
 
 If we ignore this restriction we could allow code such as the following:
 
-```
+```rust
 trait SomeTrait {
     fn foo(&self, other: &Self) { ... } // assume self and other have the same concrete type
 }
@@ -70,63 +70,108 @@ where a trait object is used with a generic call and would be something like
 "type error: SomeTrait does not implement SomeTrait" - no indication that the
 non-object-safe method were to blame, only a failure in trait matching.
 
+Another advantage of this proposal is that it implies that all
+method-calls can always be rewritten into an equivalent [UFCS]
+call. This simplifies the "core language" and makes method dispatch
+notation -- which involves some non-trivial inference -- into a kind
+of "sugar" for the more explicit UFCS notation.
 
 # Detailed design
 
-To be precise about object-safety, an object-safe method:
-* must not have any type parameters,
-* must not take `self` by value,
-* must not use `Self` (in the future, where we allow arbitrary types for the
-  receiver, `Self` may only be used for the type of the receiver and only where
-  we allow `Sized?` types).
+To be precise about object-safety, an object-safe method must meet one
+of the following conditions:
 
-A trait is object-safe if all of its methods are object-safe.
+* require `Self : Sized`; or,
+* meet all of the following conditions:
+  * must not have any type parameters; and,
+  * must not take `self` by value; and,
+  * must not use `Self` (in the future, where we allow arbitrary types
+    for the receiver, `Self` may only be used for the type of the
+    receiver and only where we allow `Sized?` types).
+
+A trait is object-safe if all of the following conditions hold:
+
+* all of its methods are object-safe; and,
+* the trait does not require that `Self : Sized` (see also [RFC 546]).
 
 When an expression with pointer-to-concrete type is coerced to a trait object,
 the compiler will check that the trait is object-safe (in addition to the usual
 check that the concrete type implements the trait). It is an error for the trait
 to be non-object-safe.
 
-
 # Drawbacks
 
-This is a breaking change and forbids some safe code which is legal today. This
-can be addressed by splitting a trait into object-safe and non-object-safe
-parts. We hope that this will lead to better design. We are not sure how much
-code this will affect, it would be good to have data about this.
+This is a breaking change and forbids some safe code which is legal
+today. This can be addressed in two ways: splitting traits, or adding
+`where Self:Sized` clauses to methods that cannot not be used with
+objects.
 
-Example, today:
+### Example problem
 
-```
+Here is an example trait that is not object safe:
+
+```rust
 trait SomeTrait {
     fn foo(&self) -> int { ... }
-    fn bar<U>(&self, u: Box<U>) { ... }
+    
+    // Object-safe methods may not return `Self`:
+    fn new() -> Self;
 }
-
-fn baz(x: &SomeTrait) {
-    x.foo();
-    //x.bar(box 42i);  // type error
-}
-
 ```
 
-with this proposal:
+### Splitting a trait
 
-```
+One option is to split a trait into object-safe and non-object-safe
+parts. We hope that this will lead to better design. We are not sure
+how much code this will affect, it would be good to have data about
+this.
+
+```rust
 trait SomeTrait {
     fn foo(&self) -> int { ... }
 }
 
-trait SomeMoreTrait: SomeTrait {
-    fn bar<U>(&self, u: Box<U>) { ... }
-}
-
-fn baz(x: &SomeTrait) {
-    x.foo();
-    //x.bar(box 42i);  // type error
+trait SomeTraitCtor : SomeTrait {
+    fn new() -> Self;
 }
 ```
 
+### Adding a where-clause
+
+Sometimes adding a second trait feels like overkill. In that case, it
+is often an option to simply add a `where Self:Sized` clause to the
+methods of the trait that would otherwise violate the object safety
+rule.
+
+```rust
+trait SomeTrait {
+    fn foo(&self) -> int { ... }
+    
+    fn new() -> Self
+        where Self : Sized; // this condition is new
+}
+```
+
+The reason that this makes sense is that if one were writing a generic
+function with a type parameter `T` that may range over the trait
+object, that type parameter would have to be declared `?Sized`, and
+hence would not have access to the `bar` method:
+
+```rust
+fn baz<T:?Sized+SomeTrait>(t: &T) {
+    let v: T = SomeTrait::new(); // illegal because `T : Sized` is not known to hold
+}
+```
+
+However, if one writes a function with sized type parameter, which
+could never be a trait object, then the `bar()` functions becomes
+available.
+
+```rust
+fn baz<T:SomeTrait>(t: &T) {
+    let v: T = SomeTrait::new(); // OK
+}
+```
 
 # Alternatives
 
@@ -148,3 +193,13 @@ approach, this is not necessary.
 # Unresolved questions
 
 N/A
+
+# Edits
+
+* 2014-02-09. Edited by Nicholas Matsakis to (1) include the
+  requirement that object-safe traits do not require `Self:Sized` and
+  (2) specify that methods may include `where Self:Sized` to overcome
+  object safety restrictions.
+
+[UFCS]: 0132-ufcs.md
+[RFC 546]: 0546-Self-not-sized-by-default.md
