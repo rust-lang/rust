@@ -130,9 +130,23 @@ tandem with types provided by the stdlib, such as `Box<T>`.
 
 * The currently-implemented desugaring does not infer that in an
   expression like `box <expr> as Box<Trait>`, the use of `box <expr>`
-  should evaluate to some `Box<_>`. This may be due to a weakness
-  in the current desugaring, though pnkfelix suspects that it is
-  probably due to a weakness in compiler itself.
+  should evaluate to some `Box<_>`. pnkfelix has found that this is
+  due to a weakness in compiler itself ([Rust PR 22012]).
+
+  Likewise, the currently-implemented desugaring does not interact
+  well with the combination of type-inference and implicit coercions
+  to trait objects. That is, when `box <expr>` is used in a context
+  like this:
+  ```
+  fn foo(Box<SomeTrait>) { ... }
+  foo(box some_expr());
+  ```
+  the type inference system attempts to unify the type `Box<SomeTrait>`
+  with the return-type of `::protocol::Boxed::finalize(place)`.
+  This may also be due to weakness in the compiler, but that is not
+  immediately obvious.
+
+[Rust PR 22012]: https://github.com/rust-lang/rust/pull/22012
 
 # Alternatives
 
