@@ -5,7 +5,7 @@
 # Summary
 
   * Change placement-new syntax from: `box (<place-expr>) <expr>` instead
-    to: `in (<place-expr>) <expr>`.
+    to: `in <place-expr> { <block> }`.  
 
   * Change `box <expr>` to an overloaded operator that chooses its
     implementation based on the expected type.
@@ -14,6 +14,13 @@
     libstd can provide support for the overloaded operators; the
     traits are unstable so that the language designers are free to
     revise the underlying protocol in the future post 1.0.
+
+(Note that `<block>` here denotes the interior of a block expression; i.e.:
+```
+<block> ::= [ <stmt> ';' | <item> ] * [ <expr> ]
+```
+This is the same sense in which the `block` nonterminal is used in the
+reference manual.)
 
 # Motivation
 
@@ -31,14 +38,15 @@ when it is created).
 However, during discussion of [Placement Box RFC PR 470], some things
 became clear:
 
- *  The syntax `in (<place-expr>) <expr>` is superior to `box (<place-expr>)
+ *  Many syntaxes using the `in` keyword are superior to `box (<place-expr>)
     <expr>` for the operation analogous to placement-new.
 
     The proposed `in`-based syntax avoids ambiguities such as having
     to write `box () (<expr>)` (or `box (alloc::HEAP) (<expr>)`) when
-    one wants to surround `<expr>` with parentheses.  It allows the
-    parser to provide clearer error messages if a user accidentally
-    writes `in <place-expr> <expr>`.
+    one wants to surround `<expr>` with parentheses.
+    It allows the parser to provide clearer error messages when
+    encountering `in <place-expr> <expr>` (clearer compared to the previous
+    situation with `box <place-expr> <expr>`).
 
  *  It would be premature for Rust to commit to any particular
     protocol for supporting placement-`in`. A number of participants in
@@ -50,7 +58,7 @@ became clear:
 Therefore, this RFC proposes a middle ground for 1.0: Support the
 desired syntax, but do not provide stable support for end-user
 implementations of the operators. The only stable ways to use the
-overloaded `box <expr>` or `in (<place-expr>) <expr>` operators will be in
+overloaded `box <expr>` or `in <place-expr> { <block> }` operators will be in
 tandem with types provided by the stdlib, such as `Box<T>`.
 
 # Detailed design
@@ -64,7 +72,7 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   Any protocol that we adopt for the operators needs to properly
   handle panics; i.e., `box <expr>` must properly cleanup any
   intermediate state if `<expr>` panics during its evaluation,
-  and likewise for `in (<place-expr>) <expr>`
+  and likewise for `in <place-expr> { <block> }`
 
   (See [Placement Box RFC PR 470] or [Appendix A] for discussion on
    ways to accomplish this.)
@@ -89,12 +97,12 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   either add a type annotation e.g. saying `Box<_>`, or will need to
   call `Box::new(<expr>)` instead of using `box <expr>`.
 
-* Add support for parsing `in (<place-expr>) <expr>` as the basis for the
+* Add support for parsing `in <place-expr> { <block> }` as the basis for the
   placement operator.
 
   Remove support for `box (<place-expr>) <expr>` from the parser.
 
-  Make `in (<place-expr>) <expr>` an overloaded operator that uses
+  Make `in <place-expr> { <block> }` an overloaded operator that uses
   the `<place-expr>` to determine what placement code to run.
 
 * The only stablized implementation for the `box <expr>` operator
@@ -104,8 +112,8 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   stabilization process.
 
   Similarly, this RFC does not propose *any* stablized implementation
-  for the `in (<place-expr>) <expr>` operator. (An obvious candidate for
-  `in (<place-expr>) <expr>` integration would be a `Vec::emplace_back`
+  for the `in <place-expr> { <block> }` operator. (An obvious candidate for
+  `in <place-expr> { <block> }` integration would be a `Vec::emplace_back`
   method; but again, the choice of which such methods to add is a
   library design issue, beyond the scope of this RFC.)
 
@@ -134,6 +142,10 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   overloaded-`box` and placement-`in`, or unless (2.) we anticipate
   some integration with `box` pattern syntax that would motivate using
   the `box` keyword for placement.
+
+* We could use the `in (<place-expr>) <expr>` syntax. An earlier
+  version of this RFC used this alternative. It is easier to implement
+  on the current code base, but I do not know of any other benefits.
 
 * A number of other syntaxes for placement have been proposed in the
   past; see for example discussion on [RFC PR 405] as well as
@@ -179,7 +191,7 @@ fn main() {
     use std::rc::Rc;
 
     let mut v = vec![1,2];
-    in (v.emplace_back()) 3; // has return type `()`
+    in v.emplace_back() { 3 }; // has return type `()`
     println!("v: {:?}", v); // prints [1,2,3]
 
     let b4: Box<i32> = box 4;
@@ -188,7 +200,7 @@ fn main() {
     let b5: Rc<i32> = box 5;
     println!("b5: {}", b5);
 
-    let b6 = in (HEAP) 6; // return type Box<i32>
+    let b6 = in HEAP { 6 }; // return type Box<i32>
     println!("b6: {}", b6);
 }
 ```
@@ -205,7 +217,7 @@ http::play.rust-lang.org )
 // The easiest way to illustrate the desugaring is by implementing
 // it with macros.  So, we will use the macro `in_` for placement-`in`
 // and the macro `box_` for overloaded-`box`; you should read
-// `in_!( (<place-expr>) <expr> )` as if it were `in (<place-expr>) <expr>`
+// `in_!( (<place-expr>) <expr> )` as if it were `in <place-expr> { <expr> }`
 // and
 // `box_!( <expr> )` as if it were `box <expr>`.
 
@@ -257,7 +269,7 @@ macro_rules! box_ {
 
 mod protocol {
 
-/// Both `in (PLACE) EXPR` and `box EXPR` desugar into expressions
+/// Both `in PLACE { BLOCK }` and `box EXPR` desugar into expressions
 /// that allocate an intermediate "place" that holds uninitialized
 /// state.  The desugaring evaluates EXPR, and writes the result at
 /// the address returned by the `pointer` method of this trait.
@@ -282,22 +294,22 @@ pub trait Place<Data: ?Sized> {
     fn pointer(&mut self) -> *mut Data;
 }
 
-/// Interface to implementations of  `in (PLACE) EXPR`.
+/// Interface to implementations of  `in PLACE { BLOCK }`.
 ///
-/// `in (PLACE) EXPR` effectively desugars into:
+/// `in PLACE { BLOCK }` effectively desugars into:
 ///
 /// ```
 /// let p = PLACE;
 /// let mut place = Placer::make_place(p);
 /// let raw_place = Place::pointer(&mut place);
-/// let value = EXPR;
+/// let value = { BLOCK };
 /// unsafe {
 ///     std::ptr::write(raw_place, value);
 ///     InPlace::finalize(place)
 /// }
 /// ```
 ///
-/// The type of `in (PLACE) EXPR` is derived from the type of `PLACE`;
+/// The type of `in PLACE { BLOCK }` is derived from the type of `PLACE`;
 /// if the type of `PLACE` is `P`, then the final type of the whole
 /// expression is `P::Place::Owner` (see the `InPlace` and `Boxed`
 /// traits).
@@ -314,11 +326,11 @@ pub trait Placer<Data: ?Sized> {
     fn make_place(self) -> Self::Place;
 }
 
-/// Specialization of `Place` trait supporting `in (PLACE) EXPR`.
+/// Specialization of `Place` trait supporting `in PLACE { BLOCK }`.
 pub trait InPlace<Data: ?Sized>: Place<Data> {
-    /// `Owner` is the type of the end value of `in (PLACE) EXPR`
+    /// `Owner` is the type of the end value of `in PLACE { BLOCK }`
     ///
-    /// Note that when `in (PLACE) EXPR` is solely used for
+    /// Note that when `in PLACE { BLOCK }` is solely used for
     /// side-effecting an existing data-structure,
     /// e.g. `Vec::emplace_back`, then `Owner` need not carry any
     /// information at all (e.g. it can be the unit type `()` in that
@@ -377,7 +389,7 @@ pub trait BoxPlace<Data: ?Sized> : Place<Data> {
 // just meant to illustrate that an implementation *can* be made;
 // i.e. that the overloading *works*.)
 //
-// Also, just for kicks, I am throwing in `in (HEAP) <expr>` support,
+// Also, just for kicks, I am throwing in `in HEAP { <block> }` support,
 // though I do not think that needs to be part of the stable libstd.
 
 struct HEAP;
