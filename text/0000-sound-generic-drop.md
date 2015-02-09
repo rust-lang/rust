@@ -287,6 +287,37 @@ Condition (B.) is catch cases like `Zook<B<'a>>` from
 [the Zook example], where the destructor's interaction with borrowed
 data is hidden behind a method call in the `fn drop`.
 
+## Near-complete parametricity suffices
+
+### Noncopy types
+
+All non-`Copy` type parameters are (still) assumed to have a
+destructor. Thus, one would be correct in noting that even a type
+`T` with no bounds may still have one hidden method attached; namely,
+its `Drop` implementation.
+
+However, the drop implementation for `T` can only be called when
+running the destructor for value `v` if either:
+
+ 1. the type of `v` owns data of type `T`, or
+
+ 2. the destructor of `v` constructs an instance of `T`.
+
+In the first case, the Drop-Check rule ensures that `T` must satisfy
+either Condition (A.) or (B.). In this second case, the freshly
+constructed instance of `T` will only be able to access either
+borrowed data from `v` itself (and thus such data will already have
+lifetime that strictly outlives `v`) or data created during the
+execution of the destructor.
+
+### `Any` instances
+
+All types implementing `Any` is forced to outlive `'static`. So one
+should not be able to hide borrowed data behind the `Any` trait, and
+therefore it is okay for the analysis to treat `Any` like a black box
+whose destructor is safe to run (at least with respect to not
+accessing borrowed data).
+
 ## Strictly outlives
 [strictly-outlives]: #strictly-outlives
 
