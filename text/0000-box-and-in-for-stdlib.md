@@ -584,7 +584,7 @@ of type annotation in Rust as it stands today for the desugaring of `box` to wor
 (The following code uses `cfg` attributes to make it easy to switch between slight variations
 on the portions that expose the weakness.)
 
-```
+```rust
 #![feature(box_syntax)]
 
 // NOTE: Scroll down to "START HERE"
@@ -646,7 +646,41 @@ impl<T> Duh for Box<[T]> { fn duh() -> Box<[T]> { let b: Box<[_; 0]> =  box_!( [
 ```
 
 You can pass `--cfg duh_worksN` and `--cfg coerce_worksM` for suitable
-`N` and `M` to see them compile.  The point I want to get across is
+`N` and `M` to see them compile.  Here is a transcript with those attempts,
+including the cases where type-inference fails in the desugaring.
+
+```
+% rustc /tmp/foo6.rs --cfg duh_works1 --cfg coerce_works1
+% rustc /tmp/foo6.rs --cfg duh_works1 --cfg coerce_works2
+% rustc /tmp/foo6.rs --cfg duh_works2 --cfg coerce_works1
+% rustc /tmp/foo6.rs --cfg duh_works1
+/tmp/foo6.rs:10:25: 10:41 error: the trait `Place<F>` is not implemented for the type `BP<core::ops::Fn()>` [E0277]
+/tmp/foo6.rs:10         let raw_place = ::Place::pointer(&mut place);
+                                        ^~~~~~~~~~~~~~~~
+/tmp/foo6.rs:7:1: 14:2 note: in expansion of box_!
+/tmp/foo6.rs:37:64: 37:76 note: expansion site
+/tmp/foo6.rs:9:25: 9:41 error: the trait `core::marker::Sized` is not implemented for the type `core::ops::Fn()` [E0277]
+/tmp/foo6.rs:9         let mut place = ::BoxPlace::make();
+                                       ^~~~~~~~~~~~~~~~
+/tmp/foo6.rs:7:1: 14:2 note: in expansion of box_!
+/tmp/foo6.rs:37:64: 37:76 note: expansion site
+error: aborting due to 2 previous errors
+% rustc /tmp/foo6.rs                  --cfg coerce_works1
+/tmp/foo6.rs:10:25: 10:41 error: the trait `Place<[_; 0]>` is not implemented for the type `BP<[T]>` [E0277]
+/tmp/foo6.rs:10         let raw_place = ::Place::pointer(&mut place);
+                                        ^~~~~~~~~~~~~~~~
+/tmp/foo6.rs:7:1: 14:2 note: in expansion of box_!
+/tmp/foo6.rs:52:51: 52:64 note: expansion site
+/tmp/foo6.rs:9:25: 9:41 error: the trait `core::marker::Sized` is not implemented for the type `[T]` [E0277]
+/tmp/foo6.rs:9         let mut place = ::BoxPlace::make();
+                                       ^~~~~~~~~~~~~~~~
+/tmp/foo6.rs:7:1: 14:2 note: in expansion of box_!
+/tmp/foo6.rs:52:51: 52:64 note: expansion site
+error: aborting due to 2 previous errors
+% 
+```
+
+The point I want to get across is
 this: It looks like both of these cases can be worked around via
 explicit type ascription.  Whether or not this is an acceptable cost
 is a reasonable question.
