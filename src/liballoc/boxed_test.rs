@@ -22,7 +22,7 @@ use std::boxed::BoxAny;
 #[test]
 fn test_owned_clone() {
     let a = Box::new(5);
-    let b: Box<int> = a.clone();
+    let b: Box<i32> = a.clone();
     assert!(a == b);
 }
 
@@ -31,11 +31,11 @@ struct Test;
 
 #[test]
 fn any_move() {
-    let a = Box::new(8us) as Box<Any>;
+    let a = Box::new(8) as Box<Any>;
     let b = Box::new(Test) as Box<Any>;
 
-    match a.downcast::<uint>() {
-        Ok(a) => { assert!(a == Box::new(8us)); }
+    match a.downcast::<i32>() {
+        Ok(a) => { assert!(a == Box::new(8)); }
         Err(..) => panic!()
     }
     match b.downcast::<Test>() {
@@ -47,7 +47,7 @@ fn any_move() {
     let b = Box::new(Test) as Box<Any>;
 
     assert!(a.downcast::<Box<Test>>().is_err());
-    assert!(b.downcast::<Box<uint>>().is_err());
+    assert!(b.downcast::<Box<i32>>().is_err());
 }
 
 #[test]
