@@ -205,7 +205,18 @@ tandem with types provided by the stdlib, such as `Box<T>`.
 
 # Unresolved questions
 
-None
+* Can the type-inference and coercion system of the compiler be
+  enriched to the point where overloaded `box` and `in` are
+  seamlessly usable? Or are type-ascriptions unavoidable when
+  supporting overloading?
+
+  In particular, I am assuming here that some amount of current
+  weakness cannot be blamed on any particular details of the
+  sample desugaring.
+
+  (See [Appendix B] for example code showing weaknesses in
+   `rustc` of today.)
+
 
 # Appendices
 
