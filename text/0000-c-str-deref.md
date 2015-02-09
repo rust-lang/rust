@@ -118,7 +118,7 @@ The described changes are implemented in crate
 
 # Drawbacks
 
-The change of the deref target is another breaking change to `CString`.
+The change of the deref target type is another breaking change to `CString`.
 In practice the main purpose of borrowing from `CString` is to obtain a
 raw pointer with `.as_ptr()`; for code which only does this and does not
 expose the slice in type annotations, parameter signatures and so on,
