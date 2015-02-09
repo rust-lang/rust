@@ -158,7 +158,7 @@ trait SomeTrait {
 The reason that this makes sense is that if one were writing a generic
 function with a type parameter `T` that may range over the trait
 object, that type parameter would have to be declared `?Sized`, and
-hence would not have access to the `bar` method:
+hence would not have access to the `new` method:
 
 ```rust
 fn baz<T:?Sized+SomeTrait>(t: &T) {
@@ -167,7 +167,7 @@ fn baz<T:?Sized+SomeTrait>(t: &T) {
 ```
 
 However, if one writes a function with sized type parameter, which
-could never be a trait object, then the `bar()` functions becomes
+could never be a trait object, then the `new` function becomes
 available.
 
 ```rust
