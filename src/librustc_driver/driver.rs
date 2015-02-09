@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -27,6 +27,7 @@ use rustc_trans::back::write;
 use rustc_trans::trans;
 use rustc_typeck as typeck;
 use rustc_privacy;
+use super::Compilation;
 
 use serialize::json;
 
@@ -55,7 +56,7 @@ pub fn compile_input(sess: Session,
             let state = $make_state;
             (control.$point.callback)(state);
         }
-        if control.$point.stop {
+        if control.$point.stop == Compilation::Stop {
             return;
         }
     })}
@@ -206,14 +207,14 @@ impl<'a> CompileController<'a> {
 }
 
 pub struct PhaseController<'a> {
-    pub stop: bool,
+    pub stop: Compilation,
     pub callback: Box<Fn(CompileState) -> () + 'a>,
 }
 
 impl<'a> PhaseController<'a> {
     pub fn basic() -> PhaseController<'a> {
         PhaseController {
-            stop: false,
+            stop: Compilation::Continue,
             callback: box |_| {},
         }
     }
