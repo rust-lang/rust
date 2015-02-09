@@ -84,7 +84,10 @@ of the following conditions:
 * require `Self : Sized`; or,
 * meet all of the following conditions:
   * must not have any type parameters; and,
-  * must not take `self` by value; and,
+  * must have a receiver that dereferences to the `Self` type;
+    - for now, this means `&self`, `&mut self`, or `self: Box<Self>`,
+      but eventually this should be extended to custom types like
+      `self: Rc<Self>` and so forth.
   * must not use `Self` (in the future, where we allow arbitrary types
     for the receiver, `Self` may only be used for the type of the
     receiver and only where we allow `Sized?` types).
