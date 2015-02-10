@@ -20,11 +20,12 @@
 
 use marker::Copy;
 use mem;
+use nonzero::NonZero;
 
 /// The representation of a Rust slice
 #[repr(C)]
 pub struct Slice<T> {
-    pub data: *const T,
+    pub data: NonZero<*const T>,
     pub len: uint,
 }
 

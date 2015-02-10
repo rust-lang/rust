@@ -93,6 +93,7 @@ use clone::Clone;
 use intrinsics;
 use option::Option::{self, Some, None};
 use marker::{Send, Sized, Sync};
+use nonzero::NonZero;
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};
@@ -522,7 +523,7 @@ impl<T> PartialOrd for *mut T {
 /// Useful for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
 #[unstable(feature = "core", reason = "recently added to this module")]
-pub struct Unique<T>(pub *mut T);
+pub struct Unique<T>(pub NonZero<*mut T>);
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
@@ -537,19 +538,3 @@ unsafe impl<T:Send> Send for Unique<T> { }
 /// `Unique` must enforce it.
 #[unstable(feature = "core", reason = "recently added to this module")]
 unsafe impl<T:Sync> Sync for Unique<T> { }
-
-impl<T> Unique<T> {
-    /// Returns a null Unique.
-    #[unstable(feature = "core",
-               reason = "recently added to this module")]
-    pub fn null() -> Unique<T> {
-        Unique(null_mut())
-    }
-
-    /// Return an (unsafe) pointer into the memory owned by `self`.
-    #[unstable(feature = "core",
-               reason = "recently added to this module")]
-    pub unsafe fn offset(self, offset: int) -> *mut T {
-        self.0.offset(offset)
-    }
-}

@@ -27,6 +27,7 @@ use iter::ExactSizeIterator;
 use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use marker::Sized;
 use mem;
+use nonzero::NonZero;
 use num::Int;
 use ops::{Fn, FnMut};
 use option::Option::{self, None, Some};
@@ -224,10 +225,9 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
 #[unstable(feature = "core")]
 #[deprecated(since = "1.0.0",
              reason = "use std::ffi::c_str_to_bytes + str::from_utf8")]
-pub unsafe fn from_c_str(s: *const i8) -> &'static str {
-    let s = s as *const u8;
+pub unsafe fn from_c_str(s: NonZero<*const i8>) -> &'static str {
     let mut len = 0;
-    while *s.offset(len as int) != 0 {
+    while *s.get().offset(len as int) != 0 {
         len += 1;
     }
     let v: &'static [u8] = ::mem::transmute(Slice { data: s, len: len });
@@ -1497,8 +1497,11 @@ impl StrExt for str {
 
     #[inline]
     unsafe fn slice_unchecked(&self, begin: uint, end: uint) -> &str {
+        let data: NonZero<*const u8> =
+            mem::transmute(self.as_ptr().offset(begin as isize));
+
         mem::transmute(Slice {
-            data: self.as_ptr().offset(begin as int),
+            data: data,
             len: end - begin,
         })
     }
@@ -1666,7 +1669,7 @@ impl StrExt for str {
 
     #[inline]
     fn as_ptr(&self) -> *const u8 {
-        self.repr().data
+        self.repr().data.get()
     }
 
     #[inline]

@@ -14,6 +14,7 @@ use self::BucketState::*;
 
 use clone::Clone;
 use cmp;
+use core::nonzero::NonZero;
 use hash::{Hash, Hasher};
 use iter::{Iterator, IteratorExt, ExactSizeIterator, count};
 use marker::{Copy, Send, Sync, Sized, self};
@@ -598,8 +599,8 @@ impl<K, V> RawTable<K, V> {
                                 .expect("capacity overflow"),
                 "capacity overflow");
 
-        let buffer = allocate(size, malloc_alignment);
-        if buffer.is_null() { ::alloc::oom() }
+        let buffer: *mut u8 = allocate(size, malloc_alignment)
+            .unwrap_or_else(|| ::alloc::oom()).get();
 
         let hashes = buffer.offset(hash_offset as isize) as *mut u64;
 
@@ -966,9 +967,11 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
 #[unsafe_destructor]
 impl<K, V> Drop for RawTable<K, V> {
     fn drop(&mut self) {
-        if self.hashes.is_null() {
-            return;
-        }
+        let hashes = match NonZero::new(self.hashes) {
+            None => return,
+            Some(hashes) => hashes,
+        };
+
         // This is done in reverse because we've likely partially taken
         // some elements out with `.into_iter()` from the front.
         // Check if the size is 0, so we don't do a useless scan when
@@ -986,7 +989,7 @@ impl<K, V> Drop for RawTable<K, V> {
                                                     vals_size, min_align_of::<V>());
 
         unsafe {
-            deallocate(self.hashes as *mut u8, size, align);
+            deallocate(hashes, size, align);
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
         }

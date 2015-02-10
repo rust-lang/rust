@@ -245,6 +245,7 @@ pub use self::FileMode::*;
 pub use self::FileAccess::*;
 pub use self::IoErrorKind::*;
 
+use core::nonzero::NonZero;
 use char::CharExt;
 use default::Default;
 use error::Error;
@@ -931,8 +932,12 @@ unsafe fn slice_vec_capacity<'a, T>(v: &'a mut Vec<T>, start: uint, end: uint) -
 
     assert!(start <= end);
     assert!(end <= v.capacity());
+
+    let data: NonZero<*const T> =
+        NonZero::new(v.as_ptr().offset(start as isize)).unwrap();
+
     transmute(Slice {
-        data: v.as_ptr().offset(start as int),
+        data: data,
         len: end - start
     })
 }

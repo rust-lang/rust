@@ -169,7 +169,7 @@ impl<T> Arc<T> {
             weak: atomic::AtomicUsize::new(1),
             data: data,
         };
-        Arc { _ptr: unsafe { NonZero::new(mem::transmute(x)) } }
+        Arc { _ptr: unsafe { mem::transmute(x) } }
     }
 
     /// Downgrades the `Arc<T>` to a `Weak<T>` reference.
@@ -199,7 +199,7 @@ impl<T> Arc<T> {
         // pointer is valid. Furthermore, we know that the `ArcInner` structure itself is `Sync`
         // because the inner data is `Sync` as well, so we're ok loaning out an immutable pointer
         // to these contents.
-        unsafe { &**self._ptr }
+        unsafe { &*self._ptr.get() }
     }
 }
 
@@ -288,7 +288,7 @@ impl<T: Send + Sync + Clone> Arc<T> {
         // pointer that will ever be returned to T. Our reference count is guaranteed to be 1 at
         // this point, and we required the Arc itself to be `mut`, so we're returning the only
         // possible reference to the inner data.
-        let inner = unsafe { &mut **self._ptr };
+        let inner = unsafe { &mut *self._ptr.get() };
         &mut inner.data
     }
 }
@@ -321,41 +321,47 @@ impl<T: Sync + Send> Drop for Arc<T> {
     /// } // implicit drop
     /// ```
     fn drop(&mut self) {
-        // This structure has #[unsafe_no_drop_flag], so this drop glue may run more than once (but
-        // it is guaranteed to be zeroed after the first if it's run more than once)
-        let ptr = *self._ptr;
-        if ptr.is_null() { return }
+        unsafe {
+            // This structure has #[unsafe_no_drop_flag], so this drop glue may run more than once (but
+            // it is guaranteed to be zeroed after the first if it's run more than once)
+            let ptr: &*mut T = mem::transmute(&self._ptr);
 
-        // Because `fetch_sub` is already atomic, we do not need to synchronize with other threads
-        // unless we are going to delete the object. This same logic applies to the below
-        // `fetch_sub` to the `weak` count.
-        if self.inner().strong.fetch_sub(1, Release) != 1 { return }
+            let ptr = match NonZero::new(*ptr) {
+                None => return,
+                Some(ptr) => ptr,
+            };
 
-        // This fence is needed to prevent reordering of use of the data and deletion of the data.
-        // Because it is marked `Release`, the decreasing of the reference count synchronizes with
-        // this `Acquire` fence. This means that use of the data happens before decreasing the
-        // reference count, which happens before this fence, which happens before the deletion of
-        // the data.
-        //
-        // As explained in the [Boost documentation][1],
-        //
-        // > It is important to enforce any possible access to the object in one thread (through an
-        // > existing reference) to *happen before* deleting the object in a different thread. This
-        // > is achieved by a "release" operation after dropping a reference (any access to the
-        // > object through this reference must obviously happened before), and an "acquire"
-        // > operation before deleting the object.
-        //
-        // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
-        atomic::fence(Acquire);
+            // Because `fetch_sub` is already atomic, we do not need to synchronize with other threads
+            // unless we are going to delete the object. This same logic applies to the below
+            // `fetch_sub` to the `weak` count.
+            if self.inner().strong.fetch_sub(1, Release) != 1 { return }
 
-        // Destroy the data at this time, even though we may not free the box allocation itself
-        // (there may still be weak pointers lying around).
-        unsafe { drop(ptr::read(&self.inner().data)); }
-
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
+            // This fence is needed to prevent reordering of use of the data and deletion of the data.
+            // Because it is marked `Release`, the decreasing of the reference count synchronizes with
+            // this `Acquire` fence. This means that use of the data happens before decreasing the
+            // reference count, which happens before this fence, which happens before the deletion of
+            // the data.
+            //
+            // As explained in the [Boost documentation][1],
+            //
+            // > It is important to enforce any possible access to the object in one thread (through an
+            // > existing reference) to *happen before* deleting the object in a different thread. This
+            // > is achieved by a "release" operation after dropping a reference (any access to the
+            // > object through this reference must obviously happened before), and an "acquire"
+            // > operation before deleting the object.
+            //
+            // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
             atomic::fence(Acquire);
-            unsafe { deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(),
-                                min_align_of::<ArcInner<T>>()) }
+
+            // Destroy the data at this time, even though we may not free the box allocation itself
+            // (there may still be weak pointers lying around).
+            drop(ptr::read(&self.inner().data));
+
+            if self.inner().weak.fetch_sub(1, Release) == 1 {
+                atomic::fence(Acquire);
+                deallocate(ptr, size_of::<ArcInner<T>>(),
+                                min_align_of::<ArcInner<T>>())
+            }
         }
     }
 }
@@ -395,7 +401,7 @@ impl<T: Sync + Send> Weak<T> {
     #[inline]
     fn inner(&self) -> &ArcInner<T> {
         // See comments above for why this is "safe"
-        unsafe { &**self._ptr }
+        unsafe { &*self._ptr.get() }
     }
 }
 
@@ -452,17 +458,22 @@ impl<T: Sync + Send> Drop for Weak<T> {
     /// } // implicit drop
     /// ```
     fn drop(&mut self) {
-        let ptr = *self._ptr;
+        unsafe {
+            let ptr: &*mut T = mem::transmute(&self._ptr);
 
-        // see comments above for why this check is here
-        if ptr.is_null() { return }
+            // see comments above for why this check is here
+            let ptr = match NonZero::new(*ptr) {
+                None => return,
+                Some(ptr) => ptr,
+            };
 
-        // If we find out that we were the last weak pointer, then its time to deallocate the data
-        // entirely. See the discussion in Arc::drop() about the memory orderings
-        if self.inner().weak.fetch_sub(1, Release) == 1 {
-            atomic::fence(Acquire);
-            unsafe { deallocate(ptr as *mut u8, size_of::<ArcInner<T>>(),
-                                min_align_of::<ArcInner<T>>()) }
+            // If we find out that we were the last weak pointer, then its time to deallocate the data
+            // entirely. See the discussion in Arc::drop() about the memory orderings
+            if self.inner().weak.fetch_sub(1, Release) == 1 {
+                atomic::fence(Acquire);
+                deallocate(ptr, size_of::<ArcInner<T>>(),
+                                min_align_of::<ArcInner<T>>())
+            }
         }
     }
 }

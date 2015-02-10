@@ -23,6 +23,7 @@ use core::fmt;
 use core::hash;
 use core::iter::FromIterator;
 use core::mem;
+use core::nonzero::NonZero;
 use core::ops::{self, Deref, Add, Index};
 use core::ptr;
 use core::raw::Slice as RawSlice;
@@ -467,8 +468,11 @@ impl String {
         unsafe {
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
+            let data: NonZero<*const u8> =
+                mem::transmute(self.vec.as_ptr().offset(cur_len as isize));
+
             let slice = RawSlice {
-                data: self.vec.as_ptr().offset(cur_len as isize),
+                data: data,
                 len: 4,
             };
             let used = ch.encode_utf8(mem::transmute(slice)).unwrap_or(0);

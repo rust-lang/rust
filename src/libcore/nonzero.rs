@@ -10,25 +10,76 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 
+use intrinsics;
+use marker::Copy;
 use ops::Deref;
-use ptr::Unique;
+use option::Option;
+use ptr::PtrExt;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
-pub unsafe trait Zeroable {}
+pub unsafe trait Zeroable {
+    /// Returns `true` if the Zeroable item is zero.
+    fn is_zero(&self) -> bool;
+}
 
-unsafe impl<T> Zeroable for *const T {}
-unsafe impl<T> Zeroable for *mut T {}
-unsafe impl<T> Zeroable for Unique<T> { }
-unsafe impl Zeroable for int {}
-unsafe impl Zeroable for uint {}
-unsafe impl Zeroable for i8 {}
-unsafe impl Zeroable for u8 {}
-unsafe impl Zeroable for i16 {}
-unsafe impl Zeroable for u16 {}
-unsafe impl Zeroable for i32 {}
-unsafe impl Zeroable for u32 {}
-unsafe impl Zeroable for i64 {}
-unsafe impl Zeroable for u64 {}
+unsafe impl<T> Zeroable for *const T {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { self.is_null() }
+}
+
+unsafe impl<T> Zeroable for *mut T {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { self.is_null() }
+}
+
+unsafe impl Zeroable for int {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+unsafe impl Zeroable for uint {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for i8 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for u8 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for i16 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for u16 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for i32 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for u32 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for i64 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
+
+unsafe impl Zeroable for u64 {
+    #[inline(always)]
+    fn is_zero(&self) -> bool { *self == 0 }
+}
 
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
@@ -39,19 +90,34 @@ pub struct NonZero<T: Zeroable>(T);
 
 impl<T: Zeroable> NonZero<T> {
     /// Create an instance of NonZero with the provided value.
-    /// You must indeed ensure that the value is actually "non-zero".
     #[inline(always)]
-    pub unsafe fn new(inner: T) -> NonZero<T> {
-        NonZero(inner)
+    pub fn new(inner: T) -> Option<NonZero<T>> {
+        if inner.is_zero() {
+            Option::Some(NonZero(inner))
+        } else {
+            Option::None
+        }
+    }
+
+    /// Returns a reference to the inner value.
+    #[inline(always)]
+    pub fn get_ref(&self) -> &T {
+        unsafe {
+            let ret = &self.0;
+            intrinsics::assume(!ret.is_zero());
+            ret
+        }
     }
 }
 
-impl<T: Zeroable> Deref for NonZero<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref<'a>(&'a self) -> &'a T {
-        let NonZero(ref inner) = *self;
-        inner
+impl<T: Zeroable + Copy> NonZero<T> {
+    /// Returns a copy of the inner value.
+    #[inline(always)]
+    pub fn get(self) -> T {
+        unsafe {
+            let ret = self.0;
+            intrinsics::assume(!ret.is_zero());
+            ret
+        }
     }
 }

@@ -24,6 +24,7 @@
 use core::prelude::*;
 
 use core::char::{encode_utf8_raw, encode_utf16_raw};
+use core::nonzero::NonZero;
 use core::str::{char_range_at_raw, next_code_point};
 use core::raw::Slice as RawSlice;
 
@@ -206,10 +207,13 @@ impl Wtf8Buf {
         self.reserve(4);
 
         unsafe {
+            let data: NonZero<*const u8> =
+                NonZero::new(self.bytes.as_ptr().offset(cur_len as isize)).unwrap();
+
             // Attempt to not use an intermediate buffer by just pushing bytes
             // directly onto this string.
             let slice = RawSlice {
-                data: self.bytes.as_ptr().offset(cur_len as int),
+                data: data,
                 len: 4,
             };
             let used = encode_utf8_raw(code_point.value, mem::transmute(slice))
@@ -714,8 +718,11 @@ pub fn is_code_point_boundary(slice: &Wtf8, index: uint) -> bool {
 /// Copied from core::str::raw::slice_unchecked
 #[inline]
 pub unsafe fn slice_unchecked(s: &Wtf8, begin: uint, end: uint) -> &Wtf8 {
+    let data: NonZero<*const u8> =
+        NonZero::new(s.bytes.as_ptr().offset(begin as isize)).unwrap();
+
     mem::transmute(RawSlice {
-        data: s.bytes.as_ptr().offset(begin as int),
+        data: data,
         len: end - begin,
     })
 }

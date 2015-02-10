@@ -202,11 +202,11 @@ impl<T> Rc<T> {
                 // there is an implicit weak pointer owned by all the strong pointers, which
                 // ensures that the weak destructor never frees the allocation while the strong
                 // destructor is running, even if the weak pointer is stored inside the strong one.
-                _ptr: NonZero::new(transmute(box RcBox {
+                _ptr: transmute(box RcBox {
                     value: value,
                     strong: Cell::new(1),
                     weak: Cell::new(1)
-                })),
+                })
             }
         }
     }
@@ -282,7 +282,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
             let val = ptr::read(&*rc); // copy the contained object
             // destruct the box and skip our Drop
             // we can ignore the refcounts because we know we're unique
-            deallocate(*rc._ptr as *mut u8, size_of::<RcBox<T>>(),
+            deallocate(rc._ptr, size_of::<RcBox<T>>(),
                         min_align_of::<RcBox<T>>());
             forget(rc);
             Ok(val)
@@ -312,7 +312,7 @@ pub fn try_unwrap<T>(rc: Rc<T>) -> Result<T, Rc<T>> {
 #[unstable(feature = "alloc")]
 pub fn get_mut<'a, T>(rc: &'a mut Rc<T>) -> Option<&'a mut T> {
     if is_unique(rc) {
-        let inner = unsafe { &mut **rc._ptr };
+        let inner = unsafe { &mut *rc._ptr.get() };
         Some(&mut inner.value)
     } else {
         None
@@ -344,7 +344,7 @@ impl<T: Clone> Rc<T> {
         // pointer that will ever be returned to T. Our reference count is guaranteed to be 1 at
         // this point, and we required the `Rc<T>` itself to be `mut`, so we're returning the only
         // possible reference to the inner value.
-        let inner = unsafe { &mut **self._ptr };
+        let inner = unsafe { &mut *self._ptr.get() };
         &mut inner.value
     }
 }
@@ -394,20 +394,23 @@ impl<T> Drop for Rc<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = *self._ptr;
-            if !ptr.is_null() {
-                self.dec_strong();
-                if self.strong() == 0 {
-                    ptr::read(&**self); // destroy the contained object
+            let ptr: &*mut T = transmute(&self._ptr);
+            let ptr = match NonZero::new(*ptr) {
+                None => return,
+                Some(ptr) => ptr,
+            };
 
-                    // remove the implicit "strong weak" pointer now that we've destroyed the
-                    // contents.
-                    self.dec_weak();
+            self.dec_strong();
+            if self.strong() == 0 {
+                ptr::read(&**self); // destroy the contained object
 
-                    if self.weak() == 0 {
-                        deallocate(ptr as *mut u8, size_of::<RcBox<T>>(),
-                                   min_align_of::<RcBox<T>>())
-                    }
+                // remove the implicit "strong weak" pointer now that we've destroyed the
+                // contents.
+                self.dec_weak();
+
+                if self.weak() == 0 {
+                    deallocate(ptr, size_of::<RcBox<T>>(),
+                               min_align_of::<RcBox<T>>())
                 }
             }
         }
@@ -700,15 +703,18 @@ impl<T> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr = *self._ptr;
-            if !ptr.is_null() {
-                self.dec_weak();
-                // the weak count starts at 1, and will only go to zero if all the strong pointers
-                // have disappeared.
-                if self.weak() == 0 {
-                    deallocate(ptr as *mut u8, size_of::<RcBox<T>>(),
-                               min_align_of::<RcBox<T>>())
-                }
+            let ptr: &*mut T= transmute(&self._ptr);
+            let ptr = match NonZero::new(*ptr) {
+                None => return,
+                Some(ptr) => ptr,
+            };
+
+            self.dec_weak();
+            // the weak count starts at 1, and will only go to zero if all the strong pointers
+            // have disappeared.
+            if self.weak() == 0 {
+                deallocate(ptr, size_of::<RcBox<T>>(),
+                           min_align_of::<RcBox<T>>())
             }
         }
     }
@@ -777,9 +783,9 @@ impl<T> RcBoxPtr<T> for Rc<T> {
             // This allows the null check to be elided in the destructor if we
             // manipulated the reference count in the same function.
             if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
-                assume(!self._ptr.is_null());
+                assume(!self._ptr.get().is_null());
             }
-            &(**self._ptr)
+            &(*self._ptr.get())
         }
     }
 }
@@ -793,9 +799,9 @@ impl<T> RcBoxPtr<T> for Weak<T> {
             // This allows the null check to be elided in the destructor if we
             // manipulated the reference count in the same function.
             if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
-                assume(!self._ptr.is_null());
+                assume(!self._ptr.get().is_null());
             }
-            &(**self._ptr)
+            &(*self._ptr.get())
         }
     }
 }
