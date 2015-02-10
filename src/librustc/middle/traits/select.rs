@@ -705,14 +705,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         Ok(Some(candidate))
     }
 
-    fn pick_candidate_cache(&self,
-                            cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>)
-                            -> &SelectionCache<'tcx>
-    {
-        // High-level idea: we have to decide whether to consult the
-        // cache that is specific to this scope, or to consult the
-        // global cache. We want the cache that is specific to this
-        // scope whenever where clauses might affect the result.
+    fn pick_candidate_cache(&self) -> &SelectionCache<'tcx> {
+        // If there are any where-clauses in scope, then we always use
+        // a cache local to this particular scope. Otherwise, we
+        // switch to a global cache. We used to try and draw
+        // finer-grained distinctions, but that led to a serious of
+        // annoying and weird bugs like #22019 and #18290. This simple
+        // rule seems to be pretty clearly safe and also still retains
+        // a very high hit rate (~95% when compiling rustc).
+        if !self.param_env().caller_bounds.is_empty() {
+            return &self.param_env().selection_cache;
+        }
 
         // Avoid using the master cache during coherence and just rely
         // on the local cache. This effectively disables caching
@@ -725,28 +728,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             return &self.param_env().selection_cache;
         }
 
-        // If the trait refers to any parameters in scope, then use
-        // the cache of the param-environment.
-        if
-            cache_fresh_trait_pred.0.input_types().iter().any(
-                |&t| ty::type_has_self(t) || ty::type_has_params(t))
-        {
-            return &self.param_env().selection_cache;
-        }
-
-        // If the trait refers to unbound type variables, and there
-        // are where clauses in scope, then use the local environment.
-        // If there are no where clauses in scope, which is a very
-        // common case, then we can use the global environment.
-        // See the discussion in doc.rs for more details.
-        if
-            !self.param_env().caller_bounds.is_empty() &&
-            cache_fresh_trait_pred.0.input_types().iter().any(
-                |&t| ty::type_has_ty_infer(t))
-        {
-            return &self.param_env().selection_cache;
-        }
-
         // Otherwise, we can use the global cache.
         &self.tcx().selection_cache
     }
@@ -755,7 +736,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                              cache_fresh_trait_pred: &ty::PolyTraitPredicate<'tcx>)
                              -> Option<SelectionResult<'tcx, SelectionCandidate<'tcx>>>
     {
-        let cache = self.pick_candidate_cache(cache_fresh_trait_pred);
+        let cache = self.pick_candidate_cache();
         let hashmap = cache.hashmap.borrow();
         hashmap.get(&cache_fresh_trait_pred.0.trait_ref).map(|c| (*c).clone())
     }
@@ -764,7 +745,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                               cache_fresh_trait_pred: ty::PolyTraitPredicate<'tcx>,
                               candidate: SelectionResult<'tcx, SelectionCandidate<'tcx>>)
     {
-        let cache = self.pick_candidate_cache(&cache_fresh_trait_pred);
+        let cache = self.pick_candidate_cache();
         let mut hashmap = cache.hashmap.borrow_mut();
         hashmap.insert(cache_fresh_trait_pred.0.trait_ref.clone(), candidate);
     }
