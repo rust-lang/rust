@@ -1,6 +1,7 @@
 -include ../tools.mk
 
 ifndef IS_WINDOWS
+ifneq ($(UNAME),OpenBSD)
 all:
 	$(RUSTC) -O --emit asm attr.rs
 	! grep -q morestack $(TMPDIR)/attr.s
@@ -8,6 +9,10 @@ all:
 	grep -q morestack $(TMPDIR)/flag.s
 	$(RUSTC) -O --emit asm -C no-stack-check flag.rs
 	! grep -q morestack $(TMPDIR)/flag.s
+else
+# On OpenBSD, morestack isn't used as the segmented stacks are disabled
+all:
+endif
 else
 # On Windows we use __chkstk and it only appears in functions with large allocations,
 # so this test wouldn't be reliable.
