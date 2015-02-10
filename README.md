@@ -78,6 +78,7 @@ the direction the language is evolving in.
 * [0601-replace-be-with-become.md](text/0601-replace-be-with-become.md)
 * [0702-rangefull-expression.md](text/0702-rangefull-expression.md)
 * [0736-privacy-respecting-fru.md](text/0736-privacy-respecting-fru.md)
+* [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
