@@ -9,7 +9,7 @@ arguments, really powerful things are possible.
 Let's make a closure:
 
 ```{rust}
-let add_one = |&: x| { 1 + x };
+let add_one = |x| { 1 + x };
 
 println!("The sum of 5 plus 1 is {}.", add_one(5));
 ```
@@ -21,8 +21,8 @@ binding name and two parentheses, just like we would for a named function.
 Let's compare syntax. The two are pretty close:
 
 ```{rust}
-let add_one = |&: x: i32| -> i32 { 1 + x };
-fn  add_one      (x: i32) -> i32 { 1 + x }
+let add_one = |x: i32| -> i32 { 1 + x };
+fn  add_one   (x: i32) -> i32 { 1 + x }
 ```
 
 As you may have noticed, closures infer their argument and return types, so you
@@ -37,7 +37,7 @@ this:
 fn main() {
     let x: i32 = 5;
 
-    let printer = |&:| { println!("x is: {}", x); };
+    let printer = || { println!("x is: {}", x); };
 
     printer(); // prints "x is: 5"
 }
@@ -53,7 +53,7 @@ defined. The closure borrows any variables it uses, so this will error:
 fn main() {
     let mut x: i32 = 5;
 
-    let printer = |&:| { println!("x is: {}", x); };
+    let printer = || { println!("x is: {}", x); };
 
     x = 6; // error: cannot assign to `x` because it is borrowed
 }
@@ -80,7 +80,7 @@ fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
 }
 
 fn main() {
-    let square = |&: x: i32| { x * x };
+    let square = |x: i32| { x * x };
 
     twice(5, square); // evaluates to 50
 }
@@ -89,7 +89,7 @@ fn main() {
 Let's break the example down, starting with `main`:
 
 ```{rust}
-let square = |&: x: i32| { x * x };
+let square = |x: i32| { x * x };
 ```
 
 We've seen this before. We make a closure that takes an integer, and returns
@@ -97,7 +97,7 @@ its square.
 
 ```{rust}
 # fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 { f(x) + f(x) }
-# let square = |&: x: i32| { x * x };
+# let square = |x: i32| { x * x };
 twice(5, square); // evaluates to 50
 ```
 
@@ -184,8 +184,8 @@ fn compose<F, G>(x: i32, f: F, g: G) -> i32
 
 fn main() {
     compose(5,
-            |&: n: i32| { n + 42 },
-            |&: n: i32| { n * 2 }); // evaluates to 94
+            |n: i32| { n + 42 },
+            |n: i32| { n * 2 }); // evaluates to 94
 }
 ```
 
