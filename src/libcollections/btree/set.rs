@@ -481,7 +481,7 @@ impl<T: Ord> FromIterator<T> for BTreeSet<T> {
 }
 
 impl<T> IntoIterator for BTreeSet<T> {
-    type Iter = IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> IntoIter<T> {
         self.into_iter()
@@ -489,7 +489,7 @@ impl<T> IntoIterator for BTreeSet<T> {
 }
 
 impl<'a, T> IntoIterator for &'a BTreeSet<T> {
-    type Iter = Iter<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
