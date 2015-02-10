@@ -249,6 +249,7 @@ pub mod dynamic_lib;
 pub mod ffi;
 pub mod old_io;
 pub mod io;
+pub mod fs;
 pub mod os;
 pub mod env;
 pub mod path;
