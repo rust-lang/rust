@@ -72,6 +72,20 @@ if x == y {
 
 This will print `no`, because some of the values aren't equal.
 
+Note that the order of the values is considered when checking for equality,
+so the following example will also print `no`.
+
+```rust
+let x = (1, 2, 3);
+let y = (2, 1, 3);
+
+if x == y {
+    println!("yes");
+} else {
+    println!("no");
+}
+```
+
 One other use of tuples is to return multiple values from a function:
 
 ```rust

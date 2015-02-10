@@ -228,7 +228,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
     /// ```
     fn into_vec(self) -> Vec<u8>;
 
-    /// Returns an object that implements `Show` for printing paths
+    /// Returns an object that implements `Display` for printing paths
     ///
     /// # Example
     ///
@@ -244,7 +244,7 @@ pub trait GenericPath: Clone + GenericPathUnsafe {
         Display{ path: self, filename: false }
     }
 
-    /// Returns an object that implements `Show` for printing filenames
+    /// Returns an object that implements `Display` for printing filenames
     ///
     /// If there is no filename, nothing will be printed.
     ///

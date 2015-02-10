@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,7 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// Test that the type variable in the type(`Vec<_>`) of a closed over
+// variable does not interfere with type inference.
+
+fn f<F: FnMut()>(mut f: F) {
+    f();
+}
+
 fn main() {
-    let be = 0;
-    //~^ ERROR `be` is a reserved keyword
+    let mut v: Vec<_> = vec![];
+    f(|| v.push(0));
+    assert_eq!(v, vec![0]);
 }

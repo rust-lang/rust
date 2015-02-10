@@ -70,7 +70,7 @@ use arena::TypedArena;
 use std::borrow::{BorrowFrom, Cow};
 use std::cell::{Cell, RefCell};
 use std::cmp;
-use std::fmt::{self, Show};
+use std::fmt;
 use std::hash::{Hash, Writer, SipHasher, Hasher};
 use std::mem;
 use std::ops;

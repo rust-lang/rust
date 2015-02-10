@@ -206,12 +206,12 @@ impl<T> Arc<T> {
 /// Get the number of weak references to this value.
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn weak_count<T>(this: &Arc<T>) -> uint { this.inner().weak.load(SeqCst) - 1 }
+pub fn weak_count<T>(this: &Arc<T>) -> usize { this.inner().weak.load(SeqCst) - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn strong_count<T>(this: &Arc<T>) -> uint { this.inner().strong.load(SeqCst) }
+pub fn strong_count<T>(this: &Arc<T>) -> usize { this.inner().strong.load(SeqCst) }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Clone for Arc<T> {
@@ -649,7 +649,7 @@ mod tests {
         let (tx, rx) = channel();
 
         let _t = Thread::spawn(move || {
-            let arc_v: Arc<Vec<int>> = rx.recv().unwrap();
+            let arc_v: Arc<Vec<i32>> = rx.recv().unwrap();
             assert_eq!((*arc_v)[3], 4);
         });
 
@@ -818,5 +818,5 @@ mod tests {
 
     // Make sure deriving works with Arc<T>
     #[derive(Eq, Ord, PartialEq, PartialOrd, Clone, Debug, Default)]
-    struct Foo { inner: Arc<int> }
+    struct Foo { inner: Arc<i32> }
 }

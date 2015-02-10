@@ -10,7 +10,7 @@
 
 //! HTML formatting module
 //!
-//! This module contains a large number of `fmt::String` implementations for
+//! This module contains a large number of `fmt::Display` implementations for
 //! various types in `rustdoc::clean`. These implementations all currently
 //! assume that HTML output is desired, although it may be possible to redesign
 //! them in the future to instead emit any format desired.

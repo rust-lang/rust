@@ -90,7 +90,6 @@
 
 #![deny(missing_docs)]
 #![feature(collections)]
-#![feature(core)]
 #![feature(int_uint)]
 #![feature(slicing_syntax)]
 #![feature(staged_api)]
@@ -195,7 +194,7 @@ pub struct Matches {
 }
 
 /// The type returned when the command line does not conform to the
-/// expected format. Use the `Show` implementation to output detailed
+/// expected format. Use the `Debug` implementation to output detailed
 /// information.
 #[derive(Clone, PartialEq, Eq, Debug)]
 pub enum Fail {
@@ -545,7 +544,7 @@ impl Fail {
     /// Convert a `Fail` enum into an error string.
     #[unstable(feature = "rustc_private")]
     #[deprecated(since = "1.0.0",
-                 reason = "use `fmt::String` (`{}` format specifier)")]
+                 reason = "use `fmt::Display` (`{}` format specifier)")]
     pub fn to_err_msg(self) -> String {
         self.to_string()
     }
@@ -579,7 +578,7 @@ impl fmt::Display for Fail {
 /// `opt_str`, etc. to interrogate results.
 /// # Panics
 ///
-/// Returns `Err(Fail)` on failure: use the `Show` implementation of `Fail` to display
+/// Returns `Err(Fail)` on failure: use the `Debug` implementation of `Fail` to display
 /// information about it.
 pub fn getopts(args: &[String], optgrps: &[OptGroup]) -> Result {
     let opts: Vec<Opt> = optgrps.iter().map(|x| x.long_to_short()).collect();

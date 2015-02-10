@@ -1549,6 +1549,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     return Ok(ParameterBuiltin);
                 }
 
+                // Upvars are always local variables or references to
+                // local variables, and local variables cannot be
+                // unsized, so the closure struct as a whole must be
+                // Sized.
+                if bound == ty::BoundSized {
+                    return Ok(If(Vec::new()));
+                }
+
                 match self.closure_typer.closure_upvars(def_id, substs) {
                     Some(upvars) => {
                         Ok(If(upvars.iter().map(|c| c.ty).collect()))

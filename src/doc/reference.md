@@ -189,7 +189,7 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 |          |          |          |          |         |
 |----------|----------|----------|----------|---------|
-| abstract | alignof  | as       | be       | box     |
+| abstract | alignof  | as       | become   | box     |
 | break    | const    | continue | crate    | do      |
 | else     | enum     | extern   | false    | final   |
 | fn       | for      | if       | impl     | in      |
@@ -381,11 +381,13 @@ character (`\`), or a single _escape_. It is equivalent to a `u8` unsigned
 
 ##### Byte string literals
 
-A _byte string literal_ is a sequence of ASCII characters and _escapes_
-enclosed within two `U+0022` (double-quote) characters, with the exception of
-`U+0022` itself, which must be _escaped_ by a preceding `U+005C` character
-(`\`), or a _raw byte string literal_. It is equivalent to a `&'static [u8]`
-borrowed array of unsigned 8-bit integers.
+A non-raw _byte string literal_ is a sequence of ASCII characters and _escapes_,
+preceded by the characters `U+0062` (`b`) and `U+0022` (double-quote), and
+followed by the character `U+0022`. If the character `U+0022` is present within
+the literal, it must be _escaped_ by a preceding `U+005C` (`\`) character.
+Alternatively, a byte string literal can be a _raw byte string literal_, defined
+below. A byte string literal is equivalent to a `&'static [u8]` borrowed array
+of unsigned 8-bit integers.
 
 Some additional _escapes_ are available in either byte or non-raw byte string
 literals. An escape starts with a `U+005C` (`\`) and continues with one of the
@@ -1253,9 +1255,7 @@ fn my_err(s: &str) -> ! {
 We call such functions "diverging" because they never return a value to the
 caller. Every control path in a diverging function must end with a `panic!()` or
 a call to another diverging function on every control path. The `!` annotation
-does *not* denote a type. Rather, the result type of a diverging function is a
-special type called ⊥ ("bottom") that unifies with any type. Rust has no
-syntax for ⊥.
+does *not* denote a type.
 
 It might be necessary to declare a diverging function because as mentioned
 previously, the typechecker checks that every control path in a function ends
@@ -2354,8 +2354,8 @@ Supported traits for `derive` are:
 * `FromPrimitive`, to create an instance from a numeric primitive.
 * `Hash`, to iterate over the bytes in a data type.
 * `Rand`, to create a random instance of a data type.
-* `Show`, to format a value using the `{}` formatter.
-* `Zero`, to create a zero instance of a numeric data type.
+* `Debug`, to format a value using the `{:?}` formatter.
+* `Copy`, for "Plain Old Data" types which can be copied by simply moving bits.
 
 ### Compiler Features
 

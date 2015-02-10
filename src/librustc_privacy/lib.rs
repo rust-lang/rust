@@ -390,8 +390,8 @@ enum PrivacyResult {
 
 enum FieldName {
     UnnamedField(uint), // index
-    // FIXME #6993: change type (and name) from Ident to Name
-    NamedField(ast::Ident),
+    // (Name, not Ident, because struct fields are not macro-hygienic)
+    NamedField(ast::Name),
 }
 
 impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
@@ -665,9 +665,9 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                    name: FieldName) {
         let fields = ty::lookup_struct_fields(self.tcx, id);
         let field = match name {
-            NamedField(ident) => {
-                debug!("privacy - check named field {} in struct {:?}", ident.name, id);
-                fields.iter().find(|f| f.name == ident.name).unwrap()
+            NamedField(f_name) => {
+                debug!("privacy - check named field {} in struct {:?}", f_name, id);
+                fields.iter().find(|f| f.name == f_name).unwrap()
             }
             UnnamedField(idx) => &fields[idx]
         };
@@ -686,7 +686,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         };
         let msg = match name {
             NamedField(name) => format!("field `{}` of {} is private",
-                                        token::get_ident(name), struct_desc),
+                                        token::get_name(name), struct_desc),
             UnnamedField(idx) => format!("field #{} of {} is private",
                                          idx + 1, struct_desc),
         };
@@ -873,7 +873,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
         match expr.node {
             ast::ExprField(ref base, ident) => {
                 if let ty::ty_struct(id, _) = ty::expr_ty_adjusted(self.tcx, &**base).sty {
-                    self.check_field(expr.span, id, NamedField(ident.node));
+                    self.check_field(expr.span, id, NamedField(ident.node.name));
                 }
             }
             ast::ExprTupField(ref base, idx) => {
@@ -897,10 +897,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
             }
             ast::ExprStruct(_, ref fields, _) => {
                 match ty::expr_ty(self.tcx, expr).sty {
-                    ty::ty_struct(id, _) => {
-                        for field in &(*fields) {
-                            self.check_field(expr.span, id,
-                                             NamedField(field.ident.node));
+                    ty::ty_struct(ctor_id, _) => {
+                        // RFC 736: ensure all unmentioned fields are visible.
+                        // Rather than computing the set of unmentioned fields
+                        // (i.e. `all_fields - fields`), just check them all.
+                        let all_fields = ty::lookup_struct_fields(self.tcx, ctor_id);
+                        for field in all_fields {
+                            self.check_field(expr.span, ctor_id,
+                                             NamedField(field.name));
                         }
                     }
                     ty::ty_enum(_, _) => {
@@ -908,7 +912,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             def::DefVariant(_, variant_id, _) => {
                                 for field in fields {
                                     self.check_field(expr.span, variant_id,
-                                                     NamedField(field.ident.node));
+                                                     NamedField(field.ident.node.name));
                                 }
                             }
                             _ => self.tcx.sess.span_bug(expr.span,
@@ -973,7 +977,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     ty::ty_struct(id, _) => {
                         for field in fields {
                             self.check_field(pattern.span, id,
-                                             NamedField(field.node.ident));
+                                             NamedField(field.node.ident.name));
                         }
                     }
                     ty::ty_enum(_, _) => {
@@ -981,7 +985,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                             Some(&def::DefVariant(_, variant_id, _)) => {
                                 for field in fields {
                                     self.check_field(pattern.span, variant_id,
-                                                     NamedField(field.node.ident));
+                                                     NamedField(field.node.ident.name));
                                 }
                             }
                             _ => self.tcx.sess.span_bug(pattern.span,

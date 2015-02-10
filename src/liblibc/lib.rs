@@ -15,7 +15,6 @@
 #![cfg_attr(not(feature = "cargo-build"), feature(staged_api))]
 #![cfg_attr(not(feature = "cargo-build"), staged_api)]
 #![cfg_attr(not(feature = "cargo-build"), feature(core))]
-#![feature(int_uint)]
 #![feature(no_std)]
 #![no_std]
 #![doc(html_logo_url = "http://www.rust-lang.org/logos/rust-logo-128x128-blk-v2.png",
@@ -1905,7 +1904,7 @@ pub mod types {
                 #[repr(C)]
                 #[derive(Copy)] pub struct WSAPROTOCOLCHAIN {
                     pub ChainLen: c_int,
-                    pub ChainEntries: [DWORD; MAX_PROTOCOL_CHAIN as uint],
+                    pub ChainEntries: [DWORD; MAX_PROTOCOL_CHAIN as usize],
                 }
 
                 pub type LPWSAPROTOCOLCHAIN = *mut WSAPROTOCOLCHAIN;
@@ -1931,7 +1930,7 @@ pub mod types {
                     pub iSecurityScheme: c_int,
                     pub dwMessageSize: DWORD,
                     pub dwProviderReserved: DWORD,
-                    pub szProtocol: [u8; (WSAPROTOCOL_LEN as uint) + 1us],
+                    pub szProtocol: [u8; WSAPROTOCOL_LEN as usize + 1us],
                 }
 
                 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;

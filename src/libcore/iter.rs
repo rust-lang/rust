@@ -120,14 +120,15 @@ pub trait FromIterator<A> {
 
 /// Conversion into an `Iterator`
 pub trait IntoIterator {
-    type Iter: Iterator;
+    type IntoIter: Iterator;
 
     /// Consumes `Self` and returns an iterator over it
-    fn into_iter(self) -> Self::Iter;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn into_iter(self) -> Self::IntoIter;
 }
 
 impl<I> IntoIterator for I where I: Iterator {
-    type Iter = I;
+    type IntoIter = I;
 
     fn into_iter(self) -> I {
         self
@@ -967,10 +968,9 @@ pub trait IteratorExt: Iterator + Sized {
     /// Creates an iterator that clones the elements it yields. Useful for converting an
     /// Iterator<&T> to an Iterator<T>.
     #[unstable(feature = "core", reason = "recent addition")]
-    fn cloned<T, D>(self) -> Cloned<Self> where
-        Self: Iterator<Item=D>,
-        D: Deref<Target=T>,
-        T: Clone,
+    fn cloned(self) -> Cloned<Self> where
+        Self::Item: Deref,
+        <Self::Item as Deref>::Output: Clone,
     {
         Cloned { it: self }
     }
@@ -2646,13 +2646,7 @@ impl<A: Int> Iterator for RangeStepInclusive<A> {
 macro_rules! range_exact_iter_impl {
     ($($t:ty)*) => ($(
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl ExactSizeIterator for ::ops::Range<$t> {
-            #[inline]
-            fn len(&self) -> usize {
-                debug_assert!(self.end >= self.start);
-                (self.end - self.start) as usize
-            }
-        }
+        impl ExactSizeIterator for ::ops::Range<$t> { }
     )*)
 }
 
@@ -2673,9 +2667,12 @@ impl<A: Int> Iterator for ::ops::Range<A> {
 
     #[inline]
     fn size_hint(&self) -> (usize, Option<usize>) {
-        debug_assert!(self.end >= self.start);
-        let hint = (self.end - self.start).to_uint();
-        (hint.unwrap_or(0), hint)
+        if self.start >= self.end {
+            (0, Some(0))
+        } else {
+            let length = (self.end - self.start).to_uint();
+            (length.unwrap_or(0), length)
+        }
     }
 }
 
