@@ -24,11 +24,8 @@ use rustc::session::{self, config};
 use rustc::session::config::get_unstable_features_setting;
 use rustc::session::search_paths::{SearchPaths, PathKind};
 use rustc_driver::{driver, Compilation};
-use syntax::ast;
-use syntax::codemap::{CodeMap, dummy_spanned};
+use syntax::codemap::CodeMap;
 use syntax::diagnostic;
-use syntax::parse::token;
-use syntax::ptr::P;
 
 use core;
 use clean;
@@ -67,10 +64,7 @@ pub fn run(input: &str,
                                       span_diagnostic_handler);
 
     let mut cfg = config::build_configuration(&sess);
-    cfg.extend(cfgs.into_iter().map(|cfg_| {
-        let cfg_ = token::intern_and_get_ident(&cfg_);
-        P(dummy_spanned(ast::MetaWord(cfg_)))
-    }));
+    cfg.extend(config::parse_cfgspecs(cfgs).into_iter());
     let krate = driver::phase_1_parse_input(&sess, cfg, &input);
     let krate = driver::phase_2_configure_and_expand(&sess, krate,
                                                      "rustdoc-test", None)
