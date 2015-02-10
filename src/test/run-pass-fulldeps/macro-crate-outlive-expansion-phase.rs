@@ -12,8 +12,6 @@
 // ignore-stage1
 
 #![feature(plugin)]
-
-#[plugin] #[no_link]
-extern crate plugin_crate_outlive_expansion_phase;
+#![plugin(plugin_crate_outlive_expansion_phase)]
 
 pub fn main() {}

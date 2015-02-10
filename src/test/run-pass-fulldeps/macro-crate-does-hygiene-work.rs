@@ -15,9 +15,7 @@
 // uses `quote_expr!` to rearrange it should be hygiene-preserving.
 
 #![feature(plugin)]
-
-#[plugin] #[no_link]
-extern crate macro_crate_test;
+#![plugin(macro_crate_test)]
 
 fn main() {
     let x = 3;

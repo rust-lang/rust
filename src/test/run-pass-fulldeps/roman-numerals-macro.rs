@@ -12,9 +12,7 @@
 // ignore-stage1
 
 #![feature(plugin)]
-
-#[plugin] #[no_link]
-extern crate roman_numerals;
+#![plugin(roman_numerals)]
 
 pub fn main() {
     assert_eq!(rn!(MMXV), 2015);

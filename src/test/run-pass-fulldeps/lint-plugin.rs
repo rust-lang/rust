@@ -13,9 +13,7 @@
 // ignore-pretty
 
 #![feature(plugin)]
-
-#[plugin] #[no_link]
-extern crate lint_plugin_test;
+#![plugin(lint_plugin_test)]
 
 fn lintme() { } //~ WARNING item is named 'lintme'
 

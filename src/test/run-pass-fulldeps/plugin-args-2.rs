@@ -12,11 +12,8 @@
 // ignore-stage1
 
 #![feature(plugin)]
-
-#[no_link]
-#[plugin()]
-extern crate plugin_args;
+#![plugin(plugin_args())]
 
 fn main() {
-    assert_eq!(plugin_args!(), "#[plugin()]");
+    assert_eq!(plugin_args!(), "");
 }
