@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See doc.rs for documentation
+//! See the Book for more information.
 
 #![allow(non_camel_case_types)]
 

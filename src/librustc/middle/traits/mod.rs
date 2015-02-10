@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Trait Resolution. See doc.rs.
+//! Trait Resolution. See the Book for more.
 
 pub use self::SelectionError::*;
 pub use self::FulfillmentErrorCode::*;
