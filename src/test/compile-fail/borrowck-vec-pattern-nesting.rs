@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(advanced_slice_patterns)]
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 
 fn a() {
