@@ -123,6 +123,7 @@ pub trait IntoIterator {
     type IntoIter: Iterator;
 
     /// Consumes `Self` and returns an iterator over it
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn into_iter(self) -> Self::IntoIter;
 }
 
