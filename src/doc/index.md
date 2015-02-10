@@ -59,8 +59,7 @@ tools we have are really nice.
 [Cargo](http://crates.io) is Rust's package manager, and its website contains
 lots of good documentation.
 
-[The `rustdoc` manual](rustdoc.html) contains information about Rust's
-documentation tool.
+[`rustdoc`](book/documentation.html) is used to generate documentation for Rust code.
 
 # FAQs
 
