@@ -34,10 +34,10 @@ fn const_ptr() -> *const T {
 
 pub fn main() {
     let a = unsafe { *mut_ref() };
-    //~^ ERROR cannot move out of dereference of borrowed content
+    //~^ ERROR cannot move out of borrowed content
 
     let b = unsafe { *imm_ref() };
-    //~^ ERROR cannot move out of dereference of borrowed content
+    //~^ ERROR cannot move out of borrowed content
 
     let c = unsafe { *mut_ptr() };
     //~^ ERROR cannot move out of dereference of unsafe pointer

@@ -90,7 +90,6 @@
 
 #![deny(missing_docs)]
 #![feature(collections)]
-#![feature(core)]
 #![feature(int_uint)]
 #![feature(slicing_syntax)]
 #![feature(staged_api)]

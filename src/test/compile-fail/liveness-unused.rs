@@ -11,7 +11,6 @@
 #![deny(unused_variables)]
 #![deny(unused_assignments)]
 #![allow(dead_code, non_camel_case_types)]
-#![feature(core)]
 
 fn f1(x: isize) {
     //~^ ERROR unused variable: `x`
