@@ -32,54 +32,16 @@ unsafe impl<T> Zeroable for *mut T {
     fn is_zero(&self) -> bool { self.is_null() }
 }
 
-unsafe impl Zeroable for int {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-unsafe impl Zeroable for uint {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-
-unsafe impl Zeroable for i8 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
+macro_rules! zeroable_impl {
+    ($($t:ty)*) => ($(
+        unsafe impl Zeroable for $t {
+            #[inline(always)]
+            fn is_zero(&self) -> bool { *self == 0 }
+        }
+    )*)
 }
 
-unsafe impl Zeroable for u8 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-
-unsafe impl Zeroable for i16 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-
-unsafe impl Zeroable for u16 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-
-unsafe impl Zeroable for i32 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-
-unsafe impl Zeroable for u32 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-
-unsafe impl Zeroable for i64 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
-
-unsafe impl Zeroable for u64 {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { *self == 0 }
-}
+zeroable_impl! { isize usize i8 u8 i16 u16 i32 u32 i64 u64 }
 
 /// A wrapper type for raw pointers and integers that will never be
 /// NULL or 0 that might allow certain optimizations.
