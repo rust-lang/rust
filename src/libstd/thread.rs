@@ -156,6 +156,7 @@ use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
 use result::Result::{Err, Ok};
 use sync::{Mutex, Condvar, Arc};
+use str::Str;
 use string::String;
 use rt::{self, unwind};
 use old_io::{Writer, stdio};
