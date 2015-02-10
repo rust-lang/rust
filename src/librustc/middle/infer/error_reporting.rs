@@ -1076,7 +1076,8 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                         trait_ref: ast::TraitRef {
                             path: new_path,
                             ref_id: tr.ref_id,
-                        }
+                        },
+                        span: poly_tr.span,
                     }, modifier)
                 }
             }

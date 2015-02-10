@@ -526,7 +526,7 @@ pub fn instantiate_poly_trait_ref<'tcx>(
 {
     let mut projections = Vec::new();
 
-    // the trait reference introduces a binding level here, so
+    // The trait reference introduces a binding level here, so
     // we need to shift the `rscope`. It'd be nice if we could
     // do away with this rscope stuff and work this knowledge
     // into resolve_lifetimes, as we do with non-omitted

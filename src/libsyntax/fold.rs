@@ -806,10 +806,12 @@ pub fn noop_fold_where_predicate<T: Folder>(
                                  fld: &mut T)
                                  -> WherePredicate {
     match pred {
-        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bounded_ty,
+        ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate{bound_lifetimes,
+                                                                     bounded_ty,
                                                                      bounds,
                                                                      span}) => {
             ast::WherePredicate::BoundPredicate(ast::WhereBoundPredicate {
+                bound_lifetimes: fld.fold_lifetime_defs(bound_lifetimes),
                 bounded_ty: fld.fold_ty(bounded_ty),
                 bounds: bounds.move_map(|x| fld.fold_ty_param_bound(x)),
                 span: fld.new_span(span)
@@ -895,7 +897,8 @@ pub fn noop_fold_trait_ref<T: Folder>(p: TraitRef, fld: &mut T) -> TraitRef {
 pub fn noop_fold_poly_trait_ref<T: Folder>(p: PolyTraitRef, fld: &mut T) -> PolyTraitRef {
     ast::PolyTraitRef {
         bound_lifetimes: fld.fold_lifetime_defs(p.bound_lifetimes),
-        trait_ref: fld.fold_trait_ref(p.trait_ref)
+        trait_ref: fld.fold_trait_ref(p.trait_ref),
+        span: fld.new_span(p.span),
     }
 }
 
