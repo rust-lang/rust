@@ -32,6 +32,8 @@ use std::cmp;
 
 use alloc::heap;
 
+use format_helpers::*;
+
 static INITIAL_CAPACITY: uint = 7u; // 2^3 - 1
 static MINIMUM_CAPACITY: uint = 1u; // 2 - 1
 
@@ -1618,26 +1620,17 @@ impl<A> Extend<A> for RingBuf<A> {
     }
 }
 
-macro_rules! fmt_ring_buf {
-    ($($Trait:ident),*) => {
-        $(
-            impl<T: fmt::$Trait> fmt::$Trait for RingBuf<T> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    try!(write!(f, "RingBuf ["));
-
-                    for (i, e) in self.iter().enumerate() {
-                        if i != 0 { try!(write!(f, ", ")); }
-                        try!(fmt::$Trait::fmt(e, f));
-                    }
-
-                    write!(f, "]")
-                }
-            }
-        )*
-    }
+impl_seq_fmt! {
+    RingBuf, "RingBuf",
+    Debug    => seq_fmt_debug,
+    Display  => seq_fmt_display,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
-
-fmt_ring_buf! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[cfg(test)]
 mod tests {

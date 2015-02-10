@@ -64,7 +64,7 @@ macro_rules! impl_map_fmt {
         )+
     };
 
-    (Fixed $map:ident, $annotation:expr, $($Trait:ident => $fmt_fun:ident),+) => {
+    (FixedKey $map:ident, $annotation:expr, $($Trait:ident => $fmt_fun:ident),+) => {
         $(
             impl<T: fmt::$Trait> fmt::$Trait for $map <T> {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {

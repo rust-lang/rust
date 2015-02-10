@@ -515,7 +515,7 @@ impl<V: Ord> Ord for VecMap<V> {
 }
 
 impl_map_fmt! {
-    Fixed VecMap, "VecMap",
+    FixedKey VecMap, "VecMap",
     Debug    => map_fmt_debug,
     Display  => map_fmt_display,
     Octal    => map_fmt_octal,

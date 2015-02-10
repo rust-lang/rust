@@ -24,6 +24,8 @@ use core::ops::{BitOr, BitAnd, BitXor, Sub};
 use btree_map::{BTreeMap, Keys};
 use Bound;
 
+use format_helpers::*;
+
 // FIXME(conventions): implement bounded iterators
 
 /// A set based on a B-Tree.
@@ -590,26 +592,17 @@ impl<'a, 'b, T: Ord + Clone> BitOr<&'b BTreeSet<T>> for &'a BTreeSet<T> {
     }
 }
 
-macro_rules! fmt_btree_set {
-    ($($Trait:ident),*) => {
-        $(
-            impl<T: fmt::$Trait> fmt::$Trait for BTreeSet<T> {
-                fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    try!(write!(f, "BTreeSet {{"));
-
-                    for (i, x) in self.iter().enumerate() {
-                        if i != 0 { try!(write!(f, ", ")); }
-                        try!(fmt::$Trait::fmt(x, f));
-                    }
-
-                    write!(f, "}}")
-                }
-            }
-        )*
-    }
+impl_map_fmt! {
+    FixedKey BTreeSet, "BTreeSet",
+    Debug    => seq_fmt_debug,
+    Display  => seq_fmt_display,
+    Octal    => seq_fmt_octal,
+    Binary   => seq_fmt_binary,
+    LowerHex => seq_fmt_lower_hex,
+    UpperHex => seq_fmt_upper_hex,
+    LowerExp => seq_fmt_lower_exp,
+    UpperExp => seq_fmt_upper_exp
 }
-
-fmt_btree_set! { Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Iterator for Iter<'a, T> {
