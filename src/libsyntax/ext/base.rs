@@ -528,8 +528,6 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("cfg"),
                             builtin_normal_expander(
                                     ext::cfg::expand_cfg));
-    syntax_expanders.insert(intern("cfg_attr"),
-                            Modifier(box ext::cfg_attr::expand));
     syntax_expanders.insert(intern("trace_macros"),
                             builtin_normal_expander(
                                     ext::trace_macros::expand_trace_macros));

@@ -338,7 +338,6 @@ mod tests {
         assert!("".is_ascii());
         assert!("a".is_ascii());
         assert!(!"\u{2009}".is_ascii());
-
     }
 
     #[test]
@@ -346,13 +345,11 @@ mod tests {
         assert_eq!("url()URL()uRl()ürl".to_ascii_uppercase(), "URL()URL()URL()üRL");
         assert_eq!("hıKß".to_ascii_uppercase(), "HıKß");
 
-        let mut i = 0;
-        while i <= 500 {
+        for i in 0u32..501 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_uppercase(),
                        (from_u32(upper).unwrap()).to_string());
-            i += 1;
         }
     }
 
@@ -362,13 +359,11 @@ mod tests {
         // Dotted capital I, Kelvin sign, Sharp S.
         assert_eq!("HİKß".to_ascii_lowercase(), "hİKß");
 
-        let mut i = 0;
-        while i <= 500 {
+        for i in 0u32..501 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().to_ascii_lowercase(),
                        (from_u32(lower).unwrap()).to_string());
-            i += 1;
         }
     }
 
@@ -378,13 +373,11 @@ mod tests {
                    "URL()URL()URL()üRL".to_string());
         assert_eq!(("hıKß".to_string()).into_ascii_uppercase(), "HıKß");
 
-        let mut i = 0;
-        while i <= 500 {
+        for i in 0u32..501 {
             let upper = if 'a' as u32 <= i && i <= 'z' as u32 { i + 'A' as u32 - 'a' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().into_ascii_uppercase(),
                        (from_u32(upper).unwrap()).to_string());
-            i += 1;
         }
     }
 
@@ -395,13 +388,11 @@ mod tests {
         // Dotted capital I, Kelvin sign, Sharp S.
         assert_eq!(("HİKß".to_string()).into_ascii_lowercase(), "hİKß");
 
-        let mut i = 0;
-        while i <= 500 {
+        for i in 0u32..501 {
             let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
                         else { i };
             assert_eq!((from_u32(i).unwrap()).to_string().into_ascii_lowercase(),
                        (from_u32(lower).unwrap()).to_string());
-            i += 1;
         }
     }
 
@@ -415,14 +406,11 @@ mod tests {
         assert!(!"K".eq_ignore_ascii_case("k"));
         assert!(!"ß".eq_ignore_ascii_case("s"));
 
-        let mut i = 0;
-        while i <= 500 {
-            let c = i;
-            let lower = if 'A' as u32 <= c && c <= 'Z' as u32 { c + 'a' as u32 - 'A' as u32 }
-                        else { c };
+        for i in 0u32..501 {
+            let lower = if 'A' as u32 <= i && i <= 'Z' as u32 { i + 'a' as u32 - 'A' as u32 }
+                        else { i };
             assert!((from_u32(i).unwrap()).to_string().eq_ignore_ascii_case(
                     &from_u32(lower).unwrap().to_string()));
-            i += 1;
         }
     }
 }

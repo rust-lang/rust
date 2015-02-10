@@ -70,7 +70,6 @@
 #![feature(lang_items, unsafe_destructor)]
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
-#![feature(int_uint)]
 #![feature(unboxed_closures)]
 #![feature(core)]
 #![feature(hash)]

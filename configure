@@ -525,6 +525,7 @@ opt verify-install 1 "verify installed binaries work"
 opt dist-host-only 0 "only install bins for the host architecture"
 opt inject-std-version 1 "inject the current compiler version of libstd into programs"
 opt jemalloc 1 "build liballoc with jemalloc"
+opt llvm-version-check 1 "don't check if the LLVM version is supported, build anyway"
 
 valopt localstatedir "/var/lib" "local state directory"
 valopt sysconfdir "/etc" "install system configuration files"
@@ -796,7 +797,7 @@ then
     putvar CFG_ENABLE_CLANG
 fi
 
-if [ ! -z "$CFG_LLVM_ROOT" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
+if [ ! -z "$CFG_LLVM_ROOT" -a -z "$CFG_DISABLE_LLVM_VERSION_CHECK" -a -e "$CFG_LLVM_ROOT/bin/llvm-config" ]
 then
     step_msg "using custom LLVM at $CFG_LLVM_ROOT"
 

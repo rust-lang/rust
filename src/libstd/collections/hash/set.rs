@@ -840,7 +840,7 @@ impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    type Iter = Iter<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()
@@ -852,7 +852,7 @@ impl<T, S, H> IntoIterator for HashSet<T, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    type Iter = IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> IntoIter<T> {
         self.into_iter()

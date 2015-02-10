@@ -40,6 +40,18 @@ pub trait AstBuilder {
                 bindings: Vec<P<ast::TypeBinding>> )
         -> ast::Path;
 
+    fn qpath(&self, self_type: P<ast::Ty>,
+             trait_ref: P<ast::TraitRef>,
+             ident: ast::Ident )
+        -> P<ast::QPath>;
+    fn qpath_all(&self, self_type: P<ast::Ty>,
+                trait_ref: P<ast::TraitRef>,
+                ident: ast::Ident,
+                lifetimes: Vec<ast::Lifetime>,
+                types: Vec<P<ast::Ty>>,
+                bindings: Vec<P<ast::TypeBinding>> )
+        -> P<ast::QPath>;
+
     // types
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
 
@@ -102,6 +114,7 @@ pub trait AstBuilder {
     // expressions
     fn expr(&self, span: Span, node: ast::Expr_) -> P<ast::Expr>;
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr>;
+    fn expr_qpath(&self, span: Span, qpath: P<ast::QPath>) -> P<ast::Expr>;
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr>;
 
     fn expr_self(&self, span: Span) -> P<ast::Expr>;
@@ -330,6 +343,44 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
+    /// Constructs a qualified path.
+    ///
+    /// Constructs a path like `<self_type as trait_ref>::ident`.
+    fn qpath(&self,
+             self_type: P<ast::Ty>,
+             trait_ref: P<ast::TraitRef>,
+             ident: ast::Ident)
+             -> P<ast::QPath> {
+        self.qpath_all(self_type, trait_ref, ident, Vec::new(), Vec::new(), Vec::new())
+    }
+
+    /// Constructs a qualified path.
+    ///
+    /// Constructs a path like `<self_type as trait_ref>::ident<a, T, A=Bar>`.
+    fn qpath_all(&self,
+                 self_type: P<ast::Ty>,
+                 trait_ref: P<ast::TraitRef>,
+                 ident: ast::Ident,
+                 lifetimes: Vec<ast::Lifetime>,
+                 types: Vec<P<ast::Ty>>,
+                 bindings: Vec<P<ast::TypeBinding>> )
+                 -> P<ast::QPath> {
+        let segment = ast::PathSegment {
+            identifier: ident,
+            parameters: ast::AngleBracketedParameters(ast::AngleBracketedParameterData {
+                lifetimes: lifetimes,
+                types: OwnedSlice::from_vec(types),
+                bindings: OwnedSlice::from_vec(bindings),
+            })
+        };
+
+        P(ast::QPath {
+            self_type: self_type,
+            trait_ref: trait_ref,
+            item_path: segment,
+        })
+    }
+
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy {
         ast::MutTy {
             ty: ty,
@@ -552,6 +603,11 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
 
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr> {
         self.expr(path.span, ast::ExprPath(path))
+    }
+
+    /// Constructs a QPath expression.
+    fn expr_qpath(&self, span: Span, qpath: P<ast::QPath>) -> P<ast::Expr> {
+        self.expr(span, ast::ExprQPath(qpath))
     }
 
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr> {

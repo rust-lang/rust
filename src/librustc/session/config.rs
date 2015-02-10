@@ -83,7 +83,7 @@ pub struct Options {
     pub debuginfo: DebugInfoLevel,
     pub lint_opts: Vec<(String, lint::Level)>,
     pub describe_lints: bool,
-    pub output_types: Vec<OutputType> ,
+    pub output_types: Vec<OutputType>,
     // This was mutable for rustpkg, which updates search paths based on the
     // parsed code. It remains mutable in case its replacements wants to use
     // this.
@@ -1076,7 +1076,9 @@ pub fn parse_crate_types_from_list(list_list: Vec<String>) -> Result<Vec<CrateTy
                                        part));
                 }
             };
-            crate_types.push(new_part)
+            if !crate_types.contains(&new_part) {
+                crate_types.push(new_part)
+            }
         }
     }
 

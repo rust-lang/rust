@@ -1388,7 +1388,7 @@ impl<T> FromIterator<T> for Vec<T> {
 }
 
 impl<T> IntoIterator for Vec<T> {
-    type Iter = IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> IntoIter<T> {
         self.into_iter()
@@ -1396,7 +1396,7 @@ impl<T> IntoIterator for Vec<T> {
 }
 
 impl<'a, T> IntoIterator for &'a Vec<T> {
-    type Iter = slice::Iter<'a, T>;
+    type IntoIter = slice::Iter<'a, T>;
 
     fn into_iter(self) -> slice::Iter<'a, T> {
         self.iter()
@@ -1404,7 +1404,7 @@ impl<'a, T> IntoIterator for &'a Vec<T> {
 }
 
 impl<'a, T> IntoIterator for &'a mut Vec<T> {
-    type Iter = slice::IterMut<'a, T>;
+    type IntoIter = slice::IterMut<'a, T>;
 
     fn into_iter(mut self) -> slice::IterMut<'a, T> {
         self.iter_mut()

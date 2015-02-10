@@ -270,51 +270,8 @@ not, because both the trait and the type aren't in our crate.
 
 One last thing about traits: generic functions with a trait bound use
 *monomorphization* (*mono*: one, *morph*: form), so they are statically
-dispatched. What's that mean? Well, let's take a look at `print_area` again:
-
-```{rust,ignore}
-fn print_area<T: HasArea>(shape: T) {
-    println!("This shape has an area of {}", shape.area());
-}
-
-fn main() {
-    let c = Circle { ... };
-
-    let s = Square { ... };
-
-    print_area(c);
-    print_area(s);
-}
-```
-
-When we use this trait with `Circle` and `Square`, Rust ends up generating
-two different functions with the concrete type, and replacing the call sites with
-calls to the concrete implementations. In other words, you get something like
-this:
-
-```{rust,ignore}
-fn __print_area_circle(shape: Circle) {
-    println!("This shape has an area of {}", shape.area());
-}
-
-fn __print_area_square(shape: Square) {
-    println!("This shape has an area of {}", shape.area());
-}
-
-fn main() {
-    let c = Circle { ... };
-
-    let s = Square { ... };
-
-    __print_area_circle(c);
-    __print_area_square(s);
-}
-```
-
-The names don't actually change to this, it's just for illustration. But
-as you can see, there's no overhead of deciding which version to call here,
-hence *statically dispatched*. The downside is that we have two copies of
-the same function, so our binary is a little bit larger.
+dispatched. What's that mean? Check out the chapter on [static and dynamic
+dispatch](static-and-dynamic-dispatch.html) for more.
 
 ## Our `inverse` Example
 

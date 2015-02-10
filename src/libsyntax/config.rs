@@ -12,7 +12,7 @@ use attr::AttrMetaMethods;
 use diagnostic::SpanHandler;
 use fold::Folder;
 use {ast, fold, attr};
-use codemap::Spanned;
+use codemap::{Spanned, respan};
 use ptr::P;
 
 use util::small_vector::SmallVector;
@@ -26,6 +26,7 @@ struct Context<F> where F: FnMut(&[ast::Attribute]) -> bool {
 // Support conditional compilation by transforming the AST, stripping out
 // any items that do not belong in the current configuration
 pub fn strip_unconfigured_items(diagnostic: &SpanHandler, krate: ast::Crate) -> ast::Crate {
+    let krate = process_cfg_attr(diagnostic, krate);
     let config = krate.config.clone();
     strip_items(krate, |attrs| in_cfg(diagnostic, &config, attrs))
 }
@@ -280,4 +281,50 @@ fn in_cfg(diagnostic: &SpanHandler, cfg: &[P<ast::MetaItem>], attrs: &[ast::Attr
 
         attr::cfg_matches(diagnostic, cfg, &*mis[0])
     })
+}
+
+struct CfgAttrFolder<'a> {
+    diag: &'a SpanHandler,
+    config: ast::CrateConfig,
+}
+
+// Process `#[cfg_attr]`.
+fn process_cfg_attr(diagnostic: &SpanHandler, krate: ast::Crate) -> ast::Crate {
+    let mut fld = CfgAttrFolder {
+        diag: diagnostic,
+        config: krate.config.clone(),
+    };
+    fld.fold_crate(krate)
+}
+
+impl<'a> fold::Folder for CfgAttrFolder<'a> {
+    fn fold_attribute(&mut self, attr: ast::Attribute) -> Option<ast::Attribute> {
+        if !attr.check_name("cfg_attr") {
+            return fold::noop_fold_attribute(attr, self);
+        }
+
+        let (cfg, mi) = match attr.meta_item_list() {
+            Some([ref cfg, ref mi]) => (cfg, mi),
+            _ => {
+                self.diag.span_err(attr.span, "expected `#[cfg_attr(<cfg pattern>, <attr>)]`");
+                return None;
+            }
+        };
+
+        if attr::cfg_matches(self.diag, &self.config[], &cfg) {
+            Some(respan(mi.span, ast::Attribute_ {
+                id: attr::mk_attr_id(),
+                style: attr.node.style,
+                value: mi.clone(),
+                is_sugared_doc: false,
+            }))
+        } else {
+            None
+        }
+    }
+
+    // Need the ability to run pre-expansion.
+    fn fold_mac(&mut self, mac: ast::Mac) -> ast::Mac {
+        fold::noop_fold_mac(mac, self)
+    }
 }
