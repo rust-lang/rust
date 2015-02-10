@@ -1694,7 +1694,7 @@ impl<T> Drop for Vec<T> {
     fn drop(&mut self) {
         // This is (and should always remain) a no-op if the fields are
         // zeroed (when moving out, because of #[unsafe_no_drop_flag]).
-        if self.cap != 0 {
+        if self.cap != 0 && self.cap != mem::POST_DROP_USIZE {
             unsafe {
                 for x in &*self {
                     ptr::read(x);
@@ -1977,7 +1977,7 @@ impl<'a, T> ExactSizeIterator for Drain<'a, T> {}
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> Drop for Drain<'a, T> {
     fn drop(&mut self) {
-        // self.ptr == self.end == null if drop has already been called,
+        // self.ptr == self.end == mem::POST_DROP_USIZE if drop has already been called,
         // so we can use #[unsafe_no_drop_flag].
 
         // destroy the remaining elements

@@ -40,7 +40,7 @@ impl<T> MoveMap<T> for Vec<T> {
         for p in &mut self {
             unsafe {
                 // FIXME(#5016) this shouldn't need to zero to be safe.
-                ptr::write(p, f(ptr::read_and_zero(p)));
+                ptr::write(p, f(ptr::read_and_drop(p)));
             }
         }
         self

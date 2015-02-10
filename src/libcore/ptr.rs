@@ -230,6 +230,21 @@ pub unsafe fn read_and_zero<T>(dest: *mut T) -> T {
     tmp
 }
 
+/// Variant of read_and_zero that writes the specific drop-flag byte
+/// (which may be more apropriate than zero).
+#[inline(always)]
+#[unstable(feature = "core",
+           reason = "may play a larger role in std::ptr future extensions")]
+pub unsafe fn read_and_drop<T>(dest: *mut T) -> T {
+    // Copy the data out from `dest`:
+    let tmp = read(&*dest);
+
+    // Now mark `dest` as dropped:
+    write_bytes(dest, mem::POST_DROP_U8, 1);
+
+    tmp
+}
+
 /// Overwrites a memory location with the given value without reading or
 /// dropping the old value.
 ///

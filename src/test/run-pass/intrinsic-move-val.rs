@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 #![feature(intrinsics)]
 
-use std::mem::transmute;
+use std::mem::{self, transmute};
 
 mod rusti {
     extern "rust-intrinsic" {
@@ -30,6 +30,6 @@ pub fn main() {
         let mut z: *const uint = transmute(&x);
         rusti::move_val_init(&mut y, x);
         assert_eq!(*y, 1);
-        assert_eq!(*z, 0); // `x` is nulled out, not directly visible
+        assert_eq!(*z, mem::POST_DROP_USIZE); // `x` is nulled out, not directly visible
     }
 }
