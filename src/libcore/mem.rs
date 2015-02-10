@@ -158,6 +158,29 @@ pub unsafe fn zeroed<T>() -> T {
     intrinsics::init()
 }
 
+/// Create a value initialized to an unspecified series of bytes.
+///
+/// The byte sequence usually indicates that the value at the memory
+/// in question has been dropped. Thus, *if* T carries a drop flag,
+/// any associated destructor will not be run when the value falls out
+/// of scope.
+///
+/// Some code at one time used the `zeroed` function above to
+/// accomplish this goal.
+///
+/// This function is expected to be deprecated with the transition
+/// to non-zeroing drop.
+#[inline]
+#[unstable(feature = "filling_drop")]
+pub unsafe fn dropped<T>() -> T {
+    let mut x: T = uninitialized();
+    let p: *mut u8 = transmute(&mut x as *mut T);
+    for i in 0..size_of::<T>() {
+        *p.offset(i as isize) = POST_DROP_U8;
+    }
+    x
+}
+
 /// Create an uninitialized value.
 ///
 /// Care must be taken when using this function, if the type `T` has a destructor and the value
@@ -290,6 +313,40 @@ pub fn replace<T>(dest: &mut T, mut src: T) -> T {
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn drop<T>(_x: T) { }
+
+macro_rules! repeat_u8_as_u32 {
+    ($name:expr) => { (($name as u32) << 24 |
+                       ($name as u32) << 16 |
+                       ($name as u32) <<  8 |
+                       ($name as u32)) }
+}
+macro_rules! repeat_u8_as_u64 {
+    ($name:expr) => { ((repeat_u8_as_u32!($name) as u64) << 32 |
+                       (repeat_u8_as_u32!($name) as u64)) }
+}
+
+// NOTE: Keep synchronized with values used in librustc_trans::trans::adt.
+//
+// In particular, the POST_DROP_U8 marker must never equal the
+// DTOR_NEEDED_U8 marker.
+//
+// For a while pnkfelix was using 0xc1 here.
+// But having the sign bit set is a pain, so 0x1d is probably better.
+//
+// And of course, 0x00 brings back the old world of zero'ing on drop.
+#[cfg(not(stage0))] pub const POST_DROP_U8: u8 = 0x0;
+#[cfg(not(stage0))] pub const POST_DROP_U32: u32 = repeat_u8_as_u32!(POST_DROP_U8);
+#[cfg(not(stage0))] pub const POST_DROP_U64: u64 = repeat_u8_as_u64!(POST_DROP_U8);
+
+#[cfg(target_pointer_width = "32")]
+#[cfg(not(stage0))] pub const POST_DROP_USIZE: usize = POST_DROP_U32 as usize;
+#[cfg(target_pointer_width = "64")]
+#[cfg(not(stage0))] pub const POST_DROP_USIZE: usize = POST_DROP_U64 as usize;
+
+#[cfg(stage0)] pub const POST_DROP_U8: u8 = 0;
+#[cfg(stage0)] pub const POST_DROP_U32: u32 = 0;
+#[cfg(stage0)] pub const POST_DROP_U64: u64 = 0;
+#[cfg(stage0)] pub const POST_DROP_USIZE: usize = 0;
 
 /// Interprets `src` as `&U`, and then reads `src` without moving the contained value.
 ///

@@ -1146,20 +1146,27 @@ pub fn memcpy_ty<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     }
 }
 
-pub fn zero_mem<'blk, 'tcx>(cx: Block<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
+pub fn drop_done_fill_mem<'blk, 'tcx>(cx: Block<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
     if cx.unreachable.get() { return; }
-    let _icx = push_ctxt("zero_mem");
+    let _icx = push_ctxt("drop_done_fill_mem");
     let bcx = cx;
-    memzero(&B(bcx), llptr, t);
+    memfill(&B(bcx), llptr, t, adt::DTOR_DONE);
 }
 
-// Always use this function instead of storing a zero constant to the memory
-// in question. If you store a zero constant, LLVM will drown in vreg
+pub fn init_zero_mem<'blk, 'tcx>(cx: Block<'blk, 'tcx>, llptr: ValueRef, t: Ty<'tcx>) {
+    if cx.unreachable.get() { return; }
+    let _icx = push_ctxt("init_zero_mem");
+    let bcx = cx;
+    memfill(&B(bcx), llptr, t, 0);
+}
+
+// Always use this function instead of storing a constant byte to the memory
+// in question. e.g. if you store a zero constant, LLVM will drown in vreg
 // allocation for large data structures, and the generated code will be
 // awful. (A telltale sign of this is large quantities of
 // `mov [byte ptr foo],0` in the generated code.)
-fn memzero<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>) {
-    let _icx = push_ctxt("memzero");
+fn memfill<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>, byte: u8) {
+    let _icx = push_ctxt("memfill");
     let ccx = b.ccx;
 
     let llty = type_of::type_of(ccx, ty);
@@ -1172,7 +1179,7 @@ fn memzero<'a, 'tcx>(b: &Builder<'a, 'tcx>, llptr: ValueRef, ty: Ty<'tcx>) {
 
     let llintrinsicfn = ccx.get_intrinsic(&intrinsic_key);
     let llptr = b.pointercast(llptr, Type::i8(ccx).ptr_to());
-    let llzeroval = C_u8(ccx, 0);
+    let llzeroval = C_u8(ccx, byte as usize);
     let size = machine::llsize_of(ccx, llty);
     let align = C_i32(ccx, type_of::align_of(ccx, ty) as i32);
     let volatile = C_bool(ccx, false);

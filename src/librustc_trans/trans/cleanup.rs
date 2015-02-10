@@ -1015,7 +1015,7 @@ impl<'tcx> Cleanup<'tcx> for DropValue<'tcx> {
             glue::drop_ty(bcx, self.val, self.ty, debug_loc)
         };
         if self.zero {
-            base::zero_mem(bcx, self.val, self.ty);
+            base::drop_done_fill_mem(bcx, self.val, self.ty);
         }
         bcx
     }
