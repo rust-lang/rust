@@ -300,6 +300,7 @@ impl Token {
                    n == SELF_KEYWORD_NAME
                 || n == STATIC_KEYWORD_NAME
                 || n == SUPER_KEYWORD_NAME
+                || n == SELF_TYPE_KEYWORD_NAME
                 || STRICT_KEYWORD_START <= n
                 && n <= RESERVED_KEYWORD_FINAL
             },
@@ -317,6 +318,7 @@ impl Token {
                    n == SELF_KEYWORD_NAME
                 || n == STATIC_KEYWORD_NAME
                 || n == SUPER_KEYWORD_NAME
+                || n == SELF_TYPE_KEYWORD_NAME
                 || STRICT_KEYWORD_START <= n
                 && n <= STRICT_KEYWORD_FINAL
             },
@@ -488,10 +490,12 @@ macro_rules! declare_special_idents_and_keywords {(
 pub const SELF_KEYWORD_NAME: ast::Name = ast::Name(SELF_KEYWORD_NAME_NUM);
 const STATIC_KEYWORD_NAME: ast::Name = ast::Name(STATIC_KEYWORD_NAME_NUM);
 const SUPER_KEYWORD_NAME: ast::Name = ast::Name(SUPER_KEYWORD_NAME_NUM);
+const SELF_TYPE_KEYWORD_NAME: ast::Name = ast::Name(SELF_TYPE_KEYWORD_NAME_NUM);
 
 pub const SELF_KEYWORD_NAME_NUM: u32 = 1;
 const STATIC_KEYWORD_NAME_NUM: u32 = 2;
 const SUPER_KEYWORD_NAME_NUM: u32 = 3;
+const SELF_TYPE_KEYWORD_NAME_NUM: u32 = 10;
 
 // NB: leaving holes in the ident table is bad! a different ident will get
 // interned with the id from the hole, but it will be between the min and max
@@ -514,7 +518,7 @@ declare_special_idents_and_keywords! {
         (7,                          clownshoe_abi,          "__rust_abi");
         (8,                          opaque,                 "<opaque>");
         (9,                          unnamed_field,          "<unnamed_field>");
-        (10,                         type_self,              "Self");
+        (super::SELF_TYPE_KEYWORD_NAME_NUM, type_self,       "Self");
         (11,                         prelude_import,         "prelude_import");
     }
 
@@ -545,7 +549,8 @@ declare_special_idents_and_keywords! {
         (32,                         Return,     "return");
         // Static and Self are also special idents (prefill de-dupes)
         (super::STATIC_KEYWORD_NAME_NUM, Static, "static");
-        (super::SELF_KEYWORD_NAME_NUM,   Self,   "self");
+        (super::SELF_KEYWORD_NAME_NUM, SelfValue, "self");
+        (super::SELF_TYPE_KEYWORD_NAME_NUM, SelfType, "Self");
         (33,                         Struct,     "struct");
         (super::SUPER_KEYWORD_NAME_NUM, Super,   "super");
         (34,                         True,       "true");

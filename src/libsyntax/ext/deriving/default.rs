@@ -38,7 +38,7 @@ pub fn expand_deriving_default<F>(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: None,
                 args: Vec::new(),
-                ret_ty: Self,
+                ret_ty: Self_,
                 attributes: attrs,
                 combine_substructure: combine_substructure(box |a, b, c| {
                     default_substructure(a, b, c)

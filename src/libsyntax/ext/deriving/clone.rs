@@ -38,7 +38,7 @@ pub fn expand_deriving_clone<F>(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: Vec::new(),
-                ret_ty: Self,
+                ret_ty: Self_,
                 attributes: attrs,
                 combine_substructure: combine_substructure(box |c, s, sub| {
                     cs_clone("Clone", c, s, sub)
