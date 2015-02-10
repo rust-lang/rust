@@ -75,6 +75,7 @@ the direction the language is evolving in.
 * [0550-macro-future-proofing.md](text/0550-macro-future-proofing.md)
 * [0587-fn-return-should-be-an-associated-type.md](text/0587-fn-return-should-be-an-associated-type.md)
 * [0702-rangefull-expression.md](text/0702-rangefull-expression.md)
+* [0736-privacy-respecting-fru.md](text/0736-privacy-respecting-fru.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents
