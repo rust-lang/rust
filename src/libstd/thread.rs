@@ -156,6 +156,7 @@ use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
 use result::Result::{Err, Ok};
 use sync::{Mutex, Condvar, Arc};
+use str::Str;
 use string::String;
 use rt::{self, unwind};
 use old_io::{Writer, stdio};
@@ -279,6 +280,10 @@ impl Builder {
             let my_stack_bottom = my_stack_top - stack_size + 1024;
             unsafe {
                 stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
+            }
+            match their_thread.name() {
+                Some(name) => unsafe { imp::set_name(name.as_slice()); },
+                None => {}
             }
             thread_info::set(
                 (my_stack_bottom, my_stack_top),
