@@ -656,7 +656,7 @@ impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
 }
 
 impl<T: Ord> IntoIterator for BinaryHeap<T> {
-    type Iter = IntoIter<T>;
+    type IntoIter = IntoIter<T>;
 
     fn into_iter(self) -> IntoIter<T> {
         self.into_iter()
@@ -664,7 +664,7 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
 }
 
 impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
-    type Iter = Iter<'a, T>;
+    type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {
         self.iter()

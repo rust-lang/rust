@@ -1377,7 +1377,7 @@ impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    type Iter = Iter<'a, K, V>;
+    type IntoIter = Iter<'a, K, V>;
 
     fn into_iter(self) -> Iter<'a, K, V> {
         self.iter()
@@ -1389,7 +1389,7 @@ impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    type Iter = IterMut<'a, K, V>;
+    type IntoIter = IterMut<'a, K, V>;
 
     fn into_iter(mut self) -> IterMut<'a, K, V> {
         self.iter_mut()
@@ -1401,7 +1401,7 @@ impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    type Iter = IntoIter<K, V>;
+    type IntoIter = IntoIter<K, V>;
 
     fn into_iter(self) -> IntoIter<K, V> {
         self.into_iter()
