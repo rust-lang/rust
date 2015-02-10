@@ -189,7 +189,7 @@ grammar as double-quoted strings. Other tokens have exact rules given.
 
 |          |          |          |          |         |
 |----------|----------|----------|----------|---------|
-| abstract | alignof  | as       | be       | box     |
+| abstract | alignof  | as       | become   | box     |
 | break    | const    | continue | crate    | do      |
 | else     | enum     | extern   | false    | final   |
 | fn       | for      | if       | impl     | in      |
