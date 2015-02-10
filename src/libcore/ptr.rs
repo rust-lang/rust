@@ -522,21 +522,21 @@ impl<T> PartialOrd for *mut T {
 /// Useful for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
 #[unstable(feature = "core", reason = "recently added to this module")]
-pub struct Unique<T>(pub *mut T);
+pub struct Unique<T: ?Sized>(pub *mut T);
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
 #[unstable(feature = "core", reason = "recently added to this module")]
-unsafe impl<T:Send> Send for Unique<T> { }
+unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 
 /// `Unique` pointers are `Sync` if `T` is `Sync` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
 /// unenforced by the type system; the abstraction using the
 /// `Unique` must enforce it.
 #[unstable(feature = "core", reason = "recently added to this module")]
-unsafe impl<T:Sync> Sync for Unique<T> { }
+unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
 impl<T> Unique<T> {
     /// Returns a null Unique.
