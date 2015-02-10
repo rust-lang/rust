@@ -723,7 +723,7 @@ extern "system" {
 ///     println!("{}", argument);
 /// }
 /// ```
-#[deprecated(since = "1.0.0", reason = "use env::args instead")]
+#[deprecated(since = "1.0.0", reason = "use std::env::args() instead")]
 #[unstable(feature = "os")]
 pub fn args() -> Vec<String> {
     real_args()
