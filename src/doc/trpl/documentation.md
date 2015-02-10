@@ -1,4 +1,4 @@
-% Rust Documentation
+% Documentation
 
 `rustdoc` is the built-in tool for generating documentation. It integrates
 with the compiler to provide accurate hyperlinking between usage of types and
@@ -294,3 +294,26 @@ Documentation` on the first line).
 Like with a Rust crate, the `--test` argument will run the code
 examples to check they compile, and obeys any `--test-args` flags. The
 tests are named after the last `#` heading.
+
+# Re-exports
+
+Rustdoc will show the documentation for a publc re-export in both places:
+
+```{rust,ignore}
+extern crate foo;
+
+pub use foo::bar;
+```
+
+This will create documentation for `bar` both inside the documentation for
+the crate `foo`, as well as the documentation for your crate. It will use
+the same documentation in both places.
+
+This behavior can be supressed with `no_inline`:
+
+```{rust,ignore}
+extern crate foo;
+
+#[doc(no_inline)]
+pub use foo::bar;
+```
