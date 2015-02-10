@@ -222,12 +222,11 @@ extern "rust-intrinsic" {
 
     /// Unsafely transforms a value of one type into a value of another type.
     ///
-    /// Both types must have the same size and alignment, and this guarantee
-    /// is enforced at compile-time.
+    /// Both types must have the same size.
     ///
     /// # Examples
     ///
-    /// ```rust
+    /// ```
     /// use std::mem;
     ///
     /// let v: &[u8] = unsafe { mem::transmute("L") };
