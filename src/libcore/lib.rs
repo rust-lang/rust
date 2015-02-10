@@ -141,6 +141,10 @@ pub mod hash;
 pub mod fmt;
 pub mod error;
 
+#[doc(primitive = "bool")]
+mod bool {
+}
+
 // note: does not need to be public
 mod tuple;
 mod array;

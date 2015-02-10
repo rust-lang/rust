@@ -157,7 +157,7 @@ token : simple_token | ident | literal | symbol | whitespace token ;
 
 |          |          |          |          |        |
 |----------|----------|----------|----------|--------|
-| abstract | alignof  | as       | be       | box    |
+| abstract | alignof  | as       | become   | box    |
 | break    | const    | continue | crate    | do     |
 | else     | enum     | extern   | false    | final  |
 | fn       | for      | if       | impl     | in     |

@@ -1,9 +1,7 @@
 -include ../tools.mk
 
 ifndef IS_WINDOWS
-ifneq ($(shell uname),Darwin)
-	EXTRAFLAGS := -lm -lrt -ldl -lpthread
-endif
+EXTRAFLAGS := $(EXTRACFLAGS)
 endif
 
 # FIXME: ignore freebsd
