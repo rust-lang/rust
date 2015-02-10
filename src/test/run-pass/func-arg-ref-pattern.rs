@@ -15,6 +15,7 @@
 // pattern.
 
 #![allow(unknown_features)]
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 
 fn getaddr(box ref x: Box<uint>) -> *const uint {

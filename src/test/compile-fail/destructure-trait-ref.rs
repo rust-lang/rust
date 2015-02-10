@@ -11,6 +11,7 @@
 // The regression test for #15031 to make sure destructuring trait
 // reference work properly.
 
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 
 trait T {}

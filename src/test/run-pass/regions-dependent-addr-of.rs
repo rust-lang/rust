@@ -12,6 +12,7 @@
 // Issue #3148.
 
 #![allow(unknown_features)]
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 
 struct A {
