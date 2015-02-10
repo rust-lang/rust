@@ -167,3 +167,12 @@ fn test_set_memory() {
     unsafe { set_memory(ptr, 5u8, xs.len()); }
     assert!(xs == [5u8; 20]);
 }
+
+#[test]
+fn test_unsized_unique() {
+    let xs: &mut [_] = &mut [1, 2, 3];
+    let ptr = Unique(xs as *mut [_]);
+    let ys = unsafe { &mut *ptr.0 };
+    let zs: &mut [_] = &mut [1, 2, 3];
+    assert!(ys == zs);
+}
