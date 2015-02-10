@@ -844,7 +844,7 @@ fn expand_arm(arm: ast::Arm, fld: &mut MacroExpander) -> ast::Arm {
         arm.guard.map(|g| fld.fold_expr(rename_fld.fold_expr(g)));
     let rewritten_body = fld.fold_expr(rename_fld.fold_expr(arm.body));
     ast::Arm {
-        attrs: arm.attrs.move_map(|x| fld.fold_attribute(x)),
+        attrs: fold::fold_attrs(arm.attrs, fld),
         pats: rewritten_pats,
         guard: rewritten_guard,
         body: rewritten_body,
@@ -1273,7 +1273,7 @@ fn expand_method(m: P<ast::Method>, fld: &mut MacroExpander) -> SmallVector<P<as
             let (rewritten_fn_decl, rewritten_body)
                 = expand_and_rename_fn_decl_and_block(decl, body, fld);
             SmallVector::one(P(ast::Method {
-                    attrs: m.attrs.move_map(|a| fld.fold_attribute(a)),
+                    attrs: fold::fold_attrs(m.attrs, fld),
                     id: id,
                     span: fld.new_span(m.span),
                     node: ast::MethDecl(fld.fold_ident(ident),
