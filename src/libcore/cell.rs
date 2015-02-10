@@ -1,4 +1,4 @@
-// Copyright 2012-2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -151,7 +151,7 @@ use option::Option::{None, Some};
 
 /// A mutable memory location that admits only `Copy` data.
 ///
-/// See the [module-level documentation](../index.html) for more.
+/// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Cell<T> {
     value: UnsafeCell<T>,
@@ -259,7 +259,7 @@ impl<T:PartialEq + Copy> PartialEq for Cell<T> {
 
 /// A mutable memory location with dynamically checked borrow rules
 ///
-/// See the [module-level documentation](../index.html) for more.
+/// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefCell<T> {
     value: UnsafeCell<T>,
@@ -534,7 +534,7 @@ impl<'b> Clone for BorrowRef<'b> {
 /// Wraps a borrowed reference to a value in a `RefCell` box.
 /// A wrapper type for an immutably borrowed value from a `RefCell<T>`.
 ///
-/// See the [module-level documentation](../index.html) for more.
+/// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Ref<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
@@ -595,7 +595,7 @@ impl<'b> BorrowRefMut<'b> {
 
 /// A wrapper type for a mutably borrowed value from a `RefCell<T>`.
 ///
-/// See the [module-level documentation](../index.html) for more.
+/// See the [module-level documentation](index.html) for more.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct RefMut<'b, T:'b> {
     // FIXME #12808: strange name to try to avoid interfering with
