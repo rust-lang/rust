@@ -84,6 +84,15 @@ impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool { self.curr.is_none() }
     /// Return the next token. EFFECT: advances the string_reader.
     fn next_token(&mut self) -> TokenAndSpan {
+        if let Some(pos) = self.complete_at {
+            if self.peek_span.lo >= pos {
+                self.complete_at = None;
+                return TokenAndSpan {
+                    tok: token::GenerateCompletion,
+                    sp: codemap::mk_sp(pos, pos),
+                }
+            }
+        }
         let ret_val = TokenAndSpan {
             tok: replace(&mut self.peek_tok, token::Underscore),
             sp: self.peek_span,

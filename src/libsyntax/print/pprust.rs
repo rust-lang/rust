@@ -294,6 +294,16 @@ pub fn token_to_string(tok: &Token) -> String {
 
         token::SpecialVarNt(var)    => format!("${}", var.as_str()),
 
+        // A proofreading mark is chosen, because the compiler is proofreading
+        // your code.
+        //
+        // U+2038 CARET or U+2041 CARET INSERTION POINT would be better,
+        // but both have poor font support. Neither are supported by
+        // Courier New, the default monospaced font on Windows, for example.
+        token::GenerateCompletion => {
+            "\u{B6}".to_string() // PILCROW SIGN
+        }
+
         token::Interpolated(ref nt) => match *nt {
             token::NtExpr(ref e)  => expr_to_string(&**e),
             token::NtMeta(ref e)  => meta_item_to_string(&**e),
