@@ -25,7 +25,7 @@ use self::Message::*;
 use core::prelude::*;
 
 use core::cmp;
-use core::int;
+use core::isize;
 use thread::Thread;
 
 use sync::atomic::{AtomicIsize, AtomicUsize, Ordering, AtomicBool};
@@ -33,11 +33,11 @@ use sync::mpsc::Receiver;
 use sync::mpsc::blocking::{self, SignalToken};
 use sync::mpsc::spsc_queue as spsc;
 
-const DISCONNECTED: int = int::MIN;
+const DISCONNECTED: isize = isize::MIN;
 #[cfg(test)]
-const MAX_STEALS: int = 5;
+const MAX_STEALS: isize = 5;
 #[cfg(not(test))]
-const MAX_STEALS: int = 1 << 20;
+const MAX_STEALS: isize = 1 << 20;
 
 pub struct Packet<T> {
     queue: spsc::Queue<Message<T>>, // internal queue for all message

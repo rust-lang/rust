@@ -34,7 +34,7 @@ use ptr::PtrExt;
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};
-use uint;
+use usize;
 
 macro_rules! delegate_iter {
     (exact $te:ty : $ti:ty) => {
@@ -783,7 +783,7 @@ impl TwoWaySearcher {
                 byteset: byteset,
 
                 position: 0,
-                memory: uint::MAX // Dummy value to signify that the period is long
+                memory: usize::MAX // Dummy value to signify that the period is long
             }
         }
     }
@@ -911,7 +911,7 @@ impl Searcher {
             Naive(NaiveSearcher::new())
         } else {
             let searcher = TwoWaySearcher::new(needle);
-            if searcher.memory == uint::MAX { // If the period is long
+            if searcher.memory == usize::MAX { // If the period is long
                 TwoWayLong(searcher)
             } else {
                 TwoWay(searcher)

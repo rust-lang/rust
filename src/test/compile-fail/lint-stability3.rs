@@ -8,19 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(simd, core)]
-#![allow(dead_code)]
+// aux-build:lint_stability.rs
+// error-pattern: use of deprecated item
 
-use std::simd::f32x4;
+#![deny(deprecated)]
+#![allow(warnings)]
 
-#[simd] #[derive(Copy)] #[repr(C)] struct LocalSimd(u8, u8);
+#[macro_use]
+extern crate lint_stability;
 
-extern {
-    fn foo() -> f32x4; //~ ERROR use of SIMD type
-    fn bar(x: f32x4); //~ ERROR use of SIMD type
+use lint_stability::*;
 
-    fn baz() -> LocalSimd; //~ ERROR use of SIMD type
-    fn qux(x: LocalSimd); //~ ERROR use of SIMD type
+fn main() {
+    macro_test_arg_nested!(deprecated_text);
 }
 
-fn main() {}

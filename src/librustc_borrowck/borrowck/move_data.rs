@@ -24,7 +24,7 @@ use rustc::util::nodemap::{FnvHashMap, NodeSet};
 use rustc::util::ppaux::Repr;
 use std::cell::RefCell;
 use std::rc::Rc;
-use std::uint;
+use std::usize;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::codemap::Span;
@@ -92,7 +92,7 @@ impl Clone for MovePathIndex {
 
 #[allow(non_upper_case_globals)]
 static InvalidMovePathIndex: MovePathIndex =
-    MovePathIndex(uint::MAX);
+    MovePathIndex(usize::MAX);
 
 /// Index into `MoveData.moves`, used like a pointer
 #[derive(Copy, PartialEq)]
@@ -106,7 +106,7 @@ impl MoveIndex {
 
 #[allow(non_upper_case_globals)]
 static InvalidMoveIndex: MoveIndex =
-    MoveIndex(uint::MAX);
+    MoveIndex(usize::MAX);
 
 pub struct MovePath<'tcx> {
     /// Loan path corresponding to this move path
