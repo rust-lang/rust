@@ -282,6 +282,7 @@
 use self::LabelText::*;
 
 use std::borrow::IntoCow;
+use std::fmt;
 use std::old_io;
 use std::string::CowString;
 use std::vec::CowVec;
@@ -418,12 +419,116 @@ pub trait Labeller<'a,N,E> {
         LabelStr(self.node_id(n).name)
     }
 
+    fn node_attrs(&self, _: &N) -> NodeAttributes {
+        NodeAttributes::default()
+    }
+
     /// Maps `e` to a label that will be used in the rendered output.
     /// The label need not be unique, and may be the empty string; the
     /// default is in fact the empty string.
-    fn edge_label(&'a self, e: &E) -> LabelText<'a> {
-        let _ignored = e;
+    fn edge_label(&'a self, _: &E) -> LabelText<'a> {
         LabelStr("".into_cow())
+    }
+}
+
+#[derive(Copy,Clone)]
+pub enum NodeShape {
+    Text,
+    Ellipse,
+    Oval,
+    Circle,
+    Egg,
+    Triangle,
+    Box,
+    Diamond,
+    Trapezium,
+    Parallelogram,
+    House,
+    Hexagon,
+    Octagon,
+    Note,
+    Tab,
+    Polygon {
+        sides: u8,
+        regular: bool
+    }
+}
+
+#[derive(Copy,Clone)]
+pub enum NodeStyle {
+    Filled,
+    Solid,
+    Dashed,
+    Dotted,
+    Bold,
+    Invis
+}
+
+#[derive(Copy,Clone)]
+pub struct NodeAttributes {
+    pub shape: NodeShape,
+    pub color: &'static str,
+    pub fillcolor: Option<&'static str>,
+    pub fontcolor: &'static str,
+    pub style: NodeStyle,
+}
+
+impl NodeAttributes {
+    pub fn default() -> NodeAttributes {
+        NodeAttributes {
+            shape: NodeShape::Ellipse,
+            color: "black",
+            fillcolor: None,
+            fontcolor: "black",
+            style: NodeStyle::Solid,
+        }
+    }
+}
+
+impl fmt::Display for NodeAttributes {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        use self::NodeShape::*;
+        use self::NodeStyle::*;
+
+        try!(f.write_str("shape="));
+        match self.shape {
+            Text => try!(f.write_str("text")),
+            Ellipse => try!(f.write_str("ellipse")),
+            Oval => try!(f.write_str("oval")),
+            Circle => try!(f.write_str("circle")),
+            Egg => try!(f.write_str("egg")),
+            Triangle => try!(f.write_str("triangle")),
+            Box => try!(f.write_str("box")),
+            Diamond => try!(f.write_str("diamond")),
+            Trapezium => try!(f.write_str("trapezium")),
+            Parallelogram => try!(f.write_str("parallelogram")),
+            House => try!(f.write_str("house")),
+            Hexagon => try!(f.write_str("hexagon")),
+            Octagon => try!(f.write_str("octagon")),
+            Note => try!(f.write_str("note")),
+            Tab => try!(f.write_str("tab")),
+            Polygon { sides, regular } => {
+                try!(f.write_str("polygon,"));
+                try!(write!(f, "sides={}", sides));
+                try!(write!(f, "regular={}", if regular { 1 } else { 0 }));
+            }
+        }
+
+        try!(write!(f, ",color={}", self.color));
+        if let Some(color) = self.fillcolor {
+            try!(write!(f, ",fillcolor={}", color));
+        }
+        try!(write!(f, ",fontcolor={}", self.fontcolor));
+
+        try!(f.write_str(",style="));
+        match self.style {
+            Filled => f.write_str("filled"),
+            Solid  => f.write_str("solid"),
+            Dashed => f.write_str("dashed"),
+            Dotted => f.write_str("dotted"),
+            Bold   => f.write_str("bold"),
+            Invis  => f.write_str("invis"),
+        }
     }
 }
 
@@ -561,8 +666,9 @@ pub fn render_opts<'a, N:Clone+'a, E:Clone+'a, G:Labeller<'a,N,E>+GraphWalk<'a,N
             try!(writeln(w, &[id.as_slice(), ";"]));
         } else {
             let escaped = g.node_label(n).escape();
-            try!(writeln(w, &[id.as_slice(),
-                              "[label=\"", &escaped, "\"];"]));
+            let attrs = g.node_attrs(n);
+            try!(write!(w, "{}[label=\"{}\",{}];\n",
+                        id.as_slice(), &escaped, attrs));
         }
     }
 

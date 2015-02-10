@@ -155,7 +155,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
                                 attrs: vec![],
                                 pats: vec![pat_under],
                                 guard: Some(cond),
-                                body: fld.cx.expr_block(then)
+                                body: fld.cx.expr_block(then),
                             });
                             elseopt.map(|elseopt| (elseopt, true))
                         }

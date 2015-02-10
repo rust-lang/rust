@@ -957,7 +957,9 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         let mut mode = Unknown;
         self.determine_pat_move_mode(cmt_discr.clone(), pat, &mut mode);
         let mode = mode.match_mode();
-        self.walk_pat(cmt_discr, pat, mode);
+
+        self.walk_pat(cmt_discr.clone(), pat, mode);
+
     }
 
     /// Identifies any bindings within `pat` and accumulates within
@@ -1006,6 +1008,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         let typer = self.typer;
         let def_map = &self.tcx().def_map;
         let delegate = &mut self.delegate;
+
         return_if_err!(mc.cat_pattern(cmt_discr.clone(), pat, |mc, cmt_pat, pat| {
             if pat_util::pat_is_binding(def_map, pat) {
                 let tcx = typer.tcx();
@@ -1043,6 +1046,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                         debug!("walk_pat binding consuming pat");
                         delegate.consume_pat(pat, cmt_pat, mode);
                     }
+
                     _ => {
                         tcx.sess.span_bug(
                             pat.span,

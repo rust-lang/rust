@@ -61,12 +61,12 @@ impl<E: Debug> Debug for Edge<E> {
     }
 }
 
-#[derive(Clone, Copy, PartialEq, Debug)]
+#[derive(Clone, Copy, PartialEq, Debug, Eq, Hash)]
 pub struct NodeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidNodeIndex: NodeIndex = NodeIndex(uint::MAX);
 
-#[derive(Copy, PartialEq, Debug)]
+#[derive(Copy, PartialEq, Debug, Eq, Hash)]
 pub struct EdgeIndex(pub uint);
 #[allow(non_upper_case_globals)]
 pub const InvalidEdgeIndex: EdgeIndex = EdgeIndex(uint::MAX);

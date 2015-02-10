@@ -373,12 +373,12 @@ pub fn noop_fold_view_path<T: Folder>(view_path: P<ViewPath>, fld: &mut T) -> P<
     })
 }
 
-pub fn noop_fold_arm<T: Folder>(Arm {attrs, pats, guard, body}: Arm, fld: &mut T) -> Arm {
+pub fn noop_fold_arm<T: Folder>(arm: Arm, fld: &mut T) -> Arm {
     Arm {
-        attrs: attrs.move_map(|x| fld.fold_attribute(x)),
-        pats: pats.move_map(|x| fld.fold_pat(x)),
-        guard: guard.map(|x| fld.fold_expr(x)),
-        body: fld.fold_expr(body),
+        attrs: arm.attrs.move_map(|x| fld.fold_attribute(x)),
+        pats: arm.pats.move_map(|x| fld.fold_pat(x)),
+        guard: arm.guard.map(|x| fld.fold_expr(x)),
+        body: fld.fold_expr(arm.body),
     }
 }
 

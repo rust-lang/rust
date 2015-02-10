@@ -388,31 +388,30 @@ impl UserIdentifiedItem {
     }
 
     fn to_one_node_id(self, user_option: &str, sess: &Session, map: &ast_map::Map) -> ast::NodeId {
-        let fail_because = |is_wrong_because| -> ast::NodeId {
-            let message =
-                format!("{} needs NodeId (int) or unique \
-                         path suffix (b::c::d); got {}, which {}",
-                        user_option,
-                        self.reconstructed_input(),
-                        is_wrong_because);
-            sess.fatal(&message[])
-        };
-
-        let mut saw_node = ast::DUMMY_NODE_ID;
-        let mut seen = 0;
+        let mut seen = Vec::new();
         for node in self.all_matching_node_ids(map) {
-            saw_node = node;
-            seen += 1;
-            if seen > 1 {
-                fail_because("does not resolve uniquely");
-            }
+            seen.push(node);
         }
-        if seen == 0 {
-            fail_because("does not resolve to any item");
+        if seen.len() == 0 {
+            sess.fatal(&format!("{} needs NodeId (int) or unique \
+                         path suffix (b::c::d); got {}, which does not resolve to any item",
+                        user_option,
+                        self.reconstructed_input())[]);
+        } else if seen.len() > 1 {
+            let mut list = String::new();
+            for node in seen {
+                list.push_str(&format!("\n    {}", map.node_to_string(node))[]);
+            }
+
+            sess.fatal(&format!(r#"\
+{} needs NodeId (int) or unique path suffix (b::c::d);
+got {} which does not resolve to a unique item
+
+  Candidiates:{}"#, user_option, self.reconstructed_input(), list)[]);
         }
 
-        assert!(seen == 1);
-        return saw_node;
+        assert!(seen.len() == 1);
+        return seen[0];
     }
 }
 
