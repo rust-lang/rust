@@ -206,7 +206,7 @@ impl<T> Rc<T> {
                     value: value,
                     strong: Cell::new(1),
                     weak: Cell::new(1)
-                })),
+                })).unwrap(),
             }
         }
     }
