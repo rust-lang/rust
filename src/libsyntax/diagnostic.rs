@@ -518,10 +518,11 @@ fn highlight_lines(err: &mut EmitterWriter,
             let count = match lastc {
                 // Most terminals have a tab stop every eight columns by default
                 '\t' => 8 - col%8,
-                _ => lastc.width(false).unwrap_or(1),
+                _ => lastc.width(false).unwrap_or(0),
             };
             col += count;
-            s.extend(::std::iter::repeat('~').take(count - 1));
+            s.extend(::std::iter::repeat('~').take(count));
+
             let hi = cm.lookup_char_pos(sp.hi);
             if hi.col != lo.col {
                 for (pos, ch) in iter {
@@ -534,6 +535,12 @@ fn highlight_lines(err: &mut EmitterWriter,
                     s.extend(::std::iter::repeat('~').take(count));
                 }
             }
+
+            if s.len() > 1 {
+                // One extra squiggly is replaced by a "^"
+                s.pop();
+            }
+
             try!(print_maybe_styled(err,
                                     &format!("{}\n", s)[],
                                     term::attr::ForegroundColor(lvl.color())));
