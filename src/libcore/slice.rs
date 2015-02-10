@@ -41,6 +41,7 @@ use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
+use nonzero::NonZero;
 use num::Int;
 use ops::{FnMut, self, Index};
 use ops::RangeFull;
@@ -222,12 +223,12 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     unsafe fn get_unchecked(&self, index: uint) -> &T {
-        transmute(self.repr().data.offset(index as int))
+        transmute(self.repr().data.get().offset(index as int))
     }
 
     #[inline]
     fn as_ptr(&self) -> *const T {
-        self.repr().data
+        self.repr().data.get()
     }
 
     #[unstable(feature = "core")]
@@ -375,12 +376,12 @@ impl<T> SliceExt for [T] {
 
     #[inline]
     unsafe fn get_unchecked_mut(&mut self, index: uint) -> &mut T {
-        transmute((self.repr().data as *mut T).offset(index as int))
+        transmute((self.repr().data.get() as *mut T).offset(index as int))
     }
 
     #[inline]
     fn as_mut_ptr(&mut self) -> *mut T {
-        self.repr().data as *mut T
+        self.repr().data.get() as *mut T
     }
 
     #[inline]
@@ -496,7 +497,7 @@ impl<T> ops::Index<uint> for [T] {
     fn index(&self, &index: &uint) -> &T {
         assert!(index < self.len());
 
-        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
+        unsafe { transmute(self.repr().data.get().offset(index as int)) }
     }
 }
 
@@ -505,7 +506,7 @@ impl<T> ops::IndexMut<uint> for [T] {
     fn index_mut(&mut self, &index: &uint) -> &mut T {
         assert!(index < self.len());
 
-        unsafe { mem::transmute(self.repr().data.offset(index as int)) }
+        unsafe { transmute(self.repr().data.get().offset(index as int)) }
     }
 }
 
@@ -517,8 +518,11 @@ impl<T> ops::Index<ops::Range<uint>> for [T] {
         assert!(index.start <= index.end);
         assert!(index.end <= self.len());
         unsafe {
+            let data: NonZero<*const T> =
+                transmute(self.as_ptr().offset(index.start as isize));
+
             transmute(RawSlice {
-                    data: self.as_ptr().offset(index.start as int),
+                    data: data,
                     len: index.end - index.start
                 })
         }
@@ -556,8 +560,11 @@ impl<T> ops::IndexMut<ops::Range<uint>> for [T] {
         assert!(index.start <= index.end);
         assert!(index.end <= self.len());
         unsafe {
+            let data: NonZero<*const T> =
+                transmute(self.as_ptr().offset(index.start as int));
+
             transmute(RawSlice {
-                    data: self.as_ptr().offset(index.start as int),
+                    data: data,
                     len: index.end - index.start
                 })
         }
@@ -720,7 +727,8 @@ macro_rules! make_slice {
             diff / mem::size_of::<$t>()
         };
         unsafe {
-            transmute::<_, $result>(RawSlice { data: $start, len: len })
+            let data: NonZero<*const $t> = transmute($start);
+            transmute::<_, $result>(RawSlice { data: data, len: len })
         }
     }}
 }
@@ -1334,7 +1342,8 @@ impl<'a, T> ExactSizeIterator for ChunksMut<'a, T> {}
 #[unstable(feature = "core")]
 pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
     unsafe {
-        transmute(RawSlice { data: s, len: 1 })
+        let s_ptr: NonZero<*const A> = transmute(s);
+        transmute(RawSlice { data: s_ptr, len: 1 })
     }
 }
 
@@ -1342,7 +1351,7 @@ pub fn ref_slice<'a, A>(s: &'a A) -> &'a [A] {
 #[unstable(feature = "core")]
 pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
     unsafe {
-        let ptr: *const A = transmute(s);
+        let ptr: NonZero<*const A> = transmute(s);
         transmute(RawSlice { data: ptr, len: 1 })
     }
 }
@@ -1378,7 +1387,7 @@ pub fn mut_ref_slice<'a, A>(s: &'a mut A) -> &'a mut [A] {
 #[inline]
 #[unstable(feature = "core")]
 pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: uint) -> &'a [T] {
-    transmute(RawSlice { data: p, len: len })
+    transmute(RawSlice { data: NonZero::new(p).unwrap(), len: len })
 }
 
 /// Performs the same functionality as `from_raw_parts`, except that a mutable
@@ -1390,7 +1399,7 @@ pub unsafe fn from_raw_parts<'a, T>(p: *const T, len: uint) -> &'a [T] {
 #[inline]
 #[unstable(feature = "core")]
 pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: uint) -> &'a mut [T] {
-    transmute(RawSlice { data: p, len: len })
+    transmute(RawSlice { data: NonZero::new(p as *const T).unwrap(), len: len })
 }
 
 /// Forms a slice from a pointer and a length.
@@ -1423,7 +1432,7 @@ pub unsafe fn from_raw_parts_mut<'a, T>(p: *mut T, len: uint) -> &'a mut [T] {
 #[deprecated(since = "1.0.0",
              reason = "use from_raw_parts")]
 pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
-    transmute(RawSlice { data: *p, len: len })
+    transmute(RawSlice { data: NonZero::new(*p).unwrap(), len: len })
 }
 
 /// Performs the same functionality as `from_raw_buf`, except that a mutable
@@ -1437,7 +1446,7 @@ pub unsafe fn from_raw_buf<'a, T>(p: &'a *const T, len: uint) -> &'a [T] {
 #[deprecated(since = "1.0.0",
              reason = "use from_raw_parts_mut")]
 pub unsafe fn from_raw_mut_buf<'a, T>(p: &'a *mut T, len: uint) -> &'a mut [T] {
-    transmute(RawSlice { data: *p, len: len })
+    transmute(RawSlice { data: NonZero::new(*p as *const T).unwrap(), len: len })
 }
 
 //

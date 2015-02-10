@@ -21,6 +21,7 @@ use core::prelude::*;
 use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{Greater, Less, Equal};
 use core::iter::Zip;
+use core::nonzero::NonZero;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::ptr::Unique;
 use core::{slice, mem, ptr, cmp, num, raw};
@@ -58,7 +59,7 @@ pub struct Node<K, V> {
     vals: Unique<V>,
 
     // In leaf nodes, this will be null, and no space will be allocated for edges.
-    edges: Unique<Node<K, V>>,
+    edges: Option<Unique<Node<K, V>>>,
 
     // At any given time, there will be `_len` keys, `_len` values, and (in an internal node)
     // `_len + 1` edges. In a leaf node, there will never be any edges.
@@ -278,9 +279,11 @@ impl<T> Drop for RawItems<T> {
 #[unsafe_destructor]
 impl<K, V> Drop for Node<K, V> {
     fn drop(&mut self) {
-        if self.keys.0.is_null() {
+        unsafe {
+            let ks: &*mut K = mem::transmute(&self.keys.0);
+
             // We have already cleaned up this node.
-            return;
+            if ks.is_null() { return; }
         }
 
         // Do the actual cleanup.
@@ -292,7 +295,10 @@ impl<K, V> Drop for Node<K, V> {
             self.destroy();
         }
 
-        self.keys.0 = ptr::null_mut();
+        unsafe {
+            let keys: &mut *mut K = mem::transmute(&mut self.keys.0);
+            *keys = ptr::null_mut();
+        }
     }
 }
 
@@ -302,15 +308,16 @@ impl<K, V> Node<K, V> {
     unsafe fn new_internal(capacity: usize) -> Node<K, V> {
         let (alignment, size) = calculate_allocation_generic::<K, V>(capacity, false);
 
-        let buffer = heap::allocate(size, alignment);
-        if buffer.is_null() { ::alloc::oom(); }
+        let buffer: *mut u8 =
+            *heap::allocate(size, alignment).unwrap_or_else(|| ::alloc::oom()).get();
 
         let (vals_offset, edges_offset) = calculate_offsets_generic::<K, V>(capacity, false);
 
         Node {
-            keys: Unique(buffer as *mut K),
-            vals: Unique(buffer.offset(vals_offset as isize) as *mut V),
-            edges: Unique(buffer.offset(edges_offset as isize) as *mut Node<K, V>),
+            keys: Unique(NonZero::new(buffer as *mut K).unwrap()),
+            vals: Unique(NonZero::new(buffer.offset(vals_offset as isize) as *mut V).unwrap()),
+            edges: Some(Unique(NonZero::new(
+                buffer.offset(edges_offset as isize) as *mut Node<K, V>).unwrap())),
             _len: 0,
             _capacity: capacity,
         }
@@ -320,36 +327,42 @@ impl<K, V> Node<K, V> {
     fn new_leaf(capacity: usize) -> Node<K, V> {
         let (alignment, size) = calculate_allocation_generic::<K, V>(capacity, true);
 
-        let buffer = unsafe { heap::allocate(size, alignment) };
-        if buffer.is_null() { ::alloc::oom(); }
+        unsafe {
+            let buffer: *mut u8 =
+                *heap::allocate(size, alignment).unwrap_or_else(|| ::alloc::oom()).get();
 
-        let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
+            let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
 
-        Node {
-            keys: Unique(buffer as *mut K),
-            vals: Unique(unsafe { buffer.offset(vals_offset as isize) as *mut V }),
-            edges: Unique(ptr::null_mut()),
-            _len: 0,
-            _capacity: capacity,
+            Node {
+                keys: Unique(NonZero::new(buffer as *mut K).unwrap()),
+                vals: Unique(NonZero::new(buffer.offset(vals_offset as isize) as *mut V).unwrap()),
+                edges: None,
+                _len: 0,
+                _capacity: capacity,
+            }
         }
     }
 
     unsafe fn destroy(&mut self) {
         let (alignment, size) =
                 calculate_allocation_generic::<K, V>(self.capacity(), self.is_leaf());
-        heap::deallocate(self.keys.0 as *mut u8, size, alignment);
+        heap::deallocate(self.keys.0, size, alignment);
     }
 
     #[inline]
     pub fn as_slices<'a>(&'a self) -> (&'a [K], &'a [V]) {
-        unsafe {(
-            mem::transmute(raw::Slice {
-                data: self.keys.0,
-                len: self.len()
+        unsafe {
+            let keys: NonZero<*const K> = mem::transmute(self.keys.0);
+            let vals: NonZero<*const V> = mem::transmute(self.vals.0);
+            let len = self.len();
+
+            (mem::transmute(raw::Slice {
+                data: keys,
+                len:  len,
             }),
             mem::transmute(raw::Slice {
-                data: self.vals.0,
-                len: self.len()
+                data: vals,
+                len:  len,
             })
         )}
     }
@@ -363,16 +376,19 @@ impl<K, V> Node<K, V> {
     pub fn as_slices_internal<'b>(&'b self) -> NodeSlice<'b, K, V> {
         let is_leaf = self.is_leaf();
         let (keys, vals) = self.as_slices();
-        let edges: &[_] = if self.is_leaf() {
-            &[]
-        } else {
-            unsafe {
+        let edges: &[_] = match self.edges.as_ref() {
+            None => &[],
+            Some(ref edges) => unsafe {
+                let edges: NonZero<*const Node<K, V>> =
+                    mem::transmute(edges.0);
+
                 mem::transmute(raw::Slice {
-                    data: self.edges.0,
-                    len: self.len() + 1
+                    data: edges,
+                    len: self.len() + 1,
                 })
             }
         };
+
         NodeSlice {
             keys: keys,
             vals: vals,
@@ -586,7 +602,7 @@ impl <K, V> Node<K, V> {
 
     /// If the node has any children
     pub fn is_leaf(&self) -> bool {
-        self.edges.0.is_null()
+        self.edges.is_none()
     }
 
     /// if the node has too few elements
@@ -1064,7 +1080,7 @@ impl<K, V> Node<K, V> {
                     vals: RawItems::from_slice(self.vals()),
                     edges: RawItems::from_slice(self.edges()),
 
-                    ptr: self.keys.0 as *mut u8,
+                    ptr: self.keys.0,
                     capacity: self.capacity(),
                     is_leaf: self.is_leaf()
                 },
@@ -1333,7 +1349,7 @@ struct MoveTraversalImpl<K, V> {
     edges: RawItems<Node<K, V>>,
 
     // For deallocation when we are done iterating.
-    ptr: *mut u8,
+    ptr: NonZero<*mut K>,
     capacity: usize,
     is_leaf: bool
 }

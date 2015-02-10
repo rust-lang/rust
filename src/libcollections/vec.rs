@@ -49,7 +49,7 @@
 use core::prelude::*;
 
 use alloc::boxed::Box;
-use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
+use alloc::heap::{empty, allocate, reallocate, deallocate};
 use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
 use core::cmp::{Ordering};
@@ -166,7 +166,7 @@ impl<T> Vec<T> {
         // non-null value which is fine since we never call deallocate on the ptr
         // if cap is 0. The reason for this is because the pointer of a slice
         // being NULL would break the null pointer optimization for enums.
-        Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T).unwrap() }, len: 0, cap: 0 }
+        Vec { ptr: empty(), len: 0, cap: 0 }
     }
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
@@ -199,17 +199,19 @@ impl<T> Vec<T> {
     pub fn with_capacity(capacity: usize) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
             Vec {
-                ptr: unsafe { NonZero::new(EMPTY as *mut T).unwrap() },
+                ptr: empty(),
                 len: 0,
-                cap: usize::MAX }
+                cap: usize::MAX
+            }
         } else if capacity == 0 {
             Vec::new()
         } else {
             let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
-            let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
-            if ptr.is_null() { ::alloc::oom() }
-            Vec { ptr: unsafe { NonZero::new(ptr as *mut T).unwrap() }, len: 0, cap: capacity }
+            let ptr = unsafe {
+                allocate(size, mem::min_align_of::<T>()).unwrap_or_else(|| ::alloc::oom())
+            };
+            Vec { ptr: ptr, len: 0, cap: capacity }
         }
     }
 
@@ -357,7 +359,7 @@ impl<T> Vec<T> {
         if self.len == 0 {
             if self.cap != 0 {
                 unsafe {
-                    dealloc(*self.ptr, self.cap)
+                    dealloc(self.ptr, self.cap)
                 }
                 self.cap = 0;
             }
@@ -365,12 +367,11 @@ impl<T> Vec<T> {
             unsafe {
                 // Overflow check is unnecessary as the vector is already at
                 // least this large.
-                let ptr = reallocate(*self.ptr as *mut u8,
+                self.ptr = reallocate(self.ptr,
                                      self.cap * mem::size_of::<T>(),
                                      self.len * mem::size_of::<T>(),
-                                     mem::min_align_of::<T>()) as *mut T;
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr).unwrap();
+                                     mem::min_align_of::<T>())
+                    .unwrap_or_else(|| ::alloc::oom());
             }
             self.cap = self.len;
         }
@@ -430,8 +431,10 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn as_mut_slice(&mut self) -> &mut [T] {
         unsafe {
+            let data = NonZero::new(self.ptr.get() as *const T).unwrap();
+
             mem::transmute(RawSlice {
-                data: *self.ptr,
+                data: data,
                 len: self.len,
             })
         }
@@ -454,13 +457,13 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<T> {
         unsafe {
-            let ptr = *self.ptr;
+            let ptr = self.ptr;
             let cap = self.cap;
-            let begin = ptr as *const T;
+            let begin = ptr.get() as *const T;
             let end = if mem::size_of::<T>() == 0 {
-                (ptr as usize + self.len()) as *const T
+                (ptr.get() as usize + self.len()) as *const T
             } else {
-                ptr.offset(self.len() as isize) as *const T
+                ptr.get().offset(self.len() as isize) as *const T
             };
             mem::forget(self);
             IntoIter { allocation: ptr, cap: cap, ptr: begin, end: end }
@@ -650,15 +653,14 @@ impl<T> Vec<T> {
             let size = max(old_size, 2 * mem::size_of::<T>()) * 2;
             if old_size > size { panic!("capacity overflow") }
             unsafe {
-                let ptr = alloc_or_realloc(*self.ptr, old_size, size);
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr).unwrap();
+                self.ptr = alloc_or_realloc(self.ptr, old_size, size)
+                    .unwrap_or_else(|| ::alloc::oom());
             }
             self.cap = max(self.cap, 2) * 2;
         }
 
         unsafe {
-            let end = (*self.ptr).offset(self.len as isize);
+            let end = self.ptr.get().offset(self.len as isize);
             ptr::write(&mut *end, value);
             self.len += 1;
         }
@@ -743,11 +745,11 @@ impl<T> Vec<T> {
                reason = "matches collection reform specification, waiting for dust to settle")]
     pub fn drain(&mut self) -> Drain<T> {
         unsafe {
-            let begin = *self.ptr as *const T;
+            let begin = self.ptr.get() as *const T;
             let end = if mem::size_of::<T>() == 0 {
-                (*self.ptr as usize + self.len()) as *const T
+                (self.ptr.get() as usize + self.len()) as *const T
             } else {
-                (*self.ptr).offset(self.len() as isize) as *const T
+                self.ptr.get().offset(self.len() as isize) as *const T
             };
             self.set_len(0);
             Drain {
@@ -1221,9 +1223,8 @@ impl<T> Vec<T> {
             let size = capacity.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
             unsafe {
-                let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
-                if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr).unwrap();
+                self.ptr = alloc_or_realloc(self.ptr, self.cap * mem::size_of::<T>(), size)
+                    .unwrap_or_else(|| ::alloc::oom());
             }
             self.cap = capacity;
         }
@@ -1232,18 +1233,18 @@ impl<T> Vec<T> {
 
 // FIXME: #13996: need a way to mark the return value as `noalias`
 #[inline(never)]
-unsafe fn alloc_or_realloc<T>(ptr: *mut T, old_size: usize, size: usize) -> *mut T {
+unsafe fn alloc_or_realloc<T>(ptr: NonZero<*mut T>, old_size: usize, size: usize) -> Option<NonZero<*mut T>> {
     if old_size == 0 {
-        allocate(size, mem::min_align_of::<T>()) as *mut T
+        allocate(size, mem::min_align_of::<T>())
     } else {
-        reallocate(ptr as *mut u8, old_size, size, mem::min_align_of::<T>()) as *mut T
+        reallocate(ptr, old_size, size, mem::min_align_of::<T>())
     }
 }
 
 #[inline]
-unsafe fn dealloc<T>(ptr: *mut T, len: usize) {
+unsafe fn dealloc<T>(ptr: NonZero<*mut T>, len: usize) {
     if mem::size_of::<T>() != 0 {
-        deallocate(ptr as *mut u8,
+        deallocate(ptr,
                    len * mem::size_of::<T>(),
                    mem::min_align_of::<T>())
     }
@@ -1524,8 +1525,9 @@ impl<T> AsSlice<T> for Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &[T] {
         unsafe {
+            let data = NonZero::new(self.ptr.get() as *const T).unwrap();
             mem::transmute(RawSlice {
-                data: *self.ptr,
+                data: data,
                 len: self.len
             })
         }
@@ -1555,7 +1557,7 @@ impl<T> Drop for Vec<T> {
                 for x in &*self {
                     ptr::read(x);
                 }
-                dealloc(*self.ptr, self.cap)
+                dealloc(self.ptr, self.cap)
             }
         }
     }
@@ -1611,7 +1613,7 @@ impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
 /// An iterator that moves out of a vector.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
-    allocation: *mut T, // the block of memory allocated for the vector
+    allocation: NonZero<*mut T>, // the block of memory allocated for the vector
     cap: usize, // the capacity of the vector
     ptr: *const T,
     end: *const T
@@ -1629,7 +1631,7 @@ impl<T> IntoIter<T> {
             for _x in self.by_ref() { }
             let IntoIter { allocation, cap, ptr: _ptr, end: _end } = self;
             mem::forget(self);
-            Vec { ptr: NonZero::new(allocation).unwrap(), cap: cap, len: 0 }
+            Vec { ptr: allocation, cap: cap, len: 0 }
         }
     }
 }
@@ -1651,7 +1653,7 @@ impl<T> Iterator for IntoIter<T> {
                     self.ptr = mem::transmute(self.ptr as usize + 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    Some(ptr::read(empty().get()))
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -1684,7 +1686,7 @@ impl<T> DoubleEndedIterator for IntoIter<T> {
                     self.end = mem::transmute(self.end as usize - 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    Some(ptr::read(empty().get()))
                 } else {
                     self.end = self.end.offset(-1);
 
@@ -1739,7 +1741,7 @@ impl<'a, T> Iterator for Drain<'a, T> {
                     self.ptr = mem::transmute(self.ptr as usize + 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    Some(ptr::read(empty().get()))
                 } else {
                     let old = self.ptr;
                     self.ptr = self.ptr.offset(1);
@@ -1772,7 +1774,7 @@ impl<'a, T> DoubleEndedIterator for Drain<'a, T> {
                     self.end = mem::transmute(self.end as usize - 1);
 
                     // Use a non-null pointer value
-                    Some(ptr::read(EMPTY as *mut T))
+                    Some(ptr::read(empty().get()))
                 } else {
                     self.end = self.end.offset(-1);
 

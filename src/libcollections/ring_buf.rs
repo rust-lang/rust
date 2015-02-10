@@ -22,6 +22,7 @@ use core::fmt;
 use core::iter::{self, repeat, FromIterator, IntoIterator, RandomAccessIterator};
 use core::marker;
 use core::mem;
+use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut};
 use core::ptr;
@@ -47,7 +48,7 @@ pub struct RingBuf<T> {
     tail: usize,
     head: usize,
     cap: usize,
-    ptr: *mut T
+    ptr: NonZero<*mut T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -70,7 +71,7 @@ impl<T> Drop for RingBuf<T> {
         self.clear();
         unsafe {
             if mem::size_of::<T>() != 0 {
-                heap::deallocate(self.ptr as *mut u8,
+                heap::deallocate(self.ptr,
                                  self.cap * mem::size_of::<T>(),
                                  mem::min_align_of::<T>())
             }
@@ -88,25 +89,27 @@ impl<T> RingBuf<T> {
     /// Turn ptr into a slice
     #[inline]
     unsafe fn buffer_as_slice(&self) -> &[T] {
-        mem::transmute(RawSlice { data: self.ptr, len: self.cap })
+        let data: NonZero<*const T> = mem::transmute(self.ptr);
+        mem::transmute(RawSlice { data: data, len: self.cap })
     }
 
     /// Turn ptr into a mut slice
     #[inline]
     unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        mem::transmute(RawSlice { data: self.ptr, len: self.cap })
+        let data: NonZero<*const T> = mem::transmute(self.ptr);
+        mem::transmute(RawSlice { data: data, len: self.cap })
     }
 
     /// Moves an element out of the buffer
     #[inline]
     unsafe fn buffer_read(&mut self, off: usize) -> T {
-        ptr::read(self.ptr.offset(off as isize))
+        ptr::read(self.ptr.get().offset(off as isize))
     }
 
     /// Writes an element into the buffer, moving it.
     #[inline]
     unsafe fn buffer_write(&mut self, off: usize, t: T) {
-        ptr::write(self.ptr.offset(off as isize), t);
+        ptr::write(self.ptr.get().offset(off as isize), t);
     }
 
     /// Returns true iff the buffer is at capacity
@@ -125,8 +128,8 @@ impl<T> RingBuf<T> {
         debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
                       self.cap);
         ptr::copy_memory(
-            self.ptr.offset(dst as isize),
-            self.ptr.offset(src as isize),
+            self.ptr.get().offset(dst as isize),
+            self.ptr.get().offset(src as isize),
             len);
     }
 
@@ -138,8 +141,8 @@ impl<T> RingBuf<T> {
         debug_assert!(src + len <= self.cap, "dst={} src={} len={} cap={}", dst, src, len,
                       self.cap);
         ptr::copy_nonoverlapping_memory(
-            self.ptr.offset(dst as isize),
-            self.ptr.offset(src as isize),
+            self.ptr.get().offset(dst as isize),
+            self.ptr.get().offset(src as isize),
             len);
     }
 }
@@ -160,15 +163,15 @@ impl<T> RingBuf<T> {
         let size = cap.checked_mul(mem::size_of::<T>())
                       .expect("capacity overflow");
 
-        let ptr = if mem::size_of::<T>() != 0 {
+        let ptr: NonZero<*mut T> =
             unsafe {
-                let ptr = heap::allocate(size, mem::min_align_of::<T>())  as *mut T;;
-                if ptr.is_null() { ::alloc::oom() }
-                ptr
-            }
-        } else {
-            heap::EMPTY as *mut T
-        };
+                if mem::size_of::<T>() != 0 {
+                    heap::allocate(size, mem::min_align_of::<T>())
+                        .unwrap_or_else(|| ::alloc::oom())
+                } else {
+                    heap::empty()
+                }
+            };
 
         RingBuf {
             tail: 0,
@@ -195,7 +198,7 @@ impl<T> RingBuf<T> {
     pub fn get(&self, i: usize) -> Option<&T> {
         if i < self.len() {
             let idx = self.wrap_index(self.tail + i);
-            unsafe { Some(&*self.ptr.offset(idx as isize)) }
+            unsafe { Some(&*self.ptr.get().offset(idx as isize)) }
         } else {
             None
         }
@@ -225,7 +228,7 @@ impl<T> RingBuf<T> {
     pub fn get_mut(&mut self, i: usize) -> Option<&mut T> {
         if i < self.len() {
             let idx = self.wrap_index(self.tail + i);
-            unsafe { Some(&mut *self.ptr.offset(idx as isize)) }
+            unsafe { Some(&mut *self.ptr.get().offset(idx as isize)) }
         } else {
             None
         }
@@ -257,7 +260,7 @@ impl<T> RingBuf<T> {
         let ri = self.wrap_index(self.tail + i);
         let rj = self.wrap_index(self.tail + j);
         unsafe {
-            ptr::swap(self.ptr.offset(ri as isize), self.ptr.offset(rj as isize))
+            ptr::swap(self.ptr.get().offset(ri as isize), self.ptr.get().offset(rj as isize))
         }
     }
 
@@ -330,11 +333,11 @@ impl<T> RingBuf<T> {
                 let new = count.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
                 unsafe {
-                    self.ptr = heap::reallocate(self.ptr as *mut u8,
+                    self.ptr = heap::reallocate(self.ptr,
                                                 old,
                                                 new,
-                                                mem::min_align_of::<T>()) as *mut T;
-                    if self.ptr.is_null() { ::alloc::oom() }
+                                                mem::min_align_of::<T>())
+                        .unwrap_or_else(|| ::alloc::oom());
                 }
             }
 
@@ -448,11 +451,11 @@ impl<T> RingBuf<T> {
                 let old = self.cap * mem::size_of::<T>();
                 let new_size = target_cap * mem::size_of::<T>();
                 unsafe {
-                    self.ptr = heap::reallocate(self.ptr as *mut u8,
+                    self.ptr = heap::reallocate(self.ptr,
                                                 old,
                                                 new_size,
-                                                mem::min_align_of::<T>()) as *mut T;
-                    if self.ptr.is_null() { ::alloc::oom() }
+                                                mem::min_align_of::<T>())
+                        .unwrap_or_else(|| ::alloc::oom());
                 }
             }
             self.cap = target_cap;
@@ -1417,7 +1420,7 @@ impl<'a, T> RandomAccessIterator for Iter<'a, T> {
 /// `RingBuf` mutable iterator.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T:'a> {
-    ptr: *mut T,
+    ptr: NonZero<*mut T>,
     tail: usize,
     head: usize,
     cap: usize,
@@ -1437,7 +1440,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
         self.tail = wrap_index(self.tail + 1, self.cap);
 
         unsafe {
-            Some(&mut *self.ptr.offset(tail as isize))
+            Some(&mut *self.ptr.get().offset(tail as isize))
         }
     }
 
@@ -1458,7 +1461,7 @@ impl<'a, T> DoubleEndedIterator for IterMut<'a, T> {
         self.head = wrap_index(self.head - 1, self.cap);
 
         unsafe {
-            Some(&mut *self.ptr.offset(self.head as isize))
+            Some(&mut *self.ptr.get().offset(self.head as isize))
         }
     }
 }

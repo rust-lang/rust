@@ -10,9 +10,11 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 
+use intrinsics;
+use marker::Copy;
 use ops::Deref;
 use option::Option;
-use ptr::{Unique, PtrExt};
+use ptr::PtrExt;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
 pub unsafe trait Zeroable {
@@ -28,11 +30,6 @@ unsafe impl<T> Zeroable for *const T {
 unsafe impl<T> Zeroable for *mut T {
     #[inline(always)]
     fn is_zero(&self) -> bool { self.is_null() }
-}
-
-unsafe impl<T> Zeroable for Unique<T> {
-    #[inline(always)]
-    fn is_zero(&self) -> bool { self.0.is_null() }
 }
 
 unsafe impl Zeroable for int {
@@ -93,23 +90,34 @@ pub struct NonZero<T: Zeroable>(T);
 
 impl<T: Zeroable> NonZero<T> {
     /// Create an instance of NonZero with the provided value.
-    /// You must indeed ensure that the value is actually "non-zero".
     #[inline(always)]
-    pub unsafe fn new(inner: T) -> Option<NonZero<T>> {
+    pub fn new(inner: T) -> Option<NonZero<T>> {
         if inner.is_zero() {
             Option::Some(NonZero(inner))
         } else {
             Option::None
         }
     }
+
+    /// Returns a reference to the inner value.
+    #[inline(always)]
+    pub fn get_ref(&self) -> &T {
+        unsafe {
+            let ret = &self.0;
+            intrinsics::assume(!ret.is_zero());
+            ret
+        }
+    }
 }
 
-impl<T: Zeroable> Deref for NonZero<T> {
-    type Target = T;
-
-    #[inline]
-    fn deref<'a>(&'a self) -> &'a T {
-        let NonZero(ref inner) = *self;
-        inner
+impl<T: Zeroable + Copy> NonZero<T> {
+    /// Returns a copy of the inner value.
+    #[inline(always)]
+    pub fn get(self) -> T {
+        unsafe {
+            let ret = self.0;
+            intrinsics::assume(!ret.is_zero());
+            ret
+        }
     }
 }

@@ -8,8 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[cfg(not(test))]
-use core::ptr::PtrExt;
+use core::mem;
+use core::nonzero::NonZero;
+use core::option::Option;
 
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
 
@@ -21,8 +22,8 @@ use core::ptr::PtrExt;
 /// power of 2. The alignment must be no larger than the largest supported page
 /// size on the platform.
 #[inline]
-pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
-    imp::allocate(size, align)
+pub unsafe fn allocate<T>(size: uint, align: uint) -> Option<NonZero<*mut T>> {
+    NonZero::new(imp::allocate(size, align) as *mut T)
 }
 
 /// Resize the allocation referenced by `ptr` to `size` bytes.
@@ -37,8 +38,8 @@ pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
-pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
-    imp::reallocate(ptr, old_size, size, align)
+pub unsafe fn reallocate<T>(ptr: NonZero<*mut T>, old_size: uint, size: uint, align: uint) -> Option<NonZero<*mut T>> {
+    NonZero::new(imp::reallocate(ptr.get() as *mut u8, old_size, size, align) as *mut T)
 }
 
 /// Resize the allocation referenced by `ptr` to `size` bytes.
@@ -54,8 +55,8 @@ pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) 
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
-pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> uint {
-    imp::reallocate_inplace(ptr, old_size, size, align)
+pub unsafe fn reallocate_inplace<T>(ptr: NonZero<*mut T>, old_size: uint, size: uint, align: uint) -> uint {
+    imp::reallocate_inplace(ptr.get() as *mut u8, old_size, size, align)
 }
 
 /// Deallocates the memory referenced by `ptr`.
@@ -66,8 +67,8 @@ pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint, align
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
-pub unsafe fn deallocate(ptr: *mut u8, old_size: uint, align: uint) {
-    imp::deallocate(ptr, old_size, align)
+pub unsafe fn deallocate<T>(ptr: NonZero<*mut T>, old_size: uint, align: uint) {
+    imp::deallocate(ptr.get() as *mut u8, old_size, align)
 }
 
 /// Returns the usable size of an allocation created with the specified the
@@ -86,30 +87,34 @@ pub fn stats_print() {
     imp::stats_print();
 }
 
+const EMPTY: *mut () = 0x1 as *mut ();
+
 /// An arbitrary non-null address to represent zero-size allocations.
 ///
 /// This preserves the non-null invariant for types like `Box<T>`. The address may overlap with
 /// non-zero-size memory allocations.
-pub const EMPTY: *mut () = 0x1 as *mut ();
+#[unstable(feature = "alloc")]
+#[inline(always)]
+pub fn empty<T>() -> NonZero<*mut T> {
+    unsafe { mem::transmute(EMPTY) }
+}
 
 /// The allocator for unique pointers.
 #[cfg(not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
+unsafe fn exchange_malloc(size: uint, align: uint) -> NonZero<*mut u8> {
     if size == 0 {
-        EMPTY as *mut u8
+        empty()
     } else {
-        let ptr = allocate(size, align);
-        if ptr.is_null() { ::oom() }
-        ptr
+        allocate(size, align).unwrap_or_else(|| ::oom())
     }
 }
 
 #[cfg(not(test))]
 #[lang="exchange_free"]
 #[inline]
-unsafe fn exchange_free(ptr: *mut u8, old_size: uint, align: uint) {
+unsafe fn exchange_free(ptr: NonZero<*mut u8>, old_size: uint, align: uint) {
     deallocate(ptr, old_size, align);
 }
 
