@@ -30,7 +30,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unsafe_destructor, slicing_syntax)]
-#![cfg_attr(test, feature(test))]
+#![cfg_attr(test, feature(rand, rustc_private, test))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
 #![feature(no_std)]
