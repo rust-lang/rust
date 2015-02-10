@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use check::{FnCtxt, structurally_resolved_type};
+use check::demand;
 use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
 use middle::traits::report_fulfillment_errors;
 use middle::ty::{self, Ty, AsPredicate};
-use middle::infer;
 use syntax::ast;
 use syntax::codemap::Span;
 use util::nodemap::FnvHashSet;
@@ -24,84 +24,69 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                    source_expr: &ast::Expr,
                                    target_object_ty: Ty<'tcx>)
 {
+    let tcx = fcx.tcx();
     debug!("check_object_cast(cast_expr={}, target_object_ty={})",
-           cast_expr.repr(fcx.tcx()),
-           target_object_ty.repr(fcx.tcx()));
+           cast_expr.repr(tcx),
+           target_object_ty.repr(tcx));
 
     // Look up vtables for the type we're casting to,
     // passing in the source and target type.  The source
     // must be a pointer type suitable to the object sigil,
     // e.g.: `&x as &Trait` or `box x as Box<Trait>`
-    let source_ty = fcx.expr_ty(source_expr);
-    let source_ty = structurally_resolved_type(fcx, source_expr.span, source_ty);
-    debug!("source_ty={}", source_ty.repr(fcx.tcx()));
-    match (&source_ty.sty, &target_object_ty.sty) {
-        (&ty::ty_uniq(referent_ty), &ty::ty_uniq(object_trait_ty)) => {
-            let object_trait = object_trait(&object_trait_ty);
 
-            // Ensure that if ~T is cast to ~Trait, then T : Trait
-            push_cast_obligation(fcx, cast_expr, object_trait, referent_ty);
-            check_object_safety(fcx.tcx(), object_trait, source_expr.span);
+    // First, construct a fresh type that we can feed into `<expr>`
+    // within `<expr> as <type>` to inform type inference (e.g. to
+    // tell it that we are expecting a `Box<_>` or an `&_`).
+    let fresh_ty = fcx.infcx().next_ty_var();
+    let (object_trait_ty, source_expected_ty) = match target_object_ty.sty {
+        ty::ty_uniq(object_trait_ty) => {
+            (object_trait_ty, ty::mk_uniq(fcx.tcx(), fresh_ty))
         }
-
-        (&ty::ty_rptr(referent_region, ty::mt { ty: referent_ty,
-                                                mutbl: referent_mutbl }),
-         &ty::ty_rptr(target_region, ty::mt { ty: object_trait_ty,
-                                              mutbl: target_mutbl })) =>
-        {
-            let object_trait = object_trait(&object_trait_ty);
-            if !mutability_allowed(referent_mutbl, target_mutbl) {
-                span_err!(fcx.tcx().sess, source_expr.span, E0188,
-                                        "types differ in mutability");
-            } else {
-                // Ensure that if &'a T is cast to &'b Trait, then T : Trait
-                push_cast_obligation(fcx, cast_expr,
-                                     object_trait,
-                                     referent_ty);
-
-                // Ensure that if &'a T is cast to &'b Trait, then 'b <= 'a
-                infer::mk_subr(fcx.infcx(),
-                               infer::RelateObjectBound(source_expr.span),
-                               *target_region,
-                               *referent_region);
-
-                check_object_safety(fcx.tcx(), object_trait, source_expr.span);
-            }
+        ty::ty_rptr(target_region, ty::mt { ty: object_trait_ty,
+                                            mutbl: target_mutbl }) => {
+            (object_trait_ty,
+             ty::mk_rptr(fcx.tcx(),
+                         target_region, ty::mt { ty: fresh_ty,
+                                                 mutbl: target_mutbl }))
         }
-
-        (_, &ty::ty_uniq(..)) => {
-            span_err!(fcx.ccx.tcx.sess, source_expr.span, E0189,
-                "can only cast a boxed pointer \
-                         to a boxed object, not a {}",
-                      ty::ty_sort_string(fcx.tcx(), source_ty));
-        }
-
-        (_, &ty::ty_rptr(..)) => {
-            span_err!(fcx.ccx.tcx.sess, source_expr.span, E0190,
-                "can only cast a &-pointer \
-                         to an &-object, not a {}",
-                        ty::ty_sort_string(fcx.tcx(), source_ty));
-        }
-
         _ => {
-            fcx.tcx().sess.span_bug(
-                source_expr.span,
-                "expected object type");
+            fcx.tcx().sess.span_bug(source_expr.span, "expected object type");
         }
-    }
+    };
+
+    let source_ty = fcx.expr_ty(source_expr);
+    debug!("check_object_cast pre unify source_ty={}", source_ty.repr(tcx));
+
+    // This ensures that the source_ty <: source_expected_ty, which
+    // will ensure e.g. that &'a T <: &'b T when doing `&'a T as &'b Trait`
+    //
+    // FIXME (pnkfelix): do we need to use suptype_with_fn in order to
+    // override the error message emitted when the types do not work
+    // out in the manner desired?
+    demand::suptype(fcx, source_expr.span, source_expected_ty, source_ty);
+
+    debug!("check_object_cast postunify source_ty={}", source_ty.repr(tcx));
+    let source_ty = structurally_resolved_type(fcx, source_expr.span, source_ty);
+    debug!("check_object_cast resolveto source_ty={}", source_ty.repr(tcx));
+
+    let object_trait = object_trait(&object_trait_ty);
+
+    let referent_ty = match source_ty.sty {
+        ty::ty_uniq(ty) => ty,
+        ty::ty_rptr(_, ty::mt { ty, mutbl: _ }) => ty,
+        _ => fcx.tcx().sess.span_bug(source_expr.span,
+                                     "expected appropriate reference type"),
+    };
+
+    // Ensure that if Ptr<T> is cast to Ptr<Trait>, then T : Trait.
+    push_cast_obligation(fcx, cast_expr, object_trait, referent_ty);
+    check_object_safety(tcx, object_trait, source_expr.span);
 
     fn object_trait<'a, 'tcx>(t: &'a Ty<'tcx>) -> &'a ty::TyTrait<'tcx> {
         match t.sty {
             ty::ty_trait(ref ty_trait) => &**ty_trait,
             _ => panic!("expected ty_trait")
         }
-    }
-
-    fn mutability_allowed(a_mutbl: ast::Mutability,
-                          b_mutbl: ast::Mutability)
-                          -> bool {
-        a_mutbl == b_mutbl ||
-            (a_mutbl == ast::MutMutable && b_mutbl == ast::MutImmutable)
     }
 
     fn push_cast_obligation<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
