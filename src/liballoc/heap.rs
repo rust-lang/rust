@@ -8,8 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use core::isize;
+use core::num::UnsignedInt;
 #[cfg(not(test))]
 use core::ptr::PtrExt;
+
+#[inline(always)]
+fn check_size_and_alignment(size: uint, align: uint) {
+    debug_assert!(size != 0);
+    debug_assert!(size <= isize::MAX as usize, "Tried to allocate too much: {} bytes", size);
+    debug_assert!(align.is_power_of_two(), "Invalid alignment of allocation: {}", align);
+}
 
 // FIXME: #13996: mark the `allocate` and `reallocate` return value as `noalias`
 
@@ -22,6 +31,7 @@ use core::ptr::PtrExt;
 /// size on the platform.
 #[inline]
 pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
+    check_size_and_alignment(size, align);
     imp::allocate(size, align)
 }
 
@@ -38,6 +48,7 @@ pub unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
 pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
+    check_size_and_alignment(size, align);
     imp::reallocate(ptr, old_size, size, align)
 }
 
@@ -55,6 +66,7 @@ pub unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) 
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
 pub unsafe fn reallocate_inplace(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> uint {
+    check_size_and_alignment(size, align);
     imp::reallocate_inplace(ptr, old_size, size, align)
 }
 
