@@ -101,7 +101,7 @@ impl<'a> SpanUtils<'a> {
                 return self.make_sub_span(span, result)
             }
             if bracket_count == 0 &&
-               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::Self)) {
+               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
                 result = Some(ts.sp);
             }
 
@@ -124,7 +124,7 @@ impl<'a> SpanUtils<'a> {
                 return None;
             }
             if bracket_count == 0 &&
-               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::Self)) {
+               (ts.tok.is_ident() || ts.tok.is_keyword(keywords::SelfValue)) {
                 return self.make_sub_span(span, Some(ts.sp));
             }
 
