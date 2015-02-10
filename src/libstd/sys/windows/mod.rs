@@ -15,10 +15,11 @@
 use prelude::v1::*;
 
 use ffi::OsStr;
-use io::ErrorKind;
+use io::{self, ErrorKind};
 use libc;
 use mem;
 use old_io::{self, IoResult, IoError};
+use num::Int;
 use os::windows::OsStrExt;
 use sync::{Once, ONCE_INIT};
 
@@ -38,6 +39,7 @@ pub mod c;
 pub mod condvar;
 pub mod ext;
 pub mod fs;
+pub mod fs2;
 pub mod handle;
 pub mod helper_signal;
 pub mod mutex;
@@ -248,7 +250,7 @@ fn to_utf16_os(s: &OsStr) -> Vec<u16> {
 // Once the syscall has completed (errors bail out early) the second closure is
 // yielded the data which has been read from the syscall. The return value
 // from this closure is then the return value of the function.
-fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> IoResult<T>
+fn fill_utf16_buf_base<F1, F2, T>(mut f1: F1, f2: F2) -> Result<T, ()>
     where F1: FnMut(*mut u16, libc::DWORD) -> libc::DWORD,
           F2: FnOnce(&[u16]) -> T
 {
@@ -280,7 +282,7 @@ fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> IoResult<T>
             c::SetLastError(0);
             let k = match f1(buf.as_mut_ptr(), n as libc::DWORD) {
                 0 if libc::GetLastError() == 0 => 0,
-                0 => return Err(IoError::last_error()),
+                0 => return Err(()),
                 n => n,
             } as usize;
             if k == n && libc::GetLastError() ==
@@ -295,6 +297,20 @@ fn fill_utf16_buf<F1, F2, T>(mut f1: F1, f2: F2) -> IoResult<T>
     }
 }
 
+fn fill_utf16_buf<F1, F2, T>(f1: F1, f2: F2) -> IoResult<T>
+    where F1: FnMut(*mut u16, libc::DWORD) -> libc::DWORD,
+          F2: FnOnce(&[u16]) -> T
+{
+    fill_utf16_buf_base(f1, f2).map_err(|()| IoError::last_error())
+}
+
+fn fill_utf16_buf_new<F1, F2, T>(f1: F1, f2: F2) -> io::Result<T>
+    where F1: FnMut(*mut u16, libc::DWORD) -> libc::DWORD,
+          F2: FnOnce(&[u16]) -> T
+{
+    fill_utf16_buf_base(f1, f2).map_err(|()| io::Error::last_os_error())
+}
+
 fn os2path(s: &[u16]) -> Path {
     // FIXME: this should not be a panicking conversion (aka path reform)
     Path::new(String::from_utf16(s).unwrap())
@@ -305,5 +321,23 @@ pub fn truncate_utf16_at_nul<'a>(v: &'a [u16]) -> &'a [u16] {
         // don't include the 0
         Some(i) => &v[..i],
         None => v
+    }
+}
+
+fn cvt<I: Int>(i: I) -> io::Result<I> {
+    if i == Int::zero() {
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(i)
+    }
+}
+
+fn ms_to_filetime(ms: u64) -> libc::FILETIME {
+    // A FILETIME is a count of 100 nanosecond intervals, so we multiply by
+    // 10000 b/c there are 10000 intervals in 1 ms
+    let ms = ms * 10000;
+    libc::FILETIME {
+        dwLowDateTime: ms as u32,
+        dwHighDateTime: (ms >> 32) as u32,
     }
 }

@@ -22,6 +22,7 @@
 //! contained in this module.
 
 pub use super::{Read, ReadExt, Write, WriteExt, BufRead, BufReadExt};
+pub use fs::PathExt;
 
 // FIXME: pub use as `Seek` when the name isn't in the actual prelude any more
 pub use super::Seek as NewSeek;

@@ -18,10 +18,11 @@
 
 pub use sys_common::wtf8::{Wtf8Buf, EncodeWide};
 
-use sys::os_str::Buf;
-use sys_common::{AsInner, FromInner};
 use ffi::{OsStr, OsString};
+use fs::{self, OpenOptions};
 use libc;
+use sys::os_str::Buf;
+use sys_common::{AsInner, FromInner, AsInnerMut};
 
 use old_io;
 
@@ -40,6 +41,12 @@ pub trait AsRawHandle {
 impl AsRawHandle for old_io::fs::File {
     fn as_raw_handle(&self) -> Handle {
         self.as_inner().handle()
+    }
+}
+
+impl AsRawHandle for fs::File {
+    fn as_raw_handle(&self) -> Handle {
+        self.as_inner().handle().raw()
     }
 }
 
@@ -122,9 +129,57 @@ impl OsStrExt for OsStr {
     }
 }
 
+// Windows-specific extensions to `OpenOptions`
+pub trait OpenOptionsExt {
+    /// Override the `dwDesiredAccess` argument to the call to `CreateFile` with
+    /// the specified value.
+    fn desired_access(&mut self, access: i32) -> &mut Self;
+
+    /// Override the `dwCreationDisposition` argument to the call to
+    /// `CreateFile` with the specified value.
+    ///
+    /// This will override any values of the standard `create` flags, for
+    /// example.
+    fn creation_disposition(&mut self, val: i32) -> &mut Self;
+
+    /// Override the `dwFlagsAndAttributes` argument to the call to
+    /// `CreateFile` with the specified value.
+    ///
+    /// This will override any values of the standard flags on the `OpenOptions`
+    /// structure.
+    fn flags_and_attributes(&mut self, val: i32) -> &mut Self;
+
+    /// Override the `dwShareMode` argument to the call to `CreateFile` with the
+    /// specified value.
+    ///
+    /// This will override any values of the standard flags on the `OpenOptions`
+    /// structure.
+    fn share_mode(&mut self, val: i32) -> &mut Self;
+}
+
+impl OpenOptionsExt for OpenOptions {
+    fn desired_access(&mut self, access: i32) -> &mut OpenOptions {
+        self.as_inner_mut().desired_access(access); self
+    }
+    fn creation_disposition(&mut self, access: i32) -> &mut OpenOptions {
+        self.as_inner_mut().creation_disposition(access); self
+    }
+    fn flags_and_attributes(&mut self, access: i32) -> &mut OpenOptions {
+        self.as_inner_mut().flags_and_attributes(access); self
+    }
+    fn share_mode(&mut self, access: i32) -> &mut OpenOptions {
+        self.as_inner_mut().share_mode(access); self
+    }
+}
+
 /// A prelude for conveniently writing platform-specific code.
 ///
 /// Includes all extension traits, and some important type definitions.
 pub mod prelude {
-    pub use super::{Socket, Handle, AsRawSocket, AsRawHandle, OsStrExt, OsStringExt};
+    #[doc(no_inline)]
+    pub use super::{Socket, Handle, AsRawSocket, AsRawHandle};
+    #[doc(no_inline)]
+    pub use super::{OsStrExt, OsStringExt};
+    #[doc(no_inline)]
+    pub use super::OpenOptionsExt;
 }

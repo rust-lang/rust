@@ -999,6 +999,12 @@ impl cmp::Ord for PathBuf {
     }
 }
 
+impl AsOsStr for PathBuf {
+    fn as_os_str(&self) -> &OsStr {
+        &self.inner[]
+    }
+}
+
 /// A slice of a path (akin to `str`).
 ///
 /// This type supports a number of operations for inspecting a path, including

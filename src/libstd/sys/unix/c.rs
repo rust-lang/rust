@@ -154,6 +154,9 @@ extern {
                       buf: *mut libc::c_char,
                       buflen: libc::size_t,
                       result: *mut *mut passwd) -> libc::c_int;
+
+    pub fn utimes(filename: *const libc::c_char,
+                  times: *const libc::timeval) -> libc::c_int;
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
