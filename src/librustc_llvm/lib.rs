@@ -33,6 +33,8 @@
 #![feature(staged_api)]
 #![feature(std_misc)]
 
+extern crate alloc;
+extern crate core;
 extern crate libc;
 #[macro_use] #[no_link] extern crate rustc_bitflags;
 
@@ -55,6 +57,8 @@ pub use self::CallConv::*;
 pub use self::Visibility::*;
 pub use self::DiagnosticSeverity::*;
 pub use self::Linkage::*;
+
+use core::nonzero::NonZero;
 
 use std::ffi::CString;
 use std::cell::RefCell;
@@ -2201,7 +2205,7 @@ pub unsafe extern "C" fn rust_llvm_string_write_impl(sr: RustStringRef,
                                                      ptr: *const c_char,
                                                      size: size_t) {
     let slice: &[u8] = mem::transmute(raw::Slice {
-        data: ptr as *const u8,
+        data: NonZero::new(ptr as *const u8).unwrap_or_else(|| ::alloc::oom()),
         len: size as uint,
     });
 

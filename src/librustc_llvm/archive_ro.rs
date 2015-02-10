@@ -13,6 +13,8 @@
 use libc;
 use ArchiveRef;
 
+use core::nonzero::NonZero;
+
 use std::ffi::CString;
 use std::mem;
 use std::raw;
@@ -47,14 +49,11 @@ impl ArchiveRO {
             let file = CString::from_slice(file.as_bytes());
             let ptr = ::LLVMRustArchiveReadSection(self.ptr, file.as_ptr(),
                                                    &mut size);
-            if ptr.is_null() {
-                None
-            } else {
-                Some(mem::transmute(raw::Slice {
+            NonZero::new(ptr).map(|ptr|
+                mem::transmute(raw::Slice {
                     data: ptr,
                     len: size as uint,
                 }))
-            }
         }
     }
 }

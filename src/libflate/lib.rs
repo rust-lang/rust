@@ -30,9 +30,11 @@
 
 #[cfg(test)] #[macro_use] extern crate log;
 
+extern crate core;
 extern crate libc;
 
 use libc::{c_void, size_t, c_int};
+use core::nonzero::NonZero;
 use std::ops::Deref;
 use std::ptr::Unique;
 use std::slice;
@@ -45,13 +47,13 @@ pub struct Bytes {
 impl Deref for Bytes {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts_mut(self.ptr.0, self.len) }
+        unsafe { slice::from_raw_parts_mut(self.ptr.0.get(), self.len) }
     }
 }
 
 impl Drop for Bytes {
     fn drop(&mut self) {
-        unsafe { libc::free(self.ptr.0 as *mut _); }
+        unsafe { libc::free(self.ptr.0.get() as *mut _); }
     }
 }
 
@@ -83,12 +85,11 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
                                              bytes.len() as size_t,
                                              &mut outsz,
                                              flags);
-        if !res.is_null() {
-            let res = Unique(res as *mut u8);
-            Some(Bytes { ptr: res, len: outsz as uint })
-        } else {
-            None
-        }
+        NonZero::new(res as *mut u8)
+            .map(|res| Bytes {
+                ptr: Unique(res),
+                len: outsz as usize,
+            })
     }
 }
 
@@ -109,12 +110,11 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
                                                bytes.len() as size_t,
                                                &mut outsz,
                                                flags);
-        if !res.is_null() {
-            let res = Unique(res as *mut u8);
-            Some(Bytes { ptr: res, len: outsz as uint })
-        } else {
-            None
-        }
+        NonZero::new(res as *mut u8)
+            .map(|res| Bytes {
+                ptr: Unique(res),
+                len: outsz as usize,
+            })
     }
 }
 

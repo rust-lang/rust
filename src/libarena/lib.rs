@@ -38,6 +38,9 @@
 #![cfg_attr(test, feature(test))]
 
 extern crate alloc;
+extern crate core;
+
+use core::nonzero::NonZero;
 
 use std::cell::{Cell, RefCell};
 use std::cmp;
@@ -392,9 +395,9 @@ impl<T> TypedArenaChunk<T> {
     unsafe fn new(next: *mut TypedArenaChunk<T>, capacity: uint)
            -> *mut TypedArenaChunk<T> {
         let size = calculate_size::<T>(capacity);
-        let chunk = allocate(size, mem::min_align_of::<TypedArenaChunk<T>>())
-                    as *mut TypedArenaChunk<T>;
-        if chunk.is_null() { alloc::oom() }
+        let chunk: *mut TypedArenaChunk<T> =
+                   allocate(size, mem::min_align_of::<TypedArenaChunk<T>>())
+                   .unwrap_or_else(|| alloc::oom()).get();
         (*chunk).next = next;
         (*chunk).capacity = capacity;
         chunk
@@ -416,7 +419,7 @@ impl<T> TypedArenaChunk<T> {
         // Destroy the next chunk.
         let next = self.next;
         let size = calculate_size::<T>(self.capacity);
-        deallocate(self as *mut TypedArenaChunk<T> as *mut u8, size,
+        deallocate(NonZero::new(self as *mut TypedArenaChunk<T>).unwrap(), size,
                    mem::min_align_of::<TypedArenaChunk<T>>());
         if !next.is_null() {
             let capacity = (*next).capacity;

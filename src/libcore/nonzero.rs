@@ -92,7 +92,7 @@ impl<T: Zeroable> NonZero<T> {
     /// Create an instance of NonZero with the provided value.
     #[inline(always)]
     pub fn new(inner: T) -> Option<NonZero<T>> {
-        if inner.is_zero() {
+        if !inner.is_zero() {
             Option::Some(NonZero(inner))
         } else {
             Option::None
@@ -104,7 +104,7 @@ impl<T: Zeroable> NonZero<T> {
     pub fn get_ref(&self) -> &T {
         unsafe {
             let ret = &self.0;
-            intrinsics::assume(!ret.is_zero());
+            //intrinsics::assume(!ret.is_zero());
             ret
         }
     }
@@ -116,7 +116,7 @@ impl<T: Zeroable + Copy> NonZero<T> {
     pub fn get(self) -> T {
         unsafe {
             let ret = self.0;
-            intrinsics::assume(!ret.is_zero());
+            //intrinsics::assume(!ret.is_zero());
             ret
         }
     }

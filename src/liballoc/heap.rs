@@ -103,18 +103,19 @@ pub fn empty<T>() -> NonZero<*mut T> {
 #[cfg(not(test))]
 #[lang="exchange_malloc"]
 #[inline]
-unsafe fn exchange_malloc(size: uint, align: uint) -> NonZero<*mut u8> {
+unsafe fn exchange_malloc(size: uint, align: uint) -> *mut u8 {
     if size == 0 {
         empty()
     } else {
         allocate(size, align).unwrap_or_else(|| ::oom())
-    }
+    }.get()
 }
 
 #[cfg(not(test))]
 #[lang="exchange_free"]
 #[inline]
-unsafe fn exchange_free(ptr: NonZero<*mut u8>, old_size: uint, align: uint) {
+unsafe fn exchange_free(ptr: *mut u8, old_size: uint, align: uint) {
+    let ptr: NonZero<*mut u8> = mem::transmute(ptr);
     deallocate(ptr, old_size, align);
 }
 
