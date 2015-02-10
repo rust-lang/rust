@@ -436,6 +436,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             ast::ExprCast(ref e, _) |
             ast::ExprUnary(_, ref e) |
             ast::ExprParen(ref e) |
+            ast::ExprCompletion(ref e) |
             ast::ExprField(ref e, _) |
             ast::ExprTupField(ref e, _) => {
                 self.straightline(expr, pred, Some(&**e).into_iter())

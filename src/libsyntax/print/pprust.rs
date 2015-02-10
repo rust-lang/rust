@@ -1943,6 +1943,10 @@ impl<'a> State<'a> {
                 try!(self.pclose());
             }
             ast::ExprMac(ref m) => try!(self.print_mac(m, token::Paren)),
+            ast::ExprCompletion(ref e) => {
+                try!(self.print_expr(&e));
+                try!(word(&mut self.s, &token_to_string(&token::GenerateCompletion)));
+            }
             ast::ExprParen(ref e) => {
                 try!(self.popen());
                 try!(self.print_expr(&**e));

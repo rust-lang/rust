@@ -548,7 +548,8 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
           ast::ExprBlock(..) | ast::ExprLoop(..) | ast::ExprMatch(..) |
           ast::ExprLit(..) | ast::ExprBreak(..) | ast::ExprMac(..) |
           ast::ExprAgain(..) | ast::ExprStruct(..) | ast::ExprRepeat(..) |
-          ast::ExprInlineAsm(..) | ast::ExprBox(..) => {
+          ast::ExprInlineAsm(..) | ast::ExprBox(..) |
+          ast::ExprCompletion(..) => {
             Ok(self.cat_rvalue_node(expr.id(), expr.span(), expr_ty))
           }
 

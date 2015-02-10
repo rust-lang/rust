@@ -761,6 +761,8 @@ pub enum Expr_ {
 
     ExprMac(Mac),
 
+    ExprCompletion(P<Expr>),
+
     /// A struct literal expression.
     ExprStruct(Path, Vec<Field>, Option<P<Expr>> /* base */),
 
