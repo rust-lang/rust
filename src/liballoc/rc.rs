@@ -40,7 +40,7 @@
 //! }
 //!
 //! struct Gadget {
-//!     id: int,
+//!     id: i32,
 //!     owner: Rc<Owner>
 //!     // ...other fields
 //! }
@@ -99,7 +99,7 @@
 //! }
 //!
 //! struct Gadget {
-//!     id: int,
+//!     id: i32,
 //!     owner: Rc<Owner>
 //!     // ...other fields
 //! }
@@ -166,8 +166,8 @@ use heap::deallocate;
 
 struct RcBox<T> {
     value: T,
-    strong: Cell<uint>,
-    weak: Cell<uint>
+    strong: Cell<usize>,
+    weak: Cell<usize>
 }
 
 /// An immutable reference-counted pointer type.
@@ -233,12 +233,12 @@ impl<T> Rc<T> {
 /// Get the number of weak references to this value.
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn weak_count<T>(this: &Rc<T>) -> uint { this.weak() - 1 }
+pub fn weak_count<T>(this: &Rc<T>) -> usize { this.weak() - 1 }
 
 /// Get the number of strong references to this value.
 #[inline]
 #[unstable(feature = "alloc")]
-pub fn strong_count<T>(this: &Rc<T>) -> uint { this.strong() }
+pub fn strong_count<T>(this: &Rc<T>) -> usize { this.strong() }
 
 /// Returns true if there are no other `Rc` or `Weak<T>` values that share the same inner value.
 ///
@@ -447,7 +447,7 @@ impl<T: Default> Default for Rc<T> {
     /// use std::rc::Rc;
     /// use std::default::Default;
     ///
-    /// let x: Rc<int> = Default::default();
+    /// let x: Rc<i32> = Default::default();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -750,7 +750,7 @@ trait RcBoxPtr<T> {
     fn inner(&self) -> &RcBox<T>;
 
     #[inline]
-    fn strong(&self) -> uint { self.inner().strong.get() }
+    fn strong(&self) -> usize { self.inner().strong.get() }
 
     #[inline]
     fn inc_strong(&self) { self.inner().strong.set(self.strong() + 1); }
@@ -759,7 +759,7 @@ trait RcBoxPtr<T> {
     fn dec_strong(&self) { self.inner().strong.set(self.strong() - 1); }
 
     #[inline]
-    fn weak(&self) -> uint { self.inner().weak.get() }
+    fn weak(&self) -> usize { self.inner().weak.get() }
 
     #[inline]
     fn inc_weak(&self) { self.inner().weak.set(self.weak() + 1); }
