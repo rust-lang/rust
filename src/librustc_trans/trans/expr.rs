@@ -10,6 +10,25 @@
 
 //! # Translation of Expressions
 //!
+//! The expr module handles translation of expressions. The most general
+//! translation routine is `trans()`, which will translate an expression
+//! into a datum. `trans_into()` is also available, which will translate
+//! an expression and write the result directly into memory, sometimes
+//! avoiding the need for a temporary stack slot. Finally,
+//! `trans_to_lvalue()` is available if you'd like to ensure that the
+//! result has cleanup scheduled.
+//!
+//! Internally, each of these functions dispatches to various other
+//! expression functions depending on the kind of expression. We divide
+//! up expressions into:
+//!
+//! - **Datum expressions:** Those that most naturally yield values.
+//!   Examples would be `22`, `box x`, or `a + b` (when not overloaded).
+//! - **DPS expressions:** Those that most naturally write into a location
+//!   in memory. Examples would be `foo()` or `Point { x: 3, y: 4 }`.
+//! - **Statement expressions:** That that do not generate a meaningful
+//!   result. Examples would be `while { ... }` or `return 44`.
+//!
 //! Public entry points:
 //!
 //! - `trans_into(bcx, expr, dest) -> bcx`: evaluates an expression,
@@ -26,8 +45,6 @@
 //!   creating a temporary stack slot if necessary.
 //!
 //! - `trans_local_var -> Datum`: looks up a local variable or upvar.
-//!
-//! See doc.rs for more comments.
 
 #![allow(non_camel_case_types)]
 

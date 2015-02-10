@@ -8,8 +8,97 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See the section on datums in `doc.rs` for an overview of what Datums are and how they are
-//! intended to be used.
+//! ## The Datum module
+//!
+//! A `Datum` encapsulates the result of evaluating a Rust expression.  It
+//! contains a `ValueRef` indicating the result, a `Ty` describing
+//! the Rust type, but also a *kind*. The kind indicates whether the datum
+//! has cleanup scheduled (lvalue) or not (rvalue) and -- in the case of
+//! rvalues -- whether or not the value is "by ref" or "by value".
+//!
+//! The datum API is designed to try and help you avoid memory errors like
+//! forgetting to arrange cleanup or duplicating a value. The type of the
+//! datum incorporates the kind, and thus reflects whether it has cleanup
+//! scheduled:
+//!
+//! - `Datum<Lvalue>` -- by ref, cleanup scheduled
+//! - `Datum<Rvalue>` -- by value or by ref, no cleanup scheduled
+//! - `Datum<Expr>` -- either `Datum<Lvalue>` or `Datum<Rvalue>`
+//!
+//! Rvalue and expr datums are noncopyable, and most of the methods on
+//! datums consume the datum itself (with some notable exceptions). This
+//! reflects the fact that datums may represent affine values which ought
+//! to be consumed exactly once, and if you were to try to (for example)
+//! store an affine value multiple times, you would be duplicating it,
+//! which would certainly be a bug.
+//!
+//! Some of the datum methods, however, are designed to work only on
+//! copyable values such as ints or pointers. Those methods may borrow the
+//! datum (`&self`) rather than consume it, but they always include
+//! assertions on the type of the value represented to check that this
+//! makes sense. An example is `shallow_copy()`, which duplicates
+//! a datum value.
+//!
+//! Translating an expression always yields a `Datum<Expr>` result, but
+//! the methods `to_[lr]value_datum()` can be used to coerce a
+//! `Datum<Expr>` into a `Datum<Lvalue>` or `Datum<Rvalue>` as
+//! needed. Coercing to an lvalue is fairly common, and generally occurs
+//! whenever it is necessary to inspect a value and pull out its
+//! subcomponents (for example, a match, or indexing expression). Coercing
+//! to an rvalue is more unusual; it occurs when moving values from place
+//! to place, such as in an assignment expression or parameter passing.
+//!
+//! ### Lvalues in detail
+//!
+//! An lvalue datum is one for which cleanup has been scheduled. Lvalue
+//! datums are always located in memory, and thus the `ValueRef` for an
+//! LLVM value is always a pointer to the actual Rust value. This means
+//! that if the Datum has a Rust type of `int`, then the LLVM type of the
+//! `ValueRef` will be `int*` (pointer to int).
+//!
+//! Because lvalues already have cleanups scheduled, the memory must be
+//! zeroed to prevent the cleanup from taking place (presuming that the
+//! Rust type needs drop in the first place, otherwise it doesn't
+//! matter). The Datum code automatically performs this zeroing when the
+//! value is stored to a new location, for example.
+//!
+//! Lvalues usually result from evaluating lvalue expressions. For
+//! example, evaluating a local variable `x` yields an lvalue, as does a
+//! reference to a field like `x.f` or an index `x[i]`.
+//!
+//! Lvalue datums can also arise by *converting* an rvalue into an lvalue.
+//! This is done with the `to_lvalue_datum` method defined on
+//! `Datum<Expr>`. Basically this method just schedules cleanup if the
+//! datum is an rvalue, possibly storing the value into a stack slot first
+//! if needed. Converting rvalues into lvalues occurs in constructs like
+//! `&foo()` or `match foo() { ref x => ... }`, where the user is
+//! implicitly requesting a temporary.
+//!
+//! Somewhat surprisingly, not all lvalue expressions yield lvalue datums
+//! when trans'd. Ultimately the reason for this is to micro-optimize
+//! the resulting LLVM. For example, consider the following code:
+//!
+//!     fn foo() -> Box<int> { ... }
+//!     let x = *foo();
+//!
+//! The expression `*foo()` is an lvalue, but if you invoke `expr::trans`,
+//! it will return an rvalue datum. See `deref_once` in expr.rs for
+//! more details.
+//!
+//! ### Rvalues in detail
+//!
+//! Rvalues datums are values with no cleanup scheduled. One must be
+//! careful with rvalue datums to ensure that cleanup is properly
+//! arranged, usually by converting to an lvalue datum or by invoking the
+//! `add_clean` method.
+//!
+//! ### Scratch datums
+//!
+//! Sometimes you need some temporary scratch space.  The functions
+//! `[lr]value_scratch_datum()` can be used to get temporary stack
+//! space. As their name suggests, they yield lvalues and rvalues
+//! respectively. That is, the slot from `lvalue_scratch_datum` will have
+//! cleanup arranged, and the slot from `rvalue_scratch_datum` does not.
 
 pub use self::Expr::*;
 pub use self::RvalueMode::*;
