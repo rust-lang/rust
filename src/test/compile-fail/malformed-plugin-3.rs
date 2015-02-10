@@ -8,15 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:plugin_args.rs
-// ignore-stage1
+#![plugin(foo="bleh")] //~ ERROR malformed plugin attribute
 
-#![feature(plugin)]
-
-#[no_link]
-#[plugin="foobar"]
-extern crate plugin_args;
-
-fn main() {
-    assert_eq!(plugin_args!(), "#[plugin = \"foobar\"]");
-}
+fn main() {}

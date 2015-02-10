@@ -13,9 +13,7 @@
 // compile-flags: -D lint-me
 
 #![feature(plugin)]
-
-#[plugin] #[no_link]
-extern crate lint_group_plugin_test;
+#![plugin(lint_group_plugin_test)]
 
 fn lintme() { } //~ ERROR item is named 'lintme'
 

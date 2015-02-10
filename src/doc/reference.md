@@ -2014,6 +2014,11 @@ type int8_t = i8;
 - `no_start` - disable linking to the `native` crate, which specifies the
   "start" language item.
 - `no_std` - disable linking to the `std` crate.
+- `plugin` — load a list of named crates as compiler plugins, e.g.
+             `#![plugin(foo, bar)]`. Optional arguments for each plugin,
+             i.e. `#![plugin(foo(... args ...))]`, are provided to the plugin's
+             registrar function.  The `plugin` feature gate is required to use
+             this attribute.
 
 ### Module-only attributes
 
@@ -2082,7 +2087,7 @@ On `struct`s:
   remove any padding between fields (note that this is very fragile and may
   break platforms which require aligned access).
 
-### Macro- and plugin-related attributes
+### Macro-related attributes
 
 - `macro_use` on a `mod` — macros defined in this module will be visible in the
   module's parent, after this module has been included.
@@ -2097,13 +2102,8 @@ On `struct`s:
 
 - `macro_export` - export a macro for cross-crate usage.
 
-- `plugin` on an `extern crate` — load this crate as a [compiler
-  plugin][plugin].  The `plugin` feature gate is required.  Any arguments to
-  the attribute, e.g. `#[plugin=...]` or `#[plugin(...)]`, are provided to the
-  plugin.
-
-- `no_link` on an `extern crate` — even if we load this crate for macros or
-  compiler plugins, don't link it into the output.
+- `no_link` on an `extern crate` — even if we load this crate for macros, don't
+  link it into the output.
 
 See the [macros section of the
 book](book/macros.html#scoping-and-macro-import/export) for more information on

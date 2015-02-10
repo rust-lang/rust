@@ -18,9 +18,10 @@ use std::mem;
 use std::env;
 use std::dynamic_lib::DynamicLibrary;
 use std::collections::HashSet;
+use std::borrow::ToOwned;
 use syntax::ast;
 use syntax::attr;
-use syntax::codemap::Span;
+use syntax::codemap::{Span, COMMAND_LINE_SP};
 use syntax::parse::token;
 use syntax::ptr::P;
 use syntax::visit;
@@ -33,7 +34,7 @@ pub type PluginRegistrarFun =
 
 pub struct PluginRegistrar {
     pub fun: PluginRegistrarFun,
-    pub args: P<ast::MetaItem>,
+    pub args: Vec<P<ast::MetaItem>>,
 }
 
 /// Information about loaded plugins.
@@ -81,10 +82,34 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
 
     visit::walk_crate(&mut loader, krate);
 
+    for attr in &krate.attrs {
+        if !attr.check_name("plugin") {
+            continue;
+        }
+
+        let plugins = match attr.meta_item_list() {
+            Some(xs) => xs,
+            None => {
+                sess.span_err(attr.span, "malformed plugin attribute");
+                continue;
+            }
+        };
+
+        for plugin in plugins {
+            if plugin.value_str().is_some() {
+                sess.span_err(attr.span, "malformed plugin attribute");
+                continue;
+            }
+
+            let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
+            loader.load_plugin(CrateOrString::Str(plugin.span, &*plugin.name()),
+                               args);
+        }
+    }
+
     if let Some(plugins) = addl_plugins {
         for plugin in plugins {
-            loader.load_plugin(CrateOrString::Str(&plugin),
-                                                  None, None, None)
+            loader.load_plugin(CrateOrString::Str(COMMAND_LINE_SP, &plugin), vec![]);
         }
     }
 
@@ -104,21 +129,19 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
         }
 
         // Parse the attributes relating to macro / plugin loading.
-        let mut plugin_attr = None;
         let mut macro_selection = Some(HashSet::new());  // None => load all
         let mut reexport = HashSet::new();
         for attr in &item.attrs {
             let mut used = true;
             match &attr.name()[] {
                 "phase" => {
-                    self.sess.span_err(attr.span, "#[phase] is deprecated; use \
-                                       #[macro_use], #[plugin], and/or #[no_link]");
+                    self.sess.span_err(attr.span, "#[phase] is deprecated");
                 }
                 "plugin" => {
-                    if plugin_attr.is_some() {
-                        self.sess.span_err(attr.span, "#[plugin] specified multiple times");
-                    }
-                    plugin_attr = Some(attr.node.value.clone());
+                    self.sess.span_err(attr.span, "#[plugin] on `extern crate` is deprecated");
+                    self.sess.span_help(attr.span, &format!("use a crate attribute instead, \
+                                                            i.e. #![plugin({})]",
+                                                            item.ident.as_str())[]);
                 }
                 "macro_use" => {
                     let names = attr.meta_item_list();
@@ -160,10 +183,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
-        self.load_plugin(CrateOrString::Krate(item),
-                         plugin_attr,
-                         macro_selection,
-                         Some(reexport))
+        self.load_macros(item, macro_selection, Some(reexport))
     }
 
     fn visit_mac(&mut self, _: &ast::Mac) {
@@ -173,38 +193,25 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
 }
 
 impl<'a> PluginLoader<'a> {
-    pub fn load_plugin<'b>(&mut self,
-                           c: CrateOrString<'b>,
-                           plugin_attr: Option<P<ast::MetaItem>>,
+    pub fn load_macros<'b>(&mut self,
+                           vi: &ast::Item,
                            macro_selection: Option<HashSet<token::InternedString>>,
                            reexport: Option<HashSet<token::InternedString>>) {
-        let mut macros = vec![];
-        let mut registrar = None;
-
-        let load_macros = match (macro_selection.as_ref(), reexport.as_ref()) {
-            (Some(sel), Some(re)) => sel.len() != 0 || re.len() != 0,
-            _ => true,
-        };
-        let load_registrar = plugin_attr.is_some();
-
-        if let CrateOrString::Krate(vi) = c {
-            if load_macros && !self.span_whitelist.contains(&vi.span) {
-                self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
-                                             the crate root");
-            }
-       }
-
-        if load_macros || load_registrar {
-            let pmd = self.reader.read_plugin_metadata(c);
-            if load_macros {
-                macros = pmd.exported_macros();
-            }
-            if load_registrar {
-                registrar = pmd.plugin_registrar();
+        if let (Some(sel), Some(re)) = (macro_selection.as_ref(), reexport.as_ref()) {
+            if sel.is_empty() && re.is_empty() {
+                return;
             }
         }
 
-        for mut def in macros {
+        if !self.span_whitelist.contains(&vi.span) {
+            self.sess.span_err(vi.span, "an `extern crate` loading macros must be at \
+                                         the crate root");
+            return;
+        }
+
+        let pmd = self.reader.read_plugin_metadata(CrateOrString::Krate(vi));
+
+        for mut def in pmd.exported_macros() {
             let name = token::get_ident(def.ident);
             def.use_locally = match macro_selection.as_ref() {
                 None => true,
@@ -217,12 +224,21 @@ impl<'a> PluginLoader<'a> {
             };
             self.plugins.macros.push(def);
         }
+    }
+
+    pub fn load_plugin<'b>(&mut self,
+                           c: CrateOrString<'b>,
+                           args: Vec<P<ast::MetaItem>>) {
+        let registrar = {
+            let pmd = self.reader.read_plugin_metadata(c);
+            pmd.plugin_registrar()
+        };
 
         if let Some((lib, symbol)) = registrar {
             let fun = self.dylink_registrar(c, lib, symbol);
             self.plugins.registrars.push(PluginRegistrar {
                 fun: fun,
-                args: plugin_attr.unwrap(),
+                args: args,
             });
         }
     }
