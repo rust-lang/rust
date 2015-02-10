@@ -268,6 +268,7 @@ pub trait Debug {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
+#[allow(deprecated)]
 impl<T: Show + ?Sized> Debug for T {
     #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter) -> Result { Show::fmt(self, f) }
@@ -295,6 +296,7 @@ pub trait Display {
     fn fmt(&self, &mut Formatter) -> Result;
 }
 
+#[allow(deprecated)]
 impl<T: String + ?Sized> Display for T {
     #[allow(deprecated)]
     fn fmt(&self, f: &mut Formatter) -> Result { String::fmt(self, f) }

@@ -164,6 +164,7 @@ pub use core::cell;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::default;
+#[allow(deprecated)]
 pub use core::finally;
 pub use core::hash;
 pub use core::intrinsics;
@@ -306,8 +307,8 @@ mod std {
     pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 
-    // The test runner calls ::std::os::args() but really wants realstd
-    #[cfg(test)] pub use realstd::os as os;
+    // The test runner calls ::std::env::args() but really wants realstd
+    #[cfg(test)] pub use realstd::env as env;
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     //
     // It is also used in vec![]

@@ -1119,8 +1119,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 
 /// A version of the call operator that takes an immutable receiver.
 #[lang="fn"]
-#[unstable(feature = "core",
-           reason = "uncertain about variadic generics, input versus associated types")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 pub trait Fn<Args> {
     type Output;
@@ -1131,8 +1130,7 @@ pub trait Fn<Args> {
 
 /// A version of the call operator that takes a mutable receiver.
 #[lang="fn_mut"]
-#[unstable(feature = "core",
-           reason = "uncertain about variadic generics, input versus associated types")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 pub trait FnMut<Args> {
     type Output;
@@ -1143,8 +1141,7 @@ pub trait FnMut<Args> {
 
 /// A version of the call operator that takes a by-value receiver.
 #[lang="fn_once"]
-#[unstable(feature = "core",
-           reason = "uncertain about variadic generics, input versus associated types")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 pub trait FnOnce<Args> {
     type Output;
