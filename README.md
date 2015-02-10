@@ -75,7 +75,7 @@ the direction the language is evolving in.
 * [0550-macro-future-proofing.md](text/0550-macro-future-proofing.md)
 * [0587-fn-return-should-be-an-associated-type.md](text/0587-fn-return-should-be-an-associated-type.md)
 * [0593-forbid-Self-definitions.md](text/0593-forbid-Self-definitions.md)
-* [0601-be2become.md](text/0601-be2become.md)
+* [0601-replace-be-with-become.md](text/0601-replace-be-with-become.md)
 * [0702-rangefull-expression.md](text/0702-rangefull-expression.md)
 * [0736-privacy-respecting-fru.md](text/0736-privacy-respecting-fru.md)
 
