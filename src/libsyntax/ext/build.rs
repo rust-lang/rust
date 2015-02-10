@@ -70,7 +70,7 @@ pub trait AstBuilder {
                default: Option<P<ast::Ty>>) -> ast::TyParam;
 
     fn trait_ref(&self, path: ast::Path) -> ast::TraitRef;
-    fn poly_trait_ref(&self, path: ast::Path) -> ast::PolyTraitRef;
+    fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef;
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound;
     fn lifetime(&self, span: Span, ident: ast::Name) -> ast::Lifetime;
     fn lifetime_def(&self,
@@ -442,15 +442,16 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
         }
     }
 
-    fn poly_trait_ref(&self, path: ast::Path) -> ast::PolyTraitRef {
+    fn poly_trait_ref(&self, span: Span, path: ast::Path) -> ast::PolyTraitRef {
         ast::PolyTraitRef {
             bound_lifetimes: Vec::new(),
-            trait_ref: self.trait_ref(path)
+            trait_ref: self.trait_ref(path),
+            span: span,
         }
     }
 
     fn typarambound(&self, path: ast::Path) -> ast::TyParamBound {
-        ast::TraitTyParamBound(self.poly_trait_ref(path), ast::TraitBoundModifier::None)
+        ast::TraitTyParamBound(self.poly_trait_ref(path.span, path), ast::TraitBoundModifier::None)
     }
 
     fn lifetime(&self, span: Span, name: ast::Name) -> ast::Lifetime {
