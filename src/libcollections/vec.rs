@@ -219,6 +219,8 @@ impl<T> Vec<T> {
     ///
     /// This is highly unsafe, due to the number of invariants that aren't checked.
     ///
+    /// Passing this function a null pointer will result in undefined behavior.
+    ///
     /// # Examples
     ///
     /// ```
@@ -252,7 +254,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
                                  capacity: usize) -> Vec<T> {
-        Vec { ptr: NonZero::new(ptr).unwrap(), len: length, cap: capacity }
+        Vec { ptr: NonZero::new_unchecked(ptr), len: length, cap: capacity }
     }
 
     /// Creates a vector by copying the elements from a raw pointer.

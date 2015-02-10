@@ -99,6 +99,13 @@ impl<T: Zeroable> NonZero<T> {
         }
     }
 
+    /// Crates an instance of NonZero with the provided value. No zero-checking
+    /// will occur, making this function unsafe. Prefer `new`.
+    #[inline(always)]
+    pub unsafe fn new_unchecked(inner: T) -> NonZero<T> {
+        NonZero(inner)
+    }
+
     /// Returns a reference to the inner value.
     #[inline(always)]
     pub fn get_ref(&self) -> &T {
