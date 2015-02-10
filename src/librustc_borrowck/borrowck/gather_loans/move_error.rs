@@ -118,6 +118,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
     match move_from.cat {
         mc::cat_deref(_, _, mc::BorrowedPtr(..)) |
         mc::cat_deref(_, _, mc::Implicit(..)) |
+        mc::cat_deref(_, _, mc::UnsafePtr(..)) |
         mc::cat_static_item => {
             bccx.span_err(move_from.span,
                           &format!("cannot move out of {}",
