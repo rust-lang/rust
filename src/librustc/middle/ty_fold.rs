@@ -400,6 +400,13 @@ impl<'tcx> TypeFoldable<'tcx> for ty::Generics<'tcx> {
         ty::Generics {
             types: self.types.fold_with(folder),
             regions: self.regions.fold_with(folder),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::GenericPredicates<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::GenericPredicates<'tcx> {
+        ty::GenericPredicates {
             predicates: self.predicates.fold_with(folder),
         }
     }
@@ -440,9 +447,9 @@ impl<'tcx> TypeFoldable<'tcx> for ty::ProjectionTy<'tcx> {
     }
 }
 
-impl<'tcx> TypeFoldable<'tcx> for ty::GenericBounds<'tcx> {
-    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::GenericBounds<'tcx> {
-        ty::GenericBounds {
+impl<'tcx> TypeFoldable<'tcx> for ty::InstantiatedPredicates<'tcx> {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::InstantiatedPredicates<'tcx> {
+        ty::InstantiatedPredicates {
             predicates: self.predicates.fold_with(folder),
         }
     }

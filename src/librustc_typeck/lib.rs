@@ -102,7 +102,6 @@ pub use rustc::util;
 use middle::def;
 use middle::infer;
 use middle::subst;
-use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty};
 use session::config;
 use util::common::time;
@@ -175,17 +174,6 @@ fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
 fn lookup_def_ccx(ccx: &CrateCtxt, sp: Span, id: ast::NodeId)
                    -> def::Def {
     lookup_def_tcx(ccx.tcx, sp, id)
-}
-
-fn no_params<'tcx>(t: Ty<'tcx>) -> ty::TypeScheme<'tcx> {
-    ty::TypeScheme {
-        generics: ty::Generics {
-            types: VecPerParamSpace::empty(),
-            regions: VecPerParamSpace::empty(),
-            predicates: VecPerParamSpace::empty(),
-        },
-        ty: t
-    }
 }
 
 fn require_same_types<'a, 'tcx, M>(tcx: &ty::ctxt<'tcx>,

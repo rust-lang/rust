@@ -2153,10 +2153,12 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         match ty::impl_or_trait_item(cx, method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
+                                let method_bounds = &method_ty.predicates;
                                 construct_parameter_environment(
                                     cx,
                                     method.span,
                                     method_generics,
+                                    method_bounds,
                                     method.pe_body().id)
                             }
                             TypeTraitItem(_) => {
@@ -2188,10 +2190,12 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                         match ty::impl_or_trait_item(cx, method_def_id) {
                             MethodTraitItem(ref method_ty) => {
                                 let method_generics = &method_ty.generics;
+                                let method_bounds = &method_ty.predicates;
                                 construct_parameter_environment(
                                     cx,
                                     method.span,
                                     method_generics,
+                                    method_bounds,
                                     method.pe_body().id)
                             }
                             TypeTraitItem(_) => {
@@ -2214,11 +2218,13 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     ast::ItemFn(_, _, _, _, ref body) => {
                         // We assume this is a function.
                         let fn_def_id = ast_util::local_def(id);
-                        let fn_pty = ty::lookup_item_type(cx, fn_def_id);
+                        let fn_scheme = lookup_item_type(cx, fn_def_id);
+                        let fn_predicates = lookup_predicates(cx, fn_def_id);
 
                         construct_parameter_environment(cx,
                                                         item.span,
-                                                        &fn_pty.generics,
+                                                        &fn_scheme.generics,
+                                                        &fn_predicates,
                                                         body.id)
                     }
                     ast::ItemEnum(..) |
@@ -2227,8 +2233,13 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
                     ast::ItemConst(..) |
                     ast::ItemStatic(..) => {
                         let def_id = ast_util::local_def(id);
-                        let pty = ty::lookup_item_type(cx, def_id);
-                        construct_parameter_environment(cx, item.span, &pty.generics, id)
+                        let scheme = lookup_item_type(cx, def_id);
+                        let predicates = lookup_predicates(cx, def_id);
+                        construct_parameter_environment(cx,
+                                                        item.span,
+                                                        &scheme.generics,
+                                                        &predicates,
+                                                        id)
                     }
                     _ => {
                         cx.sess.span_bug(item.span,
@@ -6320,7 +6331,7 @@ pub fn empty_parameter_environment<'a,'tcx>(cx: &'a ctxt<'tcx>) -> ParameterEnvi
 /// parameters in the same way, this only has an effect on regions.
 pub fn construct_free_substs<'a,'tcx>(
     tcx: &'a ctxt<'tcx>,
-    generics: &ty::Generics<'tcx>,
+    generics: &Generics<'tcx>,
     free_id: ast::NodeId)
     -> Substs<'tcx>
 {
@@ -6365,6 +6376,7 @@ pub fn construct_parameter_environment<'a,'tcx>(
     tcx: &'a ctxt<'tcx>,
     span: Span,
     generics: &ty::Generics<'tcx>,
+    generic_predicates: &ty::GenericPredicates<'tcx>,
     free_id: ast::NodeId)
     -> ParameterEnvironment<'a, 'tcx>
 {
@@ -6379,7 +6391,7 @@ pub fn construct_parameter_environment<'a,'tcx>(
     // Compute the bounds on Self and the type parameters.
     //
 
-    let bounds = generics.to_bounds(tcx, &free_substs);
+    let bounds = generic_predicates.instantiate(tcx, &free_substs);
     let bounds = liberate_late_bound_regions(tcx, free_id_outlive, &ty::Binder(bounds));
     let predicates = bounds.predicates.into_vec();
 
@@ -7013,8 +7025,7 @@ impl<'tcx,T:RegionEscape> RegionEscape for VecPerParamSpace<T> {
 
 impl<'tcx> RegionEscape for TypeScheme<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
-        self.ty.has_regions_escaping_depth(depth) ||
-            self.generics.has_regions_escaping_depth(depth)
+        self.ty.has_regions_escaping_depth(depth)
     }
 }
 
@@ -7024,7 +7035,7 @@ impl RegionEscape for Region {
     }
 }
 
-impl<'tcx> RegionEscape for Generics<'tcx> {
+impl<'tcx> RegionEscape for GenericPredicates<'tcx> {
     fn has_regions_escaping_depth(&self, depth: u32) -> bool {
         self.predicates.has_regions_escaping_depth(depth)
     }
@@ -7133,7 +7144,7 @@ impl<'tcx> HasProjectionTypes for ClosureUpvar<'tcx> {
     }
 }
 
-impl<'tcx> HasProjectionTypes for ty::GenericBounds<'tcx> {
+impl<'tcx> HasProjectionTypes for ty::InstantiatedPredicates<'tcx> {
     fn has_projection_types(&self) -> bool {
         self.predicates.has_projection_types()
     }

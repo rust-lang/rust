@@ -205,7 +205,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // however, because we want to replace all late-bound regions with
     // region variables.
     let impl_bounds =
-        impl_m.generics.to_bounds(tcx, impl_to_skol_substs);
+        impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
 
     let (impl_bounds, _) =
         infcx.replace_late_bound_regions_with_fresh_var(
@@ -216,7 +216,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
            impl_bounds.repr(tcx));
 
     // Normalize the associated types in the trait_bounds.
-    let trait_bounds = trait_m.generics.to_bounds(tcx, &trait_to_skol_substs);
+    let trait_bounds = trait_m.predicates.instantiate(tcx, &trait_to_skol_substs);
 
     // Obtain the predicate split predicate sets for each.
     let trait_pred = trait_bounds.predicates.split();

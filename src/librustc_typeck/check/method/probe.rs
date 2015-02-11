@@ -666,8 +666,9 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             debug!("assemble_projection_candidates: projection_trait_ref={}",
                    projection_trait_ref.repr(self.tcx()));
 
-            let trait_def = ty::lookup_trait_def(self.tcx(), projection_trait_ref.def_id);
-            let bounds = trait_def.generics.to_bounds(self.tcx(), projection_trait_ref.substs);
+            let trait_predicates = ty::lookup_predicates(self.tcx(),
+                                                         projection_trait_ref.def_id);
+            let bounds = trait_predicates.instantiate(self.tcx(), projection_trait_ref.substs);
             let predicates = bounds.predicates.into_vec();
             debug!("assemble_projection_candidates: predicates={}",
                    predicates.repr(self.tcx()));
@@ -943,8 +944,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                     let cause = traits::ObligationCause::misc(self.span, self.fcx.body_id);
 
                     // Check whether the impl imposes obligations we have to worry about.
-                    let impl_generics = ty::lookup_item_type(self.tcx(), impl_def_id).generics;
-                    let impl_bounds = impl_generics.to_bounds(self.tcx(), substs);
+                    let impl_bounds = ty::lookup_predicates(self.tcx(), impl_def_id);
+                    let impl_bounds = impl_bounds.instantiate(self.tcx(), substs);
                     let traits::Normalized { value: impl_bounds,
                                              obligations: norm_obligations } =
                         traits::normalize(selcx, cause.clone(), &impl_bounds);
