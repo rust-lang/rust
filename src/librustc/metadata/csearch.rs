@@ -233,6 +233,14 @@ pub fn get_trait_def<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId) -> ty::TraitDe
     decoder::get_trait_def(&*cdata, def.node, tcx)
 }
 
+pub fn get_predicates<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
+                                  -> ty::GenericPredicates<'tcx>
+{
+    let cstore = &tcx.sess.cstore;
+    let cdata = cstore.get_crate_data(def.krate);
+    decoder::get_predicates(&*cdata, def.node, tcx)
+}
+
 pub fn get_field_type<'tcx>(tcx: &ty::ctxt<'tcx>, class_id: ast::DefId,
                             def: ast::DefId) -> ty::TypeScheme<'tcx> {
     let cstore = &tcx.sess.cstore;
