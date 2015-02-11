@@ -67,6 +67,8 @@ pub use alloc::boxed;
 #[macro_use]
 mod macros;
 
+#[cfg(test)] #[macro_use] mod bench;
+
 pub mod binary_heap;
 mod bit;
 mod btree;
@@ -103,8 +105,6 @@ pub mod btree_set {
     pub use btree::set::*;
 }
 
-
-#[cfg(test)] #[macro_use] mod bench;
 
 // FIXME(#14344) this shouldn't be necessary
 #[doc(hidden)]

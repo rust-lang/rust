@@ -452,6 +452,7 @@ mod imp {
     }
 
     #[doc(hidden)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
         // Right before we run the user destructor be sure to flag the
@@ -523,6 +524,7 @@ mod imp {
     }
 
     #[doc(hidden)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to
