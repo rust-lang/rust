@@ -170,43 +170,6 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                 result
             });
 
-            let has_type_param_of_interest = dtor_generics.types.iter().any(|t| {
-                let &ty::ParamBounds {
-                    ref region_bounds, builtin_bounds, ref trait_bounds,
-                    ref projection_bounds,
-                } = &t.bounds;
-
-                // Belt-and-suspenders: The current set of builtin
-                // bounds {Send, Sized, Copy, Sync} do not introduce
-                // any new capability to access borrowed data hidden
-                // behind a type parameter.
-                //
-                // In case new builtin bounds get added that do not
-                // satisfy that property, ensure `builtin_bounds \
-                // {Send,Sized,Copy,Sync}` is empty.
-
-                let mut builtin_bounds = builtin_bounds;
-                builtin_bounds.remove(&ty::BoundSend);
-                builtin_bounds.remove(&ty::BoundSized);
-                builtin_bounds.remove(&ty::BoundCopy);
-                builtin_bounds.remove(&ty::BoundSync);
-
-                let has_bounds =
-                    !region_bounds.is_empty() ||
-                    !builtin_bounds.is_empty() ||
-                    !trait_bounds.is_empty() ||
-                    !projection_bounds.is_empty();
-
-                if has_bounds {
-                    debug!("typ: {} has interesting dtor due to \
-                            bounds on param {}",
-                           typ.repr(rcx.tcx()), t.name);
-                }
-
-                has_bounds
-
-            });
-
             // In `impl<'a> Drop ...`, we automatically assume
             // `'a` is meaningful and thus represents a bound
             // through which we could reach borrowed data.
@@ -220,15 +183,13 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
             has_dtor_of_interest =
                 has_region_param_of_interest ||
-                has_type_param_of_interest ||
                 has_pred_of_interest;
 
             if has_dtor_of_interest {
                 debug!("typ: {} has interesting dtor, due to \
-                        region params: {} type params: {} or pred: {}",
+                        region params: {} or pred: {}",
                        typ.repr(rcx.tcx()),
                        has_region_param_of_interest,
-                       has_type_param_of_interest,
                        has_pred_of_interest);
             } else {
                 debug!("typ: {} has dtor, but it is uninteresting",
