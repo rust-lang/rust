@@ -878,7 +878,8 @@ impl PathBuf {
 
     /// Truncate `self` to `self.parent()`.
     ///
-    /// Returns `None` and does nothing if `self.parent()` is `None`.
+    /// Returns `false` and does nothing if `self.parent()` is `None`.
+    /// Otherwise, returns `true`.
     pub fn pop(&mut self) -> bool {
         match self.parent().map(|p| p.as_u8_slice().len()) {
             Some(len) => {
