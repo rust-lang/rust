@@ -11,7 +11,7 @@
 use self::TargetLocation::*;
 
 use common::Config;
-use common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind, DebugInfoGdb};
+use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind, DebugInfoGdb};
 use common::{Codegen, DebugInfoLldb};
 use errors;
 use header::TestProps;
@@ -66,6 +66,7 @@ pub fn run_metrics(config: Config, testfile: String, mm: &mut MetricMap) {
     debug!("loaded props");
     match config.mode {
       CompileFail => run_cfail_test(&config, &props, &testfile),
+      ParseFail => run_cfail_test(&config, &props, &testfile),
       RunFail => run_rfail_test(&config, &props, &testfile),
       RunPass => run_rpass_test(&config, &props, &testfile),
       RunPassValgrind => run_valgrind_test(&config, &props, &testfile),
@@ -88,7 +89,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = compile_test(config, props, testfile);
 
     if proc_res.status.success() {
-        fatal_proc_rec("compile-fail test compiled successfully!",
+        fatal_proc_rec(&format!("{} test compiled successfully!", config.mode)[],
                       &proc_res);
     }
 
