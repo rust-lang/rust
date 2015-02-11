@@ -10,9 +10,7 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 
-use intrinsics;
 use marker::Copy;
-use ops::Deref;
 use option::Option;
 use ptr::PtrExt;
 
@@ -69,24 +67,30 @@ impl<T: Zeroable> NonZero<T> {
     }
 
     /// Returns a reference to the inner value.
-    #[inline(always)]
+    #[inline]
     pub fn get_ref(&self) -> &T {
+        let ret = &self.0;
+        /* FIXME: Triggers an assert in LLVM.
         unsafe {
-            let ret = &self.0;
-            //intrinsics::assume(!ret.is_zero());
-            ret
+            let is_nonzero = !ret.is_zero();
+            ::intrinsics::assume(is_nonzero);
         }
+        */
+        ret
     }
 }
 
 impl<T: Zeroable + Copy> NonZero<T> {
     /// Returns a copy of the inner value.
-    #[inline(always)]
+    #[inline]
     pub fn get(self) -> T {
+        let ret = self.0;
+        /* FIXME: Triggers an assert in LLVM.
         unsafe {
-            let ret = self.0;
-            //intrinsics::assume(!ret.is_zero());
-            ret
+            let is_nonzero = !ret.is_zero();
+            ::intrinsics::assume(is_nonzero);
         }
+        */
+        ret
     }
 }
