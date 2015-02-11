@@ -17,7 +17,7 @@ use plugin::registry::Registry;
 use std::mem;
 use std::env;
 use std::dynamic_lib::DynamicLibrary;
-use std::collections::HashSet;
+use std::collections::{HashSet, HashMap};
 use std::borrow::ToOwned;
 use syntax::ast;
 use syntax::attr;
@@ -116,6 +116,8 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
     return loader.plugins;
 }
 
+pub type MacroSelection = HashMap<token::InternedString, Span>;
+
 // note that macros aren't expanded yet, and therefore macros can't add plugins.
 impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
@@ -128,9 +130,9 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
-        // Parse the attributes relating to macro / plugin loading.
-        let mut macro_selection = Some(HashSet::new());  // None => load all
-        let mut reexport = HashSet::new();
+        // Parse the attributes relating to macro loading.
+        let mut import = Some(HashMap::new());  // None => load all
+        let mut reexport = HashMap::new();
         for attr in &item.attrs {
             let mut used = true;
             match &attr.name()[] {
@@ -147,14 +149,14 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                     let names = attr.meta_item_list();
                     if names.is_none() {
                         // no names => load all
-                        macro_selection = None;
+                        import = None;
                     }
-                    if let (Some(sel), Some(names)) = (macro_selection.as_mut(), names) {
-                        for name in names {
-                            if let ast::MetaWord(ref name) = name.node {
-                                sel.insert(name.clone());
+                    if let (Some(sel), Some(names)) = (import.as_mut(), names) {
+                        for attr in names {
+                            if let ast::MetaWord(ref name) = attr.node {
+                                sel.insert(name.clone(), attr.span);
                             } else {
-                                self.sess.span_err(name.span, "bad macro import");
+                                self.sess.span_err(attr.span, "bad macro import");
                             }
                         }
                     }
@@ -168,11 +170,11 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
                         }
                     };
 
-                    for name in names {
-                        if let ast::MetaWord(ref name) = name.node {
-                            reexport.insert(name.clone());
+                    for attr in names {
+                        if let ast::MetaWord(ref name) = attr.node {
+                            reexport.insert(name.clone(), attr.span);
                         } else {
-                            self.sess.span_err(name.span, "bad macro reexport");
+                            self.sess.span_err(attr.span, "bad macro reexport");
                         }
                     }
                 }
@@ -183,7 +185,7 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
             }
         }
 
-        self.load_macros(item, macro_selection, Some(reexport))
+        self.load_macros(item, import, reexport)
     }
 
     fn visit_mac(&mut self, _: &ast::Mac) {
@@ -195,10 +197,10 @@ impl<'a, 'v> Visitor<'v> for PluginLoader<'a> {
 impl<'a> PluginLoader<'a> {
     pub fn load_macros<'b>(&mut self,
                            vi: &ast::Item,
-                           macro_selection: Option<HashSet<token::InternedString>>,
-                           reexport: Option<HashSet<token::InternedString>>) {
-        if let (Some(sel), Some(re)) = (macro_selection.as_ref(), reexport.as_ref()) {
-            if sel.is_empty() && re.is_empty() {
+                           import: Option<MacroSelection>,
+                           reexport: MacroSelection) {
+        if let Some(sel) = import.as_ref() {
+            if sel.is_empty() && reexport.is_empty() {
                 return;
             }
         }
@@ -211,18 +213,31 @@ impl<'a> PluginLoader<'a> {
 
         let pmd = self.reader.read_plugin_metadata(CrateOrString::Krate(vi));
 
+        let mut seen = HashSet::new();
         for mut def in pmd.exported_macros() {
             let name = token::get_ident(def.ident);
-            def.use_locally = match macro_selection.as_ref() {
+            seen.insert(name.clone());
+
+            def.use_locally = match import.as_ref() {
                 None => true,
-                Some(sel) => sel.contains(&name),
+                Some(sel) => sel.contains_key(&name),
             };
-            def.export = if let Some(ref re) = reexport {
-                re.contains(&name)
-            } else {
-                false // Don't reexport macros from crates loaded from the command line
-            };
+            def.export = reexport.contains_key(&name);
             self.plugins.macros.push(def);
+        }
+
+        if let Some(sel) = import.as_ref() {
+            for (name, span) in sel.iter() {
+                if !seen.contains(name) {
+                    self.sess.span_err(*span, "imported macro not found");
+                }
+            }
+        }
+
+        for (name, span) in reexport.iter() {
+            if !seen.contains(name) {
+                self.sess.span_err(*span, "reexported macro not found");
+            }
         }
     }
 
