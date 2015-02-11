@@ -50,10 +50,7 @@ pub fn find_entry_point(session: &Session, ast_map: &ast_map::Map) {
     let any_exe = session.crate_types.borrow().iter().any(|ty| {
         *ty == config::CrateTypeExecutable
     });
-    let emit_link = session.opts.output_types.iter().any(|ty| {
-        *ty == config::OutputTypeExe
-    });
-    if !any_exe || !emit_link {
+    if !any_exe {
         // No need to find a main function
         return
     }
