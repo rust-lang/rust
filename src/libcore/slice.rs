@@ -41,7 +41,6 @@ use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use num::Int;
 use ops::{FnMut, self, Index};
 use ops::RangeFull;
 use option::Option;

@@ -140,6 +140,7 @@ pub const INIT: StaticKey = StaticKey {
 /// Constant initialization value for the inner part of static TLS keys.
 ///
 /// This value allows specific configuration of the destructor for a TLS key.
+#[stable(feature = "rust1", since = "1.0.0")]
 pub const INIT_INNER: StaticKeyInner = StaticKeyInner {
     key: atomic::ATOMIC_USIZE_INIT,
 };

@@ -62,7 +62,7 @@ pub fn cvt_r<T: SignedInt, F>(mut f: F) -> io::Result<T> where F: FnMut() -> T {
 
 impl Socket {
     pub fn new(addr: &SocketAddr, ty: c_int) -> io::Result<Socket> {
-        let fam = match addr.ip {
+        let fam = match addr.ip() {
             IpAddr::V4(..) => libc::AF_INET,
             IpAddr::V6(..) => libc::AF_INET6,
         };
