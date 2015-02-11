@@ -126,6 +126,10 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows using #![no_std]
     ("no_std", "1.0.0", Active),
+
+    // Allows using the unsafe_no_drop_flag attribute (unlikely to
+    // switch to Accepted; see RFC 320)
+    ("unsafe_no_drop_flag", "1.0.0", Active),
 ];
 
 enum Status {
@@ -473,6 +477,12 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
         if attr.check_name("no_std") {
             self.gate_feature("no_std", attr.span,
                               "no_std is experimental");
+        }
+
+        if attr.check_name("unsafe_no_drop_flag") {
+            self.gate_feature("unsafe_no_drop_flag", attr.span,
+                              "unsafe_no_drop_flag has unstable semantics \
+                               and may be removed in the future");
         }
     }
 
