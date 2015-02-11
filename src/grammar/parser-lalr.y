@@ -1309,6 +1309,7 @@ nonblock_expr
 | nonblock_expr AS ty                                           { $$ = mk_node("ExprCast", 2, $1, $3); }
 | BOX nonparen_expr                                             { $$ = mk_node("ExprBox", 1, $2); }
 | %prec BOXPLACE BOX '(' maybe_expr ')' nonblock_expr           { $$ = mk_node("ExprBox", 2, $3, $5); }
+| expr_qualified_path
 | nonblock_prefix_expr
 ;
 
@@ -1367,6 +1368,7 @@ expr
 | expr AS ty                                          { $$ = mk_node("ExprCast", 2, $1, $3); }
 | BOX nonparen_expr                                   { $$ = mk_node("ExprBox", 1, $2); }
 | %prec BOXPLACE BOX '(' maybe_expr ')' expr          { $$ = mk_node("ExprBox", 2, $3, $5); }
+| expr_qualified_path
 | block_expr
 | block
 | nonblock_prefix_expr
@@ -1426,6 +1428,7 @@ nonparen_expr
 | nonparen_expr AS ty                                 { $$ = mk_node("ExprCast", 2, $1, $3); }
 | BOX nonparen_expr                                   { $$ = mk_node("ExprBox", 1, $2); }
 | %prec BOXPLACE BOX '(' maybe_expr ')' expr          { $$ = mk_node("ExprBox", 1, $3, $5); }
+| expr_qualified_path
 | block_expr
 | block
 | nonblock_prefix_expr
@@ -1485,6 +1488,7 @@ expr_nostruct
 | expr_nostruct AS ty                                 { $$ = mk_node("ExprCast", 2, $1, $3); }
 | BOX nonparen_expr                                   { $$ = mk_node("ExprBox", 1, $2); }
 | %prec BOXPLACE BOX '(' maybe_expr ')' expr_nostruct { $$ = mk_node("ExprBox", 1, $3, $5); }
+| expr_qualified_path
 | block_expr
 | block
 | nonblock_prefix_expr_nostruct
@@ -1511,6 +1515,33 @@ nonblock_prefix_expr
 | MOVE lambda_expr                 { $$ = $2; }
 | proc_expr
 ;
+
+expr_qualified_path
+: '<' ty_sum AS trait_ref '>' MOD_SEP ident
+{
+  $$ = mk_node("ExprQualifiedPath", 3, $2, $4, $7);
+}
+| '<' ty_sum AS trait_ref '>' MOD_SEP ident generic_args
+{
+  $$ = mk_node("ExprQualifiedPath", 4, $2, $4, $7, $8);
+}
+| SHL ty_sum AS trait_ref '>' MOD_SEP ident AS trait_ref '>' MOD_SEP ident
+{
+  $$ = mk_node("ExprQualifiedPath", 3, mk_node("ExprQualifiedPath", 3, $2, $4, $7), $9, $12);
+}
+| SHL ty_sum AS trait_ref '>' MOD_SEP ident generic_args AS trait_ref '>' MOD_SEP ident
+{
+  $$ = mk_node("ExprQualifiedPath", 3, mk_node("ExprQualifiedPath", 4, $2, $4, $7, $8), $10, $13);
+}
+| SHL ty_sum AS trait_ref '>' MOD_SEP ident AS trait_ref '>' MOD_SEP ident generic_args
+{
+  $$ = mk_node("ExprQualifiedPath", 4, mk_node("ExprQualifiedPath", 3, $2, $4, $7), $9, $12, $13);
+}
+| SHL ty_sum AS trait_ref '>' MOD_SEP ident generic_args AS trait_ref '>' MOD_SEP ident generic_args
+{
+  $$ = mk_node("ExprQualifiedPath", 4, mk_node("ExprQualifiedPath", 4, $2, $4, $7, $8), $10, $13, $14);
+}
+
 
 lambda_expr
 : %prec LAMBDA
