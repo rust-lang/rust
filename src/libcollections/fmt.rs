@@ -401,7 +401,7 @@
 //! them with the same character. For example, the `{` character is escaped with
 //! `{{` and the `}` character is escaped with `}}`.
 
-#![unstable(feature = "std_misc")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
 pub use core::fmt::{Formatter, Result, Writer, rt};
 pub use core::fmt::{Show, String, Octal, Binary};

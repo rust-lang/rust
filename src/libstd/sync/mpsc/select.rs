@@ -61,7 +61,7 @@ use core::cell::Cell;
 use core::marker;
 use core::mem;
 use core::ptr;
-use core::uint;
+use core::usize;
 
 use sync::mpsc::{Receiver, RecvError};
 use sync::mpsc::blocking::{self, SignalToken};
@@ -228,7 +228,7 @@ impl Select {
             // A rewrite should focus on avoiding a yield loop, and for now this
             // implementation is tying us over to a more efficient "don't
             // iterate over everything every time" implementation.
-            let mut ready_id = uint::MAX;
+            let mut ready_id = usize::MAX;
             for handle in self.iter() {
                 if (*handle).packet.abort_selection() {
                     ready_id = (*handle).id;
@@ -236,7 +236,7 @@ impl Select {
             }
 
             // We must have found a ready receiver
-            assert!(ready_id != uint::MAX);
+            assert!(ready_id != usize::MAX);
             return ready_id;
         }
     }

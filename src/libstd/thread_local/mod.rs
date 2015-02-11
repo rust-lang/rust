@@ -335,6 +335,7 @@ mod imp {
     use ptr;
 
     #[doc(hidden)]
+    #[stable(since = "1.0.0", feature = "rust1")]
     pub struct Key<T> {
         // Place the inner bits in an `UnsafeCell` to currently get around the
         // "only Sync statics" restriction. This allows any type to be placed in
@@ -342,11 +343,14 @@ mod imp {
         //
         // Note that all access requires `T: 'static` so it can't be a type with
         // any borrowed pointers still.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub inner: UnsafeCell<T>,
 
         // Metadata to keep track of the state of the destructor. Remember that
         // these variables are thread-local, not global.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub dtor_registered: UnsafeCell<bool>, // should be Cell
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub dtor_running: UnsafeCell<bool>, // should be Cell
     }
 
@@ -468,12 +472,15 @@ mod imp {
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]
+    #[stable(since = "1.0.0", feature = "rust1")]
     pub struct Key<T> {
         // Statically allocated initialization expression, using an `UnsafeCell`
         // for the same reasons as above.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub inner: UnsafeCell<T>,
 
         // OS-TLS key that we'll use to key off.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub os: OsStaticKey,
     }
 
