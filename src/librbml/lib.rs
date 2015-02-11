@@ -738,7 +738,6 @@ pub mod writer {
         })
     }
 
-    // FIXME (#2741): Provide a function to write the standard rbml header.
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         pub fn new(w: &'a mut W) -> Encoder<'a, W> {
             Encoder {
