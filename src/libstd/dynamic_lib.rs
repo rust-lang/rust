@@ -101,7 +101,7 @@ impl DynamicLibrary {
     /// Returns the current search path for dynamic libraries being used by this
     /// process
     pub fn search_path() -> Vec<Path> {
-        match env::var(DynamicLibrary::envvar()) {
+        match env::var_os(DynamicLibrary::envvar()) {
             Some(var) => env::split_paths(&var).collect(),
             None => Vec::new(),
         }
