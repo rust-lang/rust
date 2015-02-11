@@ -66,6 +66,7 @@ impl Writer for Vec<u8> {
 #[deprecated(since = "1.0.0",
              reason = "use the Vec<u8> Writer implementation directly")]
 #[derive(Clone)]
+#[allow(deprecated)]
 pub struct MemWriter {
     buf: Vec<u8>,
 }

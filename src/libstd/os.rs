@@ -317,6 +317,7 @@ pub unsafe fn pipe() -> IoResult<Pipe> {
 #[cfg(not(target_os="ios"))]
 #[deprecated(since = "1.0.0", reason = "this function will be removed, use the constants directly")]
 #[unstable(feature = "os")]
+#[allow(deprecated)]
 pub fn dll_filename(base: &str) -> String {
     format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }
