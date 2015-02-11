@@ -258,11 +258,7 @@ mod_item
 
 // items that can appear outside of a fn block
 item
-: item_static
-| item_const
-| item_type
-| block_item
-| view_item
+: stmt_item
 | item_macro
 ;
 
@@ -272,8 +268,7 @@ stmt_item
 | item_const
 | item_type
 | block_item
-| use_item
-| extern_fn_item
+| view_item
 ;
 
 item_static
@@ -295,7 +290,6 @@ view_item
 : use_item
 | extern_fn_item
 | EXTERN CRATE ident ';'                      { $$ = mk_node("ViewItemExternCrate", 1, $3); }
-| EXTERN CRATE ident '=' str ';'              { $$ = mk_node("ViewItemExternCrate", 2, $3, $5); }
 | EXTERN CRATE str AS ident ';'               { $$ = mk_node("ViewItemExternCrate", 2, $3, $5); }
 ;
 
