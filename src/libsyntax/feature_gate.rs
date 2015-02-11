@@ -430,7 +430,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             ast::ExprBox(..) | ast::ExprUnary(ast::UnOp::UnUniq, _) => {
                 self.gate_feature("box_syntax",
                                   e.span,
-                                  "box expression syntax is experimental in alpha release; \
+                                  "box expression syntax is experimental; \
                                    you can call `Box::new` instead.");
             }
             ast::ExprLit(ref lit) => {
