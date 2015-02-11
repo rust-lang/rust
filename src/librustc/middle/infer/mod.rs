@@ -46,7 +46,6 @@ use self::unify::{UnificationTable, InferCtxtMethodsForSimplyUnifiableTypes};
 use self::error_reporting::ErrorReporting;
 
 pub mod combine;
-pub mod doc;
 pub mod equate;
 pub mod error_reporting;
 pub mod glb;
