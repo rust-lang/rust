@@ -172,7 +172,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
     /// Returns `None` whenever the terminal cannot be created for some
     /// reason.
     pub fn new(out: T) -> Option<Box<Terminal<T>+Send+'static>> {
-        let term = match env::var_string("TERM") {
+        let term = match env::var("TERM") {
             Ok(t) => t,
             Err(..) => {
                 debug!("TERM environment variable not defined");
@@ -182,7 +182,7 @@ impl<T: Writer+Send> TerminfoTerminal<T> {
 
         let entry = open(&term[]);
         if entry.is_err() {
-            if env::var_string("MSYSCON").ok().map_or(false, |s| {
+            if env::var("MSYSCON").ok().map_or(false, |s| {
                     "mintty.exe" == s
                 }) {
                 // msys terminal

@@ -52,7 +52,7 @@ pub fn min_stack() -> uint {
         0 => {}
         n => return n - 1,
     }
-    let amt = env::var_string("RUST_MIN_STACK").ok().and_then(|s| s.parse().ok());
+    let amt = env::var("RUST_MIN_STACK").ok().and_then(|s| s.parse().ok());
     let amt = amt.unwrap_or(2 * 1024 * 1024);
     // 0 is our sentinel value, so ensure that we'll never see 0 after
     // initialization has run
@@ -63,7 +63,7 @@ pub fn min_stack() -> uint {
 /// Get's the number of scheduler threads requested by the environment
 /// either `RUST_THREADS` or `num_cpus`.
 pub fn default_sched_threads() -> uint {
-    match env::var_string("RUST_THREADS") {
+    match env::var("RUST_THREADS") {
         Ok(nstr) => {
             let opt_n: Option<uint> = nstr.parse().ok();
             match opt_n {
