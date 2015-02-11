@@ -84,8 +84,8 @@ of the following conditions:
 * require `Self : Sized`; or,
 * meet all of the following conditions:
   * must not have any type parameters; and,
-  * must have a receiver that dereferences to the `Self` type;
-    - for now, this means `&self`, `&mut self`, or `self: Box<Self>`,
+  * must have a receiver that has type `Self` or which dereferences to the `Self` type;
+    - for now, this means `self`, `&self`, `&mut self`, or `self: Box<Self>`,
       but eventually this should be extended to custom types like
       `self: Rc<Self>` and so forth.
   * must not use `Self` (in the future, where we allow arbitrary types
@@ -101,6 +101,15 @@ When an expression with pointer-to-concrete type is coerced to a trait object,
 the compiler will check that the trait is object-safe (in addition to the usual
 check that the concrete type implements the trait). It is an error for the trait
 to be non-object-safe.
+
+Note that a trait can be object-safe even if some of its methods use
+features that are not supported with an object receiver. This is true
+when code that attempted to use those features would only work if the
+`Self` type is `Sized`. This is why all methods that require
+`Self:Sized` are exempt from the typical rules. This is also why
+by-value self methods are permitted, since currently one cannot invoke
+pass an unsized type by-value (though we consider that a useful future
+extension).
 
 # Drawbacks
 
@@ -178,20 +187,13 @@ fn baz<T:SomeTrait>(t: &T) {
 
 # Alternatives
 
-We could continue to check methods rather than traits are object-safe. When
-checking the bounds of a type parameter for a function call where the function
-is called with a trait object, we would check that all methods are object-safe
-as part of the check that the actual type parameter satisfies the formal bounds.
-We could probably give a different error message if the bounds are met, but the
+We could continue to check methods rather than traits are
+object-safe. When checking the bounds of a type parameter for a
+function call where the function is called with a trait object, we
+would check that all methods are object-safe as part of the check that
+the actual type parameter satisfies the formal bounds.  We could
+probably give a different error message if the bounds are met, but the
 trait is not object-safe.
-
-Rather than the restriction on taking `self` by value, we could require a trait
-is `for Sized?` in order to be object safe. The purpose of forbidding self by
-value is to enforce that we always have statically known size and that we have a
-vtable for dynamic dispatch. If the programmer were going to manually provide
-`impl`s for each trait, we would require the `Sized?` bound on the trait to
-ensure that `self` was not dereferenced. However, with the compiler-driven
-approach, this is not necessary.
 
 # Unresolved questions
 
