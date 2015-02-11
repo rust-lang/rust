@@ -28,7 +28,7 @@ impl<'a> MyWriter for &'a mut [u8] {
         let write_len = buf.len();
         unsafe {
             *self = mem::transmute(raw::Slice {
-                data: self.as_ptr().offset(write_len as int),
+                data: NonZero::new(self.as_ptr().offset(write_len as int)).unwrap(),
                 len: self.len() - write_len,
             });
         }

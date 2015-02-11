@@ -23,6 +23,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 
 #![feature(box_syntax)]
+#![feature(alloc)]
 #![feature(collections)]
 #![feature(core)]
 #![feature(hash)]

@@ -16,7 +16,7 @@ use core::option::Option;
 
 /// Return a pointer to `size` bytes of memory aligned to `align`.
 ///
-/// On failure, return a null pointer.
+/// On failure, return `None`.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
@@ -28,7 +28,7 @@ pub unsafe fn allocate<T>(size: uint, align: uint) -> Option<NonZero<*mut T>> {
 
 /// Resize the allocation referenced by `ptr` to `size` bytes.
 ///
-/// On failure, return a null pointer and leave the original allocation intact.
+/// On failure, returns `None` and leave the original allocation intact.
 ///
 /// Behavior is undefined if the requested size is 0 or the alignment is not a
 /// power of 2. The alignment must be no larger than the largest supported page
@@ -38,7 +38,9 @@ pub unsafe fn allocate<T>(size: uint, align: uint) -> Option<NonZero<*mut T>> {
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
-pub unsafe fn reallocate<T>(ptr: NonZero<*mut T>, old_size: uint, size: uint, align: uint) -> Option<NonZero<*mut T>> {
+pub unsafe fn reallocate<T>(
+    ptr: NonZero<*mut T>, old_size: uint, size: uint, align: uint)
+    -> Option<NonZero<*mut T>> {
     NonZero::new(imp::reallocate(ptr.get() as *mut u8, old_size, size, align) as *mut T)
 }
 
@@ -55,13 +57,12 @@ pub unsafe fn reallocate<T>(ptr: NonZero<*mut T>, old_size: uint, size: uint, al
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be
 /// any value in range_inclusive(requested_size, usable_size).
 #[inline]
-pub unsafe fn reallocate_inplace<T>(ptr: NonZero<*mut T>, old_size: uint, size: uint, align: uint) -> uint {
+pub unsafe fn reallocate_inplace<T>(
+    ptr: NonZero<*mut T>, old_size: uint, size: uint, align: uint) -> uint {
     imp::reallocate_inplace(ptr.get() as *mut u8, old_size, size, align)
 }
 
 /// Deallocates the memory referenced by `ptr`.
-///
-/// The `ptr` parameter must not be null.
 ///
 /// The `old_size` and `align` parameters are the parameters that were used to
 /// create the allocation referenced by `ptr`. The `old_size` parameter may be

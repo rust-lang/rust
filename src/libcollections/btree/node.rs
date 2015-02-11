@@ -309,7 +309,7 @@ impl<K, V> Node<K, V> {
         let (alignment, size) = calculate_allocation_generic::<K, V>(capacity, false);
 
         let buffer: *mut u8 =
-            *heap::allocate(size, alignment).unwrap_or_else(|| ::alloc::oom()).get();
+            heap::allocate(size, alignment).unwrap_or_else(|| ::alloc::oom()).get();
 
         let (vals_offset, edges_offset) = calculate_offsets_generic::<K, V>(capacity, false);
 
@@ -329,7 +329,7 @@ impl<K, V> Node<K, V> {
 
         unsafe {
             let buffer: *mut u8 =
-                *heap::allocate(size, alignment).unwrap_or_else(|| ::alloc::oom()).get();
+                heap::allocate(size, alignment).unwrap_or_else(|| ::alloc::oom()).get();
 
             let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
 

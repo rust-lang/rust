@@ -1235,7 +1235,8 @@ impl<T> Vec<T> {
 
 // FIXME: #13996: need a way to mark the return value as `noalias`
 #[inline(never)]
-unsafe fn alloc_or_realloc<T>(ptr: NonZero<*mut T>, old_size: usize, size: usize) -> Option<NonZero<*mut T>> {
+unsafe fn alloc_or_realloc<T>(ptr: NonZero<*mut T>, old_size: usize, size: usize)
+                              -> Option<NonZero<*mut T>> {
     if old_size == 0 {
         allocate(size, mem::min_align_of::<T>())
     } else {

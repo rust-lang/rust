@@ -16,6 +16,7 @@
 extern crate alloc;
 
 use alloc::heap;
+use core::nonzero::NonZero;
 use std::ptr;
 use std::iter::repeat;
 
@@ -27,7 +28,7 @@ fn main() {
 
 unsafe fn test_triangle() -> bool {
     static COUNT : uint = 16;
-    let mut ascend = repeat(ptr::null_mut()).take(COUNT).collect::<Vec<_>>();
+    let mut ascend = Vec::with_capacity(COUNT);
     let ascend = &mut *ascend;
     static ALIGN : uint = 1;
 
@@ -46,38 +47,39 @@ unsafe fn test_triangle() -> bool {
 
     static PRINT : bool = false;
 
-    unsafe fn allocate(size: uint, align: uint) -> *mut u8 {
+    unsafe fn allocate(size: uint, align: uint) -> NonZero<*mut u8> {
         if PRINT { println!("allocate(size={} align={})", size, align); }
 
-        let ret = heap::allocate(size, align);
-        if ret.is_null() { alloc::oom() }
+        let ret = heap::allocate(size, align)
+            .unwrap_or_else(|| alloc::oom());
 
         if PRINT { println!("allocate(size={} align={}) ret: 0x{:010x}",
-                            size, align, ret as uint);
+                            size, align, ret.get() as uint);
         }
 
         ret
     }
-    unsafe fn deallocate(ptr: *mut u8, size: uint, align: uint) {
+    unsafe fn deallocate(ptr: NonZero<*mut u8>, size: uint, align: uint) {
         if PRINT { println!("deallocate(ptr=0x{:010x} size={} align={})",
-                            ptr as uint, size, align);
+                            ptr.get() as uint, size, align);
         }
 
         heap::deallocate(ptr, size, align);
     }
-    unsafe fn reallocate(ptr: *mut u8, old_size: uint, size: uint, align: uint) -> *mut u8 {
+    unsafe fn reallocate(ptr: NonZero<*mut u8>, old_size: uint, size: uint, align: uint)
+                         -> NonZero<*mut u8> {
         if PRINT {
             println!("reallocate(ptr=0x{:010x} old_size={} size={} align={})",
-                     ptr as uint, old_size, size, align);
+                     ptr.get() as uint, old_size, size, align);
         }
 
-        let ret = heap::reallocate(ptr, old_size, size, align);
-        if ret.is_null() { alloc::oom() }
+        let ret = heap::reallocate(ptr, old_size, size, align)
+            .unwrap_or_else(|| alloc::oom());
 
         if PRINT {
             println!("reallocate(ptr=0x{:010x} old_size={} size={} align={}) \
                       ret: 0x{:010x}",
-                     ptr as uint, old_size, size, align, ret as uint);
+                     ptr.get() as uint, old_size, size, align, ret as uint);
         }
         ret
     }
@@ -90,8 +92,8 @@ unsafe fn test_triangle() -> bool {
     // way.)
     for i in 0u..COUNT / 2 {
         let size = idx_to_size(i);
-        ascend[2*i]   = allocate(size, ALIGN);
-        ascend[2*i+1] = allocate(size, ALIGN);
+        ascend.push(allocate(size, ALIGN));
+        ascend.push(allocate(size, ALIGN));
     }
 
     // Initialize each pair of rows to distinct value.
@@ -121,7 +123,7 @@ unsafe fn test_triangle() -> bool {
     // allocation; initialized portion remains a triangle) by
     // realloc'ing each row from top to bottom, and checking all the
     // rows as we go.
-    unsafe fn test_1(ascend: &mut [*mut u8]) {
+    unsafe fn test_1(ascend: &mut [NonZero<*mut u8>]) {
         let new_size = idx_to_size(COUNT-1);
         for i in 0u..COUNT / 2 {
             let (p0, p1, old_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
@@ -136,7 +138,7 @@ unsafe fn test_triangle() -> bool {
     }
 
     // Test 2: turn the square back into a triangle, top to bottom.
-    unsafe fn test_2(ascend: &mut [*mut u8]) {
+    unsafe fn test_2(ascend: &mut [NonZero<*mut u8>]) {
         let old_size = idx_to_size(COUNT-1);
         for i in 0u..COUNT / 2 {
             let (p0, p1, new_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
@@ -151,7 +153,7 @@ unsafe fn test_triangle() -> bool {
     }
 
     // Test 3: turn triangle into a square, bottom to top.
-    unsafe fn test_3(ascend: &mut [*mut u8]) {
+    unsafe fn test_3(ascend: &mut [NonZero<*mut u8>]) {
         let new_size = idx_to_size(COUNT-1);
         for i in (0u..COUNT / 2).rev() {
             let (p0, p1, old_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));
@@ -166,7 +168,7 @@ unsafe fn test_triangle() -> bool {
     }
 
     // Test 4: turn the square back into a triangle, bottom to top.
-    unsafe fn test_4(ascend: &mut [*mut u8]) {
+    unsafe fn test_4(ascend: &mut [NonZero<*mut u8>]) {
         let old_size = idx_to_size(COUNT-1);
         for i in (0u..COUNT / 2).rev() {
             let (p0, p1, new_size) = (ascend[2*i], ascend[2*i+1], idx_to_size(i));

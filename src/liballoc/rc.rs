@@ -394,7 +394,7 @@ impl<T> Drop for Rc<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr: &*mut T = transmute(&self._ptr);
+            let ptr: &*mut RcBox<T> = transmute(&self._ptr);
             let ptr = match NonZero::new(*ptr) {
                 None => return,
                 Some(ptr) => ptr,
@@ -703,7 +703,7 @@ impl<T> Drop for Weak<T> {
     /// ```
     fn drop(&mut self) {
         unsafe {
-            let ptr: &*mut T= transmute(&self._ptr);
+            let ptr: &*mut RcBox<T> = transmute(&self._ptr);
             let ptr = match NonZero::new(*ptr) {
                 None => return,
                 Some(ptr) => ptr,
