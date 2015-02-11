@@ -1551,7 +1551,7 @@ pub fn process_crate(sess: &Session,
     info!("Dumping crate {}", cratename);
 
     // find a path to dump our data to
-    let mut root_path = match env::var_string("DXR_RUST_TEMP_FOLDER") {
+    let mut root_path = match env::var("DXR_RUST_TEMP_FOLDER") {
         Ok(val) => Path::new(val),
         Err(..) => match odir {
             Some(val) => val.join("dxr"),

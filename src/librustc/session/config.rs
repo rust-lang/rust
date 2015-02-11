@@ -1052,7 +1052,7 @@ pub fn get_unstable_features_setting() -> UnstableFeatures {
     // subverting the unstable features lints
     let bootstrap_secret_key = option_env!("CFG_BOOTSTRAP_KEY");
     // The matching key to the above, only known by the build system
-    let bootstrap_provided_key = env::var_string("RUSTC_BOOTSTRAP_KEY").ok();
+    let bootstrap_provided_key = env::var("RUSTC_BOOTSTRAP_KEY").ok();
     match (disable_unstable_features, bootstrap_secret_key, bootstrap_provided_key) {
         (_, Some(ref s), Some(ref p)) if s == p => UnstableFeatures::Cheat,
         (true, _, _) => UnstableFeatures::Disallow,

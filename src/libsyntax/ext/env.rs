@@ -30,7 +30,7 @@ pub fn expand_option_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenT
         Some(v) => v
     };
 
-    let e = match env::var_string(&var[]) {
+    let e = match env::var(&var[]) {
       Err(..) => {
           cx.expr_path(cx.path_all(sp,
                                    true,
@@ -101,7 +101,7 @@ pub fn expand_env<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         }
     }
 
-    let e = match env::var_string(&var[]) {
+    let e = match env::var(&var[]) {
         Err(_) => {
             cx.span_err(sp, &msg);
             cx.expr_usize(sp, 0)

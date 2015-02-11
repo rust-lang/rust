@@ -207,7 +207,7 @@ static PATH_ENTRY_SEPARATOR: &'static str = ":";
 
 /// Returns RUST_PATH as a string, without default paths added
 pub fn get_rust_path() -> Option<String> {
-    env::var_string("RUST_PATH").ok()
+    env::var("RUST_PATH").ok()
 }
 
 /// Returns the value of RUST_PATH, as a list

@@ -29,7 +29,7 @@ pub fn log_enabled() -> bool {
         _ => {}
     }
 
-    let val = match env::var("RUST_BACKTRACE") {
+    let val = match env::var_os("RUST_BACKTRACE") {
         Some(..) => 2,
         None => 1,
     };

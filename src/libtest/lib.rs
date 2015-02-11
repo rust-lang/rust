@@ -387,7 +387,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
-        nocapture = env::var("RUST_TEST_NOCAPTURE").is_some();
+        nocapture = env::var("RUST_TEST_NOCAPTURE").is_ok();
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
@@ -813,7 +813,7 @@ fn run_tests<F>(opts: &TestOpts,
 
 fn get_concurrency() -> uint {
     use std::rt;
-    match env::var_string("RUST_TEST_TASKS") {
+    match env::var("RUST_TEST_TASKS") {
         Ok(s) => {
             let opt_n: Option<uint> = s.parse().ok();
             match opt_n {
