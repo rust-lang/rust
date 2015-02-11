@@ -771,7 +771,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
 
     // FIXME: Hacks on hacks. If the env is trying to override the stack size
     // then *don't* set it explicitly.
-    if env::var("RUST_MIN_STACK").is_none() {
+    if env::var_os("RUST_MIN_STACK").is_none() {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
@@ -835,8 +835,7 @@ pub fn diagnostics_registry() -> diagnostics::registry::Registry {
 }
 
 pub fn main() {
-    let args = env::args().map(|s| s.into_string().unwrap());
-    let result = run(args.collect());
+    let result = run(env::args().collect());
     std::env::set_exit_status(result as i32);
 }
 

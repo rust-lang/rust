@@ -384,7 +384,7 @@ impl Target {
             Path::new(target)
         };
 
-        let target_path = env::var("RUST_TARGET_PATH")
+        let target_path = env::var_os("RUST_TARGET_PATH")
                               .unwrap_or(OsString::from_str(""));
 
         // FIXME 16351: add a sane default search path?
