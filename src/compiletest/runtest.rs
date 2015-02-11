@@ -391,6 +391,9 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             script_str.push_str("set charset UTF-8\n");
             script_str.push_str(&format!("file {}\n", exe_file.as_str().unwrap()));
             script_str.push_str("target remote :5039\n");
+            script_str.push_str(&format!("set solib-search-path \
+                                         ./{}/stage2/lib/rustlib/{}/lib/\n",
+                                         config.host, config.target));
             for line in breakpoint_lines.iter() {
                 script_str.push_str(&format!("break {:?}:{}\n",
                                              testfile.filename_display(),
