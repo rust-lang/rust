@@ -159,7 +159,9 @@ impl OpenOptions {
             flags: 0,
             read: false,
             write: false,
-            mode: libc::S_IRUSR | libc::S_IWUSR,
+            mode: libc::S_IRUSR | libc::S_IWUSR
+                | libc::S_IRGRP | libc::S_IWGRP
+                | libc::S_IROTH | libc::S_IWOTH,
         }
     }
 
