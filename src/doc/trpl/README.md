@@ -33,7 +33,3 @@ chapters focus on the most complex features, as well as some things that
 are only available in upcoming versions of Rust.
 
 After reading "Advanced," you'll be a Rust expert!
-
-<h2 class="section-header"><a href="internals.html">Internals</a></h2>
-
-This section is full of documentaion of compiler internals. Here be dragons.

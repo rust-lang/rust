@@ -41,8 +41,6 @@ use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use syntax::ast::{FnDecl, Block, NodeId};
 
-pub mod doc;
-
 pub mod check_loans;
 
 pub mod gather_loans;
