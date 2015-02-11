@@ -1304,7 +1304,7 @@ The `open_mode` function will be removed in favor of and will take an
 [File kinds]: #file-kinds
 
 The `FileType` type will be removed. As mentioned above, `is_file` and
-`is_dir` will be provided directly on `Meatadata`; the other types
+`is_dir` will be provided directly on `Metadata`; the other types
 need to be audited for compatibility across
 platforms. Platform-specific kinds will be relegated to extension
 traits in `std::os::platform`.
