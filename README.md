@@ -79,6 +79,7 @@ the direction the language is evolving in.
 * [0702-rangefull-expression.md](text/0702-rangefull-expression.md)
 * [0736-privacy-respecting-fru.md](text/0736-privacy-respecting-fru.md)
 * [0769-sound-generic-drop.md](text/0769-sound-generic-drop.md)
+* [0809-box-and-in-for-stdlib.md](text/0809-box-and-in-for-stdlib.md)
 
 ## Table of Contents
 [Table of Contents]: #table-of-contents

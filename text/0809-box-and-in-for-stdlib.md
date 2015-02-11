@@ -1,7 +1,7 @@
 - Feature Name: box_syntax, placement_in_syntax
 - Start Date: 2015-02-04
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#809](https://github.com/rust-lang/rfcs/pull/809)
+- Rust Issue: [rust-lang/rust#22181](https://github.com/rust-lang/rust/issues/22181)
 
 # Summary
 
@@ -205,6 +205,12 @@ tandem with types provided by the stdlib, such as `Box<T>`.
 
 # Unresolved questions
 
+This RFC represents the current plan for `box`/`in`. However, in the
+[RFC discussion][809] a number of questions arose, including possible
+design alternatives that might render the `in` keyword unnecessary.
+Before the work in this RFC can be unfeature-gated, these questions should
+be satisfactorily resolved:
+
 * Can the type-inference and coercion system of the compiler be
   enriched to the point where overloaded `box` and `in` are
   seamlessly usable? Or are type-ascriptions unavoidable when
@@ -216,7 +222,12 @@ tandem with types provided by the stdlib, such as `Box<T>`.
 
   (See [Appendix B] for example code showing weaknesses in
    `rustc` of today.)
-
+* Do we want to change the syntax for `in(place) expr` / `in place { expr }`?
+* Do we need `in` at all, or can we replace it with some future possible feature such as `DerefSet` or `&out` etc?
+* Do we want to improve the protocol in some way?
+  - Note that the protocol was specifically excluded from this RFC.
+  - Support for DST expressions such as `box [22, ..count]` (where `count` is a dynamic value)?
+  - Protocol making use of more advanced language features?
 
 # Appendices
 
@@ -729,3 +740,5 @@ pointer-to-unsized.
 (Maybe there is a way to handle both of these cases in a generic
 fashion; pnkfelix is not sufficiently familiar with how coercions
 currently interact with type-inference in the first place.)
+
+[809]: https://github.com/rust-lang/rfcs/pull/809
