@@ -126,6 +126,9 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
 
     // Allows using #![no_std]
     ("no_std", "1.0.0", Active),
+
+    // Allows using `box` in patterns; RFC 469
+    ("box_patterns", "1.0.0", Active),
 ];
 
 enum Status {
@@ -427,7 +430,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             ast::ExprBox(..) | ast::ExprUnary(ast::UnOp::UnUniq, _) => {
                 self.gate_feature("box_syntax",
                                   e.span,
-                                  "box expression syntax is experimental in alpha release; \
+                                  "box expression syntax is experimental; \
                                    you can call `Box::new` instead.");
             }
             ast::ExprLit(ref lit) => {
@@ -486,9 +489,9 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                    `[0, ..xs, 0]` are experimental")
             }
             ast::PatBox(..) => {
-                self.gate_feature("box_syntax",
+                self.gate_feature("box_patterns",
                                   pattern.span,
-                                  "box pattern syntax is experimental in alpha release");
+                                  "box pattern syntax is experimental");
             }
             _ => {}
         }

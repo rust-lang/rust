@@ -10,6 +10,7 @@
 
 // ignore-tidy-linelength
 
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 
 struct S {

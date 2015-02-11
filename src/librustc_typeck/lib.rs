@@ -74,6 +74,7 @@ This API is completely unstable and subject to change.
 
 #![allow(non_camel_case_types)]
 
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]

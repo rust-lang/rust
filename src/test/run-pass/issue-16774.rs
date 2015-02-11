@@ -10,6 +10,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
+#![feature(box_patterns)]
 #![feature(unboxed_closures)]
 
 use std::ops::{Deref, DerefMut};

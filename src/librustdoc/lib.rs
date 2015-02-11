@@ -18,6 +18,7 @@
        html_root_url = "http://doc.rust-lang.org/nightly/",
        html_playground_url = "http://play.rust-lang.org/")]
 
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]

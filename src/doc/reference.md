@@ -3196,6 +3196,7 @@ stands for a *single* data field, whereas a wildcard `..` stands for *all* the
 fields of a particular variant. For example:
 
 ```
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 enum List<X> { Nil, Cons(X, Box<List<X>>) }
 
@@ -3259,6 +3260,7 @@ the inside of the match.
 An example of a `match` expression:
 
 ```
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 # fn process_pair(a: i32, b: i32) { }
 # fn process_ten() { }
@@ -3294,6 +3296,7 @@ Subpatterns can also be bound to variables by the use of the syntax `variable @
 subpattern`. For example:
 
 ```
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 
 enum List { Nil, Cons(uint, Box<List>) }
