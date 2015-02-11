@@ -177,6 +177,8 @@ extern char *yytext;
 
 %precedence '{' '[' '(' '.'
 
+%precedence RANGE
+
 %start crate
 
 %%
@@ -1475,7 +1477,7 @@ expr_nostruct
 | expr_nostruct '*' expr_nostruct                     { $$ = mk_node("ExprBinary", 3, mk_atom("BiMul"), $1, $3); }
 | expr_nostruct '/' expr_nostruct                     { $$ = mk_node("ExprBinary", 3, mk_atom("BiDiv"), $1, $3); }
 | expr_nostruct '%' expr_nostruct                     { $$ = mk_node("ExprBinary", 3, mk_atom("BiRem"), $1, $3); }
-| expr_nostruct DOTDOT                                { $$ = mk_node("ExprRange", 2, $1, mk_none()); }
+| expr_nostruct DOTDOT               %prec RANGE      { $$ = mk_node("ExprRange", 2, $1, mk_none()); }
 | expr_nostruct DOTDOT expr_nostruct                  { $$ = mk_node("ExprRange", 2, $1, $3); }
 |               DOTDOT expr_nostruct                  { $$ = mk_node("ExprRange", 2, mk_none(), $2); }
 |               DOTDOT                                { $$ = mk_node("ExprRange", 2, mk_none(), mk_none()); }
