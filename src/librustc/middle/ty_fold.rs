@@ -379,6 +379,19 @@ impl<'tcx> TypeFoldable<'tcx> for ty::TypeParameterDef<'tcx> {
             index: self.index,
             bounds: self.bounds.fold_with(folder),
             default: self.default.fold_with(folder),
+            object_lifetime_default: self.object_lifetime_default.fold_with(folder),
+        }
+    }
+}
+
+impl<'tcx> TypeFoldable<'tcx> for ty::ObjectLifetimeDefault {
+    fn fold_with<F: TypeFolder<'tcx>>(&self, folder: &mut F) -> ty::ObjectLifetimeDefault {
+        match *self {
+            ty::ObjectLifetimeDefault::Ambiguous =>
+                ty::ObjectLifetimeDefault::Ambiguous,
+
+            ty::ObjectLifetimeDefault::Specific(r) =>
+                ty::ObjectLifetimeDefault::Specific(r.fold_with(folder)),
         }
     }
 }
