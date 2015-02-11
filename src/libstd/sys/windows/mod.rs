@@ -43,6 +43,7 @@ pub mod fs2;
 pub mod handle;
 pub mod helper_signal;
 pub mod mutex;
+pub mod net;
 pub mod os;
 pub mod os_str;
 pub mod pipe;
