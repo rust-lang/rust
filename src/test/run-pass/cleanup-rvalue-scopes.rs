@@ -12,6 +12,7 @@
 // statement or end of block, as appropriate given the temporary
 // lifetime rules.
 
+#![feature(box_patterns)]
 #![feature(box_syntax)]
 
 use std::ops::Drop;
