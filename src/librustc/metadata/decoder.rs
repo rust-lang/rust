@@ -418,9 +418,9 @@ pub fn get_trait_def<'tcx>(cdata: Cmd,
 }
 
 pub fn get_predicates<'tcx>(cdata: Cmd,
-                                  item_id: ast::NodeId,
-                                  tcx: &ty::ctxt<'tcx>)
-                                  -> ty::GenericPredicates<'tcx>
+                            item_id: ast::NodeId,
+                            tcx: &ty::ctxt<'tcx>)
+                            -> ty::GenericPredicates<'tcx>
 {
     let item_doc = lookup_item(item_id, cdata.data());
     doc_predicates(item_doc, tcx, cdata, tag_item_generics)
