@@ -195,6 +195,12 @@ the actual type parameter satisfies the formal bounds.  We could
 probably give a different error message if the bounds are met, but the
 trait is not object-safe.
 
+We might in the future use finer-grained reasoning to permit more
+non-object-safe methods from appearing in the trait. For example, we
+might permit `fn foo() -> Self` because it (implicitly) requires that
+`Self` be sized. Similarly, we might permit other tests beyond just
+sized-ness. Any such extension would be backwards compatible.
+
 # Unresolved questions
 
 N/A
