@@ -21,6 +21,7 @@ pub use sys_common::wtf8::{Wtf8Buf, EncodeWide};
 use ffi::{OsStr, OsString};
 use fs::{self, OpenOptions};
 use libc;
+use net;
 use sys::os_str::Buf;
 use sys_common::{AsInner, FromInner, AsInnerMut};
 
@@ -101,6 +102,16 @@ impl AsRawSocket for old_io::net::udp::UdpSocket {
     fn as_raw_socket(&self) -> Socket {
         self.as_inner().fd()
     }
+}
+
+impl AsRawSocket for net::TcpStream {
+    fn as_raw_socket(&self) -> Socket { *self.as_inner().socket().as_inner() }
+}
+impl AsRawSocket for net::TcpListener {
+    fn as_raw_socket(&self) -> Socket { *self.as_inner().socket().as_inner() }
+}
+impl AsRawSocket for net::UdpSocket {
+    fn as_raw_socket(&self) -> Socket { *self.as_inner().socket().as_inner() }
 }
 
 // Windows-specific extensions to `OsString`.
