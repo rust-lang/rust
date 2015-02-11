@@ -13,7 +13,7 @@
 use super::{check_fn, Expectation, FnCtxt};
 
 use astconv;
-use middle::region::CodeExtent;
+use middle::region;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
 use rscope::RegionScope;
@@ -78,7 +78,9 @@ fn check_closure<'a,'tcx>(fcx: &FnCtxt<'a,'tcx>,
     fcx.write_ty(expr.id, closure_type);
 
     let fn_sig =
-        ty::liberate_late_bound_regions(fcx.tcx(), CodeExtent::from_node_id(body.id), &fn_ty.sig);
+        ty::liberate_late_bound_regions(fcx.tcx(),
+                                        region::DestructionScopeData::new(body.id),
+                                        &fn_ty.sig);
 
     check_fn(fcx.ccx,
              ast::Unsafety::Normal,

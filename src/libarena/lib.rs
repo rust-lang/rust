@@ -42,6 +42,7 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::intrinsics::{TyDesc, get_tydesc};
 use std::intrinsics;
+use std::marker;
 use std::mem;
 use std::num::{Int, UnsignedInt};
 use std::ptr;
@@ -88,27 +89,29 @@ impl Chunk {
 /// than objects without destructors. This reduces overhead when initializing
 /// plain-old-data (`Copy` types) and means we don't need to waste time running
 /// their destructors.
-pub struct Arena {
+pub struct Arena<'longer_than_self> {
     // The head is separated out from the list as a unbenchmarked
     // microoptimization, to avoid needing to case on the list to access the
     // head.
     head: RefCell<Chunk>,
     copy_head: RefCell<Chunk>,
     chunks: RefCell<Vec<Chunk>>,
+    _invariant: marker::InvariantLifetime<'longer_than_self>,
 }
 
-impl Arena {
+impl<'a> Arena<'a> {
     /// Allocates a new Arena with 32 bytes preallocated.
-    pub fn new() -> Arena {
+    pub fn new() -> Arena<'a> {
         Arena::new_with_size(32)
     }
 
     /// Allocates a new Arena with `initial_size` bytes preallocated.
-    pub fn new_with_size(initial_size: usize) -> Arena {
+    pub fn new_with_size(initial_size: usize) -> Arena<'a> {
         Arena {
             head: RefCell::new(chunk(initial_size, false)),
             copy_head: RefCell::new(chunk(initial_size, true)),
             chunks: RefCell::new(Vec::new()),
+            _invariant: marker::InvariantLifetime,
         }
     }
 }
@@ -122,7 +125,7 @@ fn chunk(size: usize, is_copy: bool) -> Chunk {
 }
 
 #[unsafe_destructor]
-impl Drop for Arena {
+impl<'longer_than_self> Drop for Arena<'longer_than_self> {
     fn drop(&mut self) {
         unsafe {
             destroy_chunk(&*self.head.borrow());
@@ -180,7 +183,7 @@ fn un_bitpack_tydesc_ptr(p: usize) -> (*const TyDesc, bool) {
     ((p & !1) as *const TyDesc, p & 1 == 1)
 }
 
-impl Arena {
+impl<'longer_than_self> Arena<'longer_than_self> {
     fn chunk_size(&self) -> usize {
         self.copy_head.borrow().capacity()
     }
@@ -293,7 +296,7 @@ impl Arena {
     /// Allocates a new item in the arena, using `op` to initialize the value,
     /// and returns a reference to it.
     #[inline]
-    pub fn alloc<T, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
+    pub fn alloc<T:'longer_than_self, F>(&self, op: F) -> &mut T where F: FnOnce() -> T {
         unsafe {
             if intrinsics::needs_drop::<T>() {
                 self.alloc_noncopy(op)
@@ -315,20 +318,6 @@ fn test_arena_destructors() {
         // things interesting.
         arena.alloc(|| [0u8, 1u8, 2u8]);
     }
-}
-
-#[test]
-fn test_arena_alloc_nested() {
-    struct Inner { value: usize }
-    struct Outer<'a> { inner: &'a Inner }
-
-    let arena = Arena::new();
-
-    let result = arena.alloc(|| Outer {
-        inner: arena.alloc(|| Inner { value: 10 })
-    });
-
-    assert_eq!(result.inner.value, 10);
 }
 
 #[test]
@@ -365,6 +354,10 @@ pub struct TypedArena<T> {
 
     /// A pointer to the first arena segment.
     first: RefCell<*mut TypedArenaChunk<T>>,
+
+    /// Marker indicating that dropping the arena causes its owned
+    /// instances of `T` to be dropped.
+    _own: marker::PhantomData<T>,
 }
 
 struct TypedArenaChunk<T> {
@@ -460,6 +453,7 @@ impl<T> TypedArena<T> {
                 ptr: Cell::new((*chunk).start() as *const T),
                 end: Cell::new((*chunk).end() as *const T),
                 first: RefCell::new(chunk),
+                _own: marker::PhantomData,
             }
         }
     }
@@ -521,6 +515,41 @@ mod tests {
         x: i32,
         y: i32,
         z: i32,
+    }
+
+    #[test]
+    fn test_arena_alloc_nested() {
+        struct Inner { value: u8 }
+        struct Outer<'a> { inner: &'a Inner }
+        enum EI<'e> { I(Inner), O(Outer<'e>) }
+
+        struct Wrap<'a>(TypedArena<EI<'a>>);
+
+        impl<'a> Wrap<'a> {
+            fn alloc_inner<F:Fn() -> Inner>(&self, f: F) -> &Inner {
+                let r: &EI = self.0.alloc(EI::I(f()));
+                if let &EI::I(ref i) = r {
+                    i
+                } else {
+                    panic!("mismatch");
+                }
+            }
+            fn alloc_outer<F:Fn() -> Outer<'a>>(&self, f: F) -> &Outer {
+                let r: &EI = self.0.alloc(EI::O(f()));
+                if let &EI::O(ref o) = r {
+                    o
+                } else {
+                    panic!("mismatch");
+                }
+            }
+        }
+
+        let arena = Wrap(TypedArena::new());
+
+        let result = arena.alloc_outer(|| Outer {
+            inner: arena.alloc_inner(|| Inner { value: 10 }) });
+
+        assert_eq!(result.inner.value, 10);
     }
 
     #[test]

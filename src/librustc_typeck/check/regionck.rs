@@ -83,6 +83,7 @@
 //! contents.
 
 use astconv::AstConv;
+use check::dropck;
 use check::FnCtxt;
 use check::regionmanip;
 use check::vtable;
@@ -171,6 +172,7 @@ pub struct Rcx<'a, 'tcx: 'a> {
 
     // id of AST node being analyzed (the subject of the analysis).
     subject: SubjectNode,
+
 }
 
 /// Returns the validity region of `def` -- that is, how long is `def` valid?
@@ -198,7 +200,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         Rcx { fcx: fcx,
               repeating_scope: initial_repeating_scope,
               subject: subject,
-              region_bound_pairs: Vec::new() }
+              region_bound_pairs: Vec::new()
+        }
     }
 
     pub fn tcx(&self) -> &'a ty::ctxt<'tcx> {
@@ -469,6 +472,10 @@ fn constrain_bindings_in_pat(pat: &ast::Pat, rcx: &mut Rcx) {
         type_of_node_must_outlive(
             rcx, infer::BindingTypeIsNotValidAtDecl(span),
             id, var_region);
+
+        let var_scope = tcx.region_maps.var_scope(id);
+        let typ = rcx.resolve_node_type(id);
+        dropck::check_safety_of_destructor_if_necessary(rcx, typ, span, var_scope);
     })
 }
 
@@ -516,6 +523,40 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             }
             */
             _ => {}
+        }
+
+        // If necessary, constrain destructors in the unadjusted form of this
+        // expression.
+        let cmt_result = {
+            let mc = mc::MemCategorizationContext::new(rcx.fcx);
+            mc.cat_expr_unadjusted(expr)
+        };
+        match cmt_result {
+            Ok(head_cmt) => {
+                check_safety_of_rvalue_destructor_if_necessary(rcx,
+                                                               head_cmt,
+                                                               expr.span);
+            }
+            Err(..) => {
+                rcx.fcx.tcx().sess.span_note(expr.span,
+                                             "cat_expr_unadjusted Errd during dtor check");
+            }
+        }
+    }
+
+    // If necessary, constrain destructors in this expression. This will be
+    // the adjusted form if there is an adjustment.
+    let cmt_result = {
+        let mc = mc::MemCategorizationContext::new(rcx.fcx);
+        mc.cat_expr(expr)
+    };
+    match cmt_result {
+        Ok(head_cmt) => {
+            check_safety_of_rvalue_destructor_if_necessary(rcx, head_cmt, expr.span);
+        }
+        Err(..) => {
+            rcx.fcx.tcx().sess.span_note(expr.span,
+                                         "cat_expr Errd during dtor check");
         }
     }
 
@@ -995,6 +1036,33 @@ pub fn mk_subregion_due_to_dereference(rcx: &mut Rcx,
                     minimum_lifetime, maximum_lifetime)
 }
 
+fn check_safety_of_rvalue_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+                                                            cmt: mc::cmt<'tcx>,
+                                                            span: Span) {
+    match cmt.cat {
+        mc::cat_rvalue(region) => {
+            match region {
+                ty::ReScope(rvalue_scope) => {
+                    let typ = rcx.resolve_type(cmt.ty);
+                    dropck::check_safety_of_destructor_if_necessary(rcx,
+                                                                    typ,
+                                                                    span,
+                                                                    rvalue_scope);
+                }
+                ty::ReStatic => {}
+                region => {
+                    rcx.tcx()
+                       .sess
+                       .span_bug(span,
+                                 format!("unexpected rvalue region in rvalue \
+                                          destructor safety checking: `{}`",
+                                         region.repr(rcx.tcx())).as_slice());
+                }
+            }
+        }
+        _ => {}
+    }
+}
 
 /// Invoked on any index expression that occurs. Checks that if this is a slice being indexed, the
 /// lifetime of the pointer includes the deref expr.
@@ -1404,7 +1472,7 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
 }
 
 /// Ensures that all borrowed data reachable via `ty` outlives `region`.
-fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
+pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                                origin: infer::SubregionOrigin<'tcx>,
                                ty: Ty<'tcx>,
                                region: ty::Region)

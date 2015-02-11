@@ -41,7 +41,7 @@ pub enum DefRegion {
                         /* lifetime decl */ ast::NodeId),
     DefLateBoundRegion(ty::DebruijnIndex,
                        /* lifetime decl */ ast::NodeId),
-    DefFreeRegion(/* block scope */ region::CodeExtent,
+    DefFreeRegion(/* block scope */ region::DestructionScopeData,
                   /* lifetime decl */ ast::NodeId),
 }
 
@@ -81,7 +81,7 @@ enum ScopeChain<'a> {
     LateScope(&'a Vec<ast::LifetimeDef>, Scope<'a>),
     /// lifetimes introduced by items within a code block are scoped
     /// to that block.
-    BlockScope(region::CodeExtent, Scope<'a>),
+    BlockScope(region::DestructionScopeData, Scope<'a>),
     RootScope
 }
 
@@ -191,7 +191,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
     }
 
     fn visit_block(&mut self, b: &ast::Block) {
-        self.with(BlockScope(region::CodeExtent::from_node_id(b.id), self.scope),
+        self.with(BlockScope(region::DestructionScopeData::new(b.id),
+                             self.scope),
                   |_, this| visit::walk_block(this, b));
     }
 
@@ -393,9 +394,13 @@ impl<'a> LifetimeContext<'a> {
     }
 
     fn resolve_free_lifetime_ref(&mut self,
-                                 scope_data: region::CodeExtent,
+                                 scope_data: region::DestructionScopeData,
                                  lifetime_ref: &ast::Lifetime,
                                  scope: Scope) {
+        debug!("resolve_free_lifetime_ref \
+                scope_data: {:?} lifetime_ref: {:?} scope: {:?}",
+               scope_data, lifetime_ref, scope);
+
         // Walk up the scope chain, tracking the outermost free scope,
         // until we encounter a scope that contains the named lifetime
         // or we run out of scopes.
@@ -403,6 +408,9 @@ impl<'a> LifetimeContext<'a> {
         let mut scope = scope;
         let mut search_result = None;
         loop {
+            debug!("resolve_free_lifetime_ref \
+                    scope_data: {:?} scope: {:?} search_result: {:?}",
+                   scope_data, scope, search_result);
             match *scope {
                 BlockScope(blk_scope_data, s) => {
                     scope_data = blk_scope_data;

@@ -295,7 +295,9 @@ fn main() {
         let fd = std::old_io::File::open(&Path::new("shootout-k-nucleotide.data"));
         get_sequence(&mut std::old_io::BufferedReader::new(fd), ">THREE")
     } else {
-        get_sequence(&mut *std::old_io::stdin().lock(), ">THREE")
+        let mut stdin = std::old_io::stdin();
+        let mut stdin = stdin.lock();
+        get_sequence(&mut *stdin, ">THREE")
     };
     let input = Arc::new(input);
 

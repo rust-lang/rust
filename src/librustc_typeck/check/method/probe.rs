@@ -525,7 +525,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
                                                             trait_def_id);
 
         let trait_impls = self.tcx().trait_impls.borrow();
-        let impl_def_ids = match trait_impls.get(&trait_def_id) {
+        let impl_def_ids = trait_impls.get(&trait_def_id);
+        let impl_def_ids = match impl_def_ids {
             None => { return; }
             Some(impls) => impls,
         };

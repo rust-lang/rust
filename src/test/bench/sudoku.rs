@@ -274,7 +274,9 @@ fn main() {
     let mut sudoku = if use_default {
         Sudoku::from_vec(&DEFAULT_SUDOKU)
     } else {
-        Sudoku::read(&mut *old_io::stdin().lock())
+        let mut stdin = old_io::stdin();
+        let mut stdin = stdin.lock();
+        Sudoku::read(&mut *stdin)
     };
     sudoku.solve();
     sudoku.write(&mut old_io::stdout());
