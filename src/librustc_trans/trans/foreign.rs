@@ -670,14 +670,19 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             }
         };
 
+        let rustfn_ty = Type::from_ref(llvm::LLVMTypeOf(llrustfn)).element_type();
+        let mut rust_param_tys = rustfn_ty.func_params().into_iter();
         // Push Rust return pointer, using null if it will be unused.
         let rust_uses_outptr = match tys.fn_sig.output {
             ty::FnConverging(ret_ty) => type_of::return_uses_outptr(ccx, ret_ty),
             ty::FnDiverging => false
         };
         let return_alloca: Option<ValueRef>;
-        let llrust_ret_ty = tys.llsig.llret_ty;
-        let llrust_retptr_ty = llrust_ret_ty.ptr_to();
+        let llrust_ret_ty = if rust_uses_outptr {
+            rust_param_tys.next().expect("Missing return type!").element_type()
+        } else {
+            rustfn_ty.return_type()
+        };
         if rust_uses_outptr {
             // Rust expects to use an outpointer. If the foreign fn
             // also uses an outpointer, we can reuse it, but the types
@@ -689,7 +694,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     debug!("out pointer, foreign={}",
                            ccx.tn().val_to_string(llforeign_outptr));
                     let llrust_retptr =
-                        builder.bitcast(llforeign_outptr, llrust_retptr_ty);
+                        builder.bitcast(llforeign_outptr, llrust_ret_ty.ptr_to());
                     debug!("out pointer, foreign={} (casted)",
                            ccx.tn().val_to_string(llrust_retptr));
                     llrust_args.push(llrust_retptr);
@@ -721,8 +726,13 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         // a pointer and Rust does not or vice versa.
         for i in 0..tys.fn_sig.inputs.len() {
             let rust_ty = tys.fn_sig.inputs[i];
-            let llrust_ty = tys.llsig.llarg_tys[i];
             let rust_indirect = type_of::arg_is_indirect(ccx, rust_ty);
+            let llty = rust_param_tys.next().expect("Not enough parameter types!");
+            let llrust_ty = if rust_indirect {
+                llty.element_type()
+            } else {
+                llty
+            };
             let llforeign_arg_ty = tys.fn_ty.arg_tys[i];
             let foreign_indirect = llforeign_arg_ty.is_indirect();
 
@@ -838,7 +848,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 // Foreign ABI requires an out pointer, but Rust doesn't.
                 // Store Rust return value.
                 let llforeign_outptr_casted =
-                    builder.bitcast(llforeign_outptr, llrust_retptr_ty);
+                    builder.bitcast(llforeign_outptr, llrust_ret_ty.ptr_to());
                 builder.store(llrust_ret_val, llforeign_outptr_casted);
                 builder.ret_void();
             }
