@@ -46,7 +46,7 @@ struct InstantiatedMethodSig<'tcx> {
 
     /// Generic bounds on the method's parameters which must be added
     /// as pending obligations.
-    method_bounds: ty::GenericBounds<'tcx>,
+    method_predicates: ty::InstantiatedPredicates<'tcx>,
 }
 
 pub fn confirm<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
@@ -99,7 +99,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
 
         // Create the final signature for the method, replacing late-bound regions.
         let InstantiatedMethodSig {
-            method_sig, all_substs, method_bounds
+            method_sig, all_substs, method_predicates
         } = self.instantiate_method_sig(&pick, all_substs);
         let method_self_ty = method_sig.inputs[0];
 
@@ -107,7 +107,7 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         self.unify_receivers(self_ty, method_self_ty);
 
         // Add any trait/regions obligations specified on the method's type parameters.
-        self.add_obligations(&pick, &all_substs, &method_bounds);
+        self.add_obligations(&pick, &all_substs, &method_predicates);
 
         // Create the final `MethodCallee`.
         let fty = ty::mk_bare_fn(self.tcx(), None, self.tcx().mk_bare_fn(ty::BareFnTy {
@@ -416,18 +416,19 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         // that obligation is not necessarily satisfied. (In the
         // future, it would be.) But we know that the true `Self` DOES implement
         // the trait. So we just delete this requirement. Hack hack hack.
-        let mut method_bounds = pick.method_ty.generics.to_bounds(self.tcx(), &all_substs);
+        let mut method_predicates = pick.method_ty.predicates.instantiate(self.tcx(), &all_substs);
         match pick.kind {
             probe::ObjectPick(..) => {
-                assert_eq!(method_bounds.predicates.get_slice(subst::SelfSpace).len(), 1);
-                method_bounds.predicates.pop(subst::SelfSpace);
+                assert_eq!(method_predicates.predicates.get_slice(subst::SelfSpace).len(), 1);
+                method_predicates.predicates.pop(subst::SelfSpace);
             }
             _ => { }
         }
-        let method_bounds = self.fcx.normalize_associated_types_in(self.span, &method_bounds);
+        let method_predicates = self.fcx.normalize_associated_types_in(self.span,
+                                                                       &method_predicates);
 
-        debug!("method_bounds after subst = {}",
-               method_bounds.repr(self.tcx()));
+        debug!("method_predicates after subst = {}",
+               method_predicates.repr(self.tcx()));
 
         // Instantiate late-bound regions and substitute the trait
         // parameters into the method type to get the actual method type.
@@ -446,22 +447,22 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
         InstantiatedMethodSig {
             method_sig: method_sig,
             all_substs: all_substs,
-            method_bounds: method_bounds,
+            method_predicates: method_predicates,
         }
     }
 
     fn add_obligations(&mut self,
                        pick: &probe::Pick<'tcx>,
                        all_substs: &subst::Substs<'tcx>,
-                       method_bounds: &ty::GenericBounds<'tcx>) {
-        debug!("add_obligations: pick={} all_substs={} method_bounds={}",
+                       method_predicates: &ty::InstantiatedPredicates<'tcx>) {
+        debug!("add_obligations: pick={} all_substs={} method_predicates={}",
                pick.repr(self.tcx()),
                all_substs.repr(self.tcx()),
-               method_bounds.repr(self.tcx()));
+               method_predicates.repr(self.tcx()));
 
         self.fcx.add_obligations_for_parameters(
             traits::ObligationCause::misc(self.span, self.fcx.body_id),
-            method_bounds);
+            method_predicates);
 
         self.fcx.add_default_region_param_bounds(
             all_substs,
