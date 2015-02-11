@@ -102,7 +102,7 @@ pub mod btree_set {
 }
 
 
-#[cfg(test)] mod bench;
+#[cfg(test)] #[macro_use] mod bench;
 
 // FIXME(#14344) this shouldn't be necessary
 #[doc(hidden)]
