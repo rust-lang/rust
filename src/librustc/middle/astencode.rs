@@ -423,13 +423,8 @@ impl tr for def::Def {
     fn tr(&self, dcx: &DecodeContext) -> def::Def {
         match *self {
           def::DefFn(did, is_ctor) => def::DefFn(did.tr(dcx), is_ctor),
-          def::DefStaticMethod(did, p) => {
-            def::DefStaticMethod(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
-          }
-          def::DefMethod(did0, did1, p) => {
-            def::DefMethod(did0.tr(dcx),
-                           did1.map(|did1| did1.tr(dcx)),
-                           p.map(|did2| did2.tr(dcx)))
+          def::DefMethod(did, p) => {
+            def::DefMethod(did.tr(dcx), p.map(|did2| did2.tr(dcx)))
           }
           def::DefSelfTy(nid) => { def::DefSelfTy(dcx.tr_id(nid)) }
           def::DefMod(did) => { def::DefMod(did.tr(dcx)) }

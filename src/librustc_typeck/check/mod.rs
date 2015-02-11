@@ -4627,7 +4627,7 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
              ty::GenericPredicates::empty())
         }
-        def::DefFn(id, _) | def::DefStaticMethod(id, _) | def::DefMethod(id, _, _) |
+        def::DefFn(id, _) | def::DefMethod(id, _) |
         def::DefStatic(id, _) | def::DefVariant(_, id, _) |
         def::DefStruct(id) | def::DefConst(id) => {
             (ty::lookup_item_type(fcx.tcx(), id), ty::lookup_predicates(fcx.tcx(), id))
@@ -4751,8 +4751,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Case 3. Reference to a method.
-        def::DefStaticMethod(_, providence) |
-        def::DefMethod(_, _, providence) => {
+        def::DefMethod(_, providence) => {
             assert!(path.segments.len() >= 2);
 
             match providence {

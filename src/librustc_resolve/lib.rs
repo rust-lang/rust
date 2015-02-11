@@ -900,7 +900,7 @@ struct Resolver<'a, 'tcx:'a> {
 
     graph_root: NameBindings,
 
-    trait_item_map: FnvHashMap<(Name, DefId), TraitItemKind>,
+    trait_item_map: FnvHashMap<(Name, DefId), DefId>,
 
     structs: FnvHashMap<DefId, Vec<Name>>,
 
@@ -3128,7 +3128,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     fn check_trait_item(&self, name: Name, span: Span) {
         // If there is a TraitRef in scope for an impl, then the method must be in the trait.
         if let Some((did, ref trait_ref)) = self.current_trait_ref {
-            if self.trait_item_map.get(&(name, did)).is_none() {
+            if !self.trait_item_map.contains_key(&(name, did)) {
                 let path_str = self.path_names_to_string(&trait_ref.path, 0);
                 self.resolve_error(span,
                                     &format!("method `{}` is not a member of trait `{}`",
@@ -3958,6 +3958,26 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
         }
 
+        fn is_static_method(this: &Resolver, did: DefId) -> bool {
+            if did.krate == ast::LOCAL_CRATE {
+                let explicit_self = match this.ast_map.get(did.node) {
+                    ast_map::NodeTraitItem(m) => match *m {
+                        ast::RequiredMethod(ref m) => &m.explicit_self,
+                        ast::ProvidedMethod(ref m) => m.pe_explicit_self(),
+                        _ => return false
+                    },
+                    ast_map::NodeImplItem(m) => match *m {
+                        ast::MethodImplItem(ref m) => m.pe_explicit_self(),
+                        _ => return false
+                    },
+                    _ => return false
+                };
+                explicit_self.node == ast::SelfStatic
+            } else {
+                csearch::is_static_method(&this.session.cstore, did)
+            }
+        }
+
         let (path, node_id, allowed) = match self.current_self_type {
             Some(ref ty) => match extract_path_and_node_id(ty, Everything) {
                 Some(x) => x,
@@ -3986,41 +4006,30 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         let name_path = path.segments.iter().map(|seg| seg.identifier.name).collect::<Vec<_>>();
 
         // Look for a method in the current self type's impl module.
-        match get_module(self, path.span, &name_path[..]) {
-            Some(module) => match module.children.borrow().get(&name) {
-                Some(binding) => {
-                    let p_str = self.path_names_to_string(&path, 0);
-                    match binding.def_for_namespace(ValueNS) {
-                        Some(DefStaticMethod(_, provenance)) => {
-                            match provenance {
-                                FromImpl(_) => return StaticMethod(p_str),
-                                FromTrait(_) => unreachable!()
-                            }
-                        }
-                        Some(DefMethod(_, None, _)) if allowed == Everything => return Method,
-                        Some(DefMethod(_, Some(_), _)) => return TraitItem,
-                        _ => ()
+        if let Some(module) = get_module(self, path.span, &name_path) {
+            if let Some(binding) = module.children.borrow().get(&name) {
+                if let Some(DefMethod(did, _)) = binding.def_for_namespace(ValueNS) {
+                    if is_static_method(self, did) {
+                        return StaticMethod(self.path_names_to_string(&path, 0))
+                    }
+                    if self.current_trait_ref.is_some() {
+                        return TraitItem;
+                    } else if allowed == Everything {
+                        return Method;
                     }
                 }
-                None => {}
-            },
-            None => {}
+            }
         }
 
         // Look for a method in the current trait.
-        match self.current_trait_ref {
-            Some((did, ref trait_ref)) => {
-                let path_str = self.path_names_to_string(&trait_ref.path, 0);
-
-                match self.trait_item_map.get(&(name, did)) {
-                    Some(&StaticMethodTraitItemKind) => {
-                        return TraitMethod(path_str)
-                    }
-                    Some(_) => return TraitItem,
-                    None => {}
+        if let Some((trait_did, ref trait_ref)) = self.current_trait_ref {
+            if let Some(&did) = self.trait_item_map.get(&(name, trait_did)) {
+                if is_static_method(self, did) {
+                    return TraitMethod(self.path_names_to_string(&trait_ref.path, 0));
+                } else {
+                    return TraitItem;
                 }
             }
-            None => {}
         }
 
         NoSuggestion

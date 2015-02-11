@@ -452,8 +452,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         v.add_qualif(NON_ZERO_SIZED);
                     }
                 }
-                Some(def::DefFn(..)) |
-                Some(def::DefStaticMethod(..)) | Some(def::DefMethod(..)) => {
+                Some(def::DefFn(..)) | Some(def::DefMethod(..)) => {
                     // Count the function pointer.
                     v.add_qualif(NON_ZERO_SIZED);
                 }

@@ -666,7 +666,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           ast::ExprPath(_) | ast::ExprQPath(_) => {
             let def = cx.tcx().def_map.borrow()[e.id];
             match def {
-                def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) => {
+                def::DefFn(..) | def::DefMethod(..) => {
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
                 def::DefConst(def_id) => {

@@ -250,7 +250,6 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefSelfTy(_) |
             def::DefRegion(_) |
             def::DefLabel(_) |
-            def::DefStaticMethod(..) |
             def::DefTyParam(..) |
             def::DefUse(_) |
             def::DefMethod(..) |
@@ -815,8 +814,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                       sub_span,
                                                       def_id,
                                                       self.cur_scope),
-            def::DefStaticMethod(declid, provenence) |
-            def::DefMethod(declid, _, provenence) => {
+            def::DefMethod(declid, provenence) => {
                 let sub_span = self.span.sub_span_for_meth_name(span);
                 let defid = if declid.krate == ast::LOCAL_CRATE {
                     let ti = ty::impl_or_trait_item(&self.analysis.ty_cx,
@@ -872,7 +870,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         }
         // modules or types in the path prefix
         match *def {
-            def::DefStaticMethod(..) => self.write_sub_path_trait_truncated(path),
+            def::DefMethod(did, _) => {
+                let ti = ty::impl_or_trait_item(&self.analysis.ty_cx, did);
+                if let ty::MethodTraitItem(m) = ti {
+                    if m.explicit_self == ty::StaticExplicitSelfCategory {
+                        self.write_sub_path_trait_truncated(path);
+                    }
+                }
+            }
             def::DefLocal(_) |
             def::DefStatic(_,_) |
             def::DefConst(..) |
