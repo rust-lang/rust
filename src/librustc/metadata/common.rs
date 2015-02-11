@@ -252,3 +252,6 @@ pub const tag_macro_def: uint = 0x9e;
 pub const tag_macro_def_body: uint = 0x9f;
 
 pub const tag_paren_sugar: uint = 0xa0;
+
+pub const tag_codemap: uint = 0xa1;
+pub const tag_codemap_filemap: uint = 0xa2;
