@@ -312,6 +312,8 @@ lets_do_this! {
     ExchangeHeapLangItem,            "exchange_heap",           exchange_heap;
     OwnedBoxLangItem,                "owned_box",               owned_box;
 
+    PhantomDataItem,                 "phantom_data",            phantom_data;
+
     CovariantTypeItem,               "covariant_type",          covariant_type;
     ContravariantTypeItem,           "contravariant_type",      contravariant_type;
     InvariantTypeItem,               "invariant_type",          invariant_type;

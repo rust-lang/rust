@@ -57,7 +57,7 @@ use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::iter::{repeat, FromIterator, IntoIterator};
-use core::marker::{ContravariantLifetime, InvariantType};
+use core::marker::{self, ContravariantLifetime, InvariantType};
 use core::mem;
 use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};
@@ -140,6 +140,7 @@ pub struct Vec<T> {
     ptr: NonZero<*mut T>,
     len: usize,
     cap: usize,
+    _own: marker::PhantomData<T>,
 }
 
 unsafe impl<T: Send> Send for Vec<T> { }
@@ -166,7 +167,7 @@ impl<T> Vec<T> {
         // non-null value which is fine since we never call deallocate on the ptr
         // if cap is 0. The reason for this is because the pointer of a slice
         // being NULL would break the null pointer optimization for enums.
-        Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: 0 }
+        unsafe { Vec::from_raw_parts(EMPTY as *mut T, 0, 0) }
     }
 
     /// Constructs a new, empty `Vec<T>` with the specified capacity.
@@ -198,7 +199,7 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn with_capacity(capacity: usize) -> Vec<T> {
         if mem::size_of::<T>() == 0 {
-            Vec { ptr: unsafe { NonZero::new(EMPTY as *mut T) }, len: 0, cap: usize::MAX }
+            unsafe { Vec::from_raw_parts(EMPTY as *mut T, 0, usize::MAX) }
         } else if capacity == 0 {
             Vec::new()
         } else {
@@ -206,7 +207,7 @@ impl<T> Vec<T> {
                                .expect("capacity overflow");
             let ptr = unsafe { allocate(size, mem::min_align_of::<T>()) };
             if ptr.is_null() { ::alloc::oom() }
-            Vec { ptr: unsafe { NonZero::new(ptr as *mut T) }, len: 0, cap: capacity }
+            unsafe { Vec::from_raw_parts(ptr as *mut T, 0, capacity) }
         }
     }
 
@@ -247,7 +248,12 @@ impl<T> Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
                                  capacity: usize) -> Vec<T> {
-        Vec { ptr: NonZero::new(ptr), len: length, cap: capacity }
+        Vec {
+            ptr: NonZero::new(ptr),
+            len: length,
+            cap: capacity,
+            _own: marker::PhantomData,
+        }
     }
 
     /// Creates a vector by copying the elements from a raw pointer.
@@ -1626,7 +1632,7 @@ impl<T> IntoIter<T> {
             for _x in self.by_ref() { }
             let IntoIter { allocation, cap, ptr: _ptr, end: _end } = self;
             mem::forget(self);
-            Vec { ptr: NonZero::new(allocation), cap: cap, len: 0 }
+            Vec::from_raw_parts(allocation, 0, cap)
         }
     }
 }

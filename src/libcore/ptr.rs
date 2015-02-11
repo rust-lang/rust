@@ -92,7 +92,7 @@ use mem;
 use clone::Clone;
 use intrinsics;
 use option::Option::{self, Some, None};
-use marker::{Send, Sized, Sync};
+use marker::{self, Send, Sized, Sync};
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};
@@ -522,7 +522,11 @@ impl<T> PartialOrd for *mut T {
 /// Useful for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
 #[unstable(feature = "core", reason = "recently added to this module")]
-pub struct Unique<T: ?Sized>(pub *mut T);
+pub struct Unique<T: ?Sized> {
+    /// The wrapped `*mut T`.
+    pub ptr: *mut T,
+    _own: marker::PhantomData<T>,
+}
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
 /// reference is unaliased. Note that this aliasing invariant is
@@ -550,6 +554,13 @@ impl<T> Unique<T> {
     #[unstable(feature = "core",
                reason = "recently added to this module")]
     pub unsafe fn offset(self, offset: int) -> *mut T {
-        self.0.offset(offset)
+        self.ptr.offset(offset)
     }
+}
+
+/// Creates a `Unique` wrapped around `ptr`, taking ownership of the
+/// data referenced by `ptr`.
+#[allow(non_snake_case)]
+pub fn Unique<T: ?Sized>(ptr: *mut T) -> Unique<T> {
+    Unique { ptr: ptr, _own: marker::PhantomData }
 }

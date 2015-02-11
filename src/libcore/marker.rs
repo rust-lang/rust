@@ -202,6 +202,24 @@ pub unsafe trait Sync {
     // Empty
 }
 
+/// A marker type that indicates to the compiler that the instances
+/// of the type itself owns instances of the type parameter `T`.
+///
+/// This is used to indicate that one or more instances of the type
+/// `T` could be dropped when instances of the type itself is dropped,
+/// though that may not be apparent from the other structure of the
+/// type itself. For example, the type may hold a `*mut T`, which the
+/// compiler does not automatically treat as owned.
+#[unstable(feature = "core",
+           reason = "Newly added to deal with scoping and destructor changes")]
+#[lang="phantom_data"]
+#[derive(PartialEq, Eq, PartialOrd, Ord)]
+pub struct PhantomData<T: ?Sized>;
+
+impl<T: ?Sized> Copy for PhantomData<T> {}
+impl<T: ?Sized> Clone for PhantomData<T> {
+    fn clone(&self) -> PhantomData<T> { *self }
+}
 
 /// A marker type whose type parameter `T` is considered to be
 /// covariant with respect to the type itself. This is (typically)

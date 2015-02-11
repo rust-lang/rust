@@ -8,26 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test that we correctly ignore the blanket impl
-// because (in this case) `T` does not impl `Clone`.
-//
-// Issue #17594.
+// Tests the new destructor semantics.
 
 use std::cell::RefCell;
 
-trait Foo {
-    fn foo(&self) {}
-}
-
-impl<T> Foo for T where T: Clone {}
-
-struct Bar;
-
-impl Bar {
-    fn foo(&self) {}
-}
-
 fn main() {
-    let b = RefCell::new(Bar);
-    b.borrow().foo();
+    let b = {
+        let a = Box::new(RefCell::new(4i8));
+        *a.borrow() + 1i8    //~ ERROR `*a` does not live long enough
+    };
+    println!("{}", b);
 }
