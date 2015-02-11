@@ -15,6 +15,7 @@ use std::str::FromStr;
 #[derive(Clone, Copy, PartialEq, Debug)]
 pub enum Mode {
     CompileFail,
+    ParseFail,
     RunFail,
     RunPass,
     RunPassValgrind,
@@ -29,6 +30,7 @@ impl FromStr for Mode {
     fn from_str(s: &str) -> Result<Mode, ()> {
         match s {
           "compile-fail" => Ok(CompileFail),
+          "parse-fail" => Ok(ParseFail),
           "run-fail" => Ok(RunFail),
           "run-pass" => Ok(RunPass),
           "run-pass-valgrind" => Ok(RunPassValgrind),
@@ -45,6 +47,7 @@ impl fmt::Display for Mode {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         fmt::Display::fmt(match *self {
             CompileFail => "compile-fail",
+            ParseFail => "parse-fail",
             RunFail => "run-fail",
             RunPass => "run-pass",
             RunPassValgrind => "run-pass-valgrind",
