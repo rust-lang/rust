@@ -40,7 +40,6 @@
 #![feature(hash)]
 #![feature(int_uint)]
 #![feature(io)]
-#![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
@@ -267,7 +266,7 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
 // semantics into parallel test runners, which in turn requires a ~[]
 // rather than a &[].
 pub fn test_main_static(args: env::Args, tests: &[TestDescAndFn]) {
-    let args = args.map(|s| s.into_string().unwrap()).collect::<Vec<_>>();
+    let args = args.collect::<Vec<_>>();
     let owned_tests = tests.iter().map(|t| {
         match t.testfn {
             StaticTestFn(f) => TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
