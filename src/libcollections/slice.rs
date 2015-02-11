@@ -2508,6 +2508,18 @@ mod tests {
         let wins: &[&[_]] = &[&[1,2,3], &[2,3,4]];
         assert_eq!(v.windows(3).collect::<Vec<_>>(), wins);
         assert!(v.windows(6).next().is_none());
+
+        let wins: &[&[_]] = &[&[3,4], &[2,3], &[1,2]];
+        assert_eq!(v.windows(2).rev().collect::<Vec<&[_]>>(), wins);
+        let mut it = v.windows(2);
+        assert_eq!(it.indexable(), 3);
+        let win: &[_] = &[1,2];
+        assert_eq!(it.idx(0).unwrap(), win);
+        let win: &[_] = &[2,3];
+        assert_eq!(it.idx(1).unwrap(), win);
+        let win: &[_] = &[3,4];
+        assert_eq!(it.idx(2).unwrap(), win);
+        assert_eq!(it.idx(3), None);
     }
 
     #[test]
