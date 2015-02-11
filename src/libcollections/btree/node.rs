@@ -22,9 +22,12 @@ use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{Greater, Less, Equal};
 use core::iter::Zip;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
-use core::ptr::Unique;
 use core::{slice, mem, ptr, cmp, num, raw};
+use core::marker::CovariantType;
 use alloc::heap;
+
+// secret performance sauce
+const B: usize = 6;
 
 /// Represents the result of an Insertion: either the item fit, or the node had to split
 pub enum InsertionResult<K, V> {
@@ -47,34 +50,26 @@ pub enum SearchResult<NodeRef> {
 pub struct Node<K, V> {
     // To avoid the need for multiple allocations, we allocate a single buffer with enough space
     // for `capacity` keys, `capacity` values, and (in internal nodes) `capacity + 1` edges.
-    // Despite this, we store three separate pointers to the three "chunks" of the buffer because
-    // the performance drops significantly if the locations of the vals and edges need to be
-    // recalculated upon access.
     //
-    // These will never be null during normal usage of a `Node`. However, to avoid the need for a
-    // drop flag, `Node::drop` zeroes `keys`, signaling that the `Node` has already been cleaned
+    // This will never be null during normal usage of a `Node`. However, to avoid the need for a
+    // drop flag, `Node::drop` zeroes `data`, signaling that the `Node` has already been cleaned
     // up.
-    keys: Unique<K>,
-    vals: Unique<V>,
-
-    // In leaf nodes, this will be null, and no space will be allocated for edges.
-    edges: Unique<Node<K, V>>,
+    data: *mut u8,
 
     // At any given time, there will be `_len` keys, `_len` values, and (in an internal node)
     // `_len + 1` edges. In a leaf node, there will never be any edges.
     //
     // Note: instead of accessing this field directly, please call the `len()` method, which should
     // be more stable in the face of representation changes.
-    _len: usize,
-
-    // FIXME(gereeter) It shouldn't be necessary to store the capacity in every node, as it should
-    // be constant throughout the tree. Once a solution to this is found, it might be possible to
-    // also pass down the offsets into the buffer that vals and edges are stored at, removing the
-    // need for those two pointers.
     //
-    // Note: instead of accessing this field directly, please call the `capacity()` method, which
-    // should be more stable in the face of representation changes.
-    _capacity: usize,
+    // u16 is used because on both 32 and 64-bit this will keep us below another word boundary
+    // when combined with the `_is_leaf` bool
+    _len: u16,
+
+    _is_leaf: bool,
+
+    marker1: CovariantType<K>,
+    marker2: CovariantType<V>,
 }
 
 struct NodeSlice<'a, K: 'a, V: 'a> {
@@ -278,7 +273,7 @@ impl<T> Drop for RawItems<T> {
 #[unsafe_destructor]
 impl<K, V> Drop for Node<K, V> {
     fn drop(&mut self) {
-        if self.keys.0.is_null() {
+        if self.data.is_null() {
             // We have already cleaned up this node.
             return;
         }
@@ -292,7 +287,7 @@ impl<K, V> Drop for Node<K, V> {
             self.destroy();
         }
 
-        self.keys.0 = ptr::null_mut();
+        self.data = ptr::null_mut();
     }
 }
 
@@ -305,14 +300,12 @@ impl<K, V> Node<K, V> {
         let buffer = heap::allocate(size, alignment);
         if buffer.is_null() { ::alloc::oom(); }
 
-        let (vals_offset, edges_offset) = calculate_offsets_generic::<K, V>(capacity, false);
-
         Node {
-            keys: Unique(buffer as *mut K),
-            vals: Unique(buffer.offset(vals_offset as isize) as *mut V),
-            edges: Unique(buffer.offset(edges_offset as isize) as *mut Node<K, V>),
+            data: buffer,
             _len: 0,
-            _capacity: capacity,
+            _is_leaf: false,
+            marker1: CovariantType,
+            marker2: CovariantType,
         }
     }
 
@@ -323,44 +316,42 @@ impl<K, V> Node<K, V> {
         let buffer = unsafe { heap::allocate(size, alignment) };
         if buffer.is_null() { ::alloc::oom(); }
 
-        let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
-
         Node {
-            keys: Unique(buffer as *mut K),
-            vals: Unique(unsafe { buffer.offset(vals_offset as isize) as *mut V }),
-            edges: Unique(ptr::null_mut()),
+            data: buffer,
             _len: 0,
-            _capacity: capacity,
+            _is_leaf: true,
+            marker1: CovariantType,
+            marker2: CovariantType,
         }
     }
 
     unsafe fn destroy(&mut self) {
         let (alignment, size) =
                 calculate_allocation_generic::<K, V>(self.capacity(), self.is_leaf());
-        heap::deallocate(self.keys.0 as *mut u8, size, alignment);
+        heap::deallocate(self.data, size, alignment);
     }
 
     #[inline]
-    pub fn as_slices<'a>(&'a self) -> (&'a [K], &'a [V]) {
+    pub fn as_slices(&self) -> (&[K], &[V]) {
         unsafe {(
             mem::transmute(raw::Slice {
-                data: self.keys.0,
+                data: self.keys_ptr(),
                 len: self.len()
             }),
             mem::transmute(raw::Slice {
-                data: self.vals.0,
+                data: self.vals_ptr(),
                 len: self.len()
             })
         )}
     }
 
     #[inline]
-    pub fn as_slices_mut<'a>(&'a mut self) -> (&'a mut [K], &'a mut [V]) {
+    pub fn as_slices_mut(&mut self) -> (&mut [K], &mut [V]) {
         unsafe { mem::transmute(self.as_slices()) }
     }
 
     #[inline]
-    pub fn as_slices_internal<'b>(&'b self) -> NodeSlice<'b, K, V> {
+    pub fn as_slices_internal(&self) -> NodeSlice<K, V> {
         let is_leaf = self.is_leaf();
         let (keys, vals) = self.as_slices();
         let edges: &[_] = if self.is_leaf() {
@@ -368,7 +359,7 @@ impl<K, V> Node<K, V> {
         } else {
             unsafe {
                 mem::transmute(raw::Slice {
-                    data: self.edges.0,
+                    data: self.edges_ptr(),
                     len: self.len() + 1
                 })
             }
@@ -384,38 +375,58 @@ impl<K, V> Node<K, V> {
     }
 
     #[inline]
-    pub fn as_slices_internal_mut<'b>(&'b mut self) -> MutNodeSlice<'b, K, V> {
+    pub fn as_slices_internal_mut(&mut self) -> MutNodeSlice<K, V> {
         unsafe { mem::transmute(self.as_slices_internal()) }
     }
 
     #[inline]
-    pub fn keys<'a>(&'a self) -> &'a [K] {
+    pub fn keys(&self) -> &[K] {
         self.as_slices().0
     }
 
     #[inline]
-    pub fn keys_mut<'a>(&'a mut self) -> &'a mut [K] {
+    pub fn keys_mut(&mut self) -> &mut [K] {
         self.as_slices_mut().0
     }
 
     #[inline]
-    pub fn vals<'a>(&'a self) -> &'a [V] {
+    pub fn vals(&self) -> &[V] {
         self.as_slices().1
     }
 
     #[inline]
-    pub fn vals_mut<'a>(&'a mut self) -> &'a mut [V] {
+    pub fn vals_mut(&mut self) -> &mut [V] {
         self.as_slices_mut().1
     }
 
     #[inline]
-    pub fn edges<'a>(&'a self) -> &'a [Node<K, V>] {
+    pub fn edges(&self) -> &[Node<K, V>] {
         self.as_slices_internal().edges
     }
 
     #[inline]
-    pub fn edges_mut<'a>(&'a mut self) -> &'a mut [Node<K, V>] {
+    pub fn edges_mut(&mut self) -> &mut [Node<K, V>] {
         self.as_slices_internal_mut().edges
+    }
+
+    fn keys_ptr(&self) -> *mut K {
+        self.data as *mut K
+    }
+
+    fn vals_ptr(&self) -> *mut V {
+        // edges won't affect this, so just assume there are no edges
+        unsafe {
+            let offset = calculate_offsets_generic::<K, V>(self.capacity(), false).0;
+            self.data.offset(offset as isize) as *mut _
+        }
+    }
+
+    fn edges_ptr(&self) -> *mut Node<K, V> {
+        // if we want the edges ptr, assume that we're not a leaf
+        unsafe {
+            let offset = calculate_offsets_generic::<K, V>(self.capacity(), true).1;
+            self.data.offset(offset as isize) as *mut _
+        }
     }
 }
 
@@ -449,12 +460,15 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
             mem::forget(vals);
             mem::forget(edges);
 
-            ret._len = self.len();
+            ret._len = self._len;
         }
 
         ret
     }
 }
+
+unsafe impl<K: Send, V: Send> Send for Node<K, V> {}
+unsafe impl<K: Sync, V: Sync> Sync for Node<K, V> {}
 
 /// A reference to something in the middle of a `Node`. There are two `Type`s of `Handle`s,
 /// namely `KV` handles, which point to key/value pairs, and `Edge` handles, which point to edges
@@ -557,14 +571,14 @@ impl<K: Ord, V> Node<K, V> {
 // Public interface
 impl <K, V> Node<K, V> {
     /// Make a leaf root from scratch
-    pub fn make_leaf_root(b: usize) -> Node<K, V> {
-        Node::new_leaf(capacity_from_b(b))
+    pub fn make_leaf_root() -> Node<K, V> {
+        Node::new_leaf(capacity_from_b(B))
     }
 
     /// Make an internal root and swap it with an old root
-    pub fn make_internal_root(left_and_out: &mut Node<K,V>, b: usize, key: K, value: V,
+    pub fn make_internal_root(left_and_out: &mut Node<K,V>, key: K, value: V,
             right: Node<K,V>) {
-        let node = mem::replace(left_and_out, unsafe { Node::new_internal(capacity_from_b(b)) });
+        let node = mem::replace(left_and_out, unsafe { Node::new_internal(capacity_from_b(B)) });
         left_and_out._len = 1;
         unsafe {
             ptr::write(left_and_out.keys_mut().get_unchecked_mut(0), key);
@@ -576,17 +590,17 @@ impl <K, V> Node<K, V> {
 
     /// How many key-value pairs the node contains
     pub fn len(&self) -> usize {
-        self._len
+        self._len as usize
     }
 
     /// How many key-value pairs the node can fit
     pub fn capacity(&self) -> usize {
-        self._capacity
+        capacity_from_b(B)
     }
 
     /// If the node has any children
     pub fn is_leaf(&self) -> bool {
-        self.edges.0.is_null()
+        self._is_leaf
     }
 
     /// if the node has too few elements
@@ -1064,7 +1078,7 @@ impl<K, V> Node<K, V> {
                     vals: RawItems::from_slice(self.vals()),
                     edges: RawItems::from_slice(self.edges()),
 
-                    ptr: self.keys.0 as *mut u8,
+                    ptr: self.data,
                     capacity: self.capacity(),
                     is_leaf: self.is_leaf()
                 },
@@ -1216,7 +1230,7 @@ impl<K, V> Node<K, V> {
         };
 
         unsafe {
-            right._len = self.len() / 2;
+            right._len = (self.len() / 2) as u16;
             let right_offset = self.len() - right.len();
             ptr::copy_nonoverlapping_memory(
                 right.keys_mut().as_mut_ptr(),
@@ -1239,7 +1253,7 @@ impl<K, V> Node<K, V> {
             let key = ptr::read(self.keys().get_unchecked(right_offset - 1));
             let val = ptr::read(self.vals().get_unchecked(right_offset - 1));
 
-            self._len = right_offset - 1;
+            self._len = (right_offset - 1) as u16;
 
             (key, val, right)
         }
@@ -1254,7 +1268,7 @@ impl<K, V> Node<K, V> {
 
         unsafe {
             let old_len = self.len();
-            self._len += right.len() + 1;
+            self._len += (right.len() + 1) as u16;
 
             ptr::write(self.keys_mut().get_unchecked_mut(old_len), key);
             ptr::write(self.vals_mut().get_unchecked_mut(old_len), val);

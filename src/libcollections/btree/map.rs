@@ -70,7 +70,6 @@ pub struct BTreeMap<K, V> {
     root: Node<K, V>,
     length: usize,
     depth: usize,
-    b: usize,
 }
 
 /// An abstract base over-which all other BTree iterators are built.
@@ -149,19 +148,10 @@ impl<K: Ord, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new() -> BTreeMap<K, V> {
         //FIXME(Gankro): Tune this as a function of size_of<K/V>?
-        BTreeMap::with_b(6)
-    }
-
-    /// Makes a new empty BTreeMap with the given B.
-    ///
-    /// B cannot be less than 2.
-    pub fn with_b(b: usize) -> BTreeMap<K, V> {
-        assert!(b > 1, "B must be greater than 1");
         BTreeMap {
             length: 0,
             depth: 1,
-            root: Node::make_leaf_root(b),
-            b: b,
+            root: Node::make_leaf_root(),
         }
     }
 
@@ -179,9 +169,8 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        let b = self.b;
         // avoid recursive destructors by manually traversing the tree
-        for _ in mem::replace(self, BTreeMap::with_b(b)) {};
+        for _ in mem::replace(self, BTreeMap::new()) {};
     }
 
     // Searching in a B-Tree is pretty straightforward.
@@ -798,7 +787,7 @@ mod stack {
                                 // The stack was empty; we've split the root, and need to make a
                                 // a new one. This is done in-place because we can't move the
                                 // root out of a reference to the tree.
-                                Node::make_internal_root(&mut self.map.root, self.map.b,
+                                Node::make_internal_root(&mut self.map.root,
                                                          key, val, right);
 
                                 self.map.depth += 1;
