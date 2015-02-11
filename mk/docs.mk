@@ -87,7 +87,7 @@ endif
 
 # Check for xelatex
 
-ifeq ($(CFG_XELATEX),)
+ifneq ($(CFG_XELATEX),)
     CFG_LATEX := $(CFG_XELATEX)
     XELATEX = 1
   else
