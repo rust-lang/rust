@@ -111,7 +111,7 @@
 #![feature(core)]
 #![feature(hash)]
 #![feature(int_uint)]
-#![feature(lang_items, unsafe_destructor)]
+#![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
 #![feature(old_impl_check)]
@@ -120,6 +120,8 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
+#![feature(unsafe_destructor)]
+#![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
 #![cfg_attr(test, feature(test))]
 
