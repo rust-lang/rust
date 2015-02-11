@@ -491,7 +491,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             ast::PatBox(..) => {
                 self.gate_feature("box_patterns",
                                   pattern.span,
-                                  "box pattern syntax is experimental in alpha release");
+                                  "box pattern syntax is experimental");
             }
             _ => {}
         }
