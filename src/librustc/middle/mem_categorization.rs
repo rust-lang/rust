@@ -575,7 +575,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
 
         match def {
           def::DefStruct(..) | def::DefVariant(..) | def::DefConst(..) |
-          def::DefFn(..) | def::DefStaticMethod(..) |  def::DefMethod(..) => {
+          def::DefFn(..) | def::DefMethod(..) => {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |

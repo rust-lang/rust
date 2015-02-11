@@ -795,7 +795,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // be accurate and we can get slightly wonky error messages (but type
         // checking is always correct).
         match self.tcx.def_map.borrow()[path_id].clone() {
-            def::DefStaticMethod(..) => ck("static method"),
             def::DefFn(..) => ck("function"),
             def::DefStatic(..) => ck("static"),
             def::DefConst(..) => ck("const"),
@@ -804,7 +803,6 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             def::DefTy(_, true) => ck("enum"),
             def::DefTrait(..) => ck("trait"),
             def::DefStruct(..) => ck("struct"),
-            def::DefMethod(_, Some(..), _) => ck("trait method"),
             def::DefMethod(..) => ck("method"),
             def::DefMod(..) => ck("module"),
             _ => {}

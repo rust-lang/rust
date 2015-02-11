@@ -334,12 +334,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
                 def::FromImpl(item_reqd_and_translated_parent_item(cnum,
                                                                    item))
             };
-            match fam {
-                // We don't bother to get encode/decode the trait id, we don't need it.
-                Method => DlDef(def::DefMethod(did, None, provenance)),
-                StaticMethod => DlDef(def::DefStaticMethod(did, provenance)),
-                _ => panic!()
-            }
+            DlDef(def::DefMethod(did, provenance))
         }
         Type => {
             if item_sort(item) == Some('t') {
@@ -853,22 +848,13 @@ pub fn get_trait_name(intr: Rc<IdentInterner>,
     item_name(&*intr, doc)
 }
 
-pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
-                                    cdata: Cmd,
-                                    id: ast::NodeId)
-                                    -> (ast::Name, def::TraitItemKind) {
+pub fn is_static_method(cdata: Cmd, id: ast::NodeId) -> bool {
     let doc = lookup_item(id, cdata.data());
-    let name = item_name(&*intr, doc);
     match item_sort(doc) {
         Some('r') | Some('p') => {
-            let explicit_self = get_explicit_self(doc);
-            (name, def::TraitItemKind::from_explicit_self_category(explicit_self))
+            get_explicit_self(doc) == ty::StaticExplicitSelfCategory
         }
-        Some('t') => (name, def::TypeTraitItemKind),
-        c => {
-            panic!("get_trait_item_name_and_kind(): unknown trait item kind \
-                   in metadata: `{:?}`", c)
-        }
+        _ => false
     }
 }
 

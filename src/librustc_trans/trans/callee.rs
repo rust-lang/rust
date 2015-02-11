@@ -165,13 +165,11 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
             }
-            def::DefFn(did, _) | def::DefMethod(did, _, def::FromImpl(_)) |
-            def::DefStaticMethod(did, def::FromImpl(_)) => {
+            def::DefFn(did, _) | def::DefMethod(did, def::FromImpl(_)) => {
                 fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
                                             bcx.fcx.param_substs).val)
             }
-            def::DefStaticMethod(meth_did, def::FromTrait(trait_did)) |
-            def::DefMethod(meth_did, _, def::FromTrait(trait_did)) => {
+            def::DefMethod(meth_did, def::FromTrait(trait_did)) => {
                 fn_callee(bcx, meth::trans_static_method_callee(bcx.ccx(),
                                                                 meth_did,
                                                                 trait_did,

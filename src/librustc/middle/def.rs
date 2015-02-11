@@ -10,10 +10,8 @@
 
 pub use self::Def::*;
 pub use self::MethodProvenance::*;
-pub use self::TraitItemKind::*;
 
 use middle::subst::ParamSpace;
-use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ast_util::local_def;
@@ -23,7 +21,6 @@ use std::cell::RefCell;
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
     DefFn(ast::DefId, bool /* is_ctor */),
-    DefStaticMethod(/* method */ ast::DefId, MethodProvenance),
     DefSelfTy(/* trait id */ ast::NodeId),
     DefMod(ast::DefId),
     DefForeignMod(ast::DefId),
@@ -51,7 +48,7 @@ pub enum Def {
     DefStruct(ast::DefId),
     DefRegion(ast::NodeId),
     DefLabel(ast::NodeId),
-    DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
+    DefMethod(ast::DefId /* method */, MethodProvenance),
 }
 
 /// The result of resolving the prefix of a path to a type:
@@ -99,25 +96,6 @@ impl MethodProvenance {
     }
 }
 
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub enum TraitItemKind {
-    NonstaticMethodTraitItemKind,
-    StaticMethodTraitItemKind,
-    TypeTraitItemKind,
-}
-
-impl TraitItemKind {
-    pub fn from_explicit_self_category(explicit_self_category:
-                                       ExplicitSelfCategory)
-                                       -> TraitItemKind {
-        if explicit_self_category == StaticExplicitSelfCategory {
-            StaticMethodTraitItemKind
-        } else {
-            NonstaticMethodTraitItemKind
-        }
-    }
-}
-
 impl Def {
     pub fn local_node_id(&self) -> ast::NodeId {
         let def_id = self.def_id();
@@ -127,11 +105,10 @@ impl Def {
 
     pub fn def_id(&self) -> ast::DefId {
         match *self {
-            DefFn(id, _) | DefStaticMethod(id, _) | DefMod(id) |
-            DefForeignMod(id) | DefStatic(id, _) |
+            DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
             DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
-            DefMethod(id, _, _) | DefConst(id) => {
+            DefMethod(id, _) | DefConst(id) => {
                 id
             }
             DefLocal(id) |

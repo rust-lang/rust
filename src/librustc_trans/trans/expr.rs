@@ -875,7 +875,7 @@ fn trans_def<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("trans_def_lvalue");
     match def {
-        def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) |
+        def::DefFn(..) | def::DefMethod(..) |
         def::DefStruct(_) | def::DefVariant(..) => {
             let datum = trans_def_fn_unadjusted(bcx.ccx(), ref_expr, def,
                                                 bcx.fcx.param_substs);
@@ -1275,12 +1275,10 @@ pub fn trans_def_fn_unadjusted<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     match def {
         def::DefFn(did, _) |
         def::DefStruct(did) | def::DefVariant(_, did, _) |
-        def::DefStaticMethod(did, def::FromImpl(_)) |
-        def::DefMethod(did, _, def::FromImpl(_)) => {
+        def::DefMethod(did, def::FromImpl(_)) => {
             callee::trans_fn_ref(ccx, did, ExprId(ref_expr.id), param_substs)
         }
-        def::DefStaticMethod(impl_did, def::FromTrait(trait_did)) |
-        def::DefMethod(impl_did, _, def::FromTrait(trait_did)) => {
+        def::DefMethod(impl_did, def::FromTrait(trait_did)) => {
             meth::trans_static_method_callee(ccx, impl_did,
                                              trait_did, ref_expr.id,
                                              param_substs)

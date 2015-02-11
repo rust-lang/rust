@@ -40,8 +40,7 @@ use syntax::ast::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
 use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
 use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use syntax::ast::{MethodImplItem, Name, NamedField, NodeId};
-use syntax::ast::{PathListIdent, PathListMod};
-use syntax::ast::{Public, SelfStatic};
+use syntax::ast::{PathListIdent, PathListMod, Public};
 use syntax::ast::StmtDecl;
 use syntax::ast::StructVariantKind;
 use syntax::ast::TupleVariantKind;
@@ -598,22 +597,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                &new_parent,
                                                ForbidDuplicateValues,
                                                method.span);
-                            let def = match method.pe_explicit_self()
-                                .node {
-                                    SelfStatic => {
-                                        // Static methods become
-                                        // `DefStaticMethod`s.
-                                        DefStaticMethod(local_def(method.id),
-                                                        FromImpl(local_def(item.id)))
-                                    }
-                                    _ => {
-                                        // Non-static methods become
-                                        // `DefMethod`s.
-                                        DefMethod(local_def(method.id),
-                                                  None,
-                                                  FromImpl(local_def(item.id)))
-                                    }
-                                };
+                            let def = DefMethod(local_def(method.id),
+                                                FromImpl(local_def(item.id)));
 
                             // NB: not IMPORTABLE
                             let modifiers = if method.pe_vis() == ast::Public {
@@ -674,7 +659,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
-                    let (name, kind) = match *trait_item {
+                    let (name, trait_item_id) = match *trait_item {
                         ast::RequiredMethod(_) |
                         ast::ProvidedMethod(_) => {
                             let ty_m = ast_util::trait_item_to_ty_method(trait_item);
@@ -682,23 +667,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             let name = ty_m.ident.name;
 
                             // Add it as a name in the trait module.
-                            let (def, static_flag) = match ty_m.explicit_self
-                                                               .node {
-                                SelfStatic => {
-                                    // Static methods become `DefStaticMethod`s.
-                                    (DefStaticMethod(
-                                            local_def(ty_m.id),
-                                            FromTrait(local_def(item.id))),
-                                     StaticMethodTraitItemKind)
-                                }
-                                _ => {
-                                    // Non-static methods become `DefMethod`s.
-                                    (DefMethod(local_def(ty_m.id),
-                                               Some(local_def(item.id)),
-                                               FromTrait(local_def(item.id))),
-                                     NonstaticMethodTraitItemKind)
-                                }
-                            };
+                            let def = DefMethod(local_def(ty_m.id),
+                                                FromTrait(local_def(item.id)));
 
                             let method_name_bindings =
                                 self.add_child(name,
@@ -710,7 +680,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                               ty_m.span,
                                                               PUBLIC);
 
-                            (name, static_flag)
+                            (name, local_def(ty_m.id))
                         }
                         ast::TypeTraitItem(ref associated_type) => {
                             let def = DefAssociatedTy(local_def(item.id),
@@ -726,11 +696,12 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                       associated_type.ty_param.span,
                                                       PUBLIC);
 
-                            (associated_type.ty_param.ident.name, TypeTraitItemKind)
+                            (associated_type.ty_param.ident.name,
+                             local_def(associated_type.ty_param.id))
                         }
                     };
 
-                    self.trait_item_map.insert((name, def_id), kind);
+                    self.trait_item_map.insert((name, def_id), trait_item_id);
                 }
 
                 name_bindings.define_type(DefTrait(def_id), sp, modifiers);
@@ -889,7 +860,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
                     .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, modifiers);
           }
-          DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) | DefMethod(..) => {
+          DefFn(..) | DefStatic(..) | DefConst(..) | DefMethod(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             // impl methods have already been defined with the correct importability modifier
@@ -911,21 +882,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
               let trait_item_def_ids =
                 csearch::get_trait_item_def_ids(&self.session.cstore, def_id);
-              for trait_item_def_id in &trait_item_def_ids {
-                  let (trait_item_name, trait_item_kind) =
-                      csearch::get_trait_item_name_and_kind(
-                          &self.session.cstore,
-                          trait_item_def_id.def_id());
+              for trait_item_def in &trait_item_def_ids {
+                  let trait_item_name = csearch::get_trait_name(&self.session.cstore,
+                                                                trait_item_def.def_id());
 
                   debug!("(building reduced graph for external crate) ... \
                           adding trait item '{}'",
                          token::get_name(trait_item_name));
 
-                  self.trait_item_map.insert((trait_item_name, def_id), trait_item_kind);
+                  self.trait_item_map.insert((trait_item_name, def_id),
+                                             trait_item_def.def_id());
 
                   if is_exported {
-                      self.external_exports
-                          .insert(trait_item_def_id.def_id());
+                      self.external_exports.insert(trait_item_def.def_id());
                   }
               }
 
