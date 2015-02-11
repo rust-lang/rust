@@ -4373,11 +4373,14 @@ pub mod consts {
             pub const MCL_CURRENT : c_int = 0x0001;
             pub const MCL_FUTURE : c_int = 0x0002;
 
-            pub const MS_SYNC : c_int = 0x0002; // changed
             pub const MS_ASYNC : c_int = 0x0001;
-            pub const MS_INVALIDATE : c_int = 0x0004; // changed
+            pub const MS_INVALIDATE : c_int = 0x0002;
+            pub const MS_SYNC : c_int = 0x0010;
 
-            pub const EPERM : c_int = 1; // not checked
+            pub const MS_KILLPAGES : c_int = 0x0004;
+            pub const MS_DEACTIVATE : c_int = 0x0008;
+
+            pub const EPERM : c_int = 1;
             pub const ENOENT : c_int = 2;
             pub const ESRCH : c_int = 3;
             pub const EINTR : c_int = 4;
@@ -4412,7 +4415,7 @@ pub mod consts {
             pub const EDOM : c_int = 33;
             pub const ERANGE : c_int = 34;
             pub const EAGAIN : c_int = 35;
-            pub const EWOULDBLOCK : c_int = 35;
+            pub const EWOULDBLOCK : c_int = EAGAIN;
             pub const EINPROGRESS : c_int = 36;
             pub const EALREADY : c_int = 37;
             pub const ENOTSOCK : c_int = 38;
@@ -4422,7 +4425,7 @@ pub mod consts {
             pub const ENOPROTOOPT : c_int = 42;
             pub const EPROTONOSUPPORT : c_int = 43;
             pub const ESOCKTNOSUPPORT : c_int = 44;
-            pub const EOPNOTSUPP : c_int = 45;
+            pub const ENOTSUP : c_int = 45;
             pub const EPFNOSUPPORT : c_int = 46;
             pub const EAFNOSUPPORT : c_int = 47;
             pub const EADDRINUSE : c_int = 48;
@@ -4459,25 +4462,32 @@ pub mod consts {
             pub const EFTYPE : c_int = 79;
             pub const EAUTH : c_int = 80;
             pub const ENEEDAUTH : c_int = 81;
-            pub const EIDRM : c_int = 82;
-            pub const ENOMSG : c_int = 83;
+            pub const EPWROFF : c_int = 82;
+            pub const EDEVERR : c_int = 83;
             pub const EOVERFLOW : c_int = 84;
-            pub const ECANCELED : c_int = 85;
-            pub const EILSEQ : c_int = 86;
-            pub const ENOATTR : c_int = 87;
-            pub const EDOOFUS : c_int = 88;
-            pub const EBADMSG : c_int = 89;
-            pub const EMULTIHOP : c_int = 90;
-            pub const ENOLINK : c_int = 91;
-            pub const EPROTO : c_int = 92;
-            pub const ENOMEDIUM : c_int = 93;
-            pub const EUNUSED94 : c_int = 94;
-            pub const EUNUSED95 : c_int = 95;
-            pub const EUNUSED96 : c_int = 96;
-            pub const EUNUSED97 : c_int = 97;
-            pub const EUNUSED98 : c_int = 98;
-            pub const EASYNC : c_int = 99;
-            pub const ELAST : c_int = 99;
+            pub const EBADEXEC : c_int = 85;
+            pub const EBADARCH : c_int = 86;
+            pub const ESHLIBVERS : c_int = 87;
+            pub const EBADMACHO : c_int = 88;
+            pub const ECANCELED : c_int = 89;
+            pub const EIDRM : c_int = 90;
+            pub const ENOMSG : c_int = 91;
+            pub const EILSEQ : c_int = 92;
+            pub const ENOATTR : c_int = 93;
+            pub const EBADMSG : c_int = 94;
+            pub const EMULTIHOP : c_int = 95;
+            pub const ENODATA : c_int = 96;
+            pub const ENOLINK : c_int = 97;
+            pub const ENOSR : c_int = 98;
+            pub const ENOSTR : c_int = 99;
+            pub const EPROTO : c_int = 100;
+            pub const ETIME : c_int = 101;
+            pub const EOPNOTSUPP : c_int = 102;
+            pub const ENOPOLICY : c_int = 103;
+            pub const ENOTRECOVERABLE : c_int = 104;
+            pub const EOWNERDEAD : c_int = 105;
+            pub const EQFULL : c_int = 106;
+            pub const ELAST : c_int = 106;
         }
         pub mod posix01 {
             use types::os::arch::c95::{c_int, size_t};
@@ -4498,7 +4508,7 @@ pub mod consts {
             pub const GLOB_MARK     : c_int = 0x0008;
             pub const GLOB_NOCHECK  : c_int = 0x0010;
             pub const GLOB_NOSORT   : c_int = 0x0020;
-            pub const GLOB_NOESCAPE : c_int = 0x1000; // changed
+            pub const GLOB_NOESCAPE : c_int = 0x2000;
 
             pub const GLOB_NOSPACE  : c_int = -1;
             pub const GLOB_ABORTED  : c_int = -2;
@@ -4510,41 +4520,38 @@ pub mod consts {
             pub const POSIX_MADV_WILLNEED : c_int = 3;
             pub const POSIX_MADV_DONTNEED : c_int = 4;
 
-            pub const _SC_IOV_MAX : c_int = 51; // all changed...
-            pub const _SC_GETGR_R_SIZE_MAX : c_int = 100;
-            pub const _SC_GETPW_R_SIZE_MAX : c_int = 101;
-            pub const _SC_LOGIN_NAME_MAX : c_int = 102;
-            pub const _SC_MQ_PRIO_MAX : c_int = 59;
-            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 77;
-            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 78;
-            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 80;
-            pub const _SC_THREAD_KEYS_MAX : c_int = 81;
-            pub const _SC_THREAD_PRIO_INHERIT : c_int = 82;
-            pub const _SC_THREAD_PRIO_PROTECT : c_int = 83;
-            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 84;
-            pub const _SC_THREAD_PROCESS_SHARED : c_int = 85;
-            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 103;
-            pub const _SC_THREAD_STACK_MIN : c_int = 89;
-            pub const _SC_THREAD_THREADS_MAX : c_int = 90;
-            pub const _SC_THREADS : c_int = 91;
-            pub const _SC_TTY_NAME_MAX : c_int = 107;
-            pub const _SC_ATEXIT_MAX : c_int = 46;
-            pub const _SC_XOPEN_CRYPT : c_int = 117;
-            pub const _SC_XOPEN_ENH_I18N : c_int = 118;
-            pub const _SC_XOPEN_LEGACY : c_int = 119;
-            pub const _SC_XOPEN_REALTIME : c_int = 120;
-            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 121;
-            pub const _SC_XOPEN_SHM : c_int = 30;
-            pub const _SC_XOPEN_UNIX : c_int = 123;
-            pub const _SC_XOPEN_VERSION : c_int = 125;
-            //pub const _SC_XOPEN_XCU_VERSION : c_int = ;
+            pub const _SC_IOV_MAX : c_int = 56;
+            pub const _SC_GETGR_R_SIZE_MAX : c_int = 70;
+            pub const _SC_GETPW_R_SIZE_MAX : c_int = 71;
+            pub const _SC_LOGIN_NAME_MAX : c_int = 73;
+            pub const _SC_MQ_PRIO_MAX : c_int = 75;
+            pub const _SC_THREAD_ATTR_STACKADDR : c_int = 82;
+            pub const _SC_THREAD_ATTR_STACKSIZE : c_int = 83;
+            pub const _SC_THREAD_DESTRUCTOR_ITERATIONS : c_int = 85;
+            pub const _SC_THREAD_KEYS_MAX : c_int = 86;
+            pub const _SC_THREAD_PRIO_INHERIT : c_int = 87;
+            pub const _SC_THREAD_PRIO_PROTECT : c_int = 88;
+            pub const _SC_THREAD_PRIORITY_SCHEDULING : c_int = 89;
+            pub const _SC_THREAD_PROCESS_SHARED : c_int = 90;
+            pub const _SC_THREAD_SAFE_FUNCTIONS : c_int = 91;
+            pub const _SC_THREAD_STACK_MIN : c_int = 93;
+            pub const _SC_THREAD_THREADS_MAX : c_int = 94;
+            pub const _SC_THREADS : c_int = 96;
+            pub const _SC_TTY_NAME_MAX : c_int = 101;
+            pub const _SC_ATEXIT_MAX : c_int = 107;
+            pub const _SC_XOPEN_CRYPT : c_int = 108;
+            pub const _SC_XOPEN_ENH_I18N : c_int = 109;
+            pub const _SC_XOPEN_LEGACY : c_int = 110;
+            pub const _SC_XOPEN_REALTIME : c_int = 111;
+            pub const _SC_XOPEN_REALTIME_THREADS : c_int = 112;
+            pub const _SC_XOPEN_SHM : c_int = 113;
+            pub const _SC_XOPEN_UNIX : c_int = 115;
+            pub const _SC_XOPEN_VERSION : c_int = 116;
+            pub const _SC_XOPEN_XCU_VERSION : c_int = 121;
 
-            pub const PTHREAD_CREATE_JOINABLE: c_int = 0;
-            pub const PTHREAD_CREATE_DETACHED: c_int = 1;
-            pub const PTHREAD_STACK_MIN: size_t = 2048;
-
-            pub const CLOCK_REALTIME: c_int = 0;
-            pub const CLOCK_MONOTONIC: c_int = 3;
+            pub const PTHREAD_CREATE_JOINABLE: c_int = 1;
+            pub const PTHREAD_CREATE_DETACHED: c_int = 2;
+            pub const PTHREAD_STACK_MIN: size_t = 8192;
         }
         pub mod posix08 {
         }
@@ -4556,23 +4563,21 @@ pub mod consts {
             pub const MADV_SEQUENTIAL : c_int = 2;
             pub const MADV_WILLNEED : c_int = 3;
             pub const MADV_DONTNEED : c_int = 4;
-            pub const MADV_FREE : c_int = 6; // changed
-            //pub const MADV_NOSYNC : c_int = ;
-            //pub const MADV_AUTOSYNC : c_int = ;
-            //pub const MADV_NOCORE : c_int = ;
-            //pub const MADV_CORE : c_int = ;
-            //pub const MADV_PROTECT : c_int = ;
+            pub const MADV_FREE : c_int = 5;
+            pub const MADV_ZERO_WIRED_PAGES : c_int = 6;
+            pub const MADV_FREE_REUSABLE : c_int = 7;
+            pub const MADV_FREE_REUSE : c_int = 8;
+            pub const MADV_CAN_REUSE : c_int = 9;
 
-            //pub const MINCORE_INCORE : c_int =  ;
-            //pub const MINCORE_REFERENCED : c_int = ;
-            //pub const MINCORE_MODIFIED : c_int = ;
-            //pub const MINCORE_REFERENCED_OTHER : c_int = ;
-            //pub const MINCORE_MODIFIED_OTHER : c_int = ;
-            //pub const MINCORE_SUPER : c_int = ;
+            pub const MINCORE_INCORE : c_int =  0x1;
+            pub const MINCORE_REFERENCED : c_int = 0x2;
+            pub const MINCORE_MODIFIED : c_int = 0x4;
+            pub const MINCORE_REFERENCED_OTHER : c_int = 0x8;
+            pub const MINCORE_MODIFIED_OTHER : c_int = 0x10;
 
-            pub const AF_INET: c_int = 2;
-            pub const AF_INET6: c_int = 24; // changed
             pub const AF_UNIX: c_int = 1;
+            pub const AF_INET: c_int = 2;
+            pub const AF_INET6: c_int = 30;
             pub const SOCK_STREAM: c_int = 1;
             pub const SOCK_DGRAM: c_int = 2;
             pub const SOCK_RAW: c_int = 3;
@@ -4585,13 +4590,11 @@ pub mod consts {
             pub const IP_HDRINCL: c_int = 2;
             pub const IP_ADD_MEMBERSHIP: c_int = 12;
             pub const IP_DROP_MEMBERSHIP: c_int = 13;
-            // don't exist, keep same as IP_ADD_MEMBERSHIP
             pub const IPV6_ADD_MEMBERSHIP: c_int = 12;
-            // don't exist, keep same as IP_DROP_MEMBERSHIP
             pub const IPV6_DROP_MEMBERSHIP: c_int = 13;
 
-            pub const TCP_NODELAY: c_int = 1;
-            //pub const TCP_KEEPIDLE: c_int = ;
+            pub const TCP_NODELAY: c_int = 0x01;
+            pub const TCP_KEEPALIVE: c_int = 0x10;
             pub const SOL_SOCKET: c_int = 0xffff;
             pub const SO_KEEPALIVE: c_int = 0x0008;
             pub const SO_BROADCAST: c_int = 0x0020;
@@ -4607,18 +4610,19 @@ pub mod consts {
         pub mod extra {
             use types::os::arch::c95::c_int;
 
+            pub const O_DSYNC : c_int = 4194304;
             pub const O_SYNC : c_int = 128;
             pub const O_NONBLOCK : c_int = 4;
-            pub const CTL_KERN: c_int = 1;
-            pub const KERN_PROC: c_int = 66;
+            pub const F_FULLFSYNC : c_int = 51;
 
             pub const MAP_COPY : c_int = 0x0002;
-            pub const MAP_RENAME : c_int = 0x0000; // changed
-            pub const MAP_NORESERVE : c_int = 0x0000; // changed
-            pub const MAP_HASSEMAPHORE : c_int = 0x0000; // changed
-            //pub const MAP_STACK : c_int = ;
-            //pub const MAP_NOSYNC : c_int = ;
-            //pub const MAP_NOCORE : c_int = ;
+            pub const MAP_RENAME : c_int = 0x0020;
+            pub const MAP_NORESERVE : c_int = 0x0040;
+            pub const MAP_NOEXTEND : c_int = 0x0100;
+            pub const MAP_HASSEMAPHORE : c_int = 0x0200;
+            pub const MAP_NOCACHE : c_int = 0x0400;
+            pub const MAP_JIT : c_int = 0x0800;
+            pub const MAP_STACK : c_int = 0;
 
             pub const IPPROTO_RAW : c_int = 255;
         }
@@ -4652,31 +4656,35 @@ pub mod consts {
             pub const _SC_2_UPE : c_int = 25;
             pub const _SC_STREAM_MAX : c_int = 26;
             pub const _SC_TZNAME_MAX : c_int = 27;
-            pub const _SC_ASYNCHRONOUS_IO : c_int = 45; // changed...
-            pub const _SC_MAPPED_FILES : c_int = 53;
-            pub const _SC_MEMLOCK : c_int = 54;
-            pub const _SC_MEMLOCK_RANGE : c_int = 55;
-            pub const _SC_MEMORY_PROTECTION : c_int = 56;
-            pub const _SC_MESSAGE_PASSING : c_int = 57;
-            pub const _SC_PRIORITIZED_IO : c_int = 60;
-            pub const _SC_PRIORITY_SCHEDULING : c_int = 61;
-            pub const _SC_REALTIME_SIGNALS : c_int = 64;
-            pub const _SC_SEMAPHORES : c_int = 67;
-            pub const _SC_FSYNC : c_int = 29;
-            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 68;
-            pub const _SC_SYNCHRONIZED_IO : c_int = 75;
-            pub const _SC_TIMERS : c_int = 94; // ...changed
+            pub const _SC_ASYNCHRONOUS_IO : c_int = 28;
+            pub const _SC_PAGESIZE : c_int = 29;
+            pub const _SC_MEMLOCK : c_int = 30;
+            pub const _SC_MEMLOCK_RANGE : c_int = 31;
+            pub const _SC_MEMORY_PROTECTION : c_int = 32;
+            pub const _SC_MESSAGE_PASSING : c_int = 33;
+            pub const _SC_PRIORITIZED_IO : c_int = 34;
+            pub const _SC_PRIORITY_SCHEDULING : c_int = 35;
+            pub const _SC_REALTIME_SIGNALS : c_int = 36;
+            pub const _SC_SEMAPHORES : c_int = 37;
+            pub const _SC_FSYNC : c_int = 38;
+            pub const _SC_SHARED_MEMORY_OBJECTS : c_int = 39;
+            pub const _SC_SYNCHRONIZED_IO : c_int = 40;
+            pub const _SC_TIMERS : c_int = 41;
             pub const _SC_AIO_LISTIO_MAX : c_int = 42;
             pub const _SC_AIO_MAX : c_int = 43;
             pub const _SC_AIO_PRIO_DELTA_MAX : c_int = 44;
-            pub const _SC_DELAYTIMER_MAX : c_int = 50; // changed...
-            pub const _SC_MQ_OPEN_MAX : c_int = 58;
-            pub const _SC_PAGESIZE : c_int = 28;
-            pub const _SC_RTSIG_MAX : c_int = 66;
-            pub const _SC_SEM_NSEMS_MAX : c_int = 31;
-            pub const _SC_SEM_VALUE_MAX : c_int = 32;
-            pub const _SC_SIGQUEUE_MAX : c_int = 70;
-            pub const _SC_TIMER_MAX : c_int = 93;
+            pub const _SC_DELAYTIMER_MAX : c_int = 45;
+            pub const _SC_MQ_OPEN_MAX : c_int = 46;
+            pub const _SC_MAPPED_FILES : c_int = 47;
+            pub const _SC_RTSIG_MAX : c_int = 48;
+            pub const _SC_SEM_NSEMS_MAX : c_int = 49;
+            pub const _SC_SEM_VALUE_MAX : c_int = 50;
+            pub const _SC_SIGQUEUE_MAX : c_int = 51;
+            pub const _SC_TIMER_MAX : c_int = 52;
+            pub const _SC_XBS5_ILP32_OFF32 : c_int = 122;
+            pub const _SC_XBS5_ILP32_OFFBIG : c_int = 123;
+            pub const _SC_XBS5_LP64_OFF64 : c_int = 124;
+            pub const _SC_XBS5_LPBIG_OFFBIG : c_int = 125;
         }
     }
 }
