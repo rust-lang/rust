@@ -44,7 +44,7 @@ Converting types can require:
 
 So as you can see, in general translating types requires knowing the
 trait hierarchy. But this gets a bit tricky because translating the
-trait hierarchy requires convering the types that appear in trait
+trait hierarchy requires converting the types that appear in trait
 references. One potential saving grace is that in general knowing the
 trait hierarchy is only necessary for shorthands like `T::X` or
 handling omitted lifetime bounds on object types. Therefore, if we are
@@ -1778,12 +1778,12 @@ fn check_method_self_type<'a, 'tcx, RS:RegionScope>(
                 &ty::liberate_late_bound_regions(
                     tcx, body_scope, &ty::Binder(base_type)));
 
-        //debug!("required_type={} required_type_free={} \
-                //base_type={} base_type_free={}",
-               //required_type.repr(tcx),
-               //required_type_free.repr(tcx),
-               //base_type.repr(tcx),
-               //base_type_free.repr(tcx));
+        debug!("required_type={} required_type_free={} \
+                base_type={} base_type_free={}",
+               required_type.repr(tcx),
+               required_type_free.repr(tcx),
+               base_type.repr(tcx),
+               base_type_free.repr(tcx));
 
         let infcx = infer::new_infer_ctxt(tcx);
         drop(::require_same_types(tcx,

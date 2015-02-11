@@ -234,7 +234,7 @@ pub fn get_trait_def<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId) -> ty::TraitDe
 }
 
 pub fn get_predicates<'tcx>(tcx: &ty::ctxt<'tcx>, def: ast::DefId)
-                                  -> ty::GenericPredicates<'tcx>
+                            -> ty::GenericPredicates<'tcx>
 {
     let cstore = &tcx.sess.cstore;
     let cdata = cstore.get_crate_data(def.krate);
