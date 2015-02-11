@@ -9,6 +9,7 @@
 // except according to those terms.
 
 #![feature(unsafe_destructor)]
+#![feature(unsafe_no_drop_flag)]
 
 use std::mem::size_of;
 
