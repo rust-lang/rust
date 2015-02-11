@@ -247,9 +247,12 @@ of type `&'a`/`&'a mut`. This is the "Drop-Check" (aka `dropck`) rule.
 The Motivation section alluded to the compiler enforcing a new rule.
 Here is a more formal statement of that rule:
 
-Let `v` be some value (either temporary or named); if the type of `v` owns data of type `D`,
-where `D` has a lifetime- or type-parametric `Drop` implementation and
-either:
+Let `v` be some value (either temporary or named)
+and `'a` be some lifetime (scope);
+if the type of `v` owns data of type `D`, where
+(1.) `D` has a lifetime- or type-parametric `Drop` implementation, and
+(2.) the structure of `D` can reach a reference of type `&'a _`, and
+(3.) either:
 
   * (A.) the `Drop impl` for `D` instantiates `D` at `'a`
          directly, i.e. `D<'a>`, or,
