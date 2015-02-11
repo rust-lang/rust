@@ -1,3 +1,4 @@
+- Feature Name: (none for the bulk of RFC); unsafe_no_drop_flag
 - Start Date: 2014-09-24
 - RFC PR: [rust-lang/rfcs#320](https://github.com/rust-lang/rfcs/pull/320)
 - Rust Issue: [rust-lang/rust#5016](https://github.com/rust-lang/rust/issues/5016)
@@ -589,6 +590,9 @@ the per-value drop flag is going away.  However, we *could* keep the
 attribute, and just repurpose its meaning to instead mean the
 following: *Never* inject a dynamic stack-local drop-flag for this
 value.  Just run the drop code multiple times, just like today.
+
+In any case, since the semantics of this attribute are unstable, we
+will feature-gate it (with feature name `unsafe_no_drop_flag`).
 
 # Appendices
 
