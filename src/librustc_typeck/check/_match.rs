@@ -470,7 +470,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
     };
 
     instantiate_path(pcx.fcx,
-                     path,
+                     &path.segments,
                      ty::lookup_item_type(tcx, enum_def_id),
                      &ty::lookup_predicates(tcx, enum_def_id),
                      None,
@@ -517,7 +517,9 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     } else {
         ctor_scheme
     };
-    instantiate_path(pcx.fcx, path, path_scheme, &ctor_predicates, None, def, pat.span, pat.id);
+    instantiate_path(pcx.fcx, &path.segments,
+                     path_scheme, &ctor_predicates,
+                     None, def, pat.span, pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);

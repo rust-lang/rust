@@ -3018,7 +3018,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn resolve_generics(&mut self, generics: &Generics) {
-        for type_parameter in &generics.ty_params {
+        for type_parameter in &*generics.ty_params {
             self.check_if_primitive_type_name(type_parameter.ident.name, type_parameter.span);
         }
         for predicate in &generics.where_clause.predicates {
@@ -4083,16 +4083,35 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // multiple elements in it or not.
 
             ExprPath(ref path) | ExprQPath(ast::QPath { ref path, .. }) => {
-                if let ExprQPath(_) = expr.node {
+                let max_assoc_types = if let ExprQPath(_) = expr.node {
                     // Make sure the trait is valid.
                     let _ = self.resolve_trait_reference(expr.id, path, 1);
+                    1
+                } else {
+                    path.segments.len()
+                };
+
+                let mut result = self.with_no_errors(|this| {
+                    this.resolve_path(expr.id, path, 0, ValueNS, true)
+                });
+                for depth in 1..max_assoc_types {
+                    if result.is_some() {
+                        break;
+                    }
+                    self.with_no_errors(|this| {
+                        result = this.resolve_path(expr.id, path, depth, TypeNS, true);
+                    });
+                }
+                if let Some((DefMod(_), _, _)) = result {
+                    // A module is not a valid type or value.
+                    result = None;
                 }
 
                 // This is a local path in the value namespace. Walk through
                 // scopes looking for it.
-                match self.resolve_path(expr.id, path, 0, ValueNS, true) {
+                match result {
                     // Check if struct variant
-                    Some((DefVariant(_, _, true), _, _)) => {
+                    Some((DefVariant(_, _, true), _, 0)) => {
                         let path_name = self.path_names_to_string(path, 0);
                         self.resolve_error(expr.span,
                                 &format!("`{}` is a struct variant name, but \
@@ -4109,6 +4128,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // Write the result into the def map.
                         debug!("(resolving expr) resolved `{}`",
                                self.path_names_to_string(path, 0));
+
+                        // Partial resolutions will need the set of traits in scope,
+                        // so they can be completed during typeck.
+                        if def.2 != 0 {
+                            let method_name = path.segments.last().unwrap().identifier.name;
+                            let traits = self.search_for_traits_containing_method(method_name);
+                            self.trait_map.insert(expr.id, traits);
+                        }
 
                         self.record_def(expr.id, def);
                     }
@@ -4135,6 +4162,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                             }
                             _ => {
+                                // Keep reporting some errors even if they're ignored above.
+                                self.resolve_path(expr.id, path, 0, ValueNS, true);
+
                                 let mut method_scope = false;
                                 self.value_ribs.iter().rev().all(|rib| {
                                     method_scope = match rib.kind {

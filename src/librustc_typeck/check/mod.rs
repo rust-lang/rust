@@ -82,9 +82,10 @@ pub use self::compare_method::compare_impl_method;
 use self::IsBinopAssignment::*;
 use self::TupleArgumentsFlag::*;
 
-use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv};
+use astconv::{self, ast_region_to_region, ast_ty_to_ty, AstConv, PathParamMode};
 use check::_match::pat_ctxt;
 use fmt_macros::{Parser, Piece, Position};
+use middle::astconv_util::{check_path_args, NO_TPS, NO_REGIONS};
 use middle::{const_eval, def};
 use middle::infer;
 use middle::mem_categorization as mc;
@@ -1598,26 +1599,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         let ty::TypeScheme { generics, ty: decl_ty } =
             ty::lookup_item_type(tcx, did);
 
-        let wants_params =
-            generics.has_type_params(TypeSpace) || generics.has_region_params(TypeSpace);
-
-        let needs_defaults =
-            wants_params &&
-            path.segments.iter().all(|s| s.parameters.is_empty());
-
-        let substs = if needs_defaults {
-            let tps =
-                self.infcx().next_ty_vars(generics.types.len(TypeSpace));
-            let rps =
-                self.infcx().region_vars_for_defs(path.span,
-                                                  generics.regions.get_slice(TypeSpace));
-            Substs::new_type(tps, rps)
-        } else {
-            astconv::ast_path_substs_for_ty(self, self,
-                                            path.span,
-                                            &generics,
-                                            path.segments.last().unwrap())
-        };
+        let substs = astconv::ast_path_substs_for_ty(self, self,
+                                                     path.span,
+                                                     PathParamMode::Optional,
+                                                     &generics,
+                                                     path.segments.last().unwrap());
 
         let ty = self.instantiate_type_scheme(path.span, &substs, &decl_ty);
 
@@ -3604,21 +3590,57 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
         fcx.write_ty(id, oprnd_t);
       }
-      ast::ExprPath(ref path) => {
-          let defn = lookup_def(fcx, path.span, id);
-          let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx, expr.span, defn);
-          instantiate_path(fcx, path, scheme, &predicates, None, defn, expr.span, expr.id);
+      ast::ExprPath(ref path) | ast::ExprQPath(ast::QPath { ref path, .. }) => {
+          let opt_self_ty = if let ast::ExprQPath(ref qpath) = expr.node {
+              Some(fcx.to_ty(&*qpath.self_type))
+          } else {
+              None
+          };
 
-          // We always require that the type provided as the value for
-          // a type parameter outlives the moment of instantiation.
-          constrain_path_type_parameters(fcx, expr);
-      }
-      ast::ExprQPath(ref qpath) => {
-          let self_ty = fcx.to_ty(&*qpath.self_type);
-          let defn = lookup_def(fcx, expr.span, id);
-          let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx, expr.span, defn);
-          instantiate_path(fcx, &qpath.path, scheme, &predicates, Some(self_ty),
-                           defn, expr.span, expr.id);
+          // Helpers to avoid keeping the RefCell borrow for too long.
+          let get_def = |&:| tcx.def_map.borrow().get(&id).cloned();
+          let get_partial_def = |&:| tcx.partial_def_map.borrow().get(&id).cloned();
+
+          if let Some(def) = get_def() {
+              let (scheme, predicates) =
+                  type_scheme_and_predicates_for_def(fcx, expr.span, def);
+              instantiate_path(fcx, &path.segments,
+                               scheme, &predicates,
+                               None, def, expr.span, id);
+          } else if let Some(partial) = get_partial_def() {
+              let mut def = partial.base_type;
+              let ty_segments = path.segments.init();
+              let ty_assoc_num = partial.extra_associated_types as usize;
+              let base_ty_end = ty_segments.len() - ty_assoc_num;
+              let ty = astconv::finish_resolving_def_to_ty(fcx, fcx, expr.span,
+                                                           PathParamMode::Optional,
+                                                           &mut def,
+                                                           opt_self_ty,
+                                                           &ty_segments[..base_ty_end],
+                                                           &ty_segments[base_ty_end..]);
+              let method_segment = path.segments.last().unwrap();
+              let method_name = method_segment.identifier.name;
+              match method::resolve_ufcs(fcx, expr.span, method_name, ty, id) {
+                  Ok(def) => {
+                      // Write back the new resolution.
+                      tcx.def_map.borrow_mut().insert(id, def);
+
+                      let (scheme, predicates) =
+                          type_scheme_and_predicates_for_def(fcx, expr.span, def);
+                      instantiate_path(fcx, slice::ref_slice(method_segment),
+                                       scheme, &predicates,
+                                       Some(ty), def, expr.span, id);
+                  }
+                  Err(error) => {
+                      method::report_error(fcx, expr.span, ty,
+                                           method_name, expr, error);
+                      fcx.write_error(id);
+                  }
+              }
+          } else {
+              tcx.sess.span_bug(expr.span,
+                                &format!("unbound path {}", expr.repr(tcx))[])
+          }
 
           // We always require that the type provided as the value for
           // a type parameter outlives the moment of instantiation.
@@ -4641,7 +4663,6 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefForeignMod(..) |
         def::DefUse(..) |
         def::DefRegion(..) |
-        def::DefTyParamBinder(..) |
         def::DefLabel(..) |
         def::DefSelfTy(..) => {
             fcx.ccx.tcx.sess.span_bug(sp, &format!("expected value, found {:?}", defn));
@@ -4652,15 +4673,15 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 // Instantiates the given path, which must refer to an item with the given
 // number of type parameters and type.
 pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                  path: &ast::Path,
+                                  segments: &[ast::PathSegment],
                                   type_scheme: TypeScheme<'tcx>,
                                   type_predicates: &ty::GenericPredicates<'tcx>,
                                   opt_self_ty: Option<Ty<'tcx>>,
                                   def: def::Def,
                                   span: Span,
                                   node_id: ast::NodeId) {
-    debug!("instantiate_path(path={}, def={}, node_id={}, type_scheme={})",
-           path.repr(fcx.tcx()),
+    debug!("instantiate_path(path={:?}, def={}, node_id={}, type_scheme={})",
+           segments,
            def.repr(fcx.tcx()),
            node_id,
            type_scheme.repr(fcx.tcx()));
@@ -4724,7 +4745,11 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     //
     // The first step then is to categorize the segments appropriately.
 
-    assert!(path.segments.len() >= 1);
+    assert!(segments.len() >= 1);
+
+    // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory.
+    let mut require_type_space = opt_self_ty.is_some();
+
     let mut segment_spaces: Vec<_>;
     match def {
         // Case 1 and 1b. Reference to a *type* or *enum variant*.
@@ -4738,7 +4763,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefTyParam(..) => {
             // Everything but the final segment should have no
             // parameters at all.
-            segment_spaces = repeat(None).take(path.segments.len() - 1).collect();
+            segment_spaces = repeat(None).take(segments.len() - 1).collect();
             segment_spaces.push(Some(subst::TypeSpace));
         }
 
@@ -4746,14 +4771,12 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefFn(..) |
         def::DefConst(..) |
         def::DefStatic(..) => {
-            segment_spaces = repeat(None).take(path.segments.len() - 1).collect();
+            segment_spaces = repeat(None).take(segments.len() - 1).collect();
             segment_spaces.push(Some(subst::FnSpace));
         }
 
         // Case 3. Reference to a method.
         def::DefMethod(_, providence) => {
-            assert!(path.segments.len() >= 2);
-
             match providence {
                 def::FromTrait(trait_did) => {
                     callee::check_legal_trait_for_method_call(fcx.ccx, span, trait_did)
@@ -4761,9 +4784,16 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 def::FromImpl(_) => {}
             }
 
-            segment_spaces = repeat(None).take(path.segments.len() - 2).collect();
-            segment_spaces.push(Some(subst::TypeSpace));
-            segment_spaces.push(Some(subst::FnSpace));
+            if segments.len() >= 2 {
+                segment_spaces = repeat(None).take(segments.len() - 2).collect();
+                segment_spaces.push(Some(subst::TypeSpace));
+                segment_spaces.push(Some(subst::FnSpace));
+            } else {
+                // `<T>::method` will end up here, and so can `T::method`.
+                assert!(opt_self_ty.is_some());
+                require_type_space = false;
+                segment_spaces = vec![Some(subst::FnSpace)];
+            }
         }
 
         // Other cases. Various nonsense that really shouldn't show up
@@ -4776,10 +4806,10 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefRegion(..) |
         def::DefLabel(..) |
         def::DefUpvar(..) => {
-            segment_spaces = repeat(None).take(path.segments.len()).collect();
+            segment_spaces = repeat(None).take(segments.len()).collect();
         }
     }
-    assert_eq!(segment_spaces.len(), path.segments.len());
+    assert_eq!(segment_spaces.len(), segments.len());
 
     debug!("segment_spaces={:?}", segment_spaces);
 
@@ -4793,16 +4823,17 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // provided (if any) into their appropriate spaces. We'll also report
     // errors if type parameters are provided in an inappropriate place.
     let mut substs = Substs::empty();
-    for (opt_space, segment) in segment_spaces.iter().zip(path.segments.iter()) {
+    for (opt_space, segment) in segment_spaces.iter().zip(segments.iter()) {
         match *opt_space {
             None => {
-                report_error_if_segment_contains_type_parameters(fcx, segment);
+                check_path_args(fcx.tcx(), slice::ref_slice(segment),
+                                NO_TPS | NO_REGIONS);
             }
 
             Some(space) => {
                 push_explicit_parameters_from_segment_to_substs(fcx,
                                                                 space,
-                                                                path.span,
+                                                                span,
                                                                 type_defs,
                                                                 region_defs,
                                                                 segment,
@@ -4824,7 +4855,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // a problem.
     for &space in &ParamSpace::all() {
         adjust_type_parameters(fcx, span, space, type_defs,
-                               opt_self_ty.is_some(), &mut substs);
+                               require_type_space, &mut substs);
         assert_eq!(substs.types.len(space), type_defs.len(space));
 
         adjust_region_parameters(fcx, span, space, region_defs, &mut substs);
@@ -4850,23 +4881,6 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     fcx.write_ty(node_id, ty_substituted);
     fcx.write_substs(node_id, ty::ItemSubsts { substs: substs });
     return;
-
-    fn report_error_if_segment_contains_type_parameters(
-        fcx: &FnCtxt,
-        segment: &ast::PathSegment)
-    {
-        for typ in &segment.parameters.types() {
-            span_err!(fcx.tcx().sess, typ.span, E0085,
-                "type parameters may not appear here");
-            break;
-        }
-
-        for lifetime in &segment.parameters.lifetimes() {
-            span_err!(fcx.tcx().sess, lifetime.span, E0086,
-                "lifetime parameters may not appear here");
-            break;
-        }
-    }
 
     /// Finds the parameters that the user provided and adds them to `substs`. If too many
     /// parameters are provided, then reports an error and clears the output vector.

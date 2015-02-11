@@ -246,6 +246,7 @@ pub fn ast_path_substs_for_ty<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
     span: Span,
+    param_mode: PathParamMode,
     decl_generics: &ty::Generics<'tcx>,
     item_segment: &ast::PathSegment)
     -> Substs<'tcx>
@@ -265,12 +266,12 @@ pub fn ast_path_substs_for_ty<'tcx>(
 
     let (regions, types, assoc_bindings) = match item_segment.parameters {
         ast::AngleBracketedParameters(ref data) => {
-            convert_angle_bracketed_parameters(this, rscope, path.span, decl_generics, data)
+            convert_angle_bracketed_parameters(this, rscope, span, decl_generics, data)
         }
         ast::ParenthesizedParameters(ref data) => {
             span_err!(tcx.sess, span, E0214,
                 "parenthesized parameters may only be used with a trait");
-            convert_parenthesized_parameters(this, rscope, path.span, decl_generics, data)
+            convert_parenthesized_parameters(this, rscope, span, decl_generics, data)
         }
     };
 
@@ -278,10 +279,19 @@ pub fn ast_path_substs_for_ty<'tcx>(
 
     create_substs_for_ast_path(this,
                                span,
+                               param_mode,
                                decl_generics,
                                None,
                                types,
                                regions)
+}
+
+#[derive(PartialEq, Eq)]
+pub enum PathParamMode {
+    // Any path in a type context.
+    Explicit,
+    // The `module::Type` in `module::Type::method` in an expression.
+    Optional
 }
 
 fn create_region_substs<'tcx>(
@@ -331,6 +341,7 @@ fn create_region_substs<'tcx>(
 fn create_substs_for_ast_path<'tcx>(
     this: &AstConv<'tcx>,
     span: Span,
+    param_mode: PathParamMode,
     decl_generics: &ty::Generics<'tcx>,
     self_ty: Option<Ty<'tcx>>,
     types_provided: Vec<Ty<'tcx>>,
@@ -349,13 +360,21 @@ fn create_substs_for_ast_path<'tcx>(
 
     // Convert the type parameters supplied by the user.
     let ty_param_defs = decl_generics.types.get_slice(TypeSpace);
-    let supplied_ty_param_count = types_provided.len();
     let formal_ty_param_count = ty_param_defs.len();
     let required_ty_param_count = ty_param_defs.iter()
                                                .take_while(|x| x.default.is_none())
                                                .count();
 
-    let mut type_substs = types_provided;
+    // Fill with `ty_infer` if no params were specified, as long as
+    // they were optional (e.g. paths inside expressions).
+    let mut type_substs = if param_mode == PathParamMode::Optional &&
+                             types_provided.is_empty() {
+        (0..formal_ty_param_count).map(|_| this.ty_infer(span)).collect()
+    } else {
+        types_provided
+    };
+
+    let supplied_ty_param_count = type_substs.len();
     check_type_argument_count(this.tcx(), span, supplied_ty_param_count,
                               required_ty_param_count, formal_ty_param_count);
 
@@ -415,7 +434,7 @@ fn create_substs_for_ast_path<'tcx>(
         }
     }
 
-    return substs;
+    substs
 }
 
 struct ConvertedBinding<'tcx> {
@@ -607,6 +626,7 @@ pub fn instantiate_trait_ref<'tcx>(
             let trait_ref = ast_path_to_trait_ref(this,
                                                   rscope,
                                                   path.span,
+                                                  PathParamMode::Explicit,
                                                   trait_def_id,
                                                   self_ty,
                                                   path.segments.last().unwrap(),
@@ -627,6 +647,7 @@ fn object_path_to_poly_trait_ref<'a,'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
     span: Span,
+    param_mode: PathParamMode,
     trait_def_id: ast::DefId,
     trait_segment: &ast::PathSegment,
     mut projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
@@ -640,6 +661,7 @@ fn object_path_to_poly_trait_ref<'a,'tcx>(
     let trait_ref = ty::Binder(ast_path_to_trait_ref(this,
                                                      &shifted_rscope,
                                                      span,
+                                                     param_mode,
                                                      trait_def_id,
                                                      None,
                                                      trait_segment,
@@ -652,6 +674,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
     span: Span,
+    param_mode: PathParamMode,
     trait_def_id: ast::DefId,
     self_ty: Option<Ty<'tcx>>,
     trait_segment: &ast::PathSegment,
@@ -674,7 +697,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
                             the crate attributes to enable");
             }
 
-            convert_angle_bracketed_parameters(this, rscope, path.span, &trait_def.generics, data)
+            convert_angle_bracketed_parameters(this, rscope, span, &trait_def.generics, data)
         }
         ast::ParenthesizedParameters(ref data) => {
             // For now, require that parenthetical notation be used
@@ -688,12 +711,13 @@ fn ast_path_to_trait_ref<'a,'tcx>(
                             the crate attributes to enable");
             }
 
-            convert_parenthesized_parameters(this, rscope, path.span, &trait_def.generics, data)
+            convert_parenthesized_parameters(this, rscope, span, &trait_def.generics, data)
         }
     };
 
     let substs = create_substs_for_ast_path(this,
                                             span,
+                                            param_mode,
                                             &trait_def.generics,
                                             self_ty,
                                             types,
@@ -830,6 +854,7 @@ fn ast_path_to_ty<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
     span: Span,
+    param_mode: PathParamMode,
     did: ast::DefId,
     item_segment: &ast::PathSegment)
     -> Ty<'tcx>
@@ -839,7 +864,9 @@ fn ast_path_to_ty<'tcx>(
         ty: decl_ty
     } = this.get_item_type_scheme(did);
 
-    let substs = ast_path_substs_for_ty(this, rscope, span, &generics, item_segment);
+    let substs = ast_path_substs_for_ty(this, rscope,
+                                        span, param_mode,
+                                        &generics, item_segment);
 
     // FIXME(#12938): This is a hack until we have full support for DST.
     if Some(did) == this.tcx().lang_items.owned_box() {
@@ -878,6 +905,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
                     let trait_ref = object_path_to_poly_trait_ref(this,
                                                                   rscope,
                                                                   path.span,
+                                                                  PathParamMode::Explicit,
                                                                   trait_def_id,
                                                                   path.segments.last().unwrap(),
                                                                   &mut projection_bounds);
@@ -950,8 +978,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                                    -> (Ty<'tcx>, def::Def)
 {
     let tcx = this.tcx();
-    check_path_args(tcx, span, slice::ref_slice(item_segment),
-                    NO_TPS | NO_REGIONS);
+    check_path_args(tcx, slice::ref_slice(item_segment), NO_TPS | NO_REGIONS);
     let assoc_name = item_segment.identifier.name;
 
     let ty_param_node_id = if let ty::ty_param(_) = ty.sty {
@@ -1043,7 +1070,8 @@ fn trait_defines_associated_type_named(this: &AstConv,
 fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
                      rscope: &RegionScope,
                      span: Span,
-                     opt_self_ty: Option<&ast::Ty>,
+                     param_mode: PathParamMode,
+                     opt_self_ty: Option<Ty<'tcx>>,
                      trait_def_id: ast::DefId,
                      trait_segment: &ast::PathSegment,
                      item_segment: &ast::PathSegment)
@@ -1051,11 +1079,10 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
 {
     let tcx = this.tcx();
 
-    check_path_args(tcx, span, slice::ref_slice(item_segment),
-                    NO_TPS | NO_REGIONS);
+    check_path_args(tcx, slice::ref_slice(item_segment), NO_TPS | NO_REGIONS);
 
     let self_ty = if let Some(ty) = opt_self_ty {
-        ast_ty_to_ty(this, rscope, ty)
+        ty
     } else {
         let path_str = ty::item_path_str(tcx, trait_def_id);
         span_err!(tcx.sess, span, E0223,
@@ -1070,6 +1097,7 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
     let trait_ref = ast_path_to_trait_ref(this,
                                           rscope,
                                           span,
+                                          param_mode,
                                           trait_def_id,
                                           Some(self_ty),
                                           trait_segment,
@@ -1111,6 +1139,88 @@ pub fn ast_ty_arg_to_ty<'tcx>(this: &AstConv<'tcx>,
     } else {
         ast_ty_to_ty(this, rscope, ast_ty)
     }
+}
+
+pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
+                                        rscope: &RegionScope,
+                                        span: Span,
+                                        param_mode: PathParamMode,
+                                        def: &mut def::Def,
+                                        opt_self_ty: Option<Ty<'tcx>>,
+                                        segments: &[ast::PathSegment],
+                                        assoc_segments: &[ast::PathSegment])
+                                        -> Ty<'tcx> {
+    let tcx = this.tcx();
+
+    let base_ty = match *def {
+        def::DefTrait(trait_def_id) => {
+            // N.B. this case overlaps somewhat with
+            // TyObjectSum, see that fn for details
+            let mut projection_bounds = Vec::new();
+
+            let trait_ref = object_path_to_poly_trait_ref(this,
+                                                          rscope,
+                                                          span,
+                                                          param_mode,
+                                                          trait_def_id,
+                                                          segments.last().unwrap(),
+                                                          &mut projection_bounds);
+
+            check_path_args(tcx, segments.init(), NO_TPS | NO_REGIONS);
+            trait_ref_to_object_type(this, rscope, span, trait_ref,
+                                     projection_bounds, &[])
+        }
+        def::DefTy(did, _) | def::DefStruct(did) => {
+            check_path_args(tcx, segments.init(), NO_TPS | NO_REGIONS);
+            ast_path_to_ty(this, rscope, span,
+                           param_mode, did,
+                           segments.last().unwrap())
+        }
+        def::DefTyParam(space, index, _, name) => {
+            check_path_args(tcx, segments, NO_TPS | NO_REGIONS);
+            ty::mk_param(tcx, space, index, name)
+        }
+        def::DefSelfTy(_) => {
+            // n.b.: resolve guarantees that the this type only appears in a
+            // trait, which we rely upon in various places when creating
+            // substs
+            check_path_args(tcx, segments, NO_TPS | NO_REGIONS);
+            ty::mk_self_type(tcx)
+        }
+        def::DefAssociatedTy(trait_did, _) => {
+            check_path_args(tcx, &segments[..segments.len()-2], NO_TPS | NO_REGIONS);
+            qpath_to_ty(this, rscope, span, param_mode,
+                        opt_self_ty, trait_did,
+                        &segments[segments.len()-2],
+                        segments.last().unwrap())
+        }
+        def::DefMod(id) => {
+            tcx.sess.span_bug(span,
+                              &format!("found module name used as a type: {}",
+                                       tcx.map.node_to_string(id.node)));
+        }
+        def::DefPrimTy(prim_ty) => {
+            prim_ty_to_ty(tcx, segments, prim_ty)
+        }
+        _ => {
+            span_fatal!(tcx.sess, span, E0248,
+                        "found value name used as a type: {:?}", *def);
+        }
+    };
+
+    // If any associated type segments remain, attempt to resolve them.
+    let mut ty = base_ty;
+    for segment in assoc_segments {
+        if ty.sty == ty::ty_err {
+            break;
+        }
+        // This is pretty bad (it will fail except for T::A and Self::A).
+        let (a_ty, a_def) = associated_path_def_to_ty(this, span,
+                                                      ty, *def, segment);
+        ty = a_ty;
+        *def = a_def;
+    }
+    ty
 }
 
 /// Parses the programmer's textual representation of a type into our
@@ -1201,81 +1311,18 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 tcx.sess.span_bug(ast_ty.span,
                                   &format!("unbound path {}", ast_ty.repr(tcx)))
             };
-            let (base_def, max_depth) = result;
-            let span = ast_ty.span; // Could be more granular.
-            let segments = &path.segments[..path.segments.len()-max_depth];
-            let base_ty = match base_def {
-                def::DefTrait(trait_def_id) => {
-                    // N.B. this case overlaps somewhat with
-                    // TyObjectSum, see that fn for details
-                    let mut projection_bounds = Vec::new();
-
-                    let trait_ref = object_path_to_poly_trait_ref(this,
-                                                                  rscope,
-                                                                  span,
-                                                                  trait_def_id,
-                                                                  segments.last().unwrap(),
-                                                                  &mut projection_bounds);
-
-                    check_path_args(tcx, span, segments.init(), NO_TPS | NO_REGIONS);
-                    trait_ref_to_object_type(this, rscope, span, trait_ref,
-                                             projection_bounds, &[])
-                }
-                def::DefTy(did, _) | def::DefStruct(did) => {
-                    check_path_args(tcx, span, segments.init(), NO_TPS | NO_REGIONS);
-                    ast_path_to_ty(this, rscope, span, did, segments.last().unwrap())
-                }
-                def::DefTyParam(space, index, _, name) => {
-                    check_path_args(tcx, span, segments, NO_TPS | NO_REGIONS);
-                    ty::mk_param(tcx, space, index, name)
-                }
-                def::DefSelfTy(_) => {
-                    // n.b.: resolve guarantees that the this type only appears in a
-                    // trait, which we rely upon in various places when creating
-                    // substs
-                    check_path_args(tcx, span, segments, NO_TPS | NO_REGIONS);
-                    ty::mk_self_type(tcx)
-                }
-                def::DefAssociatedTy(trait_did, _) => {
-                    let opt_self_ty = if let ast::TyQPath(ref qpath) = ast_ty.node {
-                        Some(&*qpath.self_type)
-                    } else {
-                        None
-                    };
-                    check_path_args(tcx, span, &segments[..segments.len()-2],
-                                    NO_TPS | NO_REGIONS);
-                    qpath_to_ty(this, rscope, span, opt_self_ty, trait_did,
-                                &segments[segments.len()-2],
-                                segments.last().unwrap())
-                }
-                def::DefMod(id) => {
-                    tcx.sess.span_bug(span,
-                                      &format!("found module name used as a type: {}",
-                                               tcx.map.node_to_string(id.node)));
-                }
-                def::DefPrimTy(prim_ty) => {
-                    prim_ty_to_ty(tcx, span, segments, prim_ty)
-                }
-                _ => {
-                    span_fatal!(tcx.sess, span, E0248,
-                                "found value name used as a type: {:?}", base_def);
-                }
+            let (mut def, max_depth) = result;
+            let base_ty_end = path.segments.len() - max_depth;
+            let opt_self_ty = if let ast::TyQPath(ref qpath) = ast_ty.node {
+                Some(ast_ty_to_ty(this, rscope, &*qpath.self_type))
+            } else {
+                None
             };
-
-            // If any associated type segments remain, attempt to resolve them.
-            let mut ty = base_ty;
-            let mut def = base_def;
-            for depth in (0..max_depth).rev() {
-                if ty.sty == ty::ty_err {
-                    break;
-                }
-                // This is pretty bad (it will fail except for T::A and Self::A).
-                let segment = &path.segments[path.segments.len()-depth-1];
-                let (a_ty, a_def) = associated_path_def_to_ty(this, span,
-                                                              ty, def, segment);
-                ty = a_ty;
-                def = a_def;
-            }
+            let ty = finish_resolving_def_to_ty(this, rscope, ast_ty.span,
+                                                PathParamMode::Explicit, &mut def,
+                                                opt_self_ty,
+                                                &path.segments[..base_ty_end],
+                                                &path.segments[base_ty_end..]);
 
             if max_depth != 0 && ty.sty != ty::ty_err {
                 // Write back the new resolution.
