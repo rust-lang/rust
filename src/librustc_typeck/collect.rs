@@ -86,6 +86,7 @@ There are some shortcomings in this design:
 */
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
+use middle::def;
 use middle::lang_items::SizedTraitLangItem;
 use middle::region;
 use middle::resolve_lifetime;
@@ -1199,8 +1200,23 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                                              predicates.clone());
     assert!(prev_predicates.is_none());
 
-    return (scheme, predicates);
+    // Debugging aid.
+    if ty::has_attr(tcx, local_def(it.id), "rustc_object_lifetime_default") {
+        let object_lifetime_default_reprs: String =
+            scheme.generics.types.iter()
+                                 .map(|t| match t.object_lifetime_default {
+                                     Some(ty::ObjectLifetimeDefault::Specific(r)) =>
+                                         r.user_string(tcx),
+                                     d =>
+                                         d.repr(ccx.tcx()),
+                                 })
+                                 .collect::<Vec<String>>()
+                                 .connect(",");
 
+        tcx.sess.span_err(it.span, &object_lifetime_default_reprs);
+    }
+
+    return (scheme, predicates);
 }
 
 fn type_scheme_of_foreign_item<'a, 'tcx>(
@@ -1269,6 +1285,7 @@ fn ty_generics_for_type_or_impl<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                 subst::TypeSpace,
                 &generics.lifetimes[],
                 &generics.ty_params[],
+                &generics.where_clause,
                 ty::Generics::empty())
 }
 
@@ -1298,6 +1315,7 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                     subst::TypeSpace,
                     &ast_generics.lifetimes[],
                     &ast_generics.ty_params[],
+                    &ast_generics.where_clause,
                     ty::Generics::empty());
 
     // Add in the self type parameter.
@@ -1321,7 +1339,8 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
             trait_bounds: vec!(ty::Binder(self_trait_ref.clone())),
             projection_bounds: vec!(),
         },
-        default: None
+        default: None,
+        object_lifetime_default: None,
     };
 
     ccx.tcx.ty_param_defs.borrow_mut().insert(param_id, def.clone());
@@ -1341,6 +1360,7 @@ fn ty_generics_for_fn_or_method<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                 subst::FnSpace,
                 &early_lifetimes[],
                 &generics.ty_params[],
+                &generics.where_clause,
                 base_generics)
 }
 
@@ -1487,6 +1507,7 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                         space: subst::ParamSpace,
                         lifetime_defs: &[ast::LifetimeDef],
                         types: &[ast::TyParam],
+                        where_clause: &ast::WhereClause,
                         base_generics: ty::Generics<'tcx>)
                         -> ty::Generics<'tcx>
 {
@@ -1511,7 +1532,7 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
 
     // Now create the real type parameters.
     for (i, param) in types.iter().enumerate() {
-        let def = get_or_create_type_parameter_def(ccx, space, param, i as u32);
+        let def = get_or_create_type_parameter_def(ccx, space, param, i as u32, where_clause);
         debug!("ty_generics: def for type param: {:?}, {:?}", def, space);
         result.types.push(space, def);
     }
@@ -1522,7 +1543,8 @@ fn ty_generics<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
 fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                                              space: subst::ParamSpace,
                                              param: &ast::TyParam,
-                                             index: u32)
+                                             index: u32,
+                                             where_clause: &ast::WhereClause)
                                              -> ty::TypeParameterDef<'tcx>
 {
     let tcx = ccx.tcx;
@@ -1558,18 +1580,115 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
         }
     };
 
+    let object_lifetime_default =
+        compute_object_lifetime_default(ccx, space, index, &param.bounds, where_clause);
+
     let def = ty::TypeParameterDef {
         space: space,
         index: index,
         name: param.ident.name,
         def_id: local_def(param.id),
         bounds: bounds,
-        default: default
+        default: default,
+        object_lifetime_default: object_lifetime_default,
     };
 
     tcx.ty_param_defs.borrow_mut().insert(param.id, def.clone());
 
     def
+}
+
+/// Scan the bounds and where-clauses on a parameter to extract bounds
+/// of the form `T:'a` so as to determine the `ObjectLifetimeDefault`.
+/// This runs as part of computing the minimal type scheme, so we
+/// intentionally avoid just asking astconv to convert all the where
+/// clauses into a `ty::Predicate`. This is because that could induce
+/// artificial cycles.
+fn compute_object_lifetime_default<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
+                                            space: subst::ParamSpace,
+                                            index: u32,
+                                            param_bounds: &[ast::TyParamBound],
+                                            where_clause: &ast::WhereClause)
+                                            -> Option<ty::ObjectLifetimeDefault>
+{
+    let inline_bounds = from_bounds(ccx, param_bounds);
+    let where_bounds = from_predicates(ccx, space, index, &where_clause.predicates);
+    let all_bounds: HashSet<_> = inline_bounds.into_iter()
+                                              .chain(where_bounds.into_iter())
+                                              .collect();
+    return if all_bounds.len() > 1 {
+        Some(ty::ObjectLifetimeDefault::Ambiguous)
+    } else {
+        all_bounds.into_iter()
+                  .next()
+                  .map(ty::ObjectLifetimeDefault::Specific)
+    };
+
+    fn from_bounds<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
+                            bounds: &[ast::TyParamBound])
+                            -> Vec<ty::Region>
+    {
+        bounds.iter()
+              .filter_map(|bound| {
+                  match *bound {
+                      ast::TraitTyParamBound(..) =>
+                          None,
+                      ast::RegionTyParamBound(ref lifetime) =>
+                          Some(astconv::ast_region_to_region(ccx.tcx(), lifetime)),
+                  }
+              })
+              .collect()
+    }
+
+    fn from_predicates<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
+                                space: subst::ParamSpace,
+                                index: u32,
+                                predicates: &[ast::WherePredicate])
+                                -> Vec<ty::Region>
+    {
+        predicates.iter()
+                  .flat_map(|predicate| {
+                      match *predicate {
+                          ast::WherePredicate::BoundPredicate(ref data) => {
+                              if data.bound_lifetimes.len() == 0 &&
+                                  is_param(ccx, &data.bounded_ty, space, index)
+                              {
+                                  from_bounds(ccx, &data.bounds).into_iter()
+                              } else {
+                                  Vec::new().into_iter()
+                              }
+                          }
+                          ast::WherePredicate::RegionPredicate(..) |
+                          ast::WherePredicate::EqPredicate(..) => {
+                              Vec::new().into_iter()
+                          }
+                      }
+                  })
+                  .collect()
+    }
+
+    fn is_param(ccx: &CollectCtxt,
+                ast_ty: &ast::Ty,
+                space: subst::ParamSpace,
+                index: u32)
+                -> bool
+    {
+        match ast_ty.node {
+            ast::TyPath(_, id) => {
+                match ccx.tcx.def_map.borrow()[id] {
+                    def::DefTyParam(s, i, _, _) => {
+                        space == s && index == i
+                    }
+                    _ => {
+                        false
+                    }
+                }
+            }
+            _ => {
+                false
+            }
+        }
+    }
 }
 
 enum SizedByDefault { Yes, No }
