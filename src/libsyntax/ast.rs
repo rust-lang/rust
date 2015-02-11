@@ -366,6 +366,14 @@ pub struct DefId {
     pub node: NodeId,
 }
 
+impl DefId {
+    /// Read the node id, asserting that this def-id is krate-local.
+    pub fn local_id(&self) -> NodeId {
+        assert_eq!(self.krate, LOCAL_CRATE);
+        self.node
+    }
+}
+
 /// Item definitions in the currently-compiled crate would have the CrateNum
 /// LOCAL_CRATE in their DefId.
 pub const LOCAL_CRATE: CrateNum = 0;
