@@ -42,6 +42,7 @@ use syntax;
 use std::old_io::Seek;
 use std::num::FromPrimitive;
 use std::rc::Rc;
+use std::cell::Cell;
 
 use rbml::reader;
 use rbml::writer::Encoder;
@@ -58,7 +59,9 @@ struct DecodeContext<'a, 'b, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
     cdata: &'b cstore::crate_metadata,
     from_id_range: ast_util::IdRange,
-    to_id_range: ast_util::IdRange
+    to_id_range: ast_util::IdRange,
+    // Cache the last used filemap for translating spans as an optimization.
+    last_filemap_index: Cell<usize>,
 }
 
 trait tr {
@@ -120,6 +123,8 @@ impl<'a, 'b, 'c, 'tcx> ast_map::FoldOps for &'a DecodeContext<'b, 'c, 'tcx> {
     }
 }
 
+/// Decodes an item from its AST in the cdata's metadata and adds it to the
+/// ast-map.
 pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
                                  tcx: &ty::ctxt<'tcx>,
                                  path: Vec<ast_map::PathElem>,
@@ -143,7 +148,8 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             cdata: cdata,
             tcx: tcx,
             from_id_range: from_id_range,
-            to_id_range: to_id_range
+            to_id_range: to_id_range,
+            last_filemap_index: Cell::new(0)
         };
         let raw_ii = decode_ast(ast_doc);
         let ii = ast_map::map_decoded_item(&dcx.tcx.map, path, raw_ii, dcx);
@@ -234,8 +240,47 @@ impl<'a, 'b, 'tcx> DecodeContext<'a, 'b, 'tcx> {
         assert_eq!(did.krate, ast::LOCAL_CRATE);
         ast::DefId { krate: ast::LOCAL_CRATE, node: self.tr_id(did.node) }
     }
-    pub fn tr_span(&self, _span: Span) -> Span {
-        codemap::DUMMY_SP // FIXME (#1972): handle span properly
+
+    /// Translates a `Span` from an extern crate to the corresponding `Span`
+    /// within the local crate's codemap. `creader::import_codemap()` will
+    /// already have allocated any additionally needed FileMaps in the local
+    /// codemap as a side-effect of creating the crate_metadata's
+    /// `codemap_import_info`.
+    pub fn tr_span(&self, span: Span) -> Span {
+        let imported_filemaps = &self.cdata.codemap_import_info[..];
+
+        let filemap_index = {
+            // Optimize for the case that most spans within a translated item
+            // originate from the same filemap.
+            let last_filemap_index = self.last_filemap_index.get();
+
+            if span.lo >= imported_filemaps[last_filemap_index].original_start_pos &&
+               span.hi <= imported_filemaps[last_filemap_index].original_end_pos {
+                last_filemap_index
+            } else {
+                let mut a = 0;
+                let mut b = imported_filemaps.len();
+
+                while b - a > 1 {
+                    let m = (a + b) / 2;
+                    if imported_filemaps[m].original_start_pos > span.lo {
+                        b = m;
+                    } else {
+                        a = m;
+                    }
+                }
+
+                self.last_filemap_index.set(a);
+                a
+            }
+        };
+
+        let lo = (span.lo - imported_filemaps[filemap_index].original_start_pos) +
+                  imported_filemaps[filemap_index].translated_filemap.start_pos;
+        let hi = (span.hi - imported_filemaps[filemap_index].original_start_pos) +
+                  imported_filemaps[filemap_index].translated_filemap.start_pos;
+
+        codemap::mk_sp(lo, hi)
     }
 }
 

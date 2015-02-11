@@ -542,7 +542,11 @@ pub fn pretty_print_input(sess: Session,
 
     let src_name = driver::source_name(input);
     let src = sess.codemap().get_filemap(&src_name[..])
-                            .src.as_bytes().to_vec();
+                            .src
+                            .as_ref()
+                            .unwrap()
+                            .as_bytes()
+                            .to_vec();
     let mut rdr = MemReader::new(src);
 
     let out = match ofile {

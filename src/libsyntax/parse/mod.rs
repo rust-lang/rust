@@ -751,6 +751,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
 #[cfg(test)]
 mod test {
     use super::*;
+    use std::rc::Rc;
     use serialize::json;
     use codemap::{Span, BytePos, Pos, Spanned, NO_EXPANSION};
     use owned_slice::OwnedSlice;
@@ -855,117 +856,50 @@ mod test {
     }
 
     #[test]
-    fn string_to_tts_1 () {
+    fn string_to_tts_1() {
         let tts = string_to_tts("fn a (b : i32) { b; }".to_string());
-        assert_eq!(json::encode(&tts).unwrap(),
-        "[\
-    {\
-        \"variant\":\"TtToken\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"variant\":\"Ident\",\
-                \"fields\":[\
-                    \"fn\",\
-                    \"Plain\"\
-                ]\
-            }\
-        ]\
-    },\
-    {\
-        \"variant\":\"TtToken\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"variant\":\"Ident\",\
-                \"fields\":[\
-                    \"a\",\
-                    \"Plain\"\
-                ]\
-            }\
-        ]\
-    },\
-    {\
-        \"variant\":\"TtDelimited\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"delim\":\"Paren\",\
-                \"open_span\":null,\
-                \"tts\":[\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            {\
-                                \"variant\":\"Ident\",\
-                                \"fields\":[\
-                                    \"b\",\
-                                    \"Plain\"\
-                                ]\
-                            }\
-                        ]\
-                    },\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            \"Colon\"\
-                        ]\
-                    },\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            {\
-                                \"variant\":\"Ident\",\
-                                \"fields\":[\
-                                    \"i32\",\
-                                    \"Plain\"\
-                                ]\
-                            }\
-                        ]\
-                    }\
-                ],\
-                \"close_span\":null\
-            }\
-        ]\
-    },\
-    {\
-        \"variant\":\"TtDelimited\",\
-        \"fields\":[\
-            null,\
-            {\
-                \"delim\":\"Brace\",\
-                \"open_span\":null,\
-                \"tts\":[\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            {\
-                                \"variant\":\"Ident\",\
-                                \"fields\":[\
-                                    \"b\",\
-                                    \"Plain\"\
-                                ]\
-                            }\
-                        ]\
-                    },\
-                    {\
-                        \"variant\":\"TtToken\",\
-                        \"fields\":[\
-                            null,\
-                            \"Semi\"\
-                        ]\
-                    }\
-                ],\
-                \"close_span\":null\
-            }\
-        ]\
-    }\
-]"
-        );
+
+        let expected = vec![
+            ast::TtToken(sp(0, 2),
+                         token::Ident(str_to_ident("fn"),
+                         token::IdentStyle::Plain)),
+            ast::TtToken(sp(3, 4),
+                         token::Ident(str_to_ident("a"),
+                         token::IdentStyle::Plain)),
+            ast::TtDelimited(
+                sp(5, 14),
+                Rc::new(ast::Delimited {
+                    delim: token::DelimToken::Paren,
+                    open_span: sp(5, 6),
+                    tts: vec![
+                        ast::TtToken(sp(6, 7),
+                                     token::Ident(str_to_ident("b"),
+                                     token::IdentStyle::Plain)),
+                        ast::TtToken(sp(8, 9),
+                                     token::Colon),
+                        ast::TtToken(sp(10, 13),
+                                     token::Ident(str_to_ident("i32"),
+                                     token::IdentStyle::Plain)),
+                    ],
+                    close_span: sp(13, 14),
+                })),
+            ast::TtDelimited(
+                sp(15, 21),
+                Rc::new(ast::Delimited {
+                    delim: token::DelimToken::Brace,
+                    open_span: sp(15, 16),
+                    tts: vec![
+                        ast::TtToken(sp(17, 18),
+                                     token::Ident(str_to_ident("b"),
+                                     token::IdentStyle::Plain)),
+                        ast::TtToken(sp(18, 19),
+                                     token::Semi)
+                    ],
+                    close_span: sp(20, 21),
+                }))
+        ];
+
+        assert_eq!(tts, expected);
     }
 
     #[test] fn ret_expr() {

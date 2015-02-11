@@ -26,7 +26,7 @@ use syntax::ast;
 use syntax::abi;
 use syntax::attr;
 use syntax::attr::AttrMetaMethods;
-use syntax::codemap::{Span, mk_sp};
+use syntax::codemap::{self, Span, mk_sp, Pos};
 use syntax::parse;
 use syntax::parse::token::InternedString;
 use syntax::parse::token;
@@ -373,15 +373,17 @@ impl<'a> CrateReader<'a> {
         // Maintain a reference to the top most crate.
         let root = if root.is_some() { root } else { &crate_paths };
 
-        let cnum_map = self.resolve_crate_deps(root, lib.metadata.as_slice(), span);
+        let loader::Library { dylib, rlib, metadata } = lib;
 
-        let loader::Library{ dylib, rlib, metadata } = lib;
+        let cnum_map = self.resolve_crate_deps(root, metadata.as_slice(), span);
+        let codemap_import_info = import_codemap(self.sess.codemap(), &metadata);
 
         let cmeta = Rc::new( cstore::crate_metadata {
             name: name.to_string(),
             data: metadata,
             cnum_map: cnum_map,
             cnum: cnum,
+            codemap_import_info: codemap_import_info,
             span: span,
         });
 
@@ -584,5 +586,133 @@ impl<'a> CrateReader<'a> {
             }
             _ => None,
         }
+    }
+}
+
+/// Imports the codemap from an external crate into the codemap of the crate
+/// currently being compiled (the "local crate").
+///
+/// The import algorithm works analogous to how AST items are inlined from an
+/// external crate's metadata:
+/// For every FileMap in the external codemap an 'inline' copy is created in the
+/// local codemap. The correspondence relation between external and local
+/// FileMaps is recorded in the `ImportedFileMap` objects returned from this
+/// function. When an item from an external crate is later inlined into this
+/// crate, this correspondence information is used to translate the span
+/// information of the inlined item so that it refers the correct positions in
+/// the local codemap (see `astencode::DecodeContext::tr_span()`).
+///
+/// The import algorithm in the function below will reuse FileMaps already
+/// existing in the local codemap. For example, even if the FileMap of some
+/// source file of libstd gets imported many times, there will only ever be
+/// one FileMap object for the corresponding file in the local codemap.
+///
+/// Note that imported FileMaps do not actually contain the source code of the
+/// file they represent, just information about length, line breaks, and
+/// multibyte characters. This information is enough to generate valid debuginfo
+/// for items inlined from other crates.
+fn import_codemap(local_codemap: &codemap::CodeMap,
+                  metadata: &MetadataBlob)
+                  -> Vec<cstore::ImportedFileMap> {
+    let external_codemap = decoder::get_imported_filemaps(metadata.as_slice());
+
+    let imported_filemaps = external_codemap.into_iter().map(|filemap_to_import| {
+        // Try to find an existing FileMap that can be reused for the filemap to
+        // be imported. A FileMap is reusable if it is exactly the same, just
+        // positioned at a different offset within the codemap.
+        let reusable_filemap = {
+            local_codemap.files
+                         .borrow()
+                         .iter()
+                         .find(|fm| are_equal_modulo_startpos(&fm, &filemap_to_import))
+                         .map(|rc| rc.clone())
+        };
+
+        match reusable_filemap {
+            Some(fm) => {
+                cstore::ImportedFileMap {
+                    original_start_pos: filemap_to_import.start_pos,
+                    original_end_pos: filemap_to_import.end_pos,
+                    translated_filemap: fm
+                }
+            }
+            None => {
+                // We can't reuse an existing FileMap, so allocate a new one
+                // containing the information we need.
+                let codemap::FileMap {
+                    name,
+                    start_pos,
+                    end_pos,
+                    lines,
+                    multibyte_chars,
+                    ..
+                } = filemap_to_import;
+
+                let source_length = (end_pos - start_pos).to_usize();
+
+                // Translate line-start positions and multibyte character
+                // position into frame of reference local to file.
+                // `CodeMap::new_imported_filemap()` will then translate those
+                // coordinates to their new global frame of reference when the
+                // offset of the FileMap is known.
+                let lines = lines.into_inner().map_in_place(|pos| pos - start_pos);
+                let multibyte_chars = multibyte_chars
+                    .into_inner()
+                    .map_in_place(|mbc|
+                        codemap::MultiByteChar {
+                            pos: mbc.pos + start_pos,
+                            bytes: mbc.bytes
+                        });
+
+                let local_version = local_codemap.new_imported_filemap(name,
+                                                                       source_length,
+                                                                       lines,
+                                                                       multibyte_chars);
+                cstore::ImportedFileMap {
+                    original_start_pos: start_pos,
+                    original_end_pos: end_pos,
+                    translated_filemap: local_version
+                }
+            }
+        }
+    }).collect();
+
+    return imported_filemaps;
+
+    fn are_equal_modulo_startpos(fm1: &codemap::FileMap,
+                                 fm2: &codemap::FileMap)
+                                 -> bool {
+        if fm1.name != fm2.name {
+            return false;
+        }
+
+        let lines1 = fm1.lines.borrow();
+        let lines2 = fm2.lines.borrow();
+
+        if lines1.len() != lines2.len() {
+            return false;
+        }
+
+        for (&line1, &line2) in lines1.iter().zip(lines2.iter()) {
+            if (line1 - fm1.start_pos) != (line2 - fm2.start_pos) {
+                return false;
+            }
+        }
+
+        let multibytes1 = fm1.multibyte_chars.borrow();
+        let multibytes2 = fm2.multibyte_chars.borrow();
+
+        if multibytes1.len() != multibytes2.len() {
+            return false;
+        }
+
+        for (mb1, mb2) in multibytes1.iter().zip(multibytes2.iter()) {
+            if (mb1.bytes != mb2.bytes) ||
+               ((mb1.pos - fm1.start_pos) != (mb2.pos - fm2.start_pos)) {
+                return false;
+            }
+        }
+
+        true
     }
 }
