@@ -17,37 +17,36 @@
 use middle::def;
 use middle::ty::{self, Ty};
 use syntax::ast;
-use syntax::codemap::Span;
 use util::ppaux::Repr;
 
 pub const NO_REGIONS: uint = 1;
 pub const NO_TPS: uint = 2;
 
-pub fn check_path_args(tcx: &ty::ctxt,
-                       span: Span,
-                       segments: &[ast::PathSegment],
-                       flags: uint) {
-    if (flags & NO_TPS) != 0 {
-        if segments.iter().any(|s| s.parameters.has_types()) {
-            span_err!(tcx.sess, span, E0109,
-                "type parameters are not allowed on this type");
+pub fn check_path_args(tcx: &ty::ctxt, segments: &[ast::PathSegment], flags: uint) {
+    for segment in segments {
+        if (flags & NO_TPS) != 0 {
+            for typ in segment.parameters.types() {
+                span_err!(tcx.sess, typ.span, E0109,
+                          "type parameters are not allowed on this type");
+                break;
+            }
         }
-    }
 
-    if (flags & NO_REGIONS) != 0 {
-        if segments.iter().any(|s| s.parameters.has_lifetimes()) {
-            span_err!(tcx.sess, span, E0110,
-                "lifetime parameters are not allowed on this type");
+        if (flags & NO_REGIONS) != 0 {
+            for lifetime in segment.parameters.lifetimes() {
+                span_err!(tcx.sess, lifetime.span, E0110,
+                          "lifetime parameters are not allowed on this type");
+                break;
+            }
         }
     }
 }
 
 pub fn prim_ty_to_ty<'tcx>(tcx: &ty::ctxt<'tcx>,
-                           span: Span,
                            segments: &[ast::PathSegment],
                            nty: ast::PrimTy)
                            -> Ty<'tcx> {
-    check_path_args(tcx, span, segments, NO_TPS | NO_REGIONS);
+    check_path_args(tcx, segments, NO_TPS | NO_REGIONS);
     match nty {
         ast::TyBool => tcx.types.bool,
         ast::TyChar => tcx.types.char,
@@ -69,7 +68,7 @@ pub fn ast_ty_to_prim_ty<'tcx>(tcx: &ty::ctxt<'tcx>, ast_ty: &ast::Ty)
             Some(&d) => d
         };
         if let def::DefPrimTy(nty) = def {
-            Some(prim_ty_to_ty(tcx, path.span, &path.segments[], nty))
+            Some(prim_ty_to_ty(tcx, &path.segments[], nty))
         } else {
             None
         }

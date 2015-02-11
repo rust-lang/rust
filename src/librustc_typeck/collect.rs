@@ -1684,8 +1684,8 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                 -> bool
     {
         match ast_ty.node {
-            ast::TyPath(_, id) => {
-                match ccx.tcx.def_map.borrow()[id] {
+            ast::TyPath(_) => {
+                match ccx.tcx.def_map.borrow()[ast_ty.id] {
                     def::DefTyParam(s, i, _, _) => {
                         space == s && index == i
                     }

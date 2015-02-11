@@ -77,18 +77,27 @@ tests! {
     //    , (vec![b'f', b'o', b'o'], u8_as_i8);
 
     // Trait static methods.
+    bool::size, fn() -> uint, ();
     <bool as Size>::size, fn() -> uint, ();
+
     Default::default, fn() -> int, ();
+    int::default, fn() -> int, ();
     <int as Default>::default, fn() -> int, ();
+
     Rand::rand, fn(&mut DummyRng) -> int, (&mut dummy_rng());
+    int::rand, fn(&mut DummyRng) -> int, (&mut dummy_rng());
     <int as Rand>::rand, fn(&mut DummyRng) -> int, (&mut dummy_rng());
     Rand::rand::<DummyRng>, fn(&mut DummyRng) -> int, (&mut dummy_rng());
+    int::rand::<DummyRng>, fn(&mut DummyRng) -> int, (&mut dummy_rng());
     <int as Rand>::rand::<DummyRng>, fn(&mut DummyRng) -> int, (&mut dummy_rng());
 
     // Trait non-static methods.
     Clone::clone, fn(&int) -> int, (&5);
+    int::clone, fn(&int) -> int, (&5);
     <int as Clone>::clone, fn(&int) -> int, (&5);
+
     FromIterator::from_iter, fn(OptionIter<int>) -> Vec<int>, (Some(5).into_iter());
+    Vec::from_iter, fn(OptionIter<int>) -> Vec<int>, (Some(5).into_iter());
     <Vec<_> as FromIterator<_>>::from_iter, fn(OptionIter<int>) -> Vec<int>,
         (Some(5).into_iter());
     <Vec<int> as FromIterator<_>>::from_iter, fn(OptionIter<int>) -> Vec<int>,
@@ -97,9 +106,14 @@ tests! {
         (Some(5).into_iter());
     <Vec<int> as FromIterator<_>>::from_iter::<OptionIter<int>>, fn(OptionIter<int>) -> Vec<int>,
         (Some(5).into_iter());
+
     Add::add, fn(i32, i32) -> i32, (5, 6);
+    i32::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<_>>::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<i32>>::add, fn(i32, i32) -> i32, (5, 6);
+
+    String::into_cow, fn(String) -> Cow<'static, str>,
+        ("foo".to_string());
     <String as IntoCow<_>>::into_cow, fn(String) -> Cow<'static, str>,
         ("foo".to_string());
     <String as IntoCow<'static, _>>::into_cow, fn(String) -> Cow<'static, str>,
