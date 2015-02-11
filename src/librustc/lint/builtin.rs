@@ -2121,3 +2121,52 @@ impl LintPass for UnstableFeatures {
         }
     }
 }
+
+declare_lint! {
+    UNSAFE_FFI_DROP_IMPLEMENTATIONS,
+    Warn,
+    "ffi types that may have unexpected layout due to a Drop implementation"
+}
+
+/// Forbids FFI types implementing `Drop` without `#[unsafe_no_drop_flag]`.
+#[derive(Copy)]
+pub struct UnsafeFfiDropImplementations;
+
+impl LintPass for UnsafeFfiDropImplementations {
+    fn get_lints(&self) -> LintArray {
+        lint_array!(UNSAFE_FFI_DROP_IMPLEMENTATIONS)
+    }
+
+    fn check_item(&mut self, cx: &Context, item: &ast::Item) {
+        // We only care about structs and enums.
+        match item.node {
+            ast::ItemEnum(..) | ast::ItemStruct(..) => (),
+            _ => return
+        }
+        let &ast::Item { ident, id, span, .. } = item;
+        let tcx = &cx.tcx;
+
+        // Is the type annotated with #[repr(C)]?
+        let s_ty = tcx.node_types.borrow()[id];
+        let def_id = match s_ty.sty {
+            ty::ty_enum(def_id, _) => def_id,
+            ty::ty_struct(def_id, _) => def_id,
+            _ => panic!("expected an enum or struct type")
+        };
+        let reprs = ty::lookup_repr_hints(tcx, def_id);
+        if !reprs.contains(&attr::ReprExtern) {
+            return;
+        }
+
+        // It is.  Does it have #[unsafe_no_drop_flag]?
+        if !ty::ty_dtor(tcx, def_id).has_drop_flag() {
+            return;
+        }
+
+        // It doesn't.  Oh *dear*.
+        cx.span_lint(UNSAFE_FFI_DROP_IMPLEMENTATIONS, span,
+                     &format!("{} is marked for use with FFI, but has a `Drop` implementation; \
+                               this may cause the type to have an unexpected size and layout",
+                               ident));
+    }
+}
