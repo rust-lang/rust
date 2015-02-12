@@ -16,6 +16,6 @@
 
 #![feature(plugin)]
 #![plugin(rlib_crate_test)]
-//~^ ERROR: plugin crate `rlib_crate_test` only found in rlib format, but must be available in dylib format
+//~^ ERROR: plugin `rlib_crate_test` only found in rlib format, but must be available in dylib format
 
 fn main() {}
