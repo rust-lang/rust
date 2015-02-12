@@ -146,12 +146,133 @@ trait for these hashing algorithms and it would not be bounded by
 This RFC considers two possible designs as a replacement of today's `std::hash`
 API. One is a "minor refactoring" of the current API while the
 other is a much more radical change towards being conservative. This section
-will propose the more radical change and the other may be found in the
+will propose the minor refactoring change and the other may be found in the
 [Alternatives](#alternatives) section.
 
 ## API
 
-The new API of `std::hash` will be:
+The new API of `std::hash` would be:
+
+```rust
+trait Hash {
+    fn hash<H: Hasher>(&self, h: &mut H);
+}
+
+trait Hasher {
+    type Output;
+    fn write(&mut self, data: &[u8]);
+    fn finish(&self) -> Self::Output;
+
+    fn write_u8(&mut self, i: u8) { ... }
+    fn write_i8(&mut self, i: i8) { ... }
+    fn write_u16(&mut self, i: u16) { ... }
+    fn write_i16(&mut self, i: i16) { ... }
+    fn write_u32(&mut self, i: u32) { ... }
+    fn write_i32(&mut self, i: i32) { ... }
+    fn write_u64(&mut self, i: u64) { ... }
+    fn write_i64(&mut self, i: i64) { ... }
+    fn write_usize(&mut self, i: usize) { ... }
+    fn write_isize(&mut self, i: isize) { ... }
+}
+```
+
+This API is quite similar to today's API, but has a few tweaks:
+
+* The `Writer` trait has been removed by folding it directly into the `Hasher`
+  trait. As part of this movement the `Hasher` trait grew a number of
+  specialized `write_foo` methods which the primitives will call. This should
+  help regain some performance losses where forcing a byte-oriented stream is
+  a performance loss.
+
+* The `Hasher` trait no longer has a `reset` method.
+
+* The `Hash` trait's type parameter is on the *method*, not on the trait. This
+  implies that the trait is no longer object-safe, but it is much more ergonomic
+  to operate over generically.
+
+> **Note**: A possible tweak would be to remove the `Output` associated type in
+> favor of just always returning `usize` (or `u64`).
+
+The purpose of this API is to continue to allow APIs to be generic over the
+hashing algorithm used. This would allow `HashMap` continue to use a randomly
+keyed SipHash as its default algorithm (e.g. continuing to provide DoS
+protection, more information on this below). An example encoding of the
+alternative API (proposed below) would look like:
+
+```rust
+impl Hasher for usize {
+    type Output = usize;
+    fn write(&mut self, data: &[u8]) {
+        for b in data.iter() { self.write_u8(*b); }
+    }
+    fn finish(&self) -> usize { *self }
+
+    fn write_u8(&mut self, i: u8) { *self = combine(*self, i); }
+    // and so on...
+}
+```
+
+## `HashMap` and `HashState`
+
+For both this recommendation as well as the alternative below, this RFC proposes
+removing the `HashState` trait and `Hasher` structure (as well as the
+`hash_state` module) in favor of the following API:
+
+```rust
+struct HashMap<K, V, H = DefaultHasher>;
+
+impl<K: Eq + Hash, V> HashMap<K, V> {
+    fn new() -> HashMap<K, V, DefaultHasher> {
+        HashMap::with_hasher(DefaultHasher::new())
+    }
+}
+
+impl<K: Eq, V, H: Fn(&K) -> u64> HashMap<K, V, H> {
+    fn with_hasher(hasher: H) -> HashMap<K, V, H>;
+}
+
+impl<K: Hash> Fn(&K) -> u64 for DefaultHasher {
+    fn call(&self, arg: &K) -> u64 {
+        let mut s = SipHasher::new_with_keys(self.k1, self.k2);
+        arg.hash(&mut s);
+        s.finish()
+    }
+}
+```
+
+The precise details will be affected based on which design in this RFC is
+chosen, but the general idea is to move from a custom trait to the standard `Fn`
+trait for calculating hashes.
+
+# Drawbacks
+
+* This design is a departure from the precedent set by many other languages. In
+  doing so, however, it is arguably easier to implement `Hash` as it's more
+  obvious how to feed in incremental state. We also do not lock ourselves into a
+  particular hashing algorithm in case we need to alternate in the future.
+
+* Implementations of `Hash` cannot be specialized and are forced to operate
+  generically over the hashing algorithm provided. This may cause a loss of
+  performance in some cases. Note that this could be remedied by moving the type
+  parameter to the trait instead of the method, but this would lead to a loss in
+  ergonomics for generic consumers of `T: Hash`.
+
+* Manual implementations of `Hash` are somewhat cumbersome still by requiring a
+  separate `Hasher` parameter which is not necessarily always desired.
+
+* The API of `Hasher` is approaching the realm of serialization/reflection and
+  it's unclear whether its API should grow over time to support more basic Rust
+  types.
+
+# Alternatives
+
+As alluded to in the "Detailed design" section the primary alternative to this
+RFC, which still improves ergonomics, is to remove the generic-ness over the
+hashing algorithm.
+
+## API
+
+The new API of `std::hash` would be:
 
 ```rust
 trait Hash {
@@ -161,7 +282,7 @@ trait Hash {
 fn combine(a: usize, b: usize) -> usize;
 ```
 
-The `Writer`, `Hasher`, and `SipHasher` structures/traits will all be removed
+The `Writer`, `Hasher`, and `SipHasher` structures/traits would all be removed
 from `std::hash`. This definition is more or less the Rust equivalent of the
 Java/C++ hashing infrastructure. This API is a vast simplification of what
 exists today and allows implementations of `Hash` as well as consumers of `Hash`
@@ -177,7 +298,7 @@ With this definition of `Hash`, each type must pre-ordain a particular hash
 algorithm that it implements. Using an alternate algorithm would require a
 separate newtype wrapper.
 
-Most implementations will still use `#[derive(Hash)]` which will leverage
+Most implementations would still use `#[derive(Hash)]` which will leverage
 `hash::combine` to combine the hash values of aggregate fields. Manual
 implementations which only want to hash a select number of fields would look
 like:
@@ -268,39 +389,11 @@ be:
 
 Given the information available about other DoS mitigations in hash maps for
 other languages, however, it is not clear that this will provide the same level
-of DoS protection that is available today.
+of DoS protection that is available today. For example [@DaGenix explains
+well](https://github.com/rust-lang/rfcs/pull/823#issuecomment-74013800) that we
+may not be able to provide any form of DoS protection guarantee at all.
 
-## `HashMap` and `HashState`
-
-For both this recommendation as well as the alternative below, this RFC proposes
-removing the `HashState` trait and `Hasher` structure (as well as the
-`hash_state` module) in favor of the following API:
-
-```rust
-struct HashMap<K, V, H = DefaultHasher>;
-
-impl<K: Eq + Hash, V> HashMap<K, V> {
-    fn new() -> HashMap<K, V, DefaultHasher> {
-        HashMap::with_hasher(DefaultHasher::new())
-    }
-}
-
-impl<K: Eq, V, H: Fn(&K) -> u64> HashMap<K, V, H> {
-    fn with_hasher(hasher: H) -> HashMap<K, V, H>;
-}
-
-impl<K: Hash> Fn(&K) -> u64 for DefaultHasher {
-    fn call(&self, arg: &K) -> u64 {
-        arg.hash() as u64
-    }
-}
-```
-
-The precise details will be affected based on which design in this RFC is
-chosen, but the general idea is to move from a custom trait to the standard `Fn`
-trait for calculating hashes.
-
-# Drawbacks
+## Alternative Drawbacks
 
 * One of the primary drawbacks to the proposed `Hash` trait is that it is now
   not possible to select an algorithm that a type should be hashed with. Instead
@@ -313,90 +406,7 @@ trait for calculating hashes.
 
 * Due to the lack of input state to hashing, the `HashMap` type can no longer
   randomly seed each individual instance but may at best have one global seed.
-  This consequently may elevate the risk of a DoS attack on a `HashMap`
-  instance.
-
-# Alternatives
-
-As alluded to in the "Detailed design" section the primary alternative to this
-RFC, which still improves ergonomics, is to refine the API to require fewer
-traits and less generics on consumption.
-
-## API
-
-The new API of `std::hash` would be:
-
-```rust
-trait Hash {
-    fn hash<H: Hasher>(&self, h: &mut H);
-}
-
-trait Hasher {
-    type Output;
-    fn write(&mut self, data: &[u8]);
-    fn finish(&self) -> Self::Output;
-
-    fn write_u8(&mut self, i: u8) { ... }
-    fn write_i8(&mut self, i: i8) { ... }
-    fn write_u16(&mut self, i: u16) { ... }
-    fn write_i16(&mut self, i: i16) { ... }
-    fn write_u32(&mut self, i: u32) { ... }
-    fn write_i32(&mut self, i: i32) { ... }
-    fn write_u64(&mut self, i: u64) { ... }
-    fn write_i64(&mut self, i: i64) { ... }
-    fn write_usize(&mut self, i: usize) { ... }
-    fn write_isize(&mut self, i: isize) { ... }
-}
-```
-
-This API is quite similar to today's API, but has a few tweaks:
-
-* The `Writer` trait has been removed by folding it directly into the `Hasher`
-  trait. As part of this movement the `Hasher` trait grew a number of
-  specialized `write_foo` methods which the primitives will call. This should
-  help regain some performance losses where forcing a byte-oriented stream is
-  a performance loss.
-
-* The `Hasher` trait no longer has a `reset` method.
-
-* The `Hash` trait's type parameter is on the *method*, not on the trait. This
-  implies that the trait is no longer object-safe, but it is much more ergonomic
-  to operate over generically.
-
-> **Note**: A possible tweak would be to remove the `Output` associated type in
-> favor of just always returning `usize` (or `u64`).
-
-The purpose of this API is to continue to allow APIs to be generic over the
-hashing algorithm used. This would allow `HashMap` continue to use a randomly
-keyed SipHash as its default algorithm (e.g. continuing to provide DoS
-protection). An example encoding of the previous API would look like:
-
-```rust
-impl Hasher for usize {
-    type Output = usize;
-    fn write(&mut self, data: &[u8]) {
-        for b in data.iter() { self.write_u8(*b); }
-    }
-    fn finish(&self) -> usize { *self }
-
-    fn write_u8(&mut self, i: u8) { *self = combine(*self, i); }
-    // and so on...
-}
-```
-
-Some downsides of this API, however, are:
-
-* This design is a departure from the precedent set by many other languages.
-* Implementations of `Hash` cannot be specialized and are forced to operate
-  generically over the hashing algorithm provided. This may cause a loss of
-  performance in some cases. Note that this could be remedied by moving the type
-  parameter to the trait instead of the method, but this would lead to a loss in
-  ergonomics for generic consumers of `T: Hash`.
-* Manual implementations of `Hash` are somewhat cumbersome still by requiring a
-  separate `Hasher` parameter which is not necessarily always desired.
-* The API of `Hasher` is approaching the realm of serialization/reflection and
-  it's unclear whether its API should grow over time to support more basic Rust
-  types.
+  This consequently elevates the risk of a DoS attack on a `HashMap` instance.
 
 # Unresolved questions
 
