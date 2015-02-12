@@ -845,13 +845,13 @@ pub enum MapError {
     ErrAlreadyExists,
     /// Unrecognized error from `VirtualAlloc`. The inner value is the return
     /// value of GetLastError.
-    ErrVirtualAlloc(uint),
+    ErrVirtualAlloc(i32),
     /// Unrecognized error from `CreateFileMapping`. The inner value is the
     /// return value of `GetLastError`.
-    ErrCreateFileMappingW(uint),
+    ErrCreateFileMappingW(i32),
     /// Unrecognized error from `MapViewOfFile`. The inner value is the return
     /// value of `GetLastError`.
-    ErrMapViewOfFile(uint)
+    ErrMapViewOfFile(i32)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
