@@ -26,7 +26,9 @@ fn b(v: &[u8]) -> Box<Foo + 'static> {
 }
 
 fn c(v: &[u8]) -> Box<Foo> {
-    box v // OK thanks to lifetime elision
+    // same as previous case due to RFC 599
+
+    box v //~ ERROR declared lifetime bound not satisfied
 }
 
 fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {

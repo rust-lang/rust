@@ -438,23 +438,25 @@ fn convert_angle_bracketed_parameters<'tcx>(this: &AstConv<'tcx>,
 {
     let regions: Vec<_> =
         data.lifetimes.iter()
-        .map(|l| ast_region_to_region(this.tcx(), l))
-        .collect();
+                      .map(|l| ast_region_to_region(this.tcx(), l))
+                      .collect();
 
     let region_substs =
         create_region_substs(this, rscope, span, decl_generics, regions);
 
     let types: Vec<_> =
         data.types.iter()
-        .map(|t| ast_ty_to_ty(this, rscope, &**t))
-        .collect();
+                  .enumerate()
+                  .map(|(i,t)| ast_ty_arg_to_ty(this, rscope, decl_generics,
+                                                i, &region_substs, t))
+                  .collect();
 
     let assoc_bindings: Vec<_> =
         data.bindings.iter()
-        .map(|b| ConvertedBinding { item_name: b.ident.name,
-                                    ty: ast_ty_to_ty(this, rscope, &*b.ty),
-                                    span: b.span })
-        .collect();
+                     .map(|b| ConvertedBinding { item_name: b.ident.name,
+                                                 ty: ast_ty_to_ty(this, rscope, &*b.ty),
+                                                 span: b.span })
+                     .collect();
 
     (region_substs, types, assoc_bindings)
 }
@@ -525,9 +527,11 @@ fn convert_parenthesized_parameters<'tcx>(this: &AstConv<'tcx>,
         create_region_substs(this, rscope, span, decl_generics, Vec::new());
 
     let binding_rscope = BindingRscope::new();
-    let inputs = data.inputs.iter()
-                            .map(|a_t| ast_ty_to_ty(this, &binding_rscope, &**a_t))
-                            .collect::<Vec<Ty<'tcx>>>();
+    let inputs =
+        data.inputs.iter()
+                   .map(|a_t| ast_ty_arg_to_ty(this, &binding_rscope, decl_generics,
+                                               0, &region_substs, a_t))
+                   .collect::<Vec<Ty<'tcx>>>();
 
     let input_params: Vec<_> = repeat(String::new()).take(inputs.len()).collect();
     let (implied_output_region,
@@ -655,7 +659,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
 
     let (regions, types, assoc_bindings) = match path.segments.last().unwrap().parameters {
         ast::AngleBracketedParameters(ref data) => {
-            // For now, require that parenthetical5D notation be used
+            // For now, require that parenthetical notation be used
             // only with `Fn()` etc.
             if !this.tcx().sess.features.borrow().unboxed_closures && trait_def.paren_sugar {
                 span_err!(this.tcx().sess, path.span, E0215,
@@ -1070,10 +1074,45 @@ fn qpath_to_ty<'tcx>(this: &AstConv<'tcx>,
                              qpath.item_path.identifier.name);
 }
 
-// Parses the programmer's textual representation of a type into our
-// internal notion of a type.
-pub fn ast_ty_to_ty<'tcx>(
-        this: &AstConv<'tcx>, rscope: &RegionScope, ast_ty: &ast::Ty) -> Ty<'tcx>
+/// Convert a type supplied as value for a type argument from AST into our
+/// our internal representation. This is the same as `ast_ty_to_ty` but that
+/// it applies the object lifetime default.
+///
+/// # Parameters
+///
+/// * `this`, `rscope`: the surrounding context
+/// * `decl_generics`: the generics of the struct/enum/trait declaration being
+///   referenced
+/// * `index`: the index of the type parameter being instantiated from the list
+///   (we assume it is in the `TypeSpace`)
+/// * `region_substs`: a partial substitution consisting of
+///   only the region type parameters being supplied to this type.
+/// * `ast_ty`: the ast representation of the type being supplied
+pub fn ast_ty_arg_to_ty<'tcx>(this: &AstConv<'tcx>,
+                              rscope: &RegionScope,
+                              decl_generics: &ty::Generics<'tcx>,
+                              index: usize,
+                              region_substs: &Substs<'tcx>,
+                              ast_ty: &ast::Ty)
+                              -> Ty<'tcx>
+{
+    let tcx = this.tcx();
+
+    if let Some(def) = decl_generics.types.opt_get(TypeSpace, index) {
+        let object_lifetime_default = def.object_lifetime_default.subst(tcx, region_substs);
+        let rscope1 = &ObjectLifetimeDefaultRscope::new(rscope, object_lifetime_default);
+        ast_ty_to_ty(this, rscope1, ast_ty)
+    } else {
+        ast_ty_to_ty(this, rscope, ast_ty)
+    }
+}
+
+/// Parses the programmer's textual representation of a type into our
+/// internal notion of a type.
+pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
+                          rscope: &RegionScope,
+                          ast_ty: &ast::Ty)
+                          -> Ty<'tcx>
 {
     debug!("ast_ty_to_ty(ast_ty={})",
            ast_ty.repr(this.tcx()));

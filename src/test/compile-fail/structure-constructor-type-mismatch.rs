@@ -57,6 +57,7 @@ fn main() {
 
     let pt3 = PointF::<i32> {
         //~^ ERROR wrong number of type arguments
+        //~| ERROR structure constructor specifies a structure of type
         x: 9i32,
         y: 10i32,
     };
