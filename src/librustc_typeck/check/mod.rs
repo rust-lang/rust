@@ -1890,7 +1890,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 }
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
-    fn default_region_bound(&self, span: Span) -> Option<ty::Region> {
+    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
         Some(self.infcx().next_region_var(infer::MiscVariable(span)))
     }
 

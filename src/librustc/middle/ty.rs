@@ -5896,42 +5896,13 @@ pub fn each_bound_trait_and_supertraits<'tcx, F>(tcx: &ctxt<'tcx>,
     return true;
 }
 
-pub fn object_region_bounds<'tcx>(
-    tcx: &ctxt<'tcx>,
-    opt_principal: Option<&PolyTraitRef<'tcx>>, // None for closures
-    others: BuiltinBounds)
-    -> Vec<ty::Region>
-{
-    // Since we don't actually *know* the self type for an object,
-    // this "open(err)" serves as a kind of dummy standin -- basically
-    // a skolemized type.
-    let open_ty = ty::mk_infer(tcx, FreshTy(0));
-
-    let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
-        // Note that we preserve the overall binding levels here.
-        assert!(!open_ty.has_escaping_regions());
-        let substs = tcx.mk_substs(principal.0.substs.with_self_ty(open_ty));
-        vec!(ty::Binder(Rc::new(ty::TraitRef::new(principal.0.def_id, substs))))
-    });
-
-    let param_bounds = ty::ParamBounds {
-        region_bounds: Vec::new(),
-        builtin_bounds: others,
-        trait_bounds: opt_trait_ref,
-        projection_bounds: Vec::new(), // not relevant to computing region bounds
-    };
-
-    let predicates = ty::predicates(tcx, open_ty, &param_bounds);
-    ty::required_region_bounds(tcx, open_ty, predicates)
-}
-
 /// Given a set of predicates that apply to an object type, returns
 /// the region bounds that the (erased) `Self` type must
 /// outlive. Precisely *because* the `Self` type is erased, the
 /// parameter `erased_self_ty` must be supplied to indicate what type
 /// has been used to represent `Self` in the predicates
 /// themselves. This should really be a unique type; `FreshTy(0)` is a
-/// popular choice (see `object_region_bounds` above).
+/// popular choice.
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
