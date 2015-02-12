@@ -745,6 +745,26 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                                      use_kind, lp_base);
             }
             LpExtend(ref lp_base, _, LpInterior(InteriorField(_))) => {
+                match lp_base.to_type().sty {
+                    ty::ty_struct(def_id, _) | ty::ty_enum(def_id, _) => {
+                        if ty::has_dtor(self.tcx(), def_id) {
+                            // In the case where the owner implements drop, then
+                            // the path must be initialized to prevent a case of
+                            // partial reinitialization
+                            let loan_path = owned_ptr_base_path_rc(lp_base);
+                            self.move_data.each_move_of(id, &loan_path, |_, _| {
+                                self.bccx
+                                    .report_partial_reinitialization_of_uninitialized_structure(
+                                        span,
+                                        &*loan_path);
+                                false
+                            });
+                            return;
+                        }
+                    },
+                    _ => {},
+                }
+
                 // assigning to `P.f` is ok if assigning to `P` is ok
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
@@ -775,10 +795,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     mark_variable_as_used_mut(self, assignee_cmt);
                 }
             }
+
             return;
         }
 
-        // Initializations are OK.
+        // Initializations are OK if and only if they aren't partial
+        // reinitialization of a partially-uninitialized structure.
         if mode == euv::Init {
             return
         }
