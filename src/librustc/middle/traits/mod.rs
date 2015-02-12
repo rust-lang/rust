@@ -28,6 +28,7 @@ use util::ppaux::{Repr, UserString};
 pub use self::error_reporting::report_fulfillment_errors;
 pub use self::error_reporting::suggest_new_overflow_limit;
 pub use self::coherence::orphan_check;
+pub use self::coherence::overlapping_impls;
 pub use self::coherence::OrphanCheckErr;
 pub use self::fulfill::{FulfillmentContext, RegionObligation};
 pub use self::project::MismatchedProjectionTypes;
@@ -268,16 +269,6 @@ pub struct VtableBuiltinData<N> {
 #[derive(PartialEq,Eq,Clone)]
 pub struct VtableObjectData<'tcx> {
     pub object_ty: Ty<'tcx>,
-}
-
-/// True if there exist types that satisfy both of the two given impls.
-pub fn overlapping_impls(infcx: &InferCtxt,
-                         impl1_def_id: ast::DefId,
-                         impl2_def_id: ast::DefId)
-                         -> bool
-{
-    coherence::impl_can_satisfy(infcx, impl1_def_id, impl2_def_id) &&
-    coherence::impl_can_satisfy(infcx, impl2_def_id, impl1_def_id)
 }
 
 /// Creates predicate obligations from the generic bounds.
