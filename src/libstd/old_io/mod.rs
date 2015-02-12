@@ -433,7 +433,7 @@ pub enum IoErrorKind {
 }
 
 /// A trait that lets you add a `detail` to an IoError easily
-trait UpdateIoError<T> {
+trait UpdateIoError {
     /// Returns an IoError with updated description and detail
     fn update_err<D>(self, desc: &'static str, detail: D) -> Self where
         D: FnOnce(&IoError) -> String;
@@ -446,7 +446,7 @@ trait UpdateIoError<T> {
     fn update_desc(self, desc: &'static str) -> Self;
 }
 
-impl<T> UpdateIoError<T> for IoResult<T> {
+impl<T> UpdateIoError for IoResult<T> {
     fn update_err<D>(self, desc: &'static str, detail: D) -> IoResult<T> where
         D: FnOnce(&IoError) -> String,
     {
