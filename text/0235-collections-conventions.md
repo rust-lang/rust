@@ -663,7 +663,7 @@ impl<I: Iterator> IntoIterator for I {
 which means that taking `IntoIterator` is strictly more flexible than taking
 `Iterator`. Note that in other languages (like Java), iterators are *not*
 iterable because the latter implies an unlimited number of iterations. But
-because `IntoIterable` consumes `self`, it yields only a single iteration, so
+because `IntoIterator` consumes `self`, it yields only a single iteration, so
 all is good.
 
 For individual collections, one can then implement `IntoIterator` on both the
