@@ -126,7 +126,6 @@ pub mod default;
 
 pub mod any;
 pub mod atomic;
-pub mod borrow;
 pub mod cell;
 pub mod char;
 pub mod panicking;

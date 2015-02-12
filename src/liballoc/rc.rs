@@ -144,7 +144,6 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::borrow::BorrowFrom;
 use core::cell::Cell;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
@@ -346,12 +345,6 @@ impl<T: Clone> Rc<T> {
         // possible reference to the inner value.
         let inner = unsafe { &mut **self._ptr };
         &mut inner.value
-    }
-}
-
-impl<T> BorrowFrom<Rc<T>> for T {
-    fn borrow_from(owned: &Rc<T>) -> &T {
-        &**owned
     }
 }
 
