@@ -110,6 +110,14 @@ tandem with types provided by the stdlib, such as `Box<T>`.
   Make `in <place-expr> { <block> }` an overloaded operator that uses
   the `<place-expr>` to determine what placement code to run.
 
+  Note: when `<place-expr>` is just an identifier,
+  `<place-expr> { <block> }` is not parsed as a struct literal.
+  We accomplish this via the same means that is used e.g. for `if` expressions:
+  we restrict `<place-expr>` to not include struct literals
+  (see [RFC 92]).
+
+[RFC 92]: https://github.com/rust-lang/rfcs/blob/master/text/0092-struct-grammar.md
+
 * The only stablized implementation for the `box <expr>` operator
   proposed by this RFC is `Box<T>`. The question of which other types
   should support integration with `box <expr>` is a library design
