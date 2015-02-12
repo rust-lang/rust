@@ -55,7 +55,7 @@ use middle::resolve_lifetime as rl;
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
-use rscope::{self, UnelidableRscope, RegionScope, SpecificRscope,
+use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
              ShiftedRscope, BindingRscope};
 use TypeAndSubsts;
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
@@ -465,7 +465,7 @@ fn convert_ty_with_lifetime_elision<'tcx>(this: &AstConv<'tcx>,
 {
     match implied_output_region {
         Some(implied_output_region) => {
-            let rb = SpecificRscope::new(implied_output_region);
+            let rb = ElidableRscope::new(implied_output_region);
             ast_ty_to_ty(this, &rb, ty)
         }
         None => {
@@ -932,7 +932,7 @@ fn trait_ref_to_object_type<'tcx>(this: &AstConv<'tcx>,
     let existential_bounds = conv_existential_bounds(this,
                                                      rscope,
                                                      span,
-                                                     Some(trait_ref.clone()),
+                                                     trait_ref.clone(),
                                                      projection_bounds,
                                                      bounds);
 
@@ -1518,11 +1518,11 @@ pub fn ty_of_closure<'tcx>(
 /// `ExistentialBounds` struct. The `main_trait_refs` argument specifies the `Foo` -- it is absent
 /// for closures. Eventually this should all be normalized, I think, so that there is no "main
 /// trait ref" and instead we just have a flat list of bounds as the existential type.
-pub fn conv_existential_bounds<'tcx>(
+fn conv_existential_bounds<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
     span: Span,
-    principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    principal_trait_ref: ty::PolyTraitRef<'tcx>,
     projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>,
     ast_bounds: &[ast::TyParamBound])
     -> ty::ExistentialBounds<'tcx>
@@ -1546,15 +1546,15 @@ fn conv_ty_poly_trait_ref<'tcx>(
     let mut projection_bounds = Vec::new();
     let main_trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {
         let trait_bound = partitioned_bounds.trait_bounds.remove(0);
-        Some(instantiate_poly_trait_ref(this,
-                                        rscope,
-                                        trait_bound,
-                                        None,
-                                        &mut projection_bounds))
+        instantiate_poly_trait_ref(this,
+                                   rscope,
+                                   trait_bound,
+                                   None,
+                                   &mut projection_bounds)
     } else {
         span_err!(this.tcx().sess, span, E0224,
-            "at least one non-builtin trait is required for an object type");
-        None
+                  "at least one non-builtin trait is required for an object type");
+        return this.tcx().types.err;
     };
 
     let bounds =
@@ -1565,17 +1565,14 @@ fn conv_ty_poly_trait_ref<'tcx>(
                                                         projection_bounds,
                                                         partitioned_bounds);
 
-    match main_trait_bound {
-        None => this.tcx().types.err,
-        Some(principal) => ty::mk_trait(this.tcx(), principal, bounds)
-    }
+    ty::mk_trait(this.tcx(), main_trait_bound, bounds)
 }
 
 pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
     this: &AstConv<'tcx>,
     rscope: &RegionScope,
     span: Span,
-    principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for boxed closures
+    principal_trait_ref: ty::PolyTraitRef<'tcx>,
     mut projection_bounds: Vec<ty::PolyProjectionPredicate<'tcx>>, // Empty for boxed closures
     partitioned_bounds: PartitionedBounds)
     -> ty::ExistentialBounds<'tcx>
@@ -1588,16 +1585,15 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
     if !trait_bounds.is_empty() {
         let b = &trait_bounds[0];
         span_err!(this.tcx().sess, b.trait_ref.path.span, E0225,
-            "only the builtin traits can be used \
-                     as closure or object bounds");
+                  "only the builtin traits can be used as closure or object bounds");
     }
 
-    let region_bound = compute_region_bound(this,
-                                            rscope,
-                                            span,
-                                            &region_bounds,
-                                            principal_trait_ref,
-                                            builtin_bounds);
+    let region_bound = compute_object_lifetime_bound(this,
+                                                     rscope,
+                                                     span,
+                                                     &region_bounds,
+                                                     principal_trait_ref,
+                                                     builtin_bounds);
 
     ty::sort_bounds_list(&mut projection_bounds);
 
@@ -1608,17 +1604,21 @@ pub fn conv_existential_bounds_from_partitioned_bounds<'tcx>(
     }
 }
 
-/// Given the bounds on a type parameter / existential type, determines what single region bound
+/// Given the bounds on an object, determines what single region bound
 /// (if any) we can use to summarize this type. The basic idea is that we will use the bound the
 /// user provided, if they provided one, and otherwise search the supertypes of trait bounds for
 /// region bounds. It may be that we can derive no bound at all, in which case we return `None`.
-fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
-                                  span: Span,
-                                  explicit_region_bounds: &[&ast::Lifetime],
-                                  principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>,
-                                  builtin_bounds: ty::BuiltinBounds)
-                                  -> Option<ty::Region>
+fn compute_object_lifetime_bound<'tcx>(
+    this: &AstConv<'tcx>,
+    rscope: &RegionScope,
+    span: Span,
+    explicit_region_bounds: &[&ast::Lifetime],
+    principal_trait_ref: ty::PolyTraitRef<'tcx>,
+    builtin_bounds: ty::BuiltinBounds)
+    -> ty::Region
 {
+    let tcx = this.tcx();
+
     debug!("compute_opt_region_bound(explicit_region_bounds={:?}, \
            principal_trait_ref={}, builtin_bounds={})",
            explicit_region_bounds,
@@ -1633,24 +1633,32 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     if explicit_region_bounds.len() != 0 {
         // Explicitly specified region bound. Use that.
         let r = explicit_region_bounds[0];
-        return Some(ast_region_to_region(tcx, r));
+        return ast_region_to_region(tcx, r);
     }
 
     // No explicit region bound specified. Therefore, examine trait
     // bounds and see if we can derive region bounds from those.
     let derived_region_bounds =
-        ty::object_region_bounds(tcx, principal_trait_ref.as_ref(), builtin_bounds);
+        object_region_bounds(tcx, &principal_trait_ref, builtin_bounds);
 
     // If there are no derived region bounds, then report back that we
     // can find no region bound.
     if derived_region_bounds.len() == 0 {
-        return None;
+        match rscope.object_lifetime_default(span) {
+            Some(r) => { return r; }
+            None => {
+                span_err!(this.tcx().sess, span, E0228,
+                          "the lifetime bound for this object type cannot be deduced \
+                           from context; please supply an explicit bound");
+                return ty::ReStatic;
+            }
+        }
     }
 
     // If any of the derived region bounds are 'static, that is always
     // the best choice.
     if derived_region_bounds.iter().any(|r| ty::ReStatic == *r) {
-        return Some(ty::ReStatic);
+        return ty::ReStatic;
     }
 
     // Determine whether there is exactly one unique region in the set
@@ -1659,38 +1667,36 @@ fn compute_opt_region_bound<'tcx>(tcx: &ty::ctxt<'tcx>,
     let r = derived_region_bounds[0];
     if derived_region_bounds[1..].iter().any(|r1| r != *r1) {
         span_err!(tcx.sess, span, E0227,
-            "ambiguous lifetime bound, \
-                     explicit lifetime bound required");
+                  "ambiguous lifetime bound, explicit lifetime bound required");
     }
-    return Some(r);
+    return r;
 }
 
-/// A version of `compute_opt_region_bound` for use where some region bound is required
-/// (existential types, basically). Reports an error if no region bound can be derived and we are
-/// in an `rscope` that does not provide a default.
-fn compute_region_bound<'tcx>(
-    this: &AstConv<'tcx>,
-    rscope: &RegionScope,
-    span: Span,
-    region_bounds: &[&ast::Lifetime],
-    principal_trait_ref: Option<ty::PolyTraitRef<'tcx>>, // None for closures
-    builtin_bounds: ty::BuiltinBounds)
-    -> ty::Region
+pub fn object_region_bounds<'tcx>(
+    tcx: &ty::ctxt<'tcx>,
+    principal: &ty::PolyTraitRef<'tcx>,
+    others: ty::BuiltinBounds)
+    -> Vec<ty::Region>
 {
-    match compute_opt_region_bound(this.tcx(), span, region_bounds,
-                                   principal_trait_ref, builtin_bounds) {
-        Some(r) => r,
-        None => {
-            match rscope.default_region_bound(span) {
-                Some(r) => { r }
-                None => {
-                    span_err!(this.tcx().sess, span, E0228,
-                        "explicit lifetime bound required");
-                    ty::ReStatic
-                }
-            }
-        }
-    }
+    // Since we don't actually *know* the self type for an object,
+    // this "open(err)" serves as a kind of dummy standin -- basically
+    // a skolemized type.
+    let open_ty = ty::mk_infer(tcx, ty::FreshTy(0));
+
+    // Note that we preserve the overall binding levels here.
+    assert!(!open_ty.has_escaping_regions());
+    let substs = tcx.mk_substs(principal.0.substs.with_self_ty(open_ty));
+    let trait_refs = vec!(ty::Binder(Rc::new(ty::TraitRef::new(principal.0.def_id, substs))));
+
+    let param_bounds = ty::ParamBounds {
+        region_bounds: Vec::new(),
+        builtin_bounds: others,
+        trait_bounds: trait_refs,
+        projection_bounds: Vec::new(), // not relevant to computing region bounds
+    };
+
+    let predicates = ty::predicates(tcx, open_ty, &param_bounds);
+    ty::required_region_bounds(tcx, open_ty, predicates)
 }
 
 pub struct PartitionedBounds<'a> {

@@ -32,7 +32,10 @@ pub trait RegionScope {
                     count: uint)
                     -> Result<Vec<ty::Region>, Option<Vec<(String, uint)>>>;
 
-    fn default_region_bound(&self, span: Span) -> Option<ty::Region>;
+    /// If an object omits any explicit lifetime bound, and none can
+    /// be derived from the object traits, what should we use? If
+    /// `None` is returned, an explicit annotation is required.
+    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region>;
 }
 
 // A scope in which all regions must be explicitly named. This is used
@@ -41,7 +44,7 @@ pub trait RegionScope {
 pub struct ExplicitRscope;
 
 impl RegionScope for ExplicitRscope {
-    fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
+    fn object_lifetime_default(&self, _span: Span) -> Option<ty::Region> {
         None
     }
 
@@ -63,7 +66,7 @@ impl UnelidableRscope {
 }
 
 impl RegionScope for UnelidableRscope {
-    fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
+    fn object_lifetime_default(&self, _span: Span) -> Option<ty::Region> {
         None
     }
 
@@ -76,21 +79,22 @@ impl RegionScope for UnelidableRscope {
     }
 }
 
-// A scope in which any omitted region defaults to `default`. This is
-// used after the `->` in function signatures, but also for backwards
-// compatibility with object types. The latter use may go away.
-pub struct SpecificRscope {
-    default: ty::Region
+// A scope in which omitted anonymous region defaults to
+// `default`. This is used after the `->` in function signatures. The
+// latter use may go away. Note that object-lifetime defaults work a
+// bit differently, as specified in RFC #599.
+pub struct ElidableRscope {
+    default: ty::Region,
 }
 
-impl SpecificRscope {
-    pub fn new(r: ty::Region) -> SpecificRscope {
-        SpecificRscope { default: r }
+impl ElidableRscope {
+    pub fn new(r: ty::Region) -> ElidableRscope {
+        ElidableRscope { default: r }
     }
 }
 
-impl RegionScope for SpecificRscope {
-    fn default_region_bound(&self, _span: Span) -> Option<ty::Region> {
+impl RegionScope for ElidableRscope {
+    fn object_lifetime_default(&self, _span: Span) -> Option<ty::Region> {
         Some(self.default)
     }
 
@@ -124,7 +128,7 @@ impl BindingRscope {
 }
 
 impl RegionScope for BindingRscope {
-    fn default_region_bound(&self, _span: Span) -> Option<ty::Region>
+    fn object_lifetime_default(&self, _span: Span) -> Option<ty::Region>
     {
         Some(self.next_region())
     }
@@ -151,9 +155,8 @@ impl<'r> ShiftedRscope<'r> {
 }
 
 impl<'r> RegionScope for ShiftedRscope<'r> {
-    fn default_region_bound(&self, span: Span) -> Option<ty::Region>
-    {
-        self.base_scope.default_region_bound(span)
+    fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
+        self.base_scope.object_lifetime_default(span)
             .map(|r| ty_fold::shift_region(r, 1))
     }
 
