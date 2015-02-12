@@ -56,7 +56,7 @@ use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
-             ShiftedRscope, BindingRscope};
+             ObjectLifetimeDefaultRscope, ShiftedRscope, BindingRscope};
 use TypeAndSubsts;
 use util::common::{ErrorReported, FN_OUTPUT_NAME};
 use util::nodemap::DefIdMap;
@@ -1084,7 +1084,11 @@ pub fn ast_ty_to_ty<'tcx>(
             ast::TyRptr(ref region, ref mt) => {
                 let r = opt_ast_region_to_region(this, rscope, ast_ty.span, region);
                 debug!("ty_rptr r={}", r.repr(this.tcx()));
-                let t = ast_ty_to_ty(this, rscope, &*mt.ty);
+                let rscope1 =
+                    &ObjectLifetimeDefaultRscope::new(
+                        rscope,
+                        Some(ty::ObjectLifetimeDefault::Specific(r)));
+                let t = ast_ty_to_ty(this, rscope1, &*mt.ty);
                 ty::mk_rptr(tcx, tcx.mk_region(r), ty::mt {ty: t, mutbl: mt.mutbl})
             }
             ast::TyTup(ref fields) => {
