@@ -699,6 +699,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                               lp: &Rc<LoanPath<'tcx>>) {
         debug!("check_if_path_is_moved(id={}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
+
+        // FIXME (22079): if you find yourself tempted to cut and paste
+        // the body below and then specializing the error reporting,
+        // consider refactoring this instead!
+
         let base_lp = owned_ptr_base_path_rc(lp);
         self.move_data.each_move_of(id, &base_lp, |the_move, moved_lp| {
             self.bccx.report_use_of_moved_value(
@@ -751,6 +756,9 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                             // In the case where the owner implements drop, then
                             // the path must be initialized to prevent a case of
                             // partial reinitialization
+                            //
+                            // FIXME (22079): could refactor via hypothetical
+                            // generalized check_if_path_is_moved
                             let loan_path = owned_ptr_base_path_rc(lp_base);
                             self.move_data.each_move_of(id, &loan_path, |_, _| {
                                 self.bccx
