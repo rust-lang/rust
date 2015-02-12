@@ -1783,7 +1783,7 @@ mod test {
     fn test_entry(){
         let xs = [(1, 10), (2, 20), (3, 30), (4, 40), (5, 50), (6, 60)];
 
-        let mut map: BTreeMap<_, _> = xs.iter().map(|&x| x).collect();
+        let mut map: BTreeMap<_, _> = xs.iter().cloned().collect();
 
         // Existing key (insert)
         match map.entry(1) {

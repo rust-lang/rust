@@ -65,8 +65,8 @@
 //! * You want a sorted map.
 //!
 //! ### Use a `VecMap` when:
-//! * You want a `HashMap` but with known to be small `uint` keys.
-//! * You want a `BTreeMap`, but with known to be small `uint` keys.
+//! * You want a `HashMap` but with known to be small `usize` keys.
+//! * You want a `BTreeMap`, but with known to be small `usize` keys.
 //!
 //! ### Use the `Set` variant of any of these `Map`s when:
 //! * You just want to remember which keys you've seen.
@@ -243,7 +243,7 @@
 //! use std::collections::RingBuf;
 //!
 //! let vec = vec![1, 2, 3, 4];
-//! let buf: RingBuf<uint> = vec.into_iter().collect();
+//! let buf: RingBuf<_> = vec.into_iter().collect();
 //! ```
 //!
 //! Iterators also provide a series of *adapter* methods for performing common tasks to
