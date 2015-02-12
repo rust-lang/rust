@@ -35,6 +35,9 @@ type ascription is currently only allowed on top-level patterns.
 
 ## Examples:
 
+(Somewhat simplified examples, in these cases there are sometimes better
+solutions with the current syntax).
+
 Generic return type:
 
 ```
@@ -74,6 +77,19 @@ let y = [3u32];
 foo(x: &[_], y: &[_]);
 ```
 
+Generic return type and coercion:
+
+```
+// Current.
+let x: T = {
+    let temp: U<_> = foo();
+    temp
+};
+
+// With type ascription.
+let x: T foo(): U<_>;
+```
+
 In patterns:
 
 ```
@@ -106,26 +122,63 @@ At runtime, type ascription is a no-op, unless an implicit coercion was used in
 type checking, in which case the dynamic semantics of a type ascription
 expression are exactly those of the implicit coercion.
 
-The syntax of sub-patterns is extended to include an optional type ascription.
+The syntax of patterns is extended to include an optional type ascription.
 Old syntax:
 
 ```
-P ::= SP: T | SP
-SP ::= var | 'box' SP | ...
+PT ::= P: T
+P ::= var | 'box' P | ...
+e ::= 'let' (PT | P) = ... | ...
 ```
 
-where `P` is a pattern, `SP` is a sub-pattern, `T` is a type, and `var` is a
-variable name.
+where `PT` is a pattern with optional type, `P` is a sub-pattern, `T` is a type,
+and `var` is a variable name. (Formal arguments are `PT`, patterns in match arms
+are `P`).
 
 New syntax:
 
 ```
-P ::= SP: T | SP
-SP ::= var | 'box' P | ...
+PT ::= P: T | P
+P ::= var | 'box' PT | ...
+e ::= 'let' PT = ... | ...
 ```
 
 Type ascription in patterns has the narrowest precedence, e.g., `box x: T` means
-`box (x: T)`.
+`box (x: T)`. In particular, in a struct initialiser or patter, `x : y : z` is
+parsed as `x : (y: z)`, i.e., a field named `x` is initialised with a value `y`
+and that value must have type `z`. If only `x: y` is given, that is considered
+to be the field name and the field's contents, with no type ascription.
+
+The chagnes to pattern syntax mean that in some contexts where a pattern
+previously required a type annotation, it is no longer required if all variables
+can be assigned types via the ascription. Examples,
+
+```
+struct Foo {
+    a: Bar,
+    b: Baz,
+}
+fn foo(x: Foo); // Ok, type of x given by type of whole pattern
+fn foo(Foo { a: x, b: y}: Foo) // Ok, types of x and y found by destructuring
+fn foo(Foo { a: x: Bar, b: y: Baz}) // Ok, no type annotation, but types given as ascriptions
+fn foo(Foo { a: x: Bar, _ }) // Ok, we can still deduce the type of x and the whole argument
+fn foo(Foo { a: x, b: y}) // Ok, type of x and y given by Foo
+
+struct Qux<X> {
+    a: Bar,
+    b: X,
+}
+fn foo(x: Qux<Baz>); // Ok, type of x given by type of whole pattern
+fn foo(Qux { a: x, b: y}: Qux<Baz>) // Ok, types of x and y found by destructuring
+fn foo(Qux { a: x: Bar, b: y: Baz}) // Ok, no type annotation, but types given as ascriptions
+fn foo(Qux { a: x: Bar, _ }) // Error, can't find the type of the whole argument
+fn foo(Qux { a: x, b: y}) // Error can't find type of y or the whole argument
+```
+
+Note the above changes mean moving some errors from parsing to later in type
+checking. For example, all uses of patterns have optional types, and it is a
+type error if there must be a type (e.g., in function arguments) but it is not
+fully specified (currently it would be a parsing error).
 
 In type checking, if an expression is matched against a pattern, when matching
 a sub-pattern the matching sub-expression must have the ascribed type (again,
@@ -166,6 +219,7 @@ instead of type ascription. However, we would then lose the distinction between
 implicit coercions which are safe and explicit coercions, such as narrowing,
 which require more programmer attention. This also does not help with patterns.
 
+We could use a different symbol or keyword instead of `:`, e.g., `is`.
 
 # Unresolved questions
 
@@ -173,3 +227,29 @@ Is the suggested precedence correct? Especially for patterns.
 
 Does type ascription on patterns have backwards compatibility issues?
 
+Given the potential confusion with struct literal syntax, it is perhaps worth
+re-opening that discussion. But given the timing, probably not.
+
+Should remove integer suffixes in favour of type ascription?
+
+### `as` vs `:`
+
+A downside of type ascription is the overlap with explicit coercions (aka casts,
+the `as` operator). Type ascription makes implicit coercions explicit. In RFC
+401, it is proposed that all valid implicit coercions are valid explicit
+coercions. However, that may be too confusing for users, since there is no
+reason to use type ascription rather than `as` (if there is some coercion). It
+might be a good idea to revisit that decision (it has not yet been implemented).
+Then it is clear that the user uses `as` for explicit casts and `:` for non-
+coercing ascription and implicit casts. Although there is no hard guideline for
+which operations are implicit or explicit, the intuition is that if the
+programmer ought to be aware of the change (i.e., the invariants of using the
+type change to become less safe in any way) then coercion should be explicit,
+otherwise it can be implicit.
+
+Alternatively we could remove `as` and require `:` for explicit coercions, but
+not for implicit ones (they would keep the same rules as they currently have).
+The only loss would be that `:` doesn't stand out as much as `as` and there
+would be no lint for trivial coercions. Another (backwards compatible)
+alternative would be to keep `as` and `:` as synonyms and recommend against
+using `as`.
