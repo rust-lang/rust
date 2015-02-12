@@ -231,9 +231,14 @@ impl<K: Eq, V, H: Fn(&K) -> u64> HashMap<K, V, H> {
     fn with_hasher(hasher: H) -> HashMap<K, V, H>;
 }
 
+fn global_siphash_keys() -> (u64, u64) {
+    // ...
+}
+
 impl<K: Hash> Fn(&K) -> u64 for DefaultHasher {
     fn call(&self, arg: &K) -> u64 {
-        let mut s = SipHasher::new_with_keys(self.k1, self.k2);
+        let (k1, k2) = global_siphash_keys();
+        let mut s = SipHasher::new_with_keys(k1, k2);
         arg.hash(&mut s);
         s.finish()
     }
