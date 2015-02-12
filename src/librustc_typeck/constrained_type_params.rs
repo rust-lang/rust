@@ -23,16 +23,16 @@ pub fn identify_constrained_type_params<'tcx>(_tcx: &ty::ctxt<'tcx>,
 
         let projection_predicates =
             predicates.iter()
-            .filter_map(|predicate| {
-                match *predicate {
-                    // Ignore higher-ranked binders. For the purposes
-                    // of this check, they don't matter because they
-                    // only affect named regions, and we're just
-                    // concerned about type parameters here.
-                    ty::Predicate::Projection(ref data) => Some(data.0.clone()),
-                    _ => None,
-                }
-            });
+                      .filter_map(|predicate| {
+                          match *predicate {
+                              // Ignore higher-ranked binders. For the purposes
+                              // of this check, they don't matter because they
+                              // only affect named regions, and we're just
+                              // concerned about type parameters here.
+                              ty::Predicate::Projection(ref data) => Some(data.0.clone()),
+                              _ => None,
+                          }
+                      });
 
         for projection in projection_predicates {
             // Special case: watch out for some kind of sneaky attempt

@@ -123,6 +123,7 @@ mod check;
 mod rscope;
 mod astconv;
 mod collect;
+mod constrained_type_params;
 mod coherence;
 mod variance;
 
