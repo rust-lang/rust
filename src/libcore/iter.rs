@@ -62,6 +62,7 @@ use clone::Clone;
 use cmp;
 use cmp::Ord;
 use default::Default;
+use marker;
 use mem;
 use num::{ToPrimitive, Int};
 use ops::{Add, Deref, FnMut};
@@ -947,7 +948,7 @@ pub trait IteratorExt: Iterator + Sized {
         FromB: Default + Extend<B>,
         Self: Iterator<Item=(A, B)>,
     {
-        struct SizeHint<A>(usize, Option<usize>);
+        struct SizeHint<A>(usize, Option<usize>, marker::PhantomData<A>);
         impl<A> Iterator for SizeHint<A> {
             type Item = A;
 
@@ -961,8 +962,8 @@ pub trait IteratorExt: Iterator + Sized {
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        ts.extend(SizeHint(lo, hi));
-        us.extend(SizeHint(lo, hi));
+        ts.extend(SizeHint(lo, hi, marker::PhantomData));
+        us.extend(SizeHint(lo, hi, marker::PhantomData));
 
         for (t, u) in self {
             ts.extend(Some(t).into_iter());
@@ -2047,8 +2048,8 @@ pub struct Scan<I, St, F> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: Iterator, St, F> Iterator for Scan<I, St, F> where
-    F: FnMut(&mut St, I::Item) -> Option<B>,
+impl<A, B, I: Iterator<Item=A>, St, F> Iterator for Scan<I, St, F> where
+    F: FnMut(&mut St, A) -> Option<B>,
 {
     type Item = B;
 
