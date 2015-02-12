@@ -610,6 +610,20 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             visit::walk_expr(rcx, expr);
         }
 
+        ast::ExprBinary(_, ref lhs, ref rhs) => {
+            // If you do `x OP y`, then the types of `x` and `y` must
+            // outlive the operation you are performing.
+            let lhs_ty = rcx.resolve_expr_type_adjusted(&**lhs);
+            let rhs_ty = rcx.resolve_expr_type_adjusted(&**rhs);
+            for &ty in [lhs_ty, rhs_ty].iter() {
+                type_must_outlive(rcx,
+                                  infer::Operand(expr.span),
+                                  ty,
+                                  ty::ReScope(CodeExtent::from_node_id(expr.id)));
+            }
+            visit::walk_expr(rcx, expr);
+        }
+
         ast::ExprUnary(op, ref lhs) if has_method_map => {
             let implicitly_ref_args = !ast_util::is_by_value_unop(op);
 
