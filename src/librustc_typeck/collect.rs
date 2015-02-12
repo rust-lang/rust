@@ -87,6 +87,7 @@ There are some shortcomings in this design:
 
 use astconv::{self, AstConv, ty_of_arg, ast_ty_to_ty, ast_region_to_region};
 use middle::def;
+use constrained_type_params::identify_constrained_type_params;
 use middle::lang_items::SizedTraitLangItem;
 use middle::region;
 use middle::resolve_lifetime;
@@ -1960,51 +1961,15 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
     let mut input_parameters: HashSet<_> =
         impl_trait_ref.iter()
                       .flat_map(|t| t.input_types().iter()) // Types in trait ref, if any
-                      .chain(Some(impl_scheme.ty).iter())  // Self type, always
+                      .chain(Some(impl_scheme.ty).iter())   // Self type, always
                       .flat_map(|t| t.walk())
-                      .filter_map(to_opt_param_ty)
+                      .filter_map(|t| t.as_opt_param_ty())
                       .collect();
 
-    loop {
-        let num_inputs = input_parameters.len();
-
-        let projection_predicates =
-            impl_predicates.predicates
-                           .iter()
-                           .filter_map(|predicate| {
-                               match *predicate {
-                                   // Ignore higher-ranked binders. For the purposes
-                                   // of this check, they don't matter because they
-                                   // only affect named regions, and we're just
-                                   // concerned about type parameters here.
-                                   ty::Predicate::Projection(ref data) => Some(data.0.clone()),
-                                   _ => None,
-                               }
-                           });
-
-        for projection in projection_predicates {
-            // Special case: watch out for some kind of sneaky attempt
-            // to project out an associated type defined by this very trait.
-            if Some(projection.projection_ty.trait_ref.clone()) == impl_trait_ref {
-                continue;
-            }
-
-            let relies_only_on_inputs =
-                projection.projection_ty.trait_ref.input_types().iter()
-                .flat_map(|t| t.walk())
-                .filter_map(to_opt_param_ty)
-                .all(|t| input_parameters.contains(&t));
-
-            if relies_only_on_inputs {
-                input_parameters.extend(
-                    projection.ty.walk().filter_map(to_opt_param_ty));
-            }
-        }
-
-        if input_parameters.len() == num_inputs {
-            break;
-        }
-    }
+    identify_constrained_type_params(tcx,
+                                     impl_predicates.predicates.as_slice(),
+                                     impl_trait_ref,
+                                     &mut input_parameters);
 
     for (index, ty_param) in ast_generics.ty_params.iter().enumerate() {
         let param_ty = ty::ParamTy { space: TypeSpace,
@@ -2023,13 +1988,6 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                              impl trait, self type, or predicates",
                             param_ty.user_string(tcx));
             }
-        }
-    }
-
-    fn to_opt_param_ty<'tcx>(ty: Ty<'tcx>) -> Option<ty::ParamTy> {
-        match ty.sty {
-            ty::ty_param(ref d) => Some(d.clone()),
-            _ => None,
         }
     }
 }

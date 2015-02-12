@@ -2955,6 +2955,13 @@ impl<'tcx> TyS<'tcx> {
         assert_eq!(r, Some(self));
         walker
     }
+
+    pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
+        match self.sty {
+            ty::ty_param(ref d) => Some(d.clone()),
+            _ => None,
+        }
+    }
 }
 
 pub fn walk_ty<'tcx, F>(ty_root: Ty<'tcx>, mut f: F)
