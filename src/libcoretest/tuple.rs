@@ -19,7 +19,7 @@ fn test_clone() {
 
 #[test]
 fn test_tuple_cmp() {
-    let (small, big) = ((1u, 2u, 3u), (3u, 2u, 1u));
+    let (small, big) = ((1, 2, 3), (3, 2, 1));
 
     let nan = 0.0f64/0.0;
 

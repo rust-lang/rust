@@ -12,24 +12,24 @@ use test::Bencher;
 
 #[test]
 fn size_of_basic() {
-    assert_eq!(size_of::<u8>(), 1u);
-    assert_eq!(size_of::<u16>(), 2u);
-    assert_eq!(size_of::<u32>(), 4u);
-    assert_eq!(size_of::<u64>(), 8u);
+    assert_eq!(size_of::<u8>(), 1);
+    assert_eq!(size_of::<u16>(), 2);
+    assert_eq!(size_of::<u32>(), 4);
+    assert_eq!(size_of::<u64>(), 8);
 }
 
 #[test]
 #[cfg(target_pointer_width = "32")]
 fn size_of_32() {
-    assert_eq!(size_of::<uint>(), 4u);
-    assert_eq!(size_of::<*const uint>(), 4u);
+    assert_eq!(size_of::<uint>(), 4);
+    assert_eq!(size_of::<*const uint>(), 4);
 }
 
 #[test]
 #[cfg(target_pointer_width = "64")]
 fn size_of_64() {
-    assert_eq!(size_of::<uint>(), 8u);
-    assert_eq!(size_of::<*const uint>(), 8u);
+    assert_eq!(size_of::<uint>(), 8);
+    assert_eq!(size_of::<*const uint>(), 8);
 }
 
 #[test]
@@ -42,30 +42,30 @@ fn size_of_val_basic() {
 
 #[test]
 fn align_of_basic() {
-    assert_eq!(align_of::<u8>(), 1u);
-    assert_eq!(align_of::<u16>(), 2u);
-    assert_eq!(align_of::<u32>(), 4u);
+    assert_eq!(align_of::<u8>(), 1);
+    assert_eq!(align_of::<u16>(), 2);
+    assert_eq!(align_of::<u32>(), 4);
 }
 
 #[test]
 #[cfg(target_pointer_width = "32")]
 fn align_of_32() {
-    assert_eq!(align_of::<uint>(), 4u);
-    assert_eq!(align_of::<*const uint>(), 4u);
+    assert_eq!(align_of::<uint>(), 4);
+    assert_eq!(align_of::<*const uint>(), 4);
 }
 
 #[test]
 #[cfg(target_pointer_width = "64")]
 fn align_of_64() {
-    assert_eq!(align_of::<uint>(), 8u);
-    assert_eq!(align_of::<*const uint>(), 8u);
+    assert_eq!(align_of::<uint>(), 8);
+    assert_eq!(align_of::<*const uint>(), 8);
 }
 
 #[test]
 fn align_of_val_basic() {
-    assert_eq!(align_of_val(&1u8), 1u);
-    assert_eq!(align_of_val(&1u16), 2u);
-    assert_eq!(align_of_val(&1u32), 4u);
+    assert_eq!(align_of_val(&1u8), 1);
+    assert_eq!(align_of_val(&1u16), 2);
+    assert_eq!(align_of_val(&1u32), 4);
 }
 
 #[test]
@@ -87,7 +87,7 @@ fn test_replace() {
 
 #[test]
 fn test_transmute_copy() {
-    assert_eq!(1u, unsafe { transmute_copy(&1) });
+    assert_eq!(1, unsafe { transmute_copy(&1) });
 }
 
 #[test]
