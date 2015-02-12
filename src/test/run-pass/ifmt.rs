@@ -233,7 +233,7 @@ fn test_collections() {
 
     let u32_array = [10u32, 20, 64, 255, 0xffffffff];
     t!(format!("{}", u32_array), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_array), "[10u32, 20u32, 64u32, 255u32, 4294967295u32]");
+    t!(format!("{:?}", u32_array), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_array), "[12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_array),
        "[1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
@@ -242,13 +242,13 @@ fn test_collections() {
 
     let f32_array = [10f32, 20.0 , 64.0, 255.0];
     t!(format!("{}", f32_array), "[10, 20, 64, 255]");
-    t!(format!("{:?}", f32_array), "[10f32, 20f32, 64f32, 255f32]");
+    t!(format!("{:?}", f32_array), "[10, 20, 64, 255]");
     t!(format!("{:e}", f32_array), "[1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_array), "[1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_vec = vec![10u32, 20, 64, 255, 0xffffffff];
     t!(format!("{}", u32_vec), "[10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_vec), "[10u32, 20u32, 64u32, 255u32, 4294967295u32]");
+    t!(format!("{:?}", u32_vec), "[10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_vec), "[12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_vec),
        "[1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
@@ -257,13 +257,13 @@ fn test_collections() {
 
     let f32_vec = vec![10f32, 20.0 , 64.0, 255.0];
     t!(format!("{}", f32_vec), "[10, 20, 64, 255]");
-    t!(format!("{:?}", f32_vec), "[10f32, 20f32, 64f32, 255f32]");
+    t!(format!("{:?}", f32_vec), "[10, 20, 64, 255]");
     t!(format!("{:e}", f32_vec), "[1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_vec), "[1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_dlist:DList<_> = u32_vec.into_iter().collect();
     t!(format!("{}", u32_dlist), "DList [10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_dlist), "DList [10u32, 20u32, 64u32, 255u32, 4294967295u32]");
+    t!(format!("{:?}", u32_dlist), "DList [10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_dlist), "DList [12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_dlist),
        "DList [1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
@@ -272,13 +272,13 @@ fn test_collections() {
 
     let f32_dlist:DList<_> = f32_vec.into_iter().collect();
     t!(format!("{}", f32_dlist), "DList [10, 20, 64, 255]");
-    t!(format!("{:?}", f32_dlist), "DList [10f32, 20f32, 64f32, 255f32]");
+    t!(format!("{:?}", f32_dlist), "DList [10, 20, 64, 255]");
     t!(format!("{:e}", f32_dlist), "DList [1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_dlist), "DList [1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_ring_buf:RingBuf<_> = u32_dlist.into_iter().collect();
     t!(format!("{}", u32_ring_buf), "RingBuf [10, 20, 64, 255, 4294967295]");
-    t!(format!("{:?}", u32_ring_buf), "RingBuf [10u32, 20u32, 64u32, 255u32, 4294967295u32]");
+    t!(format!("{:?}", u32_ring_buf), "RingBuf [10, 20, 64, 255, 4294967295]");
     t!(format!("{:o}", u32_ring_buf), "RingBuf [12, 24, 100, 377, 37777777777]");
     t!(format!("{:b}", u32_ring_buf),
        "RingBuf [1010, 10100, 1000000, 11111111, 11111111111111111111111111111111]");
@@ -287,13 +287,13 @@ fn test_collections() {
 
     let f32_ring_buf:RingBuf<_> = f32_dlist.into_iter().collect();
     t!(format!("{}", f32_ring_buf), "RingBuf [10, 20, 64, 255]");
-    t!(format!("{:?}", f32_ring_buf), "RingBuf [10f32, 20f32, 64f32, 255f32]");
+    t!(format!("{:?}", f32_ring_buf), "RingBuf [10, 20, 64, 255]");
     t!(format!("{:e}", f32_ring_buf), "RingBuf [1e1, 2e1, 6.4e1, 2.55e2]");
     t!(format!("{:E}", f32_ring_buf), "RingBuf [1E1, 2E1, 6.4E1, 2.55E2]");
 
     let u32_btree_set:BTreeSet<_> = u32_ring_buf.into_iter().collect();
     t!(format!("{}", u32_btree_set), "BTreeSet {10, 20, 64, 255, 4294967295}");
-    t!(format!("{:?}", u32_btree_set), "BTreeSet {10u32, 20u32, 64u32, 255u32, 4294967295u32}");
+    t!(format!("{:?}", u32_btree_set), "BTreeSet {10, 20, 64, 255, 4294967295}");
     t!(format!("{:o}", u32_btree_set), "BTreeSet {12, 24, 100, 377, 37777777777}");
     t!(format!("{:b}", u32_btree_set),
        "BTreeSet {1010, 10100, 1000000, 11111111, 11111111111111111111111111111111}");
@@ -308,8 +308,8 @@ fn test_collections() {
     t!(format!("{}", u32_btree_map),
        "BTreeMap {10: 10, 20: 20, 64: 64, 255: 255, 4294967295: 4294967295}");
     t!(format!("{:?}", u32_btree_map),
-       "BTreeMap {10u32: 10u32, 20u32: 20u32, 64u32: 64u32, \
-       255u32: 255u32, 4294967295u32: 4294967295u32}");
+       "BTreeMap {10: 10, 20: 20, 64: 64, \
+       255: 255, 4294967295: 4294967295}");
     t!(format!("{:o}", u32_btree_map),
        "BTreeMap {12: 12, 24: 24, 100: 100, 377: 377, 37777777777: 37777777777}");
     t!(format!("{:b}", u32_btree_map),

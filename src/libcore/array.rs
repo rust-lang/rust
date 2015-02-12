@@ -50,7 +50,7 @@ macro_rules! array_impls {
                     Hash::hash(&self[], state)
                 }
             }
-	    
+
             fmt_array! { $N, Debug, Display, Octal, Binary, UpperHex, LowerHex, UpperExp, LowerExp }
 
             #[stable(feature = "rust1", since = "1.0.0")]
