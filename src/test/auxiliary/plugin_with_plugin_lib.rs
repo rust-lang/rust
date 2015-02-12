@@ -1,4 +1,4 @@
-// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,20 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:macro_crate_test.rs
-// ignore-stage1
-// ignore-cross-compile
-//
-// macro_crate_test will not compile on a cross-compiled target because
-// libsyntax is not compiled for it.
+// force-host
 
-#![allow(plugin_as_library)]
-#![feature(plugin)]
-#![plugin(macro_crate_test)]
+#![feature(plugin_registrar)]
+#![deny(plugin_as_library)] // should have no effect in a plugin crate
 
 extern crate macro_crate_test;
+extern crate rustc;
 
-fn main() {
-    assert_eq!(1, make_a_1!());
-    macro_crate_test::foo();
-}
+use rustc::plugin::Registry;
+
+#[plugin_registrar]
+pub fn plugin_registrar(_: &mut Registry) { }
