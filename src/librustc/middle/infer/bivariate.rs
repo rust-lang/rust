@@ -13,45 +13,47 @@ use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use middle::infer::combine::*;
 use middle::infer::{cres};
-use middle::infer::{Subtype};
-use middle::infer::type_variable::{EqTo};
+use middle::infer::type_variable::{BiTo};
 use util::ppaux::{Repr};
 
-use syntax::ast::Unsafety;
+use syntax::ast::{Unsafety};
 
-pub struct Equate<'f, 'tcx: 'f> {
+pub struct Bivariate<'f, 'tcx: 'f> {
     fields: CombineFields<'f, 'tcx>
 }
 
 #[allow(non_snake_case)]
-pub fn Equate<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Equate<'f, 'tcx> {
-    Equate { fields: cf }
+pub fn Bivariate<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Bivariate<'f, 'tcx> {
+    Bivariate { fields: cf }
 }
 
-impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
-    fn tag(&self) -> String { "Equate".to_string() }
+impl<'f, 'tcx> Combine<'tcx> for Bivariate<'f, 'tcx> {
+    fn tag(&self) -> String { "Bivariate".to_string() }
     fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
 
-    fn tys_with_variance(&self, _: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
+    fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
                          -> cres<'tcx, Ty<'tcx>>
     {
-        // Once we're equating, it doesn't matter what the variance is.
-        self.tys(a, b)
+        match v {
+            ty::Invariant => self.equate().tys(a, b),
+            ty::Covariant => self.tys(a, b),
+            ty::Contravariant => self.tys(a, b),
+            ty::Bivariant => self.tys(a, b),
+        }
     }
 
-    fn regions_with_variance(&self, _: ty::Variance, a: ty::Region, b: ty::Region)
+    fn regions_with_variance(&self, v: ty::Variance, a: ty::Region, b: ty::Region)
                              -> cres<'tcx, ty::Region>
     {
-        // Once we're equating, it doesn't matter what the variance is.
-        self.regions(a, b)
+        match v {
+            ty::Invariant => self.equate().regions(a, b),
+            ty::Covariant => self.regions(a, b),
+            ty::Contravariant => self.regions(a, b),
+            ty::Bivariant => self.regions(a, b),
+        }
     }
 
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
-        debug!("{}.regions({}, {})",
-               self.tag(),
-               a.repr(self.fields.infcx.tcx),
-               b.repr(self.fields.infcx.tcx));
-        self.infcx().region_vars.make_eqregion(Subtype(self.trace()), a, b);
+    fn regions(&self, a: ty::Region, _: ty::Region) -> cres<'tcx, ty::Region> {
         Ok(a)
     }
 
@@ -78,11 +80,6 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
                       b: BuiltinBounds)
                       -> cres<'tcx, BuiltinBounds>
     {
-        // More bounds is a subtype of fewer bounds.
-        //
-        // e.g., fn:Copy() <: fn(), because the former is a function
-        // that only closes over copyable things, but the latter is
-        // any function at all.
         if a != b {
             Err(ty::terr_builtin_bounds(expected_found(self, a, b)))
         } else {
@@ -100,17 +97,17 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
         let b = infcx.type_variables.borrow().replace_if_possible(b);
         match (&a.sty, &b.sty) {
             (&ty::ty_infer(TyVar(a_id)), &ty::ty_infer(TyVar(b_id))) => {
-                infcx.type_variables.borrow_mut().relate_vars(a_id, EqTo, b_id);
+                infcx.type_variables.borrow_mut().relate_vars(a_id, BiTo, b_id);
                 Ok(a)
             }
 
             (&ty::ty_infer(TyVar(a_id)), _) => {
-                try!(self.fields.instantiate(b, EqTo, a_id));
+                try!(self.fields.instantiate(b, BiTo, a_id));
                 Ok(a)
             }
 
             (_, &ty::ty_infer(TyVar(b_id))) => {
-                try!(self.fields.instantiate(a, EqTo, b_id));
+                try!(self.fields.instantiate(a, BiTo, b_id));
                 Ok(a)
             }
 
@@ -123,7 +120,9 @@ impl<'f, 'tcx> Combine<'tcx> for Equate<'f, 'tcx> {
     fn binders<T>(&self, a: &ty::Binder<T>, b: &ty::Binder<T>) -> cres<'tcx, ty::Binder<T>>
         where T : Combineable<'tcx>
     {
-        try!(self.sub().binders(a, b));
-        self.sub().binders(b, a)
+        let a1 = ty::erase_late_bound_regions(self.tcx(), a);
+        let b1 = ty::erase_late_bound_regions(self.tcx(), b);
+        let c = try!(Combineable::combine(self, &a1, &b1));
+        Ok(ty::Binder(c))
     }
 }

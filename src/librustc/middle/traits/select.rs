@@ -133,6 +133,7 @@ pub enum MethodMatchedData {
 /// parameters) that would have to be inferred from the impl.
 #[derive(PartialEq,Eq,Debug,Clone)]
 enum SelectionCandidate<'tcx> {
+    PhantomFnCandidate,
     BuiltinCandidate(ty::BuiltinBound),
     ParamCandidate(ty::PolyTraitRef<'tcx>),
     ImplCandidate(ast::DefId),
@@ -795,14 +796,19 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                stack: &TraitObligationStack<'o, 'tcx>)
                                -> Result<SelectionCandidateSet<'tcx>, SelectionError<'tcx>>
     {
-        // Check for overflow.
-
         let TraitObligationStack { obligation, .. } = *stack;
 
         let mut candidates = SelectionCandidateSet {
             vec: Vec::new(),
             ambiguous: false
         };
+
+        // Check for the `PhantomFn` trait. This is really just a special annotation that
+        // *always* be considered to match, no matter what the type parameters etc.
+        if self.tcx().lang_items.phantom_fn() == Some(obligation.predicate.def_id()) {
+            candidates.vec.push(PhantomFnCandidate);
+            return Ok(candidates);
+        }
 
         // Other bounds. Consider both in-scope bounds from fn decl
         // and applicable impls. There is a certain set of precedence rules here.
@@ -1673,6 +1679,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     try!(self.confirm_builtin_candidate(obligation, builtin_bound))))
             }
 
+            PhantomFnCandidate |
             ErrorCandidate => {
                 Ok(VtableBuiltin(VtableBuiltinData { nested: VecPerParamSpace::empty() }))
             }
@@ -2339,6 +2346,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
+            PhantomFnCandidate => format!("PhantomFnCandidate"),
             ErrorCandidate => format!("ErrorCandidate"),
             BuiltinCandidate(b) => format!("BuiltinCandidate({:?})", b),
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
