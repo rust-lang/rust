@@ -21,7 +21,7 @@
 use marker::Copy;
 use mem;
 
-/// The representation of a Rust slice
+/// The representation of a Rust slice (`&[T]`)
 #[repr(C)]
 pub struct Slice<T> {
     pub data: *const T,
