@@ -48,7 +48,7 @@ type Relation = (RelationDir, ty::TyVid);
 
 #[derive(Copy, PartialEq, Debug)]
 pub enum RelationDir {
-    SubtypeOf, SupertypeOf, EqTo
+    SubtypeOf, SupertypeOf, EqTo, BiTo
 }
 
 impl RelationDir {
@@ -56,7 +56,8 @@ impl RelationDir {
         match self {
             SubtypeOf => SupertypeOf,
             SupertypeOf => SubtypeOf,
-            EqTo => EqTo
+            EqTo => EqTo,
+            BiTo => BiTo,
         }
     }
 }
