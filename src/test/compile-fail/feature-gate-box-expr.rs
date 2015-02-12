@@ -17,7 +17,10 @@ fn main() {
     let x = box () 'c'; //~ ERROR box expression syntax is experimental
     println!("x: {}", x);
 
-    let x = box (HEAP) 'c'; //~ ERROR box expression syntax is experimental
+    let x = box (HEAP) 'c'; //~ ERROR placement-in expression syntax is experimental
+    println!("x: {}", x);
+
+    let x = in HEAP { 'c' }; //~ ERROR placement-in expression syntax is experimental
     println!("x: {}", x);
 }
 

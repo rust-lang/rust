@@ -110,6 +110,12 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //     InPlace::finalize(place)
             // }
 
+            // Ensure feature-gate is enabled
+            feature_gate::check_for_placement_in(
+                fld.cx.ecfg.features,
+                &fld.cx.parse_sess.span_diagnostic,
+                expr_span);
+
             let value_span = value_expr.span;
             let placer_span = placer.span;
 
@@ -194,6 +200,12 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //     ::std::ptr::write(raw_place, value);
             //     Boxed::finalize(place)
             // }
+
+            // Ensure feature-gate is enabled
+            feature_gate::check_for_box_syntax(
+                fld.cx.ecfg.features,
+                &fld.cx.parse_sess.span_diagnostic,
+                expr_span);
 
             let value_span = value_expr.span;
 
