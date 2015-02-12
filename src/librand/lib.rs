@@ -41,6 +41,7 @@ extern crate core;
 #[cfg(test)] #[macro_use] extern crate log;
 
 use core::prelude::*;
+use core::marker::PhantomData;
 
 pub use isaac::{IsaacRng, Isaac64Rng};
 pub use chacha::ChaChaRng;
@@ -206,7 +207,7 @@ pub trait Rng : Sized {
     ///                     .collect::<Vec<(f64, bool)>>());
     /// ```
     fn gen_iter<'a, T: Rand>(&'a mut self) -> Generator<'a, T, Self> {
-        Generator { rng: self }
+        Generator { rng: self, _marker: PhantomData }
     }
 
     /// Generate a random value in the range [`low`, `high`).
@@ -317,6 +318,7 @@ pub trait Rng : Sized {
 /// This iterator is created via the `gen_iter` method on `Rng`.
 pub struct Generator<'a, T, R:'a> {
     rng: &'a mut R,
+    _marker: PhantomData<T>
 }
 
 impl<'a, T: Rand, R: Rng> Iterator for Generator<'a, T, R> {
