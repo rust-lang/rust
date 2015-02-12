@@ -93,7 +93,7 @@ use middle::pat_util::{self, pat_id_map};
 use middle::region::{self, CodeExtent};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits;
-use middle::ty::{FnSig, VariantInfo, TypeScheme};
+use middle::ty::{FnSig, GenericPredicates, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
 use middle::ty::{self, HasProjectionTypes, RegionEscape, Ty};
 use middle::ty::liberate_late_bound_regions;
@@ -101,7 +101,7 @@ use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use rscope::RegionScope;
 use session::Session;
-use {CrateCtxt, lookup_def_ccx, no_params, require_same_types};
+use {CrateCtxt, lookup_def_ccx, require_same_types};
 use TypeAndSubsts;
 use lint;
 use util::common::{block_query, indenter, loop_query};
@@ -1446,11 +1446,11 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     fn instantiate_bounds(&self,
                           span: Span,
                           substs: &Substs<'tcx>,
-                          generics: &ty::Generics<'tcx>)
-                          -> ty::GenericBounds<'tcx>
+                          bounds: &ty::GenericPredicates<'tcx>)
+                          -> ty::InstantiatedPredicates<'tcx>
     {
-        ty::GenericBounds {
-            predicates: self.instantiate_type_scheme(span, substs, &generics.predicates)
+        ty::InstantiatedPredicates {
+            predicates: self.instantiate_type_scheme(span, substs, &bounds.predicates)
         }
     }
 
@@ -1561,12 +1561,14 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let type_scheme =
             ty::lookup_item_type(self.tcx(), def_id);
+        let type_predicates =
+            ty::lookup_predicates(self.tcx(), def_id);
         let substs =
             self.infcx().fresh_substs_for_generics(
                 span,
                 &type_scheme.generics);
         let bounds =
-            self.instantiate_bounds(span, &substs, &type_scheme.generics);
+            self.instantiate_bounds(span, &substs, &type_predicates);
         self.add_obligations_for_parameters(
             traits::ObligationCause::new(
                 span,
@@ -1594,7 +1596,8 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     {
         let tcx = self.tcx();
 
-        let ty::TypeScheme { generics, ty: decl_ty } = ty::lookup_item_type(tcx, did);
+        let ty::TypeScheme { generics, ty: decl_ty } =
+            ty::lookup_item_type(tcx, did);
 
         let wants_params =
             generics.has_type_params(TypeSpace) || generics.has_region_params(TypeSpace);
@@ -1843,16 +1846,16 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
     /// and `T`. This routine will add a region obligation `$1:'$0` and register it locally.
     pub fn add_obligations_for_parameters(&self,
                                           cause: traits::ObligationCause<'tcx>,
-                                          generic_bounds: &ty::GenericBounds<'tcx>)
+                                          predicates: &ty::InstantiatedPredicates<'tcx>)
     {
-        assert!(!generic_bounds.has_escaping_regions());
+        assert!(!predicates.has_escaping_regions());
 
-        debug!("add_obligations_for_parameters(generic_bounds={})",
-               generic_bounds.repr(self.tcx()));
+        debug!("add_obligations_for_parameters(predicates={})",
+               predicates.repr(self.tcx()));
 
         let obligations = traits::predicates_for_generics(self.tcx(),
                                                           cause,
-                                                          generic_bounds);
+                                                          predicates);
 
         obligations.map_move(|o| self.register_predicate(o));
     }
@@ -3616,8 +3619,8 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprPath(ref path) => {
           let defn = lookup_def(fcx, path.span, id);
-          let pty = type_scheme_for_def(fcx, expr.span, defn);
-          instantiate_path(fcx, path, pty, None, defn, expr.span, expr.id);
+          let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx, expr.span, defn);
+          instantiate_path(fcx, path, scheme, &predicates, None, defn, expr.span, expr.id);
 
           // We always require that the type provided as the value for
           // a type parameter outlives the moment of instantiation.
@@ -3629,10 +3632,11 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
           astconv::instantiate_trait_ref(fcx, fcx, &*qpath.trait_ref, Some(self_ty), None);
 
           let defn = lookup_def(fcx, expr.span, id);
-          let pty = type_scheme_for_def(fcx, expr.span, defn);
+          let (scheme, predicates) = type_scheme_and_predicates_for_def(fcx, expr.span, defn);
           let mut path = qpath.trait_ref.path.clone();
           path.segments.push(qpath.item_path.clone());
-          instantiate_path(fcx, &path, pty, Some(self_ty), defn, expr.span, expr.id);
+          instantiate_path(fcx, &path, scheme, &predicates, Some(self_ty),
+                           defn, expr.span, expr.id);
 
           // We always require that the type provided as the value for
           // a type parameter outlives the moment of instantiation.
@@ -4048,9 +4052,9 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 };
 
                 if let Some(did) = did {
-                    let polytype = ty::lookup_item_type(tcx, did);
+                    let predicates = ty::lookup_predicates(tcx, did);
                     let substs = Substs::new_type(vec![idx_type], vec![]);
-                    let bounds = fcx.instantiate_bounds(expr.span, &substs, &polytype.generics);
+                    let bounds = fcx.instantiate_bounds(expr.span, &substs, &predicates);
                     fcx.add_obligations_for_parameters(
                         traits::ObligationCause::new(expr.span,
                                                      fcx.body_id,
@@ -4631,46 +4635,36 @@ pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> def::Def {
 }
 
 // Returns the type parameter count and the type for the given definition.
-pub fn type_scheme_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
-                                     sp: Span,
-                                     defn: def::Def)
-                                     -> TypeScheme<'tcx> {
+fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                                                sp: Span,
+                                                defn: def::Def)
+                                                -> (TypeScheme<'tcx>, GenericPredicates<'tcx>) {
     match defn {
-      def::DefLocal(nid) | def::DefUpvar(nid, _) => {
-          let typ = fcx.local_ty(sp, nid);
-          return no_params(typ);
-      }
-      def::DefFn(id, _) | def::DefStaticMethod(id, _) | def::DefMethod(id, _, _) |
-      def::DefStatic(id, _) | def::DefVariant(_, id, _) |
-      def::DefStruct(id) | def::DefConst(id) => {
-        return ty::lookup_item_type(fcx.ccx.tcx, id);
-      }
-      def::DefTrait(_) |
-      def::DefTy(..) |
-      def::DefAssociatedTy(..) |
-      def::DefAssociatedPath(..) |
-      def::DefPrimTy(_) |
-      def::DefTyParam(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type");
-      }
-      def::DefMod(..) | def::DefForeignMod(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found module");
-      }
-      def::DefUse(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found use");
-      }
-      def::DefRegion(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found region");
-      }
-      def::DefTyParamBinder(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found type parameter");
-      }
-      def::DefLabel(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found label");
-      }
-      def::DefSelfTy(..) => {
-        fcx.ccx.tcx.sess.span_bug(sp, "expected value, found self ty");
-      }
+        def::DefLocal(nid) | def::DefUpvar(nid, _) => {
+            let typ = fcx.local_ty(sp, nid);
+            (ty::TypeScheme { generics: ty::Generics::empty(), ty: typ },
+             ty::GenericPredicates::empty())
+        }
+        def::DefFn(id, _) | def::DefStaticMethod(id, _) | def::DefMethod(id, _, _) |
+        def::DefStatic(id, _) | def::DefVariant(_, id, _) |
+        def::DefStruct(id) | def::DefConst(id) => {
+            (ty::lookup_item_type(fcx.tcx(), id), ty::lookup_predicates(fcx.tcx(), id))
+        }
+        def::DefTrait(_) |
+        def::DefTy(..) |
+        def::DefAssociatedTy(..) |
+        def::DefAssociatedPath(..) |
+        def::DefPrimTy(_) |
+        def::DefTyParam(..) |
+        def::DefMod(..) |
+        def::DefForeignMod(..) |
+        def::DefUse(..) |
+        def::DefRegion(..) |
+        def::DefTyParamBinder(..) |
+        def::DefLabel(..) |
+        def::DefSelfTy(..) => {
+            fcx.ccx.tcx.sess.span_bug(sp, &format!("expected value, found {:?}", defn));
+        }
     }
 }
 
@@ -4679,6 +4673,7 @@ pub fn type_scheme_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                   path: &ast::Path,
                                   type_scheme: TypeScheme<'tcx>,
+                                  type_predicates: &ty::GenericPredicates<'tcx>,
                                   opt_self_ty: Option<Ty<'tcx>>,
                                   def: def::Def,
                                   span: Span,
@@ -4864,7 +4859,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     // Add all the obligations that are required, substituting and
     // normalized appropriately.
-    let bounds = fcx.instantiate_bounds(span, &substs, &type_scheme.generics);
+    let bounds = fcx.instantiate_bounds(span, &substs, &type_predicates);
     fcx.add_obligations_for_parameters(
         traits::ObligationCause::new(span, fcx.body_id, traits::ItemObligation(def.def_id())),
         &bounds);

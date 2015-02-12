@@ -131,8 +131,9 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
 
             let dtor_typescheme = ty::lookup_item_type(rcx.tcx(), impl_did);
             let dtor_generics = dtor_typescheme.generics;
+            let dtor_predicates = ty::lookup_predicates(rcx.tcx(), impl_did);
 
-            let has_pred_of_interest = dtor_generics.predicates.iter().any(|pred| {
+            let has_pred_of_interest = dtor_predicates.predicates.iter().any(|pred| {
                 // In `impl<T> Drop where ...`, we automatically
                 // assume some predicate will be meaningful and thus
                 // represents a type through which we could reach

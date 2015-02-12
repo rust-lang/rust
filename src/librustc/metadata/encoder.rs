@@ -139,11 +139,21 @@ fn encode_item_variances(rbml_w: &mut Encoder,
     rbml_w.end_tag();
 }
 
+fn encode_bounds_and_type_for_item<'a, 'tcx>(rbml_w: &mut Encoder,
+                                             ecx: &EncodeContext<'a, 'tcx>,
+                                             id: ast::NodeId) {
+    encode_bounds_and_type(rbml_w,
+                           ecx,
+                           &ty::lookup_item_type(ecx.tcx, local_def(id)),
+                           &ty::lookup_predicates(ecx.tcx, local_def(id)));
+}
+
 fn encode_bounds_and_type<'a, 'tcx>(rbml_w: &mut Encoder,
                                     ecx: &EncodeContext<'a, 'tcx>,
-                                    pty: &ty::TypeScheme<'tcx>) {
-    encode_generics(rbml_w, ecx, &pty.generics, tag_item_generics);
-    encode_type(ecx, rbml_w, pty.ty);
+                                    scheme: &ty::TypeScheme<'tcx>,
+                                    predicates: &ty::GenericPredicates<'tcx>) {
+    encode_generics(rbml_w, ecx, &scheme.generics, &predicates, tag_item_generics);
+    encode_type(ecx, rbml_w, scheme.ty);
 }
 
 fn encode_variant_id(rbml_w: &mut Encoder, vid: DefId) {
@@ -353,8 +363,7 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
             encode_disr_val(ecx, rbml_w, (*vi)[i].disr_val);
             disr_val = (*vi)[i].disr_val;
         }
-        encode_bounds_and_type(rbml_w, ecx,
-                               &lookup_item_type(ecx.tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, def_id.local_id());
 
         ecx.tcx.map.with_path(variant.node.id, |path| encode_path(rbml_w, path));
         rbml_w.end_tag();
@@ -698,8 +707,7 @@ fn encode_info_for_struct(ecx: &EncodeContext,
                token::get_name(nm), id);
         encode_struct_field_family(rbml_w, field.vis);
         encode_name(rbml_w, nm);
-        encode_bounds_and_type(rbml_w, ecx,
-                               &lookup_item_type(ecx.tcx, local_def(id)));
+        encode_bounds_and_type_for_item(rbml_w, ecx, id);
         encode_def_id(rbml_w, local_def(id));
 
         let stab = stability::lookup(ecx.tcx, field.id);
@@ -724,8 +732,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
     rbml_w.start_tag(tag_items_data_item);
     encode_def_id(rbml_w, local_def(ctor_id));
     encode_family(rbml_w, 'o');
-    encode_bounds_and_type(rbml_w, ecx,
-                           &lookup_item_type(ecx.tcx, local_def(ctor_id)));
+    encode_bounds_and_type_for_item(rbml_w, ecx, ctor_id);
     encode_name(rbml_w, name.name);
     ecx.tcx.map.with_path(ctor_id, |path| encode_path(rbml_w, path));
     encode_parent_item(rbml_w, local_def(struct_id));
@@ -749,6 +756,7 @@ fn encode_info_for_struct_ctor(ecx: &EncodeContext,
 fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
                              ecx: &EncodeContext<'a, 'tcx>,
                              generics: &ty::Generics<'tcx>,
+                             predicates: &ty::GenericPredicates<'tcx>,
                              tag: uint)
 {
     rbml_w.start_tag(tag);
@@ -790,7 +798,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
         rbml_w.end_tag();
     }
 
-    for (space, _, predicate) in generics.predicates.iter_enumerated() {
+    for (space, _, predicate) in predicates.predicates.iter_enumerated() {
         rbml_w.start_tag(tag_predicate);
 
         rbml_w.wr_tagged_u8(tag_predicate_space, space as u8);
@@ -810,7 +818,7 @@ fn encode_method_ty_fields<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                                      method_ty: &ty::Method<'tcx>) {
     encode_def_id(rbml_w, method_ty.def_id);
     encode_name(rbml_w, method_ty.name);
-    encode_generics(rbml_w, ecx, &method_ty.generics,
+    encode_generics(rbml_w, ecx, &method_ty.generics, &method_ty.predicates,
                     tag_method_ty_generics);
     encode_method_fty(ecx, rbml_w, &method_ty.fty);
     encode_visibility(rbml_w, method_ty.vis);
@@ -844,15 +852,15 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
     encode_stability(rbml_w, stab);
 
     // The type for methods gets encoded twice, which is unfortunate.
-    let pty = lookup_item_type(ecx.tcx, m.def_id);
-    encode_bounds_and_type(rbml_w, ecx, &pty);
+    encode_bounds_and_type_for_item(rbml_w, ecx, m.def_id.local_id());
 
     let elem = ast_map::PathName(m.name);
     encode_path(rbml_w, impl_path.chain(Some(elem).into_iter()));
     match ast_item_opt {
         Some(&ast::MethodImplItem(ref ast_method)) => {
             encode_attributes(rbml_w, &ast_method.attrs[]);
-            let any_types = !pty.generics.types.is_empty();
+            let scheme = ty::lookup_item_type(ecx.tcx, m.def_id);
+            let any_types = !scheme.generics.types.is_empty();
             if any_types || is_default_impl || should_inline(&ast_method.attrs[]) {
                 encode_inlined_item(ecx, rbml_w, IIImplItemRef(local_def(parent_id),
                                                                ast_item_opt.unwrap()));
@@ -887,8 +895,7 @@ fn encode_info_for_associated_type(ecx: &EncodeContext,
     encode_parent_item(rbml_w, local_def(parent_id));
     encode_item_sort(rbml_w, 't');
 
-    let type_scheme = ty::lookup_item_type(ecx.tcx, associated_type.def_id);
-    encode_bounds_and_type(rbml_w, ecx, &type_scheme);
+    encode_bounds_and_type_for_item(rbml_w, ecx, associated_type.def_id.local_id());
 
     let stab = stability::lookup(ecx.tcx, associated_type.def_id);
     encode_stability(rbml_w, stab);
@@ -1027,7 +1034,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         } else {
             encode_family(rbml_w, 'c');
         }
-        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
         encode_symbol(ecx, rbml_w, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
@@ -1041,7 +1048,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'C');
-        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs);
@@ -1056,7 +1063,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, FN_FAMILY);
         let tps_len = generics.ty_params.len();
-        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs[]);
@@ -1105,7 +1112,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'y');
-        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
         encode_visibility(rbml_w, vis);
@@ -1119,7 +1126,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 't');
         encode_item_variances(rbml_w, ecx, item.id);
-        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, &item.attrs[]);
         encode_repr_attrs(rbml_w, ecx, &item.attrs[]);
@@ -1161,7 +1168,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'S');
-        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
 
         encode_item_variances(rbml_w, ecx, item.id);
         encode_name(rbml_w, item.ident.name);
@@ -1204,7 +1211,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         rbml_w.start_tag(tag_items_data_item);
         encode_def_id(rbml_w, def_id);
         encode_family(rbml_w, 'i');
-        encode_bounds_and_type(rbml_w, ecx, &lookup_item_type(tcx, def_id));
+        encode_bounds_and_type_for_item(rbml_w, ecx, item.id);
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, &item.attrs[]);
         encode_unsafety(rbml_w, unsafety);
@@ -1305,10 +1312,11 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_family(rbml_w, 'I');
         encode_item_variances(rbml_w, ecx, item.id);
         let trait_def = ty::lookup_trait_def(tcx, def_id);
+        let trait_predicates = ty::lookup_predicates(tcx, def_id);
         encode_unsafety(rbml_w, trait_def.unsafety);
         encode_paren_sugar(rbml_w, trait_def.paren_sugar);
         encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
-        encode_generics(rbml_w, ecx, &trait_def.generics, tag_item_generics);
+        encode_generics(rbml_w, ecx, &trait_def.generics, &trait_predicates, tag_item_generics);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, &item.attrs[]);
@@ -1384,9 +1392,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                           METHOD_FAMILY);
                         }
                     }
-                    let pty = ty::lookup_item_type(tcx,
-                                                   method_def_id);
-                    encode_bounds_and_type(rbml_w, ecx, &pty);
+                    encode_bounds_and_type_for_item(rbml_w, ecx, method_def_id.local_id());
 
                     is_nonstatic_method = method_ty.explicit_self !=
                         ty::StaticExplicitSelfCategory;
@@ -1415,8 +1421,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
                 if is_nonstatic_method {
                     // FIXME: I feel like there is something funny
                     // going on.
-                    let pty = ty::lookup_item_type(tcx, item_def_id.def_id());
-                    encode_bounds_and_type(rbml_w, ecx, &pty);
+                    encode_bounds_and_type_for_item(rbml_w, ecx, item_def_id.def_id().local_id());
                 }
             };
             match trait_item {
@@ -1468,8 +1473,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
     match nitem.node {
       ast::ForeignItemFn(ref fndecl, _) => {
         encode_family(rbml_w, FN_FAMILY);
-        encode_bounds_and_type(rbml_w, ecx,
-                               &lookup_item_type(ecx.tcx,local_def(nitem.id)));
+        encode_bounds_and_type_for_item(rbml_w, ecx, nitem.id);
         encode_name(rbml_w, nitem.ident.name);
         if abi == abi::RustIntrinsic {
             encode_inlined_item(ecx, rbml_w, IIForeignRef(nitem));
@@ -1486,8 +1490,7 @@ fn encode_info_for_foreign_item(ecx: &EncodeContext,
         } else {
             encode_family(rbml_w, 'c');
         }
-        encode_bounds_and_type(rbml_w, ecx,
-                               &lookup_item_type(ecx.tcx,local_def(nitem.id)));
+        encode_bounds_and_type_for_item(rbml_w, ecx, nitem.id);
         encode_attributes(rbml_w, &*nitem.attrs);
         let stab = stability::lookup(ecx.tcx, ast_util::local_def(nitem.id));
         encode_stability(rbml_w, stab);

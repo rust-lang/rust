@@ -1588,8 +1588,8 @@ fn projection_bounds<'a,'tcx>(rcx: &Rcx<'a, 'tcx>,
     // ```
     //
     // we can thus deduce that `<T as SomeTrait<'a>>::SomeType : 'a`.
-    let trait_def = ty::lookup_trait_def(tcx, projection_ty.trait_ref.def_id);
-    let predicates = trait_def.generics.predicates.as_slice().to_vec();
+    let trait_predicates = ty::lookup_predicates(tcx, projection_ty.trait_ref.def_id);
+    let predicates = trait_predicates.predicates.as_slice().to_vec();
     traits::elaborate_predicates(tcx, predicates)
         .filter_map(|predicate| {
             // we're only interesting in `T : 'a` style predicates:

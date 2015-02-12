@@ -16,11 +16,12 @@
 //! somewhat differently during the collect and check phases,
 //! particularly with respect to looking up the types of top-level
 //! items.  In the collect phase, the crate context is used as the
-//! `AstConv` instance; in this phase, the `get_item_type_scheme()` function
-//! triggers a recursive call to `ty_of_item()`  (note that
-//! `ast_ty_to_ty()` will detect recursive types and report an error).
-//! In the check phase, when the FnCtxt is used as the `AstConv`,
-//! `get_item_type_scheme()` just looks up the item type in `tcx.tcache`.
+//! `AstConv` instance; in this phase, the `get_item_type_scheme()`
+//! function triggers a recursive call to `type_scheme_of_item()`
+//! (note that `ast_ty_to_ty()` will detect recursive types and report
+//! an error).  In the check phase, when the FnCtxt is used as the
+//! `AstConv`, `get_item_type_scheme()` just looks up the item type in
+//! `tcx.tcache` (using `ty::lookup_item_type`).
 //!
 //! The `RegionScope` trait controls what happens when the user does
 //! not specify a region in some location where a region is required

@@ -561,8 +561,8 @@ fn assemble_candidates_from_trait_def<'cx,'tcx>(
     };
 
     // If so, extract what we know from the trait and try to come up with a good answer.
-    let trait_def = ty::lookup_trait_def(selcx.tcx(), trait_ref.def_id);
-    let bounds = trait_def.generics.to_bounds(selcx.tcx(), trait_ref.substs);
+    let trait_predicates = ty::lookup_predicates(selcx.tcx(), trait_ref.def_id);
+    let bounds = trait_predicates.instantiate(selcx.tcx(), trait_ref.substs);
     assemble_candidates_from_predicates(selcx, obligation, obligation_trait_ref,
                                         candidate_set, bounds.predicates.into_vec());
 }
