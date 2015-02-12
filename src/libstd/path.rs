@@ -143,6 +143,7 @@ mod platform {
     use super::Prefix;
     use core::prelude::*;
     use ffi::OsStr;
+    use std::marker::PhantomData;
 
     #[inline]
     pub fn is_sep_byte(b: u8) -> bool {
