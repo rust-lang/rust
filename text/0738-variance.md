@@ -1,6 +1,6 @@
 - Start Date: 2014-12-19
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/738
+- Rust Issue: https://github.com/rust-lang/rust/issues/22212
 
 # Summary
 
@@ -193,11 +193,11 @@ used in the body of the type. This generally occurs with unsafe code:
     struct Items<'vec, T> { // unused lifetime parameter 'vec
         x: *mut T
     }
-    
+
     struct AtomicPtr<T> { // unused type parameter T
         data: AtomicUint  // represents an atomically mutable *mut T, really
     }
-    
+
 Since these parameters are unused, the inference can reasonably
 conclude that `AtomicPtr<int>` and `AtomicPtr<uint>` are
 interchangable: after all, there are no fields of type `T`, so what
@@ -230,26 +230,26 @@ This RFC proposes to replace the existing marker types
 // type system cannot see it. This type is covariant with respect to `T`.
 struct PhantomData<T>;
 ```
-    
+
 An instance of `PhantomData` is used to represent data that is
 logically present, although the type system cannot see
 it. `PhantomData` is covariant with respect to its type parameter `T`. Here are
 some examples of uses of `PhantomData` from the standard library:
-    
-```rust    
+
+```rust
 struct AtomicPtr<T> {
     data: AtomicUint,
-    
+
     // Act as if we could reach a `*mut T` for variance. This will
     // make `AtomicPtr` *invariant* with respect to `T` (because `T` appears
     // underneath the `mut` qualifier).
     marker: PhantomData<*mut T>,
 }
-    
+
 pub struct Items<'a, T: 'a> {
     ptr: *const T,
     end: *const T,
-    
+
     // Act as if we could reach a slice `[T]` with lifetime `'a`.
     // Induces covariance on `T` and suitable variance on `'a`
     // (covariance using the definition from rfcs#391).
@@ -266,7 +266,7 @@ PhantomData<*mut T>    // invariance, but see "unresolved question"
 PhantomData<Cell<T>>   // invariance
 PhantomData<fn() -> T> // contravariant
 ```
-    
+
 Even better, the user doesn't really have to understand the terms
 covariance, invariance, or contravariance, but simply to accurately
 model the kind of data that the type system should pretend is present.
@@ -300,7 +300,7 @@ not actually present:
     // Act as if there were a method `fn foo(A) -> R`. Induces contravariance on A
     // and covariance on R.
     trait PhantomFn<A,R>;
-    
+
 These traits should appear in the supertrait list. For example, the
 `Dummy` trait might be modified as follows:
 
@@ -333,7 +333,7 @@ implemented as follows:
 trait MarkerTrait for Sized? : PhantomFn(Self) -> bool { }
 impl<Sized? T> MarkerTrait for T { }
 ```
-    
+
 Intuitively, `MarkerTrait` extends `PhantomFn(Self)` because it is "as
 if" the traits were defined like:
 
@@ -342,7 +342,7 @@ trait Copy {
     fn is_copyable(&self) -> bool { true }
 }
 ```
-    
+
 Here, the type parameter `Self` appears in argument position, which is
 contravariant.
 
@@ -353,8 +353,8 @@ use that as evidence to show that `U
 : Copy` if `U <: T`. More formally:
 
     (T : Copy) <: (U : Copy)   // I can use `T:Copy` where `U:Copy` is expected...
-    U <: T                     // ...so long as `U <: T` 
-    
+    U <: T                     // ...so long as `U <: T`
+
 More intuitively, it means that if a type `T` implements the marker,
 than all of its subtypes must implement the marker.
 
@@ -368,7 +368,7 @@ Foo : Send` for any `'x`, because `&'static Foo <: &'x Foo`:
 
     (&'static Foo : Send) <: (&'x Foo : Send) // if things were covariant...
     &'static Foo <: &'x Foo                   // ...we'd have the wrong relation here
-    
+
 *Interesting side story: the author thought that covariance would be
 correct for some time. It was only when attempting to phrase the
 desired behavior as a fn that I realized I had it backward, and
@@ -423,7 +423,7 @@ hard error. The error message explicitly suggests the use of a
 
     type parameter `T` is never used; either remove it, or use a
     marker such as `std::kinds::marker::PhantomData`"
-    
+
 The goal is to help users as concretely as possible. The documentation
 on the phantom markers should also be helpful in guiding users to make
 the right choice (the ability to easily attach documentation to the
@@ -506,7 +506,7 @@ explicit declarations. Some factors that influenced this decision:
 - There is no default that is always correct but invariance, and
   invariance is typically too strong.
 - Phantom type parameters occur relatively rarely anyhow.
-  
+
 **Remove variance inference and use fully explicit declarations.**
 Variance inference is a rare case where we do non-local inference
 across type declarations. It might seem more consistent to use
@@ -553,16 +553,15 @@ options:
    a responsibility for add phantom data to that affect, something
    like `PhantomData<*const Cell<T>>`. This seems non-obvious and
    unnatural.
-   
+
 2. Rewrite safe abstractions to use `*const` (or even `usize`) instead
    of `*mut`, casting to `*mut` only they have a `&mut self`
    method. This is probably the most conservative option.
-   
+
 3. Change variance to ignore `*mut` referents entirely. Add a lint to
    detect types with a `*mut T` type and require some sort of explicit
    marker that covers `T`. This is perhaps the most explicit
    option. Like option 1, it creates the odd scenario that the
    variance computation and subtyping relation diverge.
-   
-Currently I lean towards option 2.
 
+Currently I lean towards option 2.
