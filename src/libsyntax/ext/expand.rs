@@ -56,6 +56,7 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
         });
     }
 
+    let expr_span = e.span;
     return e.and_then(|ast::Expr {id, node, span}| match node {
 
         // expr_mac should really be expr_ext or something; it's the
@@ -93,6 +94,12 @@ pub fn expand_expr(e: P<ast::Expr>, fld: &mut MacroExpander) -> P<ast::Expr> {
             //     std::intrinsics::move_val_init(raw_place, pop_unsafe!( EXPR ));
             //     InPlace::finalize(place)
             // })
+
+            // Ensure feature-gate is enabled
+            feature_gate::check_for_placement_in(
+                fld.cx.ecfg.features,
+                &fld.cx.parse_sess.span_diagnostic,
+                expr_span);
 
             let value_span = value_expr.span;
             let placer_span = placer.span;
