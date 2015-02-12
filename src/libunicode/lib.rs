@@ -60,7 +60,7 @@ mod u_str;
 /// As such, only values in the ranges \[0x0,0xD7FF\] and \[0xE000,0x10FFFF\]
 /// (inclusive) are allowed. A `char` can always be safely cast to a `u32`;
 /// however the converse is not always true due to the above range limits
-/// and, as such, should be performed via the `from_u32` function..
+/// and, as such, should be performed via the `from_u32` function.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub mod char {
     pub use core::char::{MAX, from_u32, from_digit};
