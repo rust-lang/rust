@@ -242,12 +242,11 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                         self.visit_lifetime_ref(bound);
                     }
                 }
-                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ id,
-                                                                         ref path,
-                                                                         ref ty,
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ ref ty_left,
+                                                                         ref ty_right,
                                                                          .. }) => {
-                    self.visit_path(path, id);
-                    self.visit_ty(&**ty);
+                    self.visit_ty(&**ty_left);
+                    self.visit_ty(&**ty_right);
                 }
             }
         }
@@ -603,7 +602,12 @@ fn early_bound_lifetime_names(generics: &ast::Generics) -> Vec<ast::Name> {
                         collector.visit_lifetime_ref(bound);
                     }
                 }
-                &ast::WherePredicate::EqPredicate(_) => unimplemented!()
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{ref ty_left,
+                                                                        ref ty_right,
+                                                                        ..}) => {
+                    collector.visit_ty(&**ty_left);
+                    collector.visit_ty(&**ty_right);
+                }
             }
         }
     }
