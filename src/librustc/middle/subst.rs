@@ -18,6 +18,7 @@ use middle::ty_fold::{self, TypeFoldable, TypeFolder};
 use util::ppaux::Repr;
 
 use std::fmt;
+use std::iter::IntoIterator;
 use std::slice::Iter;
 use std::vec::{Vec, IntoIter};
 use syntax::codemap::{Span, DUMMY_SP};
@@ -528,6 +529,23 @@ impl<'a,T> Iterator for EnumeratedItems<'a,T> {
         }
     }
 }
+
+impl<T> IntoIterator for VecPerParamSpace<T> {
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_vec().into_iter()
+    }
+}
+
+impl<'a,T> IntoIterator for &'a VecPerParamSpace<T> {
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.as_slice().into_iter()
+    }
+}
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Public trait `Subst`

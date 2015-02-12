@@ -283,7 +283,7 @@ pub fn overlapping_impls(infcx: &InferCtxt,
 /// Creates predicate obligations from the generic bounds.
 pub fn predicates_for_generics<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      cause: ObligationCause<'tcx>,
-                                     generic_bounds: &ty::GenericBounds<'tcx>)
+                                     generic_bounds: &ty::InstantiatedPredicates<'tcx>)
                                      -> PredicateObligations<'tcx>
 {
     util::predicates_for_generics(tcx, cause, 0, generic_bounds)

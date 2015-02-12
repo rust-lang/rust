@@ -467,8 +467,14 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
         }
     };
 
-    instantiate_path(pcx.fcx, path, ty::lookup_item_type(tcx, enum_def_id),
-                     None, def, pat.span, pat.id);
+    instantiate_path(pcx.fcx,
+                     path,
+                     ty::lookup_item_type(tcx, enum_def_id),
+                     &ty::lookup_predicates(tcx, enum_def_id),
+                     None,
+                     def,
+                     pat.span,
+                     pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);
@@ -499,6 +505,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
         .map_or_else(|| def.def_id(), |(enum_def, _)| enum_def);
 
     let ctor_scheme = ty::lookup_item_type(tcx, enum_def);
+    let ctor_predicates = ty::lookup_predicates(tcx, enum_def);
     let path_scheme = if ty::is_fn_ty(ctor_scheme.ty) {
         let fn_ret = ty::assert_no_late_bound_regions(tcx, &ty::ty_fn_ret(ctor_scheme.ty));
         ty::TypeScheme {
@@ -508,7 +515,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     } else {
         ctor_scheme
     };
-    instantiate_path(pcx.fcx, path, path_scheme, None, def, pat.span, pat.id);
+    instantiate_path(pcx.fcx, path, path_scheme, &ctor_predicates, None, def, pat.span, pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);

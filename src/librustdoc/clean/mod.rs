@@ -860,7 +860,9 @@ impl Clean<Generics> for ast::Generics {
     }
 }
 
-impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
+impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
+                                    &'a ty::GenericPredicates<'tcx>,
+                                    subst::ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Generics {
         use std::collections::HashSet;
         use syntax::ast::TraitBoundModifier as TBM;
@@ -885,7 +887,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
             false
         }
 
-        let (gens, space) = *self;
+        let (gens, preds, space) = *self;
+
         // Bounds in the type_params and lifetimes fields are repeated in the predicates
         // field (see rustc_typeck::collect::ty_generics), so remove them.
         let stripped_typarams = gens.types.get_slice(space).iter().map(|tp| {
@@ -899,7 +902,8 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
             srp.clean(cx)
         }).collect::<Vec<_>>();
 
-        let where_predicates = gens.predicates.get_slice(space).to_vec().clean(cx);
+        let where_predicates = preds.predicates.get_slice(space).to_vec().clean(cx);
+
         // Type parameters have a Sized bound by default unless removed with ?Sized.
         // Scan through the predicates and mark any type parameter with a Sized
         // bound, removing the bounds as we find them.
@@ -913,6 +917,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>, subst::ParamSpace) {
             }
             Some(pred)
         }).collect::<Vec<_>>();
+
         // Finally, run through the type parameters again and insert a ?Sized unbound for
         // any we didn't find to be Sized.
         for tp in &stripped_typarams {
@@ -1303,7 +1308,7 @@ impl<'tcx> Clean<Item> for ty::Method<'tcx> {
             source: Span::empty(),
             inner: TyMethodItem(TyMethod {
                 unsafety: self.fty.unsafety,
-                generics: (&self.generics, subst::FnSpace).clean(cx),
+                generics: (&self.generics, &self.predicates, subst::FnSpace).clean(cx),
                 self_: self_,
                 decl: (self.def_id, &sig).clean(cx),
                 abi: self.fty.abi
@@ -2560,12 +2565,12 @@ impl Clean<Item> for ast::Typedef {
     }
 }
 
-impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ParamSpace) {
+impl<'a> Clean<Typedef> for (ty::TypeScheme<'a>, ty::GenericPredicates<'a>, ParamSpace) {
     fn clean(&self, cx: &DocContext) -> Typedef {
-        let (ref ty_scheme, ps) = *self;
+        let (ref ty_scheme, ref predicates, ps) = *self;
         Typedef {
             type_: ty_scheme.ty.clean(cx),
-            generics: (&ty_scheme.generics, ps).clean(cx)
+            generics: (&ty_scheme.generics, predicates, ps).clean(cx)
         }
     }
 }
