@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use check::{FnCtxt, structurally_resolved_type};
+use check::{FnCtxt};
 use check::demand;
 use middle::traits::{self, ObjectSafetyViolation, MethodViolationCode};
 use middle::traits::{Obligation, ObligationCause};
@@ -66,20 +66,11 @@ pub fn check_object_cast<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     demand::suptype(fcx, source_expr.span, source_expected_ty, source_ty);
 
     debug!("check_object_cast postunify source_ty={}", source_ty.repr(tcx));
-    let source_ty = structurally_resolved_type(fcx, source_expr.span, source_ty);
-    debug!("check_object_cast resolveto source_ty={}", source_ty.repr(tcx));
 
     let object_trait = object_trait(&object_trait_ty);
 
-    let referent_ty = match source_ty.sty {
-        ty::ty_uniq(ty) => ty,
-        ty::ty_rptr(_, ty::mt { ty, mutbl: _ }) => ty,
-        _ => fcx.tcx().sess.span_bug(source_expr.span,
-                                     "expected appropriate reference type"),
-    };
-
     // Ensure that if Ptr<T> is cast to Ptr<Trait>, then T : Trait.
-    push_cast_obligation(fcx, cast_expr, object_trait, referent_ty);
+    push_cast_obligation(fcx, cast_expr, object_trait, fresh_ty);
     check_object_safety(tcx, object_trait, source_expr.span);
 
     fn object_trait<'a, 'tcx>(t: &'a Ty<'tcx>) -> &'a ty::TyTrait<'tcx> {
