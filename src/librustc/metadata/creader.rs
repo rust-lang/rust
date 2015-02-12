@@ -462,7 +462,7 @@ impl<'a> CrateReader<'a> {
                      name: s.to_string(),
                      ident: s.to_string(),
                      id: ast::DUMMY_NODE_ID,
-                     should_link: true,
+                     should_link: false,
                  }, sp)
             }
         };
