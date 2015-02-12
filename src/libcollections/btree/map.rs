@@ -19,7 +19,6 @@ use self::Entry::*;
 
 use core::prelude::*;
 
-use core::borrow::BorrowFrom;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt::Debug;
@@ -29,6 +28,7 @@ use core::ops::{Index, IndexMut};
 use core::{iter, fmt, mem};
 use Bound::{self, Included, Excluded, Unbounded};
 
+use borrow::Borrow;
 use ring_buf::RingBuf;
 
 use self::Continuation::{Continue, Finished};
@@ -208,7 +208,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.get(&2), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V> where Q: BorrowFrom<K> + Ord {
+    pub fn get<Q: ?Sized>(&self, key: &Q) -> Option<&V> where K: Borrow<Q>, Q: Ord {
         let mut cur_node = &self.root;
         loop {
             match Node::search(cur_node, key) {
@@ -240,7 +240,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.contains_key(&2), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool where Q: BorrowFrom<K> + Ord {
+    pub fn contains_key<Q: ?Sized>(&self, key: &Q) -> bool where K: Borrow<Q>, Q: Ord {
         self.get(key).is_some()
     }
 
@@ -264,7 +264,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// ```
     // See `get` for implementation notes, this is basically a copy-paste with mut's added
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V> where Q: BorrowFrom<K> + Ord {
+    pub fn get_mut<Q: ?Sized>(&mut self, key: &Q) -> Option<&mut V> where K: Borrow<Q>, Q: Ord {
         // temp_node is a Borrowck hack for having a mutable value outlive a loop iteration
         let mut temp_node = &mut self.root;
         loop {
@@ -434,7 +434,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
     /// assert_eq!(map.remove(&1), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V> where Q: BorrowFrom<K> + Ord {
+    pub fn remove<Q: ?Sized>(&mut self, key: &Q) -> Option<V> where K: Borrow<Q>, Q: Ord {
         // See `swap` for a more thorough description of the stuff going on in here
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
@@ -903,7 +903,7 @@ impl<K: Debug, V: Debug> Debug for BTreeMap<K, V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, Q: ?Sized, V> Index<Q> for BTreeMap<K, V>
-    where Q: BorrowFrom<K> + Ord
+    where K: Borrow<Q>, Q: Ord
 {
     type Output = V;
 
@@ -914,7 +914,7 @@ impl<K: Ord, Q: ?Sized, V> Index<Q> for BTreeMap<K, V>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, Q: ?Sized, V> IndexMut<Q> for BTreeMap<K, V>
-    where Q: BorrowFrom<K> + Ord
+    where K: Borrow<Q>, Q: Ord
 {
     fn index_mut(&mut self, key: &Q) -> &mut V {
         self.get_mut(key).expect("no entry found for key")
