@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests for "default" bounds inferred for traits with no bounds list.
+#![feature(box_syntax)]
 
+trait A<T> {}
+struct B<'a, T>(&'a (A<T>+'a));
 
-trait Foo {}
+trait X {}
+impl<'a, T> X for B<'a, T> {}
 
-fn a(_x: Box<Foo+Send>) {
-}
-
-fn b(_x: &'static (Foo+'static)) {
-}
-
-fn c(x: Box<Foo+Sync>) {
-    a(x); //~ ERROR mismatched types
-}
-
-fn d(x: &'static (Foo+Sync)) {
-    b(x);
+fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {
+    box B(&*v) as Box<X> //~ ERROR cannot infer
 }
 
 fn main() {}
+

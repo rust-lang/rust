@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Tests for "default" bounds inferred for traits with no bounds list.
+// Various tests related to testing how region inference works
+// with respect to the object receivers.
 
-
-trait Foo {}
-
-fn a(_x: Box<Foo+Send>) {
+trait Foo {
+    fn borrowed<'a>(&'a self) -> &'a ();
 }
 
-fn b(_x: &'static (Foo+'static)) {
-}
-
-fn c(x: Box<Foo+Sync>) {
-    a(x); //~ ERROR mismatched types
-}
-
-fn d(x: &'static (Foo+Sync)) {
-    b(x);
+// Borrowed receiver but two distinct lifetimes, we get an error.
+fn borrowed_receiver_different_lifetimes<'a,'b>(x: &'a Foo) -> &'b () {
+    x.borrowed() //~ ERROR cannot infer
 }
 
 fn main() {}
+
