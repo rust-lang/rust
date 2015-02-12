@@ -1891,6 +1891,12 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
 
 impl<'a, 'tcx> RegionScope for FnCtxt<'a, 'tcx> {
     fn object_lifetime_default(&self, span: Span) -> Option<ty::Region> {
+        // TODO. RFC #599 specifies that object lifetime defaults take
+        // precedence over other defaults. *However,* within a fn
+        // body, we typically use inference to allow users to elide
+        // lifetimes whenever they like, and then just infer it to
+        // whatever it must be. So I interpret that as applying only
+        // to fn sigs.
         Some(self.infcx().next_region_var(infer::MiscVariable(span)))
     }
 
