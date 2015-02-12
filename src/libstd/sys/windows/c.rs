@@ -19,7 +19,9 @@ pub use self::FILE_INFO_BY_HANDLE_CLASS::*;
 pub use libc::consts::os::extra::{
     FILE_ATTRIBUTE_READONLY,
     FILE_ATTRIBUTE_DIRECTORY,
+    WSAPROTOCOL_LEN,
 };
+pub use libc::types::os::arch::extra::{GROUP, GUID, WSAPROTOCOLCHAIN};
 
 pub const WSADESCRIPTION_LEN: usize = 256;
 pub const WSASYS_STATUS_LEN: usize = 128;
@@ -41,6 +43,7 @@ pub const WSA_INFINITE: libc::DWORD = libc::INFINITE;
 pub const WSA_WAIT_TIMEOUT: libc::DWORD = libc::consts::os::extra::WAIT_TIMEOUT;
 pub const WSA_WAIT_EVENT_0: libc::DWORD = libc::consts::os::extra::WAIT_OBJECT_0;
 pub const WSA_WAIT_FAILED: libc::DWORD = libc::consts::os::extra::WAIT_FAILED;
+pub const WSAESHUTDOWN: libc::c_int = 10058;
 
 pub const ERROR_NO_MORE_FILES: libc::DWORD = 18;
 pub const TOKEN_READ: libc::DWORD = 0x20008;
@@ -79,6 +82,33 @@ pub struct WSANETWORKEVENTS {
 pub type LPWSANETWORKEVENTS = *mut WSANETWORKEVENTS;
 
 pub type WSAEVENT = libc::HANDLE;
+
+#[repr(C)]
+#[derive(Copy)]
+pub struct WSAPROTOCOL_INFO {
+    pub dwServiceFlags1: libc::DWORD,
+    pub dwServiceFlags2: libc::DWORD,
+    pub dwServiceFlags3: libc::DWORD,
+    pub dwServiceFlags4: libc::DWORD,
+    pub dwProviderFlags: libc::DWORD,
+    pub ProviderId: GUID,
+    pub dwCatalogEntryId: libc::DWORD,
+    pub ProtocolChain: WSAPROTOCOLCHAIN,
+    pub iVersion: libc::c_int,
+    pub iAddressFamily: libc::c_int,
+    pub iMaxSockAddr: libc::c_int,
+    pub iMinSockAddr: libc::c_int,
+    pub iSocketType: libc::c_int,
+    pub iProtocol: libc::c_int,
+    pub iProtocolMaxOffset: libc::c_int,
+    pub iNetworkByteOrder: libc::c_int,
+    pub iSecurityScheme: libc::c_int,
+    pub dwMessageSize: libc::DWORD,
+    pub dwProviderReserved: libc::DWORD,
+    pub szProtocol: [u16; (WSAPROTOCOL_LEN as usize) + 1us],
+}
+
+pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;
 
 #[repr(C)]
 pub struct fd_set {
@@ -184,6 +214,7 @@ pub struct FILE_END_OF_FILE_INFO {
 extern "system" {
     pub fn WSAStartup(wVersionRequested: libc::WORD,
                       lpWSAData: LPWSADATA) -> libc::c_int;
+    pub fn WSACleanup() -> libc::c_int;
     pub fn WSAGetLastError() -> libc::c_int;
     pub fn WSACloseEvent(hEvent: WSAEVENT) -> libc::BOOL;
     pub fn WSACreateEvent() -> WSAEVENT;
@@ -200,6 +231,17 @@ extern "system" {
                                 hEventObject: WSAEVENT,
                                 lpNetworkEvents: LPWSANETWORKEVENTS)
                                 -> libc::c_int;
+    pub fn WSADuplicateSocketW(s: libc::SOCKET,
+                               dwProcessId: libc::DWORD,
+                               lpProtocolInfo: LPWSAPROTOCOL_INFO)
+                               -> libc::c_int;
+    pub fn GetCurrentProcessId() -> libc::DWORD;
+    pub fn WSASocketW(af: libc::c_int,
+                      kind: libc::c_int,
+                      protocol: libc::c_int,
+                      lpProtocolInfo: LPWSAPROTOCOL_INFO,
+                      g: GROUP,
+                      dwFlags: libc::DWORD) -> libc::SOCKET;
 
     pub fn ioctlsocket(s: libc::SOCKET, cmd: libc::c_long,
                        argp: *mut libc::c_ulong) -> libc::c_int;

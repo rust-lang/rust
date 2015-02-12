@@ -11,8 +11,8 @@
 use std::env::*;
 
 fn main() {
-    for (k, v) in vars() {
-        let v2 = var(&k);
+    for (k, v) in vars_os() {
+        let v2 = var_os(&k);
         // MingW seems to set some funky environment variables like
         // "=C:=C:\MinGW\msys\1.0\bin" and "!::=::\" that are returned
         // from vars() but not visible from var().

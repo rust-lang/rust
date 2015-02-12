@@ -41,7 +41,6 @@ use cmp::Ordering::{Less, Equal, Greater};
 use cmp;
 use default::Default;
 use iter::*;
-use num::Int;
 use ops::{FnMut, self, Index};
 use ops::RangeFull;
 use option::Option;
@@ -1179,8 +1178,42 @@ impl<'a, T> Iterator for Windows<'a, T> {
         if self.size > self.v.len() {
             (0, Some(0))
         } else {
-            let x = self.v.len() - self.size;
-            (x.saturating_add(1), x.checked_add(1))
+            let size = self.v.len() - self.size + 1;
+            (size, Some(size))
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T> DoubleEndedIterator for Windows<'a, T> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a [T]> {
+        if self.size > self.v.len() {
+            None
+        } else {
+            let ret = Some(&self.v[self.v.len()-self.size..]);
+            self.v = &self.v[..self.v.len()-1];
+            ret
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, T> ExactSizeIterator for Windows<'a, T> {}
+
+#[unstable(feature = "core", reason = "trait is experimental")]
+impl<'a, T> RandomAccessIterator for Windows<'a, T> {
+    #[inline]
+    fn indexable(&self) -> uint {
+        self.size_hint().0
+    }
+
+    #[inline]
+    fn idx(&mut self, index: uint) -> Option<&'a [T]> {
+        if index + self.size > self.v.len() {
+            None
+        } else {
+            Some(&self.v[index .. index+self.size])
         }
     }
 }

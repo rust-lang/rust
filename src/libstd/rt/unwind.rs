@@ -494,6 +494,7 @@ pub extern fn rust_begin_unwind(msg: fmt::Arguments,
 /// on (e.g.) the inlining of other functions as possible), by moving
 /// the actual formatting into this shared place.
 #[inline(never)] #[cold]
+#[stable(since = "1.0.0", feature = "rust1")]
 pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
     use fmt::Writer;
 
@@ -509,6 +510,7 @@ pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, uint)) -
 
 /// This is the entry point of unwinding for panic!() and assert!().
 #[inline(never)] #[cold] // avoid code bloat at the call sites as much as possible
+#[stable(since = "1.0.0", feature = "rust1")]
 pub fn begin_unwind<M: Any + Send>(msg: M, file_line: &(&'static str, uint)) -> ! {
     // Note that this should be the only allocation performed in this code path.
     // Currently this means that panic!() on OOM will invoke this code path,

@@ -397,7 +397,7 @@ fn enabled(level: u32,
 /// This is not threadsafe at all, so initialization is performed through a
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
-    let (mut directives, filter) = match env::var_string("RUST_LOG") {
+    let (mut directives, filter) = match env::var("RUST_LOG") {
         Ok(spec) => directive::parse_logging_spec(&spec[]),
         Err(..) => (Vec::new(), None),
     };

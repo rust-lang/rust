@@ -1768,6 +1768,11 @@ impl LintPass for Stability {
         stability::check_expr(cx.tcx, e,
                               &mut |id, sp, stab| self.lint(cx, id, sp, stab));
     }
+
+    fn check_path(&mut self, cx: &Context, path: &ast::Path, id: ast::NodeId) {
+        stability::check_path(cx.tcx, path, id,
+                              &mut |id, sp, stab| self.lint(cx, id, sp, stab));
+    }
 }
 
 declare_lint! {
@@ -2080,12 +2085,26 @@ declare_lint! {
     "functions marked #[no_mangle] should be exported"
 }
 
-#[derive(Copy)]
-pub struct PrivateNoMangleFns;
+declare_lint! {
+    PRIVATE_NO_MANGLE_STATICS,
+    Warn,
+    "statics marked #[no_mangle] should be exported"
+}
 
-impl LintPass for PrivateNoMangleFns {
+declare_lint! {
+    NO_MANGLE_CONST_ITEMS,
+    Deny,
+    "const items will not have their symbols exported"
+}
+
+#[derive(Copy)]
+pub struct InvalidNoMangleItems;
+
+impl LintPass for InvalidNoMangleItems {
     fn get_lints(&self) -> LintArray {
-        lint_array!(PRIVATE_NO_MANGLE_FNS)
+        lint_array!(PRIVATE_NO_MANGLE_FNS,
+                    PRIVATE_NO_MANGLE_STATICS,
+                    NO_MANGLE_CONST_ITEMS)
     }
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
@@ -2098,6 +2117,23 @@ impl LintPass for PrivateNoMangleFns {
                     cx.span_lint(PRIVATE_NO_MANGLE_FNS, it.span, &msg);
                 }
             },
+            ast::ItemStatic(..) => {
+                if attr::contains_name(it.attrs.as_slice(), "no_mangle") &&
+                       !cx.exported_items.contains(&it.id) {
+                    let msg = format!("static {} is marked #[no_mangle], but not exported",
+                                      it.ident);
+                    cx.span_lint(PRIVATE_NO_MANGLE_STATICS, it.span, msg.as_slice());
+                }
+            },
+            ast::ItemConst(..) => {
+                if attr::contains_name(it.attrs.as_slice(), "no_mangle") {
+                    // Const items do not refer to a particular location in memory, and therefore
+                    // don't have anything to attach a symbol to
+                    let msg = "const items should never be #[no_mangle], consider instead using \
+                        `pub static`";
+                    cx.span_lint(NO_MANGLE_CONST_ITEMS, it.span, msg);
+                }
+            }
             _ => {},
         }
     }

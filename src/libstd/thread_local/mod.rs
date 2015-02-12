@@ -335,6 +335,7 @@ mod imp {
     use ptr;
 
     #[doc(hidden)]
+    #[stable(since = "1.0.0", feature = "rust1")]
     pub struct Key<T> {
         // Place the inner bits in an `UnsafeCell` to currently get around the
         // "only Sync statics" restriction. This allows any type to be placed in
@@ -342,11 +343,14 @@ mod imp {
         //
         // Note that all access requires `T: 'static` so it can't be a type with
         // any borrowed pointers still.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub inner: UnsafeCell<T>,
 
         // Metadata to keep track of the state of the destructor. Remember that
         // these variables are thread-local, not global.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub dtor_registered: UnsafeCell<bool>, // should be Cell
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub dtor_running: UnsafeCell<bool>, // should be Cell
     }
 
@@ -448,6 +452,7 @@ mod imp {
     }
 
     #[doc(hidden)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe extern fn destroy_value<T>(ptr: *mut u8) {
         let ptr = ptr as *mut Key<T>;
         // Right before we run the user destructor be sure to flag the
@@ -468,12 +473,15 @@ mod imp {
     use sys_common::thread_local::StaticKey as OsStaticKey;
 
     #[doc(hidden)]
+    #[stable(since = "1.0.0", feature = "rust1")]
     pub struct Key<T> {
         // Statically allocated initialization expression, using an `UnsafeCell`
         // for the same reasons as above.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub inner: UnsafeCell<T>,
 
         // OS-TLS key that we'll use to key off.
+        #[stable(since = "1.0.0", feature = "rust1")]
         pub os: OsStaticKey,
     }
 
@@ -516,6 +524,7 @@ mod imp {
     }
 
     #[doc(hidden)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub unsafe extern fn destroy_value<T: 'static>(ptr: *mut u8) {
         // The OS TLS ensures that this key contains a NULL value when this
         // destructor starts to run. We set it back to a sentinel value of 1 to

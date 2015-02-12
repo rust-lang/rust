@@ -130,7 +130,7 @@ impl fmt::Display for Error {
 pub mod reader {
     use std::char;
 
-    use std::int;
+    use std::isize;
     use std::old_io::extensions::u64_from_be_bytes;
     use std::mem::transmute;
     use std::num::Int;
@@ -440,7 +440,7 @@ pub mod reader {
         fn read_u8 (&mut self) -> DecodeResult<u8 > { Ok(doc_as_u8 (try!(self.next_doc(EsU8 )))) }
         fn read_uint(&mut self) -> DecodeResult<uint> {
             let v = doc_as_u64(try!(self.next_doc(EsUint)));
-            if v > (::std::uint::MAX as u64) {
+            if v > (::std::usize::MAX as u64) {
                 Err(IntTooBig(v as uint))
             } else {
                 Ok(v as uint)
@@ -461,7 +461,7 @@ pub mod reader {
         }
         fn read_int(&mut self) -> DecodeResult<int> {
             let v = doc_as_u64(try!(self.next_doc(EsInt))) as i64;
-            if v > (int::MAX as i64) || v < (int::MIN as i64) {
+            if v > (isize::MAX as i64) || v < (isize::MIN as i64) {
                 debug!("FIXME \\#6122: Removing this makes this function miscompile");
                 Err(IntTooBig(v as uint))
             } else {
@@ -738,7 +738,6 @@ pub mod writer {
         })
     }
 
-    // FIXME (#2741): Provide a function to write the standard rbml header.
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         pub fn new(w: &'a mut W) -> Encoder<'a, W> {
             Encoder {

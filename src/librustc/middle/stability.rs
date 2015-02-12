@@ -13,6 +13,7 @@
 
 use session::Session;
 use lint;
+use middle::def;
 use middle::ty;
 use middle::privacy::PublicItems;
 use metadata::csearch;
@@ -277,6 +278,11 @@ impl<'a, 'tcx> Checker<'a, 'tcx> {
 
 impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
+        // When compiling with --test we don't enforce stability on the
+        // compiler-generated test module, demarcated with `DUMMY_SP` plus the
+        // name `__test`
+        if item.span == DUMMY_SP && item.ident.as_str() == "__test" { return }
+
         check_item(self.tcx, item,
                    &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_item(self, item);
@@ -286,6 +292,12 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         check_expr(self.tcx, ex,
                    &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_expr(self, ex);
+    }
+
+    fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId) {
+        check_path(self.tcx, path, id,
+                   &mut |id, sp, stab| self.check(id, sp, stab));
+        visit::walk_path(self, path)
     }
 }
 
@@ -304,18 +316,6 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item,
             let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
-        ast::ItemTrait(_, _, ref supertraits, _) => {
-            for t in &**supertraits {
-                if let ast::TraitTyParamBound(ref t, _) = *t {
-                    let id = ty::trait_ref_to_def_id(tcx, &t.trait_ref);
-                    maybe_do_stability_check(tcx, id, t.trait_ref.path.span, cb);
-                }
-            }
-        }
-        ast::ItemImpl(_, _, _, Some(ref t), _, _) => {
-            let id = ty::trait_ref_to_def_id(tcx, t);
-            maybe_do_stability_check(tcx, id, t.path.span, cb);
-        }
         _ => (/* pass */)
     }
 }
@@ -325,15 +325,8 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
                   cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
     if is_internal(tcx, e.span) { return; }
 
-    let mut span = e.span;
-
+    let span;
     let id = match e.node {
-        ast::ExprPath(..) | ast::ExprQPath(..) | ast::ExprStruct(..) => {
-            match tcx.def_map.borrow().get(&e.id) {
-                Some(&def) => def.def_id(),
-                None => return
-            }
-        }
         ast::ExprMethodCall(i, _, _) => {
             span = i.span;
             let method_call = ty::MethodCall::expr(e.id);
@@ -367,6 +360,16 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
     };
 
     maybe_do_stability_check(tcx, id, span, cb);
+}
+
+pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
+                  cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
+    let did = match tcx.def_map.borrow().get(&id) {
+        Some(&def::DefPrimTy(..)) => return,
+        Some(def) => def.def_id(),
+        None => return
+    };
+    maybe_do_stability_check(tcx, did, path.span, cb)
 }
 
 fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,

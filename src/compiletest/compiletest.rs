@@ -14,7 +14,6 @@
 #![feature(collections)]
 #![feature(int_uint)]
 #![feature(io)]
-#![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(slicing_syntax, unboxed_closures)]
@@ -48,8 +47,7 @@ pub mod common;
 pub mod errors;
 
 pub fn main() {
-    let args = env::args().map(|s| s.into_string().unwrap()).collect();;
-    let config = parse_config(args);
+    let config = parse_config(env::args().collect());
 
     if config.valgrind_path.is_none() && config.force_valgrind {
         panic!("Can't find Valgrind to run Valgrind tests");

@@ -157,6 +157,7 @@ extern {
 
     pub fn utimes(filename: *const libc::c_char,
                   times: *const libc::timeval) -> libc::c_int;
+    pub fn gai_strerror(errcode: libc::c_int) -> *const libc::c_char;
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
@@ -179,20 +180,20 @@ mod select {
           target_os = "openbsd",
           target_os = "linux"))]
 mod select {
-    use uint;
+    use usize;
     use libc;
 
-    pub const FD_SETSIZE: uint = 1024;
+    pub const FD_SETSIZE: usize = 1024;
 
     #[repr(C)]
     pub struct fd_set {
         // FIXME: shouldn't this be a c_ulong?
-        fds_bits: [libc::uintptr_t; (FD_SETSIZE / uint::BITS)]
+        fds_bits: [libc::uintptr_t; (FD_SETSIZE / usize::BITS)]
     }
 
     pub fn fd_set(set: &mut fd_set, fd: i32) {
         let fd = fd as uint;
-        set.fds_bits[fd / uint::BITS] |= 1 << (fd % uint::BITS);
+        set.fds_bits[fd / usize::BITS] |= 1 << (fd % usize::BITS);
     }
 }
 

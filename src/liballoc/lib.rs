@@ -71,6 +71,7 @@
 #![feature(box_syntax)]
 #![feature(optin_builtin_traits)]
 #![feature(unboxed_closures)]
+#![feature(unsafe_no_drop_flag)]
 #![feature(core)]
 #![feature(hash)]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),

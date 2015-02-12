@@ -265,7 +265,8 @@ pub fn test_main(args: &[String], tests: Vec<TestDescAndFn> ) {
 // a ~[TestDescAndFn] is used in order to effect ownership-transfer
 // semantics into parallel test runners, which in turn requires a ~[]
 // rather than a &[].
-pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
+pub fn test_main_static(args: env::Args, tests: &[TestDescAndFn]) {
+    let args = args.collect::<Vec<_>>();
     let owned_tests = tests.iter().map(|t| {
         match t.testfn {
             StaticTestFn(f) => TestDescAndFn { testfn: StaticTestFn(f), desc: t.desc.clone() },
@@ -273,7 +274,7 @@ pub fn test_main_static(args: &[String], tests: &[TestDescAndFn]) {
             _ => panic!("non-static tests passed to test::test_main_static")
         }
     }).collect();
-    test_main(args, owned_tests)
+    test_main(&args, owned_tests)
 }
 
 #[derive(Copy)]
@@ -385,7 +386,7 @@ pub fn parse_opts(args: &[String]) -> Option<OptRes> {
 
     let mut nocapture = matches.opt_present("nocapture");
     if !nocapture {
-        nocapture = env::var("RUST_TEST_NOCAPTURE").is_some();
+        nocapture = env::var("RUST_TEST_NOCAPTURE").is_ok();
     }
 
     let color = match matches.opt_str("color").as_ref().map(|s| &**s) {
@@ -811,7 +812,7 @@ fn run_tests<F>(opts: &TestOpts,
 
 fn get_concurrency() -> uint {
     use std::rt;
-    match env::var_string("RUST_TEST_TASKS") {
+    match env::var("RUST_TEST_TASKS") {
         Ok(s) => {
             let opt_n: Option<uint> = s.parse().ok();
             match opt_n {

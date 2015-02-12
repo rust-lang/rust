@@ -27,10 +27,12 @@
 #![feature(box_patterns)]
 #![feature(core)]
 #![feature(hash)]
+#![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
-#![feature(unsafe_destructor, slicing_syntax)]
+#![feature(unsafe_destructor)]
+#![feature(unsafe_no_drop_flag)]
 #![cfg_attr(test, feature(rand, rustc_private, test))]
 #![cfg_attr(test, allow(deprecated))] // rand
 
@@ -64,6 +66,8 @@ pub use alloc::boxed;
 
 #[macro_use]
 mod macros;
+
+#[cfg(test)] #[macro_use] mod bench;
 
 pub mod binary_heap;
 mod bit;
@@ -101,8 +105,6 @@ pub mod btree_set {
     pub use btree::set::*;
 }
 
-
-#[cfg(test)] mod bench;
 
 // FIXME(#14344) this shouldn't be necessary
 #[doc(hidden)]

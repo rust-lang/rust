@@ -28,14 +28,14 @@ pub fn get_dbpath_for_term(term: &str) -> Option<Box<Path>> {
     let first_char = term.char_at(0);
 
     // Find search directory
-    match env::var_string("TERMINFO") {
+    match env::var("TERMINFO") {
         Ok(dir) => dirs_to_search.push(Path::new(dir)),
         Err(..) => {
             if homedir.is_some() {
                 // ncurses compatibility;
                 dirs_to_search.push(homedir.unwrap().join(".terminfo"))
             }
-            match env::var_string("TERMINFO_DIRS") {
+            match env::var("TERMINFO_DIRS") {
                 Ok(dirs) => for i in dirs.split(':') {
                     if i == "" {
                         dirs_to_search.push(Path::new("/usr/share/terminfo"));

@@ -10,7 +10,7 @@
 
 //! Implementations of serialization for structures found in libcollections
 
-use std::uint;
+use std::usize;
 use std::default::Default;
 use std::hash::{Hash, Hasher};
 use std::collections::hash_state::HashState;
@@ -148,7 +148,7 @@ impl<
     fn decode<D: Decoder>(d: &mut D) -> Result<EnumSet<T>, D::Error> {
         let bits = try!(d.read_uint());
         let mut set = EnumSet::new();
-        for bit in 0..uint::BITS {
+        for bit in 0..usize::BITS {
             if bits & (1 << bit) != 0 {
                 set.insert(CLike::from_usize(1 << bit));
             }

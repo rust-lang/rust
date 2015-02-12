@@ -2457,6 +2457,7 @@ pub mod consts {
             pub const SHUT_RDWR: c_int = 2;
         }
         pub mod extra {
+            use SOCKET;
             use types::os::arch::c95::{c_int, c_long};
             use types::os::arch::extra::{WORD, DWORD, BOOL, HANDLE};
 
@@ -2663,7 +2664,7 @@ pub mod consts {
 
             pub const MAX_PROTOCOL_CHAIN: DWORD = 7;
             pub const WSAPROTOCOL_LEN: DWORD = 255;
-            pub const INVALID_SOCKET: DWORD = !0;
+            pub const INVALID_SOCKET: SOCKET = !0;
 
             pub const DETACHED_PROCESS: DWORD = 0x00000008;
             pub const CREATE_NEW_PROCESS_GROUP: DWORD = 0x00000200;

@@ -23,7 +23,7 @@ pub use self::Failure::*;
 use core::prelude::*;
 
 use core::cmp;
-use core::int;
+use core::isize;
 
 use sync::atomic::{AtomicUsize, AtomicIsize, AtomicBool, Ordering};
 use sync::mpsc::blocking::{self, SignalToken};
@@ -33,17 +33,17 @@ use sync::mpsc::select::StartResult;
 use sync::{Mutex, MutexGuard};
 use thread::Thread;
 
-const DISCONNECTED: int = int::MIN;
-const FUDGE: int = 1024;
+const DISCONNECTED: isize = isize::MIN;
+const FUDGE: isize = 1024;
 #[cfg(test)]
-const MAX_STEALS: int = 5;
+const MAX_STEALS: isize = 5;
 #[cfg(not(test))]
-const MAX_STEALS: int = 1 << 20;
+const MAX_STEALS: isize = 1 << 20;
 
 pub struct Packet<T> {
     queue: mpsc::Queue<T>,
     cnt: AtomicIsize, // How many items are on this channel
-    steals: int, // How many times has a port received without blocking?
+    steals: isize, // How many times has a port received without blocking?
     to_wake: AtomicUsize, // SignalToken for wake up
 
     // The number of channels which are currently using this packet.

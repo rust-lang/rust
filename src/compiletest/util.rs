@@ -40,7 +40,7 @@ pub fn make_new_path(path: &str) -> String {
 
     // Windows just uses PATH as the library search path, so we have to
     // maintain the current value while adding our own
-    match env::var_string(lib_path_env_var()) {
+    match env::var(lib_path_env_var()) {
       Ok(curr) => {
         format!("{}{}{}", path, path_div(), curr)
       }

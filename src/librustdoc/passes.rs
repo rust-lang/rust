@@ -12,7 +12,7 @@ use std::collections::HashSet;
 use rustc::util::nodemap::NodeSet;
 use std::cmp;
 use std::string::String;
-use std::uint;
+use std::usize;
 use syntax::ast;
 use syntax::ast_util;
 
@@ -310,7 +310,7 @@ pub fn unindent(s: &str) -> String {
     let lines = s.lines_any().collect::<Vec<&str> >();
     let mut saw_first_line = false;
     let mut saw_second_line = false;
-    let min_indent = lines.iter().fold(uint::MAX, |min_indent, line| {
+    let min_indent = lines.iter().fold(usize::MAX, |min_indent, line| {
 
         // After we see the first non-whitespace line, look at
         // the line we have. If it is not whitespace, and therefore
@@ -322,7 +322,7 @@ pub fn unindent(s: &str) -> String {
             !line.chars().all(|c| c.is_whitespace());
 
         let min_indent = if ignore_previous_indents {
-            uint::MAX
+            usize::MAX
         } else {
             min_indent
         };
