@@ -255,7 +255,7 @@ impl<T: Ord> BinaryHeap<T> {
     ///
     /// // Print 1, 2, 3, 4 in arbitrary order
     /// for x in heap.into_iter() {
-    ///     // x has type int, not &int
+    ///     // x has type i32, not &i32
     ///     println!("{}", x);
     /// }
     /// ```

@@ -73,7 +73,7 @@
 //!
 //! The method `iter()` returns an iteration value for a slice. The iterator
 //! yields references to the slice's elements, so if the element
-//! type of the slice is `int`, the element type of the iterator is `&int`.
+//! type of the slice is `isize`, the element type of the iterator is `&isize`.
 //!
 //! ```rust
 //! let numbers = [0, 1, 2];
@@ -1218,7 +1218,7 @@ impl Iterator for ElementSwaps {
         // Find the index of the largest mobile element:
         // The direction should point into the vector, and the
         // swap should be with a smaller `size` element.
-        let max = self.sdir.iter().map(|&x| x).enumerate()
+        let max = self.sdir.iter().cloned().enumerate()
                            .filter(|&(i, sd)|
                                 new_pos(i, sd.dir) < self.sdir.len() &&
                                 self.sdir[new_pos(i, sd.dir)].size < sd.size)
