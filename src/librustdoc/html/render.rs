@@ -1849,6 +1849,7 @@ fn render_method(w: &mut fmt::Formatter, meth: &clean::Item) -> fmt::Result {
 fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
                s: &clean::Struct) -> fmt::Result {
     try!(write!(w, "<pre class='rust struct'>"));
+    try!(render_attributes(w, it));
     try!(render_struct(w,
                        it,
                        Some(&s.generics),
@@ -1885,7 +1886,9 @@ fn item_struct(w: &mut fmt::Formatter, it: &clean::Item,
 
 fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
              e: &clean::Enum) -> fmt::Result {
-    try!(write!(w, "<pre class='rust enum'>{}enum {}{}{}",
+    try!(write!(w, "<pre class='rust enum'>"));
+    try!(render_attributes(w, it));
+    try!(write!(w, "{}enum {}{}{}",
                   VisSpace(it.visibility),
                   it.name.as_ref().unwrap(),
                   e.generics,
@@ -1979,6 +1982,21 @@ fn item_enum(w: &mut fmt::Formatter, it: &clean::Item,
 
     }
     try!(render_methods(w, it));
+    Ok(())
+}
+
+fn render_attributes(w: &mut fmt::Formatter, it: &clean::Item) -> fmt::Result {
+    for attr in &it.attrs {
+        match *attr {
+            clean::Word(ref s) if *s == "must_use" => {
+                try!(write!(w, "#[{}]\n", s));
+            }
+            clean::NameValue(ref k, ref v) if *k == "must_use" => {
+                try!(write!(w, "#[{} = \"{}\"]\n", k, v));
+            }
+            _ => ()
+        }
+    }
     Ok(())
 }
 
