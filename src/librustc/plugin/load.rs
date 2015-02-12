@@ -11,7 +11,7 @@
 //! Used by `rustc` when loading a plugin, or a crate with exported macros.
 
 use session::Session;
-use metadata::creader::{CrateOrString, CrateReader};
+use metadata::creader::CrateReader;
 use plugin::registry::Registry;
 
 use std::mem;
@@ -102,14 +102,13 @@ pub fn load_plugins(sess: &Session, krate: &ast::Crate,
             }
 
             let args = plugin.meta_item_list().map(ToOwned::to_owned).unwrap_or_default();
-            loader.load_plugin(CrateOrString::Str(plugin.span, &*plugin.name()),
-                               args);
+            loader.load_plugin(plugin.span, &*plugin.name(), args);
         }
     }
 
     if let Some(plugins) = addl_plugins {
         for plugin in plugins {
-            loader.load_plugin(CrateOrString::Str(COMMAND_LINE_SP, &plugin), vec![]);
+            loader.load_plugin(COMMAND_LINE_SP, &plugin, vec![]);
         }
     }
 
@@ -211,10 +210,10 @@ impl<'a> PluginLoader<'a> {
             return;
         }
 
-        let pmd = self.reader.read_plugin_metadata(CrateOrString::Krate(vi));
-
+        let macros = self.reader.read_exported_macros(vi);
         let mut seen = HashSet::new();
-        for mut def in pmd.exported_macros() {
+
+        for mut def in macros {
             let name = token::get_ident(def.ident);
             seen.insert(name.clone());
 
@@ -241,16 +240,11 @@ impl<'a> PluginLoader<'a> {
         }
     }
 
-    pub fn load_plugin<'b>(&mut self,
-                           c: CrateOrString<'b>,
-                           args: Vec<P<ast::MetaItem>>) {
-        let registrar = {
-            let pmd = self.reader.read_plugin_metadata(c);
-            pmd.plugin_registrar()
-        };
+    pub fn load_plugin(&mut self, span: Span, name: &str, args: Vec<P<ast::MetaItem>>) {
+        let registrar = self.reader.find_plugin_registrar(span, name);
 
         if let Some((lib, symbol)) = registrar {
-            let fun = self.dylink_registrar(c, lib, symbol);
+            let fun = self.dylink_registrar(span, lib, symbol);
             self.plugins.registrars.push(PluginRegistrar {
                 fun: fun,
                 args: args,
@@ -259,8 +253,8 @@ impl<'a> PluginLoader<'a> {
     }
 
     // Dynamically link a registrar function into the compiler process.
-    fn dylink_registrar<'b>(&mut self,
-                        c: CrateOrString<'b>,
+    fn dylink_registrar(&mut self,
+                        span: Span,
                         path: Path,
                         symbol: String) -> PluginRegistrarFun {
         // Make sure the path contains a / or the linker will search for it.
@@ -272,11 +266,7 @@ impl<'a> PluginLoader<'a> {
             // inside this crate, so continue would spew "macro undefined"
             // errors
             Err(err) => {
-                if let CrateOrString::Krate(cr) = c {
-                    self.sess.span_fatal(cr.span, &err[])
-                } else {
-                    self.sess.fatal(&err[])
-                }
+                self.sess.span_fatal(span, &err[])
             }
         };
 
@@ -288,11 +278,7 @@ impl<'a> PluginLoader<'a> {
                     }
                     // again fatal if we can't register macros
                     Err(err) => {
-                        if let CrateOrString::Krate(cr) = c {
-                            self.sess.span_fatal(cr.span, &err[])
-                        } else {
-                            self.sess.fatal(&err[])
-                        }
+                        self.sess.span_fatal(span, &err[])
                     }
                 };
 

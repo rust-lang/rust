@@ -121,12 +121,10 @@ fn register_native_lib(sess: &Session,
     sess.cstore.add_used_library(name, kind);
 }
 
-pub struct PluginMetadata<'a> {
-    sess: &'a Session,
+// Extra info about a crate loaded for plugins or exported macros.
+struct ExtensionCrate {
     metadata: PMDSource,
     dylib: Option<Path>,
-    info: CrateInfo,
-    vi_span: Span,
     target_only: bool,
 }
 
@@ -451,21 +449,7 @@ impl<'a> CrateReader<'a> {
         }).collect()
     }
 
-    pub fn read_plugin_metadata<'b>(&'b mut self,
-                                    krate: CrateOrString<'b>) -> PluginMetadata<'b> {
-        let (info, span) = match krate {
-            CrateOrString::Krate(c) => {
-                (self.extract_crate_info(c).unwrap(), c.span)
-            }
-            CrateOrString::Str(sp, s) => {
-                (CrateInfo {
-                     name: s.to_string(),
-                     ident: s.to_string(),
-                     id: ast::DUMMY_NODE_ID,
-                     should_link: false,
-                 }, sp)
-            }
-        };
+    fn read_extension_crate(&mut self, span: Span, info: &CrateInfo) -> ExtensionCrate {
         let target_triple = &self.sess.opts.target_triple[];
         let is_cross = target_triple != config::host_triple();
         let mut should_link = info.should_link && !is_cross;
@@ -517,30 +501,21 @@ impl<'a> CrateReader<'a> {
             PMDSource::Owned(library.metadata)
         };
 
-        PluginMetadata {
-            sess: self.sess,
+        ExtensionCrate {
             metadata: metadata,
             dylib: dylib.map(|p| p.0),
-            info: info,
-            vi_span: span,
             target_only: target_only,
         }
     }
-}
 
-#[derive(Copy)]
-pub enum CrateOrString<'a> {
-    Krate(&'a ast::Item),
-    Str(Span, &'a str)
-}
+    /// Read exported macros.
+    pub fn read_exported_macros(&mut self, krate: &ast::Item) -> Vec<ast::MacroDef> {
+        let ci = self.extract_crate_info(krate).unwrap();
+        let ekrate = self.read_extension_crate(krate.span, &ci);
 
-impl<'a> PluginMetadata<'a> {
-    /// Read exported macros
-    pub fn exported_macros(&self) -> Vec<ast::MacroDef> {
-        let imported_from = Some(token::intern(&self.info.ident[]).ident());
-        let source_name = format!("<{} macros>", &self.info.ident[]);
+        let source_name = format!("<{} macros>", krate.ident);
         let mut macros = vec![];
-        decoder::each_exported_macro(self.metadata.as_slice(),
+        decoder::each_exported_macro(ekrate.metadata.as_slice(),
                                      &*self.sess.cstore.intr,
             |name, attrs, body| {
                 // NB: Don't use parse::parse_tts_from_source_str because it parses with
@@ -558,7 +533,7 @@ impl<'a> PluginMetadata<'a> {
                     attrs: attrs,
                     id: ast::DUMMY_NODE_ID,
                     span: span,
-                    imported_from: imported_from,
+                    imported_from: Some(krate.ident),
                     // overridden in plugin/load.rs
                     export: false,
                     use_locally: false,
@@ -572,28 +547,35 @@ impl<'a> PluginMetadata<'a> {
     }
 
     /// Look for a plugin registrar. Returns library path and symbol name.
-    pub fn plugin_registrar(&self) -> Option<(Path, String)> {
-        if self.target_only {
+    pub fn find_plugin_registrar(&mut self, span: Span, name: &str) -> Option<(Path, String)> {
+        let ekrate = self.read_extension_crate(span, &CrateInfo {
+             name: name.to_string(),
+             ident: name.to_string(),
+             id: ast::DUMMY_NODE_ID,
+             should_link: false,
+        });
+
+        if ekrate.target_only {
             // Need to abort before syntax expansion.
-            let message = format!("plugin crate `{}` is not available for triple `{}` \
+            let message = format!("plugin `{}` is not available for triple `{}` \
                                    (only found {})",
-                                  self.info.ident,
+                                  name,
                                   config::host_triple(),
                                   self.sess.opts.target_triple);
-            self.sess.span_err(self.vi_span, &message[]);
+            self.sess.span_err(span, &message[]);
             self.sess.abort_if_errors();
         }
 
-        let registrar = decoder::get_plugin_registrar_fn(self.metadata.as_slice())
-            .map(|id| decoder::get_symbol(self.metadata.as_slice(), id));
+        let registrar = decoder::get_plugin_registrar_fn(ekrate.metadata.as_slice())
+            .map(|id| decoder::get_symbol(ekrate.metadata.as_slice(), id));
 
-        match (self.dylib.as_ref(), registrar) {
+        match (ekrate.dylib.as_ref(), registrar) {
             (Some(dylib), Some(reg)) => Some((dylib.clone(), reg)),
             (None, Some(_)) => {
-                let message = format!("plugin crate `{}` only found in rlib format, \
+                let message = format!("plugin `{}` only found in rlib format, \
                                        but must be available in dylib format",
-                                       self.info.ident);
-                self.sess.span_err(self.vi_span, &message[]);
+                                       name);
+                self.sess.span_err(span, &message[]);
                 // No need to abort because the loading code will just ignore this
                 // empty dylib.
                 None
