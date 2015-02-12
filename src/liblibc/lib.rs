@@ -2005,7 +2005,7 @@ pub mod types {
                 use types::common::c95::{c_void};
                 use types::os::arch::c95::{c_char, c_int, c_uint};
 
-                pub type socklen_t = c_int;
+                pub type socklen_t = u32;
                 pub type sa_family_t = u8;
                 pub type in_port_t = u16;
                 pub type in_addr_t = u32;
@@ -2114,8 +2114,8 @@ pub mod types {
                 pub type c_double = f64;
                 pub type size_t = u32;
                 pub type ptrdiff_t = i32;
-                pub type clock_t = u32;
-                pub type time_t = i32;
+                pub type clock_t = c_ulong;
+                pub type time_t = c_long;
                 pub type suseconds_t = i32;
                 pub type wchar_t = i32;
             }
@@ -2128,6 +2128,8 @@ pub mod types {
                 pub type uintmax_t = u64;
             }
             pub mod posix88 {
+                use types::os::arch::c95::c_long;
+
                 pub type off_t = i64;
                 pub type dev_t = i32;
                 pub type ino_t = u64;
@@ -2136,7 +2138,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
-                pub type ssize_t = i32;
+                pub type ssize_t = c_long;
             }
             pub mod posix01 {
                 use types::common::c99::{int32_t, int64_t, uint32_t};
@@ -2145,8 +2147,8 @@ pub mod types {
                                                      mode_t, off_t, uid_t};
 
                 pub type nlink_t = u16;
-                pub type blksize_t = i64;
-                pub type blkcnt_t = i32;
+                pub type blksize_t = i32;
+                pub type blkcnt_t = i64;
 
                 #[repr(C)]
                 #[derive(Copy)] pub struct stat {
@@ -2217,8 +2219,8 @@ pub mod types {
                 pub type c_double = f64;
                 pub type size_t = u64;
                 pub type ptrdiff_t = i64;
-                pub type clock_t = u64;
-                pub type time_t = i64;
+                pub type clock_t = c_ulong;
+                pub type time_t = c_long;
                 pub type suseconds_t = i32;
                 pub type wchar_t = i32;
             }
@@ -2231,6 +2233,8 @@ pub mod types {
                 pub type uintmax_t = u64;
             }
             pub mod posix88 {
+                use types::os::arch::c95::c_long;
+
                 pub type off_t = i64;
                 pub type dev_t = i32;
                 pub type ino_t = u64;
@@ -2239,7 +2243,7 @@ pub mod types {
                 pub type gid_t = u32;
                 pub type useconds_t = u32;
                 pub type mode_t = u16;
-                pub type ssize_t = i64;
+                pub type ssize_t = c_long;
             }
             pub mod posix01 {
                 use types::common::c99::{int32_t, int64_t};
@@ -2249,8 +2253,8 @@ pub mod types {
                 use types::os::arch::posix88::{mode_t, off_t, uid_t};
 
                 pub type nlink_t = u16;
-                pub type blksize_t = i64;
-                pub type blkcnt_t = i32;
+                pub type blksize_t = i32;
+                pub type blkcnt_t = i64;
 
                 #[repr(C)]
                 #[derive(Copy)] pub struct stat {
