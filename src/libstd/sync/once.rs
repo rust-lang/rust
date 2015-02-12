@@ -13,7 +13,7 @@
 //! This primitive is meant to be used to run one-time initialization. An
 //! example use case would be for initializing an FFI library.
 
-use int;
+use isize;
 use marker::Sync;
 use mem::drop;
 use ops::FnOnce;
@@ -99,9 +99,9 @@ impl Once {
 
         let prev = self.cnt.fetch_add(1, Ordering::SeqCst);
         if prev < 0 {
-            // Make sure we never overflow, we'll never have int::MIN
+            // Make sure we never overflow, we'll never have isize::MIN
             // simultaneous calls to `call_once` to make this value go back to 0
-            self.cnt.store(int::MIN, Ordering::SeqCst);
+            self.cnt.store(isize::MIN, Ordering::SeqCst);
             return
         }
 
@@ -111,7 +111,7 @@ impl Once {
         let guard = self.mutex.lock();
         if self.cnt.load(Ordering::SeqCst) > 0 {
             f();
-            let prev = self.cnt.swap(int::MIN, Ordering::SeqCst);
+            let prev = self.cnt.swap(isize::MIN, Ordering::SeqCst);
             self.lock_cnt.store(prev, Ordering::SeqCst);
         }
         drop(guard);

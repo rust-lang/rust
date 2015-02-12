@@ -61,13 +61,13 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
     }
 
     let requested_node : Option<ast::NodeId> =
-        env::var_string("RUST_REGION_GRAPH_NODE").ok().and_then(|s| s.parse().ok());
+        env::var("RUST_REGION_GRAPH_NODE").ok().and_then(|s| s.parse().ok());
 
     if requested_node.is_some() && requested_node != Some(subject_node) {
         return;
     }
 
-    let requested_output = env::var_string("RUST_REGION_GRAPH").ok();
+    let requested_output = env::var("RUST_REGION_GRAPH").ok();
     debug!("requested_output: {:?} requested_node: {:?}",
            requested_output, requested_node);
 

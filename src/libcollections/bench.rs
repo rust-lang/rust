@@ -8,103 +8,115 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use prelude::*;
-use std::rand;
-use std::rand::Rng;
-use test::{Bencher, black_box};
+macro_rules! map_insert_rand_bench {
+    ($name: ident, $n: expr, $map: ident) => (
+        #[bench]
+        pub fn $name(b: &mut ::test::Bencher) {
+            use std::rand;
+            use std::rand::Rng;
+            use test::black_box;
 
-pub fn insert_rand_n<M, I, R>(n: usize,
-                              map: &mut M,
-                              b: &mut Bencher,
-                              mut insert: I,
-                              mut remove: R) where
-    I: FnMut(&mut M, usize),
-    R: FnMut(&mut M, usize),
-{
-    // setup
-    let mut rng = rand::weak_rng();
+            let n: usize = $n;
+            let mut map = $map::new();
+            // setup
+            let mut rng = rand::weak_rng();
 
-    for _ in 0..n {
-        insert(map, rng.gen::<usize>() % n);
-    }
+            for _ in 0..n {
+                let i = rng.gen() % n;
+                map.insert(i, i);
+            }
 
-    // measure
-    b.iter(|| {
-        let k = rng.gen::<usize>() % n;
-        insert(map, k);
-        remove(map, k);
-    });
-    black_box(map);
+            // measure
+            b.iter(|| {
+                let k = rng.gen() % n;
+                map.insert(k, k);
+                map.remove(&k);
+            });
+            black_box(map);
+        }
+    )
 }
 
-pub fn insert_seq_n<M, I, R>(n: usize,
-                             map: &mut M,
-                             b: &mut Bencher,
-                             mut insert: I,
-                             mut remove: R) where
-    I: FnMut(&mut M, usize),
-    R: FnMut(&mut M, usize),
-{
-    // setup
-    for i in 0..n {
-        insert(map, i * 2);
-    }
+macro_rules! map_insert_seq_bench {
+    ($name: ident, $n: expr, $map: ident) => (
+        #[bench]
+        pub fn $name(b: &mut ::test::Bencher) {
+            use test::black_box;
 
-    // measure
-    let mut i = 1;
-    b.iter(|| {
-        insert(map, i);
-        remove(map, i);
-        i = (i + 2) % n;
-    });
-    black_box(map);
+            let mut map = $map::new();
+            let n: usize = $n;
+            // setup
+            for i in 0..n {
+                map.insert(i * 2, i * 2);
+            }
+
+            // measure
+            let mut i = 1;
+            b.iter(|| {
+                map.insert(i, i);
+                map.remove(&i);
+                i = (i + 2) % n;
+            });
+            black_box(map);
+        }
+    )
 }
 
-pub fn find_rand_n<M, T, I, F>(n: usize,
-                               map: &mut M,
-                               b: &mut Bencher,
-                               mut insert: I,
-                               mut find: F) where
-    I: FnMut(&mut M, usize),
-    F: FnMut(&M, usize) -> T,
-{
-    // setup
-    let mut rng = rand::weak_rng();
-    let mut keys: Vec<_> = (0..n).map(|_| rng.gen::<usize>() % n).collect();
+macro_rules! map_find_rand_bench {
+    ($name: ident, $n: expr, $map: ident) => (
+        #[bench]
+        pub fn $name(b: &mut ::test::Bencher) {
+            use std::rand;
+            use std::iter::IteratorExt;
+            use std::rand::Rng;
+            use test::black_box;
+            use vec::Vec;
 
-    for k in &keys {
-        insert(map, *k);
-    }
+            let mut map = $map::new();
+            let n: usize = $n;
 
-    rng.shuffle(&mut keys);
+            // setup
+            let mut rng = rand::weak_rng();
+            let mut keys: Vec<_> = (0..n).map(|_| rng.gen() % n).collect();
 
-    // measure
-    let mut i = 0;
-    b.iter(|| {
-        let t = find(map, keys[i]);
-        i = (i + 1) % n;
-        black_box(t);
-    })
+            for &k in &keys {
+                map.insert(k, k);
+            }
+
+            rng.shuffle(&mut keys);
+
+            // measure
+            let mut i = 0;
+            b.iter(|| {
+                let t = map.get(&keys[i]);
+                i = (i + 1) % n;
+                black_box(t);
+            })
+        }
+    )
 }
 
-pub fn find_seq_n<M, T, I, F>(n: usize,
-                              map: &mut M,
-                              b: &mut Bencher,
-                              mut insert: I,
-                              mut find: F) where
-    I: FnMut(&mut M, usize),
-    F: FnMut(&M, usize) -> T,
-{
-    // setup
-    for i in 0..n {
-        insert(map, i);
-    }
+macro_rules! map_find_seq_bench {
+    ($name: ident, $n: expr, $map: ident) => (
+        #[bench]
+        pub fn $name(b: &mut ::test::Bencher) {
+            use test::black_box;
 
-    // measure
-    let mut i = 0;
-    b.iter(|| {
-        let x = find(map, i);
-        i = (i + 1) % n;
-        black_box(x);
-    })
+            let mut map = $map::new();
+            let n: usize = $n;
+
+            // setup
+            for i in 0..n {
+                map.insert(i, i);
+            }
+
+            // measure
+            let mut i = 0;
+            b.iter(|| {
+                let x = map.get(&i);
+                i = (i + 1) % n;
+                black_box(x);
+            })
+        }
+    )
 }

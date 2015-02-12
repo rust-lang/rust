@@ -262,11 +262,12 @@ extern "rust-intrinsic" {
     ///
     /// # Safety
     ///
-    /// Beyond requiring that both regions of memory be allocated, it is Undefined Behaviour
-    /// for source and destination to overlap. Care must also be taken with the ownership of
-    /// `src` and `dst`. This method semantically moves the values of `src` into `dst`.
-    /// However it does not drop the contents of `dst`, or prevent the contents of `src`
-    /// from being dropped or used.
+    /// Beyond requiring that the program must be allowed to access both regions
+    /// of memory, it is Undefined Behaviour for source and destination to
+    /// overlap. Care must also be taken with the ownership of `src` and
+    /// `dst`. This method semantically moves the values of `src` into `dst`.
+    /// However it does not drop the contents of `dst`, or prevent the contents
+    /// of `src` from being dropped or used.
     ///
     /// # Examples
     ///

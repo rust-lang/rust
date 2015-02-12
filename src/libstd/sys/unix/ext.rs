@@ -32,8 +32,8 @@
 #![unstable(feature = "std_misc")]
 
 use ffi::{OsStr, OsString};
-use fs::{Permissions, OpenOptions};
-use fs;
+use fs::{self, Permissions, OpenOptions};
+use net;
 use libc;
 use mem;
 use sys::os_str::Buf;
@@ -109,6 +109,16 @@ impl AsRawFd for old_io::net::udp::UdpSocket {
     fn as_raw_fd(&self) -> Fd {
         self.as_inner().fd()
     }
+}
+
+impl AsRawFd for net::TcpStream {
+    fn as_raw_fd(&self) -> Fd { *self.as_inner().socket().as_inner() }
+}
+impl AsRawFd for net::TcpListener {
+    fn as_raw_fd(&self) -> Fd { *self.as_inner().socket().as_inner() }
+}
+impl AsRawFd for net::UdpSocket {
+    fn as_raw_fd(&self) -> Fd { *self.as_inner().socket().as_inner() }
 }
 
 // Unix-specific extensions to `OsString`.

@@ -31,6 +31,7 @@ Core encoding and decoding interfaces.
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(path)]
+#![feature(hash)]
 #![feature(rustc_private)]
 #![feature(slicing_syntax)]
 #![feature(staged_api)]

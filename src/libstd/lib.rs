@@ -111,7 +111,7 @@
 #![feature(core)]
 #![feature(hash)]
 #![feature(int_uint)]
-#![feature(lang_items, unsafe_destructor)]
+#![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
 #![feature(old_impl_check)]
@@ -120,6 +120,8 @@
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]
+#![feature(unsafe_destructor)]
+#![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
 #![cfg_attr(test, feature(test))]
 
@@ -164,6 +166,7 @@ pub use core::cell;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
 pub use core::default;
+#[allow(deprecated)]
 pub use core::finally;
 pub use core::hash;
 pub use core::intrinsics;
@@ -250,6 +253,7 @@ pub mod ffi;
 pub mod old_io;
 pub mod io;
 pub mod fs;
+pub mod net;
 pub mod os;
 pub mod env;
 pub mod path;
@@ -306,8 +310,8 @@ mod std {
     pub use marker;  // used for tls!
     pub use ops; // used for bitflags!
 
-    // The test runner calls ::std::os::args() but really wants realstd
-    #[cfg(test)] pub use realstd::os as os;
+    // The test runner calls ::std::env::args() but really wants realstd
+    #[cfg(test)] pub use realstd::env as env;
     // The test runner requires std::slice::Vector, so re-export std::slice just for it.
     //
     // It is also used in vec![]

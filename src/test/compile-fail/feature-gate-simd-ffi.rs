@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(simd)]
+#![feature(simd, core)]
 #![allow(dead_code)]
 
 use std::simd::f32x4;

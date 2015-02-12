@@ -125,7 +125,7 @@ pub fn getcwd() -> IoResult<Path> {
 #[deprecated(since = "1.0.0", reason = "use env::vars instead")]
 #[unstable(feature = "os")]
 pub fn env() -> Vec<(String,String)> {
-    env::vars().map(|(k, v)| {
+    env::vars_os().map(|(k, v)| {
         (k.to_string_lossy().into_owned(), v.to_string_lossy().into_owned())
     }).collect()
 }
@@ -135,7 +135,7 @@ pub fn env() -> Vec<(String,String)> {
 #[deprecated(since = "1.0.0", reason = "use env::vars instead")]
 #[unstable(feature = "os")]
 pub fn env_as_bytes() -> Vec<(Vec<u8>, Vec<u8>)> {
-    env::vars().map(|(k, v)| (byteify(k), byteify(v))).collect()
+    env::vars_os().map(|(k, v)| (byteify(k), byteify(v))).collect()
 }
 
 /// Fetches the environment variable `n` from the current process, returning
@@ -159,10 +159,10 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>, Vec<u8>)> {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
-#[deprecated(since = "1.0.0", reason = "use env::var or env::var_string instead")]
+#[deprecated(since = "1.0.0", reason = "use env::var or env::var_os instead")]
 #[unstable(feature = "os")]
 pub fn getenv(n: &str) -> Option<String> {
-    env::var_string(n).ok()
+    env::var(n).ok()
 }
 
 /// Fetches the environment variable `n` byte vector from the current process,
@@ -174,7 +174,7 @@ pub fn getenv(n: &str) -> Option<String> {
 #[deprecated(since = "1.0.0", reason = "use env::var instead")]
 #[unstable(feature = "os")]
 pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
-    env::var(n).map(byteify)
+    env::var_os(n).map(byteify)
 }
 
 #[cfg(unix)]
@@ -317,6 +317,7 @@ pub unsafe fn pipe() -> IoResult<Pipe> {
 #[cfg(not(target_os="ios"))]
 #[deprecated(since = "1.0.0", reason = "this function will be removed, use the constants directly")]
 #[unstable(feature = "os")]
+#[allow(deprecated)]
 pub fn dll_filename(base: &str) -> String {
     format!("{}{}{}", consts::DLL_PREFIX, base, consts::DLL_SUFFIX)
 }

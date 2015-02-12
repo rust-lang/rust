@@ -20,7 +20,7 @@ use middle::cfg;
 use middle::cfg::CFGIndex;
 use middle::ty;
 use std::old_io;
-use std::uint;
+use std::usize;
 use std::iter::repeat;
 use syntax::ast;
 use syntax::ast_util::IdRange;
@@ -48,7 +48,7 @@ pub struct DataFlowContext<'a, 'tcx: 'a, O> {
     bits_per_id: uint,
 
     /// number of words we will use to store bits_per_id.
-    /// equal to bits_per_id/uint::BITS rounded up.
+    /// equal to bits_per_id/usize::BITS rounded up.
     words_per_id: uint,
 
     // mapping from node to cfg node index
@@ -193,7 +193,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                oper: O,
                id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<'a, 'tcx, O> {
-        let words_per_id = (bits_per_id + uint::BITS - 1) / uint::BITS;
+        let words_per_id = (bits_per_id + usize::BITS - 1) / usize::BITS;
         let num_nodes = cfg.graph.all_nodes().len();
 
         debug!("DataFlowContext::new(analysis_name: {}, id_range={:?}, \
@@ -202,7 +202,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                analysis_name, id_range, bits_per_id, words_per_id,
                num_nodes);
 
-        let entry = if oper.initial_value() { uint::MAX } else {0};
+        let entry = if oper.initial_value() { usize::MAX } else {0};
 
         let gens: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
         let kills: Vec<_> = repeat(0).take(num_nodes * words_per_id).collect();
@@ -351,13 +351,13 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
-                let base_index = word_index * uint::BITS;
-                for offset in 0..uint::BITS {
+                let base_index = word_index * usize::BITS;
+                for offset in 0..usize::BITS {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
                         // NB: we round up the total number of bits
                         // that we store in any given bit set so that
-                        // it is an even multiple of uint::BITS.  This
+                        // it is an even multiple of usize::BITS.  This
                         // means that there may be some stray bits at
                         // the end that do not correspond to any
                         // actual value.  So before we callback, check
@@ -500,7 +500,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
     }
 
     fn reset(&mut self, bits: &mut [uint]) {
-        let e = if self.dfcx.oper.initial_value() {uint::MAX} else {0};
+        let e = if self.dfcx.oper.initial_value() {usize::MAX} else {0};
         for b in bits {
             *b = e;
         }
@@ -552,7 +552,7 @@ fn bits_to_string(words: &[uint]) -> String {
 
     for &word in words {
         let mut v = word;
-        for _ in 0..uint::BYTES {
+        for _ in 0..usize::BYTES {
             result.push(sep);
             result.push_str(&format!("{:02x}", v & 0xFF)[]);
             v >>= 8;
@@ -581,8 +581,8 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
     debug!("set_bit: words={} bit={}",
            mut_bits_to_string(words), bit_str(bit));
-    let word = bit / uint::BITS;
-    let bit_in_word = bit % uint::BITS;
+    let word = bit / usize::BITS;
+    let bit_in_word = bit % usize::BITS;
     let bit_mask = 1 << bit_in_word;
     debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, word);
     let oldv = words[word];

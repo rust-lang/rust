@@ -159,7 +159,7 @@ impl OpenOptions {
             flags: 0,
             read: false,
             write: false,
-            mode: libc::S_IRUSR | libc::S_IWUSR,
+            mode: 0o666,
         }
     }
 
