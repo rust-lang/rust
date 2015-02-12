@@ -12,7 +12,11 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
+#![feature(core)]
 
+extern crate core;
+
+use core::nonzero::NonZero;
 use std::mem;
 use std::raw;
 
@@ -67,7 +71,8 @@ pub fn main() {
         }
 
         let data = box Foo_{f: [1i32, 2, 3] };
-        let x: &Foo<i32> = mem::transmute(raw::Slice { len: 3, data: &*data });
+        let data_ptr: NonZero<*const Foo_<i32>> = mem::transmute(data);
+        let x: &Foo<i32> = mem::transmute(raw::Slice { len: 3, data: data_ptr });
         assert!(x.f.len() == 3);
         assert!(x.f[0] == 1);
         assert!(x.f[1] == 2);
@@ -79,7 +84,8 @@ pub fn main() {
         }
 
         let data = box Baz_{ f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
-        let x: &Baz = mem::transmute( raw::Slice { len: 5, data: &*data } );
+        let data_ptr: NonZero<*const Foo_<u8>> = mem::transmute(data);
+        let x: &Baz = mem::transmute( raw::Slice { len: 5, data: data_ptr } );
         assert!(x.f1 == 42);
         let chs: Vec<char> = x.f2.chars().collect();
         assert!(chs.len() == 5);

@@ -399,9 +399,8 @@ mod test {
     fn basic_reallocate_inplace_noop() {
         unsafe {
             let size = 4000;
-            let ptr = heap::allocate(size, 8);
-            if ptr.is_null() { ::oom() }
-            let ret = heap::reallocate_inplace(ptr, size, size, 8);
+            let ptr = heap::allocate(size, 8).unwrap_or_else(|| ::oom());
+            let ret = heap::reallocate_inplace(ptr, size, size, 8).unwrap_or_else(|| ::oom());
             heap::deallocate(ptr, size, 8);
             assert_eq!(ret, heap::usable_size(size, 8));
         }
