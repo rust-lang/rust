@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo<T> {}
+trait Foo<T> {
+    fn dummy(&self, t: T) { }
+}
 
 trait Bar<A> {
     fn method<B>(&self) where A: Foo<B>;

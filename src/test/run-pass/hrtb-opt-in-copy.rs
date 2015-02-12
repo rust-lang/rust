@@ -18,7 +18,7 @@
 
 #![allow(dead_code)]
 
-use std::marker;
+use std::marker::PhantomData;
 
 #[derive(Copy)]
 struct Foo<T> { x: T }
@@ -26,7 +26,7 @@ struct Foo<T> { x: T }
 type Ty<'tcx> = &'tcx TyS<'tcx>;
 
 enum TyS<'tcx> {
-    Boop(marker::InvariantLifetime<'tcx>)
+    Boop(PhantomData<*mut &'tcx ()>)
 }
 
 #[derive(Copy)]

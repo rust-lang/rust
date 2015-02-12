@@ -12,6 +12,8 @@
 
 pub trait Foo {
     type Bar;
+
+    fn dummy(&self) { }
 }
 
 impl Foo for int {

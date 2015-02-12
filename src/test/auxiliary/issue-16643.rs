@@ -10,7 +10,7 @@
 
 #![crate_type = "lib"]
 
-pub struct TreeBuilder<H>;
+pub struct TreeBuilder<H> { pub h: H }
 
 impl<H> TreeBuilder<H> {
     pub fn process_token(&mut self) {

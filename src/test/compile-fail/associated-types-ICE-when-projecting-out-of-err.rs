@@ -16,8 +16,12 @@
 #![feature(no_std)]
 #![no_std]
 
+#[lang="phantom_fn"]
+pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
+impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
+
 #[lang="sized"]
-pub trait Sized {
+pub trait Sized : PhantomFn<Self> {
     // Empty.
 }
 

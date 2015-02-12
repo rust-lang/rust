@@ -10,13 +10,17 @@
 
 // Test sized-ness checking in substitution in impls.
 
-trait T {}
+use std::marker::MarkerTrait;
+
+trait T : MarkerTrait {}
 
 // I would like these to fail eventually.
 // impl - bounded
 trait T1<Z: T> {
+    fn dummy(&self) -> Z;
 }
-struct S3<Y: ?Sized>;
+
+struct S3<Y: ?Sized>(Box<Y>);
 impl<X: ?Sized + T> T1<X> for S3<X> {
     //~^ ERROR `core::marker::Sized` is not implemented for the type `X`
 }

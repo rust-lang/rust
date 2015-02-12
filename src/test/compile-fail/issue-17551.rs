@@ -10,9 +10,11 @@
 
 #![feature(unboxed_closures)]
 
-struct B<T>;
+use std::marker;
+
+struct B<T>(marker::PhantomData<T>);
 
 fn main() {
-    let foo = B; //~ ERROR: unable to infer enough type information
+    let foo = B(marker::PhantomData); //~ ERROR unable to infer enough type information
     let closure = || foo;
 }

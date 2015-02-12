@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait clam<A> { }
+trait clam<A> { fn get(self) -> A; }
 trait foo<A> {
    fn bar<B,C:clam<A>>(&self, c: C) -> B;
 }

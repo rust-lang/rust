@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Cursor<'a>;
+struct Cursor<'a>(::std::marker::PhantomData<&'a ()>);
 
 trait CursorNavigator {
     fn init_cursor<'a, 'b:'a>(&'a self, cursor: &mut Cursor<'b>) -> bool;
@@ -23,7 +23,7 @@ impl CursorNavigator for SimpleNavigator {
 }
 
 fn main() {
-    let mut c = Cursor;
+    let mut c = Cursor(::std::marker::PhantomData);
     let n = SimpleNavigator;
     n.init_cursor(&mut c);
 }

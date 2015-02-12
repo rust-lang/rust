@@ -12,10 +12,11 @@
 // cause compiler to loop.  Note that no instances
 // of such a type could ever be constructed.
 
+use std::marker::MarkerTrait;
 
 struct t(Box<t>); //~ ERROR this type cannot be instantiated
 
-trait to_str_2 {
+trait to_str_2 : MarkerTrait {
     fn my_to_string() -> String;
 }
 

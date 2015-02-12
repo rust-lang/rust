@@ -8,11 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-
-
-enum opt<T> { none, }
+enum opt<T> { none, some(T) }
 
 pub fn main() {
     let x = opt::none::<int>;
-    match x { opt::none::<int> => { println!("hello world"); } }
+    match x {
+        opt::none::<int> => { println!("hello world"); }
+        opt::some(_) => { }
+    }
 }

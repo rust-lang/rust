@@ -20,7 +20,7 @@ impl Drop for Foo {
 }
 
 #[derive(Copy)] //~ ERROR the trait `Copy` may not be implemented
-struct Bar<T>;
+struct Bar<T>(::std::marker::PhantomData<T>);
 
 #[unsafe_destructor]
 impl<T> Drop for Bar<T> {

@@ -12,8 +12,9 @@
 
 #![feature(issue_5723_bootstrap)]
 
-
-trait Foo { }
+trait Foo {
+    fn dummy(&self) { }
+}
 
 fn foo<'a>(x: Box<Foo + 'a>) {
 }

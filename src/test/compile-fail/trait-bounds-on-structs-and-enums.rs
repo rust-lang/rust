@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {}
+use std::marker::MarkerTrait;
+
+trait Trait : MarkerTrait {}
 
 struct Foo<T:Trait> {
     x: T,
@@ -51,15 +53,15 @@ enum MoreBadness<V> {
     EvenMoreBadness(Bar<V>),
 }
 
-trait PolyTrait<T> {
-    fn whatever() {}
+trait PolyTrait<T>
+{
+    fn whatever(&self, t: T) {}
 }
 
 struct Struct;
 
 impl PolyTrait<Foo<usize>> for Struct {
 //~^ ERROR not implemented
-    fn whatever() {}
 }
 
 fn main() {

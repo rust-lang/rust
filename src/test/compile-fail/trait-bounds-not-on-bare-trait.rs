@@ -9,6 +9,7 @@
 // except according to those terms.
 
 trait Foo {
+    fn dummy(&self) { }
 }
 
 // This should emit the less confusing error, not the more confusing one.

@@ -11,7 +11,8 @@
 use std::ops::Deref;
 
 struct DerefWithHelper<H, T> {
-    helper: H
+    helper: H,
+    value: T
 }
 
 trait Helper<T> {
@@ -39,6 +40,7 @@ impl Foo {
 }
 
 pub fn main() {
-    let x: DerefWithHelper<Option<Foo>, Foo> = DerefWithHelper { helper: Some(Foo {x: 5}) };
+    let x: DerefWithHelper<Option<Foo>, Foo> =
+        DerefWithHelper { helper: Some(Foo {x: 5}), value: Foo { x: 2 } };
     assert!(x.foo() == 5);
 }

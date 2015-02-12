@@ -11,6 +11,7 @@
 
 trait A<T> {
     fn g(&self, x: uint) -> uint { x }
+    fn h(&self, x: T) { }
 }
 
 impl<T> A<T> for int { }

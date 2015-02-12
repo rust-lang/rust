@@ -12,13 +12,13 @@
 
 extern crate default_type_params_xc;
 
-struct Vec<T, A = default_type_params_xc::Heap>;
+struct Vec<T, A = default_type_params_xc::Heap>(Option<(T,A)>);
 
 struct Foo;
 
 fn main() {
-    let _a = Vec::<int>;
-    let _b = Vec::<int, default_type_params_xc::FakeHeap>;
-    let _c = default_type_params_xc::FakeVec::<int>;
-    let _d = default_type_params_xc::FakeVec::<int, Foo>;
+    let _a = Vec::<int>(None);
+    let _b = Vec::<int, default_type_params_xc::FakeHeap>(None);
+    let _c = default_type_params_xc::FakeVec::<int> { f: None };
+    let _d = default_type_params_xc::FakeVec::<int, Foo> { f: None };
 }

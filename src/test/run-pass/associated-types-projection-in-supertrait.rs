@@ -14,6 +14,8 @@
 trait A
 {
     type TA;
+
+    fn dummy(&self) { }
 }
 
 trait B<TB>

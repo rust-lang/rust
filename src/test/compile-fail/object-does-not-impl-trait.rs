@@ -11,8 +11,9 @@
 // Test that an object type `Box<Foo>` is not considered to implement the
 // trait `Foo`. Issue #5087.
 
+use std::marker::MarkerTrait;
 
-trait Foo {}
+trait Foo : MarkerTrait {}
 fn take_foo<F:Foo>(f: F) {}
 fn take_object(f: Box<Foo>) { take_foo(f); }
 //~^ ERROR the trait `Foo` is not implemented

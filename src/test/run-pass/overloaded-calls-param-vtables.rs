@@ -12,10 +12,11 @@
 
 #![feature(unboxed_closures)]
 
+use std::marker::PhantomData;
 use std::ops::Fn;
 use std::ops::Add;
 
-struct G<A>;
+struct G<A>(PhantomData<A>);
 
 impl<'a, A: Add<i32, Output=i32>> Fn<(A,)> for G<A> {
     type Output = i32;
@@ -27,5 +28,5 @@ impl<'a, A: Add<i32, Output=i32>> Fn<(A,)> for G<A> {
 
 fn main() {
     // ICE trigger
-    G(1_i32);
+    (G(PhantomData))(1_i32);
 }

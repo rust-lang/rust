@@ -14,13 +14,18 @@
 
 // this code used to cause an ICE
 
-trait X<T> {}
+use std::marker;
+
+trait X<T> {
+    fn dummy(&self) -> T { panic!() }
+}
 
 struct S<T> {f: Box<X<T>+'static>,
              g: Box<X<T>+'static>}
 
 struct F;
-impl X<int> for F {}
+impl X<int> for F {
+}
 
 fn main() {
   S {f: box F, g: box F};

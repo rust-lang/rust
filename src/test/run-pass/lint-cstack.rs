@@ -15,7 +15,7 @@ extern {
 }
 
 trait A {
-    fn foo() {
+    fn foo(&self) {
         unsafe {
             rust_get_test_int();
         }

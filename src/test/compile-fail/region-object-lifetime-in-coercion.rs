@@ -13,7 +13,7 @@
 
 #![feature(box_syntax)]
 
-trait Foo {}
+trait Foo : ::std::marker::MarkerTrait {}
 impl<'a> Foo for &'a [u8] {}
 
 fn a(v: &[u8]) -> Box<Foo + 'static> {

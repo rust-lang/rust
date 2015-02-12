@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait A {}
+trait A {
+    fn dummy(&self) { }
+}
 struct B;
 impl A for B {}
 

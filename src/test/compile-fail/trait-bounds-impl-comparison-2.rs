@@ -14,7 +14,9 @@ trait Iterator<A> {
     fn next(&mut self) -> Option<A>;
 }
 
-trait IteratorUtil<A> {
+trait IteratorUtil<A>
+    : ::std::marker::PhantomFn<(),A>
+{
     fn zip<B, U: Iterator<U>>(self, other: U) -> ZipIterator<Self, U>;
 }
 

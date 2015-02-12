@@ -12,6 +12,7 @@
 
 trait Iterator {
     type Item;
+    fn dummy(&self) { }
 }
 
 impl<'a, T> Iterator for &'a mut (Iterator<Item=T> + 'a) {

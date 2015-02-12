@@ -12,8 +12,9 @@
 
 // impl - unbounded
 trait T2<Z> {
+    fn foo(&self, z: Z);
 }
-struct S4<Y: ?Sized>;
+struct S4<Y: ?Sized>(Box<Y>);
 impl<X: ?Sized> T2<X> for S4<X> {
     //~^ ERROR `core::marker::Sized` is not implemented for the type `X`
 }
