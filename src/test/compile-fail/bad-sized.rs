@@ -12,7 +12,7 @@
 
 use std::cell::RefCell;
 
-trait Trait {}
+trait Trait : ::std::marker::MarkerTrait {}
 
 pub fn main() {
     let x: Vec<Trait + Sized> = Vec::new();

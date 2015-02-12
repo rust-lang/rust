@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Trait {}
+trait Trait { fn dummy(&self) { } }
 
 #[derive(Debug)]
 struct Foo<T: Trait> {

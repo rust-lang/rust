@@ -11,7 +11,9 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-trait hax { }
+trait hax {
+    fn dummy(&self) { }
+}
 impl<A> hax for A { }
 
 fn perform_hax<T: 'static>(x: Box<T>) -> Box<hax+'static> {

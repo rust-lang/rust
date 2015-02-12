@@ -10,13 +10,6 @@
 
 // ignore-tidy-linelength
 
-#![feature(no_std)]
-#![no_std]
-#![feature(lang_items)]
-
-#[lang="sized"]
-pub trait Sized {}
-
 struct S<T> {
     contents: T,
 }

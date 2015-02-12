@@ -25,7 +25,7 @@ impl Drop for Foo {
 }
 
 
-trait Trait {}
+trait Trait { fn dummy(&self) { } }
 impl Trait for Foo {}
 
 pub fn main() {

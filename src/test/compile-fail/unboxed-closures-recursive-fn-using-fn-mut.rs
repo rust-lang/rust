@@ -10,7 +10,7 @@
 
 #![feature(core,unboxed_closures)]
 
-use std::marker::CovariantType;
+use std::marker::PhantomData;
 
 // A erroneous variant of `run-pass/unboxed_closures-infer-recursive-fn.rs`
 // where we attempt to perform mutation in the recursive function. This fails to compile
@@ -18,12 +18,12 @@ use std::marker::CovariantType;
 
 struct YCombinator<F,A,R> {
     func: F,
-    marker: CovariantType<(A,R)>,
+    marker: PhantomData<(A,R)>,
 }
 
 impl<F,A,R> YCombinator<F,A,R> {
     fn new(f: F) -> YCombinator<F,A,R> {
-        YCombinator { func: f, marker: CovariantType }
+        YCombinator { func: f, marker: PhantomData }
     }
 }
 

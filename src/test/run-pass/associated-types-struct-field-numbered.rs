@@ -13,6 +13,8 @@
 
 pub trait UnifyKey {
     type Value;
+
+    fn dummy(&self) { }
 }
 
 pub struct Node<K:UnifyKey>(K, K::Value);

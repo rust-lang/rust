@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 struct Foo;
-trait Trait {}
+trait Trait : ::std::marker::MarkerTrait {}
 impl Trait for Foo {}
 
 pub fn main() {

@@ -11,7 +11,7 @@
 // Test coercions involving DST and/or raw pointers
 
 struct S;
-trait T {}
+trait T { fn dummy(&self) { } }
 impl T for S {}
 
 pub fn main() {

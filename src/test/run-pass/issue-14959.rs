@@ -12,8 +12,8 @@
 
 use std::ops::Fn;
 
-trait Response {}
-trait Request {}
+trait Response { fn dummy(&self) { } }
+trait Request { fn dummy(&self) { } }
 trait Ingot<R, S> {
     fn enter(&mut self, _: &mut R, _: &mut S, a: &mut Alloy) -> Status;
 }
@@ -21,7 +21,7 @@ trait Ingot<R, S> {
 #[allow(dead_code)]
 struct HelloWorld;
 
-struct SendFile<'a>;
+struct SendFile;
 struct Alloy;
 enum Status {
     Continue
@@ -33,7 +33,7 @@ impl Alloy {
     }
 }
 
-impl<'a, 'b> Fn<(&'b mut (Response+'b),)> for SendFile<'a> {
+impl<'b> Fn<(&'b mut (Response+'b),)> for SendFile {
     type Output = ();
 
     extern "rust-call" fn call(&self, (_res,): (&'b mut (Response+'b),)) {}

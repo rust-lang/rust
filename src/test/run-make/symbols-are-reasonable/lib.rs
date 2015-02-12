@@ -11,7 +11,7 @@
 pub static X: &'static str = "foobarbaz";
 pub static Y: &'static [u8] = include_bytes!("lib.rs");
 
-trait Foo {}
+trait Foo { fn dummy(&self) { } }
 impl Foo for uint {}
 
 pub fn dummy() {

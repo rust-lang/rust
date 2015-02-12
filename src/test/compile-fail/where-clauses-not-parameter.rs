@@ -21,7 +21,7 @@ fn test2() -> bool where Option<isize> : Eq {}
 
 #[derive(PartialEq)]
 //~^ ERROR cannot bound type `isize`, where clause bounds
-enum Foo<T> where isize : Eq { MkFoo }
+enum Foo<T> where isize : Eq { MkFoo(T) }
 //~^ ERROR cannot bound type `isize`, where clause bounds
 
 fn test3<T: Eq>() -> bool where Option<Foo<T>> : Eq {}
@@ -31,7 +31,7 @@ fn test4() -> bool where Option<Foo<isize>> : Eq {}
 
 trait Baz<T> where isize : Eq {
     //~^ ERROR cannot bound type `isize`, where clause bounds may only
-    fn baz() where String : Eq; //~ ERROR cannot bound type `collections::string::String`
+    fn baz(&self, t: T) where String : Eq; //~ ERROR cannot bound type `collections::string::String`
     //~^ ERROR cannot bound type `isize`, where clause
 }
 

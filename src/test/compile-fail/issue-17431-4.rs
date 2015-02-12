@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<T> { foo: Option<Option<Foo<T>>> }
+use std::marker;
+
+struct Foo<T> { foo: Option<Option<Foo<T>>>, marker: marker::PhantomData<T> }
 //~^ ERROR illegal recursive struct type; wrap the inner value in a box to make it representable
 
 impl<T> Foo<T> { fn bar(&self) {} }

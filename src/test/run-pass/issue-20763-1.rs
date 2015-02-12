@@ -8,7 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait T0 { type O; }
+trait T0 {
+    type O;
+    fn dummy(&self) { }
+}
 
 struct S<A>(A);
 impl<A> T0 for S<A> { type O = A; }

@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-struct Test<'s> {
+struct Test {
     func: Box<FnMut()+'static>
 }
 

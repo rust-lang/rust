@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-trait X {}
+trait X : ::std::marker::MarkerTrait {}
 
 fn p1<T>(v: T) -> Box<X+'static>
     where T : X

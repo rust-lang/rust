@@ -20,7 +20,8 @@ pub trait Parser {
         panic!()
     }
 }
-impl <P> Parser for P  {
+
+impl <P> Parser for P {
     type Input = ();
 }
 

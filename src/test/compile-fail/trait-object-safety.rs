@@ -12,6 +12,7 @@
 
 trait Tr {
     fn foo();
+    fn bar(&self) { }
 }
 
 struct St;

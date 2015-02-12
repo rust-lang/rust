@@ -8,12 +8,15 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::marker;
+
 struct Heap;
 
-struct Vec<T, A = Heap>;
+struct Vec<T, A = Heap>(
+    marker::PhantomData<(T,A)>);
 
 impl<T, A = Heap> Vec<T, A> {
-    fn new() -> Vec<T, A> {Vec}
+    fn new() -> Vec<T, A> {Vec(marker::PhantomData)}
 }
 
 fn main() {

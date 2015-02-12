@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::marker::PhantomData;
+
 struct cat<U> {
     meows : uint,
-
     how_hungry : int,
+    m: PhantomData<U>
 }
 
 impl<U> cat<U> {
@@ -22,7 +24,8 @@ impl<U> cat<U> {
 fn cat<U>(in_x : uint, in_y : int) -> cat<U> {
     cat {
         meows: in_x,
-        how_hungry: in_y
+        how_hungry: in_y,
+        m: PhantomData
     }
 }
 

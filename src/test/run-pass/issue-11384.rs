@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Common {}
+trait Common { fn dummy(&self) { } }
 
 impl<'t, T> Common for (T, &'t T) {}
 

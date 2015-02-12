@@ -11,7 +11,7 @@
 use std::marker;
 
 struct invariant<'a> {
-    marker: marker::InvariantLifetime<'a>
+    marker: marker::PhantomData<*mut &'a()>
 }
 
 fn to_same_lifetime<'r>(bi: invariant<'r>) {

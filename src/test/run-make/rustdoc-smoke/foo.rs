@@ -26,7 +26,7 @@ pub mod bar {
 
     /// *wow*
     // @has foo/bar/trait.Doge.html
-    pub trait Doge { }
+    pub trait Doge { fn dummy(&self) { } }
 
     // @has foo/bar/struct.Foo.html
     pub struct Foo { x: int, y: uint }

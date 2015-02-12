@@ -13,7 +13,10 @@
 
 
 pub trait OffsetState: Sized {}
-pub trait Offset { type State: OffsetState; }
+pub trait Offset {
+    type State: OffsetState;
+    fn dummy(&self) { }
+}
 
 #[derive(Copy)] pub struct X;
 impl Offset for X { type State = Y; }

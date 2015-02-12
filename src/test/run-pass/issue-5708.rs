@@ -48,7 +48,9 @@ pub fn main() {
 
 
 // minimal
-pub trait MyTrait<T> { }
+pub trait MyTrait<T> {
+    fn dummy(&self, t: T) -> T { panic!() }
+}
 
 pub struct MyContainer<'a, T> {
     foos: Vec<&'a (MyTrait<T>+'a)> ,

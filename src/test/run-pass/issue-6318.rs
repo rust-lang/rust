@@ -15,7 +15,9 @@ pub enum Thing {
     A(Box<Foo+'static>)
 }
 
-pub trait Foo {}
+pub trait Foo {
+    fn dummy(&self) { }
+}
 
 pub struct Struct;
 
