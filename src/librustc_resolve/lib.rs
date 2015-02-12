@@ -2786,7 +2786,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn check_if_primitive_type_name(&self, name: Name, span: Span) {
         if let Some(_) = self.primitive_type_table.primitive_types.get(&name) {
-            span_err!(self.session, span, E0316,
+            span_err!(self.session, span, E0317,
                 "user-defined types or type parameters cannot shadow the primitive types");
         }
     }
