@@ -134,6 +134,7 @@
 #![feature(no_std)]
 #![feature(oom)]
 #![feature(optin_builtin_traits)]
+#![feature(placement_in_syntax)]
 #![feature(rand)]
 #![feature(raw)]
 #![feature(reflect_marker)]
