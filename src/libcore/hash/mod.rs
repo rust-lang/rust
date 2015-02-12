@@ -61,7 +61,6 @@
 
 use prelude::*;
 
-use borrow::{Cow, ToOwned};
 use default::Default;
 use mem;
 use num::Int;
@@ -241,14 +240,5 @@ impl<S: Writer + Hasher, T> Hash<S> for *mut T {
         // NB: raw-pointer Hash does _not_ dereference
         // to the target; it just gives you the pointer-bytes.
         (*self as uint).hash(state);
-    }
-}
-
-impl<'a, T, B: ?Sized, S: Hasher> Hash<S> for Cow<'a, T, B>
-    where B: Hash<S> + ToOwned<T>
-{
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        Hash::hash(&**self, state)
     }
 }

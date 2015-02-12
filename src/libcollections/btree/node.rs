@@ -18,13 +18,14 @@ pub use self::TraversalItem::*;
 
 use core::prelude::*;
 
-use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{Greater, Less, Equal};
 use core::iter::Zip;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::ptr::Unique;
 use core::{slice, mem, ptr, cmp, num, raw};
 use alloc::heap;
+
+use borrow::Borrow;
 
 /// Represents the result of an Insertion: either the item fit, or the node had to split
 pub enum InsertionResult<K, V> {
@@ -543,7 +544,7 @@ impl<K: Ord, V> Node<K, V> {
     /// `Found` will be yielded with the matching index. If it doesn't find an exact match,
     /// `GoDown` will be yielded with the index of the subtree the key must lie in.
     pub fn search<Q: ?Sized, NodeRef: Deref<Target=Node<K, V>>>(node: NodeRef, key: &Q)
-                  -> SearchResult<NodeRef> where Q: BorrowFrom<K> + Ord {
+                  -> SearchResult<NodeRef> where K: Borrow<Q>, Q: Ord {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
         // For the B configured as of this writing (B = 6), binary search was *significantly*
         // worse for usizes.
@@ -1491,9 +1492,9 @@ macro_rules! node_slice_impl {
         impl<'a, K: Ord + 'a, V: 'a> $NodeSlice<'a, K, V> {
             /// Performs linear search in a slice. Returns a tuple of (index, is_exact_match).
             fn search_linear<Q: ?Sized>(&self, key: &Q) -> (usize, bool)
-                    where Q: BorrowFrom<K> + Ord {
+                    where K: Borrow<Q>, Q: Ord {
                 for (i, k) in self.keys.iter().enumerate() {
-                    match key.cmp(BorrowFrom::borrow_from(k)) {
+                    match key.cmp(k.borrow()) {
                         Greater => {},
                         Equal => return (i, true),
                         Less => return (i, false),
