@@ -10,14 +10,14 @@
 
 fn outer<T>() {
     #[allow(dead_code)]
-    fn inner() -> uint {
+    fn inner() -> u32 {
         8675309
     }
 }
 
 extern "C" fn outer_foreign<T>() {
     #[allow(dead_code)]
-    fn inner() -> uint {
+    fn inner() -> u32 {
         11235813
     }
 }
