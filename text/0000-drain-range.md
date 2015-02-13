@@ -81,3 +81,10 @@ pub fn drain(&mut self, range: /* ? */) -> /* ? */ {
     // ?
 }
 ```
+
+# Drawbacks
+
+- The function signature differs from other collections.
+- It's not clear from the signature that `..` can be used to get the old behavior.
+- The trait documentation will link to the `std::ops` module. It's not immediately apparent how the types in there are related to the `N..M` syntax.
+- Some of these problems can be mitigated by solid documentation of the function itself.
