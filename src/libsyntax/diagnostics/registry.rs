@@ -21,6 +21,6 @@ impl Registry {
     }
 
     pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.descriptions.get(code).map(|desc| *desc)
+        self.descriptions.get(code).cloned()
     }
 }

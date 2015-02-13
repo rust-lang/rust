@@ -983,15 +983,14 @@ impl<'a> State<'a> {
                 try!(self.word_nbsp("trait"));
                 try!(self.print_ident(item.ident));
                 try!(self.print_generics(generics));
-                let bounds: Vec<_> = bounds.iter().map(|b| b.clone()).collect();
                 let mut real_bounds = Vec::with_capacity(bounds.len());
-                for b in bounds {
-                    if let TraitTyParamBound(ref ptr, ast::TraitBoundModifier::Maybe) = b {
+                for b in bounds.iter() {
+                    if let TraitTyParamBound(ref ptr, ast::TraitBoundModifier::Maybe) = *b {
                         try!(space(&mut self.s));
                         try!(self.word_space("for ?"));
                         try!(self.print_trait_ref(&ptr.trait_ref));
                     } else {
-                        real_bounds.push(b);
+                        real_bounds.push(b.clone());
                     }
                 }
                 try!(self.print_bounds(":", &real_bounds[]));

@@ -139,8 +139,7 @@ impl CStore {
     pub fn get_used_crate_source(&self, cnum: ast::CrateNum)
                                      -> Option<CrateSource> {
         self.used_crate_sources.borrow_mut()
-            .iter().find(|source| source.cnum == cnum)
-            .map(|source| source.clone())
+            .iter().find(|source| source.cnum == cnum).cloned()
     }
 
     pub fn reset(&self) {
@@ -218,7 +217,7 @@ impl CStore {
 
     pub fn find_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId)
                                      -> Option<ast::CrateNum> {
-        self.extern_mod_crate_map.borrow().get(&emod_id).map(|x| *x)
+        self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }
 

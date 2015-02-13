@@ -713,7 +713,7 @@ fn test_random_access_inspect() {
 fn test_random_access_map() {
     let xs = [1, 2, 3, 4, 5];
 
-    let mut it = xs.iter().map(|x| *x);
+    let mut it = xs.iter().cloned();
     assert_eq!(xs.len(), it.indexable());
     for (i, elt) in xs.iter().enumerate() {
         assert_eq!(Some(*elt), it.idx(i));

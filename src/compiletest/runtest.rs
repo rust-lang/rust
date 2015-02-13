@@ -1133,7 +1133,7 @@ fn compile_test_(config: &Config, props: &TestProps,
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut link_args = vec!("-L".to_string(),
                              aux_dir.as_str().unwrap().to_string());
-    link_args.extend(extra_args.iter().map(|s| s.clone()));
+    link_args.extend(extra_args.iter().cloned());
     let args = make_compile_args(config,
                                  props,
                                  link_args,
