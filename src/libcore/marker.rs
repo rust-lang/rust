@@ -434,3 +434,11 @@ pub struct NoCopy;
 #[lang="managed_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Managed;
+
+#[cfg(not(stage0))] // SNAP ac134f7 remove this attribute after the next snapshot
+mod impls {
+    use super::{Send, Sync, Sized};
+
+    unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
+    unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
+}
