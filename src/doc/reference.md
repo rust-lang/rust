@@ -2952,9 +2952,9 @@ The precedence of Rust binary operators is ordered as follows, going from
 strong to weak:
 
 ```{.text .precedence}
-as
 * / %
 + -
+as
 << >>
 &
 ^
