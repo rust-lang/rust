@@ -175,9 +175,9 @@ pub struct Builder {
     // The size of the stack for the spawned thread
     stack_size: Option<uint>,
     // Thread-local stdout
-    stdout: Option<Box<Writer + Send>>,
+    stdout: Option<Box<Writer + Send + 'static>>,
     // Thread-local stderr
-    stderr: Option<Box<Writer + Send>>,
+    stderr: Option<Box<Writer + Send + 'static>>,
 }
 
 impl Builder {
@@ -211,7 +211,7 @@ impl Builder {
     /// Redirect thread-local stdout.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Builder {
+    pub fn stdout(mut self, stdout: Box<Writer + Send + 'static>) -> Builder {
         self.stdout = Some(stdout);
         self
     }
@@ -219,7 +219,7 @@ impl Builder {
     /// Redirect thread-local stderr.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Builder {
+    pub fn stderr(mut self, stderr: Box<Writer + Send + 'static>) -> Builder {
         self.stderr = Some(stderr);
         self
     }
@@ -469,11 +469,11 @@ impl thread_info::NewThread for Thread {
 ///
 /// A thread that completes without panicking is considered to exit successfully.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
+pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
 
 struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
 
-unsafe impl<T:'static+Send> Send for Packet<T> {}
+unsafe impl<T:Send> Send for Packet<T> {}
 unsafe impl<T> Sync for Packet<T> {}
 
 /// An RAII-style guard that will block until thread termination when dropped.
@@ -515,7 +515,7 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     }
 }
 
-impl<T: Send> JoinGuard<'static, T> {
+impl<T: Send + 'static> JoinGuard<'static, T> {
     /// Detaches the child thread, allowing it to outlive its parent.
     #[unstable(feature = "std_misc",
                reason = "unsure whether this API imposes limitations elsewhere")]

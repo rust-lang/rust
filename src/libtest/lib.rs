@@ -154,7 +154,7 @@ pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
     StaticMetricFn(fn(&mut MetricMap)),
-    DynTestFn(Thunk),
+    DynTestFn(Thunk<'static>),
     DynMetricFn(Box<for<'a> Invoke<&'a mut MetricMap>+'static>),
     DynBenchFn(Box<TDynBenchFn+'static>)
 }
@@ -878,7 +878,7 @@ pub fn run_test(opts: &TestOpts,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
-                      testfn: Thunk) {
+                      testfn: Thunk<'static>) {
         Thread::spawn(move || {
             let (tx, rx) = channel();
             let mut reader = ChanReader::new(rx);
