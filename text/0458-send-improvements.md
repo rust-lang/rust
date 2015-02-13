@@ -1,8 +1,8 @@
 - Start Date: 2014-11-10
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/458
+- Rust Issue: https://github.com/rust-lang/rust/issues/22251
 
-# Summary 
+# Summary
 
 I propose altering the `Send` trait as proposed by RFC #17 as
 follows:
@@ -17,7 +17,7 @@ follows:
 *   Evaluate each `Send` bound currently in `libstd` and either leave it as-is, add an
     explicit `'static` bound, or bound it with another lifetime parameter.
 
-# Motivation 
+# Motivation
 
 Currently, Rust has two types that deal with concurrency: `Sync` and `Send`
 
@@ -119,7 +119,7 @@ use std::kinds::marker;
 
 // Invariant: &mut Xyz always points to a valid C xyz.
 // Xyz rvalues don't exist.
- 
+
 // These leak. I *could* wrap a box or arena, but that would
 // complicate things.
 
@@ -128,9 +128,9 @@ extern "C" {
     fn xyz_create() -> *mut Xyz;
     fn xyz_play(s: *mut Xyz);
 }
- 
+
 pub struct Xyz(marker::NoCopy);
- 
+
 impl Xyz {
     pub fn new() -> &'static mut Xyz {
         unsafe {
@@ -138,12 +138,12 @@ impl Xyz {
             mem::transmute(x)
         }
     }
- 
+
     pub fn play(&mut self) {
         unsafe { xyz_play(mem::transmute(self)) }
     }
 }
- 
+
 // Invariant: only the main task has RcMainTask values
 
 pub struct RcMainTask<T>(Rc<T>);
@@ -153,13 +153,13 @@ impl<T> RcMainTask<T> {
             Some(RcMainTask(Rc::new(t)))
         } else { None }
     }
- 
+
     pub fn main_clone(self) -> (RcMainTask<T>, RcMainTask<T>) {
         let new = RcMainTask(self.0.clone());
         (self, new)
     }
 }
- 
+
 impl<T> Deref<T> for RcMainTask<T> {
     fn deref(&self) -> &T { &*self.0 }
 }
@@ -171,12 +171,12 @@ impl<T> RcMut<T> {
     pub fn new(t: T) -> RcMut<T> {
         RcMut(Rc::new(t))
     }
- 
+
     pub fn mut_clone(&mut self) -> RcMut<T> {
         RcMut(self.0.clone())
     }
 }
- 
+
 impl<T> Deref<T> for RcMut<T> {
     fn deref(&self) -> &T { &*self.0 }
 }
@@ -187,7 +187,7 @@ impl<T> Deref<T> for RcMut<T> {
 
 # Drawbacks
 
-Libraries get a bit more complicated to write, since you may have to write `Send + 'static` where previously you just wrote `Send`.   
+Libraries get a bit more complicated to write, since you may have to write `Send + 'static` where previously you just wrote `Send`.
 
 # Alternatives
 
