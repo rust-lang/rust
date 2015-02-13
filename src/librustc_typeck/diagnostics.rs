@@ -172,7 +172,8 @@ register_diagnostics! {
     E0248, // found value name used as a type
     E0249, // expected constant expr for array length
     E0250, // expected constant expr for array length
-    E0316  // can't create default impls for traits outside their crates
+    E0316,  // can't create default impls for traits outside their crates
+    E0317
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }

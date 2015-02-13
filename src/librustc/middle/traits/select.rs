@@ -1626,6 +1626,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Vec::new()
             }
 
+            ty::ty_trait(..) |
             ty::ty_projection(..) |
             ty::ty_param(..) |
             ty::ty_infer(..) => {
@@ -1637,18 +1638,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
             ty::ty_uniq(referent_ty) => {  // Box<T>
                 vec![referent_ty]
-            }
-
-
-            ty::ty_trait(ref data) => {
-                // Recursively check all supertraits to find out if any further
-                // bounds are required and thus we must fulfill.
-                let principal =
-                    data.principal_trait_ref_with_self_ty(self.tcx(),
-                                                          self.tcx().types.err);
-
-
-                util::supertraits(self.tcx(), principal).map(|tr| tr.self_ty()).collect()
             }
 
             ty::ty_open(element_ty) => {vec![element_ty]},
