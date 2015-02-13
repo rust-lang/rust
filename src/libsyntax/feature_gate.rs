@@ -134,6 +134,9 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // Allows using the unsafe_no_drop_flag attribute (unlikely to
     // switch to Accepted; see RFC 320)
     ("unsafe_no_drop_flag", "1.0.0", Active),
+
+    // Allows the use of custom attributes; RFC 572
+    ("custom_attribute", "1.0.0", Active)
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -155,6 +158,43 @@ enum Status {
 
 // Attributes that have a special meaning to rustc or rustdoc
 pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
+    // Normal attributes
+
+    ("warn", Normal),
+    ("allow", Normal),
+    ("forbid", Normal),
+    ("deny", Normal),
+
+    ("macro_reexport", Normal),
+    ("macro_use", Normal),
+    ("plugin", Normal),
+    ("macro_export", Normal),
+    ("plugin_registrar", Normal),
+
+    ("cfg", Normal),
+    ("main", Normal),
+    ("lang", Normal),
+    ("start", Normal),
+    ("test", Normal),
+    ("bench", Normal),
+    ("simd", Normal),
+    ("repr", Normal),
+    ("path", Normal),
+    ("staged_api", Normal),
+    ("abi", Normal),
+    ("rustc_move_fragments", Normal),
+    ("rustc_variance", Normal),
+    ("unsafe_destructor", Normal),
+    ("automatically_derived", Normal),
+    ("no_mangle", Normal),
+    ("no_link", Normal),
+    ("derive", Normal),
+    ("should_fail", Normal),
+    ("ignore", Normal),
+    ("no_implicit_prelude", Normal),
+    ("reexport_test_harness_main", Normal),
+    ("link_args", Normal),
+    ("macro_escape", Normal),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted),
@@ -199,11 +239,13 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     // Crate level attributes
     ("crate_name", CrateLevel),
     ("crate_type", CrateLevel),
+    ("crate_id", CrateLevel),
     ("feature", CrateLevel),
     ("no_start", CrateLevel),
     ("no_main", CrateLevel),
     ("no_std", CrateLevel),
     ("no_builtins", CrateLevel),
+    ("recursion_limit", CrateLevel),
 ];
 
 #[derive(PartialEq, Copy)]
@@ -556,6 +598,18 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             self.gate_feature("unsafe_no_drop_flag", attr.span,
                               "unsafe_no_drop_flag has unstable semantics \
                                and may be removed in the future");
+        }
+
+        // Custom attribute check
+        let name = attr.name();
+
+        if KNOWN_ATTRIBUTES.iter().all(|&(n, _)| n != name) {
+            self.gate_feature("custom_attribute", attr.span,
+                       format!("The attribute `{}` is currently \
+                                unknown to the the compiler and \
+                                may have meaning \
+                                added to it in the future",
+                                attr.name()).as_slice());
         }
     }
 
