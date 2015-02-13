@@ -649,7 +649,8 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 ///
 /// **NOTE:** `UnsafeCell<T>`'s fields are public to allow static initializers. It is not
 /// recommended to access its fields directly, `get` should be used instead.
-#[lang="unsafe"]
+#[cfg_attr(stage0, lang="unsafe")]  // NOTE: remove after next snapshot
+#[cfg_attr(not(stage0), lang="unsafe_cell")]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct UnsafeCell<T> {
     /// Wrapped value
