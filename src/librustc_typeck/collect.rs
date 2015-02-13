@@ -652,7 +652,7 @@ fn convert_item(ccx: &CollectCtxt, it: &ast::Item) {
             let trait_ref = astconv::instantiate_trait_ref(ccx, &ExplicitRscope,
                                                            ast_trait_ref, None, None);
 
-            ty::record_default_trait_implementation(tcx, trait_ref.def_id)
+            ty::record_default_trait_implementation(tcx, trait_ref.def_id, local_def(it.id))
         }
         ast::ItemImpl(_, _,
                       ref generics,
@@ -1190,6 +1190,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         ast::ItemStruct(_, ref generics) => {
             ty_generic_bounds_for_type_or_impl(ccx, &scheme.generics, generics)
         }
+        ast::ItemDefaultImpl(..) |
         ast::ItemTrait(..) |
         ast::ItemExternCrate(..) |
         ast::ItemUse(..) |
