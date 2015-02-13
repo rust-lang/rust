@@ -624,7 +624,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
                     let fn_ret = // late-bound regions in overloaded method calls are instantiated
-                        ty::assert_no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty));
+                        ty::no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty)).unwrap();
                     fn_ret.unwrap()
                 }
                 None => rcx.resolve_node_type(base.id)
@@ -971,7 +971,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // was applied on the base type, as that is always the case.
                 let fn_sig = ty::ty_fn_sig(method.ty);
                 let fn_sig = // late-bound regions should have been instantiated
-                    ty::assert_no_late_bound_regions(rcx.tcx(), fn_sig);
+                    ty::no_late_bound_regions(rcx.tcx(), fn_sig).unwrap();
                 let self_ty = fn_sig.inputs[0];
                 let (m, r) = match self_ty.sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),

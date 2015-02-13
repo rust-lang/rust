@@ -367,8 +367,8 @@ impl<'tcx> DeferredCallResolution<'tcx> for CallResolution<'tcx> {
                 // (This always bites me, should find a way to
                 // refactor it.)
                 let method_sig =
-                    ty::assert_no_late_bound_regions(fcx.tcx(),
-                                                     ty::ty_fn_sig(method_callee.ty));
+                    ty::no_late_bound_regions(fcx.tcx(),
+                                              ty::ty_fn_sig(method_callee.ty)).unwrap();
 
                 debug!("attempt_resolution: method_callee={}",
                        method_callee.repr(fcx.tcx()));
