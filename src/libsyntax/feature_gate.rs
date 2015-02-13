@@ -23,6 +23,7 @@
 //! becomes stable.
 
 use self::Status::*;
+use self::AttributeType::*;
 
 use abi::RustIntrinsic;
 use ast::NodeId;
@@ -150,6 +151,74 @@ enum Status {
 
     /// This language feature has since been Accepted (it was once Active)
     Accepted,
+}
+
+// Attributes that have a special meaning to rustc or rustdoc
+pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
+
+    // FIXME: #14408 whitelist docs since rustdoc looks at them
+    ("doc", Whitelisted),
+
+    // FIXME: #14406 these are processed in trans, which happens after the
+    // lint pass
+    ("cold", Whitelisted),
+    ("export_name", Whitelisted),
+    ("inline", Whitelisted),
+    ("link", Whitelisted),
+    ("link_name", Whitelisted),
+    ("link_section", Whitelisted),
+    ("linkage", Whitelisted),
+    ("no_builtins", Whitelisted),
+    ("no_mangle", Whitelisted),
+    ("no_split_stack", Whitelisted),
+    ("no_stack_check", Whitelisted),
+    ("packed", Whitelisted),
+    ("static_assert", Whitelisted),
+    ("thread_local", Whitelisted),
+    ("no_debug", Whitelisted),
+    ("omit_gdb_pretty_printer_section", Whitelisted),
+    ("unsafe_no_drop_flag", Whitelisted),
+
+    // used in resolve
+    ("prelude_import", Whitelisted),
+
+    // FIXME: #14407 these are only looked at on-demand so we can't
+    // guarantee they'll have already been checked
+    ("deprecated", Whitelisted),
+    ("must_use", Whitelisted),
+    ("stable", Whitelisted),
+    ("unstable", Whitelisted),
+    ("rustc_on_unimplemented", Whitelisted),
+    ("rustc_error", Whitelisted),
+
+    // FIXME: #19470 this shouldn't be needed forever
+    ("old_orphan_check", Whitelisted),
+    ("old_impl_check", Whitelisted),
+    ("rustc_paren_sugar", Whitelisted), // FIXME: #18101 temporary unboxed closure hack
+
+    // Crate level attributes
+    ("crate_name", CrateLevel),
+    ("crate_type", CrateLevel),
+    ("feature", CrateLevel),
+    ("no_start", CrateLevel),
+    ("no_main", CrateLevel),
+    ("no_std", CrateLevel),
+    ("no_builtins", CrateLevel),
+];
+
+#[derive(PartialEq, Copy)]
+pub enum AttributeType {
+    /// Normal, builtin attribute that is consumed
+    /// by the compiler before the unused_attribute check
+    Normal,
+
+    /// Builtin attribute that may not be consumed by the compiler
+    /// before the unused_attribute check. These attributes
+    /// will be ignored by the unused_attribute lint
+    Whitelisted,
+
+    /// Builtin attribute that is only allowed at the crate level
+    CrateLevel,
 }
 
 /// A set of features to be used by later passes.
