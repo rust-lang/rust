@@ -88,7 +88,7 @@ enum MyUpgrade<T> {
     GoUp(Receiver<T>),
 }
 
-impl<T: Send> Packet<T> {
+impl<T: Send + 'static> Packet<T> {
     pub fn new() -> Packet<T> {
         Packet {
             data: None,
@@ -368,7 +368,7 @@ impl<T: Send> Packet<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Packet<T> {
+impl<T: Send + 'static> Drop for Packet<T> {
     fn drop(&mut self) {
         assert_eq!(self.state.load(Ordering::SeqCst), DISCONNECTED);
     }

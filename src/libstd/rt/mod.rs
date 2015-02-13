@@ -148,7 +148,7 @@ fn lang_start(main: *const u8, argc: int, argv: *const *const u8) -> int {
 ///
 /// It is forbidden for procedures to register more `at_exit` handlers when they
 /// are running, and doing so will lead to a process abort.
-pub fn at_exit<F:FnOnce()+Send>(f: F) {
+pub fn at_exit<F:FnOnce()+Send+'static>(f: F) {
     at_exit_imp::push(Thunk::new(f));
 }
 

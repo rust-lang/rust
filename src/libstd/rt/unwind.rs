@@ -74,7 +74,7 @@ use rt::libunwind as uw;
 
 struct Exception {
     uwe: uw::_Unwind_Exception,
-    cause: Option<Box<Any + Send>>,
+    cause: Option<Box<Any + Send + 'static>>,
 }
 
 pub type Callback = fn(msg: &(Any + Send), file: &'static str, line: uint);
@@ -161,7 +161,7 @@ pub fn panicking() -> bool {
 #[inline(never)]
 #[no_mangle]
 #[allow(private_no_mangle_fns)]
-fn rust_panic(cause: Box<Any + Send>) -> ! {
+fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
     rtdebug!("begin_unwind()");
 
     unsafe {
