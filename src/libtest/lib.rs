@@ -938,7 +938,7 @@ fn calc_result(desc: &TestDesc, task_result: Result<(), Box<Any+Send>>) -> TestR
         (&ShouldFail::Yes(Some(msg)), Err(ref err))
             if err.downcast_ref::<String>()
                 .map(|e| &**e)
-                .or_else(|| err.downcast_ref::<&'static str>().map(|e| *e))
+                .or_else(|| err.downcast_ref::<&'static str>().cloned())
                 .map(|e| e.contains(msg))
                 .unwrap_or(false) => TrOk,
         _ => TrFailed,
