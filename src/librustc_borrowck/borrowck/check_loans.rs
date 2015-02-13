@@ -699,6 +699,11 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                               lp: &Rc<LoanPath<'tcx>>) {
         debug!("check_if_path_is_moved(id={}, use_kind={:?}, lp={})",
                id, use_kind, lp.repr(self.bccx.tcx));
+
+        // FIXME (22079): if you find yourself tempted to cut and paste
+        // the body below and then specializing the error reporting,
+        // consider refactoring this instead!
+
         let base_lp = owned_ptr_base_path_rc(lp);
         self.move_data.each_move_of(id, &base_lp, |the_move, moved_lp| {
             self.bccx.report_use_of_moved_value(
@@ -745,6 +750,29 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                                      use_kind, lp_base);
             }
             LpExtend(ref lp_base, _, LpInterior(InteriorField(_))) => {
+                match lp_base.to_type().sty {
+                    ty::ty_struct(def_id, _) | ty::ty_enum(def_id, _) => {
+                        if ty::has_dtor(self.tcx(), def_id) {
+                            // In the case where the owner implements drop, then
+                            // the path must be initialized to prevent a case of
+                            // partial reinitialization
+                            //
+                            // FIXME (22079): could refactor via hypothetical
+                            // generalized check_if_path_is_moved
+                            let loan_path = owned_ptr_base_path_rc(lp_base);
+                            self.move_data.each_move_of(id, &loan_path, |_, _| {
+                                self.bccx
+                                    .report_partial_reinitialization_of_uninitialized_structure(
+                                        span,
+                                        &*loan_path);
+                                false
+                            });
+                            return;
+                        }
+                    },
+                    _ => {},
+                }
+
                 // assigning to `P.f` is ok if assigning to `P` is ok
                 self.check_if_assigned_path_is_moved(id, span,
                                                      use_kind, lp_base);
@@ -775,10 +803,12 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                     mark_variable_as_used_mut(self, assignee_cmt);
                 }
             }
+
             return;
         }
 
-        // Initializations are OK.
+        // Initializations are OK if and only if they aren't partial
+        // reinitialization of a partially-uninitialized structure.
         if mode == euv::Init {
             return
         }
