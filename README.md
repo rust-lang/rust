@@ -5,16 +5,10 @@ documentation.
 
 ## Quick Start
 
-1. Download a [binary installer][installer] for your platform.
-2. Read [The Rust Programming Language][trpl].
-3. Enjoy!
+Read ["Installing Rust"][install] from [The Book][trpl].
 
-> ***Note:*** Windows users can read the detailed
-> [using Rust on Windows][win-wiki] notes on the wiki.
-
-[installer]: http://www.rust-lang.org/install.html
+[install]: http://doc.rust-lang.org/book/installing-rust.html
 [trpl]: http://doc.rust-lang.org/book/index.html
-[win-wiki]: https://github.com/rust-lang/rust/wiki/Using-Rust-on-Windows
 
 ## Building from Source
 
