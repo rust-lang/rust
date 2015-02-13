@@ -1013,7 +1013,7 @@ mod tests {
 
     #[cfg(test)]
     fn list_from<T: Clone>(v: &[T]) -> DList<T> {
-        v.iter().map(|x| (*x).clone()).collect()
+        v.iter().cloned().collect()
     }
 
     #[test]

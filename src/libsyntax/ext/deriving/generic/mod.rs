@@ -410,7 +410,7 @@ impl<'a> TraitDef<'a> {
         let mut ty_params = ty_params.into_vec();
 
         // Copy the lifetimes
-        lifetimes.extend(generics.lifetimes.iter().map(|l| (*l).clone()));
+        lifetimes.extend(generics.lifetimes.iter().cloned());
 
         // Create the type parameters.
         ty_params.extend(generics.ty_params.iter().map(|ty_param| {
