@@ -426,39 +426,33 @@ use std::thread::Thread;
 fn main() {
     let mut numbers = vec![1, 2, 3];
 
-    for i in 0..3 {
-        Thread::spawn(move || {
+    let guards: Vec<_> = (0..3).map(|i| {
+        Thread::scoped(move || {
             for j in 0..3 { numbers[j] += 1 }
         });
-    }
+    }).collect();
 }
 ```
 
 It gives us this error:
 
 ```text
-6:71 error: capture of moved value: `numbers`
-    for j in 0..3 { numbers[j] += 1 }
-                    ^~~~~~~
-7:50 note: `numbers` moved into closure environment here
-    spawn(move || {
-        for j in 0..3 { numbers[j] += 1 }
-    });
-6:79 error: cannot assign to immutable dereference (dereference is implicit, due to indexing)
-        for j in 0..3 { numbers[j] += 1 }
-                        ^~~~~~~~~~~~~~~
+7:29: 9:10 error: cannot move out of captured outer variable in an `FnMut` closure
+7         Thread::scoped(move || {
+8             for j in 0..3 { numbers[j] += 1 }
+9         });
 ```
 
-It mentions that "numbers moved into closure environment". Because we
-declared the closure as a moving closure, and it referred to
-`numbers`, the closure will try to take ownership of the vector. But
-the closure itself is created in a loop, and hence we will actually
-create three closures, one for every iteration of the loop. This means
-that all three of those closures would try to own `numbers`, which is
-impossible -- `numbers` must have just one owner. Rust detects this
-and gives us the error: we claim that `numbers` has ownership, but our
-code tries to make three owners. This may cause a safety problem, so
-Rust disallows it.
+It mentions that "captured outer variable in an `FnMut` closure".
+Because we declared the closure as a moving closure, and it referred
+to `numbers`, the closure will try to take ownership of the
+vector. But the closure itself is created in a loop, and hence we will
+actually create three closures, one for every iteration of the
+loop. This means that all three of those closures would try to own
+`numbers`, which is impossible -- `numbers` must have just one
+owner. Rust detects this and gives us the error: we claim that
+`numbers` has ownership, but our code tries to make three owners. This
+may cause a safety problem, so Rust disallows it.
 
 What to do here? Rust has two types that helps us: `Arc<T>` and `Mutex<T>`.
 *Arc* stands for "atomically reference counted". In other words, an Arc will
@@ -480,14 +474,14 @@ use std::sync::{Arc,Mutex};
 fn main() {
     let numbers = Arc::new(Mutex::new(vec![1, 2, 3]));
 
-    for i in 0..3 {
+    let guards: Vec<_> = (0..3).map(|i| {
         let number = numbers.clone();
-        Thread::spawn(move || {
+        Thread::scoped(move || {
             let mut array = number.lock().unwrap();
             array[i] += 1;
             println!("numbers[{}] is {}", i, array[i]);
         });
-    }
+    }).collect();
 }
 ```
 
@@ -516,8 +510,10 @@ numbers[1] is 3
 numbers[0] is 2
 ```
 
-Each time, we get a slightly different output, because each thread works in a
-different order. You may not get the same output as this sample, even.
+Each time, we can get a slithtly different output because the threads
+are not quaranteed to run in any set order. If you get the same order
+every time it is because each of these threads are very small and
+complete too fast for their indeterminate behavior to surface.
 
 The important part here is that the Rust compiler was able to use ownership to
 give us assurance _at compile time_ that we weren't doing something incorrect
@@ -539,13 +535,13 @@ safety check that makes this an error about moved values:
 use std::thread::Thread;
 
 fn main() {
-    let vec = vec![1, 2, 3];
-
-    for i in 0..3 {
-        Thread::spawn(move || {
-            println!("{}", vec[i]);
+    let numbers = vec![1, 2, 3];
+    
+    let guards: Vec<_> = (0..3).map(|i| {
+        Thread::scoped(move || {
+            println!("{}", numbers[i]);
         });
-    }
+    }).collect();
 }
 ```
 
