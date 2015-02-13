@@ -102,7 +102,6 @@ use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-use self::RepeatingScope::Repeating;
 use self::SubjectNode::Subject;
 
 // a variation on try that just returns unit
@@ -114,7 +113,7 @@ macro_rules! ignore_err {
 // PUBLIC ENTRY POINTS
 
 pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
-    let mut rcx = Rcx::new(fcx, Repeating(e.id), Subject(e.id));
+    let mut rcx = Rcx::new(fcx, RepeatingScope(e.id), e.id, Subject(e.id));
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         rcx.visit_expr(e);
@@ -124,16 +123,17 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
 }
 
 pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
-    let mut rcx = Rcx::new(fcx, Repeating(item.id), Subject(item.id));
+    let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
     rcx.visit_region_obligations(item.id);
     rcx.resolve_regions_and_report_errors();
 }
 
 pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, decl: &ast::FnDecl, blk: &ast::Block) {
-    let mut rcx = Rcx::new(fcx, Repeating(blk.id), Subject(id));
+    debug!("regionck_fn(id={})", id);
+    let mut rcx = Rcx::new(fcx, RepeatingScope(blk.id), blk.id, Subject(id));
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
-        rcx.visit_fn_body(id, decl, blk);
+        rcx.visit_fn_body(id, decl, blk, blk.span); // TODO suboptimal span
     }
 
     // Region checking a fn can introduce new trait obligations,
@@ -148,7 +148,7 @@ pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, decl: &ast::FnDecl, blk: &ast:
 pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   component_tys: &[Ty<'tcx>]) {
-    let mut rcx = Rcx::new(fcx, Repeating(0), SubjectNode::None);
+    let mut rcx = Rcx::new(fcx, RepeatingScope(0), 0, SubjectNode::None);
     for &component_ty in component_tys {
         // Check that each type outlives the empty region. Since the
         // empty region is a subregion of all others, this can't fail
@@ -189,14 +189,14 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
     }
 }
 
-pub enum RepeatingScope { Repeating(ast::NodeId) }
+struct RepeatingScope(ast::NodeId);
 pub enum SubjectNode { Subject(ast::NodeId), None }
 
 impl<'a, 'tcx> Rcx<'a, 'tcx> {
     pub fn new(fcx: &'a FnCtxt<'a, 'tcx>,
                initial_repeating_scope: RepeatingScope,
                subject: SubjectNode) -> Rcx<'a, 'tcx> {
-        let Repeating(initial_repeating_scope) = initial_repeating_scope;
+        let RepeatingScope(initial_repeating_scope) = initial_repeating_scope;
         Rcx { fcx: fcx,
               repeating_scope: initial_repeating_scope,
               subject: subject,
@@ -208,10 +208,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         self.fcx.ccx.tcx
     }
 
-    pub fn set_repeating_scope(&mut self, scope: ast::NodeId) -> ast::NodeId {
-        let old_scope = self.repeating_scope;
-        self.repeating_scope = scope;
-        old_scope
+    fn set_repeating_scope(&mut self, scope: ast::NodeId) -> ast::NodeId {
+        mem::replace(&mut self.repeating_scope, scope)
     }
 
     /// Try to resolve the type for the given node, returning t_err if an error results.  Note that
