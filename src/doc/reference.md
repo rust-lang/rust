@@ -2591,9 +2591,8 @@ of any reference that points to it.
 
 When a [local variable](#memory-slots) is used as an
 [rvalue](#lvalues,-rvalues-and-temporaries) the variable will either be moved
-or copied, depending on its type. For types that contain [owning
-pointers](#pointer-types) or values that implement the special trait `Drop`,
-the variable is moved. All other types are copied.
+or copied, depending on its type. All values whose type implements `Copy` are
+copied, all others are moved.
 
 ### Literal expressions
 
