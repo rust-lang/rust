@@ -31,9 +31,10 @@ use attr;
 use attr::AttrMetaMethods;
 use codemap::{CodeMap, Span};
 use diagnostic::SpanHandler;
+use ext::tt;
 use visit;
 use visit::Visitor;
-use parse::token::{self, InternedString};
+use parse::token::{self, InternedString, IdentStyle};
 
 use std::slice;
 use std::ascii::AsciiExt;
@@ -225,29 +226,44 @@ struct MacroVisitor<'a> {
     context: &'a Context<'a>
 }
 
+impl<'a> MacroVisitor<'a> {
+    fn check_ident(&self, id: ast::Ident, span: Span) {
+        for &(s, readable) in &[("asm", "inline assembly"),
+                               ("log_syntax", "`log_syntax!`"),
+                               ("trace_macros", "`trace_macros`"),
+                               ("concat_idents", "`concat_idents`")] {
+            if id.as_str() == s {
+                self.context.gate_feature(
+                    s, span, &format!("{} is not stable enough for use \
+                                      and is subject to change", readable));
+            }
+        }
+    }
+}
+
 impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
     fn visit_mac(&mut self, mac: &ast::Mac) {
-        let ast::MacInvocTT(ref path, _, _) = mac.node;
+        let ast::MacInvocTT(ref path, ref tts, _) = mac.node;
         let id = path.segments.last().unwrap().identifier;
+        self.check_ident(id, path.span);
 
-        if id == token::str_to_ident("asm") {
-            self.context.gate_feature("asm", path.span, "inline assembly is not \
-                stable enough for use and is subject to change");
-        }
-
-        else if id == token::str_to_ident("log_syntax") {
-            self.context.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
-                stable enough for use and is subject to change");
-        }
-
-        else if id == token::str_to_ident("trace_macros") {
-            self.context.gate_feature("trace_macros", path.span, "`trace_macros` is not \
-                stable enough for use and is subject to change");
-        }
-
-        else if id == token::str_to_ident("concat_idents") {
-            self.context.gate_feature("concat_idents", path.span, "`concat_idents` is not \
-                stable enough for use and is subject to change");
+        // Issue 22234: process arguments to macro invocation as well,
+        // searching for use of feature-gated macros there.
+        let mut tt_reader = tt::transcribe::new_tt_reader(
+            self.context.span_handler, None, None, tts.clone());
+        let mut curr = tt::transcribe::tt_next_token(&mut tt_reader); 
+        if curr.tok != token::Eof {
+            loop {
+                let next = tt::transcribe::tt_next_token(&mut tt_reader);
+                if next.tok == token::Eof { break; }
+                if next.tok == token::Whitespace { continue; }
+                if next.tok == token::Not {
+                    if let token::Ident(id, IdentStyle::Plain) = curr.tok {
+                        self.check_ident(id, curr.sp);
+                    }
+                }
+                curr = next;
+            }
         }
     }
 }
