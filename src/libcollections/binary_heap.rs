@@ -655,6 +655,8 @@ impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<T: Ord> IntoIterator for BinaryHeap<T> {
     type IntoIter = IntoIter<T>;
 
@@ -663,7 +665,29 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<T: Ord> IntoIterator for BinaryHeap<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.iter()
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
+    type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {

@@ -530,6 +530,8 @@ impl<'a,T> Iterator for EnumeratedItems<'a,T> {
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> IntoIterator for VecPerParamSpace<T> {
     type IntoIter = IntoIter<T>;
 
@@ -538,7 +540,29 @@ impl<T> IntoIterator for VecPerParamSpace<T> {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<T> IntoIterator for VecPerParamSpace<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_vec().into_iter()
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<'a,T> IntoIterator for &'a VecPerParamSpace<T> {
+    type IntoIter = Iter<'a, T>;
+
+    fn into_iter(self) -> Iter<'a, T> {
+        self.as_slice().into_iter()
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<'a,T> IntoIterator for &'a VecPerParamSpace<T> {
+    type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
     fn into_iter(self) -> Iter<'a, T> {

@@ -1393,6 +1393,8 @@ impl<T> FromIterator<T> for Vec<T> {
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<T> IntoIterator for Vec<T> {
     type IntoIter = IntoIter<T>;
 
@@ -1401,6 +1403,18 @@ impl<T> IntoIterator for Vec<T> {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<T> IntoIterator for Vec<T> {
+    type Item = T;
+    type IntoIter = IntoIter<T>;
+
+    fn into_iter(self) -> IntoIter<T> {
+        self.into_iter()
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<'a, T> IntoIterator for &'a Vec<T> {
     type IntoIter = slice::Iter<'a, T>;
 
@@ -1409,7 +1423,29 @@ impl<'a, T> IntoIterator for &'a Vec<T> {
     }
 }
 
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<'a, T> IntoIterator for &'a Vec<T> {
+    type Item = &'a T;
+    type IntoIter = slice::Iter<'a, T>;
+
+    fn into_iter(self) -> slice::Iter<'a, T> {
+        self.iter()
+    }
+}
+
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<'a, T> IntoIterator for &'a mut Vec<T> {
+    type IntoIter = slice::IterMut<'a, T>;
+
+    fn into_iter(mut self) -> slice::IterMut<'a, T> {
+        self.iter_mut()
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<'a, T> IntoIterator for &'a mut Vec<T> {
+    type Item = &'a mut T;
     type IntoIter = slice::IterMut<'a, T>;
 
     fn into_iter(mut self) -> slice::IterMut<'a, T> {
