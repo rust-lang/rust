@@ -1386,7 +1386,17 @@ impl<T> FromIterator<T> for Vec<T> {
     fn from_iter<I:Iterator<Item=T>>(iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
-        for element in iterator {
+
+        let mut i = iterator.fuse();
+        for element in i.by_ref().take(vector.capacity()) {
+            let len = vector.len();
+            unsafe {
+                ptr::write(vector.get_unchecked_mut(len), element);
+                vector.set_len(len + 1);
+            }
+        }
+
+        for element in i {
             vector.push(element)
         }
         vector
