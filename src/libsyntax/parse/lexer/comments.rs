@@ -82,7 +82,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         while j > i && lines[j - 1].trim().is_empty() {
             j -= 1;
         }
-        return lines[i..j].iter().map(|x| (*x).clone()).collect();
+        return lines[i..j].iter().cloned().collect();
     }
 
     /// remove a "[ \t]*\*" block from each line, if possible

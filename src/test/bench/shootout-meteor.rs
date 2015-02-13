@@ -270,7 +270,7 @@ fn handle_sol(raw_sol: &List<u64>, data: &mut Data) {
     // reverse order, i.e. the board rotated by half a turn.
     data.nb += 2;
     let sol1 = to_vec(raw_sol);
-    let sol2: Vec<u8> = sol1.iter().rev().map(|x| *x).collect();
+    let sol2: Vec<u8> = sol1.iter().rev().cloned().collect();
 
     if data.nb == 2 {
         data.min = sol1.clone();
