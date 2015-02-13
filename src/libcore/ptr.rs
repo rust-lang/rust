@@ -27,10 +27,10 @@
 //! ## 1. Coerce a reference (`&T`) or mutable reference (`&mut T`).
 //!
 //! ```
-//! let my_num: int = 10;
-//! let my_num_ptr: *const int = &my_num;
-//! let mut my_speed: int = 88;
-//! let my_speed_ptr: *mut int = &mut my_speed;
+//! let my_num: i32 = 10;
+//! let my_num_ptr: *const i32 = &my_num;
+//! let mut my_speed: i32 = 88;
+//! let my_speed_ptr: *mut i32 = &mut my_speed;
 //! ```
 //!
 //! This does not take ownership of the original allocation
@@ -49,15 +49,15 @@
 //! use std::mem;
 //!
 //! unsafe {
-//!     let my_num: Box<int> = Box::new(10);
-//!     let my_num: *const int = mem::transmute(my_num);
-//!     let my_speed: Box<int> = Box::new(88);
-//!     let my_speed: *mut int = mem::transmute(my_speed);
+//!     let my_num: Box<i32> = Box::new(10);
+//!     let my_num: *const i32 = mem::transmute(my_num);
+//!     let my_speed: Box<i32> = Box::new(88);
+//!     let my_speed: *mut i32 = mem::transmute(my_speed);
 //!
 //!     // By taking ownership of the original `Box<T>` though
 //!     // we are obligated to transmute it back later to be destroyed.
-//!     drop(mem::transmute::<_, Box<int>>(my_speed));
-//!     drop(mem::transmute::<_, Box<int>>(my_num));
+//!     drop(mem::transmute::<_, Box<i32>>(my_speed));
+//!     drop(mem::transmute::<_, Box<i32>>(my_num));
 //! }
 //! ```
 //!
@@ -73,7 +73,7 @@
 //!
 //! fn main() {
 //!     unsafe {
-//!         let my_num: *mut int = libc::malloc(mem::size_of::<int>() as libc::size_t) as *mut int;
+//!         let my_num: *mut i32 = libc::malloc(mem::size_of::<i32>() as libc::size_t) as *mut i32;
 //!         if my_num.is_null() {
 //!             panic!("failed to allocate memory");
 //!         }
@@ -117,7 +117,7 @@ pub use intrinsics::set_memory;
 /// ```
 /// use std::ptr;
 ///
-/// let p: *const int = ptr::null();
+/// let p: *const i32 = ptr::null();
 /// assert!(p.is_null());
 /// ```
 #[inline]
@@ -131,7 +131,7 @@ pub fn null<T>() -> *const T { 0 as *const T }
 /// ```
 /// use std::ptr;
 ///
-/// let p: *mut int = ptr::null_mut();
+/// let p: *mut i32 = ptr::null_mut();
 /// assert!(p.is_null());
 /// ```
 #[inline]
@@ -148,7 +148,7 @@ pub fn null_mut<T>() -> *mut T { 0 as *mut T }
 #[inline]
 #[unstable(feature = "core",
            reason = "may play a larger role in std::ptr future extensions")]
-pub unsafe fn zero_memory<T>(dst: *mut T, count: uint) {
+pub unsafe fn zero_memory<T>(dst: *mut T, count: usize) {
     set_memory(dst, 0, count);
 }
 
@@ -276,7 +276,7 @@ pub trait PtrExt: Sized {
     /// Otherwise `offset` invokes Undefined Behaviour, regardless of whether
     /// the pointer is used.
     #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe fn offset(self, count: int) -> Self;
+    unsafe fn offset(self, count: isize) -> Self;
 }
 
 /// Methods on mutable raw pointers
@@ -303,11 +303,11 @@ impl<T> PtrExt for *const T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self as uint == 0 }
+    fn is_null(self) -> bool { self as usize == 0 }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe fn offset(self, count: int) -> *const T {
+    unsafe fn offset(self, count: isize) -> *const T {
         intrinsics::offset(self, count)
     }
 
@@ -330,11 +330,11 @@ impl<T> PtrExt for *mut T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self as uint == 0 }
+    fn is_null(self) -> bool { self as usize == 0 }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    unsafe fn offset(self, count: int) -> *mut T {
+    unsafe fn offset(self, count: isize) -> *mut T {
         intrinsics::offset(self, count) as *mut T
     }
 
@@ -553,7 +553,7 @@ impl<T> Unique<T> {
     /// Return an (unsafe) pointer into the memory owned by `self`.
     #[unstable(feature = "core",
                reason = "recently added to this module")]
-    pub unsafe fn offset(self, offset: int) -> *mut T {
+    pub unsafe fn offset(self, offset: isize) -> *mut T {
         self.ptr.offset(offset)
     }
 }
