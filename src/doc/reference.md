@@ -3502,9 +3502,6 @@ elements, respectively, in a parenthesized, comma-separated list.
 Because tuple elements don't have a name, they can only be accessed by
 pattern-matching.
 
-The members of a tuple are laid out in memory contiguously, in order specified
-by the tuple type.
-
 An example of a tuple type and its use:
 
 ```
