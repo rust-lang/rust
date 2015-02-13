@@ -23,8 +23,8 @@ fn main() {
 
 The type `std::ffi::CString` is used to prepare string data for passing
 as null-terminated strings to FFI functions. This type dereferences to a
-DST, `[libc::c_char]`. The slice type, however, is a poor choice for
-representing borrowed C string data, since:
+DST, `[libc::c_char]`. The slice type as it is, however, is a poor choice
+for representing borrowed C string data, since:
 
 1. A slice does not express the C string invariant at compile time.
    Safe interfaces wrapping FFI functions cannot take slice references as is
@@ -49,32 +49,52 @@ it makes sense that `CString` gets its own borrowed counterpart.
 
 # Detailed design
 
-## CStr, an Irrelevantly Sized Type
+This proposal introduces `CStr`, a type to designate a null-terminated
+string. This type does not implement `Sized`, `Copy`, or `Clone`.
+References to `CStr` are only safely obtained by dereferencing `CString`
+and a few other helper methods, described below. A `CStr` value should provide
+no size information, as there is intent to turn `CStr` into an
+[unsized type](https://github.com/rust-lang/rfcs/issues/813),
+pending resolution on that proposal.
 
-This proposal introduces `CStr`, a token type to designate a null-terminated
-string. This type does not implement `Copy` or `Clone` and is only used in
-borrowed references. `CStr` is sized, but its size and layout are of no
-consequence to its users. It's only safely obtained by dereferencing
-`CString` and a few other helper methods, described below.
+## Stage 1: CStr, a DST with a weight problem
+
+As current Rust does not have unsized types that are not DSTs, at this stage
+`CStr` is defined as a newtype over a character slice:
 
 ```rust
 #[repr(C)]
 pub struct CStr {
-    head: libc::c_char,
-    marker: std::marker::NoCopy
+    chars: [libc::c_char]
 }
 
 impl CStr {
     pub fn as_ptr(&self) -> *const libc::c_char {
-        &self.head as *const libc::c_char
+        self.chars.as_ptr()
     }
 }
+```
 
+`CString` is changed to dereference to `CStr`:
+
+```rust
 impl Deref for CString {
     type Target = CStr;
     fn deref(&self) -> &CStr { ... }
 }
 ```
+
+In implementation, the `CStr` value needs a length for the internal slice.
+This RFC provides no guarantees that the length will be equal to the length
+of the string, or be any particular value suitable for safe use.
+
+## Stage 2: unsized CStr
+
+If unsized types are enabled later one way of another, the definition
+of `CStr` would change to an unsized type with statically sized contents.
+The authors of this RFC believe this would constitute no breakage to code
+using `CStr` safely. With a view towards this future change, it's recommended
+to avoid any unsafe code depending on the internal representation of `CStr`.
 
 ## Returning C strings
 
@@ -102,7 +122,7 @@ impl CStr {
 ```
 
 An odd consequence is that it is valid, if wasteful, to call `to_bytes` on
-`CString` via auto-dereferencing.
+a `CString` via auto-dereferencing.
 
 ## Remove c_str_to_bytes
 
@@ -113,8 +133,10 @@ in favor of composition of the functions described above:
 
 ## Proof of concept
 
-The described changes are implemented in crate
-[c_string](https://github.com/mzabaluev/rust-c-str).
+The described interface changes are implemented in crate
+[c_string](https://github.com/mzabaluev/rust-c-str), with a difference
+that the `CStr` token type has a bogus static size, as a compromise to
+offer better performance in current Rust.
 
 # Drawbacks
 
@@ -125,24 +147,13 @@ expose the slice in type annotations, parameter signatures and so on,
 the change should not be breaking since `CStr` also provides
 this method.
 
-Making the deref target practically unsized throws away the length information
+Making the deref target unsized throws away the length information
 intrinsic to `CString` and makes it less useful as a container for bytes.
 This is countered by the fact that there are general purpose byte containers
 in the core libraries, whereas `CString` addresses the specific need to
 convey string data from Rust to C-style APIs.
 
-While it's not possible outside of unsafe code to unintentionally copy out
-or modify the nominal value of `CStr` under an immutable reference, some
-unforeseen trouble or confusion can arise due to the structure having a
-bogus size. A separate [RFC](https://github.com/rust-lang/rfcs/issues/813),
-if accepted, will solve this by opting out of `Sized`.
-
 # Alternatives
-
-`CStr` could be made a newtype on DST `[libc::c_char]`, allowing no-cost
-slices. It's not clear if this is useful, and the need to calculate length
-up front might prevent some optimized uses possible with the 'thin'
-reference.
 
 If the proposed enhancements or other equivalent facilities are not adopted,
 users of Rust can turn to third-party libraries for better convenience
@@ -151,9 +162,5 @@ incompatible helper types in public APIs until a dominant de-facto solution
 is established.
 
 # Unresolved questions
-
-`CStr` can be made a
-[truly unsized type](https://github.com/rust-lang/rfcs/issues/813),
-pending on that proposal's approval.
 
 Need a `Cow`?
