@@ -29,11 +29,12 @@ use html::render::cache;
 /// The counts for each stability level.
 #[derive(Copy)]
 pub struct Counts {
-    pub unstable: uint,
-    pub stable: uint,
+    pub deprecated: u64,
+    pub unstable: u64,
+    pub stable: u64,
 
     /// No stability level, inherited or otherwise.
-    pub unmarked: uint,
+    pub unmarked: u64,
 }
 
 impl Add for Counts {
@@ -41,6 +42,7 @@ impl Add for Counts {
 
     fn add(self, other: Counts) -> Counts {
         Counts {
+            deprecated:   self.deprecated   + other.deprecated,
             unstable:     self.unstable     + other.unstable,
             stable:       self.stable       + other.stable,
             unmarked:     self.unmarked     + other.unmarked,
@@ -51,14 +53,15 @@ impl Add for Counts {
 impl Counts {
     fn zero() -> Counts {
         Counts {
+            deprecated:   0,
             unstable:     0,
             stable:       0,
             unmarked:     0,
         }
     }
 
-    pub fn total(&self) -> uint {
-        self.unstable + self.stable + self.unmarked
+    pub fn total(&self) -> u64 {
+        self.deprecated + self.unstable + self.stable + self.unmarked
     }
 }
 
@@ -94,9 +97,14 @@ fn visible(item: &Item) -> bool {
 fn count_stability(stab: Option<&Stability>) -> Counts {
     match stab {
         None            => Counts { unmarked: 1,     .. Counts::zero() },
-        Some(ref stab) => match stab.level {
-            Unstable    => Counts { unstable: 1,     .. Counts::zero() },
-            Stable      => Counts { stable: 1,       .. Counts::zero() },
+        Some(ref stab) => {
+            if !stab.deprecated_since.is_empty() {
+                return Counts { deprecated: 1, .. Counts::zero() };
+            }
+            match stab.level {
+                Unstable    => Counts { unstable: 1,     .. Counts::zero() },
+                Stable      => Counts { stable: 1,       .. Counts::zero() },
+            }
         }
     }
 }
