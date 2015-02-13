@@ -46,8 +46,6 @@ Read ["Installing Rust"][install] from [The Book][trpl].
     When complete, `make install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
     API-documentation tool.
-3. Read [The Rust Programming Language][trpl].
-4. Enjoy!
 
 ### Building on Windows
 
@@ -75,7 +73,6 @@ $ pacman -S base-devel
 
 [repo]: https://github.com/rust-lang/rust
 [tarball]: https://static.rust-lang.org/dist/rustc-nightly-src.tar.gz
-[trpl]: http://doc.rust-lang.org/book/index.html
 
 ## Notes
 
