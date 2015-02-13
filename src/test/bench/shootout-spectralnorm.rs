@@ -48,12 +48,13 @@ use std::thread::Thread;
 use std::mem;
 use std::num::Float;
 use std::os;
+use std::env;
 use std::raw::Repr;
 use std::simd::f64x2;
 
 fn main() {
     let args = os::args();
-    let answer = spectralnorm(if os::getenv("RUST_BENCH").is_some() {
+    let answer = spectralnorm(if env::var_os("RUST_BENCH").is_some() {
         5500
     } else if args.len() < 2 {
         2000

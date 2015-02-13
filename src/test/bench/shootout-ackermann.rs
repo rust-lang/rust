@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::os;
+use std::env;
 
 fn ack(m: int, n: int) -> int {
     if m == 0 {
@@ -24,7 +25,7 @@ fn ack(m: int, n: int) -> int {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
+    let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "12".to_string())
     } else if args.len() <= 1u {
         vec!("".to_string(), "8".to_string())
