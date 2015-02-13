@@ -4399,8 +4399,8 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                     // overloaded deref operators have all late-bound
                                     // regions fully instantiated and coverge
                                     let fn_ret =
-                                        ty::assert_no_late_bound_regions(cx,
-                                                                         &ty_fn_ret(method_ty));
+                                        ty::no_late_bound_regions(cx,
+                                                                  &ty_fn_ret(method_ty)).unwrap();
                                     adjusted_ty = fn_ret.unwrap();
                                 }
                                 None => {}
@@ -5201,7 +5201,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 let arg_tys = if args.len() > 0 {
                     // the regions in the argument types come from the
                     // enum def'n, and hence will all be early bound
-                    ty::assert_no_late_bound_regions(cx, &ty_fn_args(ctor_ty))
+                    ty::no_late_bound_regions(cx, &ty_fn_args(ctor_ty)).unwrap()
                 } else {
                     Vec::new()
                 };
@@ -6722,14 +6722,17 @@ pub fn binds_late_bound_regions<'tcx, T>(
     count_late_bound_regions(tcx, value) > 0
 }
 
-pub fn assert_no_late_bound_regions<'tcx, T>(
+pub fn no_late_bound_regions<'tcx, T>(
     tcx: &ty::ctxt<'tcx>,
     value: &Binder<T>)
-    -> T
+    -> Option<T>
     where T : TypeFoldable<'tcx> + Repr<'tcx> + Clone
 {
-    assert!(!binds_late_bound_regions(tcx, value));
-    value.0.clone()
+    if binds_late_bound_regions(tcx, value) {
+        None
+    } else {
+        Some(value.0.clone())
+    }
 }
 
 /// Replace any late-bound regions bound in `value` with `'static`. Useful in trans but also
