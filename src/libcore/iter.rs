@@ -1323,6 +1323,23 @@ impl<T, D, I> ExactSizeIterator for Cloned<I> where
     I: ExactSizeIterator<Item=D>,
 {}
 
+#[unstable(feature = "core", reason = "trait is experimental")]
+impl<T, D, I> RandomAccessIterator for Cloned<I> where
+    T: Clone,
+    D: Deref<Target=T>,
+    I: RandomAccessIterator<Item=D>
+{
+    #[inline]
+    fn indexable(&self) -> usize {
+        self.it.indexable()
+    }
+
+    #[inline]
+    fn idx(&mut self, index: usize) -> Option<T> {
+        self.it.idx(index).cloned()
+    }
+}
+
 /// An iterator that repeats endlessly
 #[derive(Clone)]
 #[must_use = "iterator adaptors are lazy and do nothing unless consumed"]
