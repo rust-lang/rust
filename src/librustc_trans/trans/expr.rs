@@ -1800,6 +1800,23 @@ fn trans_lazy_binop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         return immediate_rvalue_bcx(past_lhs, lhs, binop_ty).to_expr_datumblock();
     }
 
+    // Check if we can statically determine that we'll always take the left or right side of the
+    // binop, and if so, don't bother to generate the conditional branch and just translate the arm
+    // that will actually be executed
+    if is_const(lhs) && !is_undef(lhs) {
+        match (&op, const_to_uint(lhs)) {
+            (&lazy_and, 0) | (&lazy_or, 1) => {
+                return immediate_rvalue_bcx(past_lhs, lhs, binop_ty).to_expr_datumblock();
+            }
+            (&lazy_and, 1) | (&lazy_or, 0) => {
+                let DatumBlock {bcx: past_rhs, datum: rhs} = trans(past_lhs, b);
+                let rhs = rhs.to_llscalarish(past_rhs);
+                return immediate_rvalue_bcx(past_rhs, rhs, binop_ty).to_expr_datumblock();
+            }
+            (_, _) => {}
+        }
+    }
+
     let join = fcx.new_id_block("join", binop_expr.id);
     let before_rhs = fcx.new_id_block("before_rhs", b.id);
 
