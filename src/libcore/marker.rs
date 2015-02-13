@@ -32,7 +32,17 @@ use clone::Clone;
            reason = "will be overhauled with new lifetime rules; see RFC 458")]
 #[lang="send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[cfg(stage0)] // SNAP ac134f7 remove after stage0
 pub unsafe trait Send: 'static {
+    // empty.
+}
+/// Types able to be transferred across thread boundaries.
+#[unstable(feature = "core",
+           reason = "will be overhauled with new lifetime rules; see RFC 458")]
+#[lang="send"]
+#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[cfg(not(stage0))]
+pub unsafe trait Send {
     // empty.
 }
 
