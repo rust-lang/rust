@@ -179,7 +179,7 @@
 //!
 //! impl fmt::Display for Vector2D {
 //!     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-//!         // The `f` value implements the `Writer` trait, which is what the
+//!         // The `f` value implements the `Write` trait, which is what the
 //!         // write! macro is expecting. Note that this formatting ignores the
 //!         // various flags provided to format strings.
 //!         write!(f, "({}, {})", self.x, self.y)
@@ -403,7 +403,7 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-pub use core::fmt::{Formatter, Result, Writer, rt};
+pub use core::fmt::{Formatter, Result, Write, rt};
 pub use core::fmt::{Show, String, Octal, Binary};
 pub use core::fmt::{Display, Debug};
 pub use core::fmt::{LowerHex, UpperHex, Pointer};

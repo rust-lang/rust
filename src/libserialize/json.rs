@@ -371,7 +371,7 @@ impl std::error::FromError<fmt::Error> for EncoderError {
 pub type EncodeResult = Result<(), EncoderError>;
 pub type DecodeResult<T> = Result<T, DecoderError>;
 
-fn escape_str(wr: &mut fmt::Writer, v: &str) -> EncodeResult {
+fn escape_str(wr: &mut fmt::Write, v: &str) -> EncodeResult {
     try!(wr.write_str("\""));
 
     let mut start = 0;
@@ -433,14 +433,14 @@ fn escape_str(wr: &mut fmt::Writer, v: &str) -> EncodeResult {
     Ok(())
 }
 
-fn escape_char(writer: &mut fmt::Writer, v: char) -> EncodeResult {
+fn escape_char(writer: &mut fmt::Write, v: char) -> EncodeResult {
     let mut buf = [0; 4];
     let n = v.encode_utf8(&mut buf).unwrap();
     let buf = unsafe { str::from_utf8_unchecked(&buf[..n]) };
     escape_str(writer, buf)
 }
 
-fn spaces(wr: &mut fmt::Writer, mut n: uint) -> EncodeResult {
+fn spaces(wr: &mut fmt::Write, mut n: uint) -> EncodeResult {
     const BUF: &'static str = "                ";
 
     while n >= BUF.len() {
@@ -464,14 +464,14 @@ fn fmt_number_or_null(v: f64) -> string::String {
 
 /// A structure for implementing serialization to JSON.
 pub struct Encoder<'a> {
-    writer: &'a mut (fmt::Writer+'a),
+    writer: &'a mut (fmt::Write+'a),
     is_emitting_map_key: bool,
 }
 
 impl<'a> Encoder<'a> {
     /// Creates a new JSON encoder whose output will be written to the writer
     /// specified.
-    pub fn new(writer: &'a mut fmt::Writer) -> Encoder<'a> {
+    pub fn new(writer: &'a mut fmt::Write) -> Encoder<'a> {
         Encoder { writer: writer, is_emitting_map_key: false, }
     }
 }
@@ -709,7 +709,7 @@ impl<'a> ::Encoder for Encoder<'a> {
 /// Another encoder for JSON, but prints out human-readable JSON instead of
 /// compact data
 pub struct PrettyEncoder<'a> {
-    writer: &'a mut (fmt::Writer+'a),
+    writer: &'a mut (fmt::Write+'a),
     curr_indent: uint,
     indent: uint,
     is_emitting_map_key: bool,
@@ -717,7 +717,7 @@ pub struct PrettyEncoder<'a> {
 
 impl<'a> PrettyEncoder<'a> {
     /// Creates a new encoder whose output will be written to the specified writer
-    pub fn new(writer: &'a mut fmt::Writer) -> PrettyEncoder<'a> {
+    pub fn new(writer: &'a mut fmt::Write) -> PrettyEncoder<'a> {
         PrettyEncoder {
             writer: writer,
             curr_indent: 0,
@@ -2527,7 +2527,7 @@ struct FormatShim<'a, 'b: 'a> {
     inner: &'a mut fmt::Formatter<'b>,
 }
 
-impl<'a, 'b> fmt::Writer for FormatShim<'a, 'b> {
+impl<'a, 'b> fmt::Write for FormatShim<'a, 'b> {
     fn write_str(&mut self, s: &str) -> fmt::Result {
         match self.inner.write_str(s) {
             Ok(_) => Ok(()),
