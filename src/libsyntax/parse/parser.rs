@@ -240,9 +240,8 @@ macro_rules! maybe_whole {
 
 fn maybe_append(mut lhs: Vec<Attribute>, rhs: Option<Vec<Attribute>>)
                 -> Vec<Attribute> {
-    match rhs {
-        Some(ref attrs) => lhs.extend(attrs.iter().map(|a| a.clone())),
-        None => {}
+    if let Some(ref attrs) = rhs {
+        lhs.extend(attrs.iter().cloned())
     }
     lhs
 }
@@ -467,7 +466,7 @@ impl<'a> Parser<'a> {
         debug!("commit_expr {:?}", e);
         if let ExprPath(..) = e.node {
             // might be unit-struct construction; check for recoverableinput error.
-            let mut expected = edible.iter().map(|x| x.clone()).collect::<Vec<_>>();
+            let mut expected = edible.iter().cloned().collect::<Vec<_>>();
             expected.push_all(inedible);
             self.check_for_erroneous_unit_struct_expecting(&expected[]);
         }
@@ -485,7 +484,7 @@ impl<'a> Parser<'a> {
         if self.last_token
                .as_ref()
                .map_or(false, |t| t.is_ident() || t.is_path()) {
-            let mut expected = edible.iter().map(|x| x.clone()).collect::<Vec<_>>();
+            let mut expected = edible.iter().cloned().collect::<Vec<_>>();
             expected.push_all(&inedible[]);
             self.check_for_erroneous_unit_struct_expecting(
                 &expected[]);

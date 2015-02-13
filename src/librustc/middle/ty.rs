@@ -2868,7 +2868,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
                         def_id: ast::DefId,
                         input_tys: &[Ty<'tcx>],
                         output: Ty<'tcx>) -> Ty<'tcx> {
-    let input_args = input_tys.iter().map(|ty| *ty).collect();
+    let input_args = input_tys.iter().cloned().collect();
     mk_bare_fn(cx,
                Some(def_id),
                cx.mk_bare_fn(BareFnTy {
@@ -3837,7 +3837,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                                        -> Representability {
         match ty.sty {
             ty_tup(ref ts) => {
-                find_nonrepresentable(cx, sp, seen, ts.iter().map(|ty| *ty))
+                find_nonrepresentable(cx, sp, seen, ts.iter().cloned())
             }
             // Fixed-length vectors.
             // FIXME(#11924) Behavior undecided for zero-length vectors.
@@ -4965,7 +4965,7 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
 }
 
 pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.borrow().get(&id).map(|x| *x)
+    cx.provided_method_sources.borrow().get(&id).cloned()
 }
 
 pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)

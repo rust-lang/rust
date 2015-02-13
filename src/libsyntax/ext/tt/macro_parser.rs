@@ -283,7 +283,7 @@ pub fn parse(sess: &ParseSess,
              -> ParseResult {
     let mut cur_eis = Vec::new();
     cur_eis.push(initial_matcher_pos(Rc::new(ms.iter()
-                                                .map(|x| (*x).clone())
+                                                .cloned()
                                                 .collect()),
                                      None,
                                      rdr.peek().sp.lo));
