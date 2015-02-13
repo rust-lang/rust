@@ -453,7 +453,7 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
     invariant_lang_items[RegionParam as uint] =
         terms_cx.tcx.lang_items.invariant_lifetime();
 
-    let unsafe_lang_item = terms_cx.tcx.lang_items.unsafe_type();
+    let unsafe_lang_item = terms_cx.tcx.lang_items.unsafe_cell_type();
 
     let covariant = terms_cx.arena.alloc(ConstantTerm(ty::Covariant));
     let contravariant = terms_cx.arena.alloc(ConstantTerm(ty::Contravariant));

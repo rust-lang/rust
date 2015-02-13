@@ -271,7 +271,7 @@ lets_do_this! {
     RangeToStructLangItem,           "range_to",                range_to_struct;
     RangeFullStructLangItem,         "range_full",              range_full_struct;
 
-    UnsafeTypeLangItem,              "unsafe",                  unsafe_type;
+    UnsafeCellTypeLangItem,          "unsafe_cell",             unsafe_cell_type;
 
     DerefTraitLangItem,              "deref",                   deref_trait;
     DerefMutTraitLangItem,           "deref_mut",               deref_mut_trait;
