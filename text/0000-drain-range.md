@@ -4,7 +4,8 @@
 
 # Summary
 
-Replace `Vec::drain` by a method that accepts a range parameter.
+Replace `Vec::drain` by a method that accepts a range parameter. Add
+`String::drain` with similar functionality.
 
 # Motivation
 
@@ -64,3 +65,19 @@ pub fn drain<T: Drainer>(&mut self, range: T) -> RangeIter<T> {
 
 Where `Drainer` should be implemented for `Range<usize>`, `RangeTo<usize>`,
 `RangeFrom<usize>`, `FullRange`, and `usize`.
+
+Add `String::drain`:
+
+```rust
+/// Creates a draining iterator that clears the specified range in the String
+/// and iterates over the characters contained in the range.
+///
+/// # Panics
+///
+/// Panics if the range is decreasing, if the upper bound is larger than the
+/// length of the String, or if the start and the end of the range don't lie on
+/// character boundaries.
+pub fn drain(&mut self, range: /* ? */) -> /* ? */ {
+    // ?
+}
+```
