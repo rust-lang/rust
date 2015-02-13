@@ -23,7 +23,8 @@ register_diagnostics! {
     E0257, // inherent implementations are only allowed on types defined in the current module
     E0258, // import conflicts with existing submodule
     E0259, // an extern crate has already been imported into this module
-    E0260 // name conflicts with an external crate that has been imported into this module
+    E0260, // name conflicts with an external crate that has been imported into this module
+    E0317 // user-defined types or type parameters cannot shadow the primitive types
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }

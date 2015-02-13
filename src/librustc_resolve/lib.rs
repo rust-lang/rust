@@ -2788,6 +2788,13 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         visit::walk_crate(self, krate);
     }
 
+    fn check_if_primitive_type_name(&self, name: Name, span: Span) {
+        if let Some(_) = self.primitive_type_table.primitive_types.get(&name) {
+            span_err!(self.session, span, E0317,
+                "user-defined types or type parameters cannot shadow the primitive types");
+        }
+    }
+
     fn resolve_item(&mut self, item: &Item) {
         let name = item.ident.name;
 
@@ -2799,6 +2806,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             // enum item: resolve all the variants' discrs,
             // then resolve the ty params
             ItemEnum(ref enum_def, ref generics) => {
+                self.check_if_primitive_type_name(name, item.span);
+
                 for variant in &(*enum_def).variants {
                     if let Some(ref dis_expr) = variant.node.disr_expr {
                         // resolve the discriminator expr
@@ -2824,6 +2833,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemTy(_, ref generics) => {
+                self.check_if_primitive_type_name(name, item.span);
+
                 self.with_type_parameter_rib(HasTypeParameters(generics,
                                                                TypeSpace,
                                                                item.id,
@@ -2847,6 +2858,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemTrait(_, ref generics, ref bounds, ref trait_items) => {
+                self.check_if_primitive_type_name(name, item.span);
+
                 // Create a new rib for the self type.
                 let mut self_type_rib = Rib::new(ItemRibKind);
 
@@ -2919,6 +2932,8 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemStruct(ref struct_def, ref generics) => {
+                self.check_if_primitive_type_name(name, item.span);
+
                 self.resolve_struct(item.id,
                                     generics,
                                     &struct_def.fields[]);
@@ -2972,7 +2987,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
-            ItemExternCrate(_) | ItemUse(_) | ItemMac(..) => {
+            ItemUse(ref view_path) => {
+                // check for imports shadowing primitive types
+                if let ast::ViewPathSimple(ident, _) = view_path.node {
+                    match self.def_map.borrow().get(&item.id) {
+                        Some(&DefTy(..)) | Some(&DefStruct(..)) | Some(&DefTrait(..)) | None => {
+                            self.check_if_primitive_type_name(ident.name, item.span);
+                        }
+                        _ => {}
+                    }
+                }
+            }
+
+            ItemExternCrate(_) | ItemMac(..) => {
                 // do nothing, these are just around to be encoded
             }
         }
@@ -3114,6 +3141,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_type_parameter(&mut self,
                               type_parameter: &TyParam) {
+        self.check_if_primitive_type_name(type_parameter.ident.name, type_parameter.span);
         for bound in &*type_parameter.bounds {
             self.resolve_type_parameter_bound(type_parameter.id, bound,
                                               TraitBoundingTypeParameter);
