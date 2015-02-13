@@ -280,7 +280,6 @@ pub type McResult<T> = Result<T, ()>;
 /// know that no errors have occurred, so we simply consult the tcx and we
 /// can be sure that only `Ok` results will occur.
 pub trait Typer<'tcx> : ty::ClosureTyper<'tcx> {
-    fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx>;
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>>;
     fn expr_ty_adjusted(&self, expr: &ast::Expr) -> McResult<Ty<'tcx>>;
     fn type_moves_by_default(&self, span: Span, ty: Ty<'tcx>) -> bool;

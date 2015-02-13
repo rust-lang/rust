@@ -32,7 +32,6 @@ use super::object_safety;
 use super::{util};
 
 use middle::fast_reject;
-use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
 use middle::ty::{self, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;

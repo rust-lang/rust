@@ -2347,6 +2347,10 @@ impl ClosureKind {
 }
 
 pub trait ClosureTyper<'tcx> {
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
+        self.param_env().tcx
+    }
+
     fn param_env<'a>(&'a self) -> &'a ty::ParameterEnvironment<'a, 'tcx>;
 
     /// Is this a `Fn`, `FnMut` or `FnOnce` closure? During typeck,
@@ -6508,10 +6512,6 @@ impl<'tcx> ctxt<'tcx> {
 }
 
 impl<'a,'tcx> mc::Typer<'tcx> for ParameterEnvironment<'a,'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
-        self.tcx
-    }
-
     fn node_ty(&self, id: ast::NodeId) -> mc::McResult<Ty<'tcx>> {
         Ok(ty::node_id_to_type(self.tcx, id))
     }
