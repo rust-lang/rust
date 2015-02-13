@@ -518,6 +518,9 @@ This last example is different because it is not possible to use the suffix
 syntax with a floating point literal ending in a period. `2.f64` would attempt
 to call a method named `f64` on `2`.
 
+The representation semantics of floating-point numbers are described in
+["Machine Types"](#machine-types).
+
 #### Boolean literals
 
 The two values of the boolean type are written `true` and `false`.
