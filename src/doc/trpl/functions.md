@@ -60,7 +60,7 @@ not work:
 
 ```{ignore}
 fn print_sum(x, y) {
-    println!("x is: {}", x + y);
+    println!("sum is: {}", x + y);
 }
 ```
 
