@@ -895,7 +895,7 @@ impl<A: Ord> Ord for DList<A> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Clone> Clone for DList<A> {
     fn clone(&self) -> DList<A> {
-        self.iter().map(|x| x.clone()).collect()
+        self.iter().cloned().collect()
     }
 }
 
@@ -1013,7 +1013,7 @@ mod tests {
 
     #[cfg(test)]
     fn list_from<T: Clone>(v: &[T]) -> DList<T> {
-        v.iter().map(|x| (*x).clone()).collect()
+        v.iter().cloned().collect()
     }
 
     #[test]

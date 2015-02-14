@@ -158,7 +158,7 @@ fn calculate_type(sess: &session::Session,
 
     // Collect what we've got so far in the return vector.
     let mut ret = (1..sess.cstore.next_crate_num()).map(|i| {
-        match formats.get(&i).map(|v| *v) {
+        match formats.get(&i).cloned() {
             v @ Some(cstore::RequireDynamic) => v,
             _ => None,
         }

@@ -4944,7 +4944,7 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
 }
 
 pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.borrow().get(&id).map(|x| *x)
+    cx.provided_method_sources.borrow().get(&id).cloned()
 }
 
 pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
