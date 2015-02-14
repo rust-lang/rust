@@ -743,7 +743,7 @@ impl LintPass for PathStatements {
 declare_lint! {
     pub UNUSED_MUST_USE,
     Warn,
-    "unused result of a type flagged as #[must_use]"
+    "unused result of a type or function flagged as #[must_use]"
 }
 
 declare_lint! {
@@ -772,9 +772,9 @@ impl LintPass for UnusedResults {
 
         let t = ty::expr_ty(cx.tcx, expr);
         let mut warned = false;
+        let mut is_unit = false;
         match t.sty {
-            ty::ty_tup(ref tys) if tys.is_empty() => return,
-            ty::ty_bool => return,
+            ty::ty_tup(ref tys) if tys.is_empty() => is_unit = true,
             ty::ty_struct(did, _) |
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
@@ -788,7 +788,37 @@ impl LintPass for UnusedResults {
             }
             _ => {}
         }
-        if !warned {
+        match expr.node {
+            ast::ExprCall(ref func, _) => {
+                if let Some(func) = cx.tcx.def_map.borrow().get(&func.id) {
+                    if let Some(attrs) = ty::get_attrs_opt(cx.tcx, func.def_id()) {
+                        warned |= check_must_use(cx, &attrs, s.span)
+                    }
+                }
+            }
+            ast::ExprMethodCall(..) => {
+                let method_call = ty::MethodCall::expr(expr.id);
+                let map = cx.tcx.method_map.borrow();
+                let method = map.get(&method_call).unwrap();
+                let did = match method.origin {
+                    ty::MethodStatic(did) => Some(did),
+                    ty::MethodStaticClosure(did) => Some(did),
+                    // FIXME: it should be possible to get more info in this
+                    // case, since e.g. the impl is sometimes known.
+                    ty::MethodTypeParam(_) => None,
+                    ty::MethodTraitObject(_) => None
+                };
+
+                if let Some(did) = did {
+                    if let Some(attrs) = ty::get_attrs_opt(cx.tcx, did) {
+                        warned |= check_must_use(cx, &attrs, s.span)
+                    }
+                }
+            }
+            _ => {}
+        }
+
+        if !warned && !is_unit {
             cx.span_lint(UNUSED_RESULTS, s.span, "unused result");
         }
 
