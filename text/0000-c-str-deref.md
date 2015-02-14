@@ -134,9 +134,7 @@ in favor of composition of the functions described above:
 ## Proof of concept
 
 The described interface changes are implemented in crate
-[c_string](https://github.com/mzabaluev/rust-c-str), with a difference
-that the `CStr` token type has a bogus static size, as a compromise to
-offer better performance in current Rust.
+[c_string](https://github.com/mzabaluev/rust-c-str).
 
 # Drawbacks
 
