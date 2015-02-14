@@ -35,13 +35,26 @@ pub const EPSILON: f32 = 1.19209290e-07_f32;
 
 /// Smallest finite f32 value
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "use `std::f32::MIN`")]
 pub const MIN_VALUE: f32 = -3.40282347e+38_f32;
 /// Smallest positive, normalized f32 value
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "use `std::f32::MIN_POSITIVE`")]
 pub const MIN_POS_VALUE: f32 = 1.17549435e-38_f32;
 /// Largest finite f32 value
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "use `std::f32::MAX`")]
 pub const MAX_VALUE: f32 = 3.40282347e+38_f32;
+
+/// Smallest finite f32 value
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const MIN: f32 = -3.40282347e+38_f32;
+/// Smallest positive, normalized f32 value
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const MIN_POSITIVE: f32 = 1.17549435e-38_f32;
+/// Largest finite f32 value
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const MAX: f32 = 3.40282347e+38_f32;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MIN_EXP: int = -125;
@@ -215,17 +228,17 @@ impl Float for f32 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_value() -> f32 { MIN_VALUE }
+    fn min_value() -> f32 { MIN }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_pos_value(_: Option<f32>) -> f32 { MIN_POS_VALUE }
+    fn min_pos_value(_: Option<f32>) -> f32 { MIN_POSITIVE }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_value() -> f32 { MAX_VALUE }
+    fn max_value() -> f32 { MAX }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {
