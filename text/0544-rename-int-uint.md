@@ -46,7 +46,7 @@ However, given the discussions about the previous revisions of this RFC, and the
 
 # Detailed Design
 
-- Rename `int/uint` to `isize/usize`, with `isz/usz` being their literal suffixes, respectively.
+- Rename `int/uint` to `isize/usize`, with them being their own literal suffixes.
 - Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
 
 `usize` in action:
@@ -62,7 +62,7 @@ There are different opinions about which literal suffixes to use. The following 
 ### `isize/usize`:
 
 * Pros: They are the same as the type names, very consistent with the rest of the integer primitives.
-* Cons: They are too long for some, and may stand out too much as suffixes.
+* Cons: They are too long for some, and may stand out too much as suffixes. However, discouraging people from overusing `isize/usize` is the point of this RFC. And if they are not overused, then this will not be a problem in practice.
 
 ### `is/us`:
 
@@ -72,9 +72,11 @@ There are different opinions about which literal suffixes to use. The following 
 Note: No matter which suffixes get chosen, it can be beneficial to reserve `is` as a keyword, but this is outside the scope of this RFC.
 
 ### `iz/uz`:
+
 * Pros and cons: Similar to those of `is/us`, except that `iz/uz` are not actual words, which is an additional advantage. However it may not be immediately clear that `iz/uz` are abbreviations of `isize/usize`.
 
 ### `i/u`:
+
 * Pros: They are very succinct.
 * Cons: They are *too* succinct and carry the "default integer types" connotation, which is undesirable. 
 
@@ -83,7 +85,7 @@ Note: No matter which suffixes get chosen, it can be beneficial to reserve `is` 
 * Pros: They are the middle grounds between `isize/usize` and `is/us`, neither too long nor too short. They are not actual English words and it's clear that they are short for `isize/usize`.
 * Cons: Not everyone likes the appearances of `isz/usz`, but this can be said about all the candidates.
 
-Thus, this author believes that `isz/usz` are the best choices here.
+After community discussions, it is deemed that using `isize/usize` directly as suffixes is a fine choice and there is no need to introduce other suffixes.
 
 ## Advantages of `isize/usize`:
 
