@@ -297,7 +297,7 @@ pub fn expand(cap: &[u8], params: &[Param], vars: &mut Variables)
             PushParam => {
                 // params are 1-indexed
                 stack.push(mparams[match cur.to_digit(10) {
-                    Some(d) => d - 1,
+                    Some(d) => d as usize - 1,
                     None => return Err("bad param number".to_string())
                 }].clone());
             },
