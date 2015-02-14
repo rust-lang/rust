@@ -76,7 +76,7 @@ fn main() {
 
 Mo' generics, mo' magic. How you gonna discover it?
 
-"hidden" clones?
+Hidden clones?
 
 # Alternatives
 
