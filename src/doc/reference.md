@@ -5,9 +5,7 @@
 This document is the primary reference for the Rust programming language. It
 provides three kinds of material:
 
-  - Chapters that formally define the language grammar and, for each
-    construct, informally describe its semantics and give examples of its
-    use.
+  - Chapters that informally describe each language construct and their use.
   - Chapters that informally describe the memory model, concurrency model,
     runtime services, linkage model and debugging facilities.
   - Appendix chapters providing rationale and references to languages that
@@ -23,8 +21,11 @@ separately by extracting documentation attributes from their source code. Many
 of the features that one might expect to be language features are library
 features in Rust, so what you're looking for may be there, not here.
 
+You may also be interested in the [grammar].
+
 [book]: book/index.html
 [standard]: std/index.html
+[grammar]: grammar.html
 
 # Notation
 
