@@ -495,6 +495,120 @@ mod tests {
     }
 
     #[test]
+    fn test_nan() {
+        let nan: f64 = Float::nan();
+        assert!(nan.is_nan());
+        assert!(!nan.is_infinite());
+        assert!(!nan.is_finite());
+        assert!(!nan.is_normal());
+        assert!(!nan.is_positive());
+        assert!(!nan.is_negative());
+        assert_eq!(Fp::Nan, nan.classify());
+    }
+
+    #[test]
+    fn test_infinity() {
+        let inf: f64 = Float::infinity();
+        assert!(inf.is_infinite());
+        assert!(!inf.is_finite());
+        assert!(inf.is_positive());
+        assert!(!inf.is_negative());
+        assert!(!inf.is_nan());
+        assert!(!inf.is_normal());
+        assert_eq!(Fp::Infinite, inf.classify());
+    }
+
+    #[test]
+    fn test_neg_infinity() {
+        let neg_inf: f64 = Float::neg_infinity();
+        assert!(neg_inf.is_infinite());
+        assert!(!neg_inf.is_finite());
+        assert!(!neg_inf.is_positive());
+        assert!(neg_inf.is_negative());
+        assert!(!neg_inf.is_nan());
+        assert!(!neg_inf.is_normal());
+        assert_eq!(Fp::Infinite, neg_inf.classify());
+    }
+
+    #[test]
+    fn test_zero() {
+        let zero: f64 = Float::zero();
+        assert_eq!(0.0, zero);
+        assert!(!zero.is_infinite());
+        assert!(zero.is_finite());
+        assert!(zero.is_positive());
+        assert!(!zero.is_negative());
+        assert!(!zero.is_nan());
+        assert!(!zero.is_normal());
+        assert_eq!(Fp::Zero, zero.classify());
+    }
+
+    #[test]
+    fn test_neg_zero() {
+        let neg_zero: f64 = Float::neg_zero();
+        assert_eq!(0.0, neg_zero);
+        assert!(!neg_zero.is_infinite());
+        assert!(neg_zero.is_finite());
+        assert!(!neg_zero.is_positive());
+        assert!(neg_zero.is_negative());
+        assert!(!neg_zero.is_nan());
+        assert!(!neg_zero.is_normal());
+        assert_eq!(Fp::Zero, neg_zero.classify());
+    }
+
+    #[test]
+    fn test_one() {
+        let one: f64 = Float::one();
+        assert_eq!(1.0, one);
+        assert!(!one.is_infinite());
+        assert!(one.is_finite());
+        assert!(one.is_positive());
+        assert!(!one.is_negative());
+        assert!(!one.is_nan());
+        assert!(one.is_normal());
+        assert_eq!(Fp::Normal, one.classify());
+    }
+
+    #[test]
+    fn test_is_nan() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert!(nan.is_nan());
+        assert!(!0.0f64.is_nan());
+        assert!(!5.3f64.is_nan());
+        assert!(!(-10.732f64).is_nan());
+        assert!(!inf.is_nan());
+        assert!(!neg_inf.is_nan());
+    }
+
+    #[test]
+    fn test_is_infinite() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert!(!nan.is_infinite());
+        assert!(inf.is_infinite());
+        assert!(neg_inf.is_infinite());
+        assert!(!0.0f64.is_infinite());
+        assert!(!42.8f64.is_infinite());
+        assert!(!(-109.2f64).is_infinite());
+    }
+
+    #[test]
+    fn test_is_finite() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert!(!nan.is_finite());
+        assert!(!inf.is_finite());
+        assert!(!neg_inf.is_finite());
+        assert!(0.0f64.is_finite());
+        assert!(42.8f64.is_finite());
+        assert!((-109.2f64).is_finite());
+    }
+
+    #[test]
     fn test_is_normal() {
         let nan: f64 = Float::nan();
         let inf: f64 = Float::infinity();
@@ -658,6 +772,66 @@ mod tests {
     }
 
     #[test]
+    fn test_mul_add() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_approx_eq!(12.3f64.mul_add(4.5, 6.7), 62.05);
+        assert_approx_eq!((-12.3f64).mul_add(-4.5, -6.7), 48.65);
+        assert_approx_eq!(0.0f64.mul_add(8.9, 1.2), 1.2);
+        assert_approx_eq!(3.4f64.mul_add(-0.0, 5.6), 5.6);
+        assert!(nan.mul_add(7.8, 9.0).is_nan());
+        assert_eq!(inf.mul_add(7.8, 9.0), inf);
+        assert_eq!(neg_inf.mul_add(7.8, 9.0), neg_inf);
+        assert_eq!(8.9f64.mul_add(inf, 3.2), inf);
+        assert_eq!((-3.2f64).mul_add(2.4, neg_inf), neg_inf);
+    }
+
+    #[test]
+    fn test_recip() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_eq!(1.0f64.recip(), 1.0);
+        assert_eq!(2.0f64.recip(), 0.5);
+        assert_eq!((-0.4f64).recip(), -2.5);
+        assert_eq!(0.0f64.recip(), inf);
+        assert!(nan.recip().is_nan());
+        assert_eq!(inf.recip(), 0.0);
+        assert_eq!(neg_inf.recip(), 0.0);
+    }
+
+    #[test]
+    fn test_powi() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_eq!(1.0f64.powi(1), 1.0);
+        assert_approx_eq!((-3.1f64).powi(2), 9.61);
+        assert_approx_eq!(5.9f64.powi(-2), 0.028727);
+        assert_eq!(8.3f64.powi(0), 1.0);
+        assert!(nan.powi(2).is_nan());
+        assert_eq!(inf.powi(3), inf);
+        assert_eq!(neg_inf.powi(2), inf);
+    }
+
+    #[test]
+    fn test_powf() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_eq!(1.0f64.powf(1.0), 1.0);
+        assert_approx_eq!(3.4f64.powf(4.5), 246.408183);
+        assert_approx_eq!(2.7f64.powf(-3.2), 0.041652);
+        assert_approx_eq!((-3.1f64).powf(2.0), 9.61);
+        assert_approx_eq!(5.9f64.powf(-2.0), 0.028727);
+        assert_eq!(8.3f64.powf(0.0), 1.0);
+        assert!(nan.powf(2.0).is_nan());
+        assert_eq!(inf.powf(2.0), inf);
+        assert_eq!(neg_inf.powf(3.0), neg_inf);
+    }
+
+    #[test]
     fn test_sqrt_domain() {
         assert!(NAN.sqrt().is_nan());
         assert!(NEG_INFINITY.sqrt().is_nan());
@@ -666,6 +840,21 @@ mod tests {
         assert_eq!(0.0f64.sqrt(), 0.0);
         assert_eq!(1.0f64.sqrt(), 1.0);
         assert_eq!(INFINITY.sqrt(), INFINITY);
+    }
+
+    #[test]
+    fn test_rsqrt() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert!(nan.rsqrt().is_nan());
+        assert_eq!(inf.rsqrt(), 0.0);
+        assert!(neg_inf.rsqrt().is_nan());
+        assert!((-1.0f64).rsqrt().is_nan());
+        assert_eq!((-0.0f64).rsqrt(), neg_inf);
+        assert_eq!(0.0f64.rsqrt(), inf);
+        assert_eq!(1.0f64.rsqrt(), 1.0);
+        assert_eq!(4.0f64.rsqrt(), 0.5);
     }
 
     #[test]
@@ -696,13 +885,110 @@ mod tests {
     }
 
     #[test]
+    fn test_ln() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_approx_eq!(1.0f64.exp().ln(), 1.0);
+        assert!(nan.ln().is_nan());
+        assert_eq!(inf.ln(), inf);
+        assert!(neg_inf.ln().is_nan());
+        assert!((-2.3f64).ln().is_nan());
+        assert_eq!((-0.0f64).ln(), neg_inf);
+        assert_eq!(0.0f64.ln(), neg_inf);
+        assert_approx_eq!(4.0f64.ln(), 1.386294);
+    }
+
+    #[test]
+    fn test_log() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_eq!(10.0f64.log(10.0), 1.0);
+        assert_approx_eq!(2.3f64.log(3.5), 0.664858);
+        assert_eq!(1.0f64.exp().log(1.0.exp()), 1.0);
+        assert!(1.0f64.log(1.0).is_nan());
+        assert!(1.0f64.log(-13.9).is_nan());
+        assert!(nan.log(2.3).is_nan());
+        assert_eq!(inf.log(10.0), inf);
+        assert!(neg_inf.log(8.8).is_nan());
+        assert!((-2.3f64).log(0.1).is_nan());
+        assert_eq!((-0.0f64).log(2.0), neg_inf);
+        assert_eq!(0.0f64.log(7.0), neg_inf);
+    }
+
+    #[test]
+    fn test_log2() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_approx_eq!(10.0f64.log2(), 3.321928);
+        assert_approx_eq!(2.3f64.log2(), 1.201634);
+        assert_approx_eq!(1.0f64.exp().log2(), 1.442695);
+        assert!(nan.log2().is_nan());
+        assert_eq!(inf.log2(), inf);
+        assert!(neg_inf.log2().is_nan());
+        assert!((-2.3f64).log2().is_nan());
+        assert_eq!((-0.0f64).log2(), neg_inf);
+        assert_eq!(0.0f64.log2(), neg_inf);
+    }
+
+    #[test]
+    fn test_log10() {
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_eq!(10.0f64.log10(), 1.0);
+        assert_approx_eq!(2.3f64.log10(), 0.361728);
+        assert_approx_eq!(1.0f64.exp().log10(), 0.434294);
+        assert_eq!(1.0f64.log10(), 0.0);
+        assert!(nan.log10().is_nan());
+        assert_eq!(inf.log10(), inf);
+        assert!(neg_inf.log10().is_nan());
+        assert!((-2.3f64).log10().is_nan());
+        assert_eq!((-0.0f64).log10(), neg_inf);
+        assert_eq!(0.0f64.log10(), neg_inf);
+    }
+
+    #[test]
+    fn test_to_degrees() {
+        let pi: f64 = consts::PI;
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_eq!(0.0f64.to_degrees(), 0.0);
+        assert_approx_eq!((-5.8f64).to_degrees(), -332.315521);
+        assert_eq!(pi.to_degrees(), 180.0);
+        assert!(nan.to_degrees().is_nan());
+        assert_eq!(inf.to_degrees(), inf);
+        assert_eq!(neg_inf.to_degrees(), neg_inf);
+    }
+
+    #[test]
+    fn test_to_radians() {
+        let pi: f64 = consts::PI;
+        let nan: f64 = Float::nan();
+        let inf: f64 = Float::infinity();
+        let neg_inf: f64 = Float::neg_infinity();
+        assert_eq!(0.0f64.to_radians(), 0.0);
+        assert_approx_eq!(154.6f64.to_radians(), 2.698279);
+        assert_approx_eq!((-332.31f64).to_radians(), -5.799903);
+        assert_eq!(180.0f64.to_radians(), pi);
+        assert!(nan.to_radians().is_nan());
+        assert_eq!(inf.to_radians(), inf);
+        assert_eq!(neg_inf.to_radians(), neg_inf);
+    }
+
+    #[test]
     fn test_ldexp() {
         // We have to use from_str until base-2 exponents
         // are supported in floating-point literals
         let f1: f64 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
         let f2: f64 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
+        let f3: f64 = FromStrRadix::from_str_radix("1.Cp-12", 16).unwrap();
         assert_eq!(Float::ldexp(1f64, -123), f1);
         assert_eq!(Float::ldexp(1f64, -111), f2);
+        assert_eq!(Float::ldexp(1.75f64, -12), f3);
 
         assert_eq!(Float::ldexp(0f64, -123), 0f64);
         assert_eq!(Float::ldexp(-0f64, -123), -0f64);
@@ -721,12 +1007,16 @@ mod tests {
         // are supported in floating-point literals
         let f1: f64 = FromStrRadix::from_str_radix("1p-123", 16).unwrap();
         let f2: f64 = FromStrRadix::from_str_radix("1p-111", 16).unwrap();
+        let f3: f64 = FromStrRadix::from_str_radix("1.Cp-123", 16).unwrap();
         let (x1, exp1) = f1.frexp();
         let (x2, exp2) = f2.frexp();
+        let (x3, exp3) = f3.frexp();
         assert_eq!((x1, exp1), (0.5f64, -122));
         assert_eq!((x2, exp2), (0.5f64, -110));
+        assert_eq!((x3, exp3), (0.875f64, -122));
         assert_eq!(Float::ldexp(x1, exp1), f1);
         assert_eq!(Float::ldexp(x2, exp2), f2);
+        assert_eq!(Float::ldexp(x3, exp3), f3);
 
         assert_eq!(0f64.frexp(), (0f64, 0));
         assert_eq!((-0f64).frexp(), (-0f64, 0));
