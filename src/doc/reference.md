@@ -3005,7 +3005,7 @@ Some examples of call expressions:
 # fn add(x: i32, y: i32) -> i32 { 0 }
 
 let x: i32 = add(1i32, 2i32);
-let pi: Option<f32> = "3.14".parse().ok();
+let pi: Result<f32, _> = "3.14".parse();
 ```
 
 ### Lambda expressions
@@ -3148,7 +3148,7 @@ An example of a for loop over a series of integers:
 
 ```
 # fn bar(b:usize) { }
-for i in range(0us, 256) {
+for i in 0us..256 {
     bar(i);
 }
 ```
@@ -3532,7 +3532,7 @@ An example of each kind:
 ```{rust}
 let vec: Vec<i32> = vec![1, 2, 3];
 let arr: [i32; 3] = [1, 2, 3];
-let s: &[i32] = &vec;
+let s: &[i32] = &vec[];
 ```
 
 As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The
