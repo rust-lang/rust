@@ -427,7 +427,7 @@ fn main() {
     let mut numbers = vec![1, 2, 3];
 
     for i in 0..3 {
-        Thread::spawn(move || {
+        Thread::scoped(move || {
             for j in 0..3 { numbers[j] += 1 }
         });
     }
@@ -441,7 +441,7 @@ It gives us this error:
     for j in 0..3 { numbers[j] += 1 }
                     ^~~~~~~
 7:50 note: `numbers` moved into closure environment here
-    spawn(move || {
+    scoped(move || {
         for j in 0..3 { numbers[j] += 1 }
     });
 6:79 error: cannot assign to immutable dereference (dereference is implicit, due to indexing)
@@ -482,7 +482,7 @@ fn main() {
 
     for i in 0us..3 {
         let number = numbers.clone();
-        Thread::spawn(move || {
+        Thread::scoped(move || {
             let mut array = number.lock().unwrap();
             array[i] += 1;
             println!("numbers[{}] is {}", i, array[i]);
@@ -542,7 +542,7 @@ fn main() {
     let vec = vec![1, 2, 3];
 
     for i in 0us..3 {
-        Thread::spawn(move || {
+        Thread::scoped(move || {
             println!("{}", vec[i]);
         });
     }
