@@ -5116,19 +5116,6 @@ pub fn is_associated_type(cx: &ctxt, id: ast::DefId) -> bool {
     })
 }
 
-/// Returns the parameter index that the given associated type corresponds to.
-pub fn associated_type_parameter_index(cx: &ctxt,
-                                       trait_def: &TraitDef,
-                                       associated_type_id: ast::DefId)
-                                       -> uint {
-    for type_parameter_def in trait_def.generics.types.iter() {
-        if type_parameter_def.def_id == associated_type_id {
-            return type_parameter_def.index as uint
-        }
-    }
-    cx.sess.bug("couldn't find associated type parameter index")
-}
-
 pub fn trait_item_def_ids(cx: &ctxt, id: ast::DefId)
                           -> Rc<Vec<ImplOrTraitItemId>> {
     lookup_locally_or_in_crate_store("trait_item_def_ids",
