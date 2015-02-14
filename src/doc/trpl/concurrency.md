@@ -171,7 +171,7 @@ use std::time::Duration;
 fn main() {
     let mut data = vec![1u32, 2, 3];
 
-    for i in 0 .. 2 {
+    for i in 0..2 {
         Thread::spawn(move || {
             data[i] += 1;
         });
@@ -211,7 +211,7 @@ use std::sync::Mutex;
 fn main() {
     let mut data = Mutex::new(vec![1u32, 2, 3]);
 
-    for i in 0 .. 2 {
+    for i in 0..2 {
         let data = data.lock().unwrap();
         Thread::spawn(move || {
             data[i] += 1;
@@ -262,7 +262,7 @@ use std::time::Duration;
 fn main() {
     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
 
-    for i in (0us..2) {
+    for i in 0us..2 {
         let data = data.clone();
         Thread::spawn(move || {
             let mut data = data.lock().unwrap();
@@ -285,7 +285,7 @@ thread more closely:
 # use std::time::Duration;
 # fn main() {
 #     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
-#     for i in (0us..2) {
+#     for i in 0us..2 {
 #         let data = data.clone();
 Thread::spawn(move || {
     let mut data = data.lock().unwrap();
@@ -323,7 +323,7 @@ fn main() {
 
     let (tx, rx) = mpsc::channel();
 
-    for _ in (0..10) {
+    for _ in 0..10 {
         let (data, tx) = (data.clone(), tx.clone());
 
         Thread::spawn(move || {
@@ -334,7 +334,7 @@ fn main() {
         });
     }
 
-    for _ in 0 .. 10 {
+    for _ in 0..10 {
         rx.recv();
     }
 }
