@@ -325,7 +325,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let xs = [100, 200, 300];
-    /// let mut it = xs.iter().map(|x| *x).peekable();
+    /// let mut it = xs.iter().cloned().peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 200);
@@ -2676,9 +2676,9 @@ impl<A: Int> Iterator for ::ops::Range<A> {
     }
 }
 
+// Ranges of u64 and i64 are excluded because they cannot guarantee having
+// a length <= usize::MAX, which is required by ExactSizeIterator.
 range_exact_iter_impl!(usize u8 u16 u32 isize i8 i16 i32);
-#[cfg(target_pointer_width = "64")]
-range_exact_iter_impl!(u64 i64);
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A: Int> DoubleEndedIterator for ::ops::Range<A> {

@@ -11,7 +11,7 @@
 #![feature(box_syntax)]
 #![feature(int_uint)]
 #![feature(unboxed_closures)]
-#![feature(unsafe_destructor, slicing_syntax)]
+#![feature(unsafe_destructor)]
 #![allow(deprecated)] // rand
 
 extern crate core;

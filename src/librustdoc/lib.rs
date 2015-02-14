@@ -30,7 +30,6 @@
 #![feature(os)]
 #![feature(path)]
 #![feature(rustc_private)]
-#![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(test)]

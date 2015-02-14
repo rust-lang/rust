@@ -64,7 +64,7 @@
 #![feature(int_uint)]
 #![feature(intrinsics, lang_items)]
 #![feature(on_unimplemented)]
-#![feature(simd, unsafe_destructor, slicing_syntax)]
+#![feature(simd, unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 

@@ -49,8 +49,8 @@ languages.
 
 A *vector* is a dynamic or "growable" array, implemented as the standard
 library type [`Vec<T>`](../std/vec/) (we'll talk about what the `<T>` means
-later). Vectors are to arrays what `String` is to `&str`. You can create them
-with the `vec!` macro:
+later). Vectors always allocate their data on the heap. Vectors are to slices 
+what `String` is to `&str`. You can create them with the `vec!` macro:
 
 ```{rust}
 let v = vec![1, 2, 3]; // v: Vec<i32>
