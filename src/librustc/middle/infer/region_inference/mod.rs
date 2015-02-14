@@ -38,7 +38,6 @@ use std::iter::repeat;
 use std::u32;
 use syntax::ast;
 
-mod doc;
 mod graphviz;
 
 // A constraint that influences the inference process.
