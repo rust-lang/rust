@@ -30,7 +30,7 @@ use self::StdSource::*;
 use boxed::Box;
 use cell::RefCell;
 use clone::Clone;
-use failure::LOCAL_STDERR;
+use panicking::LOCAL_STDERR;
 use fmt;
 use old_io::{Reader, Writer, IoResult, IoError, OtherIoError, Buffer,
          standard_error, EndOfFile, LineBufferedWriter, BufferedReader};
