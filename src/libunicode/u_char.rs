@@ -36,7 +36,7 @@ pub trait CharExt {
     /// Panics if given a radix > 36.
     #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
-    fn is_digit(self, radix: uint) -> bool;
+    fn is_digit(self, radix: u32) -> bool;
 
     /// Converts a character to the corresponding digit.
     ///
@@ -51,7 +51,7 @@ pub trait CharExt {
     /// Panics if given a radix outside the range [0..36].
     #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
-    fn to_digit(self, radix: uint) -> Option<uint>;
+    fn to_digit(self, radix: u32) -> Option<u32>;
 
     /// Returns an iterator that yields the hexadecimal Unicode escape
     /// of a character, as `char`s.
@@ -80,12 +80,12 @@ pub trait CharExt {
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf8(self) -> uint;
+    fn len_utf8(self) -> usize;
 
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-16.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf16(self) -> uint;
+    fn len_utf16(self) -> usize;
 
     /// Encodes this character as UTF-8 into the provided byte buffer,
     /// and then returns the number of bytes written.
@@ -94,7 +94,7 @@ pub trait CharExt {
     /// and a `None` will be returned.
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer,
     /// and then returns the number of `u16`s written.
@@ -103,7 +103,7 @@ pub trait CharExt {
     /// and a `None` will be returned.
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize>;
 
     /// Returns whether the specified character is considered a Unicode
     /// alphabetic code point.
@@ -216,31 +216,31 @@ pub trait CharExt {
     /// `is_cjk` = `false`) if the context cannot be reliably determined.
     #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
-    fn width(self, is_cjk: bool) -> Option<uint>;
+    fn width(self, is_cjk: bool) -> Option<usize>;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CharExt for char {
     #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
-    fn is_digit(self, radix: uint) -> bool { C::is_digit(self, radix) }
+    fn is_digit(self, radix: u32) -> bool { C::is_digit(self, radix) }
     #[unstable(feature = "unicode",
                reason = "pending integer conventions")]
-    fn to_digit(self, radix: uint) -> Option<uint> { C::to_digit(self, radix) }
+    fn to_digit(self, radix: u32) -> Option<u32> { C::to_digit(self, radix) }
     #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_unicode(self) -> char::EscapeUnicode { C::escape_unicode(self) }
     #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> char::EscapeDefault { C::escape_default(self) }
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf8(self) -> uint { C::len_utf8(self) }
+    fn len_utf8(self) -> usize { C::len_utf8(self) }
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf16(self) -> uint { C::len_utf16(self) }
+    fn len_utf16(self) -> usize { C::len_utf16(self) }
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> { C::encode_utf8(self, dst) }
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> { C::encode_utf8(self, dst) }
     #[unstable(feature = "unicode",
                reason = "pending decision about Iterator/Writer/Reader")]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> { C::encode_utf16(self, dst) }
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> { C::encode_utf16(self, dst) }
 
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_alphabetic(self) -> bool {
@@ -313,5 +313,5 @@ impl CharExt for char {
 
     #[unstable(feature = "unicode",
                reason = "needs expert opinion. is_cjk flag stands out as ugly")]
-    fn width(self, is_cjk: bool) -> Option<uint> { charwidth::width(self, is_cjk) }
+    fn width(self, is_cjk: bool) -> Option<usize> { charwidth::width(self, is_cjk) }
 }
