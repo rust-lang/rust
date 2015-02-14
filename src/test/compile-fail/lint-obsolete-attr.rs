@@ -13,6 +13,7 @@
 
 #![deny(unused_attributes)]
 #![allow(dead_code)]
+#![feature(custom_attribute)]
 
 #[abi="stdcall"] extern {} //~ ERROR unused attribute
 

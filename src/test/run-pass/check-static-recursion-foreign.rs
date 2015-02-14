@@ -11,6 +11,9 @@
 // Static recursion check shouldn't fail when given a foreign item (#18279)
 
 // aux-build:check_static_recursion_foreign_helper.rs
+
+#![feature(custom_attribute)]
+
 extern crate check_static_recursion_foreign_helper;
 extern crate libc;
 
