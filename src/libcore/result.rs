@@ -319,6 +319,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "`ok` only discards the contents of the `Err` variant, \
+                  it does not emit an error if the `Result` is not `Ok`"]
     pub fn ok(self) -> Option<T> {
         match self {
             Ok(x)  => Some(x),
@@ -342,6 +344,8 @@ impl<T, E> Result<T, E> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[must_use = "`err` only discards the contents of the `Ok` variant, \
+                  it does not emit an error if the `Result` is not `Err`"]
     pub fn err(self) -> Option<E> {
         match self {
             Ok(_)  => None,
