@@ -516,13 +516,21 @@ impl<'a> Parser<'a> {
         }
     }
 
+    pub fn parse_ident_or_self_type(&mut self) -> ast::Ident {
+        if self.is_self_type_ident() {
+            self.expect_self_type_ident()
+        } else {
+            self.parse_ident()
+        }
+    }
+
     pub fn parse_path_list_item(&mut self) -> ast::PathListItem {
         let lo = self.span.lo;
         let node = if self.eat_keyword_noexpect(keywords::Mod) {
             let span = self.last_span;
             self.span_warn(span, "deprecated syntax; use the `self` keyword now");
             ast::PathListMod { id: ast::DUMMY_NODE_ID }
-        } else if self.eat_keyword(keywords::Self) {
+        } else if self.eat_keyword(keywords::SelfValue) {
             ast::PathListMod { id: ast::DUMMY_NODE_ID }
         } else {
             let ident = self.parse_ident();
@@ -1797,7 +1805,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
-            let identifier = self.parse_ident();
+            let identifier = self.parse_ident_or_self_type();
 
             // Parse types, optionally.
             let parameters = if self.eat_lt() {
@@ -1850,7 +1858,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
-            let identifier = self.parse_ident();
+            let identifier = self.parse_ident_or_self_type();
 
             // If we do not see a `::`, stop.
             if !self.eat(&token::ModSep) {
@@ -1895,7 +1903,7 @@ impl<'a> Parser<'a> {
         let mut segments = Vec::new();
         loop {
             // First, parse an identifier.
-            let identifier = self.parse_ident();
+            let identifier = self.parse_ident_or_self_type();
 
             // Assemble and push the result.
             segments.push(ast::PathSegment {
@@ -2166,10 +2174,8 @@ impl<'a> Parser<'a> {
             token::BinOp(token::Or) |  token::OrOr => {
                 return self.parse_lambda_expr(CaptureByRef);
             },
-            // FIXME #13626: Should be able to stick in
-            // token::SELF_KEYWORD_NAME
             token::Ident(id @ ast::Ident {
-                            name: ast::Name(token::SELF_KEYWORD_NAME_NUM),
+                            name: token::SELF_KEYWORD_NAME,
                             ctxt: _
                          }, token::Plain) => {
                 self.bump();
@@ -3411,7 +3417,7 @@ impl<'a> Parser<'a> {
               && self.token != token::ModSep)
                 || self.token.is_keyword(keywords::True)
                 || self.token.is_keyword(keywords::False) {
-            // Parse an expression pattern or exp .. exp.
+            // Parse an expression pattern or exp ... exp.
             //
             // These expressions are limited to literals (possibly
             // preceded by unary-minus) or identifiers.
@@ -3532,15 +3538,17 @@ impl<'a> Parser<'a> {
                                   enum_path.segments.len() == 1 &&
                                   enum_path.segments[0].parameters.is_empty()
                               {
-                                  // it could still be either an enum
-                                  // or an identifier pattern, resolve
-                                  // will sort it out:
-                                  pat = PatIdent(BindByValue(MutImmutable),
-                                                 codemap::Spanned{
-                                                    span: enum_path.span,
-                                                    node: enum_path.segments[0]
-                                                           .identifier},
-                                                 None);
+                                // NB: If enum_path is a single identifier,
+                                // this should not be reachable due to special
+                                // handling further above.
+                                //
+                                // However, previously a PatIdent got emitted
+                                // here, so we preserve the branch just in case.
+                                //
+                                // A rewrite of the logic in this function
+                                // would probably make this obvious.
+                                self.span_bug(enum_path.span,
+                                              "ident only path should have been covered already");
                               } else {
                                   pat = PatEnum(enum_path, Some(args));
                               }
@@ -4380,6 +4388,27 @@ impl<'a> Parser<'a> {
         }
     }
 
+    fn is_self_type_ident(&mut self) -> bool {
+        match self.token {
+          token::Ident(id, token::Plain) => id.name == special_idents::type_self.name,
+          _ => false
+        }
+    }
+
+    fn expect_self_type_ident(&mut self) -> ast::Ident {
+        match self.token {
+            token::Ident(id, token::Plain) if id.name == special_idents::type_self.name => {
+                self.bump();
+                id
+            },
+            _ => {
+                let token_str = self.this_token_to_string();
+                self.fatal(&format!("expected `Self`, found `{}`",
+                                   token_str)[])
+            }
+        }
+    }
+
     /// Parse the argument list and result type of a function
     /// that may have a self type.
     fn parse_fn_decl_with_self<F>(&mut self, parse_arg_fn: F) -> (ExplicitSelf, P<FnDecl>) where
@@ -4396,22 +4425,22 @@ impl<'a> Parser<'a> {
             //
             // We already know that the current token is `&`.
 
-            if this.look_ahead(1, |t| t.is_keyword(keywords::Self)) {
+            if this.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 SelfRegion(None, MutImmutable, this.expect_self_ident())
             } else if this.look_ahead(1, |t| t.is_mutability()) &&
-                      this.look_ahead(2, |t| t.is_keyword(keywords::Self)) {
+                      this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 let mutability = this.parse_mutability();
                 SelfRegion(None, mutability, this.expect_self_ident())
             } else if this.look_ahead(1, |t| t.is_lifetime()) &&
-                      this.look_ahead(2, |t| t.is_keyword(keywords::Self)) {
+                      this.look_ahead(2, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 let lifetime = this.parse_lifetime();
                 SelfRegion(Some(lifetime), MutImmutable, this.expect_self_ident())
             } else if this.look_ahead(1, |t| t.is_lifetime()) &&
                       this.look_ahead(2, |t| t.is_mutability()) &&
-                      this.look_ahead(3, |t| t.is_keyword(keywords::Self)) {
+                      this.look_ahead(3, |t| t.is_keyword(keywords::SelfValue)) {
                 this.bump();
                 let lifetime = this.parse_lifetime();
                 let mutability = this.parse_mutability();
@@ -4466,7 +4495,7 @@ impl<'a> Parser<'a> {
                         SelfValue(self_ident)
                     }
                 } else if self.token.is_mutability() &&
-                        self.look_ahead(1, |t| t.is_keyword(keywords::Self)) {
+                        self.look_ahead(1, |t| t.is_keyword(keywords::SelfValue)) {
                     mutbl_self = self.parse_mutability();
                     let self_ident = self.expect_self_ident();
 

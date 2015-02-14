@@ -207,7 +207,7 @@ use parse::token::InternedString;
 use parse::token::special_idents;
 use ptr::P;
 
-use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self, Ty};
+use self::ty::{LifetimeBounds, Path, Ptr, PtrTy, Self_, Ty};
 
 pub mod ty;
 
@@ -261,7 +261,7 @@ pub struct Substructure<'a> {
     pub type_ident: Ident,
     /// ident of the method
     pub method_ident: Ident,
-    /// dereferenced access to any `Self` or `Ptr(Self, _)` arguments
+    /// dereferenced access to any `Self_` or `Ptr(Self_, _)` arguments
     pub self_args: &'a [P<Expr>],
     /// verbatim access to any other arguments
     pub nonself_args: &'a [P<Expr>],
@@ -679,10 +679,10 @@ impl<'a> MethodDef<'a> {
             match *ty {
                 // for static methods, just treat any Self
                 // arguments as a normal arg
-                Self if nonstatic  => {
+                Self_ if nonstatic  => {
                     self_args.push(arg_expr);
                 }
-                Ptr(box Self, _) if nonstatic => {
+                Ptr(box Self_, _) if nonstatic => {
                     self_args.push(cx.expr_deref(trait_.span, arg_expr))
                 }
                 _ => {
