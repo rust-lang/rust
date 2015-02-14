@@ -99,8 +99,8 @@ fn grow(&self) -> Circle {
 # Circle } }
 ```
 
-We just say we're returning a `Circle`. With this, we can grow a new circle
-that's twice as big as the old one.
+We just say we're returning a `Circle`. With this method, we can grow a new
+circle with an area that's 100 times larger than the old one.
 
 ## Static methods
 
