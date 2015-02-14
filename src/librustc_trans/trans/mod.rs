@@ -19,7 +19,6 @@ pub use self::common::gensym_name;
 #[macro_use]
 mod macros;
 
-mod doc;
 mod inline;
 mod monomorphize;
 mod controlflow;

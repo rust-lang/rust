@@ -32,7 +32,6 @@ pub use self::CandidateSource::*;
 pub use self::suggest::{report_error, AllTraitsVec};
 
 mod confirm;
-mod doc;
 mod probe;
 mod suggest;
 
