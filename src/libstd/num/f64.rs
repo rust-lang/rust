@@ -29,6 +29,7 @@ use core::num;
 pub use core::f64::{RADIX, MANTISSA_DIGITS, DIGITS, EPSILON, MIN_VALUE};
 pub use core::f64::{MIN_POS_VALUE, MAX_VALUE, MIN_EXP, MAX_EXP, MIN_10_EXP};
 pub use core::f64::{MAX_10_EXP, NAN, INFINITY, NEG_INFINITY};
+pub use core::f64::{MIN, MIN_POSITIVE, MAX};
 pub use core::f64::consts;
 
 #[allow(dead_code)]

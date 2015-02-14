@@ -956,7 +956,7 @@ macro_rules! impl_to_primitive_float_to_float {
             Some($slf as $DstT)
         } else {
             let n = $slf as f64;
-            let max_value: $SrcT = ::$SrcT::MAX_VALUE;
+            let max_value: $SrcT = ::$SrcT::MAX;
             if -max_value as f64 <= n && n <= max_value as f64 {
                 Some($slf as $DstT)
             } else {
@@ -1331,18 +1331,18 @@ pub trait Float
     /// Returns the smallest finite value that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
-                 reason = "use `std::f32::MIN_VALUE` or `std::f64::MIN_VALUE` as appropriate")]
+                 reason = "use `std::f32::MIN` or `std::f64::MIN` as appropriate")]
     fn min_value() -> Self;
     /// Returns the smallest normalized positive number that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
-                 reason = "use `std::f32::MIN_POS_VALUE` or \
-                           `std::f64::MIN_POS_VALUE` as appropriate")]
+                 reason = "use `std::f32::MIN_POSITIVE` or \
+                           `std::f64::MIN_POSITIVE` as appropriate")]
     fn min_pos_value(unused_self: Option<Self>) -> Self;
     /// Returns the largest finite value that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
-                 reason = "use `std::f32::MAX_VALUE` or `std::f64::MAX_VALUE` as appropriate")]
+                 reason = "use `std::f32::MAX` or `std::f64::MAX` as appropriate")]
     fn max_value() -> Self;
 
     /// Returns true if this value is NaN and false otherwise.

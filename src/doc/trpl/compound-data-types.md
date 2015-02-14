@@ -263,15 +263,12 @@ let four_is_smaller = four <= ten;
 let four_equals_ten = four == ten;
 ```
 
-This may seem rather limiting, particularly equality being invalid; in
-many cases however, it's unnecessary. Rust provides the [`match`][match]
-keyword, which will be examined in more detail in the next section, which
-often allows better and easier branch control than a series of `if`/`else`
-statements would. However, for our [game][game] we need the comparisons
-to work so we will utilize the `Ordering` `enum` provided by the standard
-library which supports such comparisons. It has this form:
+This may seem rather limiting, but it's a limitation which we can overcome.
+There are two ways: by implementing equality ourselves, or by using the
+[`match`][match] keyword. We don't know enough about Rust to implement equality
+yet, but we can use the `Ordering` enum from the standard library, which does:
 
-```{rust}
+```
 enum Ordering {
     Less,
     Equal,
