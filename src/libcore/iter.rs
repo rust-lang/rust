@@ -1055,6 +1055,7 @@ pub trait RandomAccessIterator: Iterator {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait ExactSizeIterator: Iterator {
     #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     /// Return the exact length of the iterator.
     fn len(&self) -> usize {
         let (lower, upper) = self.size_hint();
