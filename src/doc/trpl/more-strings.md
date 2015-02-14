@@ -169,8 +169,8 @@ é
 Note that `l` has the type `&str` here, since a single grapheme can consist of
 multiple codepoints, so a `char` wouldn't be appropriate.
 
-This will print out each visible character in turn, as you'd expect: first "u͔", then
-"n͈̰̎", etc. If you wanted each individual codepoint of each grapheme, you can use `.chars()`:
+This will print out each visible character in turn, as you'd expect: first `u͔`, then
+`n͈̰̎`, etc. If you wanted each individual codepoint of each grapheme, you can use `.chars()`:
 
 ```
 let s = "u͔n͈̰̎i̙̮͚̦c͚̉o̼̩̰͗d͔̆̓ͥé";
