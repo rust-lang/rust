@@ -1122,7 +1122,7 @@ impl<'a> StringReader<'a> {
                 let keyword_checking_token =
                     &token::Ident(keyword_checking_ident, token::Plain);
                 let last_bpos = self.last_pos;
-                if keyword_checking_token.is_keyword(token::keywords::Self) {
+                if keyword_checking_token.is_keyword(token::keywords::SelfValue) {
                     self.err_span_(start,
                                    last_bpos,
                                    "invalid lifetime name: 'self \
