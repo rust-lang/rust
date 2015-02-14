@@ -244,7 +244,7 @@ unsafe fn run_dtors() {
             let ret = if DTORS.is_null() {
                 Vec::new()
             } else {
-                (*DTORS).iter().cloned().collect()
+                (*DTORS).iter().map(|s| *s).collect()
             };
             DTOR_LOCK.unlock();
             ret
