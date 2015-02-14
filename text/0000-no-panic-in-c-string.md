@@ -10,6 +10,14 @@ these functions return `Result` instead.
 
 # Motivation
 
+> As I shivered and brooded on the casting of that brain-blasting shadow,
+> I knew that I had at last pried out one of earth’s supreme horrors—one of
+> those nameless blights of outer voids whose faint daemon scratchings we
+> sometimes hear on the farthest rim of space, yet from which our own finite
+> vision has given us a merciful immunity.
+> 
+> — H. P. Lovecraft, <cite>The Lurking Fear</cite>
+
 Currently the functions that produce `std::ffi::CString` out of Rust byte
 strings panic when the input contains NUL bytes. As strings containing NULs
 are not commonly seen in real-world usage, it is easy for developers to
