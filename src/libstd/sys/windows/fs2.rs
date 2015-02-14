@@ -225,27 +225,11 @@ impl File {
     }
 
     pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
-        let mut read = 0;
-        try!(cvt(unsafe {
-            libc::ReadFile(self.handle.raw(),
-                           buf.as_ptr() as libc::LPVOID,
-                           buf.len() as libc::DWORD,
-                           &mut read,
-                           ptr::null_mut())
-        }));
-        Ok(read as usize)
+        self.handle.read(buf)
     }
 
     pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
-        let mut amt = 0;
-        try!(cvt(unsafe {
-            libc::WriteFile(self.handle.raw(),
-                            buf.as_ptr() as libc::LPVOID,
-                            buf.len() as libc::DWORD,
-                            &mut amt,
-                            ptr::null_mut())
-        }));
-        Ok(amt as usize)
+        self.handle.write(buf)
     }
 
     pub fn flush(&self) -> io::Result<()> { Ok(()) }

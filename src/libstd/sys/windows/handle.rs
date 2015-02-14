@@ -11,6 +11,10 @@
 use prelude::v1::*;
 
 use libc::{self, HANDLE};
+use io;
+use io::ErrorKind;
+use ptr;
+use sys::cvt;
 
 pub struct Handle(HANDLE);
 
@@ -21,7 +25,16 @@ impl Handle {
     pub fn new(handle: HANDLE) -> Handle {
         Handle(handle)
     }
+
     pub fn raw(&self) -> HANDLE { self.0 }
+
+    pub fn read(&self, buf: &mut [u8]) -> io::Result<usize> {
+        read(self.0, buf)
+    }
+
+    pub fn write(&self, buf: &[u8]) -> io::Result<usize> {
+        write(self.0, buf)
+    }
 }
 
 impl Drop for Handle {
@@ -30,3 +43,34 @@ impl Drop for Handle {
     }
 }
 
+
+pub fn read(h: HANDLE, buf: &mut [u8]) -> io::Result<usize> {
+    let mut read = 0;
+    let res = cvt(unsafe {
+        libc::ReadFile(h, buf.as_ptr() as libc::LPVOID,
+                       buf.len() as libc::DWORD, &mut read,
+                       ptr::null_mut())
+    });
+
+    match res {
+        Ok(_) => Ok(read as usize),
+
+        // The special treatment of BrokenPipe is to deal with Windows
+        // pipe semantics, which yields this error when *reading* from
+        // a pipe after the other end has closed; we interpret that as
+        // EOF on the pipe.
+        Err(ref e) if e.kind() == ErrorKind::BrokenPipe => Ok(0),
+
+        Err(e) => Err(e)
+    }
+}
+
+pub fn write(h: HANDLE, buf: &[u8]) -> io::Result<usize> {
+    let mut amt = 0;
+    try!(cvt(unsafe {
+        libc::WriteFile(h, buf.as_ptr() as libc::LPVOID,
+                        buf.len() as libc::DWORD, &mut amt,
+                        ptr::null_mut())
+    }));
+    Ok(amt as usize)
+}

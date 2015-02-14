@@ -27,6 +27,7 @@ use core::char::{encode_utf8_raw, encode_utf16_raw};
 use core::str::{char_range_at_raw, next_code_point};
 use core::raw::Slice as RawSlice;
 
+use ascii::*;
 use borrow::Cow;
 use cmp;
 use fmt;
@@ -38,6 +39,7 @@ use ops;
 use slice;
 use str;
 use string::{String, CowString};
+use sys_common::AsInner;
 use unicode::str::{Utf16Item, utf16_items};
 use vec::Vec;
 
@@ -382,6 +384,10 @@ impl Extend<CodePoint> for Wtf8Buf {
 /// if they’re not in a surrogate pair.
 pub struct Wtf8 {
     bytes: [u8]
+}
+
+impl AsInner<[u8]> for Wtf8 {
+    fn as_inner(&self) -> &[u8] { &self.bytes }
 }
 
 // FIXME: https://github.com/rust-lang/rust/issues/18805
@@ -808,6 +814,21 @@ impl<'a, S: Writer + Hasher> Hash<S> for Wtf8 {
     fn hash(&self, state: &mut S) {
         state.write(&self.bytes);
         0xfeu8.hash(state)
+    }
+}
+
+impl AsciiExt<Wtf8Buf> for Wtf8 {
+    fn is_ascii(&self) -> bool {
+        self.bytes.is_ascii()
+    }
+    fn to_ascii_uppercase(&self) -> Wtf8Buf {
+        Wtf8Buf { bytes: self.bytes.to_ascii_uppercase() }
+    }
+    fn to_ascii_lowercase(&self) -> Wtf8Buf {
+        Wtf8Buf { bytes: self.bytes.to_ascii_lowercase() }
+    }
+    fn eq_ignore_ascii_case(&self, other: &Wtf8) -> bool {
+        self.bytes.eq_ignore_ascii_case(&other.bytes)
     }
 }
 

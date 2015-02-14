@@ -31,14 +31,17 @@
 
 #![unstable(feature = "std_misc")]
 
-use ffi::{OsStr, OsString};
+use prelude::v1::*;
+
+use ffi::{CString, OsStr, OsString};
 use fs::{self, Permissions, OpenOptions};
 use net;
-use libc;
 use mem;
+use process;
+use sys;
 use sys::os_str::Buf;
 use sys_common::{AsInner, AsInnerMut, IntoInner, FromInner};
-use vec::Vec;
+use libc::{self, gid_t, uid_t};
 
 use old_io;
 
@@ -121,7 +124,11 @@ impl AsRawFd for net::UdpSocket {
     fn as_raw_fd(&self) -> Fd { *self.as_inner().socket().as_inner() }
 }
 
-// Unix-specific extensions to `OsString`.
+////////////////////////////////////////////////////////////////////////////////
+// OsString and OsStr
+////////////////////////////////////////////////////////////////////////////////
+
+/// Unix-specific extensions to `OsString`.
 pub trait OsStringExt {
     /// Create an `OsString` from a byte vector.
     fn from_vec(vec: Vec<u8>) -> Self;
@@ -140,18 +147,27 @@ impl OsStringExt for OsString {
     }
 }
 
-// Unix-specific extensions to `OsStr`.
+/// Unix-specific extensions to `OsStr`.
 pub trait OsStrExt {
-    fn from_byte_slice(slice: &[u8]) -> &OsStr;
-    fn as_byte_slice(&self) -> &[u8];
+    fn from_bytes(slice: &[u8]) -> &OsStr;
+
+    /// Get the underlying byte view of the `OsStr` slice.
+    fn as_bytes(&self) -> &[u8];
+
+    /// Convert the `OsStr` slice into a `CString`.
+    fn to_cstring(&self) -> CString;
 }
 
 impl OsStrExt for OsStr {
-    fn from_byte_slice(slice: &[u8]) -> &OsStr {
+    fn from_bytes(slice: &[u8]) -> &OsStr {
         unsafe { mem::transmute(slice) }
     }
-    fn as_byte_slice(&self) -> &[u8] {
+    fn as_bytes(&self) -> &[u8] {
         &self.as_inner().inner
+    }
+
+    fn to_cstring(&self) -> CString {
+        CString::from_slice(self.as_bytes())
     }
 }
 
@@ -181,10 +197,57 @@ impl OpenOptionsExt for OpenOptions {
     }
 }
 
+////////////////////////////////////////////////////////////////////////////////
+// Process and Command
+////////////////////////////////////////////////////////////////////////////////
+
+/// Unix-specific extensions to the `std::process::Command` builder
+pub trait CommandExt {
+    /// Sets the child process's user id. This translates to a
+    /// `setuid` call in the child process. Failure in the `setuid`
+    /// call will cause the spawn to fail.
+    fn uid(&mut self, id: uid_t) -> &mut process::Command;
+
+    /// Similar to `uid`, but sets the group id of the child process. This has
+    /// the same semantics as the `uid` field.
+    fn gid(&mut self, id: gid_t) -> &mut process::Command;
+}
+
+impl CommandExt for process::Command {
+    fn uid(&mut self, id: uid_t) -> &mut process::Command {
+        self.as_inner_mut().uid = Some(id);
+        self
+    }
+
+    fn gid(&mut self, id: gid_t) -> &mut process::Command {
+        self.as_inner_mut().gid = Some(id);
+        self
+    }
+}
+
+/// Unix-specific extensions to `std::process::ExitStatus`
+pub trait ExitStatusExt {
+    /// If the process was terminated by a signal, returns that signal.
+    fn signal(&self) -> Option<i32>;
+}
+
+impl ExitStatusExt for process::ExitStatus {
+    fn signal(&self) -> Option<i32> {
+        match *self.as_inner() {
+            sys::process2::ExitStatus::Signal(s) => Some(s),
+            _ => None
+        }
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Prelude
+////////////////////////////////////////////////////////////////////////////////
+
 /// A prelude for conveniently writing platform-specific code.
 ///
 /// Includes all extension traits, and some important type definitions.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use super::{Fd, AsRawFd, OsStrExt, OsStringExt, PermissionsExt};
+    pub use super::{Fd, AsRawFd, OsStrExt, OsStringExt, PermissionsExt, CommandExt, ExitStatusExt};
 }
