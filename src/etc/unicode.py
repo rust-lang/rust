@@ -366,7 +366,7 @@ def emit_conversions_module(f, lowerupper, upperlower):
         }
     }
 
-    fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<uint> {
+    fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<usize> {
         match table.binary_search(|&(key, _)| {
             if c == key { Equal }
             else if key < c { Less }
@@ -449,13 +449,13 @@ def emit_charwidth_module(f, width_table):
 """)
 
     f.write("""
-    pub fn width(c: char, is_cjk: bool) -> Option<uint> {
-        match c as uint {
+    pub fn width(c: char, is_cjk: bool) -> Option<usize> {
+        match c as usize {
             _c @ 0 => Some(0),          // null is zero width
             cu if cu < 0x20 => None,    // control sequences have no width
             cu if cu < 0x7F => Some(1), // ASCII
             cu if cu < 0xA0 => None,    // more control sequences
-            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as uint)
+            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as usize)
         }
     }
 
@@ -610,7 +610,7 @@ if __name__ == "__main__":
         rf.write("""
 /// The version of [Unicode](http://www.unicode.org/)
 /// that the `UnicodeChar` and `UnicodeStrPrelude` traits are based on.
-pub const UNICODE_VERSION: (uint, uint, uint) = (%s, %s, %s);
+pub const UNICODE_VERSION: (u64, u64, u64) = (%s, %s, %s);
 """ % unicode_version)
         (canon_decomp, compat_decomp, gencats, combines,
                 lowerupper, upperlower) = load_unicode_data("UnicodeData.txt")

@@ -119,16 +119,16 @@ pub fn from_u32(i: u32) -> Option<char> {
 /// ```
 #[inline]
 #[unstable(feature = "core", reason = "pending integer conventions")]
-pub fn from_digit(num: uint, radix: uint) -> Option<char> {
+pub fn from_digit(num: u32, radix: u32) -> Option<char> {
     if radix > 36 {
         panic!("from_digit: radix is too high (maximum 36)");
     }
     if num < radix {
         unsafe {
             if num < 10 {
-                Some(transmute(('0' as uint + num) as u32))
+                Some(transmute('0' as u32 + num))
             } else {
-                Some(transmute(('a' as uint + num - 10) as u32))
+                Some(transmute('a' as u32 + num - 10))
             }
         }
     } else {
@@ -164,7 +164,7 @@ pub trait CharExt {
     /// ```
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
-    fn is_digit(self, radix: uint) -> bool;
+    fn is_digit(self, radix: u32) -> bool;
 
     /// Converts a character to the corresponding digit.
     ///
@@ -189,7 +189,7 @@ pub trait CharExt {
     /// ```
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
-    fn to_digit(self, radix: uint) -> Option<uint>;
+    fn to_digit(self, radix: u32) -> Option<u32>;
 
     /// Returns an iterator that yields the hexadecimal Unicode escape of a character, as `char`s.
     ///
@@ -275,7 +275,7 @@ pub trait CharExt {
     /// assert_eq!(n, 2);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf8(self) -> uint;
+    fn len_utf8(self) -> usize;
 
     /// Returns the number of bytes this character would need if encoded in UTF-16.
     ///
@@ -287,7 +287,7 @@ pub trait CharExt {
     /// assert_eq!(n, 1);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf16(self) -> uint;
+    fn len_utf16(self) -> usize;
 
     /// Encodes this character as UTF-8 into the provided byte buffer, and then returns the number
     /// of bytes written.
@@ -317,7 +317,7 @@ pub trait CharExt {
     /// assert_eq!(result, None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint>;
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize>;
 
     /// Encodes this character as UTF-16 into the provided `u16` buffer, and then returns the
     /// number of `u16`s written.
@@ -347,27 +347,27 @@ pub trait CharExt {
     /// assert_eq!(result, None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint>;
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize>;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl CharExt for char {
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
-    fn is_digit(self, radix: uint) -> bool {
+    fn is_digit(self, radix: u32) -> bool {
         self.to_digit(radix).is_some()
     }
 
     #[unstable(feature = "core",
                reason = "pending integer conventions")]
-    fn to_digit(self, radix: uint) -> Option<uint> {
+    fn to_digit(self, radix: u32) -> Option<u32> {
         if radix > 36 {
             panic!("to_digit: radix is too high (maximum 36)");
         }
         let val = match self {
-          '0' ... '9' => self as uint - ('0' as uint),
-          'a' ... 'z' => self as uint + 10 - ('a' as uint),
-          'A' ... 'Z' => self as uint + 10 - ('A' as uint),
+          '0' ... '9' => self as u32 - '0' as u32,
+          'a' ... 'z' => self as u32 - 'a' as u32 + 10,
+          'A' ... 'Z' => self as u32 - 'A' as u32 + 10,
           _ => return None,
         };
         if val < radix { Some(val) }
@@ -396,7 +396,7 @@ impl CharExt for char {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf8(self) -> uint {
+    fn len_utf8(self) -> usize {
         let code = self as u32;
         match () {
             _ if code < MAX_ONE_B   => 1,
@@ -408,7 +408,7 @@ impl CharExt for char {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn len_utf16(self) -> uint {
+    fn len_utf16(self) -> usize {
         let ch = self as u32;
         if (ch & 0xFFFF_u32) == ch { 1 } else { 2 }
     }
@@ -416,14 +416,14 @@ impl CharExt for char {
     #[inline]
     #[unstable(feature = "core",
                reason = "pending decision about Iterator/Writer/Reader")]
-    fn encode_utf8(self, dst: &mut [u8]) -> Option<uint> {
+    fn encode_utf8(self, dst: &mut [u8]) -> Option<usize> {
         encode_utf8_raw(self as u32, dst)
     }
 
     #[inline]
     #[unstable(feature = "core",
                reason = "pending decision about Iterator/Writer/Reader")]
-    fn encode_utf16(self, dst: &mut [u16]) -> Option<uint> {
+    fn encode_utf16(self, dst: &mut [u16]) -> Option<usize> {
         encode_utf16_raw(self as u32, dst)
     }
 }
@@ -435,7 +435,7 @@ impl CharExt for char {
 /// and a `None` will be returned.
 #[inline]
 #[unstable(feature = "core")]
-pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<uint> {
+pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
     // Marked #[inline] to allow llvm optimizing it away
     if code < MAX_ONE_B && dst.len() >= 1 {
         dst[0] = code as u8;
@@ -467,7 +467,7 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<uint> {
 /// and a `None` will be returned.
 #[inline]
 #[unstable(feature = "core")]
-pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<uint> {
+pub fn encode_utf16_raw(mut ch: u32, dst: &mut [u16]) -> Option<usize> {
     // Marked #[inline] to allow llvm optimizing it away
     if (ch & 0xFFFF_u32) == ch  && dst.len() >= 1 {
         // The BMP falls through (assuming non-surrogate, as it should)
@@ -499,7 +499,7 @@ enum EscapeUnicodeState {
     Backslash,
     Type,
     LeftBrace,
-    Value(uint),
+    Value(usize),
     RightBrace,
     Done,
 }
