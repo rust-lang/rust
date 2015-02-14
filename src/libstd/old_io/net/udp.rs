@@ -32,7 +32,6 @@ use sys_common;
 ///
 /// ```rust,no_run
 /// # #![allow(unused_must_use)]
-/// #![feature(slicing_syntax)]
 ///
 /// use std::old_io::net::udp::UdpSocket;
 /// use std::old_io::net::ip::{Ipv4Addr, SocketAddr};
