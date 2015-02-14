@@ -40,9 +40,6 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     debug!("compare_impl_method(impl_trait_ref={})",
            impl_trait_ref.repr(tcx));
 
-    debug!("compare_impl_method: impl_trait_ref (liberated) = {}",
-           impl_trait_ref.repr(tcx));
-
     let infcx = infer::new_infer_ctxt(tcx);
     let mut fulfillment_cx = traits::FulfillmentContext::new();
 
@@ -180,10 +177,8 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
 
     // Create mapping from trait to skolemized.
     let trait_to_skol_substs =
-        trait_to_impl_substs
-        .subst(tcx, impl_to_skol_substs)
-        .with_method(impl_to_skol_substs.types.get_slice(subst::FnSpace).to_vec(),
-                     impl_to_skol_substs.regions().get_slice(subst::FnSpace).to_vec());
+        trait_to_impl_substs.subst(tcx, impl_to_skol_substs)
+                            .with_method_from(impl_to_skol_substs);
     debug!("compare_impl_method: trait_to_skol_substs={}",
            trait_to_skol_substs.repr(tcx));
 
@@ -208,10 +203,9 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         impl_m.predicates.instantiate(tcx, impl_to_skol_substs);
 
     let (impl_bounds, _) =
-        infcx.replace_late_bound_regions_with_fresh_var(
-            impl_m_span,
-            infer::HigherRankedType,
-            &ty::Binder(impl_bounds));
+        infcx.replace_late_bound_regions_with_fresh_var(impl_m_span,
+                                                        infer::HigherRankedType,
+                                                        &ty::Binder(impl_bounds));
     debug!("compare_impl_method: impl_bounds={}",
            impl_bounds.repr(tcx));
 
@@ -243,7 +237,7 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     let trait_param_env = traits::normalize_param_env_or_error(trait_param_env,
                                                                normalize_cause.clone());
 
-    debug!("compare_impl_method: trait_bounds={}",
+    debug!("compare_impl_method: trait_param_env.caller_bounds={}",
         trait_param_env.caller_bounds.repr(tcx));
 
     let mut selcx = traits::SelectionContext::new(&infcx, &trait_param_env);
@@ -275,12 +269,6 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     // calling `normalize_associated_types_in` would have no effect on
     // any associated types appearing in the fn arguments or return
     // type.
-
-    // Compute skolemized form of impl and trait method tys.
-    let impl_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(impl_m.fty.clone()));
-    let impl_fty = impl_fty.subst(tcx, impl_to_skol_substs);
-    let trait_fty = ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(trait_m.fty.clone()));
-    let trait_fty = trait_fty.subst(tcx, &trait_to_skol_substs);
 
     let err = infcx.try(|snapshot| {
         let origin = infer::MethodCompatCheck(impl_m_span);
@@ -336,9 +324,6 @@ pub fn compare_impl_method<'tcx>(tcx: &ty::ctxt<'tcx>,
     match err {
         Ok(()) => { }
         Err(terr) => {
-            debug!("checking trait method for compatibility: impl ty {}, trait ty {}",
-                   impl_fty.repr(tcx),
-                   trait_fty.repr(tcx));
             span_err!(tcx.sess, impl_m_span, E0053,
                       "method `{}` has an incompatible type for trait: {}",
                       token::get_name(trait_m.name),

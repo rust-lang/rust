@@ -157,6 +157,12 @@ impl<'tcx> Substs<'tcx> {
                                   |r, m_regions| r.with_vec(FnSpace, m_regions));
         Substs { types: types, regions: regions }
     }
+
+    pub fn with_method_from(self, other: &Substs<'tcx>) -> Substs<'tcx> {
+        let types = other.types.get_slice(FnSpace).to_vec();
+        let regions = other.regions().get_slice(FnSpace).to_vec();
+        self.with_method(types, regions)
+    }
 }
 
 impl RegionSubsts {
