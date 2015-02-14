@@ -8,6 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(equality_constraints)]
 
 trait Foo<A> where A = isize {
     type Inner;

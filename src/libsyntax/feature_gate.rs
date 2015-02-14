@@ -122,7 +122,10 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("staged_api", "1.0.0", Active),
 
     // Allows using items which are missing stability attributes
-    ("unmarked_api", "1.0.0", Active)
+    ("unmarked_api", "1.0.0", Active),
+
+    // Enables equality constraints in where clauses.
+    ("equality_constraints", "1.0.0", Active)
 ];
 
 enum Status {
@@ -502,6 +505,20 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             _ => {}
         }
         visit::walk_fn(self, fn_kind, fn_decl, block, span);
+    }
+
+    fn visit_generics(&mut self, generics: &'v ast::Generics) {
+        for pred in generics.where_clause.predicates.iter() {
+            match pred {
+                &ast::WherePredicate::EqPredicate(ast::WhereEqPredicate{span, ..}) => {
+                    self.gate_feature("equality_constraints",
+                                       span, "equality constraints are experimental")
+                },
+                _ => {}
+            }
+        }
+
+        visit::walk_generics(self, generics);
     }
 }
 

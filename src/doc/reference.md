@@ -2382,12 +2382,17 @@ The currently implemented features of the reference compiler are:
           semantics are likely to change, so this macro usage must be opted
           into.
 
+* `associated_types` - Allows type aliases in traits. Experimental.
+
 * `concat_idents` - Allows use of the `concat_idents` macro, which is in many
                     ways insufficient for concatenating identifiers, and may be
                     removed entirely for something more wholesome.
 
 * `default_type_params` - Allows use of default type parameters. The future of
                           this feature is uncertain.
+
+* `equality_constraints` - Allows the use of `=` in where clauses. This
+  allows a user to demand that two type's normal forms are equal.
 
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
@@ -2464,8 +2469,6 @@ The currently implemented features of the reference compiler are:
                    which have not been marked with a stability marker.
                    Such items should not be allowed by the compiler to exist,
                    so if you need this there probably is a compiler bug.
-
-* `associated_types` - Allows type aliases in traits. Experimental.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
