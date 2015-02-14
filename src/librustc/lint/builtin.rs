@@ -674,6 +674,7 @@ impl LintPass for UnusedAttributes {
             "stable",
             "unstable",
             "rustc_on_unimplemented",
+            "rustc_error",
 
             // FIXME: #19470 this shouldn't be needed forever
             "old_orphan_check",
