@@ -481,7 +481,8 @@ pub fn check_item_types(ccx: &CrateCtxt) {
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            decl: &'tcx ast::FnDecl,
                            body: &'tcx ast::Block,
-                           id: ast::NodeId,
+                           fn_id: ast::NodeId,
+                           fn_span: Span,
                            raw_fty: Ty<'tcx>,
                            param_env: ty::ParameterEnvironment<'a, 'tcx>)
 {
@@ -499,13 +500,13 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fn_sig =
                 inh.normalize_associated_types_in(&inh.param_env, body.span, body.id, &fn_sig);
 
-            let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_sig,
-                               decl, id, body, &inh);
+            let fcx = check_fn(ccx, fn_ty.unsafety, fn_id, &fn_sig,
+                               decl, fn_id, body, &inh);
 
             vtable::select_all_fcx_obligations_and_apply_defaults(&fcx);
-            upvar::closure_analyze_fn(&fcx, id, decl, body);
+            upvar::closure_analyze_fn(&fcx, fn_id, decl, body);
             vtable::select_all_fcx_obligations_or_error(&fcx);
-            regionck::regionck_fn(&fcx, id, decl, body);
+            regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
@@ -718,7 +719,7 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
       ast::ItemFn(ref decl, _, _, _, ref body) => {
         let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
-        check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
+        check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
       }
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
@@ -865,6 +866,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                   &*method.pe_fn_decl(),
                   &*method.pe_body(),
                   method.id,
+                  method.span,
                   fty,
                   param_env);
 }

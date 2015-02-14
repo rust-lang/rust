@@ -16,7 +16,6 @@ use borrowck::gather_loans::move_error::{MoveError, MoveErrorCollector};
 use borrowck::move_data::*;
 use rustc::middle::expr_use_visitor as euv;
 use rustc::middle::mem_categorization as mc;
-use rustc::middle::mem_categorization::Typer;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::middle::ty;
 use rustc::util::ppaux::Repr;
