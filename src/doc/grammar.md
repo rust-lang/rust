@@ -1,6 +1,4 @@
-# **This is a work in progress**
-
-% The Rust Grammar
+% Grammar
 
 # Introduction
 
