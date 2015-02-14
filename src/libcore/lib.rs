@@ -67,6 +67,7 @@
 #![feature(simd, unsafe_destructor, slicing_syntax)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(rustc_attrs)]
 
 #[macro_use]
 mod macros;

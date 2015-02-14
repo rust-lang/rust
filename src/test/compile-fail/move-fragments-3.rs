@@ -18,6 +18,8 @@
 // This checks the handling of `_` within variants, especially when mixed
 // with bindings.
 
+#![feature(rustc_attrs)]
+
 use self::Lonely::{Zero, One, Two};
 
 pub struct D { d: isize }

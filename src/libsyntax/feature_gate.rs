@@ -91,6 +91,8 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("start", "1.0.0", Active),
     ("main", "1.0.0", Active),
 
+    ("rustc_attrs", "1.0.0", Active),
+
     // A temporary feature gate used to enable parser extensions needed
     // to bootstrap fix for #5723.
     ("issue_5723_bootstrap", "1.0.0", Accepted),
@@ -287,6 +289,10 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 self.gate_feature("on_unimplemented", i.span,
                                   "the `#[rustc_on_unimplemented]` attribute \
                                   is an experimental feature")
+            } else if attr.name().starts_with("rustc_") {
+                self.gate_feature("rustc_attrs", i.span,
+                                  "unless otherwise specified, attributes with the prefix `rustc_` \
+                                   are reserved for internal compiler diagnostics")
             }
         }
         match i.node {
