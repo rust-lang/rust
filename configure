@@ -1379,7 +1379,8 @@ do
 done
 
 # Munge any paths that appear in config.mk back to posix-y
-sed -i.bak -e 's@ \([a-zA-Z]\):[/\\]@ /\1/@g;' config.tmp
+cp config.tmp config.tmp.bak
+sed -e 's@ \([a-zA-Z]\):[/\\]@ /\1/@g;' <config.tmp.bak >config.tmp
 rm -f config.tmp.bak
 
 msg
