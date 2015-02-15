@@ -57,7 +57,7 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
     // Because we query yes/no results frequently, we keep a cache:
     let cached_result =
-        tcx.object_safety_cache.borrow().get(&trait_ref.def_id()).map(|&r| r);
+        tcx.object_safety_cache.borrow().get(&trait_ref.def_id()).cloned();
 
     let result =
         cached_result.unwrap_or_else(|| {

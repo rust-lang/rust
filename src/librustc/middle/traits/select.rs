@@ -1581,7 +1581,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::substd_enum_variants(self.tcx(), def_id, substs)
                     .iter()
                     .flat_map(|variant| variant.args.iter())
-                    .map(|&ty| ty)
+                    .cloned()
                     .collect();
                 nominal(self, bound, def_id, types)
             }

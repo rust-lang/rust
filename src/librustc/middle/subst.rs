@@ -113,7 +113,7 @@ impl<'tcx> Substs<'tcx> {
     }
 
     pub fn self_ty(&self) -> Option<Ty<'tcx>> {
-        self.types.get_self().map(|&t| t)
+        self.types.get_self().cloned()
     }
 
     pub fn with_self_ty(&self, self_ty: Ty<'tcx>) -> Substs<'tcx> {

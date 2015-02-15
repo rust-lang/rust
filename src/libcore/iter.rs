@@ -540,7 +540,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// let a = [1, 4, 2, 3, 8, 9, 6];
     /// let sum = a.iter()
-    ///             .map(|&x| x)
+    ///             .cloned()
     ///             .inspect(|&x| println!("filtering {}", x))
     ///             .filter(|&x| x % 2 == 0)
     ///             .inspect(|&x| println!("{} made it through", x))
@@ -579,7 +579,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// let b: Vec<_> = a.iter().map(|&x| x).collect();
+    /// let b: Vec<_> = a.iter().cloned().collect();
     /// assert_eq!(a, b);
     /// ```
     #[inline]
@@ -955,7 +955,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let a = [(1, 2), (3, 4)];
-    /// let (left, right): (Vec<_>, Vec<_>) = a.iter().map(|&x| x).unzip();
+    /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
     /// assert_eq!([1, 3], left);
     /// assert_eq!([2, 4], right);
     /// ```
@@ -1160,7 +1160,7 @@ pub trait AdditiveIterator<A> {
     /// use std::iter::AdditiveIterator;
     ///
     /// let a = [1i32, 2, 3, 4, 5];
-    /// let mut it = a.iter().map(|&x| x);
+    /// let mut it = a.iter().cloned();
     /// assert!(it.sum() == 15);
     /// ```
     fn sum(self) -> A;

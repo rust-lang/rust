@@ -608,7 +608,7 @@ mod test {
             Result<Vec<u8>, String>
         {
             let mut u8v: Vec<_> = fmt.bytes().collect();
-            u8v.extend(cap.as_bytes().iter().map(|&b| b));
+            u8v.extend(cap.bytes());
             expand(&u8v, params, vars)
         }
 

@@ -4144,7 +4144,7 @@ pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
                                    variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
 
     match (&ty.sty, variant) {
-        (&ty_tup(ref v), None) => v.get(i).map(|&t| t),
+        (&ty_tup(ref v), None) => v.get(i).cloned(),
 
 
         (&ty_struct(def_id, substs), None) => lookup_struct_fields(cx, def_id)
