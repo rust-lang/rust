@@ -108,7 +108,7 @@
 //! Initialize a result to `None` before a loop:
 //!
 //! ```
-//! enum Kingdom { Plant(usize, &'static str), Animal(usize, &'static str) }
+//! enum Kingdom { Plant(u32, &'static str), Animal(u32, &'static str) }
 //!
 //! // A list of data to search through.
 //! let all_the_big_things = [
@@ -188,10 +188,10 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let x: Option<usize> = Some(2);
+    /// let x: Option<u32> = Some(2);
     /// assert_eq!(x.is_some(), true);
     ///
-    /// let x: Option<usize> = None;
+    /// let x: Option<u32> = None;
     /// assert_eq!(x.is_some(), false);
     /// ```
     #[inline]
@@ -208,10 +208,10 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let x: Option<usize> = Some(2);
+    /// let x: Option<u32> = Some(2);
     /// assert_eq!(x.is_none(), false);
     ///
-    /// let x: Option<usize> = None;
+    /// let x: Option<u32> = None;
     /// assert_eq!(x.is_none(), true);
     /// ```
     #[inline]
@@ -518,7 +518,7 @@ impl<T> Option<T> {
     /// let x = Some(4);
     /// assert_eq!(x.iter().next(), Some(&4));
     ///
-    /// let x: Option<usize> = None;
+    /// let x: Option<u32> = None;
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
@@ -539,7 +539,7 @@ impl<T> Option<T> {
     /// }
     /// assert_eq!(x, Some(42));
     ///
-    /// let mut x: Option<usize> = None;
+    /// let mut x: Option<u32> = None;
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
     #[inline]
@@ -581,7 +581,7 @@ impl<T> Option<T> {
     /// let y: Option<&str> = None;
     /// assert_eq!(x.and(y), None);
     ///
-    /// let x: Option<usize> = None;
+    /// let x: Option<u32> = None;
     /// let y = Some("foo");
     /// assert_eq!(x.and(y), None);
     ///
@@ -589,7 +589,7 @@ impl<T> Option<T> {
     /// let y = Some("foo");
     /// assert_eq!(x.and(y), Some("foo"));
     ///
-    /// let x: Option<usize> = None;
+    /// let x: Option<u32> = None;
     /// let y: Option<&str> = None;
     /// assert_eq!(x.and(y), None);
     /// ```
@@ -608,8 +608,8 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// fn sq(x: usize) -> Option<usize> { Some(x * x) }
-    /// fn nope(_: usize) -> Option<usize> { None }
+    /// fn sq(x: u32) -> Option<u32> { Some(x * x) }
+    /// fn nope(_: u32) -> Option<u32> { None }
     ///
     /// assert_eq!(Some(2).and_then(sq).and_then(sq), Some(16));
     /// assert_eq!(Some(2).and_then(sq).and_then(nope), None);
@@ -642,7 +642,7 @@ impl<T> Option<T> {
     /// let y = Some(100);
     /// assert_eq!(x.or(y), Some(2));
     ///
-    /// let x: Option<usize> = None;
+    /// let x: Option<u32> = None;
     /// let y = None;
     /// assert_eq!(x.or(y), None);
     /// ```
@@ -690,7 +690,7 @@ impl<T> Option<T> {
     /// x.take();
     /// assert_eq!(x, None);
     ///
-    /// let mut x: Option<usize> = None;
+    /// let mut x: Option<u32> = None;
     /// x.take();
     /// assert_eq!(x, None);
     /// ```
