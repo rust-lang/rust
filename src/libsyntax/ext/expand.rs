@@ -1425,7 +1425,14 @@ impl<'feat> ExpansionConfig<'feat> {
 
     pub fn enable_quotes(&self) -> bool {
         match self.features {
-            Some(&Features { quote: true, .. }) => true,
+            Some(&Features { allow_quote: true, .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn enable_asm(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_asm: true, .. }) => true,
             _ => false,
         }
     }

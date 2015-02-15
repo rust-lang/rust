@@ -156,7 +156,8 @@ pub struct Features {
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub visible_private_types: bool,
-    pub quote: bool,
+    pub allow_quote: bool,
+    pub allow_asm: bool,
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
@@ -172,7 +173,8 @@ impl Features {
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             visible_private_types: false,
-            quote: false,
+            allow_quote: false,
+            allow_asm: false,
             old_orphan_check: false,
             simd_ffi: false,
             unmarked_api: false,
@@ -221,6 +223,9 @@ pub fn emit_feature_warn(diag: &SpanHandler, feature: &str, span: Span, explain:
     }
 }
 
+pub const EXPLAIN_ASM: &'static str =
+    "inline assembly is not stable enough for use and is subject to change";
+
 struct MacroVisitor<'a> {
     context: &'a Context<'a>
 }
@@ -231,8 +236,7 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
         let id = path.segments.last().unwrap().identifier;
 
         if id == token::str_to_ident("asm") {
-            self.context.gate_feature("asm", path.span, "inline assembly is not \
-                stable enough for use and is subject to change");
+            self.context.gate_feature("asm", path.span, EXPLAIN_ASM);
         }
 
         else if id == token::str_to_ident("log_syntax") {
@@ -594,7 +598,8 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         visible_private_types: cx.has_feature("visible_private_types"),
-        quote: cx.has_feature("quote"),
+        allow_quote: cx.has_feature("quote"),
+        allow_asm: cx.has_feature("asm"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
