@@ -1,8 +1,7 @@
 % Glossary
 
-In this section we briefly explain terms that you may not be familiar with.
-
-This book avoids, as much as possible, overcomplicated terms. Nevertheless, the following were deemed important enough that omitting them would be a disservice to the reader.
+Not every Rustacean has a background in systems programming, nor in computer
+science, so we've added explanations of terms that might be unfamiliar.
 
 ### Arity
 
