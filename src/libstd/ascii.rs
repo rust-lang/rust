@@ -159,12 +159,12 @@ impl AsciiExt for u8 {
 
     #[inline]
     fn to_ascii_uppercase(&self) -> u8 {
-        ASCII_UPPERCASE_MAP[*self as uint]
+        ASCII_UPPERCASE_MAP[*self as usize]
     }
 
     #[inline]
     fn to_ascii_lowercase(&self) -> u8 {
-        ASCII_LOWERCASE_MAP[*self as uint]
+        ASCII_LOWERCASE_MAP[*self as usize]
     }
 
     #[inline]

@@ -422,7 +422,7 @@ impl<'a> Parser<'a> {
                 Some((_, c)) => {
                     match c.to_digit(10) {
                         Some(i) => {
-                            cur = cur * 10 + i;
+                            cur = cur * 10 + i as usize;
                             found = true;
                             self.cur.next();
                         }

@@ -645,7 +645,7 @@ impl<'a> StringReader<'a> {
 
     /// Scan through any digits (base `radix`) or underscores, and return how
     /// many digits there were.
-    fn scan_digits(&mut self, radix: usize) -> usize {
+    fn scan_digits(&mut self, radix: u32) -> usize {
         let mut len = 0;
         loop {
             let c = self.curr;

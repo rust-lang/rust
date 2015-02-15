@@ -1432,12 +1432,12 @@ pub trait Float
 #[unstable(feature = "core", reason = "needs reevaluation")]
 pub trait FromStrRadix {
     type Err;
-    fn from_str_radix(str: &str, radix: uint) -> Result<Self, Self::Err>;
+    fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::Err>;
 }
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
 #[unstable(feature = "core", reason = "needs reevaluation")]
-pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint)
+pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: u32)
                                        -> Result<T, T::Err> {
     FromStrRadix::from_str_radix(str, radix)
 }
@@ -1501,7 +1501,7 @@ macro_rules! from_str_radix_float_impl {
             /// `None` if the string did not represent a valid number.
             /// Otherwise, `Some(n)` where `n` is the floating-point number
             /// represented by `src`.
-            fn from_str_radix(src: &str, radix: uint)
+            fn from_str_radix(src: &str, radix: u32)
                               -> Result<$T, ParseFloatError> {
                 use self::FloatErrorKind::*;
                 use self::ParseFloatError as PFE;
@@ -1661,7 +1661,7 @@ macro_rules! from_str_radix_int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStrRadix for $T {
             type Err = ParseIntError;
-            fn from_str_radix(src: &str, radix: uint)
+            fn from_str_radix(src: &str, radix: u32)
                               -> Result<$T, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;

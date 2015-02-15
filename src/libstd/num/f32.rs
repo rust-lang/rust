@@ -370,7 +370,7 @@ impl Float for f32 {
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_string(num: f32) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, SignNeg, DigAll, ExpNone, false);
+        num, 10, true, SignNeg, DigAll, ExpNone, false);
     r
 }
 
@@ -383,7 +383,7 @@ pub fn to_string(num: f32) -> String {
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_hex(num: f32) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 16u, true, SignNeg, DigAll, ExpNone, false);
+        num, 16, true, SignNeg, DigAll, ExpNone, false);
     r
 }
 
@@ -396,7 +396,7 @@ pub fn to_str_hex(num: f32) -> String {
 /// * radix - The base to use
 #[inline]
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
-pub fn to_str_radix_special(num: f32, rdx: uint) -> (String, bool) {
+pub fn to_str_radix_special(num: f32, rdx: u32) -> (String, bool) {
     strconv::float_to_str_common(num, rdx, true, SignNeg, DigAll, ExpNone, false)
 }
 
@@ -411,7 +411,7 @@ pub fn to_str_radix_special(num: f32, rdx: uint) -> (String, bool) {
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_exact(num: f32, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, SignNeg, DigExact(dig), ExpNone, false);
+        num, 10, true, SignNeg, DigExact(dig), ExpNone, false);
     r
 }
 
@@ -426,7 +426,7 @@ pub fn to_str_exact(num: f32, dig: uint) -> String {
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_digits(num: f32, dig: uint) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, SignNeg, DigMax(dig), ExpNone, false);
+        num, 10, true, SignNeg, DigMax(dig), ExpNone, false);
     r
 }
 
@@ -442,7 +442,7 @@ pub fn to_str_digits(num: f32, dig: uint) -> String {
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, SignNeg, DigExact(dig), ExpDec, upper);
+        num, 10, true, SignNeg, DigExact(dig), ExpDec, upper);
     r
 }
 
@@ -458,7 +458,7 @@ pub fn to_str_exp_exact(num: f32, dig: uint, upper: bool) -> String {
 #[unstable(feature = "std_misc", reason = "may be removed or relocated")]
 pub fn to_str_exp_digits(num: f32, dig: uint, upper: bool) -> String {
     let (r, _) = strconv::float_to_str_common(
-        num, 10u, true, SignNeg, DigMax(dig), ExpDec, upper);
+        num, 10, true, SignNeg, DigMax(dig), ExpDec, upper);
     r
 }
 
