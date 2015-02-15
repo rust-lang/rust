@@ -14,9 +14,7 @@ use std::marker;
 
 use middle::ty::{expected_found, IntVarValue};
 use middle::ty::{self, Ty};
-use middle::infer::UnitResult;
-use middle::infer::InferCtxt;
-use std::cell::RefCell;
+use middle::infer::{UnitResult};
 use std::fmt::Debug;
 use std::marker::PhantomData;
 use syntax::ast;
@@ -38,11 +36,6 @@ pub trait UnifyKey : Clone + Debug + PartialEq {
     fn index(&self) -> usize;
 
     fn from_index(u: usize) -> Self;
-
-    // Given an inference context, returns the unification table
-    // appropriate to this key type.
-    fn unification_table<'v>(infcx: &'v InferCtxt)
-                             -> &'v RefCell<UnificationTable<Self>>;
 
     fn tag(k: Option<Self>) -> &'static str;
 }
@@ -137,14 +130,18 @@ impl<K:UnifyKey> UnificationTable<K> {
         k
     }
 
-    /// Find the root node for `vid`. This uses the standard union-find algorithm with path
-    /// compression: http://en.wikipedia.org/wiki/Disjoint-set_data_structure
-    pub fn get(&mut self, tcx: &ty::ctxt, vid: K) -> Node<K> {
+    /// Find the root node for `vid`. This uses the standard
+    /// union-find algorithm with path compression:
+    /// <http://en.wikipedia.org/wiki/Disjoint-set_data_structure>.
+    ///
+    /// NB. This is a building-block operation and you would probably
+    /// prefer to call `probe` below.
+    pub fn get(&mut self, vid: K) -> Node<K> {
         let index = vid.index();
         let value = (*self.values.get(index)).clone();
         match value {
             Redirect(redirect) => {
-                let node: Node<K> = self.get(tcx, redirect.clone());
+                let node: Node<K> = self.get(redirect.clone());
                 if node.key != redirect {
                     // Path compression
                     self.values.set(index, Redirect(node.key.clone()));
@@ -164,13 +161,9 @@ impl<K:UnifyKey> UnificationTable<K> {
         }
     }
 
-    /// Sets the value for `vid` to `new_value`. `vid` MUST be a root node! Also, we must be in the
-    /// middle of a snapshot.
-    pub fn set<'tcx>(&mut self,
-                     _tcx: &ty::ctxt<'tcx>,
-                     key: K,
-                     new_value: VarValue<K>)
-    {
+    /// Sets the value for `vid` to `new_value`. `vid` MUST be a root
+    /// node! This is an internal operation used to impl other things.
+    fn set(&mut self, key: K, new_value: VarValue<K>) {
         assert!(self.is_root(&key));
 
         debug!("Updating variable {:?} to {:?}",
@@ -179,37 +172,39 @@ impl<K:UnifyKey> UnificationTable<K> {
         self.values.set(key.index(), new_value);
     }
 
-    /// Either redirects node_a to node_b or vice versa, depending on the relative rank. Returns
-    /// the new root and rank. You should then update the value of the new root to something
-    /// suitable.
-    pub fn unify<'tcx>(&mut self,
-                       tcx: &ty::ctxt<'tcx>,
-                       node_a: &Node<K>,
-                       node_b: &Node<K>)
-                       -> (K, usize)
-    {
+    /// Either redirects `node_a` to `node_b` or vice versa, depending
+    /// on the relative rank. The value associated with the new root
+    /// will be `new_value`.
+    ///
+    /// NB: This is the "union" operation of "union-find". It is
+    /// really more of a building block. If the values associated with
+    /// your key are non-trivial, you would probably prefer to call
+    /// `unify_var_var` below.
+    pub fn unify(&mut self, node_a: &Node<K>, node_b: &Node<K>, new_value: K::Value) {
         debug!("unify(node_a(id={:?}, rank={:?}), node_b(id={:?}, rank={:?}))",
                node_a.key,
                node_a.rank,
                node_b.key,
                node_b.rank);
 
-        if node_a.rank > node_b.rank {
+        let (new_root, new_rank) = if node_a.rank > node_b.rank {
             // a has greater rank, so a should become b's parent,
             // i.e., b should redirect to a.
-            self.set(tcx, node_b.key.clone(), Redirect(node_a.key.clone()));
+            self.set(node_b.key.clone(), Redirect(node_a.key.clone()));
             (node_a.key.clone(), node_a.rank)
         } else if node_a.rank < node_b.rank {
             // b has greater rank, so a should redirect to b.
-            self.set(tcx, node_a.key.clone(), Redirect(node_b.key.clone()));
+            self.set(node_a.key.clone(), Redirect(node_b.key.clone()));
             (node_b.key.clone(), node_b.rank)
         } else {
             // If equal, redirect one to the other and increment the
             // other's rank.
             assert_eq!(node_a.rank, node_b.rank);
-            self.set(tcx, node_b.key.clone(), Redirect(node_a.key.clone()));
+            self.set(node_b.key.clone(), Redirect(node_a.key.clone()));
             (node_a.key.clone(), node_a.rank + 1)
-        }
+        };
+
+        self.set(new_root, Root(new_value, new_rank));
     }
 }
 
@@ -223,8 +218,9 @@ impl<K:UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
 }
 
 ///////////////////////////////////////////////////////////////////////////
-// Code to handle simple keys like ints, floats---anything that
-// doesn't have a subtyping relationship we need to worry about.
+// Code to handle keys which carry a value, like ints,
+// floats---anything that doesn't have a subtyping relationship we
+// need to worry about.
 
 /// Indicates a type that does not have any kind of subtyping
 /// relationship.
@@ -246,42 +242,19 @@ pub fn err<'tcx, V:SimplyUnifiable<'tcx>>(a_is_expected: bool,
     }
 }
 
-pub trait InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V>
+impl<'tcx,K,V> UnificationTable<K>
     where K : UnifyKey<Value=Option<V>>,
           V : SimplyUnifiable<'tcx>,
           Option<V> : UnifyValue,
 {
-    fn simple_vars(&self,
-                   a_is_expected: bool,
-                   a_id: K,
-                   b_id: K)
-                   -> UnitResult<'tcx>;
-    fn simple_var_t(&self,
-                    a_is_expected: bool,
-                    a_id: K,
-                    b: V)
-                    -> UnitResult<'tcx>;
-    fn probe_var(&self, a_id: K) -> Option<Ty<'tcx>>;
-}
-
-impl<'a,'tcx,V,K> InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V> for InferCtxt<'a,'tcx>
-    where K : UnifyKey<Value=Option<V>>,
-          V : SimplyUnifiable<'tcx>,
-          Option<V> : UnifyValue,
-{
-    /// Unifies two simple keys. Because simple keys do not have any subtyping relationships, if
-    /// both keys have already been associated with a value, then those two values must be the
-    /// same.
-    fn simple_vars(&self,
-                   a_is_expected: bool,
-                   a_id: K,
-                   b_id: K)
-                   -> UnitResult<'tcx>
+    pub fn unify_var_var(&mut self,
+                         a_is_expected: bool,
+                         a_id: K,
+                         b_id: K)
+                         -> UnitResult<'tcx>
     {
-        let tcx = self.tcx;
-        let table = UnifyKey::unification_table(self);
-        let node_a: Node<K> = table.borrow_mut().get(tcx, a_id);
-        let node_b: Node<K> = table.borrow_mut().get(tcx, b_id);
+        let node_a = self.get(a_id);
+        let node_b = self.get(b_id);
         let a_id = node_a.key.clone();
         let b_id = node_b.key.clone();
 
@@ -304,46 +277,38 @@ impl<'a,'tcx,V,K> InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V> for InferCtx
             }
         };
 
-        let (new_root, new_rank) = table.borrow_mut().unify(tcx,
-                                                            &node_a,
-                                                            &node_b);
-        table.borrow_mut().set(tcx, new_root, Root(combined, new_rank));
-        return Ok(())
+        Ok(self.unify(&node_a, &node_b, combined))
     }
 
     /// Sets the value of the key `a_id` to `b`. Because simple keys do not have any subtyping
     /// relationships, if `a_id` already has a value, it must be the same as `b`.
-    fn simple_var_t(&self,
-                    a_is_expected: bool,
-                    a_id: K,
-                    b: V)
-                    -> UnitResult<'tcx>
+    pub fn unify_var_value(&mut self,
+                           a_is_expected: bool,
+                           a_id: K,
+                           b: V)
+                           -> UnitResult<'tcx>
     {
-        let tcx = self.tcx;
-        let table = UnifyKey::unification_table(self);
-        let node_a = table.borrow_mut().get(tcx, a_id);
+        let node_a = self.get(a_id);
         let a_id = node_a.key.clone();
 
         match node_a.value {
             None => {
-                table.borrow_mut().set(tcx, a_id, Root(Some(b), node_a.rank));
-                return Ok(());
+                self.set(a_id, Root(Some(b), node_a.rank));
+                Ok(())
             }
 
             Some(ref a_t) => {
                 if *a_t == b {
-                    return Ok(());
+                    Ok(())
                 } else {
-                    return err(a_is_expected, (*a_t).clone(), b);
+                    err(a_is_expected, (*a_t).clone(), b)
                 }
             }
         }
     }
 
-    fn probe_var(&self, a_id: K) -> Option<Ty<'tcx>> {
-        let tcx = self.tcx;
-        let table = UnifyKey::unification_table(self);
-        let node_a = table.borrow_mut().get(tcx, a_id);
+    pub fn probe(&mut self, tcx: &ty::ctxt<'tcx>, a_id: K) -> Option<Ty<'tcx>> {
+        let node_a = self.get(a_id);
         match node_a.value {
             None => None,
             Some(ref a_t) => Some(a_t.to_type(tcx))
@@ -357,18 +322,9 @@ impl<'a,'tcx,V,K> InferCtxtMethodsForSimplyUnifiableTypes<'tcx,K,V> for InferCtx
 
 impl UnifyKey for ty::IntVid {
     type Value = Option<IntVarValue>;
-
     fn index(&self) -> usize { self.index as usize }
-
     fn from_index(i: usize) -> ty::IntVid { ty::IntVid { index: i as u32 } }
-
-    fn unification_table<'v>(infcx: &'v InferCtxt) -> &'v RefCell<UnificationTable<ty::IntVid>> {
-        return &infcx.int_unification_table;
-    }
-
-    fn tag(_: Option<ty::IntVid>) -> &'static str {
-        "IntVid"
-    }
+    fn tag(_: Option<ty::IntVid>) -> &'static str { "IntVid" }
 }
 
 impl<'tcx> SimplyUnifiable<'tcx> for IntVarValue {
@@ -390,18 +346,9 @@ impl UnifyValue for Option<IntVarValue> { }
 
 impl UnifyKey for ty::FloatVid {
     type Value = Option<ast::FloatTy>;
-
     fn index(&self) -> usize { self.index as usize }
-
     fn from_index(i: usize) -> ty::FloatVid { ty::FloatVid { index: i as u32 } }
-
-    fn unification_table<'v>(infcx: &'v InferCtxt) -> &'v RefCell<UnificationTable<ty::FloatVid>> {
-        return &infcx.float_unification_table;
-    }
-
-    fn tag(_: Option<ty::FloatVid>) -> &'static str {
-        "FloatVid"
-    }
+    fn tag(_: Option<ty::FloatVid>) -> &'static str { "FloatVid" }
 }
 
 impl UnifyValue for Option<ast::FloatTy> {

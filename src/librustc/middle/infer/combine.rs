@@ -37,7 +37,6 @@ use super::equate::Equate;
 use super::glb::Glb;
 use super::lub::Lub;
 use super::sub::Sub;
-use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 use super::{InferCtxt, CombineResult};
 use super::{MiscVariable, TypeTrace};
 use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
@@ -468,30 +467,29 @@ pub fn super_tys<'tcx, C>(this: &C,
 
         // Relate integral variables to other types
         (&ty::ty_infer(IntVar(a_id)), &ty::ty_infer(IntVar(b_id))) => {
-            try!(this.infcx().simple_vars(this.a_is_expected(),
-                                            a_id, b_id));
+            try!(this.infcx().int_unification_table
+                             .borrow_mut()
+                             .unify_var_var(this.a_is_expected(), a_id, b_id));
             Ok(a)
         }
         (&ty::ty_infer(IntVar(v_id)), &ty::ty_int(v)) => {
-            unify_integral_variable(this, this.a_is_expected(),
-                                    v_id, IntType(v))
+            unify_integral_variable(this, this.a_is_expected(), v_id, IntType(v))
         }
         (&ty::ty_int(v), &ty::ty_infer(IntVar(v_id))) => {
-            unify_integral_variable(this, !this.a_is_expected(),
-                                    v_id, IntType(v))
+            unify_integral_variable(this, !this.a_is_expected(), v_id, IntType(v))
         }
         (&ty::ty_infer(IntVar(v_id)), &ty::ty_uint(v)) => {
-            unify_integral_variable(this, this.a_is_expected(),
-                                    v_id, UintType(v))
+            unify_integral_variable(this, this.a_is_expected(), v_id, UintType(v))
         }
         (&ty::ty_uint(v), &ty::ty_infer(IntVar(v_id))) => {
-            unify_integral_variable(this, !this.a_is_expected(),
-                                    v_id, UintType(v))
+            unify_integral_variable(this, !this.a_is_expected(), v_id, UintType(v))
         }
 
         // Relate floating-point variables to other types
         (&ty::ty_infer(FloatVar(a_id)), &ty::ty_infer(FloatVar(b_id))) => {
-            try!(this.infcx().simple_vars(this.a_is_expected(), a_id, b_id));
+            try!(this.infcx().float_unification_table
+                             .borrow_mut()
+                             .unify_var_var(this.a_is_expected(), a_id, b_id));
             Ok(a)
         }
         (&ty::ty_infer(FloatVar(v_id)), &ty::ty_float(v)) => {
@@ -617,8 +615,11 @@ pub fn super_tys<'tcx, C>(this: &C,
                                         vid: ty::IntVid,
                                         val: ty::IntVarValue)
                                         -> CombineResult<'tcx, Ty<'tcx>>
-                                        where C: Combine<'tcx> {
-        try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
+        where C: Combine<'tcx>
+    {
+        try!(this.infcx().int_unification_table
+                         .borrow_mut()
+                         .unify_var_value(vid_is_expected, vid, val));
         match val {
             IntType(v) => Ok(ty::mk_mach_int(this.tcx(), v)),
             UintType(v) => Ok(ty::mk_mach_uint(this.tcx(), v)),
@@ -630,8 +631,11 @@ pub fn super_tys<'tcx, C>(this: &C,
                                      vid: ty::FloatVid,
                                      val: ast::FloatTy)
                                      -> CombineResult<'tcx, Ty<'tcx>>
-                                     where C: Combine<'tcx> {
-        try!(this.infcx().simple_var_t(vid_is_expected, vid, val));
+        where C: Combine<'tcx>
+    {
+        try!(this.infcx().float_unification_table
+                         .borrow_mut()
+                         .unify_var_value(vid_is_expected, vid, val));
         Ok(ty::mk_mach_float(this.tcx(), val))
     }
 }
