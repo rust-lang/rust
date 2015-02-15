@@ -47,7 +47,8 @@ This pattern is very powerful, and we'll see it repeated more later.
 
 There are also a few things you can do with a tuple as a whole, without
 destructuring. You can assign one tuple into another, if they have the same
-arity and contained types.
+contained types and arity. Tuples have the same arity when they have the same
+length.
 
 ```rust
 let mut x = (1, 2); // x: (i32, i32)
