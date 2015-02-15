@@ -439,7 +439,7 @@ fn main() {
     unsafe { 
         rl_prompt = prompt.as_ptr();
 
-        println!("{}", rl_prompt);
+        println!("{:?}", rl_prompt);
 
         rl_prompt = ptr::null();
     }
