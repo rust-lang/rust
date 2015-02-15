@@ -6636,7 +6636,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
 }
 
 /// A free variable referred to in a function.
-#[derive(Copy, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
     /// The variable being accessed free.
     pub def: def::Def,
