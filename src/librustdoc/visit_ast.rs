@@ -333,7 +333,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     name: name,
                     items: items.clone(),
                     generics: gen.clone(),
-                    bounds: b.iter().map(|x| (*x).clone()).collect(),
+                    bounds: b.iter().cloned().collect(),
                     id: item.id,
                     attrs: item.attrs.clone(),
                     whence: item.span,

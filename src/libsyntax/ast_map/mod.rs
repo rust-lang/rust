@@ -251,7 +251,7 @@ impl<'ast> Map<'ast> {
     }
 
     fn find_entry(&self, id: NodeId) -> Option<MapEntry<'ast>> {
-        self.map.borrow().get(id as usize).map(|e| *e)
+        self.map.borrow().get(id as usize).cloned()
     }
 
     pub fn krate(&self) -> &'ast Crate {

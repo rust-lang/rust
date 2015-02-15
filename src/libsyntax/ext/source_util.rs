@@ -179,7 +179,7 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             return DummyResult::expr(sp);
         }
         Ok(bytes) => {
-            let bytes = bytes.iter().map(|x| *x).collect();
+            let bytes = bytes.iter().cloned().collect();
             base::MacExpr::new(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }
     }

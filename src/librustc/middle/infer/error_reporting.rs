@@ -924,7 +924,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
 
     fn rebuild(&self)
                -> (ast::FnDecl, Option<ast::ExplicitSelf_>, ast::Generics) {
-        let mut expl_self_opt = self.expl_self_opt.map(|x| x.clone());
+        let mut expl_self_opt = self.expl_self_opt.cloned();
         let mut inputs = self.fn_decl.inputs.clone();
         let mut output = self.fn_decl.output.clone();
         let mut ty_params = self.generics.ty_params.clone();

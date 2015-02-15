@@ -562,7 +562,7 @@ pub fn early_bound_lifetimes<'a>(generics: &'a ast::Generics) -> Vec<ast::Lifeti
 
     generics.lifetimes.iter()
         .filter(|l| referenced_idents.iter().any(|&i| i == l.lifetime.name))
-        .map(|l| (*l).clone())
+        .cloned()
         .collect()
 }
 
