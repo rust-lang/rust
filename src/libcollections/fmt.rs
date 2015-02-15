@@ -108,7 +108,7 @@
 //! There are various parameters which do require a particular type, however.
 //! Namely if the syntax `{:.*}` is used, then the number of characters to print
 //! precedes the actual object being formatted, and the number of characters
-//! must have the type `uint`. Although a `uint` can be printed with `{}`, it is
+//! must have the type `usize`. Although a `usize` can be printed with `{}`, it is
 //! illegal to reference an argument as such. For example this is another
 //! invalid format string:
 //!
@@ -121,7 +121,7 @@
 //! When requesting that an argument be formatted with a particular type, you
 //! are actually requesting that an argument ascribes to a particular trait.
 //! This allows multiple actual types to be formatted via `{:x}` (like `i8` as
-//! well as `int`).  The current mapping of types to traits is:
+//! well as `isize`).  The current mapping of types to traits is:
 //!
 //! * *nothing* ⇒ `Display`
 //! * `?` ⇒ `Debug`
@@ -173,8 +173,8 @@
 //!
 //! #[derive(Debug)]
 //! struct Vector2D {
-//!     x: int,
-//!     y: int,
+//!     x: isize,
+//!     y: isize,
 //! }
 //!
 //! impl fmt::Display for Vector2D {
@@ -380,9 +380,9 @@
 //! the '0' flag is specified for numerics, then the implicit fill character is
 //! '0'.
 //!
-//! The value for the width can also be provided as a `uint` in the list of
+//! The value for the width can also be provided as a `usize` in the list of
 //! parameters by using the `2$` syntax indicating that the second argument is a
-//! `uint` specifying the width.
+//! `usize` specifying the width.
 //!
 //! ### Precision
 //!

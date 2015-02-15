@@ -756,7 +756,7 @@ impl<'a, A> IterMut<'a, A> {
     /// ```
     /// use std::collections::DList;
     ///
-    /// let mut list: DList<int> = vec![1, 3, 4].into_iter().collect();
+    /// let mut list: DList<_> = vec![1, 3, 4].into_iter().collect();
     ///
     /// {
     ///     let mut it = list.iter_mut();
@@ -765,7 +765,7 @@ impl<'a, A> IterMut<'a, A> {
     ///     it.insert_next(2);
     /// }
     /// {
-    ///     let vec: Vec<int> = list.into_iter().collect();
+    ///     let vec: Vec<_> = list.into_iter().collect();
     ///     assert_eq!(vec, vec![1, 2, 3, 4]);
     /// }
     /// ```
@@ -783,7 +783,7 @@ impl<'a, A> IterMut<'a, A> {
     /// ```
     /// use std::collections::DList;
     ///
-    /// let mut list: DList<int> = vec![1, 2, 3].into_iter().collect();
+    /// let mut list: DList<_> = vec![1, 2, 3].into_iter().collect();
     ///
     /// let mut it = list.iter_mut();
     /// assert_eq!(it.next().unwrap(), &1);

@@ -158,7 +158,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec: Vec<int> = Vec::new();
+    /// let mut vec: Vec<i32> = Vec::new();
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -277,7 +277,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let vec: Vec<int> = Vec::with_capacity(10);
+    /// let vec: Vec<i32> = Vec::with_capacity(10);
     /// assert_eq!(vec.capacity(), 10);
     /// ```
     #[inline]
@@ -296,7 +296,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec: Vec<int> = vec![1];
+    /// let mut vec = vec![1];
     /// vec.reserve(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
@@ -325,7 +325,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec: Vec<int> = vec![1];
+    /// let mut vec = vec![1];
     /// vec.reserve_exact(10);
     /// assert!(vec.capacity() >= 11);
     /// ```
@@ -347,7 +347,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// let mut vec: Vec<int> = Vec::with_capacity(10);
+    /// let mut vec = Vec::with_capacity(10);
     /// vec.push_all(&[1, 2, 3]);
     /// assert_eq!(vec.capacity(), 10);
     /// vec.shrink_to_fit();
@@ -424,7 +424,7 @@ impl<T> Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// fn foo(slice: &mut [int]) {}
+    /// fn foo(slice: &mut [i32]) {}
     ///
     /// let mut vec = vec![1, 2];
     /// foo(vec.as_mut_slice());
@@ -845,7 +845,7 @@ impl<T> Vec<T> {
             // This `as isize` cast is safe, because the size of the elements of the
             // vector is not 0, and:
             //
-            // 1) If the size of the elements in the vector is 1, the `int` may
+            // 1) If the size of the elements in the vector is 1, the `isize` may
             //    overflow, but it has the correct bit pattern so that the
             //    `.offset()` function will work.
             //
@@ -858,7 +858,7 @@ impl<T> Vec<T> {
             //        (0x1 + 0x8 = 0x1 - 0x8)
             //
             // 2) If the size of the elements in the vector is >1, the `usize` ->
-            //    `int` conversion can't overflow.
+            //    `isize` conversion can't overflow.
             let offset = vec.len() as isize;
             let start = vec.as_mut_ptr();
 
@@ -1528,7 +1528,7 @@ impl<T> AsSlice<T> for Vec<T> {
     /// # Examples
     ///
     /// ```
-    /// fn foo(slice: &[int]) {}
+    /// fn foo(slice: &[i32]) {}
     ///
     /// let vec = vec![1, 2];
     /// foo(vec.as_slice());
@@ -2172,7 +2172,7 @@ mod tests {
     fn test_zip_unzip() {
         let z1 = vec![(1, 4), (2, 5), (3, 6)];
 
-        let (left, right): (Vec<_>, Vec<_>) = z1.iter().map(|&x| x).unzip();
+        let (left, right): (Vec<_>, Vec<_>) = z1.iter().cloned().unzip();
 
         assert_eq!((1, 4), (left[0], right[0]));
         assert_eq!((2, 5), (left[1], right[1]));
