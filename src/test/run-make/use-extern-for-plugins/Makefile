@@ -1,6 +1,6 @@
 -include ../tools.mk
 
-ifneq ($(UNAME),OpenBSD)
+ifneq ($(findstring BSD,$(UNAME)),BSD)
 HOST := $(shell $(RUSTC) -vV | grep 'host:' | sed 's/host: //')
 ifeq ($(findstring i686,$(HOST)),i686)
 TARGET := $(subst i686,x86_64,$(HOST))
@@ -13,6 +13,6 @@ all:
 	$(RUSTC) bar.rs -C extra-filename=-targ --target $(TARGET)
 	$(RUSTC) baz.rs --extern a=$(TMPDIR)/liba-targ.rlib --target $(TARGET)
 else
-# OpenBSD support only x86_64 architecture for now
+# FreeBSD & OpenBSD support only x86_64 architecture for now
 all:
 endif
