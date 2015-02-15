@@ -11,7 +11,7 @@
 #![allow(dead_code)] // FFI wrappers
 
 use llvm;
-use llvm::{CallConv, AtomicBinOp, AtomicOrdering, AsmDialect, AttrBuilder};
+use llvm::{CallConv, AtomicBinOp, AtomicOrdering, SynchronizationScope, AsmDialect, AttrBuilder};
 use llvm::{Opcode, IntPredicate, RealPredicate, False};
 use llvm::{ValueRef, BasicBlockRef, BuilderRef, ModuleRef};
 use trans::base;
@@ -988,9 +988,9 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }
     }
 
-    pub fn atomic_fence(&self, order: AtomicOrdering) {
+    pub fn atomic_fence(&self, order: AtomicOrdering, scope: SynchronizationScope) {
         unsafe {
-            llvm::LLVMBuildAtomicFence(self.llbuilder, order);
+            llvm::LLVMBuildAtomicFence(self.llbuilder, order, scope);
         }
     }
 }

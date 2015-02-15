@@ -44,6 +44,7 @@ pub use self::RealPredicate::*;
 pub use self::TypeKind::*;
 pub use self::AtomicBinOp::*;
 pub use self::AtomicOrdering::*;
+pub use self::SynchronizationScope::*;
 pub use self::FileType::*;
 pub use self::MetadataType::*;
 pub use self::AsmDialect::*;
@@ -360,6 +361,13 @@ pub enum AtomicOrdering {
     Release = 5,
     AcquireRelease = 6,
     SequentiallyConsistent = 7
+}
+
+#[repr(C)]
+#[derive(Copy)]
+pub enum SynchronizationScope {
+    SingleThread = 0,
+    CrossThread = 1
 }
 
 // Consts for the LLVMCodeGenFileType type (in include/llvm/c/TargetMachine.h)
@@ -1504,7 +1512,9 @@ extern {
                               SingleThreaded: Bool)
                               -> ValueRef;
 
-    pub fn LLVMBuildAtomicFence(B: BuilderRef, Order: AtomicOrdering);
+    pub fn LLVMBuildAtomicFence(B: BuilderRef,
+                                Order: AtomicOrdering,
+                                Scope: SynchronizationScope);
 
 
     /* Selected entries from the downcasts. */

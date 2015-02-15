@@ -725,7 +725,12 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 }
 
                 "fence" => {
-                    AtomicFence(bcx, order);
+                    AtomicFence(bcx, order, llvm::CrossThread);
+                    C_nil(ccx)
+                }
+
+                "singlethreadfence" => {
+                    AtomicFence(bcx, order, llvm::SingleThread);
                     C_nil(ccx)
                 }
 
