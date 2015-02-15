@@ -674,12 +674,16 @@ impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         let &(ref trait_ref, ref projection_bounds) = self;
         let base = ty::item_path_str(tcx, trait_ref.def_id);
-        parameterized(tcx,
-                      &base,
-                      trait_ref.substs,
-                      trait_ref.def_id,
-                      &projection_bounds[..],
-                      || ty::lookup_trait_def(tcx, trait_ref.def_id).generics.clone())
+        if let Some(trait_def) = try_lookup_trait_def(tcx, trait_ref.def_id) {
+            parameterized(tcx,
+                          &base,
+                          trait_ref.substs,
+                          trait_ref.def_id,
+                          &projection_bounds[..],
+                          || trait_def.generics.clone())
+        } else {
+            format!("local_trait_not_ready({:?})", trait_ref.def_id)
+        }
     }
 }
 
@@ -807,8 +811,12 @@ impl<'tcx> Repr<'tcx> for ty::TraitRef<'tcx> {
         // to enumerate the `for<...>` etc because the debruijn index
         // tells you everything you need to know.
         let base = ty::item_path_str(tcx, self.def_id);
-        parameterized(tcx, &base, self.substs, self.def_id, &[],
-                      || ty::lookup_trait_def(tcx, self.def_id).generics.clone())
+        if let Some(trait_def) = try_lookup_trait_def(tcx, self.def_id) {
+            parameterized(tcx, &base, self.substs, self.def_id, &[],
+                          || trait_def.generics.clone())
+        } else {
+            format!("local_trait_not_ready({:?})", self.def_id)
+        }
     }
 }
 
@@ -1275,8 +1283,12 @@ impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
 impl<'tcx> UserString<'tcx> for ty::TraitRef<'tcx> {
     fn user_string(&self, tcx: &ctxt<'tcx>) -> String {
         let path_str = ty::item_path_str(tcx, self.def_id);
-        parameterized(tcx, &path_str, self.substs, self.def_id, &[],
-                      || ty::lookup_trait_def(tcx, self.def_id).generics.clone())
+        if let Some(trait_def) = try_lookup_trait_def(tcx, self.def_id) {
+            parameterized(tcx, &path_str, self.substs, self.def_id, &[],
+                          || trait_def.generics.clone())
+        } else {
+            format!("local_trait_not_ready({:?})", self.def_id)
+        }
     }
 }
 
@@ -1530,5 +1542,18 @@ impl<'tcx> UserString<'tcx> for ty::Predicate<'tcx> {
 impl<'tcx> Repr<'tcx> for ast::Unsafety {
     fn repr(&self, _: &ctxt<'tcx>) -> String {
         format!("{:?}", *self)
+    }
+}
+
+// Wrapper around lookup_trait_def that can handle when the trait is
+// defined in the local crate. Returns Option<_> because this function
+// can be called while the trait_defs map is being built, so that
+// looking up the trait_def in the local crate can sometimes fail.
+fn try_lookup_trait_def<'tcx>(tcx: &ctxt<'tcx>, did: ast::DefId)
+                              -> Option<Rc<ty::TraitDef<'tcx>>> {
+    if did.krate == ast::LOCAL_CRATE {
+        tcx.trait_defs.borrow().get(&did).map(|r| r.clone())
+    } else {
+        Some(ty::lookup_trait_def(tcx, did))
     }
 }
