@@ -2425,6 +2425,14 @@ fn finish_register_fn(ccx: &CrateContext, sp: Span, sym: String, node_id: ast::N
 
 
     if is_entry_fn(ccx.sess(), node_id) {
+        // check for the #[rustc_error] annotation, which forces an
+        // error in trans. This is used to write compile-fail tests
+        // that actually test that compilation succeeds without
+        // reporting an error.
+        if ty::has_attr(ccx.tcx(), local_def(node_id), "rustc_error") {
+            ccx.tcx().sess.span_fatal(sp, "compilation successful");
+        }
+
         create_entry_wrapper(ccx, sp, llfn);
     }
 }
