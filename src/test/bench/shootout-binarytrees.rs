@@ -86,7 +86,7 @@ fn inner(depth: i32, iterations: i32) -> String {
 fn main() {
     let args = std::os::args();
     let args = args;
-    let n = if std::os::getenv("RUST_BENCH").is_some() {
+    let n = if std::env::var_os("RUST_BENCH").is_some() {
         17
     } else if args.len() <= 1u {
         8

@@ -15,6 +15,7 @@
 #![feature(unsafe_destructor)]
 
 use std::os;
+use std::env;
 use std::old_io::process::Command;
 use std::str;
 use std::ops::{Drop, FnMut, FnOnce};
@@ -22,7 +23,7 @@ use std::ops::{Drop, FnMut, FnOnce};
 #[inline(never)]
 fn foo() {
     let _v = vec![1, 2, 3];
-    if os::getenv("IS_TEST").is_some() {
+    if env::var_os("IS_TEST").is_some() {
         panic!()
     }
 }

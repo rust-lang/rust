@@ -13,6 +13,7 @@
 use std::slice::SliceExt;
 use std::old_io::{Command, fs, USER_RWX};
 use std::os;
+use std::env;
 use std::old_path::BytesContainer;
 use std::rand::random;
 
@@ -45,7 +46,7 @@ fn test() {
     fs::copy(&my_path, &child_path).unwrap();
 
     // Append the new directory to our own PATH.
-    let mut path = os::split_paths(os::getenv("PATH").unwrap_or(String::new()));
+    let mut path = os::split_paths(env::var("PATH").ok().unwrap_or(String::new()));
     path.push(child_dir.clone());
     let path = os::join_paths(&path).unwrap();
 
