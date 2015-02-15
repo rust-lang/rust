@@ -2742,9 +2742,19 @@ items can bring new names into scopes and declared items are in scope for only
 the block itself.
 
 A block will execute each statement sequentially, and then execute the
-expression (if given). If the final expression is omitted, the type and return
-value of the block are `()`, but if it is provided, the type and return value
-of the block are that of the expression itself.
+expression (if given). If the block ends in a statement, its value is `()`:
+
+```
+let x: () = { println!("Hello."); };
+```
+
+If it ends in an expression, its value and type are that of the expression:
+
+```
+let x: i32 = { println!("Hello."); 5 };
+
+assert_eq!(5, x);
+```
 
 ### Method-call expressions
 
