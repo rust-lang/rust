@@ -1289,6 +1289,98 @@ impl<T> RingBuf<T> {
 
         return elem;
     }
+
+    /// Splits the collection into two at the given index.
+    ///
+    /// Returns a newly allocated `Self`. `self` contains elements `[0, at)`,
+    /// and the returned `Self` contains elements `[at, len)`.
+    ///
+    /// Note that the capacity of `self` does not change.
+    ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf: RingBuf<_> = vec![1,2,3].into_iter().collect();
+    /// let buf2 = buf.split_off(1);
+    /// // buf = [1], buf2 = [2, 3]
+    /// assert_eq!(buf.len(), 1);
+    /// assert_eq!(buf2.len(), 2);
+    /// ```
+    #[inline]
+    #[unstable(feature = "collections",
+               reason = "new API, waiting for dust to settle")]
+    pub fn split_off(&mut self, at: usize) -> Self {
+        let len = self.len();
+        assert!(at <= len, "`at` out of bounds");
+
+        let other_len = len - at;
+        let mut other = RingBuf::with_capacity(other_len);
+
+        unsafe {
+            let (first_half, second_half) = self.as_slices();
+
+            let first_len = first_half.len();
+            let second_len = second_half.len();
+            if at < first_len {
+                // `at` lies in the first half.
+                let amount_in_first = first_len - at;
+
+                ptr::copy_nonoverlapping_memory(other.ptr,
+                                                first_half.as_ptr().offset(at as isize),
+                                                amount_in_first);
+
+                // just take all of the second half.
+                ptr::copy_nonoverlapping_memory(other.ptr.offset(amount_in_first as isize),
+                                                second_half.as_ptr(),
+                                                second_len);
+            } else {
+                // `at` lies in the second half, need to factor in the elements we skipped
+                // in the first half.
+                let offset = at - first_len;
+                let amount_in_second = second_len - offset;
+                ptr::copy_nonoverlapping_memory(other.ptr,
+                                                second_half.as_ptr().offset(offset as isize),
+                                                amount_in_second);
+            }
+        }
+
+        // Cleanup where the ends of the buffers are
+        self.head = self.wrap_index(self.head - other_len);
+        other.head = other.wrap_index(other_len);
+
+        other
+    }
+
+    /// Moves all the elements of `other` into `Self`, leaving `other` empty.
+    ///
+    /// # Panics
+    ///
+    /// Panics if the new number of elements in self overflows a `usize`.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::RingBuf;
+    ///
+    /// let mut buf: RingBuf<_> = vec![1, 2, 3].into_iter().collect();
+    /// let mut buf2: RingBuf<_> = vec![4, 5, 6].into_iter().collect();
+    /// buf.append(&mut buf2);
+    /// assert_eq!(buf.len(), 6);
+    /// assert_eq!(buf2.len(), 0);
+    /// ```
+    #[inline]
+    #[unstable(feature = "collections",
+               reason = "new API, waiting for dust to settle")]
+    pub fn append(&mut self, other: &mut Self) {
+        // naive impl
+        self.extend(other.drain());
+    }
 }
 
 impl<T: Clone> RingBuf<T> {
@@ -2710,5 +2802,64 @@ mod tests {
 
         assert_eq!(ring.len() as i32, cap);
         assert_eq!(ring.capacity() as i32, cap);
+    }
+
+    #[test]
+    fn test_split_off() {
+        // This test checks that every single combination of tail position, length, and
+        // split position is tested. Capacity 15 should be large enough to cover every case.
+
+        let mut tester = RingBuf::with_capacity(15);
+        // can't guarantee we got 15, so have to get what we got.
+        // 15 would be great, but we will definitely get 2^k - 1, for k >= 4, or else
+        // this test isn't covering what it wants to
+        let cap = tester.capacity();
+
+        // len is the length *before* splitting
+        for len in 0..cap {
+            // index to split at
+            for at in 0..len + 1 {
+                // 0, 1, 2, .., at - 1 (may be empty)
+                let expected_self = iter::count(0, 1).take(at).collect();
+                // at, at + 1, .., len - 1 (may be empty)
+                let expected_other = iter::count(at, 1).take(len - at).collect();
+
+                for tail_pos in 0..cap {
+                    tester.tail = tail_pos;
+                    tester.head = tail_pos;
+                    for i in 0..len {
+                        tester.push_back(i);
+                    }
+                    let result = tester.split_off(at);
+                    assert!(tester.tail < tester.cap);
+                    assert!(tester.head < tester.cap);
+                    assert!(result.tail < result.cap);
+                    assert!(result.head < result.cap);
+                    assert_eq!(tester, expected_self);
+                    assert_eq!(result, expected_other);
+                }
+            }
+        }
+    }
+
+    #[test]
+    fn test_append() {
+        let mut a: RingBuf<_> = vec![1, 2, 3].into_iter().collect();
+        let mut b: RingBuf<_> = vec![4, 5, 6].into_iter().collect();
+
+        // normal append
+        a.append(&mut b);
+        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect(), vec![]);
+
+        // append nothing to something
+        a.append(&mut b);
+        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect(), vec![]);
+
+        // append something to nothing
+        b.append(&mut a);
+        assert_eq!(b.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
+        assert_eq!(a.iter().cloned().collect(), vec![]);
     }
 }
