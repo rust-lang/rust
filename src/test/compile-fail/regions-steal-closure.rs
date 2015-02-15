@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 struct closure_box<'a> {
@@ -22,7 +21,8 @@ fn box_it<'r>(x: Box<FnMut() + 'r>) -> closure_box<'r> {
 fn main() {
     let mut cl_box = {
         let mut i = 3;
-        box_it(box || i += 1) //~ ERROR `i` does not live long enough
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        box_it(Box::new(|| i += 1)) //~ ERROR `i` does not live long enough
     };
     cl_box.cl.call_mut(());
 }

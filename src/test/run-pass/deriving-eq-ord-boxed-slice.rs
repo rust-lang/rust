@@ -8,15 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
 #[derive(PartialEq, PartialOrd, Eq, Ord)]
 struct Foo(Box<[u8]>);
 
 pub fn main() {
-    let a = Foo(box [0, 1, 2]);
-    let b = Foo(box [0, 1, 2]);
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let a = Foo(Box::new([0, 1, 2]));
+    let b = Foo(Box::new([0, 1, 2]));
     assert!(a == b);
     println!("{}", a != b);
     println!("{}", a < b);

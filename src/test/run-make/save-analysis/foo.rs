@@ -245,9 +245,10 @@ fn hello<X: SomeTrait>((z, a) : (u32, String), ex: X) {
     let x = 32.0f32;
     let _ = (x + ((x * x) + 1.0).sqrt()).ln();
 
-    let s: Box<SomeTrait> = box some_fields {field1: 43};
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let s: Box<SomeTrait> = Box::new(some_fields {field1: 43});
     let s2: Box<some_fields> =  box some_fields {field1: 43};
-    let s3 = box nofields;
+    let s3: Box<_> = box nofields;
 
     s.Method(43);
     s3.Method(43);
@@ -282,7 +283,7 @@ pub struct blah {
 }
 
 fn main() { // foo
-    let s = box some_fields {field1: 43};
+    let s: Box<_> = box some_fields {field1: 43};
     hello((43, "a".to_string()), *s);
     sub::sub2::hello();
     sub2::sub3::hello();

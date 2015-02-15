@@ -10,10 +10,9 @@
 
 // Test that overloaded calls work with zero arity closures
 
-#![feature(box_syntax)]
-
 fn main() {
-    let functions: [Box<Fn() -> Option<()>>; 1] = [box || None];
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let functions: [Box<Fn() -> Option<()>>; 1] = [Box::new(|| None)];
 
     let _: Option<Vec<()>> = functions.iter().map(|f| (*f)()).collect();
 }

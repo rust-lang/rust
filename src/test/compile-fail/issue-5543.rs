@@ -8,13 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
-
 trait Foo { fn foo(&self) {} }
 impl Foo for u8 {}
 
 fn main() {
-    let r: Box<Foo> = box 5;
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let r: Box<Foo> = Box::new(5);
     let _m: Box<Foo> = r as Box<Foo>;
     //~^ ERROR `core::marker::Sized` is not implemented for the type `Foo`
 }

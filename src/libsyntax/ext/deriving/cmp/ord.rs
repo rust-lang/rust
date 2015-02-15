@@ -38,9 +38,9 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
                 args: vec!(borrowed_self()),
                 ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
-                combine_substructure: combine_substructure(box |cx, span, substr| {
+                combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
                     cs_op($op, $equal, cx, span, substr)
-                })
+                }))
             }
         } }
     }
@@ -61,9 +61,9 @@ pub fn expand_deriving_ord<F>(cx: &mut ExtCtxt,
         args: vec![borrowed_self()],
         ret_ty: ret_ty,
         attributes: attrs,
-        combine_substructure: combine_substructure(box |cx, span, substr| {
+        combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
             cs_partial_cmp(cx, span, substr)
-        })
+        }))
     };
 
     let trait_def = TraitDef {
@@ -175,13 +175,13 @@ pub fn cs_partial_cmp(cx: &mut ExtCtxt, span: Span,
             cx.expr_block(cx.block(span, vec!(assign), Some(if_)))
         },
         equals_expr.clone(),
-        box |cx, span, (self_args, tag_tuple), _non_self_args| {
+        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {
                 some_ordering_collapsed(cx, span, PartialCmpOp, tag_tuple)
             }
-        },
+        }),
         cx, span, substr)
 }
 
@@ -223,7 +223,7 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
             cx.expr_binary(span, ast::BiOr, cmp, and)
         },
         cx.expr_bool(span, equal),
-        box |cx, span, (self_args, tag_tuple), _non_self_args| {
+        Box::new(|cx, span, (self_args, tag_tuple), _non_self_args| {
             if self_args.len() != 2 {
                 cx.span_bug(span, "not exactly 2 arguments in `derive(PartialOrd)`")
             } else {
@@ -233,6 +233,6 @@ fn cs_op(less: bool, equal: bool, cx: &mut ExtCtxt,
                 };
                 some_ordering_collapsed(cx, span, op, tag_tuple)
             }
-        },
+        }),
         cx, span, substr)
 }

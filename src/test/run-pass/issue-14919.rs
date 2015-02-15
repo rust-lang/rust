@@ -8,9 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
 trait Matcher {
     fn next_match(&mut self) -> Option<(uint, uint)>;
 }
@@ -32,9 +29,10 @@ trait IntoMatcher<'a, T> {
 
 impl<'a, 'b, F> IntoMatcher<'a, CharPredMatcher<'a, 'b>> for F where F: FnMut(char) -> bool + 'b {
     fn into_matcher(self, s: &'a str) -> CharPredMatcher<'a, 'b> {
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         CharPredMatcher {
             str: s,
-            pred: box self,
+            pred: Box::new(self),
         }
     }
 }

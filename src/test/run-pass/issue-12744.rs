@@ -8,10 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
 fn main() {
-    fn test() -> Box<std::any::Any + 'static> { box 1 }
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    fn test() -> Box<std::any::Any + 'static> { Box::new(1) }
     println!("{:?}", test())
 }

@@ -10,6 +10,8 @@
 
 #![feature(box_syntax)]
 
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+
 use std::marker::MarkerTrait;
 
 trait X : MarkerTrait {}
@@ -24,48 +26,48 @@ trait Iter {
 fn bad1<T: Iter>(v: T) -> Box<X+'static>
 {
     let item = v.into_item();
-    box item //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+    Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
 }
 
 fn bad2<T: Iter>(v: T) -> Box<X+'static>
     where Box<T::Item> : X
 {
-    let item = box v.into_item();
-    box item //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+    let item: Box<_> = box v.into_item();
+    Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
 }
 
 fn bad3<'a, T: Iter>(v: T) -> Box<X+'a>
 {
     let item = v.into_item();
-    box item //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+    Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
 }
 
 fn bad4<'a, T: Iter>(v: T) -> Box<X+'a>
     where Box<T::Item> : X
 {
-    let item = box v.into_item();
-    box item //~ ERROR associated type `<T as Iter>::Item` may not live long enough
+    let item: Box<_> = box v.into_item();
+    Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live long enough
 }
 
 fn ok1<'a, T: Iter>(v: T) -> Box<X+'a>
     where T::Item : 'a
 {
     let item = v.into_item();
-    box item // OK, T::Item : 'a is declared
+    Box::new(item) // OK, T::Item : 'a is declared
 }
 
 fn ok2<'a, T: Iter>(v: &T, w: &'a T::Item) -> Box<X+'a>
     where T::Item : Clone
 {
     let item = Clone::clone(w);
-    box item // OK, T::Item : 'a is implied
+    Box::new(item) // OK, T::Item : 'a is implied
 }
 
 fn ok3<'a, T: Iter>(v: &'a T) -> Box<X+'a>
     where T::Item : Clone + 'a
 {
     let item = Clone::clone(v.as_item());
-    box item // OK, T::Item : 'a was declared
+    Box::new(item) // OK, T::Item : 'a was declared
 }
 
 fn meh1<'a, T: Iter>(v: &'a T) -> Box<X+'a>
@@ -78,7 +80,7 @@ fn meh1<'a, T: Iter>(v: &'a T) -> Box<X+'a>
     // T::Item`. But we're not that smart at present.
 
     let item = Clone::clone(v.as_item());
-    box item //~ ERROR associated type `<T as Iter>::Item` may not live
+    Box::new(item) //~ ERROR associated type `<T as Iter>::Item` may not live
 }
 
 fn main() {}

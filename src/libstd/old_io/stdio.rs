@@ -547,8 +547,9 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         let _t = thread::spawn(move|| {
-            set_stdout(box w);
+            set_stdout(Box::new(w));
             println!("hello!");
         });
         assert_eq!(r.read_to_string().unwrap(), "hello!\n");
@@ -560,8 +561,9 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         let _t = thread::spawn(move || -> () {
-            set_stderr(box w);
+            set_stderr(Box::new(w));
             panic!("my special message");
         });
         let s = r.read_to_string().unwrap();

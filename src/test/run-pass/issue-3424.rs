@@ -11,7 +11,6 @@
 // rustc --test ignores2.rs && ./ignores2
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 use std::old_path::{Path};
@@ -23,9 +22,10 @@ type rsrc_loader = Box<FnMut(&Path) -> (result::Result<String, String>) + 'stati
 
 fn tester()
 {
-    let mut loader: rsrc_loader = box move|_path| {
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let mut loader: rsrc_loader = Box::new(move|_path| {
         result::Result::Ok("more blah".to_string())
-    };
+    });
 
     let path = old_path::Path::new("blah");
     assert!(loader(&path).is_ok());

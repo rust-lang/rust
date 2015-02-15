@@ -30,7 +30,7 @@ impl<T:fmt::Debug> fmt::Debug for OwnedSlice<T> {
 
 impl<T> OwnedSlice<T> {
     pub fn empty() -> OwnedSlice<T> {
-        OwnedSlice  { data: box [] }
+        OwnedSlice  { data: Box::new([]) }
     }
 
     #[inline(never)]

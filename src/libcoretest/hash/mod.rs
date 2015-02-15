@@ -64,7 +64,8 @@ fn test_writer_hasher() {
     //assert_eq!(hasher.hash(& s), 97 + 0xFF);
     let cs: &[u8] = &[1u8, 2u8, 3u8];
     assert_eq!(hash(& cs), 9);
-    let cs: Box<[u8]> = box [1u8, 2u8, 3u8];
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let cs: Box<[u8]> = Box::new([1u8, 2u8, 3u8]);
     assert_eq!(hash(& cs), 9);
 
     // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>

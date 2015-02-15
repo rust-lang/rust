@@ -8,8 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
-
 mod my_mod {
     pub struct MyStruct {
         priv_field: isize
@@ -26,10 +24,15 @@ fn main() {
     let my_struct = my_mod::MyStruct();
     let _woohoo = (&my_struct).priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
-    let _woohoo = (box my_struct).priv_field;
+
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let _woohoo = (Box::new(my_struct)).priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
+
     (&my_struct).happyfun();               //~ ERROR method `happyfun` is private
-    (box my_struct).happyfun();            //~ ERROR method `happyfun` is private
+
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    (Box::new(my_struct)).happyfun();          //~ ERROR method `happyfun` is private
     let nope = my_struct.priv_field;
     //~^ ERROR field `priv_field` of struct `my_mod::MyStruct` is private
 }
