@@ -168,7 +168,6 @@
 #![deny(missing_docs)]
 
 #![feature(staged_api)]
-#![feature(slicing_syntax)]
 #![feature(box_syntax)]
 #![feature(int_uint)]
 #![feature(core)]
