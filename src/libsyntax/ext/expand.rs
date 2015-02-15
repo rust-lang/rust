@@ -1436,6 +1436,27 @@ impl<'feat> ExpansionConfig<'feat> {
             _ => false,
         }
     }
+
+    pub fn enable_log_syntax(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_log_syntax: true, .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn enable_concat_idents(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_concat_idents: true, .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn enable_trace_macros(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_trace_macros: true, .. }) => true,
+            _ => false,
+        }
+    }
 }
 
 pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
