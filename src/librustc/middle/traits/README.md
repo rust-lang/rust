@@ -1,15 +1,3 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
-// file at the top-level directory of this distribution and at
-// http://rust-lang.org/COPYRIGHT.
-//
-// Licensed under the Apache License, Version 2.0 <LICENSE-APACHE or
-// http://www.apache.org/licenses/LICENSE-2.0> or the MIT license
-// <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
-// option. This file may not be copied, modified, or distributed
-// except according to those terms.
-
-/*!
-
 # TRAIT RESOLUTION
 
 This document describes the general process and points out some non-obvious
@@ -440,5 +428,3 @@ We used to try and draw finer-grained distinctions, but that led to a
 serious of annoying and weird bugs like #22019 and #18290. This simple
 rule seems to be pretty clearly safe and also still retains a very
 high hit rate (~95% when compiling rustc).
-
-*/

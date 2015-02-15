@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See doc.rs for documentation
+//! See the Book for more information.
 
 #![allow(non_camel_case_types)]
 
@@ -46,7 +46,6 @@ use self::unify::{UnificationTable, InferCtxtMethodsForSimplyUnifiableTypes};
 use self::error_reporting::ErrorReporting;
 
 pub mod combine;
-pub mod doc;
 pub mod equate;
 pub mod error_reporting;
 pub mod glb;
