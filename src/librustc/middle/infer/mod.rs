@@ -43,7 +43,7 @@ use self::region_inference::{RegionVarBindings, RegionSnapshot};
 use self::equate::Equate;
 use self::sub::Sub;
 use self::lub::Lub;
-use self::unify::{UnificationTable, InferCtxtMethodsForSimplyUnifiableTypes};
+use self::unify::UnificationTable;
 use self::error_reporting::ErrorReporting;
 
 pub mod bivariate;
@@ -456,14 +456,14 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         use middle::ty::UnconstrainedNumeric::{Neither, UnconstrainedInt, UnconstrainedFloat};
         match ty.sty {
             ty::ty_infer(ty::IntVar(vid)) => {
-                match self.int_unification_table.borrow_mut().get(self.tcx, vid).value {
+                match self.int_unification_table.borrow_mut().get(vid).value {
                     None => UnconstrainedInt,
                     _ => Neither,
                 }
             },
             ty::ty_infer(ty::FloatVar(vid)) => {
-                match self.float_unification_table.borrow_mut().get(self.tcx, vid).value {
-                    None => return UnconstrainedFloat,
+                match self.float_unification_table.borrow_mut().get(vid).value {
+                    None => UnconstrainedFloat,
                     _ => Neither,
                 }
             },
@@ -881,12 +881,16 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
             }
 
             ty::ty_infer(ty::IntVar(v)) => {
-                self.probe_var(v)
+                self.int_unification_table
+                    .borrow_mut()
+                    .probe(self.tcx, v)
                     .unwrap_or(typ)
             }
 
             ty::ty_infer(ty::FloatVar(v)) => {
-                self.probe_var(v)
+                self.float_unification_table
+                    .borrow_mut()
+                    .probe(self.tcx, v)
                     .unwrap_or(typ)
             }
 

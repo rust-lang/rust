@@ -37,7 +37,6 @@ use middle::ty_fold::TypeFolder;
 use std::collections::hash_map::{self, Entry};
 
 use super::InferCtxt;
-use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 
 pub struct TypeFreshener<'a, 'tcx:'a> {
     infcx: &'a InferCtxt<'a, 'tcx>,
@@ -104,29 +103,34 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
     }
 
     fn fold_ty(&mut self, t: Ty<'tcx>) -> Ty<'tcx> {
+        let tcx = self.infcx.tcx;
+
         match t.sty {
             ty::ty_infer(ty::TyVar(v)) => {
-                self.freshen(self.infcx.type_variables.borrow().probe(v),
-                               ty::TyVar(v),
-                               ty::FreshTy)
+                self.freshen(
+                    self.infcx.type_variables.borrow().probe(v),
+                    ty::TyVar(v),
+                    ty::FreshTy)
             }
 
             ty::ty_infer(ty::IntVar(v)) => {
-                self.freshen(self.infcx.probe_var(v),
-                             ty::IntVar(v),
-                             ty::FreshIntTy)
+                self.freshen(
+                    self.infcx.int_unification_table.borrow_mut().probe(tcx, v),
+                    ty::IntVar(v),
+                    ty::FreshIntTy)
             }
 
             ty::ty_infer(ty::FloatVar(v)) => {
-                self.freshen(self.infcx.probe_var(v),
-                             ty::FloatVar(v),
-                             ty::FreshIntTy)
+                self.freshen(
+                    self.infcx.float_unification_table.borrow_mut().probe(tcx, v),
+                    ty::FloatVar(v),
+                    ty::FreshIntTy)
             }
 
             ty::ty_infer(ty::FreshTy(c)) |
             ty::ty_infer(ty::FreshIntTy(c)) => {
                 if c >= self.freshen_count {
-                    self.tcx().sess.bug(
+                    tcx.sess.bug(
                         &format!("Encountered a freshend type with id {} \
                                   but our counter is only at {}",
                                  c,
