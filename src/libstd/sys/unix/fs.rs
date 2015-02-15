@@ -364,7 +364,10 @@ mod tests {
     use os;
     use prelude::v1::*;
 
-    #[cfg_attr(target_os = "freebsd", ignore)] // hmm, maybe pipes have a tiny buffer
+    #[cfg_attr(any(target_os = "freebsd",
+                   target_os = "openbsd"),
+               ignore)]
+    // under some system, pipe(2) will return a bidrectionnal pipe
     #[test]
     fn test_file_desc() {
         // Run this test with some pipes so we don't have to mess around with
