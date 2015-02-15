@@ -79,6 +79,12 @@ apparent in the code.
 
 # Alternatives
 
+Non-panicky functions can be added alongside the existing functions, e.g.,
+as `from_slice_failing`. Adding new functions complicates the API where little
+reason for that exists; composition is preferred to adding function variants.
+Longer function names, together with a less convenient return value, may deter
+people from using the safer functions.
+
 If the panicky behavior is preserved, plentiful possibilities for DoS attacks
 and other unforeseen failures in the field may be introduced by code oblivious
 to the input constraints. 
