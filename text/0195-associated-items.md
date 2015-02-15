@@ -9,6 +9,7 @@ more convenient, scalable, and powerful. In particular, traits will consist of a
 set of methods, together with:
 
 * Associated functions (already present as "static" functions)
+* Associated consts
 * Associated statics
 * Associated types
 * Associated lifetimes
@@ -173,7 +174,7 @@ provide a distinct `impl` for every member of this family.
 Associated types, lifetimes, and functions can already be expressed in today's
 Rust, though it is unwieldy to do so (as argued above).
 
-But associated _statics_ cannot be expressed using today's traits.
+But associated _consts_ and _statics_ cannot be expressed using today's traits.
 
 For example, today's Rust includes a variety of numeric traits, including
 `Float`, which must currently expose constants as static functions:
@@ -191,19 +192,19 @@ trait Float {
 ```
 
 Because these functions cannot be used in static initializers, the modules for
-float types _also_ export a separate set of constants as statics, not using
+float types _also_ export a separate set of constants as consts, not using
 traits.
 
-Associated constants would allow the statics to live directly on the traits:
+Associated constants would allow the consts to live directly on the traits:
 
 ```rust
 trait Float {
-    static NAN: Self;
-    static INFINITY: Self;
-    static NEG_INFINITY: Self;
-    static NEG_ZERO: Self;
-    static PI: Self;
-    static TWO_PI: Self;
+    const NAN: Self;
+    const INFINITY: Self;
+    const NEG_INFINITY: Self;
+    const NEG_ZERO: Self;
+    const PI: Self;
+    const TWO_PI: Self;
     ...
 }
 ```
@@ -282,13 +283,14 @@ distinction" below.
 
 ## Trait bodies: defining associated items
 
-Trait bodies are expanded to include three new kinds of items: statics, types,
-and lifetimes:
+Trait bodies are expanded to include four new kinds of items: consts, statics,
+types, and lifetimes:
 
 ```
 TRAIT = TRAIT_HEADER '{' TRAIT_ITEM* '}'
 TRAIT_ITEM =
   ... <existing productions>
+  | 'const' IDENT ':' TYPE [ '=' CONST_EXP ] ';'
   | 'static' IDENT ':' TYPE [ '=' CONST_EXP ] ';'
   | 'type' IDENT [ ':' BOUNDS ] [ WHERE_CLAUSE ] [ '=' TYPE ] ';'
   | 'lifetime' LIFETIME_IDENT ';'
@@ -352,7 +354,7 @@ external to the trait.
 
 ### Defaults
 
-Notice that associated statics and types both permit defaults, just as trait
+Notice that associated consts, statics, and types permit defaults, just as trait
 methods and functions can provide defaults.
 
 Defaults are useful both as a code reuse mechanism, and as a way to expand the
@@ -430,6 +432,7 @@ lifetime items are allowed:
 ```
 IMPL_ITEM =
   ... <existing productions>
+  | 'const' IDENT ':' TYPE '=' CONST_EXP ';'
   | 'static' IDENT ':' TYPE '=' CONST_EXP ';'
   | 'type' IDENT' '=' 'TYPE' ';'
   | 'lifetime' LIFETIME_IDENT '=' LIFETIME_REFERENCE ';'
@@ -767,7 +770,8 @@ as UFCS-style functions:
 trait Foo {
     type AssocType;
     lifetime 'assoc_lifetime;
-    static ASSOC_STATIC: uint;
+    const ASSOC_CONST: uint;
+    static ASSOC_STATIC: &'static [uint, ..1024];
     fn assoc_fn() -> Self;
 
     // Note: 'assoc_lifetime and AssocType in scope:
@@ -776,6 +780,7 @@ trait Foo {
     fn default_method(&self) -> uint {
         // method in scope UFCS-style, assoc_fn in scope
         let _ = method(self, assoc_fn());
+        ASSOC_CONST // in scope
         ASSOC_STATIC // in scope
     }
 }
