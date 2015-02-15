@@ -4650,6 +4650,17 @@ impl<'a> Parser<'a> {
         self.parse_method(attrs, visa)
     }
 
+    fn complain_if_pub_macro(&mut self, visa: Visibility, span: Span) {
+        match visa {
+            Public => {
+                self.span_err(span, "can't qualify macro invocation with `pub`");
+                self.span_help(span, "try adjusting the macro to put `pub` inside \
+                                      the invocation");
+            }
+            Inherited => (),
+        }
+    }
+
     /// Parse a method in a trait impl, starting with `attrs` attributes.
     pub fn parse_method(&mut self,
                         attrs: Vec<Attribute>,
@@ -4664,6 +4675,10 @@ impl<'a> Parser<'a> {
                 && (self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
                     || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
                 // method macro.
+
+                let last_span = self.last_span;
+                self.complain_if_pub_macro(visa, last_span);
+
                 let pth = self.parse_path(NoTypesAllowed);
                 self.expect(&token::Not);
 
@@ -5866,6 +5881,9 @@ impl<'a> Parser<'a> {
                     || self.look_ahead(2, |t| *t == token::OpenDelim(token::Paren))
                     || self.look_ahead(2, |t| *t == token::OpenDelim(token::Brace))) {
             // MACRO INVOCATION ITEM
+
+            let last_span = self.last_span;
+            self.complain_if_pub_macro(visibility, last_span);
 
             // item macro.
             let pth = self.parse_path(NoTypesAllowed);
