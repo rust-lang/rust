@@ -279,7 +279,7 @@ pub mod sync;
 #[path = "sys/common/mod.rs"] mod sys_common;
 
 pub mod rt;
-mod failure;
+mod panicking;
 
 // Documentation for primitive types
 
