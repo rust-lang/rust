@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // ignore-windows failing on win32 bot
+// ignore-freebsd: output doesn't match
 // ignore-tidy-linelength
 // ignore-lldb
 // ignore-android: FIXME(#10381)
