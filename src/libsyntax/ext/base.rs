@@ -439,7 +439,8 @@ impl BlockInfo {
 
 /// The base map of methods for expanding syntax extension
 /// AST nodes into full ASTs
-fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
+fn initial_syntax_expander_table<'feat>(ecfg: &expand::ExpansionConfig<'feat>)
+                                        -> SyntaxEnv {
     // utility function to simplify creating NormalTT syntax extensions
     fn builtin_normal_expander(f: MacroExpanderFn) -> SyntaxExtension {
         NormalTT(box f, None)
@@ -470,7 +471,7 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
     syntax_expanders.insert(intern("deriving"),
                             Decorator(box ext::deriving::expand_deprecated_deriving));
 
-    if ecfg.enable_quotes {
+    if ecfg.enable_quotes() {
         // Quasi-quoting expanders
         syntax_expanders.insert(intern("quote_tokens"),
                            builtin_normal_expander(
@@ -541,7 +542,7 @@ pub struct ExtCtxt<'a> {
     pub parse_sess: &'a parse::ParseSess,
     pub cfg: ast::CrateConfig,
     pub backtrace: ExpnId,
-    pub ecfg: expand::ExpansionConfig,
+    pub ecfg: expand::ExpansionConfig<'a>,
     pub use_std: bool,
 
     pub mod_path: Vec<ast::Ident> ,
@@ -554,7 +555,7 @@ pub struct ExtCtxt<'a> {
 
 impl<'a> ExtCtxt<'a> {
     pub fn new(parse_sess: &'a parse::ParseSess, cfg: ast::CrateConfig,
-               ecfg: expand::ExpansionConfig) -> ExtCtxt<'a> {
+               ecfg: expand::ExpansionConfig<'a>) -> ExtCtxt<'a> {
         let env = initial_syntax_expander_table(&ecfg);
         ExtCtxt {
             parse_sess: parse_sess,
