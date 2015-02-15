@@ -12,7 +12,7 @@
 use back::abi;
 use llvm;
 use llvm::{ConstFCmp, ConstICmp, SetLinkage, SetUnnamedAddr};
-use llvm::{PrivateLinkage, ValueRef, Bool, True};
+use llvm::{InternalLinkage, ValueRef, Bool, True};
 use middle::{check_const, const_eval, def};
 use trans::{adt, closure, debuginfo, expr, inline, machine};
 use trans::base::{self, push_ctxt};
@@ -103,7 +103,7 @@ fn addr_of_mut(ccx: &CrateContext,
         let gv = llvm::LLVMAddGlobal(ccx.llmod(), val_ty(cv).to_ref(),
                                      name.as_ptr() as *const _);
         llvm::LLVMSetInitializer(gv, cv);
-        SetLinkage(gv, PrivateLinkage);
+        SetLinkage(gv, InternalLinkage);
         SetUnnamedAddr(gv, true);
         gv
     }
