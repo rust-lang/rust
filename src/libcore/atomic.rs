@@ -21,9 +21,9 @@
 //!
 //! Each method takes an `Ordering` which represents the strength of
 //! the memory barrier for that operation. These orderings are the
-//! same as [C++11 atomic orderings][1].
+//! same as [LLVM atomic orderings][1].
 //!
-//! [1]: http://gcc.gnu.org/wiki/Atomic/GCCMM/AtomicSync
+//! [1]: http://llvm.org/docs/LangRef.html#memory-model-for-concurrent-operations
 //!
 //! Atomic variables are safe to share between threads (they implement `Sync`)
 //! but they do not themselves provide the mechanism for sharing. The most
