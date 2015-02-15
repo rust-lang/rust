@@ -89,8 +89,7 @@ impl<'a> MacResult for ParserAnyMacro<'a> {
             match parser.token {
                 token::Eof => break,
                 _ => {
-                    let attrs = parser.parse_outer_attributes();
-                    ret.push(parser.parse_method(attrs, ast::Inherited))
+                    ret.push(parser.parse_method_with_outer_attributes());
                 }
             }
         }
