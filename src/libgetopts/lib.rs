@@ -91,7 +91,6 @@
 #![deny(missing_docs)]
 #![feature(collections)]
 #![feature(int_uint)]
-#![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![cfg_attr(test, feature(rustc_private))]
 

@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(slicing_syntax, box_syntax)]
+#![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
 #![feature(io)]
