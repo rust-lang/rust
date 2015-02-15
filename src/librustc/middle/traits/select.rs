@@ -738,7 +738,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     {
         let cache = self.pick_candidate_cache();
         let hashmap = cache.hashmap.borrow();
-        hashmap.get(&cache_fresh_trait_pred.0.trait_ref).map(|c| (*c).clone())
+        hashmap.get(&cache_fresh_trait_pred.0.trait_ref).cloned()
     }
 
     fn insert_candidate_cache(&mut self,
@@ -1654,7 +1654,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::BoundSync => {
                     if
                         Some(def_id) == tcx.lang_items.managed_bound() ||
-                        Some(def_id) == tcx.lang_items.unsafe_type()
+                        Some(def_id) == tcx.lang_items.unsafe_cell_type()
                     {
                         return Err(Unimplemented)
                     }

@@ -2,7 +2,7 @@
 
 You've already seen one function so far, the `main` function:
 
-```{rust}
+```rust
 fn main() {
 }
 ```
@@ -12,14 +12,14 @@ This is the simplest possible function declaration. As we mentioned before,
 this function takes no arguments, and then some curly braces to indicate the
 body. Here's a function named `foo`:
 
-```{rust}
+```rust
 fn foo() {
 }
 ```
 
 So, what about taking arguments? Here's a function that prints a number:
 
-```{rust}
+```rust
 fn print_number(x: i32) {
     println!("x is: {}", x);
 }
@@ -27,7 +27,7 @@ fn print_number(x: i32) {
 
 Here's a complete program that uses `print_number`:
 
-```{rust}
+```rust
 fn main() {
     print_number(5);
 }
@@ -42,7 +42,7 @@ you add a type to the argument name, after a colon.
 
 Here's a complete program that adds two numbers together and prints them:
 
-```{rust}
+```rust
 fn main() {
     print_sum(5, 6);
 }
@@ -58,9 +58,9 @@ as when you declare it.
 Unlike `let`, you _must_ declare the types of function arguments. This does
 not work:
 
-```{ignore}
+```{rust,ignore}
 fn print_sum(x, y) {
-    println!("x is: {}", x + y);
+    println!("sum is: {}", x + y);
 }
 ```
 
@@ -79,7 +79,7 @@ sweet spot between full inference and no inference.
 
 What about returning a value? Here's a function that adds one to an integer:
 
-```{rust}
+```rust
 fn add_one(x: i32) -> i32 {
     x + 1
 }
@@ -90,7 +90,7 @@ Rust functions return exactly one value, and you declare the type after an
 
 You'll note the lack of a semicolon here. If we added it in:
 
-```{ignore}
+```{rust,ignore}
 fn add_one(x: i32) -> i32 {
     x + 1;
 }
@@ -123,7 +123,7 @@ semicolon in a return position would cause a bug.
 
 But what about early returns? Rust does have a keyword for that, `return`:
 
-```{rust}
+```rust
 fn foo(x: i32) -> i32 {
     if x < 5 { return x; }
 
@@ -134,7 +134,7 @@ fn foo(x: i32) -> i32 {
 Using a `return` as the last line of a function works, but is considered poor
 style:
 
-```{rust}
+```rust
 fn foo(x: i32) -> i32 {
     if x < 5 { return x; }
 
@@ -160,5 +160,34 @@ fn foo(x: i32) -> i32 {
 Because `if` is an expression, and it's the only expression in this function,
 the value will be the result of the `if`.
 
-There are some additional ways to define functions, but they involve features
-that we haven't learned about yet, so let's just leave it at that for now.
+## Diverging functions
+
+Rust has some special syntax for 'diverging functions', which are functions that
+do not return:
+
+```
+fn diverges() -> ! {
+    panic!("This function never returns!");
+}
+```
+
+`panic!` is a macro, similar to `println!()` that we've already seen. Unlike
+`println!()`, `panic!()` causes the current thread of execution to crash with
+the given message.
+
+Because this function will cause a crash, it will never return, and so it has
+the type '`!`', which is read "diverges." A diverging function can be used
+as any type:
+
+```should_fail
+# fn diverges() -> ! {
+#    panic!("This function never returns!");
+# }
+
+let x: i32 = diverges();
+let x: String = diverges();
+```
+
+We don't have a good use for diverging functions yet, because they're used in
+conjunction with other Rust features. But when you see `-> !` later, you'll
+know what it's called.

@@ -52,7 +52,6 @@
 //! interval `[a, b)`:
 //!
 //! ```rust
-//! #![feature(slicing_syntax)]
 //! fn main() {
 //!     let numbers = [0, 1, 2];
 //!     let last_numbers = &numbers[1..3];

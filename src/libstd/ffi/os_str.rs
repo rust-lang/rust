@@ -189,7 +189,7 @@ impl OsStr {
         self.inner.to_string_lossy()
     }
 
-    /// Copy the slice into an onwed `OsString`.
+    /// Copy the slice into an owned `OsString`.
     pub fn to_os_string(&self) -> OsString {
         OsString { inner: self.inner.to_owned() }
     }

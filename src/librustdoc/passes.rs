@@ -293,7 +293,7 @@ pub fn collapse_docs(krate: clean::Crate) -> plugins::PluginResult {
             let mut a: Vec<clean::Attribute> = i.attrs.iter().filter(|&a| match a {
                 &clean::NameValue(ref x, _) if "doc" == *x => false,
                 _ => true
-            }).map(|x| x.clone()).collect();
+            }).cloned().collect();
             if docstr.len() > 0 {
                 a.push(clean::NameValue("doc".to_string(), docstr));
             }

@@ -3577,7 +3577,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                         -> TypeContents {
         if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
-        } else if Some(did) == cx.lang_items.unsafe_type() {
+        } else if Some(did) == cx.lang_items.unsafe_cell_type() {
             tc | TC::InteriorUnsafe
         } else {
             tc
@@ -4944,7 +4944,7 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
 }
 
 pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.borrow().get(&id).map(|x| *x)
+    cx.provided_method_sources.borrow().get(&id).cloned()
 }
 
 pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)

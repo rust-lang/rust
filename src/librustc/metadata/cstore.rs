@@ -218,7 +218,7 @@ impl CStore {
 
     pub fn find_extern_mod_stmt_cnum(&self, emod_id: ast::NodeId)
                                      -> Option<ast::CrateNum> {
-        self.extern_mod_crate_map.borrow().get(&emod_id).map(|x| *x)
+        self.extern_mod_crate_map.borrow().get(&emod_id).cloned()
     }
 }
 

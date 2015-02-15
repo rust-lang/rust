@@ -224,7 +224,7 @@ segfault when we allocate more memory?
 
 The answer is that in the C++ version, `x` is a *reference* to the memory
 location where the first element of the array is stored. But in Ruby, `x` is a
-standalone value, not connected to the underyling array at all. Let's dig into
+standalone value, not connected to the underlying array at all. Let's dig into
 the details for a moment. Your program has access to memory, provided to it by
 the operating system. Each location in memory has an address.  So when we make
 our vector, `v`, it's stored in a memory location somewhere:
