@@ -112,10 +112,10 @@ impl File {
         OpenOptions::new().read(true).open(path)
     }
 
-    /// Creates a open a file in write-only mode.
+    /// Open a file in write-only mode.
     ///
-    /// This method will attempt to open a new file, truncating it if it already
-    /// exists.
+    /// This function will create a file it it does not exist,
+    /// and will truncate it if it does.
     ///
     /// See the `OpenOptions::open` function for more details.
     pub fn create<P: AsPath + ?Sized>(path: &P) -> io::Result<File> {
