@@ -17,7 +17,7 @@ pub fn seq_fmt_debug<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:?}", e));
+        try!(fmt::Debug::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -27,7 +27,7 @@ pub fn seq_fmt_display<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{}", e));
+        try!(fmt::Display::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -37,7 +37,7 @@ pub fn seq_fmt_octal<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:o}", e));
+        try!(fmt::Octal::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -47,7 +47,7 @@ pub fn seq_fmt_binary<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:b}", e));
+        try!(fmt::Binary::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -57,7 +57,7 @@ pub fn seq_fmt_upper_hex<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:X}", e));
+        try!(fmt::UpperHex::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -67,7 +67,7 @@ pub fn seq_fmt_lower_hex<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:x}", e));
+        try!(fmt::LowerHex::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -77,7 +77,7 @@ pub fn seq_fmt_upper_exp<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:E}", e));
+        try!(fmt::UpperExp::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -87,7 +87,7 @@ pub fn seq_fmt_lower_exp<I: Iterator>(s: I, f: &mut Formatter) -> fmt::Result
 {
     for (i, e) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:e}", e));
+        try!(fmt::LowerExp::fmt(&e, f));
     }
     Result::Ok(())
 }
@@ -98,7 +98,9 @@ pub fn map_fmt_debug<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter) ->
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:?}: {:?}", k, v));
+        try!(fmt::Debug::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::Debug::fmt(&v, f));
     }
     Result::Ok(())
 }
@@ -109,7 +111,9 @@ pub fn map_fmt_display<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter) 
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{}: {}", k, v));
+        try!(fmt::Display::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::Display::fmt(&v, f));
     }
     Result::Ok(())
 }
@@ -119,7 +123,9 @@ pub fn map_fmt_octal<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter) ->
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:o}: {:o}", k, v));
+        try!(fmt::Octal::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::Octal::fmt(&v, f));
     }
     Result::Ok(())
 }
@@ -130,7 +136,9 @@ pub fn map_fmt_binary<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter) -
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:b}: {:b}", k, v));
+        try!(fmt::Binary::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::Binary::fmt(&v, f));
     }
     Result::Ok(())
 }
@@ -141,7 +149,9 @@ pub fn map_fmt_upper_hex<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:X}: {:X}", k, v));
+        try!(fmt::UpperHex::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::UpperHex::fmt(&v, f));
     }
     Result::Ok(())
 }
@@ -152,7 +162,9 @@ pub fn map_fmt_lower_hex<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:x}: {:x}", k, v));
+        try!(fmt::LowerHex::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::LowerHex::fmt(&v, f));
     }
     Result::Ok(())
 }
@@ -163,7 +175,9 @@ pub fn map_fmt_upper_exp<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:E}: {:E}", k, v));
+        try!(fmt::UpperExp::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::UpperExp::fmt(&v, f));
     }
     Result::Ok(())
 }
@@ -174,7 +188,9 @@ pub fn map_fmt_lower_exp<K, V, I: Iterator<Item=(K, V)>>(s: I, f: &mut Formatter
 {
     for (i, (k, v)) in s.enumerate() {
         if i != 0 { try!(write!(f, ", ")); }
-        try!(write!(f, "{:e}: {:e}", k, v));
+        try!(fmt::LowerExp::fmt(&k, f));
+        try!(write!(f, ": "));
+        try!(fmt::LowerExp::fmt(&v, f));
     }
     Result::Ok(())
 }
