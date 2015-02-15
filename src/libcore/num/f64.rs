@@ -38,13 +38,26 @@ pub const EPSILON: f64 = 2.2204460492503131e-16_f64;
 
 /// Smallest finite f64 value
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "use `std::f64::MIN`")]
 pub const MIN_VALUE: f64 = -1.7976931348623157e+308_f64;
 /// Smallest positive, normalized f64 value
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "use `std::f64::MIN_POSITIVE`")]
 pub const MIN_POS_VALUE: f64 = 2.2250738585072014e-308_f64;
 /// Largest finite f64 value
 #[stable(feature = "rust1", since = "1.0.0")]
+#[deprecated(since = "1.0.0", reason = "use `std::f64::MAX`")]
 pub const MAX_VALUE: f64 = 1.7976931348623157e+308_f64;
+
+/// Smallest finite f64 value
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const MIN: f64 = -1.7976931348623157e+308_f64;
+/// Smallest positive, normalized f64 value
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const MIN_POSITIVE: f64 = 2.2250738585072014e-308_f64;
+/// Largest finite f64 value
+#[stable(feature = "rust1", since = "1.0.0")]
+pub const MAX: f64 = 1.7976931348623157e+308_f64;
 
 #[unstable(feature = "core", reason = "pending integer conventions")]
 pub const MIN_EXP: int = -1021;
@@ -222,17 +235,17 @@ impl Float for f64 {
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_value() -> f64 { MIN_VALUE }
+    fn min_value() -> f64 { MIN }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn min_pos_value(_: Option<f64>) -> f64 { MIN_POS_VALUE }
+    fn min_pos_value(_: Option<f64>) -> f64 { MIN_POSITIVE }
 
     #[inline]
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0")]
-    fn max_value() -> f64 { MAX_VALUE }
+    fn max_value() -> f64 { MAX }
 
     /// Returns the mantissa, exponent and sign as integers.
     fn integer_decode(self) -> (u64, i16, i8) {
