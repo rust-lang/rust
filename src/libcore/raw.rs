@@ -58,7 +58,7 @@ use mem;
 #[repr(C)]
 pub struct Slice<T> {
     pub data: *const T,
-    pub len: uint,
+    pub len: usize,
 }
 
 impl<T> Copy for Slice<T> {}
