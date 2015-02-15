@@ -134,6 +134,7 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // switch to Accepted; see RFC 320)
     ("unsafe_no_drop_flag", "1.0.0", Active),
 ];
+// (changing above list without updating src/doc/reference.md makes @cmr sad)
 
 enum Status {
     /// Represents an active feature that is currently being implemented or
