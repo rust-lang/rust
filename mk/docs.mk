@@ -27,7 +27,7 @@
 ######################################################################
 DOCS := index intro tutorial complement-bugreport \
     complement-lang-faq complement-design-faq complement-project-faq \
-    rustdoc reference
+    rustdoc reference grammar
 
 # Legacy guides, preserved for a while to reduce the number of 404s
 DOCS += guide-crates guide-error-handling guide-ffi guide-macros guide \
