@@ -36,7 +36,6 @@ use visit;
 use visit::Visitor;
 use parse::token::{self, InternedString};
 
-use std::slice;
 use std::ascii::AsciiExt;
 
 // If you change this list without updating src/doc/reference.md, @cmr will be sad
@@ -574,42 +573,32 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        if attr.check_name("staged_api") {
-            self.gate_feature("staged_api", attr.span,
-                              "staged_api is for use by rustc only");
-        } else if attr.check_name("plugin") {
-            self.gate_feature("plugin", attr.span,
-                              "compiler plugins are experimental \
-                               and possibly buggy");
-        }
-
-        if attr::contains_name(slice::ref_slice(attr), "lang") {
-            self.gate_feature("lang_items",
-                              attr.span,
-                              "language items are subject to change");
-        }
-
-        if attr.check_name("no_std") {
-            self.gate_feature("no_std", attr.span,
-                              "no_std is experimental");
-        }
-
-        if attr.check_name("unsafe_no_drop_flag") {
-            self.gate_feature("unsafe_no_drop_flag", attr.span,
-                              "unsafe_no_drop_flag has unstable semantics \
-                               and may be removed in the future");
-        }
-
-        // Custom attribute check
-        let name = attr.name();
-
-        if KNOWN_ATTRIBUTES.iter().all(|&(n, _)| n != name) {
-            self.gate_feature("custom_attribute", attr.span,
-                       format!("The attribute `{}` is currently \
-                                unknown to the the compiler and \
-                                may have meaning \
-                                added to it in the future",
-                                attr.name()).as_slice());
+        match &*attr.name() {
+            "staged_api" => self.gate_feature("staged_api", attr.span,
+                                              "staged_api is for use by rustc only"),
+            "plugin" => self.gate_feature("plugin", attr.span,
+                                          "compiler plugins are experimental \
+                                           and possibly buggy"),
+            "no_std" => self.gate_feature("no_std", attr.span,
+                                          "no_std is experimental"),
+            "unsafe_no_drop_flag" => self.gate_feature("unsafe_no_drop_flag", attr.span,
+                                                       "unsafe_no_drop_flag has unstable \
+                                                        semantics and may be removed \
+                                                        in the future"),
+            "lang" => self.gate_feature("lang_items",
+                                        attr.span,
+                                        "language items are subject to change"),
+            name => {
+                // Custom attribute check
+                if KNOWN_ATTRIBUTES.iter().all(|&(n, _)| n != name) {
+                    self.gate_feature("custom_attribute", attr.span,
+                               format!("The attribute `{}` is currently \
+                                        unknown to the the compiler and \
+                                        may have meaning \
+                                        added to it in the future",
+                                        attr.name()).as_slice());
+                }
+            }
         }
     }
 
