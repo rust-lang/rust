@@ -73,8 +73,11 @@ fn pre_link_args(arch: Arch) -> Vec<String> {
 
 fn target_cpu(arch: Arch) -> String {
     match arch {
+        Armv7 => "cortex-a8", // iOS7 is supported on iPhone 4 and higher
+        Armv7s => "cortex-a9",
+        Arm64 => "cyclone",
+        I386 => "generic",
         X86_64 => "x86-64",
-        _ => "generic",
     }.to_string()
 }
 
