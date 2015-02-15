@@ -1071,7 +1071,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         match self.closure_typer.closure_kind(closure_def_id) {
             Some(closure_kind) => {
                 debug!("assemble_unboxed_candidates: closure_kind = {:?}", closure_kind);
-                if closure_kind == kind {
+                if closure_kind.extends(kind) {
                     candidates.vec.push(ClosureCandidate(closure_def_id, substs.clone()));
                 }
             }
@@ -1090,10 +1090,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                       candidates: &mut SelectionCandidateSet<'tcx>)
                                       -> Result<(),SelectionError<'tcx>>
     {
-        // We provide a `Fn` impl for fn pointers. There is no need to provide
-        // the other traits (e.g. `FnMut`) since those are provided by blanket
-        // impls.
-        if Some(obligation.predicate.def_id()) != self.tcx().lang_items.fn_trait() {
+        // We provide impl of all fn traits for fn pointers.
+        if self.tcx().lang_items.fn_trait_kind(obligation.predicate.def_id()).is_none() {
             return Ok(());
         }
 
