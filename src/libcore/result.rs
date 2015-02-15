@@ -311,10 +311,10 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.ok(), Some(2));
     ///
-    /// let x: Result<uint, &str> = Err("Nothing here");
+    /// let x: Result<u32, &str> = Err("Nothing here");
     /// assert_eq!(x.ok(), None);
     /// ```
     #[inline]
@@ -334,10 +334,10 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.err(), None);
     ///
-    /// let x: Result<uint, &str> = Err("Nothing here");
+    /// let x: Result<u32, &str> = Err("Nothing here");
     /// assert_eq!(x.err(), Some("Nothing here"));
     /// ```
     #[inline]
@@ -359,10 +359,10 @@ impl<T, E> Result<T, E> {
     /// into the original, leaving the original in place.
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.as_ref(), Ok(&2));
     ///
-    /// let x: Result<uint, &str> = Err("Error");
+    /// let x: Result<u32, &str> = Err("Error");
     /// assert_eq!(x.as_ref(), Err(&"Error"));
     /// ```
     #[inline]
@@ -404,7 +404,7 @@ impl<T, E> Result<T, E> {
     /// Convert from `Result<T, E>` to `&mut [T]` (without copying)
     ///
     /// ```
-    /// let mut x: Result<&str, uint> = Ok("Gold");
+    /// let mut x: Result<&str, u32> = Ok("Gold");
     /// {
     ///     let v = x.as_mut_slice();
     ///     assert!(v == ["Gold"]);
@@ -413,7 +413,7 @@ impl<T, E> Result<T, E> {
     /// }
     /// assert_eq!(x, Ok("Silver"));
     ///
-    /// let mut x: Result<&str, uint> = Err(45);
+    /// let mut x: Result<&str, u32> = Err(45);
     /// assert!(x.as_mut_slice().is_empty());
     /// ```
     #[inline]
@@ -481,12 +481,12 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// fn stringify(x: uint) -> String { format!("error code: {}", x) }
+    /// fn stringify(x: u32) -> String { format!("error code: {}", x) }
     ///
-    /// let x: Result<uint, uint> = Ok(2);
+    /// let x: Result<u32, u32> = Ok(2);
     /// assert_eq!(x.map_err(stringify), Ok(2));
     ///
-    /// let x: Result<uint, uint> = Err(13);
+    /// let x: Result<u32, u32> = Err(13);
     /// assert_eq!(x.map_err(stringify), Err("error code: 13".to_string()));
     /// ```
     #[inline]
@@ -507,10 +507,10 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(7);
+    /// let x: Result<u32, &str> = Ok(7);
     /// assert_eq!(x.iter().next(), Some(&7));
     ///
-    /// let x: Result<uint, &str> = Err("nothing!");
+    /// let x: Result<u32, &str> = Err("nothing!");
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
@@ -524,14 +524,14 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let mut x: Result<uint, &str> = Ok(7);
+    /// let mut x: Result<u32, &str> = Ok(7);
     /// match x.iter_mut().next() {
     ///     Some(&mut ref mut x) => *x = 40,
     ///     None => {},
     /// }
     /// assert_eq!(x, Ok(40));
     ///
-    /// let mut x: Result<uint, &str> = Err("nothing!");
+    /// let mut x: Result<u32, &str> = Err("nothing!");
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
     #[inline]
@@ -545,12 +545,12 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(5);
-    /// let v: Vec<uint> = x.into_iter().collect();
+    /// let x: Result<u32, &str> = Ok(5);
+    /// let v: Vec<u32> = x.into_iter().collect();
     /// assert_eq!(v, vec![5]);
     ///
-    /// let x: Result<uint, &str> = Err("nothing!");
-    /// let v: Vec<uint> = x.into_iter().collect();
+    /// let x: Result<u32, &str> = Err("nothing!");
+    /// let v: Vec<u32> = x.into_iter().collect();
     /// assert_eq!(v, vec![]);
     /// ```
     #[inline]
@@ -568,19 +568,19 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Ok(2);
     /// let y: Result<&str, &str> = Err("late error");
     /// assert_eq!(x.and(y), Err("late error"));
     ///
-    /// let x: Result<uint, &str> = Err("early error");
+    /// let x: Result<u32, &str> = Err("early error");
     /// let y: Result<&str, &str> = Ok("foo");
     /// assert_eq!(x.and(y), Err("early error"));
     ///
-    /// let x: Result<uint, &str> = Err("not a 2");
+    /// let x: Result<u32, &str> = Err("not a 2");
     /// let y: Result<&str, &str> = Err("late error");
     /// assert_eq!(x.and(y), Err("not a 2"));
     ///
-    /// let x: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Ok(2);
     /// let y: Result<&str, &str> = Ok("different result type");
     /// assert_eq!(x.and(y), Ok("different result type"));
     /// ```
@@ -600,8 +600,8 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// fn sq(x: uint) -> Result<uint, uint> { Ok(x * x) }
-    /// fn err(x: uint) -> Result<uint, uint> { Err(x) }
+    /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
+    /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
     ///
     /// assert_eq!(Ok(2).and_then(sq).and_then(sq), Ok(16));
     /// assert_eq!(Ok(2).and_then(sq).and_then(err), Err(4));
@@ -622,20 +622,20 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(2);
-    /// let y: Result<uint, &str> = Err("late error");
+    /// let x: Result<u32, &str> = Ok(2);
+    /// let y: Result<u32, &str> = Err("late error");
     /// assert_eq!(x.or(y), Ok(2));
     ///
-    /// let x: Result<uint, &str> = Err("early error");
-    /// let y: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Err("early error");
+    /// let y: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.or(y), Ok(2));
     ///
-    /// let x: Result<uint, &str> = Err("not a 2");
-    /// let y: Result<uint, &str> = Err("late error");
+    /// let x: Result<u32, &str> = Err("not a 2");
+    /// let y: Result<u32, &str> = Err("late error");
     /// assert_eq!(x.or(y), Err("late error"));
     ///
-    /// let x: Result<uint, &str> = Ok(2);
-    /// let y: Result<uint, &str> = Ok(100);
+    /// let x: Result<u32, &str> = Ok(2);
+    /// let y: Result<u32, &str> = Ok(100);
     /// assert_eq!(x.or(y), Ok(2));
     /// ```
     #[inline]
@@ -654,8 +654,8 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// fn sq(x: uint) -> Result<uint, uint> { Ok(x * x) }
-    /// fn err(x: uint) -> Result<uint, uint> { Err(x) }
+    /// fn sq(x: u32) -> Result<u32, u32> { Ok(x * x) }
+    /// fn err(x: u32) -> Result<u32, u32> { Err(x) }
     ///
     /// assert_eq!(Ok(2).or_else(sq).or_else(sq), Ok(2));
     /// assert_eq!(Ok(2).or_else(err).or_else(sq), Ok(2));
@@ -678,10 +678,10 @@ impl<T, E> Result<T, E> {
     ///
     /// ```
     /// let optb = 2;
-    /// let x: Result<uint, &str> = Ok(9);
+    /// let x: Result<u32, &str> = Ok(9);
     /// assert_eq!(x.unwrap_or(optb), 9);
     ///
-    /// let x: Result<uint, &str> = Err("error");
+    /// let x: Result<u32, &str> = Err("error");
     /// assert_eq!(x.unwrap_or(optb), optb);
     /// ```
     #[inline]
@@ -699,7 +699,7 @@ impl<T, E> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// fn count(x: &str) -> uint { x.len() }
+    /// fn count(x: &str) -> usize { x.len() }
     ///
     /// assert_eq!(Ok(2).unwrap_or_else(count), 2);
     /// assert_eq!(Err("foo").unwrap_or_else(count), 3);
@@ -726,12 +726,12 @@ impl<T, E: fmt::Debug> Result<T, E> {
     /// # Example
     ///
     /// ```
-    /// let x: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Ok(2);
     /// assert_eq!(x.unwrap(), 2);
     /// ```
     ///
     /// ```{.should_fail}
-    /// let x: Result<uint, &str> = Err("emergency failure");
+    /// let x: Result<u32, &str> = Err("emergency failure");
     /// x.unwrap(); // panics with `emergency failure`
     /// ```
     #[inline]
@@ -757,12 +757,12 @@ impl<T: fmt::Debug, E> Result<T, E> {
     /// # Example
     ///
     /// ```{.should_fail}
-    /// let x: Result<uint, &str> = Ok(2);
+    /// let x: Result<u32, &str> = Ok(2);
     /// x.unwrap_err(); // panics with `2`
     /// ```
     ///
     /// ```
-    /// let x: Result<uint, &str> = Err("emergency failure");
+    /// let x: Result<u32, &str> = Err("emergency failure");
     /// assert_eq!(x.unwrap_err(), "emergency failure");
     /// ```
     #[inline]
@@ -811,7 +811,7 @@ impl<'a, T> Iterator for Iter<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a T> { self.inner.take() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let n = if self.inner.is_some() {1} else {0};
         (n, Some(n))
     }
@@ -841,7 +841,7 @@ impl<'a, T> Iterator for IterMut<'a, T> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut T> { self.inner.take() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let n = if self.inner.is_some() {1} else {0};
         (n, Some(n))
     }
@@ -867,7 +867,7 @@ impl<T> Iterator for IntoIter<T> {
     #[inline]
     fn next(&mut self) -> Option<T> { self.inner.take() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let n = if self.inner.is_some() {1} else {0};
         (n, Some(n))
     }
@@ -896,11 +896,11 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// checking for overflow:
     ///
     /// ```rust
-    /// use std::uint;
+    /// use std::u32;
     ///
     /// let v = vec!(1, 2);
-    /// let res: Result<Vec<uint>, &'static str> = v.iter().map(|&x: &uint|
-    ///     if x == uint::MAX { Err("Overflow!") }
+    /// let res: Result<Vec<u32>, &'static str> = v.iter().map(|&x: &u32|
+    ///     if x == u32::MAX { Err("Overflow!") }
     ///     else { Ok(x + 1) }
     /// ).collect();
     /// assert!(res == Ok(vec!(2, 3)));
