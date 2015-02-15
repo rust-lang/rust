@@ -91,7 +91,7 @@ and only moving to this:
 fn foo(s: String) {
 ```
 
-If you have good reason. It's not polite to hold on to ownership you don't
+if you have good reason. It's not polite to hold on to ownership you don't
 need, and it can make your lifetimes more complex.
 
 ## Generic functions
