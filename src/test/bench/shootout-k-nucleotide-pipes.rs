@@ -22,6 +22,7 @@ use std::mem::replace;
 use std::num::Float;
 use std::option;
 use std::os;
+use std::env;
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::thread::Thread;
 
@@ -148,7 +149,7 @@ fn make_sequence_processor(sz: uint,
 fn main() {
     use std::old_io::{stdio, MemReader, BufferedReader};
 
-    let rdr = if os::getenv("RUST_BENCH").is_some() {
+    let rdr = if env::var_os("RUST_BENCH").is_some() {
         let foo = include_bytes!("shootout-k-nucleotide.data");
         box MemReader::new(foo.to_vec()) as Box<Reader>
     } else {

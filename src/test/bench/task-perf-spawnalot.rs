@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::os;
+use std::env;
 use std::thread::Thread;
 
 fn f(n: uint) {
@@ -23,7 +24,7 @@ fn g() { }
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
+    let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "400".to_string())
     } else if args.len() <= 1u {
         vec!("".to_string(), "10".to_string())

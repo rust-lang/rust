@@ -22,6 +22,7 @@ extern crate getopts;
 
 use std::sync::mpsc::{channel, Sender};
 use std::os;
+use std::env;
 use std::result::Result::{Ok, Err};
 use std::thread::Thread;
 use std::time::Duration;
@@ -89,7 +90,7 @@ fn stress(num_tasks: int) {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
+    let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "20".to_string())
     } else if args.len() <= 1u {
         vec!("".to_string(), "8".to_string())
