@@ -378,7 +378,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
         }
 
         if sess.opts.debugging_opts.save_analysis {
-            control.after_analysis.callback = box |state| {
+            control.after_analysis.callback = Box::new(|state| {
                 time(state.session.time_passes(),
                      "save analysis",
                      state.expanded_crate.unwrap(),
@@ -386,7 +386,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                                                  krate,
                                                  state.analysis.unwrap(),
                                                  state.out_dir));
-            };
+            });
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
 
@@ -807,7 +807,8 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.spawn(move || { stdio::set_stderr(box w); f() }).unwrap().join() {
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    match cfg.spawn(move || { stdio::set_stderr(Box::new(w)); f() }).unwrap().join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic
@@ -849,7 +850,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
             // Panic so the process returns a failure code, but don't pollute the
             // output with some unnecessary panic messages, we've already
             // printed everything that we needed to.
-            old_io::stdio::set_stderr(box old_io::util::NullWriter);
+            old_io::stdio::set_stderr(Box::new(old_io::util::NullWriter));
             panic!();
         }
     }

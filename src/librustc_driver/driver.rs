@@ -217,7 +217,7 @@ impl<'a> PhaseController<'a> {
     pub fn basic() -> PhaseController<'a> {
         PhaseController {
             stop: Compilation::Continue,
-            callback: box |_| {},
+            callback: Box::new(|_| {}),
         }
     }
 }

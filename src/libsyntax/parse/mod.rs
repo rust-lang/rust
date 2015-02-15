@@ -288,7 +288,7 @@ pub fn filemap_to_tts(sess: &ParseSess, filemap: Rc<FileMap>)
     // parsing tt's probably shouldn't require a parser at all.
     let cfg = Vec::new();
     let srdr = lexer::StringReader::new(&sess.span_diagnostic, filemap);
-    let mut p1 = Parser::new(sess, cfg, box srdr);
+    let mut p1 = Parser::new(sess, cfg, Box::new(srdr));
     p1.parse_all_token_trees()
 }
 
@@ -297,7 +297,7 @@ pub fn tts_to_parser<'a>(sess: &'a ParseSess,
                          tts: Vec<ast::TokenTree>,
                          cfg: ast::CrateConfig) -> Parser<'a> {
     let trdr = lexer::new_tt_reader(&sess.span_diagnostic, None, None, tts);
-    let mut p = Parser::new(sess, cfg, box trdr);
+    let mut p = Parser::new(sess, cfg, Box::new(trdr));
     p.check_unknown_macro_variable();
     p
 }
@@ -360,7 +360,7 @@ pub mod with_hygiene {
         use super::lexer::make_reader_with_embedded_idents as make_reader;
         let cfg = Vec::new();
         let srdr = make_reader(&sess.span_diagnostic, filemap);
-        let mut p1 = Parser::new(sess, cfg, box srdr);
+        let mut p1 = Parser::new(sess, cfg, Box::new(srdr));
         p1.parse_all_token_trees()
     }
 }

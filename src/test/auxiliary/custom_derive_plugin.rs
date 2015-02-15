@@ -11,7 +11,6 @@
 // force-host
 
 #![feature(plugin_registrar)]
-#![feature(box_syntax)]
 #![feature(rustc_private)]
 
 extern crate syntax;
@@ -31,7 +30,7 @@ use rustc::plugin::Registry;
 pub fn plugin_registrar(reg: &mut Registry) {
     reg.register_syntax_extension(
         token::intern("derive_TotalSum"),
-        Decorator(box expand));
+        Decorator(Box::new(expand)));
 }
 
 fn expand(cx: &mut ExtCtxt,
@@ -54,7 +53,7 @@ fn expand(cx: &mut ExtCtxt,
                 args: vec![],
                 ret_ty: Literal(Path::new_local("isize")),
                 attributes: vec![],
-                combine_substructure: combine_substructure(box |cx, span, substr| {
+                combine_substructure: combine_substructure(Box::new(|cx, span, substr| {
                     let zero = cx.expr_int(span, 0);
                     cs_fold(false,
                             |cx, span, subexpr, field, _| {
@@ -63,9 +62,9 @@ fn expand(cx: &mut ExtCtxt,
                                         token::str_to_ident("total_sum"), vec![]))
                             },
                             zero,
-                            box |cx, span, _, _| { cx.span_bug(span, "wtf??"); },
+                            Box::new(|cx, span, _, _| { cx.span_bug(span, "wtf??"); }),
                             cx, span, substr)
-                }),
+                })),
             },
         ],
     };

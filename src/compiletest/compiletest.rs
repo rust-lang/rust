@@ -361,9 +361,9 @@ pub fn make_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
 pub fn make_metrics_test_closure(config: &Config, testfile: &Path) -> test::TestFn {
     let config = (*config).clone();
     let testfile = testfile.to_path_buf();
-    test::DynMetricFn(box move |mm: &mut test::MetricMap| {
+    test::DynMetricFn(Box::new(move |mm: &mut test::MetricMap| {
         runtest::run_metrics(config, &testfile, mm)
-    })
+    }))
 }
 
 fn extract_gdb_version(full_version_line: Option<String>) -> Option<String> {
