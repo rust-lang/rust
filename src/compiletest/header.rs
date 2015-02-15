@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::env;
+
 use common::Config;
 use common;
 use util;
@@ -124,6 +126,16 @@ pub fn load_props(testfile: &Path) -> TestProps {
 
         true
     });
+
+    for key in vec!["RUST_TEST_NOCAPTURE", "RUST_TEST_TASKS"] {
+        match env::var(key) {
+            Ok(val) =>
+                if exec_env.iter().find(|&&(ref x, _)| *x == key.to_string()).is_none() {
+                    exec_env.push((key.to_string(), val))
+                },
+            Err(..) => {}
+        }
+    }
 
     TestProps {
         error_patterns: error_patterns,
