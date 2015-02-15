@@ -11,7 +11,6 @@
 // ignore-pretty
 
 #![allow(unknown_features)]
-#![feature(box_syntax)]
 #![feature(unboxed_closures)]
 
 struct Parser<'a, I, O> {
@@ -20,13 +19,14 @@ struct Parser<'a, I, O> {
 
 impl<'a, I: 'a, O: 'a> Parser<'a, I, O> {
     fn compose<K: 'a>(mut self, mut rhs: Parser<'a, O, K>) -> Parser<'a, I, K> {
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
         Parser {
-            parse: box move |x: I| {
+            parse: Box::new(move |x: I| {
                 match (self.parse)(x) {
                     Ok(r) => (rhs.parse)(r),
                     Err(e) => Err(e)
                 }
-            }
+            })
         }
     }
 }

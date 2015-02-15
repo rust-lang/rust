@@ -16,9 +16,10 @@ extern crate collections;
 use std::collections::HashMap;
 
 fn main() {
-    let tmp;
+    let tmp: Box<_>;
     let mut buggy_map: HashMap<usize, &usize> = HashMap::new();
-    buggy_map.insert(42, &*box 1); //~ ERROR borrowed value does not live long enough
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    buggy_map.insert(42, &*Box::new(1)); //~ ERROR borrowed value does not live long enough
 
     // but it is ok if we use a temporary
     tmp = box 2;

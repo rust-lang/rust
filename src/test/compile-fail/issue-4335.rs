@@ -9,12 +9,12 @@
 // except according to those terms.
 
 #![feature(unboxed_closures)]
-#![feature(box_syntax)]
 
 fn id<T>(t: T) -> T { t }
 
 fn f<'r, T>(v: &'r T) -> Box<FnMut() -> T + 'r> {
-    id(box || *v)
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    id(Box::new(|| *v))
         //~^ ERROR `v` does not live long enough
         //~| ERROR cannot move out of borrowed content
 }

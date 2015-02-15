@@ -95,7 +95,9 @@ pub fn main() {
     assert!(f6.ptr.to_bar() == Bar);
 
     // &*
-    let f7: Box<ToBar> = box Bar1 {f :42};
+    //
+    // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+    let f7: Box<ToBar> = Box::new(Bar1 {f :42});
     bar(&*f7);
 
     // Deep nesting

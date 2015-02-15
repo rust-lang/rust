@@ -99,7 +99,7 @@ impl<'a> Registry<'a> {
     /// It builds for you a `NormalTT` that calls `expander`,
     /// and also takes care of interning the macro's name.
     pub fn register_macro(&mut self, name: &str, expander: MacroExpanderFn) {
-        self.register_syntax_extension(token::intern(name), NormalTT(box expander, None));
+        self.register_syntax_extension(token::intern(name), NormalTT(Box::new(expander), None));
     }
 
     /// Register a compiler lint pass.

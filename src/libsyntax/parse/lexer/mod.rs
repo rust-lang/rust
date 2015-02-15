@@ -1484,8 +1484,9 @@ mod test {
     use std::old_io::util;
 
     fn mk_sh() -> diagnostic::SpanHandler {
-        let emitter = diagnostic::EmitterWriter::new(box util::NullWriter, None);
-        let handler = diagnostic::mk_handler(true, box emitter);
+        // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+        let emitter = diagnostic::EmitterWriter::new(Box::new(util::NullWriter), None);
+        let handler = diagnostic::mk_handler(true, Box::new(emitter));
         diagnostic::mk_span_handler(handler, CodeMap::new())
     }
 

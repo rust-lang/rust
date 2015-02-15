@@ -40,9 +40,9 @@ pub fn expand_deriving_default<F>(cx: &mut ExtCtxt,
                 args: Vec::new(),
                 ret_ty: Self_,
                 attributes: attrs,
-                combine_substructure: combine_substructure(box |a, b, c| {
+                combine_substructure: combine_substructure(Box::new(|a, b, c| {
                     default_substructure(a, b, c)
-                })
+                }))
             }
         ),
         associated_types: Vec::new(),

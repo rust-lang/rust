@@ -180,7 +180,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                            Some(named_matches),
                                            imported_from,
                                            rhs);
-                let mut p = Parser::new(cx.parse_sess(), cx.cfg(), box trncbr);
+                let mut p = Parser::new(cx.parse_sess(), cx.cfg(), Box::new(trncbr));
                 p.check_unknown_macro_variable();
                 // Let the context choose how to interpret the result.
                 // Weird, but useful for X-macros.
@@ -267,7 +267,7 @@ pub fn compile<'cx>(cx: &'cx mut ExtCtxt,
         _ => cx.span_bug(def.span, "wrong-structured rhs")
     };
 
-    let exp = box MacroRulesMacroExpander {
+    let exp: Box<_> = box MacroRulesMacroExpander {
         name: def.ident,
         imported_from: def.imported_from,
         lhses: lhses,

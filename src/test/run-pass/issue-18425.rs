@@ -11,9 +11,6 @@
 // Check that trans doesn't ICE when translating an array repeat
 // expression with a count of 1 and a non-Copy element type.
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
 fn main() {
-    let _ = [box 1_usize; 1];
+    let _ = [Box::new(1_usize); 1];
 }

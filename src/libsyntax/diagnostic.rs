@@ -223,7 +223,7 @@ pub fn mk_span_handler(handler: Handler, cm: codemap::CodeMap) -> SpanHandler {
 pub fn default_handler(color_config: ColorConfig,
                        registry: Option<diagnostics::registry::Registry>,
                        can_emit_warnings: bool) -> Handler {
-    mk_handler(can_emit_warnings, box EmitterWriter::stderr(color_config, registry))
+    mk_handler(can_emit_warnings, Box::new(EmitterWriter::stderr(color_config, registry)))
 }
 
 pub fn mk_handler(can_emit_warnings: bool, e: Box<Emitter + Send>) -> Handler {
@@ -352,11 +352,11 @@ impl EmitterWriter {
         if use_color {
             let dst = match term::stderr() {
                 Some(t) => Terminal(t),
-                None    => Raw(box stderr),
+                None    => Raw(Box::new(stderr)),
             };
             EmitterWriter { dst: dst, registry: registry }
         } else {
-            EmitterWriter { dst: Raw(box stderr), registry: registry }
+            EmitterWriter { dst: Raw(Box::new(stderr)), registry: registry }
         }
     }
 

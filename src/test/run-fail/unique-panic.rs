@@ -10,7 +10,4 @@
 
 // error-pattern: panic
 
-#![allow(unknown_features)]
-#![feature(box_syntax)]
-
-fn main() { box panic!(); }
+fn main() { Box::new(panic!()); }

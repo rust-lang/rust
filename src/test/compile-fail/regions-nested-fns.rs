@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(box_syntax)]
+// FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
 
 fn ignore<T>(t: T) {}
 
@@ -16,17 +16,17 @@ fn nested<'x>(x: &'x isize) {
     let y = 3;
     let mut ay = &y;
 
-    ignore::<Box<for<'z> FnMut(&'z isize)>>(box |z| {
+    ignore::<Box<for<'z> FnMut(&'z isize)>>(Box::new(|z| {
         ay = x; //~ ERROR cannot infer
         ay = &y;
         ay = z;
-    });
+    }));
 
-    ignore::< Box<for<'z> FnMut(&'z isize) -> &'z isize>>(box |z| {
+    ignore::< Box<for<'z> FnMut(&'z isize) -> &'z isize>>(Box::new(|z| {
         if false { return x; }  //~ ERROR cannot infer an appropriate lifetime for automatic
         if false { return ay; }
         return z;
-    });
+    }));
 }
 
 fn main() {}

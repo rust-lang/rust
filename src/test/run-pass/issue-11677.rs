@@ -9,8 +9,6 @@
 // except according to those terms.
 
 #![allow(dead_code)]
-#![allow(unknown_features)]
-#![feature(box_syntax)]
 
 // this code used to cause an ICE
 
@@ -28,5 +26,6 @@ impl X<int> for F {
 }
 
 fn main() {
-  S {f: box F, g: box F};
+  // FIXME (#22405): Replace `Box::new` with `box` here when/if possible.
+  S {f: Box::new(F), g: Box::new(F) };
 }
