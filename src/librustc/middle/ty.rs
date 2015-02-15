@@ -3577,7 +3577,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                         -> TypeContents {
         if Some(did) == cx.lang_items.managed_bound() {
             tc | TC::Managed
-        } else if Some(did) == cx.lang_items.unsafe_type() {
+        } else if Some(did) == cx.lang_items.unsafe_cell_type() {
             tc | TC::InteriorUnsafe
         } else {
             tc
