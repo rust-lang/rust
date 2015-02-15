@@ -2226,7 +2226,7 @@ mod tests {
                     assert_eq!(comps, exp);
                     let comps = path.str_components().rev().map(|x|x.unwrap())
                                 .collect::<Vec<&str>>();
-                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&str>>();
+                    let exp = exp.iter().rev().cloned().collect::<Vec<&str>>();
                     assert_eq!(comps, exp);
                 }
             );
@@ -2282,7 +2282,7 @@ mod tests {
                     let exp: &[&[u8]] = &$exp;
                     assert_eq!(comps, exp);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
-                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&[u8]>>();
+                    let exp = exp.iter().rev().cloned().collect::<Vec<&[u8]>>();
                     assert_eq!(comps, exp);
                 }
             )

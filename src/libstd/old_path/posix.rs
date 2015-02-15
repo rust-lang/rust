@@ -1172,7 +1172,7 @@ mod tests {
                     let exp: &[&[u8]] = &[$($exp),*];
                     assert_eq!(comps, exp);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
-                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&[u8]>>();
+                    let exp = exp.iter().rev().cloned().collect::<Vec<&[u8]>>();
                     assert_eq!(comps, exp)
                 }
             )
@@ -1204,7 +1204,7 @@ mod tests {
                     let exp: &[Option<&str>] = &$exp;
                     assert_eq!(comps, exp);
                     let comps = path.str_components().rev().collect::<Vec<Option<&str>>>();
-                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<Option<&str>>>();
+                    let exp = exp.iter().rev().cloned().collect::<Vec<Option<&str>>>();
                     assert_eq!(comps, exp);
                 }
             )

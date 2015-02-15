@@ -640,7 +640,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
     // Remember return type so that regionck can access it later.
     let mut fn_sig_tys: Vec<Ty> =
         arg_tys.iter()
-        .map(|&ty| ty)
+        .cloned()
         .collect();
 
     if let ty::FnConverging(ret_ty) = ret_ty {

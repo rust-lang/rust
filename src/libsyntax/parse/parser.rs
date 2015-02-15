@@ -1705,7 +1705,7 @@ impl<'a> Parser<'a> {
                         (true, LitBinary(parse::binary_lit(i.as_str()))),
                     token::BinaryRaw(i, _) =>
                         (true,
-                         LitBinary(Rc::new(i.as_str().as_bytes().iter().map(|&x| x).collect()))),
+                         LitBinary(Rc::new(i.as_str().as_bytes().iter().cloned().collect()))),
                 };
 
                 if suffix_illegal {
