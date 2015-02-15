@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See doc.rs for a thorough explanation of the borrow checker
+//! See The Book chapter on the borrow checker for more details.
 
 #![allow(non_camel_case_types)]
 
@@ -40,8 +40,6 @@ use syntax::parse::token;
 use syntax::visit;
 use syntax::visit::{Visitor, FnKind};
 use syntax::ast::{FnDecl, Block, NodeId};
-
-pub mod doc;
 
 pub mod check_loans;
 
