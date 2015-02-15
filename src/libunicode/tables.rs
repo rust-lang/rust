@@ -14,7 +14,7 @@
 
 /// The version of [Unicode](http://www.unicode.org/)
 /// that the unicode parts of `CharExt` and `UnicodeStrPrelude` traits are based on.
-pub const UNICODE_VERSION: (uint, uint, uint) = (7, 0, 0);
+pub const UNICODE_VERSION: (u64, u64, u64) = (7, 0, 0);
 
 fn bsearch_range_table(c: char, r: &'static [(char,char)]) -> bool {
     use core::cmp::Ordering::{Equal, Less, Greater};
@@ -6977,7 +6977,7 @@ pub mod conversions {
         }
     }
 
-    fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<uint> {
+    fn bsearch_case_table(c: char, table: &'static [(char, char)]) -> Option<usize> {
         match table.binary_search_by(|&(key, _)| {
             if c == key { Equal }
             else if key < c { Less }
@@ -7613,13 +7613,13 @@ pub mod charwidth {
         }
     }
 
-    pub fn width(c: char, is_cjk: bool) -> Option<uint> {
-        match c as uint {
+    pub fn width(c: char, is_cjk: bool) -> Option<usize> {
+        match c as usize {
             _c @ 0 => Some(0),          // null is zero width
             cu if cu < 0x20 => None,    // control sequences have no width
             cu if cu < 0x7F => Some(1), // ASCII
             cu if cu < 0xA0 => None,    // more control sequences
-            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as uint)
+            _ => Some(bsearch_range_value_table(c, is_cjk, charwidth_table) as usize)
         }
     }
 

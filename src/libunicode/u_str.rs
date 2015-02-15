@@ -43,7 +43,7 @@ pub trait UnicodeStr {
     fn words<'a>(&'a self) -> Words<'a>;
     fn is_whitespace(&self) -> bool;
     fn is_alphanumeric(&self) -> bool;
-    fn width(&self, is_cjk: bool) -> uint;
+    fn width(&self, is_cjk: bool) -> usize;
     fn trim<'a>(&'a self) -> &'a str;
     fn trim_left<'a>(&'a self) -> &'a str;
     fn trim_right<'a>(&'a self) -> &'a str;
@@ -57,7 +57,7 @@ impl UnicodeStr for str {
 
     #[inline]
     fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
-        GraphemeIndices { start_offset: self.as_ptr() as uint, iter: self.graphemes(is_extended) }
+        GraphemeIndices { start_offset: self.as_ptr() as usize, iter: self.graphemes(is_extended) }
     }
 
     #[inline]
@@ -78,7 +78,7 @@ impl UnicodeStr for str {
     fn is_alphanumeric(&self) -> bool { self.chars().all(|c| c.is_alphanumeric()) }
 
     #[inline]
-    fn width(&self, is_cjk: bool) -> uint {
+    fn width(&self, is_cjk: bool) -> usize {
         self.chars().map(|c| c.width(is_cjk).unwrap_or(0)).sum()
     }
 
@@ -101,28 +101,28 @@ impl UnicodeStr for str {
 /// External iterator for grapheme clusters and byte offsets.
 #[derive(Clone)]
 pub struct GraphemeIndices<'a> {
-    start_offset: uint,
+    start_offset: usize,
     iter: Graphemes<'a>,
 }
 
 impl<'a> Iterator for GraphemeIndices<'a> {
-    type Item = (uint, &'a str);
+    type Item = (usize, &'a str);
 
     #[inline]
-    fn next(&mut self) -> Option<(uint, &'a str)> {
-        self.iter.next().map(|s| (s.as_ptr() as uint - self.start_offset, s))
+    fn next(&mut self) -> Option<(usize, &'a str)> {
+        self.iter.next().map(|s| (s.as_ptr() as usize - self.start_offset, s))
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         self.iter.size_hint()
     }
 }
 
 impl<'a> DoubleEndedIterator for GraphemeIndices<'a> {
     #[inline]
-    fn next_back(&mut self) -> Option<(uint, &'a str)> {
-        self.iter.next_back().map(|s| (s.as_ptr() as uint - self.start_offset, s))
+    fn next_back(&mut self) -> Option<(usize, &'a str)> {
+        self.iter.next_back().map(|s| (s.as_ptr() as usize - self.start_offset, s))
     }
 }
 
@@ -151,7 +151,7 @@ impl<'a> Iterator for Graphemes<'a> {
     type Item = &'a str;
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let slen = self.string.len();
         (cmp::min(slen, 1), Some(slen))
     }
@@ -378,8 +378,8 @@ static UTF8_CHAR_WIDTH: [u8; 256] = [
 
 /// Given a first byte, determine how many bytes are in this UTF-8 character
 #[inline]
-pub fn utf8_char_width(b: u8) -> uint {
-    return UTF8_CHAR_WIDTH[b as uint] as uint;
+pub fn utf8_char_width(b: u8) -> usize {
+    return UTF8_CHAR_WIDTH[b as usize] as usize;
 }
 
 /// Determines if a vector of `u16` contains valid UTF-16
@@ -468,7 +468,7 @@ impl<'a> Iterator for Utf16Items<'a> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.iter.size_hint();
         // we could be entirely valid surrogates (2 elements per
         // char), or entirely non-surrogates (1 element per char)
@@ -534,7 +534,7 @@ impl<I> Iterator for Utf16Encoder<I> where I: Iterator<Item=char> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         let (low, high) = self.chars.size_hint();
         // every char gets either one u16 or two u16,
         // so this iterator is between 1 or 2 times as
