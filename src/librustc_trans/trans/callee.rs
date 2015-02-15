@@ -264,23 +264,35 @@ fn trans_fn_ref_with_substs_to_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 /// but for the bare function type given.
 pub fn trans_fn_pointer_shim<'a, 'tcx>(
     ccx: &'a CrateContext<'a, 'tcx>,
+    closure_kind: ty::ClosureKind,
     bare_fn_ty: Ty<'tcx>)
     -> ValueRef
 {
     let _icx = push_ctxt("trans_fn_pointer_shim");
     let tcx = ccx.tcx();
 
+    // Normalize the type for better caching.
     let bare_fn_ty = common::erase_regions(tcx, &bare_fn_ty);
-    match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty) {
+
+    // If this is an impl of `Fn` or `FnMut` trait, the receiver is `&self`.
+    let is_by_ref = match closure_kind {
+        ty::FnClosureKind | ty::FnMutClosureKind => true,
+        ty::FnOnceClosureKind => false,
+    };
+    let bare_fn_ty_maybe_ref = if is_by_ref {
+        ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), bare_fn_ty)
+    } else {
+        bare_fn_ty
+    };
+
+    // Check if we already trans'd this shim.
+    match ccx.fn_pointer_shims().borrow().get(&bare_fn_ty_maybe_ref) {
         Some(&llval) => { return llval; }
         None => { }
     }
 
     debug!("trans_fn_pointer_shim(bare_fn_ty={})",
            bare_fn_ty.repr(tcx));
-
-    // This is an impl of `Fn` trait, so receiver is `&self`.
-    let bare_fn_ty_ref = ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), bare_fn_ty);
 
     // Construct the "tuply" version of `bare_fn_ty`. It takes two arguments: `self`,
     // which is the fn pointer, and `args`, which is the arguments tuple.
@@ -306,7 +318,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                                          unsafety: ast::Unsafety::Normal,
                                          abi: synabi::RustCall,
                                          sig: ty::Binder(ty::FnSig {
-                                             inputs: vec![bare_fn_ty_ref,
+                                             inputs: vec![bare_fn_ty_maybe_ref,
                                                           tuple_input_ty],
                                              output: sig.output,
                                              variadic: false
@@ -337,8 +349,11 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let mut bcx = init_function(&fcx, false, sig.output);
 
     // the first argument (`self`) will be ptr to the the fn pointer
-    let llfnpointer =
-        Load(bcx, get_param(fcx.llfn, fcx.arg_pos(0) as u32));
+    let llfnpointer = if is_by_ref {
+        Load(bcx, get_param(fcx.llfn, fcx.arg_pos(0) as u32))
+    } else {
+        get_param(fcx.llfn, fcx.arg_pos(0) as u32)
+    };
 
     // the remaining arguments will be the untupled values
     let llargs: Vec<_> =
@@ -361,7 +376,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
 
-    ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty, llfn);
+    ccx.fn_pointer_shims().borrow_mut().insert(bare_fn_ty_maybe_ref, llfn);
 
     llfn
 }

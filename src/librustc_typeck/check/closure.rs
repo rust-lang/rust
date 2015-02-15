@@ -16,6 +16,7 @@ use astconv;
 use middle::region;
 use middle::subst;
 use middle::ty::{self, ToPolyTraitRef, Ty};
+use std::cmp;
 use syntax::abi;
 use syntax::ast;
 use syntax::ast_util;
@@ -109,15 +110,11 @@ fn deduce_expectations_from_expected_type<'a,'tcx>(
         ty::ty_trait(ref object_type) => {
             let proj_bounds = object_type.projection_bounds_with_self_ty(fcx.tcx(),
                                                                          fcx.tcx().types.err);
-            let expectations =
-                proj_bounds.iter()
-                           .filter_map(|pb| deduce_expectations_from_projection(fcx, pb))
-                           .next();
-
-            match expectations {
-                Some((sig, kind)) => (Some(sig), Some(kind)),
-                None => (None, None)
-            }
+            let sig = proj_bounds.iter()
+                                 .filter_map(|pb| deduce_sig_from_projection(fcx, pb))
+                                 .next();
+            let kind = fcx.tcx().lang_items.fn_trait_kind(object_type.principal_def_id());
+            (sig, kind)
         }
         ty::ty_infer(ty::TyVar(vid)) => {
             deduce_expectations_from_obligations(fcx, vid)
@@ -136,7 +133,7 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
     let fulfillment_cx = fcx.inh.fulfillment_cx.borrow();
     // Here `expected_ty` is known to be a type inference variable.
 
-    let expected_sig_and_kind =
+    let expected_sig =
         fulfillment_cx
         .pending_obligations()
         .iter()
@@ -150,7 +147,7 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
                 ty::Predicate::Projection(ref proj_predicate) => {
                     let trait_ref = proj_predicate.to_poly_trait_ref();
                     self_type_matches_expected_vid(fcx, trait_ref, expected_vid)
-                        .and_then(|_| deduce_expectations_from_projection(fcx, proj_predicate))
+                        .and_then(|_| deduce_sig_from_projection(fcx, proj_predicate))
                 }
                 _ => {
                     None
@@ -159,14 +156,10 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
         })
         .next();
 
-    match expected_sig_and_kind {
-        Some((sig, kind)) => { return (Some(sig), Some(kind)); }
-        None => { }
-    }
-
     // Even if we can't infer the full signature, we may be able to
     // infer the kind. This can occur if there is a trait-reference
-    // like `F : Fn<A>`.
+    // like `F : Fn<A>`. Note that due to subtyping we could encounter
+    // many viable options, so pick the most restrictive.
     let expected_kind =
         fulfillment_cx
         .pending_obligations()
@@ -183,54 +176,61 @@ fn deduce_expectations_from_obligations<'a,'tcx>(
                 .and_then(|trait_ref| self_type_matches_expected_vid(fcx, trait_ref, expected_vid))
                 .and_then(|trait_ref| fcx.tcx().lang_items.fn_trait_kind(trait_ref.def_id()))
         })
-        .next();
+        .fold(None, pick_most_restrictive_closure_kind);
 
-    (None, expected_kind)
+    (expected_sig, expected_kind)
+}
+
+fn pick_most_restrictive_closure_kind(best: Option<ty::ClosureKind>,
+                                      cur: ty::ClosureKind)
+                                      -> Option<ty::ClosureKind>
+{
+    match best {
+        None => Some(cur),
+        Some(best) => Some(cmp::min(best, cur))
+    }
 }
 
 /// Given a projection like "<F as Fn(X)>::Result == Y", we can deduce
 /// everything we need to know about a closure.
-fn deduce_expectations_from_projection<'a,'tcx>(
+fn deduce_sig_from_projection<'a,'tcx>(
     fcx: &FnCtxt<'a,'tcx>,
     projection: &ty::PolyProjectionPredicate<'tcx>)
-    -> Option<(ty::FnSig<'tcx>, ty::ClosureKind)>
+    -> Option<ty::FnSig<'tcx>>
 {
     let tcx = fcx.tcx();
 
-    debug!("deduce_expectations_from_projection({})",
+    debug!("deduce_sig_from_projection({})",
            projection.repr(tcx));
 
     let trait_ref = projection.to_poly_trait_ref();
 
-    let kind = match tcx.lang_items.fn_trait_kind(trait_ref.def_id()) {
-        Some(k) => k,
-        None => { return None; }
-    };
-
-    debug!("found object type {:?}", kind);
+    if tcx.lang_items.fn_trait_kind(trait_ref.def_id()).is_none() {
+        return None;
+    }
 
     let arg_param_ty = *trait_ref.substs().types.get(subst::TypeSpace, 0);
     let arg_param_ty = fcx.infcx().resolve_type_vars_if_possible(&arg_param_ty);
-    debug!("arg_param_ty {}", arg_param_ty.repr(tcx));
+    debug!("deduce_sig_from_projection: arg_param_ty {}", arg_param_ty.repr(tcx));
 
     let input_tys = match arg_param_ty.sty {
         ty::ty_tup(ref tys) => { (*tys).clone() }
         _ => { return None; }
     };
-    debug!("input_tys {}", input_tys.repr(tcx));
+    debug!("deduce_sig_from_projection: input_tys {}", input_tys.repr(tcx));
 
     let ret_param_ty = projection.0.ty;
     let ret_param_ty = fcx.infcx().resolve_type_vars_if_possible(&ret_param_ty);
-    debug!("ret_param_ty {}", ret_param_ty.repr(tcx));
+    debug!("deduce_sig_from_projection: ret_param_ty {}", ret_param_ty.repr(tcx));
 
     let fn_sig = ty::FnSig {
         inputs: input_tys,
         output: ty::FnConverging(ret_param_ty),
         variadic: false
     };
-    debug!("fn_sig {}", fn_sig.repr(tcx));
+    debug!("deduce_sig_from_projection: fn_sig {}", fn_sig.repr(tcx));
 
-    return Some((fn_sig, kind));
+    Some(fn_sig)
 }
 
 fn self_type_matches_expected_vid<'a,'tcx>(

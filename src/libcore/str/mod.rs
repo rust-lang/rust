@@ -29,7 +29,7 @@ use iter::{Map, Iterator, IteratorExt, DoubleEndedIterator};
 use marker::Sized;
 use mem;
 use num::Int;
-use ops::{Fn, FnMut};
+use ops::{Fn, FnMut, FnOnce};
 use option::Option::{self, None, Some};
 use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
@@ -524,12 +524,39 @@ delegate_iter!{exact u8 : Bytes<'a>}
 #[derive(Copy, Clone)]
 struct BytesDeref;
 
+#[cfg(stage0)]
 impl<'a> Fn<(&'a u8,)> for BytesDeref {
     type Output = u8;
 
     #[inline]
     extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
         *ptr
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a> Fn<(&'a u8,)> for BytesDeref {
+    #[inline]
+    extern "rust-call" fn call(&self, (ptr,): (&'a u8,)) -> u8 {
+        *ptr
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a> FnMut<(&'a u8,)> for BytesDeref {
+    #[inline]
+    extern "rust-call" fn call_mut(&mut self, (ptr,): (&'a u8,)) -> u8 {
+        Fn::call(&*self, (ptr,))
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'a> FnOnce<(&'a u8,)> for BytesDeref {
+    type Output = u8;
+
+    #[inline]
+    extern "rust-call" fn call_once(self, (ptr,): (&'a u8,)) -> u8 {
+        Fn::call(&self, (ptr,))
     }
 }
 

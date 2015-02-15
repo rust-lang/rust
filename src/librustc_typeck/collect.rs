@@ -784,14 +784,15 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                    &enum_definition.variants);
         },
         ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
-            let trait_ref = astconv::instantiate_trait_ref(&ccx.icx(&()),
-                                                           &ExplicitRscope,
-                                                           ast_trait_ref,
-                                                           Some(it.id),
-                                                           None,
-                                                           None);
+            let trait_ref =
+                astconv::instantiate_mono_trait_ref(&ccx.icx(&()),
+                                                    &ExplicitRscope,
+                                                    ast_trait_ref,
+                                                    None);
 
             ty::record_trait_has_default_impl(tcx, trait_ref.def_id);
+
+            tcx.impl_trait_refs.borrow_mut().insert(it.id, trait_ref);
         }
         ast::ItemImpl(_, _,
                       ref generics,
@@ -890,13 +891,14 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                 }
             }
 
-            if let Some(ref trait_ref) = *opt_trait_ref {
-                astconv::instantiate_trait_ref(&ccx.icx(&ty_predicates),
-                                               &ExplicitRscope,
-                                               trait_ref,
-                                               Some(it.id),
-                                               Some(selfty),
-                                               None);
+            if let Some(ref ast_trait_ref) = *opt_trait_ref {
+                let trait_ref =
+                    astconv::instantiate_mono_trait_ref(&ccx.icx(&ty_predicates),
+                                                        &ExplicitRscope,
+                                                        ast_trait_ref,
+                                                        Some(selfty));
+
+                tcx.impl_trait_refs.borrow_mut().insert(it.id, trait_ref);
             }
 
             enforce_impl_ty_params_are_constrained(tcx,
