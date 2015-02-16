@@ -12,6 +12,8 @@
 // case that involve multiple intricate types.
 // Try enums too.
 
+#![feature(rustc_attrs)]
+
 #[rustc_variance]
 enum Base<'a, 'b, 'c:'b, 'd> { //~ ERROR regions=[[+, -, o, *];[];[]]
     Test8A(extern "Rust" fn(&'a isize)),

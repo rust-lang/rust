@@ -19,6 +19,8 @@
 // both moving out of the structure (i.e. reading `*p.x`) and writing
 // into the container (i.e. writing `*p.x`).
 
+#![feature(rustc_attrs)]
+
 pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 

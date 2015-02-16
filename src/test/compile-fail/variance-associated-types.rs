@@ -11,6 +11,8 @@
 // Test that the variance computation considers types/regions that
 // appear in projections to be invariant.
 
+#![feature(rustc_attrs)]
+
 trait Trait<'a> {
     type Type;
 
