@@ -166,20 +166,17 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
 
     ("macro_reexport", Normal),
     ("macro_use", Normal),
-    ("plugin", Normal),
     ("macro_export", Normal),
     ("plugin_registrar", Normal),
 
     ("cfg", Normal),
     ("main", Normal),
-    ("lang", Normal),
     ("start", Normal),
     ("test", Normal),
     ("bench", Normal),
     ("simd", Normal),
     ("repr", Normal),
     ("path", Normal),
-    ("staged_api", Normal),
     ("abi", Normal),
     ("rustc_move_fragments", Normal),
     ("rustc_variance", Normal),
@@ -194,6 +191,17 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("reexport_test_harness_main", Normal),
     ("link_args", Normal),
     ("macro_escape", Normal),
+
+
+    ("staged_api", Gated("staged_api",
+                         "staged_api is for use by rustc only")),
+    ("plugin", Gated("plugin",
+                     "compiler plugins are experimental \
+                      and possibly buggy")),
+    ("no_std", Gated("no_std",
+                     "no_std is experimental")),
+    ("lang", Gated("lang_items",
+                     "language items are subject to change")),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted),
@@ -242,7 +250,6 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("feature", CrateLevel),
     ("no_start", CrateLevel),
     ("no_main", CrateLevel),
-    ("no_std", CrateLevel),
     ("no_builtins", CrateLevel),
     ("recursion_limit", CrateLevel),
 ];
@@ -257,6 +264,10 @@ pub enum AttributeType {
     /// before the unused_attribute check. These attributes
     /// will be ignored by the unused_attribute lint
     Whitelisted,
+
+    /// Is gated by a given feature gate and reason
+    /// These get whitelisted too
+    Gated(&'static str, &'static str),
 
     /// Builtin attribute that is only allowed at the crate level
     CrateLevel,
@@ -573,33 +584,22 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        match &*attr.name() {
-            "staged_api" => self.gate_feature("staged_api", attr.span,
-                                              "staged_api is for use by rustc only"),
-            "plugin" => self.gate_feature("plugin", attr.span,
-                                          "compiler plugins are experimental \
-                                           and possibly buggy"),
-            "no_std" => self.gate_feature("no_std", attr.span,
-                                          "no_std is experimental"),
-            "unsafe_no_drop_flag" => self.gate_feature("unsafe_no_drop_flag", attr.span,
-                                                       "unsafe_no_drop_flag has unstable \
-                                                        semantics and may be removed \
-                                                        in the future"),
-            "lang" => self.gate_feature("lang_items",
-                                        attr.span,
-                                        "language items are subject to change"),
-            name => {
-                // Custom attribute check
-                if KNOWN_ATTRIBUTES.iter().all(|&(n, _)| n != name) {
-                    self.gate_feature("custom_attribute", attr.span,
-                               format!("The attribute `{}` is currently \
-                                        unknown to the the compiler and \
-                                        may have meaning \
-                                        added to it in the future",
-                                        attr.name()).as_slice());
+        let name = &*attr.name();
+        for &(n, ty) in KNOWN_ATTRIBUTES {
+            if n == name {
+                if let Gated(gate, desc) = ty {
+                    self.gate_feature(gate, attr.span, desc);
                 }
+                return;
             }
+            
         }
+        self.gate_feature("custom_attribute", attr.span,
+                   format!("The attribute `{}` is currently \
+                            unknown to the the compiler and \
+                            may have meaning \
+                            added to it in the future",
+                            name).as_slice());
     }
 
     fn visit_pat(&mut self, pattern: &ast::Pat) {
