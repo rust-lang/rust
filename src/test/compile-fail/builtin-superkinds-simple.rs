@@ -14,6 +14,6 @@
 trait Foo : Send { }
 
 impl <'a> Foo for &'a mut () { }
-//~^ ERROR declared lifetime bound not satisfied
+//~^ ERROR the type `&'a mut ()` does not fulfill the required lifetime
 
 fn main() { }

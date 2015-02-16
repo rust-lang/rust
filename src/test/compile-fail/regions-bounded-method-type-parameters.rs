@@ -20,7 +20,7 @@ impl Foo {
 
 fn caller<'a>(x: &isize) {
     Foo.some_method::<&'a isize>();
-    //~^ ERROR declared lifetime bound not satisfied
+    //~^ ERROR does not fulfill the required lifetime
 }
 
 fn main() { }
