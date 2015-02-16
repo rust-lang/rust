@@ -507,7 +507,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let ctor_scheme = ty::lookup_item_type(tcx, enum_def);
     let ctor_predicates = ty::lookup_predicates(tcx, enum_def);
     let path_scheme = if ty::is_fn_ty(ctor_scheme.ty) {
-        let fn_ret = ty::assert_no_late_bound_regions(tcx, &ty::ty_fn_ret(ctor_scheme.ty));
+        let fn_ret = ty::no_late_bound_regions(tcx, &ty::ty_fn_ret(ctor_scheme.ty)).unwrap();
         ty::TypeScheme {
             ty: fn_ret.unwrap(),
             generics: ctor_scheme.generics,

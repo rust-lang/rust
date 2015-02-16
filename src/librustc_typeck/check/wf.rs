@@ -97,14 +97,10 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
                 self.check_item_type(item);
             }
             ast::ItemStruct(ref struct_def, _) => {
-                self.check_type_defn(item, |fcx| {
-                    vec![struct_variant(fcx, &**struct_def)]
-                });
+                self.check_type_defn(item, |fcx| vec![struct_variant(fcx, &**struct_def)]);
             }
             ast::ItemEnum(ref enum_def, _) => {
-                self.check_type_defn(item, |fcx| {
-                    enum_variants(fcx, enum_def)
-                });
+                self.check_type_defn(item, |fcx| enum_variants(fcx, enum_def));
             }
             ast::ItemTrait(..) => {
                 let trait_predicates =
@@ -578,8 +574,8 @@ fn enum_variants<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                     // the regions in the argument types come from the
                     // enum def'n, and hence will all be early bound
                     let arg_tys =
-                        ty::assert_no_late_bound_regions(
-                            fcx.tcx(), &ty::ty_fn_args(ctor_ty));
+                        ty::no_late_bound_regions(
+                            fcx.tcx(), &ty::ty_fn_args(ctor_ty)).unwrap();
                     AdtVariant {
                         fields: args.iter().enumerate().map(|(index, arg)| {
                             let arg_ty = arg_tys[index];

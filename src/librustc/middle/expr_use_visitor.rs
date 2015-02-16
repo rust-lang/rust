@@ -838,7 +838,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                     // the method call infrastructure should have
                     // replaced all late-bound regions with variables:
                     let self_ty = ty::ty_fn_sig(method_ty).input(0);
-                    let self_ty = ty::assert_no_late_bound_regions(self.tcx(), &self_ty);
+                    let self_ty = ty::no_late_bound_regions(self.tcx(), &self_ty).unwrap();
 
                     let (m, r) = match self_ty.sty {
                         ty::ty_rptr(r, ref m) => (m.mutbl, r),
