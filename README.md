@@ -7,10 +7,10 @@ or otherwise impose significant runtime overhead.
 
 ## Quick Start
 
-Read ["Installing Rust"][install] from [The Book][trpl].
+Read ["Installing Rust"] from [The Book].
 
-[install]: http://doc.rust-lang.org/book/installing-rust.html
-[trpl]: http://doc.rust-lang.org/book/index.html
+["Installing Rust"]: http://doc.rust-lang.org/book/installing-rust.html
+[The Book]: http://doc.rust-lang.org/book/index.html
 
 ## Building from Source
 
