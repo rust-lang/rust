@@ -537,12 +537,12 @@ mod tests {
     fn signal_reported_right() {
         use os::unix::ExitStatusExt;
 
-        let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
+        let p = Command::new("/bin/sh").arg("-c").arg("kill -9 $$").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait().unwrap().signal() {
-            Some(1) => {},
-            result => panic!("not terminated by signal 1 (instead, {:?})", result),
+            Some(9) => {},
+            result => panic!("not terminated by signal 9 (instead, {:?})", result),
         }
     }
 
