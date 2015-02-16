@@ -23,7 +23,7 @@ match x {
 `match` takes an expression and then branches based on its value. Each *arm* of
 the branch is of the form `val => expression`. When the value matches, that arm's
 expression will be evaluated. It's called `match` because of the term 'pattern
-matching,' which `match` is an implementation of.
+matching', which `match` is an implementation of.
 
 So what's the big advantage here? Well, there are a few. First of all, `match`
 enforces *exhaustiveness checking*. Do you see that last arm, the one with the

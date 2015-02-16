@@ -648,8 +648,8 @@ The `rustc` compiler has certain pluggable operations, that is,
 functionality that isn't hard-coded into the language, but is
 implemented in libraries, with a special marker to tell the compiler
 it exists. The marker is the attribute `#[lang="..."]` and there are
-various different values of `...`, i.e. various different "lang
-items."
+various different values of `...`, i.e. various different 'lang
+items'.
 
 For example, `Box` pointers require two lang items, one for allocation
 and one for deallocation. A freestanding program that uses the `Box`

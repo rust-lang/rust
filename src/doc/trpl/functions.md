@@ -75,8 +75,7 @@ This is a deliberate design decision. While full-program inference is possible,
 languages which have it, like Haskell, often suggest that documenting your
 types explicitly is a best-practice. We agree that forcing functions to declare
 types while allowing for inference inside of function bodies is a wonderful
-sweet spot between full inference and no inference. (For closures, i.e. unnamed
-functions, types do not have to be declared.)
+sweet spot between full inference and no inference.
 
 What about returning a value? Here's a function that adds one to an integer:
 
