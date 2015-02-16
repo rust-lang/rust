@@ -1,4 +1,4 @@
-// Copyright 2013-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2013-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,19 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:rlib_crate_test.rs
+// aux-build:macro_crate_test.rs
+// aux-build:plugin_with_plugin_lib.rs
 // ignore-stage1
-// ignore-tidy-linelength
-// ignore-android
-// ignore-cross-compile gives a different error message
+// ignore-cross-compile
+//
+// macro_crate_test will not compile on a cross-compiled target because
+// libsyntax is not compiled for it.
 
+#![deny(plugin_as_library)]
 #![feature(plugin)]
-#![plugin(rlib_crate_test)]
-//~^ ERROR: plugin `rlib_crate_test` only found in rlib format, but must be available in dylib format
+#![plugin(macro_crate_test)]
+#![plugin(plugin_with_plugin_lib)]
 
-fn main() {}
+fn main() {
+    assert_eq!(1, make_a_1!());
+}
