@@ -1,6 +1,6 @@
 - Start Date: 2014-11-29
-- RFC PR: #459
-- Rust Issue: [19390](https://github.com/rust-lang/rust/issues/19390)
+- RFC PR: [rust-lang/rfcs#459](https://github.com/rust-lang/rfcs/pull/459)
+- Rust Issue: [rust-lang/rust#19390](https://github.com/rust-lang/rust/issues/19390)
 
 # Summary
 
@@ -30,7 +30,7 @@ logically distinct lifetime parameters with the same name. This then leads to th
 message:
 
     mismatched types: expected `&'a int`, found `&'a int` (lifetime mismatch)
-    
+
 which is obviously completely unhelpful.
 
 Similar errors can occur with type parameters:
@@ -59,10 +59,10 @@ still a somewhat confusing situation.
 Anecdotally, this kind of accidental shadowing is fairly frequent
 occurrence.  It recently arose on [this discuss thread][dt], for
 example.
-    
-[dt]: http://discuss.rust-lang.org/t/confused-by-lifetime-error-messages-tell-me-about-it/358/41?u=nikomatsakis    
+
+[dt]: http://discuss.rust-lang.org/t/confused-by-lifetime-error-messages-tell-me-about-it/358/41?u=nikomatsakis
 [pr]: https://github.com/rust-lang/rust/pull/18264
-    
+
 # Detailed design
 
 Disallow shadowed type/lifetime parameter declarations. An error would
