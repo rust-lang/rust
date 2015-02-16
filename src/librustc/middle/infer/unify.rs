@@ -33,9 +33,9 @@ use util::snapshot_vec as sv;
 pub trait UnifyKey : Clone + Debug + PartialEq {
     type Value : UnifyValue;
 
-    fn index(&self) -> usize;
+    fn index(&self) -> u32;
 
-    fn from_index(u: usize) -> Self;
+    fn from_index(u: u32) -> Self;
 
     fn tag(k: Option<Self>) -> &'static str;
 }
@@ -123,7 +123,7 @@ impl<K:UnifyKey> UnificationTable<K> {
 
     pub fn new_key(&mut self, value: K::Value) -> K {
         let index = self.values.push(Root(value, 0));
-        let k = UnifyKey::from_index(index);
+        let k = UnifyKey::from_index(index as u32);
         debug!("{}: created new key: {:?}",
                UnifyKey::tag(None::<K>),
                k);
@@ -136,8 +136,8 @@ impl<K:UnifyKey> UnificationTable<K> {
     ///
     /// NB. This is a building-block operation and you would probably
     /// prefer to call `probe` below.
-    pub fn get(&mut self, vid: K) -> Node<K> {
-        let index = vid.index();
+    fn get(&mut self, vid: K) -> Node<K> {
+        let index = vid.index() as usize;
         let value = (*self.values.get(index)).clone();
         match value {
             Redirect(redirect) => {
@@ -155,7 +155,8 @@ impl<K:UnifyKey> UnificationTable<K> {
     }
 
     fn is_root(&self, key: &K) -> bool {
-        match *self.values.get(key.index()) {
+        let index = key.index() as usize;
+        match *self.values.get(index) {
             Redirect(..) => false,
             Root(..) => true,
         }
@@ -169,7 +170,8 @@ impl<K:UnifyKey> UnificationTable<K> {
         debug!("Updating variable {:?} to {:?}",
                key, new_value);
 
-        self.values.set(key.index(), new_value);
+        let index = key.index() as usize;
+        self.values.set(index, new_value);
     }
 
     /// Either redirects `node_a` to `node_b` or vice versa, depending
@@ -180,7 +182,7 @@ impl<K:UnifyKey> UnificationTable<K> {
     /// really more of a building block. If the values associated with
     /// your key are non-trivial, you would probably prefer to call
     /// `unify_var_var` below.
-    pub fn unify(&mut self, node_a: &Node<K>, node_b: &Node<K>, new_value: K::Value) {
+    fn unify(&mut self, node_a: &Node<K>, node_b: &Node<K>, new_value: K::Value) {
         debug!("unify(node_a(id={:?}, rank={:?}), node_b(id={:?}, rank={:?}))",
                node_a.key,
                node_a.rank,
@@ -307,6 +309,10 @@ impl<'tcx,K,V> UnificationTable<K>
         }
     }
 
+    pub fn has_value(&mut self, id: K) -> bool {
+        self.get(id).value.is_some()
+    }
+
     pub fn probe(&mut self, tcx: &ty::ctxt<'tcx>, a_id: K) -> Option<Ty<'tcx>> {
         let node_a = self.get(a_id);
         match node_a.value {
@@ -322,8 +328,8 @@ impl<'tcx,K,V> UnificationTable<K>
 
 impl UnifyKey for ty::IntVid {
     type Value = Option<IntVarValue>;
-    fn index(&self) -> usize { self.index as usize }
-    fn from_index(i: usize) -> ty::IntVid { ty::IntVid { index: i as u32 } }
+    fn index(&self) -> u32 { self.index }
+    fn from_index(i: u32) -> ty::IntVid { ty::IntVid { index: i } }
     fn tag(_: Option<ty::IntVid>) -> &'static str { "IntVid" }
 }
 
@@ -346,8 +352,8 @@ impl UnifyValue for Option<IntVarValue> { }
 
 impl UnifyKey for ty::FloatVid {
     type Value = Option<ast::FloatTy>;
-    fn index(&self) -> usize { self.index as usize }
-    fn from_index(i: usize) -> ty::FloatVid { ty::FloatVid { index: i as u32 } }
+    fn index(&self) -> u32 { self.index }
+    fn from_index(i: u32) -> ty::FloatVid { ty::FloatVid { index: i } }
     fn tag(_: Option<ty::FloatVid>) -> &'static str { "FloatVid" }
 }
 
