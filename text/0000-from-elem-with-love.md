@@ -1,7 +1,7 @@
-- Feature Name: from_elem_with_love
+- Feature Name: direct to stable, because it modifies a stable macro
 - Start Date: 2015-02-11
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/832
+- Rust Issue: https://github.com/rust-lang/rust/issues/22414
 
 # Summary
 
@@ -49,15 +49,15 @@ let vec = Vec::from_elem(elem, n)
 * `#1` is verbose *and* slow, because each `push` requires a capacity check.
 * `#2` only works for a Copy `elem` and const `n`.
 * `#3` needs a temporary, but should be otherwise identical performance-wise.
-* `#4` and `#5` are considered verbose and noisy. They also need to clone one more 
+* `#4` and `#5` are considered verbose and noisy. They also need to clone one more
 time than other methods *strictly* need to.
 
-However the issues for `#2` are *entirely* artifical. It's simply a side-effect of 
-forwarding the impl to the identical array syntax. We can just make the code in the 
-`vec!` macro better. This naturally extends the compile-timey `[x; n]` array sugar 
+However the issues for `#2` are *entirely* artifical. It's simply a side-effect of
+forwarding the impl to the identical array syntax. We can just make the code in the
+`vec!` macro better. This naturally extends the compile-timey `[x; n]` array sugar
 to the more runtimey semantics of Vec, without introducing "another way to do it".
 
-`vec![100; 10]` is also *slightly* less ambiguous than `from_elem(100, 10)`, 
+`vec![100; 10]` is also *slightly* less ambiguous than `from_elem(100, 10)`,
 because the `[T; n]` syntax is part of the language that developers should be
 familiar with, while `from_elem` is just a function with arbitrary argument order.
 
