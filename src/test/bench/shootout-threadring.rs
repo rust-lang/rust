@@ -64,13 +64,13 @@ fn roundtrip(id: i32, tx: Sender<i32>, rx: Receiver<i32>) {
 }
 
 fn main() {
-    let args = std::os::args();
+    let mut args = std::env::args();
     let token = if std::env::var_os("RUST_BENCH").is_some() {
         2000000
     } else {
-        args.get(1).and_then(|arg| arg.parse().ok()).unwrap_or(1000)
+        args.nth(1).and_then(|arg| arg.parse().ok()).unwrap_or(1000)
     };
-    let n_tasks = args.get(2)
+    let n_tasks = args.next()
                       .and_then(|arg| arg.parse().ok())
                       .unwrap_or(503);
 

@@ -11,6 +11,7 @@
 //! Implementation of the `build` subcommand, used to compile a book.
 
 use std::os;
+use std::env;
 use std::old_io;
 use std::old_io::{fs, File, BufferedWriter, TempDir, IoResult};
 
@@ -80,10 +81,10 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         let out_path = tgt.join(item.path.dirname());
 
         let src;
-        if os::args().len() < 3 {
+        if env::args().len() < 3 {
             src = os::getcwd().unwrap().clone();
         } else {
-            src = Path::new(os::args()[2].clone());
+            src = Path::new(env::args().nth(2).unwrap().clone());
         }
         // preprocess the markdown, rerouting markdown references to html references
         let markdown_data = try!(File::open(&src.join(&item.path)).read_to_string());
@@ -153,16 +154,16 @@ impl Subcommand for Build {
         let src;
         let tgt;
 
-        if os::args().len() < 3 {
+        if env::args().len() < 3 {
             src = cwd.clone();
         } else {
-            src = Path::new(os::args()[2].clone());
+            src = Path::new(env::args().nth(2).unwrap().clone());
         }
 
-        if os::args().len() < 4 {
+        if env::args().len() < 4 {
             tgt = cwd.join("_book");
         } else {
-            tgt = Path::new(os::args()[3].clone());
+            tgt = Path::new(env::args().nth(3).unwrap().clone());
         }
 
         try!(fs::mkdir(&tgt, old_io::USER_DIR));

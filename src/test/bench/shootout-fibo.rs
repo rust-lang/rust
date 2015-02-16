@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
 use std::env;
 
-fn fib(n: int) -> int {
+fn fib(n: i64) -> i64 {
     if n < 2 {
         return 1;
     } else {
@@ -20,13 +19,13 @@ fn fib(n: int) -> int {
 }
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "40".to_string())
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         vec!("".to_string(), "30".to_string())
     } else {
-        args.into_iter().collect()
+        args.collect()
     };
     let n = args[1].parse().unwrap();
     println!("{}\n", fib(n));

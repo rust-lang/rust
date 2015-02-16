@@ -16,7 +16,7 @@
 #![feature(asm)]
 
 use std::old_io::process::Command;
-use std::os;
+use std::env;
 use std::thread::Thread;
 
 // lifted from the test module
@@ -34,8 +34,7 @@ fn recurse() {
 }
 
 fn main() {
-    let args = os::args();
-    let args = args;
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "recurse" {
         let _t = Thread::scoped(recurse);
     } else {

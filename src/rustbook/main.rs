@@ -13,12 +13,13 @@
 #![feature(core)]
 #![feature(io)]
 #![feature(os)]
+#![feature(env)]
 #![feature(path)]
 #![feature(rustdoc)]
 
 extern crate rustdoc;
 
-use std::os;
+use std::env;
 use subcommand::Subcommand;
 use term::Term;
 
@@ -48,7 +49,7 @@ mod javascript;
 #[cfg(not(test))] // thanks #12327
 fn main() {
     let mut term = Term::new();
-    let cmd = os::args();
+    let cmd: Vec<_> = env::args().collect();
 
     if cmd.len() < 1 {
         help::usage()
