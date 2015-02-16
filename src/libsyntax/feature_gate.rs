@@ -135,7 +135,10 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("unsafe_no_drop_flag", "1.0.0", Active),
 
     // Allows the use of custom attributes; RFC 572
-    ("custom_attribute", "1.0.0", Active)
+    ("custom_attribute", "1.0.0", Active),
+
+    // Allows the use of rustc_* attributes; RFC 572
+    ("rustc_attrs", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -178,8 +181,6 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("repr", Normal),
     ("path", Normal),
     ("abi", Normal),
-    ("rustc_move_fragments", Normal),
-    ("rustc_variance", Normal),
     ("unsafe_destructor", Normal),
     ("automatically_derived", Normal),
     ("no_mangle", Normal),
@@ -202,9 +203,6 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
                      "no_std is experimental")),
     ("lang", Gated("lang_items",
                      "language items are subject to change")),
-    ("rustc_on_unimplemented", Gated("on_unimplemented",
-                                     "the `#[rustc_on_unimplemented]` attribute \
-                                      is an experimental feature")),
     ("linkage", Gated("linkage",
                       "the `linkage` attribute is experimental \
                        and not portable across platforms")),
@@ -212,6 +210,19 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
                             "`#[thread_local]` is an experimental feature, and does not \
                              currently handle destructors. There is no corresponding \
                              `#[task_local]` mapping to the task model")),
+
+    ("rustc_on_unimplemented", Gated("on_unimplemented",
+                                     "the `#[rustc_on_unimplemented]` attribute \
+                                      is an experimental feature")),
+    ("rustc_variance", Gated("rustc_attrs",
+                             "the `#[rustc_variance]` attribute \
+                              is an experimental feature")),
+    ("rustc_error", Gated("rustc_attrs",
+                          "the `#[rustc_error]` attribute \
+                           is an experimental feature")),
+    ("rustc_move_fragments", Gated("rustc_attrs",
+                                   "the `#[rustc_move_fragments]` attribute \
+                                    is an experimental feature")),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted),
@@ -243,7 +254,6 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("must_use", Whitelisted),
     ("stable", Whitelisted),
     ("unstable", Whitelisted),
-    ("rustc_error", Whitelisted),
 
     // FIXME: #19470 this shouldn't be needed forever
     ("old_orphan_check", Whitelisted),
@@ -584,12 +594,19 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 return;
             }
         }
-        self.gate_feature("custom_attribute", attr.span,
-                   format!("The attribute `{}` is currently \
-                            unknown to the the compiler and \
-                            may have meaning \
-                            added to it in the future",
-                            name).as_slice());
+        if name.starts_with("rustc_") {
+            self.gate_feature("rustc_attrs", attr.span,
+                              "unless otherwise specified, attributes \
+                               with the prefix `rustc_` \
+                               are reserved for internal compiler diagnostics");
+        } else {
+            self.gate_feature("custom_attribute", attr.span,
+                       format!("The attribute `{}` is currently \
+                                unknown to the the compiler and \
+                                may have meaning \
+                                added to it in the future",
+                                name).as_slice());
+        }
     }
 
     fn visit_pat(&mut self, pattern: &ast::Pat) {
