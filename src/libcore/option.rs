@@ -60,19 +60,19 @@
 //! the optional owned box, `Option<Box<T>>`.
 //!
 //! The following example uses `Option` to create an optional box of
-//! `int`. Notice that in order to use the inner `int` value first the
+//! `i32`. Notice that in order to use the inner `i32` value first the
 //! `check_optional` function needs to use pattern matching to
 //! determine whether the box has a value (i.e. it is `Some(...)`) or
 //! not (`None`).
 //!
 //! ```
-//! let optional: Option<Box<int>> = None;
+//! let optional: Option<Box<i32>> = None;
 //! check_optional(&optional);
 //!
-//! let optional: Option<Box<int>> = Some(Box::new(9000));
+//! let optional: Option<Box<i32>> = Some(Box::new(9000));
 //! check_optional(&optional);
 //!
-//! fn check_optional(optional: &Option<Box<int>>) {
+//! fn check_optional(optional: &Option<Box<i32>>) {
 //!     match *optional {
 //!         Some(ref p) => println!("have value {}", p),
 //!         None => println!("have no value")
@@ -108,7 +108,7 @@
 //! Initialize a result to `None` before a loop:
 //!
 //! ```
-//! enum Kingdom { Plant(uint, &'static str), Animal(uint, &'static str) }
+//! enum Kingdom { Plant(u32, &'static str), Animal(u32, &'static str) }
 //!
 //! // A list of data to search through.
 //! let all_the_big_things = [
@@ -188,10 +188,10 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let x: Option<uint> = Some(2);
+    /// let x: Option<u32> = Some(2);
     /// assert_eq!(x.is_some(), true);
     ///
-    /// let x: Option<uint> = None;
+    /// let x: Option<u32> = None;
     /// assert_eq!(x.is_some(), false);
     /// ```
     #[inline]
@@ -208,10 +208,10 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// let x: Option<uint> = Some(2);
+    /// let x: Option<u32> = Some(2);
     /// assert_eq!(x.is_none(), false);
     ///
-    /// let x: Option<uint> = None;
+    /// let x: Option<u32> = None;
     /// assert_eq!(x.is_none(), true);
     /// ```
     #[inline]
@@ -228,7 +228,7 @@ impl<T> Option<T> {
     ///
     /// # Example
     ///
-    /// Convert an `Option<String>` into an `Option<int>`, preserving the original.
+    /// Convert an `Option<String>` into an `Option<usize>`, preserving the original.
     /// The `map` method takes the `self` argument by value, consuming the original,
     /// so this technique uses `as_ref` to first take an `Option` to a reference
     /// to the value inside the original.
@@ -237,7 +237,7 @@ impl<T> Option<T> {
     /// let num_as_str: Option<String> = Some("10".to_string());
     /// // First, cast `Option<String>` to `Option<&String>` with `as_ref`,
     /// // then consume *that* with `map`, leaving `num_as_str` on the stack.
-    /// let num_as_int: Option<uint> = num_as_str.as_ref().map(|n| n.len());
+    /// let num_as_int: Option<usize> = num_as_str.as_ref().map(|n| n.len());
     /// println!("still can print num_as_str: {:?}", num_as_str);
     /// ```
     #[inline]
@@ -406,12 +406,12 @@ impl<T> Option<T> {
     ///
     /// # Example
     ///
-    /// Convert an `Option<String>` into an `Option<uint>`, consuming the original:
+    /// Convert an `Option<String>` into an `Option<usize>`, consuming the original:
     ///
     /// ```
     /// let num_as_str: Option<String> = Some("10".to_string());
     /// // `Option::map` takes self *by value*, consuming `num_as_str`
-    /// let num_as_int: Option<uint> = num_as_str.map(|n| n.len());
+    /// let num_as_int: Option<usize> = num_as_str.map(|n| n.len());
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -518,7 +518,7 @@ impl<T> Option<T> {
     /// let x = Some(4);
     /// assert_eq!(x.iter().next(), Some(&4));
     ///
-    /// let x: Option<uint> = None;
+    /// let x: Option<u32> = None;
     /// assert_eq!(x.iter().next(), None);
     /// ```
     #[inline]
@@ -539,7 +539,7 @@ impl<T> Option<T> {
     /// }
     /// assert_eq!(x, Some(42));
     ///
-    /// let mut x: Option<uint> = None;
+    /// let mut x: Option<u32> = None;
     /// assert_eq!(x.iter_mut().next(), None);
     /// ```
     #[inline]
@@ -581,7 +581,7 @@ impl<T> Option<T> {
     /// let y: Option<&str> = None;
     /// assert_eq!(x.and(y), None);
     ///
-    /// let x: Option<uint> = None;
+    /// let x: Option<u32> = None;
     /// let y = Some("foo");
     /// assert_eq!(x.and(y), None);
     ///
@@ -589,7 +589,7 @@ impl<T> Option<T> {
     /// let y = Some("foo");
     /// assert_eq!(x.and(y), Some("foo"));
     ///
-    /// let x: Option<uint> = None;
+    /// let x: Option<u32> = None;
     /// let y: Option<&str> = None;
     /// assert_eq!(x.and(y), None);
     /// ```
@@ -608,8 +608,8 @@ impl<T> Option<T> {
     /// # Example
     ///
     /// ```
-    /// fn sq(x: uint) -> Option<uint> { Some(x * x) }
-    /// fn nope(_: uint) -> Option<uint> { None }
+    /// fn sq(x: u32) -> Option<u32> { Some(x * x) }
+    /// fn nope(_: u32) -> Option<u32> { None }
     ///
     /// assert_eq!(Some(2).and_then(sq).and_then(sq), Some(16));
     /// assert_eq!(Some(2).and_then(sq).and_then(nope), None);
@@ -642,7 +642,7 @@ impl<T> Option<T> {
     /// let y = Some(100);
     /// assert_eq!(x.or(y), Some(2));
     ///
-    /// let x: Option<uint> = None;
+    /// let x: Option<u32> = None;
     /// let y = None;
     /// assert_eq!(x.or(y), None);
     /// ```
@@ -690,7 +690,7 @@ impl<T> Option<T> {
     /// x.take();
     /// assert_eq!(x, None);
     ///
-    /// let mut x: Option<uint> = None;
+    /// let mut x: Option<u32> = None;
     /// x.take();
     /// assert_eq!(x, None);
     /// ```
@@ -789,7 +789,7 @@ impl<A> Iterator for Item<A> {
     }
 
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) {
+    fn size_hint(&self) -> (usize, Option<usize>) {
         match self.opt {
             Some(_) => (1, Some(1)),
             None => (0, Some(0)),
@@ -817,7 +817,7 @@ impl<'a, A> Iterator for Iter<'a, A> {
     #[inline]
     fn next(&mut self) -> Option<&'a A> { self.inner.next() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -847,7 +847,7 @@ impl<'a, A> Iterator for IterMut<'a, A> {
     #[inline]
     fn next(&mut self) -> Option<&'a mut A> { self.inner.next() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -870,7 +870,7 @@ impl<A> Iterator for IntoIter<A> {
     #[inline]
     fn next(&mut self) -> Option<A> { self.inner.next() }
     #[inline]
-    fn size_hint(&self) -> (uint, Option<uint>) { self.inner.size_hint() }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -896,11 +896,11 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// checking for overflow:
     ///
     /// ```rust
-    /// use std::uint;
+    /// use std::u16;
     ///
     /// let v = vec!(1, 2);
-    /// let res: Option<Vec<uint>> = v.iter().map(|&x: &uint|
-    ///     if x == uint::MAX { None }
+    /// let res: Option<Vec<u16>> = v.iter().map(|&x: &u16|
+    ///     if x == u16::MAX { None }
     ///     else { Some(x + 1) }
     /// ).collect();
     /// assert!(res == Some(vec!(2, 3)));
