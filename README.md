@@ -38,7 +38,10 @@ Read ["Installing Rust"][install] from [The Book][trpl].
 
     When complete, `make install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
-    API-documentation tool.
+    API-documentation tool. This install does not include [Cargo],
+    Rust's package manager, which you may also want to build.
+
+[Cargo]: https://github.com/rust-lang/cargo
 
 ### Building on Windows
 
