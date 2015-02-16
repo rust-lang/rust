@@ -13,6 +13,7 @@ use target::Target;
 pub fn target() -> Target {
     let mut base = super::linux_base::opts();
     base.pre_link_args.push("-Wl,--allow-multiple-definition".to_string());
+    base.is_like_android = true;
     base.position_independent_executables = true;
     Target {
         data_layout: "e-p:64:64:64-i1:8:8-i8:8:8-i16:16:16-i32:32:32-i64:64:64-\
