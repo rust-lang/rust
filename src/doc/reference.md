@@ -648,7 +648,7 @@ All of the above extensions are expressions with values.
 
 Users of `rustc` can define new syntax extensions in two ways:
 
-* [Compiler plugins](book/syntax-extensions.html) can include arbitrary
+* [Compiler plugins][plugin] can include arbitrary
   Rust code that manipulates syntax trees at compile time.
 
 * [Macros](book/macros.html) define new syntax in a higher-level,
