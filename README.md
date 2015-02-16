@@ -107,6 +107,14 @@ The Rust community congregates in a few places:
 
 To contribute to Rust, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
+Rust has an [IRC] culture and most real-time collaboration happens in a
+variety of channels on Mozilla's IRC network, irc.mozilla.org. The
+most popular channel is [#rust], a venue for general discussion about
+Rust, and a good place to ask for help,
+
+[IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
+[#rust]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
+
 ## License
 
 Rust is primarily distributed under the terms of both the MIT license
