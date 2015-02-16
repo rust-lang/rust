@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:TEST_EXEC_ENV=22
+#![crate_type="lib"]
 
-use std::env;
+// @has lib/struct.Struct.html //pre '#[must_use]'
+#[must_use]
+pub struct Struct {
+    field: i32,
+}
 
-pub fn main() {
-    assert_eq!(env::var("TEST_EXEC_ENV"), Ok("22".to_string()));
+// @has lib/enum.Enum.html //pre '#[must_use = "message"]'
+#[must_use = "message"]
+pub enum Enum {
+    Variant(i32),
 }

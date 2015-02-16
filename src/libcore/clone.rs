@@ -61,13 +61,13 @@ macro_rules! clone_impl {
     }
 }
 
-clone_impl! { int }
+clone_impl! { isize }
 clone_impl! { i8 }
 clone_impl! { i16 }
 clone_impl! { i32 }
 clone_impl! { i64 }
 
-clone_impl! { uint }
+clone_impl! { usize }
 clone_impl! { u8 }
 clone_impl! { u16 }
 clone_impl! { u32 }

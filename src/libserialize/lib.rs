@@ -33,7 +33,6 @@ Core encoding and decoding interfaces.
 #![feature(path)]
 #![feature(hash)]
 #![feature(rustc_private)]
-#![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]

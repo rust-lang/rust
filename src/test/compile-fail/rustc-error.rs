@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,10 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// exec-env:TEST_EXEC_ENV=22
-
-use std::env;
-
-pub fn main() {
-    assert_eq!(env::var("TEST_EXEC_ENV"), Ok("22".to_string()));
+#[rustc_error]
+fn main() {
+    //~^ ERROR compilation successful
 }

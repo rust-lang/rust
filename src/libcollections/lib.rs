@@ -27,7 +27,6 @@
 #![feature(box_patterns)]
 #![feature(core)]
 #![feature(hash)]
-#![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]

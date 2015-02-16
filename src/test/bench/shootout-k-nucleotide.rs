@@ -291,7 +291,7 @@ fn get_sequence<R: Buffer>(r: &mut R, key: &str) -> Vec<u8> {
 }
 
 fn main() {
-    let input = if std::os::getenv("RUST_BENCH").is_some() {
+    let input = if std::env::var_os("RUST_BENCH").is_some() {
         let fd = std::old_io::File::open(&Path::new("shootout-k-nucleotide.data"));
         get_sequence(&mut std::old_io::BufferedReader::new(fd), ">THREE")
     } else {

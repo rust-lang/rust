@@ -5,16 +5,10 @@ documentation.
 
 ## Quick Start
 
-1. Download a [binary installer][installer] for your platform.
-2. Read [The Rust Programming Language][trpl].
-3. Enjoy!
+Read ["Installing Rust"][install] from [The Book][trpl].
 
-> ***Note:*** Windows users can read the detailed
-> [using Rust on Windows][win-wiki] notes on the wiki.
-
-[installer]: http://www.rust-lang.org/install.html
+[install]: http://doc.rust-lang.org/book/installing-rust.html
 [trpl]: http://doc.rust-lang.org/book/index.html
-[win-wiki]: https://github.com/rust-lang/rust/wiki/Using-Rust-on-Windows
 
 ## Building from Source
 
@@ -52,8 +46,6 @@ documentation.
     When complete, `make install` will place several programs into
     `/usr/local/bin`: `rustc`, the Rust compiler, and `rustdoc`, the
     API-documentation tool.
-3. Read [The Rust Programming Language][trpl].
-4. Enjoy!
 
 ### Building on Windows
 
@@ -81,7 +73,6 @@ $ pacman -S base-devel
 
 [repo]: https://github.com/rust-lang/rust
 [tarball]: https://static.rust-lang.org/dist/rustc-nightly-src.tar.gz
-[trpl]: http://doc.rust-lang.org/book/index.html
 
 ## Notes
 

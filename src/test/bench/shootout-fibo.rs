@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use std::os;
+use std::env;
 
 fn fib(n: int) -> int {
     if n < 2 {
@@ -20,7 +21,7 @@ fn fib(n: int) -> int {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
+    let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "40".to_string())
     } else if args.len() <= 1u {
         vec!("".to_string(), "30".to_string())

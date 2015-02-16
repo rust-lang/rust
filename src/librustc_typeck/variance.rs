@@ -412,7 +412,7 @@ struct ConstraintContext<'a, 'tcx: 'a> {
     invariant_lang_items: [Option<ast::DefId>; 2],
     covariant_lang_items: [Option<ast::DefId>; 2],
     contravariant_lang_items: [Option<ast::DefId>; 2],
-    unsafe_lang_item: Option<ast::DefId>,
+    unsafe_cell_lang_item: Option<ast::DefId>,
 
     // These are pointers to common `ConstantTerm` instances
     covariant: VarianceTermPtr<'a>,
@@ -453,7 +453,7 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
     invariant_lang_items[RegionParam as uint] =
         terms_cx.tcx.lang_items.invariant_lifetime();
 
-    let unsafe_lang_item = terms_cx.tcx.lang_items.unsafe_type();
+    let unsafe_cell_lang_item = terms_cx.tcx.lang_items.unsafe_cell_type();
 
     let covariant = terms_cx.arena.alloc(ConstantTerm(ty::Covariant));
     let contravariant = terms_cx.arena.alloc(ConstantTerm(ty::Contravariant));
@@ -465,7 +465,7 @@ fn add_constraints_from_crate<'a, 'tcx>(terms_cx: TermsContext<'a, 'tcx>,
         invariant_lang_items: invariant_lang_items,
         covariant_lang_items: covariant_lang_items,
         contravariant_lang_items: contravariant_lang_items,
-        unsafe_lang_item: unsafe_lang_item,
+        unsafe_cell_lang_item: unsafe_cell_lang_item,
 
         covariant: covariant,
         contravariant: contravariant,
@@ -654,7 +654,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             self.covariant
         } else if self.contravariant_lang_items[kind as uint] == Some(item_def_id) {
             self.contravariant
-        } else if kind == TypeParam && Some(item_def_id) == self.unsafe_lang_item {
+        } else if kind == TypeParam && Some(item_def_id) == self.unsafe_cell_lang_item {
             self.invariant
         } else if param_def_id.krate == ast::LOCAL_CRATE {
             // Parameter on an item defined within current crate:

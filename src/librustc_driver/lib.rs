@@ -35,7 +35,7 @@
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
-#![feature(slicing_syntax, unsafe_destructor)]
+#![feature(unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]
@@ -477,6 +477,10 @@ pub fn commit_date_str() -> Option<&'static str> {
     option_env!("CFG_VER_DATE")
 }
 
+pub fn build_date_str() -> Option<&'static str> {
+    option_env!("CFG_BUILD_DATE")
+}
+
 /// Prints version information and returns None on success or an error
 /// message on panic.
 pub fn version(binary: &str, matches: &getopts::Matches) {
@@ -488,6 +492,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
         println!("binary: {}", binary);
         println!("commit-hash: {}", unw(commit_hash_str()));
         println!("commit-date: {}", unw(commit_date_str()));
+        println!("build-date: {}", unw(build_date_str()));
         println!("host: {}", config::host_triple());
         println!("release: {}", unw(release_str()));
     }

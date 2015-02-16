@@ -111,11 +111,18 @@ pub trait Packet {
 }
 
 impl Select {
-    /// Creates a new selection structure. This set is initially empty and
-    /// `wait` will panic!() if called.
+    /// Creates a new selection structure. This set is initially empty.
     ///
-    /// Usage of this struct directly can sometimes be burdensome, and usage is
-    /// rather much easier through the `select!` macro.
+    /// Usage of this struct directly can sometimes be burdensome, and usage is much easier through
+    /// the `select!` macro.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::sync::mpsc::Select;
+    ///
+    /// let select = Select::new();
+    /// ```
     pub fn new() -> Select {
         Select {
             head: ptr::null_mut(),

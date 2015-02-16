@@ -12,6 +12,7 @@
 
 use std::collections::VecMap;
 use std::os;
+use std::env;
 use std::time::Duration;
 
 fn append_sequential(min: uint, max: uint, map: &mut VecMap<uint>) {
@@ -28,7 +29,7 @@ fn check_sequential(min: uint, max: uint, map: &VecMap<uint>) {
 
 fn main() {
     let args = os::args();
-    let args = if os::getenv("RUST_BENCH").is_some() {
+    let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "100000".to_string(), "100".to_string())
     } else if args.len() <= 1u {
         vec!("".to_string(), "10000".to_string(), "50".to_string())

@@ -20,7 +20,7 @@ you to partition your code within the crate itself.
 
 As an example, let's make a *phrases* crate, which will give us various phrases
 in different languages. To keep things simple, we'll stick to "greetings" and
-"farewells" as two kinds of phrases, and use English and Japanese (日本語） as
+"farewells" as two kinds of phrases, and use English and Japanese (日本語) as
 two languages for those phrases to be in. We'll use this module layout:
 
 ```text

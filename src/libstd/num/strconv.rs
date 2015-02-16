@@ -182,7 +182,7 @@ fn int_to_str_bytes_common<T, F>(num: T, radix: uint, sign: SignFormat, mut f: F
 /// - Panics if `radix` > 25 and `exp_format` is `ExpBin` due to conflict
 ///   between digit and exponent sign `'p'`.
 pub fn float_to_str_bytes_common<T: Float>(
-        num: T, radix: uint, negative_zero: bool,
+        num: T, radix: u32, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_upper: bool
         ) -> (Vec<u8>, bool) {
     assert!(2 <= radix && radix <= 36);
@@ -253,7 +253,7 @@ pub fn float_to_str_bytes_common<T: Float>(
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        buf.push(char::from_digit(current_digit.to_int().unwrap() as uint, radix)
+        buf.push(char::from_digit(current_digit.to_int().unwrap() as u32, radix)
              .unwrap() as u8);
 
         // No more digits to calculate for the non-fractional part -> break
@@ -310,7 +310,7 @@ pub fn float_to_str_bytes_common<T: Float>(
             let current_digit = deccum.trunc().abs();
 
             buf.push(char::from_digit(
-                current_digit.to_int().unwrap() as uint, radix).unwrap() as u8);
+                current_digit.to_int().unwrap() as u32, radix).unwrap() as u8);
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
@@ -324,7 +324,7 @@ pub fn float_to_str_bytes_common<T: Float>(
             let ascii2value = |chr: u8| {
                 (chr as char).to_digit(radix).unwrap()
             };
-            let value2ascii = |val: uint| {
+            let value2ascii = |val: u32| {
                 char::from_digit(val, radix).unwrap() as u8
             };
 
@@ -412,7 +412,7 @@ pub fn float_to_str_bytes_common<T: Float>(
 /// `to_str_bytes_common()`, for details see there.
 #[inline]
 pub fn float_to_str_common<T: Float>(
-        num: T, radix: uint, negative_zero: bool,
+        num: T, radix: u32, negative_zero: bool,
         sign: SignFormat, digits: SignificantDigits, exp_format: ExponentFormat, exp_capital: bool
         ) -> (String, bool) {
     let (bytes, special) = float_to_str_bytes_common(num, radix,
@@ -422,8 +422,8 @@ pub fn float_to_str_common<T: Float>(
 
 // Some constants for from_str_bytes_common's input validation,
 // they define minimum radix values for which the character is a valid digit.
-static DIGIT_P_RADIX: uint = ('p' as uint) - ('a' as uint) + 11u;
-static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11u;
+static DIGIT_P_RADIX: u32 = ('p' as u32) - ('a' as u32) + 11;
+static DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
 
 #[cfg(test)]
 mod tests {

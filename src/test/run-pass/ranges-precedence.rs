@@ -10,7 +10,6 @@
 
 // Test that the precedence of ranges is correct
 
-#![feature(slicing_syntax)]
 
 struct Foo {
     foo: uint,

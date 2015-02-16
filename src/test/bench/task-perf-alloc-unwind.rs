@@ -10,7 +10,7 @@
 
 #![feature(unsafe_destructor, box_syntax)]
 
-use std::os;
+use std::env;
 use std::thread::Thread;
 use std::time::Duration;
 
@@ -20,7 +20,7 @@ enum List<T> {
 }
 
 fn main() {
-    let (repeat, depth) = if os::getenv("RUST_BENCH").is_some() {
+    let (repeat, depth) = if env::var_os("RUST_BENCH").is_some() {
         (50, 1000)
     } else {
         (10, 10)

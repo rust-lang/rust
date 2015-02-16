@@ -1033,6 +1033,7 @@ impl AsOsStr for PathBuf {
 /// let parent_dir = path.parent();
 /// ```
 ///
+#[derive(Hash)]
 pub struct Path {
     inner: OsStr
 }

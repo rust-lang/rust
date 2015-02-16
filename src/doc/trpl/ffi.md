@@ -420,7 +420,7 @@ fn main() {
 ```
 
 Alternatively, you may need to alter global state provided by a foreign
-interface. To do this, statics can be declared with `mut` so rust can mutate
+interface. To do this, statics can be declared with `mut` so we can mutate
 them.
 
 ```no_run
@@ -436,11 +436,18 @@ extern {
 
 fn main() {
     let prompt = CString::from_slice(b"[my-awesome-shell] $");
-    unsafe { rl_prompt = prompt.as_ptr(); }
-    // get a line, process it
-    unsafe { rl_prompt = ptr::null(); }
+    unsafe { 
+        rl_prompt = prompt.as_ptr();
+
+        println!("{:?}", rl_prompt);
+
+        rl_prompt = ptr::null();
+    }
 }
 ```
+
+Note that all interaction with a `static mut` is unsafe, both reading and
+writing. Dealing with global mutable state requires a great deal of care.
 
 # Foreign calling conventions
 
