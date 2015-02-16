@@ -14,6 +14,8 @@
 //
 // Issue #18262.
 
+#![feature(rustc_attrs)]
+
 use std::mem;
 
 trait T { fn foo(); }
