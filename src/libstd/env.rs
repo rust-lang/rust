@@ -488,10 +488,18 @@ impl Iterator for Args {
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
 }
 
+impl ExactSizeIterator for Args {
+    fn len(&self) -> usize { self.inner.len() }
+}
+
 impl Iterator for ArgsOs {
     type Item = OsString;
     fn next(&mut self) -> Option<OsString> { self.inner.next() }
     fn size_hint(&self) -> (usize, Option<usize>) { self.inner.size_hint() }
+}
+
+impl ExactSizeIterator for ArgsOs {
+    fn len(&self) -> usize { self.inner.len() }
 }
 
 /// Returns the page size of the current architecture in bytes.
