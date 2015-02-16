@@ -13,6 +13,7 @@
 
 #![allow(unknown_features)]
 #![feature(box_syntax)]
+#![feature(placement_in_syntax)]
 
 // Tests that the new `box` syntax works with unique pointers.
 
@@ -24,8 +25,8 @@ struct Structure {
 }
 
 pub fn main() {
-    let x: Box<int> = box(HEAP) 2;
+    let x: Box<int> = in HEAP { 2 };
     let y: Box<int> = box 2;
-    let b: Box<int> = box()(1 + 2);
-    let c = box()(3 + 4);
+    let b: Box<int> = box () (1 + 2);
+    let c: Box<_> = box () (3 + 4);
 }

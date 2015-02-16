@@ -63,18 +63,19 @@ use core::ops::{Placer, Boxed, Place, InPlace, BoxPlace};
 use core::ptr::Unique;
 use core::raw::TraitObject;
 
-/// A value that represents the heap. This is the default place that the `box`
-/// keyword allocates into when no place is supplied.
+/// A value that represents the heap. This is the place that the `box`
+/// keyword allocates into.
 ///
 /// The following two examples are equivalent:
 ///
 /// ```rust
 /// #![feature(box_syntax)]
+/// #![feature(placement_in_syntax)]
 /// use std::boxed::HEAP;
 ///
 /// fn main() {
-///     let foo = box(HEAP) 5;
-///     let foo = box 5;
+///     let foo = in HEAP { 5 };
+///     let foo: Box<_> = box 5;
 /// }
 /// ```
 #[lang = "exchange_heap"]

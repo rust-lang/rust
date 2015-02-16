@@ -32,11 +32,14 @@
 
 #![allow(unused_variables)]
 #![feature(box_syntax)]
+#![feature(placement_in_syntax)]
 #![omit_gdb_pretty_printer_section]
 
+use std::boxed::HEAP;
+
 fn main() {
-    let a = box 1;
-    let b = box() (2, 3.5f64);
+    let a: Box<_> = box 1;
+    let b = in HEAP { (2, 3.5f64) };
 
     zzz(); // #break
 }
