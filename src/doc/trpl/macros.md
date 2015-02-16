@@ -1,588 +1,365 @@
 % Macros
 
-# Introduction
+By now you've learned about many of the tools Rust provides for abstracting and
+reusing code. These units of code reuse have a rich semantic structure. For
+example, functions have a type signature, type parameters have trait bounds,
+and overloaded functions must belong to a particular trait.
 
-Functions are the primary tool that programmers can use to build abstractions.
-Sometimes, however, programmers want to abstract over compile-time syntax
-rather than run-time values.
-Macros provide syntactic abstraction.
-For an example of how this can be useful, consider the following two code fragments,
-which both pattern-match on their input and both return early in one case,
-doing nothing otherwise:
+This structure means that Rust's core abstractions have powerful compile-time
+correctness checking. But this comes at the price of reduced flexibility. If
+you visually identify a pattern of repeated code, you may find it's difficult
+or cumbersome to express that pattern as a generic function, a trait, or
+anything else within Rust's semantics.
 
-~~~~
-# enum T { SpecialA(u32), SpecialB(u32) }
-# fn f() -> u32 {
-# let input_1 = T::SpecialA(0);
-# let input_2 = T::SpecialA(0);
-match input_1 {
-    T::SpecialA(x) => { return x; }
-    _ => {}
-}
-// ...
-match input_2 {
-    T::SpecialB(x) => { return x; }
-    _ => {}
-}
-# return 0;
-# }
-~~~~
+Macros allow us to abstract at a *syntactic* level. A macro invocation is
+shorthand for an "expanded" syntactic form. This expansion happens early in
+compilation, before any static checking. As a result, macros can capture many
+patterns of code reuse that Rust's core abstractions cannot.
 
-This code could become tiresome if repeated many times.
-However, no function can capture its functionality to make it possible
-to abstract the repetition away.
-Rust's macro system, however, can eliminate the repetition. Macros are
-lightweight custom syntax extensions, themselves defined using the
-`macro_rules!` syntax extension. The following `early_return` macro captures
-the pattern in the above code:
+The drawback is that macro-based code can be harder to understand, because
+fewer of the built-in rules apply. Like an ordinary function, a well-behaved
+macro can be used without understanding its implementation. However, it can be
+difficult to design a well-behaved macro!  Additionally, compiler errors in
+macro code are harder to interpret, because they describe problems in the
+expanded code, not the source-level form that developers use.
 
-~~~~
-# enum T { SpecialA(u32), SpecialB(u32) }
-# fn f() -> u32 {
-# let input_1 = T::SpecialA(0);
-# let input_2 = T::SpecialA(0);
-macro_rules! early_return {
-    ($inp:expr, $sp:path) => ( // invoke it like `(input_5, SpecialE)`
-        match $inp {
-            $sp(x) => { return x; }
-            _ => {}
-        }
-    );
-}
-// ...
-early_return!(input_1, T::SpecialA);
-// ...
-early_return!(input_2, T::SpecialB);
-# return 0;
-# }
-# fn main() {}
-~~~~
+These drawbacks make macros something of a "feature of last resort". That's not
+to say that macros are bad; they are part of Rust because sometimes they're
+needed for truly concise, well-abstracted code. Just keep this tradeoff in
+mind.
 
-Macros are defined in pattern-matching style: in the above example, the text
-`($inp:expr, $sp:path)` that appears on the left-hand side of the `=>` is the
-*macro invocation syntax*, a pattern denoting how to write a call to the
-macro. The text on the right-hand side of the `=>`, beginning with `match
-$inp`, is the *macro transcription syntax*: what the macro expands to.
+# Defining a macro
 
-# Invocation syntax
+You may have seen the `vec!` macro, used to initialize a [vector][] with any
+number of elements.
 
-The macro invocation syntax specifies the syntax for the arguments to the
-macro. It appears on the left-hand side of the `=>` in a macro definition. It
-conforms to the following rules:
+[vector]: arrays-vectors-and-slices.html
 
-1. It must be surrounded by parentheses.
-2. `$` has special meaning (described below).
-3. The `()`s, `[]`s, and `{}`s it contains must balance. For example, `([)` is
-forbidden.
-4. Some arguments can be followed only by a limited set of separators, to
-avoid ambiguity (described below).
+```rust
+let x: Vec<u32> = vec![1, 2, 3];
+# assert_eq!(&[1,2,3], &x);
+```
 
-Otherwise, the invocation syntax is free-form.
+This can't be an ordinary function, because it takes any number of arguments.
+But we can imagine it as syntactic shorthand for
 
-To take a fragment of Rust code as an argument, write `$` followed by a name
- (for use on the right-hand side), followed by a `:`, followed by a *fragment
- specifier*. The fragment specifier denotes the sort of fragment to match. The
- most common fragment specifiers are:
+```rust
+let x: Vec<u32> = {
+    let mut temp_vec = Vec::new();
+    temp_vec.push(1);
+    temp_vec.push(2);
+    temp_vec.push(3);
+    temp_vec
+};
+# assert_eq!(&[1,2,3], &x);
+```
 
-* `ident` (an identifier, referring to a variable or item. Examples: `f`, `x`,
-  `foo`.)
-* `expr` (an expression. Examples: `2 + 2`; `if true then { 1 } else { 2 }`;
-  `f(42)`.)
-* `ty` (a type. Examples: `i32`, `Vec<(char, String)>`, `&T`.)
-* `path` (a path to struct or enum variant. Example: `T::SpecialA`)
-* `pat` (a pattern, usually appearing in a `match` or on the left-hand side of
-  a declaration. Examples: `Some(t)`; `(17, 'a')`; `_`.)
-* `block` (a sequence of actions. Example: `{ log(error, "hi"); return 12; }`)
+We can implement this shorthand, using a macro: [^actual]
 
-The parser interprets any token that's not preceded by a `$` literally. Rust's usual
-rules of tokenization apply,
+[^actual]: The actual definition of `vec!` in libcollections differs from the
+           one presented here, for reasons of efficiency and reusability. Some
+           of these are mentioned in the [advanced macros chapter][].
 
-So `($x:ident -> (($e:expr)))`, though excessively fancy, would designate a macro
-that could be invoked like: `my_macro!(i->(( 2+2 )))`.
-
-To avoid ambiguity, macro invocation syntax must conform to the following rules:
-
-* `expr` must be followed by `=>`, `,` or `;`.
-* `ty` and `path` must be followed by `=>`, `,`, `:`, `=`, `>` or `as`.
-* `pat` must be followed by `=>`, `,` or `=`.
-* `ident` and `block` can be followed by any token.
-
-## Invocation location
-
-A macro invocation may take the place of (and therefore expand to) an
-expression, item, statement, or pattern.  The Rust parser will parse the macro
-invocation as a "placeholder" for whichever syntactic form is appropriate for
-the location.
-
-At expansion time, the output of the macro will be parsed as whichever of the
-three nonterminals it stands in for. This means that a single macro might,
-for example, expand to an item or an expression, depending on its arguments
-(and cause a syntax error if it is called with the wrong argument for its
-location). Although this behavior sounds excessively dynamic, it is known to
-be useful under some circumstances.
-
-
-# Transcription syntax
-
-The right-hand side of the `=>` follows the same rules as the left-hand side,
-except that a `$` need only be followed by the name of the syntactic fragment
-to transcribe into the macro expansion; its type need not be repeated.
-
-The right-hand side must be enclosed by delimiters, which the transcriber ignores.
-Therefore `() => ((1,2,3))` is a macro that expands to a tuple expression,
-`() => (let $x=$val)` is a macro that expands to a statement,
-and `() => (1,2,3)` is a macro that expands to a syntax error
-(since the transcriber interprets the parentheses on the right-hand-size as delimiters,
-and `1,2,3` is not a valid Rust expression on its own).
-
-Except for permissibility of `$name` (and `$(...)*`, discussed below), the
-right-hand side of a macro definition is ordinary Rust syntax. In particular,
-macro invocations (including invocations of the macro currently being defined)
-are permitted in expression, statement, and item locations. However, nothing
-else about the code is examined or executed by the macro system; execution
-still has to wait until run-time.
-
-## Interpolation location
-
-The interpolation `$argument_name` may appear in any location consistent with
-its fragment specifier (i.e., if it is specified as `ident`, it may be used
-anywhere an identifier is permitted).
-
-# Multiplicity
-
-## Invocation
-
-Going back to the motivating example, recall that `early_return` expanded into
-a `match` that would `return` if the `match`'s scrutinee matched the
-"special case" identifier provided as the second argument to `early_return`,
-and do nothing otherwise. Now suppose that we wanted to write a
-version of `early_return` that could handle a variable number of "special"
-cases.
-
-The syntax `$(...)*` on the left-hand side of the `=>` in a macro definition
-accepts zero or more occurrences of its contents. It works much
-like the `*` operator in regular expressions. It also supports a
-separator token (a comma-separated list could be written `$(...),*`), and `+`
-instead of `*` to mean "at least one".
-
-~~~~
-# enum T { SpecialA(u32), SpecialB(u32), SpecialC(u32), SpecialD(u32) }
-# fn f() -> u32 {
-# let input_1 = T::SpecialA(0);
-# let input_2 = T::SpecialA(0);
-macro_rules! early_return {
-    ($inp:expr, [ $($sp:path),+ ]) => (
-        match $inp {
+```rust
+macro_rules! vec {
+    ( $( $x:expr ),* ) => {
+        {
+            let mut temp_vec = Vec::new();
             $(
-                $sp(x) => { return x; }
-            )+
-            _ => {}
+                temp_vec.push($x);
+            )*
+            temp_vec
         }
-    )
+    };
 }
-// ...
-early_return!(input_1, [T::SpecialA,T::SpecialC,T::SpecialD]);
-// ...
-early_return!(input_2, [T::SpecialB]);
-# return 0;
-# }
-# fn main() {}
-~~~~
-
-### Transcription
-
-As the above example demonstrates, `$(...)*` is also valid on the right-hand
-side of a macro definition. The behavior of `*` in transcription,
-especially in cases where multiple `*`s are nested, and multiple different
-names are involved, can seem somewhat magical and unintuitive at first. The
-system that interprets them is called "Macro By Example". The two rules to
-keep in mind are (1) the behavior of `$(...)*` is to walk through one "layer"
-of repetitions for all of the `$name`s it contains in lockstep, and (2) each
-`$name` must be under at least as many `$(...)*`s as it was matched against.
-If it is under more, it'll be repeated, as appropriate.
-
-## Parsing limitations
-
-
-For technical reasons, there are two limitations to the treatment of syntax
-fragments by the macro parser:
-
-1. The parser will always parse as much as possible of a Rust syntactic
-fragment. For example, if the comma were omitted from the syntax of
-`early_return!` above, `input_1 [` would've been interpreted as the beginning
-of an array index. In fact, invoking the macro would have been impossible.
-2. The parser must have eliminated all ambiguity by the time it reaches a
-`$name:fragment_specifier` declaration. This limitation can result in parse
-errors when declarations occur at the beginning of, or immediately after,
-a `$(...)*`. For example, the grammar `$($t:ty)* $e:expr` will always fail to
-parse because the parser would be forced to choose between parsing `t` and
-parsing `e`. Changing the invocation syntax to require a distinctive token in
-front can solve the problem. In the above example, `$(T $t:ty)* E $e:exp`
-solves the problem.
-
-# Macro argument pattern matching
-
-## Motivation
-
-Now consider code like the following:
-
-~~~~
-# enum T1 { Good1(T2, u32), Bad1}
-# struct T2 { body: T3 }
-# enum T3 { Good2(u32), Bad2}
-# fn f(x: T1) -> u32 {
-match x {
-    T1::Good1(g1, val) => {
-        match g1.body {
-            T3::Good2(result) => {
-                // complicated stuff goes here
-                return result + val;
-            },
-            _ => panic!("Didn't get good_2")
-        }
-    }
-    _ => return 0 // default value
-}
-# }
-# fn main() {}
-~~~~
-
-All the complicated stuff is deeply indented, and the error-handling code is
-separated from matches that fail. We'd like to write a macro that performs
-a match, but with a syntax that suits the problem better. The following macro
-can solve the problem:
-
-~~~~
-macro_rules! biased_match {
-    // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
-    ( ($e:expr) -> ($p:pat) else $err:stmt ;
-      binds $bind_res:ident
-    ) => (
-        let $bind_res = match $e {
-            $p => ( $bind_res ),
-            _ => { $err }
-        };
-    );
-    // more than one name; use a tuple
-    ( ($e:expr) -> ($p:pat) else $err:stmt ;
-      binds $( $bind_res:ident ),*
-    ) => (
-        let ( $( $bind_res ),* ) = match $e {
-            $p => ( $( $bind_res ),* ),
-            _ => { $err }
-        };
-    )
-}
-
-# enum T1 { Good1(T2, u32), Bad1}
-# struct T2 { body: T3 }
-# enum T3 { Good2(u32), Bad2}
-# fn f(x: T1) -> u32 {
-biased_match!((x)       -> (T1::Good1(g1, val)) else { return 0 };
-              binds g1, val );
-biased_match!((g1.body) -> (T3::Good2(result) )
-                  else { panic!("Didn't get good_2") };
-              binds result );
-// complicated stuff goes here
-return result + val;
-# }
-# fn main() {}
-~~~~
-
-This solves the indentation problem. But if we have a lot of chained matches
-like this, we might prefer to write a single macro invocation. The input
-pattern we want is clear:
-
-~~~~
-# fn main() {}
-# macro_rules! b {
-    ( $( ($e:expr) -> ($p:pat) else $err:stmt ; )*
-      binds $( $bind_res:ident ),*
-    )
-# => (0) }
-~~~~
-
-However, it's not possible to directly expand to nested match statements. But
-there is a solution.
-
-## The recursive approach to macro writing
-
-A macro may accept multiple different input grammars. The first one to
-successfully match the actual argument to a macro invocation is the one that
-"wins".
-
-In the case of the example above, we want to write a recursive macro to
-process the semicolon-terminated lines, one-by-one. So, we want the following
-input patterns:
-
-~~~~
-# macro_rules! b {
-    ( binds $( $bind_res:ident ),* )
-# => (0) }
-# fn main() {}
-~~~~
-
-...and:
-
-~~~~
-# fn main() {}
-# macro_rules! b {
-    (    ($e     :expr) -> ($p     :pat) else $err     :stmt ;
-      $( ($e_rest:expr) -> ($p_rest:pat) else $err_rest:stmt ; )*
-      binds  $( $bind_res:ident ),*
-    )
-# => (0) }
-~~~~
-
-The resulting macro looks like this. Note that the separation into
-`biased_match!` and `biased_match_rec!` occurs only because we have an outer
-piece of syntax (the `let`) which we only want to transcribe once.
-
-~~~~
 # fn main() {
-
-macro_rules! biased_match_rec {
-    // Handle the first layer
-    (   ($e     :expr) -> ($p     :pat) else $err     :stmt ;
-     $( ($e_rest:expr) -> ($p_rest:pat) else $err_rest:stmt ; )*
-     binds $( $bind_res:ident ),*
-    ) => (
-        match $e {
-            $p => {
-                // Recursively handle the next layer
-                biased_match_rec!($( ($e_rest) -> ($p_rest) else $err_rest ; )*
-                                  binds $( $bind_res ),*
-                )
-            }
-            _ => { $err }
-        }
-    );
-    // Produce the requested values
-    ( binds $( $bind_res:ident ),* ) => ( ($( $bind_res ),*) )
-}
-
-// Wrap the whole thing in a `let`.
-macro_rules! biased_match {
-    // special case: `let (x) = ...` is illegal, so use `let x = ...` instead
-    ( $( ($e:expr) -> ($p:pat) else $err:stmt ; )*
-      binds $bind_res:ident
-    ) => (
-        let $bind_res = biased_match_rec!(
-            $( ($e) -> ($p) else $err ; )*
-            binds $bind_res
-        );
-    );
-    // more than one name: use a tuple
-    ( $( ($e:expr) -> ($p:pat) else $err:stmt ; )*
-      binds  $( $bind_res:ident ),*
-    ) => (
-        let ( $( $bind_res ),* ) = biased_match_rec!(
-            $( ($e) -> ($p) else $err ; )*
-            binds $( $bind_res ),*
-        );
-    )
-}
-
-
-# enum T1 { Good1(T2, u32), Bad1}
-# struct T2 { body: T3 }
-# enum T3 { Good2(u32), Bad2}
-# fn f(x: T1) -> u32 {
-biased_match!(
-    (x)       -> (T1::Good1(g1, val)) else { return 0 };
-    (g1.body) -> (T3::Good2(result) ) else { panic!("Didn't get Good2") };
-    binds val, result );
-// complicated stuff goes here
-return result + val;
+#     assert_eq!(&[1,2,3], &vec![1,2,3]);
 # }
-# }
-~~~~
+```
 
-This technique applies to many cases where transcribing a result all at once is not possible.
-The resulting code resembles ordinary functional programming in some respects,
-but has some important differences from functional programming.
+Whoa, that's a lot of new syntax! Let's break it down.
 
-The first difference is important, but also easy to forget: the transcription
-(right-hand) side of a `macro_rules!` rule is literal syntax, which can only
-be executed at run-time. If a piece of transcription syntax does not itself
-appear inside another macro invocation, it will become part of the final
-program. If it is inside a macro invocation (for example, the recursive
-invocation of `biased_match_rec!`), it does have the opportunity to affect
-transcription, but only through the process of attempted pattern matching.
+```ignore
+macro_rules! vec { ... }
+```
 
-The second, related, difference is that the evaluation order of macros feels
-"backwards" compared to ordinary programming. Given an invocation
-`m1!(m2!())`, the expander first expands `m1!`, giving it as input the literal
-syntax `m2!()`. If it transcribes its argument unchanged into an appropriate
-position (in particular, not as an argument to yet another macro invocation),
-the expander will then proceed to evaluate `m2!()` (along with any other macro
-invocations `m1!(m2!())` produced).
+This says we're defining a macro named `vec`, much as `fn vec` would define a
+function named `vec`. In prose, we informally write a macro's name with an
+exclamation point, e.g. `vec!`. The exclamation point is part of the invocation
+syntax and serves to distinguish a macro from an ordinary function.
 
-# Hygiene
+## Matching
 
-To prevent clashes, rust implements
-[hygienic macros](http://en.wikipedia.org/wiki/Hygienic_macro).
+The macro is defined through a series of *rules*, which are pattern-matching
+cases. Above, we had
 
-As an example, `loop` and `for-loop` labels (discussed in the lifetimes guide)
-will not clash. The following code will print "Hello!" only once:
+```ignore
+( $( $x:expr ),* ) => { ... };
+```
 
-~~~
-macro_rules! loop_x {
-    ($e: expr) => (
-        // $e will not interact with this 'x
-        'x: loop {
-            println!("Hello!");
-            $e
-        }
-    );
+This is like a `match` expression arm, but the matching happens on Rust syntax
+trees, at compile time. The semicolon is optional on the last (here, only)
+case. The "pattern" on the left-hand side of `=>` is known as a *matcher*.
+These have [their own little grammar] within the language.
+
+[their own little grammar]: ../reference.html#macros
+
+The matcher `$x:expr` will match any Rust expression, binding that syntax tree
+to the *metavariable* `$x`. The identifier `expr` is a *fragment specifier*;
+the full possibilities are enumerated in the [advanced macros chapter][].
+Surrounding the matcher with `$(...),*` will match zero or more expressions,
+separated by commas.
+
+Aside from the special matcher syntax, any Rust tokens that appear in a matcher
+must match exactly. For example,
+
+```rust
+macro_rules! foo {
+    (x => $e:expr) => (println!("mode X: {}", $e));
+    (y => $e:expr) => (println!("mode Y: {}", $e));
 }
 
 fn main() {
-    'x: loop {
-        loop_x!(break 'x);
-        println!("I am never printed.");
-    }
+    foo!(y => 3);
 }
-~~~
+```
 
-The two `'x` names did not clash, which would have caused the loop
-to print "I am never printed" and to run forever.
+will print
 
-# Scoping and macro import/export
+```text
+mode Y: 3
+```
 
-Macros are expanded at an early stage in compilation, before name resolution.
-One downside is that scoping works differently for macros, compared to other
-constructs in the language.
-
-Definition and expansion of macros both happen in a single depth-first,
-lexical-order traversal of a crate's source. So a macro defined at module scope
-is visible to any subsequent code in the same module, which includes the body
-of any subsequent child `mod` items.
-
-A macro defined within the body of a single `fn`, or anywhere else not at
-module scope, is visible only within that item.
-
-If a module has the `macro_use` attribute, its macros are also visible in its
-parent module after the child's `mod` item. If the parent also has `macro_use`
-then the macros will be visible in the grandparent after the parent's `mod`
-item, and so forth.
-
-The `macro_use` attribute can also appear on `extern crate`.  In this context
-it controls which macros are loaded from the external crate, e.g.
+With
 
 ```rust,ignore
-#[macro_use(foo, bar)]
-extern crate baz;
+foo!(z => 3);
 ```
 
-If the attribute is given simply as `#[macro_use]`, all macros are loaded.  If
-there is no `#[macro_use]` attribute then no macros are loaded.  Only macros
-defined with the `#[macro_export]` attribute may be loaded.
+we get the compiler error
 
-To load a crate's macros *without* linking it into the output, use `#[no_link]`
-as well.
+```text
+error: no rules expected the token `z`
+```
 
-An example:
+## Expansion
+
+The right-hand side of a macro rule is ordinary Rust syntax, for the most part.
+But we can splice in bits of syntax captured by the matcher. From the original
+example:
+
+```ignore
+$(
+    temp_vec.push($x);
+)*
+```
+
+Each matched expression `$x` will produce a single `push` statement in the
+macro expansion. The repetition in the expansion proceeds in "lockstep" with
+repetition in the matcher (more on this in a moment).
+
+Because `$x` was already declared as matching an expression, we don't repeat
+`:expr` on the right-hand side. Also, we don't include a separating comma as
+part of the repetition operator. Instead, we have a terminating semicolon
+within the repeated block.
+
+Another detail: the `vec!` macro has *two* pairs of braces on the right-hand
+side. They are often combined like so:
+
+```ignore
+macro_rules! foo {
+    () => {{
+        ...
+    }}
+}
+```
+
+The outer braces are part of the syntax of `macro_rules!`. In fact, you can use
+`()` or `[]` instead. They simply delimit the right-hand side as a whole.
+
+The inner braces are part of the expanded syntax. Remember, the `vec!` macro is
+used in an expression context. To write an expression with multiple statements,
+including `let`-bindings, we use a block. If your macro expands to a single
+expression, you don't need this extra layer of braces.
+
+Note that we never *declared* that the macro produces an expression. In fact,
+this is not determined until we use the macro as an expression. With care, you
+can write a macro whose expansion works in several contexts. For example,
+shorthand for a data type could be valid as either an expression or a pattern.
+
+## Repetition
+
+The repetition behavior can seem somewhat magical, especially when multiple
+names are bound at multiple nested levels of repetition. The two rules to keep
+in mind are:
+
+1. the behavior of `$(...)*` is to walk through one "layer" of repetitions, for
+all of the `$name`s it contains, in lockstep, and
+2. each `$name` must be under at least as many `$(...)*`s as it was matched
+against. If it is under more, it'll be duplicated, as appropriate.
+
+This baroque macro illustrates the duplication of variables from outer
+repetition levels.
 
 ```rust
-macro_rules! m1 { () => (()) }
-
-// visible here: m1
-
-mod foo {
-    // visible here: m1
-
-    #[macro_export]
-    macro_rules! m2 { () => (()) }
-
-    // visible here: m1, m2
+macro_rules! o_O {
+    (
+        $(
+            $x:expr; [ $( $y:expr ),* ]
+        );*
+    ) => {
+        &[ $($( $x + $y ),*),* ]
+    }
 }
 
-// visible here: m1
+fn main() {
+    let a: &[i32]
+        = o_O!(10; [1, 2, 3];
+               20; [4, 5, 6]);
 
-macro_rules! m3 { () => (()) }
-
-// visible here: m1, m3
-
-#[macro_use]
-mod bar {
-    // visible here: m1, m3
-
-    macro_rules! m4 { () => (()) }
-
-    // visible here: m1, m3, m4
+    assert_eq!(a, [11, 12, 13, 24, 25, 26]);
 }
-
-// visible here: m1, m3, m4
-# fn main() { }
 ```
 
-When this library is loaded with `#[use_macros] extern crate`, only `m2` will
-be imported.
+That's most of the matcher syntax. These examples use `$(...)*`, which is a
+"zero or more" match. Alternatively you can write `$(...)+` for a "one or
+more" match. Both forms optionally include a separator, which can be any token
+except `+` or `*`.
 
-The Rust Reference has a [listing of macro-related
-attributes](../reference.html#macro--and-plugin-related-attributes).
+# Hygiene
 
-# The variable `$crate`
+Some languages implement macros using simple text substitution, which leads to
+various problems. For example, this C program prints `13` instead of the
+expected `25`.
 
-A further difficulty occurs when a macro is used in multiple crates.  Say that
-`mylib` defines
+```text
+#define FIVE_TIMES(x) 5 * x
+
+int main() {
+    printf("%d\n", FIVE_TIMES(2 + 3));
+    return 0;
+}
+```
+
+After expansion we have `5 * 2 + 3`, and multiplication has greater precedence
+than addition. If you've used C macros a lot, you probably know the standard
+idioms for avoiding this problem, as well as five or six others. In Rust, we
+don't have to worry about it.
 
 ```rust
-pub fn increment(x: u32) -> u32 {
-    x + 1
+macro_rules! five_times {
+    ($x:expr) => (5 * $x);
 }
 
-#[macro_export]
-macro_rules! inc_a {
-    ($x:expr) => ( ::increment($x) )
+fn main() {
+    assert_eq!(25, five_times!(2 + 3));
 }
-
-#[macro_export]
-macro_rules! inc_b {
-    ($x:expr) => ( ::mylib::increment($x) )
-}
-# fn main() { }
 ```
 
-`inc_a` only works within `mylib`, while `inc_b` only works outside the
-library.  Furthermore, `inc_b` will break if the user imports `mylib` under
-another name.
+The metavariable `$x` is parsed as a single expression node, and keeps its
+place in the syntax tree even after substitution.
 
-Rust does not (yet) have a hygiene system for crate references, but it does
-provide a simple workaround for this problem.  Within a macro imported from a
-crate named `foo`, the special macro variable `$crate` will expand to `::foo`.
-By contrast, when a macro is defined and then used in the same crate, `$crate`
-will expand to nothing.  This means we can write
+Another common problem in macro systems is *variable capture*. Here's a C
+macro, using [a GNU C extension] to emulate Rust's expression blocks.
+
+[a GNU C extension]: https://gcc.gnu.org/onlinedocs/gcc/Statement-Exprs.html
+
+```text
+#define LOG(msg) ({ \
+    int state = get_log_state(); \
+    if (state > 0) { \
+        printf("log(%d): %s\n", state, msg); \
+    } \
+})
+```
+
+This looks reasonable, but watch what happens in this example:
+
+```text
+const char *state = "reticulating splines";
+LOG(state);
+```
+
+The program will likely segfault, after it tries to execute
+
+```text
+printf("log(%d): %s\n", state, state);
+```
+
+The equivalent Rust macro has the desired behavior.
 
 ```rust
-#[macro_export]
-macro_rules! inc {
-    ($x:expr) => ( $crate::increment($x) )
+# fn get_log_state() -> i32 { 3 }
+macro_rules! log {
+    ($msg:expr) => {{
+        let state: i32 = get_log_state();
+        if state > 0 {
+            println!("log({}): {}", state, $msg);
+        }
+    }};
 }
-# fn main() { }
+
+fn main() {
+    let state: &str = "reticulating splines";
+    log!(state);
+}
 ```
 
-to define a single macro that works both inside and outside our library.  The
-function name will expand to either `::increment` or `::mylib::increment`.
+This works because Rust has a [hygienic macro system][]. Each macro expansion
+happens in a distinct *syntax context*, and each variable is tagged with the
+syntax context where it was introduced. It's as though the variable `state`
+inside `main` is painted a different "color" from the variable `state` inside
+the macro, and therefore they don't conflict.
 
-To keep this system simple and correct, `#[macro_use] extern crate ...` may
-only appear at the root of your crate, not inside `mod`.  This ensures that
-`$crate` is a single identifier.
+[hygienic macro system]: http://en.wikipedia.org/wiki/Hygienic_macro
 
-# A final note
+This also restricts the ability of macros to introduce new bindings at the
+invocation site. Code such as the following will not work:
 
-Macros, as currently implemented, are not for the faint of heart. Even
-ordinary syntax errors can be more difficult to debug when they occur inside a
-macro, and errors caused by parse problems in generated code can be very
-tricky. Invoking the `log_syntax!` macro can help elucidate intermediate
-states, invoking `trace_macros!(true)` will automatically print those
-intermediate states out, and passing the flag `--pretty expanded` as a
-command-line argument to the compiler will show the result of expansion.
+```rust,ignore
+macro_rules! foo {
+    () => (let x = 3);
+}
 
-If Rust's macro system can't do what you need, you may want to write a
-[compiler plugin](plugins.html) instead. Compared to `macro_rules!`
-macros, this is significantly more work, the interfaces are much less stable,
-and the warnings about debugging apply ten-fold. In exchange you get the
-flexibility of running arbitrary Rust code within the compiler. Syntax
-extension plugins are sometimes called *procedural macros* for this reason.
+fn main() {
+    foo!();
+    println!("{}", x);
+}
+```
+
+Instead you need to pass the variable name into the invocation, so it's tagged
+with the right syntax context.
+
+```rust
+macro_rules! foo {
+    ($v:ident) => (let $v = 3);
+}
+
+fn main() {
+    foo!(x);
+    println!("{}", x);
+}
+```
+
+This holds for `let` bindings and loop labels, but not for [items][].
+So the following code does compile:
+
+```rust
+macro_rules! foo {
+    () => (fn x() { });
+}
+
+fn main() {
+    foo!();
+    x();
+}
+```
+
+[items]: ../reference.html#items
+
+# Further reading
+
+The [advanced macros chapter][] goes into more detail about macro syntax. It
+also describes how to share macros between different modules or crates.
+
+[advanced macros chapter]: advanced-macros.html
