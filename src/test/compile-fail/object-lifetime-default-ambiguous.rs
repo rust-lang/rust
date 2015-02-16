@@ -49,7 +49,8 @@ fn d(t: Ref2<Ref1<Test>>) {
 fn e(t: Ref2<Ref0<Test>>) {
     //~^ ERROR lifetime bound for this object type cannot be deduced from context
     //
-    // In this case, Ref0 just inherits.
+    // In this case, Ref2 is ambiguous, and Ref0 inherits the
+    // ambiguity.
 }
 
 fn f(t: &Ref2<Test>) {

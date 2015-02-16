@@ -32,15 +32,15 @@ fn static_lifime_ok<'a,T,U:Send>(_: &'a isize) {
 // otherwise lifetime pointers are not ok
 
 fn param_not_ok<'a>(x: &'a isize) {
-    assert_send::<&'a isize>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a isize>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn param_not_ok1<'a>(_: &'a isize) {
-    assert_send::<&'a str>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a str>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn param_not_ok2<'a>(_: &'a isize) {
-    assert_send::<&'a [isize]>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a [isize]>(); //~ ERROR does not fulfill the required lifetime
 }
 
 // boxes are ok
@@ -54,7 +54,7 @@ fn box_ok() {
 // but not if they own a bad thing
 
 fn box_with_region_not_ok<'a>() {
-    assert_send::<Box<&'a isize>>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<Box<&'a isize>>(); //~ ERROR does not fulfill the required lifetime
 }
 
 // objects with insufficient bounds no ok
@@ -66,7 +66,7 @@ fn object_with_random_bound_not_ok<'a>() {
 
 fn object_with_send_bound_not_ok<'a>() {
     assert_send::<&'a (Dummy+Send)>();
-    //~^ ERROR declared lifetime bound not satisfied
+    //~^ ERROR does not fulfill the required lifetime
 }
 
 // unsafe pointers are ok unless they point at unsendable things

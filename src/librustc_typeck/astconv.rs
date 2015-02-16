@@ -1754,6 +1754,12 @@ fn compute_object_lifetime_bound<'tcx>(
     return r;
 }
 
+/// Given an object type like `SomeTrait+Send`, computes the lifetime
+/// bounds that must hold on the elided self type. These are derived
+/// from the declarations of `SomeTrait`, `Send`, and friends -- if
+/// they declare `trait SomeTrait : 'static`, for example, then
+/// `'static` would appear in the list. The hard work is done by
+/// `ty::required_region_bounds`, see that for more information.
 pub fn object_region_bounds<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     principal: &ty::PolyTraitRef<'tcx>,
