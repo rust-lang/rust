@@ -14,11 +14,15 @@
 
 pub fn main() {
     let _x: Box<str> = box *"hello world";
-    //~^ ERROR E0161
-    //~^^ ERROR cannot move out of borrowed content
+    //~^ ERROR E0277
+    //~| ERROR the trait `core::marker::Sized` is not implemented for the type `str`
+    //~| ERROR the trait `core::marker::Sized` is not implemented for the type `str`
+    //~| ERROR the trait `core::marker::Sized` is not implemented for the type `str`
 
     let array: &[isize] = &[1, 2, 3];
     let _x: Box<[isize]> = box *array;
-    //~^ ERROR E0161
-    //~^^ ERROR cannot move out of borrowed content
+    //~^ ERROR E0277
+    //~| ERROR the trait `core::marker::Sized` is not implemented for the type `[isize]`
+    //~| ERROR the trait `core::marker::Sized` is not implemented for the type `[isize]`
+    //~| ERROR the trait `core::marker::Sized` is not implemented for the type `[isize]`
 }

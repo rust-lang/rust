@@ -11,6 +11,7 @@
 #![allow(dead_code)]
 #![forbid(box_pointers)]
 #![feature(box_syntax)]
+#![feature(core)]
 
 struct Foo {
     x: Box<isize> //~ ERROR type uses owned
@@ -19,4 +20,7 @@ struct Foo {
 fn main() {
     let _x : Foo = Foo {x : box 10};
     //~^ ERROR type uses owned
+    //~| ERROR type uses owned
+    //~| ERROR type uses owned
+    //~| ERROR type uses owned
 }
