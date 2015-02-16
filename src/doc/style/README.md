@@ -1,4 +1,4 @@
-% Rust Guidelines [working title]
+% Style Guidelines
 
 This document collects the emerging principles, conventions, abstractions, and
 best practices for writing Rust code.
@@ -9,19 +9,6 @@ drive discussion, consensus and adoption.
 
 Whenever feasible, guidelines provide specific examples from Rust's standard
 libraries.
-
-For now, you can find a rendered snapshot at
-[http://aturon.github.io/](http://aturon.github.io/).  After
-[some infrastructure work](https://github.com/aturon/rust-guidelines/issues/17), the snapshot will move somewhere more
-official.
-
-### Building the document
-
-Like http://rustbyexample.com/, this guidelines document is written in
-the [`gitbook`](https://github.com/GitbookIO/gitbook) style. It can be
-compiled with a prototype tool,
-[`rustbook`](https://github.com/aturon/rust-book) that provides a
-minimal subset of `gitbook`'s functionality on top of `rustdoc`.
 
 ### Guideline statuses
 
