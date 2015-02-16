@@ -22,7 +22,7 @@ fn test51<'a>() {
 }
 fn test52<'a>() {
     assert_send::<&'a (Dummy+Send)>();
-    //~^ ERROR declared lifetime bound not satisfied
+    //~^ ERROR does not fulfill the required lifetime
 }
 
 // ...unless they are properly bounded

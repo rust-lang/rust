@@ -72,7 +72,7 @@ pub fn expand_deprecated_deriving(cx: &mut ExtCtxt,
                                   span: Span,
                                   _: &MetaItem,
                                   _: &Item,
-                                  _: Box<FnMut(P<Item>)>) {
+                                  _: &mut FnMut(P<Item>)) {
     cx.span_err(span, "`deriving` has been renamed to `derive`");
 }
 
@@ -80,7 +80,7 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                           _span: Span,
                           mitem: &MetaItem,
                           item: &Item,
-                          mut push: Box<FnMut(P<Item>)>) {
+                          push: &mut FnMut(P<Item>)) {
     match mitem.node {
         MetaNameValue(_, ref l) => {
             cx.span_err(l.span, "unexpected value in `derive`");

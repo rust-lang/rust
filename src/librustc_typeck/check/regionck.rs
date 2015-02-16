@@ -154,7 +154,7 @@ pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         // empty region is a subregion of all others, this can't fail
         // unless the type does not meet the well-formedness
         // requirements.
-        type_must_outlive(&mut rcx, infer::RelateRegionParamBound(span),
+        type_must_outlive(&mut rcx, infer::RelateParamBound(span, component_ty),
                           component_ty, ty::ReEmpty);
     }
 }
@@ -305,7 +305,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             debug!("visit_region_obligations: r_o={}",
                    r_o.repr(self.tcx()));
             let sup_type = self.resolve_type(r_o.sup_type);
-            let origin = infer::RelateRegionParamBound(r_o.cause.span);
+            let origin = infer::RelateParamBound(r_o.cause.span, sup_type);
             type_must_outlive(self, origin, sup_type, r_o.sub_region);
         }
 

@@ -12,6 +12,7 @@
 
 pub use self::WfConstraint::*;
 
+use astconv::object_region_bounds;
 use middle::infer::GenericKind;
 use middle::subst::{ParamSpace, Subst, Substs};
 use middle::ty::{self, Ty};
@@ -95,7 +96,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
             ty::ty_trait(ref t) => {
                 let required_region_bounds =
-                    ty::object_region_bounds(self.tcx, Some(&t.principal), t.bounds.builtin_bounds);
+                    object_region_bounds(self.tcx, &t.principal, t.bounds.builtin_bounds);
                 self.accumulate_from_object_ty(ty, t.bounds.region_bound, required_region_bounds)
             }
 

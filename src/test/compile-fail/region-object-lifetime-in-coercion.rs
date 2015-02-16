@@ -17,20 +17,22 @@ trait Foo {}
 impl<'a> Foo for &'a [u8] {}
 
 fn a(v: &[u8]) -> Box<Foo + 'static> {
-    let x: Box<Foo + 'static> = box v; //~ ERROR declared lifetime bound not satisfied
+    let x: Box<Foo + 'static> = box v; //~ ERROR does not fulfill the required lifetime
     x
 }
 
 fn b(v: &[u8]) -> Box<Foo + 'static> {
-    box v //~ ERROR declared lifetime bound not satisfied
+    box v //~ ERROR does not fulfill the required lifetime
 }
 
 fn c(v: &[u8]) -> Box<Foo> {
-    box v // OK thanks to lifetime elision
+    // same as previous case due to RFC 599
+
+    box v //~ ERROR does not fulfill the required lifetime
 }
 
 fn d<'a,'b>(v: &'a [u8]) -> Box<Foo+'b> {
-    box v //~ ERROR declared lifetime bound not satisfied
+    box v //~ ERROR does not fulfill the required lifetime
 }
 
 fn e<'a:'b,'b>(v: &'a [u8]) -> Box<Foo+'b> {

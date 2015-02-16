@@ -29,15 +29,15 @@ fn static_lifime_ok<'a,T,U:Send>(_: &'a isize) {
 // otherwise lifetime pointers are not ok
 
 fn param_not_ok<'a>(x: &'a isize) {
-    assert_send::<&'a isize>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a isize>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn param_not_ok1<'a>(_: &'a isize) {
-    assert_send::<&'a str>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a str>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn param_not_ok2<'a>(_: &'a isize) {
-    assert_send::<&'a [isize]>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a [isize]>(); //~ ERROR does not fulfill the required lifetime
 }
 
 // boxes are ok
@@ -51,7 +51,7 @@ fn box_ok() {
 // but not if they own a bad thing
 
 fn box_with_region_not_ok<'a>() {
-    assert_send::<Box<&'a isize>>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<Box<&'a isize>>(); //~ ERROR does not fulfill the required lifetime
 }
 
 // unsafe pointers are ok unless they point at unsendable things
@@ -62,11 +62,11 @@ fn unsafe_ok1<'a>(_: &'a isize) {
 }
 
 fn unsafe_ok2<'a>(_: &'a isize) {
-    assert_send::<*const &'a isize>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<*const &'a isize>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn unsafe_ok3<'a>(_: &'a isize) {
-    assert_send::<*mut &'a isize>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<*mut &'a isize>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn main() {

@@ -17,9 +17,9 @@ trait Foo {
     fn borrowed<'a>(&'a self) -> &'a ();
 }
 
-// Here the receiver and return value all have the same lifetime,
-// so no error results.
-fn borrowed_receiver_same_lifetime<'a>(x: &'a Foo) -> &'a () {
+// Borrowed receiver with two distinct lifetimes, but we know that
+// 'b:'a, hence &'a () is permitted.
+fn borrowed_receiver_related_lifetimes<'a,'b>(x: &'a (Foo+'b)) -> &'a () {
     x.borrowed()
 }
 
