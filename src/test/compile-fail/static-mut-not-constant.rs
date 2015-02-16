@@ -11,7 +11,23 @@
 #![feature(box_syntax)]
 
 static mut a: Box<isize> = box 3;
-//~^ ERROR allocations are not allowed in statics
-//~^^ ERROR mutable statics are not allowed to have owned pointers
+//~^ ERROR mutable statics are not allowed to have owned pointers
+//~| ERROR statics are not allowed to have destructors
+//^| ERROR statics are not allowed to have destructors
+//~| ERROR statics are not allowed to have destructors
+//~| ERROR statics are not allowed to have destructors
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR blocks in statics are limited to items and tail expressions
+//~| ERROR function calls in statics are limited to struct and enum constructors
+//~| ERROR function calls in statics are limited to struct and enum constructors
+//~| ERROR function calls in statics are limited to struct and enum constructors
+//~| ERROR function calls in statics are limited to struct and enum constructors
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR paths in statics may only refer to constants or functions
+//~| ERROR references in statics may only refer to immutable values
 
 fn main() {}
