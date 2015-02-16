@@ -40,6 +40,11 @@ let x: i32 = 5;
 If I asked you to read this out loud to the rest of the class, you'd say "`x`
 is a binding with the type `i32` and the value `five`."
 
+In this case we chose to represent `x` as a 32-bit signed integer. Rust has
+many different primitive integer types. They begin with `i` for signed integers
+and `u` for unsigned integers. The possible integer sizes are 8, 16, 32, and 64
+bits.
+
 In future examples, we may annotate the type in a comment. The examples will
 look like this:
 
