@@ -226,7 +226,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 pub fn trans_fn_ref<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                               def_id: ast::DefId,
                               node: ExprOrMethodCall,
-                              param_substs: &subst::Substs<'tcx>)
+                              param_substs: &'tcx subst::Substs<'tcx>)
                               -> Datum<'tcx, Rvalue> {
     let _icx = push_ctxt("trans_fn_ref");
 
@@ -326,7 +326,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                               &function_name[]);
 
     //
-    let empty_substs = Substs::trans_empty();
+    let empty_substs = tcx.mk_substs(Substs::trans_empty());
     let (block_arena, fcx): (TypedArena<_>, FunctionContext);
     block_arena = TypedArena::new();
     fcx = new_fn_ctxt(ccx,
@@ -334,7 +334,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                       ast::DUMMY_NODE_ID,
                       false,
                       sig.output,
-                      &empty_substs,
+                      empty_substs,
                       None,
                       &block_arena);
     let mut bcx = init_function(&fcx, false, sig.output);
@@ -386,7 +386,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     ccx: &CrateContext<'a, 'tcx>,
     def_id: ast::DefId,
     node: ExprOrMethodCall,
-    param_substs: &subst::Substs<'tcx>,
+    param_substs: &'tcx subst::Substs<'tcx>,
     substs: subst::Substs<'tcx>)
     -> Datum<'tcx, Rvalue>
 {
@@ -416,7 +416,9 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     // We need to modify the def_id and our substs in order to monomorphize
     // the function.
     let (is_default, def_id, substs) = match ty::provided_source(tcx, def_id) {
-        None => (false, def_id, substs),
+        None => {
+            (false, def_id, tcx.mk_substs(substs))
+        }
         Some(source_id) => {
             // There are two relevant substitutions when compiling
             // default methods. First, there is the substitution for
@@ -444,7 +446,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
                         .erase_regions();
 
                     // And compose them
-                    let new_substs = first_subst.subst(tcx, &substs);
+                    let new_substs = tcx.mk_substs(first_subst.subst(tcx, &substs));
 
                     debug!("trans_fn_with_vtables - default method: \
                             substs = {}, trait_subst = {}, \
@@ -463,7 +465,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
     };
 
     // If this is a closure, redirect to it.
-    match closure::get_or_create_declaration_if_closure(ccx, def_id, &substs) {
+    match closure::get_or_create_declaration_if_closure(ccx, def_id, substs) {
         None => {}
         Some(llfn) => return llfn,
     }
@@ -505,7 +507,7 @@ pub fn trans_fn_ref_with_substs<'a, 'tcx>(
         };
 
         let (val, fn_ty, must_cast) =
-            monomorphize::monomorphic_fn(ccx, def_id, &substs, opt_ref_id);
+            monomorphize::monomorphic_fn(ccx, def_id, substs, opt_ref_id);
         if must_cast && node != ExprId(0) {
             // Monotype of the REFERENCE to the function (type params
             // are subst'd)

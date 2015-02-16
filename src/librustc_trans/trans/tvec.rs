@@ -309,8 +309,6 @@ pub fn write_content<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                                     |set_bcx, lleltptr, _| {
                                                         elem.shallow_copy(set_bcx, lleltptr)
                                                     });
-
-                            elem.add_clean_if_rvalue(bcx, element.id);
                             bcx
                         }
                     }

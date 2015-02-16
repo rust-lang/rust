@@ -23,6 +23,7 @@ use middle::mem_categorization::cmt;
 use middle::pat_util::*;
 use middle::ty::*;
 use middle::ty;
+use std::cmp::Ordering;
 use std::fmt;
 use std::iter::{range_inclusive, AdditiveIterator, FromIterator, repeat};
 use std::num::Float;
@@ -821,7 +822,9 @@ fn range_covered_by_constructor(ctor: &Constructor,
     let cmp_from = compare_const_vals(c_from, from);
     let cmp_to = compare_const_vals(c_to, to);
     match (cmp_from, cmp_to) {
-        (Some(val1), Some(val2)) => Some(val1 >= 0 && val2 <= 0),
+        (Some(cmp_from), Some(cmp_to)) => {
+            Some(cmp_from != Ordering::Less && cmp_to != Ordering::Greater)
+        }
         _ => None
     }
 }

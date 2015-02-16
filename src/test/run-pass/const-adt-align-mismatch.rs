@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,23 +8,21 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn outer<T>() {
-    #[allow(dead_code)]
-    fn inner() -> u32 {
-        8675309
-    }
+use std::mem;
+
+#[derive(PartialEq, Show)]
+enum Foo {
+    A(u32),
+    Bar([u16; 4]),
+    C
 }
 
-extern "C" fn outer_foreign<T>() {
-    #[allow(dead_code)]
-    fn inner() -> u32 {
-        11235813
-    }
-}
+// NOTE(eddyb) Don't make this a const, needs to be a static
+// so it is always instantiated as a LLVM constant value.
+static FOO: Foo = Foo::C;
 
 fn main() {
-    outer::<int>();
-    outer::<uint>();
-    outer_foreign::<int>();
-    outer_foreign::<uint>();
+    assert_eq!(FOO, Foo::C);
+    assert_eq!(mem::size_of::<Foo>(), 12);
+    assert_eq!(mem::min_align_of::<Foo>(), 4);
 }

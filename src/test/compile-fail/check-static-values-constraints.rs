@@ -99,7 +99,7 @@ static STATIC10: UnsafeStruct = UnsafeStruct;
 struct MyOwned;
 
 static STATIC11: Box<MyOwned> = box MyOwned;
-//~^ ERROR statics are not allowed to have custom pointers
+//~^ ERROR allocations are not allowed in statics
 
 // The following examples test that mutable structs are just forbidden
 // to have types with destructors
@@ -117,16 +117,17 @@ static mut STATIC14: SafeStruct = SafeStruct {
 //~^ ERROR mutable statics are not allowed to have destructors
     field1: SafeEnum::Variant1,
     field2: SafeEnum::Variant4("str".to_string())
+//~^ ERROR static contains unimplemented expression type
 };
 
 static STATIC15: &'static [Box<MyOwned>] = &[
-    box MyOwned, //~ ERROR statics are not allowed to have custom pointers
-    box MyOwned, //~ ERROR statics are not allowed to have custom pointers
+    box MyOwned, //~ ERROR allocations are not allowed in statics
+    box MyOwned, //~ ERROR allocations are not allowed in statics
 ];
 
 static STATIC16: (&'static Box<MyOwned>, &'static Box<MyOwned>) = (
-    &box MyOwned, //~ ERROR statics are not allowed to have custom pointers
-    &box MyOwned, //~ ERROR statics are not allowed to have custom pointers
+    &box MyOwned, //~ ERROR allocations are not allowed in statics
+    &box MyOwned, //~ ERROR allocations are not allowed in statics
 );
 
 static mut STATIC17: SafeEnum = SafeEnum::Variant1;
@@ -134,9 +135,9 @@ static mut STATIC17: SafeEnum = SafeEnum::Variant1;
 
 static STATIC19: Box<isize> =
     box 3;
-//~^ ERROR statics are not allowed to have custom pointers
+//~^ ERROR allocations are not allowed in statics
 
 pub fn main() {
     let y = { static x: Box<isize> = box 3; x };
-    //~^ ERROR statics are not allowed to have custom pointers
+    //~^ ERROR allocations are not allowed in statics
 }

@@ -9,6 +9,7 @@
 // except according to those terms.
 
 use back::link::mangle_internal_name_by_path_and_seq;
+use llvm::ValueRef;
 use middle::mem_categorization::Typer;
 use trans::adt;
 use trans::base::*;
@@ -137,7 +138,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
     // duplicate declarations
     let function_type = erase_regions(ccx.tcx(), &function_type);
     let params = match function_type.sty {
-        ty::ty_closure(_, _, ref substs) => substs.types.clone(),
+        ty::ty_closure(_, _, substs) => &substs.types,
         _ => unreachable!()
     };
     let mono_id = MonoId {
@@ -171,41 +172,51 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
     Some(Datum::new(llfn, function_type, Rvalue::new(ByValue)))
 }
 
-pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
-                                      decl: &ast::FnDecl,
-                                      body: &ast::Block,
-                                      id: ast::NodeId,
-                                      dest: expr::Dest)
-                                      -> Block<'blk, 'tcx>
+pub enum Dest<'a, 'tcx: 'a> {
+    SaveIn(Block<'a, 'tcx>, ValueRef),
+    Ignore(&'a CrateContext<'a, 'tcx>)
+}
+
+pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
+                                    decl: &ast::FnDecl,
+                                    body: &ast::Block,
+                                    id: ast::NodeId,
+                                    param_substs: &'tcx Substs<'tcx>)
+                                    -> Option<Block<'a, 'tcx>>
 {
+    let ccx = match dest {
+        Dest::SaveIn(bcx, _) => bcx.ccx(),
+        Dest::Ignore(ccx) => ccx
+    };
+    let tcx = ccx.tcx();
     let _icx = push_ctxt("closure::trans_closure");
 
     debug!("trans_closure()");
 
     let closure_id = ast_util::local_def(id);
     let llfn = get_or_create_declaration_if_closure(
-        bcx.ccx(),
+        ccx,
         closure_id,
-        bcx.fcx.param_substs).unwrap();
+        param_substs).unwrap();
 
     // Get the type of this closure. Use the current `param_substs` as
     // the closure substitutions. This makes sense because the closure
     // takes the same set of type arguments as the enclosing fn, and
     // this function (`trans_closure`) is invoked at the point
     // of the closure expression.
-    let typer = NormalizingClosureTyper::new(bcx.tcx());
-    let function_type = typer.closure_type(closure_id, bcx.fcx.param_substs);
+    let typer = NormalizingClosureTyper::new(tcx);
+    let function_type = typer.closure_type(closure_id, param_substs);
 
     let freevars: Vec<ty::Freevar> =
-        ty::with_freevars(bcx.tcx(), id, |fv| fv.iter().map(|&fv| fv).collect());
+        ty::with_freevars(tcx, id, |fv| fv.iter().map(|&fv| fv).collect());
 
-    let sig = ty::erase_late_bound_regions(bcx.tcx(), &function_type.sig);
+    let sig = ty::erase_late_bound_regions(tcx, &function_type.sig);
 
-    trans_closure(bcx.ccx(),
+    trans_closure(ccx,
                   decl,
                   body,
                   llfn.val,
-                  bcx.fcx.param_substs,
+                  param_substs,
                   id,
                   &[],
                   sig.output,
@@ -215,15 +226,15 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and
     // we must still generate the closure body.
-    let dest_addr = match dest {
-        expr::SaveIn(p) => p,
-        expr::Ignore => {
+    let (mut bcx, dest_addr) = match dest {
+        Dest::SaveIn(bcx, p) => (bcx, p),
+        Dest::Ignore(_) => {
             debug!("trans_closure() ignoring result");
-            return bcx
+            return None;
         }
     };
 
-    let repr = adt::represent_type(bcx.ccx(), node_id_type(bcx, id));
+    let repr = adt::represent_type(ccx, node_id_type(bcx, id));
 
     // Create the closure.
     for (i, freevar) in freevars.iter().enumerate() {
@@ -235,8 +246,7 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                    i);
         let upvar_id = ty::UpvarId { var_id: freevar.def.local_node_id(),
                                      closure_expr_id: id };
-        let upvar_capture = bcx.tcx().upvar_capture(upvar_id).unwrap();
-        match upvar_capture {
+        match tcx.upvar_capture(upvar_id).unwrap() {
             ty::UpvarCapture::ByValue => {
                 bcx = datum.store_to(bcx, upvar_slot_dest);
             }
@@ -247,6 +257,6 @@ pub fn trans_closure_expr<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     }
     adt::trans_set_discr(bcx, &*repr, dest_addr, 0);
 
-    bcx
+    Some(bcx)
 }
 

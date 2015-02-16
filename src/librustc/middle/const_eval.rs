@@ -12,79 +12,23 @@
 #![allow(unsigned_negation)]
 
 pub use self::const_val::*;
-pub use self::constness::*;
 
 use metadata::csearch;
 use middle::{astencode, def};
 use middle::pat_util::def_to_path;
-use middle::ty::{self};
+use middle::ty::{self, Ty};
 use middle::astconv_util::{ast_ty_to_prim_ty};
-use util::nodemap::DefIdMap;
 
 use syntax::ast::{self, Expr};
 use syntax::codemap::Span;
 use syntax::parse::token::InternedString;
 use syntax::ptr::P;
-use syntax::visit::{self, Visitor};
 use syntax::{ast_map, ast_util, codemap};
 
+use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
+use std::{i8, i16, i32, i64};
 use std::rc::Rc;
-
-//
-// This pass classifies expressions by their constant-ness.
-//
-// Constant-ness comes in 3 flavours:
-//
-//   - Integer-constants: can be evaluated by the frontend all the way down
-//     to their actual value. They are used in a few places (enum
-//     discriminants, switch arms) and are a subset of
-//     general-constants. They cover all the integer and integer-ish
-//     literals (nil, bool, int, uint, char, iNN, uNN) and all integer
-//     operators and copies applied to them.
-//
-//   - General-constants: can be evaluated by LLVM but not necessarily by
-//     the frontend; usually due to reliance on target-specific stuff such
-//     as "where in memory the value goes" or "what floating point mode the
-//     target uses". This _includes_ integer-constants, plus the following
-//     constructors:
-//
-//        fixed-size vectors and strings: [] and ""/_
-//        vector and string slices: &[] and &""
-//        tuples: (,)
-//        enums: foo(...)
-//        floating point literals and operators
-//        & and * pointers
-//        copies of general constants
-//
-//        (in theory, probably not at first: if/match on integer-const
-//         conditions / discriminants)
-//
-//   - Non-constants: everything else.
-//
-
-#[derive(Copy)]
-pub enum constness {
-    integral_const,
-    general_const,
-    non_const
-}
-
-type constness_cache = DefIdMap<constness>;
-
-pub fn join(a: constness, b: constness) -> constness {
-    match (a, b) {
-      (integral_const, integral_const) => integral_const,
-      (integral_const, general_const)
-      | (general_const, integral_const)
-      | (general_const, general_const) => general_const,
-      _ => non_const
-    }
-}
-
-pub fn join_all<It: Iterator<Item=constness>>(cs: It) -> constness {
-    cs.fold(integral_const, |a, b| join(a, b))
-}
 
 fn lookup_const<'a>(tcx: &'a ty::ctxt, e: &Expr) -> Option<&'a Expr> {
     let opt_def = tcx.def_map.borrow().get(&e.id).cloned();
@@ -186,113 +130,6 @@ pub fn lookup_const_by_id<'a>(tcx: &'a ty::ctxt, def_id: ast::DefId)
     }
 }
 
-struct ConstEvalVisitor<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
-    ccache: constness_cache,
-}
-
-impl<'a, 'tcx> ConstEvalVisitor<'a, 'tcx> {
-    fn classify(&mut self, e: &Expr) -> constness {
-        let did = ast_util::local_def(e.id);
-        match self.ccache.get(&did) {
-            Some(&x) => return x,
-            None => {}
-        }
-        let cn = match e.node {
-            ast::ExprLit(ref lit) => {
-                match lit.node {
-                    ast::LitStr(..) | ast::LitFloat(..) => general_const,
-                    _ => integral_const
-                }
-            }
-
-            ast::ExprUnary(_, ref inner) | ast::ExprParen(ref inner) =>
-                self.classify(&**inner),
-
-            ast::ExprBinary(_, ref a, ref b) =>
-                join(self.classify(&**a), self.classify(&**b)),
-
-            ast::ExprTup(ref es) |
-            ast::ExprVec(ref es) =>
-                join_all(es.iter().map(|e| self.classify(&**e))),
-
-            ast::ExprStruct(_, ref fs, None) => {
-                let cs = fs.iter().map(|f| self.classify(&*f.expr));
-                join_all(cs)
-            }
-
-            ast::ExprCast(ref base, _) => {
-                let ty = ty::expr_ty(self.tcx, e);
-                let base = self.classify(&**base);
-                if ty::type_is_integral(ty) {
-                    join(integral_const, base)
-                } else if ty::type_is_fp(ty) {
-                    join(general_const, base)
-                } else {
-                    non_const
-                }
-            }
-
-            ast::ExprField(ref base, _) => self.classify(&**base),
-
-            ast::ExprTupField(ref base, _) => self.classify(&**base),
-
-            ast::ExprIndex(ref base, ref idx) =>
-                join(self.classify(&**base), self.classify(&**idx)),
-
-            ast::ExprAddrOf(ast::MutImmutable, ref base) =>
-                self.classify(&**base),
-
-            // FIXME: (#3728) we can probably do something CCI-ish
-            // surrounding nonlocal constants. But we don't yet.
-            ast::ExprPath(_) | ast::ExprQPath(_) => self.lookup_constness(e),
-
-            ast::ExprRepeat(..) => general_const,
-
-            ast::ExprBlock(ref block) => {
-                match block.expr {
-                    Some(ref e) => self.classify(&**e),
-                    None => integral_const
-                }
-            }
-
-            _ => non_const
-        };
-        self.ccache.insert(did, cn);
-        cn
-    }
-
-    fn lookup_constness(&self, e: &Expr) -> constness {
-        match lookup_const(self.tcx, e) {
-            Some(rhs) => {
-                let ty = ty::expr_ty(self.tcx, &*rhs);
-                if ty::type_is_integral(ty) {
-                    integral_const
-                } else {
-                    general_const
-                }
-            }
-            None => non_const
-        }
-    }
-
-}
-
-impl<'a, 'tcx, 'v> Visitor<'v> for ConstEvalVisitor<'a, 'tcx> {
-    fn visit_expr_post(&mut self, e: &Expr) {
-        self.classify(e);
-    }
-}
-
-pub fn process_crate(tcx: &ty::ctxt) {
-    visit::walk_crate(&mut ConstEvalVisitor {
-        tcx: tcx,
-        ccache: DefIdMap(),
-    }, tcx.map.krate());
-    tcx.sess.abort_if_errors();
-}
-
-
 // FIXME (#33): this doesn't handle big integer/float literals correctly
 // (nor does the rest of our literal handling).
 #[derive(Clone, PartialEq)]
@@ -370,17 +207,23 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat>
 }
 
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
-    match eval_const_expr_partial(tcx, e) {
+    match eval_const_expr_partial(tcx, e, None) {
         Ok(r) => r,
         Err(s) => tcx.sess.span_fatal(e.span, &s[])
     }
 }
 
-pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, String> {
+pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                     e: &Expr,
+                                     ty_hint: Option<Ty<'tcx>>)
+                                     -> Result<const_val, String> {
     fn fromb(b: bool) -> Result<const_val, String> { Ok(const_int(b as i64)) }
+
+    let ety = ty_hint.or_else(|| ty::expr_ty_opt(tcx, e));
+
     match e.node {
       ast::ExprUnary(ast::UnNeg, ref inner) => {
-        match eval_const_expr_partial(tcx, &**inner) {
+        match eval_const_expr_partial(tcx, &**inner, ety) {
           Ok(const_float(f)) => Ok(const_float(-f)),
           Ok(const_int(i)) => Ok(const_int(-i)),
           Ok(const_uint(i)) => Ok(const_uint(-i)),
@@ -390,7 +233,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
         }
       }
       ast::ExprUnary(ast::UnNot, ref inner) => {
-        match eval_const_expr_partial(tcx, &**inner) {
+        match eval_const_expr_partial(tcx, &**inner, ety) {
           Ok(const_int(i)) => Ok(const_int(!i)),
           Ok(const_uint(i)) => Ok(const_uint(!i)),
           Ok(const_bool(b)) => Ok(const_bool(!b)),
@@ -398,8 +241,12 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
         }
       }
       ast::ExprBinary(op, ref a, ref b) => {
-        match (eval_const_expr_partial(tcx, &**a),
-               eval_const_expr_partial(tcx, &**b)) {
+        let b_ty = match op.node {
+            ast::BiShl | ast::BiShr => Some(tcx.types.uint),
+            _ => ety
+        };
+        match (eval_const_expr_partial(tcx, &**a, ety),
+               eval_const_expr_partial(tcx, &**b, b_ty)) {
           (Ok(const_float(a)), Ok(const_float(b))) => {
             match op.node {
               ast::BiAdd => Ok(const_float(a + b)),
@@ -417,19 +264,46 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
             }
           }
           (Ok(const_int(a)), Ok(const_int(b))) => {
+            let is_a_min_value = |&:| {
+                let int_ty = match ty::expr_ty_opt(tcx, e).map(|ty| &ty.sty) {
+                    Some(&ty::ty_int(int_ty)) => int_ty,
+                    _ => return false
+                };
+                let int_ty = if let ast::TyIs(_) = int_ty {
+                    tcx.sess.target.int_type
+                } else {
+                    int_ty
+                };
+                match int_ty {
+                    ast::TyI8 => (a as i8) == i8::MIN,
+                    ast::TyI16 =>  (a as i16) == i16::MIN,
+                    ast::TyI32 =>  (a as i32) == i32::MIN,
+                    ast::TyI64 =>  (a as i64) == i64::MIN,
+                    ast::TyIs(_) => unreachable!()
+                }
+            };
             match op.node {
               ast::BiAdd => Ok(const_int(a + b)),
               ast::BiSub => Ok(const_int(a - b)),
               ast::BiMul => Ok(const_int(a * b)),
-              ast::BiDiv if b == 0 => {
-                  Err("attempted to divide by zero".to_string())
+              ast::BiDiv => {
+                  if b == 0 {
+                      Err("attempted to divide by zero".to_string())
+                  } else if b == -1 && is_a_min_value() {
+                      Err("attempted to divide with overflow".to_string())
+                  } else {
+                      Ok(const_int(a / b))
+                  }
               }
-              ast::BiDiv => Ok(const_int(a / b)),
-              ast::BiRem if b == 0 => {
-                  Err("attempted remainder with a divisor of \
-                       zero".to_string())
+              ast::BiRem => {
+                  if b == 0 {
+                      Err("attempted remainder with a divisor of zero".to_string())
+                  } else if b == -1 && is_a_min_value() {
+                      Err("attempted remainder with overflow".to_string())
+                  } else {
+                      Ok(const_int(a % b))
+                  }
               }
-              ast::BiRem => Ok(const_int(a % b)),
               ast::BiAnd | ast::BiBitAnd => Ok(const_int(a & b)),
               ast::BiOr | ast::BiBitOr => Ok(const_int(a | b)),
               ast::BiBitXor => Ok(const_int(a ^ b)),
@@ -504,63 +378,53 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
         // This tends to get called w/o the type actually having been
         // populated in the ctxt, which was causing things to blow up
         // (#5900). Fall back to doing a limited lookup to get past it.
-        let ety = ty::expr_ty_opt(tcx, e)
-                .or_else(|| ast_ty_to_prim_ty(tcx, &**target_ty))
+        let ety = ety.or_else(|| ast_ty_to_prim_ty(tcx, &**target_ty))
                 .unwrap_or_else(|| {
                     tcx.sess.span_fatal(target_ty.span,
                                         "target type not found for const cast")
                 });
-
-        macro_rules! define_casts {
-            ($val:ident, {
-                $($ty_pat:pat => (
-                    $intermediate_ty:ty,
-                    $const_type:ident,
-                    $target_ty:ty
-                )),*
-            }) => (match ety.sty {
-                $($ty_pat => {
-                    match $val {
-                        const_bool(b) => Ok($const_type(b as $intermediate_ty as $target_ty)),
-                        const_uint(u) => Ok($const_type(u as $intermediate_ty as $target_ty)),
-                        const_int(i) => Ok($const_type(i as $intermediate_ty as $target_ty)),
-                        const_float(f) => Ok($const_type(f as $intermediate_ty as $target_ty)),
-                        _ => Err(concat!(
-                            "can't cast this type to ", stringify!($const_type)
-                        ).to_string())
-                    }
-                },)*
-                _ => Err("can't cast this type".to_string())
-            })
-        }
-
-        eval_const_expr_partial(tcx, &**base)
-            .and_then(|val| define_casts!(val, {
-                ty::ty_int(ast::TyIs(_)) => (int, const_int, i64),
-                ty::ty_int(ast::TyI8) => (i8, const_int, i64),
-                ty::ty_int(ast::TyI16) => (i16, const_int, i64),
-                ty::ty_int(ast::TyI32) => (i32, const_int, i64),
-                ty::ty_int(ast::TyI64) => (i64, const_int, i64),
-                ty::ty_uint(ast::TyUs(_)) => (uint, const_uint, u64),
-                ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
-                ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
-                ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),
-                ty::ty_uint(ast::TyU64) => (u64, const_uint, u64),
-                ty::ty_float(ast::TyF32) => (f32, const_float, f64),
-                ty::ty_float(ast::TyF64) => (f64, const_float, f64)
-            }))
+        // Prefer known type to noop, but always have a type hint.
+        let base_hint = ty::expr_ty_opt(tcx, &**base).unwrap_or(ety);
+        let val = try!(eval_const_expr_partial(tcx, &**base, Some(base_hint)));
+        cast_const(val, ety)
       }
       ast::ExprPath(_) | ast::ExprQPath(_) => {
-          match lookup_const(tcx, e) {
-              Some(actual_e) => eval_const_expr_partial(tcx, &*actual_e),
-              None => Err("non-constant path in constant expr".to_string())
-          }
+          let opt_def = tcx.def_map.borrow().get(&e.id).cloned();
+          let (const_expr, const_ty) = match opt_def {
+              Some(def::DefConst(def_id)) => {
+                  if ast_util::is_local(def_id) {
+                      match tcx.map.find(def_id.node) {
+                          Some(ast_map::NodeItem(it)) => match it.node {
+                              ast::ItemConst(ref ty, ref expr) => {
+                                  (Some(&**expr), Some(&**ty))
+                              }
+                              _ => (None, None)
+                          },
+                          _ => (None, None)
+                      }
+                  } else {
+                      (lookup_const_by_id(tcx, def_id), None)
+                  }
+              }
+              Some(def::DefVariant(enum_def, variant_def, _)) => {
+                  (lookup_variant_by_id(tcx, enum_def, variant_def), None)
+              }
+              _ => (None, None)
+          };
+          let const_expr = match const_expr {
+              Some(actual_e) => actual_e,
+              None => return Err("non-constant path in constant expr".to_string())
+          };
+          let ety = ety.or_else(|| const_ty.and_then(|ty| ast_ty_to_prim_ty(tcx, ty)));
+          eval_const_expr_partial(tcx, const_expr, ety)
       }
-      ast::ExprLit(ref lit) => Ok(lit_to_const(&**lit)),
-      ast::ExprParen(ref e)     => eval_const_expr_partial(tcx, &**e),
+      ast::ExprLit(ref lit) => {
+          Ok(lit_to_const(&**lit, ety))
+      }
+      ast::ExprParen(ref e)     => eval_const_expr_partial(tcx, &**e, ety),
       ast::ExprBlock(ref block) => {
         match block.expr {
-            Some(ref expr) => eval_const_expr_partial(tcx, &**expr),
+            Some(ref expr) => eval_const_expr_partial(tcx, &**expr, ety),
             None => Ok(const_int(0i64))
         }
       }
@@ -569,7 +433,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
         if let Some(&ast::ExprTup(ref fields)) = lookup_const(tcx, &**base).map(|s| &s.node) {
             // Check that the given index is within bounds and evaluate its value
             if fields.len() > index.node {
-                return eval_const_expr_partial(tcx, &*fields[index.node])
+                return eval_const_expr_partial(tcx, &*fields[index.node], None)
             } else {
                 return Err("tuple index out of bounds".to_string())
             }
@@ -584,7 +448,7 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
             // Check that the given field exists and evaluate it
             if let Some(f) = fields.iter().find(|f|
                                            f.ident.node.as_str() == field_name.node.as_str()) {
-                return eval_const_expr_partial(tcx, &*f.expr)
+                return eval_const_expr_partial(tcx, &*f.expr, None)
             } else {
                 return Err("nonexistent struct field".to_string())
             }
@@ -596,7 +460,44 @@ pub fn eval_const_expr_partial(tcx: &ty::ctxt, e: &Expr) -> Result<const_val, St
     }
 }
 
-pub fn lit_to_const(lit: &ast::Lit) -> const_val {
+fn cast_const(val: const_val, ty: Ty) -> Result<const_val, String> {
+    macro_rules! define_casts {
+        ($($ty_pat:pat => (
+            $intermediate_ty:ty,
+            $const_type:ident,
+            $target_ty:ty
+        )),*) => (match ty.sty {
+            $($ty_pat => {
+                match val {
+                    const_bool(b) => Ok($const_type(b as $intermediate_ty as $target_ty)),
+                    const_uint(u) => Ok($const_type(u as $intermediate_ty as $target_ty)),
+                    const_int(i) => Ok($const_type(i as $intermediate_ty as $target_ty)),
+                    const_float(f) => Ok($const_type(f as $intermediate_ty as $target_ty)),
+                    _ => Err(concat!("can't cast this type to ",
+                                     stringify!($const_type)).to_string())
+                }
+            },)*
+            _ => Err("can't cast this type".to_string())
+        })
+    }
+
+    define_casts!{
+        ty::ty_int(ast::TyIs(_)) => (int, const_int, i64),
+        ty::ty_int(ast::TyI8) => (i8, const_int, i64),
+        ty::ty_int(ast::TyI16) => (i16, const_int, i64),
+        ty::ty_int(ast::TyI32) => (i32, const_int, i64),
+        ty::ty_int(ast::TyI64) => (i64, const_int, i64),
+        ty::ty_uint(ast::TyUs(_)) => (uint, const_uint, u64),
+        ty::ty_uint(ast::TyU8) => (u8, const_uint, u64),
+        ty::ty_uint(ast::TyU16) => (u16, const_uint, u64),
+        ty::ty_uint(ast::TyU32) => (u32, const_uint, u64),
+        ty::ty_uint(ast::TyU64) => (u64, const_uint, u64),
+        ty::ty_float(ast::TyF32) => (f32, const_float, f64),
+        ty::ty_float(ast::TyF64) => (f64, const_float, f64)
+    }
+}
+
+fn lit_to_const(lit: &ast::Lit, ty_hint: Option<Ty>) -> const_val {
     match lit.node {
         ast::LitStr(ref s, _) => const_str((*s).clone()),
         ast::LitBinary(ref data) => {
@@ -604,8 +505,13 @@ pub fn lit_to_const(lit: &ast::Lit) -> const_val {
         }
         ast::LitByte(n) => const_uint(n as u64),
         ast::LitChar(n) => const_uint(n as u64),
-        ast::LitInt(n, ast::SignedIntLit(_, ast::Plus)) |
-        ast::LitInt(n, ast::UnsuffixedIntLit(ast::Plus)) => const_int(n as i64),
+        ast::LitInt(n, ast::SignedIntLit(_, ast::Plus)) => const_int(n as i64),
+        ast::LitInt(n, ast::UnsuffixedIntLit(ast::Plus)) => {
+            match ty_hint.map(|ty| &ty.sty) {
+                Some(&ty::ty_uint(_)) => const_uint(n),
+                _ => const_int(n as i64)
+            }
+        }
         ast::LitInt(n, ast::SignedIntLit(_, ast::Minus)) |
         ast::LitInt(n, ast::UnsuffixedIntLit(ast::Minus)) => const_int(-(n as i64)),
         ast::LitInt(n, ast::UnsignedIntLit(_)) => const_uint(n),
@@ -617,21 +523,45 @@ pub fn lit_to_const(lit: &ast::Lit) -> const_val {
     }
 }
 
-fn compare_vals<T: PartialOrd>(a: T, b: T) -> Option<int> {
-    Some(if a == b { 0 } else if a < b { -1 } else { 1 })
-}
-pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<int> {
-    match (a, b) {
-        (&const_int(a), &const_int(b)) => compare_vals(a, b),
-        (&const_uint(a), &const_uint(b)) => compare_vals(a, b),
-        (&const_float(a), &const_float(b)) => compare_vals(a, b),
-        (&const_str(ref a), &const_str(ref b)) => compare_vals(a, b),
-        (&const_bool(a), &const_bool(b)) => compare_vals(a, b),
-        (&const_binary(ref a), &const_binary(ref b)) => compare_vals(a, b),
-        _ => None
-    }
+pub fn compare_const_vals(a: &const_val, b: &const_val) -> Option<Ordering> {
+    Some(match (a, b) {
+        (&const_int(a), &const_int(b)) => a.cmp(&b),
+        (&const_uint(a), &const_uint(b)) => a.cmp(&b),
+        (&const_float(a), &const_float(b)) => {
+            // This is pretty bad but it is the existing behavior.
+            if a == b {
+                Ordering::Equal
+            } else if a < b {
+                Ordering::Less
+            } else {
+                Ordering::Greater
+            }
+        }
+        (&const_str(ref a), &const_str(ref b)) => a.cmp(b),
+        (&const_bool(a), &const_bool(b)) => a.cmp(&b),
+        (&const_binary(ref a), &const_binary(ref b)) => a.cmp(b),
+        _ => return None
+    })
 }
 
-pub fn compare_lit_exprs(tcx: &ty::ctxt, a: &Expr, b: &Expr) -> Option<int> {
-    compare_const_vals(&eval_const_expr(tcx, a), &eval_const_expr(tcx, b))
+pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
+                               a: &Expr,
+                               b: &Expr,
+                               ty_hint: Option<Ty<'tcx>>)
+                               -> Option<Ordering> {
+    let a = match eval_const_expr_partial(tcx, a, ty_hint) {
+        Ok(a) => a,
+        Err(s) => {
+            tcx.sess.span_err(a.span, &s[]);
+            return None;
+        }
+    };
+    let b = match eval_const_expr_partial(tcx, b, ty_hint) {
+        Ok(b) => b,
+        Err(s) => {
+            tcx.sess.span_err(b.span, &s[]);
+            return None;
+        }
+    };
+    compare_const_vals(&a, &b)
 }
