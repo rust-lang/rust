@@ -1070,7 +1070,19 @@ impl<'a> RandomAccessIterator for Iter<'a> {
     }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<'a> IntoIterator for &'a Bitv {
+    type IntoIter = Iter<'a>;
+
+    fn into_iter(self) -> Iter<'a> {
+        self.iter()
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<'a> IntoIterator for &'a Bitv {
+    type Item = bool;
     type IntoIter = Iter<'a>;
 
     fn into_iter(self) -> Iter<'a> {
@@ -1882,7 +1894,19 @@ impl<'a> Iterator for SymmetricDifference<'a> {
     #[inline] fn size_hint(&self) -> (usize, Option<usize>) { self.0.size_hint() }
 }
 
+// NOTE(stage0): remove impl after a snapshot
+#[cfg(stage0)]
 impl<'a> IntoIterator for &'a BitvSet {
+    type IntoIter = SetIter<'a>;
+
+    fn into_iter(self) -> SetIter<'a> {
+        self.iter()
+    }
+}
+
+#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+impl<'a> IntoIterator for &'a BitvSet {
+    type Item = usize;
     type IntoIter = SetIter<'a>;
 
     fn into_iter(self) -> SetIter<'a> {
