@@ -1,7 +1,9 @@
 # The Rust Programming Language
 
 This is a compiler for Rust, including standard libraries, tools and
-documentation.
+documentation. Rust is a systems programming language that is fast,
+memory safe and multithreaded, but does not employ a garbage collector
+or otherwise impose significant runtime overhead.
 
 ## Quick Start
 
