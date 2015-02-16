@@ -292,6 +292,27 @@ nav.sub {
 .content td p:first-child { margin-top: 0; }
 .content td h1, .content td h2 { margin-left: 0; font-size: 1.1em; }
 
+.docblock table {
+    border: 1px solid #ddd;
+    margin: .5em 0;
+    border-collapse: collapse;
+    width: 100%;
+}
+
+.docblock table td {
+    padding: .5em;
+    border-top: 1px dashed #ddd;
+    border-bottom: 1px dashed #ddd;
+
+}
+
+.docblock table th {
+    padding: .5em;
+    text-align: left;
+    border-top: 1px solid #ddd;
+    border-bottom: 1px solid #ddd;
+}
+
 .content .item-list {
     list-style-type: none;
     padding: 0;
