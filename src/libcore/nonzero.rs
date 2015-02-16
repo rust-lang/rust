@@ -19,8 +19,8 @@ pub unsafe trait Zeroable {}
 unsafe impl<T> Zeroable for *const T {}
 unsafe impl<T> Zeroable for *mut T {}
 unsafe impl<T> Zeroable for Unique<T> { }
-unsafe impl Zeroable for int {}
-unsafe impl Zeroable for uint {}
+unsafe impl Zeroable for isize {}
+unsafe impl Zeroable for usize {}
 unsafe impl Zeroable for i8 {}
 unsafe impl Zeroable for u8 {}
 unsafe impl Zeroable for i16 {}
