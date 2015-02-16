@@ -447,6 +447,9 @@ fn initial_syntax_expander_table(ecfg: &expand::ExpansionConfig) -> SyntaxEnv {
 
     let mut syntax_expanders = SyntaxEnv::new();
     syntax_expanders.insert(intern("macro_rules"), MacroRulesTT);
+    syntax_expanders.insert(intern("format_arg"),
+                            builtin_normal_expander(
+                                ext::format::expand_format_arg));
     syntax_expanders.insert(intern("format_args"),
                             builtin_normal_expander(
                                 ext::format::expand_format_args));

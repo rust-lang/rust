@@ -177,9 +177,21 @@ macro_rules! try {
 /// write!(&mut w, "test");
 /// write!(&mut w, "formatted {}", "arguments");
 /// ```
+#[cfg(stage0)]
 #[macro_export]
 macro_rules! write {
     ($dst:expr, $($arg:tt)*) => ((&mut *$dst).write_fmt(format_args!($($arg)*)))
+}
+
+#[cfg(not(stage0))]
+#[macro_export]
+macro_rules! write {
+    ($dst:expr, $fmt:expr) => {
+        (&mut *$dst).write_str(format_arg!($fmt))
+    };
+    ($dst:expr, $fmt:expr, $($arg:tt)+) => {
+        (&mut *$dst).write_fmt(format_args!($fmt, $($arg)*))
+    };
 }
 
 /// Equivalent to the `write!` macro, except that a newline is appended after

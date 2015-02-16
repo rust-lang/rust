@@ -57,7 +57,7 @@ struct Context<'a, 'b:'a> {
     /// Collection of the compiled `rt::Argument` structures
     pieces: Vec<P<ast::Expr>>,
     /// Collection of string literals
-    str_pieces: Vec<P<ast::Expr>>,
+    str_pieces: Vec<(Span, token::InternedString)>,
     /// Stays `true` if all formatting parameters are default (as in "{}{}").
     all_pieces_simple: bool,
 
@@ -335,11 +335,11 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 
     /// Translate the accumulated string literals to a literal expression
-    fn trans_literal_string(&mut self) -> P<ast::Expr> {
+    fn trans_string(&mut self) -> (Span, token::InternedString) {
         let sp = self.fmtsp;
         let s = token::intern_and_get_ident(&self.literal[]);
         self.literal.clear();
-        self.ecx.expr_str(sp, s)
+        (sp, s)
     }
 
     /// Translate a `parse::Piece` to a static `rt::Argument` or append
@@ -475,10 +475,15 @@ impl<'a, 'b> Context<'a, 'b> {
                 self.ecx.ty_ident(self.fmtsp, self.ecx.ident_of("str")),
                 Some(static_lifetime),
                 ast::MutImmutable);
+
+        let str_pieces = self.str_pieces.iter()
+            .map(|&(sp, ref s)| self.ecx.expr_str(sp, s.clone()))
+            .collect();
+
         let pieces = Context::static_array(self.ecx,
                                            "__STATIC_FMTSTR",
                                            piece_ty,
-                                           self.str_pieces);
+                                           str_pieces);
 
 
         // Right now there is a bug such that for the expression:
@@ -627,6 +632,43 @@ impl<'a, 'b> Context<'a, 'b> {
     }
 }
 
+pub fn expand_format_arg<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
+                              tts: &[ast::TokenTree])
+                              -> Box<base::MacResult+'cx> {
+
+    match parse_args(ecx, sp, tts) {
+        Some((efmt, args, order, names)) => {
+            if !args.is_empty() || !order.is_empty() || !names.is_empty() {
+                ecx.span_err(sp,
+                             &format!("requires no arguments, found {}",
+                                      args.len() + order.len()));
+
+                DummyResult::expr(sp)
+            } else {
+                MacExpr::new(expand_preparsed_format_arg(ecx, sp, efmt))
+            }
+        }
+        None => DummyResult::expr(sp)
+    }
+}
+
+/// Take the various parts of `format_arg!(efmt)`
+/// and construct the appropriate formatting expression.
+pub fn expand_preparsed_format_arg(ecx: &mut ExtCtxt, sp: Span,
+                                   efmt: P<ast::Expr>)
+                                   -> P<ast::Expr> {
+    match parse_format_args(ecx, sp, efmt, Vec::new(), Vec::new(), HashMap::new()) {
+        Some(cx) => {
+            let mut s = String::new();
+            for &(_, ref part) in cx.str_pieces.iter() {
+                s.push_str(part.as_slice());
+            }
+            cx.ecx.expr_str(sp, token::intern_and_get_ident(&s[]))
+        }
+        None => DummyResult::raw_expr(sp),
+    }
+}
+
 pub fn expand_format_args<'cx>(ecx: &'cx mut ExtCtxt, sp: Span,
                                tts: &[ast::TokenTree])
                                -> Box<base::MacResult+'cx> {
@@ -648,6 +690,18 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                     name_ordering: Vec<String>,
                                     names: HashMap<String, P<ast::Expr>>)
                                     -> P<ast::Expr> {
+    match parse_format_args(ecx, sp, efmt, args, name_ordering, names) {
+        Some(cx) => cx.into_expr(),
+        None => DummyResult::raw_expr(sp),
+    }
+}
+
+fn parse_format_args<'a, 'b: 'a>(ecx: &'a mut ExtCtxt<'b>, sp: Span,
+                          efmt: P<ast::Expr>,
+                          args: Vec<P<ast::Expr>>,
+                          name_ordering: Vec<String>,
+                          names: HashMap<String, P<ast::Expr>>)
+                          -> Option<Context<'a, 'b>> {
     let arg_types: Vec<_> = (0..args.len()).map(|_| None).collect();
     let mut cx = Context {
         ecx: ecx,
@@ -670,7 +724,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                                    efmt,
                                    "format argument must be a string literal.") {
         Some((fmt, _)) => fmt,
-        None => return DummyResult::raw_expr(sp)
+        None => return None
     };
 
     let mut parser = parse::Parser::new(&fmt);
@@ -682,7 +736,7 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
                 cx.verify_piece(&piece);
                 match cx.trans_piece(&piece) {
                     Some(piece) => {
-                        let s = cx.trans_literal_string();
+                        let s = cx.trans_string();
                         cx.str_pieces.push(s);
                         cx.pieces.push(piece);
                     }
@@ -695,10 +749,10 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
     if !parser.errors.is_empty() {
         cx.ecx.span_err(cx.fmtsp, &format!("invalid format string: {}",
                                           parser.errors.remove(0))[]);
-        return DummyResult::raw_expr(sp);
+        return None;
     }
     if !cx.literal.is_empty() {
-        let s = cx.trans_literal_string();
+        let s = cx.trans_string();
         cx.str_pieces.push(s);
     }
 
@@ -714,5 +768,5 @@ pub fn expand_preparsed_format_args(ecx: &mut ExtCtxt, sp: Span,
         }
     }
 
-    cx.into_expr()
+    Some(cx)
 }

@@ -79,10 +79,23 @@ macro_rules! format {
 
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
+#[cfg(stage0)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! print {
     ($($arg:tt)*) => ($crate::old_io::stdio::print_args(format_args!($($arg)*)))
+}
+
+#[cfg(not(stage0))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! print {
+    ($fmt:expr) => {
+        $crate::old_io::stdio::print(format_arg!($fmt))
+    };
+    ($fmt:expr, $($arg:tt)+) => {
+        $crate::old_io::stdio::print_args(format_args!($fmt, $($arg)*))
+    };
 }
 
 /// Macro for printing to a task's stdout handle.
@@ -97,10 +110,23 @@ macro_rules! print {
 /// println!("hello there!");
 /// println!("format {} arguments", "some");
 /// ```
+#[cfg(stage0)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! println {
     ($($arg:tt)*) => ($crate::old_io::stdio::println_args(format_args!($($arg)*)))
+}
+
+#[cfg(not(stage0))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! println {
+    ($fmt:expr) => {
+        $crate::old_io::stdio::println(format_arg!($fmt))
+    };
+    ($fmt:expr, $($arg:tt)*) => {
+        $crate::old_io::stdio::println_args(format_args!($fmt, $($arg)*))
+    };
 }
 
 /// Helper macro for unwrapping `Result` values while returning early with an
@@ -185,6 +211,28 @@ macro_rules! log {
 /// into libsyntax itself.
 #[cfg(dox)]
 pub mod builtin {
+    /// Parse a `&'static str` with a compatible format to `format_args!()`.
+    ///
+    /// This macro produces a value of type `&'static str`, and is intended to
+    /// be used by the other formatting macros (`format!`, `write!`, `println!`)
+    /// are proxied through this one.
+    ///
+    /// For more information, see the documentation in `std::fmt`.
+    ///
+    /// # Example
+    ///
+    /// ```rust
+    /// use std::fmt;
+    ///
+    /// let s = format_arg!("hello");
+    /// assert_eq!(s, format!("hello"));
+    ///
+    /// ```
+    #[macro_export]
+    macro_rules! format_arg { ($fmt:expr) => ({
+        /* compiler built-in */
+    }) }
+
     /// The core macro for formatted string creation & output.
     ///
     /// This macro produces a value of type `fmt::Arguments`. This value can be
