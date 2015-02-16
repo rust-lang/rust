@@ -247,6 +247,10 @@ impl Iterator for Args {
     fn size_hint(&self) -> (usize, Option<usize>) { self.iter.size_hint() }
 }
 
+impl ExactSizeIterator for Args {
+    fn len(&self) -> usize { self.iter.len() }
+}
+
 /// Returns the command line arguments
 ///
 /// Returns a list of the command line arguments.
