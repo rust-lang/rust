@@ -19,22 +19,14 @@ Read ["Installing Rust"][install] from [The Book][trpl].
     * `curl`
     * `git`
 
-2. Download and build Rust:
-
-    You can either download a [tarball] or build directly from the [repo].
-
-    To build from the [tarball] do:
-
-        $ curl -O https://static.rust-lang.org/dist/rustc-nightly-src.tar.gz
-        $ tar -xzf rustc-nightly-src.tar.gz
-        $ cd rustc-nightly
-
-    Or to build from the [repo] do:
+2. Clone the [source] with git:
 
         $ git clone https://github.com/rust-lang/rust.git
         $ cd rust
 
-    Now that you have Rust's source code, you can configure and build it:
+[source]: https://github.com/rust-lang/rust
+
+3. Build and install:
 
         $ ./configure
         $ make && make install
@@ -71,9 +63,6 @@ $ pacman -S base-devel
 
         $ ./configure
         $ make && make install
-
-[repo]: https://github.com/rust-lang/rust
-[tarball]: https://static.rust-lang.org/dist/rustc-nightly-src.tar.gz
 
 ## Notes
 
