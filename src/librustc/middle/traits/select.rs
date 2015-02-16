@@ -652,8 +652,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 let is_dup =
                     (0..candidates.len())
                     .filter(|&j| i != j)
-                    .any(|j| self.candidate_should_be_dropped_in_favor_of(stack,
-                                                                          &candidates[i],
+                    .any(|j| self.candidate_should_be_dropped_in_favor_of(&candidates[i],
                                                                           &candidates[j]));
                 if is_dup {
                     debug!("Dropping candidate #{}/{}: {}",
@@ -1235,31 +1234,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         self.evaluate_predicates_recursively(stack, selection.iter_nested())
     }
 
-    /// Returns true if `candidate_i` should be dropped in favor of `candidate_j`.
-    ///
-    /// This is generally true if either:
-    /// - candidate i and candidate j are equivalent; or,
-    /// - candidate i is a concrete impl and candidate j is a where clause bound,
-    ///   and the concrete impl is applicable to the types in the where clause bound.
-    ///
-    /// The last case refers to cases where there are blanket impls (often conditional
-    /// blanket impls) as well as a where clause. This can come down to one of two cases:
-    ///
-    /// - The impl is truly unconditional (it has no where clauses
-    ///   of its own), in which case the where clause is
-    ///   unnecessary, because coherence requires that we would
-    ///   pick that particular impl anyhow (at least so long as we
-    ///   don't have specialization).
-    ///
-    /// - The impl is conditional, in which case we may not have winnowed it out
-    ///   because we don't know if the conditions apply, but the where clause is basically
-    ///   telling us that there is some impl, though not necessarily the one we see.
-    ///
-    /// In both cases we prefer to take the where clause, which is
-    /// essentially harmless.  See issue #18453 for more details of
-    /// a case where doing the opposite caused us harm.
+    /// Returns true if `candidate_i` should be dropped in favor of
+    /// `candidate_j`.  Generally speaking we will drop duplicate
+    /// candidates and prefer where-clause candidates.
     fn candidate_should_be_dropped_in_favor_of<'o>(&mut self,
-                                                   stack: &TraitObligationStack<'o, 'tcx>,
                                                    candidate_i: &SelectionCandidate<'tcx>,
                                                    candidate_j: &SelectionCandidate<'tcx>)
                                                    -> bool
@@ -1269,37 +1247,16 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match (candidate_i, candidate_j) {
-            (&ImplCandidate(impl_def_id), &ParamCandidate(ref bound)) => {
-                debug!("Considering whether to drop param {} in favor of impl {}",
-                       candidate_i.repr(self.tcx()),
-                       candidate_j.repr(self.tcx()));
-
-                self.infcx.probe(|snapshot| {
-                    let (skol_obligation_trait_ref, skol_map) =
-                        self.infcx().skolemize_late_bound_regions(
-                            &stack.obligation.predicate, snapshot);
-                    let impl_substs =
-                        self.rematch_impl(impl_def_id, stack.obligation, snapshot,
-                                          &skol_map, skol_obligation_trait_ref.trait_ref.clone());
-                    let impl_trait_ref =
-                        ty::impl_trait_ref(self.tcx(), impl_def_id).unwrap();
-                    let impl_trait_ref =
-                        impl_trait_ref.subst(self.tcx(), &impl_substs.value);
-                    let poly_impl_trait_ref =
-                        ty::Binder(impl_trait_ref);
-                    let origin =
-                        infer::RelateOutputImplTypes(stack.obligation.cause.span);
-                    self.infcx
-                        .sub_poly_trait_refs(false, origin, poly_impl_trait_ref, bound.clone())
-                        .is_ok()
-                })
-            }
-            (&BuiltinCandidate(_), &ParamCandidate(_)) => {
-                // If we have a where-clause like `Option<K> : Send`,
-                // then we wind up in a situation where there is a
-                // default rule (`Option<K>:Send if K:Send) and the
-                // where-clause that both seem applicable. Just take
-                // the where-clause in that case.
+            (&ImplCandidate(..), &ParamCandidate(..)) |
+            (&ClosureCandidate(..), &ParamCandidate(..)) |
+            (&FnPointerCandidate(..), &ParamCandidate(..)) |
+            (&BuiltinCandidate(..), &ParamCandidate(..)) => {
+                // We basically prefer always prefer to use a
+                // where-clause over another option. Where clauses
+                // impose the burden of finding the exact match onto
+                // the caller. Using an impl in preference of a where
+                // clause can also lead us to "overspecialize", as in
+                // #18453.
                 true
             }
             (&ProjectionCandidate, &ParamCandidate(_)) => {
