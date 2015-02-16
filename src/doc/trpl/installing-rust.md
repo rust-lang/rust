@@ -24,11 +24,11 @@ installer](https://static.rust-lang.org/dist/rust-nightly-x86_64-pc-windows-gnu.
 and run it.
 
 If you decide you don't want Rust anymore, we'll be a bit sad, but that's okay.
-Not every programming language is great for everyone. Just pass an argument to
-the script:
+Not every programming language is great for everyone. Just run the uninstall
+script:
 
 ```bash
-$ curl -s https://static.rust-lang.org/rustup.sh | sudo sh -s -- --uninstall
+$ sudo /usr/local/lib/rustlib/uninstall.sh
 ```
 
 If you used the Windows installer, just re-run the `.exe` and it will give you

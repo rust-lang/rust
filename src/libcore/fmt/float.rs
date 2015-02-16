@@ -53,7 +53,7 @@ pub enum SignFormat {
     SignNeg
 }
 
-static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11;
+static DIGIT_E_RADIX: u32 = ('e' as u32) - ('a' as u32) + 11;
 
 /// Converts a number to its string representation as a byte vector.
 /// This is meant to be a common base implementation for all numeric string
@@ -87,7 +87,7 @@ static DIGIT_E_RADIX: uint = ('e' as uint) - ('a' as uint) + 11;
 ///   between digit and exponent sign `'p'`.
 pub fn float_to_str_bytes_common<T: Float, U, F>(
     num: T,
-    radix: uint,
+    radix: u32,
     negative_zero: bool,
     sign: SignFormat,
     digits: SignificantDigits,
@@ -156,7 +156,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        let c = char::from_digit(current_digit.to_int().unwrap() as uint, radix);
+        let c = char::from_digit(current_digit.to_int().unwrap() as u32, radix);
         buf[end] = c.unwrap() as u8;
         end += 1;
 
@@ -211,7 +211,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
             // See note in first loop.
             let current_digit = deccum.trunc().abs();
 
-            let c = char::from_digit(current_digit.to_int().unwrap() as uint,
+            let c = char::from_digit(current_digit.to_int().unwrap() as u32,
                                      radix);
             buf[end] = c.unwrap() as u8;
             end += 1;
@@ -228,7 +228,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
             let ascii2value = |chr: u8| {
                 (chr as char).to_digit(radix).unwrap()
             };
-            let value2ascii = |val: uint| {
+            let value2ascii = |val: u32| {
                 char::from_digit(val, radix).unwrap() as u8
             };
 

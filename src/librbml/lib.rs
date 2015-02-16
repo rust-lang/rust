@@ -30,7 +30,6 @@
 #![feature(int_uint)]
 #![feature(io)]
 #![feature(rustc_private)]
-#![feature(slicing_syntax)]
 #![feature(staged_api)]
 
 extern crate serialize;

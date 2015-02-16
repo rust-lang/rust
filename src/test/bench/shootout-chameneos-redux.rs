@@ -227,7 +227,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
 }
 
 fn main() {
-    let nn = if std::os::getenv("RUST_BENCH").is_some() {
+    let nn = if std::env::var_os("RUST_BENCH").is_some() {
         200000
     } else {
         std::os::args()

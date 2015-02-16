@@ -79,7 +79,7 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     ("tuple_indexing", "1.0.0", Accepted),
     ("associated_types", "1.0.0", Accepted),
     ("visible_private_types", "1.0.0", Active),
-    ("slicing_syntax", "1.0.0", Active),
+    ("slicing_syntax", "1.0.0", Accepted),
     ("box_syntax", "1.0.0", Active),
     ("on_unimplemented", "1.0.0", Active),
     ("simd_ffi", "1.0.0", Active),
@@ -134,6 +134,7 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // switch to Accepted; see RFC 320)
     ("unsafe_no_drop_flag", "1.0.0", Active),
 ];
+// (changing above list without updating src/doc/reference.md makes @cmr sad)
 
 enum Status {
     /// Represents an active feature that is currently being implemented or

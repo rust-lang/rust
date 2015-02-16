@@ -25,7 +25,6 @@
        html_playground_url = "http://play.rust-lang.org/")]
 
 #![feature(int_uint)]
-#![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![feature(unicode)]
 
@@ -422,7 +421,7 @@ impl<'a> Parser<'a> {
                 Some((_, c)) => {
                     match c.to_digit(10) {
                         Some(i) => {
-                            cur = cur * 10 + i;
+                            cur = cur * 10 + i as usize;
                             found = true;
                             self.cur.next();
                         }

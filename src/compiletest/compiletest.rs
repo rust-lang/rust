@@ -16,7 +16,7 @@
 #![feature(io)]
 #![feature(path)]
 #![feature(rustc_private)]
-#![feature(slicing_syntax, unboxed_closures)]
+#![feature(unboxed_closures)]
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unicode)]

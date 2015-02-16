@@ -1654,7 +1654,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 ty::BoundSync => {
                     if
                         Some(def_id) == tcx.lang_items.managed_bound() ||
-                        Some(def_id) == tcx.lang_items.unsafe_type()
+                        Some(def_id) == tcx.lang_items.unsafe_cell_type()
                     {
                         return Err(Unimplemented)
                     }

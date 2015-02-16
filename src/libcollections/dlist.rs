@@ -560,7 +560,12 @@ impl<T> DList<T> {
     /// Splits the list into two at the given index. Returns everything after the given index,
     /// including the index.
     ///
+    /// # Panics
+    ///
+    /// Panics if `at > len`.
+    ///
     /// This operation should compute in O(n) time.
+    ///
     /// # Examples
     ///
     /// ```
@@ -580,9 +585,11 @@ impl<T> DList<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn split_off(&mut self, at: usize) -> DList<T> {
         let len = self.len();
-        assert!(at < len, "Cannot split off at a nonexistent index");
+        assert!(at <= len, "Cannot split off at a nonexistent index");
         if at == 0 {
             return mem::replace(self, DList::new());
+        } else if at == len {
+            return DList::new();
         }
 
         // Below, we iterate towards the `i-1`th node, either from the start or the end,
@@ -1114,6 +1121,18 @@ mod tests {
             for elt in 5..6 {
                 assert_eq!(n.pop_front(), Some(elt));
             }
+        }
+
+        // no-op on the last index
+        {
+            let mut m = DList::new();
+            m.push_back(1);
+
+            let p = m.split_off(1);
+            assert_eq!(m.len(), 1);
+            assert_eq!(p.len(), 0);
+            assert_eq!(m.back(), Some(&1));
+            assert_eq!(m.front(), Some(&1));
         }
 
     }

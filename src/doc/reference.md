@@ -5,9 +5,7 @@
 This document is the primary reference for the Rust programming language. It
 provides three kinds of material:
 
-  - Chapters that formally define the language grammar and, for each
-    construct, informally describe its semantics and give examples of its
-    use.
+  - Chapters that informally describe each language construct and their use.
   - Chapters that informally describe the memory model, concurrency model,
     runtime services, linkage model and debugging facilities.
   - Appendix chapters providing rationale and references to languages that
@@ -23,8 +21,11 @@ separately by extracting documentation attributes from their source code. Many
 of the features that one might expect to be language features are library
 features in Rust, so what you're looking for may be there, not here.
 
+You may also be interested in the [grammar].
+
 [book]: book/index.html
 [standard]: std/index.html
+[grammar]: grammar.html
 
 # Notation
 
@@ -2377,20 +2378,32 @@ considered off, and using the features will result in a compiler error.
 
 The currently implemented features of the reference compiler are:
 
+* `advanced_slice_patterns` - see the [match expressions](#match-expressions)
+                              section for discussion; the exact semantics of
+                              slice patterns are subject to change.
+
 * `asm` - The `asm!` macro provides a means for inline assembly. This is often
           useful, but the exact syntax for this feature along with its
           semantics are likely to change, so this macro usage must be opted
           into.
 
+* `associated_types` - Allows type aliases in traits. Experimental.
+
+* `box_patterns` - Allows `box` patterns, the exact semantics of which
+                   is subject to change.
+
+* `box_syntax` - Allows use of `box` expressions, the exact semantics of which
+                 is subject to change.
+
 * `concat_idents` - Allows use of the `concat_idents` macro, which is in many
                     ways insufficient for concatenating identifiers, and may be
                     removed entirely for something more wholesome.
 
-* `default_type_params` - Allows use of default type parameters. The future of
-                          this feature is uncertain.
-
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
+
+* `int_uint` - Allows the use of the `int` and `uint` types, which are deprecated.
+               Use `isize` and `usize` instead.
 
 * `lang_items` - Allows use of the `#[lang]` attribute. Like `intrinsics`,
                  lang items are inherently unstable and no promise about them
@@ -2410,11 +2423,32 @@ The currently implemented features of the reference compiler are:
 * `log_syntax` - Allows use of the `log_syntax` macro attribute, which is a
                  nasty hack that will certainly be removed.
 
+* `main` - Allows use of the `#[main]` attribute, which changes the entry point
+           into a Rust program. This capabiilty is subject to change.
+
+* `macro_reexport` - Allows macros to be re-exported from one crate after being imported
+                     from another. This feature was originally designed with the sole
+                     use case of the Rust standard library in mind, and is subject to
+                     change.
+
 * `non_ascii_idents` - The compiler supports the use of non-ascii identifiers,
                        but the implementation is a little rough around the
                        edges, so this can be seen as an experimental feature
                        for now until the specification of identifiers is fully
                        fleshed out.
+
+* `no_std` - Allows the `#![no_std]` crate attribute, which disables the implicit
+             `extern crate std`. This typically requires use of the unstable APIs
+             behind the libstd "facade", such as libcore and libcollections. It
+             may also cause problems when using syntax extensions, including
+             `#[derive]`.
+
+* `on_unimplemented` - Allows the `#[rustc_on_unimplemented]` attribute, which allows
+                       trait definitions to add specialized notes to error messages
+                       when an implementation was expected but not found.
+
+* `optin_builtin_traits` - Allows the definition of default and negative trait
+                           implementations. Experimental.
 
 * `plugin` - Usage of [compiler plugins][plugin] for custom lints or syntax extensions.
              These depend on compiler internals and are subject to change.
@@ -2431,7 +2465,14 @@ The currently implemented features of the reference compiler are:
 * `simd` - Allows use of the `#[simd]` attribute, which is overly simple and
            not the SIMD interface we want to expose in the long term.
 
+* `simd_ffi` - Allows use of SIMD vectors in signatures for foreign functions.
+               The SIMD interface is subject to change.
+
 * `staged_api` - Allows usage of stability markers and `#![staged_api]` in a crate
+
+* `start` - Allows use of the `#[start]` attribute, which changes the entry point
+            into a Rust program. This capabiilty, especially the signature for the
+            annotated function, is subject to change.
 
 * `struct_inherit` - Allows using struct inheritance, which is barely
                      implemented and will probably be removed. Don't use this.
@@ -2460,18 +2501,20 @@ The currently implemented features of the reference compiler are:
                         which is considered wildly unsafe and will be
                         obsoleted by language improvements.
 
+* `unsafe_no_drop_flag` - Allows use of the `#[unsafe_no_drop_flag]` attribute,
+                          which removes hidden flag added to a type that
+                          implements the `Drop` trait. The design for the
+                          `Drop` flag is subject to change, and this feature
+                          may be removed in the future.
+
 * `unmarked_api` - Allows use of items within a `#![staged_api]` crate
                    which have not been marked with a stability marker.
                    Such items should not be allowed by the compiler to exist,
                    so if you need this there probably is a compiler bug.
 
-* `associated_types` - Allows type aliases in traits. Experimental.
-
-* `no_std` - Allows the `#![no_std]` crate attribute, which disables the implicit
-             `extern crate std`. This typically requires use of the unstable APIs
-             behind the libstd "facade", such as libcore and libcollections. It
-             may also cause problems when using syntax extensions, including
-             `#[derive]`.
+* `visible_private_types` - Allows public APIs to expose otherwise private
+                            types, e.g. as the return type of a public function.
+                            This capability may be removed in the future.
 
 If a feature is promoted to a language feature, then all existing programs will
 start to receive compilation warnings about #[feature] directives which enabled
@@ -2591,9 +2634,8 @@ of any reference that points to it.
 
 When a [local variable](#memory-slots) is used as an
 [rvalue](#lvalues,-rvalues-and-temporaries) the variable will either be moved
-or copied, depending on its type. For types that contain [owning
-pointers](#pointer-types) or values that implement the special trait `Drop`,
-the variable is moved. All other types are copied.
+or copied, depending on its type. All values whose type implements `Copy` are
+copied, all others are moved.
 
 ### Literal expressions
 
@@ -2701,9 +2743,19 @@ items can bring new names into scopes and declared items are in scope for only
 the block itself.
 
 A block will execute each statement sequentially, and then execute the
-expression (if given). If the final expression is omitted, the type and return
-value of the block are `()`, but if it is provided, the type and return value
-of the block are that of the expression itself.
+expression (if given). If the block ends in a statement, its value is `()`:
+
+```
+let x: () = { println!("Hello."); };
+```
+
+If it ends in an expression, its value and type are that of the expression:
+
+```
+let x: i32 = { println!("Hello."); 5 };
+
+assert_eq!(5, x);
+```
 
 ### Method-call expressions
 
@@ -3501,9 +3553,6 @@ elements, respectively, in a parenthesized, comma-separated list.
 
 Because tuple elements don't have a name, they can only be accessed by
 pattern-matching.
-
-The members of a tuple are laid out in memory contiguously, in order specified
-by the tuple type.
 
 An example of a tuple type and its use:
 

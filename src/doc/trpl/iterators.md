@@ -132,7 +132,16 @@ let one_to_one_hundred = (1..101i32).collect::<Vec<i32>>();
 ```
 
 If you remember, the `::<>` syntax allows us to give a type hint,
-and so we tell it that we want a vector of integers.
+and so we tell it that we want a vector of integers. You don't always
+need to use the whole type, though. Using a `_` will let you provide
+a partial hint:
+
+```rust
+let one_to_one_hundred = range(1, 101).collect::<Vec<_>>();
+```
+
+This says "Collect into a `Vec<T>`, please, but infer what the `T` is for me."
+`_` is sometimes called a "type placeholder" for this reason.
 
 `collect()` is the most common consumer, but there are others too. `find()`
 is one:

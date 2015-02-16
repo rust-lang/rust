@@ -956,7 +956,7 @@ macro_rules! impl_to_primitive_float_to_float {
             Some($slf as $DstT)
         } else {
             let n = $slf as f64;
-            let max_value: $SrcT = ::$SrcT::MAX_VALUE;
+            let max_value: $SrcT = ::$SrcT::MAX;
             if -max_value as f64 <= n && n <= max_value as f64 {
                 Some($slf as $DstT)
             } else {
@@ -1331,18 +1331,18 @@ pub trait Float
     /// Returns the smallest finite value that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
-                 reason = "use `std::f32::MIN_VALUE` or `std::f64::MIN_VALUE` as appropriate")]
+                 reason = "use `std::f32::MIN` or `std::f64::MIN` as appropriate")]
     fn min_value() -> Self;
     /// Returns the smallest normalized positive number that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
-                 reason = "use `std::f32::MIN_POS_VALUE` or \
-                           `std::f64::MIN_POS_VALUE` as appropriate")]
+                 reason = "use `std::f32::MIN_POSITIVE` or \
+                           `std::f64::MIN_POSITIVE` as appropriate")]
     fn min_pos_value(unused_self: Option<Self>) -> Self;
     /// Returns the largest finite value that this type can represent.
     #[unstable(feature = "core")]
     #[deprecated(since = "1.0.0",
-                 reason = "use `std::f32::MAX_VALUE` or `std::f64::MAX_VALUE` as appropriate")]
+                 reason = "use `std::f32::MAX` or `std::f64::MAX` as appropriate")]
     fn max_value() -> Self;
 
     /// Returns true if this value is NaN and false otherwise.
@@ -1432,12 +1432,12 @@ pub trait Float
 #[unstable(feature = "core", reason = "needs reevaluation")]
 pub trait FromStrRadix {
     type Err;
-    fn from_str_radix(str: &str, radix: uint) -> Result<Self, Self::Err>;
+    fn from_str_radix(str: &str, radix: u32) -> Result<Self, Self::Err>;
 }
 
 /// A utility function that just calls FromStrRadix::from_str_radix.
 #[unstable(feature = "core", reason = "needs reevaluation")]
-pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: uint)
+pub fn from_str_radix<T: FromStrRadix>(str: &str, radix: u32)
                                        -> Result<T, T::Err> {
     FromStrRadix::from_str_radix(str, radix)
 }
@@ -1501,7 +1501,7 @@ macro_rules! from_str_radix_float_impl {
             /// `None` if the string did not represent a valid number.
             /// Otherwise, `Some(n)` where `n` is the floating-point number
             /// represented by `src`.
-            fn from_str_radix(src: &str, radix: uint)
+            fn from_str_radix(src: &str, radix: u32)
                               -> Result<$T, ParseFloatError> {
                 use self::FloatErrorKind::*;
                 use self::ParseFloatError as PFE;
@@ -1661,7 +1661,7 @@ macro_rules! from_str_radix_int_impl {
         #[stable(feature = "rust1", since = "1.0.0")]
         impl FromStrRadix for $T {
             type Err = ParseIntError;
-            fn from_str_radix(src: &str, radix: uint)
+            fn from_str_radix(src: &str, radix: u32)
                               -> Result<$T, ParseIntError> {
                 use self::IntErrorKind::*;
                 use self::ParseIntError as PIE;

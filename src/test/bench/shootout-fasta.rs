@@ -43,6 +43,7 @@ use std::old_io::{BufferedWriter, File};
 use std::old_io;
 use std::num::Float;
 use std::os;
+use std::env;
 
 const LINE_LENGTH: uint = 60;
 const IM: u32 = 139968;
@@ -105,7 +106,7 @@ fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
 fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
     let args = os::args();
     let args = args;
-    let n = if os::getenv("RUST_BENCH").is_some() {
+    let n = if env::var_os("RUST_BENCH").is_some() {
         25000000
     } else if args.len() <= 1u {
         1000
@@ -143,7 +144,7 @@ fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
 }
 
 fn main() {
-    let res = if os::getenv("RUST_BENCH").is_some() {
+    let res = if env::var_os("RUST_BENCH").is_some() {
         let mut file = BufferedWriter::new(File::create(&Path::new("./shootout-fasta.data")));
         run(&mut file)
     } else {

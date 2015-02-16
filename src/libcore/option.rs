@@ -162,7 +162,7 @@ use slice;
 // `Iterator` is an enumeration with one type parameter and two variants,
 // which basically means it must be `Option`.
 
-/// The `Option` type.
+/// The `Option` type. See [the module level documentation](../index.html) for more.
 #[derive(Clone, Copy, PartialEq, PartialOrd, Eq, Ord, Debug, Hash)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub enum Option<T> {

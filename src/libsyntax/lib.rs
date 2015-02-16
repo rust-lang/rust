@@ -35,7 +35,6 @@
 #![feature(path)]
 #![feature(quote, unsafe_destructor)]
 #![feature(rustc_private)]
-#![feature(slicing_syntax)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 #![feature(unicode)]

@@ -1024,14 +1024,14 @@ impl fmt::Display for TryRecvError {
 mod test {
     use prelude::v1::*;
 
-    use os;
+    use std::env;
     use super::*;
     use thread::Thread;
 
     pub fn stress_factor() -> uint {
-        match os::getenv("RUST_TEST_STRESS") {
-            Some(val) => val.parse().unwrap(),
-            None => 1,
+        match env::var("RUST_TEST_STRESS") {
+            Ok(val) => val.parse().unwrap(),
+            Err(..) => 1,
         }
     }
 
@@ -1546,14 +1546,14 @@ mod test {
 mod sync_tests {
     use prelude::v1::*;
 
-    use os;
+    use std::env;
     use thread::Thread;
     use super::*;
 
     pub fn stress_factor() -> uint {
-        match os::getenv("RUST_TEST_STRESS") {
-            Some(val) => val.parse().unwrap(),
-            None => 1,
+        match env::var("RUST_TEST_STRESS") {
+            Ok(val) => val.parse().unwrap(),
+            Err(..) => 1,
         }
     }
 
