@@ -22,13 +22,13 @@ fn test10() { assert_send::<&'static mut isize>(); }
 
 // otherwise lifetime pointers are not ok
 fn test20<'a>(_: &'a isize) {
-    assert_send::<&'a isize>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a isize>(); //~ ERROR does not fulfill the required lifetime
 }
 fn test21<'a>(_: &'a isize) {
-    assert_send::<&'a str>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a str>(); //~ ERROR does not fulfill the required lifetime
 }
 fn test22<'a>(_: &'a isize) {
-    assert_send::<&'a [isize]>(); //~ ERROR declared lifetime bound not satisfied
+    assert_send::<&'a [isize]>(); //~ ERROR does not fulfill the required lifetime
 }
 
 fn main() { }

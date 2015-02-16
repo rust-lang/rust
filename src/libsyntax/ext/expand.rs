@@ -363,7 +363,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                              mark_thunk: G,
                              fld: &mut MacroExpander)
                              -> Option<T> where
-    F: FnOnce(Box<MacResult>) -> Option<T>,
+    F: for<'a> FnOnce(Box<MacResult+'a>) -> Option<T>,
     G: FnOnce(T, Mrk) -> T,
 {
     match mac.node {
@@ -1102,9 +1102,10 @@ fn expand_annotatable(a: Annotatable,
                     // but that double-mut-borrows fld
                     let mut items: SmallVector<P<ast::Item>> = SmallVector::zero();
                     dec.expand(fld.cx, attr.span, &*attr.node.value, &**it,
-                               box |item| items.push(item));
-                    decorator_items.extend(items.into_iter()
-                        .flat_map(|item| expand_item(item, fld).into_iter()));
+                               &mut |item| items.push(item));
+                    decorator_items.extend(
+                        items.into_iter()
+                             .flat_map(|item| expand_item(item, fld).into_iter()));
 
                     fld.cx.bt_pop();
                 }

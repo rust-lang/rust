@@ -1762,6 +1762,21 @@ impl fmt::Debug for IntVarValue {
     }
 }
 
+/// Default region to use for the bound of objects that are
+/// supplied as the value for this type parameter. This is derived
+/// from `T:'a` annotations appearing in the type definition.  If
+/// this is `None`, then the default is inherited from the
+/// surrounding context. See RFC #599 for details.
+#[derive(Copy, Clone, Debug)]
+pub enum ObjectLifetimeDefault {
+    /// Require an explicit annotation. Occurs when multiple
+    /// `T:'a` constraints are found.
+    Ambiguous,
+
+    /// Use the given region as the default.
+    Specific(Region),
+}
+
 #[derive(Clone, Debug)]
 pub struct TypeParameterDef<'tcx> {
     pub name: ast::Name,
@@ -1770,6 +1785,7 @@ pub struct TypeParameterDef<'tcx> {
     pub index: u32,
     pub bounds: ParamBounds<'tcx>,
     pub default: Option<Ty<'tcx>>,
+    pub object_lifetime_default: Option<ObjectLifetimeDefault>,
 }
 
 #[derive(RustcEncodable, RustcDecodable, Clone, Debug)]
@@ -5884,42 +5900,13 @@ pub fn each_bound_trait_and_supertraits<'tcx, F>(tcx: &ctxt<'tcx>,
     return true;
 }
 
-pub fn object_region_bounds<'tcx>(
-    tcx: &ctxt<'tcx>,
-    opt_principal: Option<&PolyTraitRef<'tcx>>, // None for closures
-    others: BuiltinBounds)
-    -> Vec<ty::Region>
-{
-    // Since we don't actually *know* the self type for an object,
-    // this "open(err)" serves as a kind of dummy standin -- basically
-    // a skolemized type.
-    let open_ty = ty::mk_infer(tcx, FreshTy(0));
-
-    let opt_trait_ref = opt_principal.map_or(Vec::new(), |principal| {
-        // Note that we preserve the overall binding levels here.
-        assert!(!open_ty.has_escaping_regions());
-        let substs = tcx.mk_substs(principal.0.substs.with_self_ty(open_ty));
-        vec!(ty::Binder(Rc::new(ty::TraitRef::new(principal.0.def_id, substs))))
-    });
-
-    let param_bounds = ty::ParamBounds {
-        region_bounds: Vec::new(),
-        builtin_bounds: others,
-        trait_bounds: opt_trait_ref,
-        projection_bounds: Vec::new(), // not relevant to computing region bounds
-    };
-
-    let predicates = ty::predicates(tcx, open_ty, &param_bounds);
-    ty::required_region_bounds(tcx, open_ty, predicates)
-}
-
 /// Given a set of predicates that apply to an object type, returns
 /// the region bounds that the (erased) `Self` type must
 /// outlive. Precisely *because* the `Self` type is erased, the
 /// parameter `erased_self_ty` must be supplied to indicate what type
 /// has been used to represent `Self` in the predicates
 /// themselves. This should really be a unique type; `FreshTy(0)` is a
-/// popular choice (see `object_region_bounds` above).
+/// popular choice.
 ///
 /// Requires that trait definitions have been processed so that we can
 /// elaborate predicates and walk supertraits.
@@ -7388,5 +7375,14 @@ impl<'a, 'tcx> Repr<'tcx> for ParameterEnvironment<'a, 'tcx> {
             self.free_substs.repr(tcx),
             self.implicit_region_bound.repr(tcx),
             self.caller_bounds.repr(tcx))
+    }
+}
+
+impl<'tcx> Repr<'tcx> for ObjectLifetimeDefault {
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        match *self {
+            ObjectLifetimeDefault::Ambiguous => format!("Ambiguous"),
+            ObjectLifetimeDefault::Specific(ref r) => r.repr(tcx),
+        }
     }
 }

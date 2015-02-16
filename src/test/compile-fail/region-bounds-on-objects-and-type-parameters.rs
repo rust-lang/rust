@@ -25,7 +25,7 @@ struct Foo<'a,'b,'c> {
     c: Box<Is<'a>>,
     d: Box<IsSend>,
     e: Box<Is<'a>+Send>, // we can derive two bounds, but one is 'static, so ok
-    f: Box<SomeTrait>, //~ ERROR explicit lifetime bound required
+    f: Box<SomeTrait>,   // OK, defaults to 'static due to RFC 599.
     g: Box<SomeTrait+'a>,
 
     z: Box<Is<'a>+'b+'c>, //~ ERROR only a single explicit lifetime bound is permitted

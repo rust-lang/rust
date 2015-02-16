@@ -12,7 +12,7 @@ use std::old_io;
 use std::vec;
 
 pub struct Container<'a> {
-    reader: &'a mut Reader //~ ERROR explicit lifetime bound required
+    reader: &'a mut Reader
 }
 
 impl<'a> Container<'a> {
@@ -33,5 +33,5 @@ pub fn for_stdin<'a>() -> Container<'a> {
 fn main() {
     let mut c = for_stdin();
     let mut v = Vec::new();
-    c.read_to(v);
+    c.read_to(v); //~ ERROR mismatched types
 }

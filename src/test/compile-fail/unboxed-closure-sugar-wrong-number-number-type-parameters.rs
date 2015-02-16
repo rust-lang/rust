@@ -12,7 +12,9 @@
 
 trait Zero { fn dummy(&self); }
 
-fn foo(_: Zero()) //~ ERROR wrong number of type arguments
+fn foo(_: Zero())
+    //~^ ERROR wrong number of type arguments
+    //~| ERROR no associated type `Output` defined in `Zero`
 {}
 
 fn main() { }
