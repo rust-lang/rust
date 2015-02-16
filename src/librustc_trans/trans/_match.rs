@@ -219,6 +219,7 @@ use util::nodemap::FnvHashMap;
 use util::ppaux::{Repr, vec_map_to_string};
 
 use std;
+use std::cmp::Ordering;
 use std::iter::AdditiveIterator;
 use std::rc::Rc;
 use syntax::ast;
@@ -232,10 +233,8 @@ struct ConstantExpr<'a>(&'a ast::Expr);
 
 impl<'a> ConstantExpr<'a> {
     fn eq(self, other: ConstantExpr<'a>, tcx: &ty::ctxt) -> bool {
-        let ConstantExpr(expr) = self;
-        let ConstantExpr(other_expr) = other;
-        match const_eval::compare_lit_exprs(tcx, expr, other_expr) {
-            Some(val1) => val1 == 0,
+        match const_eval::compare_lit_exprs(tcx, self.0, other.0, None) {
+            Some(result) => result == Ordering::Equal,
             None => panic!("compare_list_exprs: type mismatch"),
         }
     }
@@ -279,14 +278,14 @@ impl<'a, 'tcx> Opt<'a, 'tcx> {
         match *self {
             ConstantValue(ConstantExpr(lit_expr), _) => {
                 let lit_ty = ty::node_id_to_type(bcx.tcx(), lit_expr.id);
-                let (llval, _) = consts::const_expr(ccx, &*lit_expr);
+                let (llval, _) = consts::const_expr(ccx, &*lit_expr, bcx.fcx.param_substs);
                 let lit_datum = immediate_rvalue(llval, lit_ty);
                 let lit_datum = unpack_datum!(bcx, lit_datum.to_appropriate_datum(bcx));
                 SingleResult(Result::new(bcx, lit_datum.val))
             }
             ConstantRange(ConstantExpr(ref l1), ConstantExpr(ref l2), _) => {
-                let (l1, _) = consts::const_expr(ccx, &**l1);
-                let (l2, _) = consts::const_expr(ccx, &**l2);
+                let (l1, _) = consts::const_expr(ccx, &**l1, bcx.fcx.param_substs);
+                let (l2, _) = consts::const_expr(ccx, &**l2, bcx.fcx.param_substs);
                 RangeResult(Result::new(bcx, l1), Result::new(bcx, l2))
             }
             Variant(disr_val, ref repr, _, _) => {
@@ -833,8 +832,8 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
 
     let _icx = push_ctxt("compare_values");
     if ty::type_is_scalar(rhs_t) {
-        let rs = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq, debug_loc);
-        return Result::new(rs.bcx, rs.val);
+        let cmp = compare_scalar_types(cx, lhs, rhs, rhs_t, ast::BiEq, debug_loc);
+        return Result::new(cx, cmp);
     }
 
     match rhs_t.sty {
@@ -1164,29 +1163,16 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                             }
                             RangeResult(Result { val: vbegin, .. },
                                         Result { bcx, val: vend }) => {
-                                let Result { bcx, val: llge } =
-                                    compare_scalar_types(bcx,
-                                                         test_val,
-                                                         vbegin,
-                                                         t,
-                                                         ast::BiGe,
-                                                         debug_loc);
-                                let Result { bcx, val: llle } =
-                                    compare_scalar_types(bcx,
-                                                         test_val,
-                                                         vend,
-                                                         t,
-                                                         ast::BiLe,
-                                                         debug_loc);
-                                Result::new(bcx, And(bcx, llge, llle, debug_loc))
+                                let llge = compare_scalar_types(bcx, test_val, vbegin,
+                                                                t, ast::BiGe, debug_loc);
+                                let llle = compare_scalar_types(bcx, test_val, vend,
+                                                                t, ast::BiLe, debug_loc);
+                                Result::new(bcx, And(bcx, llge, llle, DebugLoc::None))
                             }
                             LowerBound(Result { bcx, val }) => {
-                                compare_scalar_types(bcx,
-                                                     test_val,
-                                                     val,
-                                                     t,
-                                                     ast::BiGe,
-                                                     debug_loc)
+                                Result::new(bcx, compare_scalar_types(bcx, test_val,
+                                                                      val, t, ast::BiGe,
+                                                                      debug_loc))
                             }
                         }
                     };

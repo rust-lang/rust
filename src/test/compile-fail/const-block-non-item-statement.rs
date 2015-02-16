@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-static A: usize = { 1us; 2 };
+const A: usize = { 1us; 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 
-static B: usize = { { } 2 };
+const B: usize = { { } 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 
 macro_rules! foo {
     () => (()) //~ ERROR: blocks in constants are limited to items and tail expressions
 }
-static C: usize = { foo!(); 2 };
+const C: usize = { foo!(); 2 };
 
-static D: usize = { let x = 4us; 2 };
+const D: usize = { let x = 4us; 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 
 pub fn main() {

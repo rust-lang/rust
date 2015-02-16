@@ -410,7 +410,7 @@ pub struct FunctionContext<'a, 'tcx: 'a> {
 
     // If this function is being monomorphized, this contains the type
     // substitutions used.
-    pub param_substs: &'a Substs<'tcx>,
+    pub param_substs: &'tcx Substs<'tcx>,
 
     // The source span and nesting context where this function comes from, for
     // error reporting and symbol generation.
@@ -858,25 +858,6 @@ pub fn C_str_slice(cx: &CrateContext, s: InternedString) -> ValueRef {
     C_named_struct(cx.tn().find_type("str_slice").unwrap(), &[cs, C_uint(cx, len)])
 }
 
-pub fn C_binary_slice(cx: &CrateContext, data: &[u8]) -> ValueRef {
-    unsafe {
-        let len = data.len();
-        let lldata = C_bytes(cx, data);
-
-        let gsym = token::gensym("binary");
-        let name = format!("binary{}", gsym.usize());
-        let name = CString::from_vec(name.into_bytes());
-        let g = llvm::LLVMAddGlobal(cx.llmod(), val_ty(lldata).to_ref(),
-                                    name.as_ptr());
-        llvm::LLVMSetInitializer(g, lldata);
-        llvm::LLVMSetGlobalConstant(g, True);
-        llvm::SetLinkage(g, llvm::InternalLinkage);
-
-        let cs = consts::ptrcast(g, Type::i8p(cx));
-        C_struct(cx, &[cs, C_uint(cx, len)], false)
-    }
-}
-
 pub fn C_struct(cx: &CrateContext, elts: &[ValueRef], packed: bool) -> ValueRef {
     C_struct_in_context(cx.llcx(), elts, packed)
 }
@@ -898,6 +879,12 @@ pub fn C_named_struct(t: Type, elts: &[ValueRef]) -> ValueRef {
 pub fn C_array(ty: Type, elts: &[ValueRef]) -> ValueRef {
     unsafe {
         return llvm::LLVMConstArray(ty.to_ref(), elts.as_ptr(), elts.len() as c_uint);
+    }
+}
+
+pub fn C_vector(elts: &[ValueRef]) -> ValueRef {
+    unsafe {
+        return llvm::LLVMConstVector(elts.as_ptr(), elts.len() as c_uint);
     }
 }
 

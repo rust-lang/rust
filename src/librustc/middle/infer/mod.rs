@@ -247,9 +247,6 @@ pub enum RegionVariableOrigin<'tcx> {
     // Regions created by `&` operator
     AddrOfRegion(Span),
 
-    // Regions created by `&[...]` literal
-    AddrOfSlice(Span),
-
     // Regions created as part of an autoref of a method receiver
     Autoref(Span),
 
@@ -1273,7 +1270,6 @@ impl<'tcx> RegionVariableOrigin<'tcx> {
             MiscVariable(a) => a,
             PatternRegion(a) => a,
             AddrOfRegion(a) => a,
-            AddrOfSlice(a) => a,
             Autoref(a) => a,
             Coercion(ref a) => a.span(),
             EarlyBoundRegion(a, _) => a,
@@ -1296,7 +1292,6 @@ impl<'tcx> Repr<'tcx> for RegionVariableOrigin<'tcx> {
             AddrOfRegion(a) => {
                 format!("AddrOfRegion({})", a.repr(tcx))
             }
-            AddrOfSlice(a) => format!("AddrOfSlice({})", a.repr(tcx)),
             Autoref(a) => format!("Autoref({})", a.repr(tcx)),
             Coercion(ref a) => format!("Coercion({})", a.repr(tcx)),
             EarlyBoundRegion(a, b) => {

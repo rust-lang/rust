@@ -40,7 +40,9 @@ fn run(repeat: int, depth: int) {
     }
 }
 
-type nillist = List<()>;
+// FIXME(#21721) used to be `List<()>` but that can cause
+// certain LLVM versions to abort during optimizations.
+type nillist = List<[u8; 0]>;
 
 // Filled with things that have to be unwound
 
@@ -81,11 +83,11 @@ fn recurse_or_panic(depth: int, st: Option<State>) {
             }
             Some(st) => {
                 let mut v = st.vec.clone();
-                v.push_all(&[box List::Cons((), st.vec.last().unwrap().clone())]);
+                v.push_all(&[box List::Cons([], st.vec.last().unwrap().clone())]);
                 State {
-                    unique: box List::Cons((), box *st.unique),
+                    unique: box List::Cons([], box *st.unique),
                     vec: v,
-                    res: r(box List::Cons((), st.res._l.clone())),
+                    res: r(box List::Cons([], st.res._l.clone())),
                 }
             }
         };

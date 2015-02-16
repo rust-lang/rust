@@ -71,6 +71,7 @@ pub use self::Note::*;
 pub use self::deref_kind::*;
 pub use self::categorization::*;
 
+use middle::check_const;
 use middle::def;
 use middle::region;
 use middle::ty::{self, Ty};
@@ -808,17 +809,29 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                            span: Span,
                            expr_ty: Ty<'tcx>)
                            -> cmt<'tcx> {
-        match self.typer.temporary_scope(id) {
-            Some(scope) => {
-                match expr_ty.sty {
-                    ty::ty_vec(_, Some(0)) => self.cat_rvalue(id, span, ty::ReStatic, expr_ty),
-                    _ => self.cat_rvalue(id, span, ty::ReScope(scope), expr_ty)
+        let qualif = self.tcx().const_qualif_map.borrow().get(&id).cloned()
+                               .unwrap_or(check_const::NOT_CONST);
+
+        // Only promote `[T; 0]` before an RFC for rvalue promotions
+        // is accepted.
+        let qualif = match expr_ty.sty {
+            ty::ty_vec(_, Some(0)) => qualif,
+            _ => check_const::NOT_CONST
+        };
+
+        let re = match qualif & check_const::NON_STATIC_BORROWS {
+            check_const::PURE_CONST => {
+                // Constant rvalues get promoted to 'static.
+                ty::ReStatic
+            }
+            _ => {
+                match self.typer.temporary_scope(id) {
+                    Some(scope) => ty::ReScope(scope),
+                    None => ty::ReStatic
                 }
             }
-            None => {
-                self.cat_rvalue(id, span, ty::ReStatic, expr_ty)
-            }
-        }
+        };
+        self.cat_rvalue(id, span, re, expr_ty)
     }
 
     pub fn cat_rvalue(&self,

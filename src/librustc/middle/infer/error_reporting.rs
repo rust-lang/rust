@@ -1435,7 +1435,6 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             infer::MiscVariable(_) => "".to_string(),
             infer::PatternRegion(_) => " for pattern".to_string(),
             infer::AddrOfRegion(_) => " for borrow expression".to_string(),
-            infer::AddrOfSlice(_) => " for slice expression".to_string(),
             infer::Autoref(_) => " for autoref".to_string(),
             infer::Coercion(_) => " for automatic coercion".to_string(),
             infer::LateBoundRegion(_, br, infer::FnCall) => {

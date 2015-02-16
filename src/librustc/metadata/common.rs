@@ -12,7 +12,6 @@
 
 pub use self::astencode_tag::*;
 
-use std::mem;
 use back::svh::Svh;
 
 // EBML enum definitions and utils shared by the encoder and decoder
@@ -113,7 +112,7 @@ pub const tag_items_data_item_reexport_def_id: uint = 0x39;
 pub const tag_items_data_item_reexport_name: uint = 0x3a;
 
 // used to encode crate_ctxt side tables
-#[derive(Copy, PartialEq)]
+#[derive(Copy, PartialEq, FromPrimitive)]
 #[repr(uint)]
 pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_ast = 0x40,
@@ -144,17 +143,7 @@ pub enum astencode_tag { // Reserves 0x40 -- 0x5f
     tag_table_upvar_capture_map = 0x56,
     tag_table_capture_modes = 0x57,
     tag_table_object_cast_map = 0x58,
-}
-
-static first_astencode_tag: uint = tag_ast as uint;
-static last_astencode_tag: uint = tag_table_object_cast_map as uint;
-impl astencode_tag {
-    pub fn from_uint(value : uint) -> Option<astencode_tag> {
-        let is_a_tag = first_astencode_tag <= value && value <= last_astencode_tag;
-        if !is_a_tag { None } else {
-            Some(unsafe { mem::transmute::<uint, astencode_tag>(value) })
-        }
-    }
+    tag_table_const_qualif = 0x59,
 }
 
 pub const tag_item_trait_item_sort: uint = 0x60;
