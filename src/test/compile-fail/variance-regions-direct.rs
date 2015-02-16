@@ -13,6 +13,8 @@
 
 // Regions that just appear in normal spots are contravariant:
 
+#![feature(rustc_attrs)]
+
 #[rustc_variance]
 struct Test2<'a, 'b, 'c> { //~ ERROR regions=[[-, -, -];[];[]]
     x: &'a isize,

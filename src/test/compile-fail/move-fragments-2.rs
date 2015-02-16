@@ -18,6 +18,8 @@
 // These are checking that enums are tracked; note that their output
 // paths include "downcasts" of the path to a particular enum.
 
+#![feature(rustc_attrs)]
+
 use self::Lonely::{Zero, One, Two};
 
 pub struct D { d: isize }

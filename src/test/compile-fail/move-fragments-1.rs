@@ -18,6 +18,8 @@
 // These are all fairly trivial cases: unused variables or direct
 // drops of substructure.
 
+#![feature(rustc_attrs)]
+
 pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 
