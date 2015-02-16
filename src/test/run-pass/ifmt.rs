@@ -157,6 +157,7 @@ pub fn main() {
         format!("{}", a);
     }
 
+    test_format_arg();
     test_format_args();
 
     // test that trailing commas are acceptable
@@ -172,13 +173,17 @@ fn test_write() {
     write!(&mut buf, "{}", 3);
     {
         let w = &mut buf;
+        write!(w, "{{");
+        write!(w, "foo");
         write!(w, "{foo}", foo=4);
         write!(w, "{}", "hello");
+        writeln!(w, "line");
         writeln!(w, "{}", "line");
         writeln!(w, "{foo}", foo="bar");
+        writeln!(w, "}}");
     }
 
-    t!(buf, "34helloline\nbar\n");
+    t!(buf, "{{foo34helloline\nbar\n}}\n");
 }
 
 // Just make sure that the macros are defined, there's not really a lot that we
@@ -198,12 +203,18 @@ fn test_format_args() {
     let mut buf = String::new();
     {
         let w = &mut buf;
+        write!(w, "{{");
         write!(w, "{}", format_args!("{}", 1));
         write!(w, "{}", format_args!("test"));
         write!(w, "{}", format_args!("{test}", test=3));
+        write!(w, "}}");
     }
     let s = buf;
-    t!(s, "1test3");
+    t!(s, "{1test3}");
+
+    t!(format_args!("hello"), "hello");
+    t!(format_args!("{{"), "{");
+    t!(format_args!("}}"), "}");
 
     let s = fmt::format(format_args!("hello {}", "world"));
     t!(s, "hello world");

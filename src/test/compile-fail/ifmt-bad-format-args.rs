@@ -9,6 +9,9 @@
 // except according to those terms.
 
 fn main() {
+    format_arg!(); //~ ERROR: requires at least a format string argument
+    format_arg!("{}", "bar"); //~ ERROR: requires no arguments, found 1.
+
     format_args!(); //~ ERROR: requires at least a format string argument
     format_args!(|| {}); //~ ERROR: must be a string literal
 }

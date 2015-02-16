@@ -33,8 +33,21 @@ macro_rules! vec {
 /// format!("hello {}", "world!");
 /// format!("x = {}, y = {y}", 10, y = 30);
 /// ```
+#[cfg(stage0)]
 #[macro_export]
 #[stable(feature = "rust1", since = "1.0.0")]
 macro_rules! format {
     ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
+}
+
+#[cfg(not(stage0))]
+#[macro_export]
+#[stable(feature = "rust1", since = "1.0.0")]
+macro_rules! format {
+    ($fmt:expr) => {
+        format_arg!($fmt).to_string()
+    };
+    ($fmt:expr, $($arg:tt)+) => {
+        $crate::fmt::format(format_args!($fmt, $($arg)*))
+    }
 }
