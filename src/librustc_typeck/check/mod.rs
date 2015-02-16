@@ -5241,7 +5241,7 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
                 (1, vec!(ty::mk_mut_ptr(tcx, param(ccx, 0)), param(ccx, 0)),
                  param(ccx, 0))
             }
-            "fence" => {
+            "fence" | "singlethreadfence" => {
                 (0, Vec::new(), ty::mk_nil(tcx))
             }
             op => {

@@ -205,8 +205,10 @@ extern "C" LLVMValueRef LLVMBuildAtomicCmpXchg(LLVMBuilderRef B,
 #endif
                                                ));
 }
-extern "C" LLVMValueRef LLVMBuildAtomicFence(LLVMBuilderRef B, AtomicOrdering order) {
-    return wrap(unwrap(B)->CreateFence(order));
+extern "C" LLVMValueRef LLVMBuildAtomicFence(LLVMBuilderRef B,
+                                             AtomicOrdering order,
+                                             SynchronizationScope scope) {
+    return wrap(unwrap(B)->CreateFence(order, scope));
 }
 
 extern "C" void LLVMSetDebug(int Enabled) {
