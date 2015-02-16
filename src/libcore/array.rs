@@ -48,6 +48,8 @@ macro_rules! array_impls {
                 }
             }
 
+            // NOTE(stage0): remove impl after a snapshot
+            #[cfg(stage0)]
             impl<'a, T> IntoIterator for &'a [T; $N] {
                 type IntoIter = Iter<'a, T>;
 
@@ -56,7 +58,29 @@ macro_rules! array_impls {
                 }
             }
 
+            #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+            impl<'a, T> IntoIterator for &'a [T; $N] {
+                type Item = &'a T;
+                type IntoIter = Iter<'a, T>;
+
+                fn into_iter(self) -> Iter<'a, T> {
+                    self.iter()
+                }
+            }
+
+            // NOTE(stage0): remove impl after a snapshot
+            #[cfg(stage0)]
             impl<'a, T> IntoIterator for &'a mut [T; $N] {
+                type IntoIter = IterMut<'a, T>;
+
+                fn into_iter(self) -> IterMut<'a, T> {
+                    self.iter_mut()
+                }
+            }
+
+            #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+            impl<'a, T> IntoIterator for &'a mut [T; $N] {
+                type Item = &'a mut T;
                 type IntoIter = IterMut<'a, T>;
 
                 fn into_iter(self) -> IterMut<'a, T> {
