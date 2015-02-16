@@ -94,6 +94,7 @@ impl<T> Box<T> {
     /// let x = Box::new(5);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
+    #[inline(always)]
     pub fn new(x: T) -> Box<T> {
         box x
     }
