@@ -456,15 +456,17 @@ impl<'a, 'tcx> InferCtxt<'a, 'tcx> {
         use middle::ty::UnconstrainedNumeric::{Neither, UnconstrainedInt, UnconstrainedFloat};
         match ty.sty {
             ty::ty_infer(ty::IntVar(vid)) => {
-                match self.int_unification_table.borrow_mut().get(vid).value {
-                    None => UnconstrainedInt,
-                    _ => Neither,
+                if self.int_unification_table.borrow_mut().has_value(vid) {
+                    Neither
+                } else {
+                    UnconstrainedInt
                 }
             },
             ty::ty_infer(ty::FloatVar(vid)) => {
-                match self.float_unification_table.borrow_mut().get(vid).value {
-                    None => UnconstrainedFloat,
-                    _ => Neither,
+                if self.float_unification_table.borrow_mut().has_value(vid) {
+                    Neither
+                } else {
+                    UnconstrainedFloat
                 }
             },
             _ => Neither,
