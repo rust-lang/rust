@@ -61,7 +61,7 @@ multiplications later, and we have our area.
 ## Chaining method calls
 
 So, now we know how to call a method, such as `foo.bar()`. But what about our
-original example, `foo.bar().baz()`? This is called 'method chaining,' and we
+original example, `foo.bar().baz()`? This is called 'method chaining', and we
 can do it by returning `self`.
 
 ```

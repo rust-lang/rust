@@ -14,7 +14,7 @@ Rust has two main types of strings: `&str` and `String`.
 
 # &str
 
-The first kind is a `&str`. This is pronounced a 'string slice.'
+The first kind is a `&str`. This is pronounced a 'string slice'.
 String literals are of the type `&str`:
 
 ```
