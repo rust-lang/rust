@@ -202,6 +202,16 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
                      "no_std is experimental")),
     ("lang", Gated("lang_items",
                      "language items are subject to change")),
+    ("rustc_on_unimplemented", Gated("on_unimplemented",
+                                     "the `#[rustc_on_unimplemented]` attribute \
+                                      is an experimental feature")),
+    ("linkage", Gated("linkage",
+                      "the `linkage` attribute is experimental \
+                       and not portable across platforms")),
+    ("thread_local", Gated("thread_local",
+                            "`#[thread_local]` is an experimental feature, and does not \
+                             currently handle destructors. There is no corresponding \
+                             `#[task_local]` mapping to the task model")),
 
     // FIXME: #14408 whitelist docs since rustdoc looks at them
     ("doc", Whitelisted),
@@ -214,14 +224,12 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("link", Whitelisted),
     ("link_name", Whitelisted),
     ("link_section", Whitelisted),
-    ("linkage", Whitelisted),
     ("no_builtins", Whitelisted),
     ("no_mangle", Whitelisted),
     ("no_split_stack", Whitelisted),
     ("no_stack_check", Whitelisted),
     ("packed", Whitelisted),
     ("static_assert", Whitelisted),
-    ("thread_local", Whitelisted),
     ("no_debug", Whitelisted),
     ("omit_gdb_pretty_printer_section", Whitelisted),
     ("unsafe_no_drop_flag", Whitelisted),
@@ -235,7 +243,6 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("must_use", Whitelisted),
     ("stable", Whitelisted),
     ("unstable", Whitelisted),
-    ("rustc_on_unimplemented", Whitelisted),
     ("rustc_error", Whitelisted),
 
     // FIXME: #19470 this shouldn't be needed forever
@@ -395,22 +402,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &ast::Item) {
-        for attr in &i.attrs {
-            if attr.name() == "thread_local" {
-                self.gate_feature("thread_local", i.span,
-                                  "`#[thread_local]` is an experimental feature, and does not \
-                                  currently handle destructors. There is no corresponding \
-                                  `#[task_local]` mapping to the task model");
-            } else if attr.name() == "linkage" {
-                self.gate_feature("linkage", i.span,
-                                  "the `linkage` attribute is experimental \
-                                   and not portable across platforms")
-            } else if attr.name() == "rustc_on_unimplemented" {
-                self.gate_feature("on_unimplemented", i.span,
-                                  "the `#[rustc_on_unimplemented]` attribute \
-                                  is an experimental feature")
-            }
-        }
         match i.node {
             ast::ItemExternCrate(_) => {
                 if attr::contains_name(&i.attrs[], "macro_reexport") {
@@ -592,7 +583,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 }
                 return;
             }
-            
         }
         self.gate_feature("custom_attribute", attr.span,
                    format!("The attribute `{}` is currently \
