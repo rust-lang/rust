@@ -37,3 +37,4 @@
     * [Macros](macros.md)
     * [Compiler Plugins](plugins.md)
 * [Conclusion](conclusion.md)
+* [Glossary](glossary.md)
