@@ -630,7 +630,7 @@ mod test {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;
@@ -677,7 +677,7 @@ mod test {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         static GENERATIONS: uint = 16;
-        fn child_no(x: uint) -> Thunk {
+        fn child_no(x: uint) -> Thunk<'static> {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
                     Thread::spawn(move|| child_no(x+1).invoke(()));

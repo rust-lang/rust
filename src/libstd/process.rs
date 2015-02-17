@@ -458,7 +458,7 @@ impl Child {
     /// the parent waits for the child to exit.
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
-        fn read<T: Read + Send>(stream: Option<T>) -> Receiver<io::Result<Vec<u8>>> {
+        fn read<T: Read + Send + 'static>(stream: Option<T>) -> Receiver<io::Result<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => {
