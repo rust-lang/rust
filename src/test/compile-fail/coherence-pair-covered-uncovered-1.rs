@@ -18,7 +18,7 @@ use lib::{Remote1, Pair};
 
 pub struct Local<T>(T);
 
-impl<T,U> Remote1<Pair<T,Local<U>>> for i32 { }
-//~^ ERROR type parameter `T` is not constrained
+impl<T, U> Remote1<Pair<T, Local<U>>> for i32 { }
+//~^ ERROR type parameter `T` must be used as the type parameter for some local type
 
 fn main() { }

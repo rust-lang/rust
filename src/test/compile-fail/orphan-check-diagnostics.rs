@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:coherence-lib.rs
+// aux-build:orphan_check_diagnostics.rs
+// see #22388
 
-// Test that it's not ok for U to appear uncovered
+extern crate orphan_check_diagnostics;
 
-extern crate "coherence-lib" as lib;
-use lib::{Remote,Pair};
+use orphan_check_diagnostics::RemoteTrait;
 
-pub struct Cover<T>(T);
+trait LocalTrait {}
 
-impl<T,U> Remote for Pair<Cover<T>,U> { }
-//~^ ERROR type parameter `U` must be used as the type parameter for some local type
+impl<T> RemoteTrait for T where T: LocalTrait {}
+//~^ ERROR type parameter `T` must be used as the type parameter for some local type
 
-fn main() { }
+fn main() {}
