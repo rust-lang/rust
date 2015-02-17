@@ -817,7 +817,9 @@ impl<'a, S: Writer + Hasher> Hash<S> for Wtf8 {
     }
 }
 
-impl AsciiExt<Wtf8Buf> for Wtf8 {
+impl AsciiExt for Wtf8 {
+    type Owned = Wtf8Buf;
+
     fn is_ascii(&self) -> bool {
         self.bytes.is_ascii()
     }
@@ -830,6 +832,9 @@ impl AsciiExt<Wtf8Buf> for Wtf8 {
     fn eq_ignore_ascii_case(&self, other: &Wtf8) -> bool {
         self.bytes.eq_ignore_ascii_case(&other.bytes)
     }
+
+    fn make_ascii_uppercase(&mut self) { self.bytes.make_ascii_uppercase() }
+    fn make_ascii_lowercase(&mut self) { self.bytes.make_ascii_lowercase() }
 }
 
 #[cfg(test)]

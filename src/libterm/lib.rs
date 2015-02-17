@@ -58,7 +58,6 @@
 #![feature(path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(unicode)]
 #![feature(env)]
 #![cfg_attr(windows, feature(libc))]
