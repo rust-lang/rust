@@ -394,7 +394,7 @@ impl Process {
                 match unsafe { c::select(max, &mut set, ptr::null_mut(),
                                          ptr::null_mut(), p) } {
                     // interrupted, retry
-                    -1 if os::errno() == libc::EINTR as uint => continue,
+                    -1 if os::errno() == libc::EINTR as i32 => continue,
 
                     // We read something, break out and process
                     1 | 2 => {}

@@ -338,7 +338,7 @@ impl IoError {
     /// If `detail` is `true`, the `detail` field of the `IoError`
     /// struct is filled with an allocated string describing the error
     /// in more detail, retrieved from the operating system.
-    pub fn from_errno(errno: uint, detail: bool) -> IoError {
+    pub fn from_errno(errno: i32, detail: bool) -> IoError {
         let mut err = sys::decode_error(errno as i32);
         if detail && err.kind == OtherIoError {
             err.detail = Some(os::error_string(errno).chars()
@@ -354,7 +354,7 @@ impl IoError {
     /// operating system) between the call(s) for which errors are
     /// being checked and the call of this function.
     pub fn last_error() -> IoError {
-        IoError::from_errno(os::errno() as uint, true)
+        IoError::from_errno(os::errno(), true)
     }
 }
 

@@ -514,8 +514,8 @@ pub fn change_dir(p: &Path) -> IoResult<()> {
 }
 
 /// Returns the platform-specific value of errno
-pub fn errno() -> uint {
-    sys::os::errno() as uint
+pub fn errno() -> i32 {
+    sys::os::errno() as i32
 }
 
 /// Return the string corresponding to an `errno()` value of `errnum`.
@@ -525,15 +525,15 @@ pub fn errno() -> uint {
 /// use std::os;
 ///
 /// // Same as println!("{}", last_os_error());
-/// println!("{}", os::error_string(os::errno() as uint));
+/// println!("{}", os::error_string(os::errno() as i32));
 /// ```
-pub fn error_string(errnum: uint) -> String {
-    return sys::os::error_string(errnum as i32);
+pub fn error_string(errnum: i32) -> String {
+    return sys::os::error_string(errnum);
 }
 
 /// Get a string representing the platform-dependent last error
 pub fn last_os_error() -> String {
-    error_string(errno() as uint)
+    error_string(errno())
 }
 
 /// Sets the process exit code
@@ -845,13 +845,13 @@ pub enum MapError {
     ErrAlreadyExists,
     /// Unrecognized error from `VirtualAlloc`. The inner value is the return
     /// value of GetLastError.
-    ErrVirtualAlloc(uint),
+    ErrVirtualAlloc(i32),
     /// Unrecognized error from `CreateFileMapping`. The inner value is the
     /// return value of `GetLastError`.
-    ErrCreateFileMappingW(uint),
+    ErrCreateFileMappingW(i32),
     /// Unrecognized error from `MapViewOfFile`. The inner value is the return
     /// value of `GetLastError`.
-    ErrMapViewOfFile(uint)
+    ErrMapViewOfFile(i32)
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
