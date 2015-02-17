@@ -1714,7 +1714,7 @@ impl LintPass for Stability {
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        stability::check_item(cx.tcx, item,
+        stability::check_item(cx.tcx, item, false,
                               &mut |id, sp, stab| self.lint(cx, id, sp, stab));
     }
 
