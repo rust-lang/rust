@@ -1710,6 +1710,7 @@ impl<T> IntoIterator for RingBuf<T> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for RingBuf<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -1730,6 +1731,7 @@ impl<'a, T> IntoIterator for &'a RingBuf<T> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a RingBuf<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -1750,6 +1752,7 @@ impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
