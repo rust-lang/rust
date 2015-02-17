@@ -494,13 +494,12 @@ pub struct BoxPointers;
 impl BoxPointers {
     fn check_heap_type<'a, 'tcx>(&self, cx: &Context<'a, 'tcx>,
                                  span: Span, ty: Ty<'tcx>) {
-        let mut n_uniq = 0us;
+        let mut n_uniq: usize = 0;
         ty::fold_ty(cx.tcx, ty, |t| {
             match t.sty {
                 ty::ty_uniq(_) => {
                     n_uniq += 1;
                 }
-
                 _ => ()
             };
             t

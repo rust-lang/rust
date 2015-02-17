@@ -46,17 +46,17 @@ fn test_writer_hasher() {
 
     assert_eq!(hash(&()), 0);
 
-    assert_eq!(hash(&5u8), 5);
-    assert_eq!(hash(&5u16), 5);
-    assert_eq!(hash(&5u32), 5);
-    assert_eq!(hash(&5u64), 5);
-    assert_eq!(hash(&5us), 5);
+    assert_eq!(hash(&5_u8), 5);
+    assert_eq!(hash(&5_u16), 5);
+    assert_eq!(hash(&5_u32), 5);
+    assert_eq!(hash(&5_u64), 5);
+    assert_eq!(hash(&5_usize), 5);
 
-    assert_eq!(hash(&5i8), 5);
-    assert_eq!(hash(&5i16), 5);
-    assert_eq!(hash(&5i32), 5);
-    assert_eq!(hash(&5i64), 5);
-    assert_eq!(hash(&5is), 5);
+    assert_eq!(hash(&5_i8), 5);
+    assert_eq!(hash(&5_i16), 5);
+    assert_eq!(hash(&5_i32), 5);
+    assert_eq!(hash(&5_i64), 5);
+    assert_eq!(hash(&5_isize), 5);
 
     assert_eq!(hash(&false), 0);
     assert_eq!(hash(&true), 1);
@@ -76,12 +76,12 @@ fn test_writer_hasher() {
     // FIXME (#18248) Add tests for hashing Rc<str> and Rc<[T]>
 
     unsafe {
-        let ptr: *const i32 = mem::transmute(5us);
+        let ptr: *const i32 = mem::transmute(5_usize);
         assert_eq!(hash(&ptr), 5);
     }
 
     unsafe {
-        let ptr: *mut i32 = mem::transmute(5us);
+        let ptr: *mut i32 = mem::transmute(5_usize);
         assert_eq!(hash(&ptr), 5);
     }
 }

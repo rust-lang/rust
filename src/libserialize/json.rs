@@ -3905,12 +3905,12 @@ mod tests {
 
         assert_eq!(array2.to_json(), array2);
         assert_eq!(object.to_json(), object);
-        assert_eq!(3_i.to_json(), I64(3));
+        assert_eq!(3_isize.to_json(), I64(3));
         assert_eq!(4_i8.to_json(), I64(4));
         assert_eq!(5_i16.to_json(), I64(5));
         assert_eq!(6_i32.to_json(), I64(6));
         assert_eq!(7_i64.to_json(), I64(7));
-        assert_eq!(8_u.to_json(), U64(8));
+        assert_eq!(8_usize.to_json(), U64(8));
         assert_eq!(9_u8.to_json(), U64(9));
         assert_eq!(10_u16.to_json(), U64(10));
         assert_eq!(11_u32.to_json(), U64(11));
@@ -3924,22 +3924,22 @@ mod tests {
         assert_eq!(false.to_json(), Boolean(false));
         assert_eq!("abc".to_json(), String("abc".to_string()));
         assert_eq!("abc".to_string().to_json(), String("abc".to_string()));
-        assert_eq!((1us, 2us).to_json(), array2);
-        assert_eq!((1us, 2us, 3us).to_json(), array3);
-        assert_eq!([1us, 2us].to_json(), array2);
-        assert_eq!((&[1us, 2us, 3us]).to_json(), array3);
-        assert_eq!((vec![1us, 2us]).to_json(), array2);
-        assert_eq!(vec!(1us, 2us, 3us).to_json(), array3);
+        assert_eq!((1_usize, 2_usize).to_json(), array2);
+        assert_eq!((1_usize, 2_usize, 3_usize).to_json(), array3);
+        assert_eq!([1_usize, 2_usize].to_json(), array2);
+        assert_eq!((&[1_usize, 2_usize, 3_usize]).to_json(), array3);
+        assert_eq!((vec![1_usize, 2_usize]).to_json(), array2);
+        assert_eq!(vec!(1_usize, 2_usize, 3_usize).to_json(), array3);
         let mut tree_map = BTreeMap::new();
-        tree_map.insert("a".to_string(), 1us);
+        tree_map.insert("a".to_string(), 1 as usize);
         tree_map.insert("b".to_string(), 2);
         assert_eq!(tree_map.to_json(), object);
         let mut hash_map = HashMap::new();
-        hash_map.insert("a".to_string(), 1us);
+        hash_map.insert("a".to_string(), 1 as usize);
         hash_map.insert("b".to_string(), 2);
         assert_eq!(hash_map.to_json(), object);
         assert_eq!(Some(15).to_json(), I64(15));
-        assert_eq!(Some(15us).to_json(), U64(15));
+        assert_eq!(Some(15 as usize).to_json(), U64(15));
         assert_eq!(None::<int>.to_json(), Null);
     }
 

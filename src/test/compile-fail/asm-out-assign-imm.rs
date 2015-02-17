@@ -21,7 +21,8 @@ pub fn main() {
     x = 1; //~ NOTE prior assignment occurs here
     foo(x);
     unsafe {
-        asm!("mov $1, $0" : "=r"(x) : "r"(5us)); //~ ERROR re-assignment of immutable variable `x`
+        asm!("mov $1, $0" : "=r"(x) : "r"(5_usize));
+        //~^ ERROR re-assignment of immutable variable `x`
     }
     foo(x);
 }
