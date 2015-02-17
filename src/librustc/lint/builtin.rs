@@ -26,7 +26,7 @@
 //! a `pub fn new()`.
 use self::MethodContext::*;
 
-use metadata::csearch;
+use metadata::{csearch, decoder};
 use middle::def::*;
 use middle::subst::Substs;
 use middle::ty::{self, Ty};
@@ -1960,6 +1960,48 @@ impl LintPass for UnconditionalRecursion {
             };
 
             ast_util::is_local(did) && did.node == method_id
+        }
+    }
+}
+
+declare_lint! {
+    PLUGIN_AS_LIBRARY,
+    Warn,
+    "compiler plugin used as ordinary library in non-plugin crate"
+}
+
+#[derive(Copy)]
+pub struct PluginAsLibrary;
+
+impl LintPass for PluginAsLibrary {
+    fn get_lints(&self) -> LintArray {
+        lint_array![PLUGIN_AS_LIBRARY]
+    }
+
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+        if cx.sess().plugin_registrar_fn.get().is_some() {
+            // We're compiling a plugin; it's fine to link other plugins.
+            return;
+        }
+
+        match it.node {
+            ast::ItemExternCrate(..) => (),
+            _ => return,
+        };
+
+        let md = match cx.sess().cstore.find_extern_mod_stmt_cnum(it.id) {
+            Some(cnum) => cx.sess().cstore.get_crate_data(cnum),
+            None => {
+                // Probably means we aren't linking the crate for some reason.
+                //
+                // Not sure if / when this could happen.
+                return;
+            }
+        };
+
+        if decoder::get_plugin_registrar_fn(md.data()).is_some() {
+            cx.span_lint(PLUGIN_AS_LIBRARY, it.span,
+                "compiler plugin used as an ordinary library");
         }
     }
 }

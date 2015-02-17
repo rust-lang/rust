@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod common;
-pub mod tyencode;
-pub mod tydecode;
-pub mod encoder;
-pub mod decoder;
-pub mod creader;
-pub mod cstore;
-pub mod csearch;
-pub mod loader;
-pub mod filesearch;
-pub mod macro_import;
+// This used to cause an ICE because the retslot for the "return" had the wrong type
+fn testcase<'a>() -> Box<Iterator<Item=usize> + 'a> {
+    return Box::new(range(0, 3).map(|i| { return i; }));
+}
+
+fn main() {
+}

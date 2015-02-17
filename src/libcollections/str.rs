@@ -1285,7 +1285,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let v: Vec<&str> = some_words.words().collect();
     /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
     /// ```
-    #[stable(feature = "rust1", since = "1.0.0")]
+    #[unstable(feature = "str_words",
+               reason = "the precise algorithm to use is unclear")]
     fn words(&self) -> Words {
         UnicodeStr::words(&self[])
     }

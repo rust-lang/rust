@@ -50,7 +50,7 @@ fn main() {
     let mut term = Term::new();
     let cmd = os::args();
 
-    if cmd.len() < 1 {
+    if cmd.len() <= 1 {
         help::usage()
     } else {
         match subcommand::parse_name(&cmd[1][]) {

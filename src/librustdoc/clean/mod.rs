@@ -2490,6 +2490,7 @@ pub struct Stability {
     pub level: attr::StabilityLevel,
     pub feature: String,
     pub since: String,
+    pub deprecated_since: String,
     pub reason: String
 }
 
@@ -2500,6 +2501,8 @@ impl Clean<Stability> for attr::Stability {
             feature: self.feature.to_string(),
             since: self.since.as_ref().map_or("".to_string(),
                                               |interned| interned.to_string()),
+            deprecated_since: self.deprecated_since.as_ref().map_or("".to_string(),
+                                                                    |istr| istr.to_string()),
             reason: self.reason.as_ref().map_or("".to_string(),
                                                 |interned| interned.to_string()),
         }

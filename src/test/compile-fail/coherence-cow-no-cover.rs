@@ -18,6 +18,6 @@ use lib::{Remote,Pair};
 pub struct Cover<T>(T);
 
 impl<T,U> Remote for Pair<Cover<T>,U> { }
-//~^ ERROR type parameter `U` is not constrained by any local type
+//~^ ERROR type parameter `U` must be used as the type parameter for some local type
 
 fn main() { }

@@ -292,7 +292,6 @@ pub mod eabi {
 
     #[lang="eh_personality"]
     #[no_mangle] // referenced from rust_try.ll
-    #[allow(private_no_mangle_fns)]
     pub extern "C" fn rust_eh_personality(
         version: c_int,
         actions: uw::_Unwind_Action,

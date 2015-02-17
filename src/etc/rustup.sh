@@ -241,6 +241,9 @@ create_tmp_dir() {
     echo $TMP_DIR
 }
 
+# Make `tr` locale independent
+LC_CTYPE=C
+
 probe_need CFG_CURL  curl
 probe_need CFG_TAR   tar
 probe_need CFG_FILE  file

@@ -72,7 +72,7 @@ impl<T, F> Finally<T> for F where F: FnMut() -> T {
 /// ```
 /// use std::finally::try_finally;
 ///
-/// struct State<'a> { buffer: &'a mut [u8], len: uint }
+/// struct State<'a> { buffer: &'a mut [u8], len: usize }
 /// # let mut buf = [];
 /// let mut state = State { buffer: &mut buf, len: 0 };
 /// try_finally(
