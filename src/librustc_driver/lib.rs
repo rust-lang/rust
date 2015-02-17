@@ -37,7 +37,6 @@
 #![feature(rustc_private)]
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(unicode)]
 
 extern crate arena;
@@ -73,7 +72,7 @@ use rustc::metadata;
 use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
-use std::old_io;
+use std::old_io::{self, stdio};
 use std::iter::repeat;
 use std::env;
 use std::sync::mpsc::channel;
@@ -780,7 +779,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.scoped(move || { std::old_io::stdio::set_stderr(box w); f() }).join() {
+    match cfg.spawn(move || { stdio::set_stderr(box w); f() }).unwrap().join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic

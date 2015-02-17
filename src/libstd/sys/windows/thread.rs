@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use boxed::Box;
+use prelude::v1::*;
+
 use cmp;
 use io;
 use mem;

@@ -10,7 +10,7 @@
 
 // Test that if a slicing expr[..] fails, the correct cleanups happen.
 
-use std::thread::Thread;
+use std::thread;
 
 struct Foo;
 
@@ -30,6 +30,6 @@ fn foo() {
 }
 
 fn main() {
-    let _ = Thread::scoped(move|| foo()).join();
+    let _ = thread::spawn(move|| foo()).join();
     unsafe { assert!(DTOR_COUNT == 2); }
 }

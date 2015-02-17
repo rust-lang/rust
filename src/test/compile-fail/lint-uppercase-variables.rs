@@ -13,9 +13,6 @@
 #![allow(dead_code)]
 #![deny(non_snake_case)]
 
-use std::old_io::File;
-use std::old_io::IoError;
-
 mod foo {
     pub enum Foo { Foo }
 }
@@ -36,6 +33,7 @@ fn main() {
         Foo => {}
 //~^ ERROR variable `Foo` should have a snake case name such as `foo`
 //~^^ WARN `Foo` is named the same as one of the variants of the type `foo::Foo`
+//~^^^ WARN unused variable: `Foo`
     }
 
     test(1);

@@ -75,7 +75,7 @@ use std::iter::repeat;
 use std::num::{Float, Int};
 use std::env;
 use std::sync::mpsc::{channel, Sender};
-use std::thread::{self, Thread};
+use std::thread;
 use std::thunk::{Thunk, Invoke};
 use std::time::Duration;
 
@@ -895,7 +895,7 @@ pub fn run_test(opts: &TestOpts,
                 cfg = cfg.stderr(box stderr as Box<Writer + Send>);
             }
 
-            let result_guard = cfg.scoped(move || { testfn.invoke(()) });
+            let result_guard = cfg.spawn(move || { testfn.invoke(()) }).unwrap();
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let test_result = calc_result(&desc, result_guard.join());
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();

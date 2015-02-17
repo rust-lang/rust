@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() { test05(); }
 
@@ -25,7 +25,7 @@ fn test05() {
         println!("{}", *three + n); // will copy x into the closure
         assert_eq!(*three, 3);
     };
-    Thread::scoped(move|| {
+    thread::spawn(move|| {
         test05_start(fn_to_send);
     }).join().ok().unwrap();
 }

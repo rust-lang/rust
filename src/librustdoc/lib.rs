@@ -34,6 +34,7 @@
 #![feature(std_misc)]
 #![feature(test)]
 #![feature(unicode)]
+#![feature(str_words)]
 
 extern crate arena;
 extern crate getopts;
@@ -55,6 +56,7 @@ use std::env;
 use std::old_io::File;
 use std::old_io;
 use std::rc::Rc;
+use std::sync::mpsc::channel;
 use externalfiles::ExternalHtml;
 use serialize::Decodable;
 use serialize::json::{self, Json};
@@ -125,8 +127,8 @@ pub fn main() {
     let res = std::thread::Builder::new().stack_size(STACK_SIZE).scoped(move || {
         let s = env::args().collect::<Vec<_>>();
         main_args(&s)
-    }).join();
-    env::set_exit_status(res.ok().unwrap() as i32);
+    }).unwrap().join();
+    env::set_exit_status(res as i32);
 }
 
 pub fn opts() -> Vec<getopts::OptGroup> {
@@ -365,12 +367,14 @@ fn rust_input(cratefile: &str, externs: core::Externs, matches: &getopts::Matche
     let cr = Path::new(cratefile);
     info!("starting to run rustc");
 
-    let (mut krate, analysis) = std::thread::spawn(move || {
+    let (tx, rx) = channel();
+    std::thread::spawn(move || {
         use rustc::session::config::Input;
 
         let cr = cr;
-        core::run_core(paths, cfgs, externs, Input::File(cr), triple)
+        tx.send(core::run_core(paths, cfgs, externs, Input::File(cr), triple)).unwrap();
     }).join().map_err(|_| "rustc failed").unwrap();
+    let (mut krate, analysis) = rx.recv().unwrap();
     info!("finished with rustc");
     let mut analysis = Some(analysis);
     ANALYSISKEY.with(|s| {
