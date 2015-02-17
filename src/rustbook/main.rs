@@ -11,10 +11,10 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(io)]
+#![feature(old_io)]
 #![feature(os)]
 #![feature(env)]
-#![feature(path)]
+#![feature(old_path)]
 #![feature(rustdoc)]
 
 extern crate rustdoc;
