@@ -96,6 +96,11 @@ two tokens: it is *always* an error either way.
 
 Don't do it, obviously.
 
+Consider `0b123` to just be `0b1` with a suffix of `23`, and this is
+an error or not depending if a suffix of `23` is valid. Handling this
+uniformly would require `"foo"123` and `'a'123` also being lexed as a
+single token. (Which may be a good idea anyway.)
+
 # Unresolved questions
 
 None.
