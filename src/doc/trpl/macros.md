@@ -420,11 +420,11 @@ invocations `m1!(m2!())` produced).
 
 # Hygiene
 
-To prevent clashes, rust implements
+To prevent clashes, Rust implements
 [hygienic macros](http://en.wikipedia.org/wiki/Hygienic_macro).
 
-As an example, `loop` and `for-loop` labels (discussed in the lifetimes guide)
-will not clash. The following code will print "Hello!" only once:
+As an example, `loop` and `for-loop` labels will not clash. The following code
+will print "Hello!" only once:
 
 ~~~
 macro_rules! loop_x {
