@@ -17,6 +17,8 @@
 
 // This is the first test that checks moving into local variables.
 
+#![feature(rustc_attrs)]
+
 pub struct D { d: isize }
 impl Drop for D { fn drop(&mut self) { } }
 

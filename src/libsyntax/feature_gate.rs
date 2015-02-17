@@ -23,6 +23,7 @@
 //! becomes stable.
 
 use self::Status::*;
+use self::AttributeType::*;
 
 use abi::RustIntrinsic;
 use ast::NodeId;
@@ -35,7 +36,6 @@ use visit;
 use visit::Visitor;
 use parse::token::{self, InternedString};
 
-use std::slice;
 use std::ascii::AsciiExt;
 
 // If you change this list without updating src/doc/reference.md, @cmr will be sad
@@ -133,6 +133,12 @@ static KNOWN_FEATURES: &'static [(&'static str, &'static str, Status)] = &[
     // Allows using the unsafe_no_drop_flag attribute (unlikely to
     // switch to Accepted; see RFC 320)
     ("unsafe_no_drop_flag", "1.0.0", Active),
+
+    // Allows the use of custom attributes; RFC 572
+    ("custom_attribute", "1.0.0", Active),
+
+    // Allows the use of rustc_* attributes; RFC 572
+    ("rustc_attrs", "1.0.0", Active),
 ];
 // (changing above list without updating src/doc/reference.md makes @cmr sad)
 
@@ -150,6 +156,138 @@ enum Status {
 
     /// This language feature has since been Accepted (it was once Active)
     Accepted,
+}
+
+// Attributes that have a special meaning to rustc or rustdoc
+pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
+    // Normal attributes
+
+    ("warn", Normal),
+    ("allow", Normal),
+    ("forbid", Normal),
+    ("deny", Normal),
+
+    ("macro_reexport", Normal),
+    ("macro_use", Normal),
+    ("macro_export", Normal),
+    ("plugin_registrar", Normal),
+
+    ("cfg", Normal),
+    ("main", Normal),
+    ("start", Normal),
+    ("test", Normal),
+    ("bench", Normal),
+    ("simd", Normal),
+    ("repr", Normal),
+    ("path", Normal),
+    ("abi", Normal),
+    ("unsafe_destructor", Normal),
+    ("automatically_derived", Normal),
+    ("no_mangle", Normal),
+    ("no_link", Normal),
+    ("derive", Normal),
+    ("should_fail", Normal),
+    ("ignore", Normal),
+    ("no_implicit_prelude", Normal),
+    ("reexport_test_harness_main", Normal),
+    ("link_args", Normal),
+    ("macro_escape", Normal),
+
+
+    ("staged_api", Gated("staged_api",
+                         "staged_api is for use by rustc only")),
+    ("plugin", Gated("plugin",
+                     "compiler plugins are experimental \
+                      and possibly buggy")),
+    ("no_std", Gated("no_std",
+                     "no_std is experimental")),
+    ("lang", Gated("lang_items",
+                     "language items are subject to change")),
+    ("linkage", Gated("linkage",
+                      "the `linkage` attribute is experimental \
+                       and not portable across platforms")),
+    ("thread_local", Gated("thread_local",
+                            "`#[thread_local]` is an experimental feature, and does not \
+                             currently handle destructors. There is no corresponding \
+                             `#[task_local]` mapping to the task model")),
+
+    ("rustc_on_unimplemented", Gated("on_unimplemented",
+                                     "the `#[rustc_on_unimplemented]` attribute \
+                                      is an experimental feature")),
+    ("rustc_variance", Gated("rustc_attrs",
+                             "the `#[rustc_variance]` attribute \
+                              is an experimental feature")),
+    ("rustc_error", Gated("rustc_attrs",
+                          "the `#[rustc_error]` attribute \
+                           is an experimental feature")),
+    ("rustc_move_fragments", Gated("rustc_attrs",
+                                   "the `#[rustc_move_fragments]` attribute \
+                                    is an experimental feature")),
+
+    // FIXME: #14408 whitelist docs since rustdoc looks at them
+    ("doc", Whitelisted),
+
+    // FIXME: #14406 these are processed in trans, which happens after the
+    // lint pass
+    ("cold", Whitelisted),
+    ("export_name", Whitelisted),
+    ("inline", Whitelisted),
+    ("link", Whitelisted),
+    ("link_name", Whitelisted),
+    ("link_section", Whitelisted),
+    ("no_builtins", Whitelisted),
+    ("no_mangle", Whitelisted),
+    ("no_split_stack", Whitelisted),
+    ("no_stack_check", Whitelisted),
+    ("packed", Whitelisted),
+    ("static_assert", Whitelisted),
+    ("no_debug", Whitelisted),
+    ("omit_gdb_pretty_printer_section", Whitelisted),
+    ("unsafe_no_drop_flag", Whitelisted),
+
+    // used in resolve
+    ("prelude_import", Whitelisted),
+
+    // FIXME: #14407 these are only looked at on-demand so we can't
+    // guarantee they'll have already been checked
+    ("deprecated", Whitelisted),
+    ("must_use", Whitelisted),
+    ("stable", Whitelisted),
+    ("unstable", Whitelisted),
+
+    // FIXME: #19470 this shouldn't be needed forever
+    ("old_orphan_check", Whitelisted),
+    ("old_impl_check", Whitelisted),
+    ("rustc_paren_sugar", Whitelisted), // FIXME: #18101 temporary unboxed closure hack
+
+    // Crate level attributes
+    ("crate_name", CrateLevel),
+    ("crate_type", CrateLevel),
+    ("crate_id", CrateLevel),
+    ("feature", CrateLevel),
+    ("no_start", CrateLevel),
+    ("no_main", CrateLevel),
+    ("no_builtins", CrateLevel),
+    ("recursion_limit", CrateLevel),
+];
+
+#[derive(PartialEq, Copy)]
+pub enum AttributeType {
+    /// Normal, builtin attribute that is consumed
+    /// by the compiler before the unused_attribute check
+    Normal,
+
+    /// Builtin attribute that may not be consumed by the compiler
+    /// before the unused_attribute check. These attributes
+    /// will be ignored by the unused_attribute lint
+    Whitelisted,
+
+    /// Is gated by a given feature gate and reason
+    /// These get whitelisted too
+    Gated(&'static str, &'static str),
+
+    /// Builtin attribute that is only allowed at the crate level
+    CrateLevel,
 }
 
 /// A set of features to be used by later passes.
@@ -274,22 +412,6 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_item(&mut self, i: &ast::Item) {
-        for attr in &i.attrs {
-            if attr.name() == "thread_local" {
-                self.gate_feature("thread_local", i.span,
-                                  "`#[thread_local]` is an experimental feature, and does not \
-                                  currently handle destructors. There is no corresponding \
-                                  `#[task_local]` mapping to the task model");
-            } else if attr.name() == "linkage" {
-                self.gate_feature("linkage", i.span,
-                                  "the `linkage` attribute is experimental \
-                                   and not portable across platforms")
-            } else if attr.name() == "rustc_on_unimplemented" {
-                self.gate_feature("on_unimplemented", i.span,
-                                  "the `#[rustc_on_unimplemented]` attribute \
-                                  is an experimental feature")
-            }
-        }
         match i.node {
             ast::ItemExternCrate(_) => {
                 if attr::contains_name(&i.attrs[], "macro_reexport") {
@@ -463,30 +585,27 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_attribute(&mut self, attr: &ast::Attribute) {
-        if attr.check_name("staged_api") {
-            self.gate_feature("staged_api", attr.span,
-                              "staged_api is for use by rustc only");
-        } else if attr.check_name("plugin") {
-            self.gate_feature("plugin", attr.span,
-                              "compiler plugins are experimental \
-                               and possibly buggy");
+        let name = &*attr.name();
+        for &(n, ty) in KNOWN_ATTRIBUTES {
+            if n == name {
+                if let Gated(gate, desc) = ty {
+                    self.gate_feature(gate, attr.span, desc);
+                }
+                return;
+            }
         }
-
-        if attr::contains_name(slice::ref_slice(attr), "lang") {
-            self.gate_feature("lang_items",
-                              attr.span,
-                              "language items are subject to change");
-        }
-
-        if attr.check_name("no_std") {
-            self.gate_feature("no_std", attr.span,
-                              "no_std is experimental");
-        }
-
-        if attr.check_name("unsafe_no_drop_flag") {
-            self.gate_feature("unsafe_no_drop_flag", attr.span,
-                              "unsafe_no_drop_flag has unstable semantics \
-                               and may be removed in the future");
+        if name.starts_with("rustc_") {
+            self.gate_feature("rustc_attrs", attr.span,
+                              "unless otherwise specified, attributes \
+                               with the prefix `rustc_` \
+                               are reserved for internal compiler diagnostics");
+        } else {
+            self.gate_feature("custom_attribute", attr.span,
+                       format!("The attribute `{}` is currently \
+                                unknown to the the compiler and \
+                                may have meaning \
+                                added to it in the future",
+                                name).as_slice());
         }
     }
 
