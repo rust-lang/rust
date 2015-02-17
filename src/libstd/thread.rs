@@ -151,7 +151,7 @@ use any::Any;
 use boxed::Box;
 use cell::UnsafeCell;
 use clone::Clone;
-use marker::{Send, Sync};
+use marker::{Send, Sync, CovariantType};
 use ops::{Drop, FnOnce};
 use option::Option::{self, Some, None};
 use result::Result::{Err, Ok};
@@ -255,6 +255,7 @@ impl Builder {
             joined: false,
             packet: my_packet,
             thread: thread,
+            _marker: CovariantType,
         }
     }
 
@@ -487,6 +488,7 @@ pub struct JoinGuard<'a, T: 'a> {
     thread: Thread,
     joined: bool,
     packet: Packet<T>,
+    _marker: CovariantType<&'a T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
