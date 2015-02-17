@@ -2388,7 +2388,7 @@ fn resolve_type(cx: &DocContext,
     };
     debug!("searching for {} in defmap", id);
     let def = match tcx.def_map.borrow().get(&id) {
-        Some(&k) => k,
+        Some(k) => k.full_def(),
         None => panic!("unresolved id not in defmap")
     };
 
@@ -2454,7 +2454,7 @@ fn resolve_use_source(cx: &DocContext, path: Path, id: ast::NodeId) -> ImportSou
 
 fn resolve_def(cx: &DocContext, id: ast::NodeId) -> Option<ast::DefId> {
     cx.tcx_opt().and_then(|tcx| {
-        tcx.def_map.borrow().get(&id).map(|&def| register_def(cx, def))
+        tcx.def_map.borrow().get(&id).map(|d| register_def(cx, d.full_def()))
     })
 }
 

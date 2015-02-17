@@ -1870,9 +1870,7 @@ struct ImplVisitor<'a, 'b:'a, 'c:'a, 'tcx:'b> {
 impl<'a, 'b, 'c, 'tcx, 'v> Visitor<'v> for ImplVisitor<'a, 'b, 'c, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
         if let ast::ItemImpl(_, _, _, Some(ref trait_ref), _, _) = item.node {
-            let def_map = &self.ecx.tcx.def_map;
-            let trait_def = def_map.borrow()[trait_ref.ref_id].clone();
-            let def_id = trait_def.def_id();
+            let def_id = self.ecx.tcx.def_map.borrow()[trait_ref.ref_id].def_id();
 
             // Load eagerly if this is an implementation of the Drop trait
             // or if the trait is not defined in this crate.

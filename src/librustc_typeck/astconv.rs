@@ -898,7 +898,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
 
     match ty.node {
         ast::TyPath(ref path) => {
-            let def = this.tcx().def_map.borrow().get(&ty.id).cloned();
+            let def = this.tcx().def_map.borrow().get(&ty.id).map(|d| d.full_def());
             match def {
                 Some(def::DefTrait(trait_def_id)) => {
                     let mut projection_bounds = Vec::new();
@@ -1303,16 +1303,14 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
             conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds)
         }
         ast::TyPath(ref path) | ast::TyQPath(ast::QPath { ref path, .. }) => {
-            let result = if let Some(&d) = tcx.def_map.borrow().get(&ast_ty.id) {
-                (d, 0)
-            } else if let Some(d) = tcx.partial_def_map.borrow().get(&ast_ty.id) {
-                (d.base_type, (d.extra_associated_types + 1) as usize)
+            let path_res = if let Some(&d) = tcx.def_map.borrow().get(&ast_ty.id) {
+                d
             } else {
                 tcx.sess.span_bug(ast_ty.span,
                                   &format!("unbound path {}", ast_ty.repr(tcx)))
             };
-            let (mut def, max_depth) = result;
-            let base_ty_end = path.segments.len() - max_depth;
+            let mut def = path_res.base_def;
+            let base_ty_end = path.segments.len() - path_res.depth;
             let opt_self_ty = if let ast::TyQPath(ref qpath) = ast_ty.node {
                 Some(ast_ty_to_ty(this, rscope, &*qpath.self_type))
             } else {
@@ -1324,9 +1322,13 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                                                 &path.segments[..base_ty_end],
                                                 &path.segments[base_ty_end..]);
 
-            if max_depth != 0 && ty.sty != ty::ty_err {
+            if path_res.depth != 0 && ty.sty != ty::ty_err {
                 // Write back the new resolution.
-                tcx.def_map.borrow_mut().insert(ast_ty.id, def);
+                tcx.def_map.borrow_mut().insert(ast_ty.id, def::PathResolution {
+                    base_def: def,
+                    last_private: path_res.last_private,
+                    depth: 0
+                });
             }
 
             ty

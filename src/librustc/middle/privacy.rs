@@ -16,7 +16,7 @@ pub use self::PrivateDep::*;
 pub use self::ImportUse::*;
 pub use self::LastPrivate::*;
 
-use util::nodemap::{DefIdSet, NodeMap, NodeSet};
+use util::nodemap::{DefIdSet, NodeSet};
 
 use syntax::ast;
 
@@ -31,9 +31,6 @@ pub type ExternalExports = DefIdSet;
 /// documentation purposes (reexporting a private struct inlines the doc,
 /// reexporting a public struct doesn't inline the doc).
 pub type PublicItems = NodeSet;
-
-// FIXME: dox
-pub type LastPrivateMap = NodeMap<LastPrivate>;
 
 #[derive(Copy, Debug)]
 pub enum LastPrivate {

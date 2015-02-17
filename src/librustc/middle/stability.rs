@@ -393,12 +393,14 @@ pub fn check_expr(tcx: &ty::ctxt, e: &ast::Expr,
 
 pub fn check_path(tcx: &ty::ctxt, path: &ast::Path, id: ast::NodeId,
                   cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
-    let did = match tcx.def_map.borrow().get(&id) {
-        Some(&def::DefPrimTy(..)) => return,
-        Some(def) => def.def_id(),
-        None => return
-    };
-    maybe_do_stability_check(tcx, did, path.span, cb)
+    match tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
+        Some(def::DefPrimTy(..)) => {}
+        Some(def) => {
+            maybe_do_stability_check(tcx, def.def_id(), path.span, cb);
+        }
+        None => {}
+    }
+
 }
 
 fn maybe_do_stability_check(tcx: &ty::ctxt, id: ast::DefId, span: Span,

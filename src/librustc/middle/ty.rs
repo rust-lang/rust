@@ -46,12 +46,11 @@ use metadata::csearch;
 use middle;
 use middle::check_const;
 use middle::const_eval;
-use middle::def::{self, DefMap, ExportMap, PartialDefMap};
+use middle::def::{self, DefMap, ExportMap};
 use middle::dependency_format;
 use middle::lang_items::{FnTraitLangItem, FnMutTraitLangItem};
 use middle::lang_items::{FnOnceTraitLangItem, TyDescStructLangItem};
 use middle::mem_categorization as mc;
-use middle::privacy::LastPrivateMap;
 use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
@@ -683,8 +682,6 @@ pub struct ctxt<'tcx> {
 
     pub sess: Session,
     pub def_map: DefMap,
-    pub partial_def_map: PartialDefMap,
-    pub last_private_map: RefCell<LastPrivateMap>,
 
     pub named_region_map: resolve_lifetime::NamedRegionMap,
 
@@ -2427,8 +2424,6 @@ impl<'tcx> CommonTypes<'tcx> {
 pub fn mk_ctxt<'tcx>(s: Session,
                      arenas: &'tcx CtxtArenas<'tcx>,
                      def_map: DefMap,
-                     partial_def_map: PartialDefMap,
-                     last_private_map: LastPrivateMap,
                      named_region_map: resolve_lifetime::NamedRegionMap,
                      map: ast_map::Map<'tcx>,
                      freevars: RefCell<FreevarMap>,
@@ -2451,8 +2446,6 @@ pub fn mk_ctxt<'tcx>(s: Session,
         variance_computed: Cell::new(false),
         sess: s,
         def_map: def_map,
-        partial_def_map: partial_def_map,
-        last_private_map: RefCell::new(last_private_map),
         region_maps: region_maps,
         node_types: RefCell::new(FnvHashMap()),
         item_substs: RefCell::new(NodeMap()),
@@ -4509,7 +4502,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
 
 pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
     match tcx.def_map.borrow().get(&expr.id) {
-        Some(&def) => def,
+        Some(def) => def.full_def(),
         None => {
             tcx.sess.span_bug(expr.span, &format!(
                 "no def-map entry for expr {}", expr.id));
@@ -4692,11 +4685,10 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
 
         ast::ExprBox(Some(ref place), _) => {
             // Special case `Box<T>` for now:
-            let definition = match tcx.def_map.borrow().get(&place.id) {
-                Some(&def) => def,
+            let def_id = match tcx.def_map.borrow().get(&place.id) {
+                Some(def) => def.def_id(),
                 None => panic!("no def for place"),
             };
-            let def_id = definition.def_id();
             if tcx.lang_items.exchange_heap() == Some(def_id) {
                 RvalueDatumExpr
             } else {
@@ -5144,10 +5136,7 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
 }
 
 pub fn trait_ref_to_def_id(tcx: &ctxt, tr: &ast::TraitRef) -> ast::DefId {
-    let def = *tcx.def_map.borrow()
-                     .get(&tr.ref_id)
-                     .expect("no def-map entry for trait");
-    def.def_id()
+    tcx.def_map.borrow().get(&tr.ref_id).expect("no def-map entry for trait").def_id()
 }
 
 pub fn try_add_builtin_trait(

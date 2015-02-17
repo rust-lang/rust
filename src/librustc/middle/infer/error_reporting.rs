@@ -1242,7 +1242,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                         "unbound path {}",
                                         pprust::path_to_string(path)))
                         }
-                        Some(&d) => d
+                        Some(d) => d.full_def()
                     };
                     match a_def {
                         def::DefTy(did, _) | def::DefStruct(did) => {
