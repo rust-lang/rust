@@ -98,12 +98,13 @@ use middle::ty::{self, RegionEscape, Ty, TypeScheme};
 use middle::ty_fold::{self, TypeFolder, TypeFoldable};
 use middle::infer;
 use rscope::*;
-use util::common::memoized;
+use util::common::{ErrorReported, memoized};
 use util::nodemap::{FnvHashMap, FnvHashSet};
 use util::ppaux;
 use util::ppaux::{Repr,UserString};
 use write_ty_to_tcx;
 
+use std::cell::RefCell;
 use std::collections::HashSet;
 use std::rc::Rc;
 
@@ -121,7 +122,7 @@ use syntax::visit;
 // Main entry point
 
 pub fn collect_item_types(tcx: &ty::ctxt) {
-    let ccx = &CrateCtxt { tcx: tcx };
+    let ccx = &CrateCtxt { tcx: tcx, stack: RefCell::new(Vec::new()) };
 
     match ccx.tcx.lang_items.ty_desc() {
         Some(id) => { collect_intrinsic_type(ccx, id); }
@@ -143,11 +144,22 @@ pub fn collect_item_types(tcx: &ty::ctxt) {
 
 struct CrateCtxt<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
+
+    // This stack is used to identify cycles in the user's source.
+    // Note that these cycles can cross multiple items.
+    stack: RefCell<Vec<AstConvRequest>>,
 }
 
 struct ItemCtxt<'a,'tcx:'a> {
     ccx: &'a CrateCtxt<'a,'tcx>,
     generics: &'a ty::Generics<'tcx>,
+}
+
+#[derive(Copy, PartialEq, Eq)]
+enum AstConvRequest {
+    GetItemTypeScheme(ast::DefId),
+    GetTraitDef(ast::DefId),
+    GetTypeParameterBounds(ast::NodeId),
 }
 
 ///////////////////////////////////////////////////////////////////////////
@@ -217,6 +229,94 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
             }
         }
     }
+
+    fn cycle_check<F,R>(&self,
+                        span: Span,
+                        request: AstConvRequest,
+                        code: F)
+                        -> Result<R,ErrorReported>
+        where F: FnOnce() -> R
+    {
+        {
+            let mut stack = self.stack.borrow_mut();
+            match stack.iter().enumerate().rev().find(|&(_, r)| *r == request) {
+                None => { }
+                Some((i, _)) => {
+                    let cycle = &stack[i..];
+                    self.report_cycle(span, cycle);
+                    return Err(ErrorReported);
+                }
+            }
+            stack.push(request);
+        }
+
+        let result = code();
+
+        self.stack.borrow_mut().pop();
+        Ok(result)
+    }
+
+    fn report_cycle(&self,
+                    span: Span,
+                    cycle: &[AstConvRequest])
+    {
+        assert!(!cycle.is_empty());
+        let tcx = self.tcx;
+
+        tcx.sess.span_err(
+            span,
+            &format!("unsupported cyclic reference between types/traits detected"));
+
+        match cycle[0] {
+            AstConvRequest::GetItemTypeScheme(def_id) |
+            AstConvRequest::GetTraitDef(def_id) => {
+                tcx.sess.note(
+                    &format!("the cycle begins when processing `{}`...",
+                             ty::item_path_str(tcx, def_id)));
+            }
+            AstConvRequest::GetTypeParameterBounds(id) => {
+                let def = tcx.type_parameter_def(id);
+                tcx.sess.note(
+                    &format!("the cycle begins when computing the bounds \
+                              for type parameter `{}`...",
+                             def.name.user_string(tcx)));
+            }
+        }
+
+        for request in cycle[1..].iter() {
+            match *request {
+                AstConvRequest::GetItemTypeScheme(def_id) |
+                AstConvRequest::GetTraitDef(def_id) => {
+                    tcx.sess.note(
+                        &format!("...which then requires processing `{}`...",
+                                 ty::item_path_str(tcx, def_id)));
+                }
+                AstConvRequest::GetTypeParameterBounds(id) => {
+                    let def = tcx.type_parameter_def(id);
+                    tcx.sess.note(
+                        &format!("...which then requires computing the bounds \
+                                  for type parameter `{}`...",
+                                 def.name.user_string(tcx)));
+                }
+            }
+        }
+
+        match cycle[0] {
+            AstConvRequest::GetItemTypeScheme(def_id) |
+            AstConvRequest::GetTraitDef(def_id) => {
+                tcx.sess.note(
+                    &format!("...which then again requires processing `{}`, completing the cycle.",
+                             ty::item_path_str(tcx, def_id)));
+            }
+            AstConvRequest::GetTypeParameterBounds(id) => {
+                let def = tcx.type_parameter_def(id);
+                tcx.sess.note(
+                    &format!("...which then again requires computing the bounds \
+                              for type parameter `{}`, completing the cycle.",
+                             def.name.user_string(tcx)));
+            }
+        }
+    }
 }
 
 pub trait ToTy<'tcx> {
@@ -232,25 +332,37 @@ impl<'a,'tcx> ToTy<'tcx> for ItemCtxt<'a,'tcx> {
 impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
     fn tcx(&self) -> &ty::ctxt<'tcx> { self.ccx.tcx }
 
-    fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx> {
-        type_scheme_of_def_id(self.ccx, id)
+    fn get_item_type_scheme(&self, span: Span, id: ast::DefId)
+                            -> Result<ty::TypeScheme<'tcx>, ErrorReported>
+    {
+        self.ccx.cycle_check(span, AstConvRequest::GetItemTypeScheme(id), || {
+            type_scheme_of_def_id(self.ccx, id)
+        })
     }
 
-    fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
-        get_trait_def(self.ccx, id)
+    fn get_trait_def(&self, span: Span, id: ast::DefId)
+                     -> Result<Rc<ty::TraitDef<'tcx>>, ErrorReported>
+    {
+        self.ccx.cycle_check(span, AstConvRequest::GetTraitDef(id), || {
+            get_trait_def(self.ccx, id)
+        })
     }
 
     fn get_type_parameter_bounds(&self,
-                                 param: subst::ParamSpace,
-                                 index: u32)
-                                 -> Vec<ty::PolyTraitRef<'tcx>>
+                                 span: Span,
+                                 node_id: ast::NodeId)
+                                 -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
     {
-        // TODO out of range indices can occur when you have something
-        // like fn foo<T:U::X,U>() { }
-        match self.generics.types.opt_get(param, index as usize) {
-            Some(def) => def.bounds.trait_bounds.clone(),
-            None => Vec::new(),
-        }
+        self.ccx.cycle_check(span, AstConvRequest::GetTypeParameterBounds(node_id), || {
+            let def = self.tcx().type_parameter_def(node_id);
+
+            // TODO out of range indices can occur when you have something
+            // like fn foo<T:U::X,U>() { }
+            match self.generics.types.opt_get(def.space, def.index as usize) {
+                Some(def) => def.bounds.trait_bounds.clone(),
+                None => Vec::new(),
+            }
+        })
     }
 
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
