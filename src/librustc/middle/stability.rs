@@ -283,7 +283,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
         // name `__test`
         if item.span == DUMMY_SP && item.ident.as_str() == "__test" { return }
 
-        check_item(self.tcx, item,
+        check_item(self.tcx, item, true,
                    &mut |id, sp, stab| self.check(id, sp, stab));
         visit::walk_item(self, item);
     }
@@ -302,7 +302,7 @@ impl<'a, 'v, 'tcx> Visitor<'v> for Checker<'a, 'tcx> {
 }
 
 /// Helper for discovering nodes to check for stability
-pub fn check_item(tcx: &ty::ctxt, item: &ast::Item,
+pub fn check_item(tcx: &ty::ctxt, item: &ast::Item, warn_about_defns: bool,
                   cb: &mut FnMut(ast::DefId, Span, &Option<Stability>)) {
     match item.node {
         ast::ItemExternCrate(_) => {
@@ -316,6 +316,35 @@ pub fn check_item(tcx: &ty::ctxt, item: &ast::Item,
             let id = ast::DefId { krate: cnum, node: ast::CRATE_NODE_ID };
             maybe_do_stability_check(tcx, id, item.span, cb);
         }
+
+        // For implementations of traits, check the stability of each item
+        // individually as it's possible to have a stable trait with unstable
+        // items.
+        ast::ItemImpl(_, _, _, Some(ref t), _, ref impl_items) => {
+            let trait_did = tcx.def_map.borrow()[t.ref_id].def_id();
+            let trait_items = ty::trait_items(tcx, trait_did);
+
+            for impl_item in impl_items {
+                let (ident, span) = match *impl_item {
+                    ast::MethodImplItem(ref method) => {
+                        (match method.node {
+                            ast::MethDecl(ident, _, _, _, _, _, _, _) => ident,
+                            ast::MethMac(..) => unreachable!(),
+                        }, method.span)
+                    }
+                    ast::TypeImplItem(ref typedef) => {
+                        (typedef.ident, typedef.span)
+                    }
+                };
+                let item = trait_items.iter().find(|item| {
+                    item.name() == ident.name
+                }).unwrap();
+                if warn_about_defns {
+                    maybe_do_stability_check(tcx, item.def_id(), span, cb);
+                }
+            }
+        }
+
         _ => (/* pass */)
     }
 }
