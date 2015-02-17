@@ -17,7 +17,7 @@ extern crate cci_borrow_lib;
 use cci_borrow_lib::foo;
 
 pub fn main() {
-    let p = box 22_usize;
+    let p: Box<_> = box 22_usize;
     let r = foo(&*p);
     println!("r={}", r);
     assert_eq!(r, 22_usize);

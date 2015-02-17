@@ -387,6 +387,7 @@ mod test {
     extern crate test;
     use self::test::Bencher;
     use core::ptr::PtrExt;
+    use boxed::Box;
     use heap;
 
     #[test]
@@ -404,7 +405,7 @@ mod test {
     #[bench]
     fn alloc_owned_small(b: &mut Bencher) {
         b.iter(|| {
-            box 10
+            let _: Box<_> = box 10;
         })
     }
 }

@@ -13,7 +13,7 @@
 #![feature(unboxed_closures)]
 
 pub fn main() {
-    let bar = box 3;
+    let bar: Box<_> = box 3;
     let h = || -> int *bar;
     assert_eq!(h(), 3);
 }

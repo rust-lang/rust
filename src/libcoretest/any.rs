@@ -68,7 +68,7 @@ fn any_downcast_ref() {
 #[test]
 fn any_downcast_mut() {
     let mut a = 5_usize;
-    let mut b = box 7_usize;
+    let mut b: Box<_> = box 7_usize;
 
     let a_r = &mut a as &mut Any;
     let tmp: &mut uint = &mut *b;

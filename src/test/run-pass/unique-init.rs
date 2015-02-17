@@ -12,5 +12,5 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let _i = box 100;
+    let _i: Box<_> = box 100;
 }

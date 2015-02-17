@@ -20,6 +20,6 @@ impl double for uint {
 }
 
 pub fn main() {
-    let x = box 3_usize;
+    let x: Box<_> = box 3_usize;
     assert_eq!(x.double(), 6_usize);
 }

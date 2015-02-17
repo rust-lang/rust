@@ -17,7 +17,7 @@ struct A { a: Box<int> }
 
 pub fn main() {
     fn invoke<F>(f: F) where F: FnOnce() { f(); }
-    let k = box 22;
+    let k: Box<_> = box 22;
     let _u = A {a: k.clone()};
     invoke(|| println!("{}", k.clone()) )
 }

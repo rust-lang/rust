@@ -146,7 +146,7 @@ impl Table {
     fn search_remainder<C:TableCallback>(item: &mut Entry, key: Code, c: C) {
         match item.next {
             None => {
-                let mut entry = box Entry {
+                let mut entry: Box<_> = box Entry {
                     code: key,
                     count: 0,
                     next: None,
@@ -170,7 +170,7 @@ impl Table {
 
         {
             if self.items[index as usize].is_none() {
-                let mut entry = box Entry {
+                let mut entry: Box<_> = box Entry {
                     code: key,
                     count: 0,
                     next: None,

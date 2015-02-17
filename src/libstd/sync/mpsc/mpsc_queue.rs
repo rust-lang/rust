@@ -164,7 +164,7 @@ mod tests {
 
     #[test]
     fn test_full() {
-        let q = Queue::new();
+        let q: Queue<Box<_>> = Queue::new();
         q.push(box 1);
         q.push(box 2);
     }

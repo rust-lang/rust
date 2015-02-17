@@ -17,7 +17,7 @@ use std::sync::mpsc::channel;
 pub fn main() {
     let (tx, rx) = channel::<uint>();
 
-    let x = box 1;
+    let x: Box<_> = box 1;
     let x_in_parent = &(*x) as *const int as uint;
 
     let _t = Thread::spawn(move || {

@@ -16,7 +16,7 @@ struct Element;
 macro_rules! foo {
     ($tag: expr, $string: expr) => {
         if $tag == $string {
-            let element = box Element;
+            let element: Box<_> = box Element;
             unsafe {
                 return std::mem::transmute::<_, uint>(element);
             }

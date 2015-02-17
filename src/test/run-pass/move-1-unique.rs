@@ -26,7 +26,7 @@ fn test(x: bool, foo: Box<Triple>) -> int {
 }
 
 pub fn main() {
-    let x = box Triple{x: 1, y: 2, z: 3};
+    let x: Box<_> = box Triple{x: 1, y: 2, z: 3};
     assert_eq!(test(true, x.clone()), 2);
     assert_eq!(test(true, x.clone()), 2);
     assert_eq!(test(true, x.clone()), 2);

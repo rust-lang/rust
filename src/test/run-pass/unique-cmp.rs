@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let i = box 100;
+    let i: Box<_> = box 100;
     assert!(i == box 100);
     assert!(i < box 101);
     assert!(i <= box 100);

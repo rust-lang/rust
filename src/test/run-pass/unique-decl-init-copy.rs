@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let mut i = box 1;
+    let mut i: Box<_> = box 1;
     // Should be a copy
     let mut j = i.clone();
     *i = 2;

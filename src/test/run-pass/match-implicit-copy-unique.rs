@@ -14,7 +14,7 @@
 struct Pair { a: Box<int>, b: Box<int> }
 
 pub fn main() {
-    let mut x = box Pair {a: box 10, b: box 20};
+    let mut x: Box<_> = box Pair {a: box 10, b: box 20};
     let x_internal = &mut *x;
     match *x_internal {
       Pair {a: ref mut a, b: ref mut _b} => {

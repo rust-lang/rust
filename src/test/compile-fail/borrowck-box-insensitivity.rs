@@ -31,100 +31,100 @@ struct D {
 }
 
 fn copy_after_move() {
-    let a = box A { x: box 0, y: 1 };
+    let a: Box<_> = box A { x: box 0, y: 1 };
     let _x = a.x;
     let _y = a.y; //~ ERROR use of moved
     //~^^ NOTE `a` moved here (through moving `a.x`)
 }
 
 fn move_after_move() {
-    let a = box B { x: box 0, y: box 1 };
+    let a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = a.x;
     let _y = a.y; //~ ERROR use of moved
     //~^^ NOTE `a` moved here (through moving `a.x`)
 }
 
 fn borrow_after_move() {
-    let a = box A { x: box 0, y: 1 };
+    let a: Box<_> = box A { x: box 0, y: 1 };
     let _x = a.x;
     let _y = &a.y; //~ ERROR use of moved
     //~^^ NOTE `a` moved here (through moving `a.x`)
 }
 
 fn move_after_borrow() {
-    let a = box B { x: box 0, y: box 1 };
+    let a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = &a.x;
     let _y = a.y; //~ ERROR cannot move
 }
 
 fn copy_after_mut_borrow() {
-    let mut a = box A { x: box 0, y: 1 };
+    let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &mut a.x;
     let _y = a.y; //~ ERROR cannot use
 }
 
 fn move_after_mut_borrow() {
-    let mut a = box B { x: box 0, y: box 1 };
+    let mut a: Box<_> = box B { x: box 0, y: box 1 };
     let _x = &mut a.x;
     let _y = a.y; //~ ERROR cannot move
 }
 
 fn borrow_after_mut_borrow() {
-    let mut a = box A { x: box 0, y: 1 };
+    let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &mut a.x;
     let _y = &a.y; //~ ERROR cannot borrow
 }
 
 fn mut_borrow_after_borrow() {
-    let mut a = box A { x: box 0, y: 1 };
+    let mut a: Box<_> = box A { x: box 0, y: 1 };
     let _x = &a.x;
     let _y = &mut a.y; //~ ERROR cannot borrow
 }
 
 fn copy_after_move_nested() {
-    let a = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = a.x.x;
     let _y = a.y; //~ ERROR use of collaterally moved
 }
 
 fn move_after_move_nested() {
-    let a = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
+    let a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = a.x.x;
     let _y = a.y; //~ ERROR use of collaterally moved
 }
 
 fn borrow_after_move_nested() {
-    let a = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = a.x.x;
     let _y = &a.y; //~ ERROR use of collaterally moved
 }
 
 fn move_after_borrow_nested() {
-    let a = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
+    let a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = &a.x.x;
     let _y = a.y; //~ ERROR cannot move
 }
 
 fn copy_after_mut_borrow_nested() {
-    let mut a = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = &mut a.x.x;
     let _y = a.y; //~ ERROR cannot use
 }
 
 fn move_after_mut_borrow_nested() {
-    let mut a = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
+    let mut a: Box<_> = box D { x: box A { x: box 0, y: 1 }, y: box 2 };
     let _x = &mut a.x.x;
     let _y = a.y; //~ ERROR cannot move
 }
 
 fn borrow_after_mut_borrow_nested() {
-    let mut a = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = &mut a.x.x;
     let _y = &a.y; //~ ERROR cannot borrow
 }
 
 fn mut_borrow_after_borrow_nested() {
-    let mut a = box C { x: box A { x: box 0, y: 1 }, y: 2 };
+    let mut a: Box<_> = box C { x: box A { x: box 0, y: 1 }, y: 2 };
     let _x = &a.x.x;
     let _y = &mut a.y; //~ ERROR cannot borrow
 }

@@ -22,7 +22,7 @@ extern crate crate_method_reexport_grrrrrrr2;
 pub fn main() {
     use crate_method_reexport_grrrrrrr2::rust::add;
     use crate_method_reexport_grrrrrrr2::rust::cx;
-    let x = box() ();
+    let x: Box<_> = box () ();
     x.cx();
     let y = ();
     y.add("hi".to_string());

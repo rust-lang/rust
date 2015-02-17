@@ -28,7 +28,7 @@ fn inc(v: &mut Box<isize>) {
 fn loop_overarching_alias_mut() {
     // In this instance, the borrow encompasses the entire loop.
 
-    let mut v = box 3;
+    let mut v: Box<_> = box 3;
     let mut x = &mut v;
     **x += 1;
     loop {
@@ -39,7 +39,7 @@ fn loop_overarching_alias_mut() {
 fn block_overarching_alias_mut() {
     // In this instance, the borrow encompasses the entire closure call.
 
-    let mut v = box 3;
+    let mut v: Box<_> = box 3;
     let mut x = &mut v;
     for _ in 0..3 {
         borrow(&*v); //~ ERROR cannot borrow
@@ -50,8 +50,8 @@ fn block_overarching_alias_mut() {
 fn loop_aliased_mut() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = box 3;
-    let mut w = box 4;
+    let mut v: Box<_> = box 3;
+    let mut w: Box<_> = box 4;
     let mut _x = &w;
     loop {
         borrow_mut(&mut *v); //~ ERROR cannot borrow
@@ -62,8 +62,8 @@ fn loop_aliased_mut() {
 fn while_aliased_mut() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = box 3;
-    let mut w = box 4;
+    let mut v: Box<_> = box 3;
+    let mut w: Box<_> = box 4;
     let mut _x = &w;
     while cond() {
         borrow_mut(&mut *v); //~ ERROR cannot borrow
@@ -75,8 +75,8 @@ fn while_aliased_mut() {
 fn loop_aliased_mut_break() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = box 3;
-    let mut w = box 4;
+    let mut v: Box<_> = box 3;
+    let mut w: Box<_> = box 4;
     let mut _x = &w;
     loop {
         borrow_mut(&mut *v);
@@ -89,8 +89,8 @@ fn loop_aliased_mut_break() {
 fn while_aliased_mut_break() {
     // In this instance, the borrow is carried through the loop.
 
-    let mut v = box 3;
-    let mut w = box 4;
+    let mut v: Box<_> = box 3;
+    let mut w: Box<_> = box 4;
     let mut _x = &w;
     while cond() {
         borrow_mut(&mut *v);
@@ -101,8 +101,8 @@ fn while_aliased_mut_break() {
 }
 
 fn while_aliased_mut_cond(cond: bool, cond2: bool) {
-    let mut v = box 3;
-    let mut w = box 4;
+    let mut v: Box<_> = box 3;
+    let mut w: Box<_> = box 4;
     let mut x = &mut w;
     while cond {
         **x += 1;

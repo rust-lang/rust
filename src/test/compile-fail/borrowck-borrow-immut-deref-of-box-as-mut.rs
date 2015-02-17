@@ -18,7 +18,7 @@ impl A {
 }
 
 pub fn main() {
-    let a = box A;
+    let a: Box<_> = box A;
     a.foo();
     //~^ ERROR cannot borrow immutable `Box` content `*a` as mutable
 }
