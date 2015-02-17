@@ -1494,15 +1494,15 @@ impl Clean<Type> for ast::Ty {
             TyFixedLengthVec(ref ty, ref e) => FixedVector(box ty.clean(cx),
                                                            e.span.to_src(cx)),
             TyTup(ref tys) => Tuple(tys.clean(cx)),
-            TyPath(ref p) => {
+            TyPath(None, ref p) => {
                 resolve_type(cx, p.clean(cx), self.id)
             }
-            TyQPath(ref qp) => {
-                let mut trait_path = qp.path.clone();
+            TyPath(Some(ref qself), ref p) => {
+                let mut trait_path = p.clone();
                 trait_path.segments.pop();
                 Type::QPath {
-                    name: qp.path.segments.last().unwrap().identifier.clean(cx),
-                    self_type: box qp.self_type.clean(cx),
+                    name: p.segments.last().unwrap().identifier.clean(cx),
+                    self_type: box qself.ty.clean(cx),
                     trait_: box resolve_type(cx, trait_path.clean(cx), self.id)
                 }
             }

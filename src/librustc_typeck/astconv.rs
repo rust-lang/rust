@@ -52,6 +52,7 @@ use middle::astconv_util::{prim_ty_to_ty, check_path_args, NO_TPS, NO_REGIONS};
 use middle::const_eval;
 use middle::def;
 use middle::resolve_lifetime as rl;
+use middle::privacy::{AllPublic, LastMod};
 use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
@@ -897,7 +898,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
      */
 
     match ty.node {
-        ast::TyPath(ref path) => {
+        ast::TyPath(None, ref path) => {
             let def = this.tcx().def_map.borrow().get(&ty.id).map(|d| d.full_def());
             match def {
                 Some(def::DefTrait(trait_def_id)) => {
@@ -981,7 +982,13 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
     check_path_args(tcx, slice::ref_slice(item_segment), NO_TPS | NO_REGIONS);
     let assoc_name = item_segment.identifier.name;
 
-    let ty_param_node_id = if let ty::ty_param(_) = ty.sty {
+    let is_param = match (&ty.sty, ty_path_def) {
+        (&ty::ty_param(_), def::DefTyParam(..)) |
+        (&ty::ty_param(_), def::DefSelfTy(_)) => true,
+        _ => false
+    };
+
+    let ty_param_node_id = if is_param {
         ty_path_def.local_node_id()
     } else {
         span_err!(tcx.sess, span, E0223,
@@ -1195,9 +1202,14 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                         segments.last().unwrap())
         }
         def::DefMod(id) => {
-            tcx.sess.span_bug(span,
-                              &format!("found module name used as a type: {}",
-                                       tcx.map.node_to_string(id.node)));
+            // Used as sentinel by callers to indicate the `<T>::a::b::c` form.
+            if segments.is_empty() {
+                opt_self_ty.expect("missing T in <T>::a::b::c")
+            } else {
+                tcx.sess.span_bug(span,
+                                  &format!("found module name used as a type: {}",
+                                           tcx.map.node_to_string(id.node)));
+            }
         }
         def::DefPrimTy(prim_ty) => {
             prim_ty_to_ty(tcx, segments, prim_ty)
@@ -1302,20 +1314,25 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
         ast::TyPolyTraitRef(ref bounds) => {
             conv_ty_poly_trait_ref(this, rscope, ast_ty.span, bounds)
         }
-        ast::TyPath(ref path) | ast::TyQPath(ast::QPath { ref path, .. }) => {
+        ast::TyPath(ref maybe_qself, ref path) => {
             let path_res = if let Some(&d) = tcx.def_map.borrow().get(&ast_ty.id) {
                 d
+            } else if let Some(ast::QSelf { position: 0, .. }) = *maybe_qself {
+                // Create some fake resolution that can't possibly be a type.
+                def::PathResolution {
+                    base_def: def::DefMod(ast_util::local_def(ast::CRATE_NODE_ID)),
+                    last_private: LastMod(AllPublic),
+                    depth: path.segments.len()
+                }
             } else {
                 tcx.sess.span_bug(ast_ty.span,
                                   &format!("unbound path {}", ast_ty.repr(tcx)))
             };
             let mut def = path_res.base_def;
             let base_ty_end = path.segments.len() - path_res.depth;
-            let opt_self_ty = if let ast::TyQPath(ref qpath) = ast_ty.node {
-                Some(ast_ty_to_ty(this, rscope, &*qpath.self_type))
-            } else {
-                None
-            };
+            let opt_self_ty = maybe_qself.as_ref().map(|qself| {
+                ast_ty_to_ty(this, rscope, &qself.ty)
+            });
             let ty = finish_resolving_def_to_ty(this, rscope, ast_ty.span,
                                                 PathParamMode::Explicit, &mut def,
                                                 opt_self_ty,

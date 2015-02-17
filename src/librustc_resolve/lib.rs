@@ -65,7 +65,7 @@ use rustc::util::lev_distance::lev_distance;
 use syntax::ast::{Arm, BindByRef, BindByValue, BindingMode, Block, Crate, CrateNum};
 use syntax::ast::{DefId, Expr, ExprAgain, ExprBreak, ExprField};
 use syntax::ast::{ExprLoop, ExprWhile, ExprMethodCall};
-use syntax::ast::{ExprPath, ExprQPath, ExprStruct, FnDecl};
+use syntax::ast::{ExprPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
 use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
@@ -75,7 +75,7 @@ use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
 use syntax::ast::{PatRange, PatStruct, Path, PrimTy};
 use syntax::ast::{TraitRef, Ty, TyBool, TyChar, TyF32};
 use syntax::ast::{TyF64, TyFloat, TyIs, TyI8, TyI16, TyI32, TyI64, TyInt};
-use syntax::ast::{TyPath, TyPtr, TyQPath};
+use syntax::ast::{TyPath, TyPtr};
 use syntax::ast::{TyRptr, TyStr, TyUs, TyU8, TyU16, TyU32, TyU64, TyUint};
 use syntax::ast::{TypeImplItem};
 use syntax::ast;
@@ -2821,7 +2821,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                   FnSpace,
                                                   MethodRibKind)
                             }
-                            ast::TypeTraitItem(_) => NoTypeParameters,
+                            ast::TypeTraitItem(ref assoc_ty) => {
+                                let ty_param = &assoc_ty.ty_param;
+                                this.check_if_primitive_type_name(ty_param.ident.name,
+                                                                  ty_param.span);
+                                NoTypeParameters
+                            }
                         };
                         this.with_type_parameter_rib(type_parameters, |this| {
                             visit::walk_trait_item(this, trait_item)
@@ -3243,14 +3248,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
     fn resolve_type(&mut self, ty: &Ty) {
         match ty.node {
-            // Like path expressions, the interpretation of path types depends
-            // on whether the path has multiple elements in it or not.
+            // `<T>::a::b::c` is resolved by typeck alone.
+            TyPath(Some(ast::QSelf { position: 0, .. }), _) => {}
 
-            TyPath(ref path) | TyQPath(ast::QPath { ref path, .. }) => {
-                let max_assoc_types = if let TyQPath(_) = ty.node {
+            TyPath(ref maybe_qself, ref path) => {
+                let max_assoc_types = if let Some(ref qself) = *maybe_qself {
                     // Make sure the trait is valid.
                     let _ = self.resolve_trait_reference(ty.id, path, 1);
-                    1
+                    path.segments.len() - qself.position
                 } else {
                     path.segments.len()
                 };
@@ -3284,10 +3289,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         // Keep reporting some errors even if they're ignored above.
                         self.resolve_path(ty.id, path, 0, TypeNS, true);
 
-                        let kind = match ty.node {
-                            TyQPath(_) => "associated type",
-                            _ => "type name"
+                        let kind = if maybe_qself.is_some() {
+                            "associated type"
+                        } else {
+                            "type name"
                         };
+
                         let msg = format!("use of undeclared {} `{}`", kind,
                                           self.path_names_to_string(path, 0));
                         self.resolve_error(ty.span, &msg[..]);
@@ -3905,7 +3912,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         fn extract_path_and_node_id(t: &Ty, allow: FallbackChecks)
                                                     -> Option<(Path, NodeId, FallbackChecks)> {
             match t.node {
-                TyPath(ref path) => Some((path.clone(), t.id, allow)),
+                TyPath(None, ref path) => Some((path.clone(), t.id, allow)),
                 TyPtr(ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, OnlyTraitAndStatics),
                 TyRptr(_, ref mut_ty) => extract_path_and_node_id(&*mut_ty.ty, allow),
                 // This doesn't handle the remaining `Ty` variants as they are not
@@ -4063,14 +4070,19 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
         // Next, resolve the node.
         match expr.node {
-            // The interpretation of paths depends on whether the path has
-            // multiple elements in it or not.
+            // `<T>::a::b::c` is resolved by typeck alone.
+            ExprPath(Some(ast::QSelf { position: 0, .. }), ref path) => {
+                let method_name = path.segments.last().unwrap().identifier.name;
+                let traits = self.search_for_traits_containing_method(method_name);
+                self.trait_map.insert(expr.id, traits);
+                visit::walk_expr(self, expr);
+            }
 
-            ExprPath(ref path) | ExprQPath(ast::QPath { ref path, .. }) => {
-                let max_assoc_types = if let ExprQPath(_) = expr.node {
+            ExprPath(ref maybe_qself, ref path) => {
+                let max_assoc_types = if let Some(ref qself) = *maybe_qself {
                     // Make sure the trait is valid.
                     let _ = self.resolve_trait_reference(expr.id, path, 1);
-                    1
+                    path.segments.len() - qself.position
                 } else {
                     path.segments.len()
                 };

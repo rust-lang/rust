@@ -439,7 +439,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
             }
         }
-        ast::ExprPath(_) | ast::ExprQPath(_) => {
+        ast::ExprPath(..) => {
             let def = v.tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
             match def {
                 Some(def::DefVariant(_, _, _)) => {

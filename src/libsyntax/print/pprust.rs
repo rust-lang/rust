@@ -729,11 +729,11 @@ impl<'a> State<'a> {
                                       &generics,
                                       None));
             }
-            ast::TyPath(ref path) => {
+            ast::TyPath(None, ref path) => {
                 try!(self.print_path(path, false, 0));
             }
-            ast::TyQPath(ref qpath) => {
-                try!(self.print_qpath(qpath, false))
+            ast::TyPath(Some(ref qself), ref path) => {
+                try!(self.print_qpath(path, qself, false))
             }
             ast::TyObjectSum(ref ty, ref bounds) => {
                 try!(self.print_type(&**ty));
@@ -1852,8 +1852,12 @@ impl<'a> State<'a> {
                     try!(self.print_expr(&**e));
                 }
             }
-            ast::ExprPath(ref path) => try!(self.print_path(path, true, 0)),
-            ast::ExprQPath(ref qpath) => try!(self.print_qpath(qpath, true)),
+            ast::ExprPath(None, ref path) => {
+                try!(self.print_path(path, true, 0))
+            }
+            ast::ExprPath(Some(ref qself), ref path) => {
+                try!(self.print_qpath(path, qself, true))
+            }
             ast::ExprBreak(opt_ident) => {
                 try!(word(&mut self.s, "break"));
                 try!(space(&mut self.s));
@@ -2037,18 +2041,19 @@ impl<'a> State<'a> {
     }
 
     fn print_qpath(&mut self,
-                   qpath: &ast::QPath,
+                   path: &ast::Path,
+                   qself: &ast::QSelf,
                    colons_before_params: bool)
                    -> IoResult<()>
     {
         try!(word(&mut self.s, "<"));
-        try!(self.print_type(&*qpath.self_type));
+        try!(self.print_type(&qself.ty));
         try!(space(&mut self.s));
         try!(self.word_space("as"));
-        try!(self.print_path(&qpath.path, false, 1));
+        try!(self.print_path(&path, false, 1));
         try!(word(&mut self.s, ">"));
         try!(word(&mut self.s, "::"));
-        let item_segment = qpath.path.segments.last().unwrap();
+        let item_segment = path.segments.last().unwrap();
         try!(self.print_ident(item_segment.identifier));
         self.print_path_parameters(&item_segment.parameters, colons_before_params)
     }

@@ -53,7 +53,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
 
     let e = P(ast::Expr {
         id: ast::DUMMY_NODE_ID,
-        node: ast::ExprPath(
+        node: ast::ExprPath(None,
             ast::Path {
                  span: sp,
                  global: false,

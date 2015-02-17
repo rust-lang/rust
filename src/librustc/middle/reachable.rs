@@ -94,7 +94,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ReachableContext<'a, 'tcx> {
     fn visit_expr(&mut self, expr: &ast::Expr) {
 
         match expr.node {
-            ast::ExprPath(_) | ast::ExprQPath(_) => {
+            ast::ExprPath(..) => {
                 let def = match self.tcx.def_map.borrow().get(&expr.id) {
                     Some(d) => d.full_def(),
                     None => {

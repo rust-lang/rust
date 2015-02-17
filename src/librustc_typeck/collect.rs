@@ -1683,20 +1683,15 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
                 index: u32)
                 -> bool
     {
-        match ast_ty.node {
-            ast::TyPath(_) => {
-                match ccx.tcx.def_map.borrow()[ast_ty.id] {
-                    def::DefTyParam(s, i, _, _) => {
-                        space == s && index == i
-                    }
-                    _ => {
-                        false
-                    }
-                }
-            }
-            _ => {
+        if let ast::TyPath(None, _) = ast_ty.node {
+            let path_res = ccx.tcx.def_map.borrow()[ast_ty.id];
+            if let def::DefTyParam(s, i, _, _) = path_res.base_def {
+                path_res.depth == 0 && space == s && index == i
+            } else {
                 false
             }
+        } else {
+            false
         }
     }
 }

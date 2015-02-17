@@ -445,7 +445,7 @@ fn visit_arm(ir: &mut IrMaps, arm: &ast::Arm) {
 fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
-      ast::ExprPath(_) | ast::ExprQPath(_) => {
+      ast::ExprPath(..) => {
         let def = ir.tcx.def_map.borrow()[expr.id].full_def();
         debug!("expr {}: path that leads to {:?}", expr.id, def);
         if let DefLocal(..) = def {
@@ -947,7 +947,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         match expr.node {
           // Interesting cases with control flow or which gen/kill
 
-          ast::ExprPath(_) | ast::ExprQPath(_) => {
+          ast::ExprPath(..) => {
               self.access_path(expr, succ, ACC_READ | ACC_USE)
           }
 
@@ -1275,7 +1275,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
         // just ignore such cases and treat them as reads.
 
         match expr.node {
-            ast::ExprPath(_) | ast::ExprQPath(_) => succ,
+            ast::ExprPath(..) => succ,
             ast::ExprField(ref e, _) => self.propagate_through_expr(&**e, succ),
             ast::ExprTupField(ref e, _) => self.propagate_through_expr(&**e, succ),
             _ => self.propagate_through_expr(expr, succ)
@@ -1286,7 +1286,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn write_lvalue(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                     -> LiveNode {
         match expr.node {
-          ast::ExprPath(_) | ast::ExprQPath(_) => {
+          ast::ExprPath(..) => {
               self.access_path(expr, succ, acc)
           }
 
@@ -1468,7 +1468,7 @@ fn check_expr(this: &mut Liveness, expr: &Expr) {
       ast::ExprBlock(..) | ast::ExprMac(..) | ast::ExprAddrOf(..) |
       ast::ExprStruct(..) | ast::ExprRepeat(..) | ast::ExprParen(..) |
       ast::ExprClosure(..) | ast::ExprPath(..) | ast::ExprBox(..) |
-      ast::ExprRange(..) | ast::ExprQPath(..) => {
+      ast::ExprRange(..) => {
         visit::walk_expr(this, expr);
       }
       ast::ExprIfLet(..) => {
@@ -1561,7 +1561,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
-            ast::ExprPath(_) | ast::ExprQPath(_) => {
+            ast::ExprPath(..) => {
                 if let DefLocal(nid) = self.ir.tcx.def_map.borrow()[expr.id].full_def() {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually

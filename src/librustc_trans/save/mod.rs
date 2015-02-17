@@ -659,7 +659,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         let trait_id = trait_ref.as_ref().and_then(|tr| self.lookup_type_ref(tr.ref_id));
         match typ.node {
             // Common case impl for a struct or something basic.
-            ast::TyPath(ref path) => {
+            ast::TyPath(None, ref path) => {
                 let sub_span = self.span.sub_span_for_type_name(path.span);
                 let self_id = self.lookup_type_ref(typ.id).map(|id| {
                     self.fmt.ref_str(recorder::TypeRef,
@@ -1306,7 +1306,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
         }
 
         match t.node {
-            ast::TyPath(ref path) => {
+            ast::TyPath(_, ref path) => {
                 match self.lookup_type_ref(t.id) {
                     Some(id) => {
                         let sub_span = self.span.sub_span_for_type_name(t.span);
@@ -1338,7 +1338,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 // because just walking the callee path does what we want.
                 visit::walk_expr(self, ex);
             }
-            ast::ExprPath(ref path) | ast::ExprQPath(ast::QPath { ref path, .. }) => {
+            ast::ExprPath(_, ref path) => {
                 self.process_path(ex.id, path.span, path, None);
                 visit::walk_expr(self, ex);
             }

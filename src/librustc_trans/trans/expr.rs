@@ -143,7 +143,7 @@ pub fn trans_into<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             // it prefers in-place instantiation, likely because it contains
             // `[x; N]` somewhere within.
             match expr.node {
-                ast::ExprPath(_) | ast::ExprQPath(_) => {
+                ast::ExprPath(..) => {
                     match bcx.def(expr.id) {
                         def::DefConst(did) => {
                             let expr = consts::get_const_expr(bcx.ccx(), did, expr);
@@ -629,7 +629,7 @@ fn trans_datum_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprParen(ref e) => {
             trans(bcx, &**e)
         }
-        ast::ExprPath(_) | ast::ExprQPath(_) => {
+        ast::ExprPath(..) => {
             trans_def(bcx, expr, bcx.def(expr.id))
         }
         ast::ExprField(ref base, ident) => {
@@ -1033,7 +1033,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         ast::ExprParen(ref e) => {
             trans_into(bcx, &**e, dest)
         }
-        ast::ExprPath(_) | ast::ExprQPath(_) => {
+        ast::ExprPath(..) => {
             trans_def_dps_unadjusted(bcx, expr, bcx.def(expr.id), dest)
         }
         ast::ExprIf(ref cond, ref thn, ref els) => {

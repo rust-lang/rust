@@ -91,6 +91,7 @@ use middle::infer;
 use middle::mem_categorization as mc;
 use middle::mem_categorization::McResult;
 use middle::pat_util::{self, pat_id_map};
+use middle::privacy::{AllPublic, LastMod};
 use middle::region::{self, CodeExtent};
 use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace};
 use middle::traits;
@@ -3397,7 +3398,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
 
           let mut checked = false;
           opt_place.as_ref().map(|place| match place.node {
-              ast::ExprPath(ref path) => {
+              ast::ExprPath(None, ref path) => {
                   // FIXME(pcwalton): For now we hardcode the two permissible
                   // places: the exchange heap and the managed heap.
                   let definition = lookup_def(fcx, path.span, place.id);
@@ -3590,16 +3591,21 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
         fcx.write_ty(id, oprnd_t);
       }
-      ast::ExprPath(ref path) | ast::ExprQPath(ast::QPath { ref path, .. }) => {
-          let opt_self_ty = if let ast::ExprQPath(ref qpath) = expr.node {
-              Some(fcx.to_ty(&*qpath.self_type))
-          } else {
-              None
-          };
+      ast::ExprPath(ref maybe_qself, ref path) => {
+          let opt_self_ty = maybe_qself.as_ref().map(|qself| {
+              fcx.to_ty(&qself.ty)
+          });
 
           let path_res = if let Some(&d) = tcx.def_map.borrow().get(&id) {
               d
-          } else {
+          } else if let Some(ast::QSelf { position: 0, .. }) = *maybe_qself {
+                // Create some fake resolution that can't possibly be a type.
+                def::PathResolution {
+                    base_def: def::DefMod(local_def(ast::CRATE_NODE_ID)),
+                    last_private: LastMod(AllPublic),
+                    depth: path.segments.len()
+                }
+            } else {
               tcx.sess.span_bug(expr.span,
                                 &format!("unbound path {}", expr.repr(tcx))[])
           };

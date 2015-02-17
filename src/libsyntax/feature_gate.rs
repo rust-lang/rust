@@ -549,7 +549,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
 
     fn visit_ty(&mut self, t: &ast::Ty) {
         match t.node {
-            ast::TyPath(ref p) => {
+            ast::TyPath(None, ref p) => {
                 match &*p.segments {
 
                     [ast::PathSegment { identifier, .. }] => {

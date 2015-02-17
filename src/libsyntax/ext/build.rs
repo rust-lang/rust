@@ -43,14 +43,14 @@ pub trait AstBuilder {
     fn qpath(&self, self_type: P<ast::Ty>,
              trait_path: ast::Path,
              ident: ast::Ident)
-             -> ast::QPath;
+             -> (ast::QSelf, ast::Path);
     fn qpath_all(&self, self_type: P<ast::Ty>,
                 trait_path: ast::Path,
                 ident: ast::Ident,
                 lifetimes: Vec<ast::Lifetime>,
                 types: Vec<P<ast::Ty>>,
                 bindings: Vec<P<ast::TypeBinding>>)
-                -> ast::QPath;
+                -> (ast::QSelf, ast::Path);
 
     // types
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy;
@@ -114,7 +114,7 @@ pub trait AstBuilder {
     // expressions
     fn expr(&self, span: Span, node: ast::Expr_) -> P<ast::Expr>;
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr>;
-    fn expr_qpath(&self, span: Span, qpath: ast::QPath) -> P<ast::Expr>;
+    fn expr_qpath(&self, span: Span, qself: ast::QSelf, path: ast::Path) -> P<ast::Expr>;
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr>;
 
     fn expr_self(&self, span: Span) -> P<ast::Expr>;
@@ -351,7 +351,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
              self_type: P<ast::Ty>,
              trait_path: ast::Path,
              ident: ast::Ident)
-             -> ast::QPath {
+             -> (ast::QSelf, ast::Path) {
         self.qpath_all(self_type, trait_path, ident, vec![], vec![], vec![])
     }
 
@@ -365,7 +365,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
                  lifetimes: Vec<ast::Lifetime>,
                  types: Vec<P<ast::Ty>>,
                  bindings: Vec<P<ast::TypeBinding>>)
-                 -> ast::QPath {
+                 -> (ast::QSelf, ast::Path) {
         let mut path = trait_path;
         path.segments.push(ast::PathSegment {
             identifier: ident,
@@ -376,10 +376,10 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
             })
         });
 
-        ast::QPath {
-            self_type: self_type,
-            path: path
-        }
+        (ast::QSelf {
+            ty: self_type,
+            position: path.segments.len() - 1
+        }, path)
     }
 
     fn ty_mt(&self, ty: P<ast::Ty>, mutbl: ast::Mutability) -> ast::MutTy {
@@ -398,7 +398,7 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn ty_path(&self, path: ast::Path) -> P<ast::Ty> {
-        self.ty(path.span, ast::TyPath(path))
+        self.ty(path.span, ast::TyPath(None, path))
     }
 
     fn ty_sum(&self, path: ast::Path, bounds: OwnedSlice<ast::TyParamBound>) -> P<ast::Ty> {
@@ -603,12 +603,12 @@ impl<'a> AstBuilder for ExtCtxt<'a> {
     }
 
     fn expr_path(&self, path: ast::Path) -> P<ast::Expr> {
-        self.expr(path.span, ast::ExprPath(path))
+        self.expr(path.span, ast::ExprPath(None, path))
     }
 
     /// Constructs a QPath expression.
-    fn expr_qpath(&self, span: Span, qpath: ast::QPath) -> P<ast::Expr> {
-        self.expr(span, ast::ExprQPath(qpath))
+    fn expr_qpath(&self, span: Span, qself: ast::QSelf, path: ast::Path) -> P<ast::Expr> {
+        self.expr(span, ast::ExprPath(Some(qself), path))
     }
 
     fn expr_ident(&self, span: Span, id: ast::Ident) -> P<ast::Expr> {

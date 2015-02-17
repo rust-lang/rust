@@ -134,7 +134,7 @@ pub fn unop_to_string(op: UnOp) -> &'static str {
 }
 
 pub fn is_path(e: P<Expr>) -> bool {
-    return match e.node { ExprPath(_) => true, _ => false };
+    match e.node { ExprPath(..) => true, _ => false }
 }
 
 /// Get a string representation of a signed int type, with its value.

@@ -193,7 +193,7 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           -> ValueRef {
     // Special-case constants to cache a common global for all uses.
     match expr.node {
-        ast::ExprPath(_) => {
+        ast::ExprPath(..) => {
             let def = ccx.tcx().def_map.borrow()[expr.id].full_def();
             match def {
                 def::DefConst(def_id) => {
@@ -663,7 +663,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 C_array(llunitty, &vs[..])
             }
           }
-          ast::ExprPath(_) | ast::ExprQPath(_) => {
+          ast::ExprPath(..) => {
             let def = cx.tcx().def_map.borrow()[e.id].full_def();
             match def {
                 def::DefFn(..) | def::DefMethod(..) => {

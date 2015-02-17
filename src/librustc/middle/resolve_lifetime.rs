@@ -165,7 +165,7 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
                     visit::walk_ty(this, ty);
                 });
             }
-            ast::TyPath(ref path) => {
+            ast::TyPath(None, ref path) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
                 match self.def_map.borrow().get(&ty.id).map(|d| (d.base_def, d.depth)) {
