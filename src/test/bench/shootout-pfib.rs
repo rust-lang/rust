@@ -23,7 +23,7 @@ extern crate getopts;
 use std::sync::mpsc::{channel, Sender};
 use std::env;
 use std::result::Result::{Ok, Err};
-use std::thread::Thread;
+use std::thread;
 use std::time::Duration;
 
 fn fib(n: isize) -> isize {
@@ -35,15 +35,15 @@ fn fib(n: isize) -> isize {
         } else {
             let (tx1, rx) = channel();
             let tx2 = tx1.clone();
-            Thread::spawn(move|| pfib(&tx2, n - 1));
+            thread::spawn(move|| pfib(&tx2, n - 1));
             let tx2 = tx1.clone();
-            Thread::spawn(move|| pfib(&tx2, n - 2));
+            thread::spawn(move|| pfib(&tx2, n - 2));
             tx.send(rx.recv().unwrap() + rx.recv().unwrap());
         }
     }
 
     let (tx, rx) = channel();
-    Thread::spawn(move|| pfib(&tx, n) );
+    thread::spawn(move|| pfib(&tx, n) );
     rx.recv().unwrap()
 }
 
@@ -78,7 +78,7 @@ fn stress_task(id: isize) {
 fn stress(num_tasks: int) {
     let mut results = Vec::new();
     for i in 0..num_tasks {
-        results.push(Thread::scoped(move|| {
+        results.push(thread::spawn(move|| {
             stress_task(i);
         }));
     }

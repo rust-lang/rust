@@ -30,7 +30,7 @@ use sync::{StaticMutex, StaticCondvar};
 use sync::mpsc::{channel, Sender, Receiver};
 use sys::helper_signal;
 
-use thread::Thread;
+use thread;
 
 /// A structure for management of a helper thread.
 ///
@@ -95,7 +95,7 @@ impl<M: Send> Helper<M> {
                 let receive = RaceBox(receive);
 
                 let t = f();
-                Thread::spawn(move || {
+                thread::spawn(move || {
                     helper(receive.0, rx, t);
                     let _g = self.lock.lock().unwrap();
                     *self.shutdown.get() = true;

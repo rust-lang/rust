@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-use std::thread::Thread;
+use std::thread;
 
 fn borrow<F>(v: &isize, f: F) where F: FnOnce(&isize) {
     f(v);
@@ -19,7 +19,7 @@ fn borrow<F>(v: &isize, f: F) where F: FnOnce(&isize) {
 fn box_imm() {
     let v = box 3;
     let _w = &v;
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         println!("v={}", *v);
         //~^ ERROR cannot move `v` into closure
     });
@@ -28,7 +28,7 @@ fn box_imm() {
 fn box_imm_explicit() {
     let v = box 3;
     let _w = &v;
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         println!("v={}", *v);
         //~^ ERROR cannot move
     });

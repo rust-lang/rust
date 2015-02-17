@@ -10,7 +10,7 @@
 
 use std::sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
 use std::rand::{thread_rng, Rng, Rand};
-use std::thread::Thread;
+use std::thread;
 
 const REPEATS: usize = 5;
 const MAX_LEN: usize = 32;
@@ -79,7 +79,7 @@ pub fn main() {
 
                 let v = main.clone();
 
-                let _ = Thread::scoped(move|| {
+                let _ = thread::spawn(move|| {
                     let mut v = v;
                     let mut panic_countdown = panic_countdown;
                     v.sort_by(|a, b| {

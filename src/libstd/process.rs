@@ -27,7 +27,7 @@ use sys::process2::Process as ProcessImp;
 use sys::process2::Command as CommandImp;
 use sys::process2::ExitStatus as ExitStatusImp;
 use sys_common::{AsInner, AsInnerMut};
-use thread::Thread;
+use thread;
 
 /// Representation of a running or exited child process.
 ///
@@ -462,7 +462,7 @@ impl Child {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => {
-                    Thread::spawn(move || {
+                    thread::spawn(move || {
                         let mut stream = stream;
                         let mut ret = Vec::new();
                         let res = stream.read_to_end(&mut ret);
@@ -499,7 +499,7 @@ mod tests {
     use str;
     use super::{Child, Command, Output, ExitStatus, Stdio};
     use sync::mpsc::channel;
-    use thread::Thread;
+    use thread;
     use time::Duration;
 
     // FIXME(#10380) these tests should not all be ignored on android.

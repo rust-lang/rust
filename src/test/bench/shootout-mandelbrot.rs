@@ -46,7 +46,7 @@ use std::old_io;
 use std::env;
 use std::simd::f64x2;
 use std::sync::Arc;
-use std::thread::Thread;
+use std::thread;
 
 const ITER: usize = 50;
 const LIMIT: f64 = 2.0;
@@ -81,7 +81,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
     let mut precalc_i = Vec::with_capacity(h);
 
     let precalc_futures = (0..WORKERS).map(|i| {
-        Thread::scoped(move|| {
+        thread::spawn(move|| {
             let mut rs = Vec::with_capacity(w / WORKERS);
             let mut is = Vec::with_capacity(w / WORKERS);
 
@@ -122,7 +122,7 @@ fn mandelbrot<W: old_io::Writer>(w: usize, mut out: W) -> old_io::IoResult<()> {
         let vec_init_r = arc_init_r.clone();
         let vec_init_i = arc_init_i.clone();
 
-        Thread::scoped(move|| {
+        thread::spawn(move|| {
             let mut res: Vec<u8> = Vec::with_capacity((chunk_size * w) / 8);
             let init_r_slice = vec_init_r;
 

@@ -160,7 +160,7 @@ mod tests {
     use sync::mpsc::channel;
     use super::{Queue, Data, Empty, Inconsistent};
     use sync::Arc;
-    use thread::Thread;
+    use thread;
 
     #[test]
     fn test_full() {
@@ -184,7 +184,7 @@ mod tests {
         for _ in 0..nthreads {
             let tx = tx.clone();
             let q = q.clone();
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 for i in 0..nmsgs {
                     q.push(i);
                 }

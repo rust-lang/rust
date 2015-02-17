@@ -127,7 +127,7 @@ impl Once {
 mod test {
     use prelude::v1::*;
 
-    use thread::Thread;
+    use thread;
     use super::{ONCE_INIT, Once};
     use sync::mpsc::channel;
 
@@ -149,8 +149,8 @@ mod test {
         let (tx, rx) = channel();
         for _ in 0u..10 {
             let tx = tx.clone();
-            Thread::spawn(move|| {
-                for _ in 0u..4 { Thread::yield_now() }
+            thread::spawn(move|| {
+                for _ in 0u..4 { thread::yield_now() }
                 unsafe {
                     O.call_once(|| {
                         assert!(!run);

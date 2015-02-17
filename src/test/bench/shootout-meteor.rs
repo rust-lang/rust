@@ -43,7 +43,7 @@
 use std::iter::repeat;
 use std::sync::Arc;
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::thread;
 
 //
 // Utilities.
@@ -317,7 +317,7 @@ fn par_search(masks: Vec<Vec<Vec<u64>>>) -> Data {
         let masks = masks.clone();
         let tx = tx.clone();
         let m = *m;
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             let mut data = Data::new();
             search(&*masks, m, 1, List::Cons(m, &List::Nil), &mut data);
             tx.send(data).unwrap();

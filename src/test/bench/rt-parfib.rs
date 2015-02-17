@@ -10,7 +10,7 @@
 
 use std::sync::mpsc::channel;
 use std::env;
-use std::thread::Thread;
+use std::thread;
 
 // A simple implementation of parfib. One subtree is found in a new
 // task and communicated over a oneshot pipe, the other is found
@@ -22,7 +22,7 @@ fn parfib(n: u64) -> u64 {
     }
 
     let (tx, rx) = channel();
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         tx.send(parfib(n-1)).unwrap();
     });
     let m2 = parfib(n-2);

@@ -47,7 +47,7 @@ extern crate libc;
 use std::old_io::stdio::{stdin_raw, stdout_raw};
 use std::old_io::{IoResult, EndOfFile};
 use std::ptr::{copy_memory, Unique};
-use std::thread::Thread;
+use std::thread;
 
 struct Tables {
     table8: [u8;1 << 8],
@@ -241,7 +241,7 @@ fn parallel<'a, I, T, F>(iter: I, f: F)
         // boundary.
         let f = Racy(&f as *const F as *const uint);
         let raw = Racy(chunk.repr());
-        Thread::scoped(move|| {
+        thread::spawn(move|| {
             let f = f.0 as *const F;
             unsafe { (*f)(mem::transmute(raw.0)) }
         })
