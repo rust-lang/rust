@@ -75,7 +75,7 @@ macro_rules! delegate_iter {
     };
     (pattern $te:ty : $ti:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: CharEq> Iterator for $ti {
+        impl<'a, P: Pattern<'a>> Iterator for $ti {
             type Item = $te;
 
             #[inline]
@@ -88,7 +88,8 @@ macro_rules! delegate_iter {
             }
         }
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: CharEq> DoubleEndedIterator for $ti {
+        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $ti
+        where P::Searcher: DoubleEndedSearcher<'a> {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
                 self.0.next_back()
@@ -97,7 +98,8 @@ macro_rules! delegate_iter {
     };
     (pattern forward $te:ty : $ti:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: CharEq> Iterator for $ti {
+        impl<'a, P: Pattern<'a>> Iterator for $ti
+        where P::Searcher: DoubleEndedSearcher<'a> {
             type Item = $te;
 
             #[inline]
@@ -610,7 +612,8 @@ where P::Searcher: DoubleEndedSearcher<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, Sep: CharEq> Iterator for CharSplitsN<'a, Sep> {
+impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P>
+where P::Searcher: DoubleEndedSearcher<'a> {
     type Item = &'a str;
 
     #[inline]
@@ -1379,7 +1382,7 @@ impl StrExt for str {
         Split(CharSplits {
             start: 0,
             end: self.len(),
-            matcher: pat.into_matcher(self),
+            matcher: pat.into_searcher(self),
             allow_trailing_empty: true,
             finished: false,
         })
@@ -1413,7 +1416,7 @@ impl StrExt for str {
 
     #[inline]
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
-        MatchIndices(pat.into_matcher(self))
+        MatchIndices(pat.into_searcher(self))
     }
 
     #[inline]
@@ -1487,7 +1490,7 @@ impl StrExt for str {
     where P::Searcher: DoubleEndedSearcher<'a> {
         let mut i = 0;
         let mut j = self.len();
-        let mut matcher = pat.into_matcher(self);
+        let mut matcher = pat.into_searcher(self);
         if let Some((a, b)) = matcher.next_reject() {
             i = a;
             j = b; // Rember earliest known match, correct it below if
@@ -1505,7 +1508,7 @@ impl StrExt for str {
     #[inline]
     fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
         let mut i = 0;
-        let mut matcher = pat.into_matcher(self);
+        let mut matcher = pat.into_searcher(self);
         if let Some((a, _)) = matcher.next_reject() {
             i = a;
         }
@@ -1519,7 +1522,7 @@ impl StrExt for str {
     fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
     where P::Searcher: ReverseSearcher<'a> {
         let mut j = self.len();
-        let mut matcher = pat.into_matcher(self);
+        let mut matcher = pat.into_searcher(self);
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;
         }
@@ -1591,12 +1594,12 @@ impl StrExt for str {
     }
 
     fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
-        pat.into_matcher(self).next_match().map(|(i, _)| i)
+        pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
 
     fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
     where P::Searcher: ReverseSearcher<'a> {
-        pat.into_matcher(self).next_match_back().map(|(i, _)| i)
+        pat.into_searcher(self).next_match_back().map(|(i, _)| i)
     }
 
     fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
