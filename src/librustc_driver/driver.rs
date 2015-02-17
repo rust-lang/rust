@@ -471,9 +471,10 @@ pub fn phase_2_configure_and_expand(sess: &Session,
                 new_path.extend(env::split_paths(&_old_path));
                 env::set_var("PATH", &env::join_paths(new_path.iter()).unwrap());
             }
+            let features = sess.features.borrow();
             let cfg = syntax::ext::expand::ExpansionConfig {
                 crate_name: crate_name.to_string(),
-                enable_quotes: sess.features.borrow().quote,
+                features: Some(&features),
                 recursion_limit: sess.recursion_limit.get(),
             };
             let ret = syntax::ext::expand::expand_crate(&sess.parse_sess,

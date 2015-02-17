@@ -18,6 +18,7 @@ use codemap;
 use codemap::Span;
 use ext::base;
 use ext::base::*;
+use feature_gate;
 use parse::token::InternedString;
 use parse::token;
 use ptr::P;
@@ -48,6 +49,12 @@ static OPTIONS: &'static [&'static str] = &["volatile", "alignstack", "intel"];
 
 pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                        -> Box<base::MacResult+'cx> {
+    if !cx.ecfg.enable_asm() {
+        feature_gate::emit_feature_err(
+            &cx.parse_sess.span_diagnostic, "asm", sp, feature_gate::EXPLAIN_ASM);
+        return DummyResult::expr(sp);
+    }
+
     let mut p = cx.new_parser_from_tts(tts);
     let mut asm = InternedString::new("");
     let mut asm_str_style = None;

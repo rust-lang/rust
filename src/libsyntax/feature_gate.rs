@@ -295,7 +295,11 @@ pub struct Features {
     pub unboxed_closures: bool,
     pub rustc_diagnostic_macros: bool,
     pub visible_private_types: bool,
-    pub quote: bool,
+    pub allow_quote: bool,
+    pub allow_asm: bool,
+    pub allow_log_syntax: bool,
+    pub allow_concat_idents: bool,
+    pub allow_trace_macros: bool,
     pub old_orphan_check: bool,
     pub simd_ffi: bool,
     pub unmarked_api: bool,
@@ -311,7 +315,11 @@ impl Features {
             unboxed_closures: false,
             rustc_diagnostic_macros: false,
             visible_private_types: false,
-            quote: false,
+            allow_quote: false,
+            allow_asm: false,
+            allow_log_syntax: false,
+            allow_concat_idents: false,
+            allow_trace_macros: false,
             old_orphan_check: false,
             simd_ffi: false,
             unmarked_api: false,
@@ -360,6 +368,18 @@ pub fn emit_feature_warn(diag: &SpanHandler, feature: &str, span: Span, explain:
     }
 }
 
+pub const EXPLAIN_ASM: &'static str =
+    "inline assembly is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_LOG_SYNTAX: &'static str =
+    "`log_syntax!` is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_CONCAT_IDENTS: &'static str =
+    "`concat_idents` is not stable enough for use and is subject to change";
+
+pub const EXPLAIN_TRACE_MACROS: &'static str =
+    "`trace_macros` is not stable enough for use and is subject to change";
+
 struct MacroVisitor<'a> {
     context: &'a Context<'a>
 }
@@ -369,24 +389,28 @@ impl<'a, 'v> Visitor<'v> for MacroVisitor<'a> {
         let ast::MacInvocTT(ref path, _, _) = mac.node;
         let id = path.segments.last().unwrap().identifier;
 
+        // Issue 22234: If you add a new case here, make sure to also
+        // add code to catch the macro during or after expansion.
+        //
+        // We still keep this MacroVisitor (rather than *solely*
+        // relying on catching cases during or after expansion) to
+        // catch uses of these macros within conditionally-compiled
+        // code, e.g. `#[cfg]`-guarded functions.
+
         if id == token::str_to_ident("asm") {
-            self.context.gate_feature("asm", path.span, "inline assembly is not \
-                stable enough for use and is subject to change");
+            self.context.gate_feature("asm", path.span, EXPLAIN_ASM);
         }
 
         else if id == token::str_to_ident("log_syntax") {
-            self.context.gate_feature("log_syntax", path.span, "`log_syntax!` is not \
-                stable enough for use and is subject to change");
+            self.context.gate_feature("log_syntax", path.span, EXPLAIN_LOG_SYNTAX);
         }
 
         else if id == token::str_to_ident("trace_macros") {
-            self.context.gate_feature("trace_macros", path.span, "`trace_macros` is not \
-                stable enough for use and is subject to change");
+            self.context.gate_feature("trace_macros", path.span, EXPLAIN_TRACE_MACROS);
         }
 
         else if id == token::str_to_ident("concat_idents") {
-            self.context.gate_feature("concat_idents", path.span, "`concat_idents` is not \
-                stable enough for use and is subject to change");
+            self.context.gate_feature("concat_idents", path.span, EXPLAIN_CONCAT_IDENTS);
         }
     }
 }
@@ -710,11 +734,18 @@ fn check_crate_inner<F>(cm: &CodeMap, span_handler: &SpanHandler, krate: &ast::C
 
     check(&mut cx, krate);
 
+    // FIXME (pnkfelix): Before adding the 99th entry below, change it
+    // to a single-pass (instead of N calls to `.has_feature`).
+
     Features {
         unboxed_closures: cx.has_feature("unboxed_closures"),
         rustc_diagnostic_macros: cx.has_feature("rustc_diagnostic_macros"),
         visible_private_types: cx.has_feature("visible_private_types"),
-        quote: cx.has_feature("quote"),
+        allow_quote: cx.has_feature("quote"),
+        allow_asm: cx.has_feature("asm"),
+        allow_log_syntax: cx.has_feature("log_syntax"),
+        allow_concat_idents: cx.has_feature("concat_idents"),
+        allow_trace_macros: cx.has_feature("trace_macros"),
         old_orphan_check: cx.has_feature("old_orphan_check"),
         simd_ffi: cx.has_feature("simd_ffi"),
         unmarked_api: cx.has_feature("unmarked_api"),
