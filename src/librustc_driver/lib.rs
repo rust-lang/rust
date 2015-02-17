@@ -94,7 +94,7 @@ pub mod pretty;
 
 
 static BUG_REPORT_URL: &'static str =
-    "http://doc.rust-lang.org/complement-bugreport.html";
+    "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports";
 
 
 pub fn run(args: Vec<String>) -> int {
