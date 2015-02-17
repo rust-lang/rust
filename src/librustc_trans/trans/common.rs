@@ -123,13 +123,6 @@ pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     ty::type_is_sized(&param_env, DUMMY_SP, ty)
 }
 
-pub fn lltype_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::ty_open(_) => true,
-        _ => type_is_sized(cx, ty),
-    }
-}
-
 pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     match ty.sty {
         ty::ty_ptr(ty::mt{ty, ..}) |
@@ -211,10 +204,15 @@ pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<
     }
 }
 
-pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>,
-                         ty: Ty<'tcx>)
-                         -> bool {
-    ty::type_contents(cx, ty).needs_drop(cx)
+pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
+    // Unsized types cannot be dropped automatically - these are lvalues pointing
+    // to alloca's containing the actual data pointer (and the unsizing info),
+    // which only be obtained by dereferencing a pointer from which moves are
+    // not allowed. Datum & friends could possibly be adjusted to avoid getting
+    // this far - maybe the (*data, info) aggregate could be an SSA value?
+    // Lvalues don't have to be pointers, just behave like a pointer, but there
+    // is no telling what other implicit assumptions are lurking around.
+    ty::type_contents(cx, ty).needs_drop(cx) && type_is_sized(cx, ty)
 }
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {

@@ -153,9 +153,6 @@ pub fn enc_ty<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>, t: Ty<'t
         ty::ty_err => {
             mywrite!(w, "e");
         }
-        ty::ty_open(_) => {
-            cx.diag.handler().bug("unexpected type in enc_sty (ty_open)");
-        }
     }
 
     let end = w.tell().unwrap();

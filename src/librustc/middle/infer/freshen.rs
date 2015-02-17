@@ -135,7 +135,6 @@ impl<'a, 'tcx> TypeFolder<'tcx> for TypeFreshener<'a, 'tcx> {
                 t
             }
 
-            ty::ty_open(..) |
             ty::ty_bool |
             ty::ty_char |
             ty::ty_int(..) |

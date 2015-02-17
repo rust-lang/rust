@@ -1626,25 +1626,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(AmbiguousBuiltin)
             }
 
-            ty::ty_open(ty) => {
-                // these only crop up in trans, and represent an
-                // "opened" unsized/existential type (one that has
-                // been dereferenced)
-                match bound {
-                    ty::BoundCopy => {
-                        Ok(If(vec!(ty)))
-                    }
-
-                    ty::BoundSized => {
-                        Err(Unimplemented)
-                    }
-
-                    ty::BoundSync |
-                    ty::BoundSend => {
-                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
-                    }
-                }
-            }
             ty::ty_err => {
                 Ok(If(Vec::new()))
             }
