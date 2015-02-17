@@ -848,6 +848,7 @@ impl<T> IntoIterator for DList<T> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for DList<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -868,6 +869,7 @@ impl<'a, T> IntoIterator for &'a DList<T> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a DList<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
