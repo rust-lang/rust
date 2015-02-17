@@ -404,17 +404,30 @@ fn create_substs_for_ast_path<'tcx>(
 
     let actual_supplied_ty_param_count = substs.types.len(TypeSpace);
     for param in &ty_param_defs[actual_supplied_ty_param_count..] {
-        match param.default {
-            Some(default) => {
+        if let Some(default) = param.default {
+            // If we are converting an object type, then the
+            // `Self` parameter is unknown. However, some of the
+            // other type parameters may reference `Self` in their
+            // defaults. This will lead to an ICE if we are not
+            // careful!
+            if self_ty.is_none() && ty::type_has_self(default) {
+                tcx.sess.span_err(
+                    span,
+                    &format!("the type parameter `{}` must be explicitly specified \
+                              in an object type because its default value `{}` references \
+                              the type `Self`",
+                             param.name.user_string(tcx),
+                             default.user_string(tcx)));
+                substs.types.push(TypeSpace, tcx.types.err);
+            } else {
                 // This is a default type parameter.
                 let default = default.subst_spanned(tcx,
                                                     &substs,
                                                     Some(span));
                 substs.types.push(TypeSpace, default);
             }
-            None => {
-                tcx.sess.span_bug(span, "extra parameter without default");
-            }
+        } else {
+            tcx.sess.span_bug(span, "extra parameter without default");
         }
     }
 
