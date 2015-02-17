@@ -2374,7 +2374,7 @@ impl<A, St, F> Iterator for Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
 /// iteration
 #[derive(Clone)]
 #[unstable(feature = "core",
-           reason = "may be renamed or replaced by range notation adapaters")]
+           reason = "may be renamed or replaced by range notation adapters")]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
     state: A,
@@ -2385,7 +2385,7 @@ pub struct Counter<A> {
 /// Creates a new counter with the specified start/step
 #[inline]
 #[unstable(feature = "core",
-           reason = "may be renamed or replaced by range notation adapaters")]
+           reason = "may be renamed or replaced by range notation adapters")]
 pub fn count<A>(start: A, step: A) -> Counter<A> {
     Counter{state: start, step: step}
 }

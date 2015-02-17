@@ -308,7 +308,7 @@ crate to allow) and of course requires an `unsafe` block.
 ## Assembly template
 
 The `assembly template` is the only required parameter and must be a
-literal string (i.e `""`)
+literal string (i.e. `""`)
 
 ```
 #![feature(asm)]
@@ -412,7 +412,7 @@ memory, `memory` should also be specified.
 ## Options
 
 The last section, `options` is specific to Rust. The format is comma
-separated literal strings (i.e `:"foo", "bar", "baz"`). It's used to
+separated literal strings (i.e. `:"foo", "bar", "baz"`). It's used to
 specify some extra info about the inline assembly:
 
 Current valid options are:
@@ -420,7 +420,7 @@ Current valid options are:
 1. *volatile* - specifying this is analogous to
    `__asm__ __volatile__ (...)` in gcc/clang.
 2. *alignstack* - certain instructions expect the stack to be
-   aligned a certain way (i.e SSE) and specifying this indicates to
+   aligned a certain way (i.e. SSE) and specifying this indicates to
    the compiler to insert its usual stack alignment code
 3. *intel* - use intel syntax instead of the default AT&T.
 
@@ -646,8 +646,8 @@ The `rustc` compiler has certain pluggable operations, that is,
 functionality that isn't hard-coded into the language, but is
 implemented in libraries, with a special marker to tell the compiler
 it exists. The marker is the attribute `#[lang="..."]` and there are
-various different values of `...`, i.e. various different "lang
-items".
+various different values of `...`, i.e. various different 'lang
+items'.
 
 For example, `Box` pointers require two lang items, one for allocation
 and one for deallocation. A freestanding program that uses the `Box`
