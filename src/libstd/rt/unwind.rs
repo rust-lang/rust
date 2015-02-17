@@ -495,7 +495,7 @@ pub extern fn rust_begin_unwind(msg: fmt::Arguments,
 #[inline(never)] #[cold]
 #[stable(since = "1.0.0", feature = "rust1")]
 pub fn begin_unwind_fmt(msg: fmt::Arguments, file_line: &(&'static str, uint)) -> ! {
-    use fmt::Writer;
+    use fmt::Write;
 
     // We do two allocations here, unfortunately. But (a) they're
     // required with the current scheme, and (b) we don't handle

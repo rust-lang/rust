@@ -381,14 +381,14 @@ pub trait Write {
     ///
     /// This function will return any I/O error reported while formatting.
     fn write_fmt(&mut self, fmt: fmt::Arguments) -> Result<()> {
-        // Create a shim which translates a Writer to a fmt::Writer and saves
+        // Create a shim which translates a Write to a fmt::Write and saves
         // off I/O errors. instead of discarding them
         struct Adaptor<'a, T: ?Sized + 'a> {
             inner: &'a mut T,
             error: Result<()>,
         }
 
-        impl<'a, T: Write + ?Sized> fmt::Writer for Adaptor<'a, T> {
+        impl<'a, T: Write + ?Sized> fmt::Write for Adaptor<'a, T> {
             fn write_str(&mut self, s: &str) -> fmt::Result {
                 match self.inner.write_all(s.as_bytes()) {
                     Ok(()) => Ok(()),

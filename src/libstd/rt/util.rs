@@ -110,7 +110,7 @@ impl Stdio {
     }
 }
 
-impl fmt::Writer for Stdio {
+impl fmt::Write for Stdio {
     fn write_str(&mut self, data: &str) -> fmt::Result {
         self.write_bytes(data.as_bytes());
         Ok(()) // yes, we're lying
@@ -122,13 +122,13 @@ pub fn dumb_print(args: fmt::Arguments) {
 }
 
 pub fn abort(args: fmt::Arguments) -> ! {
-    use fmt::Writer;
+    use fmt::Write;
 
     struct BufWriter<'a> {
         buf: &'a mut [u8],
         pos: uint,
     }
-    impl<'a> fmt::Writer for BufWriter<'a> {
+    impl<'a> fmt::Write for BufWriter<'a> {
         fn write_str(&mut self, bytes: &str) -> fmt::Result {
             let left = &mut self.buf[self.pos..];
             let to_write = &bytes.as_bytes()[..cmp::min(bytes.len(), left.len())];
