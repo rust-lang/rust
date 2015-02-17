@@ -12,15 +12,12 @@
 
 //! Operations on ASCII strings and characters
 
-#![unstable(feature = "std_misc",
-            reason = "unsure about placement and naming")]
+#![stable(feature = "rust1", since = "1.0.0")]
 
-use iter::IteratorExt;
-use ops::FnMut;
-use slice::SliceExt;
-use str::StrExt;
-use string::String;
-use vec::Vec;
+use prelude::v1::*;
+
+use mem;
+use iter::Range;
 
 /// Extension methods for ASCII-subset only operations on owned strings
 #[unstable(feature = "std_misc",
@@ -38,31 +35,50 @@ pub trait OwnedAsciiExt {
 }
 
 /// Extension methods for ASCII-subset only operations on string slices
-#[unstable(feature = "std_misc",
-           reason = "would prefer to do this in a more general way")]
-pub trait AsciiExt<T = Self> {
+#[stable(feature = "rust1", since = "1.0.0")]
+pub trait AsciiExt {
+    #[stable(feature = "rust1", since = "1.0.0")]
+    type Owned;
+
     /// Check if within the ASCII range.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn is_ascii(&self) -> bool;
 
     /// Makes a copy of the string in ASCII upper case:
     /// ASCII letters 'a' to 'z' are mapped to 'A' to 'Z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_uppercase(&self) -> T;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn to_ascii_uppercase(&self) -> Self::Owned;
 
     /// Makes a copy of the string in ASCII lower case:
     /// ASCII letters 'A' to 'Z' are mapped to 'a' to 'z',
     /// but non-ASCII letters are unchanged.
-    fn to_ascii_lowercase(&self) -> T;
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn to_ascii_lowercase(&self) -> Self::Owned;
 
     /// Check that two strings are an ASCII case-insensitive match.
     /// Same as `to_ascii_lowercase(a) == to_ascii_lowercase(b)`,
     /// but without allocating and copying temporary strings.
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn eq_ignore_ascii_case(&self, other: &Self) -> bool;
+
+    /// Convert this type to its ASCII upper case equivalent in-place.
+    ///
+    /// See `to_ascii_uppercase` for more information.
+    #[unstable(feature = "ascii")]
+    fn make_ascii_uppercase(&mut self);
+
+    /// Convert this type to its ASCII lower case equivalent in-place.
+    ///
+    /// See `to_ascii_lowercase` for more information.
+    #[unstable(feature = "ascii")]
+    fn make_ascii_lowercase(&mut self);
 }
 
-#[unstable(feature = "std_misc",
-           reason = "would prefer to do this in a more general way")]
-impl AsciiExt<String> for str {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for str {
+    type Owned = String;
+
     #[inline]
     fn is_ascii(&self) -> bool {
         self.bytes().all(|b| b.is_ascii())
@@ -70,19 +86,27 @@ impl AsciiExt<String> for str {
 
     #[inline]
     fn to_ascii_uppercase(&self) -> String {
-        // Vec<u8>::to_ascii_uppercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(self.as_bytes().to_ascii_uppercase()) }
+        self.to_string().into_ascii_uppercase()
     }
 
     #[inline]
     fn to_ascii_lowercase(&self) -> String {
-        // Vec<u8>::to_ascii_lowercase() preserves the UTF-8 invariant.
-        unsafe { String::from_utf8_unchecked(self.as_bytes().to_ascii_lowercase()) }
+        self.to_string().into_ascii_lowercase()
     }
 
     #[inline]
     fn eq_ignore_ascii_case(&self, other: &str) -> bool {
         self.as_bytes().eq_ignore_ascii_case(other.as_bytes())
+    }
+
+    fn make_ascii_uppercase(&mut self) {
+        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        me.make_ascii_uppercase()
+    }
+
+    fn make_ascii_lowercase(&mut self) {
+        let me: &mut [u8] = unsafe { mem::transmute(self) };
+        me.make_ascii_lowercase()
     }
 }
 
@@ -102,9 +126,9 @@ impl OwnedAsciiExt for String {
     }
 }
 
-#[unstable(feature = "std_misc",
-           reason = "would prefer to do this in a more general way")]
-impl AsciiExt<Vec<u8>> for [u8] {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl AsciiExt for [u8] {
+    type Owned = Vec<u8>;
     #[inline]
     fn is_ascii(&self) -> bool {
         self.iter().all(|b| b.is_ascii())
@@ -112,12 +136,12 @@ impl AsciiExt<Vec<u8>> for [u8] {
 
     #[inline]
     fn to_ascii_uppercase(&self) -> Vec<u8> {
-        self.iter().map(|b| b.to_ascii_uppercase()).collect()
+        self.to_vec().into_ascii_uppercase()
     }
 
     #[inline]
     fn to_ascii_lowercase(&self) -> Vec<u8> {
-        self.iter().map(|b| b.to_ascii_lowercase()).collect()
+        self.to_vec().into_ascii_lowercase()
     }
 
     #[inline]
@@ -127,6 +151,18 @@ impl AsciiExt<Vec<u8>> for [u8] {
             a.eq_ignore_ascii_case(b)
         })
     }
+
+    fn make_ascii_uppercase(&mut self) {
+        for byte in self {
+            byte.make_ascii_uppercase();
+        }
+    }
+
+    fn make_ascii_lowercase(&mut self) {
+        for byte in self {
+            byte.make_ascii_lowercase();
+        }
+    }
 }
 
 #[unstable(feature = "std_misc",
@@ -134,48 +170,39 @@ impl AsciiExt<Vec<u8>> for [u8] {
 impl OwnedAsciiExt for Vec<u8> {
     #[inline]
     fn into_ascii_uppercase(mut self) -> Vec<u8> {
-        for byte in &mut self {
-            *byte = byte.to_ascii_uppercase();
-        }
+        self.make_ascii_uppercase();
         self
     }
 
     #[inline]
     fn into_ascii_lowercase(mut self) -> Vec<u8> {
-        for byte in &mut self {
-            *byte = byte.to_ascii_lowercase();
-        }
+        self.make_ascii_lowercase();
         self
     }
 }
 
-#[unstable(feature = "std_misc",
-           reason = "would prefer to do this in a more general way")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for u8 {
+    type Owned = u8;
     #[inline]
-    fn is_ascii(&self) -> bool {
-        *self & 128 == 0u8
-    }
-
+    fn is_ascii(&self) -> bool { *self & 128 == 0u8 }
     #[inline]
-    fn to_ascii_uppercase(&self) -> u8 {
-        ASCII_UPPERCASE_MAP[*self as usize]
-    }
-
+    fn to_ascii_uppercase(&self) -> u8 { ASCII_UPPERCASE_MAP[*self as usize] }
     #[inline]
-    fn to_ascii_lowercase(&self) -> u8 {
-        ASCII_LOWERCASE_MAP[*self as usize]
-    }
-
+    fn to_ascii_lowercase(&self) -> u8 { ASCII_LOWERCASE_MAP[*self as usize] }
     #[inline]
     fn eq_ignore_ascii_case(&self, other: &u8) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
+    #[inline]
+    fn make_ascii_uppercase(&mut self) { *self = self.to_ascii_uppercase(); }
+    #[inline]
+    fn make_ascii_lowercase(&mut self) { *self = self.to_ascii_lowercase(); }
 }
 
-#[unstable(feature = "std_misc",
-           reason = "would prefer to do this in a more general way")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl AsciiExt for char {
+    type Owned = char;
     #[inline]
     fn is_ascii(&self) -> bool {
         *self as u32 <= 0x7F
@@ -203,6 +230,19 @@ impl AsciiExt for char {
     fn eq_ignore_ascii_case(&self, other: &char) -> bool {
         self.to_ascii_lowercase() == other.to_ascii_lowercase()
     }
+
+    #[inline]
+    fn make_ascii_uppercase(&mut self) { *self = self.to_ascii_uppercase(); }
+    #[inline]
+    fn make_ascii_lowercase(&mut self) { *self = self.to_ascii_lowercase(); }
+}
+
+/// An iterator over the escaped version of a byte, constructed via
+/// `std::ascii::escape_default`.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct EscapeDefault {
+    range: Range<usize>,
+    data: [u8; 4],
 }
 
 /// Returns a 'default' ASCII and C++11-like literal escape of a `u8`
@@ -214,33 +254,45 @@ impl AsciiExt for char {
 /// - Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
 /// - Single-quote, double-quote and backslash chars are backslash-escaped.
 /// - Any other chars in the range [0x20,0x7e] are not escaped.
-/// - Any other chars are given hex escapes.
+/// - Any other chars are given hex escapes of the form '\xNN'.
 /// - Unicode escapes are never generated by this function.
-#[unstable(feature = "std_misc",
-           reason = "needs to be updated to use an iterator")]
-pub fn escape_default<F>(c: u8, mut f: F) where
-    F: FnMut(u8),
-{
-    match c {
-        b'\t' => { f(b'\\'); f(b't'); }
-        b'\r' => { f(b'\\'); f(b'r'); }
-        b'\n' => { f(b'\\'); f(b'n'); }
-        b'\\' => { f(b'\\'); f(b'\\'); }
-        b'\'' => { f(b'\\'); f(b'\''); }
-        b'"'  => { f(b'\\'); f(b'"'); }
-        b'\x20' ... b'\x7e' => { f(c); }
-        _ => {
-            f(b'\\');
-            f(b'x');
-            for &offset in &[4u, 0u] {
-                match ((c as i32) >> offset) & 0xf {
-                    i @ 0 ... 9 => f(b'0' + (i as u8)),
-                    i => f(b'a' + (i as u8 - 10)),
-                }
-            }
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn escape_default(c: u8) -> EscapeDefault {
+    let (data, len) = match c {
+        b'\t' => ([b'\\', b't', 0, 0], 2),
+        b'\r' => ([b'\\', b'r', 0, 0], 2),
+        b'\n' => ([b'\\', b'n', 0, 0], 2),
+        b'\\' => ([b'\\', b'\\', 0, 0], 2),
+        b'\'' => ([b'\\', b'\'', 0, 0], 2),
+        b'"' => ([b'\\', b'"', 0, 0], 2),
+        b'\x20' ... b'\x7e' => ([c, 0, 0, 0], 1),
+        _ => ([b'\\', b'x', hexify(c >> 4), hexify(c & 0xf)], 4),
+    };
+
+    return EscapeDefault { range: range(0, len), data: data };
+
+    fn hexify(b: u8) -> u8 {
+        match b {
+            0 ... 9 => b'0' + b,
+            _ => b'a' + b - 10,
         }
     }
 }
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Iterator for EscapeDefault {
+    type Item = u8;
+    fn next(&mut self) -> Option<u8> { self.range.next().map(|i| self.data[i]) }
+    fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl DoubleEndedIterator for EscapeDefault {
+    fn next_back(&mut self) -> Option<u8> {
+        self.range.next_back().map(|i| self.data[i])
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl ExactSizeIterator for EscapeDefault {}
 
 static ASCII_LOWERCASE_MAP: [u8; 256] = [
     0x00, 0x01, 0x02, 0x03, 0x04, 0x05, 0x06, 0x07,
