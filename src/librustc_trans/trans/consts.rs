@@ -311,12 +311,16 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     llconst = addr_of(cx, llconst, "autoref", e.id);
                 }
                 Some(box ty::AutoUnsize(ref k)) => {
-                    let info = expr::unsized_info(cx, k, e.id, ty, param_substs,
-                        |t| ty::mk_imm_rptr(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), t));
+                    let info =
+                        expr::unsized_info(
+                            cx, k, e.id, ty, param_substs,
+                            |t| ty::mk_imm_rptr(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), t),
+                            || const_get_elt(cx, llconst, &[abi::FAT_PTR_EXTRA as u32]));
 
                     let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);
                     let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
                     let base = ptrcast(llconst, ptr_ty);
+
                     let prev_const = cx.const_unsized().borrow_mut()
                                        .insert(base, llconst);
                     assert!(prev_const.is_none() || prev_const == Some(llconst));
