@@ -2022,10 +2022,6 @@ fn enforce_impl_ty_params_are_constrained<'tcx>(tcx: &ty::ctxt<'tcx>,
                     "the type parameter `{}` is not constrained by the \
                              impl trait, self type, or predicates",
                             param_ty.user_string(tcx));
-                tcx.sess.span_help(
-                    ty_param.span,
-                    &format!("you can temporarily opt out of this rule by placing \
-                              the `#[old_impl_check]` attribute on the impl"));
             }
         }
     }
