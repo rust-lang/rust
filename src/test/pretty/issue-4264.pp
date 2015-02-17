@@ -83,8 +83,8 @@ pub type Foo = [i32; (3us as usize)];
 pub struct Bar {
     pub x: [i32; (3us as usize)],
 }
-pub struct TupleBar([i32; (4us as usize)]);
-pub enum Baz { BazVariant([i32; (5us as usize)]), }
+pub struct TupleBar([i32; (4 as usize)]);
+pub enum Baz { BazVariant([i32; (5 as usize)]), }
 pub fn id<T>(x: T) -> T { (x as T) }
 pub fn use_id() {
     let _ =

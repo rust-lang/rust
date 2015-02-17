@@ -143,9 +143,9 @@ pub fn parse_summary<R: Reader>(input: R, src: &Path) -> Result<Book, Vec<String
             path_to_root: path_to_root,
             children: vec!(),
         };
-        let level = indent.chars().map(|c| {
+        let level = indent.chars().map(|c| -> usize {
             match c {
-                ' ' => 1us,
+                ' ' => 1,
                 '\t' => 4,
                 _ => unreachable!()
             }

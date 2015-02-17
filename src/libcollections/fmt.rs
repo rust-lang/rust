@@ -27,12 +27,12 @@
 //! Some examples of the `format!` extension are:
 //!
 //! ```
-//! format!("Hello");                  // => "Hello"
-//! format!("Hello, {}!", "world");    // => "Hello, world!"
+//! format!("Hello");                 // => "Hello"
+//! format!("Hello, {}!", "world");   // => "Hello, world!"
 //! format!("The number is {}", 1);   // => "The number is 1"
-//! format!("{:?}", (3, 4));         // => "(3, 4)"
+//! format!("{:?}", (3, 4));          // => "(3, 4)"
 //! format!("{value}", value=4);      // => "4"
-//! format!("{} {}", 1, 2u);          // => "1 2"
+//! format!("{} {}", 1, 2);           // => "1 2"
 //! ```
 //!
 //! From these, you can see that the first argument is a format string. It is

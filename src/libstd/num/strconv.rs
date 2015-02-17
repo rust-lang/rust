@@ -262,7 +262,7 @@ pub fn float_to_str_bytes_common<T: Float>(
 
     // If limited digits, calculate one digit more for rounding.
     let (limit_digits, digit_count, exact) = match digits {
-        DigAll          => (false, 0u,      false),
+        DigAll          => (false, 0,       false),
         DigMax(count)   => (true,  count+1, false),
         DigExact(count) => (true,  count+1, true)
     };
@@ -289,7 +289,7 @@ pub fn float_to_str_bytes_common<T: Float>(
     deccum = num.fract();
     if deccum != _0 || (limit_digits && exact && digit_count > 0) {
         buf.push(b'.');
-        let mut dig = 0u;
+        let mut dig = 0;
 
         // calculate new digits while
         // - there is no limit and there are digits left
@@ -314,7 +314,7 @@ pub fn float_to_str_bytes_common<T: Float>(
 
             // Decrease the deccumulator one fractional digit at a time
             deccum = deccum.fract();
-            dig += 1u;
+            dig += 1;
         }
 
         // If digits are limited, and that limit has been reached,

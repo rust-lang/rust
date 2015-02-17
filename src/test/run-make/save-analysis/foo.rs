@@ -32,7 +32,7 @@ use std::num::{from_int,from_i8,from_i32};
 use std::mem::size_of;
 
 static uni: &'static str = "Les Miséééééééérables";
-static yy: usize = 25us;
+static yy: usize = 25;
 
 static bob: Option<std::vec::CowVec<'static, isize>> = None;
 

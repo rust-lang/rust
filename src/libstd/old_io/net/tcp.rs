@@ -746,7 +746,7 @@ mod test {
     #[test]
     fn multiple_connect_serial_ip4() {
         let addr = next_test_ip4();
-        let max = 10u;
+        let max = 10;
         let mut acceptor = TcpListener::bind(addr).listen();
 
         let _t = thread::spawn(move|| {
@@ -766,7 +766,7 @@ mod test {
     #[test]
     fn multiple_connect_serial_ip6() {
         let addr = next_test_ip6();
-        let max = 10u;
+        let max = 10;
         let mut acceptor = TcpListener::bind(addr).listen();
 
         let _t = thread::spawn(move|| {

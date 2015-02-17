@@ -14,4 +14,4 @@ fn bad_bang(i: usize) -> ! {
     return 7us; //~ ERROR `return` in a function declared as diverging [E0166]
 }
 
-fn main() { bad_bang(5us); }
+fn main() { bad_bang(5); }

@@ -17,7 +17,7 @@
 pub fn foo(_: [i32; 3]) {}
 
 pub fn bar() {
-    const FOO: usize = 5us - 4us;
+    const FOO: usize = 5 - 4;
     let _: [(); FOO] = [()];
 
     let _ : [(); 1us] = [()];
@@ -27,22 +27,22 @@ pub fn bar() {
     format!("test");
 }
 
-pub type Foo = [i32; 3us];
+pub type Foo = [i32; 3];
 
 pub struct Bar {
-    pub x: [i32; 3us]
+    pub x: [i32; 3]
 }
 
-pub struct TupleBar([i32; 4us]);
+pub struct TupleBar([i32; 4]);
 
 pub enum Baz {
-    BazVariant([i32; 5us])
+    BazVariant([i32; 5])
 }
 
 pub fn id<T>(x: T) -> T { x }
 
 pub fn use_id() {
-    let _ = id::<[i32; 3us]>([1,2,3]);
+    let _ = id::<[i32; 3]>([1,2,3]);
 }
 
 
