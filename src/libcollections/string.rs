@@ -950,7 +950,7 @@ pub trait ToString {
 impl<T: fmt::Display + ?Sized> ToString for T {
     #[inline]
     fn to_string(&self) -> String {
-        use core::fmt::Writer;
+        use core::fmt::Write;
         let mut buf = String::new();
         let _ = buf.write_fmt(format_args!("{}", self));
         buf.shrink_to_fit();
@@ -984,7 +984,7 @@ impl<'a> Str for CowString<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl fmt::Writer for String {
+impl fmt::Write for String {
     #[inline]
     fn write_str(&mut self, s: &str) -> fmt::Result {
         self.push_str(s);

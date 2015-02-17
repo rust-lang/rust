@@ -165,9 +165,9 @@ pub fn main() {
 }
 
 // Basic test to make sure that we can invoke the `write!` macro with an
-// io::Writer instance.
+// fmt::Write instance.
 fn test_write() {
-    use std::fmt::Writer;
+    use std::fmt::Write;
     let mut buf = String::new();
     write!(&mut buf, "{}", 3);
     {
@@ -194,7 +194,7 @@ fn test_print() {
 // Just make sure that the macros are defined, there's not really a lot that we
 // can do with them just yet (to test the output)
 fn test_format_args() {
-    use std::fmt::Writer;
+    use std::fmt::Write;
     let mut buf = String::new();
     {
         let w = &mut buf;
