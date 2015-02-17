@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android
 // ignore-windows
 // exec-env:RUST_LOG=debug
 

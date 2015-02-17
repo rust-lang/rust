@@ -9,7 +9,6 @@
 // except according to those terms.
 
 // ignore-tidy-linelength
-// ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // compile-flags:-g

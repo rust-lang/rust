@@ -8,7 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-android: FIXME(#10381)
 // min-lldb-version: 310
 
 // aux-build:cross_crate_debuginfo_type_uniquing.rs

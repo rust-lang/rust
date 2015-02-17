@@ -107,14 +107,13 @@ endef
 $(foreach target,$(CFG_TARGET), \
   $(eval $(call DEF_TARGET_COMMANDS,$(target))))
 
-# Target platform specific variables
-# for arm-linux-androidabi
+# Target platform specific variables for android
 define DEF_ADB_DEVICE_STATUS
 CFG_ADB_DEVICE_STATUS=$(1)
 endef
 
 $(foreach target,$(CFG_TARGET), \
-  $(if $(findstring $(target),"arm-linux-androideabi"), \
+  $(if $(findstring android, $(target)), \
     $(if $(findstring adb,$(CFG_ADB)), \
       $(if $(findstring device,$(shell $(CFG_ADB) devices 2>/dev/null | grep -E '^[:_A-Za-z0-9-]+[[:blank:]]+device')), \
         $(info check: android device attached) \
@@ -135,12 +134,14 @@ $(info check: android device test dir $(CFG_ADB_TEST_DIR) ready \
  $(shell $(CFG_ADB) remount 1>/dev/null) \
  $(shell $(CFG_ADB) shell rm -r $(CFG_ADB_TEST_DIR) >/dev/null) \
  $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)) \
- $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/tmp) \
  $(shell $(CFG_ADB) push $(S)src/etc/adb_run_wrapper.sh $(CFG_ADB_TEST_DIR) 1>/dev/null) \
- $(foreach crate,$(TARGET_CRATES), \
-    $(shell $(CFG_ADB) push $(TLIB2_T_arm-linux-androideabi_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_arm-linux-androideabi,$(crate)) \
-                    $(CFG_ADB_TEST_DIR))) \
- )
+ $(foreach target,$(CFG_TARGET), \
+  $(if $(findstring android, $(target)), \
+   $(shell $(CFG_ADB) shell mkdir $(CFG_ADB_TEST_DIR)/$(target)) \
+   $(foreach crate,$(TARGET_CRATES), \
+    $(shell $(CFG_ADB) push $(TLIB2_T_$(target)_H_$(CFG_BUILD))/$(call CFG_LIB_GLOB_$(target),$(crate)) \
+                    $(CFG_ADB_TEST_DIR)/$(target))), \
+ )))
 else
 CFG_ADB_TEST_DIR=
 endif
@@ -393,14 +394,14 @@ $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 	    && touch $$@
 endef
 
-define DEF_TEST_CRATE_RULES_arm-linux-androideabi
+define DEF_TEST_CRATE_RULES_android
 check-stage$(1)-T-$(2)-H-$(3)-$(4)-exec: $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4))
 
 $$(call TEST_OK_FILE,$(1),$(2),$(3),$(4)): \
 		$(3)/stage$(1)/test/$(4)test-$(2)$$(X_$(2))
 	@$$(call E, run: $$< via adb)
 	$$(Q)$(CFG_ADB) push $$< $(CFG_ADB_TEST_DIR)
-	$$(Q)$(CFG_ADB) shell '(cd $(CFG_ADB_TEST_DIR); LD_LIBRARY_PATH=. \
+	$$(Q)$(CFG_ADB) shell '(cd $(CFG_ADB_TEST_DIR); LD_LIBRARY_PATH=./$(2) \
 		./$$(notdir $$<) \
 		--logfile $(CFG_ADB_TEST_DIR)/check-stage$(1)-T-$(2)-H-$(3)-$(4).log \
 		$$(call CRATE_TEST_EXTRA_ARGS,$(1),$(2),$(3),$(4)) $(TESTARGS))' \
@@ -434,9 +435,9 @@ $(foreach host,$(CFG_HOST), \
    $(foreach crate, $(TEST_CRATES), \
     $(if $(findstring $(target),$(CFG_BUILD)), \
      $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))), \
-     $(if $(findstring $(target),"arm-linux-androideabi"), \
+     $(if $(findstring android, $(target)), \
       $(if $(findstring $(CFG_ADB_DEVICE_STATUS),"true"), \
-       $(eval $(call DEF_TEST_CRATE_RULES_arm-linux-androideabi,$(stage),$(target),$(host),$(crate))), \
+       $(eval $(call DEF_TEST_CRATE_RULES_android,$(stage),$(target),$(host),$(crate))), \
        $(eval $(call DEF_TEST_CRATE_RULES_null,$(stage),$(target),$(host),$(crate))) \
       ), \
       $(eval $(call DEF_TEST_CRATE_RULES,$(stage),$(target),$(host),$(crate))) \

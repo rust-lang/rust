@@ -72,7 +72,7 @@ mod m {
 
 #[cfg(target_os = "android")]
 mod m {
-    #[cfg(target_arch = "arm")]
+    #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
         pub fn align() -> uint { 8u }
         pub fn size() -> uint { 16u }
