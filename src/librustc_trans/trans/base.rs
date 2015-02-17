@@ -1219,19 +1219,6 @@ pub fn alloca_zeroed<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
     p
 }
 
-pub fn arrayalloca(cx: Block, ty: Type, v: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("arrayalloca");
-    if cx.unreachable.get() {
-        unsafe {
-            return llvm::LLVMGetUndef(ty.to_ref());
-        }
-    }
-    debuginfo::clear_source_location(cx.fcx);
-    let p = ArrayAlloca(cx, ty, v);
-    call_lifetime_start(cx, p);
-    p
-}
-
 // Creates the alloca slot which holds the pointer to the slot for the final return value
 pub fn make_return_slot_pointer<'a, 'tcx>(fcx: &FunctionContext<'a, 'tcx>,
                                           output_type: Ty<'tcx>) -> ValueRef {
