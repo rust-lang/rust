@@ -53,7 +53,7 @@ use middle::const_eval;
 use middle::def;
 use middle::resolve_lifetime as rl;
 use middle::privacy::{AllPublic, LastMod};
-use middle::subst::{FnSpace, TypeSpace, SelfSpace, Subst, Substs};
+use middle::subst::{FnSpace, ParamSpace, TypeSpace, SelfSpace, Subst, Substs};
 use middle::traits;
 use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use rscope::{self, UnelidableRscope, RegionScope, ElidableRscope,
@@ -76,6 +76,8 @@ pub trait AstConv<'tcx> {
     fn get_item_type_scheme(&self, id: ast::DefId) -> ty::TypeScheme<'tcx>;
 
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>>;
+
+    fn get_type_parameter_bounds(&self, space: ParamSpace, index: u32) -> Vec<ty::PolyTraitRef<'tcx>>;
 
     /// Return an (optional) substitution to convert bound type parameters that
     /// are in scope into free ones. This function should only return Some
@@ -1011,7 +1013,9 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
         // FIXME(#20300) -- search where clauses, not bounds
         suitable_bounds =
-            traits::transitive_bounds(tcx, &ty_param_def.bounds.trait_bounds)
+            traits::transitive_bounds(tcx,
+                                      &this.get_type_parameter_bounds(ty_param_def.space,
+                                                                      ty_param_def.index))
             .filter(|b| trait_defines_associated_type_named(this, b.def_id(), assoc_name))
             .collect();
     }

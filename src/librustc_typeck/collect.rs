@@ -145,7 +145,6 @@ struct CrateCtxt<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
 }
 
-#[allow(dead_code)] // just temporary, for generics
 struct ItemCtxt<'a,'tcx:'a> {
     ccx: &'a CrateCtxt<'a,'tcx>,
     generics: &'a ty::Generics<'tcx>,
@@ -239,6 +238,19 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
 
     fn get_trait_def(&self, id: ast::DefId) -> Rc<ty::TraitDef<'tcx>> {
         get_trait_def(self.ccx, id)
+    }
+
+    fn get_type_parameter_bounds(&self,
+                                 param: subst::ParamSpace,
+                                 index: u32)
+                                 -> Vec<ty::PolyTraitRef<'tcx>>
+    {
+        // TODO out of range indices can occur when you have something
+        // like fn foo<T:U::X,U>() { }
+        match self.generics.types.opt_get(param, index as usize) {
+            Some(def) => def.bounds.trait_bounds.clone(),
+            None => Vec::new(),
+        }
     }
 
     fn ty_infer(&self, span: Span) -> Ty<'tcx> {
@@ -1596,7 +1608,7 @@ fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     // Now create the real type parameters.
     for (i, param) in types.iter().enumerate() {
-        let def = get_or_create_type_parameter_def(ccx, space, param, i as u32, where_clause);
+        let def = get_or_create_type_parameter_def(ccx, &result, space, param, i as u32);
         debug!("ty_generics: def for type param: {:?}, {:?}", def, space);
         result.types.push(space, def);
     }
@@ -1605,6 +1617,7 @@ fn ty_generics<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 }
 
 fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
+                                             generics_so_far: &ty::Generics<'tcx>,
                                              space: subst::ParamSpace,
                                              param: &ast::TyParam,
                                              index: u32,
@@ -1619,7 +1632,7 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     let param_ty = ty::ParamTy::new(space, index, param.ident.name);
     let bounds = compute_bounds(ccx,
-                                &ty::Generics::empty(),
+                                generics_so_far,
                                 param_ty.to_ty(ccx.tcx),
                                 &param.bounds,
                                 SizedByDefault::Yes,
