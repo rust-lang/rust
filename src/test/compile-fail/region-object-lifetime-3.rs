@@ -11,6 +11,7 @@
 // Various tests related to testing how region inference works
 // with respect to the object receivers.
 
+#![feature(rustc_attrs)]
 #![allow(warnings)]
 
 trait Foo {

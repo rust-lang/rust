@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(rustc_attrs)]
+
 #[rustc_object_lifetime_default]
 struct A<T>(T); //~ ERROR None
 
