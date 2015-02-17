@@ -26,4 +26,5 @@ trait A {
 impl<T: 'static> A for T {}
 
 fn owned2<T: 'static>(a: Box<T>) { a as Box<A>; }
-fn owned3<T: 'static>(a: Box<T>) { box a as Box<A>; }
+// FIXME(22450): workaround pretty-printer deficiency via parens.
+fn owned3<T: 'static>(a: Box<T>) { (box a) as Box<A>; }
