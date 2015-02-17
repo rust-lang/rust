@@ -42,10 +42,9 @@ use std::cmp::min;
 use std::old_io::{BufferedWriter, File};
 use std::old_io;
 use std::num::Float;
-use std::os;
 use std::env;
 
-const LINE_LENGTH: uint = 60;
+const LINE_LENGTH: usize = 60;
 const IM: u32 = 139968;
 
 struct MyRandom {
@@ -86,7 +85,7 @@ impl<'a> Iterator for AAGen<'a> {
 }
 
 fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
-    wr: &mut W, header: &str, mut it: I, mut n: uint)
+    wr: &mut W, header: &str, mut it: I, mut n: usize)
     -> std::old_io::IoResult<()>
 {
     try!(wr.write(header.as_bytes()));
@@ -104,14 +103,13 @@ fn make_fasta<W: Writer, I: Iterator<Item=u8>>(
 }
 
 fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
-    let args = os::args();
-    let args = args;
+    let mut args = env::args();
     let n = if env::var_os("RUST_BENCH").is_some() {
         25000000
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         1000
     } else {
-        args[1].parse().unwrap()
+        args.nth(1).unwrap().parse().unwrap()
     };
 
     let rng = &mut MyRandom::new();

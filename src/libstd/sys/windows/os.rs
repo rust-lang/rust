@@ -303,6 +303,10 @@ impl Iterator for Args {
     fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
 }
 
+impl ExactSizeIterator for Args {
+    fn len(&self) -> usize { self.range.len() }
+}
+
 impl Drop for Args {
     fn drop(&mut self) {
         unsafe { c::LocalFree(self.cur as *mut c_void); }

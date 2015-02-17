@@ -12,6 +12,7 @@
 // doesn't die in a ball of fire, but rather it's gracefully handled.
 
 use std::os;
+use std::env;
 use std::old_io::PipeStream;
 use std::old_io::Command;
 
@@ -25,8 +26,7 @@ fn test() {
 }
 
 fn main() {
-    let args = os::args();
-    let args = args;
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "test" {
         return test();
     }

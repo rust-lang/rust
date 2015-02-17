@@ -84,14 +84,13 @@ fn inner(depth: i32, iterations: i32) -> String {
 }
 
 fn main() {
-    let args = std::os::args();
-    let args = args;
+    let mut args = std::env::args();
     let n = if std::env::var_os("RUST_BENCH").is_some() {
         17
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         8
     } else {
-        args[1].parse().unwrap()
+        args.nth(1).unwrap().parse().unwrap()
     };
     let min_depth = 4;
     let max_depth = if min_depth + 2 > n {min_depth + 2} else {n};

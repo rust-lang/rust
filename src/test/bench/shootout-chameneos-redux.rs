@@ -230,10 +230,10 @@ fn main() {
     let nn = if std::env::var_os("RUST_BENCH").is_some() {
         200000
     } else {
-        std::os::args()
-                       .get(1)
+        std::env::args()
+                       .nth(1)
                        .and_then(|arg| arg.parse().ok())
-                       .unwrap_or(600u)
+                       .unwrap_or(600us)
     };
 
     print_complements();

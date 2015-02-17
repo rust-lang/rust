@@ -8,17 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
 use std::env;
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "10000000".to_string())
     } else if args.len() <= 1u {
         vec!("".to_string(), "100000".to_string())
     } else {
-        args.into_iter().collect()
+        args.collect()
     };
 
     let n = args[1].parse().unwrap();

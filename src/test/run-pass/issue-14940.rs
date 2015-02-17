@@ -8,16 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
+use std::env;
 use std::old_io::{stdio, Command};
 
 fn main() {
-    let args = os::args();
+    let mut args = env::args();
     if args.len() > 1 {
         let mut out = stdio::stdout();
         out.write(&['a' as u8; 128 * 1024]).unwrap();
     } else {
-        let out = Command::new(&args[0]).arg("child").output();
+        let out = Command::new(&args.next().unwrap()).arg("child").output();
         let out = out.unwrap();
         assert!(out.status.success());
     }

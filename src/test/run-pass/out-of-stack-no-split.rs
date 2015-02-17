@@ -17,7 +17,7 @@
 #![feature(asm)]
 
 use std::old_io::process::Command;
-use std::os;
+use std::env;
 
 // lifted from the test module
 // Inlining to avoid llvm turning the recursive functions into tail calls,
@@ -34,7 +34,7 @@ fn recurse() {
 }
 
 fn main() {
-    let args = os::args();
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "recurse" {
         recurse();
     } else {

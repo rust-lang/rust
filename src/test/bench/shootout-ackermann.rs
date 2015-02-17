@@ -8,10 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
 use std::env;
 
-fn ack(m: int, n: int) -> int {
+fn ack(m: i64, n: i64) -> i64 {
     if m == 0 {
         return n + 1
     } else {
@@ -24,13 +23,13 @@ fn ack(m: int, n: int) -> int {
 }
 
 fn main() {
-    let args = os::args();
+    let mut args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "12".to_string())
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         vec!("".to_string(), "8".to_string())
     } else {
-        args.into_iter().collect()
+        args.collect()
     };
     let n = args[1].parse().unwrap();
     println!("Ack(3,{}): {}\n", n, ack(3, n));

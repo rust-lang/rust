@@ -22,7 +22,7 @@ fn main() {
     fn main() {}
     "#;
 
-    let args = std::os::args();
+    let args: Vec<String> = std::env::args().collect();
 
     if args.len() < 4 {
         panic!("expected rustc path");

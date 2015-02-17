@@ -18,7 +18,6 @@
 // no-pretty-expanded FIXME #15189
 // ignore-lexer-test FIXME #15679
 
-use std::os;
 use std::env;
 use std::sync::{Arc, Future, Mutex, Condvar};
 use std::time::Duration;
@@ -64,13 +63,13 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
 }
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "100".to_string(), "10000".to_string())
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         vec!("".to_string(), "10".to_string(), "100".to_string())
     } else {
-        args.clone().into_iter().collect()
+        args.collect()
     };
 
     let num_tasks = args[1].parse::<uint>().unwrap();

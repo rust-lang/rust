@@ -15,7 +15,6 @@
 // I *think* it's the same, more or less.
 
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::os;
 use std::env;
 use std::thread::Thread;
 use std::time::Duration;
@@ -101,13 +100,13 @@ fn run(args: &[String]) {
 }
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "1000000".to_string(), "8".to_string())
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         vec!("".to_string(), "10000".to_string(), "4".to_string())
     } else {
-        args.clone().into_iter().map(|x| x.to_string()).collect()
+        args.map(|x| x.to_string()).collect()
     };
 
     println!("{:?}", args);
