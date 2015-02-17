@@ -46,7 +46,7 @@ pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Ident>)
         None => return None,
     };
     let def = match tcx.def_map.borrow().get(&id) {
-        Some(def) => *def,
+        Some(d) => d.full_def(),
         None => return None,
     };
     let did = def.def_id();

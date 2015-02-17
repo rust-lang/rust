@@ -165,7 +165,7 @@ fn write_substs_to_tcx<'tcx>(tcx: &ty::ctxt<'tcx>,
 }
 fn lookup_def_tcx(tcx:&ty::ctxt, sp: Span, id: ast::NodeId) -> def::Def {
     match tcx.def_map.borrow().get(&id) {
-        Some(x) => x.clone(),
+        Some(x) => x.full_def(),
         _ => {
             span_fatal!(tcx.sess, sp, E0242, "internal error looking up a definition")
         }

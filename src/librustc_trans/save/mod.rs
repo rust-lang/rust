@@ -218,7 +218,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
                                   ref_id));
         }
-        let def = (*self.analysis.ty_cx.def_map.borrow())[ref_id];
+        let def = self.analysis.ty_cx.def_map.borrow()[ref_id].full_def();
         match def {
             def::DefPrimTy(_) => None,
             _ => Some(def.def_id()),
@@ -231,7 +231,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.sess.span_bug(span, &format!("def_map has no key for {} in lookup_def_kind",
                                              ref_id));
         }
-        let def = (*def_map)[ref_id];
+        let def = def_map[ref_id].full_def();
         match def {
             def::DefMod(_) |
             def::DefForeignMod(_) => Some(recorder::ModRef),
@@ -792,9 +792,9 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             self.sess.span_bug(span,
                                &format!("def_map has no key for {} in visit_expr", id));
         }
-        let def = &(*def_map)[id];
+        let def = def_map[id].full_def();
         let sub_span = self.span.span_for_last_ident(span);
-        match *def {
+        match def {
             def::DefUpvar(..) |
             def::DefLocal(..) |
             def::DefStatic(..) |
@@ -866,10 +866,10 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                     &format!("Unexpected def kind while looking \
                                               up path in `{}`: `{:?}`",
                                              self.span.snippet(span),
-                                             *def)),
+                                             def)),
         }
         // modules or types in the path prefix
-        match *def {
+        match def {
             def::DefMethod(did, _) => {
                 let ti = ty::impl_or_trait_item(&self.analysis.ty_cx, did);
                 if let ty::MethodTraitItem(m) = ti {
@@ -1456,8 +1456,8 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                                    &format!("def_map has no key for {} in visit_arm",
                                            id));
             }
-            let def = &(*def_map)[id];
-            match *def {
+            let def = def_map[id].full_def();
+            match def {
                 def::DefLocal(id)  => {
                     let value = if *immut {
                         self.span.snippet(p.span).to_string()
@@ -1480,7 +1480,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 def::DefStatic(_, _) => {}
                 def::DefConst(..) => {}
                 _ => error!("unexpected definition kind when processing collected paths: {:?}",
-                            *def)
+                            def)
             }
         }
         for &(id, ref path, ref_kind) in &paths_to_process {

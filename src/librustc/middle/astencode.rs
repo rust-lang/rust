@@ -25,6 +25,7 @@ use metadata::tydecode::{RegionParameter, ClosureSource};
 use metadata::tyencode;
 use middle::check_const::ConstQualif;
 use middle::mem_categorization::Typer;
+use middle::privacy::{AllPublic, LastMod};
 use middle::subst;
 use middle::subst::VecPerParamSpace;
 use middle::ty::{self, Ty, MethodCall, MethodCallee, MethodOrigin};
@@ -1148,10 +1149,10 @@ fn encode_side_tables_for_id(ecx: &e::EncodeContext,
 
     debug!("Encoding side tables for id {}", id);
 
-    if let Some(def) = tcx.def_map.borrow().get(&id) {
+    if let Some(def) = tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
         rbml_w.tag(c::tag_table_def, |rbml_w| {
             rbml_w.id(id);
-            rbml_w.tag(c::tag_table_val, |rbml_w| (*def).encode(rbml_w).unwrap());
+            rbml_w.tag(c::tag_table_val, |rbml_w| def.encode(rbml_w).unwrap());
         })
     }
 
@@ -1851,7 +1852,12 @@ fn decode_side_tables(dcx: &DecodeContext,
                 match value {
                     c::tag_table_def => {
                         let def = decode_def(dcx, val_doc);
-                        dcx.tcx.def_map.borrow_mut().insert(id, def);
+                        dcx.tcx.def_map.borrow_mut().insert(id, def::PathResolution {
+                            base_def: def,
+                            // This doesn't matter cross-crate.
+                            last_private: LastMod(AllPublic),
+                            depth: 0
+                        });
                     }
                     c::tag_table_node_type => {
                         let ty = val_dsr.read_ty(dcx);

@@ -168,8 +168,8 @@ impl<'a, 'v> Visitor<'v> for LifetimeContext<'a> {
             ast::TyPath(ref path) => {
                 // if this path references a trait, then this will resolve to
                 // a trait ref, which introduces a binding scope.
-                match self.def_map.borrow().get(&ty.id) {
-                    Some(&def::DefTrait(..)) => {
+                match self.def_map.borrow().get(&ty.id).map(|d| (d.base_def, d.depth)) {
+                    Some((def::DefTrait(..), 0)) => {
                         self.with(LateScope(&Vec::new(), self.scope), |_, this| {
                             this.visit_path(path, ty.id);
                         });

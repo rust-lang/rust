@@ -11,6 +11,7 @@
 pub use self::Def::*;
 pub use self::MethodProvenance::*;
 
+use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
 use util::nodemap::NodeMap;
 use syntax::ast;
@@ -51,24 +52,43 @@ pub enum Def {
     DefMethod(ast::DefId /* method */, MethodProvenance),
 }
 
-/// The result of resolving the prefix of a path to a type:
+/// The result of resolving a path.
+/// Before type checking completes, `depth` represents the number of
+/// trailing segments which are yet unresolved. Afterwards, if there
+/// were no errors, all paths should be fully resolved, with `depth`
+/// set to `0` and `base_def` representing the final resolution.
 ///
-///     module::Type::AssocA::AssocB::AssocC::MethodOrAssocType
-///     ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~
-///     base_type     extra_associated_types
+///     module::Type::AssocX::AssocY::MethodOrAssocType
+///     ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+///     base_def      depth = 3
 ///
-///     <T as Trait>::AssocA::AssocB::AssocC::MethodOrAssocType
-///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~
-///           base_type       extra_associated_types
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct PartialDef {
-    pub base_type: Def,
-    pub extra_associated_types: u32,
+///     <T as Trait>::AssocX::AssocY::MethodOrAssocType
+///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
+///           base_def        depth = 2
+#[derive(Copy, Debug)]
+pub struct PathResolution {
+    pub base_def: Def,
+    pub last_private: LastPrivate,
+    pub depth: usize
+}
+
+impl PathResolution {
+    /// Get the definition, if fully resolved, otherwise panic.
+    pub fn full_def(&self) -> Def {
+        if self.depth != 0 {
+            panic!("path not fully resolved: {:?}", self);
+        }
+        self.base_def
+    }
+
+    /// Get the DefId, if fully resolved, otherwise panic.
+    pub fn def_id(&self) -> ast::DefId {
+        self.full_def().def_id()
+    }
 }
 
 // Definition mapping
-pub type DefMap = RefCell<NodeMap<Def>>;
-pub type PartialDefMap = RefCell<NodeMap<PartialDef>>;
+pub type DefMap = RefCell<NodeMap<PathResolution>>;
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
@@ -119,7 +139,7 @@ impl Def {
                 local_def(id)
             }
 
-            DefPrimTy(_) => panic!()
+            DefPrimTy(_) => panic!("attempted .def_id() on DefPrimTy")
         }
     }
 

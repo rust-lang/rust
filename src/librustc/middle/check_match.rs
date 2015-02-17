@@ -242,7 +242,7 @@ fn check_for_bindings_named_the_same_as_variants(cx: &MatchCheckCtxt, pat: &Pat)
             ast::PatIdent(ast::BindByValue(ast::MutImmutable), ident, None) => {
                 let pat_ty = ty::pat_ty(cx.tcx, p);
                 if let ty::ty_enum(def_id, _) = pat_ty.sty {
-                    let def = cx.tcx.def_map.borrow().get(&p.id).cloned();
+                    let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
                     if let Some(DefLocal(_)) = def {
                         if ty::enum_variants(cx.tcx, def_id).iter().any(|variant|
                             token::get_name(variant.name) == token::get_name(ident.node.name)
@@ -434,7 +434,7 @@ impl<'a, 'tcx> Folder for StaticInliner<'a, 'tcx> {
     fn fold_pat(&mut self, pat: P<Pat>) -> P<Pat> {
         return match pat.node {
             ast::PatIdent(..) | ast::PatEnum(..) => {
-                let def = self.tcx.def_map.borrow().get(&pat.id).cloned();
+                let def = self.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def());
                 match def {
                     Some(DefConst(did)) => match lookup_const_by_id(self.tcx, did) {
                         Some(const_expr) => {
@@ -733,28 +733,28 @@ fn pat_constructors(cx: &MatchCheckCtxt, p: &Pat,
     let pat = raw_pat(p);
     match pat.node {
         ast::PatIdent(..) =>
-            match cx.tcx.def_map.borrow().get(&pat.id) {
-                Some(&DefConst(..)) =>
+            match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
+                Some(DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(&DefStruct(_)) => vec!(Single),
-                Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(DefStruct(_)) => vec!(Single),
+                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!()
             },
         ast::PatEnum(..) =>
-            match cx.tcx.def_map.borrow().get(&pat.id) {
-                Some(&DefConst(..)) =>
+            match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
+                Some(DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         ast::PatStruct(..) =>
-            match cx.tcx.def_map.borrow().get(&pat.id) {
-                Some(&DefConst(..)) =>
+            match cx.tcx.def_map.borrow().get(&pat.id).map(|d| d.full_def()) {
+                Some(DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat.span, "const pattern should've \
                                                     been rewritten"),
-                Some(&DefVariant(_, id, _)) => vec!(Variant(id)),
+                Some(DefVariant(_, id, _)) => vec!(Variant(id)),
                 _ => vec!(Single)
             },
         ast::PatLit(ref expr) =>
@@ -847,7 +847,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
             Some(repeat(DUMMY_WILD_PAT).take(arity).collect()),
 
         ast::PatIdent(_, _, _) => {
-            let opt_def = cx.tcx.def_map.borrow().get(&pat_id).cloned();
+            let opt_def = cx.tcx.def_map.borrow().get(&pat_id).map(|d| d.full_def());
             match opt_def {
                 Some(DefConst(..)) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
@@ -862,7 +862,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
         }
 
         ast::PatEnum(_, ref args) => {
-            let def = cx.tcx.def_map.borrow()[pat_id].clone();
+            let def = cx.tcx.def_map.borrow()[pat_id].full_def();
             match def {
                 DefConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \
@@ -880,7 +880,7 @@ pub fn specialize<'a>(cx: &MatchCheckCtxt, r: &[&'a Pat],
 
         ast::PatStruct(_, ref pattern_fields, _) => {
             // Is this a struct or an enum variant?
-            let def = cx.tcx.def_map.borrow()[pat_id].clone();
+            let def = cx.tcx.def_map.borrow()[pat_id].full_def();
             let class_id = match def {
                 DefConst(..) =>
                     cx.tcx.sess.span_bug(pat_span, "const pattern should've \

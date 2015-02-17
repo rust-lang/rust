@@ -446,7 +446,7 @@ fn visit_expr(ir: &mut IrMaps, expr: &Expr) {
     match expr.node {
       // live nodes required for uses or definitions of variables:
       ast::ExprPath(_) | ast::ExprQPath(_) => {
-        let def = ir.tcx.def_map.borrow()[expr.id].clone();
+        let def = ir.tcx.def_map.borrow()[expr.id].full_def();
         debug!("expr {}: path that leads to {:?}", expr.id, def);
         if let DefLocal(..) = def {
             ir.add_live_node_for_node(expr.id, ExprNode(expr.span));
@@ -705,8 +705,8 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             Some(_) => {
                 // Refers to a labeled loop. Use the results of resolve
                 // to find with one
-                match self.ir.tcx.def_map.borrow().get(&id) {
-                    Some(&DefLabel(loop_id)) => loop_id,
+                match self.ir.tcx.def_map.borrow().get(&id).map(|d| d.full_def()) {
+                    Some(DefLabel(loop_id)) => loop_id,
                     _ => self.ir.tcx.sess.span_bug(sp, "label on break/loop \
                                                         doesn't refer to a loop")
                 }
@@ -1300,7 +1300,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
 
     fn access_path(&mut self, expr: &Expr, succ: LiveNode, acc: uint)
                    -> LiveNode {
-        match self.ir.tcx.def_map.borrow()[expr.id].clone() {
+        match self.ir.tcx.def_map.borrow()[expr.id].full_def() {
           DefLocal(nid) => {
             let ln = self.live_node(expr.id, expr.span);
             if acc != 0 {
@@ -1562,7 +1562,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
     fn check_lvalue(&mut self, expr: &Expr) {
         match expr.node {
             ast::ExprPath(_) | ast::ExprQPath(_) => {
-                if let DefLocal(nid) = self.ir.tcx.def_map.borrow()[expr.id].clone() {
+                if let DefLocal(nid) = self.ir.tcx.def_map.borrow()[expr.id].full_def() {
                     // Assignment to an immutable variable or argument: only legal
                     // if there is no later assignment. If this local is actually
                     // mutable, then check for a reassignment to flag the mutability
