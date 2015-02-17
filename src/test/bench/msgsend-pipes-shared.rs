@@ -20,7 +20,7 @@
 
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::env;
-use std::thread::Thread;
+use std::thread;
 use std::time::Duration;
 
 fn move_out<T>(_x: T) {}
@@ -63,7 +63,7 @@ fn run(args: &[String]) {
         let mut worker_results = Vec::new();
         for _ in 0u..workers {
             let to_child = to_child.clone();
-            worker_results.push(Thread::scoped(move|| {
+            worker_results.push(thread::spawn(move|| {
                 for _ in 0u..size / workers {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
                     to_child.send(request::bytes(num_bytes)).unwrap();
@@ -71,7 +71,7 @@ fn run(args: &[String]) {
                 //println!("worker {} exiting", i);
             }));
         }
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             server(&from_parent, &to_parent);
         });
 

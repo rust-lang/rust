@@ -19,7 +19,7 @@
 
 use std::sync::mpsc::channel;
 use std::env;
-use std::thread::Thread;
+use std::thread;
 
 // This is a simple bench that creates M pairs of tasks. These
 // tasks ping-pong back and forth over a pair of streams. This is a
@@ -35,7 +35,7 @@ fn ping_pong_bench(n: usize, m: usize) {
         // Create a channel: B->A
         let (btx, brx) = channel();
 
-        let guard_a = Thread::scoped(move|| {
+        let guard_a = thread::spawn(move|| {
             let (tx, rx) = (atx, brx);
             for _ in 0..n {
                 tx.send(()).unwrap();
@@ -43,7 +43,7 @@ fn ping_pong_bench(n: usize, m: usize) {
             }
         });
 
-        let guard_b = Thread::scoped(move|| {
+        let guard_b = thread::spawn(move|| {
             let (tx, rx) = (btx, arx);
             for _ in 0..n {
                 rx.recv().unwrap();

@@ -72,7 +72,7 @@ pub mod __impl {
 ///
 /// ```
 /// use std::cell::RefCell;
-/// use std::thread::Thread;
+/// use std::thread;
 ///
 /// thread_local!(static FOO: RefCell<uint> = RefCell::new(1));
 ///
@@ -82,7 +82,7 @@ pub mod __impl {
 /// });
 ///
 /// // each thread starts out with the initial value of 1
-/// Thread::spawn(move|| {
+/// thread::spawn(move|| {
 ///     FOO.with(|f| {
 ///         assert_eq!(*f.borrow(), 1);
 ///         *f.borrow_mut() = 3;
@@ -548,7 +548,7 @@ mod tests {
     use sync::mpsc::{channel, Sender};
     use cell::UnsafeCell;
     use super::State;
-    use thread::Thread;
+    use thread;
 
     struct Foo(Sender<()>);
 
@@ -568,7 +568,7 @@ mod tests {
             *f.get() = 2;
         });
         let (tx, rx) = channel();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             FOO.with(|f| unsafe {
                 assert_eq!(*f.get(), 1);
             });
@@ -595,7 +595,7 @@ mod tests {
         }
         thread_local!(static FOO: Foo = foo());
 
-        Thread::scoped(|| {
+        thread::spawn(|| {
             assert!(FOO.state() == State::Uninitialized);
             FOO.with(|_| {
                 assert!(FOO.state() == State::Valid);
@@ -611,7 +611,7 @@ mod tests {
         });
 
         let (tx, rx) = channel();
-        let _t = Thread::spawn(move|| unsafe {
+        let _t = thread::spawn(move|| unsafe {
             let mut tx = Some(tx);
             FOO.with(|f| {
                 *f.get() = Some(Foo(tx.take().unwrap()));
@@ -659,7 +659,7 @@ mod tests {
             }
         }
 
-        Thread::scoped(move|| {
+        thread::spawn(move|| {
             drop(S1);
         }).join().ok().unwrap();
     }
@@ -677,7 +677,7 @@ mod tests {
             }
         }
 
-        Thread::scoped(move|| unsafe {
+        thread::spawn(move|| unsafe {
             K1.with(|s| *s.get() = Some(S1));
         }).join().ok().unwrap();
     }
@@ -704,7 +704,7 @@ mod tests {
         }
 
         let (tx, rx) = channel();
-        let _t = Thread::spawn(move|| unsafe {
+        let _t = thread::spawn(move|| unsafe {
             let mut tx = Some(tx);
             K1.with(|s| *s.get() = Some(S1(tx.take().unwrap())));
         });

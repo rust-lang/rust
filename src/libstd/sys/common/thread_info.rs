@@ -29,7 +29,7 @@ thread_local! { static THREAD_INFO: RefCell<Option<ThreadInfo>> = RefCell::new(N
 impl ThreadInfo {
     fn with<R, F>(f: F) -> R where F: FnOnce(&mut ThreadInfo) -> R {
         if THREAD_INFO.state() == State::Destroyed {
-            panic!("Use of std::thread::Thread::current() is not possible after \
+            panic!("Use of std::thread::current() is not possible after \
                     the thread's local data has been destroyed");
         }
 
@@ -63,7 +63,7 @@ pub fn set(stack_bounds: (uint, uint), stack_guard: uint, thread: Thread) {
     }));
 }
 
-// a hack to get around privacy restrictions; implemented by `std::thread::Thread`
+// a hack to get around privacy restrictions; implemented by `std::thread`
 pub trait NewThread {
     fn new(name: Option<String>) -> Self;
 }

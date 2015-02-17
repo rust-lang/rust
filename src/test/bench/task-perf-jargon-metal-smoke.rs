@@ -19,15 +19,15 @@
 
 use std::sync::mpsc::{channel, Sender};
 use std::env;
-use std::thread::Thread;
+use std::thread;
 
 fn child_generation(gens_left: uint, tx: Sender<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         if gens_left & 1 == 1 {
-            Thread::yield_now(); // shake things up a bit
+            thread::yield_now(); // shake things up a bit
         }
         if gens_left > 0 {
             child_generation(gens_left - 1, tx); // recurse

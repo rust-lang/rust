@@ -879,7 +879,7 @@ pub fn run_test(opts: &TestOpts,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
                       testfn: Thunk) {
-        Thread::spawn(move || {
+        thread::spawn(move || {
             let (tx, rx) = channel();
             let mut reader = ChanReader::new(rx);
             let stdout = ChanWriter::new(tx.clone());

@@ -9,12 +9,12 @@
 // except according to those terms.
 
 use std::env;
-use std::thread::Thread;
+use std::thread;
 
 fn f(n: usize) {
     let mut i = 0u;
     while i < n {
-        let _ = Thread::scoped(move|| g()).join();
+        let _ = thread::spawn(move|| g()).join();
         i += 1u;
     }
 }
@@ -32,5 +32,5 @@ fn main() {
     };
     let n = args[1].parse().unwrap();
     let mut i = 0;
-    while i < n { Thread::spawn(move|| f(n) ); i += 1u; }
+    while i < n { thread::spawn(move|| f(n) ); i += 1; }
 }
