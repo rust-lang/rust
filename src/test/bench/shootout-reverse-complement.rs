@@ -229,21 +229,12 @@ unsafe impl<T: 'static> Send for Racy<T> {}
 
 /// Executes a closure in parallel over the given iterator over mutable slice.
 /// The closure `f` is run in parallel with an element of `iter`.
-fn parallel<'a, I, T, F>(iter: I, f: F)
-        where T: 'a+Send + Sync,
-              I: Iterator<Item=&'a mut [T]>,
-              F: Fn(&mut [T]) + Sync {
-    use std::mem;
-    use std::raw::Repr;
-
-    iter.map(|chunk| {
-        // Need to convert `f` and `chunk` to something that can cross the task
-        // boundary.
-        let f = Racy(&f as *const F as *const uint);
-        let raw = Racy(chunk.repr());
+fn parallel<'a, I: Iterator, F>(iter: I, ref f: F)
+        where I::Item: Send + 'a,
+              F: Fn(I::Item) + Sync + 'a {
+    iter.map(|x| {
         Thread::scoped(move|| {
-            let f = f.0 as *const F;
-            unsafe { (*f)(mem::transmute(raw.0)) }
+            f(x)
         })
     }).collect::<Vec<_>>();
 }

@@ -12,22 +12,22 @@
 // is broken into two parts because some errors occur in distinct
 // phases in the compiler. See kindck-send-object2.rs as well!
 
-fn assert_send<T:Send>() { }
+fn assert_send<T:Send+'static>() { }
 trait Dummy { }
 
 // careful with object types, who knows what they close over...
 fn test51<'a>() {
     assert_send::<&'a Dummy>();
-    //~^ ERROR the trait `core::marker::Send` is not implemented
+    //~^ ERROR the trait `core::marker::Sync` is not implemented
 }
 fn test52<'a>() {
-    assert_send::<&'a (Dummy+Send)>();
+    assert_send::<&'a (Dummy+Sync)>();
     //~^ ERROR does not fulfill the required lifetime
 }
 
 // ...unless they are properly bounded
 fn test60() {
-    assert_send::<&'static (Dummy+Send)>();
+    assert_send::<&'static (Dummy+Sync)>();
 }
 fn test61() {
     assert_send::<Box<Dummy+Send>>();

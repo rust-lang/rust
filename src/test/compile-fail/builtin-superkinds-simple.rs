@@ -13,7 +13,7 @@
 
 trait Foo : Send { }
 
-impl <'a> Foo for &'a mut () { }
-//~^ ERROR the type `&'a mut ()` does not fulfill the required lifetime
+impl Foo for std::rc::Rc<i8> { }
+//~^ ERROR the trait `core::marker::Send` is not implemented
 
 fn main() { }

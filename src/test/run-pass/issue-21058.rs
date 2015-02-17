@@ -14,7 +14,7 @@ struct DST { a: u32, b: str }
 
 fn main() {
     // get_tydesc should support unsized types
-    assert!(unsafe {(
+    assert_eq!(unsafe {(
         // Slice
         (*std::intrinsics::get_tydesc::<[u8]>()).name,
         // str
@@ -25,5 +25,5 @@ fn main() {
         (*std::intrinsics::get_tydesc::<NT>()).name,
         // DST
         (*std::intrinsics::get_tydesc::<DST>()).name
-    )} == ("[u8]", "str", "core::marker::Copy + 'static", "NT", "DST"));
+    )}, ("[u8]", "str", "core::marker::Copy", "NT", "DST"));
 }
