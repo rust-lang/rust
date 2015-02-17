@@ -17,16 +17,16 @@ use super::CharEq;
 
 pub trait Pattern<'a>: Sized {
     type Searcher: Searcher<'a>;
-    fn into_matcher(self, haystack: &'a str) -> Self::Searcher;
+    fn into_searcher(self, haystack: &'a str) -> Self::Searcher;
 
     #[inline]
     fn is_contained_in(self, haystack: &'a str) -> bool {
-        self.into_matcher(haystack).next_match().is_some()
+        self.into_searcher(haystack).next_match().is_some()
     }
 
     #[inline]
     fn match_starts_at(self, haystack: &'a str, idx: usize) -> bool {
-        let mut matcher = self.into_matcher(haystack);
+        let mut matcher = self.into_searcher(haystack);
         loop {
             match matcher.next() {
                 SearchStep::Match(i, _) if i == idx => return true,
@@ -42,7 +42,7 @@ pub trait Pattern<'a>: Sized {
     #[inline]
     fn match_ends_at(self, haystack: &'a str, idx: usize) -> bool
     where Self::Searcher: ReverseSearcher<'a> {
-        let mut matcher = self.into_matcher(haystack);
+        let mut matcher = self.into_searcher(haystack);
         loop {
             match matcher.next_back() {
                 SearchStep::Match(_, j) if idx == j => return true,
@@ -115,9 +115,11 @@ pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
 
 pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 
-// Impl for CharEq
+// Impl for a CharEq wrapper
 
-pub struct CharEqSearcher<'a, C> {
+struct CharEqPattern<C: CharEq>(C);
+
+pub struct CharEqSearcher<'a, C: CharEq> {
     char_eq: C,
     haystack: &'a str,
     char_indices: super::CharIndices<'a>,
@@ -125,15 +127,15 @@ pub struct CharEqSearcher<'a, C> {
     ascii_only: bool,
 }
 
-impl<'a, C: CharEq> Pattern<'a> for C {
+impl<'a, C: CharEq> Pattern<'a> for CharEqPattern<C> {
     type Searcher = CharEqSearcher<'a, C>;
 
     #[inline]
-    fn into_matcher(self, haystack: &'a str) -> CharEqSearcher<'a, C> {
+    fn into_searcher(self, haystack: &'a str) -> CharEqSearcher<'a, C> {
         CharEqSearcher {
-            ascii_only: self.only_ascii(),
+            ascii_only: self.0.only_ascii(),
             haystack: haystack,
-            char_eq: self,
+            char_eq: self.0,
             char_indices: haystack.char_indices(),
         }
     }
@@ -203,7 +205,7 @@ impl<'a, 'b> Pattern<'a> for &'b str {
     type Searcher = StrSearcher<'a, 'b>;
 
     #[inline]
-    fn into_matcher(self, haystack: &'a str) -> StrSearcher<'a, 'b> {
+    fn into_searcher(self, haystack: &'a str) -> StrSearcher<'a, 'b> {
         StrSearcher {
             haystack: haystack,
             needle: self,
@@ -292,4 +294,66 @@ where F: FnOnce(&mut StrSearcher) -> SearchStep,
         m.done = true;
         SearchStep::Done
     }
+}
+
+macro_rules! associated_items {
+    ($t:ty, $s:ident, $e:expr) => {
+        // FIXME: #22463
+        //type Searcher = $t;
+
+        fn into_searcher(self, haystack: &'a str) -> $t {
+            let $s = self;
+            $e.into_searcher(haystack)
+        }
+
+        #[inline]
+        fn is_contained_in(self, haystack: &'a str) -> bool {
+            let $s = self;
+            $e.is_contained_in(haystack)
+        }
+
+        #[inline]
+        fn match_starts_at(self, haystack: &'a str, idx: usize) -> bool {
+            let $s = self;
+            $e.match_starts_at(haystack, idx)
+        }
+
+        // FIXME: #21750
+        /*#[inline]
+        fn match_ends_at(self, haystack: &'a str, idx: usize) -> bool
+        where $t: ReverseSearcher<'a> {
+            let $s = self;
+            $e.match_ends_at(haystack, idx)
+        }*/
+    }
+}
+
+// CharEq delegation impls
+
+impl<'a, 'b> Pattern<'a> for &'b [char] {
+    type Searcher =   <CharEqPattern<Self> as Pattern<'a>>::Searcher;
+    associated_items!(<CharEqPattern<Self> as Pattern<'a>>::Searcher,
+                      s, CharEqPattern(s));
+}
+
+impl<'a> Pattern<'a> for char {
+    type Searcher =   <CharEqPattern<Self> as Pattern<'a>>::Searcher;
+    associated_items!(<CharEqPattern<Self> as Pattern<'a>>::Searcher,
+                      s, CharEqPattern(s));
+}
+
+impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
+    type Searcher =   <CharEqPattern<Self> as Pattern<'a>>::Searcher;
+    associated_items!(<CharEqPattern<Self> as Pattern<'a>>::Searcher,
+                      s, CharEqPattern(s));
+}
+
+// Deref-forward impl
+
+use ops::Deref;
+
+impl<'a, 'b, P: 'b + ?Sized, T: Deref<Target = P> + ?Sized> Pattern<'a> for &'b T where &'b P: Pattern<'a> {
+    type Searcher =   <&'b P as Pattern<'a>>::Searcher;
+    associated_items!(<&'b P as Pattern<'a>>::Searcher,
+                      s, (&**s));
 }
