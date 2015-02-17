@@ -3211,7 +3211,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     reachable.push("rust_eh_personality_catch".to_string());
 
     if codegen_units > 1 {
-        internalize_symbols(&shared_ccx, &reachable.iter().map(|x| x.clone()).collect());
+        internalize_symbols(&shared_ccx, &reachable.iter().cloned().collect());
     }
 
     let metadata_module = ModuleTranslation {

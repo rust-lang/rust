@@ -67,7 +67,7 @@ pub fn untuple_arguments_if_necessary<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                 abi: abi::Abi)
                                                 -> Vec<Ty<'tcx>> {
     if abi != abi::RustCall {
-        return inputs.iter().map(|x| (*x).clone()).collect()
+        return inputs.iter().cloned().collect()
     }
 
     if inputs.len() == 0 {

@@ -350,7 +350,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let xs = [100, 200, 300];
-    /// let mut it = xs.iter().map(|x| *x).peekable();
+    /// let mut it = xs.iter().cloned().peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 200);
