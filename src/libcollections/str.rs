@@ -82,6 +82,8 @@ pub use core::str::{SplitN, RSplitN};
 pub use core::str::{from_utf8, CharEq, Chars, CharIndices, Bytes};
 pub use core::str::{from_utf8_unchecked, from_c_str, ParseBoolError};
 pub use unicode::str::{Words, Graphemes, GraphemeIndices};
+pub use core::str::Pattern;
+pub use core::str::{Searcher, ReverseSearcher, DoubleEndedSearcher, SearchStep};
 
 /*
 Section: Creating a string
@@ -530,7 +532,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert!("bananas".contains("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn contains(&self, pat: &str) -> bool {
+    fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         core_str::StrExt::contains(&self[..], pat)
     }
 
@@ -547,7 +549,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "might get removed in favour of a more generic contains()")]
-    fn contains_char<P: CharEq>(&self, pat: P) -> bool {
+    fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         core_str::StrExt::contains_char(&self[..], pat)
     }
 
@@ -603,7 +605,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(v, vec![""]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn split<P: CharEq>(&self, pat: P) -> Split<P> {
+    fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         core_str::StrExt::split(&self[..], pat)
     }
 
@@ -630,7 +632,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(v, vec![""]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn splitn<P: CharEq>(&self, count: usize, pat: P) -> SplitN<P> {
+    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
         core_str::StrExt::splitn(&self[..], count, pat)
     }
 
@@ -659,7 +661,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
     #[unstable(feature = "collections", reason = "might get removed")]
-    fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
+    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
         core_str::StrExt::split_terminator(&self[..], pat)
     }
 
@@ -680,7 +682,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn rsplitn<P: CharEq>(&self, count: usize, pat: P) -> RSplitN<P> {
+    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
         core_str::StrExt::rsplitn(&self[..], count, pat)
     }
 
@@ -706,7 +708,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "might have its iterator type changed")]
-    fn match_indices<'a, 'b>(&'a self, pat: &'b str) -> MatchIndices<'a, &'b str> {
+    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         core_str::StrExt::match_indices(&self[..], pat)
     }
 
@@ -723,7 +725,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "might get removed in the future in favor of a more generic split()")]
-    fn split_str<'a, 'b>(&'a self, pat: &'b str) -> SplitStr<'a, &'b str> {
+    fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P> {
         core_str::StrExt::split_str(&self[..], pat)
     }
 
@@ -825,7 +827,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert!("banana".starts_with("ba"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn starts_with(&self, pat: &str) -> bool {
+    fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         core_str::StrExt::starts_with(&self[..], pat)
     }
 
@@ -837,7 +839,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert!("banana".ends_with("nana"));
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn ends_with(&self, pat: &str) -> bool {
+    fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
+    where P::Searcher: ReverseSearcher<'a> {
         core_str::StrExt::ends_with(&self[..], pat)
     }
 
@@ -857,7 +860,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!("123foo1bar123".trim_matches(|c: char| c.is_numeric()), "foo1bar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn trim_matches<P: CharEq>(&self, pat: P) -> &str {
+    fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+    where P::Searcher: DoubleEndedSearcher<'a> {
         core_str::StrExt::trim_matches(&self[..], pat)
     }
 
@@ -877,7 +881,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!("123foo1bar123".trim_left_matches(|c: char| c.is_numeric()), "foo1bar123");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn trim_left_matches<P: CharEq>(&self, pat: P) -> &str {
+    fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
         core_str::StrExt::trim_left_matches(&self[..], pat)
     }
 
@@ -897,7 +901,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!("123foo1bar123".trim_right_matches(|c: char| c.is_numeric()), "123foo1bar");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn trim_right_matches<P: CharEq>(&self, pat: P) -> &str {
+    fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+    where P::Searcher: ReverseSearcher<'a> {
         core_str::StrExt::trim_right_matches(&self[..], pat)
     }
 
@@ -1074,7 +1079,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(s.find(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn find<P: CharEq>(&self, pat: P) -> Option<usize> {
+    fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
         core_str::StrExt::find(&self[..], pat)
     }
 
@@ -1102,7 +1107,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(s.rfind(x), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn rfind<P: CharEq>(&self, pat: P) -> Option<usize> {
+    fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
+    where P::Searcher: ReverseSearcher<'a> {
         core_str::StrExt::rfind(&self[..], pat)
     }
 
@@ -1127,7 +1133,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "might get removed in favor of a more generic find in the future")]
-    fn find_str(&self, needle: &str) -> Option<usize> {
+    fn find_str<'a, P: Pattern<'a>>(&'a self, needle: P) -> Option<usize> {
         core_str::StrExt::find_str(&self[..], needle)
     }
 
