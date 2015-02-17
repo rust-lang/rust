@@ -5,10 +5,10 @@
 
 # Summary
 
-Pare back the `std::hash` module's API to match more closely what other
-languages such as Java and C++ have. Consequently, this alteration in default
-hashing strategy alters the story for DoS protection with the standard library's
-`HashMap` implementation.
+Pare back the `std::hash` module's API to improve ergonomics of usage and
+definitions. While an alternative scheme more in line with what Java and C++
+have is considered, the current `std::hash` module will remain largely as-is
+with modifications to its core traits.
 
 # Motivation
 
@@ -156,12 +156,17 @@ The new API of `std::hash` would be:
 ```rust
 trait Hash {
     fn hash<H: Hasher>(&self, h: &mut H);
+
+    fn hash_slice<H: Hasher>(data: &[Self], h: &mut H) {
+        for piece in data {
+            data.hash(h);
+        }
+    }
 }
 
 trait Hasher {
-    type Output;
     fn write(&mut self, data: &[u8]);
-    fn finish(&self) -> Self::Output;
+    fn finish(&self) -> u64;
 
     fn write_u8(&mut self, i: u8) { ... }
     fn write_i8(&mut self, i: i8) { ... }
@@ -190,8 +195,13 @@ This API is quite similar to today's API, but has a few tweaks:
   implies that the trait is no longer object-safe, but it is much more ergonomic
   to operate over generically.
 
-> **Note**: A possible tweak would be to remove the `Output` associated type in
-> favor of just always returning `usize` (or `u64`).
+* The `Hash` trait now has a `hash_slice` method to slice a number of instances
+  of `Self` at once. This will allow optimization of the `Hash` implementation
+  of `&[u8]` to translate to a raw `write` as well as other various slices of
+  primitives.
+
+* The `Output` associated type was removed in favor of an explicit `u64` return
+  from `finish`.
 
 The purpose of this API is to continue to allow APIs to be generic over the
 hashing algorithm used. This would allow `HashMap` continue to use a randomly
@@ -200,12 +210,11 @@ protection, more information on this below). An example encoding of the
 alternative API (proposed below) would look like:
 
 ```rust
-impl Hasher for usize {
-    type Output = usize;
+impl Hasher for u64 {
     fn write(&mut self, data: &[u8]) {
         for b in data.iter() { self.write_u8(*b); }
     }
-    fn finish(&self) -> usize { *self }
+    fn finish(&self) -> u64 { *self }
 
     fn write_u8(&mut self, i: u8) { *self = combine(*self, i); }
     // and so on...
@@ -231,13 +240,9 @@ impl<K: Eq, V, H: Fn(&K) -> u64> HashMap<K, V, H> {
     fn with_hasher(hasher: H) -> HashMap<K, V, H>;
 }
 
-fn global_siphash_keys() -> (u64, u64) {
-    // ...
-}
-
 impl<K: Hash> Fn(&K) -> u64 for DefaultHasher {
     fn call(&self, arg: &K) -> u64 {
-        let (k1, k2) = global_siphash_keys();
+        let (k1, k2) = self.siphash_keys();
         let mut s = SipHasher::new_with_keys(k1, k2);
         arg.hash(&mut s);
         s.finish()
@@ -267,7 +272,8 @@ trait for calculating hashes.
 
 * The API of `Hasher` is approaching the realm of serialization/reflection and
   it's unclear whether its API should grow over time to support more basic Rust
-  types.
+  types. It would be unfortunate if the `Hasher` trait approached a full-blown
+  `Encoder` trait (as `rustc-serialize` has).
 
 # Alternatives
 
