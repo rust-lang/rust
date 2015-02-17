@@ -15,7 +15,13 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-static mut value: usize = 0;
+mod s {
+    // FIXME(22181,22462) workaround hygiene issues between box
+    // desugaring, macro-hygiene (or lack thereof) and static bindings
+    // by forcing the static binding `value` into its own module.
+
+    pub static mut value: usize = 0;
+}
 
 struct Cat {
     name : usize,
@@ -31,7 +37,7 @@ impl Dummy for Cat {
 
 impl Drop for Cat {
     fn drop(&mut self) {
-        unsafe { value = self.name; }
+        unsafe { s::value = self.name; }
     }
 }
 
@@ -41,6 +47,6 @@ pub fn main() {
         let nyan: Box<Dummy> = x as Box<Dummy>;
     }
     unsafe {
-        assert_eq!(value, 22);
+        assert_eq!(s::value, 22);
     }
 }
