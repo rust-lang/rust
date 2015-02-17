@@ -170,7 +170,7 @@ struct RcBox<T> {
     weak: Cell<usize>
 }
 
-/// An immutable reference-counted pointer type.
+/// A reference-counted pointer type over an immutable value.
 ///
 /// See the [module level documentation](./index.html) for more details.
 #[unsafe_no_drop_flag]
