@@ -131,8 +131,12 @@ pub trait IntoIterator {
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 /// Conversion into an `Iterator`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
+    #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
+
+    #[stable(feature = "rust1", since = "1.0.0")]
     type IntoIter: Iterator<Item=Self::Item>;
 
     /// Consumes `Self` and returns an iterator over it
@@ -151,6 +155,7 @@ impl<I> IntoIterator for I where I: Iterator {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator> IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;

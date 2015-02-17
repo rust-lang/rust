@@ -666,6 +666,7 @@ impl<T: Ord> IntoIterator for BinaryHeap<T> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> IntoIterator for BinaryHeap<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -686,6 +687,7 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;

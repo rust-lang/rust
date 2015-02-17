@@ -1387,6 +1387,7 @@ impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H>,
@@ -1415,6 +1416,7 @@ impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H>,
@@ -1443,6 +1445,7 @@ impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H>,

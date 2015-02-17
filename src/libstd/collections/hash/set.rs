@@ -850,6 +850,7 @@ impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
     where T: Eq + Hash<H>,
           S: HashState<Hasher=H>,
@@ -878,6 +879,7 @@ impl<T, S, H> IntoIterator for HashSet<T, S>
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S, H> IntoIterator for HashSet<T, S>
     where T: Eq + Hash<H>,
           S: HashState<Hasher=H>,
