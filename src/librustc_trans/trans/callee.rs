@@ -93,7 +93,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 
     // pick out special kinds of expressions that can be called:
     match expr.node {
-        ast::ExprPath(_) | ast::ExprQPath(_) => {
+        ast::ExprPath(..) => {
             return trans_def(bcx, bcx.def(expr.id), expr);
         }
         _ => {}

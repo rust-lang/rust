@@ -258,7 +258,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // * Private trait impls for private types can be completely ignored
             ast::ItemImpl(_, _, _, _, ref ty, ref impl_items) => {
                 let public_ty = match ty.node {
-                    ast::TyPath(_) => {
+                    ast::TyPath(..) => {
                         match self.tcx.def_map.borrow()[ty.id].full_def() {
                             def::DefPrimTy(..) => true,
                             def => {
@@ -325,7 +325,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             }
 
             ast::ItemTy(ref ty, _) if public_first => {
-                if let ast::TyPath(_) = ty.node {
+                if let ast::TyPath(..) = ty.node {
                     match self.tcx.def_map.borrow()[ty.id].full_def() {
                         def::DefPrimTy(..) | def::DefTyParam(..) => {},
                         def => {
@@ -627,7 +627,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                     // was private.
                     ast::ItemImpl(_, _, _, _, ref ty, _) => {
                         match ty.node {
-                            ast::TyPath(_) => {}
+                            ast::TyPath(..) => {}
                             _ => return Some((err_span, err_msg, None)),
                         };
                         let def = self.tcx.def_map.borrow()[ty.id].full_def();
@@ -908,7 +908,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                                             struct type?!"),
                 }
             }
-            ast::ExprPath(_) | ast::ExprQPath(_) => {
+            ast::ExprPath(..) => {
                 let guard = |did: ast::DefId| {
                     let fields = ty::lookup_struct_fields(self.tcx, did);
                     let any_priv = fields.iter().any(|f| {
@@ -1254,7 +1254,7 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        if let ast::TyPath(_) = ty.node {
+        if let ast::TyPath(..) = ty.node {
             if self.inner.path_is_private_type(ty.id) {
                 self.contains_private = true;
                 // found what we're looking for so let's stop
@@ -1460,7 +1460,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
-        if let ast::TyPath(ref p) = t.node {
+        if let ast::TyPath(_, ref p) = t.node {
             if !self.tcx.sess.features.borrow().visible_private_types &&
                 self.path_is_private_type(t.id) {
                 self.tcx.sess.span_err(p.span,

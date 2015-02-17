@@ -4550,7 +4550,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
     }
 
     match expr.node {
-        ast::ExprPath(_) | ast::ExprQPath(_) => {
+        ast::ExprPath(..) => {
             match resolve_expr(tcx, expr) {
                 def::DefVariant(tid, vid, _) => {
                     let variant_info = enum_variant_with_id(tcx, tid, vid);
@@ -5838,7 +5838,7 @@ pub fn eval_repeat_count(tcx: &ctxt, count_expr: &ast::Expr) -> uint {
         }
         Err(_) => {
             let found = match count_expr.node {
-                ast::ExprPath(ast::Path {
+                ast::ExprPath(None, ast::Path {
                     global: false,
                     ref segments,
                     ..

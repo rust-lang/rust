@@ -396,12 +396,11 @@ pub fn walk_ty<'v, V: Visitor<'v>>(visitor: &mut V, typ: &'v Ty) {
             walk_fn_ret_ty(visitor, &function_declaration.decl.output);
             walk_lifetime_decls_helper(visitor, &function_declaration.lifetimes);
         }
-        TyPath(ref path) => {
+        TyPath(ref maybe_qself, ref path) => {
+            if let Some(ref qself) = *maybe_qself {
+                visitor.visit_ty(&qself.ty);
+            }
             visitor.visit_path(path, typ.id);
-        }
-        TyQPath(ref qpath) => {
-            visitor.visit_ty(&*qpath.self_type);
-            visitor.visit_path(&qpath.path, typ.id);
         }
         TyObjectSum(ref ty, ref bounds) => {
             visitor.visit_ty(&**ty);
@@ -859,12 +858,11 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_expr_opt(visitor, start);
             walk_expr_opt(visitor, end)
         }
-        ExprPath(ref path) => {
+        ExprPath(ref maybe_qself, ref path) => {
+            if let Some(ref qself) = *maybe_qself {
+                visitor.visit_ty(&qself.ty);
+            }
             visitor.visit_path(path, expression.id)
-        }
-        ExprQPath(ref qpath) => {
-            visitor.visit_ty(&*qpath.self_type);
-            visitor.visit_path(&qpath.path, expression.id);
         }
         ExprBreak(_) | ExprAgain(_) => {}
         ExprRet(ref optional_expression) => {

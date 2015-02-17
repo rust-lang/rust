@@ -61,8 +61,10 @@ tests! {
     // Inherent static methods.
     Vec::new, fn() -> Vec<()>, ();
     Vec::<()>::new, fn() -> Vec<()>, ();
+    <Vec<()>>::new, fn() -> Vec<()>, ();
     Vec::with_capacity, fn(usize) -> Vec<()>, (5);
     Vec::<()>::with_capacity, fn(usize) -> Vec<()>, (5);
+    <Vec<()>>::with_capacity, fn(usize) -> Vec<()>, (5);
     BitVec::from_fn, fn(usize, fn(usize) -> bool) -> BitVec, (5, odd);
     BitVec::from_fn::<fn(usize) -> bool>, fn(usize, fn(usize) -> bool) -> BitVec, (5, odd);
 
@@ -78,26 +80,32 @@ tests! {
 
     // Trait static methods.
     bool::size, fn() -> usize, ();
+    <bool>::size, fn() -> usize, ();
     <bool as Size>::size, fn() -> usize, ();
 
     Default::default, fn() -> i32, ();
     i32::default, fn() -> i32, ();
+    <i32>::default, fn() -> i32, ();
     <i32 as Default>::default, fn() -> i32, ();
 
     Rand::rand, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
     i32::rand, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
+    <i32>::rand, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
     <i32 as Rand>::rand, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
     Rand::rand::<DummyRng>, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
     i32::rand::<DummyRng>, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
+    <i32>::rand::<DummyRng>, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
     <i32 as Rand>::rand::<DummyRng>, fn(&mut DummyRng) -> i32, (&mut dummy_rng());
 
     // Trait non-static methods.
     Clone::clone, fn(&i32) -> i32, (&5);
     i32::clone, fn(&i32) -> i32, (&5);
+    <i32>::clone, fn(&i32) -> i32, (&5);
     <i32 as Clone>::clone, fn(&i32) -> i32, (&5);
 
     FromIterator::from_iter, fn(OptionIter<i32>) -> Vec<i32>, (Some(5).into_iter());
     Vec::from_iter, fn(OptionIter<i32>) -> Vec<i32>, (Some(5).into_iter());
+    <Vec<_>>::from_iter, fn(OptionIter<i32>) -> Vec<i32>, (Some(5).into_iter());
     <Vec<_> as FromIterator<_>>::from_iter, fn(OptionIter<i32>) -> Vec<i32>,
         (Some(5).into_iter());
     <Vec<i32> as FromIterator<_>>::from_iter, fn(OptionIter<i32>) -> Vec<i32>,
@@ -109,10 +117,13 @@ tests! {
 
     Add::add, fn(i32, i32) -> i32, (5, 6);
     i32::add, fn(i32, i32) -> i32, (5, 6);
+    <i32>::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<_>>::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<i32>>::add, fn(i32, i32) -> i32, (5, 6);
 
     String::into_cow, fn(String) -> Cow<'static, str>,
+        ("foo".to_string());
+    <String>::into_cow, fn(String) -> Cow<'static, str>,
         ("foo".to_string());
     <String as IntoCow<_>>::into_cow, fn(String) -> Cow<'static, str>,
         ("foo".to_string());

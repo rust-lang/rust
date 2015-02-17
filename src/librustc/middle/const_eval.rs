@@ -178,7 +178,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat>
             ast::PatVec(pats, None, vec![])
         }
 
-        ast::ExprPath(ref path) => {
+        ast::ExprPath(_, ref path) => {
             let opt_def = tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def());
             match opt_def {
                 Some(def::DefStruct(..)) =>
@@ -191,13 +191,6 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat>
                         _ => unreachable!()
                     }
                 }
-            }
-        }
-
-        ast::ExprQPath(_) => {
-            match lookup_const(tcx, expr) {
-                Some(actual) => return const_expr_to_pat(tcx, actual, span),
-                _ => unreachable!()
             }
         }
 
@@ -388,7 +381,7 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
         let val = try!(eval_const_expr_partial(tcx, &**base, Some(base_hint)));
         cast_const(val, ety)
       }
-      ast::ExprPath(_) | ast::ExprQPath(_) => {
+      ast::ExprPath(..) => {
           let opt_def = tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
           let (const_expr, const_ty) = match opt_def {
               Some(def::DefConst(def_id)) => {

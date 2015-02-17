@@ -437,7 +437,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        if let ast::TyPath(_) = ty.node {
+        if let ast::TyPath(..) = ty.node {
             self.check_def(ty.span, ty.id);
         }
         visit::walk_ty(self, ty);
@@ -682,8 +682,8 @@ impl LintPass for PathStatements {
         match s.node {
             ast::StmtSemi(ref expr, _) => {
                 match expr.node {
-                    ast::ExprPath(_) => cx.span_lint(PATH_STATEMENTS, s.span,
-                                                     "path statement with no effect"),
+                    ast::ExprPath(..) => cx.span_lint(PATH_STATEMENTS, s.span,
+                                                      "path statement with no effect"),
                     _ => ()
                 }
             }

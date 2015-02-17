@@ -529,7 +529,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
             }
           }
 
-          ast::ExprPath(_) | ast::ExprQPath(_) => {
+          ast::ExprPath(..) => {
             let def = self.tcx().def_map.borrow()[expr.id].full_def();
             self.cat_def(expr.id, expr.span, expr_ty, def)
           }
