@@ -8,9 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This crate implements a double-ended queue with `O(1)` amortized inserts and removals from both
-//! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
-//! not required to be copyable, and the queue will be sendable if the contained type is sendable.
+//! RingBuf is a double-ended queue, which is implemented with the help of a growing circular buffer.
+//!
+//! This queue has `O(1)` amortized inserts and removals from both ends of the container. It also
+//! has `O(1)` indexing like a vector. The contained elements are not required to be copyable, and
+//! the queue will be sendable if the contained type is sendable.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
