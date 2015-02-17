@@ -1407,7 +1407,7 @@ impl<T> ops::DerefMut for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I:Iterator<Item=T>>(iterator: I) -> Vec<T> {
+    fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
 
@@ -1417,13 +1417,20 @@ impl<T> FromIterator<T> for Vec<T> {
         //          vector.push(item);
         //      }
         //
-        // This equivalent crucially runs the iterator precisely once. The
-        // optimization below (eliding bound/growth checks) means that we
-        // actually run the iterator twice. To ensure the "moral equivalent" we
-        // do a `fuse()` operation to ensure that the iterator continues to
-        // return `None` after seeing the first `None`.
-        let mut i = iterator.fuse();
-        for element in i.by_ref().take(vector.capacity()) {
+        // This equivalent crucially runs the iterator precisely once. Below we
+        // actually in theory run the iterator twice (one without bounds checks
+        // and one with). To achieve the "moral equivalent", we use the `if`
+        // statement below to break out early.
+        //
+        // If the first loop has terminated, then we have one of two conditions.
+        //
+        // 1. The underlying iterator returned `None`. In this case we are
+        //    guaranteed that less than `vector.capacity()` elements have been
+        //    returned, so we break out early.
+        // 2. The underlying iterator yielded `vector.capacity()` elements and
+        //    has not yielded `None` yet. In this case we run the iterator to
+        //    its end below.
+        for element in iterator.by_ref().take(vector.capacity()) {
             let len = vector.len();
             unsafe {
                 ptr::write(vector.get_unchecked_mut(len), element);
@@ -1431,8 +1438,10 @@ impl<T> FromIterator<T> for Vec<T> {
             }
         }
 
-        for element in i {
-            vector.push(element)
+        if vector.len() == vector.capacity() {
+            for element in iterator {
+                vector.push(element);
+            }
         }
         vector
     }
