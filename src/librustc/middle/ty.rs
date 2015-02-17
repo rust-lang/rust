@@ -55,7 +55,7 @@ use middle::region;
 use middle::resolve_lifetime;
 use middle::infer;
 use middle::stability;
-use middle::subst::{self, Subst, Substs, VecPerParamSpace};
+use middle::subst::{self, ParamSpace, Subst, Substs, VecPerParamSpace};
 use middle::traits;
 use middle::ty;
 use middle::ty_fold::{self, TypeFoldable, TypeFolder};
@@ -2994,6 +2994,13 @@ impl<'tcx> TyS<'tcx> {
         match self.sty {
             ty::ty_param(ref d) => Some(d.clone()),
             _ => None,
+        }
+    }
+
+    pub fn is_param(&self, space: ParamSpace, index: u32) -> bool {
+        match self.sty {
+            ty::ty_param(ref data) => data.space == space && data.idx == index,
+            _ => false,
         }
     }
 }

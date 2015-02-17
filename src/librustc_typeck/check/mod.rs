@@ -97,7 +97,7 @@ use middle::subst::{self, Subst, Substs, VecPerParamSpace, ParamSpace, TypeSpace
 use middle::traits;
 use middle::ty::{FnSig, GenericPredicates, VariantInfo, TypeScheme};
 use middle::ty::{Disr, ParamTy, ParameterEnvironment};
-use middle::ty::{self, HasProjectionTypes, RegionEscape, Ty};
+use middle::ty::{self, HasProjectionTypes, RegionEscape, ToPolyTraitRef, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
@@ -1216,6 +1216,30 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
 
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
         Some(&self.inh.param_env.free_substs)
+    }
+
+    fn get_type_parameter_bounds(&self,
+                                 space: ParamSpace,
+                                 index: u32)
+                                 -> Vec<ty::PolyTraitRef<'tcx>>
+    {
+        self.inh.param_env.caller_bounds
+                          .iter()
+                          .filter_map(|predicate| {
+                              match *predicate {
+                                  ty::Predicate::Trait(ref data) => {
+                                      if data.0.self_ty().is_param(space, index) {
+                                          Some(data.to_poly_trait_ref())
+                                      } else {
+                                          None
+                                      }
+                                  }
+                                  _ => {
+                                      None
+                                  }
+                              }
+                          })
+                          .collect()
     }
 
     fn ty_infer(&self, _span: Span) -> Ty<'tcx> {
