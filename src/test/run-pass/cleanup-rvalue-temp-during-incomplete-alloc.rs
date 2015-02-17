@@ -27,7 +27,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-use std::thread::Thread;
+use std::thread;
 
 enum Conzabble {
     Bickwick(Foo)
@@ -48,5 +48,5 @@ pub fn fails() {
 }
 
 pub fn main() {
-    Thread::scoped(fails).join();
+    thread::spawn(fails).join();
 }

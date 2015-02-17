@@ -57,13 +57,13 @@ place!
 ## Threads
 
 Rust's standard library provides a library for 'threads', which allow you to
-run Rust code in parallel. Here's a basic example of using `Thread`:
+run Rust code in parallel. Here's a basic example of using `std::thread`:
 
 ```
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
-    Thread::scoped(|| {
+    thread::scoped(|| {
         println!("Hello from a thread!");
     });
 }
@@ -73,10 +73,10 @@ The `Thread::scoped()` method accepts a closure, which is executed in a new
 thread. It's called `scoped` because this thread returns a join guard:
 
 ```
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
-    let guard = Thread::scoped(|| {
+    let guard = thread::scoped(|| {
         println!("Hello from a thread!");
     });
 
@@ -85,35 +85,17 @@ fn main() {
 ```
 
 When `guard` goes out of scope, it will block execution until the thread is
-finished. If we didn't want this behaviour, we could use `Thread::spawn()`:
+finished. If we didn't want this behaviour, we could use `thread::spawn()`:
 
 ```
-use std::thread::Thread;
+use std::thread;
 use std::old_io::timer;
 use std::time::Duration;
 
 fn main() {
-    Thread::spawn(|| {
+    thread::spawn(|| {
         println!("Hello from a thread!");
     });
-
-    timer::sleep(Duration::milliseconds(50));
-}
-```
-
-Or call `.detach()`:
-
-```
-use std::thread::Thread;
-use std::old_io::timer;
-use std::time::Duration;
-
-fn main() {
-    let guard = Thread::scoped(|| {
-        println!("Hello from a thread!");
-    });
-
-    guard.detach();
 
     timer::sleep(Duration::milliseconds(50));
 }
@@ -164,7 +146,7 @@ As an example, here is a Rust program that would have a data race in many
 languages. It will not compile:
 
 ```ignore
-use std::thread::Thread;
+use std::thread;
 use std::old_io::timer;
 use std::time::Duration;
 
@@ -172,7 +154,7 @@ fn main() {
     let mut data = vec![1u32, 2, 3];
 
     for i in 0..2 {
-        Thread::spawn(move || {
+        thread::spawn(move || {
             data[i] += 1;
         });
     }
@@ -203,7 +185,7 @@ only one person at a time can mutate what's inside. For that, we can use the
 but for a different reason:
 
 ```ignore
-use std::thread::Thread;
+use std::thread;
 use std::old_io::timer;
 use std::time::Duration;
 use std::sync::Mutex;
@@ -213,7 +195,7 @@ fn main() {
 
     for i in 0..2 {
         let data = data.lock().unwrap();
-        Thread::spawn(move || {
+        thread::spawn(move || {
             data[i] += 1;
         });
     }
@@ -255,7 +237,7 @@ We can use `Arc<T>` to fix this. Here's the working version:
 
 ```
 use std::sync::{Arc, Mutex};
-use std::thread::Thread;
+use std::thread;
 use std::old_io::timer;
 use std::time::Duration;
 
@@ -264,7 +246,7 @@ fn main() {
 
     for i in 0us..2 {
         let data = data.clone();
-        Thread::spawn(move || {
+        thread::spawn(move || {
             let mut data = data.lock().unwrap();
             data[i] += 1;
         });
@@ -280,14 +262,14 @@ thread more closely:
 
 ```
 # use std::sync::{Arc, Mutex};
-# use std::thread::Thread;
+# use std::thread;
 # use std::old_io::timer;
 # use std::time::Duration;
 # fn main() {
 #     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
 #     for i in 0us..2 {
 #         let data = data.clone();
-Thread::spawn(move || {
+thread::spawn(move || {
     let mut data = data.lock().unwrap();
     data[i] += 1;
 });
@@ -315,7 +297,7 @@ than waiting for a specific time:
 
 ```
 use std::sync::{Arc, Mutex};
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc;
 
 fn main() {
@@ -326,7 +308,7 @@ fn main() {
     for _ in 0..10 {
         let (data, tx) = (data.clone(), tx.clone());
 
-        Thread::spawn(move || {
+        thread::spawn(move || {
             let mut data = data.lock().unwrap();
             *data += 1;
 
@@ -348,7 +330,7 @@ is `Send` over the channel!
 
 ```
 use std::sync::{Arc, Mutex};
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc;
 
 fn main() {
@@ -357,7 +339,7 @@ fn main() {
     for _ in 0..10 {
         let tx = tx.clone();
 
-        Thread::spawn(move || {
+        thread::spawn(move || {
             let answer = 42u32;
 
             tx.send(answer);
@@ -378,9 +360,9 @@ A `panic!` will crash the currently executing thread. You can use Rust's
 threads as a simple isolation mechanism:
 
 ```
-use std::thread::Thread;
+use std::thread;
 
-let result = Thread::scoped(move || {
+let result = thread::spawn(move || {
     panic!("oops!");
 }).join();
 

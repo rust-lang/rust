@@ -87,8 +87,8 @@ pub trait PartialEq<Rhs: ?Sized = Self> {
 /// - symmetric: `a == b` implies `b == a`; and
 /// - transitive: `a == b` and `b == c` implies `a == c`.
 ///
-/// This property cannot be checked by the compiler, and therefore `Eq` implies `PartialEq`, and
-/// has no extra methods.
+/// This property cannot be checked by the compiler, and therefore `Eq` implies
+/// `PartialEq`, and has no extra methods.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Eq: PartialEq<Self> {
     // FIXME #13101: this method is used solely by #[deriving] to
@@ -100,6 +100,7 @@ pub trait Eq: PartialEq<Self> {
     // This should never be implemented by hand.
     #[doc(hidden)]
     #[inline(always)]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn assert_receiver_is_total_eq(&self) {}
 }
 
@@ -408,7 +409,7 @@ pub fn max<T: Ord>(v1: T, v2: T) -> T {
 /// ```
 /// use std::cmp;
 ///
-/// let result = cmp::partial_min(std::f64::NAN, &1.0);
+/// let result = cmp::partial_min(std::f64::NAN, 1.0);
 /// assert_eq!(result, None);
 /// ```
 #[inline]
@@ -439,7 +440,7 @@ pub fn partial_min<T: PartialOrd>(v1: T, v2: T) -> Option<T> {
 /// ```
 /// use std::cmp;
 ///
-/// let result = cmp::partial_max(std::f64::NAN, &1.0);
+/// let result = cmp::partial_max(std::f64::NAN, 1.0);
 /// assert_eq!(result, None);
 /// ```
 #[inline]

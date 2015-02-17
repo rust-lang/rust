@@ -147,21 +147,16 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use prelude::v1::*;
+
 use any::Any;
-use boxed::Box;
 use cell::UnsafeCell;
-use clone::Clone;
 use fmt;
 use io;
-use marker::{Send, Sync};
-use ops::{Drop, FnOnce};
-use option::Option::{self, Some, None};
-use result::Result::{Err, Ok};
-use sync::{Mutex, Condvar, Arc};
-use str::Str;
-use string::String;
+use marker;
+use old_io::stdio;
 use rt::{self, unwind};
-use old_io::{Writer, stdio};
+use sync::{Mutex, Condvar, Arc};
 use thunk::Thunk;
 use time::Duration;
 
@@ -264,7 +259,9 @@ impl Builder {
     pub fn scoped<'a, T, F>(self, f: F) -> io::Result<JoinGuard<'a, T>> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
-        self.spawn_inner(Thunk::new(f)).map(JoinGuard)
+        self.spawn_inner(Thunk::new(f)).map(|inner| {
+            JoinGuard { inner: inner, _marker: marker::PhantomData }
+        })
     }
 
     fn spawn_inner<T: Send>(self, f: Thunk<(), T>) -> io::Result<JoinInner<T>> {
@@ -643,7 +640,10 @@ impl Drop for JoinHandle {
 /// permission.
 #[must_use]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct JoinGuard<'a, T: 'a>(JoinInner<T>);
+pub struct JoinGuard<'a, T: 'a> {
+    inner: JoinInner<T>,
+    _marker: marker::PhantomData<&'a T>,
+}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 unsafe impl<'a, T: Send + 'a> Sync for JoinGuard<'a, T> {}
@@ -652,7 +652,7 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     /// Extract a handle to the thread this guard will join on.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn thread(&self) -> &Thread {
-        &self.0.thread
+        &self.inner.thread
     }
 
     /// Wait for the associated thread to finish, returning the result of the thread's
@@ -663,7 +663,7 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     /// Panics on the child thread are propagated by panicking the parent.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn join(mut self) -> T {
-        match self.0.join() {
+        match self.inner.join() {
             Ok(res) => res,
             Err(_) => panic!("child thread {:?} panicked", self.thread()),
         }
@@ -676,8 +676,8 @@ impl<T: Send> JoinGuard<'static, T> {
     #[deprecated(since = "1.0.0", reason = "use spawn instead")]
     #[unstable(feature = "std_misc")]
     pub fn detach(mut self) {
-        unsafe { imp::detach(self.0.native) };
-        self.0.joined = true; // avoid joining in the destructor
+        unsafe { imp::detach(self.inner.native) };
+        self.inner.joined = true; // avoid joining in the destructor
     }
 }
 
@@ -685,8 +685,8 @@ impl<T: Send> JoinGuard<'static, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     fn drop(&mut self) {
-        if !self.0.joined {
-            unsafe { imp::join(self.0.native) };
+        if !self.inner.joined {
+            unsafe { imp::join(self.inner.native) };
         }
     }
 }
