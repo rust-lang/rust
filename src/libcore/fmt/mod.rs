@@ -197,6 +197,7 @@ impl<'a> Arguments<'a> {
     /// created with `argumentuint`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new_v1_formatted(pieces: &'a [&'a str],
                             args: &'a [ArgumentV1<'a>],
                             fmt: &'a [rt::v1::Argument]) -> Arguments<'a> {
