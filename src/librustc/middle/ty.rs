@@ -2546,6 +2546,13 @@ impl<'tcx> ctxt<'tcx> {
     {
         self.closure_tys.borrow()[def_id].subst(self, substs)
     }
+
+    pub fn type_parameter_def(&self,
+                              node_id: ast::NodeId)
+                              -> TypeParameterDef<'tcx>
+    {
+        self.ty_param_defs.borrow()[node_id].clone()
+    }
 }
 
 // Interns a type/name combination, stores the resulting box in cx.interner,
