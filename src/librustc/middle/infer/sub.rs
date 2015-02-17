@@ -14,7 +14,6 @@ use super::higher_ranked::HigherRankedRelations;
 use super::{Subtype};
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
-use middle::ty::{BuiltinBounds};
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
 use util::ppaux::{Repr};
@@ -95,20 +94,6 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
         self.lub().unsafeties(a, b).compare(b, || {
             ty::terr_unsafety_mismatch(expected_found(self, a, b))
         })
-    }
-
-    fn builtin_bounds(&self, a: BuiltinBounds, b: BuiltinBounds)
-                      -> cres<'tcx, BuiltinBounds> {
-        // More bounds is a subtype of fewer bounds.
-        //
-        // e.g., fn:Copy() <: fn(), because the former is a function
-        // that only closes over copyable things, but the latter is
-        // any function at all.
-        if a.is_superset(&b) {
-            Ok(a)
-        } else {
-            Err(ty::terr_builtin_bounds(expected_found(self, a, b)))
-        }
     }
 
     fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {

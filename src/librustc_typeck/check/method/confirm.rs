@@ -176,13 +176,13 @@ impl<'a,'tcx> ConfirmContext<'a,'tcx> {
             probe::AutoDeref(num) => {
                 ty::AutoDerefRef {
                     autoderefs: num,
-                    autoref: None
+                    autoref: None,
                 }
             }
             probe::AutoUnsizeLength(autoderefs, len) => {
                 ty::AutoDerefRef {
                     autoderefs: autoderefs,
-                    autoref: Some(ty::AutoUnsize(ty::UnsizeLength(len)))
+                    autoref: Some(ty::AutoUnsize(ty::UnsizeLength(len))),
                 }
             }
             probe::AutoRef(mutability, ref sub_adjustment) => {

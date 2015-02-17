@@ -480,6 +480,7 @@ impl<'tcx> TypeFoldable<'tcx> for ty::UnsizeKind<'tcx> {
                     },
                     self_ty.fold_with(folder))
             }
+            ty::UnsizeUpcast(t) => ty::UnsizeUpcast(t.fold_with(folder)),
         }
     }
 }

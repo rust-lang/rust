@@ -292,7 +292,8 @@ pub enum UnsizeKind<'tcx> {
     // An unsize coercion applied to the tail field of a struct.
     // The uint is the index of the type parameter which is unsized.
     UnsizeStruct(Box<UnsizeKind<'tcx>>, uint),
-    UnsizeVtable(TyTrait<'tcx>, /* the self type of the trait */ Ty<'tcx>)
+    UnsizeVtable(TyTrait<'tcx>, /* the self type of the trait */ Ty<'tcx>),
+    UnsizeUpcast(Ty<'tcx>),
 }
 
 #[derive(Clone, Debug)]
@@ -4627,6 +4628,9 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
         &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
             mk_trait(cx, principal.clone(), bounds.clone())
         }
+        &UnsizeUpcast(target_ty) => {
+            target_ty
+        }
     }
 }
 
@@ -6830,6 +6834,7 @@ impl<'tcx> Repr<'tcx> for UnsizeKind<'tcx> {
             UnsizeLength(n) => format!("UnsizeLength({})", n),
             UnsizeStruct(ref k, n) => format!("UnsizeStruct({},{})", k.repr(tcx), n),
             UnsizeVtable(ref a, ref b) => format!("UnsizeVtable({},{})", a.repr(tcx), b.repr(tcx)),
+            UnsizeUpcast(ref a) => format!("UnsizeUpcast({})", a.repr(tcx)),
         }
     }
 }

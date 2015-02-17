@@ -1592,6 +1592,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                                                       code: traits::ObjectCastObligation(self_ty) };
                 self.register_region_obligation(self_ty, ty_trait.bounds.region_bound, cause);
             }
+            ty::UnsizeUpcast(_) => { }
         }
     }
 

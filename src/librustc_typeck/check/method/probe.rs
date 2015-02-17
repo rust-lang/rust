@@ -857,7 +857,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
 
         return self.pick_method(step.self_ty).map(|r| self.adjust(r, adjustment.clone()));
 
-        fn consider_reborrow(ty: Ty, d: uint) -> PickAdjustment {
+        fn consider_reborrow<'tcx>(ty: Ty<'tcx>, d: uint) -> PickAdjustment {
             // Insert a `&*` or `&mut *` if this is a reference type:
             match ty.sty {
                 ty::ty_rptr(_, ref mt) => AutoRef(mt.mutbl, box AutoDeref(d+1)),
@@ -902,7 +902,8 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
     fn adjust(&mut self,
               result: PickResult<'tcx>,
               adjustment: PickAdjustment)
-              -> PickResult<'tcx> {
+              -> PickResult<'tcx>
+    {
         match result {
             Err(e) => Err(e),
             Ok(mut pick) => {
