@@ -29,7 +29,7 @@
 #![feature(int_uint)]
 #![feature(libc)]
 #![feature(link_args)]
-#![feature(path)]
+#![feature(old_path)]
 #![feature(staged_api)]
 #![feature(std_misc)]
 
