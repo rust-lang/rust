@@ -24,7 +24,8 @@ impl<'a> SomeTrait for &'a isize {
 }
 
 fn make_object<'a,A:SomeTrait+'a>(v: A) -> Box<SomeTrait+'a> {
-    box v as Box<SomeTrait+'a>
+    // FIXME(22450): workaround pretty-printer deficiency via parens.
+    (box v) as Box<SomeTrait+'a>
 }
 
 fn main() {
