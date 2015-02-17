@@ -10,6 +10,7 @@
 
 use core::prelude::*;
 
+use io;
 use boxed::Box;
 use cmp;
 use mem;
@@ -191,7 +192,7 @@ pub mod guard {
     }
 }
 
-pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
+pub unsafe fn create(stack: uint, p: Thunk) -> io::Result<rust_thread> {
     let mut native: libc::pthread_t = mem::zeroed();
     let mut attr: libc::pthread_attr_t = mem::zeroed();
     assert_eq!(pthread_attr_init(&mut attr), 0);
@@ -226,9 +227,10 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
     if ret != 0 {
         // be sure to not leak the closure
         let _p: Box<Box<FnOnce()+Send>> = mem::transmute(arg);
-        panic!("failed to spawn native thread: {}", ret);
+        Err(io::Error::from_os_error(ret))
+    } else {
+        Ok(native)
     }
-    native
 }
 
 #[cfg(any(target_os = "linux", target_os = "android"))]
