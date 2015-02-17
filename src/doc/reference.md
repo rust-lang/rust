@@ -818,9 +818,8 @@ item : extern_crate_decl | use_decl | mod_item | fn_item | type_item
      | extern_block ;
 ```
 
-An _item_ is a component of a crate; some module items can be defined in crate
-files, but most are defined in source files. Items are organized within a crate
-by a nested set of [modules](#modules). Every crate has a single "outermost"
+An _item_ is a component of a crate. Items are organized within a crate by a
+nested set of [modules](#modules). Every crate has a single "outermost"
 anonymous module; all further items within the crate have [paths](#paths)
 within the module tree of the crate.
 
