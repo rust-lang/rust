@@ -132,7 +132,7 @@ pub fn env() -> Vec<(String,String)> {
 
 /// Returns a vector of (variable, value) byte-vector pairs for all the
 /// environment variables of the current process.
-#[deprecated(since = "1.0.0", reason = "use env::vars instead")]
+#[deprecated(since = "1.0.0", reason = "use env::vars_os instead")]
 #[unstable(feature = "os")]
 pub fn env_as_bytes() -> Vec<(Vec<u8>, Vec<u8>)> {
     env::vars_os().map(|(k, v)| (byteify(k), byteify(v))).collect()
@@ -159,7 +159,7 @@ pub fn env_as_bytes() -> Vec<(Vec<u8>, Vec<u8>)> {
 ///     None => println!("{} is not defined in the environment.", key)
 /// }
 /// ```
-#[deprecated(since = "1.0.0", reason = "use env::var or env::var_os instead")]
+#[deprecated(since = "1.0.0", reason = "use env::var instead")]
 #[unstable(feature = "os")]
 pub fn getenv(n: &str) -> Option<String> {
     env::var(n).ok()
@@ -171,7 +171,7 @@ pub fn getenv(n: &str) -> Option<String> {
 /// # Panics
 ///
 /// Panics if `n` has any interior NULs.
-#[deprecated(since = "1.0.0", reason = "use env::var instead")]
+#[deprecated(since = "1.0.0", reason = "use env::var_os instead")]
 #[unstable(feature = "os")]
 pub fn getenv_as_bytes(n: &str) -> Option<Vec<u8>> {
     env::var_os(n).map(byteify)
@@ -732,7 +732,7 @@ pub fn args() -> Vec<String> {
 
 /// Returns the arguments which this program was started with (normally passed
 /// via the command line) as byte vectors.
-#[deprecated(since = "1.0.0", reason = "use env::args_raw instead")]
+#[deprecated(since = "1.0.0", reason = "use env::args_os instead")]
 #[unstable(feature = "os")]
 pub fn args_as_bytes() -> Vec<Vec<u8>> {
     real_args_as_bytes()
