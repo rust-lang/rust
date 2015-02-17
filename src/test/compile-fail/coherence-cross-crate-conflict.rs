@@ -16,7 +16,7 @@ extern crate trait_impl_conflict;
 use trait_impl_conflict::Foo;
 
 impl<A> Foo for A {
-    //~^ ERROR type parameter `A` is not constrained
+    //~^ ERROR type parameter `A` must be used as the type parameter for some local type
     //~^^ ERROR E0119
 }
 
