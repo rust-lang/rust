@@ -11,7 +11,7 @@
 use std::old_io::{File, Command};
 use std::iter::repeat;
 use std::rand::{thread_rng, Rng};
-use std::{char, os};
+use std::{char, env};
 
 // creates a file with `fn main() { <random ident> }` and checks the
 // compiler emits a span of the appropriate length (for the
@@ -33,7 +33,7 @@ fn random_char() -> char {
 }
 
 fn main() {
-    let args = os::args();
+    let args: Vec<String> = env::args().collect();
     let rustc = &args[1];
     let tmpdir = Path::new(&args[2]);
     let main_file = tmpdir.join("span_main.rs");

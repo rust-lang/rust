@@ -13,7 +13,7 @@
 #![feature(asm)]
 
 use std::old_io::process::Command;
-use std::os;
+use std::env;
 
 // lifted from the test module
 // Inlining to avoid llvm turning the recursive functions into tail calls,
@@ -34,8 +34,7 @@ fn loud_recurse() {
 }
 
 fn main() {
-    let args = os::args();
-    let args = args;
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "silent" {
         silent_recurse();
     } else if args.len() > 1 && args[1] == "loud" {

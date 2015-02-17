@@ -16,7 +16,6 @@
 use std::old_io::File;
 use std::iter::repeat;
 use std::mem::swap;
-use std::os;
 use std::env;
 use std::rand::Rng;
 use std::rand;
@@ -25,8 +24,7 @@ use std::time::Duration;
 use std::vec;
 
 fn main() {
-    let argv = os::args();
-    let _tests = &argv[1..argv.len()];
+    let argv: Vec<String> = env::args().collect();
 
     macro_rules! bench {
         ($id:ident) =>

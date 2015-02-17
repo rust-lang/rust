@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
+use std::env;
 
 pub fn main() {
-    for arg in &os::args() {
-        match (*arg).clone() {
+    for arg in env::args() {
+        match arg.clone() {
             _s => { }
         }
     }

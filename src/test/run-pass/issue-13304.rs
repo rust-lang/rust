@@ -10,13 +10,12 @@
 
 // ignore-fast
 
-use std::os;
+use std::env;
 use std::old_io;
 use std::str;
 
 fn main() {
-    let args = os::args();
-    let args = args;
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "child" {
         child();
     } else {
@@ -25,8 +24,7 @@ fn main() {
 }
 
 fn parent() {
-    let args = os::args();
-    let args = args;
+    let args: Vec<String> = env::args().collect();
     let mut p = old_io::process::Command::new(&args[0])
                                      .arg("child").spawn().unwrap();
     p.stdin.as_mut().unwrap().write_str("test1\ntest2\ntest3").unwrap();

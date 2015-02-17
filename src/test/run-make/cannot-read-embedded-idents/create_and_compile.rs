@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
+use std::env;
 use std::old_io::{File, Command};
 
 // creates broken.rs, which has the Ident \x00name_0,ctxt_0\x00
@@ -16,7 +16,7 @@ use std::old_io::{File, Command};
 // provided `rustc`
 
 fn main() {
-    let args = os::args();
+    let args: Vec<String> = env::args().collect();
     let rustc = &args[1];
     let tmpdir = Path::new(&args[2]);
 
