@@ -158,6 +158,9 @@ pub struct TargetOptions {
     /// only realy used for figuring out how to find libraries, since Windows uses its own
     /// library naming convention. Defaults to false.
     pub is_like_windows: bool,
+    /// Whether the target toolchain is like Android's. Only useful for compiling against Android.
+    /// Defaults to false.
+    pub is_like_android: bool,
     /// Whether the linker support GNU-like arguments such as -O. Defaults to false.
     pub linker_is_gnu: bool,
     /// Whether the linker support rpaths or not. Defaults to false.
@@ -197,6 +200,7 @@ impl Default for TargetOptions {
             staticlib_suffix: ".a".to_string(),
             is_like_osx: false,
             is_like_windows: false,
+            is_like_android: false,
             linker_is_gnu: false,
             has_rpath: false,
             no_compiler_rt: false,
@@ -345,10 +349,12 @@ impl Target {
             mips_unknown_linux_gnu,
             mipsel_unknown_linux_gnu,
             powerpc_unknown_linux_gnu,
-            arm_linux_androideabi,
             arm_unknown_linux_gnueabi,
             arm_unknown_linux_gnueabihf,
             aarch64_unknown_linux_gnu,
+
+            arm_linux_androideabi,
+            aarch64_linux_android,
 
             x86_64_unknown_freebsd,
 
@@ -363,7 +369,6 @@ impl Target {
             i386_apple_ios,
             x86_64_apple_ios,
             aarch64_apple_ios,
-            aarch64_linux_android,
             armv7_apple_ios,
             armv7s_apple_ios,
 

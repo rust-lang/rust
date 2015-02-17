@@ -70,12 +70,20 @@ impl Process {
               K: BytesContainer + Eq + Hash<Hasher>, V: BytesContainer
     {
         use libc::funcs::posix88::unistd::{fork, dup2, close, chdir, execvp};
-        use libc::funcs::bsd44::getdtablesize;
 
         mod rustrt {
             extern {
                 pub fn rust_unset_sigprocmask();
             }
+        }
+
+        #[cfg(all(target_os = "android", target_arch = "aarch64"))]
+        unsafe fn getdtablesize() -> c_int {
+            libc::sysconf(libc::consts::os::sysconf::_SC_OPEN_MAX) as c_int
+        }
+        #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
+        unsafe fn getdtablesize() -> c_int {
+            libc::funcs::bsd44::getdtablesize()
         }
 
         unsafe fn set_cloexec(fd: c_int) {

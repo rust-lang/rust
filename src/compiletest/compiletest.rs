@@ -153,12 +153,12 @@ pub fn parse_config(args: Vec<String> ) -> Config {
         lldb_version: extract_lldb_version(matches.opt_str("lldb-version")),
         android_cross_path: opt_path(matches, "android-cross-path"),
         adb_path: opt_str2(matches.opt_str("adb-path")),
-        adb_test_dir: opt_str2(matches.opt_str("adb-test-dir")),
+        adb_test_dir: format!("{}/{}",
+            opt_str2(matches.opt_str("adb-test-dir")),
+            opt_str2(matches.opt_str("target"))),
         adb_device_status:
-            "arm-linux-androideabi" ==
-                opt_str2(matches.opt_str("target")) &&
-            "(none)" !=
-                opt_str2(matches.opt_str("adb-test-dir")) &&
+            opt_str2(matches.opt_str("target")).contains("android") &&
+            "(none)" != opt_str2(matches.opt_str("adb-test-dir")) &&
             !opt_str2(matches.opt_str("adb-test-dir")).is_empty(),
         lldb_python_dir: matches.opt_str("lldb-python-dir"),
         verbose: matches.opt_present("verbose"),
@@ -213,17 +213,17 @@ pub fn opt_str2(maybestr: Option<String>) -> String {
 }
 
 pub fn run_tests(config: &Config) {
-    if config.target == "arm-linux-androideabi" {
+    if config.target.contains("android") {
         match config.mode {
             DebugInfoGdb => {
-                println!("arm-linux-androideabi debug-info \
-                         test uses tcp 5039 port. please reserve it");
+                println!("{} debug-info test uses tcp 5039 port.\
+                         please reserve it", config.target);
             }
             _ =>{}
         }
 
-        //arm-linux-androideabi debug-info test uses remote debugger
-        //so, we test 1 task at once.
+        // android debug-info test uses remote debugger
+        // so, we test 1 task at once.
         // also trying to isolate problems with adb_run_wrapper.sh ilooping
         env::set_var("RUST_TEST_TASKS","1");
     }

@@ -5473,6 +5473,7 @@ pub mod funcs {
         use types::os::arch::c95::{c_uchar, c_int, size_t};
 
         extern {
+            #[cfg(not(all(target_os = "android", target_arch = "aarch64")))]
             pub fn getdtablesize() -> c_int;
             pub fn ioctl(d: c_int, request: c_int, ...) -> c_int;
             pub fn madvise(addr: *mut c_void, len: size_t, advice: c_int)
