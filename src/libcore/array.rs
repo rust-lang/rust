@@ -59,6 +59,7 @@ macro_rules! array_impls {
             }
 
             #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl<'a, T> IntoIterator for &'a [T; $N] {
                 type Item = &'a T;
                 type IntoIter = Iter<'a, T>;
@@ -79,6 +80,7 @@ macro_rules! array_impls {
             }
 
             #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+            #[stable(feature = "rust1", since = "1.0.0")]
             impl<'a, T> IntoIterator for &'a mut [T; $N] {
                 type Item = &'a mut T;
                 type IntoIter = IterMut<'a, T>;

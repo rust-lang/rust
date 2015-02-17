@@ -473,6 +473,7 @@ impl<K, V> IntoIterator for BTreeMap<K, V> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V> IntoIterator for BTreeMap<K, V> {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
@@ -493,6 +494,7 @@ impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> IntoIterator for &'a BTreeMap<K, V> {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
@@ -513,6 +515,7 @@ impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V> IntoIterator for &'a mut BTreeMap<K, V> {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;

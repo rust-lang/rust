@@ -1081,6 +1081,7 @@ impl<'a> IntoIterator for &'a Bitv {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> IntoIterator for &'a Bitv {
     type Item = bool;
     type IntoIter = Iter<'a>;
@@ -1905,6 +1906,7 @@ impl<'a> IntoIterator for &'a BitvSet {
 }
 
 #[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> IntoIterator for &'a BitvSet {
     type Item = usize;
     type IntoIter = SetIter<'a>;
