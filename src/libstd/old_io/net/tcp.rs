@@ -494,6 +494,7 @@ mod test {
     use old_io::{EndOfFile, TimedOut, ShortWrite, IoError};
     use old_io::{ConnectionRefused, BrokenPipe, ConnectionAborted};
     use old_io::{ConnectionReset, NotConnected, PermissionDenied, OtherIoError};
+    use old_io::{InvalidInput};
     use old_io::{Acceptor, Listener};
 
     // FIXME #11530 this fails on android because tests are run as root
@@ -510,7 +511,8 @@ mod test {
     fn connect_error() {
         match TcpStream::connect("0.0.0.0:1") {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind, ConnectionRefused),
+            Err(e) => assert!((e.kind == ConnectionRefused)
+                              || (e.kind == InvalidInput)),
         }
     }
 
