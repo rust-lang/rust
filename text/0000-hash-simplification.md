@@ -419,6 +419,10 @@ may not be able to provide any form of DoS protection guarantee at all.
   randomly seed each individual instance but may at best have one global seed.
   This consequently elevates the risk of a DoS attack on a `HashMap` instance.
 
+* The method of combining hashes together is not proven among other languages
+  and is not guaranteed to provide the guarantees we want. This departure from
+  the may have unknown consequences.
+
 # Unresolved questions
 
 * To what degree should `HashMap` attempt to prevent DoS attacks? Is it the
