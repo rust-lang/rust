@@ -18,7 +18,7 @@ fn x_coord(p: &Point) -> &int {
 }
 
 pub fn main() {
-    let p = box Point {x: 3, y: 4};
+    let p: Box<_> = box Point {x: 3, y: 4};
     let xc = x_coord(&*p);
     assert_eq!(*xc, 3);
 }

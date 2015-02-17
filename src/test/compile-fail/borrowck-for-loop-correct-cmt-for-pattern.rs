@@ -28,7 +28,7 @@ fn main() {
     for &a in &f.a {  //~ ERROR cannot move out
     }
 
-    let x = Some(box 1);
+    let x: Option<Box<_>> = Some(box 1);
     for &a in x.iter() {    //~ ERROR cannot move out
     }
 }

@@ -25,7 +25,7 @@ fn foo(Foo {x, ..}: Foo) -> *const uint {
 }
 
 pub fn main() {
-    let obj = box 1;
+    let obj: Box<_> = box 1;
     let objptr: *const uint = &*obj;
     let f = Foo {x: obj, y: box 2};
     let xptr = foo(f);

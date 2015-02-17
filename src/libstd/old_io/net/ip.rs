@@ -323,22 +323,22 @@ impl<'a> Parser<'a> {
     }
 
     fn read_ip_addr(&mut self) -> Option<IpAddr> {
-        let ipv4_addr = |p: &mut Parser| p.read_ipv4_addr();
-        let ipv6_addr = |p: &mut Parser| p.read_ipv6_addr();
-        self.read_or(&mut [box ipv4_addr, box ipv6_addr])
+        let ipv4_addr: Box<_> = box |p: &mut Parser| p.read_ipv4_addr();
+        let ipv6_addr: Box<_> = box |p: &mut Parser| p.read_ipv6_addr();
+        self.read_or(&mut [ipv4_addr, ipv6_addr])
     }
 
     fn read_socket_addr(&mut self) -> Option<SocketAddr> {
         let ip_addr = |p: &mut Parser| {
-            let ipv4_p = |p: &mut Parser| p.read_ip_addr();
-            let ipv6_p = |p: &mut Parser| {
+            let ipv4_p: Box<_> = box |p: &mut Parser| p.read_ip_addr();
+            let ipv6_p: Box<_> = box |p: &mut Parser| {
                 let open_br = |p: &mut Parser| p.read_given_char('[');
                 let ip_addr = |p: &mut Parser| p.read_ipv6_addr();
                 let clos_br = |p: &mut Parser| p.read_given_char(']');
                 p.read_seq_3::<char, IpAddr, char, _, _, _>(open_br, ip_addr, clos_br)
                         .map(|t| match t { (_, ip, _) => ip })
             };
-            p.read_or(&mut [box ipv4_p, box ipv6_p])
+            p.read_or(&mut [ipv4_p, ipv6_p])
         };
         let colon = |p: &mut Parser| p.read_given_char(':');
         let port  = |p: &mut Parser| p.read_number(10, 5, 0x10000).map(|n| n as u16);

@@ -984,7 +984,7 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let mut m = LinkedList::new();
+        let mut m = LinkedList::<Box<_>>::new();
         assert_eq!(m.pop_front(), None);
         assert_eq!(m.pop_back(), None);
         assert_eq!(m.pop_front(), None);

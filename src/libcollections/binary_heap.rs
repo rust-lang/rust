@@ -790,7 +790,7 @@ mod tests {
 
     #[test]
     fn test_push_unique() {
-        let mut heap = BinaryHeap::from_vec(vec![box 2, box 4, box 9]);
+        let mut heap = BinaryHeap::<Box<_>>::from_vec(vec![box 2, box 4, box 9]);
         assert_eq!(heap.len(), 3);
         assert!(*heap.peek().unwrap() == box 9);
         heap.push(box 11);

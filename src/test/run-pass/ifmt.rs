@@ -154,7 +154,7 @@ pub fn main() {
     test_order();
 
     // make sure that format! doesn't move out of local variables
-    let a = box 3;
+    let a: Box<_> = box 3;
     format!("{}", a);
     format!("{}", a);
 

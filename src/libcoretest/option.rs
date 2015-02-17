@@ -16,7 +16,7 @@ use core::clone::Clone;
 #[test]
 fn test_get_ptr() {
     unsafe {
-        let x = box 0;
+        let x: Box<_> = box 0;
         let addr_x: *const int = mem::transmute(&*x);
         let opt = Some(x);
         let y = opt.unwrap();

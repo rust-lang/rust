@@ -20,6 +20,6 @@ impl double for Box<uint> {
 }
 
 pub fn main() {
-    let x = box box box box box 3_usize;
+    let x: Box<Box<Box<Box<Box<_>>>>> = box box box box box 3_usize;
     assert_eq!(x.double(), 6_usize);
 }

@@ -15,7 +15,7 @@ fn borrow<F>(v: &isize, f: F) where F: FnOnce(&isize) {
 }
 
 fn box_imm() {
-    let mut v = box 3;
+    let mut v: Box<_> = box 3;
     borrow(&*v,
            |w| { //~ ERROR cannot borrow `v` as mutable
             v = box 4;

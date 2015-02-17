@@ -69,6 +69,8 @@
 //! }
 //! ```
 
+use boxed::Box;
+
 use core::prelude::*;
 
 use core::atomic;
@@ -170,7 +172,7 @@ impl<T> Arc<T> {
     pub fn new(data: T) -> Arc<T> {
         // Start the weak pointer count as 1 which is the weak pointer that's
         // held by all the strong pointers (kinda), see std/rc.rs for more info
-        let x = box ArcInner {
+        let x: Box<_> = box ArcInner {
             strong: atomic::AtomicUsize::new(1),
             weak: atomic::AtomicUsize::new(1),
             data: data,

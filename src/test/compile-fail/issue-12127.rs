@@ -14,7 +14,7 @@ fn to_fn_once<A,F:FnOnce<A>>(f: F) -> F { f }
 fn do_it(x: &isize) { }
 
 fn main() {
-    let x = box 22;
+    let x: Box<_> = box 22;
     let f = to_fn_once(move|| do_it(&*x));
     to_fn_once(move|| {
         f();

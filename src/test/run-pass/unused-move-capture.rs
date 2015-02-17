@@ -12,7 +12,7 @@
 #![feature(box_syntax)]
 
 pub fn main() {
-    let _x = box 1;
+    let _x: Box<_> = box 1;
     let lam_move = || {};
     lam_move();
 }

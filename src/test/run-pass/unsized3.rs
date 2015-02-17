@@ -66,7 +66,7 @@ pub fn main() {
             f: [T; 3]
         }
 
-        let data = box Foo_{f: [1i32, 2, 3] };
+        let data: Box<_> = box Foo_{f: [1i32, 2, 3] };
         let x: &Foo<i32> = mem::transmute(raw::Slice { len: 3, data: &*data });
         assert!(x.f.len() == 3);
         assert!(x.f[0] == 1);
@@ -78,7 +78,8 @@ pub fn main() {
             f2: [u8; 5],
         }
 
-        let data = box Baz_{ f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
+        let data: Box<_> = box Baz_ {
+            f1: 42, f2: ['a' as u8, 'b' as u8, 'c' as u8, 'd' as u8, 'e' as u8] };
         let x: &Baz = mem::transmute( raw::Slice { len: 5, data: &*data } );
         assert!(x.f1 == 42);
         let chs: Vec<char> = x.f2.chars().collect();
@@ -96,7 +97,7 @@ pub fn main() {
         let obj: Box<St> = box St { f: 42 };
         let obj: &Tr = &*obj;
         let obj: raw::TraitObject = mem::transmute(&*obj);
-        let data = box Qux_{ f: St { f: 234 } };
+        let data: Box<_> = box Qux_{ f: St { f: 234 } };
         let x: &Qux = mem::transmute(raw::TraitObject { vtable: obj.vtable,
                                                         data: mem::transmute(&*data) });
         assert!(x.f.foo() == 234);

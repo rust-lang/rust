@@ -1205,7 +1205,7 @@ mod test_map {
 
     #[test]
     fn test_move_iter() {
-        let mut m = VecMap::new();
+        let mut m: VecMap<Box<_>> = VecMap::new();
         m.insert(1, box 2);
         let mut called = false;
         for (k, v) in m {
