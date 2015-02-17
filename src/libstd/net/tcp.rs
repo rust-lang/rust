@@ -247,7 +247,8 @@ mod tests {
     fn connect_error() {
         match TcpStream::connect("0.0.0.0:1") {
             Ok(..) => panic!(),
-            Err(e) => assert_eq!(e.kind(), ErrorKind::ConnectionRefused),
+            Err(e) => assert!((e.kind() == ErrorKind::ConnectionRefused)
+                              || (e.kind() == ErrorKind::InvalidInput)),
         }
     }
 
