@@ -24,9 +24,9 @@ This presents a couple of issues:
 
 - The API is inconsistent.
 - The API duplicates similar operations on different types. (`contains` vs `contains_char`)
-- The API does not provide all operations for all types. (No `rsplit` for `&str` patterns)
+- The API does not provide all operations for all types. (For example, no `rsplit` for `&str` patterns)
 - The API is not extensible, eg to allow splitting at regex matches.
-- The API offers no way to statically decide between different basic search algorithms
+- The API offers no way to explicitly decide between different search algorithms
   for the same pattern, for example to use Boyer-Moore string searching.
 
 At the moment, the full set of relevant string methods roughly looks like this:
@@ -79,24 +79,24 @@ First, new traits will be added to the `str` module in the std library:
 
 ```rust
 trait Pattern<'a> {
-    type MatcherImpl: Matcher<'a>;
+    type Searcher: Searcher<'a>;
+    fn into_matcher(self, haystack: &'a str) -> Self::Searcher;
 
-    fn into_matcher(self, haystack: &'a str) -> Self::MatcherImpl;
-
-    // Can be implemented to optimize the "find only" case.
-    fn is_contained_in(self, haystack: &'a str) -> bool {
-        self.into_matcher(s).next_match().is_some()
-    }
+    fn is_contained_in(self, haystack: &'a str) -> bool { /* default*/ }
+    fn match_starts_at(self, haystack: &'a str, idx: usize) -> bool { /* default*/ }
+    fn match_ends_at(self, haystack: &'a str, idx: usize) -> bool
+        where Self::Searcher: ReverseSearcher<'a> { /* default*/ }
 }
 ```
 
 A `Pattern` represents a builder for an associated type implementing a
-family of `Matcher` traits (see below), and will be implemented by all types that
+family of `Searcher` traits (see below), and will be implemented by all types that
 represent string patterns, which includes:
 
-- `char` and `&str`
-- Everything implementing `CharEq`
-- Additional types like `&Regex` or `Ascii`
+- `&str`
+- `char`, and everything else implementing `CharEq`
+- Third party types like `&Regex` or `Ascii`
+- Alternative algorithm wrappers like `struct BoyerMoore(&str)`
 
 ```rust
 impl<'a>     Pattern<'a> for char       { /* ... */ }
@@ -112,51 +112,62 @@ The lifetime parameter on `Pattern` exists in order to allow threading the lifet
 of the haystack (the string to be searched through) through the API, and is a workaround
 for not having associated higher kinded types yet.
 
-Consumers of this API can then call `into_matcher()` on the pattern to convert it into
-a type implementing a family of `Matcher` traits:
+Consumers of this API can then call `into_searcher()` on the pattern to convert it into
+a type implementing a family of `Searcher` traits:
 
 ```rust
-unsafe trait Matcher<'a> {
-    fn haystack(&self) -> &'a str
-    fn next_match(&mut self) -> Option<(uint, uint)>;
+pub enum SearchStep {
+    Match(usize, usize),
+    Reject(usize, usize),
+    Done
 }
+pub unsafe trait Searcher<'a> {
+    fn haystack(&self) -> &'a str;
+    fn next(&mut self) -> SearchStep;
 
-unsafe trait ReverseMatcher<'a>: Matcher<'a> {
-    fn next_match_back(&mut self) -> Option<(uint, uint)>;
+    fn next_match(&mut self) -> Option<(usize, usize)> { /* default*/ }
+    fn next_reject(&mut self) -> Option<(usize, usize)> { /* default*/ }
 }
+pub unsafe trait ReverseSearcher<'a>: Searcher<'a> {
+    fn next_back(&mut self) -> SearchStep;
 
-trait DoubleEndedMatcher<'a>: ReverseMatcher<'a> {}
+    fn next_match_back(&mut self) -> Option<(usize, usize)> { /* default*/ }
+    fn next_reject_back(&mut self) -> Option<(usize, usize)> { /* default*/ }
+}
+pub trait DoubleEndedSearcher<'a>: ReverseSearcher<'a> {}
 ```
 
-The basic idea of a `Matcher` is to expose a `Iterator`-like interface for
-iterating through all matches of a pattern in the given haystack.
+The basic idea of a `Searcher` is to expose a interface for
+iterating through all connected string fragments of the haystack while classifing them as either a match, or a reject.
 
-Similar to iterators, depending on the concrete implementation a matcher can have
+This happens in form of the returned enum value. A `Match` needs to contain the start and end indices of a complete non-overlapping match, while a `Rejects` may be emitted for arbitary non-overlapping rejected parts of the string, as long as the start and end indices lie on valid utf8 boundaries.
+
+Similar to iterators, depending on the concrete implementation a searcher can have
 additional capabilities that build on each other, which is why they will be
 defined in terms of a three-tier hierarchy:
 
-- `Matcher<'a>` is the basic trait that all matchers need to implement.
-  It contains a `next_match()` method that returns the `start` and `end` indices of
-  the next non-overlapping match in the haystack, with the search beginning at the front
+- `Searcher<'a>` is the basic trait that all searchers need to implement.
+  It contains a `next()` method that returns the `start` and `end` indices of
+  the next match or reject in the haystack, with the search beginning at the front
   (left) of the string. It also contains a `haystack()` getter for returning the
   actual haystack, which is the source of the `'a` lifetime on the hierarchy.
   The reason for this getter being made part of the trait is twofold:
-  - Every matcher needs to store some reference to the haystack anyway.
+  - Every searcher needs to store some reference to the haystack anyway.
   - Users of this trait will need access to the haystack in order
     for the individual match results to be useful.
-- `ReverseMatcher<'a>` adds an `next_match_back` method, for also allowing to efficiently
-  search for matches in reverse (starting from the right).
+- `ReverseSearcher<'a>` adds an `next_back()` method, for also allowing to efficiently
+  search in reverse (starting from the right).
   However, the results are not required to be equal to the results of
-  `next_match` in reverse, (as would be the case for the `DoubleEndedIterator` trait)
-  as that can not be efficiently guaranteed for all matchers. (For an example, see further below)
-- Instead `DoubleEndedMatcher<'a>` is provided as an marker trait for expressing
-  that guarantee - If a matcher implements this trait, all results found from the
+  `next()` in reverse, (as would be the case for the `DoubleEndedIterator` trait)
+  because that can not be efficiently guaranteed for all searchers. (For an example, see further below)
+- Instead `DoubleEndedSearcher<'a>` is provided as an marker trait for expressing
+  that guarantee - If a searcher implements this trait, all results found from the
   left need to be equal to all results found from the right in reverse order.
 
 As an important last detail, both
-`Matcher` and `ReverseMatcher` are marked as `unsafe` traits, even though the actual methods
+`Searcher` and `ReverseSearcher` are marked as `unsafe` traits, even though the actual methods
 aren't. This is because every implementation of these traits need to ensure that all
-indices returned by `next_match` and `next_match_back` lay on valid utf8 boundaries
+indices returned by `next()` and `next_back()` lie on valid utf8 boundaries
 in the haystack.
 
 Without that guarantee, every single match returned by a matcher would need to be
@@ -170,6 +181,15 @@ and all unsafe code needed for such optimizations is contained inside a single s
 Given that most implementations of these traits will likely
 live in the std library anyway, and are thoroughly tested, marking these traits `unsafe`
 doesn't seem like a huge burden to bear for good, optimizable performance.
+
+### The role of the additional default methods
+
+`Pattern`, `Searcher` and `ReverseSearcher` each offer a few additional
+default methods that give better optimization opportunities.
+
+Most consumers of the pattern API will use them to more narrowly constraint
+how they are looking for a pattern, which given an optimized implementantion,
+should lead to mostly optimal code being generated.
 
 ### Example for the issue with double-ended searching
 
@@ -190,10 +210,11 @@ be considered a different operation than "matching from the back".
 
 ### Why `(uint, uint)` instead of `&str`
 
-It would be possible to define `next_match` and `next_match_back` to return an `&str`
-to the match instead of `(uint, uint)`.
+> Note: This section is a bit outdated now
 
-A concrete matcher impl could then make use of unsafe code to construct such an slice cheaply,
+It would be possible to define `next` and `next_back` to return `&str`s instead of `(uint, uint)` tuples.
+
+A concrete searcher impl could then make use of unsafe code to construct such an slice cheaply,
 and by its very nature it is guaranteed to lie on utf8 boundaries,
 which would also allow not marking the traits as unsafe.
 
@@ -224,7 +245,7 @@ as the "simple" default design.
 
 ## New methods on `StrExt`
 
-With the `Pattern` and `Matcher` traits defined and implemented, the actual `str`
+With the `Pattern` and `Searcher` traits defined and implemented, the actual `str`
 methods will be changed to make use of them:
 
 ```rust
@@ -245,17 +266,17 @@ pub trait StrExt for ?Sized {
 
     fn starts_with<'a, P>(&'a self, pat: P) -> bool where P: Pattern<'a>;
     fn ends_with<'a, P>(&'a self, pat: P) -> bool where P: Pattern<'a>,
-                                                        P::MatcherImpl: ReverseMatcher<'a>;
+                                                        P::Searcher: ReverseSearcher<'a>;
 
     fn trim_matches<'a, P>(&'a self, pat: P) -> &'a str where P: Pattern<'a>,
-                                                              P::MatcherImpl: ReverseMatcher<'a>;
+                                                              P::Searcher: DoubleEndedSearcher<'a>;
     fn trim_left_matches<'a, P>(&'a self, pat: P) -> &'a str where P: Pattern<'a>;
     fn trim_right_matches<'a, P>(&'a self, pat: P) -> &'a str where P: Pattern<'a>,
-                                                                    P::MatcherImpl: ReverseMatcher<'a>;
+                                                                    P::Searcher: ReverseSearcher<'a>;
 
     fn find<'a, P>(&'a self, pat: P) -> Option<uint> where P: Pattern<'a>;
     fn rfind<'a, P>(&'a self, pat: P) -> Option<uint> where P: Pattern<'a>,
-                                                            P::MatcherImpl: ReverseMatcher<'a>;
+                                                            P::Searcher: ReverseSearcher<'a>;
 
     // ...
 }
@@ -278,7 +299,7 @@ changed to uniformly use the new pattern API. The main differences are:
   to behave like a double ended queues where you just pop elements from both sides.
 
 _However_, all iterators will still implement `DoubleEndedIterator` if the underlying
-matcher implements `DoubleEndedMatcher`, to keep the ability to do things like `foo.split('a').rev()`.
+matcher implements `DoubleEndedSearcher`, to keep the ability to do things like `foo.split('a').rev()`.
 
 ## Transition and deprecation plans
 
@@ -288,7 +309,7 @@ methods will still compile, or give deprecation warning.
 It would even be possible to generically implement `Pattern` for all `CharEq` types,
 making the transition more painless.
 
-Long-term, post 1.0, it would be possible to define new sets of `Pattern` and `Matcher`
+Long-term, post 1.0, it would be possible to define new sets of `Pattern` and `Searcher`
 without a lifetime parameter by making use of higher kinded types in order to simplify the
 string APIs. Eg, instead of `fn starts_with<'a, P>(&'a self, pat: P) -> bool where P: Pattern<'a>;`
 you'd have `fn starts_with<P>(&self, pat: P) -> bool where P: Pattern;`.
@@ -298,30 +319,30 @@ forward to the old traits, which would roughly look like this:
 
 ```rust
 unsafe trait NewPattern {
-    type MatcherImpl<'a> where MatcherImpl: NewMatcher;
+    type Searcher<'a> where Searcher: NewSearcher;
 
-    fn into_matcher<'a>(self, s: &'a str) -> Self::MatcherImpl<'a>;
+    fn into_matcher<'a>(self, s: &'a str) -> Self::Searcher<'a>;
 }
 
 unsafe impl<'a, P> Pattern<'a> for P where P: NewPattern {
-    type MatcherImpl = <Self as NewPattern>::MatcherImpl<'a>;
+    type Searcher = <Self as NewPattern>::Searcher<'a>;
 
-    fn into_matcher(self, haystack: &'a str) -> Self::MatcherImpl {
+    fn into_matcher(self, haystack: &'a str) -> Self::Searcher {
         <Self as NewPattern>::into_matcher(self, haystack)
     }
 }
 
-unsafe trait NewMatcher for Self<'_> {
+unsafe trait NewSearcher for Self<'_> {
     fn haystack<'a>(self: &Self<'a>) -> &'a str;
     fn next_match<'a>(self: &mut Self<'a>) -> Option<(uint, uint)>;
 }
 
-unsafe impl<'a, M> Matcher<'a> for M<'a> where M: NewMatcher {
+unsafe impl<'a, M> Searcher<'a> for M<'a> where M: NewSearcher {
     fn haystack(&self) -> &'a str {
-        <M as NewMatcher>::haystack(self)
+        <M as NewSearcher>::haystack(self)
     }
     fn next_match(&mut self) -> Option<(uint, uint)> {
-        <M as NewMatcher>::next_match(self)
+        <M as NewSearcher>::next_match(self)
     }
 }
 ```
@@ -345,6 +366,8 @@ the `prelude` (which would be unneeded anyway).
 - This add a few layers of generics, so compilation times and micro optimizations might suffer.
 
 # Alternatives
+
+> Note: This section is not updated to the new naming scheme
 
 In general:
 
@@ -371,8 +394,8 @@ some negative trade-offs:
   for immediate results.
 - Extend `Pattern` into `Pattern` and `ReversePattern`, starting the forward-reverse split at the level of
   patterns directly. The two would still be in a inherits-from relationship like
-  `Matcher` and `ReverseMatcher`, and be interchangeable if the later also implement `DoubleEndedMatcher`,
-  but on the `str` API where clauses like `where P: Pattern<'a>, P::MatcherImpl: ReverseMatcher<'a>`
+  `Matcher` and `ReverseSearcher`, and be interchangeable if the later also implement `DoubleEndedSearcher`,
+  but on the `str` API where clauses like `where P: Pattern<'a>, P::Searcher: ReverseSearcher<'a>`
   would turn into `where P: ReversePattern<'a>`.
 
 Lastly, there are alternatives that don't seem very favorable, but are listed for completeness sake:
@@ -400,7 +423,7 @@ Lastly, there are alternatives that don't seem very favorable, but are listed fo
 - Should the API split in regard to forward-reverse matching be as symmetrical as possible,
   or as minimal as possible?
   In the first case, iterators like `Matches` and `RMatches` could both implement `DoubleEndedIterator` if a
-  `DoubleEndedMatcher` exists, in the latter only `Matches` would, with `RMatches` only providing the
+  `DoubleEndedSearcher` exists, in the latter only `Matches` would, with `RMatches` only providing the
   minimum to support reverse operation.
   A ruling in favor of symmetry would also speak for the `ReversePattern` alternative.
 
