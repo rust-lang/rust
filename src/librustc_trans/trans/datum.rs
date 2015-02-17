@@ -492,8 +492,6 @@ impl<'tcx> Datum<'tcx, Expr> {
                                  -> DatumBlock<'blk, 'tcx, Lvalue> {
         debug!("to_lvalue_datum self: {}", self.to_string(bcx.ccx()));
 
-        assert!(lltype_is_sized(bcx.tcx(), self.ty),
-                "Trying to convert unsized value to lval");
         self.match_kind(
             |l| DatumBlock::new(bcx, l),
             |r| {
@@ -549,15 +547,10 @@ impl<'tcx> Datum<'tcx, Lvalue> {
                                 -> Datum<'tcx, Lvalue> where
         F: FnOnce(ValueRef) -> ValueRef,
     {
-        let val = match self.ty.sty {
-            _ if type_is_sized(bcx.tcx(), self.ty) => gep(self.val),
-            ty::ty_open(_) => {
-                let base = Load(bcx, expr::get_dataptr(bcx, self.val));
-                gep(base)
-            }
-            _ => bcx.tcx().sess.bug(
-                &format!("Unexpected unsized type in get_element: {}",
-                        bcx.ty_to_string(self.ty)))
+        let val = if type_is_sized(bcx.tcx(), self.ty) {
+            gep(self.val)
+        } else {
+            gep(Load(bcx, expr::get_dataptr(bcx, self.val)))
         };
         Datum {
             val: val,
@@ -566,7 +559,8 @@ impl<'tcx> Datum<'tcx, Lvalue> {
         }
     }
 
-    pub fn get_vec_base_and_len(&self, bcx: Block) -> (ValueRef, ValueRef) {
+    pub fn get_vec_base_and_len<'blk>(&self, bcx: Block<'blk, 'tcx>)
+                                      -> (ValueRef, ValueRef) {
         //! Converts a vector into the slice pair.
 
         tvec::get_base_and_len(bcx, self.val, self.ty)

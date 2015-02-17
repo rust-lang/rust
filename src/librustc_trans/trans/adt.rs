@@ -699,7 +699,7 @@ fn struct_llfields<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, st: &Struct<'tcx>,
         st.fields.iter().filter(|&ty| !dst || type_is_sized(cx.tcx(), *ty))
             .map(|&ty| type_of::sizing_type_of(cx, ty)).collect()
     } else {
-        st.fields.iter().map(|&ty| type_of::type_of(cx, ty)).collect()
+        st.fields.iter().map(|&ty| type_of::in_memory_type_of(cx, ty)).collect()
     }
 }
 
