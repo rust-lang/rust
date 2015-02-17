@@ -13,6 +13,7 @@
 extern crate "coherence-lib" as lib;
 use lib::Remote;
 
-impl<T> Remote for T { } //~ ERROR type parameter `T` is not constrained
+impl<T> Remote for T { }
+//~^ ERROR type parameter `T` must be used as the type parameter for some local type
 
 fn main() { }

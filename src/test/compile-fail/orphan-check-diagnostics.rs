@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,16 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub mod common;
-pub mod tyencode;
-pub mod tydecode;
-pub mod encoder;
-pub mod decoder;
-pub mod creader;
-pub mod cstore;
-pub mod csearch;
-pub mod loader;
-pub mod filesearch;
-pub mod macro_import;
+// aux-build:orphan_check_diagnostics.rs
+// see #22388
+
+extern crate orphan_check_diagnostics;
+
+use orphan_check_diagnostics::RemoteTrait;
+
+trait LocalTrait {}
+
+impl<T> RemoteTrait for T where T: LocalTrait {}
+//~^ ERROR type parameter `T` must be used as the type parameter for some local type
+
+fn main() {}

@@ -214,6 +214,7 @@ impl LintStore {
                      Stability,
                      UnconditionalRecursion,
                      InvalidNoMangleItems,
+                     PluginAsLibrary,
         );
 
         add_builtin_with_new!(sess,

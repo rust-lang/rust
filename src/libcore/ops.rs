@@ -37,8 +37,8 @@
 //!
 //! #[derive(Debug)]
 //! struct Point {
-//!     x: int,
-//!     y: int
+//!     x: i32,
+//!     y: i32
 //! }
 //!
 //! impl Add for Point {
@@ -206,7 +206,7 @@ macro_rules! add_impl {
     )*)
 }
 
-add_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
+add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Sub` trait is used to specify the functionality of `-`.
 ///
@@ -259,7 +259,7 @@ macro_rules! sub_impl {
     )*)
 }
 
-sub_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
+sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Mul` trait is used to specify the functionality of `*`.
 ///
@@ -312,7 +312,7 @@ macro_rules! mul_impl {
     )*)
 }
 
-mul_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
+mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Div` trait is used to specify the functionality of `/`.
 ///
@@ -365,7 +365,7 @@ macro_rules! div_impl {
     )*)
 }
 
-div_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
+div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
 /// The `Rem` trait is used to specify the functionality of `%`.
 ///
@@ -435,7 +435,7 @@ macro_rules! rem_float_impl {
     }
 }
 
-rem_impl! { uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+rem_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 rem_float_impl! { f32, fmodf }
 rem_float_impl! { f64, fmod }
 
@@ -506,9 +506,9 @@ macro_rules! neg_uint_impl {
     }
 }
 
-neg_impl! { int i8 i16 i32 i64 f32 f64 }
+neg_impl! { isize i8 i16 i32 i64 f32 f64 }
 
-neg_uint_impl! { uint, int }
+neg_uint_impl! { usize, isize }
 neg_uint_impl! { u8, i8 }
 neg_uint_impl! { u16, i16 }
 neg_uint_impl! { u32, i32 }
@@ -566,7 +566,7 @@ macro_rules! not_impl {
     )*)
 }
 
-not_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `BitAnd` trait is used to specify the functionality of `&`.
 ///
@@ -619,7 +619,7 @@ macro_rules! bitand_impl {
     )*)
 }
 
-bitand_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `BitOr` trait is used to specify the functionality of `|`.
 ///
@@ -672,7 +672,7 @@ macro_rules! bitor_impl {
     )*)
 }
 
-bitor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `BitXor` trait is used to specify the functionality of `^`.
 ///
@@ -725,7 +725,7 @@ macro_rules! bitxor_impl {
     )*)
 }
 
-bitxor_impl! { bool uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
 /// The `Shl` trait is used to specify the functionality of `<<`.
 ///

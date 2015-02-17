@@ -38,14 +38,9 @@ ifdef CHECK_IGNORED
   TESTARGS += --ignored
 endif
 
-
 # Arguments to the cfail/rfail/rpass/bench tests
 ifdef CFG_VALGRIND
   CTEST_RUNTOOL = --runtool "$(CFG_VALGRIND)"
-endif
-
-ifdef PLEASE_BENCH
-  TESTARGS += --bench
 endif
 
 # Arguments to the perf tests
@@ -54,6 +49,11 @@ ifdef CFG_PERF_TOOL
 endif
 
 CTEST_TESTARGS := $(TESTARGS)
+
+# --bench is only relevant for crate tests, not for the compile tests
+ifdef PLEASE_BENCH
+  TESTARGS += --bench
+endif
 
 ifdef VERBOSE
   CTEST_TESTARGS += --verbose
