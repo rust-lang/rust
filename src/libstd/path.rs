@@ -107,6 +107,7 @@
 
 use core::prelude::*;
 
+use ascii::*;
 use borrow::BorrowFrom;
 use cmp;
 use iter;
@@ -118,7 +119,7 @@ use fmt;
 
 use ffi::{OsStr, OsString, AsOsStr};
 
-use self::platform::{is_sep, is_verbatim_sep, MAIN_SEP_STR, parse_prefix, Prefix};
+use self::platform::{is_sep_byte, is_verbatim_sep, MAIN_SEP_STR, parse_prefix};
 
 ////////////////////////////////////////////////////////////////////////////////
 // GENERAL NOTES
@@ -139,11 +140,12 @@ use self::platform::{is_sep, is_verbatim_sep, MAIN_SEP_STR, parse_prefix, Prefix
 
 #[cfg(unix)]
 mod platform {
+    use super::Prefix;
     use core::prelude::*;
     use ffi::OsStr;
 
     #[inline]
-    pub fn is_sep(b: u8) -> bool {
+    pub fn is_sep_byte(b: u8) -> bool {
         b == b'/'
     }
 
@@ -156,34 +158,21 @@ mod platform {
         None
     }
 
-    #[derive(Copy, Clone, Debug, Hash, PartialEq, Eq)]
-    pub struct Prefix<'a>;
-
-    impl<'a> Prefix<'a> {
-        #[inline]
-        pub fn len(&self) -> usize { 0 }
-        #[inline]
-        pub fn is_verbatim(&self) -> bool { false }
-        #[inline]
-        pub fn is_drive(&self) -> bool { false }
-        #[inline]
-        pub fn has_implicit_root(&self) -> bool { false }
-    }
-
     pub const MAIN_SEP_STR: &'static str = "/";
+    pub const MAIN_SEP: char = '/';
 }
 
 #[cfg(windows)]
 mod platform {
     use core::prelude::*;
+    use ascii::*;
 
     use char::CharExt as UnicodeCharExt;
-    use super::{os_str_as_u8_slice, u8_slice_as_os_str};
-    use ascii::*;
+    use super::{os_str_as_u8_slice, u8_slice_as_os_str, Prefix};
     use ffi::OsStr;
 
     #[inline]
-    pub fn is_sep(b: u8) -> bool {
+    pub fn is_sep_byte(b: u8) -> bool {
         b == b'/' || b == b'\\'
     }
 
@@ -193,7 +182,7 @@ mod platform {
     }
 
     pub fn parse_prefix<'a>(path: &'a OsStr) -> Option<Prefix> {
-        use self::Prefix::*;
+        use super::Prefix::*;
         unsafe {
             // The unsafety here stems from converting between &OsStr and &[u8]
             // and back. This is safe to do because (1) we only look at ASCII
@@ -224,8 +213,7 @@ mod platform {
                             let c = path[0];
                             if c.is_ascii() && (c as char).is_alphabetic() {
                                 // \\?\C:\ path
-                                let slice = u8_slice_as_os_str(&path[0..1]);
-                                return Some(VerbatimDisk(slice));
+                                return Some(VerbatimDisk(c.to_ascii_uppercase()));
                             }
                         }
                         let slice = &path[.. idx.unwrap_or(path.len())];
@@ -237,7 +225,7 @@ mod platform {
                     let slice = &path[.. path.position_elem(&b'\\').unwrap_or(path.len())];
                     return Some(DeviceNS(u8_slice_as_os_str(slice)));
                 }
-                match parse_two_comps(path, is_sep) {
+                match parse_two_comps(path, is_sep_byte) {
                     Some((server, share)) if server.len() > 0 && share.len() > 0 => {
                         // \\server\share
                         return Some(UNC(u8_slice_as_os_str(server),
@@ -249,7 +237,7 @@ mod platform {
                 // C:
                 let c = path[0];
                 if c.is_ascii() && (c as char).is_alphabetic() {
-                    return Some(Disk(u8_slice_as_os_str(&path[0..1])));
+                    return Some(Disk(c.to_ascii_uppercase()));
                 }
             }
             return None;
@@ -267,98 +255,101 @@ mod platform {
         }
     }
 
-    /// Windows path prefixes.
-    ///
-    /// Windows uses a variety of path styles, including references to drive
-    /// volumes (like `C:`), network shared (like `\\server\share`) and
-    /// others. In addition, some path prefixes are "verbatim", in which case
-    /// `/` is *not* treated as a separator and essentially no normalization is
-    /// performed.
-    #[derive(Copy, Clone, Debug, Hash, Eq)]
-    pub enum Prefix<'a> {
-        /// Prefix `\\?\`, together with the given component immediately following it.
-        Verbatim(&'a OsStr),
-
-        /// Prefix `\\?\UNC\`, with the "server" and "share" components following it.
-        VerbatimUNC(&'a OsStr, &'a OsStr),
-
-        /// Prefix like `\\?\C:\`, for the given drive letter
-        VerbatimDisk(&'a OsStr),
-
-        /// Prefix `\\.\`, together with the given component immediately following it.
-        DeviceNS(&'a OsStr),
-
-        /// Prefix `\\server\share`, with the given "server" and "share" components.
-        UNC(&'a OsStr, &'a OsStr),
-
-        /// Prefix `C:` for the given disk drive.
-        Disk(&'a OsStr),
-    }
-
-    impl<'a> Prefix<'a> {
-        #[inline]
-        pub fn len(&self) -> usize {
-            use self::Prefix::*;
-            fn os_str_len(s: &OsStr) -> usize {
-                os_str_as_u8_slice(s).len()
-            }
-            match *self {
-                Verbatim(x) => 4 + os_str_len(x),
-                VerbatimUNC(x,y) => 8 + os_str_len(x) +
-                    if os_str_len(y) > 0 { 1 + os_str_len(y) }
-                    else { 0 },
-                VerbatimDisk(_) => 6,
-                UNC(x,y) => 2 + os_str_len(x) +
-                    if os_str_len(y) > 0 { 1 + os_str_len(y) }
-                    else { 0 },
-                DeviceNS(x) => 4 + os_str_len(x),
-                Disk(_) => 2
-            }
-
-        }
-
-        #[inline]
-        pub fn is_verbatim(&self) -> bool {
-            use self::Prefix::*;
-            match *self {
-                Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(_, _) => true,
-                _ => false
-            }
-        }
-
-        #[inline]
-        pub fn is_drive(&self) -> bool {
-            match *self {
-                Prefix::Disk(_) => true,
-                _ => false,
-            }
-        }
-
-        #[inline]
-        pub fn has_implicit_root(&self) -> bool {
-            !self.is_drive()
-        }
-    }
-
-    impl<'a> PartialEq for Prefix<'a> {
-        fn eq(&self, other: &Prefix<'a>) -> bool {
-            use self::Prefix::*;
-            match (*self, *other) {
-                (Verbatim(x), Verbatim(y)) => x == y,
-                (VerbatimUNC(x1, x2), VerbatimUNC(y1, y2)) => x1 == y1 && x2 == y2,
-                (VerbatimDisk(x), VerbatimDisk(y)) =>
-                    os_str_as_u8_slice(x).eq_ignore_ascii_case(os_str_as_u8_slice(y)),
-                (DeviceNS(x), DeviceNS(y)) => x == y,
-                (UNC(x1, x2), UNC(y1, y2)) => x1 == y1 && x2 == y2,
-                (Disk(x), Disk(y)) =>
-                    os_str_as_u8_slice(x).eq_ignore_ascii_case(os_str_as_u8_slice(y)),
-                _ => false,
-            }
-        }
-    }
-
     pub const MAIN_SEP_STR: &'static str = "\\";
+    pub const MAIN_SEP: char = '\\';
 }
+
+////////////////////////////////////////////////////////////////////////////////
+// Windows Prefixes
+////////////////////////////////////////////////////////////////////////////////
+
+/// Path prefixes (Windows only).
+///
+/// Windows uses a variety of path styles, including references to drive
+/// volumes (like `C:`), network shared (like `\\server\share`) and
+/// others. In addition, some path prefixes are "verbatim", in which case
+/// `/` is *not* treated as a separator and essentially no normalization is
+/// performed.
+#[derive(Copy, Clone, Debug, Hash, PartialOrd, Ord, PartialEq, Eq)]
+pub enum Prefix<'a> {
+    /// Prefix `\\?\`, together with the given component immediately following it.
+    Verbatim(&'a OsStr),
+
+    /// Prefix `\\?\UNC\`, with the "server" and "share" components following it.
+    VerbatimUNC(&'a OsStr, &'a OsStr),
+
+    /// Prefix like `\\?\C:\`, for the given drive letter
+    VerbatimDisk(u8),
+
+    /// Prefix `\\.\`, together with the given component immediately following it.
+    DeviceNS(&'a OsStr),
+
+    /// Prefix `\\server\share`, with the given "server" and "share" components.
+    UNC(&'a OsStr, &'a OsStr),
+
+    /// Prefix `C:` for the given disk drive.
+    Disk(u8),
+}
+
+impl<'a> Prefix<'a> {
+    #[inline]
+    fn len(&self) -> usize {
+        use self::Prefix::*;
+        fn os_str_len(s: &OsStr) -> usize {
+            os_str_as_u8_slice(s).len()
+        }
+        match *self {
+            Verbatim(x) => 4 + os_str_len(x),
+            VerbatimUNC(x,y) => 8 + os_str_len(x) +
+                if os_str_len(y) > 0 { 1 + os_str_len(y) }
+                else { 0 },
+            VerbatimDisk(_) => 6,
+            UNC(x,y) => 2 + os_str_len(x) +
+                if os_str_len(y) > 0 { 1 + os_str_len(y) }
+                else { 0 },
+            DeviceNS(x) => 4 + os_str_len(x),
+            Disk(_) => 2
+        }
+
+    }
+
+    /// Determine if the prefix is verbatim, i.e. begins `\\?\`.
+    #[inline]
+    pub fn is_verbatim(&self) -> bool {
+        use self::Prefix::*;
+        match *self {
+            Verbatim(_) | VerbatimDisk(_) | VerbatimUNC(_, _) => true,
+            _ => false
+        }
+    }
+
+    #[inline]
+    fn is_drive(&self) -> bool {
+        match *self {
+            Prefix::Disk(_) => true,
+            _ => false,
+        }
+    }
+
+    #[inline]
+    fn has_implicit_root(&self) -> bool {
+        !self.is_drive()
+    }
+}
+
+////////////////////////////////////////////////////////////////////////////////
+// Exposed parsing helpers
+////////////////////////////////////////////////////////////////////////////////
+
+/// Determine whether the character is one of the permitted path
+/// separators for the current platform.
+pub fn is_separator(c: char) -> bool {
+    use ascii::*;
+    c.is_ascii() && is_sep_byte(c as u8)
+}
+
+/// The primary sperator for the current platform
+pub const MAIN_SEPARATOR: char = platform::MAIN_SEP;
 
 ////////////////////////////////////////////////////////////////////////////////
 // Misc helpers
@@ -403,7 +394,7 @@ fn has_suffix(s: &[u8], prefix: Option<Prefix>) -> bool {
         (p.len(), p.is_verbatim())
     } else { (0, false) };
     if prefix_len > 0 && prefix_len == s.len() && !verbatim { return true; }
-    let mut splits = s[prefix_len..].split(|b| is_sep(*b));
+    let mut splits = s[prefix_len..].split(|b| is_sep_byte(*b));
     let last = splits.next_back().unwrap();
     let more = splits.next_back().is_some();
     more && last == b""
@@ -412,7 +403,7 @@ fn has_suffix(s: &[u8], prefix: Option<Prefix>) -> bool {
 /// Says whether the first byte after the prefix is a separator.
 fn has_physical_root(s: &[u8], prefix: Option<Prefix>) -> bool {
     let path = if let Some(p) = prefix { &s[p.len()..] } else { s };
-    path.len() > 0 && is_sep(path[0])
+    path.len() > 0 && is_sep_byte(path[0])
 }
 
 fn parse_single_component(comp: &[u8]) -> Option<Component> {
@@ -473,8 +464,16 @@ enum State {
 /// their role in the API.
 #[derive(Copy, Clone, PartialEq, Eq, PartialOrd, Ord, Hash, Debug)]
 pub enum Component<'a> {
-    /// A Windows path prefix, e.g. `C:` or `\server\share`
-    Prefix(&'a OsStr),
+    /// A Windows path prefix, e.g. `C:` or `\server\share`.
+    ///
+    /// Does not occur on Unix.
+    Prefix {
+        /// The prefix as an unparsed `OsStr` slice.
+        raw: &'a OsStr,
+
+        /// The parsed prefix data.
+        parsed: Prefix<'a>
+    },
 
     /// An empty component. Only used on Windows for the last component of
     /// verbatim paths ending with a separator (e.g. the last component of
@@ -498,7 +497,7 @@ impl<'a> Component<'a> {
     /// Extract the underlying `OsStr` slice
     pub fn as_os_str(self) -> &'a OsStr {
         match self {
-            Component::Prefix(path) => path,
+            Component::Prefix { raw, .. } => &raw,
             Component::Empty => OsStr::from_str(""),
             Component::RootDir => OsStr::from_str(MAIN_SEP_STR),
             Component::CurDir => OsStr::from_str("."),
@@ -568,11 +567,11 @@ impl<'a> Components<'a> {
     }
 
     #[inline]
-    fn is_sep(&self, b: u8) -> bool {
+    fn is_sep_byte(&self, b: u8) -> bool {
         if self.prefix_verbatim() {
             is_verbatim_sep(b)
         } else {
-            is_sep(b)
+            is_sep_byte(b)
         }
     }
 
@@ -601,7 +600,7 @@ impl<'a> Components<'a> {
     // remove the component
     fn parse_next_component(&self) -> (usize, Option<Component<'a>>) {
         debug_assert!(self.front == State::Body);
-        let (extra, comp) = match self.path.iter().position(|b| self.is_sep(*b)) {
+        let (extra, comp) = match self.path.iter().position(|b| self.is_sep_byte(*b)) {
             None => (0, self.path),
             Some(i) => (1, &self.path[.. i]),
         };
@@ -613,7 +612,7 @@ impl<'a> Components<'a> {
     fn parse_next_component_back(&self) -> (usize, Option<Component<'a>>) {
         debug_assert!(self.back == State::Body);
         let start = self.prefix_and_root();
-        let (extra, comp) = match self.path[start..].iter().rposition(|b| self.is_sep(*b)) {
+        let (extra, comp) = match self.path[start..].iter().rposition(|b| self.is_sep_byte(*b)) {
             None => (0, &self.path[start ..]),
             Some(i) => (1, &self.path[start + i + 1 ..]),
         };
@@ -680,9 +679,12 @@ impl<'a> Iterator for Components<'a> {
                 State::Prefix if self.prefix_len() > 0 => {
                     self.front = State::Root;
                     debug_assert!(self.prefix_len() <= self.path.len());
-                    let prefix = &self.path[.. self.prefix_len()];
+                    let raw = &self.path[.. self.prefix_len()];
                     self.path = &self.path[self.prefix_len() .. ];
-                    return Some(Component::Prefix(unsafe { u8_slice_as_os_str(prefix) }))
+                    return Some(Component::Prefix {
+                        raw: unsafe { u8_slice_as_os_str(raw) },
+                        parsed: self.prefix.unwrap()
+                    })
                 }
                 State::Prefix => {
                     self.front = State::Root;
@@ -755,9 +757,10 @@ impl<'a> DoubleEndedIterator for Components<'a> {
                 }
                 State::Prefix if self.prefix_len() > 0 => {
                     self.back = State::Done;
-                    return Some(Component::Prefix(unsafe {
-                        u8_slice_as_os_str(self.path)
-                    }))
+                    return Some(Component::Prefix {
+                        raw: unsafe { u8_slice_as_os_str(self.path) },
+                        parsed: self.prefix.unwrap()
+                    })
                 }
                 State::Prefix => {
                     self.back = State::Done;
@@ -844,7 +847,7 @@ impl PathBuf {
     /// * if `path` has a prefix but no root, it replaces `self.
     pub fn push<P: ?Sized>(&mut self, path: &P) where P: AsPath {
         // in general, a separator is needed if the rightmost byte is not a separator
-        let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep(*c)).unwrap_or(false);
+        let mut need_sep = self.as_mut_vec().last().map(|c| !is_sep_byte(*c)).unwrap_or(false);
 
         // in the special case of `C:` on Windows, do *not* add a separator
         {
@@ -1142,11 +1145,11 @@ impl Path {
 
         match (comp, comps.next_back()) {
             (Some(Component::CurDir), Some(Component::RootDir)) => None,
-            (Some(Component::CurDir), Some(Component::Prefix(_))) => None,
+            (Some(Component::CurDir), Some(Component::Prefix { .. })) => None,
             (Some(Component::Empty), Some(Component::RootDir)) => None,
-            (Some(Component::Empty), Some(Component::Prefix(_))) => None,
-            (Some(Component::Prefix(_)), None) => None,
-            (Some(Component::RootDir), Some(Component::Prefix(_))) => None,
+            (Some(Component::Empty), Some(Component::Prefix { .. })) => None,
+            (Some(Component::Prefix { .. }), None) => None,
+            (Some(Component::RootDir), Some(Component::Prefix { .. })) => None,
             _ => rest
         }
     }
