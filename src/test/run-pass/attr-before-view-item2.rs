@@ -10,6 +10,8 @@
 
 // error-pattern:expected item
 
+#![feature(custom_attribute)]
+
 mod m {
     #[foo = "bar"]
     extern crate test;

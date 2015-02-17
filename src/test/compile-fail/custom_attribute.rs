@@ -8,8 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#[linkage = "external"]
-static foo: isize = 0;
-//~^^ ERROR: the `linkage` attribute is experimental and not portable
+#[foo] //~ ERROR The attribute `foo`
+fn main() {
 
-fn main() {}
+}
