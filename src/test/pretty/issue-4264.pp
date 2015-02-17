@@ -23,7 +23,7 @@ extern crate "std" as std;
 pub fn foo(_: [i32; (3 as usize)]) { }
 
 pub fn bar() {
-    const FOO: usize = ((5us as usize) - (4us as usize) as usize);
+    const FOO: usize = ((5usize as usize) - (4usize as usize) as usize);
     let _: [(); (FOO as usize)] = ([(() as ())] as [(); 1]);
 
     let _: [(); (1us as usize)] = ([(() as ())] as [(); 1]);

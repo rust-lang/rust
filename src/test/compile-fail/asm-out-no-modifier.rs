@@ -19,7 +19,7 @@ fn foo(x: isize) { println!("{}", x); }
 pub fn main() {
     let x: isize;
     unsafe {
-        asm!("mov $1, $0" : "r"(x) : "r"(5us)); //~ ERROR output operand constraint lacks '='
+        asm!("mov $1, $0" : "r"(x) : "r"(5_usize)); //~ ERROR output operand constraint lacks '='
     }
     foo(x);
 }

@@ -35,7 +35,7 @@ fn any_referenced() {
 
 #[test]
 fn any_owning() {
-    let (a, b, c) = (box 5us as Box<Any>, box TEST as Box<Any>, box Test as Box<Any>);
+    let (a, b, c) = (box 5_usize as Box<Any>, box TEST as Box<Any>, box Test as Box<Any>);
 
     assert!(a.is::<uint>());
     assert!(!b.is::<uint>());
@@ -52,7 +52,7 @@ fn any_owning() {
 
 #[test]
 fn any_downcast_ref() {
-    let a = &5us as &Any;
+    let a = &5_usize as &Any;
 
     match a.downcast_ref::<uint>() {
         Some(&5) => {}
@@ -67,8 +67,8 @@ fn any_downcast_ref() {
 
 #[test]
 fn any_downcast_mut() {
-    let mut a = 5us;
-    let mut b = box 7us;
+    let mut a = 5_usize;
+    let mut b = box 7_usize;
 
     let a_r = &mut a as &mut Any;
     let tmp: &mut uint = &mut *b;
@@ -113,7 +113,7 @@ fn any_downcast_mut() {
 
 #[test]
 fn any_fixed_vec() {
-    let test = [0us; 8];
+    let test = [0_usize; 8];
     let test = &test as &Any;
     assert!(test.is::<[uint; 8]>());
     assert!(!test.is::<[uint; 10]>());
