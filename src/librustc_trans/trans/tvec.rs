@@ -426,49 +426,26 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("tvec::iter_vec_loop");
     let fcx = bcx.fcx;
 
-    let next_bcx = fcx.new_temp_block("expr_repeat: while next");
     let loop_bcx = fcx.new_temp_block("expr_repeat");
-    let cond_bcx = fcx.new_temp_block("expr_repeat: loop cond");
-    let body_bcx = fcx.new_temp_block("expr_repeat: body: set");
-    let inc_bcx = fcx.new_temp_block("expr_repeat: body: inc");
+    let next_bcx = fcx.new_temp_block("expr_repeat: next");
+
     Br(bcx, loop_bcx.llbb, DebugLoc::None);
 
-    let loop_counter = {
-        // i = 0
-        let i = alloca(loop_bcx, bcx.ccx().int_type(), "__i");
-        Store(loop_bcx, C_uint(bcx.ccx(), 0us), i);
+    let loop_counter = Phi(loop_bcx, bcx.ccx().int_type(), &[C_uint(bcx.ccx(), 0us)], &[bcx.llbb]);
 
-        Br(loop_bcx, cond_bcx.llbb, DebugLoc::None);
-        i
+    let bcx = loop_bcx;
+
+    let lleltptr = if vt.llunit_alloc_size == 0 {
+        data_ptr
+    } else {
+        InBoundsGEP(bcx, data_ptr, &[loop_counter])
     };
+    let bcx = f(bcx, lleltptr, vt.unit_ty);
+    let plusone = Add(bcx, loop_counter, C_uint(bcx.ccx(), 1us), DebugLoc::None);
+    AddIncomingToPhi(loop_counter, plusone, bcx.llbb);
 
-    { // i < count
-        let lhs = Load(cond_bcx, loop_counter);
-        let rhs = count;
-        let cond_val = ICmp(cond_bcx, llvm::IntULT, lhs, rhs, DebugLoc::None);
-
-        CondBr(cond_bcx, cond_val, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
-    }
-
-    { // loop body
-        let i = Load(body_bcx, loop_counter);
-        let lleltptr = if vt.llunit_alloc_size == 0 {
-            data_ptr
-        } else {
-            InBoundsGEP(body_bcx, data_ptr, &[i])
-        };
-        let body_bcx = f(body_bcx, lleltptr, vt.unit_ty);
-
-        Br(body_bcx, inc_bcx.llbb, DebugLoc::None);
-    }
-
-    { // i += 1
-        let i = Load(inc_bcx, loop_counter);
-        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1us), DebugLoc::None);
-        Store(inc_bcx, plusone, loop_counter);
-
-        Br(inc_bcx, cond_bcx.llbb, DebugLoc::None);
-    }
+    let cond_val = ICmp(bcx, llvm::IntULT, plusone, count, DebugLoc::None);
+    CondBr(bcx, cond_val, loop_bcx.llbb, next_bcx.llbb, DebugLoc::None);
 
     next_bcx
 }
