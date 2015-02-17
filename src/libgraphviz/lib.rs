@@ -276,7 +276,7 @@
 #![feature(int_uint)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(io)]
+#![feature(old_io)]
 
 use self::LabelText::*;
 
