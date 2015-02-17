@@ -800,12 +800,12 @@ mod tests {
     #[cfg(all(unix, not(target_os="android")))]
     #[test]
     fn signal_reported_right() {
-        let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
+        let p = Command::new("/bin/sh").arg("-c").arg("kill -9 $$").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait().unwrap() {
-            process::ExitSignal(1) => {},
-            result => panic!("not terminated by signal 1 (instead, {})", result),
+            process::ExitSignal(9) => {},
+            result => panic!("not terminated by signal 9 (instead, {})", result),
         }
     }
 

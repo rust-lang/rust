@@ -9,10 +9,10 @@
 // except according to those terms.
 
 use std::old_io::process::Command;
-use std::os;
+use std::env;
 
 fn main() {
-    let args = os::args();
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "segfault" {
         unsafe { *(0 as *mut int) = 1 }; // trigger a segfault
     } else {

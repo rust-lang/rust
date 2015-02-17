@@ -605,6 +605,8 @@ impl<T> Option<T> {
     /// Returns `None` if the option is `None`, otherwise calls `f` with the
     /// wrapped value and returns the result.
     ///
+    /// Some languages call this operation flatmap.
+    ///
     /// # Example
     ///
     /// ```

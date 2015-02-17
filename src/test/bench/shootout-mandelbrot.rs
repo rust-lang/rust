@@ -43,7 +43,7 @@
 // ignore-pretty very bad with line comments
 
 use std::old_io;
-use std::os;
+use std::env;
 use std::simd::f64x2;
 use std::sync::Arc;
 use std::thread::Thread;
@@ -197,13 +197,13 @@ fn write_line(init_i: f64, vec_init_r: &[f64], res: &mut Vec<u8>) {
 }
 
 fn main() {
-    let args = os::args();
+    let mut args = env::args();
     let res = if args.len() < 2 {
         println!("Test mode: do not dump the image because it's not utf8, \
                   which interferes with the test runner.");
         mandelbrot(1000, old_io::util::NullWriter)
     } else {
-        mandelbrot(args[1].parse().unwrap(), old_io::stdout())
+        mandelbrot(args.nth(1).unwrap().parse().unwrap(), old_io::stdout())
     };
     res.unwrap();
 }

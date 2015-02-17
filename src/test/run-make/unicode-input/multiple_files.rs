@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::{char, os};
+use std::{char, env};
 use std::old_io::{File, Command};
 use std::rand::{thread_rng, Rng};
 
@@ -33,7 +33,7 @@ fn random_char() -> char {
 }
 
 fn main() {
-    let args = os::args();
+    let args: Vec<String> = env::args().collect();
     let rustc = &args[1];
     let tmpdir = Path::new(&args[2]);
 

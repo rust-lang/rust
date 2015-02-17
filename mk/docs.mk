@@ -25,7 +25,7 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial complement-bugreport \
+DOCS := index intro tutorial \
     complement-lang-faq complement-design-faq complement-project-faq \
     rustdoc reference grammar
 

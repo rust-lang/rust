@@ -22,6 +22,7 @@ use attr::AttrMetaMethods;
 use codemap;
 use codemap::{Span, Spanned, ExpnInfo, NameAndSpan, MacroBang, MacroAttribute};
 use ext::base::*;
+use feature_gate::{Features};
 use fold;
 use fold::*;
 use parse;
@@ -1408,28 +1409,63 @@ fn new_span(cx: &ExtCtxt, sp: Span) -> Span {
     }
 }
 
-pub struct ExpansionConfig {
+pub struct ExpansionConfig<'feat> {
     pub crate_name: String,
-    pub enable_quotes: bool,
+    pub features: Option<&'feat Features>,
     pub recursion_limit: usize,
 }
 
-impl ExpansionConfig {
-    pub fn default(crate_name: String) -> ExpansionConfig {
+impl<'feat> ExpansionConfig<'feat> {
+    pub fn default(crate_name: String) -> ExpansionConfig<'static> {
         ExpansionConfig {
             crate_name: crate_name,
-            enable_quotes: false,
+            features: None,
             recursion_limit: 64,
+        }
+    }
+
+    pub fn enable_quotes(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_quote: true, .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn enable_asm(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_asm: true, .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn enable_log_syntax(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_log_syntax: true, .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn enable_concat_idents(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_concat_idents: true, .. }) => true,
+            _ => false,
+        }
+    }
+
+    pub fn enable_trace_macros(&self) -> bool {
+        match self.features {
+            Some(&Features { allow_trace_macros: true, .. }) => true,
+            _ => false,
         }
     }
 }
 
-pub fn expand_crate(parse_sess: &parse::ParseSess,
-                    cfg: ExpansionConfig,
-                    // these are the macros being imported to this crate:
-                    imported_macros: Vec<ast::MacroDef>,
-                    user_exts: Vec<NamedSyntaxExtension>,
-                    c: Crate) -> Crate {
+pub fn expand_crate<'feat>(parse_sess: &parse::ParseSess,
+                           cfg: ExpansionConfig<'feat>,
+                           // these are the macros being imported to this crate:
+                           imported_macros: Vec<ast::MacroDef>,
+                           user_exts: Vec<NamedSyntaxExtension>,
+                           c: Crate) -> Crate {
     let mut cx = ExtCtxt::new(parse_sess, c.config.clone(), cfg);
     cx.use_std = std_inject::use_std(&c);
 
@@ -1598,7 +1634,7 @@ mod test {
     // these following tests are quite fragile, in that they don't test what
     // *kind* of failure occurs.
 
-    fn test_ecfg() -> ExpansionConfig {
+    fn test_ecfg() -> ExpansionConfig<'static> {
         ExpansionConfig::default("test".to_string())
     }
 

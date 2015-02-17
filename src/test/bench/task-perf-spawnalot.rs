@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::os;
 use std::env;
 use std::thread::Thread;
 
-fn f(n: uint) {
+fn f(n: usize) {
     let mut i = 0u;
     while i < n {
         let _ = Thread::scoped(move|| g()).join();
@@ -23,15 +22,15 @@ fn f(n: uint) {
 fn g() { }
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "400".to_string())
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         vec!("".to_string(), "10".to_string())
     } else {
-        args.into_iter().collect()
+        args.collect()
     };
     let n = args[1].parse().unwrap();
-    let mut i = 0u;
+    let mut i = 0;
     while i < n { Thread::spawn(move|| f(n) ); i += 1u; }
 }

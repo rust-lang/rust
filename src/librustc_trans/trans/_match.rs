@@ -827,7 +827,19 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
                            &format!("comparison of `{}`",
                                    cx.ty_to_string(rhs_t))[],
                            StrEqFnLangItem);
-        callee::trans_lang_call(cx, did, &[lhs, rhs], None, debug_loc)
+        let t = ty::mk_str_slice(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), ast::MutImmutable);
+        // The comparison function gets the slices by value, so we have to make copies here. Even
+        // if the function doesn't write through the pointer, things like lifetime intrinsics
+        // require that we do this properly
+        let lhs_arg = alloc_ty(cx, t, "lhs");
+        let rhs_arg = alloc_ty(cx, t, "rhs");
+        memcpy_ty(cx, lhs_arg, lhs, t);
+        memcpy_ty(cx, rhs_arg, rhs, t);
+        let res = callee::trans_lang_call(cx, did, &[lhs_arg, rhs_arg], None, debug_loc);
+        call_lifetime_end(res.bcx, lhs_arg);
+        call_lifetime_end(res.bcx, rhs_arg);
+
+        res
     }
 
     let _icx = push_ctxt("compare_values");
