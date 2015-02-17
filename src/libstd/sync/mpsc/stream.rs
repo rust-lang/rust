@@ -26,7 +26,7 @@ use core::prelude::*;
 
 use core::cmp;
 use core::isize;
-use thread::Thread;
+use thread;
 
 use sync::atomic::{AtomicIsize, AtomicUsize, Ordering, AtomicBool};
 use sync::mpsc::Receiver;
@@ -440,7 +440,7 @@ impl<T: Send> Packet<T> {
                 drop(self.take_to_wake());
             } else {
                 while self.to_wake.load(Ordering::SeqCst) != 0 {
-                    Thread::yield_now();
+                    thread::yield_now();
                 }
             }
             assert_eq!(self.steals, 0);

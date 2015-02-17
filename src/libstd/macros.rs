@@ -126,7 +126,7 @@ macro_rules! try {
 /// # Examples
 ///
 /// ```
-/// use std::thread::Thread;
+/// use std::thread;
 /// use std::sync::mpsc;
 ///
 /// // two placeholder functions for now
@@ -136,8 +136,8 @@ macro_rules! try {
 /// let (tx1, rx1) = mpsc::channel();
 /// let (tx2, rx2) = mpsc::channel();
 ///
-/// Thread::spawn(move|| { long_running_task(); tx1.send(()).unwrap(); });
-/// Thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
+/// thread::spawn(move|| { long_running_task(); tx1.send(()).unwrap(); });
+/// thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
 ///
 /// select! (
 ///     _ = rx1.recv() => println!("the long running task finished first"),

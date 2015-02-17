@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-use std::thread::Thread;
+use std::thread;
 
 fn f() {
     let _a = box 0;
@@ -19,5 +19,5 @@ fn f() {
 }
 
 pub fn main() {
-    let _t = Thread::scoped(f);
+    let _t = thread::spawn(f);
 }

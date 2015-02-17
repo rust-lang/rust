@@ -10,7 +10,7 @@
 
 #![feature(unsafe_destructor)]
 
-use std::thread::Thread;
+use std::thread;
 use std::rc::Rc;
 
 #[derive(Debug)]
@@ -35,7 +35,7 @@ fn main() {
 
     let x = foo(Port(Rc::new(())));
 
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         //~^ ERROR `core::marker::Send` is not implemented
         let y = x;
         println!("{:?}", y);

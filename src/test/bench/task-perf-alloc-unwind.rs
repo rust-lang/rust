@@ -11,7 +11,7 @@
 #![feature(unsafe_destructor, box_syntax)]
 
 use std::env;
-use std::thread::Thread;
+use std::thread;
 use std::time::Duration;
 
 #[derive(Clone)]
@@ -32,7 +32,7 @@ fn main() {
 fn run(repeat: int, depth: int) {
     for _ in 0..repeat {
         let dur = Duration::span(|| {
-            let _ = Thread::scoped(move|| {
+            let _ = thread::spawn(move|| {
                 recurse_or_panic(depth, None)
             }).join();
         });

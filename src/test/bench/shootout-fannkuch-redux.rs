@@ -39,7 +39,7 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::{cmp, iter, mem};
-use std::thread::Thread;
+use std::thread;
 
 fn rotate(x: &mut [i32]) {
     let mut prev = x[0];
@@ -164,7 +164,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     for (_, j) in (0..N).zip(iter::count(0, k)) {
         let max = cmp::min(j+k, perm.max());
 
-        futures.push(Thread::scoped(move|| {
+        futures.push(thread::spawn(move|| {
             work(perm, j as uint, max as uint)
         }))
     }

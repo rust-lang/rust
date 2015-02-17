@@ -12,7 +12,7 @@
 
 #[macro_use] extern crate log;
 use std::os;
-use std::thread::Thread;
+use std::thread;
 
 struct r {
   x:int,
@@ -35,7 +35,7 @@ fn r(x:int) -> r {
 
 fn main() {
     error!("whatever");
-    let _t = Thread::spawn(move|| {
+    let _t = thread::spawn(move|| {
       let _i = r(5);
     });
     panic!();

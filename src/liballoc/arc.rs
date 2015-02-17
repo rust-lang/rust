@@ -35,14 +35,14 @@
 //!
 //! ```
 //! use std::sync::Arc;
-//! use std::thread::Thread;
+//! use std::thread;
 //!
 //! let five = Arc::new(5);
 //!
 //! for _ in 0..10 {
 //!     let five = five.clone();
 //!
-//!     Thread::spawn(move || {
+//!     thread::spawn(move || {
 //!         println!("{:?}", five);
 //!     });
 //! }
@@ -52,14 +52,14 @@
 //!
 //! ```
 //! use std::sync::{Arc, Mutex};
-//! use std::thread::Thread;
+//! use std::thread;
 //!
 //! let five = Arc::new(Mutex::new(5));
 //!
 //! for _ in 0..10 {
 //!     let five = five.clone();
 //!
-//!     Thread::spawn(move || {
+//!     thread::spawn(move || {
 //!         let mut number = five.lock().unwrap();
 //!
 //!         *number += 1;
@@ -95,7 +95,7 @@ use heap::deallocate;
 ///
 /// ```rust
 /// use std::sync::Arc;
-/// use std::thread::Thread;
+/// use std::thread;
 ///
 /// fn main() {
 ///     let numbers: Vec<_> = (0..100u32).map(|i| i as f32).collect();
@@ -104,7 +104,7 @@ use heap::deallocate;
 ///     for _ in 0..10 {
 ///         let child_numbers = shared_numbers.clone();
 ///
-///         Thread::spawn(move || {
+///         thread::spawn(move || {
 ///             let local_numbers = child_numbers.as_slice();
 ///
 ///             // Work with the local numbers
@@ -621,7 +621,7 @@ mod tests {
     use std::option::Option::{Some, None};
     use std::sync::atomic;
     use std::sync::atomic::Ordering::{Acquire, SeqCst};
-    use std::thread::Thread;
+    use std::thread;
     use std::vec::Vec;
     use super::{Arc, Weak, weak_count, strong_count};
     use std::sync::Mutex;
@@ -648,7 +648,7 @@ mod tests {
 
         let (tx, rx) = channel();
 
-        let _t = Thread::spawn(move || {
+        let _t = thread::spawn(move || {
             let arc_v: Arc<Vec<i32>> = rx.recv().unwrap();
             assert_eq!((*arc_v)[3], 4);
         });

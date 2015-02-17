@@ -935,7 +935,7 @@ mod tests {
     use prelude::*;
     use std::rand;
     use std::hash::{self, SipHasher};
-    use std::thread::Thread;
+    use std::thread;
     use test::Bencher;
     use test;
 
@@ -1284,7 +1284,7 @@ mod tests {
     #[test]
     fn test_send() {
         let n = list_from(&[1,2,3]);
-        Thread::scoped(move || {
+        thread::spawn(move || {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
             assert_eq!(a, n.iter().collect::<Vec<_>>());

@@ -375,9 +375,9 @@ impl<T> RefCell<T> {
     ///
     /// ```
     /// use std::cell::RefCell;
-    /// use std::thread::Thread;
+    /// use std::thread;
     ///
-    /// let result = Thread::scoped(move || {
+    /// let result = thread::spawn(move || {
     ///    let c = RefCell::new(5);
     ///    let m = c.borrow_mut();
     ///
@@ -436,9 +436,9 @@ impl<T> RefCell<T> {
     ///
     /// ```
     /// use std::cell::RefCell;
-    /// use std::thread::Thread;
+    /// use std::thread;
     ///
-    /// let result = Thread::scoped(move || {
+    /// let result = thread::spawn(move || {
     ///    let c = RefCell::new(5);
     ///    let m = c.borrow_mut();
     ///

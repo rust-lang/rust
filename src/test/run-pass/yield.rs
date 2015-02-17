@@ -8,18 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
-    let mut result = Thread::scoped(child);
+    let mut result = thread::spawn(child);
     println!("1");
-    Thread::yield_now();
+    thread::yield_now();
     println!("2");
-    Thread::yield_now();
+    thread::yield_now();
     println!("3");
     result.join();
 }
 
 fn child() {
-    println!("4"); Thread::yield_now(); println!("5"); Thread::yield_now(); println!("6");
+    println!("4"); thread::yield_now(); println!("5"); thread::yield_now(); println!("6");
 }

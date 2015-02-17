@@ -131,7 +131,7 @@ mod tests {
     use net::*;
     use net::test::{next_test_ip4, next_test_ip6};
     use sync::mpsc::channel;
-    use thread::Thread;
+    use thread;
 
     fn each_ip(f: &mut FnMut(SocketAddr, SocketAddr)) {
         f(next_test_ip4(), next_test_ip4());
@@ -164,7 +164,7 @@ mod tests {
             let (tx1, rx1) = channel();
             let (tx2, rx2) = channel();
 
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 let client = t!(UdpSocket::bind(&client_ip));
                 rx1.recv().unwrap();
                 t!(client.send_to(&[99], &server_ip));
@@ -196,7 +196,7 @@ mod tests {
             let sock1 = t!(UdpSocket::bind(&addr1));
             let sock2 = t!(UdpSocket::bind(&addr2));
 
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 let mut buf = [0, 0];
                 assert_eq!(sock2.recv_from(&mut buf), Ok((1, addr1)));
                 assert_eq!(buf[0], 1);
@@ -207,7 +207,7 @@ mod tests {
 
             let (tx1, rx1) = channel();
             let (tx2, rx2) = channel();
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 rx1.recv().unwrap();
                 t!(sock3.send_to(&[1], &addr2));
                 tx2.send(()).unwrap();
@@ -227,7 +227,7 @@ mod tests {
             let (tx1, rx) = channel();
             let tx2 = tx1.clone();
 
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 t!(sock2.send_to(&[1], &addr1));
                 rx.recv().unwrap();
                 t!(sock2.send_to(&[2], &addr1));
@@ -237,7 +237,7 @@ mod tests {
             let sock3 = t!(sock1.try_clone());
 
             let (done, rx) = channel();
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 let mut buf = [0, 0];
                 t!(sock3.recv_from(&mut buf));
                 tx2.send(()).unwrap();
@@ -260,7 +260,7 @@ mod tests {
             let (tx, rx) = channel();
             let (serv_tx, serv_rx) = channel();
 
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 let mut buf = [0, 1];
                 rx.recv().unwrap();
                 t!(sock2.recv_from(&mut buf));
@@ -271,7 +271,7 @@ mod tests {
 
             let (done, rx) = channel();
             let tx2 = tx.clone();
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 match sock3.send_to(&[1], &addr2) {
                     Ok(..) => { let _ = tx2.send(()); }
                     Err(..) => {}

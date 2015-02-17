@@ -38,13 +38,13 @@ use sync::{mutex, MutexGuard, PoisonError};
 ///
 /// ```
 /// use std::sync::{Arc, Mutex, Condvar};
-/// use std::thread::Thread;
+/// use std::thread;
 ///
 /// let pair = Arc::new((Mutex::new(false), Condvar::new()));
 /// let pair2 = pair.clone();
 ///
 /// // Inside of our lock, spawn a new thread, and then wait for it to start
-/// Thread::spawn(move|| {
+/// thread::spawn(move|| {
 ///     let &(ref lock, ref cvar) = &*pair2;
 ///     let mut started = lock.lock().unwrap();
 ///     *started = true;
@@ -353,7 +353,7 @@ mod tests {
     use sync::mpsc::channel;
     use sync::{StaticMutex, MUTEX_INIT, Condvar, Mutex, Arc};
     use sync::atomic::{AtomicUsize, ATOMIC_USIZE_INIT, Ordering};
-    use thread::Thread;
+    use thread;
     use time::Duration;
 
     #[test]
@@ -377,7 +377,7 @@ mod tests {
         static M: StaticMutex = MUTEX_INIT;
 
         let g = M.lock().unwrap();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let _g = M.lock().unwrap();
             C.notify_one();
         });
@@ -395,7 +395,7 @@ mod tests {
         for _ in 0..N {
             let data = data.clone();
             let tx = tx.clone();
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 let &(ref lock, ref cond) = &*data;
                 let mut cnt = lock.lock().unwrap();
                 *cnt += 1;
@@ -431,7 +431,7 @@ mod tests {
         let (g, _no_timeout) = C.wait_timeout(g, Duration::nanoseconds(1000)).unwrap();
         // spurious wakeups mean this isn't necessarily true
         // assert!(!no_timeout);
-        let _t = Thread::spawn(move || {
+        let _t = thread::spawn(move || {
             let _g = M.lock().unwrap();
             C.notify_one();
         });
@@ -452,7 +452,7 @@ mod tests {
         assert!(!success);
 
         let (tx, rx) = channel();
-        let _t = Thread::scoped(move || {
+        let _t = thread::spawn(move || {
             rx.recv().unwrap();
             let g = M.lock().unwrap();
             S.store(1, Ordering::SeqCst);
@@ -492,7 +492,7 @@ mod tests {
         static C: StaticCondvar = CONDVAR_INIT;
 
         let mut g = M1.lock().unwrap();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let _g = M1.lock().unwrap();
             C.notify_one();
         });
