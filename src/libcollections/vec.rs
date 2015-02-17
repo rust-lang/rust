@@ -1252,6 +1252,30 @@ unsafe fn dealloc<T>(ptr: *mut T, len: usize) {
     }
 }
 
+#[doc(hidden)]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn from_elem<T: Clone>(elem: T, n: usize) -> Vec<T> {
+    unsafe {
+        let mut v = Vec::with_capacity(n);
+        let mut ptr = v.as_mut_ptr();
+
+        // Write all elements except the last one
+        for i in 1..n {
+            ptr::write(ptr, Clone::clone(&elem));
+            ptr = ptr.offset(1);
+            v.set_len(i); // Increment the length in every step in case Clone::clone() panics
+        }
+
+        if n > 0 {
+            // We can write the last element directly without cloning needlessly
+            ptr::write(ptr, elem);
+            v.set_len(n);
+        }
+
+        v
+    }
+}
+
 ////////////////////////////////////////////////////////////////////////////////
 // Common trait implementations for Vec
 ////////////////////////////////////////////////////////////////////////////////
