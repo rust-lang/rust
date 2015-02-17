@@ -11,7 +11,7 @@
 #![allow(deprecated)]
 
 use core::finally::{try_finally, Finally};
-use std::thread::Thread;
+use std::thread;
 
 #[test]
 fn test_success() {
@@ -22,7 +22,7 @@ fn test_success() {
             *i = 10;
         },
         |i| {
-            assert!(!Thread::panicking());
+            assert!(!thread::panicking());
             assert_eq!(*i, 10);
             *i = 20;
         });
@@ -40,7 +40,7 @@ fn test_fail() {
             panic!();
         },
         |i| {
-            assert!(Thread::panicking());
+            assert!(thread::panicking());
             assert_eq!(*i, 10);
         })
 }

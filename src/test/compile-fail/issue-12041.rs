@@ -9,11 +9,11 @@
 // except according to those terms.
 
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
     let (tx, rx) = channel();
-    let _t = Thread::spawn(move|| -> () {
+    let _t = thread::spawn(move|| -> () {
         loop {
             let tx = tx;
             //~^ ERROR: use of moved value: `tx`

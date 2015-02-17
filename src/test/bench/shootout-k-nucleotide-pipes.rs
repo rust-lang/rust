@@ -24,7 +24,7 @@ use std::option;
 use std::os;
 use std::env;
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::thread::Thread;
+use std::thread;
 
 fn f64_cmp(x: f64, y: f64) -> Ordering {
     // arbitrarily decide that NaNs are larger than everything.
@@ -172,7 +172,7 @@ fn main() {
 
         let (to_child, from_parent) = channel();
 
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             make_sequence_processor(sz, &from_parent, &to_parent_);
         });
 

@@ -246,7 +246,7 @@ mod test {
 
     use sync::Arc;
     use super::Queue;
-    use thread::Thread;
+    use thread;
     use sync::mpsc::channel;
 
     #[test]
@@ -324,7 +324,7 @@ mod test {
 
             let (tx, rx) = channel();
             let q2 = q.clone();
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 for _ in 0u..100000 {
                     loop {
                         match q2.pop() {

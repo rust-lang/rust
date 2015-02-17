@@ -20,7 +20,7 @@ use core::prelude::*;
 
 use sync::{Arc, Mutex};
 use sync::mpsc::{channel, Sender, Receiver};
-use thread::Thread;
+use thread;
 use thunk::Thunk;
 
 struct Sentinel<'a> {
@@ -112,7 +112,7 @@ impl TaskPool {
 }
 
 fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
-    Thread::spawn(move || {
+    thread::spawn(move || {
         // Will spawn a new thread on panic unless it is cancelled.
         let sentinel = Sentinel::new(&jobs);
 

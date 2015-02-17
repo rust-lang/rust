@@ -17,7 +17,7 @@ use cell::RefCell;
 use old_io::IoResult;
 use rt::{backtrace, unwind};
 use rt::util::{Stderr, Stdio};
-use thread::Thread;
+use thread;
 
 // Defined in this module instead of old_io::stdio so that the unwinding
 thread_local! {
@@ -42,7 +42,7 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: uint) {
         }
     };
     let mut err = Stderr;
-    let thread = Thread::current();
+    let thread = thread::current();
     let name = thread.name().unwrap_or("<unnamed>");
     let prev = LOCAL_STDERR.with(|s| s.borrow_mut().take());
     match prev {

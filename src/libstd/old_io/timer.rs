@@ -224,13 +224,13 @@ fn in_ms_u64(d: Duration) -> u64 {
 #[cfg(test)]
 mod test {
     use super::Timer;
-    use thread::Thread;
+    use thread;
     use time::Duration;
 
     #[test]
     fn test_timer_send() {
         let mut timer = Timer::new().unwrap();
-        Thread::spawn(move || timer.sleep(Duration::milliseconds(1)));
+        thread::spawn(move || timer.sleep(Duration::milliseconds(1)));
     }
 
     #[test]
@@ -360,7 +360,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             let _ = timer_rx.recv();
         });
 
@@ -374,7 +374,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             let _ = timer_rx.recv();
         });
 
@@ -387,7 +387,7 @@ mod test {
         let mut timer = Timer::new().unwrap();
         let timer_rx = timer.periodic(Duration::milliseconds(1000));
 
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             let _ = timer_rx.recv();
         });
 

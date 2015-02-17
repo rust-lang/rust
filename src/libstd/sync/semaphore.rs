@@ -114,7 +114,7 @@ mod tests {
     use sync::Arc;
     use super::Semaphore;
     use sync::mpsc::channel;
-    use thread::Thread;
+    use thread;
 
     #[test]
     fn test_sem_acquire_release() {
@@ -134,7 +134,7 @@ mod tests {
     fn test_sem_as_mutex() {
         let s = Arc::new(Semaphore::new(1));
         let s2 = s.clone();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let _g = s2.access();
         });
         let _g = s.access();
@@ -146,7 +146,7 @@ mod tests {
         let (tx, rx) = channel();
         let s = Arc::new(Semaphore::new(0));
         let s2 = s.clone();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             s2.acquire();
             tx.send(()).unwrap();
         });
@@ -157,7 +157,7 @@ mod tests {
         let (tx, rx) = channel();
         let s = Arc::new(Semaphore::new(0));
         let s2 = s.clone();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             s2.release();
             let _ = rx.recv();
         });
@@ -173,7 +173,7 @@ mod tests {
         let s2 = s.clone();
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let _g = s2.access();
             let _ = rx2.recv();
             tx1.send(()).unwrap();
@@ -190,7 +190,7 @@ mod tests {
         let (tx, rx) = channel();
         {
             let _g = s.access();
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 tx.send(()).unwrap();
                 drop(s2.access());
                 tx.send(()).unwrap();

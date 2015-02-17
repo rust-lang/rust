@@ -10,10 +10,10 @@
 
 // error-pattern:thread '<unnamed>' panicked at 'test'
 
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
-    let r: Result<int,_> = Thread::scoped(move|| {
+    let r: Result<int,_> = thread::spawn(move|| {
         panic!("test");
         1
     }).join();

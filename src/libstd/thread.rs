@@ -42,23 +42,23 @@
 //! Already-running threads are represented via the `Thread` type, which you can
 //! get in one of two ways:
 //!
-//! * By spawning a new thread, e.g. using the `Thread::spawn` constructor;
-//! * By requesting the current thread, using the `Thread::current` function.
+//! * By spawning a new thread, e.g. using the `thread::spawn` constructor;
+//! * By requesting the current thread, using the `thread::current` function.
 //!
 //! Threads can be named, and provide some built-in support for low-level
 //! synchronization described below.
 //!
-//! The `Thread::current()` function is available even for threads not spawned
+//! The `thread::current()` function is available even for threads not spawned
 //! by the APIs of this module.
 //!
 //! ## Spawning a thread
 //!
-//! A new thread can be spawned using the `Thread::spawn` function:
+//! A new thread can be spawned using the `thread::spawn` function:
 //!
 //! ```rust
-//! use std::thread::Thread;
+//! use std::thread;
 //!
-//! Thread::spawn(move || {
+//! thread::spawn(move || {
 //!     println!("Hello, World!");
 //!     // some computation here
 //! });
@@ -76,14 +76,14 @@
 //! For this scenario, use the `scoped` constructor:
 //!
 //! ```rust
-//! use std::thread::Thread;
+//! use std::thread;
 //!
-//! let guard = Thread::scoped(move || {
+//! let guard = thread::scoped(move || {
 //!     println!("Hello, World!");
 //!     // some computation here
 //! });
 //! // do some other work in the meantime
-//! let result = guard.join();
+//! let output = guard.join();
 //! ```
 //!
 //! The `scoped` function doesn't return a `Thread` directly; instead,
@@ -120,10 +120,10 @@
 //! Conceptually, each `Thread` handle has an associated token, which is
 //! initially not present:
 //!
-//! * The `Thread::park()` function blocks the current thread unless or until
+//! * The `thread::park()` function blocks the current thread unless or until
 //!   the token is available for its thread handle, at which point It atomically
 //!   consumes the token. It may also return *spuriously*, without consuming the
-//!   token. `Thread::park_timeout()` does the same, but allows specifying a
+//!   token. `thread::park_timeout()` does the same, but allows specifying a
 //!   maximum time to block the thread for.
 //!
 //! * The `unpark()` method on a `Thread` atomically makes the token available
@@ -411,7 +411,7 @@ pub fn panicking() -> bool {
 // or futuxes, and in either case may allow spurious wakeups.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub fn park() {
-    let thread = Thread::current();
+    let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();
     while !*guard {
         guard = thread.inner.cvar.wait(guard).unwrap();
@@ -431,7 +431,7 @@ pub fn park() {
 /// See the module doc for more detail.
 #[unstable(feature = "std_misc", reason = "recently introduced, depends on Duration")]
 pub fn park_timeout(dur: Duration) {
-    let thread = Thread::current();
+    let thread = current();
     let mut guard = thread.inner.lock.lock().unwrap();
     if !*guard {
         let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
@@ -512,7 +512,7 @@ impl Thread {
     #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[unstable(feature = "std_misc", reason = "recently introduced")]
     pub fn park() {
-        let thread = Thread::current();
+        let thread = current();
         let mut guard = thread.inner.lock.lock().unwrap();
         while !*guard {
             guard = thread.inner.cvar.wait(guard).unwrap();
@@ -524,7 +524,7 @@ impl Thread {
     #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[unstable(feature = "std_misc", reason = "recently introduced")]
     pub fn park_timeout(dur: Duration) {
-        let thread = Thread::current();
+        let thread = current();
         let mut guard = thread.inner.lock.lock().unwrap();
         if !*guard {
             let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
@@ -700,7 +700,7 @@ mod test {
     use boxed::BoxAny;
     use result;
     use std::old_io::{ChanReader, ChanWriter};
-    use super::{Thread, Builder};
+    use super::{self, Thread, Builder};
     use thunk::Thunk;
     use time::Duration;
 
@@ -709,22 +709,22 @@ mod test {
 
     #[test]
     fn test_unnamed_thread() {
-        Thread::scoped(move|| {
-            assert!(Thread::current().name().is_none());
+        thread::spawn(move|| {
+            assert!(thread::current().name().is_none());
         }).join().ok().unwrap();
     }
 
     #[test]
     fn test_named_thread() {
         Builder::new().name("ada lovelace".to_string()).scoped(move|| {
-            assert!(Thread::current().name().unwrap() == "ada lovelace".to_string());
+            assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
         }).join().ok().unwrap();
     }
 
     #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             tx.send(()).unwrap();
         });
         rx.recv().unwrap();
@@ -732,7 +732,7 @@ mod test {
 
     #[test]
     fn test_join_success() {
-        match Thread::scoped(move|| -> String {
+        match thread::spawn(move|| -> String {
             "Success!".to_string()
         }).join().as_ref().map(|s| &**s) {
             result::Result::Ok("Success!") => (),
@@ -742,12 +742,32 @@ mod test {
 
     #[test]
     fn test_join_panic() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!()
         }).join() {
             result::Result::Err(_) => (),
             result::Result::Ok(()) => panic!()
         }
+    }
+
+    #[test]
+    fn test_scoped_success() {
+        let res = thread::scoped(move|| -> String {
+            "Success!".to_string()
+        }).join();
+        assert!(res == "Success!");
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_scoped_panic() {
+        thread::scoped(|| panic!()).join();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_scoped_implicit_panic() {
+        thread::scoped(|| panic!());
     }
 
     #[test]
@@ -758,7 +778,7 @@ mod test {
 
         fn f(i: int, tx: Sender<()>) {
             let tx = tx.clone();
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 if i == 0 {
                     tx.send(()).unwrap();
                 } else {
@@ -775,8 +795,8 @@ mod test {
     fn test_spawn_sched_childs_on_default_sched() {
         let (tx, rx) = channel();
 
-        Thread::spawn(move|| {
-            Thread::spawn(move|| {
+        thread::spawn(move|| {
+            thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         });
@@ -802,14 +822,14 @@ mod test {
     #[test]
     fn test_avoid_copying_the_body_spawn() {
         avoid_copying_the_body(|v| {
-            Thread::spawn(move || v.invoke(()));
+            thread::spawn(move || v.invoke(()));
         });
     }
 
     #[test]
     fn test_avoid_copying_the_body_thread_spawn() {
         avoid_copying_the_body(|f| {
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 f.invoke(());
             });
         })
@@ -818,7 +838,7 @@ mod test {
     #[test]
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
-            let _ = Thread::scoped(move|| {
+            let _ = thread::spawn(move|| {
                 f.invoke(())
             }).join();
         })
@@ -834,21 +854,21 @@ mod test {
         fn child_no(x: uint) -> Thunk {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
-                    Thread::spawn(move|| child_no(x+1).invoke(()));
+                    thread::spawn(move|| child_no(x+1).invoke(()));
                 }
             });
         }
-        Thread::spawn(|| child_no(0).invoke(()));
+        thread::spawn(|| child_no(0).invoke(()));
     }
 
     #[test]
     fn test_simple_newsched_spawn() {
-        Thread::spawn(move || {});
+        thread::spawn(move || {});
     }
 
     #[test]
     fn test_try_panic_message_static_str() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!("static string");
         }).join() {
             Err(e) => {
@@ -862,7 +882,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_owned_str() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!("owned string".to_string());
         }).join() {
             Err(e) => {
@@ -876,7 +896,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_any() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!(box 413u16 as Box<Any + Send>);
         }).join() {
             Err(e) => {
@@ -894,7 +914,7 @@ mod test {
     fn test_try_panic_message_unit_struct() {
         struct Juju;
 
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!(Juju)
         }).join() {
             Err(ref e) if e.is::<Juju>() => {}
@@ -920,15 +940,15 @@ mod test {
     #[test]
     fn test_park_timeout_unpark_before() {
         for _ in 0..10 {
-            Thread::current().unpark();
-            Thread::park_timeout(Duration::seconds(10_000_000));
+            thread::current().unpark();
+            thread::park_timeout(Duration::seconds(10_000_000));
         }
     }
 
     #[test]
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
-            Thread::park_timeout(Duration::milliseconds(10));
+            thread::park_timeout(Duration::milliseconds(10));
         }
     }
 
@@ -937,14 +957,14 @@ mod test {
         use std::old_io;
 
         for _ in 0..10 {
-            let th = Thread::current();
+            let th = thread::current();
 
-            let _guard = Thread::scoped(move || {
+            let _guard = thread::spawn(move || {
                 old_io::timer::sleep(Duration::milliseconds(50));
                 th.unpark();
             });
 
-            Thread::park_timeout(Duration::seconds(10_000_000));
+            thread::park_timeout(Duration::seconds(10_000_000));
         }
     }
 
