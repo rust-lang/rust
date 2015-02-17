@@ -14,4 +14,4 @@ fn bad_bang(i: usize) -> ! { //~ ERROR computation may converge in a function ma
     if i < 0us { } else { panic!(); }
 }
 
-fn main() { bad_bang(5us); }
+fn main() { bad_bang(5); }

@@ -13,8 +13,8 @@
 //error-pattern: mismatched types
 
 fn main() {
-    match 5us {
-      6us ... 1us => { }
+    match 5 {
+      6 ... 1 => { }
       _ => { }
     };
 
@@ -22,8 +22,8 @@ fn main() {
       "bar" ... "foo" => { }
     };
 
-    match 5us {
-      'c' ... 100us => { }
+    match 5 {
+      'c' ... 100 => { }
       _ => { }
     };
 }

@@ -168,7 +168,7 @@ pub fn mk_printer(out: Box<old_io::Writer+'static>, linewidth: usize) -> Printer
     debug!("mk_printer {}", linewidth);
     let token: Vec<Token> = repeat(Token::Eof).take(n).collect();
     let size: Vec<isize> = repeat(0).take(n).collect();
-    let scan_stack: Vec<usize> = repeat(0us).take(n).collect();
+    let scan_stack: Vec<usize> = repeat(0).take(n).collect();
     Printer {
         out: out,
         buf_len: n,

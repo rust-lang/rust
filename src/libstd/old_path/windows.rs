@@ -1063,7 +1063,7 @@ fn normalize_helper<'a>(s: &'a str, prefix: Option<PathPrefix>) -> (bool, Option
         });
     }
     let mut comps: Vec<&'a str> = vec![];
-    let mut n_up = 0u;
+    let mut n_up = 0;
     let mut changed = false;
     for comp in s_.split(f) {
         if comp.is_empty() { changed = true }

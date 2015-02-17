@@ -15,21 +15,21 @@
 //error-pattern: unreachable
 
 fn main() {
-    match 5us {
-      1us ... 10us => { }
-      5us ... 6us => { }
+    match 5 {
+      1 ... 10 => { }
+      5 ... 6 => { }
       _ => {}
     };
 
-    match 5us {
-      3us ... 6us => { }
-      4us ... 6us => { }
+    match 5 {
+      3 ... 6 => { }
+      4 ... 6 => { }
       _ => {}
     };
 
-    match 5us {
-      4us ... 6us => { }
-      4us ... 6us => { }
+    match 5 {
+      4 ... 6 => { }
+      4 ... 6 => { }
       _ => {}
     };
 

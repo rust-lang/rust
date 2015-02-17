@@ -443,9 +443,9 @@ impl<'a, 'tcx> FunctionContext<'a, 'tcx> {
 
     pub fn env_arg_pos(&self) -> uint {
         if self.caller_expects_out_pointer {
-            1u
+            1
         } else {
-            0u
+            0
         }
     }
 

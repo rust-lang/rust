@@ -325,7 +325,7 @@ mod test {
             let (tx, rx) = channel();
             let q2 = q.clone();
             let _t = thread::spawn(move|| {
-                for _ in 0u..100000 {
+                for _ in 0..100000 {
                     loop {
                         match q2.pop() {
                             Some(1) => break,

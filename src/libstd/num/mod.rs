@@ -1149,7 +1149,7 @@ mod tests {
             assert_eq!(_20, NumCast::from(20f32).unwrap());
             assert_eq!(_20, NumCast::from(20f64).unwrap());
 
-            assert_eq!(_20, cast(20u).unwrap());
+            assert_eq!(_20, cast(20usize).unwrap());
             assert_eq!(_20, cast(20u8).unwrap());
             assert_eq!(_20, cast(20u16).unwrap());
             assert_eq!(_20, cast(20u32).unwrap());
@@ -1763,7 +1763,7 @@ mod bench {
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
-        let v = (0..1024u).collect::<Vec<_>>();
-        b.iter(|| {v.iter().fold(0u, |old, new| old.pow(*new));});
+        let v = (0..1024).collect::<Vec<_>>();
+        b.iter(|| {v.iter().fold(0, |old, new| old.pow(*new));});
     }
 }
