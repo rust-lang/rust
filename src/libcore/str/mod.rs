@@ -156,7 +156,6 @@ impl FromStr for bool {
 
 /// An error returned when parsing a `bool` from a string fails.
 #[derive(Debug, Clone, PartialEq)]
-#[allow(missing_copy_implementations)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct ParseBoolError { _priv: () }
 
@@ -235,7 +234,7 @@ pub unsafe fn from_utf8_unchecked<'a>(v: &'a [u8]) -> &'a str {
 pub unsafe fn from_c_str(s: *const i8) -> &'static str {
     let s = s as *const u8;
     let mut len = 0;
-    while *s.offset(len as int) != 0 {
+    while *s.offset(len as isize) != 0 {
         len += 1;
     }
     let v: &'static [u8] = ::mem::transmute(Slice { data: s, len: len });
@@ -258,7 +257,7 @@ impl CharEq for char {
     fn matches(&mut self, c: char) -> bool { *self == c }
 
     #[inline]
-    fn only_ascii(&self) -> bool { (*self as usize) < 128 }
+    fn only_ascii(&self) -> bool { (*self as u32) < 128 }
 }
 
 impl<F> CharEq for F where F: FnMut(char) -> bool {
@@ -764,7 +763,8 @@ impl TwoWaySearcher {
     // How far we can jump when we encounter a mismatch is all based on the fact
     // that (u, v) is a critical factorization for the needle.
     #[inline]
-    fn next(&mut self, haystack: &[u8], needle: &[u8], long_period: bool) -> Option<(usize, usize)> {
+    fn next(&mut self, haystack: &[u8], needle: &[u8], long_period: bool)
+    -> Option<(usize, usize)> {
         'search: loop {
             // Check that we have room to search in
             if self.position + needle.len() > haystack.len() {
@@ -955,6 +955,7 @@ Section: Comparing strings
 /// to compare &[u8] byte slices that are not necessarily valid UTF-8.
 #[inline]
 fn eq_slice_(a: &str, b: &str) -> bool {
+    // NOTE: In theory n should be libc::size_t and not usize, but libc is not available here
     #[allow(improper_ctypes)]
     extern { fn memcmp(s1: *const i8, s2: *const i8, n: usize) -> i32; }
     a.len() == b.len() && unsafe {
@@ -1489,7 +1490,7 @@ impl StrExt for str {
     fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
     where P::Searcher: DoubleEndedSearcher<'a> {
         let mut i = 0;
-        let mut j = self.len();
+        let mut j = 0;
         let mut matcher = pat.into_searcher(self);
         if let Some((a, b)) = matcher.next_reject() {
             i = a;
@@ -1507,7 +1508,7 @@ impl StrExt for str {
 
     #[inline]
     fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
-        let mut i = 0;
+        let mut i = self.len();
         let mut matcher = pat.into_searcher(self);
         if let Some((a, _)) = matcher.next_reject() {
             i = a;
@@ -1521,7 +1522,7 @@ impl StrExt for str {
     #[inline]
     fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
     where P::Searcher: ReverseSearcher<'a> {
-        let mut j = self.len();
+        let mut j = 0;
         let mut matcher = pat.into_searcher(self);
         if let Some((_, b)) = matcher.next_reject_back() {
             j = b;

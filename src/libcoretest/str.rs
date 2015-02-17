@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2014-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -139,8 +139,150 @@ fn test_utf16_code_units() {
                vec![0xE9, 0xD83D, 0xDCA9])
 }
 
+#[test]
+fn starts_with_in_unicode() {
+    assert!(!"├── Cargo.toml".starts_with("# "));
+}
 
-// rm x86_64-unknown-linux-gnu/stage1/test/coretesttest-x86_64-unknown-linux-gnu; env PLEASE_BENCH=1 make check-stage1-coretest TESTNAME=str::bench
+#[test]
+fn starts_short_long() {
+    assert!(!"".starts_with("##"));
+    assert!(!"##".starts_with("####"));
+    assert!("####".starts_with("##"));
+    assert!(!"##ä".starts_with("####"));
+    assert!("####ä".starts_with("##"));
+    assert!(!"##".starts_with("####ä"));
+    assert!("##ä##".starts_with("##ä"));
+
+    assert!("".starts_with(""));
+    assert!("ä".starts_with(""));
+    assert!("#ä".starts_with(""));
+    assert!("##ä".starts_with(""));
+    assert!("ä###".starts_with(""));
+    assert!("#ä##".starts_with(""));
+    assert!("##ä#".starts_with(""));
+}
+
+#[test]
+fn contains_weird_cases() {
+    assert!("* \t".contains_char(' '));
+    assert!(!"* \t".contains_char('?'));
+    assert!(!"* \t".contains_char('\u{1F4A9}'));
+}
+
+#[test]
+fn trim_ws() {
+    assert_eq!(" \t  a \t  ".trim_left_matches(|c: char| c.is_whitespace()),
+                    "a \t  ");
+    assert_eq!(" \t  a \t  ".trim_right_matches(|c: char| c.is_whitespace()),
+               " \t  a");
+    assert_eq!(" \t  a \t  ".trim_matches(|c: char| c.is_whitespace()),
+                    "a");
+    assert_eq!(" \t   \t  ".trim_left_matches(|c: char| c.is_whitespace()),
+                         "");
+    assert_eq!(" \t   \t  ".trim_right_matches(|c: char| c.is_whitespace()),
+               "");
+    assert_eq!(" \t   \t  ".trim_matches(|c: char| c.is_whitespace()),
+               "");
+}
+
+mod pattern {
+    use std::str::Pattern;
+    use std::str::{Searcher, ReverseSearcher, DoubleEndedSearcher};
+    use std::str::SearchStep::{self, Match, Reject, Done};
+
+    macro_rules! make_test {
+        ($name:ident, $p:expr, $h:expr, [$($e:expr,)*]) => {
+            mod $name {
+                use std::str::Pattern;
+                use std::str::{Searcher, ReverseSearcher, DoubleEndedSearcher};
+                use std::str::SearchStep::{self, Match, Reject, Done};
+                use super::{cmp_search_to_vec};
+                #[test]
+                fn fwd() {
+                    cmp_search_to_vec(false, $p, $h, vec![$($e),*]);
+                }
+                #[test]
+                fn bwd() {
+                    cmp_search_to_vec(true, $p, $h, vec![$($e),*]);
+                }
+            }
+        }
+    }
+
+    fn cmp_search_to_vec<'a, P: Pattern<'a>>(rev: bool, pat: P, haystack: &'a str,
+                                             right: Vec<SearchStep>)
+    where P::Searcher: ReverseSearcher<'a>
+    {
+        let mut searcher = pat.into_searcher(haystack);
+        let mut v = vec![];
+        loop {
+            match if !rev {searcher.next()} else {searcher.next_back()} {
+                Match(a, b) => v.push(Match(a, b)),
+                Reject(a, b) => v.push(Reject(a, b)),
+                Done => break,
+            }
+        }
+        if rev {
+            v.reverse();
+        }
+        assert_eq!(v, right);
+    }
+
+    make_test!(str_searcher_ascii_haystack, "bb", "abbcbbd", [
+        Reject(0, 1),
+        Match (1, 3),
+        Reject(3, 4),
+        Match (4, 6),
+        Reject(6, 7),
+    ]);
+    make_test!(str_searcher_empty_needle_ascii_haystack, "", "abbcbbd", [
+        Match(0, 0),
+        Match(1, 1),
+        Match(2, 2),
+        Match(3, 3),
+        Match(4, 4),
+        Match(5, 5),
+        Match(6, 6),
+        Match(7, 7),
+    ]);
+    make_test!(str_searcher_mulibyte_haystack, " ", "├──", [
+        Reject(0, 3),
+        Reject(3, 6),
+        Reject(6, 9),
+    ]);
+    make_test!(str_searcher_empty_needle_mulibyte_haystack, "", "├──", [
+        Match(0, 0),
+        Match(3, 3),
+        Match(6, 6),
+        Match(9, 9),
+    ]);
+    make_test!(str_searcher_empty_needle_empty_haystack, "", "", [
+        Match(0, 0),
+    ]);
+    make_test!(str_searcher_nonempty_needle_empty_haystack, "├", "", [
+    ]);
+    make_test!(char_searcher_ascii_haystack, 'b', "abbcbbd", [
+        Reject(0, 1),
+        Match (1, 2),
+        Match (2, 3),
+        Reject(3, 4),
+        Match (4, 5),
+        Match (5, 6),
+        Reject(6, 7),
+    ]);
+    make_test!(char_searcher_mulibyte_haystack, ' ', "├──", [
+        Reject(0, 3),
+        Reject(3, 6),
+        Reject(6, 9),
+    ]);
+    make_test!(char_searcher_short_haystack, '\u{1F4A9}', "* \t", [
+        Reject(0, 1),
+        Reject(1, 2),
+        Reject(2, 3),
+    ]);
+
+}
 
 mod bench {
     macro_rules! make_test_inner {
