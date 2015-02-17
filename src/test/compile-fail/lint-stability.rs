@@ -133,6 +133,11 @@ mod cross_crate {
     impl UnstableTrait for S { } //~ WARNING use of unstable library feature
 
     trait LocalTrait : UnstableTrait { } //~ WARNING use of unstable library feature
+
+    impl Trait for S {
+        fn trait_stable(&self) {}
+        fn trait_unstable(&self) {} //~ WARNING use of unstable library feature
+    }
 }
 
 mod inheritance {
