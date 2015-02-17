@@ -2894,44 +2894,11 @@ mod bench {
     }
 
     #[bench]
-    fn split_unicode_not_ascii(b: &mut Bencher) {
-        struct NotAscii(char);
-        impl CharEq for NotAscii {
-            fn matches(&mut self, c: char) -> bool {
-                let NotAscii(cc) = *self;
-                cc == c
-            }
-            fn only_ascii(&self) -> bool { false }
-        }
-        let s = "ประเทศไทย中华Việt Namประเทศไทย中华Việt Nam";
-
-        b.iter(|| assert_eq!(s.split(NotAscii('V')).count(), 3));
-    }
-
-
-    #[bench]
     fn split_ascii(b: &mut Bencher) {
         let s = "Mary had a little lamb, Little lamb, little-lamb.";
         let len = s.split(' ').count();
 
         b.iter(|| assert_eq!(s.split(' ').count(), len));
-    }
-
-    #[bench]
-    fn split_not_ascii(b: &mut Bencher) {
-        struct NotAscii(char);
-        impl CharEq for NotAscii {
-            #[inline]
-            fn matches(&mut self, c: char) -> bool {
-                let NotAscii(cc) = *self;
-                cc == c
-            }
-            fn only_ascii(&self) -> bool { false }
-        }
-        let s = "Mary had a little lamb, Little lamb, little-lamb.";
-        let len = s.split(' ').count();
-
-        b.iter(|| assert_eq!(s.split(NotAscii(' ')).count(), len));
     }
 
     #[bench]

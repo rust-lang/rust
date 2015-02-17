@@ -58,6 +58,7 @@ pub trait Pattern<'a>: Sized {
 
 // Searcher
 
+#[derive(Copy, Clone, Eq, PartialEq, Debug)]
 pub enum SearchStep {
     Match(usize, usize),
     Reject(usize, usize),
@@ -190,7 +191,7 @@ impl<'a, C: CharEq> DoubleEndedSearcher<'a> for CharEqSearcher<'a, C> {}
 
 // Impl for &str
 
-// TODO: Optimize the naive implementation here
+// Todo: Optimize the naive implementation here
 
 #[derive(Clone)]
 pub struct StrSearcher<'a, 'b> {
@@ -235,13 +236,16 @@ unsafe impl<'a, 'b> Searcher<'a> for StrSearcher<'a, 'b>  {
         },
         |m: &mut StrSearcher| {
             // Forward step for nonempty needle
-            let possible_match = &m.haystack[m.start .. m.start + m.needle.len()];
+            // Compare if bytes are equal
+            let possible_match = &m.haystack.as_bytes()[m.start .. m.start + m.needle.len()];
             let current_start = m.start;
-            if possible_match == m.needle {
+            if possible_match == m.needle.as_bytes() {
                 m.start += m.needle.len();
                 SearchStep::Match(current_start, m.start)
             } else {
-                m.start += possible_match.chars().next().unwrap().len_utf8();
+                // Skip a char
+                let haystack_suffix = &m.haystack[m.start..];
+                m.start += haystack_suffix.chars().next().unwrap().len_utf8();
                 SearchStep::Reject(current_start, m.start)
             }
         })
@@ -262,13 +266,16 @@ unsafe impl<'a, 'b> ReverseSearcher<'a> for StrSearcher<'a, 'b>  {
         },
         |m: &mut StrSearcher| {
             // Backward step for nonempty needle
-            let possible_match = &m.haystack[m.end - m.needle.len() .. m.end];
+            // Compare if bytes are equal
+            let possible_match = &m.haystack.as_bytes()[m.end - m.needle.len() .. m.end];
             let current_end = m.end;
-            if possible_match == m.needle {
+            if possible_match == m.needle.as_bytes() {
                 m.end -= m.needle.len();
                 SearchStep::Match(m.end, current_end)
             } else {
-                m.end -= possible_match.chars().rev().next().unwrap().len_utf8();
+                // Skip a char
+                let haystack_prefix = &m.haystack[..m.end];
+                m.end -= haystack_prefix.chars().rev().next().unwrap().len_utf8();
                 SearchStep::Reject(m.end, current_end)
             }
         })
@@ -290,6 +297,9 @@ where F: FnOnce(&mut StrSearcher) -> SearchStep,
     } else if m.start + m.needle.len() <= m.end {
         // Case for needle != ""
         g(&mut m)
+    } else if m.start < m.end {
+        m.done = true;
+        SearchStep::Reject(m.start, m.end)
     } else {
         m.done = true;
         SearchStep::Done
@@ -352,7 +362,8 @@ impl<'a, F> Pattern<'a> for F where F: FnMut(char) -> bool {
 
 use ops::Deref;
 
-impl<'a, 'b, P: 'b + ?Sized, T: Deref<Target = P> + ?Sized> Pattern<'a> for &'b T where &'b P: Pattern<'a> {
+impl<'a, 'b, P: 'b + ?Sized, T: Deref<Target = P> + ?Sized> Pattern<'a> for &'b T
+where &'b P: Pattern<'a> {
     type Searcher =   <&'b P as Pattern<'a>>::Searcher;
     associated_items!(<&'b P as Pattern<'a>>::Searcher,
                       s, (&**s));
