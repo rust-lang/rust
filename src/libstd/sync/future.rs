@@ -46,7 +46,7 @@ pub struct Future<A> {
 }
 
 enum FutureState<A> {
-    Pending(Thunk<(),A>),
+    Pending(Thunk<'static,(),A>),
     Evaluating,
     Forced(A)
 }
@@ -103,7 +103,7 @@ impl<A> Future<A> {
     }
 
     pub fn from_fn<F>(f: F) -> Future<A>
-        where F : FnOnce() -> A, F : Send
+        where F : FnOnce() -> A, F : Send + 'static
     {
         /*!
          * Create a future from a function.
@@ -117,7 +117,7 @@ impl<A> Future<A> {
     }
 }
 
-impl<A:Send> Future<A> {
+impl<A:Send+'static> Future<A> {
     pub fn from_receiver(rx: Receiver<A>) -> Future<A> {
         /*!
          * Create a future from a port
@@ -132,7 +132,7 @@ impl<A:Send> Future<A> {
     }
 
     pub fn spawn<F>(blk: F) -> Future<A>
-        where F : FnOnce() -> A, F : Send
+        where F : FnOnce() -> A, F : Send + 'static
     {
         /*!
          * Create a future from a unique closure.

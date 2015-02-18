@@ -14,7 +14,7 @@ fn assert_send<T:Send>() { }
 trait Dummy { }
 
 fn test50() {
-    assert_send::<&'static Dummy>(); //~ ERROR the trait `core::marker::Send` is not implemented
+    assert_send::<&'static Dummy>(); //~ ERROR the trait `core::marker::Sync` is not implemented
 }
 
 fn test53() {
@@ -23,7 +23,7 @@ fn test53() {
 
 // ...unless they are properly bounded
 fn test60() {
-    assert_send::<&'static (Dummy+Send)>();
+    assert_send::<&'static (Dummy+Sync)>();
 }
 fn test61() {
     assert_send::<Box<Dummy+Send>>();

@@ -24,12 +24,12 @@ use thread;
 use thunk::Thunk;
 
 struct Sentinel<'a> {
-    jobs: &'a Arc<Mutex<Receiver<Thunk>>>,
+    jobs: &'a Arc<Mutex<Receiver<Thunk<'static>>>>,
     active: bool
 }
 
 impl<'a> Sentinel<'a> {
-    fn new(jobs: &Arc<Mutex<Receiver<Thunk>>>) -> Sentinel {
+    fn new(jobs: &'a Arc<Mutex<Receiver<Thunk<'static>>>>) -> Sentinel<'a> {
         Sentinel {
             jobs: jobs,
             active: true
@@ -80,7 +80,7 @@ pub struct TaskPool {
     //
     // This is the only such Sender, so when it is dropped all subthreads will
     // quit.
-    jobs: Sender<Thunk>
+    jobs: Sender<Thunk<'static>>
 }
 
 impl TaskPool {
@@ -105,13 +105,13 @@ impl TaskPool {
 
     /// Executes the function `job` on a thread in the pool.
     pub fn execute<F>(&self, job: F)
-        where F : FnOnce(), F : Send
+        where F : FnOnce(), F : Send + 'static
     {
         self.jobs.send(Thunk::new(job)).unwrap();
     }
 }
 
-fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk>>>) {
+fn spawn_in_pool(jobs: Arc<Mutex<Receiver<Thunk<'static>>>>) {
     thread::spawn(move || {
         // Will spawn a new thread on panic unless it is cancelled.
         let sentinel = Sentinel::new(&jobs);

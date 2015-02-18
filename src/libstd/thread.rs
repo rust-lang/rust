@@ -172,9 +172,9 @@ pub struct Builder {
     // The size of the stack for the spawned thread
     stack_size: Option<uint>,
     // Thread-local stdout
-    stdout: Option<Box<Writer + Send>>,
+    stdout: Option<Box<Writer + Send + 'static>>,
     // Thread-local stderr
-    stderr: Option<Box<Writer + Send>>,
+    stderr: Option<Box<Writer + Send + 'static>>,
 }
 
 impl Builder {
@@ -208,7 +208,7 @@ impl Builder {
     /// Redirect thread-local stdout.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Builder {
+    pub fn stdout(mut self, stdout: Box<Writer + Send + 'static>) -> Builder {
         self.stdout = Some(stdout);
         self
     }
@@ -216,7 +216,7 @@ impl Builder {
     /// Redirect thread-local stderr.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Builder {
+    pub fn stderr(mut self, stderr: Box<Writer + Send + 'static>) -> Builder {
         self.stderr = Some(stderr);
         self
     }
@@ -565,11 +565,11 @@ impl thread_info::NewThread for Thread {
 ///
 /// A thread that completes without panicking is considered to exit successfully.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
+pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
 
 struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
 
-unsafe impl<T:'static+Send> Send for Packet<T> {}
+unsafe impl<T:Send> Send for Packet<T> {}
 unsafe impl<T> Sync for Packet<T> {}
 
 /// Inner representation for JoinHandle and JoinGuard
@@ -804,7 +804,7 @@ mod test {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;
@@ -851,7 +851,7 @@ mod test {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         static GENERATIONS: uint = 16;
-        fn child_no(x: uint) -> Thunk {
+        fn child_no(x: uint) -> Thunk<'static> {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1).invoke(()));

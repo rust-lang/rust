@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(optin_builtin_traits)]
+
 use std::marker::Send;
 
 enum TestE {
@@ -16,18 +18,21 @@ enum TestE {
 
 struct MyType;
 
+struct NotSync;
+impl !Sync for NotSync {}
+
 unsafe impl Send for TestE {}
 unsafe impl Send for MyType {}
 unsafe impl Send for (MyType, MyType) {}
 //~^ ERROR builtin traits can only be implemented on structs or enums
 
-unsafe impl Send for &'static MyType {}
+unsafe impl Send for &'static NotSync {}
 //~^ ERROR builtin traits can only be implemented on structs or enums
 
 unsafe impl Send for [MyType] {}
 //~^ ERROR builtin traits can only be implemented on structs or enums
 
-unsafe impl Send for &'static [MyType] {}
+unsafe impl Send for &'static [NotSync] {}
 //~^ ERROR builtin traits can only be implemented on structs or enums
 
 fn is_send<T: Send>() {}
