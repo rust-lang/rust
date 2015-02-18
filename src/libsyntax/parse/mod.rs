@@ -711,6 +711,8 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
             "u16" => ast::UnsignedIntLit(ast::TyU16),
             "u32" => ast::UnsignedIntLit(ast::TyU32),
             "u64" => ast::UnsignedIntLit(ast::TyU64),
+            "i" | "is" => ast::SignedIntLit(ast::TyIs(true), ast::Plus),
+            "u" | "us" => ast::UnsignedIntLit(ast::TyUs(true)),
             _ => {
                 // i<digits> and u<digits> look like widths, so lets
                 // give an error message along those lines
@@ -720,17 +722,8 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
                                               &suf[1..]));
                 } else {
                     sd.span_err(sp, &*format!("illegal suffix `{}` for numeric literal", suf));
-
-                    if suf == "i" || suf == "is" {
-                        sd.span_help(sp, "per RFC 544/573, the suffix \
-                                          for `isize` literals is now `isize`");
-                    } else if suf == "u" || suf == "us" {
-                        sd.span_help(sp, "per RFC 544/573, the suffix \
-                                          for `usize` literals is now `usize`");
-                    } else {
-                        sd.span_help(sp, "the suffix must be one of the integral types \
-                                          (`u32`, `isize`, etc)");
-                    }
+                    sd.span_help(sp, "the suffix must be one of the integral types \
+                                      (`u32`, `isize`, etc)");
                 }
 
                 ty
