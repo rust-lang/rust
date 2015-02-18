@@ -11,8 +11,6 @@
 #![feature(box_syntax)]
 #![allow(warnings)]
 
-use std::marker::MarkerTrait;
-
 trait A<T>
 {
     fn get(&self) -> T { panic!() }
@@ -20,7 +18,7 @@ trait A<T>
 
 struct B<'a, T>(&'a (A<T>+'a));
 
-trait X : MarkerTrait {}
+trait X { fn foo(&self) {} }
 
 impl<'a, T> X for B<'a, T> {}
 

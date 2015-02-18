@@ -16,14 +16,13 @@ use ext::tt::transcribe::tt_next_token;
 use parse::token;
 use parse::token::{str_to_ident};
 
-use std::borrow::IntoCow;
+use std::borrow::{IntoCow, Cow};
 use std::char;
 use std::fmt;
 use std::mem::replace;
 use std::num;
 use std::rc::Rc;
 use std::str;
-use std::string::CowString;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
 
@@ -278,7 +277,7 @@ impl<'a> StringReader<'a> {
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
     fn translate_crlf<'b>(&self, start: BytePos,
-                          s: &'b str, errmsg: &'b str) -> CowString<'b> {
+                          s: &'b str, errmsg: &'b str) -> Cow<'b, str> {
         let mut i = 0;
         while i < s.len() {
             let str::CharRange { ch, next } = s.char_range_at(i);

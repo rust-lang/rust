@@ -45,7 +45,7 @@ macro_rules! array_impls {
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<T: Hash> Hash for [T; $N] {
                 fn hash<H: hash::Hasher>(&self, state: &mut H) {
-                    Hash::hash(&self[], state)
+                    Hash::hash(&self[..], state)
                 }
             }
 

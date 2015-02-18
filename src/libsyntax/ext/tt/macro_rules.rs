@@ -123,8 +123,8 @@ impl TTMacroExpander for MacroRulesMacroExpander {
                           self.name,
                           self.imported_from,
                           arg,
-                          &self.lhses[],
-                          &self.rhses[])
+                          &self.lhses,
+                          &self.rhses)
     }
 }
 
@@ -151,7 +151,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
         match **lhs {
           MatchedNonterminal(NtTT(ref lhs_tt)) => {
             let lhs_tt = match **lhs_tt {
-                TtDelimited(_, ref delim) => &delim.tts[],
+                TtDelimited(_, ref delim) => &delim.tts[..],
                 _ => cx.span_fatal(sp, "malformed macro lhs")
             };
             // `None` is because we're not interpolating

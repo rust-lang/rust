@@ -10,9 +10,7 @@
 
 #![feature(box_syntax)]
 
-use std::marker::MarkerTrait;
-
-trait Foo : MarkerTrait {}
+trait Foo { fn foo(&self) {} }
 impl Foo for u8 {}
 
 fn main() {

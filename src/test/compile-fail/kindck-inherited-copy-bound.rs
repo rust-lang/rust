@@ -15,6 +15,7 @@
 use std::any::Any;
 
 trait Foo : Copy {
+    fn foo(&self) {}
 }
 
 impl<T:Copy> Foo for T {

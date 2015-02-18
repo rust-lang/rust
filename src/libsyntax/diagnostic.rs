@@ -311,16 +311,16 @@ fn print_diagnostic(dst: &mut EmitterWriter, topic: &str, lvl: Level,
     }
 
     try!(print_maybe_styled(dst,
-                            &format!("{}: ", lvl.to_string())[],
+                            &format!("{}: ", lvl.to_string()),
                             term::attr::ForegroundColor(lvl.color())));
     try!(print_maybe_styled(dst,
-                            &format!("{}", msg)[],
+                            &format!("{}", msg),
                             term::attr::Bold));
 
     match code {
         Some(code) => {
             let style = term::attr::ForegroundColor(term::color::BRIGHT_MAGENTA);
-            try!(print_maybe_styled(dst, &format!(" [{}]", code.clone())[], style));
+            try!(print_maybe_styled(dst, &format!(" [{}]", code.clone()), style));
         }
         None => ()
     }
@@ -438,7 +438,7 @@ fn emit(dst: &mut EmitterWriter, cm: &codemap::CodeMap, rsp: RenderSpan,
                 Some(_) => {
                     try!(print_diagnostic(dst, &ss[..], Help,
                                           &format!("pass `--explain {}` to see a detailed \
-                                                   explanation", code)[], None));
+                                                   explanation", code), None));
                 }
                 None => ()
             },
@@ -542,7 +542,7 @@ fn highlight_lines(err: &mut EmitterWriter,
             }
 
             try!(print_maybe_styled(err,
-                                    &format!("{}\n", s)[],
+                                    &format!("{}\n", s),
                                     term::attr::ForegroundColor(lvl.color())));
         }
     }

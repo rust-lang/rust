@@ -539,8 +539,8 @@ impl Printer {
     pub fn print(&mut self, token: Token, l: isize) -> old_io::IoResult<()> {
         debug!("print {} {} (remaining line space={})", tok_str(&token), l,
                self.space);
-        debug!("{}", buf_str(&self.token[],
-                             &self.size[],
+        debug!("{}", buf_str(&self.token,
+                             &self.size,
                              self.left,
                              self.right,
                              6));

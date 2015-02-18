@@ -309,7 +309,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                                 r.sp_diag.span_fatal(
                                     r.cur_span, /* blame the macro writer */
                                     &format!("variable '{:?}' is still repeating at this depth",
-                                            token::get_ident(ident))[]);
+                                            token::get_ident(ident)));
                             }
                         }
                     }

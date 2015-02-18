@@ -494,13 +494,4 @@ mod impls {
             state.write_usize(*self as usize)
         }
     }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T, B: ?Sized> Hash for Cow<'a, T, B>
-        where B: Hash + ToOwned<T>
-    {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            Hash::hash(&**self, state)
-        }
-    }
 }
