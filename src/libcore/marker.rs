@@ -41,8 +41,7 @@ pub unsafe trait Send: 'static {
     // empty.
 }
 /// Types able to be transferred across thread boundaries.
-#[unstable(feature = "core",
-           reason = "will be overhauled with new lifetime rules; see RFC 458")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[lang="send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
 #[cfg(not(stage0))]
@@ -208,8 +207,7 @@ pub trait Copy : MarkerTrait {
 /// around the value(s) which can be mutated when behind a `&`
 /// reference; not doing this is undefined behaviour (for example,
 /// `transmute`-ing from `&T` to `&mut T` is illegal).
-#[unstable(feature = "core",
-           reason = "will be overhauled with new lifetime rules; see RFC 458")]
+#[stable(feature = "rust1", since = "1.0.0")]
 #[lang="sync"]
 #[rustc_on_unimplemented = "`{Self}` cannot be shared between threads safely"]
 pub unsafe trait Sync : MarkerTrait {
