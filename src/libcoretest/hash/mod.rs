@@ -23,7 +23,6 @@ impl Default for MyHasher {
 }
 
 impl Hasher for MyHasher {
-    type Output = u64;
     fn write(&mut self, buf: &[u8]) {
         for byte in buf {
             self.hash += *byte as u64;
@@ -85,7 +84,6 @@ struct Custom { hash: u64 }
 struct CustomHasher { output: u64 }
 
 impl Hasher for CustomHasher {
-    type Output = u64;
     fn finish(&self) -> u64 { self.output }
     fn write(&mut self, data: &[u8]) { panic!() }
     fn write_u64(&mut self, data: u64) { self.output = data; }

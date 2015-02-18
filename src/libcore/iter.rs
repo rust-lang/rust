@@ -522,11 +522,11 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// let a = [1, 4, 2, 3, 8, 9, 6];
     /// let sum = a.iter()
-    ///             .cloned()
-    ///             .inspect(|&x| println!("filtering {}", x))
-    ///             .filter(|&x| x % 2 == 0)
-    ///             .inspect(|&x| println!("{} made it through", x))
-    ///             .sum();
+    ///            .map(|x| *x)
+    ///            .inspect(|&x| println!("filtering {}", x))
+    ///            .filter(|&x| x % 2 == 0)
+    ///            .inspect(|&x| println!("{} made it through", x))
+    ///            .sum();
     /// println!("{}", sum);
     /// ```
     #[inline]
