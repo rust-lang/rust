@@ -16,5 +16,5 @@
 extern crate macro_reexport_2_no_use;
 
 fn main() {
-    assert_eq!(reexported!(), 3u);
+    assert_eq!(reexported!(), 3_usize);
 }

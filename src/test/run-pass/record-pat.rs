@@ -20,6 +20,6 @@ fn m(input: t3) -> int {
 }
 
 pub fn main() {
-    assert_eq!(m(t3::c(T2 {x: t1::a(10), y: 5}, 4u)), 10);
-    assert_eq!(m(t3::c(T2 {x: t1::b(10u), y: 5}, 4u)), 19);
+    assert_eq!(m(t3::c(T2 {x: t1::a(10), y: 5}, 4_usize)), 10);
+    assert_eq!(m(t3::c(T2 {x: t1::b(10_usize), y: 5}, 4_usize)), 19);
 }

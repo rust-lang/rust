@@ -25,6 +25,6 @@ fn print_out(thing: Box<ToString>, expected: String) {
 }
 
 pub fn main() {
-  let nyan: Box<ToString> = box cat(0u, 2, "nyan".to_string()) as Box<ToString>;
+  let nyan: Box<ToString> = box cat(0_usize, 2, "nyan".to_string()) as Box<ToString>;
   print_out(nyan, "nyan".to_string());
 }

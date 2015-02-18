@@ -30,6 +30,6 @@ mod kitties {
 }
 
 fn main() {
-  let nyan : kitties::cat = kitties::cat(52us, 99);
+  let nyan : kitties::cat = kitties::cat(52_usize, 99);
   nyan.nap();
 }

@@ -43,7 +43,7 @@ fn foo2<I: Foo>(x: I) -> <I as Foo>::A {
 
 pub fn main() {
     let a = 42;
-    assert!(foo2(a) == 42u);
+    assert!(foo2(a) == 42_usize);
 
     let a = Bar;
     assert!(foo2(a) == 43);

@@ -39,5 +39,5 @@ fn main() {
     // just to ensure that this test fails to compile; when shadowed
     // lifetimes become either an error or a proper lint, this will
     // not be needed.
-    let x: isize = 3us; //~ ERROR mismatched types
+    let x: isize = 3_usize; //~ ERROR mismatched types
 }

@@ -22,7 +22,7 @@ mod kernel32 {
 #[cfg(windows)]
 pub fn main() {
     unsafe {
-        let expected = 1234u;
+        let expected = 1234_usize;
         kernel32::SetLastError(expected);
         let actual = kernel32::GetLastError();
         println!("actual = {}", actual);

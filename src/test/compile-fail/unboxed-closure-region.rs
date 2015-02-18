@@ -14,7 +14,7 @@
 // reference cannot escape the region of that variable.
 fn main() {
     let _f = {
-        let x = 0us;
+        let x = 0_usize;
         || x //~ ERROR cannot infer an appropriate lifetime due to conflicting requirements
     };
 }

@@ -43,11 +43,11 @@ fn main() {
             .write_str("mod unicode_input_multiple_files_chars;");
     }
 
-    for _ in 0u..100 {
+    for _ in 0..100 {
         {
             let randoms = tmpdir.join("unicode_input_multiple_files_chars.rs");
             let mut w = File::create(&randoms).unwrap();
-            for _ in 0u..30 {
+            for _ in 0..30 {
                 let _ = w.write_char(random_char());
             }
         }

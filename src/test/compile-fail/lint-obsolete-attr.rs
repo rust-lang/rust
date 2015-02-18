@@ -15,7 +15,7 @@
 #![allow(dead_code)]
 #![feature(custom_attribute)]
 
-#[abi="stdcall"] extern {} //~ ERROR unused attribute
+#[ab_isize="stdcall"] extern {} //~ ERROR unused attribute
 
 #[fixed_stack_segment] fn f() {} //~ ERROR unused attribute
 

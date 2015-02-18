@@ -34,15 +34,15 @@ fn rename_directory() {
         let fromp = CString::from_slice(test_file.as_vec());
         let modebuf = CString::from_slice(b"w+b");
         let ostream = libc::fopen(fromp.as_ptr(), modebuf.as_ptr());
-        assert!((ostream as uint != 0u));
+        assert!((ostream as uint != 0_usize));
         let s = "hello".to_string();
         let buf = CString::from_slice(b"hello");
         let write_len = libc::fwrite(buf.as_ptr() as *mut _,
-                                     1u as libc::size_t,
-                                     (s.len() + 1u) as libc::size_t,
+                                     1_usize as libc::size_t,
+                                     (s.len() + 1_usize) as libc::size_t,
                                      ostream);
         assert_eq!(write_len, (s.len() + 1) as libc::size_t);
-        assert_eq!(libc::fclose(ostream), (0u as libc::c_int));
+        assert_eq!(libc::fclose(ostream), (0_usize as libc::c_int));
 
         let new_path = tmpdir.join_many(&["quux", "blat"]);
         fs::mkdir_recursive(&new_path, old_io::USER_RWX);

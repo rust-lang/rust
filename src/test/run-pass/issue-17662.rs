@@ -15,7 +15,7 @@ extern crate "issue-17662" as i;
 struct Bar<'a>;
 
 impl<'a> i::Foo<'a, uint> for Bar<'a> {
-    fn foo(&self) -> uint { 5u }
+    fn foo(&self) -> uint { 5_usize }
 }
 
 pub fn main() {

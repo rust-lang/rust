@@ -1,17 +1,17 @@
 digraph block {
     N0[label="entry"];
     N1[label="exit"];
-    N2[label="expr 2us"];
-    N3[label="expr 0us"];
-    N4[label="expr 20us"];
-    N5[label="expr [2us, 0us, 20us]"];
+    N2[label="expr 2usize"];
+    N3[label="expr 0usize"];
+    N4[label="expr 20usize"];
+    N5[label="expr [2usize, 0usize, 20usize]"];
     N6[label="local v"];
-    N7[label="stmt let v = [2us, 0us, 20us];"];
+    N7[label="stmt let v = [2usize, 0usize, 20usize];"];
     N8[label="expr v"];
-    N9[label="expr 20us"];
-    N10[label="expr v[20us]"];
-    N11[label="stmt v[20us];"];
-    N12[label="block { let v = [2us, 0us, 20us]; v[20us]; }"];
+    N9[label="expr 20usize"];
+    N10[label="expr v[20usize]"];
+    N11[label="stmt v[20usize];"];
+    N12[label="block { let v = [2usize, 0usize, 20usize]; v[20usize]; }"];
     N0 -> N2;
     N2 -> N3;
     N3 -> N4;

@@ -22,11 +22,11 @@ struct dog {
 impl dog {
     fn bark(&mut self) -> int {
       println!("Woof {} {}", self.barks, self.volume);
-      self.barks += 1u;
-      if self.barks % 3u == 0u {
+      self.barks += 1_usize;
+      if self.barks % 3_usize == 0_usize {
           self.volume += 1;
       }
-      if self.barks % 10u == 0u {
+      if self.barks % 10_usize == 0_usize {
           self.volume -= 2;
       }
       println!("Grrr {} {}", self.barks, self.volume);
@@ -43,7 +43,7 @@ impl noisy for dog {
 fn dog() -> dog {
     dog {
         volume: 0,
-        barks: 0u
+        barks: 0_usize
     }
 }
 
@@ -70,8 +70,8 @@ impl cat {
 impl cat {
     fn meow(&mut self) -> uint {
         println!("Meow");
-        self.meows += 1u;
-        if self.meows % 5u == 0u {
+        self.meows += 1_usize;
+        if self.meows % 5_usize == 0_usize {
             self.how_hungry += 1;
         }
         self.meows
@@ -88,14 +88,14 @@ fn cat(in_x: uint, in_y: int, in_name: String) -> cat {
 
 
 fn annoy_neighbors(critter: &mut noisy) {
-    for _i in 0u..10 { critter.speak(); }
+    for _i in 0_usize..10 { critter.speak(); }
 }
 
 pub fn main() {
-  let mut nyan: cat = cat(0u, 2, "nyan".to_string());
+  let mut nyan: cat = cat(0_usize, 2, "nyan".to_string());
   let mut whitefang: dog = dog();
   annoy_neighbors(&mut nyan);
   annoy_neighbors(&mut whitefang);
-  assert_eq!(nyan.meow_count(), 10u);
+  assert_eq!(nyan.meow_count(), 10_usize);
   assert_eq!(whitefang.volume, 1);
 }

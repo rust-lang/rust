@@ -16,5 +16,5 @@
 
 fn main() {
     let n = 0;
-    let it = Some(1_us).into_iter().inspect(|_| {n;});
+    let it = Some(1_usize).into_iter().inspect(|_| {n;});
 }

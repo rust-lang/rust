@@ -12,4 +12,4 @@
 
 enum blah { a(isize, isize, usize), b(isize, isize), }
 
-fn main() { match blah::a(1, 1, 2us) { blah::a(_, x, y) | blah::b(x, y) => { } } }
+fn main() { match blah::a(1, 1, 2_usize) { blah::a(_, x, y) | blah::b(x, y) => { } } }

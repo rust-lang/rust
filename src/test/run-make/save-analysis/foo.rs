@@ -45,11 +45,11 @@ fn test_alias<I: Iterator>(i: Option<<I as Iterator>::Item>) {
     fn foo(x: &Float) {}
     let _: Option<u8> = from_i32(45);
 
-    let x = 42us;
+    let x = 42_usize;
 
     myflate::deflate_bytes(&[]);
 
-    let x = (3, 4us);
+    let x = (3, 4_usize);
     let y = x.1;
 }
 

@@ -15,7 +15,7 @@ use std::u64;
 
 #[cfg(target_arch="x86")]
 fn main() {
-    let x = vec!(1u,2u,3u);
+    let x = vec!(1_usize,2_usize,3_usize);
 
     // This should cause a bounds-check panic, but may not if we do our
     // bounds checking by truncating the index value to the size of the
@@ -23,7 +23,7 @@ fn main() {
 
     // This test is only meaningful on 32-bit hosts.
 
-    let idx = u64::MAX & !(u64::MAX >> 1u);
+    let idx = u64::MAX & !(u64::MAX >> 1_usize);
     println!("ov3 idx = 0x%8.8x%8.8x",
            (idx >> 32) as uint,
            idx as uint);
@@ -35,6 +35,6 @@ fn main() {
 #[cfg(any(target_arch="x86_64", target_arch = "aarch64"))]
 fn main() {
     // This version just panics anyways, for symmetry on 64-bit hosts.
-    let x = vec!(1u,2u,3u);
+    let x = vec!(1_usize,2_usize,3_usize);
     error!("ov3 0x%x",  x[200]);
 }

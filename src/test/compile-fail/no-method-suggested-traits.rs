@@ -123,8 +123,8 @@ fn main() {
     //~^^^ HELP `no_method_suggested_traits::foo::PubPub`
 
     // should have no help:
-    1us.method3(); //~ ERROR does not implement
-    std::rc::Rc::new(&mut Box::new(&1us)).method3(); //~ ERROR does not implement
+    1_usize.method3(); //~ ERROR does not implement
+    std::rc::Rc::new(&mut Box::new(&1_usize)).method3(); //~ ERROR does not implement
     no_method_suggested_traits::Foo.method3();  //~ ERROR does not implement
     std::rc::Rc::new(&mut Box::new(&no_method_suggested_traits::Foo)).method3();
     //~^ ERROR does not implement

@@ -30,7 +30,7 @@ fn main() {
                                //~| found `Bar`
                                //~| expected struct `Foo`
                                //~| found struct `Bar`
-    let f_i = Foo { a: 2, ..4 }; //~  ERROR mismatched types
+    let f__isize = Foo { a: 2, ..4 }; //~  ERROR mismatched types
                                  //~| expected `Foo`
                                  //~| found `_`
                                  //~| expected struct `Foo`

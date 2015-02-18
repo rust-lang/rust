@@ -14,9 +14,9 @@ use std::ops::Add;
 
 #[inline]
 pub fn has_closures() -> uint {
-    let x = 1u;
+    let x = 1_usize;
     let mut f = move || x;
-    let y = 1u;
+    let y = 1_usize;
     let g = || y;
     f() + g()
 }

@@ -15,5 +15,5 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let _ = [box 1u; 1];
+    let _ = [box 1_usize; 1];
 }

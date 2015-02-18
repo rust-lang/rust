@@ -32,15 +32,15 @@ impl<T> DerefMut for Own<T> {
 }
 
 fn deref_imm(x: Own<isize>) {
-    let _i = &*x;
+    let __isize = &*x;
 }
 
 fn deref_mut1(x: Own<isize>) {
-    let _i = &mut *x; //~ ERROR cannot borrow
+    let __isize = &mut *x; //~ ERROR cannot borrow
 }
 
 fn deref_mut2(mut x: Own<isize>) {
-    let _i = &mut *x;
+    let __isize = &mut *x;
 }
 
 fn deref_extend<'a>(x: &'a Own<isize>) -> &'a isize {

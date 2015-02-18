@@ -10,10 +10,10 @@
 
 // Regression test for issue #152.
 pub fn main() {
-    let mut b: uint = 1u;
-    while b <= 32u {
-        0u << b;
-        b <<= 1u;
+    let mut b: uint = 1_usize;
+    while b <= 32_usize {
+        0_usize << b;
+        b <<= 1_usize;
         println!("{}", b);
     }
 }

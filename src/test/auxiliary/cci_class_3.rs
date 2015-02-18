@@ -16,7 +16,7 @@ pub mod kitties {
     }
 
     impl cat {
-        pub fn speak(&mut self) { self.meows += 1u; }
+        pub fn speak(&mut self) { self.meows += 1_usize; }
         pub fn meow_count(&mut self) -> uint { self.meows }
     }
 

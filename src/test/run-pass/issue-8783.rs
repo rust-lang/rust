@@ -13,7 +13,7 @@ use std::default::Default;
 struct X { pub x: uint }
 impl Default for X {
     fn default() -> X {
-        X { x: 42u }
+        X { x: 42_usize }
     }
 }
 

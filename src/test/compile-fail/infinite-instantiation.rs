@@ -28,11 +28,11 @@ impl<T:Clone> to_opt for Option<T> {
 }
 
 fn function<T:to_opt + Clone>(counter: usize, t: T) {
-    if counter > 0us {
-        function(counter - 1us, t.to_option());
+    if counter > 0_usize {
+        function(counter - 1_usize, t.to_option());
     }
 }
 
 fn main() {
-    function(22us, 22us);
+    function(22_usize, 22_usize);
 }

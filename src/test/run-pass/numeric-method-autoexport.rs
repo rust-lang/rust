@@ -29,7 +29,7 @@ pub fn main() {
 
 // uints
     // num
-    assert_eq!(15_usize.add(6us), 21_usize);
+    assert_eq!(15_usize.add(6_usize), 21_usize);
     assert_eq!(15_u8.add(6u8), 21_u8);
     assert_eq!(15_u16.add(6u16), 21_u16);
     assert_eq!(15_u32.add(6u32), 21_u32);
