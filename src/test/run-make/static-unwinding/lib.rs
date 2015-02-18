@@ -10,7 +10,7 @@
 
 #![crate_type = "rlib"]
 
-pub static mut statik: int = 0;
+pub static mut statik: isize = 0;
 
 struct A;
 impl Drop for A {

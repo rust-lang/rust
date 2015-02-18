@@ -343,7 +343,7 @@ trait ConvertTo<Output> {
 }
 
 impl ConvertTo<i64> for i32 {
-    fn convert(&self) -> i64 { *self as i32 }
+    fn convert(&self) -> i64 { *self as i64 }
 }
 
 // can be called with T == i32

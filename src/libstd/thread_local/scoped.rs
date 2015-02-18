@@ -84,7 +84,7 @@ macro_rules! __scoped_thread_local_inner {
                            target_os = "openbsd",
                            target_arch = "aarch64")),
                    thread_local)]
-        static $name: ::std::thread_local::spawn::Key<$t> =
+        static $name: ::std::thread_local::scoped::Key<$t> =
             __scoped_thread_local_inner!($t);
     );
     (pub static $name:ident: $t:ty) => (
@@ -94,11 +94,11 @@ macro_rules! __scoped_thread_local_inner {
                            target_os = "openbsd",
                            target_arch = "aarch64")),
                    thread_local)]
-        pub static $name: ::std::thread_local::spawn::Key<$t> =
+        pub static $name: ::std::thread_local::scoped::Key<$t> =
             __scoped_thread_local_inner!($t);
     );
     ($t:ty) => ({
-        use std::thread_local::spawn::Key as __Key;
+        use std::thread_local::scoped::Key as __Key;
 
         #[cfg(not(any(windows,
                       target_os = "android",
@@ -106,7 +106,7 @@ macro_rules! __scoped_thread_local_inner {
                       target_os = "openbsd",
                       target_arch = "aarch64")))]
         const _INIT: __Key<$t> = __Key {
-            inner: ::std::thread_local::spawn::__impl::KeyInner {
+            inner: ::std::thread_local::scoped::__impl::KeyInner {
                 inner: ::std::cell::UnsafeCell { value: 0 as *mut _ },
             }
         };
@@ -117,8 +117,8 @@ macro_rules! __scoped_thread_local_inner {
                   target_os = "openbsd",
                   target_arch = "aarch64"))]
         const _INIT: __Key<$t> = __Key {
-            inner: ::std::thread_local::spawn::__impl::KeyInner {
-                inner: ::std::thread_local::spawn::__impl::OS_INIT,
+            inner: ::std::thread_local::scoped::__impl::KeyInner {
+                inner: ::std::thread_local::scoped::__impl::OS_INIT,
                 marker: ::std::marker::InvariantType,
             }
         };

@@ -10,9 +10,9 @@
 
 extern crate lib;
 
-use std::thread::Thread;
+use std::thread;
 
-static mut statik: int = 0;
+static mut statik: isize = 0;
 
 struct A;
 impl Drop for A {
@@ -22,10 +22,9 @@ impl Drop for A {
 }
 
 fn main() {
-    Thread::scoped(move|| {
+    thread::spawn(move|| {
         let _a = A;
         lib::callback(|| panic!());
-        1
     }).join().err().unwrap();
 
     unsafe {
