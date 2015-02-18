@@ -830,9 +830,9 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for DList<A> {
-    fn from_iter<T: Iterator<Item=A>>(iterator: T) -> DList<A> {
+    fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> DList<A> {
         let mut ret = DList::new();
-        ret.extend(iterator);
+        ret.extend(iter);
         ret
     }
 }

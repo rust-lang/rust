@@ -924,9 +924,9 @@ impl Default for Bitv {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<bool> for Bitv {
-    fn from_iter<I:Iterator<Item=bool>>(iterator: I) -> Bitv {
+    fn from_iter<I: IntoIterator<Item=bool>>(iter: I) -> Bitv {
         let mut ret = Bitv::new();
-        ret.extend(iterator);
+        ret.extend(iter);
         ret
     }
 }
@@ -1134,9 +1134,9 @@ impl Default for BitvSet {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<usize> for BitvSet {
-    fn from_iter<I:Iterator<Item=usize>>(iterator: I) -> BitvSet {
+    fn from_iter<I: IntoIterator<Item=usize>>(iter: I) -> BitvSet {
         let mut ret = BitvSet::new();
-        ret.extend(iterator);
+        ret.extend(iter);
         ret
     }
 }

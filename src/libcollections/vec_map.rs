@@ -661,7 +661,7 @@ impl<V: fmt::Debug> fmt::Debug for VecMap<V> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> FromIterator<(usize, V)> for VecMap<V> {
-    fn from_iter<Iter: Iterator<Item=(usize, V)>>(iter: Iter) -> VecMap<V> {
+    fn from_iter<I: IntoIterator<Item=(usize, V)>>(iter: I) -> VecMap<V> {
         let mut map = VecMap::new();
         map.extend(iter);
         map

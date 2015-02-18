@@ -1696,7 +1696,8 @@ impl<A> IndexMut<usize> for RingBuf<A> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> FromIterator<A> for RingBuf<A> {
-    fn from_iter<T: Iterator<Item=A>>(iterator: T) -> RingBuf<A> {
+    fn from_iter<T: IntoIterator<Item=A>>(iterable: T) -> RingBuf<A> {
+        let iterator = iterable.into_iter();
         let (lower, _) = iterator.size_hint();
         let mut deq = RingBuf::with_capacity(lower);
         deq.extend(iterator);
