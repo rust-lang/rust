@@ -37,7 +37,7 @@ use util::ppaux::{ty_to_string};
 use util::nodemap::{FnvHashMap, NodeSet};
 use lint::{Level, Context, LintPass, LintArray, Lint};
 
-use std::collections::BitvSet;
+use std::collections::BitSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
 use std::num::SignedInt;
 use std::{cmp, slice};
@@ -1792,7 +1792,7 @@ impl LintPass for UnconditionalRecursion {
         let mut work_queue = vec![cfg.entry];
         let mut reached_exit_without_self_call = false;
         let mut self_call_spans = vec![];
-        let mut visited = BitvSet::new();
+        let mut visited = BitSet::new();
 
         while let Some(idx) = work_queue.pop() {
             let cfg_id = idx.node_id();
