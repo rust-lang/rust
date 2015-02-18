@@ -428,10 +428,10 @@ mod test {
         let (tx3, rx3) = channel::<int>();
 
         let _t = thread::spawn(move|| {
-            for _ in 0u..20 { thread::yield_now(); }
+            for _ in 0..20 { thread::yield_now(); }
             tx1.send(1).unwrap();
             rx3.recv().unwrap();
-            for _ in 0u..20 { thread::yield_now(); }
+            for _ in 0..20 { thread::yield_now(); }
         });
 
         select! {
@@ -452,7 +452,7 @@ mod test {
         let (tx3, rx3) = channel::<()>();
 
         let _t = thread::spawn(move|| {
-            for _ in 0u..20 { thread::yield_now(); }
+            for _ in 0..20 { thread::yield_now(); }
             tx1.send(1).unwrap();
             tx2.send(2).unwrap();
             rx3.recv().unwrap();
@@ -557,7 +557,7 @@ mod test {
             tx3.send(()).unwrap();
         });
 
-        for _ in 0u..1000 { thread::yield_now(); }
+        for _ in 0..1000 { thread::yield_now(); }
         drop(tx1.clone());
         tx2.send(()).unwrap();
         rx3.recv().unwrap();
@@ -670,7 +670,7 @@ mod test {
             tx2.send(()).unwrap();
         });
 
-        for _ in 0u..100 { thread::yield_now() }
+        for _ in 0..100 { thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -690,7 +690,7 @@ mod test {
             tx2.send(()).unwrap();
         });
 
-        for _ in 0u..100 { thread::yield_now() }
+        for _ in 0..100 { thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -709,7 +709,7 @@ mod test {
             tx2.send(()).unwrap();
         });
 
-        for _ in 0u..100 { thread::yield_now() }
+        for _ in 0..100 { thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -727,7 +727,7 @@ mod test {
     fn sync2() {
         let (tx, rx) = sync_channel::<int>(0);
         let _t = thread::spawn(move|| {
-            for _ in 0u..100 { thread::yield_now() }
+            for _ in 0..100 { thread::yield_now() }
             tx.send(1).unwrap();
         });
         select! {

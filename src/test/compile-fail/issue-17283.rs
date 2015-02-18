@@ -16,7 +16,7 @@ struct Foo {
 }
 
 fn main() {
-    let x = 1us;
+    let x = 1_usize;
     let y: Foo;
 
     // `x { ... }` should not be interpreted as a struct literal here

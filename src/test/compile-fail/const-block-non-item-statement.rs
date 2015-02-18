@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-const A: usize = { 1us; 2 };
+const A: usize = { 1_usize; 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 
 const B: usize = { { } 2 };
@@ -19,7 +19,7 @@ macro_rules! foo {
 }
 const C: usize = { foo!(); 2 };
 
-const D: usize = { let x = 4us; 2 };
+const D: usize = { let x = 4_usize; 2 };
 //~^ ERROR: blocks in constants are limited to items and tail expressions
 
 pub fn main() {

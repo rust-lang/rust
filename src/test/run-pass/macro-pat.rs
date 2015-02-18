@@ -47,9 +47,9 @@ fn f(c: Option<char>) -> uint {
 }
 
 pub fn main() {
-    assert_eq!(1u, f(Some('x')));
-    assert_eq!(2u, f(Some('y')));
-    assert_eq!(3u, f(None));
+    assert_eq!(1_usize, f(Some('x')));
+    assert_eq!(2_usize, f(Some('y')));
+    assert_eq!(3_usize, f(None));
 
     assert_eq!(1, match Some('x') {
         Some(char_x!()) => 1,

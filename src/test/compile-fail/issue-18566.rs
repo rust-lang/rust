@@ -28,7 +28,7 @@ impl Tr for usize {
 }
 
 fn main() {
-    let s = &mut 1us;
+    let s = &mut 1_usize;
 
     MyPtr(s).poke(s);
     //~^ ERROR cannot borrow `*s` as mutable more than once at a time

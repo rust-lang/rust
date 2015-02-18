@@ -11,7 +11,7 @@
 macro_rules! higher_order {
     (subst $lhs:tt => $rhs:tt) => ({
             macro_rules! anon { $lhs => $rhs }
-            anon!(1u, 2u, "foo")
+            anon!(1_usize, 2_usize, "foo")
     });
 }
 

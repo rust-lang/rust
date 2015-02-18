@@ -588,11 +588,11 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                 match lit.node {
                     ast::LitInt(_, ty) => {
                         let msg = if let ast::SignedIntLit(ast::TyIs(true), _) = ty {
-                            Some("the `i` suffix on integers is deprecated; use `is` \
-                                  or one of the fixed-sized suffixes")
+                            Some("the `i` and `is` suffixes on integers are deprecated; \
+                                  use `isize` or one of the fixed-sized suffixes")
                         } else if let ast::UnsignedIntLit(ast::TyUs(true)) = ty {
-                            Some("the `u` suffix on integers is deprecated; use `us` \
-                                 or one of the fixed-sized suffixes")
+                            Some("the `u` and `us` suffixes on integers are deprecated; \
+                                  use `usize` or one of the fixed-sized suffixes")
                         } else {
                             None
                         };

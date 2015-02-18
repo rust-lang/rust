@@ -175,13 +175,13 @@ pub fn current_exe() -> IoResult<Path> {
         let mut sz: libc::size_t = 0;
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          ptr::null_mut(), &mut sz, ptr::null_mut(),
-                         0u as libc::size_t);
+                         0 as libc::size_t);
         if err != 0 { return Err(IoError::last_error()); }
         if sz == 0 { return Err(IoError::last_error()); }
         let mut v: Vec<u8> = Vec::with_capacity(sz as uint);
         let err = sysctl(mib.as_mut_ptr(), mib.len() as ::libc::c_uint,
                          v.as_mut_ptr() as *mut libc::c_void, &mut sz,
-                         ptr::null_mut(), 0u as libc::size_t);
+                         ptr::null_mut(), 0 as libc::size_t);
         if err != 0 { return Err(IoError::last_error()); }
         if sz == 0 { return Err(IoError::last_error()); }
         v.set_len(sz as uint - 1); // chop off trailing NUL

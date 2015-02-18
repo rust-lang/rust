@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub fn main() {
-  let _i = 0u;
+  let _i = 0_usize;
   loop {
     break;
   }

@@ -10,5 +10,5 @@
 
 // error-pattern:no valid digits found for number
 fn main() {
-    log(error, 0bu);
+    log(error, 0b_usize);
 }

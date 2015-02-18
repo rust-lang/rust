@@ -21,7 +21,7 @@ mod a {
 
     impl Foo for uint {
         fn foo() -> uint {
-            5u
+            5_usize
         }
     }
 }

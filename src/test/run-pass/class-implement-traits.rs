@@ -24,8 +24,8 @@ struct cat {
 impl cat {
     fn meow(&mut self) {
         println!("Meow");
-        self.meows += 1u;
-        if self.meows % 5u == 0u {
+        self.meows += 1_usize;
+        if self.meows % 5_usize == 0_usize {
             self.how_hungry += 1;
         }
     }
@@ -62,10 +62,10 @@ fn make_speak<C:noisy>(mut c: C) {
 }
 
 pub fn main() {
-    let mut nyan = cat(0u, 2, "nyan".to_string());
+    let mut nyan = cat(0_usize, 2, "nyan".to_string());
     nyan.eat();
     assert!((!nyan.eat()));
-    for _ in 1u..10u {
+    for _ in 1_usize..10_usize {
         make_speak(nyan.clone());
     }
 }

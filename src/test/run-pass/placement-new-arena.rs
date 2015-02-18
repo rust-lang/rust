@@ -15,7 +15,7 @@ use arena::Arena;
 pub fn main() {
     let mut arena = Arena::new();
     let p = &mut arena;
-    let x = p.alloc(|| 4u);
+    let x = p.alloc(|| 4_usize);
     println!("{}", *x);
-    assert_eq!(*x, 4u);
+    assert_eq!(*x, 4_usize);
 }

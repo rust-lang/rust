@@ -301,7 +301,7 @@ fn main() {
     };
     let input = Arc::new(input);
 
-    let nb_freqs: Vec<_> = (1u..3).map(|i| {
+    let nb_freqs: Vec<_> = (1..3).map(|i| {
         let input = input.clone();
         (i, thread::scoped(move|| generate_frequencies(&input, i)))
     }).collect();

@@ -14,7 +14,7 @@
 // cause borrow conflicts.
 
 fn main() {
-    let mut x = 0us;
+    let mut x = 0_usize;
     let f = || x += 1;
     let _y = x; //~ ERROR cannot use `x` because it was mutably borrowed
 }

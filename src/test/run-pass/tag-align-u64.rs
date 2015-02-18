@@ -28,7 +28,7 @@ fn mk_rec() -> Rec {
 
 fn is_8_byte_aligned(u: &Tag) -> bool {
     let p: uint = unsafe { mem::transmute(u) };
-    return (p & 7u) == 0u;
+    return (p & 7_usize) == 0_usize;
 }
 
 pub fn main() {

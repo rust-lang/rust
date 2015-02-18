@@ -12,10 +12,10 @@ use std::env;
 use std::thread;
 
 fn f(n: usize) {
-    let mut i = 0u;
+    let mut i = 0;
     while i < n {
         let _ = thread::spawn(move|| g()).join();
-        i += 1u;
+        i += 1;
     }
 }
 

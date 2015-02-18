@@ -1123,20 +1123,20 @@ mod tests {
         ($_20:expr) => ({
             let _20 = $_20;
 
-            assert_eq!(20u,   _20.to_uint().unwrap());
-            assert_eq!(20u8,  _20.to_u8().unwrap());
-            assert_eq!(20u16, _20.to_u16().unwrap());
-            assert_eq!(20u32, _20.to_u32().unwrap());
-            assert_eq!(20u64, _20.to_u64().unwrap());
-            assert_eq!(20,   _20.to_int().unwrap());
-            assert_eq!(20i8,  _20.to_i8().unwrap());
-            assert_eq!(20i16, _20.to_i16().unwrap());
-            assert_eq!(20i32, _20.to_i32().unwrap());
-            assert_eq!(20i64, _20.to_i64().unwrap());
-            assert_eq!(20f32, _20.to_f32().unwrap());
-            assert_eq!(20f64, _20.to_f64().unwrap());
+            assert_eq!(20usize, _20.to_uint().unwrap());
+            assert_eq!(20u8,    _20.to_u8().unwrap());
+            assert_eq!(20u16,   _20.to_u16().unwrap());
+            assert_eq!(20u32,   _20.to_u32().unwrap());
+            assert_eq!(20u64,   _20.to_u64().unwrap());
+            assert_eq!(20,      _20.to_int().unwrap());
+            assert_eq!(20i8,    _20.to_i8().unwrap());
+            assert_eq!(20i16,   _20.to_i16().unwrap());
+            assert_eq!(20i32,   _20.to_i32().unwrap());
+            assert_eq!(20i64,   _20.to_i64().unwrap());
+            assert_eq!(20f32,   _20.to_f32().unwrap());
+            assert_eq!(20f64,   _20.to_f64().unwrap());
 
-            assert_eq!(_20, NumCast::from(20u).unwrap());
+            assert_eq!(_20, NumCast::from(20usize).unwrap());
             assert_eq!(_20, NumCast::from(20u8).unwrap());
             assert_eq!(_20, NumCast::from(20u16).unwrap());
             assert_eq!(_20, NumCast::from(20u32).unwrap());
@@ -1149,7 +1149,7 @@ mod tests {
             assert_eq!(_20, NumCast::from(20f32).unwrap());
             assert_eq!(_20, NumCast::from(20f64).unwrap());
 
-            assert_eq!(_20, cast(20u).unwrap());
+            assert_eq!(_20, cast(20usize).unwrap());
             assert_eq!(_20, cast(20u8).unwrap());
             assert_eq!(_20, cast(20u16).unwrap());
             assert_eq!(_20, cast(20u32).unwrap());
@@ -1164,18 +1164,18 @@ mod tests {
         })
     }
 
-    #[test] fn test_u8_cast()    { test_cast_20!(20u8)  }
-    #[test] fn test_u16_cast()   { test_cast_20!(20u16) }
-    #[test] fn test_u32_cast()   { test_cast_20!(20u32) }
-    #[test] fn test_u64_cast()   { test_cast_20!(20u64) }
-    #[test] fn test_uint_cast()  { test_cast_20!(20u)   }
-    #[test] fn test_i8_cast()    { test_cast_20!(20i8)  }
-    #[test] fn test_i16_cast()   { test_cast_20!(20i16) }
-    #[test] fn test_i32_cast()   { test_cast_20!(20i32) }
-    #[test] fn test_i64_cast()   { test_cast_20!(20i64) }
-    #[test] fn test_int_cast()   { test_cast_20!(20)   }
-    #[test] fn test_f32_cast()   { test_cast_20!(20f32) }
-    #[test] fn test_f64_cast()   { test_cast_20!(20f64) }
+    #[test] fn test_u8_cast()    { test_cast_20!(20u8)    }
+    #[test] fn test_u16_cast()   { test_cast_20!(20u16)   }
+    #[test] fn test_u32_cast()   { test_cast_20!(20u32)   }
+    #[test] fn test_u64_cast()   { test_cast_20!(20u64)   }
+    #[test] fn test_uint_cast()  { test_cast_20!(20usize) }
+    #[test] fn test_i8_cast()    { test_cast_20!(20i8)    }
+    #[test] fn test_i16_cast()   { test_cast_20!(20i16)   }
+    #[test] fn test_i32_cast()   { test_cast_20!(20i32)   }
+    #[test] fn test_i64_cast()   { test_cast_20!(20i64)   }
+    #[test] fn test_int_cast()   { test_cast_20!(20)      }
+    #[test] fn test_f32_cast()   { test_cast_20!(20f32)   }
+    #[test] fn test_f64_cast()   { test_cast_20!(20f64)   }
 
     #[test]
     fn test_cast_range_int_min() {
@@ -1548,8 +1548,8 @@ mod tests {
     #[test]
     fn test_saturating_add_uint() {
         use uint::MAX;
-        assert_eq!(3u.saturating_add(5u), 8u);
-        assert_eq!(3u.saturating_add(MAX-1), MAX);
+        assert_eq!(3_usize.saturating_add(5_usize), 8_usize);
+        assert_eq!(3_usize.saturating_add(MAX-1), MAX);
         assert_eq!(MAX.saturating_add(MAX), MAX);
         assert_eq!((MAX-2).saturating_add(1), MAX-1);
     }
@@ -1557,9 +1557,9 @@ mod tests {
     #[test]
     fn test_saturating_sub_uint() {
         use uint::MAX;
-        assert_eq!(5u.saturating_sub(3u), 2u);
-        assert_eq!(3u.saturating_sub(5u), 0u);
-        assert_eq!(0u.saturating_sub(1u), 0u);
+        assert_eq!(5_usize.saturating_sub(3_usize), 2_usize);
+        assert_eq!(3_usize.saturating_sub(5_usize), 0_usize);
+        assert_eq!(0_usize.saturating_sub(1_usize), 0_usize);
         assert_eq!((MAX-1).saturating_sub(MAX), 0);
     }
 
@@ -1602,14 +1602,14 @@ mod tests {
 
     #[test]
     fn test_checked_sub() {
-        assert_eq!(5u.checked_sub(0), Some(5));
-        assert_eq!(5u.checked_sub(1), Some(4));
-        assert_eq!(5u.checked_sub(2), Some(3));
-        assert_eq!(5u.checked_sub(3), Some(2));
-        assert_eq!(5u.checked_sub(4), Some(1));
-        assert_eq!(5u.checked_sub(5), Some(0));
-        assert_eq!(5u.checked_sub(6), None);
-        assert_eq!(5u.checked_sub(7), None);
+        assert_eq!(5_usize.checked_sub(0), Some(5));
+        assert_eq!(5_usize.checked_sub(1), Some(4));
+        assert_eq!(5_usize.checked_sub(2), Some(3));
+        assert_eq!(5_usize.checked_sub(3), Some(2));
+        assert_eq!(5_usize.checked_sub(4), Some(1));
+        assert_eq!(5_usize.checked_sub(5), Some(0));
+        assert_eq!(5_usize.checked_sub(6), None);
+        assert_eq!(5_usize.checked_sub(7), None);
     }
 
     #[test]
@@ -1763,7 +1763,7 @@ mod bench {
 
     #[bench]
     fn bench_pow_function(b: &mut Bencher) {
-        let v = (0..1024u).collect::<Vec<_>>();
-        b.iter(|| {v.iter().fold(0u, |old, new| old.pow(*new));});
+        let v = (0..1024).collect::<Vec<_>>();
+        b.iter(|| {v.iter().fold(0, |old, new| old.pow(*new));});
     }
 }

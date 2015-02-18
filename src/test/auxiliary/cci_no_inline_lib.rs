@@ -13,10 +13,10 @@
 
 // same as cci_iter_lib, more-or-less, but not marked inline
 pub fn iter<F>(v: Vec<uint> , mut f: F) where F: FnMut(uint) {
-    let mut i = 0u;
+    let mut i = 0_usize;
     let n = v.len();
     while i < n {
         f(v[i]);
-        i += 1u;
+        i += 1_usize;
     }
 }

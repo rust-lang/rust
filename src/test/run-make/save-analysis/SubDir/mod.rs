@@ -14,7 +14,7 @@ use sub::sub2 as msalias;
 use sub::sub2;
 use std::old_io::stdio::println;
 
-static yy: usize = 25us;
+static yy: usize = 25;
 
 mod sub {
     pub mod sub2 {

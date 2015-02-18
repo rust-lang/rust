@@ -76,7 +76,7 @@ pub fn make_drop_glue_unboxed<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let not_empty = ICmp(bcx,
                                      llvm::IntNE,
                                      len,
-                                     C_uint(ccx, 0us),
+                                     C_uint(ccx, 0_u32),
                                      DebugLoc::None);
                 with_cond(bcx, not_empty, |bcx| {
                     let llalign = C_uint(ccx, machine::llalign_of_min(ccx, llty));
@@ -425,7 +425,8 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
 
     Br(bcx, loop_bcx.llbb, DebugLoc::None);
 
-    let loop_counter = Phi(loop_bcx, bcx.ccx().int_type(), &[C_uint(bcx.ccx(), 0us)], &[bcx.llbb]);
+    let loop_counter = Phi(loop_bcx, bcx.ccx().int_type(),
+                           &[C_uint(bcx.ccx(), 0)], &[bcx.llbb]);
 
     let bcx = loop_bcx;
 

@@ -32,7 +32,7 @@ enum request {
 }
 
 fn server(requests: &Receiver<request>, responses: &Sender<uint>) {
-    let mut count = 0u;
+    let mut count = 0;
     let mut done = false;
     while !done {
         match requests.recv() {
@@ -61,10 +61,10 @@ fn run(args: &[String]) {
     let dur = Duration::span(|| {
         let (to_child, to_parent, from_parent) = p.take().unwrap();
         let mut worker_results = Vec::new();
-        for _ in 0u..workers {
+        for _ in 0..workers {
             let to_child = to_child.clone();
             worker_results.push(thread::spawn(move|| {
-                for _ in 0u..size / workers {
+                for _ in 0..size / workers {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
                     to_child.send(request::bytes(num_bytes)).unwrap();
                 }

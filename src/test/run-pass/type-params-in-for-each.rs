@@ -16,11 +16,11 @@ struct S<T> {
 
 fn range_<F>(lo: uint, hi: uint, mut it: F) where F: FnMut(uint) {
     let mut lo_ = lo;
-    while lo_ < hi { it(lo_); lo_ += 1u; }
+    while lo_ < hi { it(lo_); lo_ += 1_usize; }
 }
 
 fn create_index<T>(_index: Vec<S<T>> , _hash_fn: extern fn(T) -> uint) {
-    range_(0u, 256u, |_i| {
+    range_(0_usize, 256_usize, |_i| {
         let _bucket: Vec<T> = Vec::new();
     })
 }

@@ -77,7 +77,7 @@ fn sort_and_fmt(mm: &HashMap<Vec<u8> , uint>, total: uint) -> String {
 fn find(mm: &HashMap<Vec<u8> , uint>, key: String) -> uint {
    let key = key.into_ascii_lowercase();
    match mm.get(key.as_bytes()) {
-      option::Option::None      => { return 0u; }
+      option::Option::None      => { return 0; }
       option::Option::Some(&num) => { return num; }
    }
 }
@@ -98,15 +98,15 @@ fn update_freq(mm: &mut HashMap<Vec<u8> , uint>, key: &[u8]) {
 fn windows_with_carry<F>(bb: &[u8], nn: uint, mut it: F) -> Vec<u8> where
     F: FnMut(&[u8]),
 {
-   let mut ii = 0u;
+   let mut ii = 0;
 
    let len = bb.len();
-   while ii < len - (nn - 1u) {
+   while ii < len - (nn - 1) {
       it(&bb[ii..ii+nn]);
-      ii += 1u;
+      ii += 1;
    }
 
-   return bb[len - (nn - 1u)..len].to_vec();
+   return bb[len - (nn - 1)..len].to_vec();
 }
 
 fn make_sequence_processor(sz: uint,
@@ -114,7 +114,7 @@ fn make_sequence_processor(sz: uint,
                            to_parent: &Sender<String>) {
    let mut freqs: HashMap<Vec<u8>, uint> = HashMap::new();
    let mut carry = Vec::new();
-   let mut total: uint = 0u;
+   let mut total: uint = 0;
 
    let mut line: Vec<u8>;
 
@@ -126,20 +126,20 @@ fn make_sequence_processor(sz: uint,
        carry.push_all(&line);
        carry = windows_with_carry(&carry, sz, |window| {
            update_freq(&mut freqs, window);
-           total += 1u;
+           total += 1;
        });
    }
 
    let buffer = match sz {
-       1u => { sort_and_fmt(&freqs, total) }
-       2u => { sort_and_fmt(&freqs, total) }
-       3u => { format!("{}\t{}", find(&freqs, "GGT".to_string()), "GGT") }
-       4u => { format!("{}\t{}", find(&freqs, "GGTA".to_string()), "GGTA") }
-       6u => { format!("{}\t{}", find(&freqs, "GGTATT".to_string()), "GGTATT") }
-      12u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_string()), "GGTATTTTAATT") }
-      18u => { format!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_string()),
+       1 => { sort_and_fmt(&freqs, total) }
+       2 => { sort_and_fmt(&freqs, total) }
+       3 => { format!("{}\t{}", find(&freqs, "GGT".to_string()), "GGT") }
+       4 => { format!("{}\t{}", find(&freqs, "GGTA".to_string()), "GGTA") }
+       6 => { format!("{}\t{}", find(&freqs, "GGTATT".to_string()), "GGTATT") }
+      12 => { format!("{}\t{}", find(&freqs, "GGTATTTTAATT".to_string()), "GGTATTTTAATT") }
+      18 => { format!("{}\t{}", find(&freqs, "GGTATTTTAATTTATAGT".to_string()),
                        "GGTATTTTAATTTATAGT") }
-        _ => { "".to_string() }
+       _ => { "".to_string() }
    };
 
     to_parent.send(buffer).unwrap();
@@ -158,7 +158,7 @@ fn main() {
     let mut rdr = BufferedReader::new(rdr);
 
     // initialize each sequence sorter
-    let sizes = vec!(1u,2,3,4,6,12,18);
+    let sizes: Vec<usize> = vec!(1,2,3,4,6,12,18);
     let mut streams = (0..sizes.len()).map(|_| {
         Some(channel::<String>())
     }).collect::<Vec<_>>();
@@ -177,7 +177,7 @@ fn main() {
         });
 
         to_child
-    }).collect::<Vec<Sender<Vec<u8> >> >();
+    }).collect::<Vec<Sender<Vec<u8>>>>();
 
 
    // latch stores true after we've started
@@ -187,7 +187,7 @@ fn main() {
    for line in rdr.lines() {
        let line = line.unwrap().trim().to_string();
 
-       if line.len() == 0u { continue; }
+       if line.len() == 0 { continue; }
 
        match (line.as_bytes()[0] as char, proc_mode) {
 

@@ -14,7 +14,7 @@ pub fn main() {
     // The expected arm type `Option<T>` has one type parameter, while
     // the actual arm `Result<T, E>` has two. typeck should not be
     // tricked into looking up a non-existing second type parameter.
-    let _x: usize = match Some(1us) {
+    let _x: usize = match Some(1_usize) {
         Ok(u) => u,
         //~^ ERROR mismatched types
         //~| expected `core::option::Option<usize>`

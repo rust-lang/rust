@@ -503,7 +503,7 @@ mod tests {
 
         thread::spawn(move|| {
             let mut lock = arc2.write().unwrap();
-            for _ in 0u..10 {
+            for _ in 0..10 {
                 let tmp = *lock;
                 *lock = -1;
                 thread::yield_now();
@@ -514,7 +514,7 @@ mod tests {
 
         // Readers try to catch the writer in the act
         let mut children = Vec::new();
-        for _ in 0u..5 {
+        for _ in 0..5 {
             let arc3 = arc.clone();
             children.push(thread::spawn(move|| {
                 let lock = arc3.read().unwrap();

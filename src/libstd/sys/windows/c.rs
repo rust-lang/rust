@@ -105,7 +105,7 @@ pub struct WSAPROTOCOL_INFO {
     pub iSecurityScheme: libc::c_int,
     pub dwMessageSize: libc::DWORD,
     pub dwProviderReserved: libc::DWORD,
-    pub szProtocol: [u16; (WSAPROTOCOL_LEN as usize) + 1us],
+    pub szProtocol: [u16; (WSAPROTOCOL_LEN as usize) + 1],
 }
 
 pub type LPWSAPROTOCOL_INFO = *mut WSAPROTOCOL_INFO;

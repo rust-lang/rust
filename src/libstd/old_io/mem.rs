@@ -720,7 +720,7 @@ mod test {
             let buf = [5 as u8; 100].to_vec();
             {
                 let mut rdr = MemReader::new(buf);
-                for _i in 0u..10 {
+                for _i in 0..10 {
                     let mut buf = [0 as u8; 10];
                     rdr.read(&mut buf).unwrap();
                     assert_eq!(buf, [5; 10]);
@@ -735,7 +735,7 @@ mod test {
             let mut buf = [0 as u8; 100];
             {
                 let mut wr = BufWriter::new(&mut buf);
-                for _i in 0u..10 {
+                for _i in 0..10 {
                     wr.write(&[5; 10]).unwrap();
                 }
             }
@@ -749,7 +749,7 @@ mod test {
             let buf = [5 as u8; 100];
             {
                 let mut rdr = BufReader::new(&buf);
-                for _i in 0u..10 {
+                for _i in 0..10 {
                     let mut buf = [0 as u8; 10];
                     rdr.read(&mut buf).unwrap();
                     assert_eq!(buf, [5; 10]);

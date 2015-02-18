@@ -41,7 +41,7 @@ fn eventual_timeout() {
     rx1.recv().unwrap();
 
     let mut v = Vec::new();
-    for _ in 0u..10000 {
+    for _ in 0_usize..10000 {
         match TcpStream::connect_timeout(addr, Duration::milliseconds(100)) {
             Ok(e) => v.push(e),
             Err(ref e) if e.kind == old_io::TimedOut => return,

@@ -52,7 +52,7 @@ fn main() {
     let addr = rx.recv().unwrap();
 
     let (tx, rx) = channel();
-    for _ in 0u..1000 {
+    for _ in 0_usize..1000 {
         let tx = tx.clone();
         Builder::new().stack_size(64 * 1024).spawn(move|| {
             match TcpStream::connect(addr) {
@@ -71,7 +71,7 @@ fn main() {
     // Wait for all clients to exit, but don't wait for the server to exit. The
     // server just runs infinitely.
     drop(tx);
-    for _ in 0u..1000 {
+    for _ in 0_usize..1000 {
         rx.recv().unwrap();
     }
     unsafe { libc::exit(0) }

@@ -17,8 +17,8 @@ fn each<'a,T,F:FnMut(&'a T)>(x: &'a [T], mut f: F) {
 }
 
 fn main() {
-    let mut sum = 0u;
-    let elems = [ 1u, 2, 3, 4, 5 ];
+    let mut sum = 0_usize;
+    let elems = [ 1_usize, 2, 3, 4, 5 ];
     each(&elems, |val: &uint| sum += *val);
     assert_eq!(sum, 15);
 }

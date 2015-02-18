@@ -70,7 +70,7 @@ fn main() {
     assert_eq!(match_vecs_snoc::<uint>(&[], &[]), "both empty");
     assert_eq!(match_vecs_snoc(&[1, 2, 3], &[]), "one empty");
 
-    assert_eq!(match_nested_vecs_cons(None, Ok::<&[_], ()>(&[4u, 2u])),
+    assert_eq!(match_nested_vecs_cons(None, Ok::<&[_], ()>(&[4_usize, 2_usize])),
                "None, Ok(at least two elements)");
     assert_eq!(match_nested_vecs_cons::<uint>(None, Err(())), "None, Ok(less than one element)");
     assert_eq!(match_nested_vecs_cons::<bool>(Some::<&[_]>(&[]), Ok::<&[_], ()>(&[])),
@@ -79,7 +79,7 @@ fn main() {
     assert_eq!(match_nested_vecs_cons(Some::<&[_]>(&[(42, ())]), Ok::<&[_], ()>(&[(1, ())])),
                "Some(non-empty), any");
 
-    assert_eq!(match_nested_vecs_snoc(None, Ok::<&[_], ()>(&[4u, 2u])),
+    assert_eq!(match_nested_vecs_snoc(None, Ok::<&[_], ()>(&[4_usize, 2_usize])),
                "None, Ok(at least two elements)");
     assert_eq!(match_nested_vecs_snoc::<uint>(None, Err(())), "None, Ok(less than one element)");
     assert_eq!(match_nested_vecs_snoc::<bool>(Some::<&[_]>(&[]), Ok::<&[_], ()>(&[])),
