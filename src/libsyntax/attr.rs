@@ -26,11 +26,11 @@ use parse::token;
 use ptr::P;
 
 use std::cell::{RefCell, Cell};
-use std::collections::BitvSet;
+use std::collections::BitSet;
 use std::collections::HashSet;
 use std::fmt;
 
-thread_local! { static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()) }
+thread_local! { static USED_ATTRS: RefCell<BitSet> = RefCell::new(BitSet::new()) }
 
 pub fn mark_used(attr: &Attribute) {
     let AttrId(id) = attr.node.id;
