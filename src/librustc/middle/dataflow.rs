@@ -11,7 +11,7 @@
 
 //! A module for propagating forward dataflow information. The analysis
 //! assumes that the items to be propagated can be represented as bits
-//! and thus uses bitvectors. Your job is simply to specify the so-called
+//! and thus uses bit_vecectors. Your job is simply to specify the so-called
 //! GEN and KILL bits for each expression.
 
 pub use self::EntryOrExit::*;
@@ -486,7 +486,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
 
             let (start, end) = self.dfcx.compute_id_range(node_index);
 
-            // Initialize local bitvector with state on-entry.
+            // Initialize local bit_vecector with state on-entry.
             in_out.clone_from_slice(&self.dfcx.on_entry[start.. end]);
 
             // Compute state on-exit by applying transfer function to
