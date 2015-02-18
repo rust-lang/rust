@@ -17,11 +17,11 @@
 // A var moved into a proc, that has a mutable loan path should
 // not trigger a misleading unused_mut warning.
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
     let mut stdin = std::old_io::stdin();
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         let _ = stdin.read_to_end();
     });
 }

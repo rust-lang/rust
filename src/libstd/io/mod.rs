@@ -443,9 +443,8 @@ pub trait Seek {
     /// A seek beyond the end of a stream is allowed, but seeking before offset
     /// 0 is an error.
     ///
-    /// Seeking past the end of the stream does not modify the underlying
-    /// stream, but the next write may cause the previous data to be filled in
-    /// with a bit pattern.
+    /// The behavior when seeking past the end of the stream is implementation
+    /// defined.
     ///
     /// This method returns the new position within the stream if the seek
     /// operation completed successfully.

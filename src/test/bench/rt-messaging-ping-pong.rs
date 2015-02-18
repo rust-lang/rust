@@ -18,24 +18,24 @@
 // except according to those terms.
 
 use std::sync::mpsc::channel;
-use std::os;
-use std::thread::Thread;
+use std::env;
+use std::thread;
 
 // This is a simple bench that creates M pairs of tasks. These
 // tasks ping-pong back and forth over a pair of streams. This is a
 // canonical message-passing benchmark as it heavily strains message
 // passing and almost nothing else.
 
-fn ping_pong_bench(n: uint, m: uint) {
+fn ping_pong_bench(n: usize, m: usize) {
 
     // Create pairs of tasks that pingpong back and forth.
-    fn run_pair(n: uint) {
+    fn run_pair(n: usize) {
         // Create a channel: A->B
         let (atx, arx) = channel();
         // Create a channel: B->A
         let (btx, brx) = channel();
 
-        let guard_a = Thread::scoped(move|| {
+        let guard_a = thread::spawn(move|| {
             let (tx, rx) = (atx, brx);
             for _ in 0..n {
                 tx.send(()).unwrap();
@@ -43,7 +43,7 @@ fn ping_pong_bench(n: uint, m: uint) {
             }
         });
 
-        let guard_b = Thread::scoped(move|| {
+        let guard_b = thread::spawn(move|| {
             let (tx, rx) = (btx, arx);
             for _ in 0..n {
                 rx.recv().unwrap();
@@ -63,19 +63,13 @@ fn ping_pong_bench(n: uint, m: uint) {
 
 
 fn main() {
-
-    let args = os::args();
-    let args = args;
-    let n = if args.len() == 3 {
-        args[1].parse::<uint>().unwrap()
+    let mut args = env::args();
+    let (n, m) = if args.len() == 3 {
+        let n = args.nth(1).unwrap().parse::<usize>().unwrap();
+        let m = args.next().unwrap().parse::<usize>().unwrap();
+        (n, m)
     } else {
-        10000
-    };
-
-    let m = if args.len() == 3 {
-        args[2].parse::<uint>().unwrap()
-    } else {
-        4
+        (10000, 4)
     };
 
     ping_pong_bench(n, m);

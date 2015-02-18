@@ -78,12 +78,12 @@
 //! use std::cell::RefCell;
 //!
 //! struct Graph {
-//!     edges: Vec<(uint, uint)>,
-//!     span_tree_cache: RefCell<Option<Vec<(uint, uint)>>>
+//!     edges: Vec<(i32, i32)>,
+//!     span_tree_cache: RefCell<Option<Vec<(i32, i32)>>>
 //! }
 //!
 //! impl Graph {
-//!     fn minimum_spanning_tree(&self) -> Vec<(uint, uint)> {
+//!     fn minimum_spanning_tree(&self) -> Vec<(i32, i32)> {
 //!         // Create a new scope to contain the lifetime of the
 //!         // dynamic borrow
 //!         {
@@ -104,7 +104,7 @@
 //!         // This is the major hazard of using `RefCell`.
 //!         self.minimum_spanning_tree()
 //!     }
-//! #   fn calc_span_tree(&self) -> Vec<(uint, uint)> { vec![] }
+//! #   fn calc_span_tree(&self) -> Vec<(i32, i32)> { vec![] }
 //! }
 //! ```
 //!
@@ -125,7 +125,7 @@
 //!
 //! struct RcBox<T> {
 //!     value: T,
-//!     refcount: Cell<uint>
+//!     refcount: Cell<usize>
 //! }
 //!
 //! impl<T> Clone for Rc<T> {
@@ -279,8 +279,8 @@ pub enum BorrowState {
 }
 
 // Values [1, MAX-1] represent the number of `Ref` active
-// (will not outgrow its range since `uint` is the size of the address space)
-type BorrowFlag = uint;
+// (will not outgrow its range since `usize` is the size of the address space)
+type BorrowFlag = usize;
 const UNUSED: BorrowFlag = 0;
 const WRITING: BorrowFlag = -1;
 
@@ -375,9 +375,9 @@ impl<T> RefCell<T> {
     ///
     /// ```
     /// use std::cell::RefCell;
-    /// use std::thread::Thread;
+    /// use std::thread;
     ///
-    /// let result = Thread::scoped(move || {
+    /// let result = thread::spawn(move || {
     ///    let c = RefCell::new(5);
     ///    let m = c.borrow_mut();
     ///
@@ -436,9 +436,9 @@ impl<T> RefCell<T> {
     ///
     /// ```
     /// use std::cell::RefCell;
-    /// use std::thread::Thread;
+    /// use std::thread;
     ///
-    /// let result = Thread::scoped(move || {
+    /// let result = thread::spawn(move || {
     ///    let c = RefCell::new(5);
     ///    let m = c.borrow_mut();
     ///
@@ -649,8 +649,7 @@ impl<'b, T> DerefMut for RefMut<'b, T> {
 ///
 /// **NOTE:** `UnsafeCell<T>`'s fields are public to allow static initializers. It is not
 /// recommended to access its fields directly, `get` should be used instead.
-#[cfg_attr(stage0, lang="unsafe")]  // NOTE: remove after next snapshot
-#[cfg_attr(not(stage0), lang="unsafe_cell")]
+#[lang="unsafe_cell"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct UnsafeCell<T> {
     /// Wrapped value

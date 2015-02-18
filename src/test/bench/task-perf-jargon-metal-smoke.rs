@@ -18,17 +18,16 @@
 // ignore-pretty very bad with line comments
 
 use std::sync::mpsc::{channel, Sender};
-use std::os;
 use std::env;
-use std::thread::Thread;
+use std::thread;
 
 fn child_generation(gens_left: uint, tx: Sender<()>) {
     // This used to be O(n^2) in the number of generations that ever existed.
     // With this code, only as many generations are alive at a time as tasks
     // alive at a time,
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         if gens_left & 1 == 1 {
-            Thread::yield_now(); // shake things up a bit
+            thread::yield_now(); // shake things up a bit
         }
         if gens_left > 0 {
             child_generation(gens_left - 1, tx); // recurse
@@ -39,13 +38,13 @@ fn child_generation(gens_left: uint, tx: Sender<()>) {
 }
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "100000".to_string())
     } else if args.len() <= 1 {
         vec!("".to_string(), "100".to_string())
     } else {
-        args.clone().into_iter().collect()
+        args.collect()
     };
 
     let (tx, rx) = channel();

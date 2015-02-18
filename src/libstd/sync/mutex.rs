@@ -47,7 +47,7 @@ use sys_common::mutex as sys;
 ///
 /// ```rust
 /// use std::sync::{Arc, Mutex};
-/// use std::thread::Thread;
+/// use std::thread;
 /// use std::sync::mpsc::channel;
 ///
 /// const N: uint = 10;
@@ -62,7 +62,7 @@ use sys_common::mutex as sys;
 /// let (tx, rx) = channel();
 /// for _ in 0u..10 {
 ///     let (data, tx) = (data.clone(), tx.clone());
-///     Thread::spawn(move || {
+///     thread::spawn(move || {
 ///         // The shared static can only be accessed once the lock is held.
 ///         // Our non-atomic increment is safe because we're the only thread
 ///         // which can access the shared state when the lock is held.
@@ -85,12 +85,12 @@ use sys_common::mutex as sys;
 ///
 /// ```rust
 /// use std::sync::{Arc, Mutex};
-/// use std::thread::Thread;
+/// use std::thread;
 ///
 /// let lock = Arc::new(Mutex::new(0u));
 /// let lock2 = lock.clone();
 ///
-/// let _ = Thread::scoped(move || -> () {
+/// let _ = thread::spawn(move || -> () {
 ///     // This thread will acquire the mutex first, unwrapping the result of
 ///     // `lock` because the lock has not been poisoned.
 ///     let _lock = lock2.lock().unwrap();
@@ -120,9 +120,9 @@ pub struct Mutex<T> {
     data: UnsafeCell<T>,
 }
 
-unsafe impl<T:Send> Send for Mutex<T> { }
+unsafe impl<T: Send + 'static> Send for Mutex<T> { }
 
-unsafe impl<T:Send> Sync for Mutex<T> { }
+unsafe impl<T: Send + 'static> Sync for Mutex<T> { }
 
 /// The static mutex type is provided to allow for static allocation of mutexes.
 ///
@@ -180,7 +180,7 @@ pub const MUTEX_INIT: StaticMutex = StaticMutex {
     poison: poison::FLAG_INIT,
 };
 
-impl<T: Send> Mutex<T> {
+impl<T: Send + 'static> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
@@ -243,7 +243,7 @@ impl<T: Send> Mutex<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send> Drop for Mutex<T> {
+impl<T: Send + 'static> Drop for Mutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
         // this mutex (it's up to the user to arrange for a mutex to get
@@ -350,7 +350,7 @@ mod test {
 
     use sync::mpsc::channel;
     use sync::{Arc, Mutex, StaticMutex, MUTEX_INIT, Condvar};
-    use thread::Thread;
+    use thread;
 
     struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
 
@@ -393,9 +393,9 @@ mod test {
         let (tx, rx) = channel();
         for _ in 0..K {
             let tx2 = tx.clone();
-            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
+            thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
             let tx2 = tx.clone();
-            Thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
+            thread::spawn(move|| { inc(); tx2.send(()).unwrap(); });
         }
 
         drop(tx);
@@ -419,7 +419,7 @@ mod test {
         let packet = Packet(Arc::new((Mutex::new(false), Condvar::new())));
         let packet2 = Packet(packet.0.clone());
         let (tx, rx) = channel();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             // wait until parent gets in
             rx.recv().unwrap();
             let &(ref lock, ref cvar) = &*packet2.0;
@@ -443,7 +443,7 @@ mod test {
         let packet2 = Packet(packet.0.clone());
         let (tx, rx) = channel();
 
-        let _t = Thread::spawn(move || -> () {
+        let _t = thread::spawn(move || -> () {
             rx.recv().unwrap();
             let &(ref lock, ref cvar) = &*packet2.0;
             let _g = lock.lock().unwrap();
@@ -471,7 +471,7 @@ mod test {
         let arc = Arc::new(Mutex::new(1));
         assert!(!arc.is_poisoned());
         let arc2 = arc.clone();
-        let _ = Thread::scoped(move|| {
+        let _ = thread::spawn(move|| {
             let lock = arc2.lock().unwrap();
             assert_eq!(*lock, 2);
         }).join();
@@ -486,7 +486,7 @@ mod test {
         let arc = Arc::new(Mutex::new(1));
         let arc2 = Arc::new(Mutex::new(arc));
         let (tx, rx) = channel();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let lock = arc2.lock().unwrap();
             let lock2 = lock.lock().unwrap();
             assert_eq!(*lock2, 1);
@@ -499,7 +499,7 @@ mod test {
     fn test_mutex_arc_access_in_unwind() {
         let arc = Arc::new(Mutex::new(1));
         let arc2 = arc.clone();
-        let _ = Thread::scoped(move|| -> () {
+        let _ = thread::spawn(move|| -> () {
             struct Unwinder {
                 i: Arc<Mutex<int>>,
             }

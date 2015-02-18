@@ -14,7 +14,7 @@
   Arnold.
  */
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 type ctx = Sender<int>;
@@ -25,6 +25,6 @@ fn iotask(_tx: &ctx, ip: String) {
 
 pub fn main() {
     let (tx, _rx) = channel::<int>();
-    let t = Thread::scoped(move|| iotask(&tx, "localhost".to_string()) );
+    let t = thread::spawn(move|| iotask(&tx, "localhost".to_string()) );
     t.join().ok().unwrap();
 }

@@ -7,9 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+
 #![deny(unused_attributes)]
 #![allow(dead_code, unused_imports)]
-#![feature(core)]
+#![feature(core, custom_attribute)]
 
 #![foo] //~ ERROR unused attribute
 

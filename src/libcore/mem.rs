@@ -43,7 +43,7 @@ pub use intrinsics::forget;
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn size_of<T>() -> uint {
+pub fn size_of<T>() -> usize {
     unsafe { intrinsics::size_of::<T>() }
 }
 
@@ -58,7 +58,7 @@ pub fn size_of<T>() -> uint {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn size_of_val<T>(_val: &T) -> uint {
+pub fn size_of_val<T>(_val: &T) -> usize {
     size_of::<T>()
 }
 
@@ -75,7 +75,7 @@ pub fn size_of_val<T>(_val: &T) -> uint {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn min_align_of<T>() -> uint {
+pub fn min_align_of<T>() -> usize {
     unsafe { intrinsics::min_align_of::<T>() }
 }
 
@@ -90,7 +90,7 @@ pub fn min_align_of<T>() -> uint {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn min_align_of_val<T>(_val: &T) -> uint {
+pub fn min_align_of_val<T>(_val: &T) -> usize {
     min_align_of::<T>()
 }
 
@@ -108,7 +108,7 @@ pub fn min_align_of_val<T>(_val: &T) -> uint {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn align_of<T>() -> uint {
+pub fn align_of<T>() -> usize {
     // We use the preferred alignment as the default alignment for a type. This
     // appears to be what clang migrated towards as well:
     //
@@ -130,7 +130,7 @@ pub fn align_of<T>() -> uint {
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub fn align_of_val<T>(_val: &T) -> uint {
+pub fn align_of_val<T>(_val: &T) -> usize {
     align_of::<T>()
 }
 
@@ -150,7 +150,7 @@ pub fn align_of_val<T>(_val: &T) -> uint {
 /// ```
 /// use std::mem;
 ///
-/// let x: int = unsafe { mem::zeroed() };
+/// let x: i32 = unsafe { mem::zeroed() };
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -171,7 +171,7 @@ pub unsafe fn zeroed<T>() -> T {
 /// ```
 /// use std::mem;
 ///
-/// let x: int = unsafe { mem::uninitialized() };
+/// let x: i32 = unsafe { mem::uninitialized() };
 /// ```
 #[inline]
 #[stable(feature = "rust1", since = "1.0.0")]

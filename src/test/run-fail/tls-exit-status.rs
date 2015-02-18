@@ -11,9 +11,9 @@
 // error-pattern:nonzero
 // exec-env:RUST_NEWRT=1
 
-use std::os;
+use std::env;
 
 fn main() {
-    os::args();
+    env::args();
     panic!("please have a nonzero exit status");
 }

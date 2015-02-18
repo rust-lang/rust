@@ -31,7 +31,7 @@ use sync::mpsc::mpsc_queue as mpsc;
 use sync::mpsc::select::StartResult::*;
 use sync::mpsc::select::StartResult;
 use sync::{Mutex, MutexGuard};
-use thread::Thread;
+use thread;
 
 const DISCONNECTED: isize = isize::MIN;
 const FUDGE: isize = 1024;
@@ -64,7 +64,7 @@ pub enum Failure {
     Disconnected,
 }
 
-impl<T: Send> Packet<T> {
+impl<T: Send + 'static> Packet<T> {
     // Creation of a packet *must* be followed by a call to postinit_lock
     // and later by inherit_blocker
     pub fn new() -> Packet<T> {
@@ -194,7 +194,7 @@ impl<T: Send> Packet<T> {
                             match self.queue.pop() {
                                 mpsc::Data(..) => {}
                                 mpsc::Empty => break,
-                                mpsc::Inconsistent => Thread::yield_now(),
+                                mpsc::Inconsistent => thread::yield_now(),
                             }
                         }
                         // maybe we're done, if we're not the last ones
@@ -283,7 +283,7 @@ impl<T: Send> Packet<T> {
             mpsc::Inconsistent => {
                 let data;
                 loop {
-                    Thread::yield_now();
+                    thread::yield_now();
                     match self.queue.pop() {
                         mpsc::Data(t) => { data = t; break }
                         mpsc::Empty => panic!("inconsistent => empty"),
@@ -460,7 +460,7 @@ impl<T: Send> Packet<T> {
                 drop(self.take_to_wake());
             } else {
                 while self.to_wake.load(Ordering::SeqCst) != 0 {
-                    Thread::yield_now();
+                    thread::yield_now();
                 }
             }
             // if the number of steals is -1, it was the pre-emptive -1 steal
@@ -474,7 +474,7 @@ impl<T: Send> Packet<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Packet<T> {
+impl<T: Send + 'static> Drop for Packet<T> {
     fn drop(&mut self) {
         // Note that this load is not only an assert for correctness about
         // disconnection, but also a proper fence before the read of

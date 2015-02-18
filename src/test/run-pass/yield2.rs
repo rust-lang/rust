@@ -8,9 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
     let mut i: int = 0;
-    while i < 100 { i = i + 1; println!("{}", i); Thread::yield_now(); }
+    while i < 100 { i = i + 1; println!("{}", i); thread::yield_now(); }
 }

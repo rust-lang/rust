@@ -1372,21 +1372,7 @@ enum VacantEntryState<K, V, M> {
     NoElem(EmptyBucket<K, V, M>),
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
-{
-    type IntoIter = Iter<'a, K, V>;
-
-    fn into_iter(self) -> Iter<'a, K, V> {
-        self.iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H>,
@@ -1400,21 +1386,7 @@ impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
-{
-    type IntoIter = IterMut<'a, K, V>;
-
-    fn into_iter(mut self) -> IterMut<'a, K, V> {
-        self.iter_mut()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H>,
@@ -1428,21 +1400,7 @@ impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
-{
-    type IntoIter = IntoIter<K, V>;
-
-    fn into_iter(self) -> IntoIter<K, V> {
-        self.into_iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
     where K: Eq + Hash<H>,
           S: HashState<Hasher=H>,

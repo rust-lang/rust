@@ -257,17 +257,7 @@ impl<E:CLike> FromIterator<E> for EnumSet<E> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
-    type IntoIter = Iter<E>;
-
-    fn into_iter(self) -> Iter<E> {
-        self.iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
     type Item = E;
     type IntoIter = Iter<E>;

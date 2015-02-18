@@ -18,7 +18,7 @@ use std::old_io::stdio::StdReader;
 use std::old_io;
 use std::iter::repeat;
 use std::num::Int;
-use std::os;
+use std::env;
 
 // Computes a single solution to a given 9x9 sudoku
 //
@@ -269,8 +269,8 @@ fn check_DEFAULT_SUDOKU_solution() {
 }
 
 fn main() {
-    let args        = os::args();
-    let use_default = args.len() == 1u;
+    let args        = env::args();
+    let use_default = args.len() == 1;
     let mut sudoku = if use_default {
         Sudoku::from_vec(&DEFAULT_SUDOKU)
     } else {

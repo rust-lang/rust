@@ -5734,10 +5734,3 @@ pub mod funcs {
 pub fn issue_14344_workaround() {} // FIXME #14344 force linkage to happen correctly
 
 #[test] fn work_on_windows() { } // FIXME #10872 needed for a happy windows
-
-// NOTE: remove after next snapshot
-#[doc(hidden)]
-#[cfg(all(stage0, not(test)))]
-mod std {
-    pub use core::marker;
-}

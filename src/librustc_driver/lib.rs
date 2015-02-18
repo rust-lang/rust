@@ -28,16 +28,15 @@
 #![feature(core)]
 #![feature(env)]
 #![feature(int_uint)]
-#![feature(io)]
+#![feature(old_io)]
 #![feature(libc)]
 #![feature(os)]
-#![feature(path)]
+#![feature(old_path)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
 #![feature(unsafe_destructor)]
 #![feature(staged_api)]
-#![feature(std_misc)]
 #![feature(unicode)]
 
 extern crate arena;
@@ -73,7 +72,7 @@ use rustc::metadata;
 use rustc::util::common::time;
 
 use std::cmp::Ordering::Equal;
-use std::old_io;
+use std::old_io::{self, stdio};
 use std::iter::repeat;
 use std::env;
 use std::sync::mpsc::channel;
@@ -94,7 +93,7 @@ pub mod pretty;
 
 
 static BUG_REPORT_URL: &'static str =
-    "http://doc.rust-lang.org/complement-bugreport.html";
+    "https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports";
 
 
 pub fn run(args: Vec<String>) -> int {
@@ -765,7 +764,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor<F:FnOnce()+Send>(f: F) {
+pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
     static STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
 
     let (tx, rx) = channel();
@@ -780,7 +779,7 @@ pub fn monitor<F:FnOnce()+Send>(f: F) {
         cfg = cfg.stack_size(STACK_SIZE);
     }
 
-    match cfg.scoped(move || { std::old_io::stdio::set_stderr(box w); f() }).join() {
+    match cfg.spawn(move || { stdio::set_stderr(box w); f() }).unwrap().join() {
         Ok(()) => { /* fallthrough */ }
         Err(value) => {
             // Thread panicked without emitting a fatal diagnostic

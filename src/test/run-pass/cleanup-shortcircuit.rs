@@ -20,11 +20,10 @@
 
 // Test that cleanups for the RHS of shortcircuiting operators work.
 
-use std::os;
+use std::env;
 
 pub fn main() {
-    let args = os::args();
-    let args = args;
+    let args: Vec<String> = env::args().collect();
 
     // Here, the rvalue `"signal".to_string()` requires cleanup. Older versions
     // of the code had a problem that the cleanup scope for this

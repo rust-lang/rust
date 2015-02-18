@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+#![feature(custom_attribute)]
+
 macro_rules! test { ($nm:ident,
                      #[$a:meta],
                      $i:item) => (mod $nm { #[$a] $i }); }

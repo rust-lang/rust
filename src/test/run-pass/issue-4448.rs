@@ -9,12 +9,12 @@
 // except according to those terms.
 
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
     let (tx, rx) = channel::<&'static str>();
 
-    let t = Thread::scoped(move|| {
+    let t = thread::spawn(move|| {
         assert_eq!(rx.recv().unwrap(), "hello, world");
     });
 

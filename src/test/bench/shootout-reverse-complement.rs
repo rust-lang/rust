@@ -47,7 +47,7 @@ extern crate libc;
 use std::old_io::stdio::{stdin_raw, stdout_raw};
 use std::old_io::{IoResult, EndOfFile};
 use std::ptr::{copy_memory, Unique};
-use std::thread::Thread;
+use std::thread;
 
 struct Tables {
     table8: [u8;1 << 8],
@@ -229,21 +229,12 @@ unsafe impl<T: 'static> Send for Racy<T> {}
 
 /// Executes a closure in parallel over the given iterator over mutable slice.
 /// The closure `f` is run in parallel with an element of `iter`.
-fn parallel<'a, I, T, F>(iter: I, f: F)
-        where T: 'a+Send + Sync,
-              I: Iterator<Item=&'a mut [T]>,
-              F: Fn(&mut [T]) + Sync {
-    use std::mem;
-    use std::raw::Repr;
-
-    iter.map(|chunk| {
-        // Need to convert `f` and `chunk` to something that can cross the task
-        // boundary.
-        let f = Racy(&f as *const F as *const uint);
-        let raw = Racy(chunk.repr());
-        Thread::scoped(move|| {
-            let f = f.0 as *const F;
-            unsafe { (*f)(mem::transmute(raw.0)) }
+fn parallel<'a, I: Iterator, F>(iter: I, ref f: F)
+        where I::Item: Send + 'a,
+              F: Fn(I::Item) + Sync + 'a {
+    iter.map(|x| {
+        thread::scoped(move|| {
+            f(x)
         })
     }).collect::<Vec<_>>();
 }

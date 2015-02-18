@@ -21,14 +21,13 @@
 extern crate getopts;
 
 use std::sync::mpsc::{channel, Sender};
-use std::os;
 use std::env;
 use std::result::Result::{Ok, Err};
-use std::thread::Thread;
+use std::thread;
 use std::time::Duration;
 
-fn fib(n: int) -> int {
-    fn pfib(tx: &Sender<int>, n: int) {
+fn fib(n: isize) -> isize {
+    fn pfib(tx: &Sender<isize>, n: isize) {
         if n == 0 {
             tx.send(0).unwrap();
         } else if n <= 2 {
@@ -36,15 +35,15 @@ fn fib(n: int) -> int {
         } else {
             let (tx1, rx) = channel();
             let tx2 = tx1.clone();
-            Thread::spawn(move|| pfib(&tx2, n - 1));
+            thread::spawn(move|| pfib(&tx2, n - 1));
             let tx2 = tx1.clone();
-            Thread::spawn(move|| pfib(&tx2, n - 2));
+            thread::spawn(move|| pfib(&tx2, n - 2));
             tx.send(rx.recv().unwrap() + rx.recv().unwrap());
         }
     }
 
     let (tx, rx) = channel();
-    Thread::spawn(move|| pfib(&tx, n) );
+    thread::spawn(move|| pfib(&tx, n) );
     rx.recv().unwrap()
 }
 
@@ -66,7 +65,7 @@ fn parse_opts(argv: Vec<String> ) -> Config {
     }
 }
 
-fn stress_task(id: int) {
+fn stress_task(id: isize) {
     let mut i = 0;
     loop {
         let n = 15;
@@ -79,7 +78,7 @@ fn stress_task(id: int) {
 fn stress(num_tasks: int) {
     let mut results = Vec::new();
     for i in 0..num_tasks {
-        results.push(Thread::scoped(move|| {
+        results.push(thread::spawn(move|| {
             stress_task(i);
         }));
     }
@@ -89,13 +88,13 @@ fn stress(num_tasks: int) {
 }
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "20".to_string())
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         vec!("".to_string(), "8".to_string())
     } else {
-        args.into_iter().map(|x| x.to_string()).collect()
+        args.map(|x| x.to_string()).collect()
     };
 
     let opts = parse_opts(args.clone());
@@ -103,12 +102,12 @@ fn main() {
     if opts.stress {
         stress(2);
     } else {
-        let max = args[1].parse::<int>().unwrap();
+        let max = args[1].parse::<isize>().unwrap();
 
         let num_trials = 10;
 
         for n in 1..max + 1 {
-            for _ in 0u..num_trials {
+            for _ in 0..num_trials {
                 let mut fibn = None;
                 let dur = Duration::span(|| fibn = Some(fib(n)));
                 let fibn = fibn.unwrap();

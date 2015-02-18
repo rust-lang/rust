@@ -322,8 +322,8 @@ The `ordering` variable has the type `Ordering`, and so contains one of the
 three values. We then do a bunch of `if`/`else` comparisons to check which
 one it is.
 
-This `Ordering::Greater` notation is too long. Lets use `use` to import can
-the `enum` variants instead. This will avoid full scoping:
+This `Ordering::Greater` notation is too long. Let's use `use` to import the
+`enum` variants instead. This will avoid full scoping:
 
 ```{rust}
 use std::cmp::Ordering::{self, Equal, Less, Greater};

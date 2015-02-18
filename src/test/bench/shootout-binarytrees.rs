@@ -41,7 +41,7 @@
 extern crate arena;
 
 use std::iter::range_step;
-use std::thread::{Thread, JoinGuard};
+use std::thread;
 use arena::TypedArena;
 
 struct Tree<'a> {
@@ -84,14 +84,13 @@ fn inner(depth: i32, iterations: i32) -> String {
 }
 
 fn main() {
-    let args = std::os::args();
-    let args = args;
+    let mut args = std::env::args();
     let n = if std::env::var_os("RUST_BENCH").is_some() {
         17
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         8
     } else {
-        args[1].parse().unwrap()
+        args.nth(1).unwrap().parse().unwrap()
     };
     let min_depth = 4;
     let max_depth = if min_depth + 2 > n {min_depth + 2} else {n};
@@ -111,11 +110,11 @@ fn main() {
     let messages = range_step(min_depth, max_depth + 1, 2).map(|depth| {
         use std::num::Int;
         let iterations = 2.pow((max_depth - depth + min_depth) as usize);
-        Thread::scoped(move || inner(depth, iterations))
+        thread::scoped(move || inner(depth, iterations))
     }).collect::<Vec<_>>();
 
     for message in messages {
-        println!("{}", message.join().ok().unwrap());
+        println!("{}", message.join());
     }
 
     println!("long lived tree of depth {}\t check: {}",

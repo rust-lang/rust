@@ -171,7 +171,7 @@
 #![feature(box_syntax)]
 #![feature(int_uint)]
 #![feature(core)]
-#![feature(io)]
+#![feature(old_io)]
 #![feature(std_misc)]
 #![feature(env)]
 

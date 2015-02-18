@@ -115,7 +115,7 @@ mod test {
     use prelude::v1::*;
 
     use sync::mpsc::channel;
-    use thread::Thread;
+    use thread;
 
     #[test]
     fn partial_read() {
@@ -126,7 +126,7 @@ mod test {
         let out = PipeStream::open(writer);
         let mut input = PipeStream::open(reader);
         let (tx, rx) = channel();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let mut out = out;
             out.write(&[10]).unwrap();
             rx.recv().unwrap(); // don't close the pipe until the other read has finished

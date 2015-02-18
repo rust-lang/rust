@@ -27,7 +27,7 @@ use sys::process2::Process as ProcessImp;
 use sys::process2::Command as CommandImp;
 use sys::process2::ExitStatus as ExitStatusImp;
 use sys_common::{AsInner, AsInnerMut};
-use thread::Thread;
+use thread;
 
 /// Representation of a running or exited child process.
 ///
@@ -458,11 +458,11 @@ impl Child {
     /// the parent waits for the child to exit.
     pub fn wait_with_output(mut self) -> io::Result<Output> {
         drop(self.stdin.take());
-        fn read<T: Read + Send>(stream: Option<T>) -> Receiver<io::Result<Vec<u8>>> {
+        fn read<T: Read + Send + 'static>(stream: Option<T>) -> Receiver<io::Result<Vec<u8>>> {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => {
-                    Thread::spawn(move || {
+                    thread::spawn(move || {
                         let mut stream = stream;
                         let mut ret = Vec::new();
                         let res = stream.read_to_end(&mut ret);
@@ -499,7 +499,7 @@ mod tests {
     use str;
     use super::{Child, Command, Output, ExitStatus, Stdio};
     use sync::mpsc::channel;
-    use thread::Thread;
+    use thread;
     use time::Duration;
 
     // FIXME(#10380) these tests should not all be ignored on android.
@@ -537,12 +537,12 @@ mod tests {
     fn signal_reported_right() {
         use os::unix::ExitStatusExt;
 
-        let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
+        let p = Command::new("/bin/sh").arg("-c").arg("kill -9 $$").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait().unwrap().signal() {
-            Some(1) => {},
-            result => panic!("not terminated by signal 1 (instead, {:?})", result),
+            Some(9) => {},
+            result => panic!("not terminated by signal 9 (instead, {:?})", result),
         }
     }
 

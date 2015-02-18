@@ -25,7 +25,7 @@ struct X<T>(T);
 impl <T: Sync> RequiresShare for X<T> { }
 impl <T: Sync+Send> RequiresRequiresShareAndSend for X<T> { }
 
-fn foo<T: RequiresRequiresShareAndSend>(val: T, chan: Sender<T>) {
+fn foo<T: RequiresRequiresShareAndSend + 'static>(val: T, chan: Sender<T>) {
     chan.send(val).unwrap();
 }
 

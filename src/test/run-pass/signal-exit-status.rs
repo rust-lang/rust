@@ -10,12 +10,11 @@
 
 // ignore-windows
 
-use std::os;
+use std::env;
 use std::old_io::process::{Command, ExitSignal, ExitStatus};
 
 pub fn main() {
-    let args = os::args();
-    let args = args;
+    let args: Vec<String> = env::args().collect();
     if args.len() >= 2 && args[1] == "signal" {
         // Raise a segfault.
         unsafe { *(0 as *mut int) = 0; }

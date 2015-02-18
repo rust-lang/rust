@@ -118,21 +118,13 @@ pub trait FromIterator<A> {
     fn from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
 }
 
-// NOTE(stage0): remove trait after a snapshot
-#[cfg(stage0)]
 /// Conversion into an `Iterator`
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
-    type IntoIter: Iterator;
-
-    /// Consumes `Self` and returns an iterator over it
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn into_iter(self) -> Self::IntoIter;
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
-/// Conversion into an `Iterator`
-pub trait IntoIterator {
     type Item;
+
+    #[stable(feature = "rust1", since = "1.0.0")]
     type IntoIter: Iterator<Item=Self::Item>;
 
     /// Consumes `Self` and returns an iterator over it
@@ -140,17 +132,7 @@ pub trait IntoIterator {
     fn into_iter(self) -> Self::IntoIter;
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<I> IntoIterator for I where I: Iterator {
-    type IntoIter = I;
-
-    fn into_iter(self) -> I {
-        self
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<I: Iterator> IntoIterator for I {
     type Item = I::Item;
     type IntoIter = I;
@@ -2374,7 +2356,7 @@ impl<A, St, F> Iterator for Unfold<St, F> where F: FnMut(&mut St) -> Option<A> {
 /// iteration
 #[derive(Clone)]
 #[unstable(feature = "core",
-           reason = "may be renamed or replaced by range notation adapaters")]
+           reason = "may be renamed or replaced by range notation adapters")]
 pub struct Counter<A> {
     /// The current state the counter is at (next value to be yielded)
     state: A,
@@ -2385,7 +2367,7 @@ pub struct Counter<A> {
 /// Creates a new counter with the specified start/step
 #[inline]
 #[unstable(feature = "core",
-           reason = "may be renamed or replaced by range notation adapaters")]
+           reason = "may be renamed or replaced by range notation adapters")]
 pub fn count<A>(start: A, step: A) -> Counter<A> {
     Counter{state: start, step: step}
 }

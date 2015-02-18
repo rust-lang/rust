@@ -518,18 +518,18 @@ mod tests {
 
     #[test]
     fn test_null_byte() {
-        use thread::Thread;
-        let result = Thread::scoped(move|| {
-            Path::new(b"foo/bar\0")
+        use thread;
+        let result = thread::spawn(move|| {
+            Path::new(b"foo/bar\0");
         }).join();
         assert!(result.is_err());
 
-        let result = Thread::scoped(move|| {
+        let result = thread::spawn(move|| {
             Path::new("test").set_filename(b"f\0o")
         }).join();
         assert!(result.is_err());
 
-        let result = Thread::scoped(move|| {
+        let result = thread::spawn(move|| {
             Path::new("test").push(b"f\0o");
         }).join();
         assert!(result.is_err());

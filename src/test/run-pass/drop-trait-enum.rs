@@ -11,7 +11,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-use std::thread::Thread;
+use std::thread;
 use std::sync::mpsc::{channel, Sender};
 
 #[derive(PartialEq, Debug)]
@@ -69,15 +69,16 @@ pub fn main() {
     assert_eq!(receiver.recv().ok(), None);
 
     let (sender, receiver) = channel();
-    let _t = Thread::scoped(move|| {
+    let t = thread::spawn(move|| {
         let v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
     });
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
     assert_eq!(receiver.recv().ok(), None);
+    drop(t.join());
 
     let (sender, receiver) = channel();
-    let _t = {
-        Thread::scoped(move|| {
+    let t = {
+        thread::spawn(move|| {
             let mut v = Foo::NestedVariant(box 42u, SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());
@@ -93,4 +94,5 @@ pub fn main() {
     assert_eq!(receiver.recv().unwrap(), Message::DestructorRan);
     assert_eq!(receiver.recv().unwrap(), Message::Dropped);
     assert_eq!(receiver.recv().ok(), None);
+    drop(t.join());
 }

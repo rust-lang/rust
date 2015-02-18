@@ -668,17 +668,7 @@ impl<V> FromIterator<(usize, V)> for VecMap<V> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T> IntoIterator for VecMap<T> {
-    type IntoIter = IntoIter<T>;
-
-    fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for VecMap<T> {
     type Item = (usize, T);
     type IntoIter = IntoIter<T>;
@@ -688,17 +678,7 @@ impl<T> IntoIterator for VecMap<T> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, T> IntoIterator for &'a VecMap<T> {
-    type IntoIter = Iter<'a, T>;
-
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a VecMap<T> {
     type Item = (usize, &'a T);
     type IntoIter = Iter<'a, T>;
@@ -708,17 +688,7 @@ impl<'a, T> IntoIterator for &'a VecMap<T> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, T> IntoIterator for &'a mut VecMap<T> {
-    type IntoIter = IterMut<'a, T>;
-
-    fn into_iter(mut self) -> IterMut<'a, T> {
-        self.iter_mut()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a mut VecMap<T> {
     type Item = (usize, &'a mut T);
     type IntoIter = IterMut<'a, T>;

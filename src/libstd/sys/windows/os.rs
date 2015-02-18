@@ -18,7 +18,7 @@ use os::windows::*;
 use error::Error as StdError;
 use ffi::{OsString, OsStr, AsOsStr};
 use fmt;
-use iter::Range;
+use ops::Range;
 use libc::types::os::arch::extra::LPWCH;
 use libc::{self, c_int, c_void};
 use mem;
@@ -303,6 +303,10 @@ impl Iterator for Args {
     fn size_hint(&self) -> (usize, Option<usize>) { self.range.size_hint() }
 }
 
+impl ExactSizeIterator for Args {
+    fn len(&self) -> usize { self.range.len() }
+}
+
 impl Drop for Args {
     fn drop(&mut self) {
         unsafe { c::LocalFree(self.cur as *mut c_void); }
@@ -315,7 +319,7 @@ pub fn args() -> Args {
         let lpCmdLine = c::GetCommandLineW();
         let szArgList = c::CommandLineToArgvW(lpCmdLine, &mut nArgs);
 
-        Args { cur: szArgList, range: range(0, nArgs as isize) }
+        Args { cur: szArgList, range: 0..(nArgs as isize) }
     }
 }
 

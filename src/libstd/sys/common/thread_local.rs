@@ -24,7 +24,7 @@
 //! # Usage
 //!
 //! This module should likely not be used directly unless other primitives are
-//! being built on. types such as `thread_local::scoped::Key` are likely much
+//! being built on. types such as `thread_local::spawn::Key` are likely much
 //! more useful in practice than this OS-based version which likely requires
 //! unsafe code to interoperate with.
 //!

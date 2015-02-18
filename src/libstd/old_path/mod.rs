@@ -59,7 +59,7 @@
 //! println!("path exists: {}", path.exists());
 //! ```
 
-#![unstable(feature = "path")]
+#![unstable(feature = "old_path")]
 
 use core::marker::Sized;
 use ffi::CString;

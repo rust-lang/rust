@@ -4,19 +4,19 @@ Let's talk about loops.
 
 Remember Rust's `for` loop? Here's an example:
 
-```{rust}
+```rust
 for x in 0..10 {
     println!("{}", x);
 }
 ```
 
-Now that you know more Rust, we can talk in detail about how this works. The
-`range` function returns an *iterator*. An iterator is something that we can
+Now that you know more Rust, we can talk in detail about how this works.
+Ranges (the `0..10`) are 'iterators'. An iterator is something that we can
 call the `.next()` method on repeatedly, and it gives us a sequence of things.
 
 Like this:
 
-```{rust}
+```rust
 let mut range = 0..10;
 
 loop {
@@ -29,12 +29,12 @@ loop {
 }
 ```
 
-We make a mutable binding to the return value of `range`, which is our iterator.
-We then `loop`, with an inner `match`. This `match` is used on the result of
-`range.next()`, which gives us a reference to the next value of the iterator.
-`next` returns an `Option<i32>`, in this case, which will be `Some(i32)` when
-we have a value and `None` once we run out. If we get `Some(i32)`, we print it
-out, and if we get `None`, we `break` out of the loop.
+We make a mutable binding to the range, which is our iterator. We then `loop`,
+with an inner `match`. This `match` is used on the result of `range.next()`,
+which gives us a reference to the next value of the iterator. `next` returns an
+`Option<i32>`, in this case, which will be `Some(i32)` when we have a value and
+`None` once we run out. If we get `Some(i32)`, we print it out, and if we get
+`None`, we `break` out of the loop.
 
 This code sample is basically the same as our `for` loop version. The `for`
 loop is just a handy way to write this `loop`/`match`/`break` construct.
@@ -43,13 +43,13 @@ loop is just a handy way to write this `loop`/`match`/`break` construct.
 own iterator involves implementing the `Iterator` trait. While doing that is
 outside of the scope of this guide, Rust provides a number of useful iterators
 to accomplish various tasks. Before we talk about those, we should talk about a
-Rust anti-pattern. And that's `range`.
+Rust anti-pattern. And that's using ranges like this.
 
-Yes, we just talked about how `range` is cool. But `range` is also very
-primitive. For example, if you needed to iterate over the contents of
-a vector, you may be tempted to write this:
+Yes, we just talked about how ranges are cool. But ranges are also very
+primitive. For example, if you needed to iterate over the contents of a vector,
+you may be tempted to write this:
 
-```{rust}
+```rust
 let nums = vec![1, 2, 3];
 
 for i in 0..nums.len() {
@@ -61,7 +61,7 @@ This is strictly worse than using an actual iterator. The `.iter()` method on
 vectors returns an iterator which iterates through a reference to each element
 of the vector in turn. So write this:
 
-```{rust}
+```rust
 let nums = vec![1, 2, 3];
 
 for num in nums.iter() {
@@ -83,7 +83,7 @@ works. `num` is actually of type `&i32`. That is, it's a reference to an `i32`,
 not an `i32` itself. `println!` handles the dereferencing for us, so we don't
 see it. This code works fine too:
 
-```{rust}
+```rust
 let nums = vec![1, 2, 3];
 
 for num in nums.iter() {
@@ -97,7 +97,7 @@ involve making a copy of the data and giving us the copy. With references,
 we're just borrowing a reference to the data, and so it's just passing
 a reference, without needing to do the copy.
 
-So, now that we've established that `range` is often not what you want, let's
+So, now that we've established that ranges are often not what you want, let's
 talk about what you do want instead.
 
 There are three broad classes of things that are relevant here: iterators,
@@ -108,8 +108,7 @@ There are three broad classes of things that are relevant here: iterators,
   different output sequence.
 * *consumers* operate on an iterator, producing some final set of values.
 
-Let's talk about consumers first, since you've already seen an iterator,
-`range`.
+Let's talk about consumers first, since you've already seen an iterator, ranges.
 
 ## Consumers
 
@@ -118,7 +117,7 @@ The most common consumer is `collect()`. This code doesn't quite compile,
 but it shows the intention:
 
 ```{rust,ignore}
-let one_to_one_hundred = (1..101i32).collect();
+let one_to_one_hundred = (1..101).collect();
 ```
 
 As you can see, we call `collect()` on our iterator. `collect()` takes
@@ -127,8 +126,8 @@ of the results. So why won't this compile? Rust can't determine what
 type of things you want to collect, and so you need to let it know.
 Here's the version that does compile:
 
-```{rust}
-let one_to_one_hundred = (1..101i32).collect::<Vec<i32>>();
+```rust
+let one_to_one_hundred = (1..101).collect::<Vec<i32>>();
 ```
 
 If you remember, the `::<>` syntax allows us to give a type hint,
@@ -137,7 +136,7 @@ need to use the whole type, though. Using a `_` will let you provide
 a partial hint:
 
 ```rust
-let one_to_one_hundred = range(1, 101).collect::<Vec<_>>();
+let one_to_one_hundred = (1..101).collect::<Vec<_>>();
 ```
 
 This says "Collect into a `Vec<T>`, please, but infer what the `T` is for me."
@@ -146,8 +145,8 @@ This says "Collect into a `Vec<T>`, please, but infer what the `T` is for me."
 `collect()` is the most common consumer, but there are others too. `find()`
 is one:
 
-```{rust}
-let greater_than_forty_two = (0..100i32)
+```rust
+let greater_than_forty_two = (0..100)
                              .find(|x| *x > 42);
 
 match greater_than_forty_two {
@@ -163,9 +162,8 @@ element, `find` returns an `Option` rather than the element itself.
 
 Another important consumer is `fold`. Here's what it looks like:
 
-```{rust}
-let sum = (1..4)
-              .fold(0, |sum, x| sum + x);
+```rust
+let sum = (1..4).fold(0, |sum, x| sum + x);
 ```
 
 `fold()` is a consumer that looks like this:
@@ -187,7 +185,7 @@ in this iterator:
 
 We called `fold()` with these arguments:
 
-```{rust}
+```rust
 # (1..4)
 .fold(0, |sum, x| sum + x);
 ```
@@ -218,25 +216,25 @@ are *lazy* and don't need to generate all of the values upfront.
 This code, for example, does not actually generate the numbers
 `1-100`, and just creates a value that represents the sequence:
 
-```{rust}
+```rust
 let nums = 1..100;
 ```
 
 Since we didn't do anything with the range, it didn't generate the sequence.
 Let's add the consumer:
 
-```{rust}
+```rust
 let nums = (1..100).collect::<Vec<i32>>();
 ```
 
 Now, `collect()` will require that the range gives it some numbers, and so
 it will do the work of generating the sequence.
 
-A range is one of two basic iterators that you'll see. The other is `iter()`,
+Ranges are one of two basic iterators that you'll see. The other is `iter()`,
 which you've used before. `iter()` can turn a vector into a simple iterator
 that gives you each element in turn:
 
-```{rust}
+```rust
 let nums = [1, 2, 3];
 
 for num in nums.iter() {
@@ -247,7 +245,7 @@ for num in nums.iter() {
 These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite. Like `count`:
 
-```{rust}
+```rust
 std::iter::count(1, 5);
 ```
 
@@ -265,7 +263,7 @@ we need to talk about with regards to iterators. Let's get to it!
 a new iterator. The simplest one is called `map`:
 
 ```{rust,ignore}
-(1..100i32).map(|x| x + 1);
+(1..100).map(|x| x + 1);
 ```
 
 `map` is called upon another iterator, and produces a new iterator where each
@@ -273,7 +271,7 @@ element reference has the closure it's been given as an argument called on it.
 So this would give us the numbers from `2-100`. Well, almost! If you
 compile the example, you'll get a warning:
 
-```{notrust,ignore}
+```text
 warning: unused result which must be used: iterator adaptors are lazy and
          do nothing unless consumed, #[warn(unused_must_use)] on by default
 (1..100).map(|x| x + 1);
@@ -295,7 +293,7 @@ iterator over the next `n` elements of the original iterator, note that this
 has no side effect on the original iterator. Let's try it out with our infinite
 iterator from before, `count()`:
 
-```{rust}
+```rust
 for i in std::iter::count(1, 5).take(5) {
     println!("{}", i);
 }
@@ -303,7 +301,7 @@ for i in std::iter::count(1, 5).take(5) {
 
 This will print
 
-```{notrust,ignore}
+```text
 1
 6
 11
@@ -315,8 +313,8 @@ This will print
 returns `true` or `false`. The new iterator `filter()` produces
 only the elements that that closure returns `true` for:
 
-```{rust}
-for i in (1..100i32).filter(|&x| x % 2 == 0) {
+```rust
+for i in (1..100).filter(|&x| x % 2 == 0) {
     println!("{}", i);
 }
 ```
@@ -330,8 +328,8 @@ itself.)
 You can chain all three things together: start with an iterator, adapt it
 a few times, and then consume the result. Check it out:
 
-```{rust}
-(1..1000i32)
+```rust
+(1..1000)
     .filter(|&x| x % 2 == 0)
     .filter(|&x| x % 3 == 0)
     .take(5)

@@ -530,7 +530,7 @@ mod tests {
 
     use super::*;
     use sync::mpsc::channel;
-    use thread::Thread;
+    use thread;
 
     #[test]
     fn smoke() {
@@ -546,7 +546,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             set_stdout(box w);
             println!("hello!");
         });
@@ -559,7 +559,7 @@ mod tests {
 
         let (tx, rx) = channel();
         let (mut r, w) = (ChanReader::new(rx), ChanWriter::new(tx));
-        let _t = Thread::spawn(move || -> () {
+        let _t = thread::spawn(move || -> () {
             set_stderr(box w);
             panic!("my special message");
         });

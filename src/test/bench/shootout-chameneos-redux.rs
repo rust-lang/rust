@@ -43,7 +43,7 @@
 use self::Color::{Red, Yellow, Blue};
 use std::sync::mpsc::{channel, Sender, Receiver};
 use std::fmt;
-use std::thread::Thread;
+use std::thread;
 
 fn print_complements() {
     let all = [Blue, Red, Yellow];
@@ -187,7 +187,7 @@ fn rendezvous(nn: uint, set: Vec<Color>) {
             let to_rendezvous = to_rendezvous.clone();
             let to_rendezvous_log = to_rendezvous_log.clone();
             let (to_creature, from_rendezvous) = channel();
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 creature(ii,
                          col,
                          from_rendezvous,
@@ -230,10 +230,10 @@ fn main() {
     let nn = if std::env::var_os("RUST_BENCH").is_some() {
         200000
     } else {
-        std::os::args()
-                       .get(1)
+        std::env::args()
+                       .nth(1)
                        .and_then(|arg| arg.parse().ok())
-                       .unwrap_or(600u)
+                       .unwrap_or(600us)
     };
 
     print_complements();

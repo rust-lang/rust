@@ -19,7 +19,7 @@
 // In any case, this test should let us know if enabling parallel codegen ever
 // breaks unwinding.
 
-use std::thread::Thread;
+use std::thread;
 
 fn pad() -> uint { 0 }
 
@@ -36,5 +36,5 @@ mod b {
 }
 
 fn main() {
-    Thread::scoped(move|| { ::b::g() }).join().err().unwrap();
+    thread::spawn(move|| { ::b::g() }).join().err().unwrap();
 }

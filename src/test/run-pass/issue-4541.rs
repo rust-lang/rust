@@ -9,8 +9,7 @@
 // except according to those terms.
 
 fn parse_args() -> String {
-    let args = ::std::os::args();
-    let args = args;
+    let args: Vec<_> = ::std::env::args().collect();
     let mut n = 0;
 
     while n < args.len() {

@@ -42,32 +42,32 @@
 //! Already-running threads are represented via the `Thread` type, which you can
 //! get in one of two ways:
 //!
-//! * By spawning a new thread, e.g. using the `Thread::spawn` constructor;
-//! * By requesting the current thread, using the `Thread::current` function.
+//! * By spawning a new thread, e.g. using the `thread::spawn` constructor;
+//! * By requesting the current thread, using the `thread::current` function.
 //!
 //! Threads can be named, and provide some built-in support for low-level
 //! synchronization described below.
 //!
-//! The `Thread::current()` function is available even for threads not spawned
+//! The `thread::current()` function is available even for threads not spawned
 //! by the APIs of this module.
 //!
 //! ## Spawning a thread
 //!
-//! A new thread can be spawned using the `Thread::spawn` function:
+//! A new thread can be spawned using the `thread::spawn` function:
 //!
 //! ```rust
-//! use std::thread::Thread;
+//! use std::thread;
 //!
-//! let thread = Thread::spawn(move || {
+//! thread::spawn(move || {
 //!     println!("Hello, World!");
 //!     // some computation here
 //! });
 //! ```
 //!
-//! The spawned thread is "detached" from the current thread, meaning that it
-//! can outlive the thread that spawned it. (Note, however, that when the main
-//! thread terminates all detached threads are terminated as well.) The returned
-//! `Thread` handle can be used for low-level synchronization as described below.
+//! In this example, the spawned thread is "detached" from the current
+//! thread, meaning that it can outlive the thread that spawned
+//! it. (Note, however, that when the main thread terminates all
+//! detached threads are terminated as well.)
 //!
 //! ## Scoped threads
 //!
@@ -76,23 +76,23 @@
 //! For this scenario, use the `scoped` constructor:
 //!
 //! ```rust
-//! use std::thread::Thread;
+//! use std::thread;
 //!
-//! let guard = Thread::scoped(move || {
+//! let guard = thread::scoped(move || {
 //!     println!("Hello, World!");
 //!     // some computation here
 //! });
 //! // do some other work in the meantime
-//! let result = guard.join();
+//! let output = guard.join();
 //! ```
 //!
-//! The `scoped` function doesn't return a `Thread` directly; instead, it
-//! returns a *join guard* from which a `Thread` can be extracted. The join
-//! guard is an RAII-style guard that will automatically join the child thread
-//! (block until it terminates) when it is dropped. You can join the child
-//! thread in advance by calling the `join` method on the guard, which will also
-//! return the result produced by the thread.  A handle to the thread itself is
-//! available via the `thread` method on the join guard.
+//! The `scoped` function doesn't return a `Thread` directly; instead,
+//! it returns a *join guard*. The join guard is an RAII-style guard
+//! that will automatically join the child thread (block until it
+//! terminates) when it is dropped. You can join the child thread in
+//! advance by calling the `join` method on the guard, which will also
+//! return the result produced by the thread.  A handle to the thread
+//! itself is available via the `thread` method on the join guard.
 //!
 //! (Note: eventually, the `scoped` constructor will allow the parent and child
 //! threads to data that lives on the parent thread's stack, but some language
@@ -120,10 +120,10 @@
 //! Conceptually, each `Thread` handle has an associated token, which is
 //! initially not present:
 //!
-//! * The `Thread::park()` function blocks the current thread unless or until
+//! * The `thread::park()` function blocks the current thread unless or until
 //!   the token is available for its thread handle, at which point It atomically
 //!   consumes the token. It may also return *spuriously*, without consuming the
-//!   token. `Thread::park_timeout()` does the same, but allows specifying a
+//!   token. `thread::park_timeout()` does the same, but allows specifying a
 //!   maximum time to block the thread for.
 //!
 //! * The `unpark()` method on a `Thread` atomically makes the token available
@@ -147,19 +147,16 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use prelude::v1::*;
+
 use any::Any;
-use boxed::Box;
 use cell::UnsafeCell;
-use clone::Clone;
-use marker::{Send, Sync};
-use ops::{Drop, FnOnce};
-use option::Option::{self, Some, None};
-use result::Result::{Err, Ok};
-use sync::{Mutex, Condvar, Arc};
-use str::Str;
-use string::String;
+use fmt;
+use io;
+use marker;
+use old_io::stdio;
 use rt::{self, unwind};
-use old_io::{Writer, stdio};
+use sync::{Mutex, Condvar, Arc};
 use thunk::Thunk;
 use time::Duration;
 
@@ -175,9 +172,9 @@ pub struct Builder {
     // The size of the stack for the spawned thread
     stack_size: Option<uint>,
     // Thread-local stdout
-    stdout: Option<Box<Writer + Send>>,
+    stdout: Option<Box<Writer + Send + 'static>>,
     // Thread-local stderr
-    stderr: Option<Box<Writer + Send>>,
+    stderr: Option<Box<Writer + Send + 'static>>,
 }
 
 impl Builder {
@@ -211,7 +208,7 @@ impl Builder {
     /// Redirect thread-local stdout.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stdout(mut self, stdout: Box<Writer + Send>) -> Builder {
+    pub fn stdout(mut self, stdout: Box<Writer + Send + 'static>) -> Builder {
         self.stdout = Some(stdout);
         self
     }
@@ -219,53 +216,64 @@ impl Builder {
     /// Redirect thread-local stderr.
     #[unstable(feature = "std_misc",
                reason = "Will likely go away after proc removal")]
-    pub fn stderr(mut self, stderr: Box<Writer + Send>) -> Builder {
+    pub fn stderr(mut self, stderr: Box<Writer + Send + 'static>) -> Builder {
         self.stderr = Some(stderr);
         self
     }
 
-    /// Spawn a new detached thread, and return a handle to it.
+    /// Spawn a new thread, and return a join handle for it.
     ///
-    /// See `Thead::spawn` and the module doc for more details.
-    #[unstable(feature = "std_misc",
-               reason = "may change with specifics of new Send semantics")]
-    pub fn spawn<F>(self, f: F) -> Thread where F: FnOnce(), F: Send + 'static {
-        let (native, thread) = self.spawn_inner(Thunk::new(f), Thunk::with_arg(|_| {}));
-        unsafe { imp::detach(native) };
-        thread
+    /// The child thread may outlive the parent (unless the parent thread
+    /// is the main thread; the whole process is terminated when the main
+    /// thread finishes.) The join handle can be used to block on
+    /// termination of the child thread, including recovering its panics.
+    ///
+    /// # Errors
+    ///
+    /// Unlike the `spawn` free function, this method yields an
+    /// `io::Result` to capture any failure to create the thread at
+    /// the OS level.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn spawn<F>(self, f: F) -> io::Result<JoinHandle> where
+        F: FnOnce(), F: Send + 'static
+    {
+        self.spawn_inner(Thunk::new(f)).map(|i| JoinHandle(i))
     }
 
     /// Spawn a new child thread that must be joined within a given
     /// scope, and return a `JoinGuard`.
     ///
-    /// See `Thead::scoped` and the module doc for more details.
-    #[unstable(feature = "std_misc",
-               reason = "may change with specifics of new Send semantics")]
-    pub fn scoped<'a, T, F>(self, f: F) -> JoinGuard<'a, T> where
+    /// The join guard can be used to explicitly join the child thread (via
+    /// `join`), returning `Result<T>`, or it will implicitly join the child
+    /// upon being dropped. Because the child thread may refer to data on the
+    /// current thread's stack (hence the "scoped" name), it cannot be detached;
+    /// it *must* be joined before the relevant stack frame is popped. See the
+    /// module documentation for additional details.
+    ///
+    /// # Errors
+    ///
+    /// Unlike the `scoped` free function, this method yields an
+    /// `io::Result` to capture any failure to create the thread at
+    /// the OS level.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn scoped<'a, T, F>(self, f: F) -> io::Result<JoinGuard<'a, T>> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
-        let my_packet = Packet(Arc::new(UnsafeCell::new(None)));
-        let their_packet = Packet(my_packet.0.clone());
-        let (native, thread) = self.spawn_inner(Thunk::new(f), Thunk::with_arg(move |ret| unsafe {
-            *their_packet.0.get() = Some(ret);
-        }));
-
-        JoinGuard {
-            native: native,
-            joined: false,
-            packet: my_packet,
-            thread: thread,
-        }
+        self.spawn_inner(Thunk::new(f)).map(|inner| {
+            JoinGuard { inner: inner, _marker: marker::CovariantType }
+        })
     }
 
-    fn spawn_inner<T: Send>(self, f: Thunk<(), T>, finish: Thunk<Result<T>, ()>)
-                      -> (imp::rust_thread, Thread)
-    {
+    fn spawn_inner<T: Send>(self, f: Thunk<(), T>) -> io::Result<JoinInner<T>> {
         let Builder { name, stack_size, stdout, stderr } = self;
 
         let stack_size = stack_size.unwrap_or(rt::min_stack());
+
         let my_thread = Thread::new(name);
         let their_thread = my_thread.clone();
+
+        let my_packet = Packet(Arc::new(UnsafeCell::new(None)));
+        let their_packet = Packet(my_packet.0.clone());
 
         // Spawning a new OS thread guarantees that __morestack will never get
         // triggered, but we must manually set up the actual stack bounds once
@@ -316,17 +324,120 @@ impl Builder {
                     unwind::try(move || *ptr = Some(f.invoke(())))
                 }
             };
-            finish.invoke(match (output, try_result) {
-                (Some(data), Ok(_)) => Ok(data),
-                (None, Err(cause)) => Err(cause),
-                _ => unreachable!()
-            });
+            unsafe {
+                *their_packet.0.get() = Some(match (output, try_result) {
+                    (Some(data), Ok(_)) => Ok(data),
+                    (None, Err(cause)) => Err(cause),
+                    _ => unreachable!()
+                });
+            }
         };
 
-        (unsafe { imp::create(stack_size, Thunk::new(main)) }, my_thread)
+        Ok(JoinInner {
+            native: try!(unsafe { imp::create(stack_size, Thunk::new(main)) }),
+            thread: my_thread,
+            packet: my_packet,
+            joined: false,
+        })
     }
 }
 
+/// Spawn a new, returning a join handle for it.
+///
+/// The child thread may outlive the parent (unless the parent thread
+/// is the main thread; the whole process is terminated when the main
+/// thread finishes.) The join handle can be used to block on
+/// termination of the child thread, including recovering its panics.
+///
+/// # Panics
+///
+/// Panicks if the OS fails to create a thread; use `Builder::spawn`
+/// to recover from such errors.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn spawn<F>(f: F) -> JoinHandle where F: FnOnce(), F: Send + 'static {
+    Builder::new().spawn(f).unwrap()
+}
+
+/// Spawn a new *scoped* thread, returning a `JoinGuard` for it.
+///
+/// The join guard can be used to explicitly join the child thread (via
+/// `join`), returning `Result<T>`, or it will implicitly join the child
+/// upon being dropped. Because the child thread may refer to data on the
+/// current thread's stack (hence the "scoped" name), it cannot be detached;
+/// it *must* be joined before the relevant stack frame is popped. See the
+/// module documentation for additional details.
+///
+/// # Panics
+///
+/// Panicks if the OS fails to create a thread; use `Builder::scoped`
+/// to recover from such errors.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
+    T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
+{
+    Builder::new().scoped(f).unwrap()
+}
+
+/// Gets a handle to the thread that invokes it.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn current() -> Thread {
+    thread_info::current_thread()
+}
+
+/// Cooperatively give up a timeslice to the OS scheduler.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn yield_now() {
+    unsafe { imp::yield_now() }
+}
+
+/// Determines whether the current thread is unwinding because of panic.
+#[inline]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn panicking() -> bool {
+    unwind::panicking()
+}
+
+/// Block unless or until the current thread's token is made available (may wake spuriously).
+///
+/// See the module doc for more detail.
+//
+// The implementation currently uses the trivial strategy of a Mutex+Condvar
+// with wakeup flag, which does not actually allow spurious wakeups. In the
+// future, this will be implemented in a more efficient way, perhaps along the lines of
+//   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
+// or futuxes, and in either case may allow spurious wakeups.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub fn park() {
+    let thread = current();
+    let mut guard = thread.inner.lock.lock().unwrap();
+    while !*guard {
+        guard = thread.inner.cvar.wait(guard).unwrap();
+    }
+    *guard = false;
+}
+
+/// Block unless or until the current thread's token is made available or
+/// the specified duration has been reached (may wake spuriously).
+///
+/// The semantics of this function are equivalent to `park()` except that the
+/// thread will be blocked for roughly no longer than dur. This method
+/// should not be used for precise timing due to anomalies such as
+/// preemption or platform differences that may not cause the maximum
+/// amount of time waited to be precisely dur
+///
+/// See the module doc for more detail.
+#[unstable(feature = "std_misc", reason = "recently introduced, depends on Duration")]
+pub fn park_timeout(dur: Duration) {
+    let thread = current();
+    let mut guard = thread.inner.lock.lock().unwrap();
+    if !*guard {
+        let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
+        guard = g;
+    }
+    *guard = false;
+}
+
+/// The internal representation of a `Thread` handle
 struct Inner {
     name: Option<String>,
     lock: Mutex<bool>,          // true when there is a buffered unpark
@@ -354,65 +465,51 @@ impl Thread {
         }
     }
 
-    /// Spawn a new detached thread, returning a handle to it.
-    ///
-    /// The child thread may outlive the parent (unless the parent thread is the
-    /// main thread; the whole process is terminated when the main thread
-    /// finishes.) The thread handle can be used for low-level
-    /// synchronization. See the module documentation for additional details.
+    /// Deprecated: use module-level free fucntion.
+    #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[unstable(feature = "std_misc",
                reason = "may change with specifics of new Send semantics")]
     pub fn spawn<F>(f: F) -> Thread where F: FnOnce(), F: Send + 'static {
-        Builder::new().spawn(f)
+        Builder::new().spawn(f).unwrap().thread().clone()
     }
 
-    /// Spawn a new *scoped* thread, returning a `JoinGuard` for it.
-    ///
-    /// The join guard can be used to explicitly join the child thread (via
-    /// `join`), returning `Result<T>`, or it will implicitly join the child
-    /// upon being dropped. Because the child thread may refer to data on the
-    /// current thread's stack (hence the "scoped" name), it cannot be detached;
-    /// it *must* be joined before the relevant stack frame is popped. See the
-    /// module documentation for additional details.
+    /// Deprecated: use module-level free fucntion.
+    #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[unstable(feature = "std_misc",
                reason = "may change with specifics of new Send semantics")]
     pub fn scoped<'a, T, F>(f: F) -> JoinGuard<'a, T> where
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
-        Builder::new().scoped(f)
+        Builder::new().scoped(f).unwrap()
     }
 
-    /// Gets a handle to the thread that invokes it.
+    /// Deprecated: use module-level free fucntion.
+    #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn current() -> Thread {
         thread_info::current_thread()
     }
 
-    /// Cooperatively give up a timeslice to the OS scheduler.
+    /// Deprecated: use module-level free fucntion.
+    #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[unstable(feature = "std_misc", reason = "name may change")]
     pub fn yield_now() {
         unsafe { imp::yield_now() }
     }
 
-    /// Determines whether the current thread is unwinding because of panic.
+    /// Deprecated: use module-level free fucntion.
+    #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn panicking() -> bool {
         unwind::panicking()
     }
 
-    /// Block unless or until the current thread's token is made available (may wake spuriously).
-    ///
-    /// See the module doc for more detail.
-    //
-    // The implementation currently uses the trivial strategy of a Mutex+Condvar
-    // with wakeup flag, which does not actually allow spurious wakeups. In the
-    // future, this will be implemented in a more efficient way, perhaps along the lines of
-    //   http://cr.openjdk.java.net/~stefank/6989984.1/raw_files/new/src/os/linux/vm/os_linux.cpp
-    // or futuxes, and in either case may allow spurious wakeups.
+    /// Deprecated: use module-level free fucntion.
+    #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[unstable(feature = "std_misc", reason = "recently introduced")]
     pub fn park() {
-        let thread = Thread::current();
+        let thread = current();
         let mut guard = thread.inner.lock.lock().unwrap();
         while !*guard {
             guard = thread.inner.cvar.wait(guard).unwrap();
@@ -420,19 +517,11 @@ impl Thread {
         *guard = false;
     }
 
-    /// Block unless or until the current thread's token is made available or
-    /// the specified duration has been reached (may wake spuriously).
-    ///
-    /// The semantics of this function are equivalent to `park()` except that the
-    /// thread will be blocked for roughly no longer than dur. This method
-    /// should not be used for precise timing due to anomalies such as
-    /// preemption or platform differences that may not cause the maximum
-    /// amount of time waited to be precisely dur
-    ///
-    /// See the module doc for more detail.
+    /// Deprecated: use module-level free fucntion.
+    #[deprecated(since = "1.0.0", reason = "use module-level free fucntion")]
     #[unstable(feature = "std_misc", reason = "recently introduced")]
     pub fn park_timeout(dur: Duration) {
-        let thread = Thread::current();
+        let thread = current();
         let mut guard = thread.inner.lock.lock().unwrap();
         if !*guard {
             let (g, _) = thread.inner.cvar.wait_timeout(guard, dur).unwrap();
@@ -444,7 +533,7 @@ impl Thread {
     /// Atomically makes the handle's token available if it is not already.
     ///
     /// See the module doc for more detail.
-    #[unstable(feature = "std_misc", reason = "recently introduced")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn unpark(&self) {
         let mut guard = self.inner.lock.lock().unwrap();
         if !*guard {
@@ -460,6 +549,13 @@ impl Thread {
     }
 }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl fmt::Debug for Thread {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        fmt::Debug::fmt(&self.name(), f)
+    }
+}
+
 // a hack to get around privacy restrictions
 impl thread_info::NewThread for Thread {
     fn new(name: Option<String>) -> Thread { Thread::new(name) }
@@ -469,43 +565,23 @@ impl thread_info::NewThread for Thread {
 ///
 /// A thread that completes without panicking is considered to exit successfully.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub type Result<T> = ::result::Result<T, Box<Any + Send>>;
+pub type Result<T> = ::result::Result<T, Box<Any + Send + 'static>>;
 
 struct Packet<T>(Arc<UnsafeCell<Option<Result<T>>>>);
 
-unsafe impl<T:'static+Send> Send for Packet<T> {}
+unsafe impl<T:Send> Send for Packet<T> {}
 unsafe impl<T> Sync for Packet<T> {}
 
-/// An RAII-style guard that will block until thread termination when dropped.
-///
-/// The type `T` is the return type for the thread's main function.
-#[must_use]
-#[unstable(feature = "std_misc",
-           reason = "may change with specifics of new Send semantics")]
-pub struct JoinGuard<'a, T: 'a> {
+/// Inner representation for JoinHandle and JoinGuard
+struct JoinInner<T> {
     native: imp::rust_thread,
     thread: Thread,
-    joined: bool,
     packet: Packet<T>,
+    joined: bool,
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-unsafe impl<'a, T: Send + 'a> Sync for JoinGuard<'a, T> {}
-
-impl<'a, T: Send + 'a> JoinGuard<'a, T> {
-    /// Extract a handle to the thread this guard will join on.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn thread(&self) -> &Thread {
-        &self.thread
-    }
-
-    /// Wait for the associated thread to finish, returning the result of the thread's
-    /// calculation.
-    ///
-    /// If the child thread panics, `Err` is returned with the parameter given
-    /// to `panic`.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn join(mut self) -> Result<T> {
+impl<T> JoinInner<T> {
+    fn join(&mut self) -> Result<T> {
         assert!(!self.joined);
         unsafe { imp::join(self.native) };
         self.joined = true;
@@ -515,13 +591,93 @@ impl<'a, T: Send + 'a> JoinGuard<'a, T> {
     }
 }
 
+/// An owned permission to join on a thread (block on its termination).
+///
+/// Unlike a `JoinGuard`, a `JoinHandle` *detaches* the child thread
+/// when it is dropped, rather than automatically joining on drop.
+///
+/// Due to platform restrictions, it is not possible to `Clone` this
+/// handle: the ability to join a child thread is a uniquely-owned
+/// permission.
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct JoinHandle(JoinInner<()>);
+
+impl JoinHandle {
+    /// Extract a handle to the underlying thread
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn thread(&self) -> &Thread {
+        &self.0.thread
+    }
+
+    /// Wait for the associated thread to finish.
+    ///
+    /// If the child thread panics, `Err` is returned with the parameter given
+    /// to `panic`.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn join(mut self) -> Result<()> {
+        self.0.join()
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Drop for JoinHandle {
+    fn drop(&mut self) {
+        if !self.0.joined {
+            unsafe { imp::detach(self.0.native) }
+        }
+    }
+}
+
+/// An RAII-style guard that will block until thread termination when dropped.
+///
+/// The type `T` is the return type for the thread's main function.
+///
+/// Joining on drop is necessary to ensure memory safety when stack
+/// data is shared between a parent and child thread.
+///
+/// Due to platform restrictions, it is not possible to `Clone` this
+/// handle: the ability to join a child thread is a uniquely-owned
+/// permission.
+#[must_use]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct JoinGuard<'a, T: 'a> {
+    inner: JoinInner<T>,
+    _marker: marker::CovariantType<&'a T>,
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
+unsafe impl<'a, T: Send + 'a> Sync for JoinGuard<'a, T> {}
+
+impl<'a, T: Send + 'a> JoinGuard<'a, T> {
+    /// Extract a handle to the thread this guard will join on.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn thread(&self) -> &Thread {
+        &self.inner.thread
+    }
+
+    /// Wait for the associated thread to finish, returning the result of the thread's
+    /// calculation.
+    ///
+    /// # Panics
+    ///
+    /// Panics on the child thread are propagated by panicking the parent.
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn join(mut self) -> T {
+        match self.inner.join() {
+            Ok(res) => res,
+            Err(_) => panic!("child thread {:?} panicked", self.thread()),
+        }
+    }
+}
+
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Send> JoinGuard<'static, T> {
     /// Detaches the child thread, allowing it to outlive its parent.
-    #[unstable(feature = "std_misc",
-               reason = "unsure whether this API imposes limitations elsewhere")]
+    #[deprecated(since = "1.0.0", reason = "use spawn instead")]
+    #[unstable(feature = "std_misc")]
     pub fn detach(mut self) {
-        unsafe { imp::detach(self.native) };
-        self.joined = true; // avoid joining in the destructor
+        unsafe { imp::detach(self.inner.native) };
+        self.inner.joined = true; // avoid joining in the destructor
     }
 }
 
@@ -529,8 +685,10 @@ impl<T: Send> JoinGuard<'static, T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     fn drop(&mut self) {
-        if !self.joined {
-            unsafe { imp::join(self.native) };
+        if !self.inner.joined {
+            if self.inner.join().is_err() {
+                panic!("child thread {:?} panicked", self.thread());
+            }
         }
     }
 }
@@ -545,6 +703,7 @@ mod test {
     use result;
     use std::old_io::{ChanReader, ChanWriter};
     use super::{Thread, Builder};
+    use thread;
     use thunk::Thunk;
     use time::Duration;
 
@@ -553,22 +712,22 @@ mod test {
 
     #[test]
     fn test_unnamed_thread() {
-        Thread::scoped(move|| {
-            assert!(Thread::current().name().is_none());
+        thread::spawn(move|| {
+            assert!(thread::current().name().is_none());
         }).join().ok().unwrap();
     }
 
     #[test]
     fn test_named_thread() {
         Builder::new().name("ada lovelace".to_string()).scoped(move|| {
-            assert!(Thread::current().name().unwrap() == "ada lovelace".to_string());
-        }).join().ok().unwrap();
+            assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
+        }).unwrap().join();
     }
 
     #[test]
     fn test_run_basic() {
         let (tx, rx) = channel();
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             tx.send(()).unwrap();
         });
         rx.recv().unwrap();
@@ -576,22 +735,39 @@ mod test {
 
     #[test]
     fn test_join_success() {
-        match Thread::scoped(move|| -> String {
+        assert!(thread::scoped(move|| -> String {
             "Success!".to_string()
-        }).join().as_ref().map(|s| &**s) {
-            result::Result::Ok("Success!") => (),
-            _ => panic!()
-        }
+        }).join() == "Success!");
     }
 
     #[test]
     fn test_join_panic() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!()
         }).join() {
             result::Result::Err(_) => (),
             result::Result::Ok(()) => panic!()
         }
+    }
+
+    #[test]
+    fn test_scoped_success() {
+        let res = thread::scoped(move|| -> String {
+            "Success!".to_string()
+        }).join();
+        assert!(res == "Success!");
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_scoped_panic() {
+        thread::scoped(|| panic!()).join();
+    }
+
+    #[test]
+    #[should_fail]
+    fn test_scoped_implicit_panic() {
+        thread::scoped(|| panic!());
     }
 
     #[test]
@@ -602,7 +778,7 @@ mod test {
 
         fn f(i: int, tx: Sender<()>) {
             let tx = tx.clone();
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 if i == 0 {
                     tx.send(()).unwrap();
                 } else {
@@ -619,8 +795,8 @@ mod test {
     fn test_spawn_sched_childs_on_default_sched() {
         let (tx, rx) = channel();
 
-        Thread::spawn(move|| {
-            Thread::spawn(move|| {
+        thread::spawn(move|| {
+            thread::spawn(move|| {
                 tx.send(()).unwrap();
             });
         });
@@ -628,7 +804,7 @@ mod test {
         rx.recv().unwrap();
     }
 
-    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk) {
+    fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
         let (tx, rx) = channel::<uint>();
 
         let x = box 1;
@@ -646,14 +822,14 @@ mod test {
     #[test]
     fn test_avoid_copying_the_body_spawn() {
         avoid_copying_the_body(|v| {
-            Thread::spawn(move || v.invoke(()));
+            thread::spawn(move || v.invoke(()));
         });
     }
 
     #[test]
     fn test_avoid_copying_the_body_thread_spawn() {
         avoid_copying_the_body(|f| {
-            Thread::spawn(move|| {
+            thread::spawn(move|| {
                 f.invoke(());
             });
         })
@@ -662,7 +838,7 @@ mod test {
     #[test]
     fn test_avoid_copying_the_body_join() {
         avoid_copying_the_body(|f| {
-            let _ = Thread::scoped(move|| {
+            let _ = thread::spawn(move|| {
                 f.invoke(())
             }).join();
         })
@@ -675,24 +851,24 @@ mod test {
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
         static GENERATIONS: uint = 16;
-        fn child_no(x: uint) -> Thunk {
+        fn child_no(x: uint) -> Thunk<'static> {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
-                    Thread::spawn(move|| child_no(x+1).invoke(()));
+                    thread::spawn(move|| child_no(x+1).invoke(()));
                 }
             });
         }
-        Thread::spawn(|| child_no(0).invoke(()));
+        thread::spawn(|| child_no(0).invoke(()));
     }
 
     #[test]
     fn test_simple_newsched_spawn() {
-        Thread::spawn(move || {});
+        thread::spawn(move || {});
     }
 
     #[test]
     fn test_try_panic_message_static_str() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!("static string");
         }).join() {
             Err(e) => {
@@ -706,7 +882,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_owned_str() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!("owned string".to_string());
         }).join() {
             Err(e) => {
@@ -720,7 +896,7 @@ mod test {
 
     #[test]
     fn test_try_panic_message_any() {
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!(box 413u16 as Box<Any + Send>);
         }).join() {
             Err(e) => {
@@ -738,7 +914,7 @@ mod test {
     fn test_try_panic_message_unit_struct() {
         struct Juju;
 
-        match Thread::scoped(move|| {
+        match thread::spawn(move|| {
             panic!(Juju)
         }).join() {
             Err(ref e) if e.is::<Juju>() => {}
@@ -752,10 +928,9 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let stdout = ChanWriter::new(tx);
 
-        let r = Builder::new().stdout(box stdout as Box<Writer + Send>).scoped(move|| {
+        Builder::new().stdout(box stdout as Box<Writer + Send>).scoped(move|| {
             print!("Hello, world!");
-        }).join();
-        assert!(r.is_ok());
+        }).unwrap().join();
 
         let output = reader.read_to_string().unwrap();
         assert_eq!(output, "Hello, world!".to_string());
@@ -764,15 +939,15 @@ mod test {
     #[test]
     fn test_park_timeout_unpark_before() {
         for _ in 0..10 {
-            Thread::current().unpark();
-            Thread::park_timeout(Duration::seconds(10_000_000));
+            thread::current().unpark();
+            thread::park_timeout(Duration::seconds(10_000_000));
         }
     }
 
     #[test]
     fn test_park_timeout_unpark_not_called() {
         for _ in 0..10 {
-            Thread::park_timeout(Duration::milliseconds(10));
+            thread::park_timeout(Duration::milliseconds(10));
         }
     }
 
@@ -781,14 +956,14 @@ mod test {
         use std::old_io;
 
         for _ in 0..10 {
-            let th = Thread::current();
+            let th = thread::current();
 
-            let _guard = Thread::scoped(move || {
+            let _guard = thread::spawn(move || {
                 old_io::timer::sleep(Duration::milliseconds(50));
                 th.unpark();
             });
 
-            Thread::park_timeout(Duration::seconds(10_000_000));
+            thread::park_timeout(Duration::seconds(10_000_000));
         }
     }
 

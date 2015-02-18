@@ -10,6 +10,7 @@
 
 // pp-exact - Make sure we print all the attributes
 #![allow(unused_attribute)]
+#![feature(custom_attribute)]
 
 #[frobable]
 trait frobable {

@@ -23,7 +23,7 @@ use std::old_io::{fs, TempDir};
 use std::old_io;
 use std::os;
 use std::sync::mpsc::channel;
-use std::thread::Thread;
+use std::thread;
 
 fn test_tempdir() {
     let path = {
@@ -42,7 +42,7 @@ fn test_rm_tempdir() {
         tx.send(tmp.path().clone()).unwrap();
         panic!("panic to unwind past `tmp`");
     };
-    let _ = Thread::scoped(f).join();
+    thread::spawn(f).join();
     let path = rx.recv().unwrap();
     assert!(!path.exists());
 
@@ -52,7 +52,7 @@ fn test_rm_tempdir() {
         let _tmp = tmp;
         panic!("panic to unwind past `tmp`");
     };
-    let _ = Thread::scoped(f).join();
+    thread::spawn(f).join();
     assert!(!path.exists());
 
     let path;
@@ -61,7 +61,7 @@ fn test_rm_tempdir() {
             TempDir::new("test_rm_tempdir").unwrap()
         };
         // FIXME(#16640) `: TempDir` annotation shouldn't be necessary
-        let tmp: TempDir = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
+        let tmp: TempDir = thread::scoped(f).join();
         path = tmp.path().clone();
         assert!(path.exists());
     }
@@ -85,7 +85,7 @@ fn test_rm_tempdir_close() {
         tmp.close();
         panic!("panic when unwinding past `tmp`");
     };
-    let _ = Thread::scoped(f).join();
+    thread::spawn(f).join();
     let path = rx.recv().unwrap();
     assert!(!path.exists());
 
@@ -96,7 +96,7 @@ fn test_rm_tempdir_close() {
         tmp.close();
         panic!("panic when unwinding past `tmp`");
     };
-    let _ = Thread::scoped(f).join();
+    thread::spawn(f).join();
     assert!(!path.exists());
 
     let path;
@@ -105,7 +105,7 @@ fn test_rm_tempdir_close() {
             TempDir::new("test_rm_tempdir").unwrap()
         };
         // FIXME(#16640) `: TempDir` annotation shouldn't be necessary
-        let tmp: TempDir = Thread::scoped(f).join().ok().expect("test_rm_tmdir");
+        let tmp: TempDir = thread::scoped(f).join();
         path = tmp.path().clone();
         assert!(path.exists());
         tmp.close();
@@ -179,7 +179,7 @@ pub fn test_rmdir_recursive_ok() {
 }
 
 pub fn dont_double_panic() {
-    let r: Result<(), _> = Thread::scoped(move|| {
+    let r: Result<(), _> = thread::spawn(move|| {
         let tmpdir = TempDir::new("test").unwrap();
         // Remove the temporary directory so that TempDir sees
         // an error on drop

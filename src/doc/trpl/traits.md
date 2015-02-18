@@ -273,6 +273,96 @@ One last thing about traits: generic functions with a trait bound use
 dispatched. What's that mean? Check out the chapter on [static and dynamic
 dispatch](static-and-dynamic-dispatch.html) for more.
 
+## Where clause
+
+Writing functions with only a few generic types and a small number of trait
+bounds isn't too bad, but as the number increases, the syntax gets increasingly
+awkward:
+
+```
+use std::fmt::Debug;
+
+fn foo<T: Clone, K: Clone + Debug>(x: T, y: K) {
+    x.clone();
+    y.clone();
+    println!("{:?}", y);
+}
+```
+
+The name of the function is on the far left, and the parameter list is on the
+far right. The bounds are getting in the way.
+
+Rust has a solution, and it's called a '`where` clause':
+
+```
+use std::fmt::Debug;
+
+fn foo<T: Clone, K: Clone + Debug>(x: T, y: K) {
+    x.clone();
+    y.clone();
+    println!("{:?}", y);
+}
+
+fn bar<T, K>(x: T, y: K) where T: Clone, K: Clone + Debug {
+    x.clone();
+    y.clone();
+    println!("{:?}", y);
+}
+
+fn main() {
+    foo("Hello", "world");
+    bar("Hello", "workd");
+}
+```
+
+`foo()` uses the syntax we showed earlier, and `bar()` uses a `where` clause.
+All you need to do is leave off the bounds when defining your type parameters,
+and then add `where` after the parameter list. For longer lists, whitespace can
+be added:
+
+```
+use std::fmt::Debug;
+
+fn bar<T, K>(x: T, y: K)
+    where T: Clone,
+          K: Clone + Debug {
+
+    x.clone();
+    y.clone();
+    println!("{:?}", y);
+}
+```
+
+This flexibility can add clarity in complex situations.
+
+`where` is also more powerful than the simpler syntax. For example:
+
+```
+trait ConvertTo<Output> {
+    fn convert(&self) -> Output;
+}
+
+impl ConvertTo<i64> for i32 {
+    fn convert(&self) -> i64 { *self as i64 }
+}
+
+// can be called with T == i32
+fn normal<T: ConvertTo<i64>>(x: &T) -> i64 {
+    x.convert()
+}
+
+// can be called with T == i64
+fn inverse<T>() -> T
+        // this is using ConvertTo as if it were "ConvertFrom<i32>"
+        where i32: ConvertTo<T> {
+    1i32.convert()
+}
+```
+
+This shows off the additional feature of `where` clauses: they allow bounds
+where the left-hand side is an arbitrary type (`i32` in this case), not just a
+plain type parameter (like `T`).
+
 ## Our `inverse` Example
 
 Back in [Generics](generics.html), we were trying to write code like this:

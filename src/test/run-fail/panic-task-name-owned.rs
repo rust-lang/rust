@@ -13,9 +13,9 @@
 use std::thread::Builder;
 
 fn main() {
-    let r: Result<int,_> = Builder::new().name("owned name".to_string()).scoped(move|| {
+    let r: () = Builder::new().name("owned name".to_string()).scoped(move|| {
         panic!("test");
-        1
-    }).join();
-    assert!(r.is_ok());
+        ()
+    }).unwrap().join();
+    panic!();
 }

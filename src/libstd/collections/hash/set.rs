@@ -835,21 +835,7 @@ pub struct Union<'a, T: 'a, S: 'a> {
     iter: Chain<Iter<'a, T>, Difference<'a, T, S>>
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
-{
-    type IntoIter = Iter<'a, T>;
-
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
     where T: Eq + Hash<H>,
           S: HashState<Hasher=H>,
@@ -863,21 +849,7 @@ impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T, S, H> IntoIterator for HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
-{
-    type IntoIter = IntoIter<T>;
-
-    fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T, S, H> IntoIterator for HashSet<T, S>
     where T: Eq + Hash<H>,
           S: HashState<Hasher=H>,

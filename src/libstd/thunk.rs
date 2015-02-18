@@ -16,21 +16,24 @@ use alloc::boxed::Box;
 use core::marker::Send;
 use core::ops::FnOnce;
 
-pub struct Thunk<A=(),R=()> {
-    invoke: Box<Invoke<A,R>+Send>
+pub struct Thunk<'a, A=(),R=()> {
+    #[cfg(stage0)]
+    invoke: Box<Invoke<A,R>+Send>,
+    #[cfg(not(stage0))]
+    invoke: Box<Invoke<A,R>+Send + 'a>,
 }
 
-impl<R> Thunk<(),R> {
-    pub fn new<F>(func: F) -> Thunk<(),R>
-        where F : FnOnce() -> R, F : Send
+impl<'a, R> Thunk<'a,(),R> {
+    pub fn new<F>(func: F) -> Thunk<'a,(),R>
+        where F : FnOnce() -> R, F : Send + 'a
     {
         Thunk::with_arg(move|()| func())
     }
 }
 
-impl<A,R> Thunk<A,R> {
-    pub fn with_arg<F>(func: F) -> Thunk<A,R>
-        where F : FnOnce(A) -> R, F : Send
+impl<'a,A,R> Thunk<'a,A,R> {
+    pub fn with_arg<F>(func: F) -> Thunk<'a,A,R>
+        where F : FnOnce(A) -> R, F : Send + 'a
     {
         Thunk {
             invoke: box func

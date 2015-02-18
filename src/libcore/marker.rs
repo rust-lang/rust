@@ -32,7 +32,17 @@ use clone::Clone;
            reason = "will be overhauled with new lifetime rules; see RFC 458")]
 #[lang="send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[cfg(stage0)]
 pub unsafe trait Send: 'static {
+    // empty.
+}
+/// Types able to be transferred across thread boundaries.
+#[unstable(feature = "core",
+           reason = "will be overhauled with new lifetime rules; see RFC 458")]
+#[lang="send"]
+#[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
+#[cfg(not(stage0))]
+pub unsafe trait Send {
     // empty.
 }
 
@@ -424,3 +434,11 @@ pub struct NoCopy;
 #[lang="managed_bound"]
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Managed;
+
+#[cfg(not(stage0))]
+mod impls {
+    use super::{Send, Sync, Sized};
+
+    unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
+    unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
+}

@@ -20,12 +20,13 @@ use std::old_io;
 use std::old_io::fs;
 use std::old_io::Command;
 use std::os;
+use std::env;
 use std::old_path::Path;
 
 fn main() {
-    let my_args = os::args();
+    let my_args = env::args().collect::<Vec<_>>();
     let my_cwd  = os::getcwd().unwrap();
-    let my_env  = os::env();
+    let my_env  = env::vars().collect::<Vec<_>>();
     let my_path = Path::new(os::self_exe_name().unwrap());
     let my_dir  = my_path.dir_path();
     let my_ext  = my_path.extension_str().unwrap_or("");

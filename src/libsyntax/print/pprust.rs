@@ -2761,15 +2761,13 @@ impl<'a> State<'a> {
             ast::LitStr(ref st, style) => self.print_string(&st, style),
             ast::LitByte(byte) => {
                 let mut res = String::from_str("b'");
-                ascii::escape_default(byte, |c| res.push(c as char));
+                res.extend(ascii::escape_default(byte).map(|c| c as char));
                 res.push('\'');
                 word(&mut self.s, &res[])
             }
             ast::LitChar(ch) => {
                 let mut res = String::from_str("'");
-                for c in ch.escape_default() {
-                    res.push(c);
-                }
+                res.extend(ch.escape_default());
                 res.push('\'');
                 word(&mut self.s, &res[])
             }
@@ -2809,8 +2807,8 @@ impl<'a> State<'a> {
             ast::LitBinary(ref v) => {
                 let mut escaped: String = String::new();
                 for &ch in &**v {
-                    ascii::escape_default(ch as u8,
-                                          |ch| escaped.push(ch as char));
+                    escaped.extend(ascii::escape_default(ch as u8)
+                                         .map(|c| c as char));
                 }
                 word(&mut self.s, &format!("b\"{}\"", escaped)[])
             }

@@ -64,16 +64,6 @@ impl MethodTester {
     pub fn method_stable(&self) {}
     #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
     pub fn method_stable_text(&self) {}
-
-    #[locked]
-    pub fn method_locked(&self) {}
-    #[locked="text"]
-    pub fn method_locked_text(&self) {}
-
-    #[frozen]
-    pub fn method_frozen(&self) {}
-    #[frozen="text"]
-    pub fn method_frozen_text(&self) {}
 }
 
 #[stable(feature = "test_feature", since = "1.0.0")]
@@ -101,16 +91,6 @@ pub trait Trait {
     fn trait_stable(&self) {}
     #[stable(feature = "rust1", since = "1.0.0", reason = "text")]
     fn trait_stable_text(&self) {}
-
-    #[locked]
-    fn trait_locked(&self) {}
-    #[locked="text"]
-    fn trait_locked_text(&self) {}
-
-    #[frozen]
-    fn trait_frozen(&self) {}
-    #[frozen="text"]
-    fn trait_frozen_text(&self) {}
 }
 
 impl Trait for MethodTester {}

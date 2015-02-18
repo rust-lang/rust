@@ -18,6 +18,7 @@ Read ["Installing Rust"][install] from [The Book][trpl].
     * GNU `make` 3.81 or later
     * `curl`
     * `git`
+
 2. Download and build Rust:
 
     You can either download a [tarball] or build directly from the [repo].
@@ -97,19 +98,21 @@ There is a lot more documentation in the [wiki].
 
 [wiki]: https://github.com/rust-lang/rust/wiki
 
-## Getting help and getting involved
+## Getting help
 
 The Rust community congregates in a few places:
 
 * [StackOverflow] - Direct questions about using the language here.
 * [users.rust-lang.org] - General discussion, broader questions.
-* [internals.rust-lang.org] - For development of the Rust language itself.
 * [/r/rust] - News and general discussion.
 
 [StackOverflow]: http://stackoverflow.com/questions/tagged/rust
 [/r/rust]: http://reddit.com/r/rust
 [users.rust-lang.org]: http://users.rust-lang.org/
-[internals.rust-lang.org]: http://internals.rust-lang.org/
+
+## Contributing
+
+To contribute to Rust, please see [CONTRIBUTING.md](CONTRIBUTING.md).
 
 ## License
 

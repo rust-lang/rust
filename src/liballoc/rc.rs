@@ -170,7 +170,7 @@ struct RcBox<T> {
     weak: Cell<usize>
 }
 
-/// An immutable reference-counted pointer type.
+/// A reference-counted pointer type over an immutable value.
 ///
 /// See the [module level documentation](./index.html) for more details.
 #[unsafe_no_drop_flag]
@@ -776,9 +776,7 @@ impl<T> RcBoxPtr<T> for Rc<T> {
             // the contract anyway.
             // This allows the null check to be elided in the destructor if we
             // manipulated the reference count in the same function.
-            if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
-                assume(!self._ptr.is_null());
-            }
+            assume(!self._ptr.is_null());
             &(**self._ptr)
         }
     }
@@ -792,9 +790,7 @@ impl<T> RcBoxPtr<T> for Weak<T> {
             // the contract anyway.
             // This allows the null check to be elided in the destructor if we
             // manipulated the reference count in the same function.
-            if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
-                assume(!self._ptr.is_null());
-            }
+            assume(!self._ptr.is_null());
             &(**self._ptr)
         }
     }

@@ -645,7 +645,7 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
         "32" => (ast::TyI32, ast::TyU32),
         "64" => (ast::TyI64, ast::TyU64),
         w    => sp.handler().fatal(&format!("target specification was invalid: unrecognized \
-                                            target-word-size {}", w)[])
+                                             target-pointer-width {}", w)[])
     };
 
     Config {

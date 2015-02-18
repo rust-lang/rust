@@ -28,7 +28,7 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(int_uint)]
-#![feature(io)]
+#![feature(old_io)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 

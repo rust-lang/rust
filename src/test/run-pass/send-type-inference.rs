@@ -16,7 +16,7 @@ struct Command<K, V> {
     val: V
 }
 
-fn cache_server<K:Send,V:Send>(mut tx: Sender<Sender<Command<K, V>>>) {
+fn cache_server<K:Send+'static,V:Send+'static>(mut tx: Sender<Sender<Command<K, V>>>) {
     let (tx1, _rx) = channel();
     tx.send(tx1);
 }
