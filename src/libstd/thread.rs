@@ -170,7 +170,7 @@ pub struct Builder {
     // A name for the thread-to-be, for identification in panic messages
     name: Option<String>,
     // The size of the stack for the spawned thread
-    stack_size: Option<uint>,
+    stack_size: Option<usize>,
     // Thread-local stdout
     stdout: Option<Box<Writer + Send + 'static>>,
     // Thread-local stderr
@@ -200,7 +200,7 @@ impl Builder {
 
     /// Set the size of the stack for the new thread.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn stack_size(mut self, size: uint) -> Builder {
+    pub fn stack_size(mut self, size: usize) -> Builder {
         self.stack_size = Some(size);
         self
     }
@@ -283,8 +283,8 @@ impl Builder {
         // address at which our stack started).
         let main = move || {
             let something_around_the_top_of_the_stack = 1;
-            let addr = &something_around_the_top_of_the_stack as *const int;
-            let my_stack_top = addr as uint;
+            let addr = &something_around_the_top_of_the_stack as *const isize;
+            let my_stack_top = addr as usize;
             let my_stack_bottom = my_stack_top - stack_size + 1024;
             unsafe {
                 stack::record_os_managed_stack_bounds(my_stack_bottom, my_stack_top);
@@ -779,7 +779,7 @@ mod test {
 
         let (tx, rx) = channel();
 
-        fn f(i: int, tx: Sender<()>) {
+        fn f(i: i32, tx: Sender<()>) {
             let tx = tx.clone();
             thread::spawn(move|| {
                 if i == 0 {
@@ -808,13 +808,13 @@ mod test {
     }
 
     fn avoid_copying_the_body<F>(spawnfn: F) where F: FnOnce(Thunk<'static>) {
-        let (tx, rx) = channel::<uint>();
+        let (tx, rx) = channel::<u32>();
 
         let x = box 1;
-        let x_in_parent = (&*x) as *const int as uint;
+        let x_in_parent = (&*x) as *const isize as u32;
 
         spawnfn(Thunk::new(move|| {
-            let x_in_child = (&*x) as *const int as uint;
+            let x_in_child = (&*x) as *const isize as u32;
             tx.send(x_in_child).unwrap();
         }));
 
@@ -853,8 +853,8 @@ mod test {
         // climbing the task tree to dereference each ancestor. (See #1789)
         // (well, it would if the constant were 8000+ - I lowered it to be more
         // valgrind-friendly. try this at home, instead..!)
-        static GENERATIONS: uint = 16;
-        fn child_no(x: uint) -> Thunk<'static> {
+        static GENERATIONS: usize = 16;
+        fn child_no(x: usize) -> Thunk<'static> {
             return Thunk::new(move|| {
                 if x < GENERATIONS {
                     thread::spawn(move|| child_no(x+1).invoke(()));
