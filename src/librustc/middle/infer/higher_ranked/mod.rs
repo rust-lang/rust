@@ -31,7 +31,7 @@ pub trait HigherRankedRelations<'tcx> {
         where T : Combineable<'tcx>;
 }
 
-trait InferCtxtExt<'tcx> {
+trait InferCtxtExt {
     fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region>;
 
     fn region_vars_confined_to_snapshot(&self,
@@ -371,7 +371,7 @@ fn fold_regions_in<'tcx, T, F>(tcx: &ty::ctxt<'tcx>,
     }))
 }
 
-impl<'a,'tcx> InferCtxtExt<'tcx> for InferCtxt<'a,'tcx> {
+impl<'a,'tcx> InferCtxtExt for InferCtxt<'a,'tcx> {
     fn tainted_regions(&self, snapshot: &CombinedSnapshot, r: ty::Region) -> Vec<ty::Region> {
         self.region_vars.tainted(&snapshot.region_vars_snapshot, r)
     }

@@ -19,7 +19,7 @@
 #[derive(Clone)]
 struct B1;
 
-trait A {}
+trait A : std::marker::MarkerTrait {}
 impl A for B1 {}
 
 fn main() {

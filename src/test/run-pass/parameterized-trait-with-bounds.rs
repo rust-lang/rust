@@ -11,12 +11,12 @@
 #![allow(dead_code)]
 
 
-trait A<T> {}
-trait B<T, U> {}
-trait C<'a, U> {}
+trait A<T> { fn get(self) -> T; }
+trait B<T, U> { fn get(self) -> (T,U); }
+trait C<'a, U> { fn get(self) -> &'a U; }
 
 mod foo {
-    pub trait D<'a, T> {}
+    pub trait D<'a, T> { fn get(self) -> &'a T; }
 }
 
 fn foo1<T>(_: &(A<T> + Send)) {}

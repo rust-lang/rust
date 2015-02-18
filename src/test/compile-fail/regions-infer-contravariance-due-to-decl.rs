@@ -20,7 +20,7 @@ use std::marker;
 // Contravariant<'foo> <: Contravariant<'static> because
 // 'foo <= 'static
 struct Contravariant<'a> {
-    marker: marker::ContravariantLifetime<'a>
+    marker: marker::PhantomData<&'a()>
 }
 
 fn use_<'short,'long>(c: Contravariant<'short>,

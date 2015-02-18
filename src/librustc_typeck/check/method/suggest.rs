@@ -306,10 +306,10 @@ pub fn all_traits<'a>(ccx: &'a CrateCtxt) -> AllTraits<'a> {
         // Crate-local:
         //
         // meh.
-        struct Visitor<'a, 'b: 'a, 'tcx: 'a + 'b> {
+        struct Visitor<'a> {
             traits: &'a mut AllTraitsVec,
         }
-        impl<'v,'a, 'b, 'tcx> visit::Visitor<'v> for Visitor<'a, 'b, 'tcx> {
+        impl<'v, 'a> visit::Visitor<'v> for Visitor<'a> {
             fn visit_item(&mut self, i: &'v ast::Item) {
                 match i.node {
                     ast::ItemTrait(..) => {

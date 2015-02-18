@@ -10,21 +10,22 @@
 
 use astconv::AstConv;
 use check::{FnCtxt, Inherited, blank_fn_ctxt, vtable, regionck};
+use constrained_type_params::identify_constrained_type_params;
 use CrateCtxt;
 use middle::region;
-use middle::subst;
+use middle::subst::{self, TypeSpace, FnSpace, ParamSpace, SelfSpace};
 use middle::traits;
 use middle::ty::{self, Ty};
 use middle::ty::liberate_late_bound_regions;
 use middle::ty_fold::{TypeFolder, TypeFoldable, super_fold_ty};
-use util::ppaux::Repr;
+use util::ppaux::{Repr, UserString};
 
 use std::collections::HashSet;
 use syntax::ast;
 use syntax::ast_util::{local_def};
 use syntax::attr;
 use syntax::codemap::Span;
-use syntax::parse::token;
+use syntax::parse::token::{self, special_idents};
 use syntax::visit;
 use syntax::visit::Visitor;
 
@@ -36,6 +37,10 @@ pub struct CheckTypeWellFormedVisitor<'ccx, 'tcx:'ccx> {
 impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
     pub fn new(ccx: &'ccx CrateCtxt<'ccx, 'tcx>) -> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         CheckTypeWellFormedVisitor { ccx: ccx, cache: HashSet::new() }
+    }
+
+    fn tcx(&self) -> &ty::ctxt<'tcx> {
+        self.ccx.tcx
     }
 
     /// Checks that the field types (in a struct def'n) or argument types (in an enum def'n) are
@@ -96,19 +101,29 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             ast::ItemConst(..) => {
                 self.check_item_type(item);
             }
-            ast::ItemStruct(ref struct_def, _) => {
-                self.check_type_defn(item, |fcx| vec![struct_variant(fcx, &**struct_def)]);
+            ast::ItemStruct(ref struct_def, ref ast_generics) => {
+                self.check_type_defn(item, |fcx| {
+                    vec![struct_variant(fcx, &**struct_def)]
+                });
+
+                self.check_variances_for_type_defn(item, ast_generics);
             }
-            ast::ItemEnum(ref enum_def, _) => {
-                self.check_type_defn(item, |fcx| enum_variants(fcx, enum_def));
+            ast::ItemEnum(ref enum_def, ref ast_generics) => {
+                self.check_type_defn(item, |fcx| {
+                    enum_variants(fcx, enum_def)
+                });
+
+                self.check_variances_for_type_defn(item, ast_generics);
             }
-            ast::ItemTrait(..) => {
+            ast::ItemTrait(_, ref ast_generics, _, _) => {
                 let trait_predicates =
                     ty::lookup_predicates(ccx.tcx, local_def(item.id));
                 reject_non_type_param_bounds(
                     ccx.tcx,
                     item.span,
                     &trait_predicates);
+                self.check_variances(item, ast_generics, &trait_predicates,
+                                     self.tcx().lang_items.phantom_fn());
             }
             _ => {}
         }
@@ -276,6 +291,123 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
         });
     }
+
+    fn check_variances_for_type_defn(&self,
+                                     item: &ast::Item,
+                                     ast_generics: &ast::Generics)
+    {
+        let item_def_id = local_def(item.id);
+        let predicates = ty::lookup_predicates(self.tcx(), item_def_id);
+        self.check_variances(item,
+                             ast_generics,
+                             &predicates,
+                             self.tcx().lang_items.phantom_data());
+    }
+
+    fn check_variances(&self,
+                       item: &ast::Item,
+                       ast_generics: &ast::Generics,
+                       ty_predicates: &ty::GenericPredicates<'tcx>,
+                       suggested_marker_id: Option<ast::DefId>)
+    {
+        let variance_lang_items = &[
+            self.tcx().lang_items.phantom_fn(),
+            self.tcx().lang_items.phantom_data(),
+        ];
+
+        let item_def_id = local_def(item.id);
+        let is_lang_item = variance_lang_items.iter().any(|n| *n == Some(item_def_id));
+        if is_lang_item {
+            return;
+        }
+
+        let variances = ty::item_variances(self.tcx(), item_def_id);
+
+        let mut constrained_parameters: HashSet<_> =
+            variances.types
+            .iter_enumerated()
+            .filter(|&(_, _, &variance)| variance != ty::Bivariant)
+            .map(|(space, index, _)| self.param_ty(ast_generics, space, index))
+            .collect();
+
+        identify_constrained_type_params(self.tcx(),
+                                         ty_predicates.predicates.as_slice(),
+                                         None,
+                                         &mut constrained_parameters);
+
+        for (space, index, _) in variances.types.iter_enumerated() {
+            let param_ty = self.param_ty(ast_generics, space, index);
+            if constrained_parameters.contains(&param_ty) {
+                continue;
+            }
+            let span = self.ty_param_span(ast_generics, item, space, index);
+            self.report_bivariance(span, param_ty.name, suggested_marker_id);
+        }
+
+        for (space, index, &variance) in variances.regions.iter_enumerated() {
+            if variance != ty::Bivariant {
+                continue;
+            }
+
+            assert_eq!(space, TypeSpace);
+            let span = ast_generics.lifetimes[index].lifetime.span;
+            let name = ast_generics.lifetimes[index].lifetime.name;
+            self.report_bivariance(span, name, suggested_marker_id);
+        }
+    }
+
+    fn param_ty(&self,
+                ast_generics: &ast::Generics,
+                space: ParamSpace,
+                index: usize)
+                -> ty::ParamTy
+    {
+        let name = match space {
+            TypeSpace => ast_generics.ty_params[index].ident.name,
+            SelfSpace => special_idents::type_self.name,
+            FnSpace => self.tcx().sess.bug("Fn space occupied?"),
+        };
+
+        ty::ParamTy { space: space, idx: index as u32, name: name }
+    }
+
+    fn ty_param_span(&self,
+                     ast_generics: &ast::Generics,
+                     item: &ast::Item,
+                     space: ParamSpace,
+                     index: usize)
+                     -> Span
+    {
+        match space {
+            TypeSpace => ast_generics.ty_params[index].span,
+            SelfSpace => item.span,
+            FnSpace => self.tcx().sess.span_bug(item.span, "Fn space occupied?"),
+        }
+    }
+
+    fn report_bivariance(&self,
+                         span: Span,
+                         param_name: ast::Name,
+                         suggested_marker_id: Option<ast::DefId>)
+    {
+        self.tcx().sess.span_err(
+            span,
+            &format!("parameter `{}` is never used",
+                     param_name.user_string(self.tcx()))[]);
+
+        match suggested_marker_id {
+            Some(def_id) => {
+                self.tcx().sess.span_help(
+                    span,
+                    format!("consider removing `{}` or using a marker such as `{}`",
+                            param_name.user_string(self.tcx()),
+                            ty::item_path_str(self.tcx(), def_id)).as_slice());
+            }
+            None => {
+                // no lang items, no help!
+            }
+        }
+    }
 }
 
 // Reject any predicates that do not involve a type parameter.
@@ -343,9 +475,9 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         match fk {
             visit::FkFnBlock | visit::FkItemFn(..) => {}
             visit::FkMethod(..) => {
-                match ty::impl_or_trait_item(self.ccx.tcx, local_def(id)) {
+                match ty::impl_or_trait_item(self.tcx(), local_def(id)) {
                     ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
-                        reject_shadowing_type_parameters(self.ccx.tcx, span, &ty_method.generics)
+                        reject_shadowing_type_parameters(self.tcx(), span, &ty_method.generics)
                     }
                     _ => {}
                 }
@@ -359,14 +491,14 @@ impl<'ccx, 'tcx, 'v> Visitor<'v> for CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             &ast::TraitItem::ProvidedMethod(_) |
             &ast::TraitItem::TypeTraitItem(_) => {},
             &ast::TraitItem::RequiredMethod(ref method) => {
-                match ty::impl_or_trait_item(self.ccx.tcx, local_def(method.id)) {
+                match ty::impl_or_trait_item(self.tcx(), local_def(method.id)) {
                     ty::ImplOrTraitItem::MethodTraitItem(ty_method) => {
                         reject_non_type_param_bounds(
-                            self.ccx.tcx,
+                            self.tcx(),
                             method.span,
                             &ty_method.predicates);
                         reject_shadowing_type_parameters(
-                            self.ccx.tcx,
+                            self.tcx(),
                             method.span,
                             &ty_method.generics);
                     }

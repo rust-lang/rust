@@ -12,7 +12,7 @@
 
 // impl - struct
 
-struct S5<Y>;
+struct S5<Y>(Y);
 
 impl<X: ?Sized> S5<X> { //~ ERROR not implemented
 }

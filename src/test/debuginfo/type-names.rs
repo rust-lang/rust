@@ -177,10 +177,11 @@
 #![omit_gdb_pretty_printer_section]
 
 use self::Enum1::{Variant1_1, Variant1_2};
+use std::marker::PhantomData;
 use std::ptr;
 
 struct Struct1;
-struct GenericStruct<T1, T2>;
+struct GenericStruct<T1, T2>(PhantomData<(T1,T2)>);
 
 enum Enum1 {
     Variant1_1,
@@ -207,8 +208,8 @@ mod Mod1 {
     }
 }
 
-trait Trait1 { }
-trait Trait2<T1, T2> { }
+trait Trait1 { fn dummy(&self) { } }
+trait Trait2<T1, T2> { fn dummy(&self, _: T1, _:T2) { } }
 
 impl Trait1 for isize {}
 impl<T1, T2> Trait2<T1, T2> for isize {}
@@ -240,8 +241,10 @@ fn main() {
 
     // Structs
     let simple_struct = Struct1;
-    let generic_struct1: GenericStruct<Mod1::Struct2, Mod1::Mod2::Struct3> = GenericStruct;
-    let generic_struct2: GenericStruct<Struct1, extern "fastcall" fn(isize) -> usize> = GenericStruct;
+    let generic_struct1: GenericStruct<Mod1::Struct2, Mod1::Mod2::Struct3> =
+        GenericStruct(PhantomData);
+    let generic_struct2: GenericStruct<Struct1, extern "fastcall" fn(isize) -> usize> =
+        GenericStruct(PhantomData);
     let mod_struct = Mod1::Struct2;
 
     // Enums
@@ -262,10 +265,10 @@ fn main() {
 
     // References
     let ref1 = (&Struct1, 0i32);
-    let ref2 = (&GenericStruct::<char, Struct1>, 0i32);
+    let ref2 = (&GenericStruct::<char, Struct1>(PhantomData), 0i32);
 
     let mut mut_struct1 = Struct1;
-    let mut mut_generic_struct = GenericStruct::<Mod1::Enum2, f64>;
+    let mut mut_generic_struct = GenericStruct::<Mod1::Enum2, f64>(PhantomData);
     let mut_ref1 = (&mut mut_struct1, 0i32);
     let mut_ref2 = (&mut mut_generic_struct, 0i32);
 

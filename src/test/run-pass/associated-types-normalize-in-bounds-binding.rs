@@ -13,7 +13,9 @@
 
 #![allow(dead_code)]
 
-pub trait Integral {
+use std::marker::MarkerTrait;
+
+pub trait Integral : MarkerTrait {
     type Opposite;
 }
 
@@ -27,6 +29,8 @@ impl Integral for u32 {
 
 pub trait FnLike<A> {
     type R;
+
+    fn dummy(&self, a: A) -> Self::R { loop { } }
 }
 
 fn foo<T>()

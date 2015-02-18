@@ -16,7 +16,7 @@ use any;
 use cell::{Cell, RefCell, Ref, RefMut, BorrowState};
 use char::CharExt;
 use iter::{Iterator, IteratorExt};
-use marker::{Copy, Sized};
+use marker::{Copy, PhantomData, Sized};
 use mem;
 use option::Option;
 use option::Option::{Some, None};
@@ -912,6 +912,11 @@ impl<T: Debug> Debug for [T] {
 impl Debug for () {
     fn fmt(&self, f: &mut Formatter) -> Result {
         f.pad("()")
+    }
+}
+impl<T> Debug for PhantomData<T> {
+    fn fmt(&self, f: &mut Formatter) -> Result {
+        f.pad("PhantomData")
     }
 }
 

@@ -11,7 +11,7 @@
 // Check that we get an error when you use `<Self as Get>::Value` in
 // the trait definition but `Self` does not, in fact, implement `Get`.
 
-trait Get {
+trait Get : ::std::marker::MarkerTrait {
     type Value;
 }
 

@@ -21,6 +21,6 @@ mod private {
     }
 
     pub trait PrivateTrait {
-        fn trait_method() {} // @!has - priv_method
+        fn trait_method(&self) {} // @!has - priv_method
     }
 }

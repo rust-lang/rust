@@ -11,7 +11,7 @@
 // Check that we correctly prevent users from making trait objects
 // from traits with static methods.
 
-trait Foo {
+trait Foo : ::std::marker::MarkerTrait {
     fn foo();
 }
 

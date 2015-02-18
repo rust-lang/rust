@@ -11,7 +11,7 @@
 pub use self::sub::{Bar, Baz};
 
 pub trait Trait {
-    fn foo();
+    fn foo(&self);
 }
 
 struct Foo;

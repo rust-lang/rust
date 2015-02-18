@@ -12,17 +12,19 @@
 
 // Test syntax checks for `?Sized` syntax.
 
-trait T1 {}
-pub trait T2 {}
-trait T3<X: T1> : T2 {}
-trait T4<X: ?Sized> {}
-trait T5<X: ?Sized, Y> {}
-trait T6<Y, X: ?Sized> {}
-trait T7<X: ?Sized, Y: ?Sized> {}
-trait T8<X: ?Sized+T2> {}
-trait T9<X: T2 + ?Sized> {}
-struct S1<X: ?Sized>;
-enum E<X: ?Sized> {}
+use std::marker::{PhantomData, PhantomFn};
+
+trait T1 : PhantomFn<Self> { }
+pub trait T2 : PhantomFn<Self> { }
+trait T3<X: T1> : T2 + PhantomFn<X> { }
+trait T4<X: ?Sized> : PhantomFn<(Self,X)> {}
+trait T5<X: ?Sized, Y> : PhantomFn<(Self,X,Y)> {}
+trait T6<Y, X: ?Sized> : PhantomFn<(Self,X,Y)> {}
+trait T7<X: ?Sized, Y: ?Sized> : PhantomFn<(Self,X,Y)> {}
+trait T8<X: ?Sized+T2> : PhantomFn<(Self,X)> {}
+trait T9<X: T2 + ?Sized> : PhantomFn<(Self,X)> {}
+struct S1<X: ?Sized>(PhantomData<X>);
+enum E<X: ?Sized> { E1(PhantomData<X>) }
 impl <X: ?Sized> T1 for S1<X> {}
 fn f<X: ?Sized>() {}
 type TT<T: ?Sized> = T;

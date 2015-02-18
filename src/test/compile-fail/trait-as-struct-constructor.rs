@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait TraitNotAStruct { }
+trait TraitNotAStruct : ::std::marker::MarkerTrait { }
 
 fn main() {
     TraitNotAStruct{ value: 0 };

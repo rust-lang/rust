@@ -153,7 +153,7 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use io;
-use marker;
+use marker::PhantomData;
 use old_io::stdio;
 use rt::{self, unwind};
 use sync::{Mutex, Condvar, Arc};
@@ -260,7 +260,7 @@ impl Builder {
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
         self.spawn_inner(Thunk::new(f)).map(|inner| {
-            JoinGuard { inner: inner, _marker: marker::CovariantType }
+            JoinGuard { inner: inner, _marker: PhantomData }
         })
     }
 
@@ -642,7 +642,7 @@ impl Drop for JoinHandle {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinGuard<'a, T: 'a> {
     inner: JoinInner<T>,
-    _marker: marker::CovariantType<&'a T>,
+    _marker: PhantomData<&'a T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]

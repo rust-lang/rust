@@ -18,7 +18,7 @@
 
 use std::mem;
 
-trait T { fn foo(); }
+trait T { fn foo(&self); }
 
 #[rustc_variance]
 struct TOption<'a> { //~ ERROR regions=[[-];[];[]]

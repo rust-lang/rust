@@ -14,8 +14,7 @@
 use std::cmp::{PartialEq, PartialOrd};
 use std::num::NumCast;
 
-pub trait TypeExt {}
-
+pub trait TypeExt : ::std::marker::MarkerTrait { }
 
 impl TypeExt for u8 {}
 impl TypeExt for u16 {}

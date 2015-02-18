@@ -876,7 +876,7 @@ pub struct IntoIter<V> {
 }
 
 #[unstable(feature = "collections")]
-pub struct Drain<'a, V> {
+pub struct Drain<'a, V:'a> {
     iter: FilterMap<
     Enumerate<vec::Drain<'a, Option<V>>>,
     fn((usize, Option<V>)) -> Option<(usize, V)>>

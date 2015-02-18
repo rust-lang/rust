@@ -10,8 +10,9 @@
 
 // Tests for "default" bounds inferred for traits with no bounds list.
 
+use std::marker::MarkerTrait;
 
-trait Foo {}
+trait Foo : MarkerTrait {}
 
 fn a(_x: Box<Foo+Send>) {
 }

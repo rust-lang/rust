@@ -13,8 +13,11 @@
 
 #![feature(unsafe_destructor)]
 
+use std::marker;
+
 struct arc_destruct<T> {
-  _data: int,
+    _data: int,
+    _marker: marker::PhantomData<T>
 }
 
 #[unsafe_destructor]
@@ -24,7 +27,8 @@ impl<T: Sync> Drop for arc_destruct<T> {
 
 fn arc_destruct<T: Sync>(data: int) -> arc_destruct<T> {
     arc_destruct {
-        _data: data
+        _data: data,
+        _marker: marker::PhantomData
     }
 }
 

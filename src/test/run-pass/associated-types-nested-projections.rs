@@ -10,11 +10,12 @@
 
 // Test that we can resolve nested projection types. Issue #20666.
 
+use std::marker::MarkerTrait;
 use std::slice;
 
-trait Bound {}
+trait Bound : MarkerTrait {}
 
-impl<'a> Bound for &'a int {}
+impl<'a> Bound for &'a i32 {}
 
 trait IntoIterator {
     type Iter: Iterator;

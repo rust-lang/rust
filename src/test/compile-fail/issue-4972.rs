@@ -11,7 +11,9 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
-trait MyTrait { }
+trait MyTrait {
+    fn dummy(&self) {}
+}
 
 pub enum TraitWrapper {
     A(Box<MyTrait+'static>),

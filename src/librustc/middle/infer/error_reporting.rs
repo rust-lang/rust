@@ -675,6 +675,17 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     sup,
                     "");
             }
+            infer::Operand(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "lifetime of operand does not outlive \
+                     the operation");
+                note_and_explain_region(
+                    self.tcx,
+                    "the operand is only valid for ",
+                    sup,
+                    "");
+            }
             infer::AddrOf(span) => {
                 self.tcx.sess.span_err(
                     span,
@@ -1592,6 +1603,11 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_note(
                     span,
                     "...so that return value is valid for the call");
+            }
+            infer::Operand(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "...so that operand is valid for operation");
             }
             infer::AddrOf(span) => {
                 self.tcx.sess.span_note(

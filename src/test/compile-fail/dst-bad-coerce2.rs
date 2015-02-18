@@ -15,7 +15,7 @@ struct Fat<T: ?Sized> {
 }
 
 struct Foo;
-trait Bar {}
+trait Bar : ::std::marker::MarkerTrait {}
 impl Bar for Foo {}
 
 pub fn main() {

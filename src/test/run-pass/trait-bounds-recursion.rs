@@ -10,17 +10,17 @@
 
 trait I { fn i(&self) -> Self; }
 
-trait A<T:I> {
+trait A<T:I> : ::std::marker::MarkerTrait {
     fn id(x:T) -> T { x.i() }
 }
 
-trait J<T> { fn j(&self) -> Self; }
+trait J<T> { fn j(&self) -> T; }
 
-trait B<T:J<T>> {
+trait B<T:J<T>> : ::std::marker::MarkerTrait {
     fn id(x:T) -> T { x.j() }
 }
 
-trait C {
+trait C : ::std::marker::MarkerTrait {
     fn id<T:J<T>>(x:T) -> T { x.j() }
 }
 

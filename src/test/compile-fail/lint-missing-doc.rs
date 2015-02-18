@@ -47,20 +47,26 @@ fn foo3() {}
 /// dox
 pub trait A {
     /// dox
-    fn foo();
+    fn foo(&self);
     /// dox
-    fn foo_with_impl() {}
+    fn foo_with_impl(&self) {}
 }
+
 #[allow(missing_docs)]
 trait B {
-    fn foo();
-    fn foo_with_impl() {}
+    fn foo(&self);
+    fn foo_with_impl(&self) {}
 }
+
 pub trait C { //~ ERROR: missing documentation
-    fn foo(); //~ ERROR: missing documentation
-    fn foo_with_impl() {} //~ ERROR: missing documentation
+    fn foo(&self); //~ ERROR: missing documentation
+    fn foo_with_impl(&self) {} //~ ERROR: missing documentation
 }
-#[allow(missing_docs)] pub trait D {}
+
+#[allow(missing_docs)]
+pub trait D {
+    fn dummy(&self) { }
+}
 
 impl Foo {
     pub fn foo() {}

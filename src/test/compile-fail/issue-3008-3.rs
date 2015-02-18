@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+use std::marker;
+
 enum E1 { V1(E2<E1>), }
-enum E2<T> { V2(E2<E1>), }
+enum E2<T> { V2(E2<E1>, marker::PhantomData<T>), }
 //~^ ERROR illegal recursive enum type; wrap the inner value in a box to make it representable
 
 impl E1 { fn foo(&self) {} }

@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait X { }
+trait X { fn dummy(&self) { } }
 impl X for uint { }
 
-trait Y { }
+trait Y { fn dummy(&self) { } }
 impl Y for uint { }

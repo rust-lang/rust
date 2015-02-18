@@ -12,7 +12,9 @@
 
 use std::mem;
 
-trait A {}
+trait A {
+    fn dummy(&self) { }
+}
 struct B;
 impl A for B {}
 

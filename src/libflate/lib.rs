@@ -45,13 +45,13 @@ pub struct Bytes {
 impl Deref for Bytes {
     type Target = [u8];
     fn deref(&self) -> &[u8] {
-        unsafe { slice::from_raw_parts_mut(self.ptr.ptr, self.len) }
+        unsafe { slice::from_raw_parts(*self.ptr, self.len) }
     }
 }
 
 impl Drop for Bytes {
     fn drop(&mut self) {
-        unsafe { libc::free(self.ptr.ptr as *mut _); }
+        unsafe { libc::free(*self.ptr as *mut _); }
     }
 }
 
@@ -84,7 +84,7 @@ fn deflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
                                              &mut outsz,
                                              flags);
         if !res.is_null() {
-            let res = Unique(res as *mut u8);
+            let res = Unique::new(res as *mut u8);
             Some(Bytes { ptr: res, len: outsz as uint })
         } else {
             None
@@ -110,7 +110,7 @@ fn inflate_bytes_internal(bytes: &[u8], flags: c_int) -> Option<Bytes> {
                                                &mut outsz,
                                                flags);
         if !res.is_null() {
-            let res = Unique(res as *mut u8);
+            let res = Unique::new(res as *mut u8);
             Some(Bytes { ptr: res, len: outsz as uint })
         } else {
             None

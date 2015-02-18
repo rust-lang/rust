@@ -12,6 +12,7 @@
 #![feature(box_syntax)]
 
 pub trait EventLoop {
+    fn dummy(&self) { }
 }
 
 pub struct UvEventLoop {

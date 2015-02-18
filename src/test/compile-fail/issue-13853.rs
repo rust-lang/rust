@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Node {
+use std::marker::MarkerTrait;
+
+trait Node : MarkerTrait {
     fn zomg();
 }
 
