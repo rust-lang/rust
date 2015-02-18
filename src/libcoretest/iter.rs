@@ -82,7 +82,7 @@ fn test_iterator_chain() {
     let xs = [0, 1, 2, 3, 4, 5];
     let ys = [30, 40, 50, 60];
     let expected = [0, 1, 2, 3, 4, 5, 30, 40, 50, 60];
-    let mut it = xs.iter().chain(ys.iter());
+    let it = xs.iter().chain(ys.iter());
     let mut i = 0;
     for &x in it {
         assert_eq!(x, expected[i]);
@@ -91,7 +91,7 @@ fn test_iterator_chain() {
     assert_eq!(i, expected.len());
 
     let ys = count(30, 10).take(4);
-    let mut it = xs.iter().cloned().chain(ys);
+    let it = xs.iter().cloned().chain(ys);
     let mut i = 0;
     for x in it {
         assert_eq!(x, expected[i]);
@@ -110,7 +110,7 @@ fn test_filter_map() {
 #[test]
 fn test_iterator_enumerate() {
     let xs = [0, 1, 2, 3, 4, 5];
-    let mut it = xs.iter().enumerate();
+    let it = xs.iter().enumerate();
     for (i, &x) in it {
         assert_eq!(i, x);
     }
@@ -152,7 +152,7 @@ fn test_iterator_peekable() {
 fn test_iterator_take_while() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
     let ys = [0, 1, 2, 3, 5, 13];
-    let mut it = xs.iter().take_while(|&x| *x < 15);
+    let it = xs.iter().take_while(|&x| *x < 15);
     let mut i = 0;
     for x in it {
         assert_eq!(*x, ys[i]);
@@ -165,7 +165,7 @@ fn test_iterator_take_while() {
 fn test_iterator_skip_while() {
     let xs = [0, 1, 2, 3, 5, 13, 15, 16, 17, 19];
     let ys = [15, 16, 17, 19];
-    let mut it = xs.iter().skip_while(|&x| *x < 15);
+    let it = xs.iter().skip_while(|&x| *x < 15);
     let mut i = 0;
     for x in it {
         assert_eq!(*x, ys[i]);
@@ -231,7 +231,7 @@ fn test_iterator_scan() {
     let xs = [0, 1, 2, 3, 4];
     let ys = [0f64, 1.0, 3.0, 6.0, 10.0];
 
-    let mut it = xs.iter().scan(0, add);
+    let it = xs.iter().scan(0, add);
     let mut i = 0;
     for x in it {
         assert_eq!(x, ys[i]);
@@ -244,7 +244,7 @@ fn test_iterator_scan() {
 fn test_iterator_flat_map() {
     let xs = [0, 3, 6];
     let ys = [0, 1, 2, 3, 4, 5, 6, 7, 8];
-    let mut it = xs.iter().flat_map(|&x| count(x, 1).take(3));
+    let it = xs.iter().flat_map(|&x| count(x, 1).take(3));
     let mut i = 0;
     for x in it {
         assert_eq!(x, ys[i]);
@@ -279,7 +279,7 @@ fn test_unfoldr() {
         }
     }
 
-    let mut it = Unfold::new(0, count);
+    let it = Unfold::new(0, count);
     let mut i = 0;
     for counted in it {
         assert_eq!(counted, i);
