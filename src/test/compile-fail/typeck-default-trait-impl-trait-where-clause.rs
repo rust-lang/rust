@@ -25,14 +25,19 @@ impl MyTrait for .. {}
 
 fn foo<T:MyTrait>() {
     bar::<Option<T>>()
-        //~^ ERROR not implemented for the type `Option<T>`
-        //
-        // This should probably typecheck. This is #20671.
+    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<T>`
+    //
+    // This should probably typecheck. This is #20671.
 }
 
 fn bar<T:NotImplemented>() { }
 
+fn test() {
+    bar::<Option<i32>>();
+    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<i32>`
+}
+
 fn main() {
-    foo::<i32>(); //~ ERROR not implemented for the type `i32`
-    bar::<Option<i32>>(); //~ ERROR not implemented for the type `Option<i32>`
+    foo::<i32>();
+    //~^ ERROR the trait `NotImplemented` is not implemented for the type `core::option::Option<i32>`
 }
