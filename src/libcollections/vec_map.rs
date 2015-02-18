@@ -700,7 +700,7 @@ impl<'a, T> IntoIterator for &'a mut VecMap<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<V> Extend<(usize, V)> for VecMap<V> {
-    fn extend<Iter: Iterator<Item=(usize, V)>>(&mut self, iter: Iter) {
+    fn extend<I: IntoIterator<Item=(usize, V)>>(&mut self, iter: I) {
         for (k, v) in iter {
             self.insert(k, v);
         }

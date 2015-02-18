@@ -1570,7 +1570,7 @@ impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
+    fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }

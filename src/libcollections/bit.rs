@@ -934,7 +934,8 @@ impl FromIterator<bool> for Bitv {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<bool> for Bitv {
     #[inline]
-    fn extend<I: Iterator<Item=bool>>(&mut self, iterator: I) {
+    fn extend<I: IntoIterator<Item=bool>>(&mut self, iterable: I) {
+        let iterator = iterable.into_iter();
         let (min, _) = iterator.size_hint();
         self.reserve(min);
         for element in iterator {
@@ -1143,8 +1144,8 @@ impl FromIterator<usize> for BitvSet {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Extend<usize> for BitvSet {
     #[inline]
-    fn extend<I: Iterator<Item=usize>>(&mut self, iterator: I) {
-        for i in iterator {
+    fn extend<I: IntoIterator<Item=usize>>(&mut self, iter: I) {
+        for i in iter {
             self.insert(i);
         }
     }
