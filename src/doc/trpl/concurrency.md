@@ -244,7 +244,7 @@ use std::time::Duration;
 fn main() {
     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
 
-    for i in 0us..2 {
+    for i in 0..2 {
         let data = data.clone();
         thread::spawn(move || {
             let mut data = data.lock().unwrap();
@@ -267,7 +267,7 @@ thread more closely:
 # use std::time::Duration;
 # fn main() {
 #     let data = Arc::new(Mutex::new(vec![1u32, 2, 3]));
-#     for i in 0us..2 {
+#     for i in 0..2 {
 #         let data = data.clone();
 thread::spawn(move || {
     let mut data = data.lock().unwrap();

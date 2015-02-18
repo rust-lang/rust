@@ -465,13 +465,9 @@ An _integer literal_ has one of four forms:
 
 Like any literal, an integer literal may be followed (immediately,
 without any spaces) by an _integer suffix_, which forcibly sets the
-type of the literal. There are 10 valid values for an integer suffix:
-
-* Each of the signed and unsigned machine types `u8`, `i8`,
-  `u16`, `i16`, `u32`, `i32`, `u64` and `i64`
-  give the literal the corresponding machine type.
-* The `is` and `us` suffixes give the literal type `isize` or `usize`,
-  respectively.
+type of the literal. The integer suffix must be the name of one of the
+integral types: `u8`, `i8`, `u16`, `i16`, `u32`, `i32`, `u64`, `i64`,
+`isize`, or `usize`.
 
 The type of an _unsuffixed_ integer literal is determined by type inference.
 If an integer type can be _uniquely_ determined from the surrounding program
@@ -489,7 +485,7 @@ Examples of integer literals of various forms:
 0xff_u8;                           // type u8
 0o70_i16;                          // type i16
 0b1111_1111_1001_0000_i32;         // type i32
-0us;                               // type usize
+0usize;                            // type usize
 ```
 
 ##### Floating-point literals
@@ -1001,8 +997,8 @@ fn foo<T>(_: T){}
 fn bar(map1: HashMap<String, usize>, map2: hash_map::HashMap<String, usize>){}
 
 fn main() {
-    // Equivalent to 'std::iter::range_step(0us, 10, 2);'
-    range_step(0us, 10, 2);
+    // Equivalent to 'std::iter::range_step(0, 10, 2);'
+    range_step(0, 10, 2);
 
     // Equivalent to 'foo(vec![std::option::Option::Some(1.0f64),
     // std::option::Option::None]);'
@@ -3126,7 +3122,7 @@ conditional expression evaluates to `false`, the `while` expression completes.
 An example:
 
 ```
-let mut i = 0us;
+let mut i = 0;
 
 while i < 10 {
     println!("hello");
@@ -3206,7 +3202,7 @@ An example of a for loop over a series of integers:
 
 ```
 # fn bar(b:usize) { }
-for i in 0us..256 {
+for i in 0..256 {
     bar(i);
 }
 ```
