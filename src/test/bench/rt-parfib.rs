@@ -9,20 +9,20 @@
 // except according to those terms.
 
 use std::sync::mpsc::channel;
-use std::os;
-use std::thread::Thread;
+use std::env;
+use std::thread;
 
 // A simple implementation of parfib. One subtree is found in a new
 // task and communicated over a oneshot pipe, the other is found
 // locally. There is no sequential-mode threshold.
 
-fn parfib(n: uint) -> uint {
+fn parfib(n: u64) -> u64 {
     if n == 0 || n == 1 {
         return 1;
     }
 
     let (tx, rx) = channel();
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         tx.send(parfib(n-1)).unwrap();
     });
     let m2 = parfib(n-2);
@@ -30,11 +30,9 @@ fn parfib(n: uint) -> uint {
 }
 
 fn main() {
-
-    let args = os::args();
-    let args = args;
+    let mut args = env::args();
     let n = if args.len() == 2 {
-        args[1].parse::<uint>().unwrap()
+        args.nth(1).unwrap().parse::<u64>().unwrap()
     } else {
         10
     };

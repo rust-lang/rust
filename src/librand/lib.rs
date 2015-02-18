@@ -497,17 +497,6 @@ pub struct Open01<F>(pub F);
 /// ```
 pub struct Closed01<F>(pub F);
 
-// NOTE: remove after next snapshot
-#[cfg(all(stage0, not(test)))]
-mod std {
-    pub use core::{option, fmt}; // panic!()
-    pub use core::clone; // derive Clone
-    pub use core::marker;
-    // for-loops
-    pub use core::iter;
-    pub use core::ops; // slicing syntax
-}
-
 #[cfg(test)]
 mod test {
     use std::rand;

@@ -39,7 +39,7 @@
 // OF THE POSSIBILITY OF SUCH DAMAGE.
 
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::thread::Thread;
+use std::thread;
 
 fn start(n_tasks: i32, token: i32) {
     let (tx, mut rx) = channel();
@@ -48,9 +48,9 @@ fn start(n_tasks: i32, token: i32) {
     for i in 2 .. n_tasks + 1 {
         let (tx, next_rx) = channel();
         let cur_rx = std::mem::replace(&mut rx, next_rx);
-        guards.push(Thread::scoped(move|| roundtrip(i, tx, cur_rx)));
+        guards.push(thread::spawn(move|| roundtrip(i, tx, cur_rx)));
     }
-    let guard = Thread::scoped(move|| roundtrip(1, tx, rx));
+    let guard = thread::spawn(move|| roundtrip(1, tx, rx));
 }
 
 fn roundtrip(id: i32, tx: Sender<i32>, rx: Receiver<i32>) {
@@ -64,13 +64,13 @@ fn roundtrip(id: i32, tx: Sender<i32>, rx: Receiver<i32>) {
 }
 
 fn main() {
-    let args = std::os::args();
+    let mut args = std::env::args();
     let token = if std::env::var_os("RUST_BENCH").is_some() {
         2000000
     } else {
-        args.get(1).and_then(|arg| arg.parse().ok()).unwrap_or(1000)
+        args.nth(1).and_then(|arg| arg.parse().ok()).unwrap_or(1000)
     };
-    let n_tasks = args.get(2)
+    let n_tasks = args.next()
                       .and_then(|arg| arg.parse().ok())
                       .unwrap_or(503);
 

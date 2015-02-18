@@ -124,7 +124,7 @@
 //!     # #![allow(dead_code)]
 //!     use std::old_io::{TcpListener, TcpStream};
 //!     use std::old_io::{Acceptor, Listener};
-//!     use std::thread::Thread;
+//!     use std::thread;
 //!
 //!     let listener = TcpListener::bind("127.0.0.1:80");
 //!
@@ -140,7 +140,7 @@
 //!         match stream {
 //!             Err(e) => { /* connection failed */ }
 //!             Ok(stream) => {
-//!                 Thread::spawn(move|| {
+//!                 thread::spawn(move|| {
 //!                     // connection succeeded
 //!                     handle_client(stream)
 //!                 });
@@ -238,7 +238,7 @@
 //! concerned with error handling; instead its caller is responsible for
 //! responding to errors that may occur while attempting to read the numbers.
 
-#![unstable(feature = "io")]
+#![unstable(feature = "old_io")]
 #![deny(unused_must_use)]
 
 pub use self::SeekStyle::*;

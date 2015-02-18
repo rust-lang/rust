@@ -12,11 +12,10 @@
 
 #![allow(dead_code)]
 #![deny(non_snake_case)]
-#![feature(path)]
-#![feature(io)]
 
-use std::old_io::File;
-use std::old_io::IoError;
+mod foo {
+    pub enum Foo { Foo }
+}
 
 struct Something {
     X: usize //~ ERROR structure field `X` should have a snake case name such as `x`
@@ -30,13 +29,11 @@ fn main() {
     let Test: usize = 0; //~ ERROR variable `Test` should have a snake case name such as `test`
     println!("{}", Test);
 
-    let mut f = File::open(&Path::new("something.txt"));
-    let mut buff = [0u8; 16];
-    match f.read(&mut buff) {
-        Ok(cnt) => println!("read this many bytes: {}", cnt),
-        Err(IoError{ kind: EndOfFile, .. }) => println!("Got end of file: {:?}", EndOfFile),
-//~^ ERROR variable `EndOfFile` should have a snake case name such as `end_of_file`
-//~^^ WARN `EndOfFile` is named the same as one of the variants of the type `std::old_io::IoErrorKind`
+    match foo::Foo::Foo {
+        Foo => {}
+//~^ ERROR variable `Foo` should have a snake case name such as `foo`
+//~^^ WARN `Foo` is named the same as one of the variants of the type `foo::Foo`
+//~^^^ WARN unused variable: `Foo`
     }
 
     test(1);

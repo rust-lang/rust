@@ -74,11 +74,11 @@ pub struct Queue<T> {
     cache_subtractions: AtomicUsize,
 }
 
-unsafe impl<T: Send> Send for Queue<T> { }
+unsafe impl<T: Send + 'static> Send for Queue<T> { }
 
-unsafe impl<T: Send> Sync for Queue<T> { }
+unsafe impl<T: Send + 'static> Sync for Queue<T> { }
 
-impl<T: Send> Node<T> {
+impl<T: Send + 'static> Node<T> {
     fn new() -> *mut Node<T> {
         unsafe {
             mem::transmute(box Node {
@@ -89,7 +89,7 @@ impl<T: Send> Node<T> {
     }
 }
 
-impl<T: Send> Queue<T> {
+impl<T: Send + 'static> Queue<T> {
     /// Creates a new queue.
     ///
     /// This is unsafe as the type system doesn't enforce a single
@@ -227,7 +227,7 @@ impl<T: Send> Queue<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Queue<T> {
+impl<T: Send + 'static> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
             let mut cur = *self.first.get();
@@ -246,7 +246,7 @@ mod test {
 
     use sync::Arc;
     use super::Queue;
-    use thread::Thread;
+    use thread;
     use sync::mpsc::channel;
 
     #[test]
@@ -324,7 +324,7 @@ mod test {
 
             let (tx, rx) = channel();
             let q2 = q.clone();
-            let _t = Thread::spawn(move|| {
+            let _t = thread::spawn(move|| {
                 for _ in 0u..100000 {
                     loop {
                         match q2.pop() {

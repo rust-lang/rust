@@ -39,8 +39,8 @@
 #![feature(env)]
 #![feature(hash)]
 #![feature(int_uint)]
-#![feature(io)]
-#![feature(path)]
+#![feature(old_io)]
+#![feature(old_path)]
 #![feature(rustc_private)]
 #![feature(staged_api)]
 #![feature(std_misc)]
@@ -75,7 +75,7 @@ use std::iter::repeat;
 use std::num::{Float, Int};
 use std::env;
 use std::sync::mpsc::{channel, Sender};
-use std::thread::{self, Thread};
+use std::thread;
 use std::thunk::{Thunk, Invoke};
 use std::time::Duration;
 
@@ -154,7 +154,7 @@ pub enum TestFn {
     StaticTestFn(fn()),
     StaticBenchFn(fn(&mut Bencher)),
     StaticMetricFn(fn(&mut MetricMap)),
-    DynTestFn(Thunk),
+    DynTestFn(Thunk<'static>),
     DynMetricFn(Box<for<'a> Invoke<&'a mut MetricMap>+'static>),
     DynBenchFn(Box<TDynBenchFn+'static>)
 }
@@ -878,8 +878,8 @@ pub fn run_test(opts: &TestOpts,
     fn run_test_inner(desc: TestDesc,
                       monitor_ch: Sender<MonitorMsg>,
                       nocapture: bool,
-                      testfn: Thunk) {
-        Thread::spawn(move || {
+                      testfn: Thunk<'static>) {
+        thread::spawn(move || {
             let (tx, rx) = channel();
             let mut reader = ChanReader::new(rx);
             let stdout = ChanWriter::new(tx.clone());
@@ -895,7 +895,7 @@ pub fn run_test(opts: &TestOpts,
                 cfg = cfg.stderr(box stderr as Box<Writer + Send>);
             }
 
-            let result_guard = cfg.scoped(move || { testfn.invoke(()) });
+            let result_guard = cfg.spawn(move || { testfn.invoke(()) }).unwrap();
             let stdout = reader.read_to_end().unwrap().into_iter().collect();
             let test_result = calc_result(&desc, result_guard.join());
             monitor_ch.send((desc.clone(), test_result, stdout)).unwrap();

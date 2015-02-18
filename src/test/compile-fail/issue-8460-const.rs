@@ -9,47 +9,47 @@
 // except according to those terms.
 
 use std::{int, i8, i16, i32, i64};
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
-    assert!(Thread::scoped(move|| int::MIN / -1).join().is_err());
+    assert!(thread::spawn(move|| { int::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
-    assert!(Thread::scoped(move|| i8::MIN / -1).join().is_err());
+    assert!(thread::spawn(move|| { i8::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
-    assert!(Thread::scoped(move|| i16::MIN / -1).join().is_err());
+    assert!(thread::spawn(move|| { i16::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
-    assert!(Thread::scoped(move|| i32::MIN / -1).join().is_err());
+    assert!(thread::spawn(move|| { i32::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
-    assert!(Thread::scoped(move|| i64::MIN / -1).join().is_err());
+    assert!(thread::spawn(move|| { i64::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
-    assert!(Thread::scoped(move|| 1is / 0).join().is_err());
+    assert!(thread::spawn(move|| { 1is / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
-    assert!(Thread::scoped(move|| 1i8 / 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i8 / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
-    assert!(Thread::scoped(move|| 1i16 / 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i16 / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
-    assert!(Thread::scoped(move|| 1i32 / 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i32 / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
-    assert!(Thread::scoped(move|| 1i64 / 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i64 / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
-    assert!(Thread::scoped(move|| int::MIN % -1).join().is_err());
+    assert!(thread::spawn(move|| { int::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression
-    assert!(Thread::scoped(move|| i8::MIN % -1).join().is_err());
+    assert!(thread::spawn(move|| { i8::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression
-    assert!(Thread::scoped(move|| i16::MIN % -1).join().is_err());
+    assert!(thread::spawn(move|| { i16::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression
-    assert!(Thread::scoped(move|| i32::MIN % -1).join().is_err());
+    assert!(thread::spawn(move|| { i32::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression
-    assert!(Thread::scoped(move|| i64::MIN % -1).join().is_err());
+    assert!(thread::spawn(move|| { i64::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression
-    assert!(Thread::scoped(move|| 1is % 0).join().is_err());
+    assert!(thread::spawn(move|| { 1is % 0; }).join().is_err());
     //~^ ERROR attempted remainder with a divisor of zero in a constant expression
-    assert!(Thread::scoped(move|| 1i8 % 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i8 % 0; }).join().is_err());
     //~^ ERROR attempted remainder with a divisor of zero in a constant expression
-    assert!(Thread::scoped(move|| 1i16 % 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i16 % 0; }).join().is_err());
     //~^ ERROR attempted remainder with a divisor of zero in a constant expression
-    assert!(Thread::scoped(move|| 1i32 % 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i32 % 0; }).join().is_err());
     //~^ ERROR attempted remainder with a divisor of zero in a constant expression
-    assert!(Thread::scoped(move|| 1i64 % 0).join().is_err());
+    assert!(thread::spawn(move|| { 1i64 % 0; }).join().is_err());
     //~^ ERROR attempted remainder with a divisor of zero in a constant expression
 }

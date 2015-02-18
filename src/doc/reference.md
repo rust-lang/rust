@@ -2398,6 +2398,10 @@ The currently implemented features of the reference compiler are:
                     ways insufficient for concatenating identifiers, and may be
                     removed entirely for something more wholesome.
 
+* `custom_attribute` - Allows the usage of attributes unknown to the compiler
+                       so that new attributes can be added in a bacwards compatible
+                       manner (RFC 572).
+
 * `intrinsics` - Allows use of the "rust-intrinsics" ABI. Compiler intrinsics
                  are inherently unstable and no promise about them is made.
 
@@ -2457,6 +2461,9 @@ The currently implemented features of the reference compiler are:
 * `quote` - Allows use of the `quote_*!` family of macros, which are
             implemented very poorly and will likely change significantly
             with a proper implementation.
+
+* `rustc_attrs` - Gates internal `#[rustc_*]` attributes which may be
+                  for internal use only or have meaning added to them in the future.
 
 * `rustc_diagnostic_macros`- A mysterious feature, used in the implementation
                              of rustc, not meant for mortals.

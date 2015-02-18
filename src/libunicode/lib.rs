@@ -77,16 +77,3 @@ pub mod str {
     pub use u_str::{utf8_char_width, is_utf16, Utf16Items, Utf16Item};
     pub use u_str::{utf16_items, Utf16Encoder};
 }
-
-// NOTE: remove after next snapshot
-// this lets us use #[derive(..)]
-#[cfg(stage0)]
-mod std {
-    pub use core::clone;
-    pub use core::cmp;
-    pub use core::fmt;
-    pub use core::marker;
-    // for-loops
-    pub use core::iter;
-    pub use core::option;
-}

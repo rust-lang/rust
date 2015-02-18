@@ -47,6 +47,7 @@ use syntax::{abi, ast, ast_map};
 use syntax::ast_util::is_shift_binop;
 use syntax::attr::{self, AttrMetaMethods};
 use syntax::codemap::{self, Span};
+use syntax::feature_gate::{KNOWN_ATTRIBUTES, AttributeType};
 use syntax::parse::token;
 use syntax::ast::{TyIs, TyUs, TyI8, TyU8, TyI16, TyU16, TyI32, TyU32, TyI64, TyU64};
 use syntax::ast_util;
@@ -640,67 +641,19 @@ impl LintPass for UnusedAttributes {
     }
 
     fn check_attribute(&mut self, cx: &Context, attr: &ast::Attribute) {
-        static ATTRIBUTE_WHITELIST: &'static [&'static str] = &[
-            // FIXME: #14408 whitelist docs since rustdoc looks at them
-            "doc",
-
-            // FIXME: #14406 these are processed in trans, which happens after the
-            // lint pass
-            "cold",
-            "export_name",
-            "inline",
-            "link",
-            "link_name",
-            "link_section",
-            "linkage",
-            "no_builtins",
-            "no_mangle",
-            "no_split_stack",
-            "no_stack_check",
-            "packed",
-            "static_assert",
-            "thread_local",
-            "no_debug",
-            "omit_gdb_pretty_printer_section",
-            "unsafe_no_drop_flag",
-
-            // used in resolve
-            "prelude_import",
-
-            // FIXME: #14407 these are only looked at on-demand so we can't
-            // guarantee they'll have already been checked
-            "deprecated",
-            "must_use",
-            "stable",
-            "unstable",
-            "rustc_on_unimplemented",
-            "rustc_error",
-
-            // FIXME: #19470 this shouldn't be needed forever
-            "old_orphan_check",
-            "old_impl_check",
-            "rustc_paren_sugar", // FIXME: #18101 temporary unboxed closure hack
-        ];
-
-        static CRATE_ATTRS: &'static [&'static str] = &[
-            "crate_name",
-            "crate_type",
-            "feature",
-            "no_start",
-            "no_main",
-            "no_std",
-            "no_builtins",
-        ];
-
-        for &name in ATTRIBUTE_WHITELIST {
-            if attr.check_name(name) {
-                break;
+        for &(ref name, ty) in KNOWN_ATTRIBUTES {
+            match ty {
+                AttributeType::Whitelisted
+                | AttributeType::Gated(_, _) if attr.check_name(name) => {
+                    break;
+                },
+                _ => ()
             }
         }
 
         if !attr::is_used(attr) {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
-            if CRATE_ATTRS.contains(&&attr.name()[]) {
+            if KNOWN_ATTRIBUTES.contains(&(&attr.name()[], AttributeType::CrateLevel)) {
                 let msg = match attr.node.style {
                     ast::AttrOuter => "crate-level attribute should be an inner \
                                        attribute: add an exclamation mark: #![foo]",
@@ -1761,7 +1714,7 @@ impl LintPass for Stability {
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        stability::check_item(cx.tcx, item,
+        stability::check_item(cx.tcx, item, false,
                               &mut |id, sp, stab| self.lint(cx, id, sp, stab));
     }
 

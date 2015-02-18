@@ -25,7 +25,7 @@
 # L10N_LANGS are the languages for which the docs have been
 # translated.
 ######################################################################
-DOCS := index intro tutorial complement-bugreport \
+DOCS := index intro tutorial \
     complement-lang-faq complement-design-faq complement-project-faq \
     rustdoc reference grammar
 
@@ -73,7 +73,7 @@ RUSTBOOK = $(RPATH_VAR2_T_$(CFG_BUILD)_H_$(CFG_BUILD)) $(RUSTBOOK_EXE)
 
 D := $(S)src/doc
 
-DOC_TARGETS := trpl
+DOC_TARGETS := trpl style
 COMPILER_DOC_TARGETS :=
 DOC_L10N_TARGETS :=
 
@@ -275,3 +275,9 @@ trpl: doc/book/index.html
 doc/book/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/trpl/*.md) | doc/
 	$(Q)rm -rf doc/book
 	$(Q)$(RUSTBOOK) build $(S)src/doc/trpl doc/book
+
+style: doc/style/index.html
+
+doc/style/index.html: $(RUSTBOOK_EXE) $(wildcard $(S)/src/doc/style/*.md) | doc/
+	$(Q)rm -rf doc/style
+	$(Q)$(RUSTBOOK) build $(S)src/doc/style doc/style

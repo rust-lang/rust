@@ -18,6 +18,8 @@
 // Test that moving into a field (i.e. overwriting it) fragments the
 // receiver.
 
+#![feature(rustc_attrs)]
+
 use std::mem::drop;
 
 pub struct Pair<X,Y> { x: X, y: Y }

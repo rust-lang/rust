@@ -8,11 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn assert_send<T: Send>(_t: T) {}
+fn assert_static<T: 'static>(_t: T) {}
 
 fn main() {
     let line = String::new();
     match [&*line] { //~ ERROR `line` does not live long enough
-        [ word ] => { assert_send(word); }
+        [ word ] => { assert_static(word); }
     }
 }

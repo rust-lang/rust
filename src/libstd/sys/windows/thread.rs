@@ -8,8 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use boxed::Box;
+use prelude::v1::*;
+
 use cmp;
+use io;
 use mem;
 use ptr;
 use libc;
@@ -42,7 +44,7 @@ pub mod guard {
     }
 }
 
-pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
+pub unsafe fn create(stack: uint, p: Thunk) -> io::Result<rust_thread> {
     let arg: *mut libc::c_void = mem::transmute(box p);
     // FIXME On UNIX, we guard against stack sizes that are too small but
     // that's because pthreads enforces that stacks are at least
@@ -60,9 +62,10 @@ pub unsafe fn create(stack: uint, p: Thunk) -> rust_thread {
     if ret as uint == 0 {
         // be sure to not leak the closure
         let _p: Box<Thunk> = mem::transmute(arg);
-        panic!("failed to spawn native thread: {:?}", ret);
+        Err(io::Error::last_os_error())
+    } else {
+        Ok(ret)
     }
-    return ret;
 }
 
 pub unsafe fn set_name(_name: &str) {

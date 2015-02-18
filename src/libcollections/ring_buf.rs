@@ -8,9 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! This crate implements a double-ended queue with `O(1)` amortized inserts and removals from both
-//! ends of the container. It also has `O(1)` indexing like a vector. The contained elements are
-//! not required to be copyable, and the queue will be sendable if the contained type is sendable.
+//! RingBuf is a double-ended queue, which is implemented with the help of a
+//! growing circular buffer.
+//!
+//! This queue has `O(1)` amortized inserts and removals from both ends of the
+//! container. It also has `O(1)` indexing like a vector. The contained elements
+//! are not required to be copyable, and the queue will be sendable if the
+//! contained type is sendable.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -113,7 +117,8 @@ impl<T> RingBuf<T> {
     #[inline]
     fn is_full(&self) -> bool { self.cap - self.len() == 1 }
 
-    /// Returns the index in the underlying buffer for a given logical element index.
+    /// Returns the index in the underlying buffer for a given logical element
+    /// index.
     #[inline]
     fn wrap_index(&self, idx: usize) -> usize { wrap_index(idx, self.cap) }
 
@@ -1699,17 +1704,7 @@ impl<A> FromIterator<A> for RingBuf<A> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T> IntoIterator for RingBuf<T> {
-    type IntoIter = IntoIter<T>;
-
-    fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for RingBuf<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -1719,17 +1714,7 @@ impl<T> IntoIterator for RingBuf<T> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, T> IntoIterator for &'a RingBuf<T> {
-    type IntoIter = Iter<'a, T>;
-
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a RingBuf<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -1739,17 +1724,7 @@ impl<'a, T> IntoIterator for &'a RingBuf<T> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
-    type IntoIter = IterMut<'a, T>;
-
-    fn into_iter(mut self) -> IterMut<'a, T> {
-        self.iter_mut()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a mut RingBuf<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;

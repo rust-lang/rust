@@ -126,11 +126,3 @@ pub fn oom() -> ! {
 //                optimize it out).
 #[doc(hidden)]
 pub fn fixme_14344_be_sure_to_link_to_collections() {}
-
-// NOTE: remove after next snapshot
-#[cfg(all(stage0, not(test)))]
-#[doc(hidden)]
-mod std {
-    pub use core::fmt;
-    pub use core::option;
-}

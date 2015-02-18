@@ -19,9 +19,8 @@
 // version.
 
 use std::sync::mpsc::{channel, Sender, Receiver};
-use std::os;
 use std::env;
-use std::thread::Thread;
+use std::thread;
 use std::time::Duration;
 
 fn move_out<T>(_x: T) {}
@@ -64,7 +63,7 @@ fn run(args: &[String]) {
         let mut worker_results = Vec::new();
         for _ in 0u..workers {
             let to_child = to_child.clone();
-            worker_results.push(Thread::scoped(move|| {
+            worker_results.push(thread::spawn(move|| {
                 for _ in 0u..size / workers {
                     //println!("worker {}: sending {} bytes", i, num_bytes);
                     to_child.send(request::bytes(num_bytes)).unwrap();
@@ -72,7 +71,7 @@ fn run(args: &[String]) {
                 //println!("worker {} exiting", i);
             }));
         }
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
             server(&from_parent, &to_parent);
         });
 
@@ -94,13 +93,13 @@ fn run(args: &[String]) {
 }
 
 fn main() {
-    let args = os::args();
+    let args = env::args();
     let args = if env::var_os("RUST_BENCH").is_some() {
         vec!("".to_string(), "1000000".to_string(), "10000".to_string())
-    } else if args.len() <= 1u {
+    } else if args.len() <= 1 {
         vec!("".to_string(), "10000".to_string(), "4".to_string())
     } else {
-        args.into_iter().map(|x| x.to_string()).collect()
+        args.map(|x| x.to_string()).collect()
     };
 
     println!("{:?}", args);

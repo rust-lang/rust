@@ -149,7 +149,7 @@ pub fn abort(args: fmt::Arguments) -> ! {
 }
 
 pub unsafe fn report_overflow() {
-    use thread::Thread;
+    use thread;
 
     // See the message below for why this is not emitted to the
     // ^ Where did the message below go?
@@ -159,5 +159,5 @@ pub unsafe fn report_overflow() {
     // and the FFI call needs 2MB of stack when we just ran out.
 
     rterrln!("\nthread '{}' has overflowed its stack",
-             Thread::current().name().unwrap_or("<unknown>"));
+             thread::current().name().unwrap_or("<unknown>"));
 }

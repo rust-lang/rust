@@ -60,23 +60,6 @@ macro_rules! panic {
     });
 }
 
-/// Use the syntax described in `std::fmt` to create a value of type `String`.
-/// See `std::fmt` for more information.
-///
-/// # Example
-///
-/// ```
-/// format!("test");
-/// format!("hello {}", "world!");
-/// format!("x = {}, y = {y}", 10, y = 30);
-/// ```
-#[cfg(stage0)] // NOTE: remove after snapshot
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-macro_rules! format {
-    ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
-}
-
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
@@ -126,7 +109,7 @@ macro_rules! try {
 /// # Examples
 ///
 /// ```
-/// use std::thread::Thread;
+/// use std::thread;
 /// use std::sync::mpsc;
 ///
 /// // two placeholder functions for now
@@ -136,8 +119,8 @@ macro_rules! try {
 /// let (tx1, rx1) = mpsc::channel();
 /// let (tx2, rx2) = mpsc::channel();
 ///
-/// Thread::spawn(move|| { long_running_task(); tx1.send(()).unwrap(); });
-/// Thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
+/// thread::spawn(move|| { long_running_task(); tx1.send(()).unwrap(); });
+/// thread::spawn(move|| { tx2.send(calculate_the_answer()).unwrap(); });
 ///
 /// select! (
 ///     _ = rx1.recv() => println!("the long running task finished first"),

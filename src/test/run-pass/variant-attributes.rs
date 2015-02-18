@@ -9,6 +9,7 @@
 // except according to those terms.
 
 // pp-exact - Make sure we actually print the attributes
+#![feature(custom_attribute)]
 
 enum crew_of_enterprise_d {
 

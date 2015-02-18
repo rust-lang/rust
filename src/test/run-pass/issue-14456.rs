@@ -12,10 +12,10 @@
 use std::old_io::process;
 use std::old_io::Command;
 use std::old_io;
-use std::os;
+use std::env;
 
 fn main() {
-    let args = os::args();
+    let args: Vec<String> = env::args().collect();
     if args.len() > 1 && args[1] == "child" {
         return child()
     }
@@ -32,7 +32,7 @@ fn child() {
 }
 
 fn test() {
-    let args = os::args();
+    let args: Vec<String> = env::args().collect();
     let mut p = Command::new(&args[0]).arg("child")
                                      .stdin(process::Ignored)
                                      .stdout(process::Ignored)

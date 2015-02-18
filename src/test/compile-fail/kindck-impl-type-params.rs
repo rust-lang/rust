@@ -17,7 +17,7 @@ struct S<T>;
 
 trait Gettable<T> {}
 
-impl<T: Send + Copy> Gettable<T> for S<T> {}
+impl<T: Send + Copy + 'static> Gettable<T> for S<T> {}
 
 fn f<T>(val: T) {
     let t: S<T> = S;

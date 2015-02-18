@@ -837,17 +837,7 @@ impl<A> FromIterator<A> for DList<A> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<T> IntoIterator for DList<T> {
-    type IntoIter = IntoIter<T>;
-
-    fn into_iter(self) -> IntoIter<T> {
-        self.into_iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T> IntoIterator for DList<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -857,17 +847,7 @@ impl<T> IntoIterator for DList<T> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, T> IntoIterator for &'a DList<T> {
-    type IntoIter = Iter<'a, T>;
-
-    fn into_iter(self) -> Iter<'a, T> {
-        self.iter()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<'a, T> IntoIterator for &'a DList<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -877,17 +857,6 @@ impl<'a, T> IntoIterator for &'a DList<T> {
     }
 }
 
-// NOTE(stage0): remove impl after a snapshot
-#[cfg(stage0)]
-impl<'a, T> IntoIterator for &'a mut DList<T> {
-    type IntoIter = IterMut<'a, T>;
-
-    fn into_iter(mut self) -> IterMut<'a, T> {
-        self.iter_mut()
-    }
-}
-
-#[cfg(not(stage0))]  // NOTE(stage0): remove cfg after a snapshot
 impl<'a, T> IntoIterator for &'a mut DList<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
@@ -971,7 +940,7 @@ mod tests {
     use prelude::*;
     use std::rand;
     use std::hash::{self, SipHasher};
-    use std::thread::Thread;
+    use std::thread;
     use test::Bencher;
     use test;
 
@@ -1320,7 +1289,7 @@ mod tests {
     #[test]
     fn test_send() {
         let n = list_from(&[1,2,3]);
-        Thread::scoped(move || {
+        thread::spawn(move || {
             check_links(&n);
             let a: &[_] = &[&1,&2,&3];
             assert_eq!(a, n.iter().collect::<Vec<_>>());

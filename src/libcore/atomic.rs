@@ -42,13 +42,13 @@
 //! ```
 //! use std::sync::Arc;
 //! use std::sync::atomic::{AtomicUsize, Ordering};
-//! use std::thread::Thread;
+//! use std::thread;
 //!
 //! fn main() {
 //!     let spinlock = Arc::new(AtomicUsize::new(1));
 //!
 //!     let spinlock_clone = spinlock.clone();
-//!     Thread::spawn(move|| {
+//!     thread::spawn(move|| {
 //!         spinlock_clone.store(0, Ordering::SeqCst);
 //!     });
 //!

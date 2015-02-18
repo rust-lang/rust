@@ -9,13 +9,13 @@
 // except according to those terms.
 
 use std::sync::Arc;
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
     let v = vec!(1, 2, 3, 4, 5, 6, 7, 8, 9, 10);
     let arc_v = Arc::new(v);
 
-    Thread::spawn(move|| {
+    thread::spawn(move|| {
         assert_eq!((*arc_v)[3], 4);
     });
 

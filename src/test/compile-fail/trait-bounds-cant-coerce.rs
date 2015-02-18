@@ -22,7 +22,7 @@ fn c(x: Box<Foo+Sync+Send>) {
 fn d(x: Box<Foo>) {
     a(x); //~  ERROR mismatched types
           //~| expected `Box<Foo + Send>`
-          //~| found `Box<Foo + 'static>`
+          //~| found `Box<Foo>`
           //~| expected bounds `Send`
           //~| found no bounds
 }

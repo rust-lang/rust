@@ -18,7 +18,7 @@ trait Foo : Send { }
 
 impl <T: Send> Foo for T { }
 
-fn foo<T: Foo>(val: T, chan: Sender<T>) {
+fn foo<T: Foo + 'static>(val: T, chan: Sender<T>) {
     chan.send(val).unwrap();
 }
 

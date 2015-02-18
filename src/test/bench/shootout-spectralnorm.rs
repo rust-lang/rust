@@ -44,7 +44,7 @@
 #![feature(unboxed_closures)]
 
 use std::iter::{repeat, AdditiveIterator};
-use std::thread::Thread;
+use std::thread;
 use std::mem;
 use std::num::Float;
 use std::os;
@@ -53,13 +53,13 @@ use std::raw::Repr;
 use std::simd::f64x2;
 
 fn main() {
-    let args = os::args();
+    let mut args = env::args();
     let answer = spectralnorm(if env::var_os("RUST_BENCH").is_some() {
         5500
     } else if args.len() < 2 {
         2000
     } else {
-        args[1].parse().unwrap()
+        args.nth(1).unwrap().parse().unwrap()
     });
     println!("{:.9}", answer);
 }
@@ -112,26 +112,16 @@ fn dot(v: &[f64], u: &[f64]) -> f64 {
 }
 
 
-struct Racy<T>(T);
-
-unsafe impl<T: 'static> Send for Racy<T> {}
-
 // Executes a closure in parallel over the given mutable slice. The closure `f`
 // is run in parallel and yielded the starting index within `v` as well as a
 // sub-slice of `v`.
-fn parallel<T, F>(v: &mut [T], f: F)
-                  where T: Send + Sync,
-                        F: Fn(uint, &mut [T]) + Sync {
+fn parallel<'a,T, F>(v: &mut [T], ref f: F)
+                  where T: Send + Sync + 'a,
+                        F: Fn(uint, &mut [T]) + Sync + 'a {
     let size = v.len() / os::num_cpus() + 1;
-
     v.chunks_mut(size).enumerate().map(|(i, chunk)| {
-        // Need to convert `f` and `chunk` to something that can cross the task
-        // boundary.
-        let f = Racy(&f as *const _ as *const uint);
-        let raw = Racy(chunk.repr());
-        Thread::scoped(move|| {
-            let f = f.0 as *const F;
-            unsafe { (*f)(i * size, mem::transmute(raw.0)) }
+        thread::scoped(move|| {
+            f(i * size, chunk)
         })
     }).collect::<Vec<_>>();
 }

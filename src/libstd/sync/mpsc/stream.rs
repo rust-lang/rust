@@ -26,7 +26,7 @@ use core::prelude::*;
 
 use core::cmp;
 use core::isize;
-use thread::Thread;
+use thread;
 
 use sync::atomic::{AtomicIsize, AtomicUsize, Ordering, AtomicBool};
 use sync::mpsc::Receiver;
@@ -74,7 +74,7 @@ enum Message<T> {
     GoUp(Receiver<T>),
 }
 
-impl<T: Send> Packet<T> {
+impl<T: Send + 'static> Packet<T> {
     pub fn new() -> Packet<T> {
         Packet {
             queue: unsafe { spsc::Queue::new(128) },
@@ -440,7 +440,7 @@ impl<T: Send> Packet<T> {
                 drop(self.take_to_wake());
             } else {
                 while self.to_wake.load(Ordering::SeqCst) != 0 {
-                    Thread::yield_now();
+                    thread::yield_now();
                 }
             }
             assert_eq!(self.steals, 0);
@@ -472,7 +472,7 @@ impl<T: Send> Packet<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send> Drop for Packet<T> {
+impl<T: Send + 'static> Drop for Packet<T> {
     fn drop(&mut self) {
         // Note that this load is not only an assert for correctness about
         // disconnection, but also a proper fence before the read of

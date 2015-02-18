@@ -13,7 +13,7 @@
 
 use std::cell::Cell;
 use std::fmt;
-use std::thread::Thread;
+use std::thread;
 
 struct Foo(Cell<int>);
 
@@ -27,7 +27,7 @@ impl fmt::Debug for Foo {
 }
 
 pub fn main() {
-    Thread::scoped(move|| {
+    thread::spawn(move|| {
         let mut f = Foo(Cell::new(0));
         println!("{:?}", f);
         let Foo(ref mut f) = f;

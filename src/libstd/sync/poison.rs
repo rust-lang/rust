@@ -13,7 +13,7 @@ use prelude::v1::*;
 use cell::UnsafeCell;
 use error::{Error, FromError};
 use fmt;
-use thread::Thread;
+use thread;
 
 pub struct Flag { failed: UnsafeCell<bool> }
 pub const FLAG_INIT: Flag = Flag { failed: UnsafeCell { value: false } };
@@ -21,7 +21,7 @@ pub const FLAG_INIT: Flag = Flag { failed: UnsafeCell { value: false } };
 impl Flag {
     #[inline]
     pub fn borrow(&self) -> LockResult<Guard> {
-        let ret = Guard { panicking: Thread::panicking() };
+        let ret = Guard { panicking: thread::panicking() };
         if unsafe { *self.failed.get() } {
             Err(PoisonError::new(ret))
         } else {
@@ -31,7 +31,7 @@ impl Flag {
 
     #[inline]
     pub fn done(&self, guard: &Guard) {
-        if !guard.panicking && Thread::panicking() {
+        if !guard.panicking && thread::panicking() {
             unsafe { *self.failed.get() = true; }
         }
     }

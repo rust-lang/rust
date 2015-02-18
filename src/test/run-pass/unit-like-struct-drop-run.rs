@@ -11,7 +11,7 @@
 // Make sure the destructor is run for unit-like structs.
 
 use std::boxed::BoxAny;
-use std::thread::Thread;
+use std::thread;
 
 struct Foo;
 
@@ -22,7 +22,7 @@ impl Drop for Foo {
 }
 
 pub fn main() {
-    let x = Thread::scoped(move|| {
+    let x = thread::spawn(move|| {
         let _b = Foo;
     }).join();
 

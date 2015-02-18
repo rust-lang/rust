@@ -134,7 +134,7 @@ impl Select {
     /// Creates a new handle into this receiver set for a new receiver. Note
     /// that this does *not* add the receiver to the receiver set, for that you
     /// must call the `add` method on the handle itself.
-    pub fn handle<'a, T: Send>(&'a self, rx: &'a Receiver<T>) -> Handle<'a, T> {
+    pub fn handle<'a, T: Send + 'static>(&'a self, rx: &'a Receiver<T>) -> Handle<'a, T> {
         let id = self.next_id.get();
         self.next_id.set(id + 1);
         Handle {
@@ -251,7 +251,7 @@ impl Select {
     fn iter(&self) -> Packets { Packets { cur: self.head } }
 }
 
-impl<'rx, T: Send> Handle<'rx, T> {
+impl<'rx, T: Send + 'static> Handle<'rx, T> {
     /// Retrieve the id of this handle.
     #[inline]
     pub fn id(&self) -> uint { self.id }
@@ -322,7 +322,7 @@ impl Drop for Select {
 }
 
 #[unsafe_destructor]
-impl<'rx, T: Send> Drop for Handle<'rx, T> {
+impl<'rx, T: Send + 'static> Drop for Handle<'rx, T> {
     fn drop(&mut self) {
         unsafe { self.remove() }
     }
@@ -347,7 +347,7 @@ impl Iterator for Packets {
 mod test {
     use prelude::v1::*;
 
-    use thread::Thread;
+    use thread;
     use sync::mpsc::*;
 
     // Don't use the libstd version so we can pull in the right Select structure
@@ -427,11 +427,11 @@ mod test {
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<int>();
 
-        let _t = Thread::spawn(move|| {
-            for _ in 0u..20 { Thread::yield_now(); }
+        let _t = thread::spawn(move|| {
+            for _ in 0u..20 { thread::yield_now(); }
             tx1.send(1).unwrap();
             rx3.recv().unwrap();
-            for _ in 0u..20 { Thread::yield_now(); }
+            for _ in 0u..20 { thread::yield_now(); }
         });
 
         select! {
@@ -451,8 +451,8 @@ mod test {
         let (tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        let _t = Thread::spawn(move|| {
-            for _ in 0u..20 { Thread::yield_now(); }
+        let _t = thread::spawn(move|| {
+            for _ in 0u..20 { thread::yield_now(); }
             tx1.send(1).unwrap();
             tx2.send(2).unwrap();
             rx3.recv().unwrap();
@@ -478,7 +478,7 @@ mod test {
         let (tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             for i in 0..AMT {
                 if i % 2 == 0 {
                     tx1.send(i).unwrap();
@@ -504,7 +504,7 @@ mod test {
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             rx3.recv().unwrap();
             tx1.clone();
             assert_eq!(rx3.try_recv(), Err(TryRecvError::Empty));
@@ -526,7 +526,7 @@ mod test {
         let (_tx2, rx2) = channel::<int>();
         let (tx3, rx3) = channel::<()>();
 
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             rx3.recv().unwrap();
             tx1.clone();
             assert_eq!(rx3.try_recv(), Err(TryRecvError::Empty));
@@ -547,7 +547,7 @@ mod test {
         let (tx1, rx1) = channel::<()>();
         let (tx2, rx2) = channel::<()>();
         let (tx3, rx3) = channel::<()>();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let s = Select::new();
             let mut h1 = s.handle(&rx1);
             let mut h2 = s.handle(&rx2);
@@ -557,7 +557,7 @@ mod test {
             tx3.send(()).unwrap();
         });
 
-        for _ in 0u..1000 { Thread::yield_now(); }
+        for _ in 0u..1000 { thread::yield_now(); }
         drop(tx1.clone());
         tx2.send(()).unwrap();
         rx3.recv().unwrap();
@@ -663,14 +663,14 @@ mod test {
     fn oneshot_data_waiting() {
         let (tx1, rx1) = channel();
         let (tx2, rx2) = channel();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             select! {
                 _n = rx1.recv() => {}
             }
             tx2.send(()).unwrap();
         });
 
-        for _ in 0u..100 { Thread::yield_now() }
+        for _ in 0u..100 { thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -683,14 +683,14 @@ mod test {
         tx1.send(()).unwrap();
         rx1.recv().unwrap();
         rx1.recv().unwrap();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             select! {
                 _n = rx1.recv() => {}
             }
             tx2.send(()).unwrap();
         });
 
-        for _ in 0u..100 { Thread::yield_now() }
+        for _ in 0u..100 { thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -702,14 +702,14 @@ mod test {
         drop(tx1.clone());
         tx1.send(()).unwrap();
         rx1.recv().unwrap();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             select! {
                 _n = rx1.recv() => {}
             }
             tx2.send(()).unwrap();
         });
 
-        for _ in 0u..100 { Thread::yield_now() }
+        for _ in 0u..100 { thread::yield_now() }
         tx1.send(()).unwrap();
         rx2.recv().unwrap();
     }
@@ -726,8 +726,8 @@ mod test {
     #[test]
     fn sync2() {
         let (tx, rx) = sync_channel::<int>(0);
-        let _t = Thread::spawn(move|| {
-            for _ in 0u..100 { Thread::yield_now() }
+        let _t = thread::spawn(move|| {
+            for _ in 0u..100 { thread::yield_now() }
             tx.send(1).unwrap();
         });
         select! {
@@ -739,8 +739,8 @@ mod test {
     fn sync3() {
         let (tx1, rx1) = sync_channel::<int>(0);
         let (tx2, rx2): (Sender<int>, Receiver<int>) = channel();
-        let _t = Thread::spawn(move|| { tx1.send(1).unwrap(); });
-        let _t = Thread::spawn(move|| { tx2.send(2).unwrap(); });
+        let _t = thread::spawn(move|| { tx1.send(1).unwrap(); });
+        let _t = thread::spawn(move|| { tx2.send(2).unwrap(); });
         select! {
             n = rx1.recv() => {
                 let n = n.unwrap();

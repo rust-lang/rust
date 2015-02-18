@@ -41,11 +41,11 @@
 use std::cmp::min;
 use std::old_io::{stdout, IoResult};
 use std::iter::repeat;
-use std::os;
+use std::env;
 use std::slice::bytes::copy_memory;
 
-const LINE_LEN: uint = 60;
-const LOOKUP_SIZE: uint = 4 * 1024;
+const LINE_LEN: usize = 60;
+const LOOKUP_SIZE: usize = 4 * 1024;
 const LOOKUP_SCALE: f32 = (LOOKUP_SIZE - 1) as f32;
 
 // Random number generator constants
@@ -119,7 +119,7 @@ impl<'a, W: Writer> RepeatFasta<'a, W> {
         RepeatFasta { alu: alu, out: w }
     }
 
-    fn make(&mut self, n: uint) -> IoResult<()> {
+    fn make(&mut self, n: usize) -> IoResult<()> {
         let alu_len = self.alu.len();
         let mut buf = repeat(0u8).take(alu_len + LINE_LEN).collect::<Vec<_>>();
         let alu: &[u8] = self.alu.as_bytes();
@@ -188,19 +188,19 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
         0
     }
 
-    fn make(&mut self, n: uint) -> IoResult<()> {
+    fn make(&mut self, n: usize) -> IoResult<()> {
         let lines = n / LINE_LEN;
         let chars_left = n % LINE_LEN;
         let mut buf = [0;LINE_LEN + 1];
 
         for _ in 0..lines {
-            for i in 0u..LINE_LEN {
+            for i in 0..LINE_LEN {
                 buf[i] = self.nextc();
             }
             buf[LINE_LEN] = '\n' as u8;
             try!(self.out.write(&buf));
         }
-        for i in 0u..chars_left {
+        for i in 0..chars_left {
             buf[i] = self.nextc();
         }
         self.out.write(&buf[..chars_left])
@@ -208,10 +208,9 @@ impl<'a, W: Writer> RandomFasta<'a, W> {
 }
 
 fn main() {
-    let args = os::args();
-    let args = args;
+    let mut args = env::args();
     let n = if args.len() > 1 {
-        args[1].parse::<uint>().unwrap()
+        args.nth(1).unwrap().parse::<usize>().unwrap()
     } else {
         5
     };

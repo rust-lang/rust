@@ -161,12 +161,12 @@ mod test {
     use sync::mpsc::channel;
     use super::*;
     use old_io;
-    use thread::Thread;
+    use thread;
 
     #[test]
     fn test_rx_reader() {
         let (tx, rx) = channel();
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
           tx.send(vec![1u8, 2u8]).unwrap();
           tx.send(vec![]).unwrap();
           tx.send(vec![3u8, 4u8]).unwrap();
@@ -208,7 +208,7 @@ mod test {
     #[test]
     fn test_rx_buffer() {
         let (tx, rx) = channel();
-        Thread::spawn(move|| {
+        thread::spawn(move|| {
           tx.send(b"he".to_vec()).unwrap();
           tx.send(b"llo wo".to_vec()).unwrap();
           tx.send(b"".to_vec()).unwrap();
@@ -234,10 +234,7 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-        let got = match Thread::scoped(move|| { rx.recv().unwrap() }).join() {
-            Ok(got) => got,
-            Err(_) => panic!(),
-        };
+        let got = thread::scoped(move|| { rx.recv().unwrap() }).join();
         assert_eq!(wanted, got);
 
         match writer.write_u8(1) {

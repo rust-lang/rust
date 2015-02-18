@@ -30,7 +30,7 @@ use sync::mpsc::{channel, Receiver};
 use sys::fs::FileDesc;
 use sys::process::Process as ProcessImp;
 use sys;
-use thread::Thread;
+use thread;
 
 #[cfg(windows)] use hash;
 #[cfg(windows)] use str;
@@ -703,7 +703,7 @@ impl Process {
             let (tx, rx) = channel();
             match stream {
                 Some(stream) => {
-                    Thread::spawn(move || {
+                    thread::spawn(move || {
                         let mut stream = stream;
                         tx.send(stream.read_to_end()).unwrap();
                     });
@@ -764,7 +764,7 @@ mod tests {
     use super::{CreatePipe};
     use super::{InheritFd, Process, PleaseExitSignal, Command, ProcessOutput};
     use sync::mpsc::channel;
-    use thread::Thread;
+    use thread;
     use time::Duration;
 
     // FIXME(#10380) these tests should not all be ignored on android.
@@ -800,12 +800,12 @@ mod tests {
     #[cfg(all(unix, not(target_os="android")))]
     #[test]
     fn signal_reported_right() {
-        let p = Command::new("/bin/sh").arg("-c").arg("kill -1 $$").spawn();
+        let p = Command::new("/bin/sh").arg("-c").arg("kill -9 $$").spawn();
         assert!(p.is_ok());
         let mut p = p.unwrap();
         match p.wait().unwrap() {
-            process::ExitSignal(1) => {},
-            result => panic!("not terminated by signal 1 (instead, {})", result),
+            process::ExitSignal(9) => {},
+            result => panic!("not terminated by signal 9 (instead, {})", result),
         }
     }
 
@@ -1169,14 +1169,14 @@ mod tests {
     fn wait_timeout2() {
         let (tx, rx) = channel();
         let tx2 = tx.clone();
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);
             p.signal_kill().unwrap();
             tx.send(()).unwrap();
         });
-        let _t = Thread::spawn(move|| {
+        let _t = thread::spawn(move|| {
             let mut p = sleeper();
             p.set_timeout(Some(10));
             assert_eq!(p.wait().err().unwrap().kind, TimedOut);

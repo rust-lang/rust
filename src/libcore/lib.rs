@@ -67,6 +67,7 @@
 #![feature(simd, unsafe_destructor)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
+#![feature(rustc_attrs)]
 
 #[macro_use]
 mod macros;
@@ -153,25 +154,16 @@ mod array;
 mod core {
     pub use panicking;
     pub use fmt;
-    #[cfg(not(stage0))] pub use clone;
-    #[cfg(not(stage0))] pub use cmp;
-    #[cfg(not(stage0))] pub use hash;
-    #[cfg(not(stage0))] pub use marker;
-    #[cfg(not(stage0))] pub use option;
-    #[cfg(not(stage0))] pub use iter;
+    pub use clone;
+    pub use cmp;
+    pub use hash;
+    pub use marker;
+    pub use option;
+    pub use iter;
 }
 
 #[doc(hidden)]
 mod std {
-    // NOTE: remove after next snapshot
-    #[cfg(stage0)] pub use clone;
-    #[cfg(stage0)] pub use cmp;
-    #[cfg(stage0)] pub use hash;
-    #[cfg(stage0)] pub use marker;
-    #[cfg(stage0)] pub use option;
-    #[cfg(stage0)] pub use fmt;
-    #[cfg(stage0)] pub use iter;
-
     // range syntax
     pub use ops;
 }

@@ -11,6 +11,8 @@
 // Test that we correctly infer variance for region parameters in
 // various self-contained types.
 
+#![feature(rustc_attrs)]
+
 // Regions that just appear in normal spots are contravariant:
 
 #[rustc_variance]

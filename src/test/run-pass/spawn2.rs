@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::thread::Thread;
+use std::thread;
 
 pub fn main() {
-    let t = Thread::scoped(move|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) );
+    let t = thread::spawn(move|| child((10, 20, 30, 40, 50, 60, 70, 80, 90)) );
     t.join().ok().unwrap();
 }
 

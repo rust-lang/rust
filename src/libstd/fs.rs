@@ -114,7 +114,7 @@ impl File {
 
     /// Open a file in write-only mode.
     ///
-    /// This function will create a file it it does not exist,
+    /// This function will create a file if it does not exist,
     /// and will truncate it if it does.
     ///
     /// See the `OpenOptions::open` function for more details.

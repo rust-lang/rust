@@ -111,15 +111,6 @@ pub fn fixme_14344_be_sure_to_link_to_collections() {}
 
 #[cfg(not(test))]
 mod std {
-    // NOTE: remove after next snapshot
-    #[cfg(stage0)] pub use core::clone;    // derive(Clone)
-    #[cfg(stage0)] pub use core::cmp;      // derive(Eq, Ord, etc.)
-    #[cfg(stage0)] pub use core::marker;   // derive(Copy)
-    #[cfg(stage0)] pub use core::hash;     // derive(Hash)
-    #[cfg(stage0)] pub use core::iter;
-    #[cfg(stage0)] pub use core::fmt;      // necessary for panic!()
-    #[cfg(stage0)] pub use core::option;   // necessary for panic!()
-
     pub use core::ops;      // RangeFull
 }
 
