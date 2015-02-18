@@ -10,7 +10,7 @@
 
 use std::num::Int;
 
-extern "C" fn foo<T: Int>(a: T, b: T) -> T { a + b }
+extern "C" fn foo<T: WrappingOps>(a: T, b: T) -> T { a.wrapping_add(b) }
 
 fn main() {
     assert_eq!(99u8, foo(255u8, 100u8));
