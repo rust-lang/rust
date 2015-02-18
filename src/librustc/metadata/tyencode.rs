@@ -386,10 +386,7 @@ pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                             bs: &ty::ParamBounds<'tcx>) {
     enc_builtin_bounds(w, cx, &bs.builtin_bounds);
 
-    for &r in &bs.region_bounds {
-        mywrite!(w, "R");
-        enc_region(w, cx, r);
-    }
+    enc_region_bounds(w, cx, &bs.region_bounds);
 
     for tp in &bs.trait_bounds {
         mywrite!(w, "I");
@@ -404,12 +401,22 @@ pub fn enc_bounds<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
     mywrite!(w, ".");
 }
 
+pub fn enc_region_bounds<'a, 'tcx>(w: &mut SeekableMemWriter,
+                            cx: &ctxt<'a, 'tcx>,
+                            rs: &[ty::Region]) {
+    for &r in rs {
+        mywrite!(w, "R");
+        enc_region(w, cx, r);
+    }
+
+    mywrite!(w, ".");
+}
+
 pub fn enc_type_param_def<'a, 'tcx>(w: &mut SeekableMemWriter, cx: &ctxt<'a, 'tcx>,
                                     v: &ty::TypeParameterDef<'tcx>) {
     mywrite!(w, "{}:{}|{}|{}|",
              token::get_name(v.name), (cx.ds)(v.def_id),
              v.space.to_uint(), v.index);
-    enc_bounds(w, cx, &v.bounds);
     enc_opt(w, v.default, |w, t| enc_ty(w, cx, t));
     enc_object_lifetime_default(w, cx, v.object_lifetime_default);
 }
