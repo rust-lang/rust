@@ -10,7 +10,7 @@
 //
 // ignore-lexer-test FIXME #15883
 
-use borrow::BorrowFrom;
+use borrow::Borrow;
 use clone::Clone;
 use cmp::{Eq, PartialEq};
 use core::marker::Sized;
@@ -460,7 +460,7 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
-        where Q: BorrowFrom<T> + Hash + Eq
+        where T: Borrow<Q>, Q: Hash + Eq
     {
         self.map.contains_key(value)
     }
@@ -570,7 +570,7 @@ impl<T, S> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
-        where Q: BorrowFrom<T> + Hash + Eq
+        where T: Borrow<Q>, Q: Hash + Eq
     {
         self.map.remove(value).is_some()
     }

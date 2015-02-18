@@ -16,7 +16,6 @@
 
 use core::prelude::*;
 
-use core::borrow::{Cow, IntoCow};
 use core::default::Default;
 use core::error::Error;
 use core::fmt;
@@ -29,6 +28,7 @@ use core::raw::Slice as RawSlice;
 use unicode::str as unicode_str;
 use unicode::str::Utf16Item;
 
+use borrow::{Cow, IntoCow};
 use str::{self, CharRange, FromStr, Utf8Error};
 use vec::{DerefVec, Vec, as_vec};
 
@@ -142,7 +142,7 @@ impl String {
     /// assert_eq!(output.as_slice(), "Hello \u{FFFD}World");
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> CowString<'a> {
+    pub fn from_utf8_lossy<'a>(v: &'a [u8]) -> Cow<'a, str> {
         let mut i = 0;
         match str::from_utf8(v) {
             Ok(s) => return Cow::Borrowed(s),
@@ -782,10 +782,10 @@ macro_rules! impl_eq {
 }
 
 impl_eq! { String, &'a str }
-impl_eq! { CowString<'a>, String }
+impl_eq! { Cow<'a, str>, String }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
+impl<'a, 'b> PartialEq<&'b str> for Cow<'a, str> {
     #[inline]
     fn eq(&self, other: &&'b str) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
@@ -793,11 +793,11 @@ impl<'a, 'b> PartialEq<&'b str> for CowString<'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b> PartialEq<CowString<'a>> for &'b str {
+impl<'a, 'b> PartialEq<Cow<'a, str>> for &'b str {
     #[inline]
-    fn eq(&self, other: &CowString<'a>) -> bool { PartialEq::eq(&**self, &**other) }
+    fn eq(&self, other: &Cow<'a, str>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
-    fn ne(&self, other: &CowString<'a>) -> bool { PartialEq::ne(&**self, &**other) }
+    fn ne(&self, other: &Cow<'a, str>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
 #[unstable(feature = "collections", reason = "waiting on Str stabilization")]
@@ -969,30 +969,33 @@ impl<T: fmt::Display + ?Sized> ToString for T {
     }
 }
 
-impl IntoCow<'static, String, str> for String {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl IntoCow<'static, str> for String {
     #[inline]
-    fn into_cow(self) -> CowString<'static> {
+    fn into_cow(self) -> Cow<'static, str> {
         Cow::Owned(self)
     }
 }
 
-impl<'a> IntoCow<'a, String, str> for &'a str {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a> IntoCow<'a, str> for &'a str {
     #[inline]
-    fn into_cow(self) -> CowString<'a> {
+    fn into_cow(self) -> Cow<'a, str> {
         Cow::Borrowed(self)
     }
 }
 
-/// A clone-on-write string
-#[stable(feature = "rust1", since = "1.0.0")]
-pub type CowString<'a> = Cow<'a, String, str>;
-
-impl<'a> Str for CowString<'a> {
+impl<'a> Str for Cow<'a, str> {
     #[inline]
     fn as_slice<'b>(&'b self) -> &'b str {
         &**self
     }
 }
+
+/// A clone-on-write string
+#[deprecated(since = "1.0.0", reason = "use Cow<'a, str> instead")]
+#[stable(feature = "rust1", since = "1.0.0")]
+pub type CowString<'a> = Cow<'a, str>;
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl fmt::Write for String {

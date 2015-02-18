@@ -96,6 +96,13 @@ pub mod string;
 pub mod vec;
 pub mod vec_map;
 
+#[cfg(stage0)]
+#[path = "borrow_stage0.rs"]
+pub mod borrow;
+
+#[cfg(not(stage0))]
+pub mod borrow;
+
 #[unstable(feature = "collections",
            reason = "RFC 509")]
 pub mod bit_vec {

@@ -58,8 +58,9 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
+use prelude::*;
+
 use default::Default;
-use marker::Sized;
 use mem;
 
 pub use self::sip::SipHasher;
@@ -397,120 +398,5 @@ mod impls {
                 }
             }
         )*}
-    }
-
-    impl_write! {
-        (u8, write_u8),
-        (u16, write_u16),
-        (u32, write_u32),
-        (u64, write_u64),
-        (usize, write_usize),
-        (i8, write_i8),
-        (i16, write_i16),
-        (i32, write_i32),
-        (i64, write_i64),
-        (isize, write_isize),
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl Hash for bool {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_u8(*self as u8)
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl Hash for char {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_u32(*self as u32)
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl Hash for str {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write(self.as_bytes());
-            state.write_u8(0xff)
-        }
-    }
-
-    macro_rules! impl_hash_tuple {
-        () => (
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl Hash for () {
-                fn hash<H: Hasher>(&self, _state: &mut H) {}
-            }
-        );
-
-        ( $($name:ident)+) => (
-            #[stable(feature = "rust1", since = "1.0.0")]
-            impl<$($name: Hash),*> Hash for ($($name,)*) {
-                #[allow(non_snake_case)]
-                fn hash<S: Hasher>(&self, state: &mut S) {
-                    let ($(ref $name,)*) = *self;
-                    $($name.hash(state);)*
-                }
-            }
-        );
-    }
-
-    impl_hash_tuple! {}
-    impl_hash_tuple! { A }
-    impl_hash_tuple! { A B }
-    impl_hash_tuple! { A B C }
-    impl_hash_tuple! { A B C D }
-    impl_hash_tuple! { A B C D E }
-    impl_hash_tuple! { A B C D E F }
-    impl_hash_tuple! { A B C D E F G }
-    impl_hash_tuple! { A B C D E F G H }
-    impl_hash_tuple! { A B C D E F G H I }
-    impl_hash_tuple! { A B C D E F G H I J }
-    impl_hash_tuple! { A B C D E F G H I J K }
-    impl_hash_tuple! { A B C D E F G H I J K L }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T: Hash> Hash for [T] {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            self.len().hash(state);
-            Hash::hash_slice(self, state)
-        }
-    }
-
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized + Hash> Hash for &'a T {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            (**self).hash(state);
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T: ?Sized + Hash> Hash for &'a mut T {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            (**self).hash(state);
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T> Hash for *const T {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_usize(*self as usize)
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<T> Hash for *mut T {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            state.write_usize(*self as usize)
-        }
-    }
-
-    #[stable(feature = "rust1", since = "1.0.0")]
-    impl<'a, T, B: ?Sized> Hash for Cow<'a, T, B>
-        where B: Hash + ToOwned<T>
-    {
-        fn hash<H: Hasher>(&self, state: &mut H) {
-            Hash::hash(&**self, state)
-        }
     }
 }

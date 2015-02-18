@@ -23,18 +23,18 @@ pub type Node<'a> = &'a CFGNode;
 
 pub trait GraphWalk<'c, N> {
     /// Returns all the nodes in this graph.
-    fn nodes(&'c self) where [N]:ToOwned<Vec<N>>;
+    fn nodes(&'c self) where [N]:ToOwned<Owned=Vec<N>>;
 }
 
 impl<'g> GraphWalk<'g, Node<'g>> for u32
 {
-    fn nodes(&'g self) where [Node<'g>]:ToOwned<Vec<Node<'g>>>
+    fn nodes(&'g self) where [Node<'g>]:ToOwned<Owned=Vec<Node<'g>>>
     { loop { } }
 }
 
 impl<'h> GraphWalk<'h, Node<'h>> for u64
 {
-    fn nodes(&'h self) where [Node<'h>]:ToOwned<Vec<Node<'h>>>
+    fn nodes(&'h self) where [Node<'h>]:ToOwned<Owned=Vec<Node<'h>>>
     { loop { } }
 }
 

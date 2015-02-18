@@ -88,7 +88,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use alloc::boxed::Box;
-use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
 use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
@@ -105,6 +104,7 @@ use core::result::Result;
 use core::slice as core_slice;
 use self::Direction::*;
 
+use borrow::{Borrow, BorrowMut, ToOwned};
 use vec::Vec;
 
 pub use core::slice::{Chunks, AsSlice, Windows};
@@ -1175,18 +1175,19 @@ impl ElementSwaps {
 // Standard trait implementations for slices
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl<T> BorrowFrom<Vec<T>> for [T] {
-    fn borrow_from(owned: &Vec<T>) -> &[T] { &owned[] }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Borrow<[T]> for Vec<T> {
+    fn borrow(&self) -> &[T] { &self[] }
 }
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl<T> BorrowFromMut<Vec<T>> for [T] {
-    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { &mut owned[] }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> BorrowMut<[T]> for Vec<T> {
+    fn borrow_mut(&mut self) -> &mut [T] { &mut self[] }
 }
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl<T: Clone> ToOwned<Vec<T>> for [T] {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone> ToOwned for [T] {
+    type Owned = Vec<T>;
     fn to_owned(&self) -> Vec<T> { self.to_vec() }
 }
 

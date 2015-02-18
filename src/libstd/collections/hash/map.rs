@@ -14,7 +14,7 @@ use self::Entry::*;
 use self::SearchResult::*;
 use self::VacantEntryState::*;
 
-use borrow::BorrowFrom;
+use borrow::Borrow;
 use clone::Clone;
 use cmp::{max, Eq, PartialEq};
 use default::Default;
@@ -451,18 +451,18 @@ impl<K, V, S> HashMap<K, V, S>
     /// If you already have the hash for the key lying around, use
     /// search_hashed.
     fn search<'a, Q: ?Sized>(&'a self, q: &Q) -> Option<FullBucketImm<'a, K, V>>
-        where Q: BorrowFrom<K> + Eq + Hash
+        where K: Borrow<Q>, Q: Eq + Hash
     {
         let hash = self.make_hash(q);
-        search_hashed(&self.table, hash, |k| q.eq(BorrowFrom::borrow_from(k)))
+        search_hashed(&self.table, hash, |k| q.eq(k.borrow()))
             .into_option()
     }
 
     fn search_mut<'a, Q: ?Sized>(&'a mut self, q: &Q) -> Option<FullBucketMut<'a, K, V>>
-        where Q: BorrowFrom<K> + Eq + Hash
+        where K: Borrow<Q>, Q: Eq + Hash
     {
         let hash = self.make_hash(q);
-        search_hashed(&mut self.table, hash, |k| q.eq(BorrowFrom::borrow_from(k)))
+        search_hashed(&mut self.table, hash, |k| q.eq(k.borrow()))
             .into_option()
     }
 
@@ -1033,7 +1033,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
-        where Q: Hash + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         self.search(k).map(|bucket| bucket.into_refs().1)
     }
@@ -1056,7 +1056,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
-        where Q: Hash + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         self.search(k).is_some()
     }
@@ -1082,7 +1082,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
-        where Q: Hash + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
     }
@@ -1134,7 +1134,7 @@ impl<K, V, S> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
-        where Q: Hash + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         if self.table.size() == 0 {
             return None
@@ -1236,8 +1236,8 @@ impl<K, V, S> Default for HashMap<K, V, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, Q: ?Sized, V, S> Index<Q> for HashMap<K, V, S>
-    where K: Eq + Hash,
-          Q: Eq + Hash + BorrowFrom<K>,
+    where K: Eq + Hash + Borrow<Q>,
+          Q: Eq + Hash,
           S: HashState,
 {
     type Output = V;
@@ -1250,8 +1250,8 @@ impl<K, Q: ?Sized, V, S> Index<Q> for HashMap<K, V, S>
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K, V, S, Q: ?Sized> IndexMut<Q> for HashMap<K, V, S>
-    where K: Eq + Hash,
-          Q: Eq + Hash + BorrowFrom<K>,
+    where K: Eq + Hash + Borrow<Q>,
+          Q: Eq + Hash,
           S: HashState,
 {
     #[inline]

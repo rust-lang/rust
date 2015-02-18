@@ -50,7 +50,6 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
-use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
 use core::cmp::{Ordering};
 use core::default::Default;
@@ -68,6 +67,8 @@ use core::ptr;
 use core::raw::Slice as RawSlice;
 use core::slice;
 use core::usize;
+
+use borrow::{Cow, IntoCow};
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
@@ -1529,34 +1530,34 @@ macro_rules! impl_eq {
 impl_eq! { Vec<A>, &'b [B] }
 impl_eq! { Vec<A>, &'b mut [B] }
 
-impl<'a, A, B> PartialEq<Vec<B>> for CowVec<'a, A> where A: PartialEq<B> + Clone {
+impl<'a, A, B> PartialEq<Vec<B>> for Cow<'a, [A]> where A: PartialEq<B> + Clone {
     #[inline]
     fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
     fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
-impl<'a, A, B> PartialEq<CowVec<'a, A>> for Vec<B> where A: Clone, B: PartialEq<A> {
+impl<'a, A, B> PartialEq<Cow<'a, [A]>> for Vec<B> where A: Clone, B: PartialEq<A> {
     #[inline]
-    fn eq(&self, other: &CowVec<'a, A>) -> bool { PartialEq::eq(&**self, &**other) }
+    fn eq(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
-    fn ne(&self, other: &CowVec<'a, A>) -> bool { PartialEq::ne(&**self, &**other) }
+    fn ne(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
 macro_rules! impl_eq_for_cowvec {
     ($rhs:ty) => {
-        impl<'a, 'b, A, B> PartialEq<$rhs> for CowVec<'a, A> where A: PartialEq<B> + Clone {
+        impl<'a, 'b, A, B> PartialEq<$rhs> for Cow<'a, [A]> where A: PartialEq<B> + Clone {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
             #[inline]
             fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
         }
 
-        impl<'a, 'b, A, B> PartialEq<CowVec<'a, A>> for $rhs where A: Clone, B: PartialEq<A> {
+        impl<'a, 'b, A, B> PartialEq<Cow<'a, [A]>> for $rhs where A: Clone, B: PartialEq<A> {
             #[inline]
-            fn eq(&self, other: &CowVec<'a, A>) -> bool { PartialEq::eq(&**self, &**other) }
+            fn eq(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::eq(&**self, &**other) }
             #[inline]
-            fn ne(&self, other: &CowVec<'a, A>) -> bool { PartialEq::ne(&**self, &**other) }
+            fn ne(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::ne(&**self, &**other) }
         }
     }
 }
@@ -1564,8 +1565,7 @@ macro_rules! impl_eq_for_cowvec {
 impl_eq_for_cowvec! { &'b [B] }
 impl_eq_for_cowvec! { &'b mut [B] }
 
-#[unstable(feature = "collections",
-           reason = "waiting on PartialOrd stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
     fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
@@ -1573,10 +1573,10 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
     }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Eq stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[unstable(feature = "collections", reason = "waiting on Ord stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
@@ -1659,26 +1659,26 @@ impl<T: fmt::Debug> fmt::Debug for Vec<T> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections",
-           reason = "unclear how valuable this alias is")]
 /// A clone-on-write vector
-pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
+#[deprecated(since = "1.0.0", reason = "use Cow<'a, [T]> instead")]
+#[unstable(feature = "collections")]
+pub type CowVec<'a, T> = Cow<'a, [T]>;
 
 #[unstable(feature = "collections")]
-impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
-    fn from_iter<I: IntoIterator<Item=T>>(it: I) -> CowVec<'a, T> {
+impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
+    fn from_iter<I: IntoIterator<Item=T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }
 
-impl<'a, T: 'a> IntoCow<'a, Vec<T>, [T]> for Vec<T> where T: Clone {
-    fn into_cow(self) -> CowVec<'a, T> {
+impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
+    fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Owned(self)
     }
 }
 
-impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
-    fn into_cow(self) -> CowVec<'a, T> {
+impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
+    fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Borrowed(self)
     }
 }

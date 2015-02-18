@@ -73,7 +73,6 @@ use core::prelude::*;
 
 use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
-use core::borrow::BorrowFrom;
 use core::fmt;
 use core::cmp::{Ordering};
 use core::default::Default;
@@ -241,12 +240,6 @@ impl<T> Clone for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         self.inner().strong.fetch_add(1, Relaxed);
         Arc { _ptr: self._ptr }
-    }
-}
-
-impl<T> BorrowFrom<Arc<T>> for T {
-    fn borrow_from(owned: &Arc<T>) -> &T {
-        &**owned
     }
 }
 

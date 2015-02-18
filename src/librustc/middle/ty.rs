@@ -68,7 +68,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FnvHashMap};
 
 use arena::TypedArena;
-use std::borrow::{BorrowFrom, Cow};
+use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt;
@@ -1001,9 +1001,9 @@ impl<'tcx> Hash for InternedTy<'tcx> {
     }
 }
 
-impl<'tcx> BorrowFrom<InternedTy<'tcx>> for sty<'tcx> {
-    fn borrow_from<'a>(ty: &'a InternedTy<'tcx>) -> &'a sty<'tcx> {
-        &ty.ty.sty
+impl<'tcx> Borrow<sty<'tcx>> for InternedTy<'tcx> {
+    fn borrow<'a>(&'a self) -> &'a sty<'tcx> {
+        &self.ty.sty
     }
 }
 
