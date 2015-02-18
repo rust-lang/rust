@@ -25,6 +25,9 @@ use util::ppaux::Repr;
 pub fn check(tcx: &ty::ctxt) {
     let mut overlap = OverlapChecker { tcx: tcx };
     overlap.check_for_overlapping_impls();
+
+    // this secondary walk specifically checks for impls of defaulted
+    // traits, for which additional overlap rules exist
     visit::walk_crate(&mut overlap, tcx.map.krate());
 }
 

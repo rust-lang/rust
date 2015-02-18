@@ -152,6 +152,8 @@ enum SelectionCandidate<'tcx> {
 
     ObjectCandidate,
 
+    BuiltinObjectCandidate,
+
     ErrorCandidate,
 }
 
@@ -818,21 +820,24 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 debug!("obligation self ty is {}",
                        obligation.predicate.0.self_ty().repr(self.tcx()));
 
+                // User-defined copy impls are permitted, but only for
+                // structs and enums.
                 try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
 
+                // For other types, we'll use the builtin rules.
                 try!(self.assemble_builtin_bound_candidates(ty::BoundCopy,
                                                             stack,
                                                             &mut candidates));
             }
             Some(bound @ ty::BoundSized) => {
-                // Sized and Copy are always automatically computed.
+                // Sized is never implementable by end-users, it is
+                // always automatically computed.
                 try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
             }
 
-            _ => {
-                // For the time being, we ignore user-defined impls for builtin-bounds, other than
-                // `Copy`.
-                // (And unboxed candidates only apply to the Fn/FnMut/etc traits.)
+            Some(ty::BoundSend) |
+            Some(ty::BoundSync) |
+            None => {
                 try!(self.assemble_closure_candidates(obligation, &mut candidates));
                 try!(self.assemble_fn_pointer_candidates(obligation, &mut candidates));
                 try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
@@ -1178,7 +1183,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         if data.bounds.builtin_bounds.contains(&bound) {
                             debug!("assemble_candidates_from_object_ty: matched builtin bound, \
                             pushing candidate");
-                            candidates.vec.push(BuiltinCandidate(bound));
+                            candidates.vec.push(BuiltinObjectCandidate);
                             return;
                         }
                     }
@@ -1272,6 +1277,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             (&ImplCandidate(..), &ParamCandidate(..)) |
             (&ClosureCandidate(..), &ParamCandidate(..)) |
             (&FnPointerCandidate(..), &ParamCandidate(..)) |
+            (&BuiltinObjectCandidate(..), &ParamCandidate(_)) |
             (&BuiltinCandidate(..), &ParamCandidate(..)) => {
                 // We basically prefer always prefer to use a
                 // where-clause over another option. Where clauses
@@ -1359,7 +1365,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Ok(If(Vec::new()))
             }
 
-            ty::ty_uniq(referent_ty) => {  // Box<T>
+            ty::ty_uniq(_) => {  // Box<T>
                 match bound {
                     ty::BoundCopy => {
                         Err(Unimplemented)
@@ -1369,26 +1375,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         Ok(If(Vec::new()))
                     }
 
-                    ty::BoundSync |
-                    ty::BoundSend => {
-                        Ok(If(vec![referent_ty]))
+                    ty::BoundSync | ty::BoundSend => {
+                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
 
             ty::ty_ptr(..) => {     // *const T, *mut T
                 match bound {
-                    ty::BoundCopy |
-                    ty::BoundSized => {
+                    ty::BoundCopy | ty::BoundSized => {
                         Ok(If(Vec::new()))
                     }
 
-                    ty::BoundSync |
-                    ty::BoundSend => {
-                        self.tcx().sess.bug(
-                            &format!(
-                                "raw pointers should have a negative \
-                                 impl for `Send` and `Sync`")[]);
+                    ty::BoundSync | ty::BoundSend => {
+                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1398,7 +1398,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                     ty::BoundSized => {
                         Err(Unimplemented)
                     }
-                    ty::BoundCopy | ty::BoundSync | ty::BoundSend => {
+                    ty::BoundCopy => {
                         if data.bounds.builtin_bounds.contains(&bound) {
                             Ok(If(Vec::new()))
                         } else {
@@ -1416,6 +1416,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                             Err(Unimplemented)
                         }
+                    }
+                    ty::BoundSync | ty::BoundSend => {
+                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1441,9 +1444,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         Ok(If(Vec::new()))
                     }
 
-                    ty::BoundSync |
-                    ty::BoundSend => {
-                        Ok(If(vec![referent_ty]))
+                    ty::BoundSync | ty::BoundSend => {
+                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1472,9 +1474,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                         }
                     }
 
-                    ty::BoundSync |
-                    ty::BoundSend => {
-                        Ok(If(vec![element_ty]))
+                    ty::BoundSync | ty::BoundSend => {
+                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1482,13 +1483,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_str => {
                 // Equivalent to [u8]
                 match bound {
-                    ty::BoundSync |
-                    ty::BoundSend => {
-                        Ok(If(Vec::new()))
+                    ty::BoundSync | ty::BoundSend => {
+                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
 
-                    ty::BoundCopy |
-                    ty::BoundSized => {
+                    ty::BoundCopy | ty::BoundSized => {
                         Err(Unimplemented)
                     }
                 }
@@ -1576,14 +1575,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 // "opened" unsized/existential type (one that has
                 // been dereferenced)
                 match bound {
-                    ty::BoundCopy |
-                    ty::BoundSync |
-                    ty::BoundSend => {
+                    ty::BoundCopy => {
                         Ok(If(vec!(ty)))
                     }
 
                     ty::BoundSized => {
                         Err(Unimplemented)
+                    }
+
+                    ty::BoundSync |
+                    ty::BoundSend => {
+                        self.tcx().sess.bug("Send/Sync shouldn't occur in builtin_bounds()");
                     }
                 }
             }
@@ -1606,16 +1608,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         {
             // First check for markers and other nonsense.
             match bound {
-                ty::BoundCopy => {
-                    return Ok(ParameterBuiltin)
-                }
+                // Fallback to whatever user-defined impls exist in this case.
+                ty::BoundCopy => Ok(ParameterBuiltin),
 
-                ty::BoundSend |
-                ty::BoundSync |
-                ty::BoundSized => { }
+                // Sized if all the component types are sized.
+                ty::BoundSized => Ok(If(types)),
+
+                // Shouldn't be coming through here.
+                ty::BoundSend | ty::BoundSync => unreachable!(),
             }
-
-            Ok(If(types))
         }
     }
 
@@ -1737,6 +1738,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ClosureCandidate(closure_def_id, substs) => {
                 try!(self.confirm_closure_candidate(obligation, closure_def_id, &substs));
                 Ok(VtableClosure(closure_def_id, substs))
+            }
+
+            BuiltinObjectCandidate => {
+                // This indicates something like `(Trait+Send) :
+                // Send`. In this case, we know that this holds
+                // because that's what the object type is telling us,
+                // and there's really no additional obligations to
+                // prove and no types in particular to unify etc.
+                Ok(VtableParam(Vec::new()))
             }
 
             ObjectCandidate => {
@@ -2449,6 +2459,7 @@ impl<'tcx> Repr<'tcx> for SelectionCandidate<'tcx> {
             PhantomFnCandidate => format!("PhantomFnCandidate"),
             ErrorCandidate => format!("ErrorCandidate"),
             BuiltinCandidate(b) => format!("BuiltinCandidate({:?})", b),
+            BuiltinObjectCandidate => format!("BuiltinObjectCandidate"),
             ParamCandidate(ref a) => format!("ParamCandidate({})", a.repr(tcx)),
             ImplCandidate(a) => format!("ImplCandidate({})", a.repr(tcx)),
             DefaultImplCandidate(t) => format!("DefaultImplCandidate({:?})", t),
