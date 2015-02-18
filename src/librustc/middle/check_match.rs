@@ -94,8 +94,8 @@ impl<'a> fmt::Debug for Matrix<'a> {
 }
 
 impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
-    fn from_iter<T: Iterator<Item=Vec<&'a Pat>>>(iterator: T) -> Matrix<'a> {
-        Matrix(iterator.collect())
+    fn from_iter<T: IntoIterator<Item=Vec<&'a Pat>>>(iter: T) -> Matrix<'a> {
+        Matrix(iter.into_iter().collect())
     }
 }
 
