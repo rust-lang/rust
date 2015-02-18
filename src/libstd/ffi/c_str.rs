@@ -105,7 +105,7 @@ pub struct CString {
 /// }
 ///
 /// fn main() {
-///     let s = CString::from_slice(b"data data data data").unwrap();
+///     let s = CString::new("data data data data").unwrap();
 ///     work(&s);
 /// }
 /// ```
@@ -141,7 +141,7 @@ impl CString {
     /// extern { fn puts(s: *const libc::c_char); }
     ///
     /// fn main() {
-    ///     let to_print = CString::from_slice(b"Hello!").unwrap();
+    ///     let to_print = CString::new("Hello!").unwrap();
     ///     unsafe {
     ///         puts(to_print.as_ptr());
     ///     }
@@ -175,7 +175,7 @@ impl CString {
     /// extern { fn puts(s: *const libc::c_char); }
     ///
     /// fn main() {
-    ///     let to_print = CString::from_slice(b"Hello!").unwrap();
+    ///     let to_print = CString::new("Hello!").unwrap();
     ///     unsafe {
     ///         puts(to_print.as_ptr());
     ///     }
@@ -436,18 +436,18 @@ mod tests {
 
     #[test]
     fn simple() {
-        let s = CString::from_slice(b"1234").unwrap();
+        let s = CString::new(b"1234").unwrap();
         assert_eq!(s.as_bytes(), b"1234");
         assert_eq!(s.as_bytes_with_nul(), b"1234\0");
     }
 
     #[test]
     fn build_with_zero1() {
-        assert!(CString::from_slice(b"\0").is_err());
+        assert!(CString::new(b"\0").is_err());
     }
     #[test]
     fn build_with_zero2() {
-        assert!(CString::from_vec(vec![0]).is_err());
+        assert!(CString::new(vec![0]).is_err());
     }
 
     #[test]
@@ -460,7 +460,7 @@ mod tests {
 
     #[test]
     fn formatted() {
-        let s = CString::from_slice(b"12").unwrap();
+        let s = CString::new(b"12").unwrap();
         assert_eq!(format!("{:?}", s), "\"12\"");
     }
 

@@ -1552,7 +1552,8 @@ impl<K, V, S, H> FromIterator<(K, V)> for HashMap<K, V, S>
           S: HashState<Hasher=H> + Default,
           H: hash::Hasher<Output=u64>
 {
-    fn from_iter<T: Iterator<Item=(K, V)>>(iter: T) -> HashMap<K, V, S> {
+    fn from_iter<T: IntoIterator<Item=(K, V)>>(iter: T) -> HashMap<K, V, S> {
+        let iter = iter.into_iter();
         let lower = iter.size_hint().0;
         let mut map = HashMap::with_capacity_and_hash_state(lower,
                                                             Default::default());
@@ -1567,7 +1568,7 @@ impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
           S: HashState<Hasher=H>,
           H: hash::Hasher<Output=u64>
 {
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
+    fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }
