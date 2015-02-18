@@ -287,7 +287,7 @@ pub fn log(level: u32, loc: &'static LogLocation, args: fmt::Arguments) {
     // Test the literal string from args against the current filter, if there
     // is one.
     match unsafe { FILTER.as_ref() } {
-        Some(filter) if !args.to_string().contains(&filter[]) => return,
+        Some(filter) if !args.to_string().contains(&filter[..]) => return,
         _ => {}
     }
 
@@ -382,7 +382,7 @@ fn enabled(level: u32,
     // Search for the longest match, the vector is assumed to be pre-sorted.
     for directive in iter.rev() {
         match directive.name {
-            Some(ref name) if !module.starts_with(&name[]) => {},
+            Some(ref name) if !module.starts_with(&name[..]) => {},
             Some(..) | None => {
                 return level <= directive.level
             }
@@ -397,7 +397,7 @@ fn enabled(level: u32,
 /// `Once` primitive (and this function is called from that primitive).
 fn init() {
     let (mut directives, filter) = match env::var("RUST_LOG") {
-        Ok(spec) => directive::parse_logging_spec(&spec[]),
+        Ok(spec) => directive::parse_logging_spec(&spec[..]),
         Err(..) => (Vec::new(), None),
     };
 

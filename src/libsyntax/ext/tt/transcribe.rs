@@ -255,7 +255,7 @@ pub fn tt_next_token(r: &mut TtReader) -> TokenAndSpan {
                     }
                     LisContradiction(ref msg) => {
                         // FIXME #2887 blame macro invoker instead
-                        r.sp_diag.span_fatal(sp.clone(), &msg[]);
+                        r.sp_diag.span_fatal(sp.clone(), &msg[..]);
                     }
                     LisConstraint(len, _) => {
                         if len == 0 {

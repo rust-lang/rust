@@ -118,7 +118,7 @@ fn parse_args(ecx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                 }
             };
             let interned_name = token::get_ident(ident);
-            let name = &interned_name[];
+            let name = &interned_name[..];
 
             p.expect(&token::Eq);
             let e = p.parse_expr();
@@ -218,7 +218,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     let msg = format!("invalid reference to argument `{}` ({})",
                                       arg, self.describe_num_args());
 
-                    self.ecx.span_err(self.fmtsp, &msg[]);
+                    self.ecx.span_err(self.fmtsp, &msg[..]);
                     return;
                 }
                 {
@@ -238,7 +238,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     Some(e) => e.span,
                     None => {
                         let msg = format!("there is no argument named `{}`", name);
-                        self.ecx.span_err(self.fmtsp, &msg[]);
+                        self.ecx.span_err(self.fmtsp, &msg[..]);
                         return;
                     }
                 };
@@ -587,7 +587,7 @@ impl<'a, 'b> Context<'a, 'b> {
                   -> P<ast::Expr> {
         let trait_ = match *ty {
             Known(ref tyname) => {
-                match &tyname[] {
+                match &tyname[..] {
                     ""  => "Display",
                     "?" => "Debug",
                     "e" => "LowerExp",

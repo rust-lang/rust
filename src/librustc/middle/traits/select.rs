@@ -996,7 +996,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let all_bounds =
             util::transitive_bounds(
-                self.tcx(), &caller_trait_refs[]);
+                self.tcx(), &caller_trait_refs[..]);
 
         let matching_bounds =
             all_bounds.filter(

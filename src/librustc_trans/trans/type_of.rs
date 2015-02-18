@@ -144,7 +144,7 @@ pub fn type_of_rust_fn<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let input_tys = inputs.iter().map(|&arg_ty| type_of_explicit_arg(cx, arg_ty));
     atys.extend(input_tys);
 
-    Type::func(&atys[], &lloutputtype)
+    Type::func(&atys[..], &lloutputtype)
 }
 
 // Given a function type and a count of ty params, construct an llvm type
@@ -332,7 +332,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           let repr = adt::represent_type(cx, t);
           let tps = substs.types.get_slice(subst::TypeSpace);
           let name = llvm_type_name(cx, an_enum, did, tps);
-          adt::incomplete_type_of(cx, &*repr, &name[])
+          adt::incomplete_type_of(cx, &*repr, &name[..])
       }
       ty::ty_closure(did, _, ref substs) => {
           // Only create the named struct, but don't fill it in. We
@@ -343,7 +343,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           // contents of the VecPerParamSpace to to construct the llvm
           // name
           let name = llvm_type_name(cx, a_closure, did, substs.types.as_slice());
-          adt::incomplete_type_of(cx, &*repr, &name[])
+          adt::incomplete_type_of(cx, &*repr, &name[..])
       }
 
       ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) | ty::ty_ptr(ty::mt{ty, ..}) => {
@@ -399,7 +399,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
               let repr = adt::represent_type(cx, t);
               let tps = substs.types.get_slice(subst::TypeSpace);
               let name = llvm_type_name(cx, a_struct, did, tps);
-              adt::incomplete_type_of(cx, &*repr, &name[])
+              adt::incomplete_type_of(cx, &*repr, &name[..])
           }
       }
 

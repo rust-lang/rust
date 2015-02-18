@@ -92,7 +92,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
         {
             let urls = markdown_data.replace(".md)", ".html)");
             try!(File::create(&preprocessed_path)
-                      .write_str(&urls[]));
+                      .write_str(&urls[..]));
         }
 
         // write the prelude to a temporary HTML file for rustdoc inclusion

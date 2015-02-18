@@ -294,8 +294,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
 
         let len = self.region_bound_pairs.len();
         let old_body_id = self.set_body_id(body.id);
-        self.relate_free_regions(&fn_sig[], body.id, span);
-        link_fn_args(self, CodeExtent::from_node_id(body.id), &fn_decl.inputs[]);
+        self.relate_free_regions(&fn_sig[..], body.id, span);
+        link_fn_args(self, CodeExtent::from_node_id(body.id), &fn_decl.inputs[..]);
         self.visit_block(body);
         self.visit_region_obligations(body.id);
         self.region_bound_pairs.truncate(len);
@@ -690,7 +690,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
         }
 
         ast::ExprMatch(ref discr, ref arms, _) => {
-            link_match(rcx, &**discr, &arms[]);
+            link_match(rcx, &**discr, &arms[..]);
 
             visit::walk_expr(rcx, expr);
         }

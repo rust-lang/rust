@@ -163,7 +163,7 @@ fn encode_variant_id(rbml_w: &mut Encoder, vid: DefId) {
     rbml_w.end_tag();
 
     rbml_w.start_tag(tag_mod_child);
-    rbml_w.wr_str(&s[]);
+    rbml_w.wr_str(&s[..]);
     rbml_w.end_tag();
 }
 
@@ -353,9 +353,9 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                 let fields = ty::lookup_struct_fields(ecx.tcx, def_id);
                 let idx = encode_info_for_struct(ecx,
                                                  rbml_w,
-                                                 &fields[],
+                                                 &fields[..],
                                                  index);
-                encode_struct_fields(rbml_w, &fields[], def_id);
+                encode_struct_fields(rbml_w, &fields[..], def_id);
                 encode_index(rbml_w, idx, write_i64);
             }
         }
@@ -1158,7 +1158,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
            class itself */
         let idx = encode_info_for_struct(ecx,
                                          rbml_w,
-                                         &fields[],
+                                         &fields[..],
                                          index);
 
         /* Index the class*/
@@ -1181,7 +1181,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        encode_struct_fields(rbml_w, &fields[], def_id);
+        encode_struct_fields(rbml_w, &fields[..], def_id);
 
         encode_inlined_item(ecx, rbml_w, IIItemRef(item));
 

@@ -977,7 +977,7 @@ impl ops::Deref for PathBuf {
     type Target = Path;
 
     fn deref(&self) -> &Path {
-        unsafe { mem::transmute(&self.inner[]) }
+        unsafe { mem::transmute(&self.inner[..]) }
     }
 }
 
@@ -1014,7 +1014,7 @@ impl cmp::Ord for PathBuf {
 
 impl AsOsStr for PathBuf {
     fn as_os_str(&self) -> &OsStr {
-        &self.inner[]
+        &self.inner[..]
     }
 }
 

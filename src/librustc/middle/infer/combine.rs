@@ -142,7 +142,7 @@ pub trait Combine<'tcx> : Sized {
                             for _ in a_regions {
                                 invariance.push(ty::Invariant);
                             }
-                            &invariance[]
+                            &invariance[..]
                         }
                     };
 
