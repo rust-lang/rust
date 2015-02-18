@@ -655,14 +655,6 @@ pub fn build_target_config(opts: &Options, sp: &SpanHandler) -> Config {
     }
 }
 
-/// Returns all of the stable rustc command line options.
-pub fn optgroups() -> Vec<getopts::OptGroup> {
-    rustc_optgroups().into_iter()
-        .filter(|g|g.is_stable())
-        .map(|g|g.opt_group)
-        .collect()
-}
-
 #[derive(Copy, Clone, PartialEq, Eq, Debug)]
 pub enum OptionStability { Stable, Unstable }
 
