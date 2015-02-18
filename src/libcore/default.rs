@@ -16,7 +16,7 @@
 //!
 //! ```
 //! struct SomeOptions {
-//!     foo: int,
+//!     foo: i32,
 //!     bar: f32,
 //! }
 //! ```
@@ -28,7 +28,7 @@
 //!
 //! #[derive(Default)]
 //! struct SomeOptions {
-//!     foo: int,
+//!     foo: i32,
 //!     bar: f32,
 //! }
 //!
@@ -56,7 +56,7 @@
 //!
 //! #[derive(Default)]
 //! struct SomeOptions {
-//!     foo: int,
+//!     foo: i32,
 //!     bar: f32,
 //!     baz: Kind,
 //! }
@@ -73,7 +73,7 @@
 //! # use std::default::Default;
 //! # #[derive(Default)]
 //! # struct SomeOptions {
-//! #     foo: int,
+//! #     foo: i32,
 //! #     bar: f32,
 //! # }
 //! fn main() {
@@ -93,7 +93,7 @@
 /// ```
 /// #[derive(Default)]
 /// struct SomeOptions {
-///     foo: int,
+///     foo: i32,
 ///     bar: f32,
 /// }
 /// ```
@@ -113,7 +113,7 @@ pub trait Default {
     ///
     /// let i: i8 = Default::default();
     /// let (x, y): (Option<String>, f64) = Default::default();
-    /// let (a, b, (c, d)): (int, uint, (bool, bool)) = Default::default();
+    /// let (a, b, (c, d)): (i32, u32, (bool, bool)) = Default::default();
     /// ```
     ///
     /// Making your own:
@@ -150,13 +150,13 @@ default_impl! { (), () }
 default_impl! { bool, false }
 default_impl! { char, '\x00' }
 
-default_impl! { uint, 0 }
+default_impl! { usize, 0 }
 default_impl! { u8, 0 }
 default_impl! { u16, 0 }
 default_impl! { u32, 0 }
 default_impl! { u64, 0 }
 
-default_impl! { int, 0 }
+default_impl! { isize, 0 }
 default_impl! { i8, 0 }
 default_impl! { i16, 0 }
 default_impl! { i32, 0 }
