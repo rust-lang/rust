@@ -153,7 +153,7 @@ use any::Any;
 use cell::UnsafeCell;
 use fmt;
 use io;
-use marker::{PhantomData, Send, Sync};
+use marker::PhantomData;
 use old_io::stdio;
 use rt::{self, unwind};
 use sync::{Mutex, Condvar, Arc};
