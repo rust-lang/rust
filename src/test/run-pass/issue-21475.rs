@@ -13,9 +13,8 @@ use m::{START, END};
 fn main() {
     match 42u32 {
         m::START...m::END => {},
-        // FIXME: Should also work (now: mismatched types in range [E0031])
-        // 0u32...m::END => {},
-        // m::START...59u32 => {},
+        0u32...m::END => {},
+        m::START...59u32 => {},
         _  => {},
     }
 }
