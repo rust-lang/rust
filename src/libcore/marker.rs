@@ -383,3 +383,40 @@ mod impls {
     unsafe impl<'a, T: Sync + ?Sized> Send for &'a T {}
     unsafe impl<'a, T: Send + ?Sized> Send for &'a mut T {}
 }
+
+/// Old-style marker trait. Deprecated.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<&'a ()>`")]
+#[lang="contravariant_lifetime"]
+pub struct ContravariantLifetime<'a>;
+
+/// Old-style marker trait. Deprecated.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<fn(&'a ())>`")]
+#[lang="covariant_lifetime"]
+pub struct CovariantLifetime<'a>;
+
+/// Old-style marker trait. Deprecated.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<Cell<&'a ()>>`")]
+#[lang="invariant_lifetime"]
+pub struct InvariantLifetime<'a>;
+
+/// Old-style marker trait. Deprecated.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<fn(T)>`")]
+#[lang="contravariant_type"]
+pub struct ContravariantType<T>;
+
+/// Old-style marker trait. Deprecated.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<T>`")]
+#[lang="covariant_type"]
+#[cfg(not(stage0))]
+pub struct CovariantType<T>;
+
+/// Old-style marker trait. Deprecated.
+#[unstable(feature = "core", reason = "deprecated")]
+#[deprecated(since = "1.0.0", reason = "Replace with `PhantomData<Cell<T>>`")]
+#[lang="invariant_type"]
+pub struct InvariantType<T>;

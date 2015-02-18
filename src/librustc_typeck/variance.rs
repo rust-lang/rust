@@ -335,7 +335,17 @@ fn lang_items(tcx: &ty::ctxt) -> Vec<(ast::NodeId,Vec<ty::Variance>)> {
     let all = vec![
         (tcx.lang_items.phantom_fn(), vec![ty::Contravariant, ty::Covariant]),
         (tcx.lang_items.phantom_data(), vec![ty::Covariant]),
-        (tcx.lang_items.unsafe_cell_type(), vec![ty::Invariant])];
+        (tcx.lang_items.unsafe_cell_type(), vec![ty::Invariant]),
+
+        // Deprecated:
+        (tcx.lang_items.covariant_type(), vec![ty::Covariant]),
+        (tcx.lang_items.contravariant_type(), vec![ty::Contravariant]),
+        (tcx.lang_items.invariant_type(), vec![ty::Invariant]),
+        (tcx.lang_items.covariant_lifetime(), vec![ty::Covariant]),
+        (tcx.lang_items.contravariant_lifetime(), vec![ty::Contravariant]),
+        (tcx.lang_items.invariant_lifetime(), vec![ty::Invariant]),
+
+        ];
 
     all.into_iter()
        .filter(|&(ref d,_)| d.is_some())
