@@ -10,7 +10,6 @@
 
 use borrowck::BorrowckCtxt;
 use rustc::middle::mem_categorization as mc;
-use rustc::middle::mem_categorization::Typer;
 use rustc::middle::mem_categorization::InteriorOffsetKind as Kind;
 use rustc::middle::ty;
 use rustc::util::ppaux::UserString;

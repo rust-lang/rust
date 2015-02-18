@@ -10,52 +10,74 @@
 
 // #![warn(deprecated_mode)]
 
-pub use self::WfConstraint::*;
-
 use astconv::object_region_bounds;
-use middle::infer::GenericKind;
-use middle::subst::{ParamSpace, Subst, Substs};
-use middle::ty::{self, Ty};
-use middle::ty_fold::{TypeFolder};
+use middle::infer::{InferCtxt, GenericKind};
+use middle::subst::{Substs};
+use middle::traits;
+use middle::ty::{self, ToPolyTraitRef, Ty};
+use middle::ty_fold::{TypeFoldable, TypeFolder};
 
+use std::rc::Rc;
 use syntax::ast;
+use syntax::codemap::Span;
 
+use util::common::ErrorReported;
 use util::ppaux::Repr;
 
 // Helper functions related to manipulating region types.
 
-pub enum WfConstraint<'tcx> {
-    RegionSubRegionConstraint(Option<Ty<'tcx>>, ty::Region, ty::Region),
-    RegionSubGenericConstraint(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
+pub enum Implication<'tcx> {
+    RegionSubRegion(Option<Ty<'tcx>>, ty::Region, ty::Region),
+    RegionSubGeneric(Option<Ty<'tcx>>, ty::Region, GenericKind<'tcx>),
+    Predicate(ast::DefId, ty::Predicate<'tcx>),
 }
 
-struct Wf<'a, 'tcx: 'a> {
-    tcx: &'a ty::ctxt<'tcx>,
+struct Implicator<'a, 'tcx: 'a> {
+    infcx: &'a InferCtxt<'a,'tcx>,
+    closure_typer: &'a (ty::ClosureTyper<'tcx>+'a),
+    body_id: ast::NodeId,
     stack: Vec<(ty::Region, Option<Ty<'tcx>>)>,
-    out: Vec<WfConstraint<'tcx>>,
+    span: Span,
+    out: Vec<Implication<'tcx>>,
 }
 
 /// This routine computes the well-formedness constraints that must hold for the type `ty` to
 /// appear in a context with lifetime `outer_region`
-pub fn region_wf_constraints<'tcx>(
-    tcx: &ty::ctxt<'tcx>,
+pub fn implications<'a,'tcx>(
+    infcx: &'a InferCtxt<'a,'tcx>,
+    closure_typer: &ty::ClosureTyper<'tcx>,
+    body_id: ast::NodeId,
     ty: Ty<'tcx>,
-    outer_region: ty::Region)
-    -> Vec<WfConstraint<'tcx>>
+    outer_region: ty::Region,
+    span: Span)
+    -> Vec<Implication<'tcx>>
 {
+    debug!("implications(body_id={}, ty={}, outer_region={})",
+           body_id,
+           ty.repr(closure_typer.tcx()),
+           outer_region.repr(closure_typer.tcx()));
+
     let mut stack = Vec::new();
     stack.push((outer_region, None));
-    let mut wf = Wf { tcx: tcx,
-                      stack: stack,
-                      out: Vec::new() };
+    let mut wf = Implicator { closure_typer: closure_typer,
+                              infcx: infcx,
+                              body_id: body_id,
+                              span: span,
+                              stack: stack,
+                              out: Vec::new() };
     wf.accumulate_from_ty(ty);
+    debug!("implications: out={}", wf.out.repr(closure_typer.tcx()));
     wf.out
 }
 
-impl<'a, 'tcx> Wf<'a, 'tcx> {
+impl<'a, 'tcx> Implicator<'a, 'tcx> {
+    fn tcx(&self) -> &'a ty::ctxt<'tcx> {
+        self.infcx.tcx
+    }
+
     fn accumulate_from_ty(&mut self, ty: Ty<'tcx>) {
-        debug!("Wf::accumulate_from_ty(ty={})",
-               ty.repr(self.tcx));
+        debug!("accumulate_from_ty(ty={})",
+               ty.repr(self.tcx()));
 
         match ty.sty {
             ty::ty_bool |
@@ -96,13 +118,13 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
 
             ty::ty_trait(ref t) => {
                 let required_region_bounds =
-                    object_region_bounds(self.tcx, &t.principal, t.bounds.builtin_bounds);
+                    object_region_bounds(self.tcx(), &t.principal, t.bounds.builtin_bounds);
                 self.accumulate_from_object_ty(ty, t.bounds.region_bound, required_region_bounds)
             }
 
             ty::ty_enum(def_id, substs) |
             ty::ty_struct(def_id, substs) => {
-                let item_scheme = ty::lookup_item_type(self.tcx, def_id);
+                let item_scheme = ty::lookup_item_type(self.tcx(), def_id);
                 self.accumulate_from_adt(ty, def_id, &item_scheme.generics, substs)
             }
 
@@ -141,9 +163,9 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
             }
 
             ty::ty_open(_) => {
-                self.tcx.sess.bug(
+                self.tcx().sess.bug(
                     &format!("Unexpected type encountered while doing wf check: {}",
-                            ty.repr(self.tcx))[]);
+                            ty.repr(self.tcx()))[]);
             }
         }
     }
@@ -197,7 +219,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                                   opt_ty: Option<Ty<'tcx>>,
                                   r_a: ty::Region,
                                   r_b: ty::Region) {
-        self.out.push(RegionSubRegionConstraint(opt_ty, r_a, r_b));
+        self.out.push(Implication::RegionSubRegion(opt_ty, r_a, r_b));
     }
 
     /// Pushes a constraint that `param_ty` must outlive the top region on the stack.
@@ -211,7 +233,7 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
     fn push_projection_constraint_from_top(&mut self,
                                            projection_ty: &ty::ProjectionTy<'tcx>) {
         let &(region, opt_ty) = self.stack.last().unwrap();
-        self.out.push(RegionSubGenericConstraint(
+        self.out.push(Implication::RegionSubGeneric(
             opt_ty, region, GenericKind::Projection(projection_ty.clone())));
     }
 
@@ -220,107 +242,117 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
                              region: ty::Region,
                              opt_ty: Option<Ty<'tcx>>,
                              param_ty: ty::ParamTy) {
-        self.out.push(RegionSubGenericConstraint(
+        self.out.push(Implication::RegionSubGeneric(
             opt_ty, region, GenericKind::Param(param_ty)));
     }
 
     fn accumulate_from_adt(&mut self,
                            ty: Ty<'tcx>,
                            def_id: ast::DefId,
-                           generics: &ty::Generics<'tcx>,
+                           _generics: &ty::Generics<'tcx>,
                            substs: &Substs<'tcx>)
     {
-        // The generic declarations from the type, appropriately
-        // substituted for the actual substitutions.
-        let generics = generics.subst(self.tcx, substs);
+        let predicates =
+            ty::lookup_predicates(self.tcx(), def_id).instantiate(self.tcx(), substs);
+        let predicates = match self.fully_normalize(&predicates) {
+            Ok(predicates) => predicates,
+            Err(ErrorReported) => { return; }
+        };
 
-        // Variance of each type/region parameter.
-        let variances = ty::item_variances(self.tcx, def_id);
-
-        for &space in &ParamSpace::all() {
-            let region_params = substs.regions().get_slice(space);
-            let region_variances = variances.regions.get_slice(space);
-            let region_param_defs = generics.regions.get_slice(space);
-            assert_eq!(region_params.len(), region_variances.len());
-            for (&region_param, (&region_variance, region_param_def)) in
-                region_params.iter().zip(
-                    region_variances.iter().zip(
-                        region_param_defs.iter()))
-            {
-                match region_variance {
-                    ty::Covariant | ty::Bivariant => {
-                        // Ignore covariant or bivariant region
-                        // parameters.  To understand why, consider a
-                        // struct `Foo<'a>`. If `Foo` contains any
-                        // references with lifetime `'a`, then `'a` must
-                        // be at least contravariant (and possibly
-                        // invariant). The only way to have a covariant
-                        // result is if `Foo` contains only a field with a
-                        // type like `fn() -> &'a T`; i.e., a bare
-                        // function that can produce a reference of
-                        // lifetime `'a`. In this case, there is no
-                        // *actual data* with lifetime `'a` that is
-                        // reachable. (Presumably this bare function is
-                        // really returning static data.)
-                    }
-
-                    ty::Contravariant | ty::Invariant => {
-                        // If the parameter is contravariant or
-                        // invariant, there may indeed be reachable
-                        // data with this lifetime. See other case for
-                        // more details.
-                        self.push_region_constraint_from_top(region_param);
+        for predicate in predicates.predicates.as_slice() {
+            match *predicate {
+                ty::Predicate::Trait(ref data) => {
+                    self.accumulate_from_assoc_types_transitive(data);
+                }
+                ty::Predicate::Equate(..) => { }
+                ty::Predicate::Projection(..) => { }
+                ty::Predicate::RegionOutlives(ref data) => {
+                    match ty::no_late_bound_regions(self.tcx(), data) {
+                        None => { }
+                        Some(ty::OutlivesPredicate(r_a, r_b)) => {
+                            self.push_sub_region_constraint(Some(ty), r_b, r_a);
+                        }
                     }
                 }
-
-                for &region_bound in &region_param_def.bounds {
-                    // The type declared a constraint like
-                    //
-                    //     'b : 'a
-                    //
-                    // which means that `'a <= 'b` (after
-                    // substitution).  So take the region we
-                    // substituted for `'a` (`region_bound`) and make
-                    // it a subregion of the region we substituted
-                    // `'b` (`region_param`).
-                    self.push_sub_region_constraint(
-                        Some(ty), region_bound, region_param);
+                ty::Predicate::TypeOutlives(ref data) => {
+                    match ty::no_late_bound_regions(self.tcx(), data) {
+                        None => { }
+                        Some(ty::OutlivesPredicate(ty_a, r_b)) => {
+                            self.stack.push((r_b, Some(ty)));
+                            self.accumulate_from_ty(ty_a);
+                            self.stack.pop().unwrap();
+                        }
+                    }
                 }
             }
+        }
 
-            let types = substs.types.get_slice(space);
-            let type_variances = variances.types.get_slice(space);
-            let type_param_defs = generics.types.get_slice(space);
-            assert_eq!(types.len(), type_variances.len());
-            for (&type_param_ty, (&variance, type_param_def)) in
-                types.iter().zip(
-                    type_variances.iter().zip(
-                        type_param_defs.iter()))
-            {
-                debug!("type_param_ty={} variance={}",
-                       type_param_ty.repr(self.tcx),
-                       variance.repr(self.tcx));
+        let obligations = predicates.predicates
+                                    .into_iter()
+                                    .map(|pred| Implication::Predicate(def_id, pred));
+        self.out.extend(obligations);
 
-                match variance {
-                    ty::Contravariant | ty::Bivariant => {
-                        // As above, except that in this it is a
-                        // *contravariant* reference that indices that no
-                        // actual data of type T is reachable.
-                    }
+        let variances = ty::item_variances(self.tcx(), def_id);
 
-                    ty::Covariant | ty::Invariant => {
-                        self.accumulate_from_ty(type_param_ty);
-                    }
+        for (&region, &variance) in substs.regions().iter().zip(variances.regions.iter()) {
+            match variance {
+                ty::Contravariant | ty::Invariant => {
+                    // If any data with this lifetime is reachable
+                    // within, it must be at least contravariant.
+                    self.push_region_constraint_from_top(region)
                 }
-
-                // Inspect bounds on this type parameter for any
-                // region bounds.
-                for &r in &type_param_def.bounds.region_bounds {
-                    self.stack.push((r, Some(ty)));
-                    self.accumulate_from_ty(type_param_ty);
-                    self.stack.pop().unwrap();
-                }
+                ty::Covariant | ty::Bivariant => { }
             }
+        }
+
+        for (&ty, &variance) in substs.types.iter().zip(variances.types.iter()) {
+            match variance {
+                ty::Covariant | ty::Invariant => {
+                    // If any data of this type is reachable within,
+                    // it must be at least covariant.
+                    self.accumulate_from_ty(ty);
+                }
+                ty::Contravariant | ty::Bivariant => { }
+            }
+        }
+    }
+
+    /// Given that there is a requirement that `Foo<X> : 'a`, where
+    /// `Foo` is declared like `struct Foo<T> where T : SomeTrait`,
+    /// this code finds all the associated types defined in
+    /// `SomeTrait` (and supertraits) and adds a requirement that `<X
+    /// as SomeTrait>::N : 'a` (where `N` is some associated type
+    /// defined in `SomeTrait`). This rule only applies to
+    /// trait-bounds that are not higher-ranked, because we cannot
+    /// project out of a HRTB. This rule helps code using associated
+    /// types to compile, see Issue #22246 for an example.
+    fn accumulate_from_assoc_types_transitive(&mut self,
+                                              data: &ty::PolyTraitPredicate<'tcx>)
+    {
+        for poly_trait_ref in traits::supertraits(self.tcx(), data.to_poly_trait_ref()) {
+            match ty::no_late_bound_regions(self.tcx(), &poly_trait_ref) {
+                Some(trait_ref) => { self.accumulate_from_assoc_types(trait_ref); }
+                None => { }
+            }
+        }
+    }
+
+    fn accumulate_from_assoc_types(&mut self,
+                                   trait_ref: Rc<ty::TraitRef<'tcx>>)
+    {
+        let trait_def_id = trait_ref.def_id;
+        let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
+        let assoc_type_projections: Vec<_> =
+            trait_def.associated_type_names
+                     .iter()
+                     .map(|&name| ty::mk_projection(self.tcx(), trait_ref.clone(), name))
+                     .collect();
+        let tys = match self.fully_normalize(&assoc_type_projections) {
+            Ok(tys) => { tys }
+            Err(ErrorReported) => { return; }
+        };
+        for ty in tys {
+            self.accumulate_from_ty(ty);
         }
     }
 
@@ -372,23 +404,51 @@ impl<'a, 'tcx> Wf<'a, 'tcx> {
         for &r_d in &required_region_bounds {
             // Each of these is an instance of the `'c <= 'b`
             // constraint above
-            self.out.push(RegionSubRegionConstraint(Some(ty), r_d, r_c));
+            self.out.push(Implication::RegionSubRegion(Some(ty), r_d, r_c));
+        }
+    }
+
+    fn fully_normalize<T>(&self, value: &T) -> Result<T,ErrorReported>
+        where T : TypeFoldable<'tcx> + ty::HasProjectionTypes + Clone + Repr<'tcx>
+    {
+        let value =
+            traits::fully_normalize(self.infcx,
+                                    self.closure_typer,
+                                    traits::ObligationCause::misc(self.span, self.body_id),
+                                    value);
+        match value {
+            Ok(value) => Ok(value),
+            Err(errors) => {
+                // I don't like reporting these errors here, but I
+                // don't know where else to report them just now. And
+                // I don't really expect errors to arise here
+                // frequently. I guess the best option would be to
+                // propagate them out.
+                traits::report_fulfillment_errors(self.infcx, &errors);
+                Err(ErrorReported)
+            }
         }
     }
 }
 
-impl<'tcx> Repr<'tcx> for WfConstraint<'tcx> {
+impl<'tcx> Repr<'tcx> for Implication<'tcx> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         match *self {
-            RegionSubRegionConstraint(_, ref r_a, ref r_b) => {
-                format!("RegionSubRegionConstraint({}, {})",
+            Implication::RegionSubRegion(_, ref r_a, ref r_b) => {
+                format!("RegionSubRegion({}, {})",
                         r_a.repr(tcx),
                         r_b.repr(tcx))
             }
 
-            RegionSubGenericConstraint(_, ref r, ref p) => {
-                format!("RegionSubGenericConstraint({}, {})",
+            Implication::RegionSubGeneric(_, ref r, ref p) => {
+                format!("RegionSubGeneric({}, {})",
                         r.repr(tcx),
+                        p.repr(tcx))
+            }
+
+            Implication::Predicate(ref def_id, ref p) => {
+                format!("Predicate({}, {})",
+                        def_id.repr(tcx),
                         p.repr(tcx))
             }
         }
