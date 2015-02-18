@@ -150,9 +150,16 @@ struct CrateCtxt<'a,'tcx:'a> {
     stack: RefCell<Vec<AstConvRequest>>,
 }
 
+/// Context specific to some particular item. This is what implements
+/// AstConv. It has information about the predicates that are defined
+/// on the trait. Unfortunately, this predicate information is
+/// available in various different forms at various points in the
+/// process. So we can't just store a pointer to e.g. the AST or the
+/// parsed ty form, we have to wind up keeping both (and making both
+/// optional) and extracting what we need from what's available.
 struct ItemCtxt<'a,'tcx:'a> {
     ccx: &'a CrateCtxt<'a,'tcx>,
-    generics: &'a ty::Generics<'tcx>,
+    param_bounds: &'a (GetTypeParameterBounds<'tcx>+'a),
 }
 
 #[derive(Copy, PartialEq, Eq)]
@@ -216,8 +223,8 @@ impl<'a, 'tcx, 'v> visit::Visitor<'v> for CollectItemTypesVisitor<'a, 'tcx> {
 // Utility types and common code for the above passes.
 
 impl<'a,'tcx> CrateCtxt<'a,'tcx> {
-    fn icx(&'a self, generics: &'a ty::Generics<'tcx>) -> ItemCtxt<'a,'tcx> {
-        ItemCtxt { ccx: self, generics: generics }
+    fn icx(&'a self, param_bounds: &'a GetTypeParameterBounds<'tcx>) -> ItemCtxt<'a,'tcx> {
+        ItemCtxt { ccx: self, param_bounds: param_bounds }
     }
 
     fn method_ty(&self, method_id: ast::NodeId) -> Rc<ty::Method<'tcx>> {
@@ -319,11 +326,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
     }
 }
 
-pub trait ToTy<'tcx> {
-    fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty<'tcx>;
-}
-
-impl<'a,'tcx> ToTy<'tcx> for ItemCtxt<'a,'tcx> {
+impl<'a,'tcx> ItemCtxt<'a,'tcx> {
     fn to_ty<RS:RegionScope>(&self, rs: &RS, ast_ty: &ast::Ty) -> Ty<'tcx> {
         ast_ty_to_ty(self, rs, ast_ty)
     }
@@ -354,14 +357,7 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                                  -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
     {
         self.ccx.cycle_check(span, AstConvRequest::GetTypeParameterBounds(node_id), || {
-            let def = self.tcx().type_parameter_def(node_id);
-
-            // TODO out of range indices can occur when you have something
-            // like fn foo<T:U::X,U>() { }
-            match self.generics.types.opt_get(def.space, def.index as usize) {
-                Some(def) => def.bounds.trait_bounds.clone(),
-                None => Vec::new(),
-            }
+            self.param_bounds.get_type_parameter_bounds(self, span, node_id)
         })
     }
 
@@ -378,6 +374,32 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                     -> Ty<'tcx>
     {
         ty::mk_projection(self.tcx(), trait_ref, item_name)
+    }
+}
+
+
+trait GetTypeParameterBounds<'tcx> {
+    fn get_type_parameter_bounds(&self,
+                                 astconv: &AstConv<'tcx>,
+                                 span: Span,
+                                 node_id: ast::NodeId)
+                                 -> Vec<ty::PolyTraitRef<'tcx>>;
+}
+impl<'tcx> GetTypeParameterBounds<'tcx> for ty::Generics<'tcx> {
+    fn get_type_parameter_bounds(&self,
+                                 astconv: &AstConv<'tcx>,
+                                 _span: Span,
+                                 node_id: ast::NodeId)
+                                 -> Vec<ty::PolyTraitRef<'tcx>>
+    {
+        let def = astconv.tcx().type_parameter_def(node_id);
+
+        // TODO out of range indices can occur when you have something
+        // like fn foo<T:U::X,U>() { }
+        match self.types.opt_get(def.space, def.index as usize) {
+            Some(def) => def.bounds.trait_bounds.clone(),
+            None => Vec::new(),
+        }
     }
 }
 
@@ -1646,13 +1668,10 @@ fn ty_generic_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                         &ast::TyParamBound::TraitTyParamBound(ref poly_trait_ref, _) => {
                             let mut projections = Vec::new();
 
-                            let trait_ref = astconv::instantiate_poly_trait_ref(
-                                &ccx.icx(generics),
-                                &ExplicitRscope,
-                                poly_trait_ref,
-                                Some(ty),
-                                &mut projections,
-                            );
+                            let trait_ref = conv_poly_trait_ref(&ccx.icx(generics),
+                                                                ty,
+                                                                poly_trait_ref,
+                                                                &mut projections);
 
                             result.predicates.push(space, trait_ref.as_predicate());
 
@@ -1934,6 +1953,38 @@ fn check_bounds_compatible<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     }
 }
 
+/// Converts a specific TyParamBound from the AST into the
+/// appropriate poly-trait-reference.
+fn poly_trait_ref_from_bound<'tcx>(astconv: &AstConv<'tcx>,
+                                   param_ty: Ty<'tcx>,
+                                   bound: &ast::TyParamBound,
+                                   projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+                                   -> Option<ty::PolyTraitRef<'tcx>>
+{
+    match *bound {
+        ast::TraitTyParamBound(ref tr, ast::TraitBoundModifier::None) => {
+            Some(conv_poly_trait_ref(astconv, param_ty, tr, projections))
+        }
+        ast::TraitTyParamBound(_, ast::TraitBoundModifier::Maybe) |
+        ast::RegionTyParamBound(_) => {
+            None
+        }
+    }
+}
+
+fn conv_poly_trait_ref<'tcx>(astconv: &AstConv<'tcx>,
+                             param_ty: Ty<'tcx>,
+                             trait_ref: &ast::PolyTraitRef,
+                             projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
+                             -> ty::PolyTraitRef<'tcx>
+{
+    astconv::instantiate_poly_trait_ref(astconv,
+                                        &ExplicitRscope,
+                                        trait_ref,
+                                        Some(param_ty),
+                                        projections)
+}
+
 fn conv_param_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                               generics: &ty::Generics<'tcx>,
                               span: Span,
@@ -1952,14 +2003,11 @@ fn conv_param_bounds<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
 
     let trait_bounds: Vec<ty::PolyTraitRef> =
         trait_bounds.into_iter()
-        .map(|bound| {
-            astconv::instantiate_poly_trait_ref(&ccx.icx(generics),
-                                                &ExplicitRscope,
-                                                bound,
-                                                Some(param_ty),
-                                                &mut projection_bounds)
-        })
-    .collect();
+                    .map(|bound| conv_poly_trait_ref(&ccx.icx(generics),
+                                                     param_ty,
+                                                     bound,
+                                                     &mut projection_bounds))
+                    .collect();
 
     let region_bounds: Vec<ty::Region> =
         region_bounds.into_iter()
