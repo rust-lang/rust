@@ -2552,8 +2552,9 @@ impl<'a> Parser<'a> {
                             parameters: ast::PathParameters::none(),
                         }
                     }).collect();
+                    let span = mk_sp(lo, hi);
                     let path = ast::Path {
-                        span: mk_sp(lo, hi),
+                        span: span,
                         global: true,
                         segments: segments,
                     };
@@ -2562,10 +2563,8 @@ impl<'a> Parser<'a> {
                     let ix = self.mk_expr(bracket_pos, hi, range);
                     let index = self.mk_index(e, ix);
                     e = self.mk_expr(lo, hi, index);
-                    // Enable after snapshot.
-                    // self.span_warn(e.span, "deprecated slicing syntax: `[]`");
-                    // self.span_note(e.span,
-                    //               "use `&expr[..]` to construct a slice of the whole of expr");
+
+                    self.obsolete(span, ObsoleteSyntax::EmptyIndex);
                 } else {
                     let ix = self.parse_expr();
                     hi = self.span.hi;
