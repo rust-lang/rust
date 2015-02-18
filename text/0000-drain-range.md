@@ -58,13 +58,14 @@ Remove `Vec::drain` and add the following method:
 ///
 /// Panics if the range is decreasing or if the upper bound is larger than the
 /// length of the vector.
-pub fn drain<T: Drainer>(&mut self, range: T) -> RangeIter<T> {
-    range.drain(self)
-}
+pub fn drain<T: Trait>(&mut self, range: T) -> /* ... */;
 ```
 
-Where `Drainer` should be implemented for `Range<usize>`, `RangeTo<usize>`,
-`RangeFrom<usize>`, `FullRange`, and `usize`.
+Where `Trait` is some trait that is implemented for at least `Range<usize>`,
+`RangeTo<usize>`, `RangeFrom<usize>`, `FullRange`, and `usize`.
+
+The precise nature of the return value is to be determined during implementation
+and may or may not depend on `T`.
 
 Add `String::drain`:
 
@@ -77,10 +78,10 @@ Add `String::drain`:
 /// Panics if the range is decreasing, if the upper bound is larger than the
 /// length of the String, or if the start and the end of the range don't lie on
 /// character boundaries.
-pub fn drain(&mut self, range: /* ? */) -> /* ? */ {
-    // ?
-}
+pub fn drain<T: Trait>(&mut self, range: T) -> /* ... */;
 ```
+
+Where `Trait` and the return value are as above but need not be the same.
 
 # Drawbacks
 
