@@ -39,7 +39,6 @@ impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
     fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
                          -> cres<'tcx, Ty<'tcx>>
     {
-        // Once we're equating, it doesn't matter what the variance is.
         match v {
             ty::Invariant => self.equate().tys(a, b),
             ty::Covariant => self.tys(a, b),

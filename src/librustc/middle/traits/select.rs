@@ -803,8 +803,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ambiguous: false
         };
 
-        // Check for the `PhantomFn` trait. This is really just a special annotation that
-        // *always* be considered to match, no matter what the type parameters etc.
+        // Check for the `PhantomFn` trait. This is really just a
+        // special annotation that is *always* considered to match, no
+        // matter what the type parameters are etc.
         if self.tcx().lang_items.phantom_fn() == Some(obligation.predicate.def_id()) {
             candidates.vec.push(PhantomFnCandidate);
             return Ok(candidates);

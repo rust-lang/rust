@@ -8,6 +8,23 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+//! Applies the "bivariance relationship" to two types and/or regions.
+//! If (A,B) are bivariant then either A <: B or B <: A. It occurs
+//! when type/lifetime parameters are unconstrained. Usually this is
+//! an error, but we permit it in the specific case where a type
+//! parameter is constrained in a where-clause via an associated type.
+//!
+//! There are several ways one could implement bivariance. You could
+//! just do nothing at all, for example, or you could fully verify
+//! that one of the two subtyping relationships hold. We choose to
+//! thread a middle line: we relate types up to regions, but ignore
+//! all region relationships.
+//!
+//! At one point, handling bivariance in this fashion was necessary
+//! for inference, but I'm actually not sure if that is true anymore.
+//! In particular, it might be enough to say (A,B) are bivariant for
+//! all (A,B).
+
 use middle::ty::{BuiltinBounds};
 use middle::ty::{self, Ty};
 use middle::ty::TyVar;
