@@ -50,7 +50,7 @@ pub struct OpenOptions {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions { mode: mode_t }
+pub struct Permissions { mode: mode_t }
 
 impl FileAttr {
     pub fn is_dir(&self) -> bool {
@@ -60,8 +60,8 @@ impl FileAttr {
         (self.stat.st_mode as mode_t) & libc::S_IFMT == libc::S_IFREG
     }
     pub fn size(&self) -> u64 { self.stat.st_size as u64 }
-    pub fn perm(&self) -> FilePermissions {
-        FilePermissions { mode: (self.stat.st_mode as mode_t) & 0o777 }
+    pub fn perm(&self) -> Permissions {
+        Permissions { mode: (self.stat.st_mode as mode_t) & 0o777 }
     }
 
     pub fn accessed(&self) -> u64 {
@@ -77,7 +77,7 @@ impl FileAttr {
     }
 }
 
-impl FilePermissions {
+impl Permissions {
     pub fn readonly(&self) -> bool { self.mode & 0o222 == 0 }
     pub fn set_readonly(&mut self, readonly: bool) {
         if readonly {
@@ -88,9 +88,9 @@ impl FilePermissions {
     }
 }
 
-impl FromInner<i32> for FilePermissions {
-    fn from_inner(mode: i32) -> FilePermissions {
-        FilePermissions { mode: mode as mode_t }
+impl FromInner<i32> for Permissions {
+    fn from_inner(mode: i32) -> Permissions {
+        Permissions { mode: mode as mode_t }
     }
 }
 
@@ -272,9 +272,9 @@ fn cstr(path: &Path) -> CString {
     CString::from_slice(path.as_os_str().as_bytes())
 }
 
-pub fn mkdir(p: &Path) -> io::Result<()> {
+pub fn mkdir(p: &Path, perms: Permissions) -> io::Result<()> {
     let p = cstr(p);
-    try!(cvt(unsafe { libc::mkdir(p.as_ptr(), 0o777) }));
+    try!(cvt(unsafe { libc::mkdir(p.as_ptr(), perms.mode) }));
     Ok(())
 }
 
@@ -304,7 +304,7 @@ pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
     Ok(())
 }
 
-pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+pub fn set_perm(p: &Path, perm: Permissions) -> io::Result<()> {
     let p = cstr(p);
     try!(cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }));
     Ok(())

@@ -97,7 +97,7 @@ pub struct OpenOptions(fs_imp::OpenOptions);
 /// functionality, such as mode bits, is available through the
 /// `os::unix::PermissionsExt` trait.
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct Permissions(fs_imp::FilePermissions);
+pub struct Permissions(fs_imp::Permissions);
 
 impl File {
     /// Attempts to open a file in read-only mode.
@@ -319,8 +319,8 @@ impl Permissions {
     }
 }
 
-impl FromInner<fs_imp::FilePermissions> for Permissions {
-    fn from_inner(f: fs_imp::FilePermissions) -> Permissions {
+impl FromInner<fs_imp::Permissions> for Permissions {
+    fn from_inner(f: fs_imp::Permissions) -> Permissions {
         Permissions(f)
     }
 }
@@ -521,7 +521,15 @@ pub fn read_link<P: AsPath + ?Sized>(path: &P) -> io::Result<PathBuf> {
 /// This function will return an error if the user lacks permissions to make a
 /// new directory at the provided `path`, or if the directory already exists.
 pub fn create_dir<P: AsPath + ?Sized>(path: &P) -> io::Result<()> {
-    fs_imp::mkdir(path.as_path())
+    #[cfg(windows)]
+    fn mkdir(path: &Path) -> io::Result<()> {
+        fs_imp::mkdir(path)
+    }
+    #[cfg(unix)]
+    fn mkdir(path: &Path) -> io::Result<()> {
+        fs_imp::mkdir(path, FromInner::from_inner(0o777))
+    }
+    mkdir(path.as_path())
 }
 
 /// Recursively create a directory and all of its parent components if they

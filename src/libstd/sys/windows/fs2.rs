@@ -48,7 +48,7 @@ pub struct OpenOptions {
 }
 
 #[derive(Clone, PartialEq, Eq, Debug)]
-pub struct FilePermissions { attrs: libc::DWORD }
+pub struct Permissions { attrs: libc::DWORD }
 
 impl Iterator for ReadDir {
     type Item = io::Result<DirEntry>;
@@ -266,8 +266,8 @@ impl FileAttr {
     pub fn size(&self) -> u64 {
         ((self.data.nFileSizeHigh as u64) << 32) | (self.data.nFileSizeLow as u64)
     }
-    pub fn perm(&self) -> FilePermissions {
-        FilePermissions { attrs: self.data.dwFileAttributes }
+    pub fn perm(&self) -> Permissions {
+        Permissions { attrs: self.data.dwFileAttributes }
     }
 
     pub fn accessed(&self) -> u64 { self.to_ms(&self.data.ftLastAccessTime) }
@@ -281,7 +281,7 @@ impl FileAttr {
     }
 }
 
-impl FilePermissions {
+impl Permissions {
     pub fn readonly(&self) -> bool {
         self.attrs & c::FILE_ATTRIBUTE_READONLY != 0
     }
@@ -390,7 +390,7 @@ pub fn stat(p: &Path) -> io::Result<FileAttr> {
     }
 }
 
-pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
+pub fn set_perm(p: &Path, perm: Permissions) -> io::Result<()> {
     let p = to_utf16(p);
     unsafe {
         try!(cvt(c::SetFileAttributesW(p.as_ptr(), perm.attrs)));
