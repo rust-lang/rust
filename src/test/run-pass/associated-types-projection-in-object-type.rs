@@ -18,6 +18,8 @@ use std::cell::RefCell;
 
 pub trait Subscriber {
     type Input;
+
+    fn dummy(&self) { }
 }
 
 pub trait Publisher<'a> {

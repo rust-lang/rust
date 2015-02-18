@@ -57,13 +57,13 @@ use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
 use core::iter::{repeat, FromIterator, IntoIterator};
-use core::marker::{self, ContravariantLifetime, InvariantType};
+use core::marker::PhantomData;
 use core::mem;
-use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
+use core::ptr::Unique;
 use core::raw::Slice as RawSlice;
 use core::slice;
 use core::usize;
@@ -137,10 +137,9 @@ use core::usize;
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
-    ptr: NonZero<*mut T>,
+    ptr: Unique<T>,
     len: usize,
     cap: usize,
-    _own: marker::PhantomData<T>,
 }
 
 unsafe impl<T: Send> Send for Vec<T> { }
@@ -249,10 +248,9 @@ impl<T> Vec<T> {
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
                                  capacity: usize) -> Vec<T> {
         Vec {
-            ptr: NonZero::new(ptr),
+            ptr: Unique::new(ptr),
             len: length,
             cap: capacity,
-            _own: marker::PhantomData,
         }
     }
 
@@ -373,7 +371,7 @@ impl<T> Vec<T> {
                                      self.len * mem::size_of::<T>(),
                                      mem::min_align_of::<T>()) as *mut T;
                 if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
+                self.ptr = Unique::new(ptr);
             }
             self.cap = self.len;
         }
@@ -655,7 +653,7 @@ impl<T> Vec<T> {
             unsafe {
                 let ptr = alloc_or_realloc(*self.ptr, old_size, size);
                 if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
+                self.ptr = Unique::new(ptr);
             }
             self.cap = max(self.cap, 2) * 2;
         }
@@ -756,7 +754,7 @@ impl<T> Vec<T> {
             Drain {
                 ptr: begin,
                 end: end,
-                marker: ContravariantLifetime,
+                marker: PhantomData,
             }
         }
     }
@@ -871,6 +869,8 @@ impl<T> Vec<T> {
                 end_t: unsafe { start.offset(offset) },
                 start_u: start as *mut U,
                 end_u: start as *mut U,
+
+                _marker: PhantomData,
             };
             //  start_t
             //  start_u
@@ -967,8 +967,7 @@ impl<T> Vec<T> {
             let mut pv = PartialVecZeroSized::<T,U> {
                 num_t: vec.len(),
                 num_u: 0,
-                marker_t: InvariantType,
-                marker_u: InvariantType,
+                marker: PhantomData,
             };
             unsafe { mem::forget(vec); }
 
@@ -1226,7 +1225,7 @@ impl<T> Vec<T> {
             unsafe {
                 let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
                 if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
+                self.ptr = Unique::new(ptr);
             }
             self.cap = capacity;
         }
@@ -1779,10 +1778,10 @@ impl<T> Drop for IntoIter<T> {
 #[unsafe_no_drop_flag]
 #[unstable(feature = "collections",
            reason = "recently added as part of collections reform 2")]
-pub struct Drain<'a, T> {
+pub struct Drain<'a, T:'a> {
     ptr: *const T,
     end: *const T,
-    marker: ContravariantLifetime<'a>,
+    marker: PhantomData<&'a T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1867,9 +1866,9 @@ impl<'a, T> Drop for Drain<'a, T> {
 
 /// Wrapper type providing a `&Vec<T>` reference via `Deref`.
 #[unstable(feature = "collections")]
-pub struct DerefVec<'a, T> {
+pub struct DerefVec<'a, T:'a> {
     x: Vec<T>,
-    l: ContravariantLifetime<'a>
+    l: PhantomData<&'a T>,
 }
 
 #[unstable(feature = "collections")]
@@ -1897,7 +1896,7 @@ pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
         DerefVec {
             x: Vec::from_raw_parts(x.as_ptr() as *mut T, x.len(), x.len()),
-            l: ContravariantLifetime::<'a>
+            l: PhantomData,
         }
     }
 }
@@ -1921,6 +1920,8 @@ struct PartialVecNonZeroSized<T,U> {
     end_u: *mut U,
     start_t: *mut T,
     end_t: *mut T,
+
+    _marker: PhantomData<U>,
 }
 
 /// An owned, partially type-converted vector of zero-sized elements.
@@ -1930,8 +1931,7 @@ struct PartialVecNonZeroSized<T,U> {
 struct PartialVecZeroSized<T,U> {
     num_t: usize,
     num_u: usize,
-    marker_t: InvariantType<T>,
-    marker_u: InvariantType<U>,
+    marker: PhantomData<::core::cell::Cell<(T,U)>>,
 }
 
 #[unsafe_destructor]

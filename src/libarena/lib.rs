@@ -96,7 +96,7 @@ pub struct Arena<'longer_than_self> {
     head: RefCell<Chunk>,
     copy_head: RefCell<Chunk>,
     chunks: RefCell<Vec<Chunk>>,
-    _invariant: marker::InvariantLifetime<'longer_than_self>,
+    _marker: marker::PhantomData<*mut &'longer_than_self()>,
 }
 
 impl<'a> Arena<'a> {
@@ -111,7 +111,7 @@ impl<'a> Arena<'a> {
             head: RefCell::new(chunk(initial_size, false)),
             copy_head: RefCell::new(chunk(initial_size, true)),
             chunks: RefCell::new(Vec::new()),
-            _invariant: marker::InvariantLifetime,
+            _marker: marker::PhantomData,
         }
     }
 }
@@ -361,6 +361,8 @@ pub struct TypedArena<T> {
 }
 
 struct TypedArenaChunk<T> {
+    marker: marker::PhantomData<T>,
+
     /// Pointer to the next arena segment.
     next: *mut TypedArenaChunk<T>,
 

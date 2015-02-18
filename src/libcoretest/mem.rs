@@ -92,7 +92,7 @@ fn test_transmute_copy() {
 
 #[test]
 fn test_transmute() {
-    trait Foo {}
+    trait Foo { fn dummy(&self) { } }
     impl Foo for int {}
 
     let a = box 100 as Box<Foo>;

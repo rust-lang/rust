@@ -12,7 +12,7 @@
 // than the traits require.
 
 trait A {
-  fn b<C:Sync,D>(x: C) -> C;
+  fn b<C:Sync,D>(&self, x: C) -> C;
 }
 
 struct E {
@@ -20,7 +20,7 @@ struct E {
 }
 
 impl A for E {
-  fn b<F,G>(_x: F) -> F { panic!() }
+  fn b<F,G>(&self, _x: F) -> F { panic!() }
   //~^ ERROR in method `b`, type parameter 0 has 1 bound, but
 }
 

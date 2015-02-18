@@ -13,6 +13,8 @@
 trait Int
 {
     type T;
+
+    fn dummy(&self) { }
 }
 
 trait NonZero

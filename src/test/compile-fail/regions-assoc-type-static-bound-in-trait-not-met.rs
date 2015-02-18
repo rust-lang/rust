@@ -11,7 +11,10 @@
 // Test that the compiler checks that the 'static bound declared in
 // the trait must be satisfied on the impl. Issue #20890.
 
-trait Foo { type Value: 'static; }
+trait Foo {
+    type Value: 'static;
+    fn dummy(&self) { }
+}
 
 impl<'a> Foo for &'a i32 {
     //~^ ERROR cannot infer

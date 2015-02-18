@@ -13,5 +13,5 @@
 extern crate "issue-16643" as i;
 
 pub fn main() {
-    i::TreeBuilder::<uint>.process_token();
+    i::TreeBuilder { h: 3u }.process_token();
 }

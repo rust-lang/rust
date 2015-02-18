@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait ListItem<'a> {
+use std::marker::MarkerTrait;
+
+trait ListItem<'a> : MarkerTrait {
     fn list_name() -> &'a str;
 }
 

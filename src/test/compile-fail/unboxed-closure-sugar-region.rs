@@ -22,7 +22,7 @@ trait Foo<'a,T> {
     fn dummy(&'a self) -> &'a (T,Self::Output);
 }
 
-trait Eq<X: ?Sized> { }
+trait Eq<X: ?Sized> { fn is_of_eq_type(&self, x: &X) -> bool { true } }
 impl<X: ?Sized> Eq<X> for X { }
 fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 

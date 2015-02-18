@@ -16,9 +16,12 @@
 //
 // Regression test for issue #16218.
 
-trait Bar<'a> {}
+trait Bar<'a> {
+    fn dummy(&'a self);
+}
 
 trait Foo<'a> {
+    fn dummy(&'a self) { }
     fn bar<'b, T: Bar<'b>>(self) -> &'b str;
 }
 

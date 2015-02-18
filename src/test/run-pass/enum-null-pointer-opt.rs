@@ -16,7 +16,7 @@ use std::mem::size_of;
 use std::rc::Rc;
 use std::sync::Arc;
 
-trait Trait {}
+trait Trait { fn dummy(&self) { } }
 
 fn main() {
     // Functions

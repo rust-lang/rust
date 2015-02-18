@@ -13,7 +13,9 @@ mod a {
         A(T),
     }
 
-    pub trait X {}
+    pub trait X {
+        fn dummy(&self) { }
+    }
     impl X for int {}
 
     pub struct Z<'a>(Enum<&'a (X+'a)>);
@@ -21,7 +23,9 @@ mod a {
 }
 
 mod b {
-    trait X {}
+    trait X {
+        fn dummy(&self) { }
+    }
     impl X for int {}
     struct Y<'a>{
         x:Option<&'a (X+'a)>,

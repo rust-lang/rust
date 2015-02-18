@@ -23,8 +23,8 @@ use num::{Int, UnsignedInt};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{Some, None};
-use ptr::{self, PtrExt, copy_nonoverlapping_memory, zero_memory};
-use rt::heap::{allocate, deallocate};
+use ptr::{self, PtrExt, copy_nonoverlapping_memory, Unique, zero_memory};
+use rt::heap::{allocate, deallocate, EMPTY};
 use collections::hash_state::HashState;
 
 const EMPTY_BUCKET: u64 = 0u64;
@@ -69,10 +69,11 @@ const EMPTY_BUCKET: u64 = 0u64;
 pub struct RawTable<K, V> {
     capacity: usize,
     size:     usize,
-    hashes:   *mut u64,
+    hashes:   Unique<u64>,
+
     // Because K/V do not appear directly in any of the types in the struct,
     // inform rustc that in fact instances of K and V are reachable from here.
-    marker:   marker::CovariantType<(K,V)>,
+    marker:   marker::PhantomData<(K,V)>,
 }
 
 unsafe impl<K: Send, V: Send> Send for RawTable<K, V> {}
@@ -81,7 +82,8 @@ unsafe impl<K: Sync, V: Sync> Sync for RawTable<K, V> {}
 struct RawBucket<K, V> {
     hash: *mut u64,
     key:  *mut K,
-    val:  *mut V
+    val:  *mut V,
+    _marker: marker::PhantomData<(K,V)>,
 }
 
 impl<K,V> Copy for RawBucket<K,V> {}
@@ -170,11 +172,12 @@ fn can_alias_safehash_as_u64() {
 }
 
 impl<K, V> RawBucket<K, V> {
-    unsafe fn offset(self, count: int) -> RawBucket<K, V> {
+    unsafe fn offset(self, count: isize) -> RawBucket<K, V> {
         RawBucket {
             hash: self.hash.offset(count),
             key:  self.key.offset(count),
             val:  self.val.offset(count),
+            _marker: marker::PhantomData,
         }
     }
 }
@@ -567,10 +570,11 @@ impl<K, V> RawTable<K, V> {
             return RawTable {
                 size: 0,
                 capacity: 0,
-                hashes: ptr::null_mut(),
-                marker: marker::CovariantType,
+                hashes: Unique::new(EMPTY as *mut u64),
+                marker: marker::PhantomData,
             };
         }
+
         // No need for `checked_mul` before a more restrictive check performed
         // later in this method.
         let hashes_size = capacity * size_of::<u64>();
@@ -606,8 +610,8 @@ impl<K, V> RawTable<K, V> {
         RawTable {
             capacity: capacity,
             size:     0,
-            hashes:   hashes,
-            marker:   marker::CovariantType,
+            hashes:   Unique::new(hashes),
+            marker:   marker::PhantomData,
         }
     }
 
@@ -615,16 +619,17 @@ impl<K, V> RawTable<K, V> {
         let hashes_size = self.capacity * size_of::<u64>();
         let keys_size = self.capacity * size_of::<K>();
 
-        let buffer = self.hashes as *mut u8;
+        let buffer = *self.hashes as *mut u8;
         let (keys_offset, vals_offset) = calculate_offsets(hashes_size,
                                                            keys_size, min_align_of::<K>(),
                                                            min_align_of::<V>());
 
         unsafe {
             RawBucket {
-                hash: self.hashes,
+                hash: *self.hashes,
                 key:  buffer.offset(keys_offset as isize) as *mut K,
-                val:  buffer.offset(vals_offset as isize) as *mut V
+                val:  buffer.offset(vals_offset as isize) as *mut V,
+                _marker: marker::PhantomData,
             }
         }
     }
@@ -634,7 +639,7 @@ impl<K, V> RawTable<K, V> {
     pub fn new(capacity: usize) -> RawTable<K, V> {
         unsafe {
             let ret = RawTable::new_uninitialized(capacity);
-            zero_memory(ret.hashes, capacity);
+            zero_memory(*ret.hashes, capacity);
             ret
         }
     }
@@ -656,7 +661,7 @@ impl<K, V> RawTable<K, V> {
             hashes_end: unsafe {
                 self.hashes.offset(self.capacity as isize)
             },
-            marker: marker::ContravariantLifetime,
+            marker: marker::PhantomData,
         }
     }
 
@@ -681,7 +686,7 @@ impl<K, V> RawTable<K, V> {
             iter: RawBuckets {
                 raw: raw,
                 hashes_end: hashes_end,
-                marker: marker::ContravariantLifetime,
+                marker: marker::PhantomData,
             },
             table: self,
         }
@@ -694,7 +699,7 @@ impl<K, V> RawTable<K, V> {
             iter: RawBuckets {
                 raw: raw,
                 hashes_end: hashes_end,
-                marker: marker::ContravariantLifetime::<'static>,
+                marker: marker::PhantomData,
             },
             table: self,
         }
@@ -708,7 +713,7 @@ impl<K, V> RawTable<K, V> {
             raw: raw_bucket.offset(self.capacity as isize),
             hashes_end: raw_bucket.hash,
             elems_left: self.size,
-            marker:     marker::ContravariantLifetime,
+            marker:     marker::PhantomData,
         }
     }
 }
@@ -718,7 +723,13 @@ impl<K, V> RawTable<K, V> {
 struct RawBuckets<'a, K, V> {
     raw: RawBucket<K, V>,
     hashes_end: *mut u64,
-    marker: marker::ContravariantLifetime<'a>,
+
+    // Strictly speaking, this should be &'a (K,V), but that would
+    // require that K:'a, and we often use RawBuckets<'static...> for
+    // move iterations, so that messes up a lot of other things. So
+    // just use `&'a (K,V)` as this is not a publicly exposed type
+    // anyway.
+    marker: marker::PhantomData<&'a ()>,
 }
 
 // FIXME(#19839) Remove in favor of `#[derive(Clone)]`
@@ -727,7 +738,7 @@ impl<'a, K, V> Clone for RawBuckets<'a, K, V> {
         RawBuckets {
             raw: self.raw,
             hashes_end: self.hashes_end,
-            marker: marker::ContravariantLifetime,
+            marker: marker::PhantomData,
         }
     }
 }
@@ -759,7 +770,11 @@ struct RevMoveBuckets<'a, K, V> {
     raw: RawBucket<K, V>,
     hashes_end: *mut u64,
     elems_left: usize,
-    marker: marker::ContravariantLifetime<'a>,
+
+    // As above, `&'a (K,V)` would seem better, but we often use
+    // 'static for the lifetime, and this is not a publicly exposed
+    // type.
+    marker: marker::PhantomData<&'a ()>,
 }
 
 impl<'a, K, V> Iterator for RevMoveBuckets<'a, K, V> {
@@ -966,9 +981,10 @@ impl<K: Clone, V: Clone> Clone for RawTable<K, V> {
 #[unsafe_destructor]
 impl<K, V> Drop for RawTable<K, V> {
     fn drop(&mut self) {
-        if self.hashes.is_null() {
+        if self.capacity == 0 {
             return;
         }
+
         // This is done in reverse because we've likely partially taken
         // some elements out with `.into_iter()` from the front.
         // Check if the size is 0, so we don't do a useless scan when
@@ -986,7 +1002,7 @@ impl<K, V> Drop for RawTable<K, V> {
                                                     vals_size, min_align_of::<V>());
 
         unsafe {
-            deallocate(self.hashes as *mut u8, size, align);
+            deallocate(*self.hashes as *mut u8, size, align);
             // Remember how everything was allocated out of one buffer
             // during initialization? We only need one call to free here.
         }

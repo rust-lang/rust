@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub mod io {
-    pub trait Reader { }
+    pub trait Reader { fn dummy(&self) { } }
 }
 
 pub enum Maybe<A> {

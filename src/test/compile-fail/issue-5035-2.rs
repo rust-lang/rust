@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait I {}
+use std::marker::MarkerTrait;
+
+trait I : MarkerTrait {}
 type K = I+'static;
 
 fn foo(_x: K) {} //~ ERROR: the trait `core::marker::Sized` is not implemented

@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-pub trait EventLoop { }
+pub trait EventLoop : ::std::marker::MarkerTrait { }
 
 pub struct UvEventLoop {
     uvio: int

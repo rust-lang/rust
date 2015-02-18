@@ -15,12 +15,14 @@
 
 #![crate_name = "a"]
 
+use std::marker::MarkerTrait;
+
 macro_rules! three {
     () => { 3 }
 }
 
-pub trait U {}
-pub trait V {}
+pub trait U : MarkerTrait {}
+pub trait V : MarkerTrait {}
 impl U for () {}
 impl V for () {}
 

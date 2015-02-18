@@ -9,8 +9,10 @@
 // except according to those terms.
 
 pub trait E {
-    pub fn foo();               //~ ERROR: unnecessary visibility
+    pub fn foo(&self);               //~ ERROR: unnecessary visibility
 }
-trait F { pub fn foo(); }       //~ ERROR: unnecessary visibility
+trait F {
+    pub fn foo(&self);               //~ ERROR: unnecessary visibility
+}
 
 fn main() {}

@@ -10,15 +10,14 @@
 
 //! Exposes the NonZero lang item which provides optimization hints.
 
+use marker::{Sized, MarkerTrait};
 use ops::Deref;
-use ptr::Unique;
 
 /// Unsafe trait to indicate what types are usable with the NonZero struct
-pub unsafe trait Zeroable {}
+pub unsafe trait Zeroable : MarkerTrait {}
 
-unsafe impl<T> Zeroable for *const T {}
-unsafe impl<T> Zeroable for *mut T {}
-unsafe impl<T> Zeroable for Unique<T> { }
+unsafe impl<T:?Sized> Zeroable for *const T {}
+unsafe impl<T:?Sized> Zeroable for *mut T {}
 unsafe impl Zeroable for isize {}
 unsafe impl Zeroable for usize {}
 unsafe impl Zeroable for i8 {}

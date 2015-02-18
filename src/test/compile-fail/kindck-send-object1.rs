@@ -12,8 +12,10 @@
 // is broken into two parts because some errors occur in distinct
 // phases in the compiler. See kindck-send-object2.rs as well!
 
+use std::marker::MarkerTrait;
+
 fn assert_send<T:Send+'static>() { }
-trait Dummy { }
+trait Dummy : MarkerTrait { }
 
 // careful with object types, who knows what they close over...
 fn test51<'a>() {

@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait U {}
-trait T<X: U> {}
+trait U : ::std::marker::MarkerTrait {}
+trait T<X: U> { fn get(self) -> X; }
 
-trait S2<Y: U> {
+trait S2<Y: U> : ::std::marker::MarkerTrait {
     fn m(x: Box<T<Y>+'static>) {}
 }
 
