@@ -1,6 +1,6 @@
 - Start Date: 2014-12-28
-- RFC PR #: https://github.com/rust-lang/rfcs/pull/544
-- Rust Issue #: https://github.com/rust-lang/rust/issues/20639
+- RFC PR #: [rust-lang/rfcs#544](https://github.com/rust-lang/rfcs/pull/544)
+- Rust Issue #: [rust-lang/rust#20639](https://github.com/rust-lang/rust/issues/20639)
 
 # Summary
 
@@ -240,3 +240,11 @@ There are other alternatives not covered in this RFC. Please refer to this RFC's
 # Unresolved questions
 
 None. Necessary decisions about Rust's general integer type policies have been made in [Restarting the `int/uint` Discussion](http://discuss.rust-lang.org/t/restarting-the-int-uint-discussion/1131).
+
+# History
+
+Amended by [RFC 573][573] to change the suffixes from `is` and `us` to
+`isize` and `usize`. Tracking issue for this amendment is
+[rust-lang/rust#22496](https://github.com/rust-lang/rust/issues/22496).
+
+[573]: https://github.com/rust-lang/rfcs/pull/573
