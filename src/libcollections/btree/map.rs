@@ -843,9 +843,19 @@ impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     }
 }
 
+#[cfg(stage0)]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<S: Hasher, K: Hash<S>, V: Hash<S>> Hash<S> for BTreeMap<K, V> {
     fn hash(&self, state: &mut S) {
+        for elt in self {
+            elt.hash(state);
+        }
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<K: Hash, V: Hash> Hash for BTreeMap<K, V> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         for elt in self {
             elt.hash(state);
         }

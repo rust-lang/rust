@@ -12,6 +12,14 @@
 
 mod bench;
 mod table;
+#[cfg(stage0)]
+#[path = "map_stage0.rs"]
 pub mod map;
+#[cfg(not(stage0))]
+pub mod map;
+#[cfg(stage0)]
+#[path = "set_stage0.rs"]
+pub mod set;
+#[cfg(not(stage0))]
 pub mod set;
 pub mod state;

@@ -28,7 +28,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(env)]

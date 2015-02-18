@@ -20,7 +20,6 @@
 #![feature(alloc)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]

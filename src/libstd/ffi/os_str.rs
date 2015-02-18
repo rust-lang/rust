@@ -40,7 +40,8 @@ use mem;
 use string::{String, CowString};
 use ops;
 use cmp;
-use hash::{Hash, Hasher, Writer};
+use hash::{Hash, Hasher};
+#[cfg(stage0)] use hash::Writer;
 use old_path::{Path, GenericPath};
 
 use sys::os_str::{Buf, Slice};
@@ -162,9 +163,18 @@ impl Ord for OsString {
     }
 }
 
+#[cfg(stage0)]
 impl<'a, S: Hasher + Writer> Hash<S> for OsString {
     #[inline]
     fn hash(&self, state: &mut S) {
+        (&**self).hash(state)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for OsString {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (&**self).hash(state)
     }
 }
@@ -253,9 +263,18 @@ impl Ord for OsStr {
     fn cmp(&self, other: &OsStr) -> cmp::Ordering { self.bytes().cmp(other.bytes()) }
 }
 
+#[cfg(stage0)]
 impl<'a, S: Hasher + Writer> Hash<S> for OsStr {
     #[inline]
     fn hash(&self, state: &mut S) {
+        self.bytes().hash(state)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for OsStr {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.bytes().hash(state)
     }
 }

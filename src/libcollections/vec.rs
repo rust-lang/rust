@@ -1302,9 +1302,18 @@ impl<T:Clone> Clone for Vec<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
+        Hash::hash(&**self, state)
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<T: Hash> Hash for Vec<T> {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
     }
 }

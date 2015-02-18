@@ -111,8 +111,15 @@ impl<T: Display> Display for P<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<S: Hasher, T: Hash<S>> Hash<S> for P<T> {
     fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+#[cfg(not(stage0))]
+impl<T: Hash> Hash for P<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }

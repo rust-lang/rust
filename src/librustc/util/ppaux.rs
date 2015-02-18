@@ -28,7 +28,8 @@ use middle::ty_fold::TypeFoldable;
 
 use std::collections::HashMap;
 use std::collections::hash_state::HashState;
-use std::hash::{Hash, Hasher};
+use std::hash::Hash;
+#[cfg(stage0)] use std::hash::Hasher;
 use std::rc::Rc;
 use syntax::abi;
 use syntax::ast_map;
@@ -1420,11 +1421,27 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for ty::Binder<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<'tcx, S, K, V> Repr<'tcx> for HashMap<K, V, S>
     where K: Hash<<S as HashState>::Hasher> + Eq + Repr<'tcx>,
           V: Repr<'tcx>,
           S: HashState,
           <S as HashState>::Hasher: Hasher<Output=u64>,
+{
+    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
+        format!("HashMap({})",
+                self.iter()
+                    .map(|(k,v)| format!("{} => {}", k.repr(tcx), v.repr(tcx)))
+                    .collect::<Vec<String>>()
+                    .connect(", "))
+    }
+}
+
+#[cfg(not(stage0))]
+impl<'tcx, S, K, V> Repr<'tcx> for HashMap<K, V, S>
+    where K: Hash + Eq + Repr<'tcx>,
+          V: Repr<'tcx>,
+          S: HashState,
 {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
         format!("HashMap({})",
