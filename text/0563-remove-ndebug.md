@@ -1,6 +1,6 @@
 - Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: [rust-lang/rfcs#563](https://github.com/rust-lang/rfcs/pull/563)
+- Rust Issue: [rust-lang/rust#22492](https://github.com/rust-lang/rust/issues/22492)
 
 # Summary
 
@@ -42,4 +42,22 @@ No real alternatives beyond different names and defaults.
 
 # Unresolved questions
 
-None.
+From the RFC discussion there remain some unresolved details:
+
+* brson
+  [writes](https://github.com/rust-lang/rfcs/pull/563#issuecomment-72549694),
+  "I have a minor concern that `-C debug-assertions` might not be the
+  right place for this command line flag - it doesn't really affect
+  code generation, at least in the current codebase (also `--cfg
+  debug_assertions` has the same effect).".
+* huonw
+  [writes](https://github.com/rust-lang/rfcs/pull/563#issuecomment-72550619),
+  "It seems like the flag could be more than just a boolean, but
+  rather take a list of what to enable to allow fine-grained control,
+  e.g. none, overflow-checks, debug_cfg,overflow-checks, all. (Where
+  -C debug-assertions=debug_cfg acts like --cfg debug.)".
+* huonw
+  [writes](https://github.com/rust-lang/rfcs/pull/563#issuecomment-74762795),
+  "if we want this to apply to more than just debug_assert do we want
+  to use a name other than -C debug-assertions?".
+

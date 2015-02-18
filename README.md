@@ -41,6 +41,7 @@ the direction the language is evolving in.
 * [0509-collections-reform-part-2.md](text/0509-collections-reform-part-2.md)
 * [0517-io-os-reform.md](text/0517-io-os-reform.md)
 * [0560-integer-overflow.md](text/0560-integer-overflow.md)
+* [0563-remove-ndebug.md](text/0563-remove-ndebug.md)
 * [0572-rustc-attribute.md](text/0572-rustc-attribute.md)
 * [0702-rangefull-expression.md](text/0702-rangefull-expression.md)
 * [0738-variance.md](text/0738-variance.md)
