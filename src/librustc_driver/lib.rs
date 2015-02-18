@@ -497,7 +497,7 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
     }
 }
 
-fn usage(verbose: bool, include_unstable_options: bool) {
+fn usage(include_unstable_options: bool) {
     let groups : Vec<_> = config::rustc_optgroups().into_iter()
         .filter(|x| include_unstable_options || x.is_stable())
         .map(|x|x.opt_group)
@@ -662,7 +662,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     if args.is_empty() {
         // user did not write `-v` nor `-Z unstable-options`, so do not
         // include that extra information.
-        usage(false, false);
+        usage(false);
         return None;
     }
 
@@ -698,7 +698,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     let include_unstable_options = r.iter().any(|x| *x == "unstable-options");
 
     if matches.opt_present("h") || matches.opt_present("help") {
-        usage(matches.opt_present("verbose"), include_unstable_options);
+        usage(include_unstable_options);
         return None;
     }
 
