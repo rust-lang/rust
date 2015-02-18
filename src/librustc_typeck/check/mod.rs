@@ -131,7 +131,7 @@ pub mod dropck;
 pub mod _match;
 pub mod vtable;
 pub mod writeback;
-pub mod regionmanip;
+pub mod implicator;
 pub mod regionck;
 pub mod coercion;
 pub mod demand;
@@ -309,9 +309,6 @@ pub struct FnCtxt<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> mc::Typer<'tcx> for FnCtxt<'a, 'tcx> {
-    fn tcx(&self) -> &ty::ctxt<'tcx> {
-        self.ccx.tcx
-    }
     fn node_ty(&self, id: ast::NodeId) -> McResult<Ty<'tcx>> {
         let ty = self.node_ty(id);
         self.resolve_type_vars_or_error(&ty)
@@ -484,7 +481,8 @@ pub fn check_item_types(ccx: &CrateCtxt) {
 fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                            decl: &'tcx ast::FnDecl,
                            body: &'tcx ast::Block,
-                           id: ast::NodeId,
+                           fn_id: ast::NodeId,
+                           fn_span: Span,
                            raw_fty: Ty<'tcx>,
                            param_env: ty::ParameterEnvironment<'a, 'tcx>)
 {
@@ -502,13 +500,13 @@ fn check_bare_fn<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
             let fn_sig =
                 inh.normalize_associated_types_in(&inh.param_env, body.span, body.id, &fn_sig);
 
-            let fcx = check_fn(ccx, fn_ty.unsafety, id, &fn_sig,
-                               decl, id, body, &inh);
+            let fcx = check_fn(ccx, fn_ty.unsafety, fn_id, &fn_sig,
+                               decl, fn_id, body, &inh);
 
             vtable::select_all_fcx_obligations_and_apply_defaults(&fcx);
-            upvar::closure_analyze_fn(&fcx, id, decl, body);
+            upvar::closure_analyze_fn(&fcx, fn_id, decl, body);
             vtable::select_all_fcx_obligations_or_error(&fcx);
-            regionck::regionck_fn(&fcx, id, decl, body);
+            regionck::regionck_fn(&fcx, fn_id, fn_span, decl, body);
             writeback::resolve_type_vars_in_fn(&fcx, decl, body);
         }
         _ => ccx.tcx.sess.impossible_case(body.span,
@@ -721,7 +719,7 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
       ast::ItemFn(ref decl, _, _, _, ref body) => {
         let fn_pty = ty::lookup_item_type(ccx.tcx, ast_util::local_def(it.id));
         let param_env = ParameterEnvironment::for_item(ccx.tcx, it.id);
-        check_bare_fn(ccx, &**decl, &**body, it.id, fn_pty.ty, param_env);
+        check_bare_fn(ccx, &**decl, &**body, it.id, it.span, fn_pty.ty, param_env);
       }
       ast::ItemImpl(_, _, _, _, _, ref impl_items) => {
         debug!("ItemImpl {} with id {}", token::get_ident(it.ident), it.id);
@@ -868,6 +866,7 @@ fn check_method_body<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
                   &*method.pe_fn_decl(),
                   &*method.pe_body(),
                   method.id,
+                  method.span,
                   fty,
                   param_env);
 }
@@ -2050,8 +2049,8 @@ fn make_overloaded_lvalue_return_type<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     match method {
         Some(method) => {
             let ref_ty = // invoked methods have all LB regions instantiated
-                ty::assert_no_late_bound_regions(
-                    fcx.tcx(), &ty::ty_fn_ret(method.ty));
+                ty::no_late_bound_regions(
+                    fcx.tcx(), &ty::ty_fn_ret(method.ty)).unwrap();
             match method_call {
                 Some(method_call) => {
                     fcx.inh.method_map.borrow_mut().insert(method_call,

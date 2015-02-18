@@ -212,7 +212,7 @@ impl<K:UnifyKey> UnificationTable<K> {
     }
 }
 
-impl<K> sv::SnapshotVecDelegate for Delegate<K> {
+impl<K:UnifyKey> sv::SnapshotVecDelegate for Delegate<K> {
     type Value = VarValue<K>;
     type Undo = ();
 

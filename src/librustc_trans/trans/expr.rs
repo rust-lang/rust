@@ -781,8 +781,8 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             let ix_datum = unpack_datum!(bcx, trans(bcx, idx));
 
             let ref_ty = // invoked methods have LB regions instantiated:
-                ty::assert_no_late_bound_regions(
-                    bcx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap();
+                ty::no_late_bound_regions(
+                    bcx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap().unwrap();
             let elt_ty = match ty::deref(ref_ty, true) {
                 None => {
                     bcx.tcx().sess.span_bug(index_expr.span,
@@ -2214,8 +2214,8 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             };
 
             let ref_ty = // invoked methods have their LB regions instantiated
-                ty::assert_no_late_bound_regions(
-                    ccx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap();
+                ty::no_late_bound_regions(
+                    ccx.tcx(), &ty::ty_fn_ret(method_ty)).unwrap().unwrap();
             let scratch = rvalue_scratch_datum(bcx, ref_ty, "overloaded_deref");
 
             unpack_result!(bcx, trans_overloaded_op(bcx, expr, method_call,
