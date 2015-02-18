@@ -8,11 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! RingBuf is a double-ended queue, which is implemented with the help of a growing circular buffer.
+//! RingBuf is a double-ended queue, which is implemented with the help of a
+//! growing circular buffer.
 //!
-//! This queue has `O(1)` amortized inserts and removals from both ends of the container. It also
-//! has `O(1)` indexing like a vector. The contained elements are not required to be copyable, and
-//! the queue will be sendable if the contained type is sendable.
+//! This queue has `O(1)` amortized inserts and removals from both ends of the
+//! container. It also has `O(1)` indexing like a vector. The contained elements
+//! are not required to be copyable, and the queue will be sendable if the
+//! contained type is sendable.
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
@@ -115,7 +117,8 @@ impl<T> RingBuf<T> {
     #[inline]
     fn is_full(&self) -> bool { self.cap - self.len() == 1 }
 
-    /// Returns the index in the underlying buffer for a given logical element index.
+    /// Returns the index in the underlying buffer for a given logical element
+    /// index.
     #[inline]
     fn wrap_index(&self, idx: usize) -> usize { wrap_index(idx, self.cap) }
 

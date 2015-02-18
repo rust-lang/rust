@@ -8,18 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![feature(core, std_misc)]
-use std::thread::Thread;
+use std::thread;
 
 fn main() {
     let bad = {
         let x = 1;
         let y = &x;
 
-        Thread::scoped(|| { //~ ERROR cannot infer an appropriate lifetime
+        thread::scoped(|| { //~ ERROR cannot infer an appropriate lifetime
             let _z = y;
         })
     };
 
-    bad.join().ok().unwrap();
+    bad.join();
 }

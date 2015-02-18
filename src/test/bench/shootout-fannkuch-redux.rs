@@ -164,7 +164,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     for (_, j) in (0..N).zip(iter::count(0, k)) {
         let max = cmp::min(j+k, perm.max());
 
-        futures.push(thread::spawn(move|| {
+        futures.push(thread::scoped(move|| {
             work(perm, j as uint, max as uint)
         }))
     }
@@ -172,7 +172,7 @@ fn fannkuch(n: i32) -> (i32, i32) {
     let mut checksum = 0;
     let mut maxflips = 0;
     for fut in futures {
-        let (cs, mf) = fut.join().ok().unwrap();
+        let (cs, mf) = fut.join();
         checksum += cs;
         maxflips = cmp::max(maxflips, mf);
     }

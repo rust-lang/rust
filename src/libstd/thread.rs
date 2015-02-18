@@ -260,7 +260,7 @@ impl Builder {
         T: Send + 'a, F: FnOnce() -> T, F: Send + 'a
     {
         self.spawn_inner(Thunk::new(f)).map(|inner| {
-            JoinGuard { inner: inner, _marker: marker::PhantomData }
+            JoinGuard { inner: inner, _marker: marker::CovariantType }
         })
     }
 
@@ -642,7 +642,7 @@ impl Drop for JoinHandle {
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct JoinGuard<'a, T: 'a> {
     inner: JoinInner<T>,
-    _marker: marker::PhantomData<&'a T>,
+    _marker: marker::CovariantType<&'a T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -686,7 +686,9 @@ impl<T: Send> JoinGuard<'static, T> {
 impl<'a, T: Send + 'a> Drop for JoinGuard<'a, T> {
     fn drop(&mut self) {
         if !self.inner.joined {
-            unsafe { imp::join(self.inner.native) };
+            if self.inner.join().is_err() {
+                panic!("child thread {:?} panicked", self.thread());
+            }
         }
     }
 }
@@ -700,7 +702,8 @@ mod test {
     use boxed::BoxAny;
     use result;
     use std::old_io::{ChanReader, ChanWriter};
-    use super::{self, Thread, Builder};
+    use super::{Thread, Builder};
+    use thread;
     use thunk::Thunk;
     use time::Duration;
 
@@ -718,7 +721,7 @@ mod test {
     fn test_named_thread() {
         Builder::new().name("ada lovelace".to_string()).scoped(move|| {
             assert!(thread::current().name().unwrap() == "ada lovelace".to_string());
-        }).join().ok().unwrap();
+        }).unwrap().join();
     }
 
     #[test]
@@ -732,12 +735,9 @@ mod test {
 
     #[test]
     fn test_join_success() {
-        match thread::spawn(move|| -> String {
+        assert!(thread::scoped(move|| -> String {
             "Success!".to_string()
-        }).join().as_ref().map(|s| &**s) {
-            result::Result::Ok("Success!") => (),
-            _ => panic!()
-        }
+        }).join() == "Success!");
     }
 
     #[test]
@@ -928,10 +928,9 @@ mod test {
         let mut reader = ChanReader::new(rx);
         let stdout = ChanWriter::new(tx);
 
-        let r = Builder::new().stdout(box stdout as Box<Writer + Send>).scoped(move|| {
+        Builder::new().stdout(box stdout as Box<Writer + Send>).scoped(move|| {
             print!("Hello, world!");
-        }).join();
-        assert!(r.is_ok());
+        }).unwrap().join();
 
         let output = reader.read_to_string().unwrap();
         assert_eq!(output, "Hello, world!".to_string());

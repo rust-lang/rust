@@ -425,8 +425,8 @@ mod tests {
     #[test]
     fn frob() {
         static R: StaticRwLock = RW_LOCK_INIT;
-        static N: uint = 10;
-        static M: uint = 1000;
+        static N: usize = 10;
+        static M: usize = 1000;
 
         let (tx, rx) = channel::<()>();
         for _ in 0..N {
@@ -452,7 +452,7 @@ mod tests {
     fn test_rw_arc_poison_wr() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _: Result<uint, _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move|| {
             let _lock = arc2.write().unwrap();
             panic!();
         }).join();
@@ -464,7 +464,7 @@ mod tests {
         let arc = Arc::new(RwLock::new(1));
         assert!(!arc.is_poisoned());
         let arc2 = arc.clone();
-        let _: Result<uint, _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move|| {
             let _lock = arc2.write().unwrap();
             panic!();
         }).join();
@@ -476,7 +476,7 @@ mod tests {
     fn test_rw_arc_no_poison_rr() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _: Result<uint, _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move|| {
             let _lock = arc2.read().unwrap();
             panic!();
         }).join();
@@ -487,7 +487,7 @@ mod tests {
     fn test_rw_arc_no_poison_rw() {
         let arc = Arc::new(RwLock::new(1));
         let arc2 = arc.clone();
-        let _: Result<uint, _> = thread::spawn(move|| {
+        let _: Result<(), _> = thread::spawn(move|| {
             let _lock = arc2.read().unwrap();
             panic!()
         }).join();

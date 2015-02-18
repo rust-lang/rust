@@ -520,7 +520,7 @@ mod tests {
     fn test_null_byte() {
         use thread;
         let result = thread::spawn(move|| {
-            Path::new(b"foo/bar\0")
+            Path::new(b"foo/bar\0");
         }).join();
         assert!(result.is_err());
 

@@ -234,10 +234,7 @@ mod test {
         writer.write_be_u32(42).unwrap();
 
         let wanted = vec![0u8, 0u8, 0u8, 42u8];
-        let got = match thread::spawn(move|| { rx.recv().unwrap() }).join() {
-            Ok(got) => got,
-            Err(_) => panic!(),
-        };
+        let got = thread::scoped(move|| { rx.recv().unwrap() }).join();
         assert_eq!(wanted, got);
 
         match writer.write_u8(1) {

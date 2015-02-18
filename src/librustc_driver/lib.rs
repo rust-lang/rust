@@ -764,7 +764,7 @@ fn parse_crate_attrs(sess: &Session, input: &Input) ->
 ///
 /// The diagnostic emitter yielded to the procedure should be used for reporting
 /// errors of the compiler.
-pub fn monitor<F:FnOnce()+Send>(f: F) {
+pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
     static STACK_SIZE: uint = 8 * 1024 * 1024; // 8MB
 
     let (tx, rx) = channel();
