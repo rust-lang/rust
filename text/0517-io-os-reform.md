@@ -68,6 +68,10 @@ follow-up PRs against this RFC.
             * [Files]
             * [File kinds]
             * [File permissions]
+        * [std::net]
+            * [TCP]
+            * [UDP]
+            * [Addresses]
         * [std::net] (stub)
         * [std::process]
             * [Command]
@@ -1361,7 +1365,160 @@ This trait will essentially remain stay as it is (renamed from
 ### `std::net`
 [std::net]: #stdnet
 
-> To be added in a follow-up PR.
+The contents of `std::io::net` submodules `tcp`, `udp`, `ip` and
+`addrinfo` will be retained but moved into a single `std::net` module;
+the other modules are being moved or removed and are described
+elsewhere.
+
+#### TCP
+[TCP]: #tcp
+
+The current `TcpStream` struct will be pared back from where it is today to the
+following interface:
+
+```rust
+// TcpStream, which contains both a reader and a writer
+
+impl TcpStream {
+    fn connect<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpStream>;
+    fn peer_addr(&self) -> io::Result<SocketAddr>;
+    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn shutdown(&self, how: Shutdown) -> io::Result<()>;
+    fn duplicate(&self) -> io::Result<TcpStream>;
+}
+
+impl Read for TcpStream { ... }
+impl Write for TcpStream { ... }
+impl<'a> Read for &'a TcpStream { ... }
+impl<'a> Write for &'a TcpStream { ... }
+#[cfg(unix)]    impl AsRawFd for TcpStream { ... }
+#[cfg(windows)] impl AsRawSocket for TcpStream { ... }
+```
+
+* `clone` has been replaced with a `duplicate` function. The implementation of
+  `duplicate` will map to using `dup` on Unix platforms and
+  `WSADuplicateSocket` on Windows platforms. The `TcpStream` itself will no
+   longer be reference counted itself under the hood.
+* `close_{read,write}` are both removed in favor of binding the `shutdown`
+  function directly on sockets. This will map to the `shutdown` function on both
+  Unix and Windows.
+* `set_timeout` has been removed for now (as well as other timeout-related
+  functions). It is likely that this may come back soon as a binding to
+  `setsockopt` to the `SO_RCVTIMEO` and `SO_SNDTIMEO` options. This RFC does not
+  currently proposed adding them just yet, however.
+* Implementations of `Read` and `Write` are provided for `&TcpStream`. These
+  implementations are not necessarily ergonomic to call (requires taking an
+  explicit reference), but they express the ability to concurrently read and
+  write from a `TcpStream`
+
+Various other options such as `nodelay` and `keepalive` will be left
+`#[unstable]` for now. The `TcpStream` structure will also adhere to both `Send`
+and `Sync`.
+
+The `TcpAcceptor` struct will be removed and all functionality will be folded
+into the `TcpListener` structure. Specifically, this will be the resulting API:
+
+```rust
+impl TcpListener {
+    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<TcpListener>;
+    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn duplicate(&self) -> io::Result<TcpListener>;
+    fn accept(&self) -> io::Result<(TcpStream, SocketAddr)>;
+    fn incoming(&self) -> Incoming;
+}
+
+impl<'a> Iterator for Incoming<'a> {
+    type Item = io::Result<TcpStream>;
+    ...
+}
+#[cfg(unix)]    impl AsRawFd for TcpListener { ... }
+#[cfg(windows)] impl AsRawSocket for TcpListener { ... }
+```
+
+Some major changes from today's API include:
+
+* The static distinction between `TcpAcceptor` and `TcpListener` has been
+  removed (more on this in the [socket][Sockets] section).
+* The `clone` functionality has been removed in favor of `duplicate` (same
+  caveats as `TcpStream`).
+* The `close_accept` functionality is removed entirely. This is not currently
+  implemented via `shutdown` (not supported well across platforms) and is
+  instead implemented via `select`. This functionality can return at a later
+  date with a more robust interface.
+* The `set_timeout` functionality has also been removed in favor of returning at
+  a later date in a more robust fashion with `select`.
+* The `accept` function no longer takes `&mut self` and returns `SocketAddr`.
+  The change in mutability is done to express that multiple `accept` calls can
+  happen concurrently.
+* For convenience the iterator does not yield the `SocketAddr` from `accept`.
+
+The `TcpListener` type will also adhere to `Send` and `Sync`.
+
+#### UDP
+[UDP]: #udp
+
+The UDP infrastructure will receive a similar face-lift as the TCP
+infrastructure will:
+
+```rust
+impl UdpSocket {
+    fn bind<A: ToSocketAddrs>(addr: &A) -> io::Result<UdpSocket>;
+    fn recv_from(&self, buf: &mut [u8]) -> io::Result<(usize, SocketAddr)>;
+    fn send_to<A: ToSocketAddrs>(&self, buf: &[u8], addr: &A) -> io::Result<usize>;
+    fn socket_addr(&self) -> io::Result<SocketAddr>;
+    fn duplicate(&self) -> io::Result<UdpSocket>;
+}
+
+#[cfg(unix)]    impl AsRawFd for UdpSocket { ... }
+#[cfg(windows)] impl AsRawSocket for UdpSocket { ... }
+```
+
+Some important points of note are:
+
+* The `send` and `recv` function take `&self` instead of `&mut self` to indicate
+  that they may be called safely in concurrent contexts.
+* All configuration options such as `multicast` and `ttl` are left as
+  `#[unstable]` for now.
+* All timeout support is removed. This may come back in the form of `setsockopt`
+  (as with TCP streams) or with a more general implementation of `select`.
+* `clone` functionality has been replaced with `duplicate`.
+
+The `UdpSocket` type will adhere to both `Send` and `Sync`.
+
+#### Sockets
+[Sockets]: #sockets
+
+The current constructors for `TcpStream`, `TcpListener`, and `UdpSocket` are
+largely "convenience constructors" as they do not expose the underlying details
+that a socket can be configured before it is bound, connected, or listened on.
+One of the more frequent configuration options is `SO_REUSEADDR` which is set by
+default for `TcpListener` currently.
+
+This RFC leaves it as an open question how best to implement this
+pre-configuration. The constructors today will likely remain no matter what as
+convenience constructors and a new structure would implement consuming methods
+to transform itself to each of the various `TcpStream`, `TcpListener`, and
+`UdpSocket`.
+
+This RFC does, however, recommend not adding multiple constructors to the
+various types to set various configuration options. This pattern is best
+expressed via a flexible socket type to be added at a future date.
+
+#### Addresses
+[Addresses]: #addresses
+
+For the current `addrinfo` module:
+
+* The `get_host_addresses` should be renamed to `lookup_host`.
+* All other contents should be removed.
+
+For the current `ip` module:
+
+* The `ToSocketAddr` trait should become `ToSocketAddrs`
+* The default `to_socket_addr_all` method should be removed.
+
+The actual address structures could use some scrutiny, but any
+revisions there are left as an unresolved question.
 
 ### `std::process`
 [std::process]: #stdprocess
