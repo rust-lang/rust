@@ -85,7 +85,7 @@
 use astconv::AstConv;
 use check::dropck;
 use check::FnCtxt;
-use check::regionmanip;
+use check::implicator;
 use check::vtable;
 use middle::def;
 use middle::mem_categorization as mc;
@@ -97,12 +97,12 @@ use middle::infer::{self, GenericKind};
 use middle::pat_util;
 use util::ppaux::{ty_to_string, Repr};
 
+use std::mem;
 use syntax::{ast, ast_util};
 use syntax::codemap::Span;
 use syntax::visit;
 use syntax::visit::Visitor;
 
-use self::RepeatingScope::Repeating;
 use self::SubjectNode::Subject;
 
 // a variation on try that just returns unit
@@ -114,7 +114,7 @@ macro_rules! ignore_err {
 // PUBLIC ENTRY POINTS
 
 pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
-    let mut rcx = Rcx::new(fcx, Repeating(e.id), Subject(e.id));
+    let mut rcx = Rcx::new(fcx, RepeatingScope(e.id), e.id, Subject(e.id));
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
         rcx.visit_expr(e);
@@ -124,21 +124,22 @@ pub fn regionck_expr(fcx: &FnCtxt, e: &ast::Expr) {
 }
 
 pub fn regionck_item(fcx: &FnCtxt, item: &ast::Item) {
-    let mut rcx = Rcx::new(fcx, Repeating(item.id), Subject(item.id));
+    let mut rcx = Rcx::new(fcx, RepeatingScope(item.id), item.id, Subject(item.id));
     rcx.visit_region_obligations(item.id);
     rcx.resolve_regions_and_report_errors();
 }
 
-pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, decl: &ast::FnDecl, blk: &ast::Block) {
-    let mut rcx = Rcx::new(fcx, Repeating(blk.id), Subject(id));
+pub fn regionck_fn(fcx: &FnCtxt,
+                   fn_id: ast::NodeId,
+                   fn_span: Span,
+                   decl: &ast::FnDecl,
+                   blk: &ast::Block) {
+    debug!("regionck_fn(id={})", fn_id);
+    let mut rcx = Rcx::new(fcx, RepeatingScope(blk.id), blk.id, Subject(fn_id));
     if fcx.err_count_since_creation() == 0 {
         // regionck assumes typeck succeeded
-        rcx.visit_fn_body(id, decl, blk);
+        rcx.visit_fn_body(fn_id, decl, blk, fn_span);
     }
-
-    // Region checking a fn can introduce new trait obligations,
-    // particularly around closure bounds.
-    vtable::select_all_fcx_obligations_or_error(fcx);
 
     rcx.resolve_regions_and_report_errors();
 }
@@ -148,7 +149,7 @@ pub fn regionck_fn(fcx: &FnCtxt, id: ast::NodeId, decl: &ast::FnDecl, blk: &ast:
 pub fn regionck_ensure_component_tys_wf<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                   span: Span,
                                                   component_tys: &[Ty<'tcx>]) {
-    let mut rcx = Rcx::new(fcx, Repeating(0), SubjectNode::None);
+    let mut rcx = Rcx::new(fcx, RepeatingScope(0), 0, SubjectNode::None);
     for &component_ty in component_tys {
         // Check that each type outlives the empty region. Since the
         // empty region is a subregion of all others, this can't fail
@@ -166,6 +167,9 @@ pub struct Rcx<'a, 'tcx: 'a> {
     fcx: &'a FnCtxt<'a, 'tcx>,
 
     region_bound_pairs: Vec<(ty::Region, GenericKind<'tcx>)>,
+
+    // id of innermost fn body id
+    body_id: ast::NodeId,
 
     // id of innermost fn or loop
     repeating_scope: ast::NodeId,
@@ -189,16 +193,18 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
     }
 }
 
-pub enum RepeatingScope { Repeating(ast::NodeId) }
+struct RepeatingScope(ast::NodeId);
 pub enum SubjectNode { Subject(ast::NodeId), None }
 
 impl<'a, 'tcx> Rcx<'a, 'tcx> {
     pub fn new(fcx: &'a FnCtxt<'a, 'tcx>,
                initial_repeating_scope: RepeatingScope,
+               initial_body_id: ast::NodeId,
                subject: SubjectNode) -> Rcx<'a, 'tcx> {
-        let Repeating(initial_repeating_scope) = initial_repeating_scope;
+        let RepeatingScope(initial_repeating_scope) = initial_repeating_scope;
         Rcx { fcx: fcx,
               repeating_scope: initial_repeating_scope,
+              body_id: initial_body_id,
               subject: subject,
               region_bound_pairs: Vec::new()
         }
@@ -208,10 +214,12 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         self.fcx.ccx.tcx
     }
 
-    pub fn set_repeating_scope(&mut self, scope: ast::NodeId) -> ast::NodeId {
-        let old_scope = self.repeating_scope;
-        self.repeating_scope = scope;
-        old_scope
+    fn set_body_id(&mut self, body_id: ast::NodeId) -> ast::NodeId {
+        mem::replace(&mut self.body_id, body_id)
+    }
+
+    fn set_repeating_scope(&mut self, scope: ast::NodeId) -> ast::NodeId {
+        mem::replace(&mut self.repeating_scope, scope)
     }
 
     /// Try to resolve the type for the given node, returning t_err if an error results.  Note that
@@ -269,9 +277,11 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     fn visit_fn_body(&mut self,
                      id: ast::NodeId,
                      fn_decl: &ast::FnDecl,
-                     body: &ast::Block)
+                     body: &ast::Block,
+                     span: Span)
     {
         // When we enter a function, we can derive
+        debug!("visit_fn_body(id={})", id);
 
         let fn_sig_map = self.fcx.inh.fn_sig_map.borrow();
         let fn_sig = match fn_sig_map.get(&id) {
@@ -283,16 +293,23 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
         };
 
         let len = self.region_bound_pairs.len();
-        self.relate_free_regions(&fn_sig[], body.id);
+        let old_body_id = self.set_body_id(body.id);
+        self.relate_free_regions(&fn_sig[], body.id, span);
         link_fn_args(self, CodeExtent::from_node_id(body.id), &fn_decl.inputs[]);
         self.visit_block(body);
         self.visit_region_obligations(body.id);
         self.region_bound_pairs.truncate(len);
+        self.set_body_id(old_body_id);
     }
 
     fn visit_region_obligations(&mut self, node_id: ast::NodeId)
     {
         debug!("visit_region_obligations: node_id={}", node_id);
+
+        // region checking can introduce new pending obligations
+        // which, when processed, might generate new region
+        // obligations. So make sure we process those.
+        vtable::select_all_fcx_obligations_or_error(self.fcx);
 
         // Make a copy of the region obligations vec because we'll need
         // to be able to borrow the fulfillment-cx below when projecting.
@@ -326,7 +343,8 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
     /// Tests: `src/test/compile-fail/regions-free-region-ordering-*.rs`
     fn relate_free_regions(&mut self,
                            fn_sig_tys: &[Ty<'tcx>],
-                           body_id: ast::NodeId) {
+                           body_id: ast::NodeId,
+                           span: Span) {
         debug!("relate_free_regions >>");
         let tcx = self.tcx();
 
@@ -335,25 +353,22 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             debug!("relate_free_regions(t={})", ty.repr(tcx));
             let body_scope = CodeExtent::from_node_id(body_id);
             let body_scope = ty::ReScope(body_scope);
-            let constraints =
-                regionmanip::region_wf_constraints(
-                    tcx,
-                    ty,
-                    body_scope);
-            for constraint in &constraints {
-                debug!("constraint: {}", constraint.repr(tcx));
-                match *constraint {
-                    regionmanip::RegionSubRegionConstraint(_,
-                                              ty::ReFree(free_a),
-                                              ty::ReFree(free_b)) => {
+            let implications = implicator::implications(self.fcx.infcx(), self.fcx, body_id,
+                                                        ty, body_scope, span);
+            for implication in implications {
+                debug!("implication: {}", implication.repr(tcx));
+                match implication {
+                    implicator::Implication::RegionSubRegion(_,
+                                                             ty::ReFree(free_a),
+                                                             ty::ReFree(free_b)) => {
                         tcx.region_maps.relate_free_regions(free_a, free_b);
                     }
-                    regionmanip::RegionSubRegionConstraint(_,
-                                              ty::ReFree(free_a),
-                                              ty::ReInfer(ty::ReVar(vid_b))) => {
+                    implicator::Implication::RegionSubRegion(_,
+                                                             ty::ReFree(free_a),
+                                                             ty::ReInfer(ty::ReVar(vid_b))) => {
                         self.fcx.inh.infcx.add_given(free_a, vid_b);
                     }
-                    regionmanip::RegionSubRegionConstraint(..) => {
+                    implicator::Implication::RegionSubRegion(..) => {
                         // In principle, we could record (and take
                         // advantage of) every relationship here, but
                         // we are also free not to -- it simply means
@@ -364,12 +379,13 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
                         // relationship that arises here, but
                         // presently we do not.)
                     }
-                    regionmanip::RegionSubGenericConstraint(_, r_a, ref generic_b) => {
-                        debug!("RegionSubGenericConstraint: {} <= {}",
+                    implicator::Implication::RegionSubGeneric(_, r_a, ref generic_b) => {
+                        debug!("RegionSubGeneric: {} <= {}",
                                r_a.repr(tcx), generic_b.repr(tcx));
 
                         self.region_bound_pairs.push((r_a, generic_b.clone()));
                     }
+                    implicator::Implication::Predicate(..) => { }
                 }
             }
         }
@@ -400,8 +416,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Rcx<'a, 'tcx> {
     // regions, until regionck, as described in #3238.
 
     fn visit_fn(&mut self, _fk: visit::FnKind<'v>, fd: &'v ast::FnDecl,
-                b: &'v ast::Block, _s: Span, id: ast::NodeId) {
-        self.visit_fn_body(id, fd, b)
+                b: &'v ast::Block, span: Span, id: ast::NodeId) {
+        self.visit_fn_body(id, fd, b, span)
     }
 
     fn visit_item(&mut self, i: &ast::Item) { visit_item(self, i); }
@@ -628,7 +644,7 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                     constrain_call(rcx, expr, Some(&**base),
                                    None::<ast::Expr>.iter(), true);
                     let fn_ret = // late-bound regions in overloaded method calls are instantiated
-                        ty::assert_no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty));
+                        ty::no_late_bound_regions(rcx.tcx(), &ty::ty_fn_ret(method.ty)).unwrap();
                     fn_ret.unwrap()
                 }
                 None => rcx.resolve_node_type(base.id)
@@ -975,7 +991,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                 // was applied on the base type, as that is always the case.
                 let fn_sig = ty::ty_fn_sig(method.ty);
                 let fn_sig = // late-bound regions should have been instantiated
-                    ty::assert_no_late_bound_regions(rcx.tcx(), fn_sig);
+                    ty::no_late_bound_regions(rcx.tcx(), fn_sig).unwrap();
                 let self_ty = fn_sig.inputs[0];
                 let (m, r) = match self_ty.sty {
                     ty::ty_rptr(r, ref m) => (m.mutbl, r),
@@ -1481,27 +1497,31 @@ pub fn type_must_outlive<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
            ty.repr(rcx.tcx()),
            region.repr(rcx.tcx()));
 
-    let constraints =
-        regionmanip::region_wf_constraints(
-            rcx.tcx(),
-            ty,
-            region);
-    for constraint in &constraints {
-        debug!("constraint: {}", constraint.repr(rcx.tcx()));
-        match *constraint {
-            regionmanip::RegionSubRegionConstraint(None, r_a, r_b) => {
+    let implications = implicator::implications(rcx.fcx.infcx(), rcx.fcx, rcx.body_id,
+                                                ty, region, origin.span());
+    for implication in implications {
+        debug!("implication: {}", implication.repr(rcx.tcx()));
+        match implication {
+            implicator::Implication::RegionSubRegion(None, r_a, r_b) => {
                 rcx.fcx.mk_subr(origin.clone(), r_a, r_b);
             }
-            regionmanip::RegionSubRegionConstraint(Some(ty), r_a, r_b) => {
+            implicator::Implication::RegionSubRegion(Some(ty), r_a, r_b) => {
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
                 rcx.fcx.mk_subr(o1, r_a, r_b);
             }
-            regionmanip::RegionSubGenericConstraint(None, r_a, ref generic_b) => {
+            implicator::Implication::RegionSubGeneric(None, r_a, ref generic_b) => {
                 generic_must_outlive(rcx, origin.clone(), r_a, generic_b);
             }
-            regionmanip::RegionSubGenericConstraint(Some(ty), r_a, ref generic_b) => {
+            implicator::Implication::RegionSubGeneric(Some(ty), r_a, ref generic_b) => {
                 let o1 = infer::ReferenceOutlivesReferent(ty, origin.span());
                 generic_must_outlive(rcx, o1, r_a, generic_b);
+            }
+            implicator::Implication::Predicate(def_id, predicate) => {
+                let cause = traits::ObligationCause::new(origin.span(),
+                                                         rcx.body_id,
+                                                         traits::ItemObligation(def_id));
+                let obligation = traits::Obligation::new(cause, predicate);
+                rcx.fcx.register_predicate(obligation);
             }
         }
     }
