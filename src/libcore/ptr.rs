@@ -303,7 +303,7 @@ impl<T> PtrExt for *const T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self as usize == 0 }
+    fn is_null(self) -> bool { self == 0 as *const T }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -330,7 +330,7 @@ impl<T> PtrExt for *mut T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self as usize == 0 }
+    fn is_null(self) -> bool { self == 0 as *mut T }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
