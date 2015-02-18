@@ -11,6 +11,8 @@
 // Test that we correctly infer variance for type parameters in
 // various types and traits.
 
+#![feature(rustc_attrs)]
+
 #[rustc_variance]
 struct TestImm<A, B> { //~ ERROR types=[[+, +];[];[]]
     x: A,

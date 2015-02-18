@@ -12,6 +12,7 @@
 // they permit lifetimes to be approximated as expected.
 
 #![allow(dead_code)]
+#![feature(rustc_attrs)]
 
 struct SomeStruct<T>(fn(T));
 

@@ -10,6 +10,7 @@
 
 #![deny(bivariance)]
 #![allow(dead_code)]
+#![feature(rustc_attrs)]
 
 // Check that bounds on type parameters (other than `Self`) do not
 // influence variance.

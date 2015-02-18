@@ -12,6 +12,7 @@
 // be shortened.
 
 #![allow(dead_code)]
+#![feature(rustc_attrs)]
 
 struct SomeStruct<T>(T);
 
