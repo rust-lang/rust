@@ -129,10 +129,10 @@ fn main() {
     let some_str: Option<&'static str> = Some("abc");
     let none_str: Option<&'static str> = None;
 
-    let some: Option<&u32> = Some(unsafe { std::mem::transmute(0x12345678u) });
+    let some: Option<&u32> = Some(unsafe { std::mem::transmute(0x12345678_usize) });
     let none: Option<&u32> = None;
 
-    let full = MoreFields::Full(454545, unsafe { std::mem::transmute(0x87654321u) }, 9988);
+    let full = MoreFields::Full(454545, unsafe { std::mem::transmute(0x87654321_usize) }, 9988);
 
     let empty = MoreFields::Empty;
     let empty_gdb: &MoreFieldsRepr = unsafe { std::mem::transmute(&MoreFields::Empty) };
@@ -140,7 +140,7 @@ fn main() {
     let droid = NamedFields::Droid {
         id: 675675,
         range: 10000001,
-        internals: unsafe { std::mem::transmute(0x43218765u) }
+        internals: unsafe { std::mem::transmute(0x43218765_usize) }
     };
 
     let void_droid = NamedFields::Void;

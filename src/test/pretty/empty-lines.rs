@@ -13,5 +13,5 @@
 
 fn a() -> uint {
 
-    1u
+    1usize
 }

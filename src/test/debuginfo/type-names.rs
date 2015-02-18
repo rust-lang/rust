@@ -280,9 +280,9 @@ fn main() {
 
     // Vectors
     let fixed_size_vec1 = ([Struct1, Struct1, Struct1], 0i16);
-    let fixed_size_vec2 = ([0u, 1u, 2u], 0i16);
+    let fixed_size_vec2 = ([0_usize, 1, 2], 0i16);
 
-    let vec1 = vec![0u, 2u, 3u];
+    let vec1 = vec![0_usize, 2, 3];
     let slice1 = &*vec1;
     let vec2 = vec![Mod1::Variant2_2(Struct1)];
     let slice2 = &*vec2;
@@ -301,20 +301,20 @@ fn main() {
         &mut Trait2<Mod1::Mod2::Struct3, GenericStruct<usize, isize>>;
 
     // Bare Functions
-    let rust_fn = (rust_fn, 0u);
-    let extern_c_fn = (extern_c_fn, 0u);
-    let unsafe_fn = (unsafe_fn, 0u);
-    let extern_stdcall_fn = (extern_stdcall_fn, 0u);
+    let rust_fn = (rust_fn, 0_usize);
+    let extern_c_fn = (extern_c_fn, 0_usize);
+    let unsafe_fn = (unsafe_fn, 0_usize);
+    let extern_stdcall_fn = (extern_stdcall_fn, 0_usize);
 
-    let rust_fn_with_return_value = (rust_fn_with_return_value, 0u);
-    let extern_c_fn_with_return_value = (extern_c_fn_with_return_value, 0u);
-    let unsafe_fn_with_return_value = (unsafe_fn_with_return_value, 0u);
-    let extern_stdcall_fn_with_return_value = (extern_stdcall_fn_with_return_value, 0u);
+    let rust_fn_with_return_value = (rust_fn_with_return_value, 0_usize);
+    let extern_c_fn_with_return_value = (extern_c_fn_with_return_value, 0_usize);
+    let unsafe_fn_with_return_value = (unsafe_fn_with_return_value, 0_usize);
+    let extern_stdcall_fn_with_return_value = (extern_stdcall_fn_with_return_value, 0_usize);
 
-    let generic_function_int = (generic_function::<isize>, 0u);
-    let generic_function_struct3 = (generic_function::<Mod1::Mod2::Struct3>, 0u);
+    let generic_function_int = (generic_function::<isize>, 0_usize);
+    let generic_function_struct3 = (generic_function::<Mod1::Mod2::Struct3>, 0_usize);
 
-    let variadic_function = (printf, 0u);
+    let variadic_function = (printf, 0_usize);
 
     // Closures
     // I (mw) am a bit unclear about the current state of closures, their
@@ -322,8 +322,8 @@ fn main() {
     // how that maps to rustc's internal representation of these forms.
     // Once closures have reached their 1.0 form, the tests below should
     // probably be expanded.
-    let closure1 = (|x:isize| {}, 0u);
-    let closure2 = (|x:i8, y: f32| { (x as f32) + y }, 0u);
+    let closure1 = (|x:isize| {}, 0_usize);
+    let closure2 = (|x:i8, y: f32| { (x as f32) + y }, 0_usize);
 
     zzz(); // #break
 }

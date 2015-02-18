@@ -82,7 +82,9 @@ pub fn main() {
             let mut v = Foo::NestedVariant(box 42usize, SendOnDrop {
                 sender: sender.clone()
             }, sender.clone());
-            v = Foo::NestedVariant(box 42_usize, SendOnDrop { sender: sender.clone() }, sender.clone());
+            v = Foo::NestedVariant(box 42_usize,
+                                   SendOnDrop { sender: sender.clone() },
+                                   sender.clone());
             v = Foo::SimpleVariant(sender.clone());
             v = Foo::FailingVariant { on_drop: SendOnDrop { sender: sender } };
         })
