@@ -294,7 +294,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// As an example, consider a trait with no methods like `Even`, meant
 /// to represent types that are "even":
 ///
-/// ```rust
+/// ```ignore
 /// trait Even { }
 /// ```
 ///
