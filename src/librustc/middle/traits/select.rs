@@ -824,24 +824,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                                             stack,
                                                             &mut candidates));
             }
-            Some(bound @ ty::BoundSend) |
-            Some(bound @ ty::BoundSync) => {
-                // Ideally, we shouldn't sepcial case Send/Sync. This will be unified
-                // as soon as default trait implementations for these traits land.
-                try!(self.assemble_candidates_from_impls(obligation, &mut candidates));
-
-                // No explicit impls were declared for this type, consider the fallback rules.
-                if candidates.vec.is_empty() && !candidates.ambiguous {
-                    try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
-                }
-            }
-
             Some(bound @ ty::BoundSized) => {
                 // Sized and Copy are always automatically computed.
                 try!(self.assemble_builtin_bound_candidates(bound, stack, &mut candidates));
             }
 
-            None => {
+            _ => {
                 // For the time being, we ignore user-defined impls for builtin-bounds, other than
                 // `Copy`.
                 // (And unboxed candidates only apply to the Fn/FnMut/etc traits.)
@@ -1149,8 +1137,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
         }
 
-        if ty::trait_has_default_impl(self.tcx(), def_id) {
-            candidates.vec.push(DefaultImplCandidate(def_id.clone()))
+        match self_ty.sty {
+            ty::ty_infer(ty::TyVar(_)) |
+            ty::ty_trait(..) => {},
+            _ => {
+                if ty::trait_has_default_impl(self.tcx(), def_id) {
+                    candidates.vec.push(DefaultImplCandidate(def_id.clone()))
+                }
+            }
         }
 
         Ok(())
@@ -1179,6 +1173,18 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         let poly_trait_ref = match self_ty.sty {
             ty::ty_trait(ref data) => {
+                match self.tcx().lang_items.to_builtin_kind(obligation.predicate.def_id()) {
+                    Some(bound @ ty::BoundSend) | Some(bound @ ty::BoundSync) => {
+                        if data.bounds.builtin_bounds.contains(&bound) {
+                            debug!("assemble_candidates_from_object_ty: matched builtin bound, \
+                            pushing candidate");
+                            candidates.vec.push(BuiltinCandidate(bound));
+                            return;
+                        }
+                    }
+                    _ => {}
+                }
+
                 data.principal_trait_ref_with_self_ty(self.tcx(), self_ty)
             }
             ty::ty_infer(ty::TyVar(_)) => {
@@ -1622,13 +1628,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_bare_fn(..) |
             ty::ty_str |
             ty::ty_err |
+            ty::ty_param(..) |
             ty::ty_char => {
                 Vec::new()
             }
 
             ty::ty_trait(..) |
             ty::ty_projection(..) |
-            ty::ty_param(..) |
             ty::ty_infer(..) => {
                 self.tcx().sess.bug(
                     &format!(
