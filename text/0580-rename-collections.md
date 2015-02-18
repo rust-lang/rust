@@ -1,6 +1,6 @@
 - Start Date: 2015-01-13
-- RFC PR: (leave this empty)
-- Rust Issue: (leave this empty)
+- RFC PR: https://github.com/rust-lang/rfcs/pull/580
+- Rust Issue: https://github.com/rust-lang/rust/issues/22479
 
 # Summary
 
@@ -13,8 +13,8 @@ In [this comment](http://www.reddit.com/r/programming/comments/2rvoha/announcing
 The current collection names (and their longer versions) are:
 
 * `Vec` -> `Vector`
-* `BTreeMap` 
-* `BTreeSet` 
+* `BTreeMap`
+* `BTreeSet`
 * `BinaryHeap`
 * `Bitv` -> `BitVec` -> `BitVector`
 * `BitvSet` -> `BitVecSet` -> `BitVectorSet`
@@ -40,8 +40,8 @@ First some general naming rules should be established.
 And the new names:
 
 * `Vec`
-* `BTreeMap` 
-* `BTreeSet` 
+* `BTreeMap`
+* `BTreeSet`
 * `BinaryHeap`
 * `Bitv` -> `BitVec`
 * `BitvSet` -> `BitSet`
