@@ -21,7 +21,7 @@ Read ["Installing Rust"] from [The Book].
     * `curl`
     * `git`
 
-2. Clone the [source] with git:
+2. Clone the [source] with `git`:
 
         $ git clone https://github.com/rust-lang/rust.git
         $ cd rust
@@ -90,7 +90,7 @@ swap, it will take a very long time to build.
 
 There is more advice about [hacking on Rust][hack] on the [wiki].
 
-[hack]: https://github.com/rust-lang/rust/wiki/Note-getting-started-developing-Rust
+[hack]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md
 [wiki]: https://github.com/rust-lang/rust/wiki
 
 ## Getting help
@@ -115,7 +115,7 @@ most popular channel is [#rust], a venue for general discussion about
 Rust, and a good place to ask for help,
 
 [IRC]: https://en.wikipedia.org/wiki/Internet_Relay_Chat
-[#rust]: https://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust
+[#rust]: irc://irc.mozilla.org/rust
 
 ## License
 
