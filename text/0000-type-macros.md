@@ -383,6 +383,20 @@ macro_rules! impl_to_hlist_for_seq {
 // generate implementations up to length 32
 impl_for_seq_upto!{ impl_to_tuple_for_seq, 32 }
 impl_for_seq_upto!{ impl_to_hlist_for_seq, 32 }
+
+// test converting an hlist to tuple
+#[test]
+fn test_to_tuple() {
+    assert_eq(ToTuple(hlist!["foo", true, (), vec![42u64]]),
+                            ("foo", true, (), vec![42u64]))
+}
+
+// test converting a tuple to hlist
+#[test]
+fn test_to_hlist() {
+    assert_eq(ToHList(("foo", true, (), vec![42u64])),
+                hlist!["foo", true, (), vec![42u64]])
+}
 ```
 
 # Drawbacks
