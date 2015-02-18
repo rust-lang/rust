@@ -28,8 +28,8 @@ pub fn replace_map<'a, T, F>(src: &mut T, prod: F) where F: FnOnce(T) -> T {
 }
 
 pub fn main() {
-    let mut a = 7u;
+    let mut a = 7_usize;
     let b = &mut a;
     replace_map(b, |x: uint| x * 2);
-    assert_eq!(*b, 14u);
+    assert_eq!(*b, 14_usize);
 }

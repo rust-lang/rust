@@ -11,7 +11,7 @@
 pub fn main() {
     let v: Vec<isize> = vec!(0, 1, 2, 3, 4, 5);
     let s: String = "abcdef".to_string();
-    v[3us];
+    v[3_usize];
     v[3];
     v[3u8];  //~ERROR the trait `core::ops::Index<u8>` is not implemented
     //~^ ERROR the trait `core::ops::Index<u8>` is not implemented
@@ -21,7 +21,7 @@ pub fn main() {
     //~^ ERROR the trait `core::ops::Index<u32>` is not implemented
     v[3i32]; //~ERROR the trait `core::ops::Index<i32>` is not implemented
     //~^ ERROR the trait `core::ops::Index<i32>` is not implemented
-    s.as_bytes()[3us];
+    s.as_bytes()[3_usize];
     s.as_bytes()[3];
     s.as_bytes()[3u8];  //~ERROR the trait `core::ops::Index<u8>` is not implemented
     //~^ERROR the trait `core::ops::Index<u8>` is not implemented

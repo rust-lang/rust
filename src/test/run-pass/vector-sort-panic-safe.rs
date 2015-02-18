@@ -67,7 +67,7 @@ pub fn main() {
 
             // work out the total number of comparisons required to sort
             // this array...
-            let mut count = 0us;
+            let mut count = 0_usize;
             main.clone().sort_by(|a, b| { count += 1; a.cmp(b) });
 
             // ... and then panic on each and every single one.

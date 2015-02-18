@@ -65,7 +65,7 @@ fn canttouchthis() -> uint {
     fn p() -> bool { true }
     let _a = (assert!((true)) == (assert!(p())));
     let _c = (assert!((p())) == ());
-    let _b: bool = (println!("{}", 0) == (return 0u));
+    let _b: bool = (println!("{}", 0) == (return 0_usize));
 }
 
 fn angrydome() {

@@ -54,5 +54,5 @@ fn main() {
 
     x.foo(&x);
 
-    unsafe { assert!(COUNT == 2u*3*3*3*5*5*5*7*7*7); }
+    unsafe { assert!(COUNT == 2_usize*3*3*3*5*5*5*7*7*7); }
 }

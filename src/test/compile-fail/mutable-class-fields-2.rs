@@ -29,6 +29,6 @@ fn cat(in_x : usize, in_y : isize) -> cat {
 }
 
 fn main() {
-  let nyan : cat = cat(52us, 99);
+  let nyan : cat = cat(52_usize, 99);
   nyan.eat();
 }

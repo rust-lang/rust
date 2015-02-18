@@ -50,15 +50,15 @@ impl Point {
 }
 
 fn deref_imm_field(x: Rc<Point>) {
-    let _i = &x.y;
+    let __isize = &x.y;
 }
 
 fn deref_mut_field1(x: Rc<Point>) {
-    let _i = &mut x.y; //~ ERROR cannot borrow
+    let __isize = &mut x.y; //~ ERROR cannot borrow
 }
 
 fn deref_mut_field2(mut x: Rc<Point>) {
-    let _i = &mut x.y; //~ ERROR cannot borrow
+    let __isize = &mut x.y; //~ ERROR cannot borrow
 }
 
 fn deref_extend_field(x: &Rc<Point>) -> &isize {
@@ -86,7 +86,7 @@ fn assign_field3<'a>(x: &'a mut Rc<Point>) {
 }
 
 fn deref_imm_method(x: Rc<Point>) {
-    let _i = x.get();
+    let __isize = x.get();
 }
 
 fn deref_mut_method1(x: Rc<Point>) {

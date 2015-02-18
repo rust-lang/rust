@@ -17,7 +17,7 @@ impl Foo for Thing {
     fn foo<T>(&self, _: &T) {}
 }
 
-#[inline(never)] fn foo(b: &Bar) { b.foo(&0us) }
+#[inline(never)] fn foo(b: &Bar) { b.foo(&0_usize) }
 
 fn main() {
     let mut thing = Thing;

@@ -16,5 +16,5 @@ include!(concat!("", "", "../auxiliary/", "macro-include-items-item.rs"));
 
 fn main() {
     foo();
-    assert_eq!(include!(concat!("", "../auxiliary/", "macro-include-items-expr.rs")), 1u);
+    assert_eq!(include!(concat!("", "../auxiliary/", "macro-include-items-expr.rs")), 1_usize);
 }

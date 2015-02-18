@@ -9,5 +9,5 @@
 // except according to those terms.
 
 fn main() {
-    (return)[0us]; //~ ERROR the type of this value must be known in this context
+    (return)[0_usize]; //~ ERROR the type of this value must be known in this context
 }

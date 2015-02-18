@@ -9,9 +9,9 @@
 // except according to those terms.
 
 fn even(x: uint) -> bool {
-    if x < 2u {
+    if x < 2_usize {
         return false;
-    } else if x == 2u { return true; } else { return even(x - 2u); }
+    } else if x == 2_usize { return true; } else { return even(x - 2_usize); }
 }
 
 fn foo(x: uint) {
@@ -22,4 +22,4 @@ fn foo(x: uint) {
     }
 }
 
-pub fn main() { foo(2u); }
+pub fn main() { foo(2_usize); }

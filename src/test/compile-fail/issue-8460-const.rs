@@ -22,7 +22,7 @@ fn main() {
     //~^ ERROR attempted to divide with overflow in a constant expression
     assert!(thread::spawn(move|| { i64::MIN / -1; }).join().is_err());
     //~^ ERROR attempted to divide with overflow in a constant expression
-    assert!(thread::spawn(move|| { 1is / 0; }).join().is_err());
+    assert!(thread::spawn(move|| { 1isize / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
     assert!(thread::spawn(move|| { 1i8 / 0; }).join().is_err());
     //~^ ERROR attempted to divide by zero in a constant expression
@@ -42,7 +42,7 @@ fn main() {
     //~^ ERROR attempted remainder with overflow in a constant expression
     assert!(thread::spawn(move|| { i64::MIN % -1; }).join().is_err());
     //~^ ERROR attempted remainder with overflow in a constant expression
-    assert!(thread::spawn(move|| { 1is % 0; }).join().is_err());
+    assert!(thread::spawn(move|| { 1isize % 0; }).join().is_err());
     //~^ ERROR attempted remainder with a divisor of zero in a constant expression
     assert!(thread::spawn(move|| { 1i8 % 0; }).join().is_err());
     //~^ ERROR attempted remainder with a divisor of zero in a constant expression

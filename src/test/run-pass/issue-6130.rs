@@ -12,9 +12,9 @@
 
 pub fn main() {
     let i: uint = 0;
-    assert!(i <= 0xFFFF_FFFF_u);
+    assert!(i <= 0xFFFF_FFFF_usize);
 
     let i: int = 0;
-    assert!(i >= -0x8000_0000_i);
-    assert!(i <= 0x7FFF_FFFF_i);
+    assert!(i >= -0x8000_0000__isize);
+    assert!(i <= 0x7FFF_FFFF__isize);
 }

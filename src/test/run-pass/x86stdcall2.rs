@@ -31,7 +31,7 @@ mod kernel32 {
 pub fn main() {
     let heap = unsafe { kernel32::GetProcessHeap() };
     let mem = unsafe { kernel32::HeapAlloc(heap, 0u32, 100u32) };
-    assert!(mem != 0u);
+    assert!(mem != 0_usize);
     let res = unsafe { kernel32::HeapFree(heap, 0u32, mem) };
     assert!(res != 0u8);
 }

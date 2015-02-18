@@ -35,5 +35,5 @@ fn get(x: int) -> <int as SignedUnsigned>::Opposite {
 
 fn main() {
     let x = get(22);
-    assert_eq!(22u, x);
+    assert_eq!(22_usize, x);
 }

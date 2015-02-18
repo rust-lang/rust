@@ -17,11 +17,11 @@ pub fn main() {
     assert_eq!(x[2], 3);
     assert_eq!(x[3], 4);
 
-    assert_eq!(size_of::<[u8; 4]>(), 4u);
+    assert_eq!(size_of::<[u8; 4]>(), 4_usize);
 
     // FIXME #10183
     // FIXME #18069
     //if cfg!(target_pointer_width = "64") {
-    //    assert_eq!(size_of::<[u8; (1 << 32)]>(), (1u << 32));
+    //    assert_eq!(size_of::<[u8; (1 << 32)]>(), (1_usize << 32));
     //}
 }

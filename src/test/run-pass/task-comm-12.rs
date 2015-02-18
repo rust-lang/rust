@@ -21,7 +21,7 @@ fn test00() {
     });
 
     // Sleep long enough for the task to finish.
-    let mut i = 0u;
+    let mut i = 0_usize;
     while i < 10000 {
         Thread::yield_now();
         i += 1;

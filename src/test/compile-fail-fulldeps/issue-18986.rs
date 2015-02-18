@@ -15,6 +15,6 @@ pub use use_from_trait_xc::Trait;
 
 fn main() {
     match () {
-        Trait { x: 42us } => () //~ ERROR use of trait `Trait` in a struct pattern
+        Trait { x: 42_usize } => () //~ ERROR use of trait `Trait` in a struct pattern
     }
 }

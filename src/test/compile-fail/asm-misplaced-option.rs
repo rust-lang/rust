@@ -28,7 +28,7 @@ pub fn main() {
 
     unsafe {
         // comma in place of a colon
-        asm!("add $2, $1; mov $1, $0" : "=r"(x) : "r"(x), "r"(8us) : "cc", "volatile");
+        asm!("add $2, $1; mov $1, $0" : "=r"(x) : "r"(x), "r"(8_usize) : "cc", "volatile");
         //~^ WARNING expected a clobber, found an option
     }
     assert_eq!(x, 13);

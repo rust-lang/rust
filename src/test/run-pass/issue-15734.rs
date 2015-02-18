@@ -53,12 +53,12 @@ impl<T, M: Index<(uint, uint), Output=T>> Index<uint> for Row<M> {
 }
 
 fn main() {
-    let m = Mat::new(vec!(1u, 2, 3, 4, 5, 6), 3);
+    let m = Mat::new(vec!(1_usize, 2, 3, 4, 5, 6), 3);
     let r = m.row(1);
 
     assert!(r.index(&2) == &6);
     assert!(r[2] == 6);
-    assert!(r[2u] == 6u);
+    assert!(r[2_usize] == 6_usize);
     assert!(6 == r[2]);
 
     let e = r[2];

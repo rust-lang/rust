@@ -104,9 +104,9 @@ fn main() {
     let mut pixels = [0f32; 256*256];
     let n2d = Noise2DContext::new();
 
-    for _ in 0u..100 {
-        for y in 0u..256 {
-            for x in 0u..256 {
+    for _ in 0..100 {
+        for y in 0..256 {
+            for x in 0..256 {
                 let v = n2d.get(x as f32 * 0.1, y as f32 * 0.1);
                 pixels[y*256+x] = v * 0.5 + 0.5;
             }

@@ -15,7 +15,7 @@ pub fn main() {
     let x: int;
     unsafe {
         // Treat the output as initialization.
-        asm!("mov $1, $0" : "=r"(x) : "r"(5u));
+        asm!("mov $1, $0" : "=r"(x) : "r"(5_usize));
     }
     assert_eq!(x, 5);
 

@@ -29,6 +29,6 @@ impl Foo for uint {
 }
 
 pub fn main() {
-    let x = box 3u;
+    let x = box 3_usize;
     assert_eq!(x.foo(), "box 3".to_string());
 }
