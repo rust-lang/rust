@@ -5,10 +5,13 @@
 
 # Summary
 
-Extend the Extend trait to take IntoIterator, and make all collections
-`impl<'a, T: Clone> Extend<&'a T>`. This enables both `vec.extend(&[1, 2, 3])`, and
-`vec.extend(&hash_set)`. This provides a more expressive replacement for
-`Vec::push_all` with literally no ergonomic loss, while leveraging established APIs.
+NOTE: This RFC assumes Extend is improved to take IntoIterator, as was always intended.
+
+Make all collections `impl<'a, T: Clone> Extend<&'a T>`. 
+
+This enables both `vec.extend(&[1, 2, 3])`, and `vec.extend(&hash_set)`. 
+This provides a more expressive replacement for `Vec::push_all` with 
+literally no ergonomic loss, while leveraging established APIs.
 
 # Motivation
 
@@ -28,35 +31,17 @@ collection by-reference to clone the data out of it.
 
 # Detailed design
 
-Here's a quick hack to get this working today:
+* For sequences and sets: `impl<'a, T: Clone> Extend<&'a T>`
+* For maps: `impl<'a, K: Clone, V: Clone> Extend<(&'a K, &'a V)>`
 
-```
-/// A type growable from an `Iterator` implementation
-pub trait Extend<T> {
-    fn extend<It: Iterator<Item=T>, I: IntoIterator<IntoIter=It>>
-        (&mut self, iterator: I);
-}
-```
-
-This isn't the signature we'd like longterm, but it's what works with today's
-IntoIterator and where clauses. Longterm (like, tomorrow) this should work:
-
-```
-/// A type growable from an `Iterator` implementation
-pub trait Extend<T> {
-    fn extend<I: IntoIterator<Item=T>>(&mut self, iterator: I);
-}
-```
-
-And here's usage:
+e.g.
 
 ```
 use std::iter::IntoIterator;
 
 impl<'a, T: Clone> Extend<&'a T> for Vec<T> {
-    fn extend<It: Iterator<Item=&'a T>, I: IntoIterator<IntoIter=It>>
-            (&mut self, iterator: I){
-        self.extend(iterator.into_iter().cloned())
+    fn extend<I: IntoIterator<Item=&'a T>>(&mut self, iter: I) {
+        self.extend(iter.into_iter().cloned())
     }
 }
 
@@ -84,7 +69,7 @@ Nope.
 
 # Unresolved questions
 
-FromIterator could also be extended in the same manner, but this is less useuful for
+FromIterator could also be extended in the same manner, but this is less useful for
 two reasons:
 
 * FromIterator is always called by calling `collect`, and IntoIterator doesn't really
