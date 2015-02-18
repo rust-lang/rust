@@ -8,10 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test a supertrait cycle where a trait extends itself.
+// Test a case where a supertrait references a type that references
+// the original trait. This poses no problem at the moment.
 
-trait Chromosome: Get<Struct> {
-    //~^ ERROR cyclic reference detected
+trait Chromosome: Get<Struct<i32>> {
 }
 
 trait Get<A> {

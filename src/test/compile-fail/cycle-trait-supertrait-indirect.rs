@@ -15,8 +15,8 @@ trait A: B {
 }
 
 trait B: C { }
-    //~^ ERROR cyclic reference detected
 
 trait C: B { }
+    //~^ ERROR unsupported cyclic reference
 
 fn main() { }
