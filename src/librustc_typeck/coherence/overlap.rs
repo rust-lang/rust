@@ -141,7 +141,7 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
                             ty::ty_struct(..) | ty::ty_enum(..) => {},
                             _ => {
                                 let impl_def_id = ast_util::local_def(item.id);
-                                span_err!(self.tcx.sess, self.span_of_impl(impl_def_id), E0317,
+                                span_err!(self.tcx.sess, self.span_of_impl(impl_def_id), E0319,
                                           "implementations for traits providing default \
                                            implementations are only allowed on structs and enums");
 
