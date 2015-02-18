@@ -257,6 +257,17 @@ this. Furthermore, expansion-time optimizations would not necessarily
 be limited to simple arithmetic expressions but could be used for
 other data like HLists.
 
+##### Native alternatives: types parameterized by constant values
+
+This example with type-level naturals is meant to illustrate the kind
+of patterns macros in types enable. I am not suggesting the standard
+libraries adopt _this particular_ representation as a means to address
+the more general issue of lack of numeric parameterization for
+types. There is
+[another RFC here](https://github.com/rust-lang/rfcs/pull/884) which
+does propose extending the type system to allow parameterization over
+constants.
+
 #### Conversion from HList to Tuple
 
 With type macros, it is possible to write macros that convert back and
