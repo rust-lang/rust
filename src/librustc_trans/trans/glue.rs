@@ -513,7 +513,7 @@ pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_string(ccx.tcx(), t), name);
-    let buf = CString::from_slice(name.as_bytes());
+    let buf = CString::new(name.clone()).unwrap();
     let gvar = unsafe {
         llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(),
                             buf.as_ptr())

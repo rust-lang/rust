@@ -237,7 +237,7 @@ pub unsafe fn create(stack: uint, p: Thunk) -> io::Result<rust_thread> {
 pub unsafe fn set_name(name: &str) {
     // pthread_setname_np() since glibc 2.12
     // availability autodetected via weak linkage
-    let cname = CString::from_slice(name.as_bytes());
+    let cname = CString::new(name).unwrap();
     type F = unsafe extern "C" fn(libc::pthread_t, *const libc::c_char) -> libc::c_int;
     extern {
         #[linkage = "extern_weak"]
@@ -255,14 +255,14 @@ pub unsafe fn set_name(name: &str) {
           target_os = "openbsd"))]
 pub unsafe fn set_name(name: &str) {
     // pthread_set_name_np() since almost forever on all BSDs
-    let cname = CString::from_slice(name.as_bytes());
+    let cname = CString::new(name).unwrap();
     pthread_set_name_np(pthread_self(), cname.as_ptr());
 }
 
 #[cfg(any(target_os = "macos", target_os = "ios"))]
 pub unsafe fn set_name(name: &str) {
     // pthread_setname_np() since OS X 10.6 and iOS 3.2
-    let cname = CString::from_slice(name.as_bytes());
+    let cname = CString::new(name).unwrap();
     pthread_setname_np(cname.as_ptr());
 }
 

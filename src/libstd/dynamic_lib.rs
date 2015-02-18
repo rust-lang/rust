@@ -112,7 +112,7 @@ impl DynamicLibrary {
         // This function should have a lifetime constraint of 'a on
         // T but that feature is still unimplemented
 
-        let raw_string = CString::from_slice(symbol.as_bytes());
+        let raw_string = CString::new(symbol).unwrap();
         let maybe_symbol_value = dl::check_for_errors_in(|| {
             dl::symbol(self.handle, raw_string.as_ptr())
         });
@@ -187,7 +187,7 @@ mod test {
 mod dl {
     use prelude::v1::*;
 
-    use ffi::{self, CString};
+    use ffi::{CString, CStr};
     use str;
     use libc;
     use ptr;
@@ -206,7 +206,7 @@ mod dl {
     const LAZY: libc::c_int = 1;
 
     unsafe fn open_external(filename: &[u8]) -> *mut u8 {
-        let s = CString::from_slice(filename);
+        let s = CString::new(filename).unwrap();
         dlopen(s.as_ptr(), LAZY) as *mut u8
     }
 
@@ -231,7 +231,7 @@ mod dl {
             let ret = if ptr::null() == last_error {
                 Ok(result)
             } else {
-                let s = ffi::c_str_to_bytes(&last_error);
+                let s = CStr::from_ptr(last_error).to_bytes();
                 Err(str::from_utf8(s).unwrap().to_string())
             };
 

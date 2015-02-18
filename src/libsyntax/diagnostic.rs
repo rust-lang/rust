@@ -618,22 +618,25 @@ fn print_macro_backtrace(w: &mut EmitterWriter,
                          cm: &codemap::CodeMap,
                          sp: Span)
                          -> old_io::IoResult<()> {
-    let cs = try!(cm.with_expn_info(sp.expn_id, |expn_info| match expn_info {
-        Some(ei) => {
-            let ss = ei.callee.span.map_or(String::new(), |span| cm.span_to_string(span));
-            let (pre, post) = match ei.callee.format {
-                codemap::MacroAttribute => ("#[", "]"),
-                codemap::MacroBang => ("", "!")
-            };
-            try!(print_diagnostic(w, &ss[], Note,
-                                  &format!("in expansion of {}{}{}", pre,
-                                          ei.callee.name,
-                                          post)[], None));
-            let ss = cm.span_to_string(ei.call_site);
-            try!(print_diagnostic(w, &ss[], Note, "expansion site", None));
-            Ok(Some(ei.call_site))
-        }
-        None => Ok(None)
+    let cs = try!(cm.with_expn_info(sp.expn_id, |expn_info| -> old_io::IoResult<_> {
+        match expn_info {
+            Some(ei) => {
+                let ss = ei.callee.span.map_or(String::new(),
+                                               |span| cm.span_to_string(span));
+                let (pre, post) = match ei.callee.format {
+                    codemap::MacroAttribute => ("#[", "]"),
+                    codemap::MacroBang => ("", "!")
+                };
+                try!(print_diagnostic(w, &ss[], Note,
+                                      &format!("in expansion of {}{}{}", pre,
+                                              ei.callee.name,
+                                              post)[], None));
+                let ss = cm.span_to_string(ei.call_site);
+                try!(print_diagnostic(w, &ss[], Note, "expansion site", None));
+                Ok(Some(ei.call_site))
+            }
+            None => Ok(None)
+    }
     }));
     cs.map_or(Ok(()), |call_site| print_macro_backtrace(w, cm, call_site))
 }

@@ -809,8 +809,8 @@ pub fn create_global_var_metadata(cx: &CrateContext,
         namespace_node.mangled_name_of_contained_item(&var_name[]);
     let var_scope = namespace_node.scope;
 
-    let var_name = CString::from_slice(var_name.as_bytes());
-    let linkage_name = CString::from_slice(linkage_name.as_bytes());
+    let var_name = CString::new(var_name).unwrap();
+    let linkage_name = CString::new(linkage_name).unwrap();
     unsafe {
         llvm::LLVMDIBuilderCreateStaticVariable(DIB(cx),
                                                 var_scope,
@@ -1379,8 +1379,8 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let is_local_to_unit = is_node_local_to_unit(cx, fn_ast_id);
 
-    let function_name = CString::from_slice(function_name.as_bytes());
-    let linkage_name = CString::from_slice(linkage_name.as_bytes());
+    let function_name = CString::new(function_name).unwrap();
+    let linkage_name = CString::new(linkage_name).unwrap();
     let fn_metadata = unsafe {
         llvm::LLVMDIBuilderCreateFunction(
             DIB(cx),
@@ -1501,7 +1501,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 let ident = special_idents::type_self;
 
                 let ident = token::get_ident(ident);
-                let name = CString::from_slice(ident.as_bytes());
+                let name = CString::new(ident.as_bytes()).unwrap();
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
@@ -1535,7 +1535,7 @@ pub fn create_function_debug_context<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             if cx.sess().opts.debuginfo == FullDebugInfo {
                 let actual_type_metadata = type_metadata(cx, actual_type, codemap::DUMMY_SP);
                 let ident = token::get_ident(ident);
-                let name = CString::from_slice(ident.as_bytes());
+                let name = CString::new(ident.as_bytes()).unwrap();
                 let param_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateTemplateTypeParameter(
                         DIB(cx),
@@ -1601,7 +1601,7 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                             path_bytes.insert(1, prefix[1]);
                         }
 
-                        CString::from_vec(path_bytes)
+                        CString::new(path_bytes).unwrap()
                     }
                     _ => fallback_path(cx)
                 }
@@ -1614,8 +1614,8 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
                            (option_env!("CFG_VERSION")).expect("CFG_VERSION"));
 
     let compile_unit_name = compile_unit_name.as_ptr();
-    let work_dir = CString::from_slice(work_dir.as_vec());
-    let producer = CString::from_slice(producer.as_bytes());
+    let work_dir = CString::new(work_dir.as_vec()).unwrap();
+    let producer = CString::new(producer).unwrap();
     let flags = "\0";
     let split_name = "\0";
     return unsafe {
@@ -1632,7 +1632,7 @@ fn compile_unit_metadata(cx: &CrateContext) -> DIDescriptor {
     };
 
     fn fallback_path(cx: &CrateContext) -> CString {
-        CString::from_slice(cx.link_meta().crate_name.as_bytes())
+        CString::new(cx.link_meta().crate_name.clone()).unwrap()
     }
 }
 
@@ -1658,7 +1658,7 @@ fn declare_local<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         CapturedVariable => (0, DW_TAG_auto_variable)
     };
 
-    let name = CString::from_slice(name.as_bytes());
+    let name = CString::new(name.as_bytes()).unwrap();
     match (variable_access, [].as_slice()) {
         (DirectVariable { alloca }, address_operations) |
         (IndirectVariable {alloca, address_operations}, _) => {
@@ -1724,8 +1724,8 @@ fn file_metadata(cx: &CrateContext, full_path: &str) -> DIFile {
             full_path
         };
 
-    let file_name = CString::from_slice(file_name.as_bytes());
-    let work_dir = CString::from_slice(work_dir.as_bytes());
+    let file_name = CString::new(file_name).unwrap();
+    let work_dir = CString::new(work_dir).unwrap();
     let file_metadata = unsafe {
         llvm::LLVMDIBuilderCreateFile(DIB(cx), file_name.as_ptr(),
                                       work_dir.as_ptr())
@@ -1800,7 +1800,7 @@ fn basic_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
 
     let llvm_type = type_of::type_of(cx, t);
     let (size, align) = size_and_align_of(cx, llvm_type);
-    let name = CString::from_slice(name.as_bytes());
+    let name = CString::new(name).unwrap();
     let ty_metadata = unsafe {
         llvm::LLVMDIBuilderCreateBasicType(
             DIB(cx),
@@ -1820,7 +1820,7 @@ fn pointer_type_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
     let pointer_llvm_type = type_of::type_of(cx, pointer_type);
     let (pointer_size, pointer_align) = size_and_align_of(cx, pointer_llvm_type);
     let name = compute_debuginfo_type_name(cx, pointer_type, false);
-    let name = CString::from_slice(name.as_bytes());
+    let name = CString::new(name).unwrap();
     let ptr_metadata = unsafe {
         llvm::LLVMDIBuilderCreatePointerType(
             DIB(cx),
@@ -2445,7 +2445,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         .iter()
         .map(|v| {
             let token = token::get_name(v.name);
-            let name = CString::from_slice(token.as_bytes());
+            let name = CString::new(token.as_bytes()).unwrap();
             unsafe {
                 llvm::LLVMDIBuilderCreateEnumerator(
                     DIB(cx),
@@ -2475,7 +2475,7 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                                   codemap::DUMMY_SP);
                 let discriminant_name = get_enum_discriminant_name(cx, enum_def_id);
 
-                let name = CString::from_slice(discriminant_name.as_bytes());
+                let name = CString::new(discriminant_name.as_bytes()).unwrap();
                 let discriminant_type_metadata = unsafe {
                     llvm::LLVMDIBuilderCreateEnumerationType(
                         DIB(cx),
@@ -2518,8 +2518,8 @@ fn prepare_enum_metadata<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                              .borrow()
                              .get_unique_type_id_as_string(unique_type_id);
 
-    let enum_name = CString::from_slice(enum_name.as_bytes());
-    let unique_type_id_str = CString::from_slice(unique_type_id_str.as_bytes());
+    let enum_name = CString::new(enum_name).unwrap();
+    let unique_type_id_str = CString::new(unique_type_id_str.as_bytes()).unwrap();
     let enum_metadata = unsafe {
         llvm::LLVMDIBuilderCreateUnionType(
         DIB(cx),
@@ -2644,7 +2644,8 @@ fn set_members_of_composite_type(cx: &CrateContext,
                 ComputedMemberOffset => machine::llelement_offset(cx, composite_llvm_type, i)
             };
 
-            let member_name = CString::from_slice(member_description.name.as_bytes());
+            let member_name = member_description.name.as_bytes();
+            let member_name = CString::new(member_name).unwrap();
             unsafe {
                 llvm::LLVMDIBuilderCreateMemberType(
                     DIB(cx),
@@ -2681,8 +2682,8 @@ fn create_struct_stub(cx: &CrateContext,
     let unique_type_id_str = debug_context(cx).type_map
                                               .borrow()
                                               .get_unique_type_id_as_string(unique_type_id);
-    let name = CString::from_slice(struct_type_name.as_bytes());
-    let unique_type_id = CString::from_slice(unique_type_id_str.as_bytes());
+    let name = CString::new(struct_type_name).unwrap();
+    let unique_type_id = CString::new(unique_type_id_str.as_bytes()).unwrap();
     let metadata_stub = unsafe {
         // LLVMDIBuilderCreateStructType() wants an empty array. A null
         // pointer will lead to hard to trace and debug LLVM assertions
@@ -3971,8 +3972,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
                         None => ptr::null_mut()
                     };
                     let namespace_name = token::get_name(name);
-                    let namespace_name = CString::from_slice(namespace_name
-                                                                .as_bytes());
+                    let namespace_name = CString::new(namespace_name.as_bytes()).unwrap();
                     let scope = unsafe {
                         llvm::LLVMDIBuilderCreateNameSpace(
                             DIB(cx),
@@ -4020,7 +4020,7 @@ fn namespace_for_item(cx: &CrateContext, def_id: ast::DefId) -> Rc<NamespaceTree
 /// .debug_gdb_scripts global is referenced, so it isn't removed by the linker.
 pub fn insert_reference_to_gdb_debug_scripts_section_global(ccx: &CrateContext) {
     if needs_gdb_debug_scripts_section(ccx) {
-        let empty = CString::from_slice(b"");
+        let empty = CString::new(b"").unwrap();
         let gdb_debug_scripts_section_global =
             get_or_insert_gdb_debug_scripts_section_global(ccx);
         unsafe {
