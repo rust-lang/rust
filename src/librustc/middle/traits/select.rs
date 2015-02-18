@@ -20,7 +20,7 @@ use self::EvaluationResult::*;
 use super::{DerivedObligationCause};
 use super::{project};
 use super::project::Normalized;
-use super::{PredicateObligation, Obligation, TraitObligation, ObligationCause};
+use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
 use super::{Selection};
@@ -34,7 +34,7 @@ use super::{util};
 use middle::fast_reject;
 use middle::mem_categorization::Typer;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
-use middle::ty::{self, AsPredicate, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -1459,22 +1459,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                     ty::BoundSync |
                     ty::BoundSend => {
-                        // Note: technically, a region pointer is only
-                        // sendable if it has lifetime
-                        // `'static`. However, we don't take regions
-                        // into account when doing trait matching:
-                        // instead, when we decide that `T : Send`, we
-                        // will register a separate constraint with
-                        // the region inferencer that `T : 'static`
-                        // holds as well (because the trait `Send`
-                        // requires it). This will ensure that there
-                        // is no borrowed data in `T` (or else report
-                        // an inference error). The reason we do it
-                        // this way is that we do not yet *know* what
-                        // lifetime the borrowed reference has, since
-                        // we haven't finished running inference -- in
-                        // other words, there's a kind of
-                        // chicken-and-egg problem.
                         Ok(If(vec![referent_ty]))
                     }
                 }
@@ -1817,20 +1801,10 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             })
         }).collect::<Result<_, _>>();
-        let mut obligations = match obligations {
+        let obligations = match obligations {
             Ok(o) => o,
             Err(ErrorReported) => Vec::new()
         };
-
-        // as a special case, `Send` requires `'static`
-        if bound == ty::BoundSend {
-            obligations.push(Obligation {
-                cause: obligation.cause.clone(),
-                recursion_depth: obligation.recursion_depth+1,
-                predicate: ty::Binder(ty::OutlivesPredicate(obligation.self_ty(),
-                                                            ty::ReStatic)).as_predicate(),
-            });
-        }
 
         let obligations = VecPerParamSpace::new(obligations, Vec::new(), Vec::new());
 

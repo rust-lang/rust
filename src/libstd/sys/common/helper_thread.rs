@@ -81,7 +81,7 @@ impl<M: Send> Helper<M> {
     ///
     /// This function is safe to be called many times.
     pub fn boot<T, F>(&'static self, f: F, helper: fn(helper_signal::signal, Receiver<M>, T)) where
-        T: Send,
+        T: Send + 'static,
         F: FnOnce() -> T,
     {
         unsafe {

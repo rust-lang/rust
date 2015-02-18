@@ -287,7 +287,7 @@ mod tests {
 
     pub fn smalltest<F,G>(server: F, client: G)
         where F : FnOnce(UnixStream), F : Send,
-              G : FnOnce(UnixStream), G : Send
+              G : FnOnce(UnixStream), G : Send + 'static
     {
         let path1 = next_test_unix();
         let path2 = path1.clone();

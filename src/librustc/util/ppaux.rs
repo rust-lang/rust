@@ -697,9 +697,8 @@ impl<'tcx> UserString<'tcx> for ty::TyTrait<'tcx> {
         }
 
         // Region, if not obviously implied by builtin bounds.
-        if bounds.region_bound != ty::ReStatic ||
-            !bounds.builtin_bounds.contains(&ty::BoundSend)
-        { // Region bound is implied by builtin bounds:
+        if bounds.region_bound != ty::ReStatic {
+            // Region bound is implied by builtin bounds:
             components.push(bounds.region_bound.user_string(tcx));
         }
 

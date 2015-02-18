@@ -8,11 +8,18 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-fn assert_static<T: 'static>(_t: T) {}
+#![feature(core, std_misc)]
+use std::thread::Thread;
 
 fn main() {
-    let line = String::new();
-    match [&*line] { //~ ERROR `line` does not live long enough
-        [ word ] => { assert_static(word); }
-    }
+    let bad = {
+        let x = 1;
+        let y = &x;
+
+        Thread::scoped(|| { //~ ERROR cannot infer an appropriate lifetime
+            let _z = y;
+        })
+    };
+
+    bad.join().ok().unwrap();
 }
