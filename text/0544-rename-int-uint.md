@@ -46,10 +46,8 @@ However, given the discussions about the previous revisions of this RFC, and the
 
 # Detailed Design
 
-- Rename `int/uint` to `isize/usize`, with `is/us` being their literal suffixes, respectively.
+- Rename `int/uint` to `isize/usize`, with them being their own literal suffixes.
 - Update code and documentation to use pointer-sized integers more narrowly for their intended purposes. Provide a deprecation period to carry out these updates.
-
-Some would prefer using `isize/usize` directly as literal suffixes here, as `is/us` are actual words and maybe a bit *too* pleasant to use. But on the other hand, `42isize` can be too long for others.
 
 `usize` in action:
 
@@ -57,7 +55,37 @@ Some would prefer using `isize/usize` directly as literal suffixes here, as `is/
 fn slice_or_fail<'b>(&'b self, from: &usize, to: &usize) -> &'b [T]
 ```
 
-See **Alternatives B to L** for the other alternatives that are rejected.
+There are different opinions about which literal suffixes to use. The following section would discuss the alternatives.
+
+## Choosing literal suffixes:
+
+### `isize/usize`:
+
+* Pros: They are the same as the type names, very consistent with the rest of the integer primitives.
+* Cons: They are too long for some, and may stand out too much as suffixes. However, discouraging people from overusing `isize/usize` is the point of this RFC. And if they are not overused, then this will not be a problem in practice.
+
+### `is/us`:
+
+* Pros: They are succinct as suffixes.
+* Cons: They are actual English words, with `is` being a keyword in many programming languages and `us` being an abbreviation of "unsigned" (losing information) or "microsecond" (misleading). Also, `is/us` may be *too* short (shorter than `i64/u64`) and *too* pleasant to use, which can be a problem.
+
+Note: No matter which suffixes get chosen, it can be beneficial to reserve `is` as a keyword, but this is outside the scope of this RFC.
+
+### `iz/uz`:
+
+* Pros and cons: Similar to those of `is/us`, except that `iz/uz` are not actual words, which is an additional advantage. However it may not be immediately clear that `iz/uz` are abbreviations of `isize/usize`.
+
+### `i/u`:
+
+* Pros: They are very succinct.
+* Cons: They are *too* succinct and carry the "default integer types" connotation, which is undesirable. 
+
+### `isz/usz`:
+
+* Pros: They are the middle grounds between `isize/usize` and `is/us`, neither too long nor too short. They are not actual English words and it's clear that they are short for `isize/usize`.
+* Cons: Not everyone likes the appearances of `isz/usz`, but this can be said about all the candidates.
+
+After community discussions, it is deemed that using `isize/usize` directly as suffixes is a fine choice and there is no need to introduce other suffixes.
 
 ## Advantages of `isize/usize`:
 
@@ -65,6 +93,8 @@ See **Alternatives B to L** for the other alternatives that are rejected.
 - The names follow the `i/u + {suffix}` pattern that is used by all the other primitive integer types like `i32/u32`.
 - The names are newcomer friendly and have familiarity advantage over almost all other alternatives.
 - The names are easy on the eyes.
+
+See **Alternatives B to L** for the alternatives to `isize/usize` that have been rejected.
 
 # Drawbacks
 
@@ -82,7 +112,7 @@ Familiarity is a double edged sword here. `isize/usize` are chosen not because t
 
 # Alternatives
 
-## A. Keep the status quo.
+## A. Keep the status quo:
 
 Which may hurt in the long run, especially when there is at least one (would-be?) high-profile language (which is Rust-inspired) taking the opposite stance of Rust.
 
