@@ -110,7 +110,7 @@ use core::prelude::*;
 use ascii::*;
 use borrow::BorrowFrom;
 use cmp;
-use iter;
+use iter::{self, IntoIterator};
 use mem;
 use ops::{self, Deref};
 use string::CowString;
@@ -953,7 +953,7 @@ impl PathBuf {
 }
 
 impl<'a, P: ?Sized + 'a> iter::FromIterator<&'a P> for PathBuf where P: AsPath {
-    fn from_iter<I: Iterator<Item = &'a P>>(iter: I) -> PathBuf {
+    fn from_iter<I: IntoIterator<Item = &'a P>>(iter: I) -> PathBuf {
         let mut buf = PathBuf::new("");
         buf.extend(iter);
         buf
@@ -961,7 +961,7 @@ impl<'a, P: ?Sized + 'a> iter::FromIterator<&'a P> for PathBuf where P: AsPath {
 }
 
 impl<'a, P: ?Sized + 'a> iter::Extend<&'a P> for PathBuf where P: AsPath {
-    fn extend<I: Iterator<Item = &'a P>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = &'a P>>(&mut self, iter: I) {
         for p in iter {
             self.push(p)
         }

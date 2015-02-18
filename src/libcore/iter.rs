@@ -113,9 +113,9 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
                           built from an iterator over elements of type `{A}`"]
 pub trait FromIterator<A> {
-    /// Build a container with elements from an external iterator.
+    /// Build a container with elements from something iterable.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
+    fn from_iter<T: IntoIterator<Item=A>>(iterator: T) -> Self;
 }
 
 /// Conversion into an `Iterator`
@@ -147,7 +147,7 @@ impl<I: Iterator> IntoIterator for I {
 pub trait Extend<A> {
     /// Extend a container with the elements yielded by an arbitrary iterator
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: Iterator<Item=A>>(&mut self, iterator: T);
+    fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
 }
 
 /// An extension trait providing numerous methods applicable to all iterators.

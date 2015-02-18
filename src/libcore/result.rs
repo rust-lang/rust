@@ -230,7 +230,8 @@ use self::Result::{Ok, Err};
 
 use clone::Clone;
 use fmt;
-use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, ExactSizeIterator};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator,
+           FromIterator, ExactSizeIterator, IntoIterator};
 use ops::{FnMut, FnOnce};
 use option::Option::{self, None, Some};
 use slice::AsSlice;
@@ -906,7 +907,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
     /// assert!(res == Ok(vec!(2, 3)));
     /// ```
     #[inline]
-    fn from_iter<I: Iterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {
+    fn from_iter<I: IntoIterator<Item=Result<A, E>>>(iter: I) -> Result<V, E> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
@@ -931,7 +932,7 @@ impl<A, E, V: FromIterator<A>> FromIterator<Result<A, E>> for Result<V, E> {
             }
         }
 
-        let mut adapter = Adapter { iter: iter, err: None };
+        let mut adapter = Adapter { iter: iter.into_iter(), err: None };
         let v: V = FromIterator::from_iter(adapter.by_ref());
 
         match adapter.err {

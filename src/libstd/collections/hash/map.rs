@@ -1534,7 +1534,8 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
 impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
     where K: Eq + Hash, S: HashState + Default
 {
-    fn from_iter<T: Iterator<Item=(K, V)>>(iter: T) -> HashMap<K, V, S> {
+    fn from_iter<T: IntoIterator<Item=(K, V)>>(iterable: T) -> HashMap<K, V, S> {
+        let iter = iterable.into_iter();
         let lower = iter.size_hint().0;
         let mut map = HashMap::with_capacity_and_hash_state(lower,
                                                             Default::default());
@@ -1547,7 +1548,7 @@ impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
 impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
     where K: Eq + Hash, S: HashState
 {
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
+    fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }

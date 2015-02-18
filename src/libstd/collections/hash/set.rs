@@ -614,7 +614,8 @@ impl<T, S> FromIterator<T> for HashSet<T, S>
     where T: Eq + Hash,
           S: HashState + Default,
 {
-    fn from_iter<I: Iterator<Item=T>>(iter: I) -> HashSet<T, S> {
+    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> HashSet<T, S> {
+        let iter = iterable.into_iter();
         let lower = iter.size_hint().0;
         let mut set = HashSet::with_capacity_and_hash_state(lower, Default::default());
         set.extend(iter);
@@ -627,7 +628,7 @@ impl<T, S> Extend<T> for HashSet<T, S>
     where T: Eq + Hash,
           S: HashState,
 {
-    fn extend<I: Iterator<Item=T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item=T>>(&mut self, iter: I) {
         for k in iter {
             self.insert(k);
         }

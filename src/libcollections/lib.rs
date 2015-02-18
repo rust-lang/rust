@@ -48,16 +48,32 @@ extern crate alloc;
 #[cfg(test)] #[macro_use] extern crate log;
 
 pub use binary_heap::BinaryHeap;
-pub use bitv::Bitv;
-pub use bitv_set::BitvSet;
+pub use bit_vec::BitVec;
+pub use bit_set::BitSet;
 pub use btree_map::BTreeMap;
 pub use btree_set::BTreeSet;
-pub use dlist::DList;
+pub use linked_list::LinkedList;
 pub use enum_set::EnumSet;
-pub use ring_buf::RingBuf;
+pub use vec_deque::VecDeque;
 pub use string::String;
 pub use vec::Vec;
 pub use vec_map::VecMap;
+
+#[deprecated(since = "1.0.0", reason = "renamed to vec_deque")]
+#[unstable(feature = "collections")]
+pub use vec_deque as ring_buf;
+
+#[deprecated(since = "1.0.0", reason = "renamed to linked_list")]
+#[unstable(feature = "collections")]
+pub use linked_list as dlist;
+
+#[deprecated(since = "1.0.0", reason = "renamed to bit_vec")]
+#[unstable(feature = "collections")]
+pub use bit_vec as bitv;
+
+#[deprecated(since = "1.0.0", reason = "renamed to bit_set")]
+#[unstable(feature = "collections")]
+pub use bit_set as bitv_set;
 
 // Needed for the vec! macro
 pub use alloc::boxed;
@@ -70,10 +86,10 @@ mod macros;
 pub mod binary_heap;
 mod bit;
 mod btree;
-pub mod dlist;
+pub mod linked_list;
 pub mod enum_set;
 pub mod fmt;
-pub mod ring_buf;
+pub mod vec_deque;
 pub mod slice;
 pub mod str;
 pub mod string;
@@ -82,15 +98,23 @@ pub mod vec_map;
 
 #[unstable(feature = "collections",
            reason = "RFC 509")]
-pub mod bitv {
-    pub use bit::{Bitv, Iter};
+pub mod bit_vec {
+    pub use bit::{BitVec, Iter};
+
+    #[deprecated(since = "1.0.0", reason = "renamed to BitVec")]
+    #[unstable(feature = "collections")]
+    pub use bit::BitVec as Bitv;
 }
 
 #[unstable(feature = "collections",
            reason = "RFC 509")]
-pub mod bitv_set {
-    pub use bit::{BitvSet, Union, Intersection, Difference, SymmetricDifference};
+pub mod bit_set {
+    pub use bit::{BitSet, Union, Intersection, Difference, SymmetricDifference};
     pub use bit::SetIter as Iter;
+
+    #[deprecated(since = "1.0.0", reason = "renamed to BitSet")]
+    #[unstable(feature = "collections")]
+    pub use bit::BitSet as BitvSet;
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
