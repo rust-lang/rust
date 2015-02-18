@@ -12,6 +12,7 @@
 // "outlives" requirements. Issue #22246.
 
 #![allow(dead_code)]
+#![feature(rustc_attrs)]
 
 ///////////////////////////////////////////////////////////////////////////
 
