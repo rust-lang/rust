@@ -10,7 +10,6 @@
 
 //! Implementation of the `build` subcommand, used to compile a book.
 
-use std::os;
 use std::env;
 use std::old_io;
 use std::old_io::{fs, File, BufferedWriter, TempDir, IoResult};

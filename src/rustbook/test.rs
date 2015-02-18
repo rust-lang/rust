@@ -17,7 +17,6 @@ use error::Error;
 use term::Term;
 use book;
 use std::old_io::{Command, File};
-use std::os;
 use std::env;
 
 struct Test;
