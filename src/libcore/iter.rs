@@ -728,10 +728,11 @@ pub trait IteratorExt: Iterator + Sized {
         P: FnMut(Self::Item) -> bool,
         Self: ExactSizeIterator + DoubleEndedIterator
     {
-        let mut i = self.len() - 1;
+        let mut i = self.len();
+
         while let Some(v) = self.next_back() {
             if predicate(v) {
-                return Some(i);
+                return Some(i - 1);
             }
             i -= 1;
         }
