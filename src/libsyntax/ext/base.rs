@@ -640,7 +640,7 @@ impl<'a> ExtCtxt<'a> {
     pub fn mod_path(&self) -> Vec<ast::Ident> {
         let mut v = Vec::new();
         v.push(token::str_to_ident(&self.ecfg.crate_name[]));
-        v.extend(self.mod_path.iter().map(|a| *a));
+        v.extend(self.mod_path.iter().cloned());
         return v;
     }
     pub fn bt_push(&mut self, ei: ExpnInfo) {

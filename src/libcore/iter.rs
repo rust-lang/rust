@@ -332,7 +332,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let xs = [100, 200, 300];
-    /// let mut it = xs.iter().map(|x| *x).peekable();
+    /// let mut it = xs.iter().cloned().peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 200);
@@ -522,7 +522,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// let a = [1, 4, 2, 3, 8, 9, 6];
     /// let sum = a.iter()
-    ///             .map(|&x| x)
+    ///             .cloned()
     ///             .inspect(|&x| println!("filtering {}", x))
     ///             .filter(|&x| x % 2 == 0)
     ///             .inspect(|&x| println!("{} made it through", x))
@@ -561,7 +561,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// let b: Vec<_> = a.iter().map(|&x| x).collect();
+    /// let b: Vec<_> = a.iter().cloned().collect();
     /// assert_eq!(a, b);
     /// ```
     #[inline]
@@ -937,7 +937,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let a = [(1, 2), (3, 4)];
-    /// let (left, right): (Vec<_>, Vec<_>) = a.iter().map(|&x| x).unzip();
+    /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
     /// assert_eq!([1, 3], left);
     /// assert_eq!([2, 4], right);
     /// ```
@@ -1142,7 +1142,7 @@ pub trait AdditiveIterator<A> {
     /// use std::iter::AdditiveIterator;
     ///
     /// let a = [1i32, 2, 3, 4, 5];
-    /// let mut it = a.iter().map(|&x| x);
+    /// let mut it = a.iter().cloned();
     /// assert!(it.sum() == 15);
     /// ```
     fn sum(self) -> A;
@@ -1304,6 +1304,23 @@ impl<T, D, I> ExactSizeIterator for Cloned<I> where
     D: Deref<Target=T>,
     I: ExactSizeIterator<Item=D>,
 {}
+
+#[unstable(feature = "core", reason = "trait is experimental")]
+impl<T, D, I> RandomAccessIterator for Cloned<I> where
+    T: Clone,
+    D: Deref<Target=T>,
+    I: RandomAccessIterator<Item=D>
+{
+    #[inline]
+    fn indexable(&self) -> usize {
+        self.it.indexable()
+    }
+
+    #[inline]
+    fn idx(&mut self, index: usize) -> Option<T> {
+        self.it.idx(index).cloned()
+    }
+}
 
 /// An iterator that repeats endlessly
 #[derive(Clone)]

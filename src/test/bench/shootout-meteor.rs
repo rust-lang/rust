@@ -202,7 +202,7 @@ fn filter_masks(masks: &mut Vec<Vec<Vec<u64>>>) {
     for i in 0..masks.len() {
         for j in 0..(*masks)[i].len() {
             masks[i][j] =
-                (*masks)[i][j].iter().map(|&m| m)
+                (*masks)[i][j].iter().cloned()
                 .filter(|&m| !is_board_unfeasible(m, masks))
                 .collect();
         }
@@ -270,7 +270,7 @@ fn handle_sol(raw_sol: &List<u64>, data: &mut Data) {
     // reverse order, i.e. the board rotated by half a turn.
     data.nb += 2;
     let sol1 = to_vec(raw_sol);
-    let sol2: Vec<u8> = sol1.iter().rev().map(|x| *x).collect();
+    let sol2: Vec<u8> = sol1.iter().rev().cloned().collect();
 
     if data.nb == 2 {
         data.min = sol1.clone();

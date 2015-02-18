@@ -159,7 +159,7 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                                                       None,
                                                       None,
                                                       arg.iter()
-                                                         .map(|x| (*x).clone())
+                                                         .cloned()
                                                          .collect(),
                                                       true);
             match parse(cx.parse_sess(), cx.cfg(), arg_rdr, lhs_tt) {

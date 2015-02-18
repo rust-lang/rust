@@ -1920,18 +1920,15 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 -> ResolveResult<(Rc<Module>, LastPrivate)> {
         fn search_parent_externals(needle: Name, module: &Rc<Module>)
                                 -> Option<Rc<Module>> {
-            module.external_module_children.borrow()
-                                            .get(&needle).cloned()
-                                            .map(|_| module.clone())
-                                            .or_else(|| {
-                match module.parent_link.clone() {
-                    ModuleParentLink(parent, _) => {
-                        search_parent_externals(needle,
-                                                &parent.upgrade().unwrap())
+            match module.external_module_children.borrow().get(&needle) {
+                Some(_) => Some(module.clone()),
+                None => match module.parent_link {
+                    ModuleParentLink(ref parent, _) => {
+                        search_parent_externals(needle, &parent.upgrade().unwrap())
                     }
                    _ => None
                 }
-            })
+            }
         }
 
         let mut search_module = module_;

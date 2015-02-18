@@ -2286,7 +2286,7 @@ mod tests {
     #[test]
     fn test_from_bools() {
         let bools = vec![true, false, true, true];
-        let bitv: Bitv = bools.iter().map(|n| *n).collect();
+        let bitv: Bitv = bools.iter().cloned().collect();
         assert_eq!(format!("{:?}", bitv), "1011");
     }
 
@@ -2299,12 +2299,12 @@ mod tests {
     #[test]
     fn test_bitv_iterator() {
         let bools = vec![true, false, true, true];
-        let bitv: Bitv = bools.iter().map(|n| *n).collect();
+        let bitv: Bitv = bools.iter().cloned().collect();
 
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), bools);
 
         let long: Vec<_> = (0i32..10000).map(|i| i % 2 == 0).collect();
-        let bitv: Bitv = long.iter().map(|n| *n).collect();
+        let bitv: Bitv = long.iter().cloned().collect();
         assert_eq!(bitv.iter().collect::<Vec<bool>>(), long)
     }
 

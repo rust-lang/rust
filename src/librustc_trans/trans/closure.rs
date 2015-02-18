@@ -208,7 +208,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let function_type = typer.closure_type(closure_id, param_substs);
 
     let freevars: Vec<ty::Freevar> =
-        ty::with_freevars(tcx, id, |fv| fv.iter().map(|&fv| fv).collect());
+        ty::with_freevars(tcx, id, |fv| fv.iter().cloned().collect());
 
     let sig = ty::erase_late_bound_regions(tcx, &function_type.sig);
 
