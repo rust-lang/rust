@@ -356,9 +356,9 @@ impl Wtf8Buf {
 /// This replaces surrogate code point pairs with supplementary code points,
 /// like concatenating ill-formed UTF-16 strings effectively would.
 impl FromIterator<CodePoint> for Wtf8Buf {
-    fn from_iter<T: Iterator<Item=CodePoint>>(iterator: T) -> Wtf8Buf {
+    fn from_iter<T: IntoIterator<Item=CodePoint>>(iter: T) -> Wtf8Buf {
         let mut string = Wtf8Buf::new();
-        string.extend(iterator);
+        string.extend(iter);
         string
     }
 }

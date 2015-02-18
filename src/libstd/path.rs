@@ -953,7 +953,7 @@ impl PathBuf {
 }
 
 impl<'a, P: ?Sized + 'a> iter::FromIterator<&'a P> for PathBuf where P: AsPath {
-    fn from_iter<I: Iterator<Item = &'a P>>(iter: I) -> PathBuf {
+    fn from_iter<I: IntoIterator<Item = &'a P>>(iter: I) -> PathBuf {
         let mut buf = PathBuf::new("");
         buf.extend(iter);
         buf
