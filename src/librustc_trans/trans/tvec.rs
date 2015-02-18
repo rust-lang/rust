@@ -171,33 +171,27 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vt = vec_types_from_expr(bcx, content_expr);
     let count = elements_required(bcx, content_expr);
     debug!("    vt={}, count={}", vt.to_string(ccx), count);
-    let llcount = C_uint(ccx, count);
 
     let fixed_ty = ty::mk_vec(bcx.tcx(),
                               vt.unit_ty,
                               Some(count));
-    let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
+    let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty);
 
-    let llfixed = if count == 0 {
-        // Just create a zero-sized alloca to preserve
-        // the non-null invariant of the inner slice ptr
-        let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
-        BitCast(bcx, llfixed, llfixed_ty)
-    } else {
-        // Make a fixed-length backing array and allocate it on the stack.
-        let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
+    // Always create an alloca even if zero-sized, to preserve
+    // the non-null invariant of the inner slice ptr
+    let llfixed = base::alloca(bcx, llfixed_ty, "");
 
+    if count > 0 {
         // Arrange for the backing array to be cleaned up.
-        let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
         let cleanup_scope = cleanup::temporary_scope(bcx.tcx(), content_expr.id);
-        fcx.schedule_lifetime_end(cleanup_scope, llfixed_casted);
-        fcx.schedule_drop_mem(cleanup_scope, llfixed_casted, fixed_ty);
+        fcx.schedule_lifetime_end(cleanup_scope, llfixed);
+        fcx.schedule_drop_mem(cleanup_scope, llfixed, fixed_ty);
 
         // Generate the content into the backing array.
-        bcx = write_content(bcx, &vt, slice_expr,
-                            content_expr, SaveIn(llfixed));
-
-        llfixed_casted
+        // llfixed has type *[T x N], but we want the type *T,
+        // so use GEP to convert
+        bcx = write_content(bcx, &vt, slice_expr, content_expr,
+                            SaveIn(GEPi(bcx, llfixed, &[0, 0])));
     };
 
     immediate_rvalue_bcx(bcx, llfixed, vec_ty).to_expr_datumblock()
