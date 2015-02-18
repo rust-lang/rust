@@ -498,28 +498,17 @@ pub fn version(binary: &str, matches: &getopts::Matches) {
 }
 
 fn usage(verbose: bool, include_unstable_options: bool) {
-    let groups = if verbose {
-        config::rustc_optgroups()
-    } else {
-        config::rustc_short_optgroups()
-    };
-    let groups : Vec<_> = groups.into_iter()
+    let groups : Vec<_> = config::rustc_optgroups().into_iter()
         .filter(|x| include_unstable_options || x.is_stable())
         .map(|x|x.opt_group)
         .collect();
     let message = format!("Usage: rustc [OPTIONS] INPUT");
-    let extra_help = if verbose {
-        ""
-    } else {
-        "\n    --help -v           Print the full set of options rustc accepts"
-    };
     println!("{}\n\
 Additional help:
     -C help             Print codegen options
     -W help             Print 'lint' options and default settings
-    -Z help             Print internal options for debugging rustc{}\n",
-              getopts::usage(&message, &groups),
-              extra_help);
+    -Z help             Print internal options for debugging rustc\n",
+              getopts::usage(&message, &groups));
 }
 
 fn describe_lints(lint_store: &lint::LintStore, loaded_plugins: bool) {
