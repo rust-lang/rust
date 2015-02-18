@@ -21,6 +21,7 @@
 #![feature(test)]
 #![feature(unicode)]
 #![feature(env)]
+#![feature(core)]
 
 #![deny(warnings)]
 

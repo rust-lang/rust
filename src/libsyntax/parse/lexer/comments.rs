@@ -61,7 +61,7 @@ pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
 
 pub fn strip_doc_comment_decoration(comment: &str) -> String {
     /// remove whitespace-only lines from the start/end of lines
-    fn vertical_trim(lines: Vec<String> ) -> Vec<String> {
+    fn vertical_trim(lines: Vec<String>) -> Vec<String> {
         let mut i = 0;
         let mut j = lines.len();
         // first line of all-stars should be omitted
@@ -82,7 +82,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         while j > i && lines[j - 1].trim().is_empty() {
             j -= 1;
         }
-        return lines[i..j].iter().map(|x| (*x).clone()).collect();
+        lines[i..j].iter().cloned().collect()
     }
 
     /// remove a "[ \t]*\*" block from each line, if possible

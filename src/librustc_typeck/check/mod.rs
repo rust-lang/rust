@@ -640,7 +640,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
     // Remember return type so that regionck can access it later.
     let mut fn_sig_tys: Vec<Ty> =
         arg_tys.iter()
-        .map(|&ty| ty)
+        .cloned()
         .collect();
 
     if let ty::FnConverging(ret_ty) = ret_ty {
@@ -3220,7 +3220,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         for field in ast_fields {
             let mut expected_field_type = tcx.types.err;
 
-            let pair = class_field_map.get(&field.ident.node.name).map(|x| *x);
+            let pair = class_field_map.get(&field.ident.node.name).cloned();
             match pair {
                 None => {
                     fcx.type_error_message(
@@ -3852,7 +3852,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprStruct(ref path, ref fields, ref base_expr) => {
         // Resolve the path.
-        let def = tcx.def_map.borrow().get(&id).map(|i| *i);
+        let def = tcx.def_map.borrow().get(&id).cloned();
         let struct_id = match def {
             Some(def::DefVariant(enum_id, variant_id, true)) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,

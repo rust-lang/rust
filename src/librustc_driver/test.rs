@@ -254,7 +254,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 output_ty: Ty<'tcx>)
                 -> Ty<'tcx>
     {
-        let input_args = input_tys.iter().map(|ty| *ty).collect();
+        let input_args = input_tys.iter().cloned().collect();
         ty::mk_bare_fn(self.infcx.tcx,
                        None,
                        self.infcx.tcx.mk_bare_fn(ty::BareFnTy {

@@ -547,7 +547,7 @@ mod test {
     #[test]
     fn test_choose() {
         let mut r = thread_rng();
-        assert_eq!(r.choose(&[1, 1, 1]).map(|&x|x), Some(1));
+        assert_eq!(r.choose(&[1, 1, 1]).cloned(), Some(1));
 
         let v: &[int] = &[];
         assert_eq!(r.choose(v), None);

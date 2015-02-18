@@ -1197,7 +1197,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let trait_ref =
                     bcx.tcx().object_cast_map.borrow()
                                              .get(&expr.id)
-                                             .map(|t| (*t).clone())
+                                             .cloned()
                                              .unwrap();
                 let trait_ref = bcx.monomorphize(&trait_ref);
                 let datum = unpack_datum!(bcx, trans(bcx, &**val));

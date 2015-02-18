@@ -926,7 +926,7 @@ mod tests {
     #[cfg(unix)]
     fn join_paths_unix() {
         fn test_eq(input: &[&str], output: &str) -> bool {
-            &*join_paths(input.iter().map(|s| *s)).unwrap() ==
+            &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::from_str(output)
         }
 
@@ -935,14 +935,14 @@ mod tests {
                          "/bin:/usr/bin:/usr/local/bin"));
         assert!(test_eq(&["", "/bin", "", "", "/usr/bin", ""],
                          ":/bin:::/usr/bin:"));
-        assert!(join_paths(["/te:st"].iter().map(|s| *s)).is_err());
+        assert!(join_paths(["/te:st"].iter().cloned()).is_err());
     }
 
     #[test]
     #[cfg(windows)]
     fn join_paths_windows() {
         fn test_eq(input: &[&str], output: &str) -> bool {
-            &*join_paths(input.iter().map(|s| *s)).unwrap() ==
+            &*join_paths(input.iter().cloned()).unwrap() ==
                 OsStr::from_str(output)
         }
 
@@ -953,6 +953,6 @@ mod tests {
                         r";c:\windows;;;c:\;"));
         assert!(test_eq(&[r"c:\te;st", r"c:\"],
                         r#""c:\te;st";c:\"#));
-        assert!(join_paths([r#"c:\te"st"#].iter().map(|s| *s)).is_err());
+        assert!(join_paths([r#"c:\te"st"#].iter().cloned()).is_err());
     }
     }

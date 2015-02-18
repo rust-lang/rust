@@ -367,7 +367,7 @@ impl<'a> TraitDef<'a> {
                 "allow" | "warn" | "deny" | "forbid" => true,
                 _ => false,
             }
-        }).map(|a| a.clone()));
+        }).cloned());
         push(P(ast::Item {
             attrs: attrs,
             ..(*newitem).clone()
@@ -410,7 +410,7 @@ impl<'a> TraitDef<'a> {
         let mut ty_params = ty_params.into_vec();
 
         // Copy the lifetimes
-        lifetimes.extend(generics.lifetimes.iter().map(|l| (*l).clone()));
+        lifetimes.extend(generics.lifetimes.iter().cloned());
 
         // Create the type parameters.
         ty_params.extend(generics.ty_params.iter().map(|ty_param| {
@@ -445,14 +445,14 @@ impl<'a> TraitDef<'a> {
                         span: self.span,
                         bound_lifetimes: wb.bound_lifetimes.clone(),
                         bounded_ty: wb.bounded_ty.clone(),
-                        bounds: OwnedSlice::from_vec(wb.bounds.iter().map(|b| b.clone()).collect())
+                        bounds: OwnedSlice::from_vec(wb.bounds.iter().cloned().collect())
                     })
                 }
                 ast::WherePredicate::RegionPredicate(ref rb) => {
                     ast::WherePredicate::RegionPredicate(ast::WhereRegionPredicate {
                         span: self.span,
                         lifetime: rb.lifetime,
-                        bounds: rb.bounds.iter().map(|b| b.clone()).collect()
+                        bounds: rb.bounds.iter().cloned().collect()
                     })
                 }
                 ast::WherePredicate::EqPredicate(ref we) => {
@@ -500,7 +500,7 @@ impl<'a> TraitDef<'a> {
         let opt_trait_ref = Some(trait_ref);
         let ident = ast_util::impl_pretty_name(&opt_trait_ref, &*self_type);
         let mut a = vec![attr];
-        a.extend(self.attributes.iter().map(|a| a.clone()));
+        a.extend(self.attributes.iter().cloned());
         cx.item(
             self.span,
             ident,
