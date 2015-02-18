@@ -30,7 +30,7 @@ enum SmallVectorRepr<T> {
 }
 
 impl<T> FromIterator<T> for SmallVector<T> {
-    fn from_iter<I: Iterator<Item=T>>(iter: I) -> SmallVector<T> {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> SmallVector<T> {
         let mut v = SmallVector::zero();
         v.extend(iter);
         v

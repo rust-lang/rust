@@ -709,18 +709,18 @@ impl Error for FromUtf16Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I:Iterator<Item=char>>(iterator: I) -> String {
+    fn from_iter<I: IntoIterator<Item=char>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterator);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I:Iterator<Item=&'a str>>(iterator: I) -> String {
+    fn from_iter<I: IntoIterator<Item=&'a str>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterator);
+        buf.extend(iter);
         buf
     }
 }

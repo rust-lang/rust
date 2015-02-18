@@ -473,7 +473,7 @@ impl<T: Ord> BTreeSet<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
-    fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BTreeSet<T> {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> BTreeSet<T> {
         let mut set = BTreeSet::new();
         set.extend(iter);
         set

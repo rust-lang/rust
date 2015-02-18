@@ -1407,7 +1407,8 @@ impl<T> ops::DerefMut for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
+    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> Vec<T> {
+        let mut iterator = iterable.into_iter();
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
 
@@ -1651,7 +1652,7 @@ pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
 
 #[unstable(feature = "collections")]
 impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
-    fn from_iter<I: Iterator<Item=T>>(it: I) -> CowVec<'a, T> {
+    fn from_iter<I: IntoIterator<Item=T>>(it: I) -> CowVec<'a, T> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }

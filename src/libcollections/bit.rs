@@ -924,9 +924,9 @@ impl Default for BitVec {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<bool> for BitVec {
-    fn from_iter<I:Iterator<Item=bool>>(iterator: I) -> BitVec {
-        let mut ret = BitVec::new();
-        ret.extend(iterator);
+    fn from_iter<I: IntoIterator<Item=bool>>(iter: I) -> BitVec {
+        let mut ret = Bitv::new();
+        ret.extend(iter);
         ret
     }
 }
@@ -1134,9 +1134,9 @@ impl Default for BitSet {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<usize> for BitSet {
-    fn from_iter<I:Iterator<Item=usize>>(iterator: I) -> BitSet {
-        let mut ret = BitSet::new();
-        ret.extend(iterator);
+    fn from_iter<I: IntoIterator<Item=usize>>(iter: I) -> BitSet {
+        let mut ret = BitvSet::new();
+        ret.extend(iter);
         ret
     }
 }

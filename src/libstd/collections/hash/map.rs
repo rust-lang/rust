@@ -1555,7 +1555,8 @@ impl<K, V, S, H> FromIterator<(K, V)> for HashMap<K, V, S>
           S: HashState<Hasher=H> + Default,
           H: hash::Hasher<Output=u64>
 {
-    fn from_iter<T: Iterator<Item=(K, V)>>(iter: T) -> HashMap<K, V, S> {
+    fn from_iter<T: IntoIterator<Item=(K, V)>>(iterable: T) -> HashMap<K, V, S> {
+        let iter = iterable.into_iter();
         let lower = iter.size_hint().0;
         let mut map = HashMap::with_capacity_and_hash_state(lower,
                                                             Default::default());
