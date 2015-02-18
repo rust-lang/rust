@@ -1162,8 +1162,8 @@ pub fn langcall(bcx: Block,
         Err(s) => {
             let msg = format!("{} {}", msg, s);
             match span {
-                Some(span) => bcx.tcx().sess.span_fatal(span, &msg[]),
-                None => bcx.tcx().sess.fatal(&msg[]),
+                Some(span) => bcx.tcx().sess.span_fatal(span, &msg[..]),
+                None => bcx.tcx().sess.fatal(&msg[..]),
             }
         }
     }

@@ -607,7 +607,7 @@ impl Printer {
             assert_eq!(l, len);
             // assert!(l <= space);
             self.space -= len;
-            self.print_str(&s[])
+            self.print_str(&s[..])
           }
           Token::Eof => {
             // Eof should never get here.

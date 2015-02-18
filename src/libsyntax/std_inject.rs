@@ -54,7 +54,7 @@ impl<'a> fold::Folder for StandardLibraryInjector<'a> {
 
         // The name to use in `extern crate "name" as std;`
         let actual_crate_name = match self.alt_std_name {
-            Some(ref s) => token::intern_and_get_ident(&s[]),
+            Some(ref s) => token::intern_and_get_ident(&s[..]),
             None => token::intern_and_get_ident("std"),
         };
 

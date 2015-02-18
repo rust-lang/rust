@@ -1177,12 +1177,12 @@ impl ElementSwaps {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Borrow<[T]> for Vec<T> {
-    fn borrow(&self) -> &[T] { &self[] }
+    fn borrow(&self) -> &[T] { &self[..] }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> BorrowMut<[T]> for Vec<T> {
-    fn borrow_mut(&mut self) -> &mut [T] { &mut self[] }
+    fn borrow_mut(&mut self) -> &mut [T] { &mut self[..] }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1744,7 +1744,7 @@ mod tests {
     #[test]
     fn test_slice_from() {
         let vec: &[_] = &[1, 2, 3, 4];
-        assert_eq!(&vec[], vec);
+        assert_eq!(&vec[..], vec);
         let b: &[_] = &[3, 4];
         assert_eq!(&vec[2..], b);
         let b: &[_] = &[];
@@ -1997,9 +1997,9 @@ mod tests {
 
     #[test]
     fn test_lexicographic_permutations_empty_and_short() {
-        let empty : &mut[i32] = &mut[];
+        let empty : &mut[i32] = &mut[..];
         assert!(empty.next_permutation() == false);
-        let b: &mut[i32] = &mut[];
+        let b: &mut[i32] = &mut[..];
         assert!(empty == b);
         assert!(empty.prev_permutation() == false);
         assert!(empty == b);
@@ -2265,15 +2265,15 @@ mod tests {
     #[test]
     fn test_total_ord() {
         let c = &[1, 2, 3];
-        [1, 2, 3, 4][].cmp(c) == Greater;
+        [1, 2, 3, 4][..].cmp(c) == Greater;
         let c = &[1, 2, 3, 4];
-        [1, 2, 3][].cmp(c) == Less;
+        [1, 2, 3][..].cmp(c) == Less;
         let c = &[1, 2, 3, 6];
-        [1, 2, 3, 4][].cmp(c) == Equal;
+        [1, 2, 3, 4][..].cmp(c) == Equal;
         let c = &[1, 2, 3, 4, 5, 6];
-        [1, 2, 3, 4, 5, 5, 5, 5][].cmp(c) == Less;
+        [1, 2, 3, 4, 5, 5, 5, 5][..].cmp(c) == Less;
         let c = &[1, 2, 3, 4];
-        [2, 2][].cmp(c) == Greater;
+        [2, 2][..].cmp(c) == Greater;
     }
 
     #[test]

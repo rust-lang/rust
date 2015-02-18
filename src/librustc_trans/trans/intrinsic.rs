@@ -166,7 +166,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let name = token::get_ident(foreign_item.ident);
 
     // For `transmute` we can just trans the input expr directly into dest
-    if &name[] == "transmute" {
+    if &name[..] == "transmute" {
         let llret_ty = type_of::type_of(ccx, ret_ty.unwrap());
         match args {
             callee::ArgExprs(arg_exprs) => {
@@ -274,13 +274,13 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     let call_debug_location = DebugLoc::At(call_info.id, call_info.span);
 
     // These are the only intrinsic functions that diverge.
-    if &name[] == "abort" {
+    if &name[..] == "abort" {
         let llfn = ccx.get_intrinsic(&("llvm.trap"));
         Call(bcx, llfn, &[], None, call_debug_location);
         fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         Unreachable(bcx);
         return Result::new(bcx, C_undef(Type::nil(ccx).ptr_to()));
-    } else if &name[] == "unreachable" {
+    } else if &name[..] == "unreachable" {
         fcx.pop_and_trans_custom_cleanup_scope(bcx, cleanup_scope);
         Unreachable(bcx);
         return Result::new(bcx, C_nil(ccx));
@@ -307,7 +307,7 @@ pub fn trans_intrinsic_call<'a, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
     };
 
     let simple = get_simple_intrinsic(ccx, &*foreign_item);
-    let llval = match (simple, &name[]) {
+    let llval = match (simple, &name[..]) {
         (Some(llfn), _) => {
             Call(bcx, llfn, &llargs, None, call_debug_location)
         }

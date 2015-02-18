@@ -629,7 +629,7 @@ pub fn build_configuration(sess: &Session) -> ast::CrateConfig {
         append_configuration(&mut user_cfg, InternedString::new("test"))
     }
     let mut v = user_cfg.into_iter().collect::<Vec<_>>();
-    v.push_all(&default_cfg[]);
+    v.push_all(&default_cfg[..]);
     v
 }
 
@@ -824,7 +824,7 @@ pub fn parse_cfgspecs(cfgspecs: Vec<String> ) -> ast::CrateConfig {
 pub fn build_session_options(matches: &getopts::Matches) -> Options {
     let unparsed_crate_types = matches.opt_strs("crate-type");
     let crate_types = parse_crate_types_from_list(unparsed_crate_types)
-        .unwrap_or_else(|e| early_error(&e[]));
+        .unwrap_or_else(|e| early_error(&e[..]));
 
     let mut lint_opts = vec!();
     let mut describe_lints = false;
@@ -923,7 +923,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
 
     let mut search_paths = SearchPaths::new();
     for s in &matches.opt_strs("L") {
-        search_paths.add_path(&s[]);
+        search_paths.add_path(&s[..]);
     }
 
     let libs = matches.opt_strs("l").into_iter().map(|s| {
@@ -981,7 +981,7 @@ pub fn build_session_options(matches: &getopts::Matches) -> Options {
                     --debuginfo");
     }
 
-    let color = match matches.opt_str("color").as_ref().map(|s| &s[]) {
+    let color = match matches.opt_str("color").as_ref().map(|s| &s[..]) {
         Some("auto")   => Auto,
         Some("always") => Always,
         Some("never")  => Never,
@@ -1119,7 +1119,7 @@ mod test {
         let sessopts = build_session_options(matches);
         let sess = build_session(sessopts, None, registry);
         let cfg = build_configuration(&sess);
-        assert!((attr::contains_name(&cfg[], "test")));
+        assert!((attr::contains_name(&cfg[..], "test")));
     }
 
     // When the user supplies --test and --cfg test, don't implicitly add

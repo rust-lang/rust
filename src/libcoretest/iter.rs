@@ -264,7 +264,7 @@ fn test_inspect() {
                .collect::<Vec<uint>>();
 
     assert_eq!(n, xs.len());
-    assert_eq!(&xs[], &ys[]);
+    assert_eq!(&xs[..], &ys[..]);
 }
 
 #[test]

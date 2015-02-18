@@ -3583,7 +3583,7 @@ An example of each kind:
 ```{rust}
 let vec: Vec<i32> = vec![1, 2, 3];
 let arr: [i32; 3] = [1, 2, 3];
-let s: &[i32] = &vec[];
+let s: &[i32] = &vec[..];
 ```
 
 As you can see, the `vec!` macro allows you to create a `Vec<T>` easily. The

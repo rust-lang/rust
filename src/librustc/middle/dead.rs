@@ -321,7 +321,7 @@ fn has_allow_dead_code_or_lang_attr(attrs: &[ast::Attribute]) -> bool {
     for attr in lint::gather_attrs(attrs) {
         match attr {
             Ok((ref name, lint::Allow, _))
-                if &name[] == dead_code => return true,
+                if &name[..] == dead_code => return true,
             _ => (),
         }
     }

@@ -689,7 +689,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                                                .unwrap()
                                                .to_string();
 
-    script_str.push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[])[]);
+    script_str.push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[]);
     script_str.push_str("type summary add --no-value ");
     script_str.push_str("--python-function lldb_rust_formatters.print_val ");
     script_str.push_str("-x \".*\" --category Rust\n");

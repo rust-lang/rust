@@ -536,15 +536,15 @@ impl<'a> TraitDef<'a> {
                     self,
                     struct_def,
                     type_ident,
-                    &self_args[],
-                    &nonself_args[])
+                    &self_args[..],
+                    &nonself_args[..])
             } else {
                 method_def.expand_struct_method_body(cx,
                                                      self,
                                                      struct_def,
                                                      type_ident,
-                                                     &self_args[],
-                                                     &nonself_args[])
+                                                     &self_args[..],
+                                                     &nonself_args[..])
             };
 
             method_def.create_method(cx,
@@ -576,15 +576,15 @@ impl<'a> TraitDef<'a> {
                     self,
                     enum_def,
                     type_ident,
-                    &self_args[],
-                    &nonself_args[])
+                    &self_args[..],
+                    &nonself_args[..])
             } else {
                 method_def.expand_enum_method_body(cx,
                                                    self,
                                                    enum_def,
                                                    type_ident,
                                                    self_args,
-                                                   &nonself_args[])
+                                                   &nonself_args[..])
             };
 
             method_def.create_method(cx,
@@ -934,22 +934,22 @@ impl<'a> MethodDef<'a> {
             .collect::<Vec<String>>();
 
         let self_arg_idents = self_arg_names.iter()
-            .map(|name|cx.ident_of(&name[]))
+            .map(|name|cx.ident_of(&name[..]))
             .collect::<Vec<ast::Ident>>();
 
         // The `vi_idents` will be bound, solely in the catch-all, to
         // a series of let statements mapping each self_arg to a usize
         // corresponding to its variant index.
         let vi_idents: Vec<ast::Ident> = self_arg_names.iter()
-            .map(|name| { let vi_suffix = format!("{}_vi", &name[]);
-                          cx.ident_of(&vi_suffix[]) })
+            .map(|name| { let vi_suffix = format!("{}_vi", &name[..]);
+                          cx.ident_of(&vi_suffix[..]) })
             .collect::<Vec<ast::Ident>>();
 
         // Builds, via callback to call_substructure_method, the
         // delegated expression that handles the catch-all case,
         // using `__variants_tuple` to drive logic if necessary.
         let catch_all_substructure = EnumNonMatchingCollapsed(
-            self_arg_idents, &variants[], &vi_idents[]);
+            self_arg_idents, &variants[..], &vi_idents[..]);
 
         // These arms are of the form:
         // (Variant1, Variant1, ...) => Body1
@@ -976,7 +976,7 @@ impl<'a> MethodDef<'a> {
                     idents
                 };
                 for self_arg_name in self_arg_names.tail() {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_name[]);
+                    let (p, idents) = mk_self_pat(cx, &self_arg_name[..]);
                     subpats.push(p);
                     self_pats_idents.push(idents);
                 }
@@ -1032,7 +1032,7 @@ impl<'a> MethodDef<'a> {
                                                 &**variant,
                                                 field_tuples);
                 let arm_expr = self.call_substructure_method(
-                    cx, trait_, type_ident, &self_args[], nonself_args,
+                    cx, trait_, type_ident, &self_args[..], nonself_args,
                     &substructure);
 
                 cx.arm(sp, vec![single_pat], arm_expr)
@@ -1085,7 +1085,7 @@ impl<'a> MethodDef<'a> {
             }
 
             let arm_expr = self.call_substructure_method(
-                cx, trait_, type_ident, &self_args[], nonself_args,
+                cx, trait_, type_ident, &self_args[..], nonself_args,
                 &catch_all_substructure);
 
             // Builds the expression:
@@ -1391,7 +1391,7 @@ pub fn cs_fold<F>(use_foldl: bool,
             }
         },
         EnumNonMatchingCollapsed(ref all_args, _, tuple) =>
-            enum_nonmatch_f(cx, trait_span, (&all_args[], tuple),
+            enum_nonmatch_f(cx, trait_span, (&all_args[..], tuple),
                             substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `derive`")
@@ -1431,7 +1431,7 @@ pub fn cs_same_method<F>(f: F,
             f(cx, trait_span, called)
         },
         EnumNonMatchingCollapsed(ref all_self_args, _, tuple) =>
-            enum_nonmatch_f(cx, trait_span, (&all_self_args[], tuple),
+            enum_nonmatch_f(cx, trait_span, (&all_self_args[..], tuple),
                             substructure.nonself_args),
         StaticEnum(..) | StaticStruct(..) => {
             cx.span_bug(trait_span, "static function in `derive`")

@@ -148,7 +148,7 @@ struct LanguageItemCollector<'a> {
 impl<'a, 'v> Visitor<'v> for LanguageItemCollector<'a> {
     fn visit_item(&mut self, item: &ast::Item) {
         if let Some(value) = extract(&item.attrs) {
-            let item_index = self.item_refs.get(&value[]).cloned();
+            let item_index = self.item_refs.get(&value[..]).cloned();
 
             if let Some(item_index) = item_index {
                 self.collect_item(item_index, local_def(item.id), item.span)
