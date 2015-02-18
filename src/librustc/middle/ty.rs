@@ -6007,7 +6007,10 @@ pub fn trait_default_impl(tcx: &ctxt, trait_def_id: DefId) -> Option<ast::DefId>
 }
 
 pub fn trait_has_default_impl(tcx: &ctxt, trait_def_id: DefId) -> bool {
-    tcx.default_trait_impls.borrow().contains_key(&trait_def_id)
+    match tcx.lang_items.to_builtin_kind(trait_def_id) {
+        Some(BoundSend) | Some(BoundSync) => true,
+        _ => tcx.default_trait_impls.borrow().contains_key(&trait_def_id)
+    }
 }
 
 /// Records a trait-to-implementation mapping.

@@ -2989,7 +2989,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // check for imports shadowing primitive types
                 if let ast::ViewPathSimple(ident, _) = view_path.node {
                     match self.def_map.borrow().get(&item.id) {
-                        Some(&DefTy(..)) | Some(&DefStruct(..)) | Some(&DefTrait(..)) | None => {
+                        Some(&DefTy(..)) | Some(&DefStruct(..)) | Some(&DefaultImpl(..)) | None => {
                             self.check_if_primitive_type_name(ident.name, item.span);
                         }
                         _ => {}
