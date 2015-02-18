@@ -38,6 +38,7 @@ the direction the language is evolving in.
 * [0447-no-unused-impl-parameters.md](text/0447-no-unused-impl-parameters.md)
 * [0458-send-improvements.md](text/0458-send-improvements.md)
 * [0501-consistent_no_prelude_attributes.md](text/0501-consistent_no_prelude_attributes.md)
+* [0505-api-comment-conventions.md](text/0505-api-comment-conventions.md)
 * [0509-collections-reform-part-2.md](text/0509-collections-reform-part-2.md)
 * [0517-io-os-reform.md](text/0517-io-os-reform.md)
 * [0560-integer-overflow.md](text/0560-integer-overflow.md)
