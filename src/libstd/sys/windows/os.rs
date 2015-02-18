@@ -114,7 +114,7 @@ impl Iterator for Env {
 
             let (k, v) = match s.iter().position(|&b| b == '=' as u16) {
                 Some(n) => (&s[..n], &s[n+1..]),
-                None => (s, &[][]),
+                None => (s, &[][..]),
             };
             Some((OsStringExt::from_wide(k), OsStringExt::from_wide(v)))
         }
@@ -186,7 +186,7 @@ impl<'a> Iterator for SplitPaths<'a> {
         if !must_yield && in_progress.is_empty() {
             None
         } else {
-            Some(super::os2path(&in_progress[]))
+            Some(super::os2path(&in_progress[..]))
         }
     }
 }
@@ -208,14 +208,14 @@ pub fn join_paths<I, T>(paths: I) -> Result<OsString, JoinPathsError>
             return Err(JoinPathsError)
         } else if v.contains(&sep) {
             joined.push(b'"' as u16);
-            joined.push_all(&v[]);
+            joined.push_all(&v[..]);
             joined.push(b'"' as u16);
         } else {
-            joined.push_all(&v[]);
+            joined.push_all(&v[..]);
         }
     }
 
-    Ok(OsStringExt::from_wide(&joined[]))
+    Ok(OsStringExt::from_wide(&joined[..]))
 }
 
 impl fmt::Display for JoinPathsError {

@@ -110,34 +110,34 @@ impl Eq for RcStr {}
 
 impl Ord for RcStr {
     fn cmp(&self, other: &RcStr) -> Ordering {
-        self[].cmp(&other[])
+        self[..].cmp(&other[..])
     }
 }
 
 impl fmt::Debug for RcStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use std::fmt::Debug;
-        self[].fmt(f)
+        self[..].fmt(f)
     }
 }
 
 impl fmt::Display for RcStr {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         use std::fmt::Display;
-        self[].fmt(f)
+        self[..].fmt(f)
     }
 }
 
 impl BorrowFrom<RcStr> for str {
     fn borrow_from(owned: &RcStr) -> &str {
-        &owned.string[]
+        &owned.string[..]
     }
 }
 
 impl Deref for RcStr {
     type Target = str;
 
-    fn deref(&self) -> &str { &self.string[] }
+    fn deref(&self) -> &str { &self.string[..] }
 }
 
 /// A StrInterner differs from Interner<String> in that it accepts

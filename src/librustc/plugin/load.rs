@@ -111,19 +111,19 @@ impl<'a> PluginLoader<'a> {
             // inside this crate, so continue would spew "macro undefined"
             // errors
             Err(err) => {
-                self.sess.span_fatal(span, &err[])
+                self.sess.span_fatal(span, &err[..])
             }
         };
 
         unsafe {
             let registrar =
-                match lib.symbol(&symbol[]) {
+                match lib.symbol(&symbol[..]) {
                     Ok(registrar) => {
                         mem::transmute::<*mut u8,PluginRegistrarFun>(registrar)
                     }
                     // again fatal if we can't register macros
                     Err(err) => {
-                        self.sess.span_fatal(span, &err[])
+                        self.sess.span_fatal(span, &err[..])
                     }
                 };
 

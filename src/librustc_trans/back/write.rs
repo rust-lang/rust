@@ -47,14 +47,14 @@ pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
     unsafe {
         let cstr = llvm::LLVMRustGetLastError();
         if cstr == ptr::null() {
-            handler.fatal(&msg[]);
+            handler.fatal(&msg[..]);
         } else {
             let err = ffi::c_str_to_bytes(&cstr);
             let err = String::from_utf8_lossy(err).to_string();
             libc::free(cstr as *mut _);
             handler.fatal(&format!("{}: {}",
-                                  &msg[],
-                                  &err[])[]);
+                                  &msg[..],
+                                  &err[..])[]);
         }
     }
 }
@@ -105,7 +105,7 @@ impl SharedEmitter {
                 Some(ref code) => {
                     handler.emit_with_code(None,
                                            &diag.msg[],
-                                           &code[],
+                                           &code[..],
                                            diag.lvl);
                 },
                 None => {
@@ -165,7 +165,7 @@ fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
 
 fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let reloc_model_arg = match sess.opts.cg.relocation_model {
-        Some(ref s) => &s[],
+        Some(ref s) => &s[..],
         None => &sess.target.target.options.relocation_model[]
     };
     let reloc_model = match reloc_model_arg {
@@ -198,7 +198,7 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let fdata_sections = ffunction_sections;
 
     let code_model_arg = match sess.opts.cg.code_model {
-        Some(ref s) => &s[],
+        Some(ref s) => &s[..],
         None => &sess.target.target.options.code_model[]
     };
 
@@ -365,7 +365,7 @@ unsafe extern "C" fn inline_asm_handler(diag: SMDiagnosticRef,
     let msg = llvm::build_string(|s| llvm::LLVMWriteSMDiagnosticToString(diag, s))
         .expect("non-UTF8 SMDiagnostic");
 
-    report_inline_asm(cgcx, &msg[], cookie);
+    report_inline_asm(cgcx, &msg[..], cookie);
 }
 
 unsafe extern "C" fn diagnostic_handler(info: DiagnosticInfoRef, user: *mut c_void) {
@@ -711,7 +711,7 @@ pub fn run_passes(sess: &Session,
             };
 
         let pname = get_cc_prog(sess);
-        let mut cmd = Command::new(&pname[]);
+        let mut cmd = Command::new(&pname[..]);
 
         cmd.args(&sess.target.target.options.pre_link_args[]);
         cmd.arg("-nostdlib");
@@ -829,12 +829,12 @@ pub fn run_passes(sess: &Session,
         for i in 0..trans.modules.len() {
             if modules_config.emit_obj {
                 let ext = format!("{}.o", i);
-                remove(sess, &crate_output.with_extension(&ext[]));
+                remove(sess, &crate_output.with_extension(&ext[..]));
             }
 
             if modules_config.emit_bc && !keep_numbered_bitcode {
                 let ext = format!("{}.bc", i);
-                remove(sess, &crate_output.with_extension(&ext[]));
+                remove(sess, &crate_output.with_extension(&ext[..]));
             }
         }
 
@@ -960,7 +960,7 @@ fn run_work_multithreaded(sess: &Session,
 
 pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
     let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(&pname[]);
+    let mut cmd = Command::new(&pname[..]);
 
     cmd.arg("-c").arg("-o").arg(outputs.path(config::OutputTypeObject))
                            .arg(outputs.temp_path(config::OutputTypeAssembly));
@@ -975,7 +975,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
                 sess.note(&format!("{:?}", &cmd)[]);
                 let mut note = prog.error.clone();
                 note.push_all(&prog.output[]);
-                sess.note(str::from_utf8(&note[]).unwrap());
+                sess.note(str::from_utf8(&note[..]).unwrap());
                 sess.abort_if_errors();
             }
         },

@@ -292,7 +292,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             Some(def_id) => {
                 s.push_str(" {");
                 let path_str = ty::item_path_str(cx, def_id);
-                s.push_str(&path_str[]);
+                s.push_str(&path_str[..]);
                 s.push_str("}");
             }
             None => { }
@@ -376,7 +376,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
                 .iter()
                 .map(|elem| ty_to_string(cx, *elem))
                 .collect::<Vec<_>>();
-            match &strs[] {
+            match &strs[..] {
                 [ref string] => format!("({},)", string),
                 strs => format!("({})", strs.connect(", "))
             }
@@ -625,7 +625,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for [T] {
 
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, &self[])
+        repr_vec(tcx, &self[..])
     }
 }
 
@@ -633,7 +633,7 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for OwnedSlice<T> {
 // autoderef cannot convert the &[T] handler
 impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for Vec<T> {
     fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        repr_vec(tcx, &self[])
+        repr_vec(tcx, &self[..])
     }
 }
 
@@ -673,7 +673,7 @@ impl<'tcx> UserString<'tcx> for TraitAndProjections<'tcx> {
                       &base,
                       trait_ref.substs,
                       trait_ref.def_id,
-                      &projection_bounds[],
+                      &projection_bounds[..],
                       || ty::lookup_trait_def(tcx, trait_ref.def_id).generics.clone())
     }
 }
@@ -1259,7 +1259,7 @@ impl<'tcx, T> UserString<'tcx> for ty::Binder<T>
                 }
             })
         });
-        let names: Vec<_> = names.iter().map(|s| &s[]).collect();
+        let names: Vec<_> = names.iter().map(|s| &s[..]).collect();
 
         let value_str = unbound_value.user_string(tcx);
         if names.len() == 0 {

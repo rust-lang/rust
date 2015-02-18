@@ -288,7 +288,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
             let llmod_id = format!("{}.{}.rs", crate_name, i);
-            let local_ccx = LocalCrateContext::new(&shared_ccx, &llmod_id[]);
+            let local_ccx = LocalCrateContext::new(&shared_ccx, &llmod_id[..]);
             shared_ccx.local_ccxs.push(local_ccx);
         }
 

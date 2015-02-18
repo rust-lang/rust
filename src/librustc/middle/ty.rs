@@ -2331,7 +2331,7 @@ impl ClosureKind {
         };
         match result {
             Ok(trait_did) => trait_did,
-            Err(err) => cx.sess.fatal(&err[]),
+            Err(err) => cx.sess.fatal(&err[..]),
         }
     }
 }
@@ -2661,7 +2661,7 @@ impl FlagComputation {
             }
 
             &ty_tup(ref ts) => {
-                self.add_tys(&ts[]);
+                self.add_tys(&ts[..]);
             }
 
             &ty_bare_fn(_, ref f) => {
@@ -3447,7 +3447,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             ty_struct(did, substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let mut res =
-                    TypeContents::union(&flds[],
+                    TypeContents::union(&flds[..],
                                         |f| tc_mt(cx, f.mt, cache));
 
                 if !lookup_repr_hints(cx, did).contains(&attr::ReprExtern) {
@@ -3470,14 +3470,14 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_tup(ref tys) => {
-                TypeContents::union(&tys[],
+                TypeContents::union(&tys[..],
                                     |ty| tc_ty(cx, *ty, cache))
             }
 
             ty_enum(did, substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
                 let mut res =
-                    TypeContents::union(&variants[], |variant| {
+                    TypeContents::union(&variants[..], |variant| {
                         TypeContents::union(&variant.args[],
                                             |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
@@ -4940,7 +4940,7 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                 match item.node {
                     ItemTrait(_, _, _, ref ms) => {
                         let (_, p) =
-                            ast_util::split_trait_methods(&ms[]);
+                            ast_util::split_trait_methods(&ms[..]);
                         p.iter()
                          .map(|m| {
                             match impl_or_trait_item(
@@ -6625,7 +6625,7 @@ pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
 {
     match tcx.freevars.borrow().get(&fid) {
         None => f(&[]),
-        Some(d) => f(&d[])
+        Some(d) => f(&d[..])
     }
 }
 

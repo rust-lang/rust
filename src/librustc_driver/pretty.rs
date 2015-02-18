@@ -383,7 +383,7 @@ impl UserIdentifiedItem {
             ItemViaNode(node_id) =>
                 NodesMatchingDirect(Some(node_id).into_iter()),
             ItemViaPath(ref parts) =>
-                NodesMatchingSuffix(map.nodes_matching_suffix(&parts[])),
+                NodesMatchingSuffix(map.nodes_matching_suffix(&parts[..])),
         }
     }
 
@@ -395,7 +395,7 @@ impl UserIdentifiedItem {
                         user_option,
                         self.reconstructed_input(),
                         is_wrong_because);
-            sess.fatal(&message[])
+            sess.fatal(&message[..])
         };
 
         let mut saw_node = ast::DUMMY_NODE_ID;
@@ -522,7 +522,7 @@ pub fn pretty_print_input(sess: Session,
     let is_expanded = needs_expansion(&ppm);
     let compute_ast_map = needs_ast_map(&ppm, &opt_uii);
     let krate = if compute_ast_map {
-        match driver::phase_2_configure_and_expand(&sess, krate, &id[], None) {
+        match driver::phase_2_configure_and_expand(&sess, krate, &id[..], None) {
             None => return,
             Some(k) => k
         }
@@ -541,7 +541,7 @@ pub fn pretty_print_input(sess: Session,
     };
 
     let src_name = driver::source_name(input);
-    let src = sess.codemap().get_filemap(&src_name[])
+    let src = sess.codemap().get_filemap(&src_name[..])
                             .src.as_bytes().to_vec();
     let mut rdr = MemReader::new(src);
 
@@ -632,8 +632,8 @@ pub fn pretty_print_input(sess: Session,
                     // point to what was found, if there's an
                     // accessible span.
                     match ast_map.opt_span(nodeid) {
-                        Some(sp) => sess.span_fatal(sp, &message[]),
-                        None => sess.fatal(&message[])
+                        Some(sp) => sess.span_fatal(sp, &message[..]),
+                        None => sess.fatal(&message[..])
                     }
                 }
             }

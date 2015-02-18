@@ -103,7 +103,7 @@ impl ops::Deref for OsString {
 
     #[inline]
     fn deref(&self) -> &OsStr {
-        &self[]
+        &self[..]
     }
 }
 
@@ -267,7 +267,7 @@ impl Debug for OsStr {
 }
 
 impl BorrowFrom<OsString> for OsStr {
-    fn borrow_from(owned: &OsString) -> &OsStr { &owned[] }
+    fn borrow_from(owned: &OsString) -> &OsStr { &owned[..] }
 }
 
 impl ToOwned<OsString> for OsStr {
@@ -288,7 +288,7 @@ impl AsOsStr for OsStr {
 
 impl AsOsStr for OsString {
     fn as_os_str(&self) -> &OsStr {
-        &self[]
+        &self[..]
     }
 }
 
@@ -300,7 +300,7 @@ impl AsOsStr for str {
 
 impl AsOsStr for String {
     fn as_os_str(&self) -> &OsStr {
-        OsStr::from_str(&self[])
+        OsStr::from_str(&self[..])
     }
 }
 

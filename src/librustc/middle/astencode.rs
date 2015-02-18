@@ -134,7 +134,7 @@ pub fn decode_inlined_item<'tcx>(cdata: &cstore::crate_metadata,
             // Do an Option dance to use the path after it is moved below.
             let s = ast_map::path_to_string(path.iter().cloned());
             path_as_str = Some(s);
-            path_as_str.as_ref().map(|x| &x[])
+            path_as_str.as_ref().map(|x| &x[..])
         });
         let mut ast_dsr = reader::Decoder::new(ast_doc);
         let from_id_range = Decodable::decode(&mut ast_dsr).unwrap();

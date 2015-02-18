@@ -55,7 +55,7 @@ pub fn check_crate(krate: &ast::Crate,
 
 pub fn link_name(attrs: &[ast::Attribute]) -> Option<InternedString> {
     lang_items::extract(attrs).and_then(|name| {
-        $(if &name[] == stringify!($name) {
+        $(if &name[..] == stringify!($name) {
             Some(InternedString::new(stringify!($sym)))
         } else)* {
             None

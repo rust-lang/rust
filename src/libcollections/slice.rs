@@ -1177,12 +1177,12 @@ impl ElementSwaps {
 
 #[unstable(feature = "collections", reason = "trait is unstable")]
 impl<T> BorrowFrom<Vec<T>> for [T] {
-    fn borrow_from(owned: &Vec<T>) -> &[T] { &owned[] }
+    fn borrow_from(owned: &Vec<T>) -> &[T] { &owned[..] }
 }
 
 #[unstable(feature = "collections", reason = "trait is unstable")]
 impl<T> BorrowFromMut<Vec<T>> for [T] {
-    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { &mut owned[] }
+    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { &mut owned[..] }
 }
 
 #[unstable(feature = "collections", reason = "trait is unstable")]
@@ -1743,7 +1743,7 @@ mod tests {
     #[test]
     fn test_slice_from() {
         let vec: &[_] = &[1, 2, 3, 4];
-        assert_eq!(&vec[], vec);
+        assert_eq!(&vec[..], vec);
         let b: &[_] = &[3, 4];
         assert_eq!(&vec[2..], b);
         let b: &[_] = &[];
@@ -1996,9 +1996,9 @@ mod tests {
 
     #[test]
     fn test_lexicographic_permutations_empty_and_short() {
-        let empty : &mut[i32] = &mut[];
+        let empty : &mut[i32] = &mut[..];
         assert!(empty.next_permutation() == false);
-        let b: &mut[i32] = &mut[];
+        let b: &mut[i32] = &mut[..];
         assert!(empty == b);
         assert!(empty.prev_permutation() == false);
         assert!(empty == b);
@@ -2264,15 +2264,15 @@ mod tests {
     #[test]
     fn test_total_ord() {
         let c = &[1, 2, 3];
-        [1, 2, 3, 4][].cmp(c) == Greater;
+        [1, 2, 3, 4][..].cmp(c) == Greater;
         let c = &[1, 2, 3, 4];
-        [1, 2, 3][].cmp(c) == Less;
+        [1, 2, 3][..].cmp(c) == Less;
         let c = &[1, 2, 3, 6];
-        [1, 2, 3, 4][].cmp(c) == Equal;
+        [1, 2, 3, 4][..].cmp(c) == Equal;
         let c = &[1, 2, 3, 4, 5, 6];
-        [1, 2, 3, 4, 5, 5, 5, 5][].cmp(c) == Less;
+        [1, 2, 3, 4, 5, 5, 5, 5][..].cmp(c) == Less;
         let c = &[1, 2, 3, 4];
-        [2, 2][].cmp(c) == Greater;
+        [2, 2][..].cmp(c) == Greater;
     }
 
     #[test]

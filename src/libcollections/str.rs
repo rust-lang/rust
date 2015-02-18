@@ -388,7 +388,7 @@ macro_rules! utf8_acc_cont_byte {
 
 #[unstable(feature = "collections", reason = "trait is unstable")]
 impl BorrowFrom<String> for str {
-    fn borrow_from(owned: &String) -> &str { &owned[] }
+    fn borrow_from(owned: &String) -> &str { &owned[..] }
 }
 
 #[unstable(feature = "collections", reason = "trait is unstable")]
@@ -466,7 +466,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
                reason = "this functionality may be moved to libunicode")]
     fn nfd_chars(&self) -> Decompositions {
         Decompositions {
-            iter: self[].chars(),
+            iter: self[..].chars(),
             buffer: Vec::new(),
             sorted: false,
             kind: Canonical
@@ -480,7 +480,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
                reason = "this functionality may be moved to libunicode")]
     fn nfkd_chars(&self) -> Decompositions {
         Decompositions {
-            iter: self[].chars(),
+            iter: self[..].chars(),
             buffer: Vec::new(),
             sorted: false,
             kind: Compatible
@@ -530,7 +530,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn contains(&self, pat: &str) -> bool {
-        core_str::StrExt::contains(&self[], pat)
+        core_str::StrExt::contains(&self[..], pat)
     }
 
     /// Returns true if a string contains a char pattern.
@@ -547,7 +547,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "might get removed in favour of a more generic contains()")]
     fn contains_char<P: CharEq>(&self, pat: P) -> bool {
-        core_str::StrExt::contains_char(&self[], pat)
+        core_str::StrExt::contains_char(&self[..], pat)
     }
 
     /// An iterator over the characters of `self`. Note, this iterates
@@ -561,7 +561,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn chars(&self) -> Chars {
-        core_str::StrExt::chars(&self[])
+        core_str::StrExt::chars(&self[..])
     }
 
     /// An iterator over the bytes of `self`
@@ -574,13 +574,13 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn bytes(&self) -> Bytes {
-        core_str::StrExt::bytes(&self[])
+        core_str::StrExt::bytes(&self[..])
     }
 
     /// An iterator over the characters of `self` and their byte offsets.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn char_indices(&self) -> CharIndices {
-        core_str::StrExt::char_indices(&self[])
+        core_str::StrExt::char_indices(&self[..])
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -603,7 +603,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn split<P: CharEq>(&self, pat: P) -> Split<P> {
-        core_str::StrExt::split(&self[], pat)
+        core_str::StrExt::split(&self[..], pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -630,7 +630,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn splitn<P: CharEq>(&self, count: usize, pat: P) -> SplitN<P> {
-        core_str::StrExt::splitn(&self[], count, pat)
+        core_str::StrExt::splitn(&self[..], count, pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -659,7 +659,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections", reason = "might get removed")]
     fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
-        core_str::StrExt::split_terminator(&self[], pat)
+        core_str::StrExt::split_terminator(&self[..], pat)
     }
 
     /// An iterator over substrings of `self`, separated by characters
@@ -680,7 +680,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rsplitn<P: CharEq>(&self, count: usize, pat: P) -> RSplitN<P> {
-        core_str::StrExt::rsplitn(&self[], count, pat)
+        core_str::StrExt::rsplitn(&self[..], count, pat)
     }
 
     /// An iterator over the start and end indices of the disjoint
@@ -706,7 +706,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "might have its iterator type changed")]
     fn match_indices<'a>(&'a self, pat: &'a str) -> MatchIndices<'a> {
-        core_str::StrExt::match_indices(&self[], pat)
+        core_str::StrExt::match_indices(&self[..], pat)
     }
 
     /// An iterator over the substrings of `self` separated by the pattern `sep`.
@@ -723,7 +723,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "might get removed in the future in favor of a more generic split()")]
     fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a> {
-        core_str::StrExt::split_str(&self[], pat)
+        core_str::StrExt::split_str(&self[..], pat)
     }
 
     /// An iterator over the lines of a string (subsequences separated
@@ -739,7 +739,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(&self) -> Lines {
-        core_str::StrExt::lines(&self[])
+        core_str::StrExt::lines(&self[..])
     }
 
     /// An iterator over the lines of a string, separated by either
@@ -755,7 +755,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines_any(&self) -> LinesAny {
-        core_str::StrExt::lines_any(&self[])
+        core_str::StrExt::lines_any(&self[..])
     }
 
     /// Deprecated: use `s[a .. b]` instead.
@@ -802,7 +802,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "may have yet to prove its worth")]
     fn slice_chars(&self, begin: usize, end: usize) -> &str {
-        core_str::StrExt::slice_chars(&self[], begin, end)
+        core_str::StrExt::slice_chars(&self[..], begin, end)
     }
 
     /// Takes a bytewise (not UTF-8) slice from a string.
@@ -813,7 +813,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// the entire slice as well.
     #[stable(feature = "rust1", since = "1.0.0")]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
-        core_str::StrExt::slice_unchecked(&self[], begin, end)
+        core_str::StrExt::slice_unchecked(&self[..], begin, end)
     }
 
     /// Returns true if the pattern `pat` is a prefix of the string.
@@ -825,7 +825,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn starts_with(&self, pat: &str) -> bool {
-        core_str::StrExt::starts_with(&self[], pat)
+        core_str::StrExt::starts_with(&self[..], pat)
     }
 
     /// Returns true if the pattern `pat` is a suffix of the string.
@@ -837,7 +837,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn ends_with(&self, pat: &str) -> bool {
-        core_str::StrExt::ends_with(&self[], pat)
+        core_str::StrExt::ends_with(&self[..], pat)
     }
 
     /// Returns a string with all pre- and suffixes that match
@@ -857,7 +857,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_matches<P: CharEq>(&self, pat: P) -> &str {
-        core_str::StrExt::trim_matches(&self[], pat)
+        core_str::StrExt::trim_matches(&self[..], pat)
     }
 
     /// Returns a string with all prefixes that match
@@ -877,7 +877,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_left_matches<P: CharEq>(&self, pat: P) -> &str {
-        core_str::StrExt::trim_left_matches(&self[], pat)
+        core_str::StrExt::trim_left_matches(&self[..], pat)
     }
 
     /// Returns a string with all suffixes that match
@@ -897,7 +897,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_right_matches<P: CharEq>(&self, pat: P) -> &str {
-        core_str::StrExt::trim_right_matches(&self[], pat)
+        core_str::StrExt::trim_right_matches(&self[..], pat)
     }
 
     /// Check that `index`-th byte lies at the start and/or end of a
@@ -926,7 +926,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "naming is uncertain with container conventions")]
     fn is_char_boundary(&self, index: usize) -> bool {
-        core_str::StrExt::is_char_boundary(&self[], index)
+        core_str::StrExt::is_char_boundary(&self[..], index)
     }
 
     /// Pluck a character out of a string and return the index of the next
@@ -985,7 +985,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "naming is uncertain with container conventions")]
     fn char_range_at(&self, start: usize) -> CharRange {
-        core_str::StrExt::char_range_at(&self[], start)
+        core_str::StrExt::char_range_at(&self[..], start)
     }
 
     /// Given a byte position and a str, return the previous char and its position.
@@ -1001,7 +1001,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "naming is uncertain with container conventions")]
     fn char_range_at_reverse(&self, start: usize) -> CharRange {
-        core_str::StrExt::char_range_at_reverse(&self[], start)
+        core_str::StrExt::char_range_at_reverse(&self[..], start)
     }
 
     /// Plucks the character starting at the `i`th byte of a string.
@@ -1022,7 +1022,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "naming is uncertain with container conventions")]
     fn char_at(&self, i: usize) -> char {
-        core_str::StrExt::char_at(&self[], i)
+        core_str::StrExt::char_at(&self[..], i)
     }
 
     /// Plucks the character ending at the `i`th byte of a string.
@@ -1034,7 +1034,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "naming is uncertain with container conventions")]
     fn char_at_reverse(&self, i: usize) -> char {
-        core_str::StrExt::char_at_reverse(&self[], i)
+        core_str::StrExt::char_at_reverse(&self[..], i)
     }
 
     /// Work with the byte buffer of a string as a byte slice.
@@ -1046,7 +1046,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_bytes(&self) -> &[u8] {
-        core_str::StrExt::as_bytes(&self[])
+        core_str::StrExt::as_bytes(&self[..])
     }
 
     /// Returns the byte index of the first character of `self` that
@@ -1074,7 +1074,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn find<P: CharEq>(&self, pat: P) -> Option<usize> {
-        core_str::StrExt::find(&self[], pat)
+        core_str::StrExt::find(&self[..], pat)
     }
 
     /// Returns the byte index of the last character of `self` that
@@ -1102,7 +1102,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rfind<P: CharEq>(&self, pat: P) -> Option<usize> {
-        core_str::StrExt::rfind(&self[], pat)
+        core_str::StrExt::rfind(&self[..], pat)
     }
 
     /// Returns the byte index of the first matching substring
@@ -1127,7 +1127,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "might get removed in favor of a more generic find in the future")]
     fn find_str(&self, needle: &str) -> Option<usize> {
-        core_str::StrExt::find_str(&self[], needle)
+        core_str::StrExt::find_str(&self[..], needle)
     }
 
     /// Retrieves the first character from a string slice and returns
@@ -1151,7 +1151,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "awaiting conventions about shifting and slices")]
     fn slice_shift_char(&self) -> Option<(char, &str)> {
-        core_str::StrExt::slice_shift_char(&self[])
+        core_str::StrExt::slice_shift_char(&self[..])
     }
 
     /// Returns the byte offset of an inner slice relative to an enclosing outer slice.
@@ -1171,7 +1171,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "awaiting convention about comparability of arbitrary slices")]
     fn subslice_offset(&self, inner: &str) -> usize {
-        core_str::StrExt::subslice_offset(&self[], inner)
+        core_str::StrExt::subslice_offset(&self[..], inner)
     }
 
     /// Return an unsafe pointer to the strings buffer.
@@ -1182,14 +1182,14 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn as_ptr(&self) -> *const u8 {
-        core_str::StrExt::as_ptr(&self[])
+        core_str::StrExt::as_ptr(&self[..])
     }
 
     /// Return an iterator of `u16` over the string encoded as UTF-16.
     #[unstable(feature = "collections",
                reason = "this functionality may only be provided by libunicode")]
     fn utf16_units(&self) -> Utf16Units {
-        Utf16Units { encoder: Utf16Encoder::new(self[].chars()) }
+        Utf16Units { encoder: Utf16Encoder::new(self[..].chars()) }
     }
 
     /// Return the number of bytes in this string
@@ -1203,7 +1203,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[stable(feature = "rust1", since = "1.0.0")]
     #[inline]
     fn len(&self) -> usize {
-        core_str::StrExt::len(&self[])
+        core_str::StrExt::len(&self[..])
     }
 
     /// Returns true if this slice contains no bytes
@@ -1216,7 +1216,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn is_empty(&self) -> bool {
-        core_str::StrExt::is_empty(&self[])
+        core_str::StrExt::is_empty(&self[..])
     }
 
     /// Parse this string into the specified type.
@@ -1230,7 +1230,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn parse<F: FromStr>(&self) -> Result<F, F::Err> {
-        core_str::StrExt::parse(&self[])
+        core_str::StrExt::parse(&self[..])
     }
 
     /// Returns an iterator over the
@@ -1255,7 +1255,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "this functionality may only be provided by libunicode")]
     fn graphemes(&self, is_extended: bool) -> Graphemes {
-        UnicodeStr::graphemes(&self[], is_extended)
+        UnicodeStr::graphemes(&self[..], is_extended)
     }
 
     /// Returns an iterator over the grapheme clusters of self and their byte offsets.
@@ -1271,7 +1271,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "this functionality may only be provided by libunicode")]
     fn grapheme_indices(&self, is_extended: bool) -> GraphemeIndices {
-        UnicodeStr::grapheme_indices(&self[], is_extended)
+        UnicodeStr::grapheme_indices(&self[..], is_extended)
     }
 
     /// An iterator over the words of a string (subsequences separated
@@ -1288,7 +1288,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "str_words",
                reason = "the precise algorithm to use is unclear")]
     fn words(&self) -> Words {
-        UnicodeStr::words(&self[])
+        UnicodeStr::words(&self[..])
     }
 
     /// Returns a string's displayed width in columns, treating control
@@ -1303,25 +1303,25 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     #[unstable(feature = "collections",
                reason = "this functionality may only be provided by libunicode")]
     fn width(&self, is_cjk: bool) -> usize {
-        UnicodeStr::width(&self[], is_cjk)
+        UnicodeStr::width(&self[..], is_cjk)
     }
 
     /// Returns a string with leading and trailing whitespace removed.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim(&self) -> &str {
-        UnicodeStr::trim(&self[])
+        UnicodeStr::trim(&self[..])
     }
 
     /// Returns a string with leading whitespace removed.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_left(&self) -> &str {
-        UnicodeStr::trim_left(&self[])
+        UnicodeStr::trim_left(&self[..])
     }
 
     /// Returns a string with trailing whitespace removed.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_right(&self) -> &str {
-        UnicodeStr::trim_right(&self[])
+        UnicodeStr::trim_right(&self[..])
     }
 }
 
@@ -2704,7 +2704,7 @@ mod tests {
             &["\u{378}\u{308}\u{903}"], &["\u{378}\u{308}", "\u{903}"]),
         ];
 
-        for &(s, g) in &test_same[] {
+        for &(s, g) in &test_same[..] {
             // test forward iterator
             assert!(order::equals(s.graphemes(true), g.iter().cloned()));
             assert!(order::equals(s.graphemes(false), g.iter().cloned()));

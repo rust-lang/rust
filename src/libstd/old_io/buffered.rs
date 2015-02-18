@@ -546,7 +546,7 @@ mod test {
         assert_eq!(a, &w.get_ref()[]);
         let w = w.into_inner();
         let a: &[_] = &[0, 1];
-        assert_eq!(a, &w[]);
+        assert_eq!(a, &w[..]);
     }
 
     // This is just here to make sure that we don't infinite loop in the
@@ -643,14 +643,14 @@ mod test {
     #[test]
     fn read_char_buffered() {
         let buf = [195u8, 159u8];
-        let mut reader = BufferedReader::with_capacity(1, &buf[]);
+        let mut reader = BufferedReader::with_capacity(1, &buf[..]);
         assert_eq!(reader.read_char(), Ok('ß'));
     }
 
     #[test]
     fn test_chars() {
         let buf = [195u8, 159u8, b'a'];
-        let mut reader = BufferedReader::with_capacity(1, &buf[]);
+        let mut reader = BufferedReader::with_capacity(1, &buf[..]);
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));
         assert_eq!(it.next(), Some(Ok('a')));

@@ -37,14 +37,14 @@ macro_rules! array_impls {
 
             impl<S: hash::Writer + Hasher, T: Hash<S>> Hash<S> for [T; $N] {
                 fn hash(&self, state: &mut S) {
-                    Hash::hash(&self[], state)
+                    Hash::hash(&self[..], state)
                 }
             }
 
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<T: fmt::Debug> fmt::Debug for [T; $N] {
                 fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-                    fmt::Debug::fmt(&&self[], f)
+                    fmt::Debug::fmt(&&self[..], f)
                 }
             }
 
@@ -72,11 +72,11 @@ macro_rules! array_impls {
             impl<A, B> PartialEq<[B; $N]> for [A; $N] where A: PartialEq<B> {
                 #[inline]
                 fn eq(&self, other: &[B; $N]) -> bool {
-                    &self[] == &other[]
+                    &self[..] == &other[..]
                 }
                 #[inline]
                 fn ne(&self, other: &[B; $N]) -> bool {
-                    &self[] != &other[]
+                    &self[..] != &other[..]
                 }
             }
 
@@ -87,11 +87,11 @@ macro_rules! array_impls {
             {
                 #[inline(always)]
                 fn eq(&self, other: &Rhs) -> bool {
-                    PartialEq::eq(&self[], &**other)
+                    PartialEq::eq(&self[..], &**other)
                 }
                 #[inline(always)]
                 fn ne(&self, other: &Rhs) -> bool {
-                    PartialEq::ne(&self[], &**other)
+                    PartialEq::ne(&self[..], &**other)
                 }
             }
 
@@ -102,11 +102,11 @@ macro_rules! array_impls {
             {
                 #[inline(always)]
                 fn eq(&self, other: &[B; $N]) -> bool {
-                    PartialEq::eq(&**self, &other[])
+                    PartialEq::eq(&**self, &other[..])
                 }
                 #[inline(always)]
                 fn ne(&self, other: &[B; $N]) -> bool {
-                    PartialEq::ne(&**self, &other[])
+                    PartialEq::ne(&**self, &other[..])
                 }
             }
 
@@ -117,23 +117,23 @@ macro_rules! array_impls {
             impl<T:PartialOrd> PartialOrd for [T; $N] {
                 #[inline]
                 fn partial_cmp(&self, other: &[T; $N]) -> Option<Ordering> {
-                    PartialOrd::partial_cmp(&&self[], &&other[])
+                    PartialOrd::partial_cmp(&&self[..], &&other[..])
                 }
                 #[inline]
                 fn lt(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::lt(&&self[], &&other[])
+                    PartialOrd::lt(&&self[..], &&other[..])
                 }
                 #[inline]
                 fn le(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::le(&&self[], &&other[])
+                    PartialOrd::le(&&self[..], &&other[..])
                 }
                 #[inline]
                 fn ge(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::ge(&&self[], &&other[])
+                    PartialOrd::ge(&&self[..], &&other[..])
                 }
                 #[inline]
                 fn gt(&self, other: &[T; $N]) -> bool {
-                    PartialOrd::gt(&&self[], &&other[])
+                    PartialOrd::gt(&&self[..], &&other[..])
                 }
             }
 
@@ -141,7 +141,7 @@ macro_rules! array_impls {
             impl<T:Ord> Ord for [T; $N] {
                 #[inline]
                 fn cmp(&self, other: &[T; $N]) -> Ordering {
-                    Ord::cmp(&&self[], &&other[])
+                    Ord::cmp(&&self[..], &&other[..])
                 }
             }
         )+
