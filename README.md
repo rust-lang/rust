@@ -88,10 +88,9 @@ supported build environments that are most likely to work.
 Rust currently needs about 1.5 GiB of RAM to build without swapping; if it hits
 swap, it will take a very long time to build.
 
-There is more advice about [hacking on Rust][hack] on the [wiki].
+There is more advice about hacking on Rust in [CONTRIBUTING.md].
 
-[hack]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md
-[wiki]: https://github.com/rust-lang/rust/wiki
+[CONTRIBUTING.md]: https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md
 
 ## Getting help
 
