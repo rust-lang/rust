@@ -15,7 +15,8 @@
 use std::collections::hash_state::{DefaultState};
 use std::collections::{HashMap, HashSet};
 use std::default::Default;
-use std::hash::{Hasher, Writer, Hash};
+use std::hash::{Hasher, Hash};
+#[cfg(stage0)] use std::hash::Writer;
 use syntax::ast;
 
 pub type FnvHashMap<K, V> = HashMap<K, V, DefaultState<FnvHasher>>;
@@ -27,10 +28,20 @@ pub type DefIdMap<T> = FnvHashMap<ast::DefId, T>;
 pub type NodeSet = FnvHashSet<ast::NodeId>;
 pub type DefIdSet = FnvHashSet<ast::DefId>;
 
+#[cfg(stage0)]
 pub fn FnvHashMap<K: Hash<FnvHasher> + Eq, V>() -> FnvHashMap<K, V> {
     Default::default()
 }
+#[cfg(stage0)]
 pub fn FnvHashSet<V: Hash<FnvHasher> + Eq>() -> FnvHashSet<V> {
+    Default::default()
+}
+#[cfg(not(stage0))]
+pub fn FnvHashMap<K: Hash + Eq, V>() -> FnvHashMap<K, V> {
+    Default::default()
+}
+#[cfg(not(stage0))]
+pub fn FnvHashSet<V: Hash + Eq>() -> FnvHashSet<V> {
     Default::default()
 }
 
@@ -52,12 +63,14 @@ impl Default for FnvHasher {
     fn default() -> FnvHasher { FnvHasher(0xcbf29ce484222325) }
 }
 
+#[cfg(stage0)]
 impl Hasher for FnvHasher {
     type Output = u64;
     fn reset(&mut self) { *self = Default::default(); }
     fn finish(&self) -> u64 { self.0 }
 }
 
+#[cfg(stage0)]
 impl Writer for FnvHasher {
     fn write(&mut self, bytes: &[u8]) {
         let FnvHasher(mut hash) = *self;
@@ -67,4 +80,17 @@ impl Writer for FnvHasher {
         }
         *self = FnvHasher(hash);
     }
+}
+
+#[cfg(not(stage0))]
+impl Hasher for FnvHasher {
+    fn write(&mut self, bytes: &[u8]) {
+        let FnvHasher(mut hash) = *self;
+        for byte in bytes {
+            hash = hash ^ (*byte as u64);
+            hash = hash * 0x100000001b3;
+        }
+        *self = FnvHasher(hash);
+    }
+    fn finish(&self) -> u64 { self.0 }
 }

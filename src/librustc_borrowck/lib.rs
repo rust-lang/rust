@@ -20,7 +20,6 @@
 #![allow(non_camel_case_types)]
 
 #![feature(core)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(quote)]
 #![feature(rustc_diagnostic_macros)]

@@ -12,7 +12,7 @@
 
 use std::cmp::Ordering::{self, Less, Greater, Equal};
 use std::collections::hash_map::Entry::{Occupied, Vacant};
-use std::collections::hash_map::{self, Hasher};
+use std::collections::hash_map;
 use std::hash::Hash;
 use std::mem;
 use std::num::{Float, FromPrimitive};
@@ -333,7 +333,7 @@ pub fn winsorize<T: Float + FromPrimitive>(samples: &mut [T], pct: T) {
 /// Returns a HashMap with the number of occurrences of every element in the
 /// sequence that the iterator exposes.
 pub fn freq_count<T, U>(iter: T) -> hash_map::HashMap<U, uint>
-  where T: Iterator<Item=U>, U: Eq + Clone + Hash<Hasher>
+  where T: Iterator<Item=U>, U: Eq + Clone + Hash
 {
     let mut map: hash_map::HashMap<U,uint> = hash_map::HashMap::new();
     for elem in iter {

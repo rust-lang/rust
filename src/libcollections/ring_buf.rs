@@ -31,7 +31,8 @@ use core::ops::{Index, IndexMut};
 use core::ptr;
 use core::raw::Slice as RawSlice;
 
-use core::hash::{Writer, Hash, Hasher};
+use core::hash::{Hash, Hasher};
+#[cfg(stage0)] use core::hash::Writer;
 use core::cmp;
 
 use alloc::heap;
@@ -1667,8 +1668,19 @@ impl<A: Ord> Ord for RingBuf<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(stage0)]
 impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for RingBuf<A> {
     fn hash(&self, state: &mut S) {
+        self.len().hash(state);
+        for elt in self {
+            elt.hash(state);
+        }
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<A: Hash> Hash for RingBuf<A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);
         for elt in self {
             elt.hash(state);

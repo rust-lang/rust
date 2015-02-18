@@ -189,8 +189,16 @@ impl PartialEq for Ipv4Addr {
 }
 impl Eq for Ipv4Addr {}
 
+#[cfg(stage0)]
 impl<S: hash::Hasher + hash::Writer> hash::Hash<S> for Ipv4Addr {
     fn hash(&self, s: &mut S) {
+        self.inner.s_addr.hash(s)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl hash::Hash for Ipv4Addr {
+    fn hash<H: hash::Hasher>(&self, s: &mut H) {
         self.inner.s_addr.hash(s)
     }
 }
@@ -421,8 +429,16 @@ impl PartialEq for Ipv6Addr {
 }
 impl Eq for Ipv6Addr {}
 
+#[cfg(stage0)]
 impl<S: hash::Hasher + hash::Writer> hash::Hash<S> for Ipv6Addr {
     fn hash(&self, s: &mut S) {
+        self.inner.s6_addr.hash(s)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl hash::Hash for Ipv6Addr {
+    fn hash<H: hash::Hasher>(&self, s: &mut H) {
         self.inner.s6_addr.hash(s)
     }
 }
