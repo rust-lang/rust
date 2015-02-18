@@ -10,6 +10,7 @@
 
 #![deny(bivariance)]
 #![allow(dead_code)]
+#![feature(rustc_attrs)]
 
 use std::cell::Cell;
 

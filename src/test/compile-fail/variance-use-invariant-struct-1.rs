@@ -11,6 +11,8 @@
 // Test various uses of structs with distint variances to make sure
 // they permit lifetimes to be approximated as expected.
 
+#![feature(rustc_attrs)]
+
 struct SomeStruct<T>(*mut T);
 
 fn foo<'min,'max>(v: SomeStruct<&'max ()>)
