@@ -1480,7 +1480,8 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 #[unstable(feature = "collections", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
-    fn extend<I: Iterator<Item=T>>(&mut self, iterator: I) {
+    fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
+        let iterator = iterable.into_iter();
         let (lower, _) = iterator.size_hint();
         self.reserve(lower);
         for element in iterator {

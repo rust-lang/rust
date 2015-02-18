@@ -503,7 +503,7 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
-    fn extend<Iter: Iterator<Item=T>>(&mut self, iter: Iter) {
+    fn extend<Iter: IntoIterator<Item=T>>(&mut self, iter: Iter) {
         for elem in iter {
             self.insert(elem);
         }
