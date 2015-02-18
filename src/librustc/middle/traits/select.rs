@@ -1423,7 +1423,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             }
 
-            ty::ty_rptr(_, ty::mt { ty: referent_ty, mutbl }) => {
+            ty::ty_rptr(_, ty::mt { ty: _, mutbl }) => {
                 // &mut T or &T
                 match bound {
                     ty::BoundCopy => {
@@ -1871,8 +1871,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     }
 
     fn confirm_default_impl_candidate(&mut self,
-                              obligation: &TraitObligation<'tcx>,
-                              impl_def_id: ast::DefId)
+                                      obligation: &TraitObligation<'tcx>,
+                                      impl_def_id: ast::DefId)
                               -> Result<VtableDefaultImplData<PredicateObligation<'tcx>>,
                                         SelectionError<'tcx>>
     {
@@ -1892,6 +1892,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                            -> VtableDefaultImplData<PredicateObligation<'tcx>>
     {
         let derived_cause = self.derived_cause(obligation, ImplDerivedObligation);
+
         let obligations = nested.iter().map(|&nested_ty| {
             // the obligation might be higher-ranked, e.g. for<'a> &'a
             // int : Copy. In that case, we will wind up with
@@ -1918,10 +1919,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 }
             })
         }).collect::<Result<_, _>>();
-        let obligations = match obligations {
+
+        let mut obligations = match obligations {
             Ok(o) => o,
             Err(ErrorReported) => Vec::new()
         };
+
+        let _: Result<(),()> = self.infcx.try(|snapshot| {
+            let (_, skol_map) =
+                self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
+
+            let substs = obligation.predicate.to_poly_trait_ref().substs();
+            let trait_obligations = self.impl_obligations(obligation.cause.clone(),
+                                                          obligation.recursion_depth + 1,
+                                                          trait_def_id,
+                                                          substs,
+                                                          skol_map,
+                                                          snapshot);
+            obligations.push_all(trait_obligations.as_slice());
+            Ok(())
+        });
 
         debug!("vtable_default_impl_data: obligations={}", obligations.repr(self.tcx()));
 
