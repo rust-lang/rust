@@ -282,11 +282,65 @@ macro_rules! impls{
 pub trait MarkerTrait : PhantomFn<Self> { }
 impl<T:?Sized> MarkerTrait for T { }
 
-/// `PhantomFn` is a marker trait for use with traits that do not
-/// include any methods.
+/// `PhantomFn` is a marker trait for use with traits that contain
+/// type or lifetime parameters that do not appear in any of their
+/// methods. In that case, you can either remove those parameters, or
+/// add a `PhantomFn` supertrait that reflects the signature of
+/// methods that compiler should "pretend" exists. This most commonly
+/// occurs for traits with no methods: in that particular case, you
+/// can extend `MarkerTrait`, which is equivalent to
+/// `PhantomFn<Self>`.
 ///
-/// FIXME. Better documentation needed here!
+/// # Example
+///
+/// As an example, consider a trait with no methods like `Even`, meant
+/// to represent types that are "even":
+///
+/// ```rust
+/// trait Even { }
+/// ```
+///
+/// In this case, because the implicit parameter `Self` is unused, the
+/// compiler will issue an error. The only purpose of this trait is to
+/// categorize types (and hence instances of those types) as "even" or
+/// not, so if we *were* going to have a method, it might look like:
+///
+/// ```rust
+/// trait Even {
+///     fn is_even(self) -> bool { true }
+/// }
+/// ```
+///
+/// Therefore, we can model a method like this as follows:
+///
+/// ```rust
+/// use std::marker::PhantomFn
+/// trait Even : PhantomFn<Self> { }
+/// ```
+///
+/// Another equivalent, but clearer, option would be to use
+/// `MarkerTrait`:
+///
+/// ```rust
+/// use std::marker::MarkerTrait;
+/// trait Even : MarkerTrait { }
+/// ```
+///
+/// # Parameters
+///
+/// - `A` represents the type of the method's argument. You can use a
+///   tuple to represent "multiple" arguments. Any types appearing here
+///   will be considered "contravariant".
+/// - `R`, if supplied, represents the method's return type. This defaults
+///   to `()` as it is rarely needed.
+///
+/// # Additional reading
+///
+/// More details and background can be found in [RFC 738][738].
+///
+/// [738]: https://github.com/rust-lang/rfcs/blob/master/text/0738-variance.md
 #[lang="phantom_fn"]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
 
 #[cfg(stage0)] // built into the trait matching system after stage0
@@ -298,17 +352,29 @@ impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
 pub struct PhantomData<T:?Sized>;
 
 /// `PhantomData` is a way to tell the compiler about fake fields.
+/// Phantom data is required whenever type parameters are not used.
 /// The idea is that if the compiler encounters a `PhantomData<T>`
 /// instance, it will behave *as if* an instance of the type `T` were
 /// present for the purpose of various automatic analyses.
 ///
-/// FIXME. Better documentation needed here!
+/// For example, embedding a `PhantomData<T>` will inform the compiler
+/// that one or more instances of the type `T` could be dropped when
+/// instances of the type itself is dropped, though that may not be
+/// apparent from the other structure of the type itself. This is
+/// commonly necessary if the structure is using an unsafe pointer
+/// like `*mut T` whose referent may be dropped when the type is
+/// dropped, as a `*mut T` is otherwise not treated as owned.
+///
+/// FIXME. Better documentation and examples of common patterns needed
+/// here! For now, please see [RFC 738][738] for more information.
+///
+/// [738]: https://github.com/rust-lang/rfcs/blob/master/text/0738-variance.md
 #[cfg(not(stage0))]
 #[lang="phantom_data"]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct PhantomData<T:?Sized>;
 
 impls! { PhantomData }
-
 
 #[cfg(not(stage0))]
 mod impls {
