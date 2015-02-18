@@ -32,7 +32,7 @@ use clone::Clone;
            reason = "will be overhauled with new lifetime rules; see RFC 458")]
 #[lang="send"]
 #[rustc_on_unimplemented = "`{Self}` cannot be sent between threads safely"]
-#[cfg(stage0)] // SNAP ac134f7 remove after stage0
+#[cfg(stage0)]
 pub unsafe trait Send: 'static {
     // empty.
 }
@@ -435,7 +435,7 @@ pub struct NoCopy;
 #[derive(Clone, PartialEq, Eq, PartialOrd, Ord)]
 pub struct Managed;
 
-#[cfg(not(stage0))] // SNAP ac134f7 remove this attribute after the next snapshot
+#[cfg(not(stage0))]
 mod impls {
     use super::{Send, Sync, Sized};
 
