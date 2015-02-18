@@ -16,7 +16,7 @@
 use std::marker;
 
 fn main() {
-    trait T : marker::MarkerTrait {}
+    trait T { fn foo(&self) {} }
 
     fn f<'a, V: T>(v: &'a V) -> &'a T {
         v as &'a T

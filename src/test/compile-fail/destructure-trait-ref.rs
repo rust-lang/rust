@@ -14,7 +14,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
-trait T : ::std::marker::MarkerTrait {}
+trait T { fn foo(&self) {} }
 impl T for isize {}
 
 fn main() {

@@ -229,7 +229,7 @@ pub fn nameize(p_s: &ParseSess, ms: &[TokenTree], res: &[Rc<NamedMatch>])
                         p_s.span_diagnostic
                            .span_fatal(sp,
                                        &format!("duplicated bind name: {}",
-                                               &string)[])
+                                               &string))
                     }
                 }
             }
@@ -533,7 +533,7 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
         _ => {
             let token_str = pprust::token_to_string(&p.token);
             p.fatal(&format!("expected ident, found {}",
-                             &token_str[..])[])
+                             &token_str[..]))
         }
       },
       "path" => {
@@ -542,7 +542,7 @@ pub fn parse_nt(p: &mut Parser, sp: Span, name: &str) -> Nonterminal {
       "meta" => token::NtMeta(p.parse_meta_item()),
       _ => {
           p.span_fatal_help(sp,
-                            &format!("invalid fragment specifier `{}`", name)[],
+                            &format!("invalid fragment specifier `{}`", name),
                             "valid fragment specifiers are `ident`, `block`, \
                              `stmt`, `expr`, `pat`, `ty`, `path`, `meta`, `tt` \
                              and `item`")

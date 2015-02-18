@@ -16,7 +16,8 @@ use traitimpl::Bar;
 
 static mut COUNT: uint = 1;
 
-trait T : ::std::marker::MarkerTrait {
+trait T {
+    fn foo(&self) {}
 }
 
 impl<'a> T+'a {

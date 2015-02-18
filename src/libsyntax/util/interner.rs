@@ -144,7 +144,7 @@ impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     }
 
     pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
-    where Q: BorrowFrom<T> + Eq + Hash {
+    where T: Borrow<Q>, Q: Eq + Hash {
         let map = self.map.borrow();
         match (*map).get(val) {
             Some(v) => Some(*v),
@@ -285,7 +285,7 @@ impl StrInterner {
     }
     #[cfg(not(stage0))]
     pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
-    where Q: BorrowFrom<RcStr> + Eq + Hash {
+    where RcStr: Borrow<Q>, Q: Eq + Hash {
         match (*self.map.borrow()).get(val) {
             Some(v) => Some(*v),
             None => None,

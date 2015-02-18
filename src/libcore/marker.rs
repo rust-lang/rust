@@ -233,9 +233,16 @@ pub struct Managed;
 
 macro_rules! impls{
     ($t: ident) => (
+        #[cfg(stage0)]
         impl<T:?Sized, S: Hasher> Hash<S> for $t<T> {
             #[inline]
             fn hash(&self, _: &mut S) {
+            }
+        }
+        #[cfg(not(stage0))]
+        impl<T:?Sized> Hash for $t<T> {
+            #[inline]
+            fn hash<H: Hasher>(&self, _: &mut H) {
             }
         }
 
