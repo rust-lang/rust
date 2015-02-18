@@ -74,18 +74,27 @@ impl Session {
         self.diagnostic().handler().fatal(msg)
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
+        if self.opts.treat_err_as_bug {
+            self.span_bug(sp, msg);
+        }
         match split_msg_into_multilines(msg) {
             Some(msg) => self.diagnostic().span_err(sp, &msg[..]),
             None => self.diagnostic().span_err(sp, msg)
         }
     }
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
+        if self.opts.treat_err_as_bug {
+            self.span_bug(sp, msg);
+        }
         match split_msg_into_multilines(msg) {
             Some(msg) => self.diagnostic().span_err_with_code(sp, &msg[..], code),
             None => self.diagnostic().span_err_with_code(sp, msg, code)
         }
     }
     pub fn err(&self, msg: &str) {
+        if self.opts.treat_err_as_bug {
+            self.bug(msg);
+        }
         self.diagnostic().handler().err(msg)
     }
     pub fn err_count(&self) -> uint {
