@@ -20,7 +20,7 @@ struct Foo {
     baz: int
 }
 
-fn hash<T: Hash<SipHasher>>(_t: &T) {}
+fn hash<T: Hash>(_t: &T) {}
 
 pub fn main() {
     let a = Foo {bar: 4, baz: -3};
