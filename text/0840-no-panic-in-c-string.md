@@ -1,7 +1,7 @@
 - Feature Name: non_panicky_cstring
 - Start Date: 2015-02-13
-- RFC PR:
-- Rust Issue:
+- RFC PR: https://github.com/rust-lang/rfcs/pull/840
+- Rust Issue: https://github.com/rust-lang/rust/issues/22470
 
 # Summary
 
@@ -15,7 +15,7 @@ these functions return `Result` instead.
 > those nameless blights of outer voids whose faint daemon scratchings we
 > sometimes hear on the farthest rim of space, yet from which our own finite
 > vision has given us a merciful immunity.
-> 
+>
 > — H. P. Lovecraft, <cite>The Lurking Fear</cite>
 
 Currently the functions that produce `std::ffi::CString` out of Rust byte
@@ -87,7 +87,7 @@ people from using the safer functions.
 
 If the panicky behavior is preserved, plentiful possibilities for DoS attacks
 and other unforeseen failures in the field may be introduced by code oblivious
-to the input constraints. 
+to the input constraints.
 
 # Unresolved questions
 
