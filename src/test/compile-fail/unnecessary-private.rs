@@ -13,10 +13,10 @@ fn main() {
     pub struct A; //~ ERROR: visibility has no effect
     pub enum B {} //~ ERROR: visibility has no effect
     pub trait C { //~ ERROR: visibility has no effect
-        pub fn foo() {} //~ ERROR: visibility has no effect
+        pub fn foo(&self) {} //~ ERROR: visibility has no effect
     }
     impl A {
-        pub fn foo() {} //~ ERROR: visibility has no effect
+        pub fn foo(&self) {} //~ ERROR: visibility has no effect
     }
 
     struct D {

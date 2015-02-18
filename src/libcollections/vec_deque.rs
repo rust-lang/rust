@@ -28,7 +28,7 @@ use core::marker;
 use core::mem;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut};
-use core::ptr;
+use core::ptr::{self, Unique};
 use core::raw::Slice as RawSlice;
 
 use core::hash::{Hash, Hasher};
@@ -57,7 +57,7 @@ pub struct VecDeque<T> {
     tail: usize,
     head: usize,
     cap: usize,
-    ptr: *mut T
+    ptr: Unique<T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -80,7 +80,7 @@ impl<T> Drop for VecDeque<T> {
         self.clear();
         unsafe {
             if mem::size_of::<T>() != 0 {
-                heap::deallocate(self.ptr as *mut u8,
+                heap::deallocate(*self.ptr as *mut u8,
                                  self.cap * mem::size_of::<T>(),
                                  mem::min_align_of::<T>())
             }
@@ -98,13 +98,13 @@ impl<T> VecDeque<T> {
     /// Turn ptr into a slice
     #[inline]
     unsafe fn buffer_as_slice(&self) -> &[T] {
-        mem::transmute(RawSlice { data: self.ptr, len: self.cap })
+        mem::transmute(RawSlice { data: *self.ptr as *const T, len: self.cap })
     }
 
     /// Turn ptr into a mut slice
     #[inline]
     unsafe fn buffer_as_mut_slice(&mut self) -> &mut [T] {
-        mem::transmute(RawSlice { data: self.ptr, len: self.cap })
+        mem::transmute(RawSlice { data: *self.ptr as *const T, len: self.cap })
     }
 
     /// Moves an element out of the buffer
@@ -171,21 +171,21 @@ impl<T> VecDeque<T> {
         let size = cap.checked_mul(mem::size_of::<T>())
                       .expect("capacity overflow");
 
-        let ptr = if mem::size_of::<T>() != 0 {
-            unsafe {
+        let ptr = unsafe {
+            if mem::size_of::<T>() != 0 {
                 let ptr = heap::allocate(size, mem::min_align_of::<T>())  as *mut T;;
                 if ptr.is_null() { ::alloc::oom() }
-                ptr
+                Unique::new(ptr)
+            } else {
+                Unique::new(heap::EMPTY as *mut T)
             }
-        } else {
-            heap::EMPTY as *mut T
         };
 
         VecDeque {
             tail: 0,
             head: 0,
             cap: cap,
-            ptr: ptr
+            ptr: ptr,
         }
     }
 
@@ -341,11 +341,12 @@ impl<T> VecDeque<T> {
                 let new = count.checked_mul(mem::size_of::<T>())
                                .expect("capacity overflow");
                 unsafe {
-                    self.ptr = heap::reallocate(self.ptr as *mut u8,
-                                                old,
-                                                new,
-                                                mem::min_align_of::<T>()) as *mut T;
-                    if self.ptr.is_null() { ::alloc::oom() }
+                    let ptr = heap::reallocate(*self.ptr as *mut u8,
+                                               old,
+                                               new,
+                                               mem::min_align_of::<T>()) as *mut T;
+                    if ptr.is_null() { ::alloc::oom() }
+                    self.ptr = Unique::new(ptr);
                 }
             }
 
@@ -459,11 +460,12 @@ impl<T> VecDeque<T> {
                 let old = self.cap * mem::size_of::<T>();
                 let new_size = target_cap * mem::size_of::<T>();
                 unsafe {
-                    self.ptr = heap::reallocate(self.ptr as *mut u8,
-                                                old,
-                                                new_size,
-                                                mem::min_align_of::<T>()) as *mut T;
-                    if self.ptr.is_null() { ::alloc::oom() }
+                    let ptr = heap::reallocate(*self.ptr as *mut u8,
+                                               old,
+                                               new_size,
+                                               mem::min_align_of::<T>()) as *mut T;
+                    if ptr.is_null() { ::alloc::oom() }
+                    self.ptr = Unique::new(ptr);
                 }
             }
             self.cap = target_cap;
@@ -545,8 +547,8 @@ impl<T> VecDeque<T> {
             tail: self.tail,
             head: self.head,
             cap: self.cap,
-            ptr: self.ptr,
-            marker: marker::ContravariantLifetime,
+            ptr: *self.ptr,
+            marker: marker::PhantomData,
         }
     }
 
@@ -1342,7 +1344,7 @@ impl<T> VecDeque<T> {
                 // `at` lies in the first half.
                 let amount_in_first = first_len - at;
 
-                ptr::copy_nonoverlapping_memory(other.ptr,
+                ptr::copy_nonoverlapping_memory(*other.ptr,
                                                 first_half.as_ptr().offset(at as isize),
                                                 amount_in_first);
 
@@ -1355,7 +1357,7 @@ impl<T> VecDeque<T> {
                 // in the first half.
                 let offset = at - first_len;
                 let amount_in_second = second_len - offset;
-                ptr::copy_nonoverlapping_memory(other.ptr,
+                ptr::copy_nonoverlapping_memory(*other.ptr,
                                                 second_half.as_ptr().offset(offset as isize),
                                                 amount_in_second);
             }
@@ -1524,7 +1526,7 @@ pub struct IterMut<'a, T:'a> {
     tail: usize,
     head: usize,
     cap: usize,
-    marker: marker::ContravariantLifetime<'a>,
+    marker: marker::PhantomData<&'a mut T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -2004,9 +2006,9 @@ mod tests {
 
     #[derive(Clone, PartialEq, Debug)]
     enum Taggypar<T> {
-        Onepar(i32),
-        Twopar(i32, i32),
-        Threepar(i32, i32, i32),
+        Onepar(T),
+        Twopar(T, T),
+        Threepar(T, T, T),
     }
 
     #[derive(Clone, PartialEq, Debug)]

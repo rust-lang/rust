@@ -13,8 +13,12 @@
 #![feature(lang_items, start, no_std)]
 #![no_std]
 
+#[lang="phantom_fn"]
+trait PhantomFn<A:?Sized,R:?Sized=()> { }
+impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
+
 #[lang = "sized"]
-trait Sized {}
+trait Sized : PhantomFn<Self> {}
 
 #[start]
 fn main(_: int, _: *const *const u8) -> int {

@@ -12,7 +12,9 @@
 
 struct TestType;
 
-trait TestTrait {}
+trait TestTrait {
+    fn dummy(&self) { }
+}
 
 impl !TestTrait for TestType {}
 //~^ ERROR  negative impls are currently allowed just for `Send` and `Sync`

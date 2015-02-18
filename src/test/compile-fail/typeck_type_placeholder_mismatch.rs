@@ -11,14 +11,16 @@
 // This test checks that genuine type errors with partial
 // type hints are understandable.
 
-struct Foo<T>;
-struct Bar<U>;
+use std::marker::PhantomData;
+
+struct Foo<T>(PhantomData<T>);
+struct Bar<U>(PhantomData<U>);
 
 pub fn main() {
 }
 
 fn test1() {
-    let x: Foo<_> = Bar::<usize>;
+    let x: Foo<_> = Bar::<usize>(PhantomData);
     //~^ ERROR mismatched types
     //~| expected `Foo<_>`
     //~| found `Bar<usize>`
@@ -28,7 +30,7 @@ fn test1() {
 }
 
 fn test2() {
-    let x: Foo<_> = Bar::<usize>;
+    let x: Foo<_> = Bar::<usize>(PhantomData);
     //~^ ERROR mismatched types
     //~| expected `Foo<_>`
     //~| found `Bar<usize>`

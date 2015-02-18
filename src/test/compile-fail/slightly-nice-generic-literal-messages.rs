@@ -8,10 +8,12 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<T,U>(T);
+use std::marker;
+
+struct Foo<T,U>(T, marker::PhantomData<U>);
 
 fn main() {
-    match Foo(1.1) {
+    match Foo(1.1, marker::PhantomData) {
         1 => {}
     //~^ ERROR mismatched types
     //~| expected `Foo<_, _>`

@@ -13,6 +13,8 @@
 
 trait Foo {
     type A;
+
+    fn dummy(&self) { }
 }
 
 fn bar(x: &Foo) {}

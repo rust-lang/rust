@@ -10,24 +10,27 @@
 
 //! See `doc.rs` for high-level documentation
 
+use super::Normalized;
 use super::SelectionContext;
-use super::{Obligation, ObligationCause};
+use super::{ObligationCause};
+use super::PredicateObligation;
 use super::project;
 use super::util;
 
 use middle::subst::{Subst, TypeSpace};
-use middle::ty::{self, Ty};
-use middle::infer::InferCtxt;
+use middle::ty::{self, ToPolyTraitRef, Ty};
+use middle::infer::{self, InferCtxt};
 use std::collections::HashSet;
 use std::rc::Rc;
 use syntax::ast;
 use syntax::codemap::DUMMY_SP;
 use util::ppaux::Repr;
 
-pub fn impl_can_satisfy(infcx: &InferCtxt,
-                        impl1_def_id: ast::DefId,
-                        impl2_def_id: ast::DefId)
-                        -> bool
+/// True if there exist types that satisfy both of the two given impls.
+pub fn overlapping_impls(infcx: &InferCtxt,
+                         impl1_def_id: ast::DefId,
+                         impl2_def_id: ast::DefId)
+                         -> bool
 {
     debug!("impl_can_satisfy(\
            impl1_def_id={}, \
@@ -35,28 +38,68 @@ pub fn impl_can_satisfy(infcx: &InferCtxt,
            impl1_def_id.repr(infcx.tcx),
            impl2_def_id.repr(infcx.tcx));
 
-    let param_env = ty::empty_parameter_environment(infcx.tcx);
-    let mut selcx = SelectionContext::intercrate(infcx, &param_env);
-    let cause = ObligationCause::dummy();
+    let param_env = &ty::empty_parameter_environment(infcx.tcx);
+    let selcx = &mut SelectionContext::intercrate(infcx, param_env);
+    infcx.probe(|_| {
+        overlap(selcx, impl1_def_id, impl2_def_id) || overlap(selcx, impl2_def_id, impl1_def_id)
+    })
+}
 
-    // `impl1` provides an implementation of `Foo<X,Y> for Z`.
-    let impl1_substs =
-        util::fresh_substs_for_impl(infcx, DUMMY_SP, impl1_def_id);
-    let impl1_trait_ref =
-        (*ty::impl_trait_ref(infcx.tcx, impl1_def_id).unwrap()).subst(infcx.tcx, &impl1_substs);
-    let impl1_trait_ref =
-        project::normalize(&mut selcx, cause.clone(), &impl1_trait_ref);
+/// Can the types from impl `a` be used to satisfy impl `b`?
+/// (Including all conditions)
+fn overlap(selcx: &mut SelectionContext,
+           a_def_id: ast::DefId,
+           b_def_id: ast::DefId)
+           -> bool
+{
+    let (a_trait_ref, a_obligations) = impl_trait_ref_and_oblig(selcx, a_def_id);
+    let (b_trait_ref, b_obligations) = impl_trait_ref_and_oblig(selcx, b_def_id);
 
-    // Determine whether `impl2` can provide an implementation for those
-    // same types.
-    let obligation = Obligation::new(cause,
-                                     ty::Binder(ty::TraitPredicate {
-                                         trait_ref: Rc::new(impl1_trait_ref.value),
-                                     }));
-    debug!("impl_can_satisfy(obligation={})", obligation.repr(infcx.tcx));
-    selcx.evaluate_impl(impl2_def_id, &obligation) &&
-        impl1_trait_ref.obligations.iter().all(
-            |o| selcx.evaluate_obligation(o))
+    // Does `a <: b` hold? If not, no overlap.
+    if let Err(_) = infer::mk_sub_poly_trait_refs(selcx.infcx(),
+                                                  true,
+                                                  infer::Misc(DUMMY_SP),
+                                                  a_trait_ref.to_poly_trait_ref(),
+                                                  b_trait_ref.to_poly_trait_ref()) {
+        return false;
+    }
+
+    // Are any of the obligations unsatisfiable? If so, no overlap.
+    a_obligations.iter()
+                 .chain(b_obligations.iter())
+                 .all(|o| selcx.evaluate_obligation(o))
+}
+
+/// Instantiate fresh variables for all bound parameters of the impl
+/// and return the impl trait ref with those variables substituted.
+fn impl_trait_ref_and_oblig<'a,'tcx>(selcx: &mut SelectionContext<'a,'tcx>,
+                                     impl_def_id: ast::DefId)
+                                     -> (Rc<ty::TraitRef<'tcx>>,
+                                         Vec<PredicateObligation<'tcx>>)
+{
+    let impl_substs =
+        &util::fresh_substs_for_impl(selcx.infcx(), DUMMY_SP, impl_def_id);
+    let impl_trait_ref =
+        ty::impl_trait_ref(selcx.tcx(), impl_def_id).unwrap();
+    let impl_trait_ref =
+        impl_trait_ref.subst(selcx.tcx(), impl_substs);
+    let Normalized { value: impl_trait_ref, obligations: normalization_obligations1 } =
+        project::normalize(selcx, ObligationCause::dummy(), &impl_trait_ref);
+
+    let predicates = ty::lookup_predicates(selcx.tcx(), impl_def_id);
+    let predicates = predicates.instantiate(selcx.tcx(), impl_substs);
+    let Normalized { value: predicates, obligations: normalization_obligations2 } =
+        project::normalize(selcx, ObligationCause::dummy(), &predicates);
+    let impl_obligations =
+        util::predicates_for_generics(selcx.tcx(), ObligationCause::dummy(), 0, &predicates);
+
+    let impl_obligations: Vec<_> =
+        impl_obligations.into_iter()
+        .chain(normalization_obligations1.into_iter())
+        .chain(normalization_obligations2.into_iter())
+        .collect();
+
+    (impl_trait_ref, impl_obligations)
 }
 
 pub enum OrphanCheckErr<'tcx> {

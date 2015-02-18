@@ -512,13 +512,22 @@ mod stack {
     use super::super::node::handle;
     use vec::Vec;
 
+    struct InvariantLifetime<'id>(
+        marker::PhantomData<::core::cell::Cell<&'id ()>>);
+
+    impl<'id> InvariantLifetime<'id> {
+        fn new() -> InvariantLifetime<'id> {
+            InvariantLifetime(marker::PhantomData)
+        }
+    }
+
     /// A generic mutable reference, identical to `&mut` except for the fact that its lifetime
     /// parameter is invariant. This means that wherever an `IdRef` is expected, only an `IdRef`
     /// with the exact requested lifetime can be used. This is in contrast to normal references,
     /// where `&'static` can be used in any function expecting any lifetime reference.
     pub struct IdRef<'id, T: 'id> {
         inner: &'id mut T,
-        marker: marker::InvariantLifetime<'id>
+        _marker: InvariantLifetime<'id>,
     }
 
     impl<'id, T> Deref for IdRef<'id, T> {
@@ -560,7 +569,7 @@ mod stack {
     pub struct Pusher<'id, 'a, K:'a, V:'a> {
         map: &'a mut BTreeMap<K, V>,
         stack: Stack<K, V>,
-        marker: marker::InvariantLifetime<'id>
+        _marker: InvariantLifetime<'id>,
     }
 
     impl<'a, K, V> PartialSearchStack<'a, K, V> {
@@ -595,11 +604,11 @@ mod stack {
             let pusher = Pusher {
                 map: self.map,
                 stack: self.stack,
-                marker: marker::InvariantLifetime
+                _marker: InvariantLifetime::new(),
             };
             let node = IdRef {
                 inner: unsafe { &mut *self.next },
-                marker: marker::InvariantLifetime
+                _marker: InvariantLifetime::new(),
             };
 
             closure(pusher, node)

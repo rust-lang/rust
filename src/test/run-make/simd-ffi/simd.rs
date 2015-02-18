@@ -70,10 +70,14 @@ pub fn bar(a: i32x4, b: i32x4) -> i32x4 {
 }
 
 #[lang = "sized"]
-trait Sized {}
+pub trait Sized : PhantomFn<Self> {}
 
 #[lang = "copy"]
-trait Copy {}
+pub trait Copy : PhantomFn<Self> {}
+
+#[lang="phantom_fn"]
+pub trait PhantomFn<A:?Sized,R:?Sized=()> { }
+impl<A:?Sized, R:?Sized, U:?Sized> PhantomFn<A,R> for U { }
 
 mod core {
     pub mod marker {

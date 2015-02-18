@@ -10,7 +10,7 @@
 
 #![feature(core,unboxed_closures)]
 
-use std::marker::CovariantType;
+use std::marker::PhantomData;
 
 // Test that we are able to infer a suitable kind for a "recursive"
 // closure.  As far as I can tell, coding up a recursive closure
@@ -20,12 +20,12 @@ use std::marker::CovariantType;
 
 struct YCombinator<F,A,R> {
     func: F,
-    marker: CovariantType<(A,R)>,
+    marker: PhantomData<(A,R)>,
 }
 
 impl<F,A,R> YCombinator<F,A,R> {
     fn new(f: F) -> YCombinator<F,A,R> {
-        YCombinator { func: f, marker: CovariantType }
+        YCombinator { func: f, marker: PhantomData }
     }
 }
 

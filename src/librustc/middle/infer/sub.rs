@@ -10,12 +10,8 @@
 
 use super::combine::*;
 use super::{cres, CresCompare};
-use super::equate::Equate;
-use super::glb::Glb;
 use super::higher_ranked::HigherRankedRelations;
-use super::InferCtxt;
-use super::lub::Lub;
-use super::{TypeTrace, Subtype};
+use super::{Subtype};
 use super::type_variable::{SubtypeOf, SupertypeOf};
 
 use middle::ty::{BuiltinBounds};
@@ -37,28 +33,30 @@ pub fn Sub<'f, 'tcx>(cf: CombineFields<'f, 'tcx>) -> Sub<'f, 'tcx> {
 }
 
 impl<'f, 'tcx> Combine<'tcx> for Sub<'f, 'tcx> {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields.infcx }
-    fn tag(&self) -> String { "sub".to_string() }
-    fn a_is_expected(&self) -> bool { self.fields.a_is_expected }
-    fn trace(&self) -> TypeTrace<'tcx> { self.fields.trace.clone() }
+    fn tag(&self) -> String { "Sub".to_string() }
+    fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx> { &self.fields }
 
-    fn equate<'a>(&'a self) -> Equate<'a, 'tcx> { Equate(self.fields.clone()) }
-    fn sub<'a>(&'a self) -> Sub<'a, 'tcx> { Sub(self.fields.clone()) }
-    fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields.clone()) }
-    fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields.clone()) }
-
-    fn contratys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
-        Sub(self.fields.switch_expected()).tys(b, a)
+    fn tys_with_variance(&self, v: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
+                         -> cres<'tcx, Ty<'tcx>>
+    {
+        match v {
+            ty::Invariant => self.equate().tys(a, b),
+            ty::Covariant => self.tys(a, b),
+            ty::Bivariant => self.bivariate().tys(a, b),
+            ty::Contravariant => Sub(self.fields.switch_expected()).tys(b, a),
+        }
     }
 
-    fn contraregions(&self, a: ty::Region, b: ty::Region)
-                     -> cres<'tcx, ty::Region> {
-                         let opp = CombineFields {
-                             a_is_expected: !self.fields.a_is_expected,
-                             ..self.fields.clone()
-                         };
-                         Sub(opp).regions(b, a)
-                     }
+    fn regions_with_variance(&self, v: ty::Variance, a: ty::Region, b: ty::Region)
+                             -> cres<'tcx, ty::Region>
+    {
+        match v {
+            ty::Invariant => self.equate().regions(a, b),
+            ty::Covariant => self.regions(a, b),
+            ty::Bivariant => self.bivariate().regions(a, b),
+            ty::Contravariant => Sub(self.fields.switch_expected()).regions(b, a),
+        }
+    }
 
     fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region> {
         debug!("{}.regions({}, {})",

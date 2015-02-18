@@ -12,8 +12,10 @@
 // in this file all test the "kind" violates detected during kindck.
 // See all `regions-bounded-by-send.rs`
 
+use std::marker::MarkerTrait;
+
 fn assert_send<T:Send>() { }
-trait Dummy { }
+trait Dummy : MarkerTrait { }
 trait Message : Send { }
 
 // careful with object types, who knows what they close over...

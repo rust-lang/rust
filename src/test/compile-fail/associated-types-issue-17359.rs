@@ -11,7 +11,7 @@
 // Test that we do not ICE when an impl is missing an associated type (and that we report
 // a useful error, of course).
 
-trait Trait {
+trait Trait : ::std::marker::MarkerTrait {
     type Type;
 }
 

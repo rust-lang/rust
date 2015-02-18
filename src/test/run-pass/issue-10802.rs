@@ -29,7 +29,7 @@ impl Drop for DroppableEnum {
     }
 }
 
-trait MyTrait { }
+trait MyTrait { fn dummy(&self) { } }
 impl MyTrait for Box<DroppableStruct> {}
 impl MyTrait for Box<DroppableEnum> {}
 

@@ -16,7 +16,7 @@ struct B { b: u32 }
 struct C;
 struct D;
 
-trait T<A> {}
+trait T<A> { fn dummy(&self, a: A) { } }
 impl<A> T<A> for () {}
 
 impl B {

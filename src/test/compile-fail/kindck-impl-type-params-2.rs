@@ -10,7 +10,9 @@
 
 #![feature(box_syntax)]
 
-trait Foo {
+use std::marker::MarkerTrait;
+
+trait Foo : MarkerTrait {
 }
 
 impl<T:Copy> Foo for T {

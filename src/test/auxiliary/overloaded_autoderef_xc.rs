@@ -11,7 +11,8 @@
 use std::ops::Deref;
 
 struct DerefWithHelper<H, T> {
-    pub helper: H
+    pub helper: H,
+    pub value: Option<T>
 }
 
 trait Helper<T> {
@@ -34,6 +35,6 @@ impl<T, H: Helper<T>> Deref for DerefWithHelper<H, T> {
 
 // Test cross-crate autoderef + vtable.
 pub fn check<T: PartialEq>(x: T, y: T) -> bool {
-    let d: DerefWithHelper<Option<T>, T> = DerefWithHelper { helper: Some(x) };
+    let d: DerefWithHelper<Option<T>, T> = DerefWithHelper { helper: Some(x), value: None };
     d.eq(&y)
 }

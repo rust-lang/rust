@@ -96,7 +96,7 @@ pub trait Trait {
 impl Trait for MethodTester {}
 
 #[unstable(feature = "test_feature")]
-pub trait UnstableTrait {}
+pub trait UnstableTrait { fn dummy(&self) { } }
 
 #[stable(feature = "test_feature", since = "1.0.0")]
 #[deprecated(since = "1.0.0")]

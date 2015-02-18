@@ -99,6 +99,7 @@ struct some_fields {
 type SF = some_fields;
 
 trait SuperTrait {
+    fn dummy(&self) { }
 }
 
 trait SomeTrait: SuperTrait {
