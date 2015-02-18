@@ -835,6 +835,22 @@ fn parse_type_param_def_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F)
     }
 }
 
+fn parse_object_lifetime_default<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
+                                             conv: &mut F)
+                                             -> Option<ty::ObjectLifetimeDefault>
+    where F: FnMut(DefIdSource, ast::DefId) -> ast::DefId,
+{
+    match next(st) {
+        'n' => None,
+        'a' => Some(ty::ObjectLifetimeDefault::Ambiguous),
+        's' => {
+            let region = parse_region_(st, conv);
+            Some(ty::ObjectLifetimeDefault::Specific(region))
+        }
+        _ => panic!("parse_object_lifetime_default: bad input")
+    }
+}
+
 fn parse_existential_bounds<'a,'tcx, F>(st: &mut PState<'a,'tcx>,
                                         mut conv: F)
                                         -> ty::ExistentialBounds<'tcx> where

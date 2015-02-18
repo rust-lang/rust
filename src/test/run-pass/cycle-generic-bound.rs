@@ -8,12 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Regression test for #15477. This test should pass, vs reporting an
-// error as it does now, but at least this test shows it doesn't
-// segfault.
+// Regression test for #15477. This test just needs to compile.
 
-trait Chromosome<X: Chromosome> {
-    //~^ ERROR cyclic reference detected
+use std::marker::PhantomFn;
+
+trait Chromosome<X: Chromosome<i32>> : PhantomFn<(Self,X)> {
 }
 
 fn main() { }
