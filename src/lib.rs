@@ -1,6 +1,7 @@
 #![feature(plugin_registrar, box_syntax)]
+#![feature(rustc_private, core, collections)]
 
-#![allow(unused_imports, unstable)]
+#![allow(unused_imports)]
 
 #[macro_use]
 extern crate syntax;
