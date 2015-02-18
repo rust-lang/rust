@@ -76,7 +76,7 @@ use std::hash::{Hash, Writer, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use std::vec::CowVec;
+use std::vec::{CowVec, IntoIter};
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
@@ -2004,6 +2004,40 @@ impl<'tcx> AsPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
+    /// Iterates over the types in this predicate. Note that in all
+    /// cases this is skipping over a binder, so late-bound regions
+    /// with depth 0 are bound by the predicate.
+    pub fn walk_tys(&self) -> IntoIter<Ty<'tcx>> {
+        let vec: Vec<_> = match *self {
+            ty::Predicate::Trait(ref data) => {
+                data.0.trait_ref.substs.types.as_slice().to_vec()
+            }
+            ty::Predicate::Equate(ty::Binder(ref data)) => {
+                vec![data.0, data.1]
+            }
+            ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
+                vec![data.0]
+            }
+            ty::Predicate::RegionOutlives(..) => {
+                vec![]
+            }
+            ty::Predicate::Projection(ref data) => {
+                let trait_inputs = data.0.projection_ty.trait_ref.substs.types.as_slice();
+                trait_inputs.iter()
+                            .cloned()
+                            .chain(Some(data.0.ty).into_iter())
+                            .collect()
+            }
+        };
+
+        // The only reason to collect into a vector here is that I was
+        // too lazy to make the full (somewhat complicated) iterator
+        // type that would be needed here. But I wanted this fn to
+        // return an iterator conceptually, rather than a `Vec`, so as
+        // to be closer to `Ty::walk`.
+        vec.into_iter()
+    }
+
     pub fn has_escaping_regions(&self) -> bool {
         match *self {
             Predicate::Trait(ref trait_ref) => trait_ref.has_escaping_regions(),
