@@ -9,7 +9,6 @@
 // except according to those terms.
 
 use middle::infer::{InferCtxt};
-use middle::mem_categorization::Typer;
 use middle::ty::{self, RegionEscape, Ty};
 use std::collections::HashSet;
 use std::collections::hash_map::Entry::{Occupied, Vacant};
