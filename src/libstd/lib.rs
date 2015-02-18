@@ -292,13 +292,6 @@ mod tuple;
 // can be resolved within libstd.
 #[doc(hidden)]
 mod std {
-    // NOTE: remove after next snapshot
-    // mods used for deriving
-    #[cfg(stage0)] pub use clone;
-    #[cfg(stage0)] pub use cmp;
-    #[cfg(stage0)] pub use hash;
-    #[cfg(stage0)] pub use default;
-
     pub use sync; // used for select!()
     pub use error; // used for try!()
     pub use fmt; // used for any formatting strings
@@ -319,7 +312,4 @@ mod std {
     pub use slice;
 
     pub use boxed; // used for vec![]
-    // for-loops
-    // NOTE: remove after next snapshot
-    #[cfg(stage0)] pub use iter;
 }

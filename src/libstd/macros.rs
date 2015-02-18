@@ -60,23 +60,6 @@ macro_rules! panic {
     });
 }
 
-/// Use the syntax described in `std::fmt` to create a value of type `String`.
-/// See `std::fmt` for more information.
-///
-/// # Example
-///
-/// ```
-/// format!("test");
-/// format!("hello {}", "world!");
-/// format!("x = {}, y = {y}", 10, y = 30);
-/// ```
-#[cfg(stage0)] // NOTE: remove after snapshot
-#[macro_export]
-#[stable(feature = "rust1", since = "1.0.0")]
-macro_rules! format {
-    ($($arg:tt)*) => ($crate::fmt::format(format_args!($($arg)*)))
-}
-
 /// Equivalent to the `println!` macro except that a newline is not printed at
 /// the end of the message.
 #[macro_export]
