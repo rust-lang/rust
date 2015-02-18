@@ -744,7 +744,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         }
     }
     unsafe {
-        let buf = CString::from_slice(filename.as_vec());
+        let buf = CString::new(filename.as_vec()).unwrap();
         let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr());
         if mb as int == 0 {
             return Err(format!("error reading library: '{}'",

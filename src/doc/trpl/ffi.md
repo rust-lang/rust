@@ -435,8 +435,8 @@ extern {
 }
 
 fn main() {
-    let prompt = CString::from_slice(b"[my-awesome-shell] $");
-    unsafe { 
+    let prompt = CString::new("[my-awesome-shell] $").unwrap();
+    unsafe {
         rl_prompt = prompt.as_ptr();
 
         println!("{:?}", rl_prompt);

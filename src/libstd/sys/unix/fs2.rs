@@ -12,7 +12,7 @@ use core::prelude::*;
 use io::prelude::*;
 use os::unix::prelude::*;
 
-use ffi::{self, CString, OsString, AsOsStr, OsStr};
+use ffi::{CString, CStr, OsString, AsOsStr, OsStr};
 use io::{self, Error, Seek, SeekFrom};
 use libc::{self, c_int, c_void, size_t, off_t, c_char, mode_t};
 use mem;
@@ -147,8 +147,7 @@ impl DirEntry {
             fn rust_list_dir_val(ptr: *mut libc::dirent_t) -> *const c_char;
         }
         unsafe {
-            let ptr = rust_list_dir_val(self.dirent);
-            ffi::c_str_to_bytes(mem::copy_lifetime(self, &ptr))
+            CStr::from_ptr(rust_list_dir_val(self.dirent)).to_bytes()
         }
     }
 }
@@ -204,7 +203,7 @@ impl File {
             (true, false) |
             (false, false) => libc::O_RDONLY,
         };
-        let path = cstr(path);
+        let path = try!(cstr(path));
         let fd = try!(cvt_r(|| unsafe {
             libc::open(path.as_ptr(), flags, opts.mode)
         }));
@@ -268,19 +267,20 @@ impl File {
     pub fn fd(&self) -> &FileDesc { &self.0 }
 }
 
-fn cstr(path: &Path) -> CString {
-    CString::from_slice(path.as_os_str().as_bytes())
+fn cstr(path: &Path) -> io::Result<CString> {
+    let cstring = try!(path.as_os_str().to_cstring());
+    Ok(cstring)
 }
 
 pub fn mkdir(p: &Path) -> io::Result<()> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     try!(cvt(unsafe { libc::mkdir(p.as_ptr(), 0o777) }));
     Ok(())
 }
 
 pub fn readdir(p: &Path) -> io::Result<ReadDir> {
     let root = Rc::new(p.to_path_buf());
-    let p = cstr(p);
+    let p = try!(cstr(p));
     unsafe {
         let ptr = libc::opendir(p.as_ptr());
         if ptr.is_null() {
@@ -292,32 +292,32 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
 }
 
 pub fn unlink(p: &Path) -> io::Result<()> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     try!(cvt(unsafe { libc::unlink(p.as_ptr()) }));
     Ok(())
 }
 
 pub fn rename(old: &Path, new: &Path) -> io::Result<()> {
-    let old = cstr(old);
-    let new = cstr(new);
+    let old = try!(cstr(old));
+    let new = try!(cstr(new));
     try!(cvt(unsafe { libc::rename(old.as_ptr(), new.as_ptr()) }));
     Ok(())
 }
 
 pub fn set_perm(p: &Path, perm: FilePermissions) -> io::Result<()> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     try!(cvt_r(|| unsafe { libc::chmod(p.as_ptr(), perm.mode) }));
     Ok(())
 }
 
 pub fn rmdir(p: &Path) -> io::Result<()> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     try!(cvt(unsafe { libc::rmdir(p.as_ptr()) }));
     Ok(())
 }
 
 pub fn chown(p: &Path, uid: isize, gid: isize) -> io::Result<()> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     try!(cvt_r(|| unsafe {
         libc::chown(p.as_ptr(), uid as libc::uid_t, gid as libc::gid_t)
     }));
@@ -325,7 +325,7 @@ pub fn chown(p: &Path, uid: isize, gid: isize) -> io::Result<()> {
 }
 
 pub fn readlink(p: &Path) -> io::Result<PathBuf> {
-    let c_path = cstr(p);
+    let c_path = try!(cstr(p));
     let p = c_path.as_ptr();
     let mut len = unsafe { libc::pathconf(p as *mut _, libc::_PC_NAME_MAX) };
     if len < 0 {
@@ -343,35 +343,35 @@ pub fn readlink(p: &Path) -> io::Result<PathBuf> {
 }
 
 pub fn symlink(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src);
-    let dst = cstr(dst);
+    let src = try!(cstr(src));
+    let dst = try!(cstr(dst));
     try!(cvt(unsafe { libc::symlink(src.as_ptr(), dst.as_ptr()) }));
     Ok(())
 }
 
 pub fn link(src: &Path, dst: &Path) -> io::Result<()> {
-    let src = cstr(src);
-    let dst = cstr(dst);
+    let src = try!(cstr(src));
+    let dst = try!(cstr(dst));
     try!(cvt(unsafe { libc::link(src.as_ptr(), dst.as_ptr()) }));
     Ok(())
 }
 
 pub fn stat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     let mut stat: libc::stat = unsafe { mem::zeroed() };
     try!(cvt(unsafe { libc::stat(p.as_ptr(), &mut stat) }));
     Ok(FileAttr { stat: stat })
 }
 
 pub fn lstat(p: &Path) -> io::Result<FileAttr> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     let mut stat: libc::stat = unsafe { mem::zeroed() };
     try!(cvt(unsafe { libc::lstat(p.as_ptr(), &mut stat) }));
     Ok(FileAttr { stat: stat })
 }
 
 pub fn utimes(p: &Path, atime: u64, mtime: u64) -> io::Result<()> {
-    let p = cstr(p);
+    let p = try!(cstr(p));
     let buf = [super::ms_to_timeval(atime), super::ms_to_timeval(mtime)];
     try!(cvt(unsafe { c::utimes(p.as_ptr(), buf.as_ptr()) }));
     Ok(())

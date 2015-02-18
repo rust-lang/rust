@@ -12,8 +12,7 @@ use prelude::v1::*;
 use self::SocketStatus::*;
 use self::InAddr::*;
 
-use ffi::CString;
-use ffi;
+use ffi::{CString, CStr};
 use old_io::net::addrinfo;
 use old_io::net::ip::{SocketAddr, IpAddr, Ipv4Addr, Ipv6Addr};
 use old_io::{IoResult, IoError};
@@ -235,9 +234,15 @@ pub fn get_host_addresses(host: Option<&str>, servname: Option<&str>,
 
     assert!(host.is_some() || servname.is_some());
 
-    let c_host = host.map(|x| CString::from_slice(x.as_bytes()));
+    let c_host = match host {
+        Some(x) => Some(try!(CString::new(x))),
+        None => None,
+    };
     let c_host = c_host.as_ref().map(|x| x.as_ptr()).unwrap_or(null());
-    let c_serv = servname.map(|x| CString::from_slice(x.as_bytes()));
+    let c_serv = match servname {
+        Some(x) => Some(try!(CString::new(x))),
+        None => None,
+    };
     let c_serv = c_serv.as_ref().map(|x| x.as_ptr()).unwrap_or(null());
 
     let hint = hint.map(|hint| {
@@ -325,8 +330,8 @@ pub fn get_address_name(addr: IpAddr) -> Result<String, IoError> {
     }
 
     unsafe {
-        Ok(str::from_utf8(ffi::c_str_to_bytes(&hostbuf.as_ptr()))
-               .unwrap().to_string())
+        let data = CStr::from_ptr(hostbuf.as_ptr());
+        Ok(str::from_utf8(data.to_bytes()).unwrap().to_string())
     }
 }
 
