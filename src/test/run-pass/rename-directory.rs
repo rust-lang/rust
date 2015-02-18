@@ -31,12 +31,12 @@ fn rename_directory() {
         let test_file = &old_path.join("temp.txt");
 
         /* Write the temp input file */
-        let fromp = CString::from_slice(test_file.as_vec());
-        let modebuf = CString::from_slice(b"w+b");
+        let fromp = CString::from_slice(test_file.as_vec()).unwrap();
+        let modebuf = CString::from_slice(b"w+b").unwrap();
         let ostream = libc::fopen(fromp.as_ptr(), modebuf.as_ptr());
         assert!((ostream as uint != 0u));
         let s = "hello".to_string();
-        let buf = CString::from_slice(b"hello");
+        let buf = CString::from_slice(b"hello").unwrap();
         let write_len = libc::fwrite(buf.as_ptr() as *mut _,
                                      1u as libc::size_t,
                                      (s.len() + 1u) as libc::size_t,

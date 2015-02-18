@@ -86,7 +86,7 @@ use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use libc::{c_uint, uint64_t};
-use std::ffi::{self, CString};
+use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::mem;
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
                ty: Type, output: ty::FnOutput) -> ValueRef {
 
-    let buf = CString::from_slice(name.as_bytes());
+    let buf = CString::new(name).unwrap();
     let llfn: ValueRef = unsafe {
         llvm::LLVMGetOrInsertFunction(ccx.llmod(), buf.as_ptr(), ty.to_ref())
     };
@@ -340,7 +340,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
         None => ()
     }
     unsafe {
-        let buf = CString::from_slice(name.as_bytes());
+        let buf = CString::new(name.clone()).unwrap();
         let c = llvm::LLVMAddGlobal(ccx.llmod(), ty.to_ref(), buf.as_ptr());
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
@@ -2788,7 +2788,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                 &format!("Illegal null byte in export_name \
                                          value: `{}`", sym)[]);
                         }
-                        let buf = CString::from_slice(sym.as_bytes());
+                        let buf = CString::new(sym.clone()).unwrap();
                         let g = llvm::LLVMAddGlobal(ccx.llmod(), llty,
                                                     buf.as_ptr());
 
@@ -2826,7 +2826,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                                  &sect)[]);
                     }
                     unsafe {
-                        let buf = CString::from_slice(sect.as_bytes());
+                        let buf = CString::new(sect.as_bytes()).unwrap();
                         llvm::LLVMSetSection(v, buf.as_ptr());
                     }
                 },
@@ -2993,7 +2993,7 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     let name = format!("rust_metadata_{}_{}",
                        cx.link_meta().crate_name,
                        cx.link_meta().crate_hash);
-    let buf = CString::from_vec(name.into_bytes());
+    let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
         llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(),
                             buf.as_ptr())
@@ -3001,7 +3001,7 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let name = loader::meta_section_name(cx.sess().target.target.options.is_like_osx);
-        let name = CString::from_slice(name.as_bytes());
+        let name = CString::new(name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr())
     }
     return metadata;
@@ -3039,8 +3039,8 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = ffi::c_str_to_bytes(&llvm::LLVMGetValueName(val))
-                               .to_vec();
+                let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
+                                .to_bytes().to_vec();
                 declared.insert(name);
             }
         }
@@ -3056,8 +3056,8 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = ffi::c_str_to_bytes(&llvm::LLVMGetValueName(val))
-                               .to_vec();
+                let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
+                                .to_bytes().to_vec();
                 if !declared.contains(&name) &&
                    !reachable.contains(str::from_utf8(&name).unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);

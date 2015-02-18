@@ -85,7 +85,7 @@
 
 use prelude::v1::*;
 
-use ffi;
+use ffi::CStr;
 use old_io::IoResult;
 use libc;
 use mem;
@@ -233,7 +233,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
         output(w, idx,addr, None)
     } else {
         output(w, idx, addr, Some(unsafe {
-            ffi::c_str_to_bytes(&info.dli_sname)
+            CStr::from_ptr(info.dli_sname).to_bytes()
         }))
     }
 }
@@ -364,7 +364,7 @@ fn print(w: &mut Writer, idx: int, addr: *mut libc::c_void) -> IoResult<()> {
     if ret == 0 || data.is_null() {
         output(w, idx, addr, None)
     } else {
-        output(w, idx, addr, Some(unsafe { ffi::c_str_to_bytes(&data) }))
+        output(w, idx, addr, Some(unsafe { CStr::from_ptr(data).to_bytes() }))
     }
 }
 
