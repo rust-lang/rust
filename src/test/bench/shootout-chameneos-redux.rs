@@ -233,7 +233,7 @@ fn main() {
         std::env::args()
                        .nth(1)
                        .and_then(|arg| arg.parse().ok())
-                       .unwrap_or(600us)
+                       .unwrap_or(600)
     };
 
     print_complements();

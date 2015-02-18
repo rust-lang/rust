@@ -49,8 +49,8 @@ impl Sudoku {
     }
 
     pub fn from_vec(vec: &[[u8;9];9]) -> Sudoku {
-        let g = (0..9u).map(|i| {
-            (0..9u).map(|j| { vec[i][j] }).collect()
+        let g = (0..9).map(|i| {
+            (0..9).map(|j| { vec[i][j] }).collect()
         }).collect();
         return Sudoku::new(g)
     }
@@ -68,7 +68,7 @@ impl Sudoku {
                                        .split(',')
                                        .collect();
 
-            if comps.len() == 3u {
+            if comps.len() == 3 {
                 let row = comps[0].parse::<u8>().unwrap();
                 let col = comps[1].parse::<u8>().unwrap();
                 g[row as uint][col as uint] = comps[2].parse().unwrap();
@@ -102,7 +102,7 @@ impl Sudoku {
             }
         }
 
-        let mut ptr = 0u;
+        let mut ptr = 0;
         let end = work.len();
         while ptr < end {
             let (row, col) = work[ptr];
@@ -111,11 +111,11 @@ impl Sudoku {
                                 (1 as u8);
             if self.next_color(row, col, the_color) {
                 //  yes: advance work list
-                ptr = ptr + 1u;
+                ptr = ptr + 1;
             } else {
                 // no: redo this field aft recoloring pred; unless there is none
-                if ptr == 0u { panic!("No solution found for this sudoku"); }
-                ptr = ptr - 1u;
+                if ptr == 0 { panic!("No solution found for this sudoku"); }
+                ptr = ptr - 1;
             }
         }
     }

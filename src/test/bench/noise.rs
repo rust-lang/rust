@@ -113,8 +113,8 @@ fn main() {
         }
     }
 
-    for y in 0u..256 {
-        for x in 0u..256 {
+    for y in 0..256 {
+        for x in 0..256 {
             let idx = (pixels[y*256+x] / 0.2) as uint;
             print!("{}", symbols[idx]);
         }
