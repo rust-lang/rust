@@ -1056,6 +1056,7 @@ do
     make_dir $h/test/run-pass-fulldeps
     make_dir $h/test/run-fail
     make_dir $h/test/compile-fail
+    make_dir $h/test/parse-fail
     make_dir $h/test/compile-fail-fulldeps
     make_dir $h/test/bench
     make_dir $h/test/perf
