@@ -358,7 +358,7 @@ impl<'a> Id<'a> {
     ///
     /// Passing an invalid string (containing spaces, brackets,
     /// quotes, ...) will return an empty `Err` value.
-    pub fn new<Name: IntoCow<'a, String, str>>(name: Name) -> Result<Id<'a>, ()> {
+    pub fn new<Name: IntoCow<'a, str>>(name: Name) -> Result<Id<'a>, ()> {
         let name = name.into_cow();
         {
             let mut chars = name.chars();
@@ -427,11 +427,11 @@ pub trait Labeller<'a,N,E> {
 }
 
 impl<'a> LabelText<'a> {
-    pub fn label<S:IntoCow<'a, String, str>>(s: S) -> LabelText<'a> {
+    pub fn label<S:IntoCow<'a, str>>(s: S) -> LabelText<'a> {
         LabelStr(s.into_cow())
     }
 
-    pub fn escaped<S:IntoCow<'a, String, str>>(s: S) -> LabelText<'a> {
+    pub fn escaped<S:IntoCow<'a, str>>(s: S) -> LabelText<'a> {
         EscStr(s.into_cow())
     }
 

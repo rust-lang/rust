@@ -55,7 +55,6 @@
 use self::RecompositionState::*;
 use self::DecompositionType::*;
 
-use core::borrow::{BorrowFrom, ToOwned};
 use core::char::CharExt;
 use core::clone::Clone;
 use core::iter::AdditiveIterator;
@@ -69,6 +68,7 @@ use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
 
 use vec_deque::VecDeque;
+use borrow::{Borrow, ToOwned};
 use slice::SliceExt;
 use string::String;
 use unicode;
@@ -386,13 +386,14 @@ macro_rules! utf8_acc_cont_byte {
     ($ch:expr, $byte:expr) => (($ch << 6) | ($byte & 63u8) as u32)
 }
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl BorrowFrom<String> for str {
-    fn borrow_from(owned: &String) -> &str { &owned[] }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Borrow<str> for String {
+    fn borrow(&self) -> &str { &self[] }
 }
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl ToOwned<String> for str {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl ToOwned for str {
+    type Owned = String;
     fn to_owned(&self) -> String {
         unsafe {
             String::from_utf8_unchecked(self.as_bytes().to_owned())

@@ -100,8 +100,8 @@ tests! {
     Add::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<_>>::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<i32>>::add, fn(i32, i32) -> i32, (5, 6);
-    <String as IntoCow<_, _>>::into_cow, fn(String) -> Cow<'static, String, str>,
+    <String as IntoCow<_>>::into_cow, fn(String) -> Cow<'static, str>,
         ("foo".to_string());
-    <String as IntoCow<'static, _, _>>::into_cow, fn(String) -> Cow<'static, String, str>,
+    <String as IntoCow<'static, _>>::into_cow, fn(String) -> Cow<'static, str>,
         ("foo".to_string());
 }

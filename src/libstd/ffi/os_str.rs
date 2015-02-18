@@ -34,7 +34,7 @@
 
 use core::prelude::*;
 
-use core::borrow::{BorrowFrom, ToOwned};
+use borrow::{Borrow, ToOwned};
 use fmt::{self, Debug};
 use mem;
 use string::{String, CowString};
@@ -285,11 +285,12 @@ impl Debug for OsStr {
     }
 }
 
-impl BorrowFrom<OsString> for OsStr {
-    fn borrow_from(owned: &OsString) -> &OsStr { &owned[] }
+impl Borrow<OsStr> for OsString {
+    fn borrow(&self) -> &OsStr { &self[] }
 }
 
-impl ToOwned<OsString> for OsStr {
+impl ToOwned for OsStr {
+    type Owned = OsString;
     fn to_owned(&self) -> OsString { self.to_os_string() }
 }
 
