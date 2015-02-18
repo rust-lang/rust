@@ -877,7 +877,7 @@ impl BytesContainer for String {
     }
     #[inline]
     fn container_as_str(&self) -> Option<&str> {
-        Some(&self[])
+        Some(&self[..])
     }
     #[inline]
     fn is_str(_: Option<&String>) -> bool { true }
@@ -893,7 +893,7 @@ impl BytesContainer for [u8] {
 impl BytesContainer for Vec<u8> {
     #[inline]
     fn container_as_bytes(&self) -> &[u8] {
-        &self[]
+        &self[..]
     }
 }
 

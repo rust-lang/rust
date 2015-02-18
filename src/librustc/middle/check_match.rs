@@ -200,7 +200,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
             }
 
             // Fourth, check for unreachable arms.
-            check_arms(cx, &inlined_arms[], source);
+            check_arms(cx, &inlined_arms[..], source);
 
             // Finally, check if the whole match expression is exhaustive.
             // Check for empty enum, because is_useful only works on inhabited types.
@@ -291,7 +291,7 @@ fn check_arms(cx: &MatchCheckCtxt,
         for pat in pats {
             let v = vec![&**pat];
 
-            match is_useful(cx, &seen, &v[], LeaveOutWitness) {
+            match is_useful(cx, &seen, &v[..], LeaveOutWitness) {
                 NotUseful => {
                     match source {
                         ast::MatchSource::IfLetDesugar { .. } => {
@@ -351,7 +351,7 @@ fn raw_pat<'a>(p: &'a Pat) -> &'a Pat {
 fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: ast::MatchSource) {
     match is_useful(cx, matrix, &[DUMMY_WILD_PAT], ConstructWitness) {
         UsefulWithWitness(pats) => {
-            let witness = match &pats[] {
+            let witness = match &pats[..] {
                 [ref witness] => &**witness,
                 [] => DUMMY_WILD_PAT,
                 _ => unreachable!()
@@ -360,7 +360,7 @@ fn check_exhaustive(cx: &MatchCheckCtxt, sp: Span, matrix: &Matrix, source: ast:
                 ast::MatchSource::ForLoopDesugar => {
                     // `witness` has the form `Some(<head>)`, peel off the `Some`
                     let witness = match witness.node {
-                        ast::PatEnum(_, Some(ref pats)) => match &pats[] {
+                        ast::PatEnum(_, Some(ref pats)) => match &pats[..] {
                             [ref pat] => &**pat,
                             _ => unreachable!(),
                         },
@@ -664,7 +664,7 @@ fn is_useful(cx: &MatchCheckCtxt,
                         UsefulWithWitness(pats) => UsefulWithWitness({
                             let arity = constructor_arity(cx, &c, left_ty);
                             let mut result = {
-                                let pat_slice = &pats[];
+                                let pat_slice = &pats[..];
                                 let subpats: Vec<_> = (0..arity).map(|i| {
                                     pat_slice.get(i).map_or(DUMMY_WILD_PAT, |p| &**p)
                                 }).collect();
@@ -711,10 +711,10 @@ fn is_useful_specialized(cx: &MatchCheckCtxt, &Matrix(ref m): &Matrix,
                          witness: WitnessPreference) -> Usefulness {
     let arity = constructor_arity(cx, &ctor, lty);
     let matrix = Matrix(m.iter().filter_map(|r| {
-        specialize(cx, &r[], &ctor, 0, arity)
+        specialize(cx, &r[..], &ctor, 0, arity)
     }).collect());
     match specialize(cx, v, &ctor, 0, arity) {
-        Some(v) => is_useful(cx, &matrix, &v[], witness),
+        Some(v) => is_useful(cx, &matrix, &v[..], witness),
         None => NotUseful
     }
 }

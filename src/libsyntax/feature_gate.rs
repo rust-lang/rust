@@ -356,7 +356,7 @@ pub fn emit_feature_err(diag: &SpanHandler, feature: &str, span: Span, explain: 
     diag.span_err(span, explain);
     diag.span_help(span, &format!("add #![feature({})] to the \
                                    crate attributes to enable",
-                                  feature)[]);
+                                  feature));
 }
 
 pub fn emit_feature_warn(diag: &SpanHandler, feature: &str, span: Span, explain: &str) {
@@ -364,7 +364,7 @@ pub fn emit_feature_warn(diag: &SpanHandler, feature: &str, span: Span, explain:
     if diag.handler.can_emit_warnings {
         diag.span_help(span, &format!("add #![feature({})] to the \
                                        crate attributes to silence this warning",
-                                      feature)[]);
+                                      feature));
     }
 }
 
@@ -438,7 +438,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     fn visit_item(&mut self, i: &ast::Item) {
         match i.node {
             ast::ItemExternCrate(_) => {
-                if attr::contains_name(&i.attrs[], "macro_reexport") {
+                if attr::contains_name(&i.attrs[..], "macro_reexport") {
                     self.gate_feature("macro_reexport", i.span,
                                       "macros reexports are experimental \
                                        and possibly buggy");
@@ -446,7 +446,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemForeignMod(ref foreign_module) => {
-                if attr::contains_name(&i.attrs[], "link_args") {
+                if attr::contains_name(&i.attrs[..], "link_args") {
                     self.gate_feature("link_args", i.span,
                                       "the `link_args` attribute is not portable \
                                        across platforms, it is recommended to \
@@ -460,17 +460,17 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemFn(..) => {
-                if attr::contains_name(&i.attrs[], "plugin_registrar") {
+                if attr::contains_name(&i.attrs[..], "plugin_registrar") {
                     self.gate_feature("plugin_registrar", i.span,
                                       "compiler plugins are experimental and possibly buggy");
                 }
-                if attr::contains_name(&i.attrs[], "start") {
+                if attr::contains_name(&i.attrs[..], "start") {
                     self.gate_feature("start", i.span,
                                       "a #[start] function is an experimental \
                                        feature whose signature may change \
                                        over time");
                 }
-                if attr::contains_name(&i.attrs[], "main") {
+                if attr::contains_name(&i.attrs[..], "main") {
                     self.gate_feature("main", i.span,
                                       "declaration of a nonstandard #[main] \
                                        function may change over time, for now \
@@ -479,7 +479,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
             }
 
             ast::ItemStruct(..) => {
-                if attr::contains_name(&i.attrs[], "simd") {
+                if attr::contains_name(&i.attrs[..], "simd") {
                     self.gate_feature("simd", i.span,
                                       "SIMD types are experimental and possibly buggy");
                 }
@@ -505,7 +505,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                                        removed in the future");
                 }
 
-                if attr::contains_name(&i.attrs[],
+                if attr::contains_name(&i.attrs[..],
                                        "old_orphan_check") {
                     self.gate_feature(
                         "old_orphan_check",
@@ -513,7 +513,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
                         "the new orphan check rules will eventually be strictly enforced");
                 }
 
-                if attr::contains_name(&i.attrs[],
+                if attr::contains_name(&i.attrs[..],
                                        "old_impl_check") {
                     self.gate_feature("old_impl_check",
                                       i.span,
@@ -528,7 +528,7 @@ impl<'a, 'v> Visitor<'v> for PostExpansionVisitor<'a> {
     }
 
     fn visit_foreign_item(&mut self, i: &ast::ForeignItem) {
-        if attr::contains_name(&i.attrs[], "linkage") {
+        if attr::contains_name(&i.attrs, "linkage") {
             self.gate_feature("linkage", i.span,
                               "the `linkage` attribute is experimental \
                                and not portable across platforms")

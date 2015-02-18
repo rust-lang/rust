@@ -323,7 +323,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
     let llfn =
         decl_internal_rust_fn(ccx,
                               tuple_fn_ty,
-                              &function_name[]);
+                              &function_name[..]);
 
     //
     let empty_substs = tcx.mk_substs(Substs::trans_empty());
@@ -359,7 +359,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
                            DebugLoc::None,
                            bare_fn_ty,
                            |bcx, _| Callee { bcx: bcx, data: Fn(llfnpointer) },
-                           ArgVals(&llargs[]),
+                           ArgVals(&llargs[..]),
                            dest).bcx;
 
     finish_fn(&fcx, bcx, sig.output, DebugLoc::None);
@@ -792,7 +792,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         // Invoke the actual rust fn and update bcx/llresult.
         let (llret, b) = base::invoke(bcx,
                                       llfn,
-                                      &llargs[],
+                                      &llargs[..],
                                       callee_ty,
                                       debug_loc);
         bcx = b;
@@ -833,7 +833,7 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
                                          callee_ty,
                                          llfn,
                                          opt_llretslot.unwrap(),
-                                         &llargs[],
+                                         &llargs[..],
                                          arg_tys,
                                          debug_loc);
     }

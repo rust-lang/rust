@@ -311,7 +311,7 @@ impl<'a> fold::Folder for CfgAttrFolder<'a> {
             }
         };
 
-        if attr::cfg_matches(self.diag, &self.config[], &cfg) {
+        if attr::cfg_matches(self.diag, &self.config[..], &cfg) {
             Some(respan(mi.span, ast::Attribute_ {
                 id: attr::mk_attr_id(),
                 style: attr.node.style,

@@ -172,7 +172,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             traits_are = if candidates.len() == 1 {"trait is"} else {"traits are"},
             one_of_them = if candidates.len() == 1 {"it"} else {"one of them"});
 
-        fcx.sess().fileline_help(span, &msg[]);
+        fcx.sess().fileline_help(span, &msg[..]);
 
         for (i, trait_did) in candidates.iter().enumerate() {
             fcx.sess().fileline_help(span,
@@ -218,7 +218,7 @@ fn suggest_traits_to_import<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             one_of_them = if candidates.len() == 1 {"it"} else {"one of them"},
             name = method_ustring);
 
-        fcx.sess().fileline_help(span, &msg[]);
+        fcx.sess().fileline_help(span, &msg[..]);
 
         for (i, trait_info) in candidates.iter().enumerate() {
             fcx.sess().fileline_help(span,

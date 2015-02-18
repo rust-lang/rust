@@ -50,7 +50,7 @@ impl<'a> ParserAnyMacro<'a> {
                                following",
                               token_str);
             let span = parser.span;
-            parser.span_err(span, &msg[]);
+            parser.span_err(span, &msg[..]);
         }
     }
 }
@@ -192,13 +192,13 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 best_fail_spot = sp;
                 best_fail_msg = (*msg).clone();
               },
-              Error(sp, ref msg) => cx.span_fatal(sp, &msg[])
+              Error(sp, ref msg) => cx.span_fatal(sp, &msg[..])
             }
           }
           _ => cx.bug("non-matcher found in parsed lhses")
         }
     }
-    cx.span_fatal(best_fail_spot, &best_fail_msg[]);
+    cx.span_fatal(best_fail_spot, &best_fail_msg[..]);
 }
 
 // Note that macro-by-example's input is also matched against a token tree:

@@ -901,7 +901,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("applicable_candidates: {}", applicable_candidates.repr(self.tcx()));
 
         if applicable_candidates.len() > 1 {
-            match self.collapse_candidates_to_trait_pick(&applicable_candidates[]) {
+            match self.collapse_candidates_to_trait_pick(&applicable_candidates[..]) {
                 Some(pick) => { return Some(Ok(pick)); }
                 None => { }
             }

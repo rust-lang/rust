@@ -24,7 +24,7 @@ pub fn expand_deriving_bound<F>(cx: &mut ExtCtxt,
 {
     let name = match mitem.node {
         MetaWord(ref tname) => {
-            match &tname[] {
+            match &tname[..] {
                 "Copy" => "Copy",
                 "Send" | "Sync" => {
                     return cx.span_err(span,

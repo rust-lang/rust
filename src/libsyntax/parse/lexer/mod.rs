@@ -196,7 +196,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.fatal_span_(from_pos, to_pos, &m[]);
+        self.fatal_span_(from_pos, to_pos, &m[..]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -205,7 +205,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.err_span_(from_pos, to_pos, &m[]);
+        self.err_span_(from_pos, to_pos, &m[..]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -215,7 +215,7 @@ impl<'a> StringReader<'a> {
         let from = self.byte_offset(from_pos).to_usize();
         let to = self.byte_offset(to_pos).to_usize();
         m.push_str(&self.filemap.src[from..to]);
-        self.fatal_span_(from_pos, to_pos, &m[]);
+        self.fatal_span_(from_pos, to_pos, &m[..]);
     }
 
     /// Advance peek_tok and peek_span to refer to the next token, and
@@ -556,7 +556,7 @@ impl<'a> StringReader<'a> {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
                 } else { string.into_cow() };
-                token::DocComment(token::intern(&string[]))
+                token::DocComment(token::intern(&string[..]))
             } else {
                 token::Comment
             };

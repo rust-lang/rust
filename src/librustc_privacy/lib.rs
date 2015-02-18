@@ -585,10 +585,10 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         match result {
             None => true,
             Some((span, msg, note)) => {
-                self.tcx.sess.span_err(span, &msg[]);
+                self.tcx.sess.span_err(span, &msg[..]);
                 match note {
                     Some((span, msg)) => {
-                        self.tcx.sess.span_note(span, &msg[])
+                        self.tcx.sess.span_note(span, &msg[..])
                     }
                     None => {},
                 }
@@ -690,7 +690,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             UnnamedField(idx) => format!("field #{} of {} is private",
                                          idx + 1, struct_desc),
         };
-        self.tcx.sess.span_err(span, &msg[]);
+        self.tcx.sess.span_err(span, &msg[..]);
     }
 
     // Given the ID of a method, checks to ensure it's in scope.

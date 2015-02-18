@@ -52,7 +52,7 @@ impl<'a> Error for &'a str {
 
 impl Error for String {
     fn description<'a>(&'a self) -> &'a str {
-        &self[]
+        &self[..]
     }
 }
 
@@ -75,7 +75,7 @@ impl Error for IoError {
         self.desc
     }
     fn detail(&self) -> Option<&str> {
-        self.detail.as_ref().map(|s| &s[])
+        self.detail.as_ref().map(|s| &s[..])
     }
 }
 

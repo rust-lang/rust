@@ -268,7 +268,7 @@ fn get_enum_variant_types<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
             ast::TupleVariantKind(ref args) if args.len() > 0 => {
                 let rs = ExplicitRscope;
                 let input_tys: Vec<_> = args.iter().map(|va| ccx.to_ty(&rs, &*va.ty)).collect();
-                ty::mk_ctor_fn(tcx, variant_def_id, &input_tys[], enum_scheme.ty)
+                ty::mk_ctor_fn(tcx, variant_def_id, &input_tys[..], enum_scheme.ty)
             }
 
             ast::TupleVariantKind(_) => {
@@ -313,7 +313,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                     trait_id,
                                     &trait_def.generics,
                                     &trait_predicates,
-                                    &trait_items[],
+                                    &trait_items[..],
                                     &m.id,
                                     &m.ident.name,
                                     &m.explicit_self,
@@ -328,7 +328,7 @@ fn collect_trait_methods<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                                     trait_id,
                                     &trait_def.generics,
                                     &trait_predicates,
-                                    &trait_items[],
+                                    &trait_items[..],
                                     &m.id,
                                     &m.pe_ident().name,
                                     m.pe_explicit_self(),
@@ -871,7 +871,7 @@ fn convert_struct<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
                             local_def(field.node.id)].ty).collect();
                 let ctor_fn_ty = ty::mk_ctor_fn(tcx,
                                                 local_def(ctor_id),
-                                                &inputs[],
+                                                &inputs[..],
                                                 selfty);
                 write_ty_to_tcx(tcx, ctor_id, ctor_fn_ty);
                 tcx.tcache.borrow_mut().insert(local_def(ctor_id),
@@ -1358,7 +1358,7 @@ fn ty_generics_for_fn_or_method<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
     let early_lifetimes = resolve_lifetime::early_bound_lifetimes(generics);
     ty_generics(ccx,
                 subst::FnSpace,
-                &early_lifetimes[],
+                &early_lifetimes[..],
                 &generics.ty_params[],
                 &generics.where_clause,
                 base_generics)

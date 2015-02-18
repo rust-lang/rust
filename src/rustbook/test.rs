@@ -65,7 +65,7 @@ impl Subcommand for Test {
             }
             Err(errors) => {
                 for err in errors {
-                    term.err(&err[]);
+                    term.err(&err[..]);
                 }
                 return Err(box "There was an error." as Box<Error>);
             }

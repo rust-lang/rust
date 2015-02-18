@@ -857,7 +857,7 @@ impl ops::Index<ops::Range<usize>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::Range<usize>) -> &str {
-        &self[][*index]
+        &self[..][*index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -865,7 +865,7 @@ impl ops::Index<ops::RangeTo<usize>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeTo<usize>) -> &str {
-        &self[][*index]
+        &self[..][*index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -873,7 +873,7 @@ impl ops::Index<ops::RangeFrom<usize>> for String {
     type Output = str;
     #[inline]
     fn index(&self, index: &ops::RangeFrom<usize>) -> &str {
-        &self[][*index]
+        &self[..][*index]
     }
 }
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -891,7 +891,7 @@ impl ops::Deref for String {
 
     #[inline]
     fn deref(&self) -> &str {
-        unsafe { mem::transmute(&self.vec[]) }
+        unsafe { mem::transmute(&self.vec[..]) }
     }
 }
 
@@ -1287,7 +1287,7 @@ mod tests {
     #[test]
     fn test_slicing() {
         let s = "foobar".to_string();
-        assert_eq!("foobar", &s[]);
+        assert_eq!("foobar", &s[..]);
         assert_eq!("foo", &s[..3]);
         assert_eq!("bar", &s[3..]);
         assert_eq!("oob", &s[1..4]);

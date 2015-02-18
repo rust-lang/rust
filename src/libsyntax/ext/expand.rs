@@ -405,7 +405,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                                 },
                             });
                         let fm = fresh_mark();
-                        let marked_before = mark_tts(&tts[], fm);
+                        let marked_before = mark_tts(&tts[..], fm);
 
                         // The span that we pass to the expanders we want to
                         // be the root of the call stack. That's the most
@@ -416,7 +416,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         let opt_parsed = {
                             let expanded = expandfun.expand(fld.cx,
                                                             mac_span,
-                                                            &marked_before[]);
+                                                            &marked_before[..]);
                             parse_thunk(expanded)
                         };
                         let parsed = match opt_parsed {
@@ -425,7 +425,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                                 fld.cx.span_err(
                                     pth.span,
                                     &format!("non-expression macro in expression position: {}",
-                                            &extnamestr[]
+                                            &extnamestr[..]
                                             )[]);
                                 return None;
                             }
@@ -633,8 +633,8 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         }
                     });
                     // mark before expansion:
-                    let marked_before = mark_tts(&tts[], fm);
-                    expander.expand(fld.cx, it.span, &marked_before[])
+                    let marked_before = mark_tts(&tts[..], fm);
+                    expander.expand(fld.cx, it.span, &marked_before[..])
                 }
                 IdentTT(ref expander, span) => {
                     if it.ident.name == parse::token::special_idents::invalid.name {
@@ -652,7 +652,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                         }
                     });
                     // mark before expansion:
-                    let marked_tts = mark_tts(&tts[], fm);
+                    let marked_tts = mark_tts(&tts[..], fm);
                     expander.expand(fld.cx, it.span, it.ident, marked_tts)
                 }
                 MacroRulesTT => {
@@ -971,11 +971,11 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                     });
 
                     let fm = fresh_mark();
-                    let marked_before = mark_tts(&tts[], fm);
+                    let marked_before = mark_tts(&tts[..], fm);
                     let mac_span = fld.cx.original_span();
                     let expanded = match expander.expand(fld.cx,
                                         mac_span,
-                                        &marked_before[]).make_pat() {
+                                        &marked_before[..]).make_pat() {
                         Some(e) => e,
                         None => {
                             fld.cx.span_err(
@@ -1128,7 +1128,7 @@ fn expand_annotatable(a: Annotatable,
                 if valid_ident {
                     fld.cx.mod_push(it.ident);
                 }
-                let macro_use = contains_macro_use(fld, &new_attrs[]);
+                let macro_use = contains_macro_use(fld, &new_attrs[..]);
                 let result = with_exts_frame!(fld.cx.syntax_env,
                                               macro_use,
                                               noop_fold_item(it, fld));
@@ -1508,7 +1508,7 @@ impl Folder for Marker {
             node: match node {
                 MacInvocTT(path, tts, ctxt) => {
                     MacInvocTT(self.fold_path(path),
-                               self.fold_tts(&tts[]),
+                               self.fold_tts(&tts[..]),
                                mtwt::apply_mark(self.mark, ctxt))
                 }
             },
@@ -1914,7 +1914,7 @@ mod test {
                         .collect();
                     println!("varref #{}: {:?}, resolves to {}",idx, varref_idents, varref_name);
                     let string = token::get_ident(final_varref_ident);
-                    println!("varref's first segment's string: \"{}\"", &string[]);
+                    println!("varref's first segment's string: \"{}\"", &string[..]);
                     println!("binding #{}: {}, resolves to {}",
                              binding_idx, bindings[binding_idx], binding_name);
                     mtwt::with_sctable(|x| mtwt::display_sctable(x));
@@ -1967,10 +1967,10 @@ foo_module!();
         let cxbinds: Vec<&ast::Ident> =
             bindings.iter().filter(|b| {
                 let ident = token::get_ident(**b);
-                let string = &ident[];
+                let string = &ident[..];
                 "xx" == string
             }).collect();
-        let cxbinds: &[&ast::Ident] = &cxbinds[];
+        let cxbinds: &[&ast::Ident] = &cxbinds[..];
         let cxbind = match cxbinds {
             [b] => b,
             _ => panic!("expected just one binding for ext_cx")

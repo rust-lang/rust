@@ -509,7 +509,7 @@ impl BoxPointers {
         if n_uniq > 0 {
             let s = ty_to_string(cx.tcx, ty);
             let m = format!("type uses owned (Box type) pointers: {}", s);
-            cx.span_lint(BOX_POINTERS, span, &m[]);
+            cx.span_lint(BOX_POINTERS, span, &m[..]);
         }
     }
 }
@@ -737,7 +737,7 @@ impl LintPass for UnusedResults {
                     }
                 } else {
                     let attrs = csearch::get_item_attrs(&cx.sess().cstore, did);
-                    warned |= check_must_use(cx, &attrs[], s.span);
+                    warned |= check_must_use(cx, &attrs[..], s.span);
                 }
             }
             _ => {}
@@ -804,7 +804,7 @@ impl NonCamelCaseTypes {
             } else {
                 format!("{} `{}` should have a camel case name such as `{}`", sort, s, c)
             };
-            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m[]);
+            cx.span_lint(NON_CAMEL_CASE_TYPES, span, &m[..]);
         }
     }
 }
@@ -951,7 +951,7 @@ impl NonSnakeCase {
 
         if !is_snake_case(ident) {
             let sc = NonSnakeCase::to_snake_case(&s);
-            if sc != &s[] {
+            if sc != &s[..] {
                 cx.span_lint(NON_SNAKE_CASE, span,
                     &*format!("{} `{}` should have a snake case name such as `{}`",
                             sort, s, sc));
@@ -1034,7 +1034,7 @@ impl NonUpperCaseGlobals {
         if s.chars().any(|c| c.is_lowercase()) {
             let uc: String = NonSnakeCase::to_snake_case(&s).chars()
                                            .map(|c| c.to_uppercase()).collect();
-            if uc != &s[] {
+            if uc != &s[..] {
                 cx.span_lint(NON_UPPER_CASE_GLOBALS, span,
                     &format!("{} `{}` should have an upper case name such as `{}`",
                              sort, s, uc));
@@ -1197,7 +1197,7 @@ impl LintPass for UnusedImportBraces {
                                     let m = format!("braces around {} is unnecessary",
                                                     &token::get_ident(*name));
                                     cx.span_lint(UNUSED_IMPORT_BRACES, item.span,
-                                                 &m[]);
+                                                 &m[..]);
                                 },
                                 _ => ()
                             }
@@ -1475,7 +1475,7 @@ impl LintPass for MissingDoc {
         let doc_hidden = self.doc_hidden() || attrs.iter().any(|attr| {
             attr.check_name("doc") && match attr.meta_item_list() {
                 None => false,
-                Some(l) => attr::contains_name(&l[], "hidden"),
+                Some(l) => attr::contains_name(&l[..], "hidden"),
             }
         });
         self.doc_hidden_stack.push(doc_hidden);
@@ -1703,7 +1703,7 @@ impl Stability {
                 _ => format!("use of {} item", label)
             };
 
-            cx.span_lint(lint, span, &msg[]);
+            cx.span_lint(lint, span, &msg[..]);
         }
     }
 }

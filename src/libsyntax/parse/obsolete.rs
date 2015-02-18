@@ -41,7 +41,8 @@ pub trait ParserObsoleteMethods {
               sp: Span,
               kind: ObsoleteSyntax,
               kind_str: &str,
-              desc: &str);
+              desc: &str,
+              error: bool);
     fn is_obsolete_ident(&mut self, ident: &str) -> bool;
     fn eat_obsolete_ident(&mut self, ident: &str) -> bool;
 }
@@ -68,17 +69,17 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
             ),
             ObsoleteSyntax::ClosureType => (
                 "`|usize| -> bool` closure type",
-                "use unboxed closures instead, no type annotation needed"
+                "use unboxed closures instead, no type annotation needed",
                 true,
             ),
             ObsoleteSyntax::ClosureKind => (
                 "`:`, `&mut:`, or `&:`",
-                "rely on inference instead"
+                "rely on inference instead",
                 true,
             ),
             ObsoleteSyntax::Sized => (
                 "`Sized? T` for removing the `Sized` bound",
-                "write `T: ?Sized` instead"
+                "write `T: ?Sized` instead",
                 true,
             ),
             ObsoleteSyntax::EmptyIndex => (
