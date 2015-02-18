@@ -26,7 +26,6 @@
 #![feature(box_syntax)]
 #![feature(box_patterns)]
 #![feature(core)]
-#![feature(hash)]
 #![feature(staged_api)]
 #![feature(unboxed_closures)]
 #![feature(unicode)]

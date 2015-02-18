@@ -72,7 +72,8 @@ use std::borrow::{BorrowFrom, Cow};
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt;
-use std::hash::{Hash, Writer, SipHasher, Hasher};
+use std::hash::{Hash, SipHasher, Hasher};
+#[cfg(stage0)] use std::hash::Writer;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
@@ -958,8 +959,15 @@ impl<'tcx> PartialEq for TyS<'tcx> {
 }
 impl<'tcx> Eq for TyS<'tcx> {}
 
+#[cfg(stage0)]
 impl<'tcx, S: Writer + Hasher> Hash<S> for TyS<'tcx> {
     fn hash(&self, s: &mut S) {
+        (self as *const _).hash(s)
+    }
+}
+#[cfg(not(stage0))]
+impl<'tcx> Hash for TyS<'tcx> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
         (self as *const _).hash(s)
     }
 }
@@ -980,8 +988,15 @@ impl<'tcx> PartialEq for InternedTy<'tcx> {
 
 impl<'tcx> Eq for InternedTy<'tcx> {}
 
+#[cfg(stage0)]
 impl<'tcx, S: Writer + Hasher> Hash<S> for InternedTy<'tcx> {
     fn hash(&self, s: &mut S) {
+        self.ty.sty.hash(s)
+    }
+}
+#[cfg(not(stage0))]
+impl<'tcx> Hash for InternedTy<'tcx> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
         self.ty.sty.hash(s)
     }
 }

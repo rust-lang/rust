@@ -23,7 +23,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(env)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(libc)]

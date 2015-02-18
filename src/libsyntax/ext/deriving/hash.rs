@@ -14,7 +14,6 @@ use ext::base::ExtCtxt;
 use ext::build::AstBuilder;
 use ext::deriving::generic::*;
 use ext::deriving::generic::ty::*;
-use parse::token::InternedString;
 use ptr::P;
 
 pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
@@ -26,30 +25,26 @@ pub fn expand_deriving_hash<F>(cx: &mut ExtCtxt,
 {
 
     let path = Path::new_(pathvec_std!(cx, core::hash::Hash), None,
-                          vec!(box Literal(Path::new_local("__S"))), true);
-    let generics = LifetimeBounds {
-        lifetimes: Vec::new(),
-        bounds: vec!(("__S",
-                      vec!(path_std!(cx, core::hash::Writer),
-                           path_std!(cx, core::hash::Hasher)))),
-    };
-    let args = Path::new_local("__S");
-    let inline = cx.meta_word(span, InternedString::new("inline"));
-    let attrs = vec!(cx.attribute(span, inline));
+                          vec!(), true);
+    let arg = Path::new_local("__H");
     let hash_trait_def = TraitDef {
         span: span,
         attributes: Vec::new(),
         path: path,
         additional_bounds: Vec::new(),
-        generics: generics,
+        generics: LifetimeBounds::empty(),
         methods: vec!(
             MethodDef {
                 name: "hash",
-                generics: LifetimeBounds::empty(),
+                generics: LifetimeBounds {
+                    lifetimes: Vec::new(),
+                    bounds: vec![("__H",
+                                  vec![path_std!(cx, core::hash::Hasher)])],
+                },
                 explicit_self: borrowed_explicit_self(),
-                args: vec!(Ptr(box Literal(args), Borrowed(None, MutMutable))),
+                args: vec!(Ptr(box Literal(arg), Borrowed(None, MutMutable))),
                 ret_ty: nil_ty(),
-                attributes: attrs,
+                attributes: vec![],
                 combine_substructure: combine_substructure(box |a, b, c| {
                     hash_substructure(a, b, c)
                 })

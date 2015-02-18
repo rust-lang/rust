@@ -17,7 +17,7 @@ struct Person {
     phone: uint,
 }
 
-fn hash<T: Hash<SipHasher>>(t: &T) -> u64 {
+fn hash<T: Hash>(t: &T) -> u64 {
     std::hash::hash::<T, SipHasher>(t)
 }
 

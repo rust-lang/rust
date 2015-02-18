@@ -1588,9 +1588,51 @@ fn encode_info_for_items(ecx: &EncodeContext,
 
 // Path and definition ID indexing
 
+#[cfg(stage0)]
 fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
     F: FnMut(&mut SeekableMemWriter, &T),
     T: Hash<SipHasher>,
+{
+    let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
+    for elt in index {
+        let mut s = SipHasher::new();
+        elt.val.hash(&mut s);
+        let h = s.finish() as uint;
+        (&mut buckets[h % 256]).push(elt);
+    }
+
+    rbml_w.start_tag(tag_index);
+    let mut bucket_locs = Vec::new();
+    rbml_w.start_tag(tag_index_buckets);
+    for bucket in &buckets {
+        bucket_locs.push(rbml_w.writer.tell().unwrap());
+        rbml_w.start_tag(tag_index_buckets_bucket);
+        for elt in bucket {
+            rbml_w.start_tag(tag_index_buckets_bucket_elt);
+            assert!(elt.pos < 0xffff_ffff);
+            {
+                let wr: &mut SeekableMemWriter = rbml_w.writer;
+                wr.write_be_u32(elt.pos as u32);
+            }
+            write_fn(rbml_w.writer, &elt.val);
+            rbml_w.end_tag();
+        }
+        rbml_w.end_tag();
+    }
+    rbml_w.end_tag();
+    rbml_w.start_tag(tag_index_table);
+    for pos in &bucket_locs {
+        assert!(*pos < 0xffff_ffff);
+        let wr: &mut SeekableMemWriter = rbml_w.writer;
+        wr.write_be_u32(*pos as u32);
+    }
+    rbml_w.end_tag();
+    rbml_w.end_tag();
+}
+#[cfg(not(stage0))]
+fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
+    F: FnMut(&mut SeekableMemWriter, &T),
+    T: Hash,
 {
     let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
     for elt in index {

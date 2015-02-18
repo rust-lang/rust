@@ -11,7 +11,6 @@
 use prelude::v1::*;
 
 use collections::HashMap;
-use collections::hash_map::Hasher;
 use env;
 use ffi::{OsString, OsStr, CString};
 use fmt;

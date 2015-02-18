@@ -10,13 +10,14 @@
 
 //! A pointer type for heap allocation.
 //!
-//! `Box<T>`, casually referred to as a 'box', provides the simplest form of heap allocation in
-//! Rust. Boxes provide ownership for this allocation, and drop their contents when they go out of
-//! scope.
+//! `Box<T>`, casually referred to as a 'box', provides the simplest form of
+//! heap allocation in Rust. Boxes provide ownership for this allocation, and
+//! drop their contents when they go out of scope.
 //!
-//! Boxes are useful in two situations: recursive data structures, and occasionally when returning
-//! data. [The Pointer chapter of the Book](../../../book/pointers.html#best-practices-1) explains
-//! these cases in detail.
+//! Boxes are useful in two situations: recursive data structures, and
+//! occasionally when returning data. [The Pointer chapter of the
+//! Book](../../../book/pointers.html#best-practices-1) explains these cases in
+//! detail.
 //!
 //! # Examples
 //!
@@ -58,8 +59,8 @@ use core::ops::{Deref, DerefMut};
 use core::ptr::Unique;
 use core::raw::TraitObject;
 
-/// A value that represents the heap. This is the default place that the `box` keyword allocates
-/// into when no place is supplied.
+/// A value that represents the heap. This is the default place that the `box`
+/// keyword allocates into when no place is supplied.
 ///
 /// The following two examples are equivalent:
 ///
@@ -219,9 +220,17 @@ impl<T: ?Sized + Ord> Ord for Box<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> Eq for Box<T> {}
 
+#[cfg(stage0)]
 impl<S: hash::Hasher, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: ?Sized + Hash> Hash for Box<T> {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }
