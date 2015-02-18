@@ -479,11 +479,10 @@ impl<'tcx> Clean<TyParam> for ty::TypeParameterDef<'tcx> {
     fn clean(&self, cx: &DocContext) -> TyParam {
         cx.external_typarams.borrow_mut().as_mut().unwrap()
           .insert(self.def_id, self.name.clean(cx));
-        let bounds = self.bounds.clean(cx);
         TyParam {
             name: self.name.clean(cx),
             did: self.def_id,
-            bounds: bounds,
+            bounds: vec![], // these are filled in from the where-clauses
             default: self.default.clean(cx),
         }
     }
@@ -892,9 +891,7 @@ impl<'a, 'tcx> Clean<Generics> for (&'a ty::Generics<'tcx>,
         // Bounds in the type_params and lifetimes fields are repeated in the predicates
         // field (see rustc_typeck::collect::ty_generics), so remove them.
         let stripped_typarams = gens.types.get_slice(space).iter().map(|tp| {
-            let mut stp = tp.clone();
-            stp.bounds = ty::ParamBounds::empty();
-            stp.clean(cx)
+            tp.clean(cx)
         }).collect::<Vec<_>>();
         let stripped_lifetimes = gens.regions.get_slice(space).iter().map(|rp| {
             let mut srp = rp.clone();

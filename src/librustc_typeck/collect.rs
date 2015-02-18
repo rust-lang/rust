@@ -1225,10 +1225,10 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
         };
     base_predicates.predicates.extend(subst::TypeSpace, assoc_predicates.into_iter());
 
-    let self_bounds = &trait_def.generics.types.get_self().unwrap().bounds;
-    base_predicates.predicates.extend(
-        subst::SelfSpace,
-        ty::predicates(ccx.tcx, self_param_ty, self_bounds).into_iter());
+    // Add in a predicate that `Self:Trait` (where `Trait` is the
+    // current trait).  This is needed for builtin bounds.
+    let self_predicate = trait_def.trait_ref.to_poly_trait_ref().as_predicate();
+    base_predicates.predicates.push(SelfSpace, self_predicate);
 
     // add in the explicit where-clauses
     let trait_predicates =
@@ -1532,21 +1532,11 @@ fn ty_generics_for_trait<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     // the node id for the Self type parameter.
     let param_id = trait_id;
 
-    let self_trait_ref =
-        Rc::new(ty::TraitRef { def_id: local_def(trait_id),
-                               substs: substs });
-
     let def = ty::TypeParameterDef {
         space: subst::SelfSpace,
         index: 0,
         name: special_idents::type_self.name,
         def_id: local_def(param_id),
-        bounds: ty::ParamBounds {
-            region_bounds: vec!(),
-            builtin_bounds: ty::empty_builtin_bounds(),
-            trait_bounds: vec!(ty::Binder(self_trait_ref.clone())),
-            projection_bounds: vec!(),
-        },
         default: None,
         object_lifetime_default: None,
     };
@@ -1761,13 +1751,6 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         None => { }
     }
 
-    let param_ty = ty::ParamTy::new(space, index, param.ident.name);
-    let bounds = compute_bounds(ccx,
-                                generics_so_far,
-                                param_ty.to_ty(ccx.tcx),
-                                &param.bounds,
-                                SizedByDefault::Yes,
-                                param.span);
     let default = match param.default {
         None => None,
         Some(ref path) => {
@@ -1797,7 +1780,6 @@ fn get_or_create_type_parameter_def<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         index: index,
         name: param.ident.name,
         def_id: local_def(param.id),
-        bounds: bounds,
         default: default,
         object_lifetime_default: object_lifetime_default,
     };
