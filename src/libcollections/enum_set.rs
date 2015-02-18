@@ -268,8 +268,8 @@ impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
 }
 
 impl<E:CLike> Extend<E> for EnumSet<E> {
-    fn extend<I: Iterator<Item=E>>(&mut self, iterator: I) {
-        for element in iterator {
+    fn extend<I: IntoIterator<Item=E>>(&mut self, iter: I) {
+        for element in iter {
             self.insert(element);
         }
     }

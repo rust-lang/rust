@@ -1741,8 +1741,8 @@ impl<'a, T> IntoIterator for &'a mut VecDeque<T> {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<A> Extend<A> for VecDeque<A> {
-    fn extend<T: Iterator<Item=A>>(&mut self, iterator: T) {
-        for elt in iterator {
+    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T) {
+        for elt in iter {
             self.push_back(elt);
         }
     }
