@@ -508,13 +508,26 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
     // avoid those ICEs.
     let generics = get_generics();
 
+    let has_self = substs.self_ty().is_some();
     let tps = substs.types.get_slice(subst::TypeSpace);
     let ty_params = generics.types.get_slice(subst::TypeSpace);
     let has_defaults = ty_params.last().map_or(false, |def| def.default.is_some());
     let num_defaults = if has_defaults {
         ty_params.iter().zip(tps.iter()).rev().take_while(|&(def, &actual)| {
             match def.default {
-                Some(default) => default.subst(cx, substs) == actual,
+                Some(default) => {
+                    if !has_self && ty::type_has_self(default) {
+                        // In an object type, there is no `Self`, and
+                        // thus if the default value references Self,
+                        // the user will be required to give an
+                        // explicit value. We can't even do the
+                        // substitution below to check without causing
+                        // an ICE. (#18956).
+                        false
+                    } else {
+                        default.subst(cx, substs) == actual
+                    }
+                }
                 None => false
             }
         }).count()
