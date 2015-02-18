@@ -315,6 +315,14 @@ lets_do_this! {
     PhantomFnItem,                   "phantom_fn",              phantom_fn;
     PhantomDataItem,                 "phantom_data",            phantom_data;
 
+    // Deprecated:
+    CovariantTypeItem,               "covariant_type",          covariant_type;
+    ContravariantTypeItem,           "contravariant_type",      contravariant_type;
+    InvariantTypeItem,               "invariant_type",          invariant_type;
+    CovariantLifetimeItem,           "covariant_lifetime",      covariant_lifetime;
+    ContravariantLifetimeItem,       "contravariant_lifetime",  contravariant_lifetime;
+    InvariantLifetimeItem,           "invariant_lifetime",      invariant_lifetime;
+
     NoCopyItem,                      "no_copy_bound",           no_copy_bound;
     ManagedItem,                     "managed_bound",           managed_bound;
 
