@@ -110,7 +110,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(hash)]
-#![feature(int_uint)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
@@ -219,14 +218,12 @@ mod int_macros;
 #[macro_use]
 mod uint_macros;
 
-#[path = "num/int.rs"]  pub mod int;
 #[path = "num/isize.rs"]  pub mod isize;
 #[path = "num/i8.rs"]   pub mod i8;
 #[path = "num/i16.rs"]  pub mod i16;
 #[path = "num/i32.rs"]  pub mod i32;
 #[path = "num/i64.rs"]  pub mod i64;
 
-#[path = "num/uint.rs"] pub mod uint;
 #[path = "num/usize.rs"] pub mod usize;
 #[path = "num/u8.rs"]   pub mod u8;
 #[path = "num/u16.rs"]  pub mod u16;
