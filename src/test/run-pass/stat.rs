@@ -20,7 +20,7 @@ pub fn main() {
             Err(..) => unreachable!(),
             Ok(f) => {
                 let mut f = f;
-                for _ in 0u..1000 {
+                for _ in 0_usize..1000 {
                     f.write(&[0]);
                 }
             }

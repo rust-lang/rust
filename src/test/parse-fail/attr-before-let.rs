@@ -10,5 +10,5 @@
 
 fn main() {
     #[attr] //~ ERROR expected item
-    let _i = 0;
+    let __isize = 0;
 }

@@ -18,5 +18,5 @@ trait me2 {
     fn me(&self) -> usize;
 }
 impl me2 for usize { fn me(&self) -> usize { *self } }
-fn main() { 1us.me(); } //~ ERROR E0034
+fn main() { 1_usize.me(); } //~ ERROR E0034
 

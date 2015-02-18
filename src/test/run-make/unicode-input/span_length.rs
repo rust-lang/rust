@@ -38,8 +38,8 @@ fn main() {
     let tmpdir = Path::new(&args[2]);
     let main_file = tmpdir.join("span_main.rs");
 
-    for _ in 0u..100 {
-        let n = thread_rng().gen_range(3u, 20);
+    for _ in 0..100 {
+        let n = thread_rng().gen_range(3, 20);
 
         {
             let _ = write!(&mut File::create(&main_file).unwrap(),

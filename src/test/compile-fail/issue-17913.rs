@@ -15,14 +15,14 @@
 
 #[cfg(target_pointer_width = "64")]
 fn main() {
-    let n = 0us;
-    let a = box [&n; 0xF000000000000000us];
-    println!("{}", a[0xFFFFFFu]);
+    let n = 0_usize;
+    let a = box [&n; 0xF000000000000000_usize];
+    println!("{}", a[0xFFFFFF_usize]);
 }
 
 #[cfg(target_pointer_width = "32")]
 fn main() {
-    let n = 0us;
-    let a = box [&n; 0xFFFFFFFFu];
-    println!("{}", a[0xFFFFFFu]);
+    let n = 0_usize;
+    let a = box [&n; 0xFFFFFFFF_usize];
+    println!("{}", a[0xFFFFFF_usize]);
 }

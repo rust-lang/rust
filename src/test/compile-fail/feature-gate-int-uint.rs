@@ -8,7 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-#![allow(dead_code)]
+#![allow(dead_code, unused_variables)]
+#![feature(rustc_attrs)]
 
 mod u {
     type X = uint; //~ WARN the `uint` type is deprecated
@@ -16,7 +17,8 @@ mod u {
         x: uint //~ WARN the `uint` type is deprecated
     }
     fn bar(x: uint) { //~ WARN the `uint` type is deprecated
-        1u; //~ WARN the `u` suffix on integers is deprecated
+        1_u; //~ WARN the `u` and `us` suffixes on integers are deprecated
+        1_us; //~ WARN the `u` and `us` suffixes on integers are deprecated
     }
 }
 mod i {
@@ -25,11 +27,11 @@ mod i {
         x: int //~ WARN the `int` type is deprecated
     }
     fn bar(x: int) { //~ WARN the `int` type is deprecated
-        1i; //~ WARN the `i` suffix on integers is deprecated
+        1_i; //~ WARN the `i` and `is` suffixes on integers are deprecated
+        1_is; //~ WARN the `i` and `is` suffixes on integers are deprecated
     }
 }
 
-fn main() {
-    // make compilation fail, after feature gating
-    let () = 1u8; //~ ERROR
+#[rustc_error]
+fn main() { //~ ERROR compilation successful
 }

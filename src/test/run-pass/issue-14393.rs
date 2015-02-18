@@ -9,8 +9,8 @@
 // except according to those terms.
 
 fn main() {
-    match ("", 1u) {
-        (_, 42u) => (),
+    match ("", 1_usize) {
+        (_, 42_usize) => (),
         ("", _) => (),
         _ => ()
     }

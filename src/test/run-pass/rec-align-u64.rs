@@ -44,14 +44,14 @@ struct Outer {
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {
-        pub fn align() -> uint { 4u }
-        pub fn size() -> uint { 12u }
+        pub fn align() -> uint { 4_usize }
+        pub fn size() -> uint { 12_usize }
     }
 
     #[cfg(any(target_arch = "x86_64", target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
-        pub fn align() -> uint { 8u }
-        pub fn size() -> uint { 16u }
+        pub fn align() -> uint { 8_usize }
+        pub fn size() -> uint { 16_usize }
     }
 }
 
@@ -59,14 +59,14 @@ mod m {
 mod m {
     #[cfg(target_arch = "x86")]
     pub mod m {
-        pub fn align() -> uint { 8u }
-        pub fn size() -> uint { 16u }
+        pub fn align() -> uint { 8_usize }
+        pub fn size() -> uint { 16_usize }
     }
 
     #[cfg(target_arch = "x86_64")]
     pub mod m {
-        pub fn align() -> uint { 8u }
-        pub fn size() -> uint { 16u }
+        pub fn align() -> uint { 8_usize }
+        pub fn size() -> uint { 16_usize }
     }
 }
 
@@ -74,8 +74,8 @@ mod m {
 mod m {
     #[cfg(any(target_arch = "arm", target_arch = "aarch64"))]
     pub mod m {
-        pub fn align() -> uint { 8u }
-        pub fn size() -> uint { 16u }
+        pub fn align() -> uint { 8_usize }
+        pub fn size() -> uint { 16_usize }
     }
 }
 

@@ -18,7 +18,7 @@ use sync::{Mutex, Condvar};
 /// use std::thread;
 ///
 /// let barrier = Arc::new(Barrier::new(10));
-/// for _ in 0u..10 {
+/// for _ in 0..10 {
 ///     let c = barrier.clone();
 ///     // The same messages will be printed together.
 ///     // You will NOT see any interleaving.
@@ -120,7 +120,7 @@ mod tests {
         let barrier = Arc::new(Barrier::new(N));
         let (tx, rx) = channel();
 
-        for _ in 0u..N - 1 {
+        for _ in 0..N - 1 {
             let c = barrier.clone();
             let tx = tx.clone();
             thread::spawn(move|| {
@@ -138,7 +138,7 @@ mod tests {
         let mut leader_found = barrier.wait().is_leader();
 
         // Now, the barrier is cleared and we should get data.
-        for _ in 0u..N - 1 {
+        for _ in 0..N - 1 {
             if rx.recv().unwrap() {
                 assert!(!leader_found);
                 leader_found = true;

@@ -57,7 +57,7 @@ fn main() {
       let n = 1u8 << (4+3);
       let n = 1u8 << (4+4); //~ ERROR: bitshift exceeds the type's number of bits
 
-      let n = 1is << std::isize::BITS; //~ ERROR: bitshift exceeds the type's number of bits
-      let n = 1us << std::usize::BITS; //~ ERROR: bitshift exceeds the type's number of bits
+      let n = 1_isize << std::isize::BITS; //~ ERROR: bitshift exceeds the type's number of bits
+      let n = 1_usize << std::usize::BITS; //~ ERROR: bitshift exceeds the type's number of bits
 }
 

@@ -26,7 +26,7 @@ fn add_int(x: &mut Ints, v: int) {
 
 fn iter_ints<F>(x: &Ints, mut f: F) -> bool where F: FnMut(&int) -> bool {
     let l = x.values.len();
-    (0u..l).all(|i| f(&x.values[i]))
+    (0_usize..l).all(|i| f(&x.values[i]))
 }
 
 pub fn main() {

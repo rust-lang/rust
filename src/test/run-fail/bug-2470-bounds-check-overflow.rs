@@ -20,7 +20,7 @@ fn main() {
     // address of the 0th cell in the array (even though the index is
     // huge).
 
-    let x = vec!(1u,2u,3u);
+    let x = vec!(1_usize,2_usize,3_usize);
 
     let base = x.as_ptr() as uint;
     let idx = base / mem::size_of::<uint>();

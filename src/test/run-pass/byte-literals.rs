@@ -53,9 +53,9 @@ pub fn main() {
 
     let buf = vec!(97u8, 98, 99, 100);
     assert_eq!(match &buf[0..3] {
-         b"def" => 1u,
-         b"abc" => 2u,
-         _ => 3u
+         b"def" => 1_usize,
+         b"abc" => 2_usize,
+         _ => 3_usize
     }, 2);
 
     let expected: &[_] = &[97u8, 92u8, 110u8];

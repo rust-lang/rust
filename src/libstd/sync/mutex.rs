@@ -60,7 +60,7 @@ use sys_common::mutex as sys;
 /// let data = Arc::new(Mutex::new(0));
 ///
 /// let (tx, rx) = channel();
-/// for _ in 0u..10 {
+/// for _ in 0..10 {
 ///     let (data, tx) = (data.clone(), tx.clone());
 ///     thread::spawn(move || {
 ///         // The shared static can only be accessed once the lock is held.
@@ -87,7 +87,7 @@ use sys_common::mutex as sys;
 /// use std::sync::{Arc, Mutex};
 /// use std::thread;
 ///
-/// let lock = Arc::new(Mutex::new(0u));
+/// let lock = Arc::new(Mutex::new(0_u32));
 /// let lock2 = lock.clone();
 ///
 /// let _ = thread::spawn(move || -> () {

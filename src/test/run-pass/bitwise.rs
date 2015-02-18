@@ -11,12 +11,12 @@
 
 #[cfg(any(target_arch = "x86", target_arch = "arm"))]
 fn target() {
-    assert_eq!(-1000 as uint >> 3u, 536870787u);
+    assert_eq!(-1000 as uint >> 3_usize, 536870787_usize);
 }
 
 #[cfg(any(target_arch = "x86_64", target_arch = "aarch64"))]
 fn target() {
-    assert_eq!(-1000 as uint >> 3u, 2305843009213693827u);
+    assert_eq!(-1000 as uint >> 3_usize, 2305843009213693827_usize);
 }
 
 fn general() {
@@ -29,12 +29,12 @@ fn general() {
     println!("{}", b);
     assert_eq!(b, 1);
     assert_eq!(a, 2);
-    assert_eq!(!0xf0i & 0xff, 0xf);
-    assert_eq!(0xf0i | 0xf, 0xff);
-    assert_eq!(0xfi << 4, 0xf0);
-    assert_eq!(0xf0i >> 4, 0xf);
+    assert_eq!(!0xf0_isize & 0xff, 0xf);
+    assert_eq!(0xf0_isize | 0xf, 0xff);
+    assert_eq!(0xf_isize << 4, 0xf0);
+    assert_eq!(0xf0_isize >> 4, 0xf);
     assert_eq!(-16 >> 2, -4);
-    assert_eq!(0b1010_1010i | 0b0101_0101, 0xff);
+    assert_eq!(0b1010_1010_isize | 0b0101_0101, 0xff);
 }
 
 pub fn main() {

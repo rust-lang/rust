@@ -16,8 +16,8 @@ fn foo(x: &uint) -> uint {
 }
 
 pub fn main() {
-    let p = box 22u;
+    let p = box 22_usize;
     let r = foo(&*p);
     println!("r={}", r);
-    assert_eq!(r, 22u);
+    assert_eq!(r, 22_usize);
 }

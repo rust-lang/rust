@@ -9,7 +9,7 @@
 // except according to those terms.
 
 pub extern
-  "invalid-abi" //~ ERROR illegal ABI
+  "invalid-ab_isize" //~ ERROR illegal ABI
 fn foo() {}
 
 fn main() {}

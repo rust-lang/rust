@@ -11,7 +11,7 @@
 // Tests that a function with a ! annotation always actually fails
 
 fn bad_bang(i: usize) -> ! { //~ ERROR computation may converge in a function marked as diverging
-    if i < 0us { } else { panic!(); }
+    if i < 0_usize { } else { panic!(); }
 }
 
-fn main() { bad_bang(5us); }
+fn main() { bad_bang(5); }

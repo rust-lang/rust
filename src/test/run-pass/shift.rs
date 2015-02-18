@@ -54,28 +54,28 @@ fn test_expr() {
 }
 
 fn test_const() {
-    static r1_1: uint = 10u >> 2u;
-    static r2_1: uint = 10u << 4u;
+    static r1_1: uint = 10_usize >> 2_usize;
+    static r2_1: uint = 10_usize << 4_usize;
     assert_eq!(r1_1, 2 as uint);
     assert_eq!(r2_1, 160 as uint);
 
-    static r1_2: u8 = 10u8 >> 2u;
-    static r2_2: u8 = 10u8 << 4u;
+    static r1_2: u8 = 10u8 >> 2_usize;
+    static r2_2: u8 = 10u8 << 4_usize;
     assert_eq!(r1_2, 2 as u8);
     assert_eq!(r2_2, 160 as u8);
 
-    static r1_3: int = 10 >> 2u;
-    static r2_3: int = 10 << 4u;
+    static r1_3: int = 10 >> 2_usize;
+    static r2_3: int = 10 << 4_usize;
     assert_eq!(r1_3, 2 as int);
     assert_eq!(r2_3, 160 as int);
 
-    static r1_4: i8 = 10i8 >> 2u;
-    static r2_4: i8 = 10i8 << 4u;
+    static r1_4: i8 = 10i8 >> 2_usize;
+    static r2_4: i8 = 10i8 << 4_usize;
     assert_eq!(r1_4, 2 as i8);
     assert_eq!(r2_4, 160 as i8);
 
-    static r1_5: uint = 10u >> 2u;
-    static r2_5: uint = 10u << 4u;
+    static r1_5: uint = 10_usize >> 2_usize;
+    static r2_5: uint = 10_usize << 4_usize;
     assert_eq!(r1_5, 2 as uint);
     assert_eq!(r2_5, 160 as uint);
 }

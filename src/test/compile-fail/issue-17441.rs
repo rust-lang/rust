@@ -11,16 +11,16 @@
 #![feature(box_syntax)]
 
 fn main() {
-    let _foo = &[1us, 2] as [usize];
+    let _foo = &[1_usize, 2] as [usize];
     //~^ ERROR cast to unsized type: `&[usize; 2]` as `[usize]`
     //~^^ HELP consider using an implicit coercion to `&[usize]` instead
-    let _bar = box 1us as std::fmt::Show;
+    let _bar = box 1_usize as std::fmt::Show;
     //~^ ERROR cast to unsized type: `Box<usize>` as `core::fmt::Show`
     //~^^ HELP did you mean `Box<core::fmt::Show>`?
-    let _baz = 1us as std::fmt::Show;
+    let _baz = 1_usize as std::fmt::Show;
     //~^ ERROR cast to unsized type: `usize` as `core::fmt::Show`
     //~^^ HELP consider using a box or reference as appropriate
-    let _quux = [1us, 2] as [usize];
+    let _quux = [1_usize, 2] as [usize];
     //~^ ERROR cast to unsized type: `[usize; 2]` as `[usize]`
     //~^^ HELP consider using a box or reference as appropriate
 }

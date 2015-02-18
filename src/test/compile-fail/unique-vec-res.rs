@@ -28,7 +28,7 @@ impl<'a> Drop for r<'a> {
     }
 }
 
-fn f<T>(_i: Vec<T> , _j: Vec<T> ) {
+fn f<T>(__isize: Vec<T> , _j: Vec<T> ) {
 }
 
 fn clone<T: Clone>(t: &T) -> T { t.clone() }

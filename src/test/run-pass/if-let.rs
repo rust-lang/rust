@@ -23,14 +23,14 @@ pub fn main() {
     let clause: uint;
     if let None = Some("test") {
         clause = 1;
-    } else if 4u > 5 {
+    } else if 4_usize > 5 {
         clause = 2;
     } else if let Ok(()) = Err::<(),&'static str>("test") {
         clause = 3;
     } else {
         clause = 4;
     }
-    assert_eq!(clause, 4u);
+    assert_eq!(clause, 4_usize);
 
     if 3 > 4 {
         panic!("bad math");
@@ -57,9 +57,9 @@ pub fn main() {
 
     if false {
         panic!("wat");
-    } else if let a@Foo::Two(_) = Foo::Two(42u) {
+    } else if let a@Foo::Two(_) = Foo::Two(42_usize) {
         if let Foo::Two(b) = a {
-            assert_eq!(b, 42u);
+            assert_eq!(b, 42_usize);
         } else {
             panic!("panic in nested if-let");
         }

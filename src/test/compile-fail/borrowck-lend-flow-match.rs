@@ -21,7 +21,7 @@ fn separate_arms() {
             // fact no outstanding loan of x!
             x = Some(0);
         }
-        Some(ref _i) => {
+        Some(ref __isize) => {
             x = Some(1); //~ ERROR cannot assign
         }
     }

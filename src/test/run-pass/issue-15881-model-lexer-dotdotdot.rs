@@ -11,24 +11,24 @@
 // regression test for the model lexer handling the DOTDOTDOT syntax (#15877)
 
 pub fn main() {
-    match 5u {
-      1u...5u => {}
+    match 5_usize {
+      1_usize...5_usize => {}
       _ => panic!("should match range"),
     }
-    match 5u {
-      6u...7u => panic!("shouldn't match range"),
+    match 5_usize {
+      6_usize...7_usize => panic!("shouldn't match range"),
       _ => {}
     }
-    match 5u {
-      1u => panic!("should match non-first range"),
-      2u...6u => {}
+    match 5_usize {
+      1_usize => panic!("should match non-first range"),
+      2_usize...6_usize => {}
       _ => panic!("math is broken")
     }
     match 'c' {
       'a'...'z' => {}
       _ => panic!("should suppport char ranges")
     }
-    match -3i {
+    match -3_isize {
       -7...5 => {}
       _ => panic!("should match signed range")
     }

@@ -102,7 +102,7 @@
 //!    let total = 1_000_000;
 //!    let mut in_circle = 0;
 //!
-//!    for _ in 0u..total {
+//!    for _ in 0..total {
 //!        let a = between.ind_sample(&mut rng);
 //!        let b = between.ind_sample(&mut rng);
 //!        if a*a + b*b <= 1. {
@@ -176,7 +176,7 @@
 //! }
 //!
 //! fn free_doors(blocked: &[uint]) -> Vec<uint> {
-//!     (0u..3).filter(|x| !blocked.contains(x)).collect()
+//!     (0..3).filter(|x| !blocked.contains(x)).collect()
 //! }
 //!
 //! fn main() {
@@ -483,14 +483,14 @@ mod test {
     #[test]
     fn test_gen_range() {
         let mut r = thread_rng();
-        for _ in 0u..1000 {
+        for _ in 0..1000 {
             let a = r.gen_range(-3, 42);
             assert!(a >= -3 && a < 42);
             assert_eq!(r.gen_range(0, 1), 0);
             assert_eq!(r.gen_range(-12, -11), -12);
         }
 
-        for _ in 0u..1000 {
+        for _ in 0..1000 {
             let a = r.gen_range(10, 42);
             assert!(a >= 10 && a < 42);
             assert_eq!(r.gen_range(0, 1), 0);
@@ -510,7 +510,7 @@ mod test {
     #[should_fail]
     fn test_gen_range_panic_uint() {
         let mut r = thread_rng();
-        r.gen_range(5us, 2us);
+        r.gen_range(5, 2);
     }
 
     #[test]

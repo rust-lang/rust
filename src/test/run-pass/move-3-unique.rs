@@ -27,7 +27,7 @@ fn test(x: bool, foo: Box<Triple>) -> int {
 
 pub fn main() {
     let x = box Triple{x: 1, y: 2, z: 3};
-    for _ in 0u..10000u {
+    for _ in 0_usize..10000_usize {
         assert_eq!(test(true, x.clone()), 2);
     }
     assert_eq!(test(false, x), 5);

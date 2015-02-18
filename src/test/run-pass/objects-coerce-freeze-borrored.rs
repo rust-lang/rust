@@ -40,9 +40,9 @@ fn do_it_imm(obj: &Foo, v: uint) {
 }
 
 pub fn main() {
-    let mut x = 22_u;
+    let mut x = 22_usize;
     let obj = &mut x as &mut Foo;
     do_it_mut(obj);
-    do_it_imm(obj, 23u);
+    do_it_imm(obj, 23_usize);
     do_it_mut(obj);
 }

@@ -10,7 +10,7 @@
 
 fn main() {
     match 1 {
-        1...2us => 1, //~ ERROR mismatched types in range
+        1...2_usize => 1, //~ ERROR mismatched types in range
         _ => 2,
     };
 }

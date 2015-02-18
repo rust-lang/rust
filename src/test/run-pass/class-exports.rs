@@ -27,7 +27,7 @@ mod kitty {
     pub fn cat(in_name: String) -> cat {
         cat {
             name: in_name,
-            meows: 0u
+            meows: 0_usize
         }
     }
 }

@@ -1120,37 +1120,37 @@ pub trait Writer {
     /// Write a big-endian u64 (8 bytes).
     #[inline]
     fn write_be_u64(&mut self, n: u64) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n, 8u, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n, 8, |v| self.write_all(v))
     }
 
     /// Write a big-endian u32 (4 bytes).
     #[inline]
     fn write_be_u32(&mut self, n: u32) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n as u64, 4, |v| self.write_all(v))
     }
 
     /// Write a big-endian u16 (2 bytes).
     #[inline]
     fn write_be_u16(&mut self, n: u16) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n as u64, 2, |v| self.write_all(v))
     }
 
     /// Write a big-endian i64 (8 bytes).
     #[inline]
     fn write_be_i64(&mut self, n: i64) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 8u, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n as u64, 8, |v| self.write_all(v))
     }
 
     /// Write a big-endian i32 (4 bytes).
     #[inline]
     fn write_be_i32(&mut self, n: i32) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 4u, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n as u64, 4, |v| self.write_all(v))
     }
 
     /// Write a big-endian i16 (2 bytes).
     #[inline]
     fn write_be_i16(&mut self, n: i16) -> IoResult<()> {
-        extensions::u64_to_be_bytes(n as u64, 2u, |v| self.write_all(v))
+        extensions::u64_to_be_bytes(n as u64, 2, |v| self.write_all(v))
     }
 
     /// Write a big-endian IEEE754 double-precision floating-point (8 bytes).
@@ -1172,37 +1172,37 @@ pub trait Writer {
     /// Write a little-endian u64 (8 bytes).
     #[inline]
     fn write_le_u64(&mut self, n: u64) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n, 8u, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n, 8, |v| self.write_all(v))
     }
 
     /// Write a little-endian u32 (4 bytes).
     #[inline]
     fn write_le_u32(&mut self, n: u32) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n as u64, 4, |v| self.write_all(v))
     }
 
     /// Write a little-endian u16 (2 bytes).
     #[inline]
     fn write_le_u16(&mut self, n: u16) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n as u64, 2, |v| self.write_all(v))
     }
 
     /// Write a little-endian i64 (8 bytes).
     #[inline]
     fn write_le_i64(&mut self, n: i64) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 8u, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n as u64, 8, |v| self.write_all(v))
     }
 
     /// Write a little-endian i32 (4 bytes).
     #[inline]
     fn write_le_i32(&mut self, n: i32) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 4u, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n as u64, 4, |v| self.write_all(v))
     }
 
     /// Write a little-endian i16 (2 bytes).
     #[inline]
     fn write_le_i16(&mut self, n: i16) -> IoResult<()> {
-        extensions::u64_to_le_bytes(n as u64, 2u, |v| self.write_all(v))
+        extensions::u64_to_le_bytes(n as u64, 2, |v| self.write_all(v))
     }
 
     /// Write a little-endian IEEE754 double-precision floating-point
