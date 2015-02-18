@@ -21,6 +21,11 @@ This RFC also provides a mechanism for *multidispatch* traits, where the `impl`
 is selected based on multiple types. The connection to associated items will
 become clear in the detailed text below.
 
+*Note: This RFC was originally accepted before RFC 246 added consts and changed
+the definition of statics. The text has been updated to clarify that both consts
+and statics can be associated with a trait. Other than that modification, the
+proposal has not been changed to reflect newer Rust features or syntax.*
+
 # Motivation
 
 A typical example where associated items are helpful is data structures like
