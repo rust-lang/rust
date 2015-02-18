@@ -55,7 +55,7 @@ impl UnixStream {
     /// stream.write(&[1, 2, 3]);
     /// ```
     pub fn connect<P: BytesContainer>(path: P) -> IoResult<UnixStream> {
-        let path = CString::from_slice(path.container_as_bytes());
+        let path = try!(CString::new(path.container_as_bytes()));
         UnixStreamImp::connect(&path, None)
             .map(|inner| UnixStream { inner: inner })
     }
@@ -77,7 +77,7 @@ impl UnixStream {
             return Err(standard_error(TimedOut));
         }
 
-        let path = CString::from_slice(path.container_as_bytes());
+        let path = try!(CString::new(path.container_as_bytes()));
         UnixStreamImp::connect(&path, Some(timeout.num_milliseconds() as u64))
             .map(|inner| UnixStream { inner: inner })
     }
@@ -184,7 +184,7 @@ impl UnixListener {
     /// # }
     /// ```
     pub fn bind<P: BytesContainer>(path: P) -> IoResult<UnixListener> {
-        let path = CString::from_slice(path.container_as_bytes());
+        let path = try!(CString::new(path.container_as_bytes()));
         UnixListenerImp::bind(&path)
             .map(|inner| UnixListener { inner: inner })
     }

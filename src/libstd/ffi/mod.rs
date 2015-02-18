@@ -14,8 +14,10 @@
             reason = "module just underwent fairly large reorganization and the dust \
                       still needs to settle")]
 
-pub use self::c_str::CString;
+pub use self::c_str::{CString, CStr, NulError, IntoBytes};
+#[allow(deprecated)]
 pub use self::c_str::c_str_to_bytes;
+#[allow(deprecated)]
 pub use self::c_str::c_str_to_bytes_with_nul;
 
 pub use self::os_str::OsString;

@@ -33,7 +33,7 @@
 
 use prelude::v1::*;
 
-use ffi::{CString, OsStr, OsString};
+use ffi::{CString, NulError, OsStr, OsString};
 use fs::{self, Permissions, OpenOptions};
 use net;
 use mem;
@@ -155,7 +155,7 @@ pub trait OsStrExt {
     fn as_bytes(&self) -> &[u8];
 
     /// Convert the `OsStr` slice into a `CString`.
-    fn to_cstring(&self) -> CString;
+    fn to_cstring(&self) -> Result<CString, NulError>;
 }
 
 impl OsStrExt for OsStr {
@@ -166,8 +166,8 @@ impl OsStrExt for OsStr {
         &self.as_inner().inner
     }
 
-    fn to_cstring(&self) -> CString {
-        CString::from_slice(self.as_bytes())
+    fn to_cstring(&self) -> Result<CString, NulError> {
+        CString::new(self.as_bytes())
     }
 }
 
@@ -249,5 +249,7 @@ impl ExitStatusExt for process::ExitStatus {
 /// Includes all extension traits, and some important type definitions.
 pub mod prelude {
     #[doc(no_inline)]
-    pub use super::{Fd, AsRawFd, OsStrExt, OsStringExt, PermissionsExt, CommandExt, ExitStatusExt};
+    pub use super::{Fd, AsRawFd, OsStrExt, OsStringExt, PermissionsExt};
+    #[doc(no_inline)]
+    pub use super::{CommandExt, ExitStatusExt};
 }

@@ -135,7 +135,7 @@ pub fn register_static(ccx: &CrateContext,
             };
             unsafe {
                 // Declare a symbol `foo` with the desired linkage.
-                let buf = CString::from_slice(ident.as_bytes());
+                let buf = CString::new(ident.as_bytes()).unwrap();
                 let g1 = llvm::LLVMAddGlobal(ccx.llmod(), llty2.to_ref(),
                                              buf.as_ptr());
                 llvm::SetLinkage(g1, linkage);
@@ -148,7 +148,7 @@ pub fn register_static(ccx: &CrateContext,
                 // zero.
                 let mut real_name = "_rust_extern_with_linkage_".to_string();
                 real_name.push_str(&ident);
-                let real_name = CString::from_vec(real_name.into_bytes());
+                let real_name = CString::new(real_name).unwrap();
                 let g2 = llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(),
                                              real_name.as_ptr());
                 llvm::SetLinkage(g2, llvm::InternalLinkage);
@@ -158,7 +158,7 @@ pub fn register_static(ccx: &CrateContext,
         }
         None => unsafe {
             // Generate an external declaration.
-            let buf = CString::from_slice(ident.as_bytes());
+            let buf = CString::new(ident.as_bytes()).unwrap();
             llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf.as_ptr())
         }
     }

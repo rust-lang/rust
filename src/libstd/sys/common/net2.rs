@@ -121,7 +121,7 @@ impl Drop for LookupHost {
 pub fn lookup_host(host: &str) -> io::Result<LookupHost> {
     init();
 
-    let c_host = CString::from_slice(host.as_bytes());
+    let c_host = try!(CString::new(host));
     let mut res = 0 as *mut _;
     unsafe {
         try!(cvt_gai(getaddrinfo(c_host.as_ptr(), 0 as *const _, 0 as *const _,

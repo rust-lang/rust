@@ -49,7 +49,7 @@ mod imp {
 
     use libc;
     use mem;
-    use ffi;
+    use ffi::CStr;
 
     use sync::{StaticMutex, MUTEX_INIT};
 
@@ -96,10 +96,11 @@ mod imp {
         unsafe { mem::transmute(&GLOBAL_ARGS_PTR) }
     }
 
-    unsafe fn load_argc_and_argv(argc: int, argv: *const *const u8) -> Vec<Vec<u8>> {
+    unsafe fn load_argc_and_argv(argc: isize,
+                                 argv: *const *const u8) -> Vec<Vec<u8>> {
         let argv = argv as *const *const libc::c_char;
-        (0..argc as uint).map(|i| {
-            ffi::c_str_to_bytes(&*argv.offset(i as int)).to_vec()
+        (0..argc).map(|i| {
+            CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec()
         }).collect()
     }
 
