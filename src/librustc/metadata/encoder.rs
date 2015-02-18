@@ -861,7 +861,7 @@ fn encode_info_for_method<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
             encode_attributes(rbml_w, &ast_method.attrs);
             let scheme = ty::lookup_item_type(ecx.tcx, m.def_id);
             let any_types = !scheme.generics.types.is_empty();
-            if any_types || is_default_impl || should_inline(&ast_method.attrs) {
+            if any_types || is_default_impl || attr::requests_inline(&ast_method.attrs) {
                 encode_inlined_item(ecx, rbml_w, IIImplItemRef(local_def(parent_id),
                                                                ast_item_opt.unwrap()));
             }
@@ -953,14 +953,6 @@ fn encode_inlined_item(ecx: &EncodeContext,
 const FN_FAMILY: char = 'f';
 const STATIC_METHOD_FAMILY: char = 'F';
 const METHOD_FAMILY: char = 'h';
-
-fn should_inline(attrs: &[ast::Attribute]) -> bool {
-    use syntax::attr::*;
-    match find_inline_attr(attrs) {
-        InlineNone | InlineNever  => false,
-        InlineHint | InlineAlways => true
-    }
-}
 
 // Encodes the inherent implementations of a structure, enumeration, or trait.
 fn encode_inherent_implementations(ecx: &EncodeContext,
@@ -1067,7 +1059,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_name(rbml_w, item.ident.name);
         encode_path(rbml_w, path);
         encode_attributes(rbml_w, &item.attrs);
-        if tps_len > 0 || should_inline(&item.attrs) {
+        if tps_len > 0 || attr::requests_inline(&item.attrs) {
             encode_inlined_item(ecx, rbml_w, IIItemRef(item));
         }
         if tps_len == 0 {

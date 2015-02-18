@@ -292,7 +292,7 @@ pub enum InlineAttr {
 }
 
 /// Determine what `#[inline]` attribute is present in `attrs`, if any.
-pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
+pub fn find_inline_attr(diagnostic: Option<&SpanHandler>, attrs: &[Attribute]) -> InlineAttr {
     // FIXME (#2809)---validate the usage of #[inline] and #[inline]
     attrs.iter().fold(InlineNone, |ia,attr| {
         match attr.node.value.node {
@@ -302,12 +302,16 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
             }
             MetaList(ref n, ref items) if *n == "inline" => {
                 mark_used(attr);
-                if contains_name(&items[..], "always") {
+                if items.len() != 1 {
+                    diagnostic.map(|d|{ d.span_err(attr.span, "expected one argument"); });
+                    InlineNone
+                } else if contains_name(&items[..], "always") {
                     InlineAlways
                 } else if contains_name(&items[..], "never") {
                     InlineNever
                 } else {
-                    InlineHint
+                    diagnostic.map(|d|{ d.span_err((*items[0]).span, "invalid argument"); });
+                    InlineNone
                 }
             }
             _ => ia
@@ -317,7 +321,7 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
 
 /// True if `#[inline]` or `#[inline(always)]` is present in `attrs`.
 pub fn requests_inline(attrs: &[Attribute]) -> bool {
-    match find_inline_attr(attrs) {
+    match find_inline_attr(None, attrs) {
         InlineHint | InlineAlways => true,
         InlineNone | InlineNever => false,
     }
