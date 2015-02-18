@@ -421,8 +421,8 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         self.walk_adjustment(expr);
 
         match expr.node {
-            ast::ExprParen(ref subexpr) => {
-                self.walk_expr(&**subexpr)
+            ast::ExprParen(ref e) | ast::ExprCompletion(ref e) => {
+                self.walk_expr(&e)
             }
 
             ast::ExprPath(_) | ast::ExprQPath(_) => { }

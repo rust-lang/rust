@@ -293,6 +293,7 @@ mod svh_visitor {
             ExprIfLet(..)            => unreachable!(),
             ExprWhileLet(..)         => unreachable!(),
             ExprMac(..)              => unreachable!(),
+            ExprCompletion(..)       => unreachable!(),
         }
     }
 

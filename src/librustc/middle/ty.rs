@@ -4679,7 +4679,9 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
             }
         }
 
-        ast::ExprParen(ref e) => expr_kind(tcx, &**e),
+        ast::ExprParen(ref e) | ast::ExprCompletion(ref e) => {
+            expr_kind(tcx, &e)
+        }
 
         ast::ExprMac(..) => {
             tcx.sess.span_bug(

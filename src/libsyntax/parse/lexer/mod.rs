@@ -69,6 +69,7 @@ pub struct StringReader<'a> {
     /// The last character to be read
     pub curr: Option<char>,
     pub filemap: Rc<codemap::FileMap>,
+    pub complete_at: Option<BytePos>,
     /* cached: */
     pub peek_tok: token::Token,
     pub peek_span: Span,
@@ -83,6 +84,15 @@ impl<'a> Reader for StringReader<'a> {
     fn is_eof(&self) -> bool { self.curr.is_none() }
     /// Return the next token. EFFECT: advances the string_reader.
     fn next_token(&mut self) -> TokenAndSpan {
+        if let Some(pos) = self.complete_at {
+            if self.peek_span.lo >= pos {
+                self.complete_at = None;
+                return TokenAndSpan {
+                    tok: token::GenerateCompletion,
+                    sp: codemap::mk_sp(pos, pos),
+                }
+            }
+        }
         let ret_val = TokenAndSpan {
             tok: replace(&mut self.peek_tok, token::Underscore),
             sp: self.peek_span,
@@ -150,6 +160,7 @@ impl<'a> StringReader<'a> {
             col: CharPos(0),
             curr: Some('\n'),
             filemap: filemap,
+            complete_at: None,
             /* dummy values; not read */
             peek_tok: token::Eof,
             peek_span: codemap::DUMMY_SP,
@@ -160,8 +171,10 @@ impl<'a> StringReader<'a> {
     }
 
     pub fn new<'b>(span_diagnostic: &'b SpanHandler,
-                   filemap: Rc<codemap::FileMap>) -> StringReader<'b> {
+                   filemap: Rc<codemap::FileMap>,
+                   complete_at: Option<BytePos>) -> StringReader<'b> {
         let mut sr = StringReader::new_raw(span_diagnostic, filemap);
+        sr.complete_at = complete_at;
         sr.advance_token();
         sr
     }

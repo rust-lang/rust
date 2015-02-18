@@ -277,6 +277,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for MarkSymbolVisitor<'a, 'tcx> {
             ast::ExprTupField(ref lhs, idx) => {
                 self.handle_tup_field_access(&**lhs, idx.node);
             }
+            ast::ExprCompletion(..) => return,
             _ => ()
         }
 

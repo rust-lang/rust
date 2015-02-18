@@ -807,6 +807,8 @@ pub fn rustc_optgroups() -> Vec<RustcOptGroup> {
                       `everybody_loops` (all function bodies replaced with `loop {}`).",
                      "TYPE"),
         opt::opt_u("", "show-span", "Show spans for compiler debugging", "expr|pat|ty"),
+        opt::opt_u("", "complete-at", "Give completions at the given position",
+                   "FILENAME:BYTEPOS"),
     ]);
     opts
 }

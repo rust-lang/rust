@@ -30,7 +30,7 @@ pub fn highlight(src: &str, class: Option<&str>, id: Option<&str>) -> String {
 
     let mut out = Vec::new();
     doit(&sess,
-         lexer::StringReader::new(&sess.span_diagnostic, fm),
+         lexer::StringReader::new(&sess.span_diagnostic, fm, None),
          class,
          id,
          &mut out).unwrap();
@@ -171,7 +171,8 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
             token::Lifetime(..) => "lifetime",
             token::DocComment(..) => "doccomment",
-            token::Underscore | token::Eof | token::Interpolated(..) |
+            token::Underscore | token::Eof | token::GenerateCompletion |
+                token::Interpolated(..) |
                 token::MatchNt(..) | token::SubstNt(..) => "",
         };
 

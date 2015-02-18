@@ -877,6 +877,9 @@ pub fn walk_expr<'v, V: Visitor<'v>>(visitor: &mut V, expression: &'v Expr) {
             walk_expr_opt(visitor, optional_expression)
         }
         ExprMac(ref mac) => visitor.visit_mac(mac),
+        ExprCompletion(ref subexpression) => {
+            visitor.visit_expr(&subexpression);
+        }
         ExprParen(ref subexpression) => {
             visitor.visit_expr(&**subexpression)
         }

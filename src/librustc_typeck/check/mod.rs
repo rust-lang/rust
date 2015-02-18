@@ -3667,6 +3667,23 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                                     lvalue_pref);
         fcx.write_ty(id, fcx.expr_ty(&**a));
       }
+      ast::ExprCompletion(ref e) => {
+          fcx.write_ty(e.id, fcx.infcx().next_diverging_ty_var());
+          fcx.write_ty(id, fcx.infcx().next_diverging_ty_var());
+          if let ast::ExprField(ref base, _) = e.node {
+              check_expr_with_lvalue_pref(fcx, &base, lvalue_pref);
+              let expr_t = structurally_resolved_type(fcx, base.span, fcx.expr_ty(&base));
+              match expr_t.sty {
+                  ty::ty_struct(base_id, _) => {
+                      let fields = ty::lookup_struct_fields(tcx, base_id);
+                      for field in fields.iter() {
+                          println!("{}", field.name);
+                      }
+                  }
+                  _ => ()
+              }
+          }
+      }
       ast::ExprAssign(ref lhs, ref rhs) => {
         check_expr_with_lvalue_pref(fcx, &**lhs, PreferMutLvalue);
 

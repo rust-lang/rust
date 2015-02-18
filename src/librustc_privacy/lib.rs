@@ -958,6 +958,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                     _ => {}
                 }
             }
+            ast::ExprCompletion(_) => return,
             _ => {}
         }
 

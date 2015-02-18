@@ -161,6 +161,9 @@ pub enum Token {
     /// A macro variable with special meaning.
     SpecialVarNt(SpecialMacroVar),
 
+    /* For completion */
+    GenerateCompletion,
+
     // Junk. These carry no data because we don't really care about the data
     // they *would* carry, and don't really want to allocate a new ident for
     // them. Instead, users could extract that from the associated span.

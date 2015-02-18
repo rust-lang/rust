@@ -22,7 +22,7 @@ use ast::{DeclLocal, DefaultBlock, DefaultReturn};
 use ast::{UnDeref, BiDiv, EMPTY_CTXT, EnumDef, ExplicitSelf};
 use ast::{Expr, Expr_, ExprAddrOf, ExprMatch, ExprAgain};
 use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
-use ast::{ExprBreak, ExprCall, ExprCast};
+use ast::{ExprBreak, ExprCall, ExprCast, ExprCompletion};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
 use ast::{ExprMethodCall, ExprParen, ExprPath, ExprQPath};
@@ -2038,7 +2038,7 @@ impl<'a> Parser<'a> {
         }
     }
 
-    pub fn mk_expr(&mut self, lo: BytePos, hi: BytePos, node: Expr_) -> P<Expr> {
+    pub fn mk_expr(&self, lo: BytePos, hi: BytePos, node: Expr_) -> P<Expr> {
         P(Expr {
             id: ast::DUMMY_NODE_ID,
             node: node,
@@ -2510,6 +2510,15 @@ impl<'a> Parser<'a> {
                     }
                     self.abort_if_errors();
 
+                  }
+                  token::GenerateCompletion => {
+                      // Important: do not bump
+                      let sp = self.span;
+                      let hi = self.last_span.hi;
+                      let id = codemap::respan(sp, special_idents::invalid);
+                      let field = self.mk_field(e, id);
+                      e = self.mk_expr(lo, hi,
+                          ExprCompletion(self.mk_expr(lo, hi, field)));
                   }
                   _ => self.unexpected()
                 }
@@ -3950,10 +3959,15 @@ impl<'a> Parser<'a> {
             stmts: &mut Vec<P<Stmt>>,
             last_block_expr: &mut Option<P<Expr>>) {
         // expression without semicolon
-        if classify::expr_requires_semi_to_be_stmt(&*e) {
+        if classify::expr_requires_semi_to_be_stmt(&*e) &&
+            self.token != token::GenerateCompletion {
             // Just check for errors and recover; do not eat semicolon yet.
             self.commit_stmt(&[],
                              &[token::Semi, token::CloseDelim(token::Brace)]);
+        }
+
+        if self.token == token::GenerateCompletion {
+            self.bump();
         }
 
         match self.token {
