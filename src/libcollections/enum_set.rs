@@ -250,9 +250,9 @@ impl<E:CLike> Iterator for Iter<E> {
 }
 
 impl<E:CLike> FromIterator<E> for EnumSet<E> {
-    fn from_iter<I:Iterator<Item=E>>(iterator: I) -> EnumSet<E> {
+    fn from_iter<I: IntoIterator<Item=E>>(iter: I) -> EnumSet<E> {
         let mut ret = EnumSet::new();
-        ret.extend(iterator);
+        ret.extend(iter);
         ret
     }
 }
@@ -268,8 +268,8 @@ impl<'a, E> IntoIterator for &'a EnumSet<E> where E: CLike {
 }
 
 impl<E:CLike> Extend<E> for EnumSet<E> {
-    fn extend<I: Iterator<Item=E>>(&mut self, iterator: I) {
-        for element in iterator {
+    fn extend<I: IntoIterator<Item=E>>(&mut self, iter: I) {
+        for element in iter {
             self.insert(element);
         }
     }

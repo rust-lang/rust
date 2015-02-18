@@ -68,7 +68,7 @@ use core::slice::AsSlice;
 use core::str as core_str;
 use unicode::str::{UnicodeStr, Utf16Encoder};
 
-use ring_buf::RingBuf;
+use vec_deque::VecDeque;
 use slice::SliceExt;
 use string::String;
 use unicode;
@@ -261,7 +261,7 @@ enum RecompositionState {
 pub struct Recompositions<'a> {
     iter: Decompositions<'a>,
     state: RecompositionState,
-    buffer: RingBuf<char>,
+    buffer: VecDeque<char>,
     composee: Option<char>,
     last_ccc: Option<u8>
 }
@@ -496,7 +496,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
         Recompositions {
             iter: self.nfd_chars(),
             state: Composing,
-            buffer: RingBuf::new(),
+            buffer: VecDeque::new(),
             composee: None,
             last_ccc: None
         }
@@ -511,7 +511,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
         Recompositions {
             iter: self.nfkd_chars(),
             state: Composing,
-            buffer: RingBuf::new(),
+            buffer: VecDeque::new(),
             composee: None,
             last_ccc: None
         }

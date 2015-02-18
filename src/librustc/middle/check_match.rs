@@ -25,7 +25,7 @@ use middle::ty::*;
 use middle::ty;
 use std::cmp::Ordering;
 use std::fmt;
-use std::iter::{range_inclusive, AdditiveIterator, FromIterator, repeat};
+use std::iter::{range_inclusive, AdditiveIterator, FromIterator, IntoIterator, repeat};
 use std::num::Float;
 use std::slice;
 use syntax::ast::{self, DUMMY_NODE_ID, NodeId, Pat};
@@ -94,8 +94,8 @@ impl<'a> fmt::Debug for Matrix<'a> {
 }
 
 impl<'a> FromIterator<Vec<&'a Pat>> for Matrix<'a> {
-    fn from_iter<T: Iterator<Item=Vec<&'a Pat>>>(iterator: T) -> Matrix<'a> {
-        Matrix(iterator.collect())
+    fn from_iter<T: IntoIterator<Item=Vec<&'a Pat>>>(iter: T) -> Matrix<'a> {
+        Matrix(iter.into_iter().collect())
     }
 }
 

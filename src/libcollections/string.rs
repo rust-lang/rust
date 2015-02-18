@@ -21,7 +21,7 @@ use core::default::Default;
 use core::error::Error;
 use core::fmt;
 use core::hash;
-use core::iter::FromIterator;
+use core::iter::{IntoIterator, FromIterator};
 use core::mem;
 use core::ops::{self, Deref, Add, Index};
 use core::ptr;
@@ -709,18 +709,18 @@ impl Error for FromUtf16Error {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl FromIterator<char> for String {
-    fn from_iter<I:Iterator<Item=char>>(iterator: I) -> String {
+    fn from_iter<I: IntoIterator<Item=char>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterator);
+        buf.extend(iter);
         buf
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> FromIterator<&'a str> for String {
-    fn from_iter<I:Iterator<Item=&'a str>>(iterator: I) -> String {
+    fn from_iter<I: IntoIterator<Item=&'a str>>(iter: I) -> String {
         let mut buf = String::new();
-        buf.extend(iterator);
+        buf.extend(iter);
         buf
     }
 }
@@ -728,7 +728,8 @@ impl<'a> FromIterator<&'a str> for String {
 #[unstable(feature = "collections",
            reason = "waiting on Extend stabilization")]
 impl Extend<char> for String {
-    fn extend<I:Iterator<Item=char>>(&mut self, iterator: I) {
+    fn extend<I: IntoIterator<Item=char>>(&mut self, iterable: I) {
+        let iterator = iterable.into_iter();
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);
         for ch in iterator {
@@ -740,7 +741,8 @@ impl Extend<char> for String {
 #[unstable(feature = "collections",
            reason = "waiting on Extend stabilization")]
 impl<'a> Extend<&'a str> for String {
-    fn extend<I: Iterator<Item=&'a str>>(&mut self, iterator: I) {
+    fn extend<I: IntoIterator<Item=&'a str>>(&mut self, iterable: I) {
+        let iterator = iterable.into_iter();
         // A guess that at least one byte per iterator element will be needed.
         let (lower_bound, _) = iterator.size_hint();
         self.reserve(lower_bound);

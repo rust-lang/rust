@@ -29,7 +29,7 @@ use core::ops::{Index, IndexMut};
 use core::{iter, fmt, mem};
 use Bound::{self, Included, Excluded, Unbounded};
 
-use ring_buf::RingBuf;
+use vec_deque::VecDeque;
 
 use self::Continuation::{Continue, Finished};
 use self::StackOp::*;
@@ -75,7 +75,7 @@ pub struct BTreeMap<K, V> {
 
 /// An abstract base over-which all other BTree iterators are built.
 struct AbsIter<T> {
-    traversals: RingBuf<T>,
+    traversals: VecDeque<T>,
     size: usize,
 }
 
@@ -826,7 +826,7 @@ mod stack {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
-    fn from_iter<T: Iterator<Item=(K, V)>>(iter: T) -> BTreeMap<K, V> {
+    fn from_iter<T: IntoIterator<Item=(K, V)>>(iter: T) -> BTreeMap<K, V> {
         let mut map = BTreeMap::new();
         map.extend(iter);
         map
@@ -836,7 +836,7 @@ impl<K: Ord, V> FromIterator<(K, V)> for BTreeMap<K, V> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<K: Ord, V> Extend<(K, V)> for BTreeMap<K, V> {
     #[inline]
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
+    fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -1199,7 +1199,7 @@ impl<K, V> BTreeMap<K, V> {
     pub fn iter(&self) -> Iter<K, V> {
         let len = self.len();
         // NB. The initial capacity for ringbuf is large enough to avoid reallocs in many cases.
-        let mut lca = RingBuf::new();
+        let mut lca = VecDeque::new();
         lca.push_back(Traverse::traverse(&self.root));
         Iter {
             inner: AbsIter {
@@ -1231,7 +1231,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn iter_mut(&mut self) -> IterMut<K, V> {
         let len = self.len();
-        let mut lca = RingBuf::new();
+        let mut lca = VecDeque::new();
         lca.push_back(Traverse::traverse(&mut self.root));
         IterMut {
             inner: AbsIter {
@@ -1260,7 +1260,7 @@ impl<K, V> BTreeMap<K, V> {
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<K, V> {
         let len = self.len();
-        let mut lca = RingBuf::new();
+        let mut lca = VecDeque::new();
         lca.push_back(Traverse::traverse(self.root));
         IntoIter {
             inner: AbsIter {
@@ -1352,7 +1352,7 @@ macro_rules! range_impl {
             // A deque that encodes two search paths containing (left-to-right):
             // a series of truncated-from-the-left iterators, the LCA's doubly-truncated iterator,
             // and a series of truncated-from-the-right iterators.
-            let mut traversals = RingBuf::new();
+            let mut traversals = VecDeque::new();
             let (root, min, max) = ($root, $min, $max);
 
             let mut leftmost = None;

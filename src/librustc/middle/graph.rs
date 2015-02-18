@@ -34,7 +34,7 @@
 
 use std::fmt::{Formatter, Error, Debug};
 use std::usize;
-use std::collections::BitvSet;
+use std::collections::BitSet;
 
 pub struct Graph<N,E> {
     nodes: Vec<Node<N>> ,
@@ -292,7 +292,7 @@ impl<N,E> Graph<N,E> {
         DepthFirstTraversal {
             graph: self,
             stack: vec![start],
-            visited: BitvSet::new()
+            visited: BitSet::new()
         }
     }
 }
@@ -300,7 +300,7 @@ impl<N,E> Graph<N,E> {
 pub struct DepthFirstTraversal<'g, N:'g, E:'g> {
     graph: &'g Graph<N, E>,
     stack: Vec<NodeIndex>,
-    visited: BitvSet
+    visited: BitSet
 }
 
 impl<'g, N, E> Iterator for DepthFirstTraversal<'g, N, E> {
