@@ -242,8 +242,10 @@ pub unsafe fn from_c_str(s: *const i8) -> &'static str {
 }
 
 /// Something that can be used to compare against a character
-#[unstable(feature = "core",
-           reason = "definition may change as pattern-related methods are stabilized")]
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
+             reason = "use `Pattern` instead")]
+// NB: Rather than removing it, make it private and move it into self::pattern
 pub trait CharEq {
     /// Determine if the splitter should split at the given character
     fn matches(&mut self, char) -> bool;
@@ -252,6 +254,7 @@ pub trait CharEq {
     fn only_ascii(&self) -> bool;
 }
 
+#[allow(deprecated) /* for CharEq */ ]
 impl CharEq for char {
     #[inline]
     fn matches(&mut self, c: char) -> bool { *self == c }
@@ -260,6 +263,7 @@ impl CharEq for char {
     fn only_ascii(&self) -> bool { (*self as u32) < 128 }
 }
 
+#[allow(deprecated) /* for CharEq */ ]
 impl<F> CharEq for F where F: FnMut(char) -> bool {
     #[inline]
     fn matches(&mut self, c: char) -> bool { (*self)(c) }
@@ -268,13 +272,16 @@ impl<F> CharEq for F where F: FnMut(char) -> bool {
     fn only_ascii(&self) -> bool { false }
 }
 
+#[allow(deprecated) /* for CharEq */ ]
 impl<'a> CharEq for &'a [char] {
     #[inline]
+    #[allow(deprecated) /* for CharEq */ ]
     fn matches(&mut self, c: char) -> bool {
         self.iter().any(|&m| { let mut m = m; m.matches(c) })
     }
 
     #[inline]
+    #[allow(deprecated) /* for CharEq */ ]
     fn only_ascii(&self) -> bool {
         self.iter().all(|m| m.only_ascii())
     }
@@ -764,7 +771,7 @@ impl TwoWaySearcher {
     // that (u, v) is a critical factorization for the needle.
     #[inline]
     fn next(&mut self, haystack: &[u8], needle: &[u8], long_period: bool)
-    -> Option<(usize, usize)> {
+            -> Option<(usize, usize)> {
         'search: loop {
             // Check that we have room to search in
             if self.position + needle.len() > haystack.len() {
@@ -866,6 +873,8 @@ impl TwoWaySearcher {
 /// The internal state of an iterator that searches for matches of a substring
 /// within a larger string using a dynamically chosen search algorithm
 #[derive(Clone)]
+// NB: This is kept around for convenience because
+// it is planned to be used again in the future
 enum OldSearcher {
     TwoWay(TwoWaySearcher),
     TwoWayLong(TwoWaySearcher),
@@ -896,6 +905,8 @@ impl OldSearcher {
 }
 
 #[derive(Clone)]
+// NB: This is kept around for convenience because
+// it is planned to be used again in the future
 struct OldMatchIndices<'a, 'b> {
     // constants
     haystack: &'a str,
@@ -921,7 +932,8 @@ impl<'a, P: Pattern<'a>> Iterator for MatchIndices<'a, P> {
 
 /// An iterator over the substrings of a string separated by a given
 /// search string
-#[unstable(feature = "core", reason = "type may be removed")]
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0", reason = "use `Split` with a `&str`")]
 pub struct SplitStr<'a, P: Pattern<'a>>(Split<'a, P>);
 impl<'a, P: Pattern<'a>> Iterator for SplitStr<'a, P> {
     type Item = &'a str;
@@ -1282,8 +1294,7 @@ where P::Searcher: DoubleEndedSearcher<'a> {
 }
 
 /// Return type of `StrExt::split_terminator`
-#[unstable(feature = "core",
-           reason = "might get removed in favour of a constructor method on Split")]
+#[stable(feature = "rust1", since = "1.0.0")]
 pub struct SplitTerminator<'a, P: Pattern<'a>>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 
@@ -1421,6 +1432,7 @@ impl StrExt for str {
     }
 
     #[inline]
+    #[allow(deprecated) /* for SplitStr */ ]
     fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P> {
         SplitStr(self.split(pat))
     }
@@ -1477,18 +1489,20 @@ impl StrExt for str {
 
     #[inline]
     fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
-        pat.match_starts_at(self, 0)
+        pat.is_prefix_of(self)
     }
 
     #[inline]
     fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
-    where P::Searcher: ReverseSearcher<'a> {
-        pat.match_ends_at(self, self.len())
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        pat.is_suffix_of(self)
     }
 
     #[inline]
     fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
-    where P::Searcher: DoubleEndedSearcher<'a> {
+        where P::Searcher: DoubleEndedSearcher<'a>
+    {
         let mut i = 0;
         let mut j = 0;
         let mut matcher = pat.into_searcher(self);
@@ -1521,7 +1535,8 @@ impl StrExt for str {
 
     #[inline]
     fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
-    where P::Searcher: ReverseSearcher<'a> {
+        where P::Searcher: ReverseSearcher<'a>
+    {
         let mut j = 0;
         let mut matcher = pat.into_searcher(self);
         if let Some((_, b)) = matcher.next_reject_back() {
@@ -1599,7 +1614,8 @@ impl StrExt for str {
     }
 
     fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
-    where P::Searcher: ReverseSearcher<'a> {
+        where P::Searcher: ReverseSearcher<'a>
+    {
         pat.into_searcher(self).next_match_back().map(|(i, _)| i)
     }
 

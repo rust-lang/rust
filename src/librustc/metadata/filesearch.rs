@@ -219,7 +219,7 @@ pub fn rust_path() -> Vec<Path> {
     let mut env_rust_path: Vec<Path> = match get_rust_path() {
         Some(env_path) => {
             let env_path_components =
-                env_path.split_str(PATH_ENTRY_SEPARATOR);
+                env_path.split(PATH_ENTRY_SEPARATOR);
             env_path_components.map(|s| Path::new(s)).collect()
         }
         None => Vec::new()

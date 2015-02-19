@@ -330,7 +330,7 @@ fn parse_name_directive(line: &str, directive: &str) -> bool {
 pub fn parse_name_value_directive(line: &str, directive: &str)
                                   -> Option<String> {
     let keycolon = format!("{}:", directive);
-    match line.find_str(&keycolon) {
+    match line.find(&keycolon) {
         Some(colon) => {
             let value = line[(colon + keycolon.len()) .. line.len()].to_string();
             debug!("{}: {}", directive, value);

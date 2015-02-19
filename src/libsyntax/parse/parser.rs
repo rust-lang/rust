@@ -2496,7 +2496,7 @@ impl<'a> Parser<'a> {
                     let fstr = n.as_str();
                     self.span_err(last_span,
                                   &format!("unexpected token: `{}`", n.as_str()));
-                    if fstr.chars().all(|x| "0123456789.".contains_char(x)) {
+                    if fstr.chars().all(|x| "0123456789.".contains(x)) {
                         let float = match fstr.parse::<f64>().ok() {
                             Some(f) => f,
                             None => continue,

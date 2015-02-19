@@ -463,7 +463,7 @@ impl<'a> LabelText<'a> {
     fn pre_escaped_content(self) -> Cow<'a, str> {
         match self {
             EscStr(s) => s,
-            LabelStr(s) => if s.contains_char('\\') {
+            LabelStr(s) => if s.contains('\\') {
                 (&*s).escape_default().into_cow()
             } else {
                 s

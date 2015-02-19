@@ -23,7 +23,7 @@
 #![feature(env)]
 #![feature(core)]
 
-// #![deny(warnings)]
+#![deny(warnings)]
 
 extern crate test;
 extern crate getopts;
