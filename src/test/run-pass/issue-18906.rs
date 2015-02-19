@@ -24,7 +24,7 @@ fn bar<K, Q>(k: &K, q: &Q) where K: Borrow<Q>, Q: Foo {
     q.foo(k.borrow())
 }
 
-struct MyTree<K>;
+struct MyTree<K>(K);
 
 impl<K> MyTree<K> {
     // This caused a failure in #18906

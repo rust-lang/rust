@@ -86,7 +86,7 @@ use util::nodemap::NodeMap;
 
 use arena::TypedArena;
 use libc::{c_uint, uint64_t};
-use std::ffi::{self, CString};
+use std::ffi::{CStr, CString};
 use std::cell::{Cell, RefCell};
 use std::collections::HashSet;
 use std::mem;
@@ -186,7 +186,7 @@ impl<'a, 'tcx> Drop for StatRecorder<'a, 'tcx> {
 pub fn decl_fn(ccx: &CrateContext, name: &str, cc: llvm::CallConv,
                ty: Type, output: ty::FnOutput) -> ValueRef {
 
-    let buf = CString::from_slice(name.as_bytes());
+    let buf = CString::new(name).unwrap();
     let llfn: ValueRef = unsafe {
         llvm::LLVMGetOrInsertFunction(ccx.llmod(), buf.as_ptr(), ty.to_ref())
     };
@@ -247,7 +247,7 @@ fn get_extern_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<'tcx>,
     let f = decl_rust_fn(ccx, fn_ty, name);
 
     let attrs = csearch::get_item_attrs(&ccx.sess().cstore, did);
-    set_llvm_fn_attrs(ccx, &attrs[], f);
+    set_llvm_fn_attrs(ccx, &attrs[..], f);
 
     ccx.externs().borrow_mut().insert(name.to_string(), f);
     f
@@ -340,7 +340,7 @@ pub fn get_extern_const<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, did: ast::DefId,
         None => ()
     }
     unsafe {
-        let buf = CString::from_slice(name.as_bytes());
+        let buf = CString::new(name.clone()).unwrap();
         let c = llvm::LLVMAddGlobal(ccx.llmod(), ty.to_ref(), buf.as_ptr());
         // Thread-local statics in some other crate need to *always* be linked
         // against in a thread-local fashion, so we need to be sure to apply the
@@ -523,7 +523,7 @@ pub fn get_res_dtor<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                      ty::mk_nil(ccx.tcx()));
         get_extern_fn(ccx,
                       &mut *ccx.externs().borrow_mut(),
-                      &name[],
+                      &name[..],
                       llvm::CCallConv,
                       llty,
                       dtor_ty)
@@ -898,14 +898,14 @@ pub fn trans_external_path<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ty::ty_bare_fn(_, ref fn_ty) => {
             match ccx.sess().target.target.adjust_abi(fn_ty.abi) {
                 Rust | RustCall => {
-                    get_extern_rust_fn(ccx, t, &name[], did)
+                    get_extern_rust_fn(ccx, t, &name[..], did)
                 }
                 RustIntrinsic => {
                     ccx.sess().bug("unexpected intrinsic in trans_external_path")
                 }
                 _ => {
                     foreign::register_foreign_item_fn(ccx, fn_ty.abi, t,
-                                                      &name[])
+                                                      &name[..])
                 }
             }
         }
@@ -947,7 +947,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let llresult = Invoke(bcx,
                               llfn,
-                              &llargs[],
+                              &llargs[..],
                               normal_bcx.llbb,
                               landing_pad,
                               Some(attributes),
@@ -961,7 +961,7 @@ pub fn invoke<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
         let llresult = Call(bcx,
                             llfn,
-                            &llargs[],
+                            &llargs[..],
                             Some(attributes),
                             debug_loc);
         return (llresult, bcx);
@@ -1216,19 +1216,6 @@ pub fn alloca_zeroed<'blk, 'tcx>(cx: Block<'blk, 'tcx>, ty: Ty<'tcx>,
     let b = cx.fcx.ccx.builder();
     b.position_before(cx.fcx.alloca_insert_pt.get().unwrap());
     memzero(&b, p, ty);
-    p
-}
-
-pub fn arrayalloca(cx: Block, ty: Type, v: ValueRef) -> ValueRef {
-    let _icx = push_ctxt("arrayalloca");
-    if cx.unreachable.get() {
-        unsafe {
-            return llvm::LLVMGetUndef(ty.to_ref());
-        }
-    }
-    debuginfo::clear_source_location(cx.fcx);
-    let p = ArrayAlloca(cx, ty, v);
-    call_lifetime_start(cx, p);
     p
 }
 
@@ -1646,7 +1633,7 @@ fn copy_closure_args_to_allocas<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                                                          "argtuple",
                                                          arg_scope_id));
     let untupled_arg_types = match monomorphized_arg_types[0].sty {
-        ty::ty_tup(ref types) => &types[],
+        ty::ty_tup(ref types) => &types[..],
         _ => {
             bcx.tcx().sess.span_bug(args[0].pat.span,
                                     "first arg to `rust-call` ABI function \
@@ -1834,12 +1821,12 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     let arg_datums = if abi != RustCall {
         create_datums_for_fn_args(&fcx,
-                                  &monomorphized_arg_types[])
+                                  &monomorphized_arg_types[..])
     } else {
         create_datums_for_fn_args_under_call_abi(
             bcx,
             arg_scope,
-            &monomorphized_arg_types[])
+            &monomorphized_arg_types[..])
     };
 
     bcx = match closure_env {
@@ -1855,7 +1842,7 @@ pub fn trans_closure<'a, 'b, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 arg_scope,
                 &decl.inputs[],
                 arg_datums,
-                &monomorphized_arg_types[])
+                &monomorphized_arg_types[..])
         }
     };
 
@@ -2000,7 +1987,7 @@ pub fn trans_named_tuple_constructor<'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
                 bcx = expr::trans_adt(bcx,
                                       result_ty,
                                       disr,
-                                      &fields[],
+                                      &fields[..],
                                       None,
                                       expr::SaveIn(llresult),
                                       debug_loc);
@@ -2070,7 +2057,7 @@ fn trans_enum_variant_or_tuple_like_struct<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx
         ty::erase_late_bound_regions(
             ccx.tcx(), &ty::ty_fn_args(ctor_ty));
 
-    let arg_datums = create_datums_for_fn_args(&fcx, &arg_tys[]);
+    let arg_datums = create_datums_for_fn_args(&fcx, &arg_tys[..]);
 
     if !type_is_zero_size(fcx.ccx, result_ty.unwrap()) {
         let dest = fcx.get_ret_slot(bcx, result_ty, "eret_slot");
@@ -2315,7 +2302,7 @@ pub fn trans_item(ccx: &CrateContext, item: &ast::Item) {
       ast::ItemImpl(_, _, ref generics, _, _, ref impl_items) => {
         meth::trans_impl(ccx,
                          item.ident,
-                         &impl_items[],
+                         &impl_items[..],
                          generics,
                          item.id);
       }
@@ -2430,7 +2417,7 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         _ => panic!("expected bare rust fn")
     };
 
-    let llfn = decl_rust_fn(ccx, node_type, &sym[]);
+    let llfn = decl_rust_fn(ccx, node_type, &sym[..]);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
     llfn
 }
@@ -2475,7 +2462,7 @@ pub fn get_fn_llvm_attributes<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, fn_ty: Ty<
 
             match fn_sig.inputs[1].sty {
                 ty::ty_tup(ref t_in) => {
-                    inputs.push_all(&t_in[]);
+                    inputs.push_all(&t_in[..]);
                     inputs
                 }
                 _ => ccx.sess().bug("expected tuple'd inputs")
@@ -2611,7 +2598,7 @@ pub fn register_fn_llvmty(ccx: &CrateContext,
     debug!("register_fn_llvmty id={} sym={}", node_id, sym);
 
     let llfn = decl_fn(ccx,
-                       &sym[],
+                       &sym[..],
                        cc,
                        llfty,
                        ty::FnConverging(ty::mk_nil(ccx.tcx())));
@@ -2667,7 +2654,7 @@ pub fn create_entry_wrapper(ccx: &CrateContext,
             let (start_fn, args) = if use_start_lang_item {
                 let start_def_id = match ccx.tcx().lang_items.require(StartFnLangItem) {
                     Ok(id) => id,
-                    Err(s) => { ccx.sess().fatal(&s[]); }
+                    Err(s) => { ccx.sess().fatal(&s[..]); }
                 };
                 let start_fn = if start_def_id.krate == ast::LOCAL_CRATE {
                     get_item_val(ccx, start_def_id.node)
@@ -2783,12 +2770,12 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                         } else {
                             llvm::LLVMTypeOf(v)
                         };
-                        if contains_null(&sym[]) {
+                        if contains_null(&sym[..]) {
                             ccx.sess().fatal(
                                 &format!("Illegal null byte in export_name \
                                          value: `{}`", sym)[]);
                         }
-                        let buf = CString::from_slice(sym.as_bytes());
+                        let buf = CString::new(sym.clone()).unwrap();
                         let g = llvm::LLVMAddGlobal(ccx.llmod(), llty,
                                                     buf.as_ptr());
 
@@ -2826,7 +2813,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                                                  &sect)[]);
                     }
                     unsafe {
-                        let buf = CString::from_slice(sect.as_bytes());
+                        let buf = CString::new(sect.as_bytes()).unwrap();
                         llvm::LLVMSetSection(v, buf.as_ptr());
                     }
                 },
@@ -2988,12 +2975,12 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
         Some(compressed) => compressed,
         None => cx.sess().fatal("failed to compress metadata"),
     });
-    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[]);
+    let llmeta = C_bytes_in_context(cx.metadata_llcx(), &compressed[..]);
     let llconst = C_struct_in_context(cx.metadata_llcx(), &[llmeta], false);
     let name = format!("rust_metadata_{}_{}",
                        cx.link_meta().crate_name,
                        cx.link_meta().crate_hash);
-    let buf = CString::from_vec(name.into_bytes());
+    let buf = CString::new(name).unwrap();
     let llglobal = unsafe {
         llvm::LLVMAddGlobal(cx.metadata_llmod(), val_ty(llconst).to_ref(),
                             buf.as_ptr())
@@ -3001,7 +2988,7 @@ pub fn write_metadata(cx: &SharedCrateContext, krate: &ast::Crate) -> Vec<u8> {
     unsafe {
         llvm::LLVMSetInitializer(llglobal, llconst);
         let name = loader::meta_section_name(cx.sess().target.target.options.is_like_osx);
-        let name = CString::from_slice(name.as_bytes());
+        let name = CString::new(name).unwrap();
         llvm::LLVMSetSection(llglobal, name.as_ptr())
     }
     return metadata;
@@ -3039,8 +3026,8 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = ffi::c_str_to_bytes(&llvm::LLVMGetValueName(val))
-                               .to_vec();
+                let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
+                                .to_bytes().to_vec();
                 declared.insert(name);
             }
         }
@@ -3056,8 +3043,8 @@ fn internalize_symbols(cx: &SharedCrateContext, reachable: &HashSet<String>) {
                     continue
                 }
 
-                let name = ffi::c_str_to_bytes(&llvm::LLVMGetValueName(val))
-                               .to_vec();
+                let name = CStr::from_ptr(llvm::LLVMGetValueName(val))
+                                .to_bytes().to_vec();
                 if !declared.contains(&name) &&
                    !reachable.contains(str::from_utf8(&name).unwrap()) {
                     llvm::SetLinkage(val, llvm::InternalLinkage);
@@ -3211,7 +3198,7 @@ pub fn trans_crate<'tcx>(analysis: ty::CrateAnalysis<'tcx>)
     reachable.push("rust_eh_personality_catch".to_string());
 
     if codegen_units > 1 {
-        internalize_symbols(&shared_ccx, &reachable.iter().map(|x| x.clone()).collect());
+        internalize_symbols(&shared_ccx, &reachable.iter().cloned().collect());
     }
 
     let metadata_module = ModuleTranslation {

@@ -11,7 +11,7 @@
 #![feature(macro_rules)]
 
 use std::borrow::{Cow, IntoCow};
-use std::collections::Bitv;
+use std::collections::BitVec;
 use std::default::Default;
 use std::iter::FromIterator;
 use std::ops::Add;
@@ -63,8 +63,8 @@ tests! {
     Vec::<()>::new, fn() -> Vec<()>, ();
     Vec::with_capacity, fn(uint) -> Vec<()>, (5);
     Vec::<()>::with_capacity, fn(uint) -> Vec<()>, (5);
-    Bitv::from_fn, fn(uint, fn(uint) -> bool) -> Bitv, (5, odd);
-    Bitv::from_fn::<fn(uint) -> bool>, fn(uint, fn(uint) -> bool) -> Bitv, (5, odd);
+    BitVec::from_fn, fn(uint, fn(uint) -> bool) -> BitVec, (5, odd);
+    BitVec::from_fn::<fn(uint) -> bool>, fn(uint, fn(uint) -> bool) -> BitVec, (5, odd);
 
     // Inherent non-static method.
     Vec::map_in_place, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>, (vec![b'f', b'o', b'o'], u8_as_i8);
@@ -100,8 +100,8 @@ tests! {
     Add::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<_>>::add, fn(i32, i32) -> i32, (5, 6);
     <i32 as Add<i32>>::add, fn(i32, i32) -> i32, (5, 6);
-    <String as IntoCow<_, _>>::into_cow, fn(String) -> Cow<'static, String, str>,
+    <String as IntoCow<_>>::into_cow, fn(String) -> Cow<'static, str>,
         ("foo".to_string());
-    <String as IntoCow<'static, _, _>>::into_cow, fn(String) -> Cow<'static, String, str>,
+    <String as IntoCow<'static, _>>::into_cow, fn(String) -> Cow<'static, str>,
         ("foo".to_string());
 }

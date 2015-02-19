@@ -10,10 +10,12 @@
 
 #![feature(box_syntax)]
 
-trait A<T> {}
+use std::marker::PhantomFn;
+
+trait A<T> : PhantomFn<(Self,T)> {}
 struct B<'a, T>(&'a (A<T>+'a));
 
-trait X {}
+trait X : PhantomFn<Self> {}
 impl<'a, T> X for B<'a, T> {}
 
 fn i<'a, T, U>(v: Box<A<U>+'a>) -> Box<X+'static> {

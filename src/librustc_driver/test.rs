@@ -254,7 +254,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
                 output_ty: Ty<'tcx>)
                 -> Ty<'tcx>
     {
-        let input_args = input_tys.iter().map(|ty| *ty).collect();
+        let input_args = input_tys.iter().cloned().collect();
         ty::mk_bare_fn(self.infcx.tcx,
                        None,
                        self.infcx.tcx.mk_bare_fn(ty::BareFnTy {
@@ -278,7 +278,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
     pub fn t_param(&self, space: subst::ParamSpace, index: u32) -> Ty<'tcx> {
         let name = format!("T{}", index);
-        ty::mk_param(self.infcx.tcx, space, index, token::intern(&name[]))
+        ty::mk_param(self.infcx.tcx, space, index, token::intern(&name[..]))
     }
 
     pub fn re_early_bound(&self,

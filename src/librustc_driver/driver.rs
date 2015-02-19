@@ -85,7 +85,7 @@ pub fn compile_input(sess: Session,
             let expanded_crate
                 = match phase_2_configure_and_expand(&sess,
                                                      krate,
-                                                     &id[],
+                                                     &id[..],
                                                      addl_plugins) {
                     None => return,
                     Some(k) => k
@@ -99,20 +99,20 @@ pub fn compile_input(sess: Session,
                                                                  &sess,
                                                                  outdir,
                                                                  &expanded_crate,
-                                                                 &id[]));
+                                                                 &id[..]));
 
         let mut forest = ast_map::Forest::new(expanded_crate);
         let arenas = ty::CtxtArenas::new();
         let ast_map = assign_node_ids_and_map(&sess, &mut forest);
 
-        write_out_deps(&sess, input, &outputs, &id[]);
+        write_out_deps(&sess, input, &outputs, &id[..]);
 
         controller_entry_point!(after_write_deps,
                                 CompileState::state_after_write_deps(input,
                                                                      &sess,
                                                                      outdir,
                                                                      &ast_map,
-                                                                     &id[]));
+                                                                     &id[..]));
 
         let analysis = phase_3_run_analysis_passes(sess,
                                                    ast_map,

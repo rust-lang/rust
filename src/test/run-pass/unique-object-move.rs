@@ -13,7 +13,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-pub trait EventLoop { }
+pub trait EventLoop { fn foo(&self) {} }
 
 pub struct UvEventLoop {
     uvio: int

@@ -125,11 +125,11 @@ impl LintStore {
                 match (sess, from_plugin) {
                     // We load builtin lints first, so a duplicate is a compiler bug.
                     // Use early_error when handling -W help with no crate.
-                    (None, _) => early_error(&msg[]),
-                    (Some(sess), false) => sess.bug(&msg[]),
+                    (None, _) => early_error(&msg[..]),
+                    (Some(sess), false) => sess.bug(&msg[..]),
 
                     // A duplicate name from a plugin is a user error.
-                    (Some(sess), true)  => sess.err(&msg[]),
+                    (Some(sess), true)  => sess.err(&msg[..]),
                 }
             }
 
@@ -150,11 +150,11 @@ impl LintStore {
             match (sess, from_plugin) {
                 // We load builtin lints first, so a duplicate is a compiler bug.
                 // Use early_error when handling -W help with no crate.
-                (None, _) => early_error(&msg[]),
-                (Some(sess), false) => sess.bug(&msg[]),
+                (None, _) => early_error(&msg[..]),
+                (Some(sess), false) => sess.bug(&msg[..]),
 
                 // A duplicate name from a plugin is a user error.
-                (Some(sess), true)  => sess.err(&msg[]),
+                (Some(sess), true)  => sess.err(&msg[..]),
             }
         }
     }
@@ -251,8 +251,8 @@ impl LintStore {
                 let warning = format!("lint {} has been renamed to {}",
                                       lint_name, new_name);
                 match span {
-                    Some(span) => sess.span_warn(span, &warning[]),
-                    None => sess.warn(&warning[]),
+                    Some(span) => sess.span_warn(span, &warning[..]),
+                    None => sess.warn(&warning[..]),
                 };
                 Some(lint_id)
             }
@@ -262,13 +262,13 @@ impl LintStore {
 
     pub fn process_command_line(&mut self, sess: &Session) {
         for &(ref lint_name, level) in &sess.opts.lint_opts {
-            match self.find_lint(&lint_name[], sess, None) {
+            match self.find_lint(&lint_name[..], sess, None) {
                 Some(lint_id) => self.set_level(lint_id, (level, CommandLine)),
                 None => {
                     match self.lint_groups.iter().map(|(&x, pair)| (x, pair.0.clone()))
                                                  .collect::<FnvHashMap<&'static str,
                                                                        Vec<LintId>>>()
-                                                 .get(&lint_name[]) {
+                                                 .get(&lint_name[..]) {
                         Some(v) => {
                             v.iter()
                              .map(|lint_id: &LintId|
@@ -411,15 +411,15 @@ pub fn raw_emit_lint(sess: &Session, lint: &'static Lint,
     if level == Forbid { level = Deny; }
 
     match (level, span) {
-        (Warn, Some(sp)) => sess.span_warn(sp, &msg[]),
-        (Warn, None)     => sess.warn(&msg[]),
-        (Deny, Some(sp)) => sess.span_err(sp, &msg[]),
-        (Deny, None)     => sess.err(&msg[]),
+        (Warn, Some(sp)) => sess.span_warn(sp, &msg[..]),
+        (Warn, None)     => sess.warn(&msg[..]),
+        (Deny, Some(sp)) => sess.span_err(sp, &msg[..]),
+        (Deny, None)     => sess.err(&msg[..]),
         _ => sess.bug("impossible level in raw_emit_lint"),
     }
 
     if let Some(note) = note {
-        sess.note(&note[]);
+        sess.note(&note[..]);
     }
 
     if let Some(span) = def {
@@ -503,7 +503,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                     match self.lints.find_lint(&lint_name, &self.tcx.sess, Some(span)) {
                         Some(lint_id) => vec![(lint_id, level, span)],
                         None => {
-                            match self.lints.lint_groups.get(&lint_name[]) {
+                            match self.lints.lint_groups.get(&lint_name[..]) {
                                 Some(&(ref v, _)) => v.iter()
                                                       .map(|lint_id: &LintId|
                                                            (*lint_id, level, span))
@@ -729,7 +729,7 @@ impl<'a, 'tcx> IdVisitingOperation for Context<'a, 'tcx> {
             None => {}
             Some(lints) => {
                 for (lint_id, span, msg) in lints {
-                    self.span_lint(lint_id.lint, span, &msg[])
+                    self.span_lint(lint_id.lint, span, &msg[..])
                 }
             }
         }

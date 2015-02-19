@@ -50,10 +50,10 @@ pub type GlueFn = extern "Rust" fn(*const i8);
 #[derive(Copy)]
 pub struct TyDesc {
     // sizeof(T)
-    pub size: uint,
+    pub size: usize,
 
     // alignof(T)
-    pub align: uint,
+    pub align: usize,
 
     // Called when a value of type `T` is no longer needed
     pub drop_glue: GlueFn,
@@ -186,15 +186,15 @@ extern "rust-intrinsic" {
     /// would *exactly* overwrite a value. When laid out in vectors
     /// and structures there may be additional padding between
     /// elements.
-    pub fn size_of<T>() -> uint;
+    pub fn size_of<T>() -> usize;
 
     /// Move a value to an uninitialized memory location.
     ///
     /// Drop glue is not run on the destination.
     pub fn move_val_init<T>(dst: &mut T, src: T);
 
-    pub fn min_align_of<T>() -> uint;
-    pub fn pref_align_of<T>() -> uint;
+    pub fn min_align_of<T>() -> usize;
+    pub fn pref_align_of<T>() -> usize;
 
     /// Get a static pointer to a type descriptor.
     pub fn get_tydesc<T: ?Sized>() -> *const TyDesc;
@@ -253,7 +253,7 @@ extern "rust-intrinsic" {
     ///
     /// This is implemented as an intrinsic to avoid converting to and from an
     /// integer, since the conversion would throw away aliasing information.
-    pub fn offset<T>(dst: *const T, offset: int) -> *const T;
+    pub fn offset<T>(dst: *const T, offset: isize) -> *const T;
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may *not* overlap.
@@ -294,7 +294,7 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     #[unstable(feature = "core")]
-    pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: uint);
+    pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
     /// and destination may overlap.
@@ -324,13 +324,13 @@ extern "rust-intrinsic" {
     /// ```
     ///
     #[unstable(feature = "core")]
-    pub fn copy_memory<T>(dst: *mut T, src: *const T, count: uint);
+    pub fn copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
     #[unstable(feature = "core",
                reason = "uncertain about naming and semantics")]
-    pub fn set_memory<T>(dst: *mut T, val: u8, count: uint);
+    pub fn set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
@@ -338,19 +338,19 @@ extern "rust-intrinsic" {
     ///
     /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
     pub fn volatile_copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T,
-                                                  count: uint);
+                                                  count: usize);
     /// Equivalent to the appropriate `llvm.memmove.p0i8.0i8.*` intrinsic, with
     /// a size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`
     ///
     /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
-    pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: uint);
+    pub fn volatile_copy_memory<T>(dst: *mut T, src: *const T, count: usize);
     /// Equivalent to the appropriate `llvm.memset.p0i8.*` intrinsic, with a
     /// size of `count` * `size_of::<T>()` and an alignment of
     /// `min_align_of::<T>()`.
     ///
     /// The volatile parameter parameter is set to `true`, so it will not be optimized out.
-    pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: uint);
+    pub fn volatile_set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Perform a volatile load from the `src` pointer.
     pub fn volatile_load<T>(src: *const T) -> T;

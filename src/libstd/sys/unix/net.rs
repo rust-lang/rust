@@ -10,7 +10,7 @@
 
 use prelude::v1::*;
 
-use ffi;
+use ffi::CStr;
 use io;
 use libc::{self, c_int, size_t};
 use str;
@@ -31,7 +31,7 @@ pub fn cvt_gai(err: c_int) -> io::Result<()> {
     if err == 0 { return Ok(()) }
 
     let detail = unsafe {
-        str::from_utf8(ffi::c_str_to_bytes(&c::gai_strerror(err))).unwrap()
+        str::from_utf8(CStr::from_ptr(c::gai_strerror(err)).to_bytes()).unwrap()
             .to_string()
     };
     Err(io::Error::new(io::ErrorKind::Other,

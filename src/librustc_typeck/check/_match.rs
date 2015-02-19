@@ -162,7 +162,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             check_pat_enum(pcx, pat, &path, Some(&[]), expected);
         }
         ast::PatEnum(ref path, ref subpats) => {
-            let subpats = subpats.as_ref().map(|v| &v[]);
+            let subpats = subpats.as_ref().map(|v| &v[..]);
             check_pat_enum(pcx, pat, path, subpats, expected);
         }
         ast::PatStruct(ref path, ref fields, etc) => {

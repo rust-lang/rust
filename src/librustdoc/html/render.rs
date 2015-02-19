@@ -1404,8 +1404,7 @@ impl<'a> fmt::Display for Item<'a> {
 
         try!(write!(fmt,
         r##"<span id='render-detail'>
-            <a id="collapse-all" href="#">[-]
-            </a>&nbsp;<a id="expand-all" href="#">[+]</a>
+            <a id="collapse-all" href="#">[-]</a>&nbsp;<a id="expand-all" href="#">[+]</a>
         </span>"##));
 
         // Write `src` tag

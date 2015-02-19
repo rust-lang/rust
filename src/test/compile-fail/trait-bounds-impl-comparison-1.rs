@@ -11,7 +11,10 @@
 // Make sure rustc checks the type parameter bounds in implementations of traits,
 // see #2687
 
-trait A {}
+use std::marker;
+
+trait A : marker::PhantomFn<Self> {
+}
 
 trait B: A {}
 
@@ -62,15 +65,16 @@ impl Foo for isize {
     //~^ ERROR the requirement `T : C` appears on the impl
 }
 
-
-trait Getter<T> { }
+trait Getter<T> {
+    fn get(&self) -> T { loop { } }
+}
 
 trait Trait {
-    fn method<G:Getter<isize>>();
+    fn method<G:Getter<isize>>(&self);
 }
 
 impl Trait for usize {
-    fn method<G: Getter<usize>>() {}
+    fn method<G: Getter<usize>>(&self) {}
     //~^ G : Getter<usize>` appears on the impl method but not on the corresponding trait method
 }
 

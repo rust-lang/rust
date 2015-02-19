@@ -11,7 +11,6 @@
 use prelude::v1::*;
 
 use collections::HashMap;
-use collections::hash_map::Hasher;
 use env;
 use ffi::{OsString, OsStr, CString};
 use fmt;
@@ -46,7 +45,7 @@ pub struct Command {
 impl Command {
     pub fn new(program: &OsStr) -> Command {
         Command {
-            program: program.to_cstring(),
+            program: program.to_cstring().unwrap(),
             args: Vec::new(),
             env: None,
             cwd: None,
@@ -57,10 +56,10 @@ impl Command {
     }
 
     pub fn arg(&mut self, arg: &OsStr) {
-        self.args.push(arg.to_cstring())
+        self.args.push(arg.to_cstring().unwrap())
     }
     pub fn args<'a, I: Iterator<Item = &'a OsStr>>(&mut self, args: I) {
-        self.args.extend(args.map(OsStrExt::to_cstring))
+        self.args.extend(args.map(|s| OsStrExt::to_cstring(s).unwrap()))
     }
     fn init_env_map(&mut self) {
         if self.env.is_none() {
@@ -79,7 +78,7 @@ impl Command {
         self.env = Some(HashMap::new())
     }
     pub fn cwd(&mut self, dir: &OsStr) {
-        self.cwd = Some(dir.to_cstring())
+        self.cwd = Some(dir.to_cstring().unwrap())
     }
 }
 

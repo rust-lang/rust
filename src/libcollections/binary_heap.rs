@@ -650,8 +650,8 @@ impl<'a, T: 'a> ExactSizeIterator for Drain<'a, T> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BinaryHeap<T> {
-    fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BinaryHeap<T> {
-        BinaryHeap::from_vec(iter.collect())
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> BinaryHeap<T> {
+        BinaryHeap::from_vec(iter.into_iter().collect())
     }
 }
 
@@ -677,7 +677,8 @@ impl<'a, T> IntoIterator for &'a BinaryHeap<T> where T: Ord {
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BinaryHeap<T> {
-    fn extend<Iter: Iterator<Item=T>>(&mut self, iter: Iter) {
+    fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
+        let iter = iterable.into_iter();
         let (lower, _) = iter.size_hint();
 
         self.reserve(lower);

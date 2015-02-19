@@ -10,7 +10,7 @@
 
 // Test that we cannot create objects from unsized types.
 
-trait Foo {}
+trait Foo { fn foo(&self) {} }
 impl Foo for str {}
 
 fn test1<T: ?Sized + Foo>(t: &T) {

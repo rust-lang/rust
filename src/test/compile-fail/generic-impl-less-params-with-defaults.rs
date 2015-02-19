@@ -8,10 +8,13 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<A, B, C = (A, B)>;
+use std::marker;
+
+struct Foo<A, B, C = (A, B)>(
+    marker::PhantomData<(A,B,C)>);
 
 impl<A, B, C = (A, B)> Foo<A, B, C> {
-    fn new() -> Foo<A, B, C> {Foo}
+    fn new() -> Foo<A, B, C> {Foo(marker::PhantomData)}
 }
 
 fn main() {

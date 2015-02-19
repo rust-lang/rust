@@ -171,33 +171,27 @@ pub fn trans_slice_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let vt = vec_types_from_expr(bcx, content_expr);
     let count = elements_required(bcx, content_expr);
     debug!("    vt={}, count={}", vt.to_string(ccx), count);
-    let llcount = C_uint(ccx, count);
 
     let fixed_ty = ty::mk_vec(bcx.tcx(),
                               vt.unit_ty,
                               Some(count));
-    let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty).ptr_to();
+    let llfixed_ty = type_of::type_of(bcx.ccx(), fixed_ty);
 
-    let llfixed = if count == 0 {
-        // Just create a zero-sized alloca to preserve
-        // the non-null invariant of the inner slice ptr
-        let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
-        BitCast(bcx, llfixed, llfixed_ty)
-    } else {
-        // Make a fixed-length backing array and allocate it on the stack.
-        let llfixed = base::arrayalloca(bcx, vt.llunit_ty, llcount);
+    // Always create an alloca even if zero-sized, to preserve
+    // the non-null invariant of the inner slice ptr
+    let llfixed = base::alloca(bcx, llfixed_ty, "");
 
+    if count > 0 {
         // Arrange for the backing array to be cleaned up.
-        let llfixed_casted = BitCast(bcx, llfixed, llfixed_ty);
         let cleanup_scope = cleanup::temporary_scope(bcx.tcx(), content_expr.id);
-        fcx.schedule_lifetime_end(cleanup_scope, llfixed_casted);
-        fcx.schedule_drop_mem(cleanup_scope, llfixed_casted, fixed_ty);
+        fcx.schedule_lifetime_end(cleanup_scope, llfixed);
+        fcx.schedule_drop_mem(cleanup_scope, llfixed, fixed_ty);
 
         // Generate the content into the backing array.
-        bcx = write_content(bcx, &vt, slice_expr,
-                            content_expr, SaveIn(llfixed));
-
-        llfixed_casted
+        // llfixed has type *[T x N], but we want the type *T,
+        // so use GEP to convert
+        bcx = write_content(bcx, &vt, slice_expr, content_expr,
+                            SaveIn(GEPi(bcx, llfixed, &[0, 0])));
     };
 
     immediate_rvalue_bcx(bcx, llfixed, vec_ty).to_expr_datumblock()
@@ -426,49 +420,27 @@ pub fn iter_vec_loop<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("tvec::iter_vec_loop");
     let fcx = bcx.fcx;
 
-    let next_bcx = fcx.new_temp_block("expr_repeat: while next");
     let loop_bcx = fcx.new_temp_block("expr_repeat");
-    let cond_bcx = fcx.new_temp_block("expr_repeat: loop cond");
-    let body_bcx = fcx.new_temp_block("expr_repeat: body: set");
-    let inc_bcx = fcx.new_temp_block("expr_repeat: body: inc");
+    let next_bcx = fcx.new_temp_block("expr_repeat: next");
+
     Br(bcx, loop_bcx.llbb, DebugLoc::None);
 
-    let loop_counter = {
-        // i = 0
-        let i = alloca(loop_bcx, bcx.ccx().int_type(), "__i");
-        Store(loop_bcx, C_uint(bcx.ccx(), 0_u32), i);
+    let loop_counter = Phi(loop_bcx, bcx.ccx().int_type(),
+                           &[C_uint(bcx.ccx(), 0 as usize)], &[bcx.llbb]);
 
-        Br(loop_bcx, cond_bcx.llbb, DebugLoc::None);
-        i
+    let bcx = loop_bcx;
+
+    let lleltptr = if vt.llunit_alloc_size == 0 {
+        data_ptr
+    } else {
+        InBoundsGEP(bcx, data_ptr, &[loop_counter])
     };
+    let bcx = f(bcx, lleltptr, vt.unit_ty);
+    let plusone = Add(bcx, loop_counter, C_uint(bcx.ccx(), 1us), DebugLoc::None);
+    AddIncomingToPhi(loop_counter, plusone, bcx.llbb);
 
-    { // i < count
-        let lhs = Load(cond_bcx, loop_counter);
-        let rhs = count;
-        let cond_val = ICmp(cond_bcx, llvm::IntULT, lhs, rhs, DebugLoc::None);
-
-        CondBr(cond_bcx, cond_val, body_bcx.llbb, next_bcx.llbb, DebugLoc::None);
-    }
-
-    { // loop body
-        let i = Load(body_bcx, loop_counter);
-        let lleltptr = if vt.llunit_alloc_size == 0 {
-            data_ptr
-        } else {
-            InBoundsGEP(body_bcx, data_ptr, &[i])
-        };
-        let body_bcx = f(body_bcx, lleltptr, vt.unit_ty);
-
-        Br(body_bcx, inc_bcx.llbb, DebugLoc::None);
-    }
-
-    { // i += 1
-        let i = Load(inc_bcx, loop_counter);
-        let plusone = Add(inc_bcx, i, C_uint(bcx.ccx(), 1_u32), DebugLoc::None);
-        Store(inc_bcx, plusone, loop_counter);
-
-        Br(inc_bcx, cond_bcx.llbb, DebugLoc::None);
-    }
+    let cond_val = ICmp(bcx, llvm::IntULT, plusone, count, DebugLoc::None);
+    CondBr(bcx, cond_val, loop_bcx.llbb, next_bcx.llbb, DebugLoc::None);
 
     next_bcx
 }

@@ -14,7 +14,9 @@ pub trait Bar {
     fn bar(&self);
 }
 
-pub trait Baz {}
+pub trait Baz {
+    fn baz(&self) { }
+}
 
 impl<T: Baz> Bar for T {
     fn bar(&self) {}

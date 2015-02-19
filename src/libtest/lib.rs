@@ -37,7 +37,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(env)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(old_io)]
 #![feature(old_path)]
@@ -721,7 +720,7 @@ fn should_sort_failures_before_printing_them() {
 
     st.write_failures().unwrap();
     let s = match st.out {
-        Raw(ref m) => String::from_utf8_lossy(&m[]),
+        Raw(ref m) => String::from_utf8_lossy(&m[..]),
         Pretty(_) => unreachable!()
     };
 
@@ -834,7 +833,7 @@ pub fn filter_tests(opts: &TestOpts, tests: Vec<TestDescAndFn>) -> Vec<TestDescA
         None => filtered,
         Some(ref filter) => {
             filtered.into_iter().filter(|test| {
-                test.desc.name.as_slice().contains(&filter[])
+                test.desc.name.as_slice().contains(&filter[..])
             }).collect()
         }
     };

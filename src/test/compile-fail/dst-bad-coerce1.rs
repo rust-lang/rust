@@ -15,7 +15,7 @@ struct Fat<T: ?Sized> {
 }
 
 struct Foo;
-trait Bar {}
+trait Bar { fn bar(&self) {} }
 
 pub fn main() {
     // With a vec of isize.

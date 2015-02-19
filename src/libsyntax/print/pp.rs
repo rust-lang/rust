@@ -539,8 +539,8 @@ impl Printer {
     pub fn print(&mut self, token: Token, l: isize) -> old_io::IoResult<()> {
         debug!("print {} {} (remaining line space={})", tok_str(&token), l,
                self.space);
-        debug!("{}", buf_str(&self.token[],
-                             &self.size[],
+        debug!("{}", buf_str(&self.token,
+                             &self.size,
                              self.left,
                              self.right,
                              6));
@@ -607,7 +607,7 @@ impl Printer {
             assert_eq!(l, len);
             // assert!(l <= space);
             self.space -= len;
-            self.print_str(&s[])
+            self.print_str(&s[..])
           }
           Token::Eof => {
             // Eof should never get here.

@@ -50,23 +50,25 @@ use core::prelude::*;
 
 use alloc::boxed::Box;
 use alloc::heap::{EMPTY, allocate, reallocate, deallocate};
-use core::borrow::{Cow, IntoCow};
 use core::cmp::max;
 use core::cmp::{Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{self, Hash};
+use core::intrinsics::assume;
 use core::iter::{repeat, FromIterator, IntoIterator};
-use core::marker::{self, ContravariantLifetime, InvariantType};
+use core::marker::PhantomData;
 use core::mem;
-use core::nonzero::NonZero;
 use core::num::{Int, UnsignedInt};
 use core::ops::{Index, IndexMut, Deref, Add};
 use core::ops;
 use core::ptr;
+use core::ptr::Unique;
 use core::raw::Slice as RawSlice;
 use core::slice;
 use core::usize;
+
+use borrow::{Cow, IntoCow};
 
 /// A growable list type, written `Vec<T>` but pronounced 'vector.'
 ///
@@ -137,10 +139,9 @@ use core::usize;
 #[unsafe_no_drop_flag]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Vec<T> {
-    ptr: NonZero<*mut T>,
+    ptr: Unique<T>,
     len: usize,
     cap: usize,
-    _own: marker::PhantomData<T>,
 }
 
 unsafe impl<T: Send> Send for Vec<T> { }
@@ -249,10 +250,9 @@ impl<T> Vec<T> {
     pub unsafe fn from_raw_parts(ptr: *mut T, length: usize,
                                  capacity: usize) -> Vec<T> {
         Vec {
-            ptr: NonZero::new(ptr),
+            ptr: Unique::new(ptr),
             len: length,
             cap: capacity,
-            _own: marker::PhantomData,
         }
     }
 
@@ -373,7 +373,7 @@ impl<T> Vec<T> {
                                      self.len * mem::size_of::<T>(),
                                      mem::min_align_of::<T>()) as *mut T;
                 if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
+                self.ptr = Unique::new(ptr);
             }
             self.cap = self.len;
         }
@@ -655,7 +655,7 @@ impl<T> Vec<T> {
             unsafe {
                 let ptr = alloc_or_realloc(*self.ptr, old_size, size);
                 if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
+                self.ptr = Unique::new(ptr);
             }
             self.cap = max(self.cap, 2) * 2;
         }
@@ -756,7 +756,7 @@ impl<T> Vec<T> {
             Drain {
                 ptr: begin,
                 end: end,
-                marker: ContravariantLifetime,
+                marker: PhantomData,
             }
         }
     }
@@ -871,6 +871,8 @@ impl<T> Vec<T> {
                 end_t: unsafe { start.offset(offset) },
                 start_u: start as *mut U,
                 end_u: start as *mut U,
+
+                _marker: PhantomData,
             };
             //  start_t
             //  start_u
@@ -967,8 +969,7 @@ impl<T> Vec<T> {
             let mut pv = PartialVecZeroSized::<T,U> {
                 num_t: vec.len(),
                 num_u: 0,
-                marker_t: InvariantType,
-                marker_u: InvariantType,
+                marker: PhantomData,
             };
             unsafe { mem::forget(vec); }
 
@@ -1226,7 +1227,7 @@ impl<T> Vec<T> {
             unsafe {
                 let ptr = alloc_or_realloc(*self.ptr, self.cap * mem::size_of::<T>(), size);
                 if ptr.is_null() { ::alloc::oom() }
-                self.ptr = NonZero::new(ptr);
+                self.ptr = Unique::new(ptr);
             }
             self.cap = capacity;
         }
@@ -1302,9 +1303,18 @@ impl<T:Clone> Clone for Vec<T> {
     }
 }
 
+#[cfg(stage0)]
 impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
+        Hash::hash(&**self, state)
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<T: Hash> Hash for Vec<T> {
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         Hash::hash(&**self, state)
     }
 }
@@ -1407,7 +1417,8 @@ impl<T> ops::DerefMut for Vec<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
-    fn from_iter<I:Iterator<Item=T>>(mut iterator: I) -> Vec<T> {
+    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> Vec<T> {
+        let mut iterator = iterable.into_iter();
         let (lower, _) = iterator.size_hint();
         let mut vector = Vec::with_capacity(lower);
 
@@ -1480,7 +1491,8 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 #[unstable(feature = "collections", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
     #[inline]
-    fn extend<I: Iterator<Item=T>>(&mut self, iterator: I) {
+    fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
+        let iterator = iterable.into_iter();
         let (lower, _) = iterator.size_hint();
         self.reserve(lower);
         for element in iterator {
@@ -1517,34 +1529,34 @@ macro_rules! impl_eq {
 impl_eq! { Vec<A>, &'b [B] }
 impl_eq! { Vec<A>, &'b mut [B] }
 
-impl<'a, A, B> PartialEq<Vec<B>> for CowVec<'a, A> where A: PartialEq<B> + Clone {
+impl<'a, A, B> PartialEq<Vec<B>> for Cow<'a, [A]> where A: PartialEq<B> + Clone {
     #[inline]
     fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
     fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
-impl<'a, A, B> PartialEq<CowVec<'a, A>> for Vec<B> where A: Clone, B: PartialEq<A> {
+impl<'a, A, B> PartialEq<Cow<'a, [A]>> for Vec<B> where A: Clone, B: PartialEq<A> {
     #[inline]
-    fn eq(&self, other: &CowVec<'a, A>) -> bool { PartialEq::eq(&**self, &**other) }
+    fn eq(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::eq(&**self, &**other) }
     #[inline]
-    fn ne(&self, other: &CowVec<'a, A>) -> bool { PartialEq::ne(&**self, &**other) }
+    fn ne(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::ne(&**self, &**other) }
 }
 
 macro_rules! impl_eq_for_cowvec {
     ($rhs:ty) => {
-        impl<'a, 'b, A, B> PartialEq<$rhs> for CowVec<'a, A> where A: PartialEq<B> + Clone {
+        impl<'a, 'b, A, B> PartialEq<$rhs> for Cow<'a, [A]> where A: PartialEq<B> + Clone {
             #[inline]
             fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
             #[inline]
             fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
         }
 
-        impl<'a, 'b, A, B> PartialEq<CowVec<'a, A>> for $rhs where A: Clone, B: PartialEq<A> {
+        impl<'a, 'b, A, B> PartialEq<Cow<'a, [A]>> for $rhs where A: Clone, B: PartialEq<A> {
             #[inline]
-            fn eq(&self, other: &CowVec<'a, A>) -> bool { PartialEq::eq(&**self, &**other) }
+            fn eq(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::eq(&**self, &**other) }
             #[inline]
-            fn ne(&self, other: &CowVec<'a, A>) -> bool { PartialEq::ne(&**self, &**other) }
+            fn ne(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::ne(&**self, &**other) }
         }
     }
 }
@@ -1552,8 +1564,7 @@ macro_rules! impl_eq_for_cowvec {
 impl_eq_for_cowvec! { &'b [B] }
 impl_eq_for_cowvec! { &'b mut [B] }
 
-#[unstable(feature = "collections",
-           reason = "waiting on PartialOrd stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
     #[inline]
     fn partial_cmp(&self, other: &Vec<T>) -> Option<Ordering> {
@@ -1561,10 +1572,10 @@ impl<T: PartialOrd> PartialOrd for Vec<T> {
     }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Eq stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Eq> Eq for Vec<T> {}
 
-#[unstable(feature = "collections", reason = "waiting on Ord stability")]
+#[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Ord for Vec<T> {
     #[inline]
     fn cmp(&self, other: &Vec<T>) -> Ordering {
@@ -1587,8 +1598,12 @@ impl<T> AsSlice<T> for Vec<T> {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn as_slice(&self) -> &[T] {
         unsafe {
+            let p = *self.ptr;
+            if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
+                assume(p != 0 as *mut T);
+            }
             mem::transmute(RawSlice {
-                data: *self.ptr,
+                data: p,
                 len: self.len
             })
         }
@@ -1643,26 +1658,26 @@ impl<T: fmt::Debug> fmt::Debug for Vec<T> {
 // Clone-on-write
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections",
-           reason = "unclear how valuable this alias is")]
 /// A clone-on-write vector
-pub type CowVec<'a, T> = Cow<'a, Vec<T>, [T]>;
+#[deprecated(since = "1.0.0", reason = "use Cow<'a, [T]> instead")]
+#[unstable(feature = "collections")]
+pub type CowVec<'a, T> = Cow<'a, [T]>;
 
 #[unstable(feature = "collections")]
-impl<'a, T> FromIterator<T> for CowVec<'a, T> where T: Clone {
-    fn from_iter<I: Iterator<Item=T>>(it: I) -> CowVec<'a, T> {
+impl<'a, T> FromIterator<T> for Cow<'a, [T]> where T: Clone {
+    fn from_iter<I: IntoIterator<Item=T>>(it: I) -> Cow<'a, [T]> {
         Cow::Owned(FromIterator::from_iter(it))
     }
 }
 
-impl<'a, T: 'a> IntoCow<'a, Vec<T>, [T]> for Vec<T> where T: Clone {
-    fn into_cow(self) -> CowVec<'a, T> {
+impl<'a, T: 'a> IntoCow<'a, [T]> for Vec<T> where T: Clone {
+    fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Owned(self)
     }
 }
 
-impl<'a, T> IntoCow<'a, Vec<T>, [T]> for &'a [T] where T: Clone {
-    fn into_cow(self) -> CowVec<'a, T> {
+impl<'a, T> IntoCow<'a, [T]> for &'a [T] where T: Clone {
+    fn into_cow(self) -> Cow<'a, [T]> {
         Cow::Borrowed(self)
     }
 }
@@ -1779,10 +1794,10 @@ impl<T> Drop for IntoIter<T> {
 #[unsafe_no_drop_flag]
 #[unstable(feature = "collections",
            reason = "recently added as part of collections reform 2")]
-pub struct Drain<'a, T> {
+pub struct Drain<'a, T:'a> {
     ptr: *const T,
     end: *const T,
-    marker: ContravariantLifetime<'a>,
+    marker: PhantomData<&'a T>,
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -1867,9 +1882,9 @@ impl<'a, T> Drop for Drain<'a, T> {
 
 /// Wrapper type providing a `&Vec<T>` reference via `Deref`.
 #[unstable(feature = "collections")]
-pub struct DerefVec<'a, T> {
+pub struct DerefVec<'a, T:'a> {
     x: Vec<T>,
-    l: ContravariantLifetime<'a>
+    l: PhantomData<&'a T>,
 }
 
 #[unstable(feature = "collections")]
@@ -1897,7 +1912,7 @@ pub fn as_vec<'a, T>(x: &'a [T]) -> DerefVec<'a, T> {
     unsafe {
         DerefVec {
             x: Vec::from_raw_parts(x.as_ptr() as *mut T, x.len(), x.len()),
-            l: ContravariantLifetime::<'a>
+            l: PhantomData,
         }
     }
 }
@@ -1921,6 +1936,8 @@ struct PartialVecNonZeroSized<T,U> {
     end_u: *mut U,
     start_t: *mut T,
     end_t: *mut T,
+
+    _marker: PhantomData<U>,
 }
 
 /// An owned, partially type-converted vector of zero-sized elements.
@@ -1930,8 +1947,7 @@ struct PartialVecNonZeroSized<T,U> {
 struct PartialVecZeroSized<T,U> {
     num_t: usize,
     num_u: usize,
-    marker_t: InvariantType<T>,
-    marker_u: InvariantType<U>,
+    marker: PhantomData<::core::cell::Cell<(T,U)>>,
 }
 
 #[unsafe_destructor]
@@ -2589,7 +2605,7 @@ mod tests {
         b.bytes = src_len as u64;
 
         b.iter(|| {
-            let dst = src.clone()[].to_vec();
+            let dst = src.clone()[..].to_vec();
             assert_eq!(dst.len(), src_len);
             assert!(dst.iter().enumerate().all(|(i, x)| i == *x));
         });

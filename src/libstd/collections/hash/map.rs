@@ -14,12 +14,12 @@ use self::Entry::*;
 use self::SearchResult::*;
 use self::VacantEntryState::*;
 
-use borrow::BorrowFrom;
+use borrow::Borrow;
 use clone::Clone;
 use cmp::{max, Eq, PartialEq};
 use default::Default;
 use fmt::{self, Debug};
-use hash::{self, Hash, SipHasher};
+use hash::{Hash, SipHasher};
 use iter::{self, Iterator, ExactSizeIterator, IntoIterator, IteratorExt, FromIterator, Extend, Map};
 use marker::Sized;
 use mem::{self, replace};
@@ -440,12 +440,10 @@ impl<K, V, M> SearchResult<K, V, M> {
     }
 }
 
-impl<K, V, S, H> HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> HashMap<K, V, S>
+    where K: Eq + Hash, S: HashState
 {
-    fn make_hash<X: ?Sized>(&self, x: &X) -> SafeHash where X: Hash<H> {
+    fn make_hash<X: ?Sized>(&self, x: &X) -> SafeHash where X: Hash {
         table::make_hash(&self.hash_state, x)
     }
 
@@ -453,18 +451,18 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// If you already have the hash for the key lying around, use
     /// search_hashed.
     fn search<'a, Q: ?Sized>(&'a self, q: &Q) -> Option<FullBucketImm<'a, K, V>>
-        where Q: BorrowFrom<K> + Eq + Hash<H>
+        where K: Borrow<Q>, Q: Eq + Hash
     {
         let hash = self.make_hash(q);
-        search_hashed(&self.table, hash, |k| q.eq(BorrowFrom::borrow_from(k)))
+        search_hashed(&self.table, hash, |k| q.eq(k.borrow()))
             .into_option()
     }
 
     fn search_mut<'a, Q: ?Sized>(&'a mut self, q: &Q) -> Option<FullBucketMut<'a, K, V>>
-        where Q: BorrowFrom<K> + Eq + Hash<H>
+        where K: Borrow<Q>, Q: Eq + Hash
     {
         let hash = self.make_hash(q);
-        search_hashed(&mut self.table, hash, |k| q.eq(BorrowFrom::borrow_from(k)))
+        search_hashed(&mut self.table, hash, |k| q.eq(k.borrow()))
             .into_option()
     }
 
@@ -490,7 +488,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     }
 }
 
-impl<K: Hash<Hasher> + Eq, V> HashMap<K, V, RandomState> {
+impl<K: Hash + Eq, V> HashMap<K, V, RandomState> {
     /// Create an empty HashMap.
     ///
     /// # Example
@@ -520,10 +518,8 @@ impl<K: Hash<Hasher> + Eq, V> HashMap<K, V, RandomState> {
     }
 }
 
-impl<K, V, S, H> HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> HashMap<K, V, S>
+    where K: Eq + Hash, S: HashState
 {
     /// Creates an empty hashmap which will use the given hasher to hash keys.
     ///
@@ -1037,7 +1033,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get<Q: ?Sized>(&self, k: &Q) -> Option<&V>
-        where Q: Hash<H> + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         self.search(k).map(|bucket| bucket.into_refs().1)
     }
@@ -1060,7 +1056,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains_key<Q: ?Sized>(&self, k: &Q) -> bool
-        where Q: Hash<H> + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         self.search(k).is_some()
     }
@@ -1086,7 +1082,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn get_mut<Q: ?Sized>(&mut self, k: &Q) -> Option<&mut V>
-        where Q: Hash<H> + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         self.search_mut(k).map(|bucket| bucket.into_mut_refs().1)
     }
@@ -1138,7 +1134,7 @@ impl<K, V, S, H> HashMap<K, V, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, k: &Q) -> Option<V>
-        where Q: Hash<H> + Eq + BorrowFrom<K>
+        where K: Borrow<Q>, Q: Hash + Eq
     {
         if self.table.size() == 0 {
             return None
@@ -1195,10 +1191,8 @@ fn search_entry_hashed<'a, K: Eq, V>(table: &'a mut RawTable<K,V>, hash: SafeHas
     }
 }
 
-impl<K, V, S, H> PartialEq for HashMap<K, V, S>
-    where K: Eq + Hash<H>, V: PartialEq,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> PartialEq for HashMap<K, V, S>
+    where K: Eq + Hash, V: PartialEq, S: HashState
 {
     fn eq(&self, other: &HashMap<K, V, S>) -> bool {
         if self.len() != other.len() { return false; }
@@ -1210,17 +1204,13 @@ impl<K, V, S, H> PartialEq for HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, H> Eq for HashMap<K, V, S>
-    where K: Eq + Hash<H>, V: Eq,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> Eq for HashMap<K, V, S>
+    where K: Eq + Hash, V: Eq, S: HashState
 {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, H> Debug for HashMap<K, V, S>
-    where K: Eq + Hash<H> + Debug, V: Debug,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> Debug for HashMap<K, V, S>
+    where K: Eq + Hash + Debug, V: Debug, S: HashState
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "HashMap {{"));
@@ -1235,10 +1225,9 @@ impl<K, V, S, H> Debug for HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, H> Default for HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> Default for HashMap<K, V, S>
+    where K: Eq + Hash,
+          S: HashState + Default,
 {
     fn default() -> HashMap<K, V, S> {
         HashMap::with_hash_state(Default::default())
@@ -1246,11 +1235,10 @@ impl<K, V, S, H> Default for HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, Q: ?Sized, V, S, H> Index<Q> for HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          Q: Eq + Hash<H> + BorrowFrom<K>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, Q: ?Sized, V, S> Index<Q> for HashMap<K, V, S>
+    where K: Eq + Hash + Borrow<Q>,
+          Q: Eq + Hash,
+          S: HashState,
 {
     type Output = V;
 
@@ -1261,11 +1249,10 @@ impl<K, Q: ?Sized, V, S, H> Index<Q> for HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, H, Q: ?Sized> IndexMut<Q> for HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          Q: Eq + Hash<H> + BorrowFrom<K>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S, Q: ?Sized> IndexMut<Q> for HashMap<K, V, S>
+    where K: Eq + Hash + Borrow<Q>,
+          Q: Eq + Hash,
+          S: HashState,
 {
     #[inline]
     fn index_mut<'a>(&'a mut self, index: &Q) -> &'a mut V {
@@ -1373,10 +1360,8 @@ enum VacantEntryState<K, V, M> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<'a, K, V, S> IntoIterator for &'a HashMap<K, V, S>
+    where K: Eq + Hash, S: HashState
 {
     type Item = (&'a K, &'a V);
     type IntoIter = Iter<'a, K, V>;
@@ -1387,10 +1372,8 @@ impl<'a, K, V, S, H> IntoIterator for &'a HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<'a, K, V, S> IntoIterator for &'a mut HashMap<K, V, S>
+    where K: Eq + Hash, S: HashState
 {
     type Item = (&'a K, &'a mut V);
     type IntoIter = IterMut<'a, K, V>;
@@ -1401,10 +1384,8 @@ impl<'a, K, V, S, H> IntoIterator for &'a mut HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, H> IntoIterator for HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> IntoIterator for HashMap<K, V, S>
+    where K: Eq + Hash, S: HashState
 {
     type Item = (K, V);
     type IntoIter = IntoIter<K, V>;
@@ -1550,12 +1531,11 @@ impl<'a, K: 'a, V: 'a> VacantEntry<'a, K, V> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, H> FromIterator<(K, V)> for HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> FromIterator<(K, V)> for HashMap<K, V, S>
+    where K: Eq + Hash, S: HashState + Default
 {
-    fn from_iter<T: Iterator<Item=(K, V)>>(iter: T) -> HashMap<K, V, S> {
+    fn from_iter<T: IntoIterator<Item=(K, V)>>(iterable: T) -> HashMap<K, V, S> {
+        let iter = iterable.into_iter();
         let lower = iter.size_hint().0;
         let mut map = HashMap::with_capacity_and_hash_state(lower,
                                                             Default::default());
@@ -1565,12 +1545,10 @@ impl<K, V, S, H> FromIterator<(K, V)> for HashMap<K, V, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<K, V, S, H> Extend<(K, V)> for HashMap<K, V, S>
-    where K: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<K, V, S> Extend<(K, V)> for HashMap<K, V, S>
+    where K: Eq + Hash, S: HashState
 {
-    fn extend<T: Iterator<Item=(K, V)>>(&mut self, iter: T) {
+    fn extend<T: IntoIterator<Item=(K, V)>>(&mut self, iter: T) {
         for (k, v) in iter {
             self.insert(k, v);
         }
@@ -1606,9 +1584,9 @@ impl RandomState {
 #[unstable(feature = "std_misc",
            reason = "hashing an hash maps may be altered")]
 impl HashState for RandomState {
-    type Hasher = Hasher;
-    fn hasher(&self) -> Hasher {
-        Hasher { inner: SipHasher::new_with_keys(self.k0, self.k1) }
+    type Hasher = SipHasher;
+    fn hasher(&self) -> SipHasher {
+        SipHasher::new_with_keys(self.k0, self.k1)
     }
 }
 
@@ -1619,25 +1597,6 @@ impl Default for RandomState {
     fn default() -> RandomState {
         RandomState::new()
     }
-}
-
-/// A hasher implementation which is generated from `RandomState` instances.
-///
-/// This is the default hasher used in a `HashMap` to hash keys. Types do not
-/// typically declare an ability to explicitly hash into this particular type,
-/// but rather in a `H: hash::Writer` type parameter.
-#[unstable(feature = "std_misc",
-           reason = "hashing an hash maps may be altered")]
-pub struct Hasher { inner: SipHasher }
-
-impl hash::Writer for Hasher {
-    fn write(&mut self, data: &[u8]) { self.inner.write(data) }
-}
-
-impl hash::Hasher for Hasher {
-    type Output = u64;
-    fn reset(&mut self) { self.inner.reset() }
-    fn finish(&self) -> u64 { self.inner.finish() }
 }
 
 #[cfg(test)]

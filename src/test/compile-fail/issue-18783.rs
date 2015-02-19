@@ -26,6 +26,7 @@ fn ufcs() {
 
     Push::push(&c, box || y = 0);
     Push::push(&c, box || y = 0);
+//~^ ERROR cannot borrow `y` as mutable more than once at a time
 }
 
 trait Push<'c> {

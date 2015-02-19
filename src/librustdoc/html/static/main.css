@@ -374,8 +374,8 @@ a {
     color: #000;
     background: transparent;
 }
-p a { color: #4e8bca; }
-p a:hover { text-decoration: underline; }
+.docblock a { color: #4e8bca; }
+.docblock a:hover { text-decoration: underline; }
 
 .content span.trait, .content a.trait, .block a.current.trait { color: #ed9603; }
 .content span.mod, .content a.mod, block a.current.mod { color: #4d76ae; }

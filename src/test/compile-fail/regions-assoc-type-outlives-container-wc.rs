@@ -15,15 +15,12 @@
 
 #![allow(dead_code)]
 
-use std::mem::transmute;
-use std::ops::Deref;
+use std::marker::PhantomFn;
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub trait TheTrait {
+pub trait TheTrait: PhantomFn<Self, Self> {
     type TheAssocType;
-
-    fn dummy(&self) { }
 }
 
 pub struct TheType<'b> {

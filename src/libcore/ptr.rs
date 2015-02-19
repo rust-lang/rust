@@ -91,8 +91,10 @@
 use mem;
 use clone::Clone;
 use intrinsics;
+use ops::Deref;
 use option::Option::{self, Some, None};
-use marker::{self, Send, Sized, Sync};
+use marker::{PhantomData, Send, Sized, Sync};
+use nonzero::NonZero;
 
 use cmp::{PartialEq, Eq, Ord, PartialOrd};
 use cmp::Ordering::{self, Less, Equal, Greater};
@@ -303,7 +305,7 @@ impl<T> PtrExt for *const T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self as usize == 0 }
+    fn is_null(self) -> bool { self == 0 as *const T }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -330,7 +332,7 @@ impl<T> PtrExt for *mut T {
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn is_null(self) -> bool { self as usize == 0 }
+    fn is_null(self) -> bool { self == 0 as *mut T }
 
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -517,15 +519,16 @@ impl<T> PartialOrd for *mut T {
 
 /// A wrapper around a raw `*mut T` that indicates that the possessor
 /// of this wrapper owns the referent. This in turn implies that the
-/// `Unique<T>` is `Send`/`Sync` if `T` is `Send`/`Sync`, unlike a
-/// raw `*mut T` (which conveys no particular ownership semantics).
-/// Useful for building abstractions like `Vec<T>` or `Box<T>`, which
+/// `Unique<T>` is `Send`/`Sync` if `T` is `Send`/`Sync`, unlike a raw
+/// `*mut T` (which conveys no particular ownership semantics).  It
+/// also implies that the referent of the pointer should not be
+/// modified without a unique path to the `Unique` reference. Useful
+/// for building abstractions like `Vec<T>` or `Box<T>`, which
 /// internally use raw pointers to manage the memory that they own.
 #[unstable(feature = "core", reason = "recently added to this module")]
-pub struct Unique<T: ?Sized> {
-    /// The wrapped `*mut T`.
-    pub ptr: *mut T,
-    _own: marker::PhantomData<T>,
+pub struct Unique<T:?Sized> {
+    pointer: NonZero<*const T>,
+    _marker: PhantomData<T>,
 }
 
 /// `Unique` pointers are `Send` if `T` is `Send` because the data they
@@ -542,25 +545,34 @@ unsafe impl<T: Send + ?Sized> Send for Unique<T> { }
 #[unstable(feature = "core", reason = "recently added to this module")]
 unsafe impl<T: Sync + ?Sized> Sync for Unique<T> { }
 
-impl<T> Unique<T> {
-    /// Returns a null Unique.
+impl<T:?Sized> Unique<T> {
+    /// Create a new `Unique`.
     #[unstable(feature = "core",
                reason = "recently added to this module")]
-    pub fn null() -> Unique<T> {
-        Unique(null_mut())
+    pub unsafe fn new(ptr: *mut T) -> Unique<T> {
+        Unique { pointer: NonZero::new(ptr as *const T), _marker: PhantomData }
     }
 
-    /// Return an (unsafe) pointer into the memory owned by `self`.
+    /// Dereference the content.
     #[unstable(feature = "core",
                reason = "recently added to this module")]
-    pub unsafe fn offset(self, offset: isize) -> *mut T {
-        self.ptr.offset(offset)
+    pub unsafe fn get(&self) -> &T {
+        &**self.pointer
+    }
+
+    /// Mutably dereference the content.
+    #[unstable(feature = "core",
+               reason = "recently added to this module")]
+    pub unsafe fn get_mut(&mut self) -> &mut T {
+        &mut ***self
     }
 }
 
-/// Creates a `Unique` wrapped around `ptr`, taking ownership of the
-/// data referenced by `ptr`.
-#[allow(non_snake_case)]
-pub fn Unique<T: ?Sized>(ptr: *mut T) -> Unique<T> {
-    Unique { ptr: ptr, _own: marker::PhantomData }
+impl<T:?Sized> Deref for Unique<T> {
+    type Target = *mut T;
+
+    #[inline]
+    fn deref<'a>(&'a self) -> &'a *mut T {
+        unsafe { mem::transmute(&*self.pointer) }
+    }
 }

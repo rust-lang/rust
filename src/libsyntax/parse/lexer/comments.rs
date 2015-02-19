@@ -61,7 +61,7 @@ pub fn doc_comment_style(comment: &str) -> ast::AttrStyle {
 
 pub fn strip_doc_comment_decoration(comment: &str) -> String {
     /// remove whitespace-only lines from the start/end of lines
-    fn vertical_trim(lines: Vec<String> ) -> Vec<String> {
+    fn vertical_trim(lines: Vec<String>) -> Vec<String> {
         let mut i = 0;
         let mut j = lines.len();
         // first line of all-stars should be omitted
@@ -82,7 +82,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         while j > i && lines[j - 1].trim().is_empty() {
             j -= 1;
         }
-        return lines[i..j].iter().map(|x| (*x).clone()).collect();
+        lines[i..j].iter().cloned().collect()
     }
 
     /// remove a "[ \t]*\*" block from each line, if possible
@@ -187,7 +187,7 @@ fn read_line_comments(rdr: &mut StringReader, code_to_the_left: bool,
         let line = rdr.read_one_line_comment();
         debug!("{}", line);
         // Doc comments are not put in comments.
-        if is_doc_comment(&line[]) {
+        if is_doc_comment(&line[..]) {
             break;
         }
         lines.push(line);
@@ -224,7 +224,7 @@ fn all_whitespace(s: &str, col: CharPos) -> Option<usize> {
 fn trim_whitespace_prefix_and_push_line(lines: &mut Vec<String> ,
                                         s: String, col: CharPos) {
     let len = s.len();
-    let s1 = match all_whitespace(&s[], col) {
+    let s1 = match all_whitespace(&s[..], col) {
         Some(col) => {
             if col < len {
                 (&s[col..len]).to_string()
@@ -261,7 +261,7 @@ fn read_block_comment(rdr: &mut StringReader,
             rdr.bump();
             rdr.bump();
         }
-        if is_block_doc_comment(&curr_line[]) {
+        if is_block_doc_comment(&curr_line[..]) {
             return
         }
         assert!(!curr_line.contains_char('\n'));

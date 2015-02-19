@@ -329,6 +329,9 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     fn accumulate_from_assoc_types_transitive(&mut self,
                                               data: &ty::PolyTraitPredicate<'tcx>)
     {
+        debug!("accumulate_from_assoc_types_transitive({})",
+               data.repr(self.tcx()));
+
         for poly_trait_ref in traits::supertraits(self.tcx(), data.to_poly_trait_ref()) {
             match ty::no_late_bound_regions(self.tcx(), &poly_trait_ref) {
                 Some(trait_ref) => { self.accumulate_from_assoc_types(trait_ref); }
@@ -340,6 +343,9 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
     fn accumulate_from_assoc_types(&mut self,
                                    trait_ref: Rc<ty::TraitRef<'tcx>>)
     {
+        debug!("accumulate_from_assoc_types({})",
+               trait_ref.repr(self.tcx()));
+
         let trait_def_id = trait_ref.def_id;
         let trait_def = ty::lookup_trait_def(self.tcx(), trait_def_id);
         let assoc_type_projections: Vec<_> =
@@ -347,6 +353,8 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                      .iter()
                      .map(|&name| ty::mk_projection(self.tcx(), trait_ref.clone(), name))
                      .collect();
+        debug!("accumulate_from_assoc_types: assoc_type_projections={}",
+               assoc_type_projections.repr(self.tcx()));
         let tys = match self.fully_normalize(&assoc_type_projections) {
             Ok(tys) => { tys }
             Err(ErrorReported) => { return; }

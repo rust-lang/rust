@@ -482,7 +482,7 @@ macro_rules! declare_special_idents_and_keywords {(
         $(init_vec.push($si_str);)*
         $(init_vec.push($sk_str);)*
         $(init_vec.push($rk_str);)*
-        interner::StrInterner::prefill(&init_vec[])
+        interner::StrInterner::prefill(&init_vec[..])
     }
 }}
 
@@ -644,7 +644,7 @@ impl BytesContainer for InternedString {
         // of `BytesContainer`, which is itself a workaround for the lack of
         // DST.
         unsafe {
-            let this = &self[];
+            let this = &self[..];
             mem::transmute::<&[u8],&[u8]>(this.container_as_bytes())
         }
     }

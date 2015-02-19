@@ -75,7 +75,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
         ast::LitBool(b) => C_bool(cx, b),
         ast::LitStr(ref s, _) => C_str_slice(cx, (*s).clone()),
         ast::LitBinary(ref data) => {
-            let g = addr_of(cx, C_bytes(cx, &data[]), "binary", e.id);
+            let g = addr_of(cx, C_bytes(cx, &data[..]), "binary", e.id);
             let base = ptrcast(g, Type::i8p(cx));
             let prev_const = cx.const_unsized().borrow_mut()
                                .insert(base, g);
@@ -611,8 +611,8 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           }
           ast::ExprTup(ref es) => {
               let repr = adt::represent_type(cx, ety);
-              let vals = map_list(&es[]);
-              adt::trans_const(cx, &*repr, 0, &vals[])
+              let vals = map_list(&es[..]);
+              adt::trans_const(cx, &*repr, 0, &vals[..])
           }
           ast::ExprStruct(_, ref fs, ref base_opt) => {
               let repr = adt::represent_type(cx, ety);
@@ -642,9 +642,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       }
                   }).collect::<Vec<_>>();
                   if ty::type_is_simd(cx.tcx(), ety) {
-                      C_vector(&cs[])
+                      C_vector(&cs[..])
                   } else {
-                      adt::trans_const(cx, &*repr, discr, &cs[])
+                      adt::trans_const(cx, &*repr, discr, &cs[..])
                   }
               })
           }
@@ -655,9 +655,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                               .collect::<Vec<_>>();
             // If the vector contains enums, an LLVM array won't work.
             if vs.iter().any(|vi| val_ty(*vi) != llunitty) {
-                C_struct(cx, &vs[], false)
+                C_struct(cx, &vs[..], false)
             } else {
-                C_array(llunitty, &vs[])
+                C_array(llunitty, &vs[..])
             }
           }
           ast::ExprRepeat(ref elem, ref count) => {
@@ -671,9 +671,9 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             let unit_val = const_expr(cx, &**elem, param_substs).0;
             let vs: Vec<_> = repeat(unit_val).take(n).collect();
             if val_ty(unit_val) != llunitty {
-                C_struct(cx, &vs[], false)
+                C_struct(cx, &vs[..], false)
             } else {
-                C_array(llunitty, &vs[])
+                C_array(llunitty, &vs[..])
             }
           }
           ast::ExprPath(_) | ast::ExprQPath(_) => {
@@ -715,14 +715,14 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
           }
           ast::ExprCall(ref callee, ref args) => {
               let opt_def = cx.tcx().def_map.borrow().get(&callee.id).cloned();
-              let arg_vals = map_list(&args[]);
+              let arg_vals = map_list(&args[..]);
               match opt_def {
                   Some(def::DefStruct(_)) => {
                       if ty::type_is_simd(cx.tcx(), ety) {
-                          C_vector(&arg_vals[])
+                          C_vector(&arg_vals[..])
                       } else {
                           let repr = adt::represent_type(cx, ety);
-                          adt::trans_const(cx, &*repr, 0, &arg_vals[])
+                          adt::trans_const(cx, &*repr, 0, &arg_vals[..])
                       }
                   }
                   Some(def::DefVariant(enum_did, variant_did, _)) => {
@@ -733,7 +733,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       adt::trans_const(cx,
                                        &*repr,
                                        vinfo.disr_val,
-                                       &arg_vals[])
+                                       &arg_vals[..])
                   }
                   _ => cx.sess().span_bug(e.span, "expected a struct or variant def")
               }

@@ -37,7 +37,7 @@ impl TTMacroExpander for Expander {
                    _: &[ast::TokenTree]) -> Box<MacResult+'cx> {
         let args = self.args.iter().map(|i| pprust::meta_item_to_string(&*i))
             .collect::<Vec<_>>().connect(", ");
-        let interned = token::intern_and_get_ident(&args[]);
+        let interned = token::intern_and_get_ident(&args[..]);
         MacExpr::new(ecx.expr_str(sp, interned))
     }
 }

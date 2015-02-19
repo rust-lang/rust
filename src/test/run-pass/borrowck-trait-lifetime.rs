@@ -12,8 +12,11 @@
 // to the same lifetime on a trait succeeds. See issue #10766.
 
 #![allow(dead_code)]
+
+use std::marker;
+
 fn main() {
-    trait T {}
+    trait T { fn foo(&self) {} }
 
     fn f<'a, V: T>(v: &'a V) -> &'a T {
         v as &'a T

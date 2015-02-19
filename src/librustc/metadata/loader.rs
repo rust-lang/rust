@@ -322,7 +322,7 @@ impl<'a> Context<'a> {
             &Some(ref r) => format!("{} which `{}` depends on",
                                     message, r.ident)
         };
-        self.sess.span_err(self.span, &message[]);
+        self.sess.span_err(self.span, &message[..]);
 
         if self.rejected_via_triple.len() > 0 {
             let mismatches = self.rejected_via_triple.iter();
@@ -404,7 +404,7 @@ impl<'a> Context<'a> {
                 None => return FileDoesntMatch,
                 Some(file) => file,
             };
-            let (hash, rlib) = if file.starts_with(&rlib_prefix[]) &&
+            let (hash, rlib) = if file.starts_with(&rlib_prefix[..]) &&
                                   file.ends_with(".rlib") {
                 (&file[(rlib_prefix.len()) .. (file.len() - ".rlib".len())],
                  true)
@@ -413,7 +413,7 @@ impl<'a> Context<'a> {
                 (&file[(dylib_prefix.len()) .. (file.len() - dypair.1.len())],
                  false)
             } else {
-                if file.starts_with(&staticlib_prefix[]) &&
+                if file.starts_with(&staticlib_prefix[..]) &&
                    file.ends_with(".a") {
                     staticlibs.push(CrateMismatch {
                         path: path.clone(),
@@ -627,7 +627,7 @@ impl<'a> Context<'a> {
         let mut rlibs = HashMap::new();
         let mut dylibs = HashMap::new();
         {
-            let locs = locs.iter().map(|l| Path::new(&l[])).filter(|loc| {
+            let locs = locs.iter().map(|l| Path::new(&l[..])).filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
                                      self.crate_name, loc.display())[]);
@@ -645,8 +645,8 @@ impl<'a> Context<'a> {
                     return true
                 } else {
                     let (ref prefix, ref suffix) = dylibname;
-                    if file.starts_with(&prefix[]) &&
-                       file.ends_with(&suffix[]) {
+                    if file.starts_with(&prefix[..]) &&
+                       file.ends_with(&suffix[..]) {
                         return true
                     }
                 }
@@ -744,7 +744,7 @@ fn get_metadata_section_imp(is_osx: bool, filename: &Path) -> Result<MetadataBlo
         }
     }
     unsafe {
-        let buf = CString::from_slice(filename.as_vec());
+        let buf = CString::new(filename.as_vec()).unwrap();
         let mb = llvm::LLVMRustCreateMemoryBufferWithContentsOfFile(buf.as_ptr());
         if mb as int == 0 {
             return Err(format!("error reading library: '{}'",

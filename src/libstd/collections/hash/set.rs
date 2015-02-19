@@ -10,21 +10,21 @@
 //
 // ignore-lexer-test FIXME #15883
 
-use borrow::BorrowFrom;
+use borrow::Borrow;
 use clone::Clone;
 use cmp::{Eq, PartialEq};
 use core::marker::Sized;
 use default::Default;
 use fmt::Debug;
 use fmt;
-use hash::{self, Hash};
+use hash::Hash;
 use iter::{
     Iterator, IntoIterator, ExactSizeIterator, IteratorExt, FromIterator, Map, Chain, Extend,
 };
 use ops::{BitOr, BitAnd, BitXor, Sub};
 use option::Option::{Some, None, self};
 
-use super::map::{self, HashMap, Keys, INITIAL_CAPACITY, RandomState, Hasher};
+use super::map::{self, HashMap, Keys, INITIAL_CAPACITY, RandomState};
 use super::state::HashState;
 
 // Future Optimization (FIXME!)
@@ -97,7 +97,7 @@ pub struct HashSet<T, S = RandomState> {
     map: HashMap<T, (), S>
 }
 
-impl<T: Hash<Hasher> + Eq> HashSet<T, RandomState> {
+impl<T: Hash + Eq> HashSet<T, RandomState> {
     /// Create an empty HashSet.
     ///
     /// # Example
@@ -128,10 +128,8 @@ impl<T: Hash<Hasher> + Eq> HashSet<T, RandomState> {
     }
 }
 
-impl<T, S, H> HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<T, S> HashSet<T, S>
+    where T: Eq + Hash, S: HashState
 {
     /// Creates a new empty hash set which will use the given hasher to hash
     /// keys.
@@ -462,7 +460,7 @@ impl<T, S, H> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool
-        where Q: BorrowFrom<T> + Hash<H> + Eq
+        where T: Borrow<Q>, Q: Hash + Eq
     {
         self.map.contains_key(value)
     }
@@ -572,17 +570,15 @@ impl<T, S, H> HashSet<T, S>
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool
-        where Q: BorrowFrom<T> + Hash<H> + Eq
+        where T: Borrow<Q>, Q: Hash + Eq
     {
         self.map.remove(value).is_some()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S, H> PartialEq for HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<T, S> PartialEq for HashSet<T, S>
+    where T: Eq + Hash, S: HashState
 {
     fn eq(&self, other: &HashSet<T, S>) -> bool {
         if self.len() != other.len() { return false; }
@@ -592,17 +588,14 @@ impl<T, S, H> PartialEq for HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S, H> Eq for HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<T, S> Eq for HashSet<T, S>
+    where T: Eq + Hash, S: HashState
 {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S, H> fmt::Debug for HashSet<T, S>
-    where T: Eq + Hash<H> + fmt::Debug,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<T, S> fmt::Debug for HashSet<T, S>
+    where T: Eq + Hash + fmt::Debug,
+          S: HashState
 {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         try!(write!(f, "HashSet {{"));
@@ -617,12 +610,12 @@ impl<T, S, H> fmt::Debug for HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S, H> FromIterator<T> for HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<T, S> FromIterator<T> for HashSet<T, S>
+    where T: Eq + Hash,
+          S: HashState + Default,
 {
-    fn from_iter<I: Iterator<Item=T>>(iter: I) -> HashSet<T, S> {
+    fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> HashSet<T, S> {
+        let iter = iterable.into_iter();
         let lower = iter.size_hint().0;
         let mut set = HashSet::with_capacity_and_hash_state(lower, Default::default());
         set.extend(iter);
@@ -631,12 +624,11 @@ impl<T, S, H> FromIterator<T> for HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S, H> Extend<T> for HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<T, S> Extend<T> for HashSet<T, S>
+    where T: Eq + Hash,
+          S: HashState,
 {
-    fn extend<I: Iterator<Item=T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item=T>>(&mut self, iter: I) {
         for k in iter {
             self.insert(k);
         }
@@ -644,10 +636,9 @@ impl<T, S, H> Extend<T> for HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S, H> Default for HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<T, S> Default for HashSet<T, S>
+    where T: Eq + Hash,
+          S: HashState + Default,
 {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn default() -> HashSet<T, S> {
@@ -656,10 +647,9 @@ impl<T, S, H> Default for HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S, H> BitOr<&'b HashSet<T, S>> for &'a HashSet<T, S>
-    where T: Eq + Hash<H> + Clone,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<'a, 'b, T, S> BitOr<&'b HashSet<T, S>> for &'a HashSet<T, S>
+    where T: Eq + Hash + Clone,
+          S: HashState + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -689,10 +679,9 @@ impl<'a, 'b, T, S, H> BitOr<&'b HashSet<T, S>> for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S, H> BitAnd<&'b HashSet<T, S>> for &'a HashSet<T, S>
-    where T: Eq + Hash<H> + Clone,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<'a, 'b, T, S> BitAnd<&'b HashSet<T, S>> for &'a HashSet<T, S>
+    where T: Eq + Hash + Clone,
+          S: HashState + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -722,10 +711,9 @@ impl<'a, 'b, T, S, H> BitAnd<&'b HashSet<T, S>> for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S, H> BitXor<&'b HashSet<T, S>> for &'a HashSet<T, S>
-    where T: Eq + Hash<H> + Clone,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<'a, 'b, T, S> BitXor<&'b HashSet<T, S>> for &'a HashSet<T, S>
+    where T: Eq + Hash + Clone,
+          S: HashState + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -755,10 +743,9 @@ impl<'a, 'b, T, S, H> BitXor<&'b HashSet<T, S>> for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, 'b, T, S, H> Sub<&'b HashSet<T, S>> for &'a HashSet<T, S>
-    where T: Eq + Hash<H> + Clone,
-          S: HashState<Hasher=H> + Default,
-          H: hash::Hasher<Output=u64>
+impl<'a, 'b, T, S> Sub<&'b HashSet<T, S>> for &'a HashSet<T, S>
+    where T: Eq + Hash + Clone,
+          S: HashState + Default,
 {
     type Output = HashSet<T, S>;
 
@@ -836,10 +823,8 @@ pub struct Union<'a, T: 'a, S: 'a> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<'a, T, S> IntoIterator for &'a HashSet<T, S>
+    where T: Eq + Hash, S: HashState
 {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
@@ -850,10 +835,9 @@ impl<'a, T, S, H> IntoIterator for &'a HashSet<T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T, S, H> IntoIterator for HashSet<T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<T, S> IntoIterator for HashSet<T, S>
+    where T: Eq + Hash,
+          S: HashState
 {
     type Item = T;
     type IntoIter = IntoIter<T>;
@@ -900,10 +884,8 @@ impl<'a, K> ExactSizeIterator for Drain<'a, K> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S, H> Iterator for Intersection<'a, T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<'a, T, S> Iterator for Intersection<'a, T, S>
+    where T: Eq + Hash, S: HashState
 {
     type Item = &'a T;
 
@@ -925,10 +907,8 @@ impl<'a, T, S, H> Iterator for Intersection<'a, T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S, H> Iterator for Difference<'a, T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<'a, T, S> Iterator for Difference<'a, T, S>
+    where T: Eq + Hash, S: HashState
 {
     type Item = &'a T;
 
@@ -950,10 +930,8 @@ impl<'a, T, S, H> Iterator for Difference<'a, T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S, H> Iterator for SymmetricDifference<'a, T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<'a, T, S> Iterator for SymmetricDifference<'a, T, S>
+    where T: Eq + Hash, S: HashState
 {
     type Item = &'a T;
 
@@ -962,10 +940,8 @@ impl<'a, T, S, H> Iterator for SymmetricDifference<'a, T, S>
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T, S, H> Iterator for Union<'a, T, S>
-    where T: Eq + Hash<H>,
-          S: HashState<Hasher=H>,
-          H: hash::Hasher<Output=u64>
+impl<'a, T, S> Iterator for Union<'a, T, S>
+    where T: Eq + Hash, S: HashState
 {
     type Item = &'a T;
 

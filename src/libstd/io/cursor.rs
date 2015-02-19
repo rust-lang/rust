@@ -180,7 +180,7 @@ mod tests {
     fn test_buf_writer() {
         let mut buf = [0 as u8; 9];
         {
-            let mut writer = Cursor::new(&mut buf[]);
+            let mut writer = Cursor::new(&mut buf[..]);
             assert_eq!(writer.position(), 0);
             assert_eq!(writer.write(&[0]), Ok(1));
             assert_eq!(writer.position(), 1);
@@ -201,7 +201,7 @@ mod tests {
     fn test_buf_writer_seek() {
         let mut buf = [0 as u8; 8];
         {
-            let mut writer = Cursor::new(&mut buf[]);
+            let mut writer = Cursor::new(&mut buf[..]);
             assert_eq!(writer.position(), 0);
             assert_eq!(writer.write(&[1]), Ok(1));
             assert_eq!(writer.position(), 1);
@@ -229,7 +229,7 @@ mod tests {
     #[test]
     fn test_buf_writer_error() {
         let mut buf = [0 as u8; 2];
-        let mut writer = Cursor::new(&mut buf[]);
+        let mut writer = Cursor::new(&mut buf[..]);
         assert_eq!(writer.write(&[0]), Ok(1));
         assert_eq!(writer.write(&[0, 0]), Ok(1));
         assert_eq!(writer.write(&[0, 0]), Ok(0));
@@ -331,7 +331,7 @@ mod tests {
     #[test]
     fn seek_past_end() {
         let buf = [0xff];
-        let mut r = Cursor::new(&buf[]);
+        let mut r = Cursor::new(&buf[..]);
         assert_eq!(r.seek(SeekFrom::Start(10)), Ok(10));
         assert_eq!(r.read(&mut [0]), Ok(0));
 
@@ -340,7 +340,7 @@ mod tests {
         assert_eq!(r.read(&mut [0]), Ok(0));
 
         let mut buf = [0];
-        let mut r = Cursor::new(&mut buf[]);
+        let mut r = Cursor::new(&mut buf[..]);
         assert_eq!(r.seek(SeekFrom::Start(10)), Ok(10));
         assert_eq!(r.write(&[3]), Ok(0));
     }
@@ -348,14 +348,14 @@ mod tests {
     #[test]
     fn seek_before_0() {
         let buf = [0xff_u8];
-        let mut r = Cursor::new(&buf[]);
+        let mut r = Cursor::new(&buf[..]);
         assert!(r.seek(SeekFrom::End(-2)).is_err());
 
         let mut r = Cursor::new(vec!(10u8));
         assert!(r.seek(SeekFrom::End(-2)).is_err());
 
         let mut buf = [0];
-        let mut r = Cursor::new(&mut buf[]);
+        let mut r = Cursor::new(&mut buf[..]);
         assert!(r.seek(SeekFrom::End(-2)).is_err());
     }
 

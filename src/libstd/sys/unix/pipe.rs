@@ -38,7 +38,7 @@ fn addr_to_sockaddr_un(addr: &CString,
             mem::size_of::<libc::sockaddr_un>());
     let s = unsafe { &mut *(storage as *mut _ as *mut libc::sockaddr_un) };
 
-    let len = addr.len();
+    let len = addr.as_bytes().len();
     if len > s.sun_path.len() - 1 {
         return Err(IoError {
             kind: old_io::InvalidInput,
@@ -47,8 +47,8 @@ fn addr_to_sockaddr_un(addr: &CString,
         })
     }
     s.sun_family = libc::AF_UNIX as libc::sa_family_t;
-    for (slot, value) in s.sun_path.iter_mut().zip(addr.iter()) {
-        *slot = *value;
+    for (slot, value) in s.sun_path.iter_mut().zip(addr.as_bytes().iter()) {
+        *slot = *value as libc::c_char;
     }
 
     // count the null terminator

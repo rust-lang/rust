@@ -13,7 +13,7 @@
 // @matches foo/struct.Alpha.html '//pre' "pub struct Alpha"
 pub struct Alpha;
 // @matches foo/struct.Bravo.html '//pre' "pub struct Bravo<B>"
-pub struct Bravo<B>;
+pub struct Bravo<B>(B);
 
 // @matches foo/struct.Alpha.html '//*[@class="impl"]//code' "impl !Send for Alpha"
 impl !Send for Alpha {}

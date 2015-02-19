@@ -360,7 +360,7 @@ impl CodeMap {
         let mut src = if src.starts_with("\u{feff}") {
             String::from_str(&src[3..])
         } else {
-            String::from_str(&src[])
+            String::from_str(&src[..])
         };
 
         // Append '\n' in case it's not already there.

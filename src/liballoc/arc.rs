@@ -73,7 +73,6 @@ use core::prelude::*;
 
 use core::atomic;
 use core::atomic::Ordering::{Relaxed, Release, Acquire, SeqCst};
-use core::borrow::BorrowFrom;
 use core::fmt;
 use core::cmp::{Ordering};
 use core::default::Default;
@@ -241,12 +240,6 @@ impl<T> Clone for Arc<T> {
         // [1]: (www.boost.org/doc/libs/1_55_0/doc/html/atomic/usage_examples.html)
         self.inner().strong.fetch_add(1, Relaxed);
         Arc { _ptr: self._ptr }
-    }
-}
-
-impl<T> BorrowFrom<Arc<T>> for T {
-    fn borrow_from(owned: &Arc<T>) -> &T {
-        &**owned
     }
 }
 
@@ -605,8 +598,16 @@ impl<T: Default + Sync + Send> Default for Arc<T> {
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
 
+#[cfg(stage0)]
 impl<H: Hasher, T: Hash<H>> Hash<H> for Arc<T> {
     fn hash(&self, state: &mut H) {
+        (**self).hash(state)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Hash> Hash for Arc<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state)
     }
 }

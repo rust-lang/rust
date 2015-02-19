@@ -92,7 +92,7 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
             let s = replace_newline_with_backslash_l(s);
             label.push_str(&format!("exiting scope_{} {}",
                                    i,
-                                   &s[])[]);
+                                   &s[..])[]);
         }
         dot::LabelText::EscStr(label.into_cow())
     }

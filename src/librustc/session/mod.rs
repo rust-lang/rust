@@ -75,13 +75,13 @@ impl Session {
     }
     pub fn span_err(&self, sp: Span, msg: &str) {
         match split_msg_into_multilines(msg) {
-            Some(msg) => self.diagnostic().span_err(sp, &msg[]),
+            Some(msg) => self.diagnostic().span_err(sp, &msg[..]),
             None => self.diagnostic().span_err(sp, msg)
         }
     }
     pub fn span_err_with_code(&self, sp: Span, msg: &str, code: &str) {
         match split_msg_into_multilines(msg) {
-            Some(msg) => self.diagnostic().span_err_with_code(sp, &msg[], code),
+            Some(msg) => self.diagnostic().span_err_with_code(sp, &msg[..], code),
             None => self.diagnostic().span_err_with_code(sp, msg, code)
         }
     }

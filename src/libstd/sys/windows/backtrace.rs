@@ -25,7 +25,7 @@
 #![allow(dead_code)]
 
 use dynamic_lib::DynamicLibrary;
-use ffi;
+use ffi::CStr;
 use intrinsics;
 use old_io::{IoResult, Writer};
 use libc;
@@ -362,7 +362,7 @@ pub fn write(w: &mut Writer) -> IoResult<()> {
         if ret == libc::TRUE {
             try!(write!(w, " - "));
             let ptr = info.Name.as_ptr() as *const libc::c_char;
-            let bytes = unsafe { ffi::c_str_to_bytes(&ptr) };
+            let bytes = unsafe { CStr::from_ptr(ptr).to_bytes() };
             match str::from_utf8(bytes) {
                 Ok(s) => try!(demangle(w, s)),
                 Err(..) => try!(w.write_all(&bytes[..bytes.len()-1])),

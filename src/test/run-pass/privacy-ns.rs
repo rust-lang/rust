@@ -19,6 +19,7 @@
 // public type, private value
 pub mod foo1 {
     pub trait Bar {
+        fn dummy(&self) { }
     }
     pub struct Baz;
 
@@ -50,6 +51,7 @@ fn test_glob1() {
 // private type, public value
 pub mod foo2 {
     trait Bar {
+        fn dummy(&self) { }
     }
     pub struct Baz;
 
@@ -81,6 +83,7 @@ fn test_glob2() {
 // public type, public value
 pub mod foo3 {
     pub trait Bar {
+        fn dummy(&self) { }
     }
     pub struct Baz;
 

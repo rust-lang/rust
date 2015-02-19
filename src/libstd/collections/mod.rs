@@ -23,7 +23,7 @@
 //!
 //! Rust's collections can be grouped into four major categories:
 //!
-//! * Sequences: `Vec`, `RingBuf`, `DList`, `BitV`
+//! * Sequences: `Vec`, `VecDeque`, `LinkedList`, `BitV`
 //! * Maps: `HashMap`, `BTreeMap`, `VecMap`
 //! * Sets: `HashSet`, `BTreeSet`, `BitVSet`
 //! * Misc: `BinaryHeap`
@@ -43,13 +43,13 @@
 //! * You want a resizable array.
 //! * You want a heap-allocated array.
 //!
-//! ### Use a `RingBuf` when:
+//! ### Use a `VecDeque` when:
 //! * You want a `Vec` that supports efficient insertion at both ends of the sequence.
 //! * You want a queue.
 //! * You want a double-ended queue (deque).
 //!
-//! ### Use a `DList` when:
-//! * You want a `Vec` or `RingBuf` of unknown size, and can't tolerate amortization.
+//! ### Use a `LinkedList` when:
+//! * You want a `Vec` or `VecDeque` of unknown size, and can't tolerate amortization.
 //! * You want to efficiently split and append lists.
 //! * You are *absolutely* certain you *really*, *truly*, want a doubly linked list.
 //!
@@ -75,7 +75,7 @@
 //!
 //! ### Use a `BitV` when:
 //! * You want to store an unbounded number of booleans in a small space.
-//! * You want a bitvector.
+//! * You want a bit vector.
 //!
 //! ### Use a `BitVSet` when:
 //! * You want a `VecSet`.
@@ -106,20 +106,20 @@
 //!
 //! ## Sequences
 //!
-//! |         | get(i)         | insert(i)       | remove(i)      | append | split_off(i)   |
-//! |---------|----------------|-----------------|----------------|--------|----------------|
-//! | Vec     | O(1)           | O(n-i)*         | O(n-i)         | O(m)*  | O(n-i)         |
-//! | RingBuf | O(1)           | O(min(i, n-i))* | O(min(i, n-i)) | O(m)*  | O(min(i, n-i)) |
-//! | DList   | O(min(i, n-i)) | O(min(i, n-i))  | O(min(i, n-i)) | O(1)   | O(min(i, n-i)) |
-//! | Bitv    | O(1)           | O(n-i)*         | O(n-i)         | O(m)*  | O(n-i)         |
+//! |              | get(i)         | insert(i)       | remove(i)      | append | split_off(i)   |
+//! |--------------|----------------|-----------------|----------------|--------|----------------|
+//! | Vec          | O(1)           | O(n-i)*         | O(n-i)         | O(m)*  | O(n-i)         |
+//! | VecDeque     | O(1)           | O(min(i, n-i))* | O(min(i, n-i)) | O(m)*  | O(min(i, n-i)) |
+//! | LinkedList   | O(min(i, n-i)) | O(min(i, n-i))  | O(min(i, n-i)) | O(1)   | O(min(i, n-i)) |
+//! | BitVec       | O(1)           | O(n-i)*         | O(n-i)         | O(m)*  | O(n-i)         |
 //!
-//! Note that where ties occur, Vec is generally going to be faster than RingBuf, and RingBuf
-//! is generally going to be faster than DList. Bitv is not a general purpose collection, and
+//! Note that where ties occur, Vec is generally going to be faster than VecDeque, and VecDeque
+//! is generally going to be faster than LinkedList. BitVec is not a general purpose collection, and
 //! therefore cannot reasonably be compared.
 //!
 //! ## Maps
 //!
-//! For Sets, all operations have the cost of the equivalent Map operation. For BitvSet,
+//! For Sets, all operations have the cost of the equivalent Map operation. For BitSet,
 //! refer to VecMap.
 //!
 //! |          | get       | insert   | remove   | predecessor |
@@ -166,7 +166,7 @@
 //!
 //! Any `with_capacity` constructor will instruct the collection to allocate enough space
 //! for the specified number of elements. Ideally this will be for exactly that many
-//! elements, but some implementation details may prevent this. `Vec` and `RingBuf` can
+//! elements, but some implementation details may prevent this. `Vec` and `VecDeque` can
 //! be relied on to allocate exactly the requested amount, though. Use `with_capacity`
 //! when you know exactly how many elements will be inserted, or at least have a
 //! reasonable upper-bound on that number.
@@ -240,10 +240,10 @@
 //! ```
 //!
 //! ```
-//! use std::collections::RingBuf;
+//! use std::collections::VecDeque;
 //!
 //! let vec = vec![1, 2, 3, 4];
-//! let buf: RingBuf<_> = vec.into_iter().collect();
+//! let buf: VecDeque<_> = vec.into_iter().collect();
 //! ```
 //!
 //! Iterators also provide a series of *adapter* methods for performing common tasks to
@@ -362,11 +362,11 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 pub use core_collections::Bound;
-pub use core_collections::{BinaryHeap, Bitv, BitvSet, BTreeMap, BTreeSet};
-pub use core_collections::{DList, RingBuf, VecMap};
+pub use core_collections::{BinaryHeap, BitVec, BitSet, BTreeMap, BTreeSet};
+pub use core_collections::{LinkedList, VecDeque, VecMap};
 
-pub use core_collections::{binary_heap, bitv, bitv_set, btree_map, btree_set};
-pub use core_collections::{dlist, ring_buf, vec_map};
+pub use core_collections::{binary_heap, bit_vec, bit_set, btree_map, btree_set};
+pub use core_collections::{linked_list, vec_deque, vec_map};
 
 pub use self::hash_map::HashMap;
 pub use self::hash_set::HashSet;

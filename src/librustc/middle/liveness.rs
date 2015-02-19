@@ -1119,7 +1119,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
           // Uninteresting cases: just propagate in rev exec order
 
           ast::ExprVec(ref exprs) => {
-            self.propagate_through_exprs(&exprs[], succ)
+            self.propagate_through_exprs(&exprs[..], succ)
           }
 
           ast::ExprRepeat(ref element, ref count) => {
@@ -1143,7 +1143,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            let succ = self.propagate_through_exprs(&args[], succ);
+            let succ = self.propagate_through_exprs(&args[..], succ);
             self.propagate_through_expr(&**f, succ)
           }
 
@@ -1156,11 +1156,11 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             } else {
                 succ
             };
-            self.propagate_through_exprs(&args[], succ)
+            self.propagate_through_exprs(&args[..], succ)
           }
 
           ast::ExprTup(ref exprs) => {
-            self.propagate_through_exprs(&exprs[], succ)
+            self.propagate_through_exprs(&exprs[..], succ)
           }
 
           ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op.node) => {

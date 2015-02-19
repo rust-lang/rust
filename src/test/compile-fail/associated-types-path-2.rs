@@ -12,6 +12,8 @@
 
 pub trait Foo {
     type A;
+
+    fn dummy(&self) { }
 }
 
 impl Foo for i32 {

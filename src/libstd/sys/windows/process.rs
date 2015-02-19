@@ -10,7 +10,7 @@
 
 use prelude::v1::*;
 
-use collections::hash_map::Hasher;
+#[cfg(stage0)] use collections::hash_map::Hasher;
 use collections;
 use env;
 use ffi::CString;
@@ -106,11 +106,175 @@ impl Process {
     }
 
     #[allow(deprecated)]
+    #[cfg(stage0)]
     pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
                               out_fd: Option<P>, err_fd: Option<P>)
                               -> IoResult<Process>
         where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
               K: BytesContainer + Eq + Hash<Hasher>, V: BytesContainer
+    {
+        use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
+        use libc::consts::os::extra::{
+            TRUE, FALSE,
+            STARTF_USESTDHANDLES,
+            INVALID_HANDLE_VALUE,
+            DUPLICATE_SAME_ACCESS
+        };
+        use libc::funcs::extra::kernel32::{
+            GetCurrentProcess,
+            DuplicateHandle,
+            CloseHandle,
+            CreateProcessW
+        };
+        use libc::funcs::extra::msvcrt::get_osfhandle;
+
+        use mem;
+        use iter::IteratorExt;
+        use str::StrExt;
+
+        if cfg.gid().is_some() || cfg.uid().is_some() {
+            return Err(IoError {
+                kind: old_io::IoUnavailable,
+                desc: "unsupported gid/uid requested on windows",
+                detail: None,
+            })
+        }
+
+        // To have the spawning semantics of unix/windows stay the same, we need to
+        // read the *child's* PATH if one is provided. See #15149 for more details.
+        let program = cfg.env().and_then(|env| {
+            for (key, v) in env {
+                if b"PATH" != key.container_as_bytes() { continue }
+
+                // Split the value and test each path to see if the
+                // program exists.
+                for path in os::split_paths(v.container_as_bytes()) {
+                    let path = path.join(cfg.program().as_bytes())
+                                   .with_extension(env::consts::EXE_EXTENSION);
+                    if path.exists() {
+                        return Some(CString::from_slice(path.as_vec()))
+                    }
+                }
+                break
+            }
+            None
+        });
+
+        unsafe {
+            let mut si = zeroed_startupinfo();
+            si.cb = mem::size_of::<STARTUPINFO>() as DWORD;
+            si.dwFlags = STARTF_USESTDHANDLES;
+
+            let cur_proc = GetCurrentProcess();
+
+            // Similarly to unix, we don't actually leave holes for the stdio file
+            // descriptors, but rather open up /dev/null equivalents. These
+            // equivalents are drawn from libuv's windows process spawning.
+            let set_fd = |fd: &Option<P>, slot: &mut HANDLE,
+                          is_stdin: bool| {
+                match *fd {
+                    None => {
+                        let access = if is_stdin {
+                            libc::FILE_GENERIC_READ
+                        } else {
+                            libc::FILE_GENERIC_WRITE | libc::FILE_READ_ATTRIBUTES
+                        };
+                        let size = mem::size_of::<libc::SECURITY_ATTRIBUTES>();
+                        let mut sa = libc::SECURITY_ATTRIBUTES {
+                            nLength: size as libc::DWORD,
+                            lpSecurityDescriptor: ptr::null_mut(),
+                            bInheritHandle: 1,
+                        };
+                        let mut filename: Vec<u16> = "NUL".utf16_units().collect();
+                        filename.push(0);
+                        *slot = libc::CreateFileW(filename.as_ptr(),
+                                                  access,
+                                                  libc::FILE_SHARE_READ |
+                                                      libc::FILE_SHARE_WRITE,
+                                                  &mut sa,
+                                                  libc::OPEN_EXISTING,
+                                                  0,
+                                                  ptr::null_mut());
+                        if *slot == INVALID_HANDLE_VALUE {
+                            return Err(super::last_error())
+                        }
+                    }
+                    Some(ref fd) => {
+                        let orig = get_osfhandle(fd.as_inner().fd()) as HANDLE;
+                        if orig == INVALID_HANDLE_VALUE {
+                            return Err(super::last_error())
+                        }
+                        if DuplicateHandle(cur_proc, orig, cur_proc, slot,
+                                           0, TRUE, DUPLICATE_SAME_ACCESS) == FALSE {
+                            return Err(super::last_error())
+                        }
+                    }
+                }
+                Ok(())
+            };
+
+            try!(set_fd(&in_fd, &mut si.hStdInput, true));
+            try!(set_fd(&out_fd, &mut si.hStdOutput, false));
+            try!(set_fd(&err_fd, &mut si.hStdError, false));
+
+            let cmd_str = make_command_line(program.as_ref().unwrap_or(cfg.program()),
+                                            cfg.args());
+            let mut pi = zeroed_process_information();
+            let mut create_err = None;
+
+            // stolen from the libuv code.
+            let mut flags = libc::CREATE_UNICODE_ENVIRONMENT;
+            if cfg.detach() {
+                flags |= libc::DETACHED_PROCESS | libc::CREATE_NEW_PROCESS_GROUP;
+            }
+
+            with_envp(cfg.env(), |envp| {
+                with_dirp(cfg.cwd(), |dirp| {
+                    let mut cmd_str: Vec<u16> = cmd_str.utf16_units().collect();
+                    cmd_str.push(0);
+                    let _lock = CREATE_PROCESS_LOCK.lock().unwrap();
+                    let created = CreateProcessW(ptr::null(),
+                                                 cmd_str.as_mut_ptr(),
+                                                 ptr::null_mut(),
+                                                 ptr::null_mut(),
+                                                 TRUE,
+                                                 flags, envp, dirp,
+                                                 &mut si, &mut pi);
+                    if created == FALSE {
+                        create_err = Some(super::last_error());
+                    }
+                })
+            });
+
+            assert!(CloseHandle(si.hStdInput) != 0);
+            assert!(CloseHandle(si.hStdOutput) != 0);
+            assert!(CloseHandle(si.hStdError) != 0);
+
+            match create_err {
+                Some(err) => return Err(err),
+                None => {}
+            }
+
+            // We close the thread handle because we don't care about keeping the
+            // thread id valid, and we aren't keeping the thread handle around to be
+            // able to close it later. We don't close the process handle however
+            // because std::we want the process id to stay valid at least until the
+            // calling code closes the process handle.
+            assert!(CloseHandle(pi.hThread) != 0);
+
+            Ok(Process {
+                pid: pi.dwProcessId as pid_t,
+                handle: pi.hProcess as *mut ()
+            })
+        }
+    }
+    #[allow(deprecated)]
+    #[cfg(not(stage0))]
+    pub fn spawn<K, V, C, P>(cfg: &C, in_fd: Option<P>,
+                              out_fd: Option<P>, err_fd: Option<P>)
+                              -> IoResult<Process>
+        where C: ProcessConfig<K, V>, P: AsInner<FileDesc>,
+              K: BytesContainer + Eq + Hash, V: BytesContainer
     {
         use libc::types::os::arch::extra::{DWORD, HANDLE, STARTUPINFO};
         use libc::consts::os::extra::{
@@ -425,8 +589,37 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     }
 }
 
+#[cfg(stage0)]
 fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T
     where K: BytesContainer + Eq + Hash<Hasher>,
+          V: BytesContainer,
+          F: FnOnce(*mut c_void) -> T,
+{
+    // On Windows we pass an "environment block" which is not a char**, but
+    // rather a concatenation of null-terminated k=v\0 sequences, with a final
+    // \0 to terminate.
+    match env {
+        Some(env) => {
+            let mut blk = Vec::new();
+
+            for pair in env {
+                let kv = format!("{}={}",
+                                 pair.0.container_as_str().unwrap(),
+                                 pair.1.container_as_str().unwrap());
+                blk.extend(kv.utf16_units());
+                blk.push(0);
+            }
+
+            blk.push(0);
+
+            cb(blk.as_mut_ptr() as *mut c_void)
+        }
+        _ => cb(ptr::null_mut())
+    }
+}
+#[cfg(not(stage0))]
+fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T
+    where K: BytesContainer + Eq + Hash,
           V: BytesContainer,
           F: FnOnce(*mut c_void) -> T,
 {

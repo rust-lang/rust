@@ -131,7 +131,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
         hash = format!("h{}", state.finish());
         ccx.tcx().map.with_path(fn_id.node, |path| {
-            exported_name(path, &hash[])
+            exported_name(path, &hash[..])
         })
     };
 
@@ -141,9 +141,9 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let mut hash_id = Some(hash_id);
     let mut mk_lldecl = |abi: abi::Abi| {
         let lldecl = if abi != abi::Rust {
-            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s[])
+            foreign::decl_rust_fn_with_foreign_abi(ccx, mono_ty, &s[..])
         } else {
-            decl_internal_rust_fn(ccx, mono_ty, &s[])
+            decl_internal_rust_fn(ccx, mono_ty, &s[..])
         };
 
         ccx.monomorphized().borrow_mut().insert(hash_id.take().unwrap(), lldecl);
@@ -182,7 +182,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                       if abi != abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
                               ccx, &**decl, &**body, &[], d, psubsts, fn_id.node,
-                              Some(&hash[]));
+                              Some(&hash[..]));
                       } else {
                           trans_fn(ccx, &**decl, &**body, d, psubsts, fn_id.node, &[]);
                       }
@@ -206,7 +206,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                     trans_enum_variant(ccx,
                                        parent,
                                        &*v,
-                                       &args[],
+                                       &args[..],
                                        this_tv.disr_val,
                                        psubsts,
                                        d);

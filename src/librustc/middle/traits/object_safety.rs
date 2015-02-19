@@ -20,7 +20,7 @@
 use super::supertraits;
 use super::elaborate_predicates;
 
-use middle::subst::{self, SelfSpace};
+use middle::subst::{self, SelfSpace, TypeSpace};
 use middle::traits;
 use middle::ty::{self, Ty};
 use std::rc::Rc;
@@ -30,6 +30,10 @@ use util::ppaux::Repr;
 pub enum ObjectSafetyViolation<'tcx> {
     /// Self : Sized declared on the trait
     SizedSelf,
+
+    /// Supertrait reference references `Self` an in illegal location
+    /// (e.g. `trait Foo : Bar<Self>`)
+    SupertraitSelf,
 
     /// Method has something illegal
     Method(Rc<ty::Method<'tcx>>, MethodViolationCode),
@@ -57,7 +61,7 @@ pub fn is_object_safe<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
     // Because we query yes/no results frequently, we keep a cache:
     let cached_result =
-        tcx.object_safety_cache.borrow().get(&trait_ref.def_id()).map(|&r| r);
+        tcx.object_safety_cache.borrow().get(&trait_ref.def_id()).cloned();
 
     let result =
         cached_result.unwrap_or_else(|| {
@@ -110,12 +114,44 @@ fn object_safety_violations_for_trait<'tcx>(tcx: &ty::ctxt<'tcx>,
     if trait_has_sized_self(tcx, trait_def_id) {
         violations.push(ObjectSafetyViolation::SizedSelf);
     }
+    if supertraits_reference_self(tcx, trait_def_id) {
+        violations.push(ObjectSafetyViolation::SupertraitSelf);
+    }
 
     debug!("object_safety_violations_for_trait(trait_def_id={}) = {}",
            trait_def_id.repr(tcx),
            violations.repr(tcx));
 
     violations
+}
+
+fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                    trait_def_id: ast::DefId)
+                                    -> bool
+{
+    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
+    let trait_ref = trait_def.trait_ref.clone();
+    let predicates = ty::predicates_for_trait_ref(tcx, &ty::Binder(trait_ref));
+    predicates
+        .into_iter()
+        .any(|predicate| {
+            match predicate {
+                ty::Predicate::Trait(ref data) => {
+                    // In the case of a trait predicate, we can skip the "self" type.
+                    Some(data.def_id()) != tcx.lang_items.phantom_fn() &&
+                        data.0.trait_ref.substs.types.get_slice(TypeSpace)
+                                                     .iter()
+                                                     .cloned()
+                                                     .any(is_self)
+                }
+                ty::Predicate::Projection(..) |
+                ty::Predicate::TypeOutlives(..) |
+                ty::Predicate::RegionOutlives(..) |
+                ty::Predicate::Equate(..) => {
+                    false
+                }
+            }
+        })
 }
 
 fn trait_has_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
@@ -138,11 +174,7 @@ fn trait_has_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
         .any(|predicate| {
             match predicate {
                 ty::Predicate::Trait(ref trait_pred) if trait_pred.def_id() == sized_def_id => {
-                    let self_ty = trait_pred.0.self_ty();
-                    match self_ty.sty {
-                        ty::ty_param(ref data) => data.space == subst::SelfSpace,
-                        _ => false,
-                    }
+                    is_self(trait_pred.0.self_ty())
                 }
                 ty::Predicate::Projection(..) |
                 ty::Predicate::Trait(..) |
@@ -295,8 +327,17 @@ impl<'tcx> Repr<'tcx> for ObjectSafetyViolation<'tcx> {
         match *self {
             ObjectSafetyViolation::SizedSelf =>
                 format!("SizedSelf"),
+            ObjectSafetyViolation::SupertraitSelf =>
+                format!("SupertraitSelf"),
             ObjectSafetyViolation::Method(ref m, code) =>
                 format!("Method({},{:?})", m.repr(tcx), code),
         }
+    }
+}
+
+fn is_self<'tcx>(ty: Ty<'tcx>) -> bool {
+    match ty.sty {
+        ty::ty_param(ref data) => data.space == subst::SelfSpace,
+        _ => false,
     }
 }

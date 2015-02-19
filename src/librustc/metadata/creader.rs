@@ -183,7 +183,7 @@ impl<'a> CrateReader<'a> {
                 let name = match *path_opt {
                     Some((ref path_str, _)) => {
                         let name = path_str.to_string();
-                        validate_crate_name(Some(self.sess), &name[],
+                        validate_crate_name(Some(self.sess), &name[..],
                                             Some(i.span));
                         name
                     }
@@ -321,7 +321,7 @@ impl<'a> CrateReader<'a> {
             let source = self.sess.cstore.get_used_crate_source(cnum).unwrap();
             if let Some(locs) = self.sess.opts.externs.get(name) {
                 let found = locs.iter().any(|l| {
-                    let l = fs::realpath(&Path::new(&l[])).ok();
+                    let l = fs::realpath(&Path::new(&l[..])).ok();
                     source.dylib.as_ref().map(|p| &p.0) == l.as_ref() ||
                     source.rlib.as_ref().map(|p| &p.0) == l.as_ref()
                 });
@@ -459,8 +459,8 @@ impl<'a> CrateReader<'a> {
         let mut load_ctxt = loader::Context {
             sess: self.sess,
             span: span,
-            ident: &ident[],
-            crate_name: &name[],
+            ident: &ident[..],
+            crate_name: &name[..],
             hash: None,
             filesearch: self.sess.host_filesearch(PathKind::Crate),
             target: &self.sess.host,
@@ -562,7 +562,7 @@ impl<'a> CrateReader<'a> {
                                   name,
                                   config::host_triple(),
                                   self.sess.opts.target_triple);
-            self.sess.span_err(span, &message[]);
+            self.sess.span_err(span, &message[..]);
             self.sess.abort_if_errors();
         }
 
@@ -575,7 +575,7 @@ impl<'a> CrateReader<'a> {
                 let message = format!("plugin `{}` only found in rlib format, \
                                        but must be available in dylib format",
                                        name);
-                self.sess.span_err(span, &message[]);
+                self.sess.span_err(span, &message[..]);
                 // No need to abort because the loading code will just ignore this
                 // empty dylib.
                 None

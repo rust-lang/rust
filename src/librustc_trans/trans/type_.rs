@@ -163,7 +163,7 @@ impl Type {
     }
 
     pub fn named_struct(ccx: &CrateContext, name: &str) -> Type {
-        let name = CString::from_slice(name.as_bytes());
+        let name = CString::new(name).unwrap();
         ty!(llvm::LLVMStructCreateNamed(ccx.llcx(), name.as_ptr()))
     }
 

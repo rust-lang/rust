@@ -16,12 +16,14 @@
 #![feature(unboxed_closures)]
 #![allow(dead_code)]
 
+use std::marker;
+
 trait Foo<T> {
     type Output;
     fn dummy(&self, t: T);
 }
 
-trait Eq<X: ?Sized> { }
+trait Eq<X: ?Sized> : marker::PhantomFn<(Self, X)> { }
 impl<X: ?Sized> Eq<X> for X { }
 fn eq<A: ?Sized,B: ?Sized +Eq<A>>() { }
 

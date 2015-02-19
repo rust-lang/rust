@@ -17,11 +17,15 @@ use std::collections::HashMap;
 
 trait Graph<Node, Edge> {
     fn f(&self, Edge);
+    fn g(&self, Node);
 
 }
 
 impl<E> Graph<int, E> for HashMap<int, int> {
     fn f(&self, _e: E) {
+        panic!();
+    }
+    fn g(&self, _e: int) {
         panic!();
     }
 }

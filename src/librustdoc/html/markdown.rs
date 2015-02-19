@@ -236,7 +236,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                 s.push_str(&highlight::highlight(&text,
                                                  None,
                                                  Some("rust-example-rendered")));
-                let output = CString::from_vec(s.into_bytes());
+                let output = CString::new(s).unwrap();
                 hoedown_buffer_puts(ob, output.as_ptr());
             })
         }
@@ -293,7 +293,7 @@ pub fn render(w: &mut fmt::Formatter, s: &str, print_toc: bool) -> fmt::Result {
                                format!("{} ", sec)
                            });
 
-        let text = CString::from_vec(text.into_bytes());
+        let text = CString::new(text).unwrap();
         unsafe { hoedown_buffer_puts(ob, text.as_ptr()) }
     }
 
