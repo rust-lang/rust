@@ -1,3 +1,102 @@
+Version 1.0.0-alpha.2 (February 2015)
+-------------------------------------
+
+* ~1300 changes, numerous bugfixes
+
+* Highlights
+
+    * The various I/O modules were [overhauled][io-rfc] to reduce
+      unncessary abstractions and provide better interoperation with
+      the underlying platform. The old `io` module remains temporarily
+      at `std::old_io`.
+    * The standard library now [partipates in feature gating][feat],
+      so use of unstable libraries now requires a `#![feature(...)]`
+      attribute. The impact of this change is [described on the
+      forum][feat-forum]. [RFC][feat-rfc].
+
+* Language
+
+    * `for` loops [now operate on the `IntoIterator` trait][into],
+      which eliminates the need to call `.iter()`, etc. to iterate
+      over collections. There are some new subtleties to remember
+      though regarding what sort of iterators various types yield, in
+      particular that `for foo in bar { }` yields values from a move
+      iterator, destroying the original collection. [RFC][into-rfc].
+    * Objects now have [default lifetime bounds][obj], so you don't
+      have to write `Box<Trait+'static>` when you don't care about
+      storing references. [RFC][obj-rfc].
+    * In types that implement `Drop`, [lifetimes must outlive the
+      value][drop]. This will soon make it possible to safely
+      implement `Drop` for types where `#[unsafe_destructor]` is now
+      required. Read the [gorgeous RFC][drop-rfc] for details.
+    * The fully qualified <T as Trait>::X syntax lets you set the Self
+      type for a trait method or associated type. [RFC][ufcs-rfc].
+    * References to types that implement `Deref<U>` now [automatically
+      coerce to references][deref] to the dereferenced type `U`,
+      e.g. `&T where T: Deref<U>` automatically coerces to `&U`. This
+      should eliminate many unsightly uses of `&*`, as when converting
+      from references to vectors into references to
+      slices. [RFC][deref-rfc].
+    * The explicit [closure kind syntax][close] (`|&:|`, `|&mut:|`,
+      `|:|`) is obsolete and closure kind is inferred from context.
+    * [`Self` is a keyword][Self].
+
+* Libraries
+
+    * The `Show` and `String` formatting traits [have been
+      renamed][fmt] to `Debug` and `Display` to more clearly reflect
+      their related purposes. Automatically getting a string
+      conversion to use with `format!("{:?}", something_to_debug)` is
+      now written `#[derive(Debug)]`.
+    * Abstract [OS-specific string types][osstr], `std::ff::{OsString,
+      OsStr}`, provide strings in platform-specific encodings for easier
+      interop with system APIs. [RFC][osstr-rfc].
+    * The `boxed::into_raw` and `Box::frow_raw` functions [convert
+      between `Box<T>` and `*mut T`][boxraw], a common pattern for
+      creating raw pointers.
+
+* Tooling
+
+    * Certain long error messages of the form 'expected foo found bar'
+      are now [split neatly across multiple
+      lines][multiline]. Examples in the PR.
+    * On Unix Rust can be [uninstalled][un] by running
+      `/usr/local/lib/rustlib/uninstall.sh`.
+    * The `#[rustc_on_unimplemented]` attribute, requiring the
+      'on_unimplemented' feature, lets rustc [display custom error
+      messages when a trait is expected to be implemented for a type
+      but is not][onun].
+
+* Misc
+
+    * Rust is tested against a [LALR grammar][lalr], which parses
+      almost all the Rust files that rustc does.
+
+[boxraw]: https://github.com/rust-lang/rust/pull/21318
+[close]: https://github.com/rust-lang/rust/pull/21843
+[deref]: https://github.com/rust-lang/rust/pull/21351
+[deref-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0241-deref-conversions.md
+[drop]: https://github.com/rust-lang/rust/pull/21972
+[drop-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0769-sound-generic-drop.md
+[feat]: https://github.com/rust-lang/rust/pull/21248
+[feat-forum]: http://users.rust-lang.org/t/psa-important-info-about-rustcs-new-feature-staging/82/5
+[feat-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0507-release-channels.md
+[fmt]: https://github.com/rust-lang/rust/pull/21457
+[into]: https://github.com/rust-lang/rust/pull/20790
+[into-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0235-collections-conventions.md#intoiterator-and-iterable
+[io-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0517-io-os-reform.md
+[lalr]: https://github.com/rust-lang/rust/pull/21452
+[multiline]: https://github.com/rust-lang/rust/pull/19870
+[obj]: https://github.com/rust-lang/rust/pull/22230
+[obj-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0599-default-object-bound.md
+[onun]: https://github.com/rust-lang/rust/pull/20889
+[osstr]: https://github.com/rust-lang/rust/pull/21488
+[osstr-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0517-io-os-reform.md
+[Self]: https://github.com/rust-lang/rust/pull/22158
+[ufcs]: https://github.com/rust-lang/rust/pull/21077
+[ufcs-rfc]: https://github.com/rust-lang/rfcs/blob/master/text/0132-ufcs.md
+[un]: https://github.com/rust-lang/rust/pull/22256
+
 Version 1.0.0-alpha (January 2015)
 ----------------------------------
 
