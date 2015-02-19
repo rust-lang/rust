@@ -34,6 +34,20 @@ if x == 5 {
 }
 ```
 
+If there is more than one case, use an `else if`:
+
+```rust
+let x = 5;
+
+if x == 5 {
+    println!("x is five!");
+} else if x == 6 {
+    println!("x is six!");
+} else {
+    println!("x is not five or six :(");
+}
+```
+
 This is all pretty standard. However, you can also do this:
 
 
