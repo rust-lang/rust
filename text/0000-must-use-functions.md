@@ -108,11 +108,13 @@ fn qux() {
 
 This adds a little more complexity to the `#[must_use]` system.
 
-The rule stated doesn't cover every instance were a `#[must_use]`
-function is ignored (it does cover all instances of a `#[must_use]`
-type), e.g. `(foo());` and `{ ...; foo() };` will not be picked up
-(that is, passing the result through another piece of syntax). This
-could be tweaked.
+The rule stated doesn't cover every instance where a `#[must_use]`
+function is ignored, e.g. `(foo());` and `{ ...; foo() };` will not be
+picked up, even though it is passing the result through a piece of
+no-op syntax. This could be tweaked. Notably, the type-based rule doesn't
+have this problem, since that sort of "passing-through" causes the
+outer piece of syntax to be of the `#[must_use]` type, and so is
+considered for the lint itself.
 
 `Result::ok` is occasionally used for silencing the `#[must_use]`
 error of `Result`, i.e. the ignoring of `foo().ok();` is
