@@ -14,13 +14,11 @@
 use middle::graph;
 use middle::ty;
 use syntax::ast;
-use util::nodemap::NodeMap;
 
 mod construct;
 pub mod graphviz;
 
 pub struct CFG {
-    pub exit_map: NodeMap<CFGIndex>,
     pub graph: CFGGraph,
     pub entry: CFGIndex,
     pub exit: CFGIndex,

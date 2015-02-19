@@ -16,11 +16,9 @@ use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ptr::P;
-use util::nodemap::NodeMap;
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    exit_map: NodeMap<CFGIndex>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
     loop_scopes: Vec<LoopScope>,
@@ -46,7 +44,6 @@ pub fn construct(tcx: &ty::ctxt,
     let block_exit;
 
     let mut cfg_builder = CFGBuilder {
-        exit_map: NodeMap(),
         graph: graph,
         fn_exit: fn_exit,
         tcx: tcx,
@@ -54,9 +51,8 @@ pub fn construct(tcx: &ty::ctxt,
     };
     block_exit = cfg_builder.block(blk, entry);
     cfg_builder.add_contained_edge(block_exit, fn_exit);
-    let CFGBuilder {exit_map, graph, ..} = cfg_builder;
-    CFG {exit_map: exit_map,
-         graph: graph,
+    let CFGBuilder {graph, ..} = cfg_builder;
+    CFG {graph: graph,
          entry: entry,
          exit: fn_exit}
 }
@@ -512,7 +508,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     }
 
     fn add_ast_node(&mut self, id: ast::NodeId, preds: &[CFGIndex]) -> CFGIndex {
-        assert!(!self.exit_map.contains_key(&id));
         assert!(id != ast::DUMMY_NODE_ID);
         self.add_node(CFGNodeData::AST(id), preds)
     }
@@ -523,10 +518,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
     fn add_node(&mut self, data: CFGNodeData, preds: &[CFGIndex]) -> CFGIndex {
         let node = self.graph.add_node(data);
-        if let CFGNodeData::AST(id) = data {
-            assert!(!self.exit_map.contains_key(&id));
-            self.exit_map.insert(id, node);
-        }
         for &pred in preds {
             self.add_contained_edge(pred, node);
         }
