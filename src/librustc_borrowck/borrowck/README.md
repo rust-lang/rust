@@ -64,7 +64,7 @@ Here is the formal grammar for the types we'll consider:
 
 ```text
 TY = () | S<'LT...> | Box<TY> | & 'LT MQ TY
-MQ = mut | imm | const
+MQ = mut | imm
 ```
 
 Most of these types should be pretty self explanatory. Here `S` is a
@@ -198,7 +198,7 @@ The kinds of expressions which in-scope loans can render illegal are:
 
 Now that we hopefully have some kind of intuitive feeling for how the
 borrow checker works, let's look a bit more closely now at the precise
-conditions that it uses. For simplicity I will ignore const loans.
+conditions that it uses.
 
 I will present the rules in a modified form of standard inference
 rules, which looks as follows:
@@ -275,15 +275,14 @@ but also the code in `mem_categorization`.
 
 Let's begin with the rules for variables, which state that if a
 variable is declared as mutable, it may be borrowed any which way, but
-otherwise the variable must be borrowed as immutable or const:
+otherwise the variable must be borrowed as immutable:
 
 ```text
 MUTABILITY(X, MQ)                   // M-Var-Mut
   DECL(X) = mut
 
-MUTABILITY(X, MQ)                   // M-Var-Imm
+MUTABILITY(X, imm)                  // M-Var-Imm
   DECL(X) = imm
-  MQ = imm | const
 ```
 
 ### Checking mutability of owned content
@@ -304,12 +303,11 @@ MUTABILITY(*LV, MQ)                 // M-Deref-Unique
 ### Checking mutability of immutable pointer types
 
 Immutable pointer types like `&T` can only
-be borrowed if MQ is immutable or const:
+be borrowed if MQ is immutable:
 
 ```text
-MUTABILITY(*LV, MQ)                // M-Deref-Borrowed-Imm
+MUTABILITY(*LV, imm)               // M-Deref-Borrowed-Imm
   TYPE(LV) = &Ty
-  MQ == imm | const
 ```
 
 ### Checking mutability of mutable pointer types
@@ -466,15 +464,12 @@ are computed based on the kind of borrow:
 ```text
 &mut LV =>   RESTRICTIONS(LV, LT, MUTATE|CLAIM|FREEZE)
 &LV =>       RESTRICTIONS(LV, LT, MUTATE|CLAIM)
-&const LV => RESTRICTIONS(LV, LT, [])
 ```
 
 The reasoning here is that a mutable borrow must be the only writer,
 therefore it prevents other writes (`MUTATE`), mutable borrows
 (`CLAIM`), and immutable borrows (`FREEZE`). An immutable borrow
 permits other immutable borrows but forbids writes and mutable borrows.
-Finally, a const borrow just wants to be sure that the value is not
-moved out from under it, so no actions are forbidden.
 
 ### Restrictions for loans of a local variable
 
@@ -640,19 +635,6 @@ in terms of capability, the caller passed in the ability to mutate
 `*p`, and we never gave it back. (Note that we can't return `p` while
 `*p` is borrowed since that would be a move of `p`, as `&mut` pointers
 are affine.)
-
-### Restrictions for loans of const aliasable referents
-
-Freeze pointers are read-only. There may be `&mut` or `&` aliases, and
-we can not prevent *anything* but moves in that case. So the
-`RESTRICTIONS` function is only defined if `ACTIONS` is the empty set.
-Because moves from a `&const` lvalue are never legal, it is not
-necessary to add any restrictions at all to the final result.
-
-```text
-    RESTRICTIONS(*LV, LT, []) = []                // R-Deref-Freeze-Borrowed
-      TYPE(LV) = &const Ty
-```
 
 ### Restrictions for loans of mutable borrowed referents
 
@@ -854,6 +836,9 @@ would suggest that an `&mut` referent found in an `&const` location be
 prohibited from both freezes and claims. This would avoid the need to
 prevent `const` borrows of the base pointer when the referent is
 borrowed.
+
+[ Previous revisions of this document discussed `&const` in more detail.
+See the revision history. ]
 
 # Moves and initialization
 
