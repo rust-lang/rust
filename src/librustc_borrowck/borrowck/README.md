@@ -54,7 +54,7 @@ and `*LV` is a pointer dereference. There is no auto-deref or other
 niceties. This means that if you have a type like:
 
 ```rust
-struct S { f: uint }
+struct S { f: i32 }
 ```
 
 and a variable `a: Box<S>`, then the rust expression `a.f` would correspond
@@ -63,7 +63,7 @@ to an `LV` of `(*a).f`.
 Here is the formal grammar for the types we'll consider:
 
 ```text
-TY = () | S<'LT...> | Box<TY> | & 'LT MQ TY
+TY = i32 | bool | S<'LT...> | Box<TY> | & 'LT MQ TY
 MQ = mut | imm
 ```
 
@@ -83,7 +83,7 @@ SD = struct S<'LT...> { (f: TY)... }
 Now, imagine we had a program like this:
 
 ```rust
-struct Foo { f: uint, g: uint }
+struct Foo { f: i32, g: i32 }
 ...
 'a: {
     let mut x: Box<Foo> = ...;
@@ -508,7 +508,7 @@ of the `&Ty` pointer. In simple cases, this clause is redundant, since
 the `LIFETIME()` function will already enforce the required rule:
 
 ```rust
-fn foo(point: &'a Point) -> &'static f32 {
+fn foo(point: &'a Point) -> &'static i32 {
     &point.x // Error
 }
 ```
@@ -518,7 +518,7 @@ but also by the basic `LIFETIME()` check. However, in more advanced
 examples involving multiple nested pointers, clause (1) is needed:
 
 ```rust
-fn foo(point: &'a &'b mut Point) -> &'b f32 {
+fn foo(point: &'a &'b mut Point) -> &'b i32 {
     &point.x // Error
 }
 ```
@@ -537,7 +537,7 @@ As a final twist, consider the case of two nested *immutable*
 pointers, rather than a mutable pointer within an immutable one:
 
 ```rust
-fn foo(point: &'a &'b Point) -> &'b f32 {
+fn foo(point: &'a &'b Point) -> &'b i32 {
     &point.x // OK
 }
 ```
@@ -559,7 +559,7 @@ create a borrowed pointer that outlives the memory it points at. So
 `LIFETIME` prevents a function like this:
 
 ```rust
-fn get_1<'a>() -> &'a int {
+fn get_1<'a>() -> &'a i32 {
     let x = 1;
     &x
 }
@@ -579,7 +579,7 @@ mutate it. This distinction is important for type checking functions
 like this one:
 
 ```rust
-fn inc_and_get<'a>(p: &'a mut Point) -> &'a int {
+fn inc_and_get<'a>(p: &'a mut Point) -> &'a i32 {
     p.x += 1;
     &p.x
 }
@@ -661,8 +661,8 @@ the old name. Here is an example:
 
 ```rust
 // src/test/compile-fail/borrowck-move-mut-base-ptr.rs
-fn foo(t0: &mut int) {
-    let p: &int = &*t0; // Freezes `*t0`
+fn foo(t0: &mut i32) {
+    let p: &i32 = &*t0; // Freezes `*t0`
     let t1 = t0;        //~ ERROR cannot move out of `t0`
     *t1 = 22;           // OK, not a write through `*t0`
 }
@@ -681,9 +681,9 @@ another path to access the same data, as shown here:
 
 ```rust
 // src/test/compile-fail/borrowck-mut-borrow-of-mut-base-ptr.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0;     // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &i32 = &*t0;     // Freezes `*t0`
     let mut t2 = &mut t0;   //~ ERROR cannot borrow `t0`
     **t2 += 1;              // Mutates `*t0`
 }
@@ -702,9 +702,9 @@ value away to create a new path:
 
 ```rust
 // src/test/compile-fail/borrowck-swap-mut-base-ptr.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0;     // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &i32 = &*t0;     // Freezes `*t0`
     swap(&mut t0, &mut t1); //~ ERROR cannot borrow `t0`
     *t1 = 22;
 }
@@ -720,21 +720,21 @@ as shown in the following example:
 
 ```rust
 // src/test/compile-fail/borrowck-borrow-of-mut-base-ptr.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &mut int = &mut *t0; // Claims `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &mut i32 = &mut *t0; // Claims `*t0`
     let mut t2 = &t0;           //~ ERROR cannot borrow `t0`
-    let q: &int = &*t2;         // Freezes `*t0` but not through `*p`
+    let q: &i32 = &*t2;         // Freezes `*t0` but not through `*p`
     *p += 1;                    // violates type of `*q`
 }
 ```
 
 Here the problem is that `*t0` is claimed by `p`, and hence `p` wants
 to be the controlling pointer through which mutation or freezes occur.
-But `t2` would -- if it were legal -- have the type `& &mut int`, and
+But `t2` would -- if it were legal -- have the type `& &mut i32`, and
 hence would be a mutable pointer in an aliasable location, which is
 considered frozen (since no one can write to `**t2` as it is not a
-unique path). Therefore, we could reasonably create a frozen `&int`
+unique path). Therefore, we could reasonably create a frozen `&i32`
 pointer pointing at `*t0` that coexists with the mutable pointer `p`,
 which is clearly unsound.
 
@@ -743,12 +743,12 @@ particular, if the referent is frozen, there is no harm in it:
 
 ```rust
 // src/test/run-pass/borrowck-borrow-of-mut-base-ptr-safe.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0; // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &i32 = &*t0; // Freezes `*t0`
     let mut t2 = &t0;
-    let q: &int = &*t2; // Freezes `*t0`, but that's ok...
-    let r: &int = &*t0; // ...after all, could do same thing directly.
+    let q: &i32 = &*t2; // Freezes `*t0`, but that's ok...
+    let r: &i32 = &*t0; // ...after all, could do same thing directly.
 }
 ```
 
@@ -759,9 +759,9 @@ new alias `t2`, as demonstrated in this test case:
 
 ```rust
 // src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
-fn foo(t0: & &mut int) {
+fn foo(t0: & &mut i32) {
     let t1 = t0;
-    let p: &int = &**t0;
+    let p: &i32 = &**t0;
     **t1 = 22; //~ ERROR cannot assign
 }
 ```
@@ -831,8 +831,8 @@ moves/uninitializations of the variable that is being used.
 Let's look at a simple example:
 
 ```rust
-fn foo(a: Box<int>) {
-    let b: Box<int>;   // Gen bit 0.
+fn foo(a: Box<i32>) {
+    let b: Box<i32>;   // Gen bit 0.
 
     if cond {          // Bits: 0
         use(&*a);
@@ -846,7 +846,7 @@ fn foo(a: Box<int>) {
     use(&*b);          // Error.
 }
 
-fn use(a: &int) { }
+fn use(a: &i32) { }
 ```
 
 In this example, the variable `b` is created uninitialized. In one
@@ -977,8 +977,8 @@ not) the destructor invocation for that path.
 A simple example of this is the following:
 
 ```rust
-struct D { p: int }
-impl D { fn new(x: int) -> D { ... }
+struct D { p: i32 }
+impl D { fn new(x: i32) -> D { ... }
 impl Drop for D { ... }
 
 fn foo(a: D, b: D, t: || -> bool) {
@@ -1091,7 +1091,7 @@ the elements of an array that has been passed by value, such as
 the following:
 
 ```rust
-fn foo(a: [D; 10], i: uint) -> D {
+fn foo(a: [D; 10], i: i32) -> D {
     a[i]
 }
 ```
@@ -1107,7 +1107,7 @@ all-but-one element of the array.  A place where that distinction
 would arise is the following:
 
 ```rust
-fn foo(a: [D; 10], b: [D; 10], i: uint, t: bool) -> D {
+fn foo(a: [D; 10], b: [D; 10], i: i32, t: bool) -> D {
     if t {
         a[i]
     } else {
@@ -1122,7 +1122,7 @@ fn foo(a: [D; 10], b: [D; 10], i: uint, t: bool) -> D {
 
 There are a number of ways that the trans backend could choose to
 compile this (e.g. a `[bool; 10]` array for each such moved array;
-or an `Option<uint>` for each moved array).  From the viewpoint of the
+or an `Option<usize>` for each moved array).  From the viewpoint of the
 borrow-checker, the important thing is to record what kind of fragment
 is implied by the relevant moves.
 
