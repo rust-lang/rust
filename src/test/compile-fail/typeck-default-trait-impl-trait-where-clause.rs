@@ -8,6 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
+// ignore-tidy-linelength
+
 // Test that when a `..` impl applies, we also check that any
 // supertrait conditions are met.
 
