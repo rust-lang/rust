@@ -1,6 +1,6 @@
-- Feature Name: (fill me in with a unique ident, my_awesome_feature)
-- Start Date: (fill me in with today's date, YYYY-MM-DD)
-- RFC PR: (leave this empty)
+- Feature Name: none?
+- Start Date: 2015-02-18
+- RFC PR: [rust-lang/rfcs#886](https://github.com/rust-lang/rfcs/pull/886)
 - Rust Issue: (leave this empty)
 
 # Summary
@@ -137,3 +137,4 @@ this nor `let _ =` have the method chaining style.
 
 - Are there many other functions in the standard library/compiler
   would benefit from `#[must_use]`?
+- Should this be feature gated?
