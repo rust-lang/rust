@@ -17,7 +17,7 @@ pub fn main() {
     //let bt0 = sys::frame_address();
     //println!("%?", bt0);
 
-    3u.to(10u, |i| {
+    3_usize.to(10_usize, |i| {
         println!("{}", i);
 
         //let bt1 = sys::frame_address();

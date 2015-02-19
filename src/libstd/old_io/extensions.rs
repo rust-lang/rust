@@ -85,21 +85,21 @@ pub fn u64_to_le_bytes<T, F>(n: u64, size: uint, f: F) -> T where
     use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_le* intrinsics
-    assert!(size <= 8u);
+    assert!(size <= 8);
     match size {
-      1u => f(&[n as u8]),
-      2u => f(unsafe { & transmute::<_, [u8; 2]>((n as u16).to_le()) }),
-      4u => f(unsafe { & transmute::<_, [u8; 4]>((n as u32).to_le()) }),
-      8u => f(unsafe { & transmute::<_, [u8; 8]>(n.to_le()) }),
+      1 => f(&[n as u8]),
+      2 => f(unsafe { & transmute::<_, [u8; 2]>((n as u16).to_le()) }),
+      4 => f(unsafe { & transmute::<_, [u8; 4]>((n as u32).to_le()) }),
+      8 => f(unsafe { & transmute::<_, [u8; 8]>(n.to_le()) }),
       _ => {
 
         let mut bytes = vec!();
         let mut i = size;
         let mut n = n;
-        while i > 0u {
+        while i > 0 {
             bytes.push((n & 255_u64) as u8);
             n >>= 8;
-            i -= 1u;
+            i -= 1;
         }
         f(&bytes)
       }
@@ -126,19 +126,19 @@ pub fn u64_to_be_bytes<T, F>(n: u64, size: uint, f: F) -> T where
     use mem::transmute;
 
     // LLVM fails to properly optimize this when using shifts instead of the to_be* intrinsics
-    assert!(size <= 8u);
+    assert!(size <= 8);
     match size {
-      1u => f(&[n as u8]),
-      2u => f(unsafe { & transmute::<_, [u8; 2]>((n as u16).to_be()) }),
-      4u => f(unsafe { & transmute::<_, [u8; 4]>((n as u32).to_be()) }),
-      8u => f(unsafe { & transmute::<_, [u8; 8]>(n.to_be()) }),
+      1 => f(&[n as u8]),
+      2 => f(unsafe { & transmute::<_, [u8; 2]>((n as u16).to_be()) }),
+      4 => f(unsafe { & transmute::<_, [u8; 4]>((n as u32).to_be()) }),
+      8 => f(unsafe { & transmute::<_, [u8; 8]>(n.to_be()) }),
       _ => {
         let mut bytes = vec!();
         let mut i = size;
-        while i > 0u {
-            let shift = (i - 1u) * 8u;
+        while i > 0 {
+            let shift = (i - 1) * 8;
             bytes.push((n >> shift) as u8);
-            i -= 1u;
+            i -= 1;
         }
         f(&bytes)
       }
@@ -160,7 +160,7 @@ pub fn u64_from_be_bytes(data: &[u8], start: uint, size: uint) -> u64 {
     use ptr::{copy_nonoverlapping_memory};
     use slice::SliceExt;
 
-    assert!(size <= 8u);
+    assert!(size <= 8);
 
     if data.len() - start < size {
         panic!("index out of bounds");

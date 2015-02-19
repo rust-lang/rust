@@ -11,7 +11,7 @@
 #![allow(dead_code)]
 fn main() {
     // Original borrow ends at end of function
-    let mut x = 1us;
+    let mut x = 1_usize;
     let y = &mut x;
     let z = &x; //~ ERROR cannot borrow
 }
@@ -21,7 +21,7 @@ fn foo() {
     match true {
         true => {
             // Original borrow ends at end of match arm
-            let mut x = 1us;
+            let mut x = 1_usize;
             let y = &x;
             let z = &mut x; //~ ERROR cannot borrow
         }
@@ -33,7 +33,7 @@ fn foo() {
 fn bar() {
     // Original borrow ends at end of closure
     || {
-        let mut x = 1us;
+        let mut x = 1_usize;
         let y = &mut x;
         let z = &mut x; //~ ERROR cannot borrow
     };

@@ -62,7 +62,7 @@ pub fn run(sess: &session::Session, llmod: ModuleRef,
         let file = path.filename_str().unwrap();
         let file = &file[3..file.len() - 5]; // chop off lib/.rlib
         debug!("reading {}", file);
-        for i in iter::count(0us, 1) {
+        for i in iter::count(0, 1) {
             let bc_encoded = time(sess.time_passes(),
                                   &format!("check for {}.{}.bytecode.deflate", name, i),
                                   (),

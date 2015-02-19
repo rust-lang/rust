@@ -9,6 +9,6 @@
 // except according to those terms.
 
 fn main() {
-    vec![1u, 2, 3].len();
+    vec![1_usize, 2, 3].len();
 }
 

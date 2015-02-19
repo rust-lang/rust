@@ -388,7 +388,7 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
             cmd.push('"');
         }
         let argvec: Vec<char> = arg.chars().collect();
-        for i in 0u..argvec.len() {
+        for i in 0..argvec.len() {
             append_char_at(cmd, &argvec, i);
         }
         if quote {

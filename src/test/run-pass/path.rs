@@ -14,4 +14,4 @@ mod foo {
     pub fn bar(_offset: uint) { }
 }
 
-pub fn main() { foo::bar(0u); }
+pub fn main() { foo::bar(0_usize); }

@@ -447,7 +447,7 @@ mod test {
         let _b = UdpSocket::bind(addr2).unwrap();
 
         a.set_write_timeout(Some(1000));
-        for _ in 0u..100 {
+        for _ in 0..100 {
             match a.send_to(&[0;4*1024], addr2) {
                 Ok(()) | Err(IoError { kind: ShortWrite(..), .. }) => {},
                 Err(IoError { kind: TimedOut, .. }) => break,

@@ -9,7 +9,7 @@
 // except according to those terms.
 
 fn foo<T:'static>() {
-    1us.bar::<T>(); //~ ERROR `core::marker::Send` is not implemented
+    1_usize.bar::<T>(); //~ ERROR `core::marker::Send` is not implemented
 }
 
 trait bar {

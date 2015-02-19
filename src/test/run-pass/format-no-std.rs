@@ -20,13 +20,13 @@ use collections::string::ToString;
 
 #[start]
 fn start(_argc: int, _argv: *const *const u8) -> int {
-    let s = format!("{}", 1i);
+    let s = format!("{}", 1_isize);
     assert_eq!(s, "1".to_string());
 
     let s = format!("test");
     assert_eq!(s, "test".to_string());
 
-    let s = format!("{test}", test=3i);
+    let s = format!("{test}", test=3_isize);
     assert_eq!(s, "3".to_string());
 
     let s = format!("hello {}", "world");

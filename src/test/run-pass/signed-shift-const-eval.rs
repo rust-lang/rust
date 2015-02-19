@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-enum test { thing = -5 >> 1u }
+enum test { thing = -5 >> 1_usize }
 pub fn main() {
     assert_eq!(test::thing as int, -3);
 }

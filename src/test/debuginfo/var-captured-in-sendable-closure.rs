@@ -67,7 +67,7 @@ fn main() {
 
     closure();
 
-    let constant2 = 6u;
+    let constant2 = 6_usize;
 
     // The `self` argument of the following closure should be passed by value
     // to FnOnce::call_once(self, args), which gets translated a bit differently

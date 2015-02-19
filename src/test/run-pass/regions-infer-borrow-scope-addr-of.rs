@@ -13,7 +13,7 @@ use std::mem::swap;
 pub fn main() {
     let mut x = 4;
 
-    for i in 0u..3 {
+    for i in 0_usize..3 {
         // ensure that the borrow in this alt
         // does not interfere with the swap
         // below.  note that it would it you

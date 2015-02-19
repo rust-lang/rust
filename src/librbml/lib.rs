@@ -713,10 +713,10 @@ pub mod writer {
         match size {
             1 => w.write_all(&[0x80u8 | (n as u8)]),
             2 => w.write_all(&[0x40u8 | ((n >> 8) as u8), n as u8]),
-            3 => w.write_all(&[0x20u8 | ((n >> 16) as u8), (n >> 8_u) as u8,
+            3 => w.write_all(&[0x20u8 | ((n >> 16) as u8), (n >> 8) as u8,
                             n as u8]),
-            4 => w.write_all(&[0x10u8 | ((n >> 24) as u8), (n >> 16_u) as u8,
-                            (n >> 8_u) as u8, n as u8]),
+            4 => w.write_all(&[0x10u8 | ((n >> 24) as u8), (n >> 16) as u8,
+                            (n >> 8) as u8, n as u8]),
             _ => Err(old_io::IoError {
                 kind: old_io::OtherIoError,
                 desc: "int too big",
@@ -863,7 +863,7 @@ pub mod writer {
     impl<'a, W: Writer + Seek> Encoder<'a, W> {
         // used internally to emit things like the vector length and so on
         fn _emit_tagged_uint(&mut self, t: EbmlEncoderTag, v: uint) -> EncodeResult {
-            assert!(v <= 0xFFFF_FFFF_u);
+            assert!(v <= 0xFFFF_FFFF);
             self.wr_tagged_u32(t as uint, v as u32)
         }
 

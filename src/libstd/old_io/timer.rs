@@ -121,7 +121,7 @@ impl Timer {
     /// let mut timer = Timer::new().unwrap();
     /// let ten_milliseconds = timer.oneshot(Duration::milliseconds(10));
     ///
-    /// for _ in 0u..100 { /* do work */ }
+    /// for _ in 0..100 { /* do work */ }
     ///
     /// // blocks until 10 ms after the `oneshot` call
     /// ten_milliseconds.recv().unwrap();
@@ -173,12 +173,12 @@ impl Timer {
     /// let mut timer = Timer::new().unwrap();
     /// let ten_milliseconds = timer.periodic(Duration::milliseconds(10));
     ///
-    /// for _ in 0u..100 { /* do work */ }
+    /// for _ in 0..100 { /* do work */ }
     ///
     /// // blocks until 10 ms after the `periodic` call
     /// ten_milliseconds.recv().unwrap();
     ///
-    /// for _ in 0u..100 { /* do work */ }
+    /// for _ in 0..100 { /* do work */ }
     ///
     /// // blocks until 20 ms after the `periodic` call (*not* 10ms after the
     /// // previous `recv`)

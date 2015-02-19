@@ -488,7 +488,7 @@ pub fn parse(sess: &ParseSess,
                     let match_cur = ei.match_cur;
                     (&mut ei.matches[match_cur]).push(Rc::new(MatchedNonterminal(
                         parse_nt(&mut rust_parser, span, &name_string))));
-                    ei.idx += 1us;
+                    ei.idx += 1;
                     ei.match_cur += 1;
                   }
                   _ => panic!()
