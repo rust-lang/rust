@@ -53,7 +53,7 @@ Here `x` represents some variable, `LV.f` is a field reference,
 and `*LV` is a pointer dereference. There is no auto-deref or other
 niceties. This means that if you have a type like:
 
-```text
+```rust
 struct S { f: uint }
 ```
 
@@ -82,13 +82,13 @@ SD = struct S<'LT...> { (f: TY)... }
 
 Now, imagine we had a program like this:
 
-```text
+```rust
 struct Foo { f: uint, g: uint }
 ...
 'a: {
-  let mut x: Box<Foo> = ...;
-  let y = &mut (*x).f;
-  x = ...;
+    let mut x: Box<Foo> = ...;
+    let y = &mut (*x).f;
+    x = ...;
 }
 ```
 
@@ -507,7 +507,7 @@ specify that the lifetime of the loan must be less than the lifetime
 of the `&Ty` pointer. In simple cases, this clause is redundant, since
 the `LIFETIME()` function will already enforce the required rule:
 
-```
+```rust
 fn foo(point: &'a Point) -> &'static f32 {
     &point.x // Error
 }
@@ -517,7 +517,7 @@ The above example fails to compile both because of clause (1) above
 but also by the basic `LIFETIME()` check. However, in more advanced
 examples involving multiple nested pointers, clause (1) is needed:
 
-```
+```rust
 fn foo(point: &'a &'b mut Point) -> &'b f32 {
     &point.x // Error
 }
@@ -536,7 +536,7 @@ which is only `'a`, not `'b`. Hence this example yields an error.
 As a final twist, consider the case of two nested *immutable*
 pointers, rather than a mutable pointer within an immutable one:
 
-```
+```rust
 fn foo(point: &'a &'b Point) -> &'b f32 {
     &point.x // OK
 }
@@ -558,7 +558,7 @@ The rules pertaining to `LIFETIME` exist to ensure that we don't
 create a borrowed pointer that outlives the memory it points at. So
 `LIFETIME` prevents a function like this:
 
-```
+```rust
 fn get_1<'a>() -> &'a int {
     let x = 1;
     &x
@@ -578,7 +578,7 @@ after we return and hence the remaining code in `'a` cannot possibly
 mutate it. This distinction is important for type checking functions
 like this one:
 
-```
+```rust
 fn inc_and_get<'a>(p: &'a mut Point) -> &'a int {
     p.x += 1;
     &p.x
@@ -631,7 +631,7 @@ maximum of `LT'`.
 
 Here is a concrete example of a bug this rule prevents:
 
-```
+```rust
 // Test region-reborrow-from-shorter-mut-ref.rs:
 fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
     &mut **p // ERROR due to clause (1)
@@ -659,7 +659,7 @@ ways to violate the rules is to move the base pointer to a new name
 and access it via that new name, thus bypassing the restrictions on
 the old name. Here is an example:
 
-```
+```rust
 // src/test/compile-fail/borrowck-move-mut-base-ptr.rs
 fn foo(t0: &mut int) {
     let p: &int = &*t0; // Freezes `*t0`
@@ -679,7 +679,7 @@ danger is to mutably borrow the base path. This can lead to two bad
 scenarios. The most obvious is that the mutable borrow itself becomes
 another path to access the same data, as shown here:
 
-```
+```rust
 // src/test/compile-fail/borrowck-mut-borrow-of-mut-base-ptr.rs
 fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {
@@ -700,7 +700,7 @@ of `t0`. Hence the claim `&mut t0` is illegal.
 Another danger with an `&mut` pointer is that we could swap the `t0`
 value away to create a new path:
 
-```
+```rust
 // src/test/compile-fail/borrowck-swap-mut-base-ptr.rs
 fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {
@@ -718,7 +718,7 @@ careful to ensure this example is still illegal.
 referent is claimed, even freezing the base pointer can be dangerous,
 as shown in the following example:
 
-```
+```rust
 // src/test/compile-fail/borrowck-borrow-of-mut-base-ptr.rs
 fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {
@@ -741,7 +741,7 @@ which is clearly unsound.
 However, it is not always unsafe to freeze the base pointer. In
 particular, if the referent is frozen, there is no harm in it:
 
-```
+```rust
 // src/test/run-pass/borrowck-borrow-of-mut-base-ptr-safe.rs
 fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {
@@ -757,7 +757,7 @@ thing `t2` can be used for is to further freeze `*t0`, which is
 already frozen. In particular, we cannot assign to `*t0` through the
 new alias `t2`, as demonstrated in this test case:
 
-```
+```rust
 // src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
 fn foo(t0: & &mut int) {
     let t1 = t0;
@@ -830,7 +830,7 @@ moves/uninitializations of the variable that is being used.
 
 Let's look at a simple example:
 
-```
+```rust
 fn foo(a: Box<int>) {
     let b: Box<int>;   // Gen bit 0.
 
