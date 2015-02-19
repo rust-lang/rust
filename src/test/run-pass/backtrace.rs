@@ -53,7 +53,9 @@ fn runtest(me: &str) {
             "bad output: {}", s);
 
     // Make sure the stack trace is *not* printed
-    let p = template.clone().arg("fail").spawn().unwrap();
+    // (Remove RUST_BACKTRACE from our own environment, in case developer
+    // is running `make check` with it on.)
+    let p = template.clone().arg("fail").env_remove("RUST_BACKTRACE").spawn().unwrap();
     let out = p.wait_with_output().unwrap();
     assert!(!out.status.success());
     let s = str::from_utf8(&out.error).unwrap();
