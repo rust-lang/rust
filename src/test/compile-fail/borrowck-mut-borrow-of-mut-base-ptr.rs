@@ -11,7 +11,7 @@
 // Test that attempt to mutably borrow `&mut` pointer while pointee is
 // borrowed yields an error.
 //
-// Example from src/middle/borrowck/doc.rs
+// Example from src/librustc_borrowck/borrowck/README.md
 
 fn foo<'a>(mut t0: &'a mut isize,
            mut t1: &'a mut isize) {
