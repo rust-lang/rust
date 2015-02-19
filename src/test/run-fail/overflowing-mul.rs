@@ -8,8 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// error-pattern:thread '<main>' panicked at 'arithmatic operation overflowed'
+// error-pattern:thread '<main>' panicked at 'arithmetic operation overflowed'
+
+// (Work around constant-evaluation)
+fn value() -> u8 { 200 }
 
 fn main() {
-    let x = 200u8 + 4u8;
+    let x = value() * 4;
 }
