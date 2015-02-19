@@ -109,7 +109,7 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(int_uint)]
+#![feature(hash)]
 #![feature(lang_items)]
 #![feature(libc)]
 #![feature(linkage, thread_local, asm)]
