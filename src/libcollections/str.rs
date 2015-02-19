@@ -547,8 +547,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```rust
     /// assert!("hello".contains_char('e'));
     /// ```
-    #[unstable(feature = "collections",
-               reason = "might get removed in favour of a more generic contains()")]
+    #[unstable(feature = "collections")]
+    #[deprecated(since = "1.0.0", reason = "use `contains()` with a char")]
     fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
         core_str::StrExt::contains_char(&self[..], pat)
     }
@@ -660,7 +660,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').rev().collect();
     /// assert_eq!(v, vec!["leopard", "tiger", "", "lion"]);
     /// ```
-    #[unstable(feature = "collections", reason = "might get removed")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
         core_str::StrExt::split_terminator(&self[..], pat)
     }
@@ -708,6 +708,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[unstable(feature = "collections",
                reason = "might have its iterator type changed")]
+    // NB: Right now MatchIndices yields `(usize, usize)`,
+    // but it would be more consistent and useful to return `(usize, &str)`
     fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
         core_str::StrExt::match_indices(&self[..], pat)
     }
@@ -723,8 +725,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
     /// assert_eq!(v, vec!["1", "", "2"]);
     /// ```
-    #[unstable(feature = "collections",
-               reason = "might get removed in the future in favor of a more generic split()")]
+    #[unstable(feature = "collections")]
+    #[deprecated(since = "1.0.0", reason = "use `split()` with a `&str`")]
     fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P> {
         core_str::StrExt::split_str(&self[..], pat)
     }
@@ -840,7 +842,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
-    where P::Searcher: ReverseSearcher<'a> {
+        where P::Searcher: ReverseSearcher<'a>
+    {
         core_str::StrExt::ends_with(&self[..], pat)
     }
 
@@ -861,7 +864,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
-    where P::Searcher: DoubleEndedSearcher<'a> {
+        where P::Searcher: DoubleEndedSearcher<'a>
+    {
         core_str::StrExt::trim_matches(&self[..], pat)
     }
 
@@ -902,7 +906,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
-    where P::Searcher: ReverseSearcher<'a> {
+        where P::Searcher: ReverseSearcher<'a>
+    {
         core_str::StrExt::trim_right_matches(&self[..], pat)
     }
 
@@ -1108,7 +1113,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
-    where P::Searcher: ReverseSearcher<'a> {
+        where P::Searcher: ReverseSearcher<'a>
+    {
         core_str::StrExt::rfind(&self[..], pat)
     }
 
@@ -1131,8 +1137,8 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// assert_eq!(s.find_str("老虎 L"), Some(6));
     /// assert_eq!(s.find_str("muffin man"), None);
     /// ```
-    #[unstable(feature = "collections",
-               reason = "might get removed in favor of a more generic find in the future")]
+    #[unstable(feature = "collections")]
+    #[deprecated(since = "1.0.0", reason = "use `find()` with a `&str`")]
     fn find_str<'a, P: Pattern<'a>>(&'a self, needle: P) -> Option<usize> {
         core_str::StrExt::find_str(&self[..], needle)
     }

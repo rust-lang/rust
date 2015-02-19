@@ -58,7 +58,7 @@ pub fn load_errors(testfile: &Path) -> Vec<ExpectedError> {
 fn parse_expected(last_nonfollow_error: Option<uint>,
                   line_num: uint,
                   line: &str) -> Option<(WhichLine, ExpectedError)> {
-    let start = match line.find_str("//~") { Some(i) => i, None => return None };
+    let start = match line.find("//~") { Some(i) => i, None => return None };
     let (follow, adjusts) = if line.char_at(start + 3) == '|' {
         (true, 0)
     } else {

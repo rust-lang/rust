@@ -90,7 +90,7 @@ pub fn maybe_print_constraints_for<'a, 'tcx>(region_vars: &RegionVarBindings<'a,
             tcx.sess.bug("empty string provided as RUST_REGION_GRAPH");
         }
 
-        if output_template.contains_char('%') {
+        if output_template.contains('%') {
             let mut new_str = String::new();
             for c in output_template.chars() {
                 if c == '%' {
