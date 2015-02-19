@@ -11,6 +11,7 @@
 use middle::cfg::*;
 use middle::def;
 use middle::graph;
+use middle::pat_util;
 use middle::region::CodeExtent;
 use middle::ty;
 use syntax::ast;
@@ -149,23 +150,6 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         pats.fold(pred, |pred, pat| self.pat(&**pat, pred))
     }
 
-    fn pats_any(&mut self,
-                pats: &[P<ast::Pat>],
-                pred: CFGIndex) -> CFGIndex {
-        //! Handles case where just one of the patterns must match.
-
-        if pats.len() == 1 {
-            self.pat(&*pats[0], pred)
-        } else {
-            let collect = self.add_dummy_node(&[]);
-            for pat in pats {
-                let pat_exit = self.pat(&**pat, pred);
-                self.add_contained_edge(pat_exit, collect);
-            }
-            collect
-        }
-    }
-
     fn expr(&mut self, expr: &ast::Expr, pred: CFGIndex) -> CFGIndex {
         match expr.node {
             ast::ExprBlock(ref blk) => {
@@ -288,45 +272,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::ExprMatch(ref discr, ref arms, _) => {
-                //
-                //     [pred]
-                //       |
-                //       v 1
-                //    [discr]
-                //       |
-                //       v 2
-                //    [cond1]
-                //      /  \
-                //     |    \
-                //     v 3   \
-                //  [pat1]    \
-                //     |       |
-                //     v 4     |
-                //  [guard1]   |
-                //     |       |
-                //     |       |
-                //     v 5     v
-                //  [body1]  [cond2]
-                //     |      /  \
-                //     |    ...  ...
-                //     |     |    |
-                //     v 6   v    v
-                //  [.....expr.....]
-                //
-                let discr_exit = self.expr(&**discr, pred);              // 1
-
-                let expr_exit = self.add_ast_node(expr.id, &[]);
-                let mut cond_exit = discr_exit;
-                for arm in arms {
-                    cond_exit = self.add_dummy_node(&[cond_exit]);        // 2
-                    let pats_exit = self.pats_any(&arm.pats,
-                                                  cond_exit);            // 3
-                    let guard_exit = self.opt_expr(&arm.guard,
-                                                   pats_exit);           // 4
-                    let body_exit = self.expr(&*arm.body, guard_exit);   // 5
-                    self.add_contained_edge(body_exit, expr_exit);       // 6
-                }
-                expr_exit
+                self.match_(expr.id, &discr, &arms, pred)
             }
 
             ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op.node) => {
@@ -501,6 +447,108 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
         let subexprs_exit = self.exprs(subexprs, pred);
         self.add_ast_node(expr.id, &[subexprs_exit])
+    }
+
+    fn match_(&mut self, id: ast::NodeId, discr: &ast::Expr,
+              arms: &[ast::Arm], pred: CFGIndex) -> CFGIndex {
+        // The CFG for match expression is quite complex, so no ASCII
+        // art for it (yet).
+        //
+        // The CFG generated below matches roughly what trans puts
+        // out. Each pattern and guard is visited in parallel, with
+        // arms containing multiple patterns generating multiple nodes
+        // for the same guard expression. The guard expressions chain
+        // into each other from top to bottom, with a specific
+        // exception to allow some additional valid programs
+        // (explained below). Trans differs slightly in that the
+        // pattern matching may continue after a guard but the visible
+        // behaviour should be the same.
+        //
+        // What is going on is explained in further comments.
+
+        // Visit the discriminant expression
+        let discr_exit = self.expr(discr, pred);
+
+        // Add a node for the exit of the match expression as a whole.
+        let expr_exit = self.add_ast_node(id, &[]);
+
+        // Keep track of the previous guard expressions
+        let mut prev_guards = Vec::new();
+        // Track if the previous pattern contained bindings or wildcards
+        let mut prev_has_bindings = false;
+
+        for arm in arms {
+            // Add an exit node for when we've visited all the
+            // patterns and the guard (if there is one) in the arm.
+            let arm_exit = self.add_dummy_node(&[]);
+
+            for pat in &arm.pats {
+                // Visit the pattern, coming from the discriminant exit
+                let mut pat_exit = self.pat(&**pat, discr_exit);
+
+                // If there is a guard expression, handle it here
+                if let Some(ref guard) = arm.guard {
+                    // Add a dummy node for the previous guard
+                    // expression to target
+                    let guard_start = self.add_dummy_node(&[pat_exit]);
+                    // Visit the guard expression
+                    let guard_exit = self.expr(&**guard, guard_start);
+
+                    let this_has_bindings = pat_util::pat_contains_bindings_or_wild(
+                        &self.tcx.def_map, &**pat);
+
+                    // If both this pattern and the previous pattern
+                    // were free of bindings, they must consist only
+                    // of "constant" patterns. Note we cannot match an
+                    // all-constant pattern, fail the guard, and then
+                    // match *another* all-constant pattern. This is
+                    // because if the previous pattern matches, then
+                    // we *cannot* match this one, unless all the
+                    // constants are the same (which is rejected by
+                    // `check_match`).
+                    //
+                    // We can use this to be smarter about the flow
+                    // along guards. If the previous pattern matched,
+                    // then we know we will not visit the guard in
+                    // this one (whether or not the guard succeeded),
+                    // if the previous pattern failed, then we know
+                    // the guard for that pattern will not have been
+                    // visited. Thus, it is not possible to visit both
+                    // the previous guard and the current one when
+                    // both patterns consist only of constant
+                    // sub-patterns.
+                    //
+                    // However, if the above does not hold, then all
+                    // previous guards need to be wired to visit the
+                    // current guard pattern.
+                    if prev_has_bindings || this_has_bindings {
+                        while let Some(prev) = prev_guards.pop() {
+                            self.add_contained_edge(prev, guard_start);
+                        }
+                    }
+
+                    prev_has_bindings = this_has_bindings;
+
+                    // Push the guard onto the list of previous guards
+                    prev_guards.push(guard_exit);
+
+                    // Update the exit node for the pattern
+                    pat_exit = guard_exit;
+                }
+
+                // Add an edge from the exit of this pattern to the
+                // exit of the arm
+                self.add_contained_edge(pat_exit, arm_exit);
+            }
+
+            // Visit the body of this arm
+            let body_exit = self.expr(&arm.body, arm_exit);
+
+            // Link the body to the exit of the expression
+            self.add_contained_edge(body_exit, expr_exit);
+        }
+
+        expr_exit
     }
 
     fn add_dummy_node(&mut self, preds: &[CFGIndex]) -> CFGIndex {
