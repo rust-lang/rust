@@ -790,7 +790,7 @@ pub trait SliceExt {
     fn ends_with(&self, needle: &[Self::Item]) -> bool where Self::Item: PartialEq;
 
     /// Convert `self` into a vector without clones or allocation.
-    #[unstable(feature = "collections")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     fn into_vec(self: Box<Self>) -> Vec<Self::Item>;
 }
 
