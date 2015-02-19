@@ -17,9 +17,9 @@ use self::SelectionCandidate::*;
 use self::BuiltinBoundConditions::*;
 use self::EvaluationResult::*;
 
-use super::{DerivedObligationCause};
-use super::{project};
-use super::project::Normalized;
+use super::DerivedObligationCause;
+use super::project;
+use super::project::{normalize_with_depth, Normalized};
 use super::{PredicateObligation, TraitObligation, ObligationCause};
 use super::{ObligationCauseCode, BuiltinDerivedObligation, ImplDerivedObligation};
 use super::{SelectionError, Unimplemented, Overflow, OutputTypeParameterMismatch};
@@ -1620,7 +1620,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn constituent_types(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+    fn constituent_ty_obligations(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
         match t.sty {
             ty::ty_uint(_) |
             ty::ty_int(_) |
@@ -1870,6 +1870,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         VtableBuiltinData { nested: obligations }
     }
 
+    /// This handles the case where a `impl Foo for ..` impl is being used.
+    /// The idea is that the impl applies to `X : Foo` if the following conditions are met:
+    ///
+    /// 1. For each constituent type `Y` in `X`, `Y : Foo` holds
+    /// 2. For each where-clause `C` declared on `Foo`, `[Self => X] C` holds.
     fn confirm_default_impl_candidate(&mut self,
                                       obligation: &TraitObligation<'tcx>,
                                       impl_def_id: ast::DefId)
@@ -1881,10 +1886,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                impl_def_id.repr(self.tcx()));
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
-        let types = self.constituent_types(self_ty);
+        let types = self.constituent_ty_obligations(self_ty);
         Ok(self.vtable_default_impl(obligation, impl_def_id, types))
     }
 
+    /// See `confirm_default_impl_candidate`
     fn vtable_default_impl(&mut self,
                            obligation: &TraitObligation<'tcx>,
                            trait_def_id: ast::DefId,
@@ -1930,12 +1936,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.infcx().skolemize_late_bound_regions(&obligation.predicate, snapshot);
 
             let substs = obligation.predicate.to_poly_trait_ref().substs();
-            let trait_obligations = self.impl_obligations(obligation.cause.clone(),
-                                                          obligation.recursion_depth + 1,
-                                                          trait_def_id,
-                                                          substs,
-                                                          skol_map,
-                                                          snapshot);
+            let trait_obligations = self.impl_or_trait_obligations(obligation.cause.clone(),
+                                                                   obligation.recursion_depth + 1,
+                                                                   trait_def_id,
+                                                                   substs,
+                                                                   skol_map,
+                                                                   snapshot);
             obligations.push_all(trait_obligations.as_slice());
             Ok(())
         });
@@ -1988,12 +1994,12 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                skol_map.repr(self.tcx()));
 
         let mut impl_obligations =
-            self.impl_obligations(cause,
-                                 recursion_depth,
-                                 impl_def_id,
-                                 &substs.value,
-                                 skol_map,
-                                 snapshot);
+            self.impl_or_trait_obligations(cause,
+                                           recursion_depth,
+                                           impl_def_id,
+                                           &substs.value,
+                                           skol_map,
+                                           snapshot);
 
         debug!("vtable_impl: impl_def_id={} impl_obligations={}",
                impl_def_id.repr(self.tcx()),
@@ -2413,28 +2419,30 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         ty::Binder(trait_ref)
     }
 
-    fn impl_obligations(&mut self,
-                        cause: ObligationCause<'tcx>,
-                        recursion_depth: uint,
-                        impl_def_id: ast::DefId,
-                        impl_substs: &Substs<'tcx>,
-                        skol_map: infer::SkolemizationMap,
-                        snapshot: &infer::CombinedSnapshot)
-                        -> VecPerParamSpace<PredicateObligation<'tcx>>
+    /// Returns the obligations that are implied by instantiating an
+    /// impl or trait. The obligations are substituted and fully
+    /// normalized. This is used when confirming an impl or default
+    /// impl.
+    fn impl_or_trait_obligations(&mut self,
+                                 cause: ObligationCause<'tcx>,
+                                 recursion_depth: uint,
+                                 def_id: ast::DefId, // of impl or trait
+                                 substs: &Substs<'tcx>, // for impl or trait
+                                 skol_map: infer::SkolemizationMap,
+                                 snapshot: &infer::CombinedSnapshot)
+                                 -> VecPerParamSpace<PredicateObligation<'tcx>>
     {
-        let impl_bounds = ty::lookup_predicates(self.tcx(), impl_def_id);
-        let bounds = impl_bounds.instantiate(self.tcx(), impl_substs);
-        let normalized_bounds =
-            project::normalize_with_depth(self, cause.clone(), recursion_depth, &bounds);
-        let normalized_bounds =
-            self.infcx().plug_leaks(skol_map, snapshot, &normalized_bounds);
-        let mut impl_obligations =
+        let predicates = ty::lookup_predicates(self.tcx(), def_id);
+        let predicates = predicates.instantiate(self.tcx(), substs);
+        let predicates = normalize_with_depth(self, cause.clone(), recursion_depth, &predicates);
+        let predicates = self.infcx().plug_leaks(skol_map, snapshot, &predicates);
+        let mut obligations =
             util::predicates_for_generics(self.tcx(),
                                           cause,
                                           recursion_depth,
-                                          &normalized_bounds.value);
-        impl_obligations.extend(TypeSpace, normalized_bounds.obligations.into_iter());
-        impl_obligations
+                                          &predicates.value);
+        obligations.extend(TypeSpace, predicates.obligations.into_iter());
+        obligations
     }
 
     #[allow(unused_comparisons)]
