@@ -1041,7 +1041,7 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn list_from<T: Clone>(v: &[T]) -> DList<T> {
+    fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
         v.iter().cloned().collect()
     }
 

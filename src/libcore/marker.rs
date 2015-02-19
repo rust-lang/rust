@@ -301,7 +301,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// As an example, consider a trait with no methods like `Even`, meant
 /// to represent types that are "even":
 ///
-/// ```rust
+/// ```rust,ignore
 /// trait Even { }
 /// ```
 ///
@@ -310,7 +310,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// categorize types (and hence instances of those types) as "even" or
 /// not, so if we *were* going to have a method, it might look like:
 ///
-/// ```rust
+/// ```rust,ignore
 /// trait Even {
 ///     fn is_even(self) -> bool { true }
 /// }
@@ -319,7 +319,7 @@ impl<T:?Sized> MarkerTrait for T { }
 /// Therefore, we can model a method like this as follows:
 ///
 /// ```rust
-/// use std::marker::PhantomFn
+/// use std::marker::PhantomFn;
 /// trait Even : PhantomFn<Self> { }
 /// ```
 ///

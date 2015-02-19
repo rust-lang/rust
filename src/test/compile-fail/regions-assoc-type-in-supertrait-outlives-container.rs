@@ -15,9 +15,6 @@
 
 #![allow(dead_code)]
 
-use std::mem::transmute;
-use std::ops::Deref;
-
 ///////////////////////////////////////////////////////////////////////////
 
 pub trait TheTrait {

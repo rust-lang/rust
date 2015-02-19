@@ -1997,9 +1997,9 @@ mod tests {
 
     #[test]
     fn test_lexicographic_permutations_empty_and_short() {
-        let empty : &mut[i32] = &mut[..];
+        let empty : &mut[i32] = &mut[];
         assert!(empty.next_permutation() == false);
-        let b: &mut[i32] = &mut[..];
+        let b: &mut[i32] = &mut[];
         assert!(empty == b);
         assert!(empty.prev_permutation() == false);
         assert!(empty == b);
