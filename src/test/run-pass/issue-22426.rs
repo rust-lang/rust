@@ -8,18 +8,6 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-struct Foo<T>(T, T);
-
-impl<T> Foo<T> {
-    fn foo(&self) {
-        match *self {
-            Foo::<T>(ref x, ref y) => {
-              println!("Goodbye, World!")
-            }
-        }
-    }
-}
-
 fn main() {
   match 42 {
     x if x < 7 => (),
