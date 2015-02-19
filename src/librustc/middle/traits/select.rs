@@ -1143,8 +1143,13 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
 
         match self_ty.sty {
-            ty::ty_infer(ty::TyVar(_)) |
             ty::ty_trait(..) => {},
+            ty::ty_infer(ty::TyVar(_)) => {
+                // the defaulted impl might apply, we don't know
+                if ty::trait_has_default_impl(self.tcx(), def_id) {
+                    candidates.ambiguous = true;
+                }
+            }
             _ => {
                 if ty::trait_has_default_impl(self.tcx(), def_id) {
                     candidates.vec.push(DefaultImplCandidate(def_id.clone()))
