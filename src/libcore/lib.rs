@@ -69,6 +69,7 @@
 #![feature(unboxed_closures)]
 #![feature(rustc_attrs)]
 #![feature(optin_builtin_traits)]
+#![feature(concat_idents)]
 
 #[macro_use]
 mod macros;
