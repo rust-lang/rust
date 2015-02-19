@@ -1569,8 +1569,8 @@ impl<T: Iterator<Item=char>> Parser<T> {
                 while !self.eof() {
                     match self.ch_or_null() {
                         c @ '0' ... '9' => {
-                            accum *= 10;
-                            accum += (c as u64) - ('0' as u64);
+                            accum = accum.wrapping_mul(10);
+                            accum = accum.wrapping_add((c as u64) - ('0' as u64));
 
                             // Detect overflow by comparing to the last value.
                             if accum <= last_accum { return self.error(InvalidNumber); }
