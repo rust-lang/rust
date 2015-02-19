@@ -1152,7 +1152,14 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             _ => {
                 if ty::trait_has_default_impl(self.tcx(), def_id) {
-                    candidates.vec.push(DefaultImplCandidate(def_id.clone()))
+                    match self.constituent_types_for_ty(self_ty) {
+                        Some(_) => {
+                            candidates.vec.push(DefaultImplCandidate(def_id.clone()))
+                        }
+                        None => {
+                            candidates.ambiguous = true;
+                        }
+                    }
                 }
             }
         }
@@ -1625,7 +1632,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
-    fn constituent_ty_obligations(&self, t: Ty<'tcx>) -> Vec<Ty<'tcx>> {
+    fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Option<Vec<Ty<'tcx>>> {
         match t.sty {
             ty::ty_uint(_) |
             ty::ty_int(_) |
@@ -1636,7 +1643,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_err |
             ty::ty_param(..) |
             ty::ty_char => {
-                Vec::new()
+                Some(Vec::new())
             }
 
             ty::ty_trait(..) |
@@ -1649,23 +1656,23 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::ty_uniq(referent_ty) => {  // Box<T>
-                vec![referent_ty]
+                Some(vec![referent_ty])
             }
 
-            ty::ty_open(element_ty) => {vec![element_ty]},
+            ty::ty_open(element_ty) => {Some(vec![element_ty])},
 
             ty::ty_ptr(ty::mt { ty: element_ty, ..}) |
             ty::ty_rptr(_, ty::mt { ty: element_ty, ..}) => {
-                vec![element_ty]
+                Some(vec![element_ty])
             },
 
             ty::ty_vec(element_ty, _) => {
-                vec![element_ty]
+                Some(vec![element_ty])
             }
 
             ty::ty_tup(ref tys) => {
                 // (T1, ..., Tn) -- meets any bound that all of T1...Tn meet
-                tys.clone()
+                Some(tys.clone())
             }
 
             ty::ty_closure(def_id, _, substs) => {
@@ -1673,26 +1680,26 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
                 match self.closure_typer.closure_upvars(def_id, substs) {
                     Some(upvars) => {
-                        upvars.iter().map(|c| c.ty).collect()
+                        Some(upvars.iter().map(|c| c.ty).collect())
                     }
                     None => {
-                        Vec::new()
+                        None
                     }
                 }
             }
 
             ty::ty_struct(def_id, substs) => {
-                ty::struct_fields(self.tcx(), def_id, substs).iter()
-                    .map(|f| f.mt.ty)
-                    .collect()
+                Some(ty::struct_fields(self.tcx(), def_id, substs).iter()
+                     .map(|f| f.mt.ty)
+                     .collect())
             }
 
             ty::ty_enum(def_id, substs) => {
-                ty::substd_enum_variants(self.tcx(), def_id, substs)
-                    .iter()
-                    .flat_map(|variant| variant.args.iter())
-                    .map(|&ty| ty)
-                    .collect()
+                Some(ty::substd_enum_variants(self.tcx(), def_id, substs)
+                     .iter()
+                     .flat_map(|variant| variant.args.iter())
+                     .map(|&ty| ty)
+                     .collect())
             }
         }
     }
@@ -1891,8 +1898,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                impl_def_id.repr(self.tcx()));
 
         let self_ty = self.infcx.shallow_resolve(obligation.predicate.0.self_ty());
-        let types = self.constituent_ty_obligations(self_ty);
-        Ok(self.vtable_default_impl(obligation, impl_def_id, types))
+        match self.constituent_types_for_ty(self_ty) {
+            Some(types) => {
+                Ok(self.vtable_default_impl(obligation, impl_def_id, types))
+            }
+            None => {
+                self.tcx().sess.bug(
+                    &format!(
+                        "asked to confirm default implementation for ambiguous type: {}",
+                        self_ty.repr(self.tcx()))[]);
+            }
+        }
     }
 
     /// See `confirm_default_impl_candidate`
