@@ -13,13 +13,14 @@
 // outlive the location in which the type appears. Issue #22246.
 
 #![allow(dead_code)]
+#![feature(rustc_attrs)]
+
+use std::marker::PhantomFn;
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub trait TheTrait {
+pub trait TheTrait: PhantomFn<Self, Self> {
     type TheAssocType;
-
-    fn dummy(&self) { }
 }
 
 pub struct TheType<'b> {

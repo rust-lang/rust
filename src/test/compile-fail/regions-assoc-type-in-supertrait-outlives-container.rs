@@ -15,12 +15,12 @@
 
 #![allow(dead_code)]
 
+use std::marker::PhantomFn;
+
 ///////////////////////////////////////////////////////////////////////////
 
-pub trait TheTrait {
+pub trait TheTrait: PhantomFn<Self, Self> {
     type TheAssocType;
-
-    fn dummy(&self) { }
 }
 
 pub trait TheSubTrait : TheTrait {
