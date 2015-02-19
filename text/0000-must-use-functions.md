@@ -19,7 +19,7 @@ about whether, for example, ignoring the possible error from a `write`
 call is intentional or just an accidental oversight.
 
 Rust has got a lot of mileage out connecting the `#[must_use]` lint to
-specific types: types like `Result`, `MutexGuard` (any guard, ina
+specific types: types like `Result`, `MutexGuard` (any guard, in
 general) and the lazy iterator adapters have narrow enough use cases
 that the programmer usually wants to do something with them. These
 types are marked `#[must_use]` and the compiler will print an error if
