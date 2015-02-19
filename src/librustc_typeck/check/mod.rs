@@ -117,7 +117,7 @@ use std::iter::repeat;
 use std::slice;
 use syntax::{self, abi, attr};
 use syntax::attr::AttrMetaMethods;
-use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
+use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId, Visibility};
 use syntax::ast_util::{self, local_def, PostExpansionMethod};
 use syntax::codemap::{self, Span};
 use syntax::owned_slice::OwnedSlice;
@@ -3115,6 +3115,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             let n = elem.name.as_str();
             // ignore already set fields
             if skip.iter().any(|&x| x == n) {
+                continue;
+            }
+            // ignore private fields from non-local crates
+            if id.krate != ast::LOCAL_CRATE && elem.vis != Visibility::Public {
                 continue;
             }
             let dist = lev_distance(n, name);
