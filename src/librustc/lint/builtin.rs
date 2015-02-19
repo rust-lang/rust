@@ -1848,7 +1848,7 @@ impl LintPass for UnconditionalRecursion {
                 continue
             }
             visited.insert(cfg_id);
-            let node_id = cfg.graph.node_data(idx).id;
+            let node_id = cfg.graph.node_data(idx).id();
 
             // is this a recursive call?
             if node_id != ast::DUMMY_NODE_ID && checker(cx.tcx, impl_node_id, id, name, node_id) {

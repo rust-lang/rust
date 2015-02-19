@@ -157,8 +157,8 @@ fn build_nodeid_to_index(decl: Option<&ast::FnDecl>,
     }
 
     cfg.graph.each_node(|node_idx, node| {
-        if node.data.id != ast::DUMMY_NODE_ID {
-            index.insert(node.data.id, node_idx);
+        if node.data.id() != ast::DUMMY_NODE_ID {
+            index.insert(node.data.id(), node_idx);
         }
         true
     });
@@ -482,7 +482,7 @@ impl<'a, 'b, 'tcx, O:DataFlowOperator> PropagationContext<'a, 'b, 'tcx, O> {
 
         cfg.graph.each_node(|node_index, node| {
             debug!("DataFlowContext::walk_cfg idx={:?} id={} begin in_out={}",
-                   node_index, node.data.id, bits_to_string(in_out));
+                   node_index, node.data.id(), bits_to_string(in_out));
 
             let (start, end) = self.dfcx.compute_id_range(node_index);
 
