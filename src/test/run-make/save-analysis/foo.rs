@@ -34,7 +34,7 @@ use std::mem::size_of;
 static uni: &'static str = "Les Miséééééééérables";
 static yy: usize = 25;
 
-static bob: Option<std::borrow::Cow<'static, [isize]>> = None;
+static bob: Option<&'static [isize]> = None;
 
 // buglink test - see issue #1337.
 

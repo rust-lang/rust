@@ -18,7 +18,7 @@ use std::marker::PhantomFn;
 
 ///////////////////////////////////////////////////////////////////////////
 
-pub trait TheTrait<'b> : PhantomFn<Self,Self> {
+pub trait TheTrait<'b> : PhantomFn<&'b Self,Self> {
     type TheAssocType;
 }
 

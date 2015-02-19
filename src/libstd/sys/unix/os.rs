@@ -266,7 +266,7 @@ pub fn args() -> Args {
         let (argc, argv) = (*_NSGetArgc() as isize,
                             *_NSGetArgv() as *const *const c_char);
         range(0, argc as isize).map(|i| {
-            let bytes = CStr::from_ptr(&*argv.offset(i)).to_bytes().to_vec();
+            let bytes = CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec();
             OsStringExt::from_vec(bytes)
         }).collect::<Vec<_>>()
     };

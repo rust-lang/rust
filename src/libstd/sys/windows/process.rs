@@ -589,8 +589,37 @@ fn make_command_line(prog: &CString, args: &[CString]) -> String {
     }
 }
 
+#[cfg(stage0)]
 fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T
     where K: BytesContainer + Eq + Hash<Hasher>,
+          V: BytesContainer,
+          F: FnOnce(*mut c_void) -> T,
+{
+    // On Windows we pass an "environment block" which is not a char**, but
+    // rather a concatenation of null-terminated k=v\0 sequences, with a final
+    // \0 to terminate.
+    match env {
+        Some(env) => {
+            let mut blk = Vec::new();
+
+            for pair in env {
+                let kv = format!("{}={}",
+                                 pair.0.container_as_str().unwrap(),
+                                 pair.1.container_as_str().unwrap());
+                blk.extend(kv.utf16_units());
+                blk.push(0);
+            }
+
+            blk.push(0);
+
+            cb(blk.as_mut_ptr() as *mut c_void)
+        }
+        _ => cb(ptr::null_mut())
+    }
+}
+#[cfg(not(stage0))]
+fn with_envp<K, V, T, F>(env: Option<&collections::HashMap<K, V>>, cb: F) -> T
+    where K: BytesContainer + Eq + Hash,
           V: BytesContainer,
           F: FnOnce(*mut c_void) -> T,
 {
