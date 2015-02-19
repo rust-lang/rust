@@ -161,7 +161,6 @@ extern crate libc;
 // NB: These reexports are in the order they should be listed in rustdoc
 
 pub use core::any;
-pub use core::borrow;
 pub use core::cell;
 pub use core::clone;
 #[cfg(not(test))] pub use core::cmp;
@@ -184,6 +183,7 @@ pub use core::error;
 #[cfg(not(test))] pub use alloc::boxed;
 pub use alloc::rc;
 
+pub use core_collections::borrow;
 pub use core_collections::fmt;
 pub use core_collections::slice;
 pub use core_collections::str;

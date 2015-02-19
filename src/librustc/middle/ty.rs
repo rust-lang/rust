@@ -68,7 +68,7 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FnvHashMap};
 
 use arena::TypedArena;
-use std::borrow::{BorrowFrom, Cow};
+use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt;
@@ -76,7 +76,6 @@ use std::hash::{Hash, Writer, SipHasher, Hasher};
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use std::vec::CowVec;
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
@@ -986,9 +985,9 @@ impl<'tcx, S: Writer + Hasher> Hash<S> for InternedTy<'tcx> {
     }
 }
 
-impl<'tcx> BorrowFrom<InternedTy<'tcx>> for sty<'tcx> {
-    fn borrow_from<'a>(ty: &'a InternedTy<'tcx>) -> &'a sty<'tcx> {
-        &ty.ty.sty
+impl<'tcx> Borrow<sty<'tcx>> for InternedTy<'tcx> {
+    fn borrow<'a>(&'a self) -> &'a sty<'tcx> {
+        &self.ty.sty
     }
 }
 
@@ -5565,7 +5564,7 @@ pub fn predicates<'tcx>(
 
 /// Get the attributes of a definition.
 pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId)
-                       -> CowVec<'tcx, ast::Attribute> {
+                       -> Cow<'tcx, [ast::Attribute]> {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
         Cow::Borrowed(&item.attrs[])

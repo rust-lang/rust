@@ -13,7 +13,6 @@
 
 use core::prelude::*;
 
-use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Debug;
@@ -21,6 +20,7 @@ use core::fmt;
 use core::iter::{Peekable, Map, FromIterator, IntoIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
+use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
 use Bound;
 
@@ -336,7 +336,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where T: Borrow<Q>, Q: Ord {
         self.map.contains_key(value)
     }
 
@@ -466,7 +466,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where T: Borrow<Q>, Q: Ord {
         self.map.remove(value).is_some()
     }
 }
