@@ -147,7 +147,6 @@ mod std {
 #[cfg(test)]
 mod prelude {
     // from core.
-    pub use core::borrow::IntoCow;
     pub use core::clone::Clone;
     pub use core::cmp::{PartialEq, Eq, PartialOrd, Ord};
     pub use core::cmp::Ordering::{Less, Equal, Greater};
@@ -173,6 +172,7 @@ mod prelude {
     pub use unicode::char::CharExt;
 
     // from collections.
+    pub use borrow::IntoCow;
     pub use slice::SliceConcatExt;
     pub use string::{String, ToString};
     pub use vec::Vec;

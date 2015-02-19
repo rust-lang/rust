@@ -11,8 +11,14 @@
 // Check that `Self` appearing in a phantom fn does not make a trait not object safe.
 
 #![feature(rustc_attrs)]
+#![allow(dead_code)]
+
+use std::marker::PhantomFn;
 
 trait Baz : PhantomFn<Self> {
+}
+
+trait Bar<T> : PhantomFn<(Self, T)> {
 }
 
 fn make_bar<T:Bar<u32>>(t: &T) -> &Bar<u32> {
