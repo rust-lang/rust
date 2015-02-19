@@ -301,7 +301,7 @@ pub fn decl_rust_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                    self_type.repr(ccx.tcx()));
             (&function_type.sig, RustCall, Some(llenvironment_type))
         }
-        _ => panic!("expected closure or fn")
+        _ => ccx.sess().bug("expected closure or fn")
     };
 
     let sig = ty::erase_late_bound_regions(ccx.tcx(), sig);
@@ -2410,12 +2410,15 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          node_id: ast::NodeId,
                          node_type: Ty<'tcx>)
                          -> ValueRef {
-    match node_type.sty {
-        ty::ty_bare_fn(_, ref f) => {
-            assert!(f.abi == Rust || f.abi == RustCall);
+    if let ty::ty_bare_fn(_, ref f) = node_type.sty {
+        if f.abi != Rust && f.abi != RustCall {
+            ccx.sess().span_bug(sp, &format!("only `Rust` or `rust-call` calling conventions \
+                                              are valid for this function, but it uses `{:?}`",
+                                              f.abi.name));
         }
-        _ => panic!("expected bare rust fn")
-    };
+    } else {
+        ccx.sess().span_bug(sp, "expected bare rust function")
+    }
 
     let llfn = decl_rust_fn(ccx, node_type, &sym[..]);
     finish_register_fn(ccx, sp, sym, node_id, llfn);
@@ -2802,7 +2805,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                     llfn
                 }
 
-                _ => panic!("get_item_val: weird result in table")
+                _ => ccx.sess().bug("get_item_val: weird result in table")
             };
 
             match attr::first_attr_value_str_by_name(&i.attrs,
@@ -2866,7 +2869,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
             let args = match v.node.kind {
                 ast::TupleVariantKind(ref args) => args,
                 ast::StructVariantKind(_) => {
-                    panic!("struct variant kind unexpected in get_item_val")
+                    ccx.sess().bug("struct variant kind unexpected in get_item_val")
                 }
             };
             assert!(args.len() != 0);
@@ -2882,7 +2885,7 @@ pub fn get_item_val(ccx: &CrateContext, id: ast::NodeId) -> ValueRef {
                 ast::ItemEnum(_, _) => {
                     register_fn(ccx, (*v).span, sym, id, ty)
                 }
-                _ => panic!("NodeVariant, shouldn't happen")
+                _ => ccx.sess().bug("NodeVariant, shouldn't happen")
             };
             set_inline_hint(llfn);
             llfn
