@@ -106,7 +106,9 @@ fn qux() {
 
 # Drawbacks
 
-This adds a little more complexity to the `#[must_use]` system.
+This adds a little more complexity to the `#[must_use]` system, and
+may be misused by library authors (but then, many features may be
+misused).
 
 The rule stated doesn't cover every instance where a `#[must_use]`
 function is ignored, e.g. `(foo());` and `{ ...; foo() };` will not be
@@ -124,6 +126,11 @@ code-bases: 2 instances in the rust-lang/rust codebase (vs. nearly 400
 text matches for `let _ =`) and 4 in the servo/servo (vs. 55 `let _
 =`). Yet another way to write this is `drop(foo())`, although neither
 this nor `let _ =` have the method chaining style.
+
+Marking functions `#[must_use]` is a breaking change in certain cases,
+e.g. if someone is ignoring their result and has the relevant lint (or
+warnings in general) set to be an error. This is a general problem of
+improving/expanding lints.
 
 # Alternatives
 
