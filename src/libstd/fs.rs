@@ -744,6 +744,8 @@ pub fn set_permissions<P: AsPath + ?Sized>(path: &P, perm: Permissions)
 
 #[cfg(test)]
 mod tests {
+    #![allow(deprecated)] //rand
+
     use prelude::v1::*;
     use io::prelude::*;
 
@@ -1035,7 +1037,7 @@ mod tests {
             let msg = msg_str.as_bytes();
             check!(w.write(msg));
         }
-        let mut files = check!(fs::read_dir(dir));
+        let files = check!(fs::read_dir(dir));
         let mut mem = [0u8; 4];
         for f in files {
             let f = f.unwrap().path();
@@ -1065,7 +1067,7 @@ mod tests {
         check!(fs::create_dir_all(dir2));
         check!(File::create(&dir2.join("14")));
 
-        let mut files = check!(fs::walk_dir(dir));
+        let files = check!(fs::walk_dir(dir));
         let mut cur = [0u8; 2];
         for f in files {
             let f = f.unwrap().path();

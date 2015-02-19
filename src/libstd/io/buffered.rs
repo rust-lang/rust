@@ -497,7 +497,6 @@ mod tests {
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8]);
 
         writer.write(&[9, 10, 11]).unwrap();
-        let a: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11];
         assert_eq!(*writer.get_ref(), [0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11]);
 
         writer.flush().unwrap();
@@ -593,7 +592,7 @@ mod tests {
     #[test]
     fn test_lines() {
         let in_buf = b"a\nb\nc";
-        let mut reader = BufReader::with_capacity(2, in_buf);
+        let reader = BufReader::with_capacity(2, in_buf);
         let mut it = reader.lines();
         assert_eq!(it.next(), Some(Ok("a".to_string())));
         assert_eq!(it.next(), Some(Ok("b".to_string())));
@@ -618,14 +617,14 @@ mod tests {
     #[test]
     fn read_char_buffered() {
         let buf = [195u8, 159u8];
-        let mut reader = BufReader::with_capacity(1, &buf[..]);
+        let reader = BufReader::with_capacity(1, &buf[..]);
         assert_eq!(reader.chars().next(), Some(Ok('ß')));
     }
 
     #[test]
     fn test_chars() {
         let buf = [195u8, 159u8, b'a'];
-        let mut reader = BufReader::with_capacity(1, &buf[..]);
+        let reader = BufReader::with_capacity(1, &buf[..]);
         let mut it = reader.chars();
         assert_eq!(it.next(), Some(Ok('ß')));
         assert_eq!(it.next(), Some(Ok('a')));

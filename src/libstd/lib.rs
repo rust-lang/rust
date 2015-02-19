@@ -109,7 +109,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(lang_items)]
 #![feature(libc)]
@@ -123,7 +122,7 @@
 #![feature(unsafe_destructor)]
 #![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
-#![cfg_attr(test, feature(test))]
+#![cfg_attr(test, feature(test, rustc_private, env))]
 
 // Don't link to std. We are std.
 #![feature(no_std)]

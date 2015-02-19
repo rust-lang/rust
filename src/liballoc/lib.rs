@@ -73,6 +73,7 @@
 #![feature(unboxed_closures)]
 #![feature(unsafe_no_drop_flag)]
 #![feature(core)]
+#![cfg_attr(test, feature(test, alloc, rustc_private))]
 #![cfg_attr(all(not(feature = "external_funcs"), not(feature = "external_crate")),
             feature(libc))]
 
