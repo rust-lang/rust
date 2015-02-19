@@ -158,7 +158,7 @@ pub trait Hasher {
     #[inline]
     #[unstable(feature = "hash", reason = "module was recently redesigned")]
     fn write_usize(&mut self, i: usize) {
-        if cfg!(target_pointer_size = "32") {
+        if cfg!(target_pointer_width = "32") {
             self.write_u32(i as u32)
         } else {
             self.write_u64(i as u64)
@@ -241,7 +241,7 @@ mod impls {
                 #[inline]
                 fn hash(&self, state: &mut S) {
                     let a: [u8; ::$ty::BYTES] = unsafe {
-                        mem::transmute((*self as $uty).to_le() as $ty)
+                        mem::transmute(*self)
                     };
                     state.write(&a)
                 }

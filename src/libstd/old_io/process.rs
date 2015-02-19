@@ -104,9 +104,21 @@ struct EnvKey(CString);
 #[derive(Eq, Clone, Debug)]
 struct EnvKey(CString);
 
-#[cfg(windows)]
+#[cfg(all(windows, stage0))]
 impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for EnvKey {
     fn hash(&self, state: &mut H) {
+        let &EnvKey(ref x) = self;
+        match str::from_utf8(x.as_bytes()) {
+            Ok(s) => for ch in s.chars() {
+                (ch as u8 as char).to_lowercase().hash(state);
+            },
+            Err(..) => x.hash(state)
+        }
+    }
+}
+#[cfg(all(windows, not(stage0)))]
+impl hash::Hash for EnvKey {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         let &EnvKey(ref x) = self;
         match str::from_utf8(x.as_bytes()) {
             Ok(s) => for ch in s.chars() {
