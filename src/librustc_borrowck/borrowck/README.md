@@ -261,12 +261,11 @@ that will go into the final loan. We'll discuss in more detail below.
 ## Checking mutability
 
 Checking mutability is fairly straightforward. We just want to prevent
-immutable data from being borrowed as mutable. Note that it is ok to
-borrow mutable data as immutable, since that is simply a
-freeze. Formally we define a predicate `MUTABLE(LV, MQ)` which, if
-defined, means that "borrowing `LV` with mutability `MQ` is ok. The
-Rust code corresponding to this predicate is the function
-`check_mutability` in `middle::borrowck::gather_loans`.
+immutable data from being borrowed as mutable. Note that it is ok to borrow
+mutable data as immutable, since that is simply a freeze. The judgement
+`MUTABILITY(LV, MQ)` means the mutability of `LV` is compatible with a borrow
+of mutability `MQ`. The Rust code corresponding to this predicate is the
+function `check_mutability` in `middle::borrowck::gather_loans`.
 
 ### Checking mutability of variables
 
@@ -321,12 +320,11 @@ MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
 
 ## Checking aliasability
 
-The goal of the aliasability check is to ensure that we never permit
-`&mut` borrows of aliasable data. Formally we define a predicate
-`ALIASABLE(LV, MQ)` which if defined means that
-"borrowing `LV` with mutability `MQ` is ok". The
-Rust code corresponding to this predicate is the function
-`check_aliasability()` in `middle::borrowck::gather_loans`.
+The goal of the aliasability check is to ensure that we never permit `&mut`
+borrows of aliasable data. The judgement `ALIASABLE(LV, MQ)` means the
+aliasability of `LV` is compatible with a borrow of mutability `MQ`. The Rust
+code corresponding to this predicate is the function `check_aliasability()` in
+`middle::borrowck::gather_loans`.
 
 ### Checking aliasability of variables
 
