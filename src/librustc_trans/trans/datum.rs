@@ -122,7 +122,7 @@ use syntax::codemap::DUMMY_SP;
 /// A `Datum` encapsulates the result of evaluating an expression.  It
 /// describes where the value is stored, what Rust type the value has,
 /// whether it is addressed by reference, and so forth. Please refer
-/// the section on datums in `doc.rs` for more details.
+/// the section on datums in `README.md` for more details.
 #[derive(Clone, Copy)]
 pub struct Datum<'tcx, K> {
     /// The llvm value.  This is either a pointer to the Rust value or
