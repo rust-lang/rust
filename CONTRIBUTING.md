@@ -14,7 +14,7 @@ links to the major sections:
 If you have questions, please make a post on [internals.rust-lang.org][internals] or
 hop on [#rust-internals][pound-rust-internals].
 
-As a reminder, all contributors are expected to follow our [Code of Conduct](coc).
+As a reminder, all contributors are expected to follow our [Code of Conduct][coc].
 
 [pound-rust-internals]: http://chat.mibbit.com/?server=irc.mozilla.org&channel=%23rust-internals
 [internals]: http://internals.rust-lang.org
