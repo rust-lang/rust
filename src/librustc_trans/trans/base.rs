@@ -2412,9 +2412,9 @@ fn register_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                          -> ValueRef {
     if let ty::ty_bare_fn(_, ref f) = node_type.sty {
         if f.abi != Rust && f.abi != RustCall {
-            ccx.sess().span_bug(sp, &format!("only `Rust` or `rust-call` calling conventions \
-                                              are valid for this function, but it uses `{:?}`",
-                                              f.abi.name));
+            ccx.sess().span_bug(sp, &format!("only the `{}` or `{}` calling conventions are valid \
+                                              for this function; `{}` was specified",
+                                              Rust.name(), RustCall.name(), f.abi.name()));
         }
     } else {
         ccx.sess().span_bug(sp, "expected bare rust function")
@@ -2938,9 +2938,17 @@ fn register_method(ccx: &CrateContext, id: ast::NodeId,
 
     let sym = exported_name(ccx, id, mty, &m.attrs);
 
-    let llfn = register_fn(ccx, m.span, sym, id, mty);
-    set_llvm_fn_attrs(ccx, &m.attrs, llfn);
-    llfn
+    if let ty::ty_bare_fn(_, ref f) = mty.sty {
+        let llfn = if f.abi == Rust || f.abi == RustCall {
+            register_fn(ccx, m.span, sym, id, mty)
+        } else {
+            foreign::register_rust_fn_with_foreign_abi(ccx, m.span, sym, id)
+        };
+        set_llvm_fn_attrs(ccx, &m.attrs, llfn);
+        return llfn;
+    } else {
+        ccx.sess().span_bug(m.span, "expected bare rust function");
+    }
 }
 
 pub fn crate_ctxt_to_encode_parms<'a, 'tcx>(cx: &'a SharedCrateContext<'tcx>,
