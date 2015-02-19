@@ -375,40 +375,6 @@ Formally, we define a predicate `LIFETIME(LV, LT, MQ)`, which states that
 `MQ`". The Rust code corresponding to this predicate is the module
 `middle::borrowck::gather_loans::lifetime`.
 
-### The Scope function
-
-Several of the rules refer to a helper function `SCOPE(LV)=LT`.  The
-`SCOPE(LV)` yields the lifetime `LT` for which the lvalue `LV` is
-guaranteed to exist, presuming that no mutations occur.
-
-The scope of a local variable is the block where it is declared:
-
-```text
-  SCOPE(X) = block where X is declared
-```
-
-The scope of a field is the scope of the struct:
-
-```text
-  SCOPE(LV.f) = SCOPE(LV)
-```
-
-The scope of a unique referent is the scope of the pointer, since
-(barring mutation or moves) the pointer will not be freed until
-the pointer itself `LV` goes out of scope:
-
-```text
-  SCOPE(*LV) = SCOPE(LV) if LV has type Box<T>
-```
-
-The scope of a borrowed referent is the scope associated with the
-pointer.  This is a conservative approximation, since the data that
-the pointer points at may actually live longer:
-
-```text
-  SCOPE(*LV) = LT if LV has type &'LT T or &'LT mut T
-```
-
 ### Checking lifetime of variables
 
 The rule for variables states that a variable can only be borrowed a
@@ -416,7 +382,7 @@ lifetime `LT` that is a subregion of the variable's scope:
 
 ```text
 LIFETIME(X, LT, MQ)                 // L-Local
-  LT <= SCOPE(X)
+  LT <= block where X is declared
 ```
 
 ### Checking lifetime for owned content
