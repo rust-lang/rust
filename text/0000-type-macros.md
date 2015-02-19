@@ -29,14 +29,18 @@ restriction for the following reasons:
 ## Implementation
 
 The proposed feature has been implemented at
-[this branch](https://github.com/freebroccolo/rust/commits/feature/type_macros). There
-is no real novelty to the design as it is simply an extension of the
-existing macro machinery to handle the additional case of macro
-expansion in types. The biggest change is the addition of a
+[this branch](https://github.com/freebroccolo/rust/commits/feature/type_macros). The
+implementation is very simple and there is no novelty to the
+design. The patches make a small modification to the existing macro
+expansion functionality in order to support macro invocations in
+syntax for types. No changes are made to type-checking or other phases
+of the compiler.
+
+The biggest change introduced by this feature is a
 [`TyMac`](https://github.com/freebroccolo/rust/blob/f8f8dbb6d332c364ecf26b248ce5f872a7a67019/src/libsyntax/ast.rs#L1274-L1275)
-to the `Ty_` enum so that the parser can indicate a macro invocation
-in a type position. In other words, `TyMac` is added to the ast and
-handled analogously to `ExprMac`, `ItemMac`, and `PatMac`.
+case for the `Ty_` enum so that the parser can indicate a macro
+invocation in a type position. In other words, `TyMac` is added to the
+ast and handled analogously to `ExprMac`, `ItemMac`, and `PatMac`.
 
 ## Examples
 
@@ -235,12 +239,14 @@ we would need macros in types:
 
 // Nat! would expand integer constants to type-level binary naturals; would
 // be implemented as a plugin for efficiency
-Nat!(4) ==> ((_1, _0), _0)
+Nat!(4)
+    ==> ((_1, _0), _0)
 
 // Expr! would expand + to Add::Output and integer constants to Nat!; see
 // the HList append earlier in the RFC for a concrete example of how this
 // might be defined
-Expr!(N + M) ==> <N as Add<M>>::Output
+Expr!(N + M)
+    ==> <N as Add<M>>::Output
 
 // Now we could expand the following type to something meaningful in Rust:
 LengthVec<A, Expr!(N + 3)>
@@ -271,7 +277,12 @@ constants.
 #### Conversion from HList to Tuple
 
 With type macros, it is possible to write macros that convert back and
-forth between tuples and HLists in the following fashion:
+forth between tuples and HLists. This is very powerful because it lets
+us reuse all of the operations we define for HLists (appending, taking
+length, adding/removing items, computing permutations, etc.) on tuples
+just by converting to HList, computing, then convert back to a tuple.
+
+The conversion can be implemented in the following fashion:
 
 ```rust
 // type-level macro for HLists
@@ -295,8 +306,17 @@ macro_rules! hlist_match {
     { $head:ident, $($tail:ident),* } => { Cons($head, hlist_match!($($tail),*)) };
 }
 
-// iterate macro for generated comma separated sequences of idents
-fn impl_for_seq_upto_expand<'cx>(
+// `invoke_for_seq_upto` is a `higher-order` macro that takes the name
+// of another macro and a number and iteratively invokes the named
+// macro with sequences of identifiers, e.g.,
+//
+// invoke_for_seq_upto{ my_mac, 5 }
+//     ==> my_mac!{ A0, A1, A2, A3, A4 };
+//         my_mac!{ A0, A1, A2, A3 };
+//         my_mac!{ A0, A1, A2 };
+//         ...
+
+fn invoke_for_seq_upto_expand<'cx>(
     ecx: &'cx mut base::ExtCtxt,
     span: codemap::Span,
     args: &[ast::TokenTree],
@@ -348,8 +368,9 @@ fn impl_for_seq_upto_expand<'cx>(
 pub struct ToHList;
 pub struct ToTuple;
 
-// macro to implement: ToTuple(hlist![…]) => (…,)
-macro_rules! impl_to_tuple_for_seq {
+// macro to implement conversion from hlist to tuple,
+// e.g., ToTuple(hlist![…]) ==> (…,)
+macro_rules! impl_to_tuple {
     ($($seq:ident),*) => {
         #[allow(non_snake_case)]
         impl<$($seq,)*> Fn<(HList![$($seq),*],)> for ToTuple {
@@ -364,8 +385,9 @@ macro_rules! impl_to_tuple_for_seq {
     }
 }
 
-// macro to implement: ToHList((…,)) => hlist![…]
-macro_rules! impl_to_hlist_for_seq {
+// macro to implement conversion from tuple to hlist,
+// e.g., ToHList((…,)) ==> hlist![…]
+macro_rules! impl_to_hlist {
     ($($seq:ident),*) => {
         #[allow(non_snake_case)]
         impl<$($seq,)*> Fn<(($($seq,)*),)> for ToHList {
@@ -381,8 +403,8 @@ macro_rules! impl_to_hlist_for_seq {
 }
 
 // generate implementations up to length 32
-impl_for_seq_upto!{ impl_to_tuple_for_seq, 32 }
-impl_for_seq_upto!{ impl_to_hlist_for_seq, 32 }
+invoke_for_seq_upto!{ impl_to_tuple, 32 }
+invoke_for_seq_upto!{ impl_to_hlist, 32 }
 
 // test converting an hlist to tuple
 #[test]
@@ -402,13 +424,17 @@ fn test_to_hlist() {
 # Drawbacks
 
 There seem to be few drawbacks to implementing this feature as an
-extension of the existing macro machinery. Parsing macro invocations
-in types adds a very small amount of additional complexity to the
-parser (basically looking for `!`). Having an extra case for macro
-invocation in types slightly complicates conversion. As with all
-feature proposals, it is possible that designs for future extensions
-to the macro system or type system might somehow interfere with this
-functionality.
+extension of the existing macro machinery. The change adds a very
+small amount of additional complexity to the
+[parser](https://github.com/freebroccolo/rust/blob/e09cb32bcc04029dc4c16790e2aaa9811af27f25/src/libsyntax/parse/parser.rs#L1547-L1560)
+and
+[conversion](https://github.com/freebroccolo/rust/blob/e4b826b7afa1b5496b41ddaa1666014046ac5704/src/librustc_typeck/astconv.rs#L1301-L1303)
+but the changes are almost negligible.
+
+As with all feature proposals, it is possible that designs for future
+extensions to the macro system or type system might somehow interfere
+with this functionality but it seems unlikely unless they are
+significant, breaking changes.
 
 # Alternatives
 
