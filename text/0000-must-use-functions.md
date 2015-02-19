@@ -173,8 +173,7 @@ ignored. The grepping was performed by running `runit url`, where
 `runit` is the shell function:
 
 ```bash
-function runit () { cd ~/tmp; git clone $1; cd $(basename $1); git grep '\.ok'
-| wc -l; git grep 'let _ =' | wc -l; }
+function runit () { cd ~/tmp; git clone $1; cd $(basename $1); git grep '\.ok' | wc -l; git grep 'let _ =' | wc -l; }
 ```
 
 If there were any `ok`s, I manually read the grep to see if they were
