@@ -13,6 +13,7 @@
 use core::prelude::*;
 use core::slice;
 use core::iter::{range_step, repeat};
+use core::num::wrapping::Wrapping;
 
 use {Rng, SeedableRng, Rand};
 
@@ -60,7 +61,7 @@ impl IsaacRng {
     /// of `rsl` as a seed, otherwise construct one algorithmically (not
     /// randomly).
     fn init(&mut self, use_rsl: bool) {
-        let mut a = 0x9e3779b9;
+        let mut a = Wrapping(0x9e3779b9);
         let mut b = a;
         let mut c = a;
         let mut d = a;
@@ -71,14 +72,14 @@ impl IsaacRng {
 
         macro_rules! mix {
             () => {{
-                a^=b<<11; d+=a; b+=c;
-                b^=c>>2;  e+=b; c+=d;
-                c^=d<<8;  f+=c; d+=e;
-                d^=e>>16; g+=d; e+=f;
-                e^=f<<10; h+=e; f+=g;
-                f^=g>>4;  a+=f; g+=h;
-                g^=h<<8;  b+=g; h+=a;
-                h^=a>>9;  c+=h; a+=b;
+                a=a^(b<<11); d=d+a; b=b+c;
+                b=b^(c>>2);  e=e+b; c=c+d;
+                c=c^(d<<8);  f=f+c; d=d+e;
+                d=d^(e>>16); g=g+d; e=e+f;
+                e=e^(f<<10); h=h+e; f=f+g;
+                f=f^(g>>4);  a=a+f; g=g+h;
+                g=g^(h<<8);  b=b+g; h=h+a;
+                h=h^(a>>9);  c=c+h; a=a+b;
             }}
         }
 
@@ -90,15 +91,15 @@ impl IsaacRng {
             macro_rules! memloop {
                 ($arr:expr) => {{
                     for i in range_step(0, RAND_SIZE as uint, 8) {
-                        a+=$arr[i  ]; b+=$arr[i+1];
-                        c+=$arr[i+2]; d+=$arr[i+3];
-                        e+=$arr[i+4]; f+=$arr[i+5];
-                        g+=$arr[i+6]; h+=$arr[i+7];
+                        a=a+Wrapping($arr[i  ]); b=b+Wrapping($arr[i+1]);
+                        c=c+Wrapping($arr[i+2]); d=d+Wrapping($arr[i+3]);
+                        e=e+Wrapping($arr[i+4]); f=f+Wrapping($arr[i+5]);
+                        g=g+Wrapping($arr[i+6]); h=h+Wrapping($arr[i+7]);
                         mix!();
-                        self.mem[i  ]=a; self.mem[i+1]=b;
-                        self.mem[i+2]=c; self.mem[i+3]=d;
-                        self.mem[i+4]=e; self.mem[i+5]=f;
-                        self.mem[i+6]=g; self.mem[i+7]=h;
+                        self.mem[i  ]=a.0; self.mem[i+1]=b.0;
+                        self.mem[i+2]=c.0; self.mem[i+3]=d.0;
+                        self.mem[i+4]=e.0; self.mem[i+5]=f.0;
+                        self.mem[i+6]=g.0; self.mem[i+7]=h.0;
                     }
                 }}
             }
@@ -108,10 +109,10 @@ impl IsaacRng {
         } else {
             for i in range_step(0, RAND_SIZE as uint, 8) {
                 mix!();
-                self.mem[i  ]=a; self.mem[i+1]=b;
-                self.mem[i+2]=c; self.mem[i+3]=d;
-                self.mem[i+4]=e; self.mem[i+5]=f;
-                self.mem[i+6]=g; self.mem[i+7]=h;
+                self.mem[i  ]=a.0; self.mem[i+1]=b.0;
+                self.mem[i+2]=c.0; self.mem[i+3]=d.0;
+                self.mem[i+4]=e.0; self.mem[i+5]=f.0;
+                self.mem[i+6]=g.0; self.mem[i+7]=h.0;
             }
         }
 
@@ -130,7 +131,8 @@ impl IsaacRng {
         static MIDPOINT: uint = (RAND_SIZE / 2) as uint;
 
         macro_rules! ind {
-            ($x:expr) => ( self.mem[(($x >> 2) as uint & ((RAND_SIZE - 1) as uint))] )
+            ($x:expr) => (Wrapping( self.mem[(($x >> 2) as uint &
+                                              ((RAND_SIZE - 1) as uint))] ))
         }
 
         let r = [(0, MIDPOINT), (MIDPOINT, 0)];
@@ -142,11 +144,11 @@ impl IsaacRng {
                     let mix = a << $shift as uint;
 
                     let x = self.mem[base  + mr_offset];
-                    a = (a ^ mix) + self.mem[base + m2_offset];
-                    let y = ind!(x) + a + b;
-                    self.mem[base + mr_offset] = y;
+                    a = (Wrapping(a ^ mix) + Wrapping(self.mem[base + m2_offset])).0;
+                    let y = ind!(x) + Wrapping(a) + Wrapping(b);
+                    self.mem[base + mr_offset] = y.0;
 
-                    b = ind!(y >> RAND_SIZE_LEN as uint) + x;
+                    b = (ind!(y.0 >> RAND_SIZE_LEN as uint) + Wrapping(x)).0;
                     self.rsl[base + mr_offset] = b;
                 }}
             }
@@ -157,11 +159,11 @@ impl IsaacRng {
                     let mix = a >> $shift as uint;
 
                     let x = self.mem[base  + mr_offset];
-                    a = (a ^ mix) + self.mem[base + m2_offset];
-                    let y = ind!(x) + a + b;
-                    self.mem[base + mr_offset] = y;
+                    a = (Wrapping(a ^ mix) + Wrapping(self.mem[base + m2_offset])).0;
+                    let y = ind!(x) + Wrapping(a) + Wrapping(b);
+                    self.mem[base + mr_offset] = y.0;
 
-                    b = ind!(y >> RAND_SIZE_LEN as uint) + x;
+                    b = (ind!(y.0 >> RAND_SIZE_LEN as uint) + Wrapping(x)).0;
                     self.rsl[base + mr_offset] = b;
                 }}
             }
