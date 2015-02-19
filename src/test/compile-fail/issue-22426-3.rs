@@ -13,7 +13,8 @@ struct Foo<T>(T, T);
 impl<T> Foo<T> {
     fn foo(&self) {
         match *self {
-            Foo<T>(x, y) => { //~ ERROR unexpected token `<`
+            Foo<T>(x, y) => {
+            //~^ error: unexpected token: `<`
               println!("Goodbye, World!")
             }
         }

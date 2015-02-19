@@ -10,7 +10,8 @@
 
 fn main() {
   match 42 {
-    x < 7 => (), //~ ERROR unexpected token `<`
+    x < 7 => (),
+   //~^ error: unexpected token: `<`
     _ => ()
   }
 }
