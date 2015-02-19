@@ -88,7 +88,6 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 use alloc::boxed::Box;
-use core::borrow::{BorrowFrom, BorrowFromMut, ToOwned};
 use core::clone::Clone;
 use core::cmp::Ordering::{self, Greater, Less};
 use core::cmp::{self, Ord, PartialEq};
@@ -105,6 +104,7 @@ use core::result::Result;
 use core::slice as core_slice;
 use self::Direction::*;
 
+use borrow::{Borrow, BorrowMut, ToOwned};
 use vec::Vec;
 
 pub use core::slice::{Chunks, AsSlice, Windows};
@@ -1175,18 +1175,19 @@ impl ElementSwaps {
 // Standard trait implementations for slices
 ////////////////////////////////////////////////////////////////////////////////
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl<T> BorrowFrom<Vec<T>> for [T] {
-    fn borrow_from(owned: &Vec<T>) -> &[T] { &owned[] }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> Borrow<[T]> for Vec<T> {
+    fn borrow(&self) -> &[T] { &self[..] }
 }
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl<T> BorrowFromMut<Vec<T>> for [T] {
-    fn borrow_from_mut(owned: &mut Vec<T>) -> &mut [T] { &mut owned[] }
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T> BorrowMut<[T]> for Vec<T> {
+    fn borrow_mut(&mut self) -> &mut [T] { &mut self[..] }
 }
 
-#[unstable(feature = "collections", reason = "trait is unstable")]
-impl<T: Clone> ToOwned<Vec<T>> for [T] {
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Clone> ToOwned for [T] {
+    type Owned = Vec<T>;
     fn to_owned(&self) -> Vec<T> { self.to_vec() }
 }
 
@@ -1743,7 +1744,7 @@ mod tests {
     #[test]
     fn test_slice_from() {
         let vec: &[_] = &[1, 2, 3, 4];
-        assert_eq!(&vec[], vec);
+        assert_eq!(&vec[..], vec);
         let b: &[_] = &[3, 4];
         assert_eq!(&vec[2..], b);
         let b: &[_] = &[];
@@ -2264,15 +2265,15 @@ mod tests {
     #[test]
     fn test_total_ord() {
         let c = &[1, 2, 3];
-        [1, 2, 3, 4][].cmp(c) == Greater;
+        [1, 2, 3, 4][..].cmp(c) == Greater;
         let c = &[1, 2, 3, 4];
-        [1, 2, 3][].cmp(c) == Less;
+        [1, 2, 3][..].cmp(c) == Less;
         let c = &[1, 2, 3, 6];
-        [1, 2, 3, 4][].cmp(c) == Equal;
+        [1, 2, 3, 4][..].cmp(c) == Equal;
         let c = &[1, 2, 3, 4, 5, 6];
-        [1, 2, 3, 4, 5, 5, 5, 5][].cmp(c) == Less;
+        [1, 2, 3, 4, 5, 5, 5, 5][..].cmp(c) == Less;
         let c = &[1, 2, 3, 4];
-        [2, 2][].cmp(c) == Greater;
+        [2, 2][..].cmp(c) == Greater;
     }
 
     #[test]

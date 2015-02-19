@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait TheTrait { }
+trait TheTrait { fn dummy(&self) { } }
 
 impl TheTrait for &'static int { }
 

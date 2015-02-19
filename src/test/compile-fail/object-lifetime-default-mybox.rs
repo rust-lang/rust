@@ -37,7 +37,6 @@ fn load1<'a,'b>(a: &'a MyBox<SomeTrait>,
     a
       //~^ ERROR cannot infer
       //~| ERROR mismatched types
-      //~| ERROR mismatched types
 }
 
 fn main() {

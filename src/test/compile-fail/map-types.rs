@@ -14,7 +14,10 @@ extern crate collections;
 
 use std::collections::HashMap;
 
-trait Map<K, V> {}
+trait Map<K, V>
+{
+    fn get(&self, k: K) -> V { panic!() }
+}
 
 impl<K, V> Map<K, V> for HashMap<K, V> {}
 

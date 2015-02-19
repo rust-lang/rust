@@ -16,14 +16,13 @@ use ext::tt::transcribe::tt_next_token;
 use parse::token;
 use parse::token::{str_to_ident};
 
-use std::borrow::IntoCow;
+use std::borrow::{IntoCow, Cow};
 use std::char;
 use std::fmt;
 use std::mem::replace;
 use std::num;
 use std::rc::Rc;
 use std::str;
-use std::string::CowString;
 
 pub use ext::tt::transcribe::{TtReader, new_tt_reader, new_tt_reader_with_doc_flag};
 
@@ -196,7 +195,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.fatal_span_(from_pos, to_pos, &m[]);
+        self.fatal_span_(from_pos, to_pos, &m[..]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending an
@@ -205,7 +204,7 @@ impl<'a> StringReader<'a> {
         let mut m = m.to_string();
         m.push_str(": ");
         for c in c.escape_default() { m.push(c) }
-        self.err_span_(from_pos, to_pos, &m[]);
+        self.err_span_(from_pos, to_pos, &m[..]);
     }
 
     /// Report a lexical error spanning [`from_pos`, `to_pos`), appending the
@@ -215,7 +214,7 @@ impl<'a> StringReader<'a> {
         let from = self.byte_offset(from_pos).to_usize();
         let to = self.byte_offset(to_pos).to_usize();
         m.push_str(&self.filemap.src[from..to]);
-        self.fatal_span_(from_pos, to_pos, &m[]);
+        self.fatal_span_(from_pos, to_pos, &m[..]);
     }
 
     /// Advance peek_tok and peek_span to refer to the next token, and
@@ -278,7 +277,7 @@ impl<'a> StringReader<'a> {
 
     /// Converts CRLF to LF in the given string, raising an error on bare CR.
     fn translate_crlf<'b>(&self, start: BytePos,
-                          s: &'b str, errmsg: &'b str) -> CowString<'b> {
+                          s: &'b str, errmsg: &'b str) -> Cow<'b, str> {
         let mut i = 0;
         while i < s.len() {
             let str::CharRange { ch, next } = s.char_range_at(i);
@@ -556,7 +555,7 @@ impl<'a> StringReader<'a> {
                     self.translate_crlf(start_bpos, string,
                                         "bare CR not allowed in block doc-comment")
                 } else { string.into_cow() };
-                token::DocComment(token::intern(&string[]))
+                token::DocComment(token::intern(&string[..]))
             } else {
                 token::Comment
             };

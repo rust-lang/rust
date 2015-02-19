@@ -561,10 +561,11 @@ pub fn get_exit_status() -> int {
 #[cfg(target_os = "macos")]
 unsafe fn load_argc_and_argv(argc: int,
                              argv: *const *const c_char) -> Vec<Vec<u8>> {
+    use ffi::CStr;
     use iter::range;
 
-    (0..argc as uint).map(|i| {
-        ffi::c_str_to_bytes(&*argv.offset(i as int)).to_vec()
+    (0..argc).map(|i| {
+        CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec()
     }).collect()
 }
 

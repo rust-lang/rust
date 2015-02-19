@@ -18,13 +18,15 @@ pub use self::TraversalItem::*;
 
 use core::prelude::*;
 
-use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{Greater, Less, Equal};
 use core::iter::Zip;
+use core::marker::PhantomData;
 use core::ops::{Deref, DerefMut, Index, IndexMut};
 use core::ptr::Unique;
 use core::{slice, mem, ptr, cmp, num, raw};
-use alloc::heap;
+use alloc::heap::{self, EMPTY};
+
+use borrow::Borrow;
 
 /// Represents the result of an Insertion: either the item fit, or the node had to split
 pub enum InsertionResult<K, V> {
@@ -57,8 +59,8 @@ pub struct Node<K, V> {
     keys: Unique<K>,
     vals: Unique<V>,
 
-    // In leaf nodes, this will be null, and no space will be allocated for edges.
-    edges: Unique<Node<K, V>>,
+    // In leaf nodes, this will be None, and no space will be allocated for edges.
+    edges: Option<Unique<Node<K, V>>>,
 
     // At any given time, there will be `_len` keys, `_len` values, and (in an internal node)
     // `_len + 1` edges. In a leaf node, there will never be any edges.
@@ -278,8 +280,11 @@ impl<T> Drop for RawItems<T> {
 #[unsafe_destructor]
 impl<K, V> Drop for Node<K, V> {
     fn drop(&mut self) {
-        if self.keys.ptr.is_null() {
-            // We have already cleaned up this node.
+        if self.keys.is_null() {
+            // Since we have #[unsafe_no_drop_flag], we have to watch
+            // out for a null value being stored in self.keys. (Using
+            // null is technically a violation of the `Unique`
+            // requirements, though.)
             return;
         }
 
@@ -292,7 +297,7 @@ impl<K, V> Drop for Node<K, V> {
             self.destroy();
         }
 
-        self.keys.ptr = ptr::null_mut();
+        self.keys = unsafe { Unique::new(0 as *mut K) };
     }
 }
 
@@ -308,9 +313,9 @@ impl<K, V> Node<K, V> {
         let (vals_offset, edges_offset) = calculate_offsets_generic::<K, V>(capacity, false);
 
         Node {
-            keys: Unique(buffer as *mut K),
-            vals: Unique(buffer.offset(vals_offset as isize) as *mut V),
-            edges: Unique(buffer.offset(edges_offset as isize) as *mut Node<K, V>),
+            keys: Unique::new(buffer as *mut K),
+            vals: Unique::new(buffer.offset(vals_offset as isize) as *mut V),
+            edges: Some(Unique::new(buffer.offset(edges_offset as isize) as *mut Node<K, V>)),
             _len: 0,
             _capacity: capacity,
         }
@@ -326,9 +331,9 @@ impl<K, V> Node<K, V> {
         let (vals_offset, _) = calculate_offsets_generic::<K, V>(capacity, true);
 
         Node {
-            keys: Unique(buffer as *mut K),
-            vals: Unique(unsafe { buffer.offset(vals_offset as isize) as *mut V }),
-            edges: Unique(ptr::null_mut()),
+            keys: unsafe { Unique::new(buffer as *mut K) },
+            vals: unsafe { Unique::new(buffer.offset(vals_offset as isize) as *mut V) },
+            edges: None,
             _len: 0,
             _capacity: capacity,
         }
@@ -337,18 +342,18 @@ impl<K, V> Node<K, V> {
     unsafe fn destroy(&mut self) {
         let (alignment, size) =
                 calculate_allocation_generic::<K, V>(self.capacity(), self.is_leaf());
-        heap::deallocate(self.keys.ptr as *mut u8, size, alignment);
+        heap::deallocate(*self.keys as *mut u8, size, alignment);
     }
 
     #[inline]
     pub fn as_slices<'a>(&'a self) -> (&'a [K], &'a [V]) {
         unsafe {(
             mem::transmute(raw::Slice {
-                data: self.keys.ptr,
+                data: *self.keys as *const K,
                 len: self.len()
             }),
             mem::transmute(raw::Slice {
-                data: self.vals.ptr,
+                data: *self.vals as *const V,
                 len: self.len()
             })
         )}
@@ -367,8 +372,12 @@ impl<K, V> Node<K, V> {
             &[]
         } else {
             unsafe {
+                let data = match self.edges {
+                    None => heap::EMPTY as *const Node<K,V>,
+                    Some(ref p) => **p as *const Node<K,V>,
+                };
                 mem::transmute(raw::Slice {
-                    data: self.edges.ptr,
+                    data: data,
                     len: self.len() + 1
                 })
             }
@@ -524,7 +533,8 @@ impl<K: Clone, V: Clone> Clone for Node<K, V> {
 #[derive(Copy)]
 pub struct Handle<NodeRef, Type, NodeType> {
     node: NodeRef,
-    index: usize
+    index: usize,
+    marker: PhantomData<(Type, NodeType)>,
 }
 
 pub mod handle {
@@ -543,13 +553,13 @@ impl<K: Ord, V> Node<K, V> {
     /// `Found` will be yielded with the matching index. If it doesn't find an exact match,
     /// `GoDown` will be yielded with the index of the subtree the key must lie in.
     pub fn search<Q: ?Sized, NodeRef: Deref<Target=Node<K, V>>>(node: NodeRef, key: &Q)
-                  -> SearchResult<NodeRef> where Q: BorrowFrom<K> + Ord {
+                  -> SearchResult<NodeRef> where K: Borrow<Q>, Q: Ord {
         // FIXME(Gankro): Tune when to search linear or binary based on B (and maybe K/V).
         // For the B configured as of this writing (B = 6), binary search was *significantly*
         // worse for usizes.
         match node.as_slices_internal().search_linear(key) {
-            (index, true) => Found(Handle { node: node, index: index }),
-            (index, false) => GoDown(Handle { node: node, index: index }),
+            (index, true) => Found(Handle { node: node, index: index, marker: PhantomData }),
+            (index, false) => GoDown(Handle { node: node, index: index, marker: PhantomData }),
         }
     }
 }
@@ -586,7 +596,7 @@ impl <K, V> Node<K, V> {
 
     /// If the node has any children
     pub fn is_leaf(&self) -> bool {
-        self.edges.ptr.is_null()
+        self.edges.is_none()
     }
 
     /// if the node has too few elements
@@ -618,7 +628,8 @@ impl<K, V, NodeRef, Type, NodeType> Handle<NodeRef, Type, NodeType> where
     pub fn as_raw(&mut self) -> Handle<*mut Node<K, V>, Type, NodeType> {
         Handle {
             node: &mut *self.node as *mut _,
-            index: self.index
+            index: self.index,
+            marker: PhantomData,
         }
     }
 }
@@ -630,7 +641,8 @@ impl<K, V, Type, NodeType> Handle<*mut Node<K, V>, Type, NodeType> {
     pub unsafe fn from_raw<'a>(&'a self) -> Handle<&'a Node<K, V>, Type, NodeType> {
         Handle {
             node: &*self.node,
-            index: self.index
+            index: self.index,
+            marker: PhantomData,
         }
     }
 
@@ -640,7 +652,8 @@ impl<K, V, Type, NodeType> Handle<*mut Node<K, V>, Type, NodeType> {
     pub unsafe fn from_raw_mut<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, Type, NodeType> {
         Handle {
             node: &mut *self.node,
-            index: self.index
+            index: self.index,
+            marker: PhantomData,
         }
     }
 }
@@ -688,12 +701,14 @@ impl<K, V, NodeRef: Deref<Target=Node<K, V>>, Type> Handle<NodeRef, Type, handle
         if self.node.is_leaf() {
             Leaf(Handle {
                 node: self.node,
-                index: self.index
+                index: self.index,
+                marker: PhantomData,
             })
         } else {
             Internal(Handle {
                 node: self.node,
-                index: self.index
+                index: self.index,
+                marker: PhantomData,
             })
         }
     }
@@ -826,7 +841,8 @@ impl<K, V, NodeRef, NodeType> Handle<NodeRef, handle::Edge, NodeType> where
     unsafe fn left_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
         Handle {
             node: &mut *self.node,
-            index: self.index - 1
+            index: self.index - 1,
+            marker: PhantomData,
         }
     }
 
@@ -836,7 +852,8 @@ impl<K, V, NodeRef, NodeType> Handle<NodeRef, handle::Edge, NodeType> where
     unsafe fn right_kv<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::KV, NodeType> {
         Handle {
             node: &mut *self.node,
-            index: self.index
+            index: self.index,
+            marker: PhantomData,
         }
     }
 }
@@ -876,7 +893,8 @@ impl<'a, K: 'a, V: 'a, NodeType> Handle<&'a mut Node<K, V>, handle::KV, NodeType
     pub fn into_left_edge(self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
         Handle {
             node: &mut *self.node,
-            index: self.index
+            index: self.index,
+            marker: PhantomData,
         }
     }
 }
@@ -926,7 +944,8 @@ impl<K, V, NodeRef, NodeType> Handle<NodeRef, handle::KV, NodeType> where
     pub fn left_edge<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
         Handle {
             node: &mut *self.node,
-            index: self.index
+            index: self.index,
+            marker: PhantomData,
         }
     }
 
@@ -935,7 +954,8 @@ impl<K, V, NodeRef, NodeType> Handle<NodeRef, handle::KV, NodeType> where
     pub fn right_edge<'a>(&'a mut self) -> Handle<&'a mut Node<K, V>, handle::Edge, NodeType> {
         Handle {
             node: &mut *self.node,
-            index: self.index + 1
+            index: self.index + 1,
+            marker: PhantomData,
         }
     }
 }
@@ -1044,7 +1064,8 @@ impl<K, V> Node<K, V> {
         debug_assert!(index < self.len(), "kv_handle index out of bounds");
         Handle {
             node: self,
-            index: index
+            index: index,
+            marker: PhantomData,
         }
     }
 
@@ -1064,7 +1085,7 @@ impl<K, V> Node<K, V> {
                     vals: RawItems::from_slice(self.vals()),
                     edges: RawItems::from_slice(self.edges()),
 
-                    ptr: self.keys.ptr as *mut u8,
+                    ptr: *self.keys as *mut u8,
                     capacity: self.capacity(),
                     is_leaf: self.is_leaf()
                 },
@@ -1491,9 +1512,9 @@ macro_rules! node_slice_impl {
         impl<'a, K: Ord + 'a, V: 'a> $NodeSlice<'a, K, V> {
             /// Performs linear search in a slice. Returns a tuple of (index, is_exact_match).
             fn search_linear<Q: ?Sized>(&self, key: &Q) -> (usize, bool)
-                    where Q: BorrowFrom<K> + Ord {
+                    where K: Borrow<Q>, Q: Ord {
                 for (i, k) in self.keys.iter().enumerate() {
-                    match key.cmp(BorrowFrom::borrow_from(k)) {
+                    match key.cmp(k.borrow()) {
                         Greater => {},
                         Equal => return (i, true),
                         Less => return (i, false),

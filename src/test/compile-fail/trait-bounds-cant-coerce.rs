@@ -10,6 +10,7 @@
 
 
 trait Foo {
+    fn dummy(&self) { }
 }
 
 fn a(_x: Box<Foo+Send>) {

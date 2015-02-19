@@ -34,7 +34,7 @@ use std::mem::size_of;
 static uni: &'static str = "Les Miséééééééérables";
 static yy: usize = 25;
 
-static bob: Option<std::vec::CowVec<'static, isize>> = None;
+static bob: Option<&'static [isize]> = None;
 
 // buglink test - see issue #1337.
 
@@ -99,6 +99,7 @@ struct some_fields {
 type SF = some_fields;
 
 trait SuperTrait {
+    fn dummy(&self) { }
 }
 
 trait SomeTrait: SuperTrait {

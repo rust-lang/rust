@@ -29,11 +29,11 @@ pub fn main() {
 
     unsafe {
         // Call with just the named parameter
-        let c = CString::from_slice(b"Hello World\n");
+        let c = CString::new(b"Hello World\n").unwrap();
         check("Hello World\n", |s| sprintf(s, c.as_ptr()));
 
         // Call with variable number of arguments
-        let c = CString::from_slice(b"%d %f %c %s\n");
+        let c = CString::new(b"%d %f %c %s\n").unwrap();
         check("42 42.500000 a %d %f %c %s\n\n", |s| {
             sprintf(s, c.as_ptr(), 42, 42.5f64, 'a' as c_int, c.as_ptr());
         });
@@ -44,11 +44,11 @@ pub fn main() {
         // A function that takes a function pointer
         unsafe fn call(p: unsafe extern fn(*mut c_char, *const c_char, ...) -> c_int) {
             // Call with just the named parameter
-            let c = CString::from_slice(b"Hello World\n");
+            let c = CString::new(b"Hello World\n").unwrap();
             check("Hello World\n", |s| sprintf(s, c.as_ptr()));
 
             // Call with variable number of arguments
-            let c = CString::from_slice(b"%d %f %c %s\n");
+            let c = CString::new(b"%d %f %c %s\n").unwrap();
             check("42 42.500000 a %d %f %c %s\n\n", |s| {
                 sprintf(s, c.as_ptr(), 42, 42.5f64, 'a' as c_int, c.as_ptr());
             });

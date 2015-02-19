@@ -12,12 +12,14 @@ struct A { pub i: isize }
 pub enum C { pub Variant }      //~ ERROR: unnecessary `pub`
 
 pub trait E {
-    pub fn foo() {}             //~ ERROR: unnecessary visibility
+    pub fn foo(&self) {}         //~ ERROR: unnecessary visibility
 }
-trait F { pub fn foo() {} }     //~ ERROR: unnecessary visibility
+trait F {
+    pub fn foo(&self) {}     //~ ERROR: unnecessary visibility
+}
 
 impl E for A {
-    pub fn foo() {}             //~ ERROR: unnecessary visibility
+    pub fn foo(&self) {}             //~ ERROR: unnecessary visibility
 }
 
 fn main() {}

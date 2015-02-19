@@ -265,12 +265,12 @@ fn fill_utf16_buf_base<F1, F2, T>(mut f1: F1, f2: F2) -> Result<T, ()>
         let mut n = stack_buf.len();
         loop {
             let buf = if n <= stack_buf.len() {
-                &mut stack_buf[]
+                &mut stack_buf[..]
             } else {
                 let extra = n - heap_buf.len();
                 heap_buf.reserve(extra);
                 heap_buf.set_len(n);
-                &mut heap_buf[]
+                &mut heap_buf[..]
             };
 
             // This function is typically called on windows API functions which

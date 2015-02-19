@@ -16,9 +16,8 @@ extern crate collections;
 extern crate rand;
 
 use std::collections::BTreeSet;
-use std::collections::BitvSet;
+use std::collections::BitSet;
 use std::collections::HashSet;
-use std::collections::hash_map::Hasher;
 use std::hash::Hash;
 use std::env;
 use std::time::Duration;
@@ -43,7 +42,7 @@ trait MutableSet<T> {
     fn contains(&self, k: &T) -> bool;
 }
 
-impl<T: Hash<Hasher> + Eq> MutableSet<T> for HashSet<T> {
+impl<T: Hash + Eq> MutableSet<T> for HashSet<T> {
     fn insert(&mut self, k: T) { self.insert(k); }
     fn remove(&mut self, k: &T) -> bool { self.remove(k) }
     fn contains(&self, k: &T) -> bool { self.contains(k) }
@@ -53,7 +52,7 @@ impl<T: Ord> MutableSet<T> for BTreeSet<T> {
     fn remove(&mut self, k: &T) -> bool { self.remove(k) }
     fn contains(&self, k: &T) -> bool { self.contains(k) }
 }
-impl MutableSet<usize> for BitvSet {
+impl MutableSet<usize> for BitSet {
     fn insert(&mut self, k: usize) { self.insert(k); }
     fn remove(&mut self, k: &usize) -> bool { self.remove(k) }
     fn contains(&self, k: &usize) -> bool { self.contains(k) }
@@ -222,7 +221,7 @@ fn main() {
     {
         let mut rng: rand::IsaacRng = rand::SeedableRng::from_seed(seed);
         let mut results = empty_results();
-        results.bench_int(&mut rng, num_keys, max, || BitvSet::new());
-        write_results("collections::bitv::BitvSet", &results);
+        results.bench_int(&mut rng, num_keys, max, || BitSet::new());
+        write_results("collections::bit_vec::BitSet", &results);
     }
 }

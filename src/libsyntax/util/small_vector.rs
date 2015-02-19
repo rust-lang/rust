@@ -11,7 +11,7 @@
 use self::SmallVectorRepr::*;
 use self::IntoIterRepr::*;
 
-use std::iter::FromIterator;
+use std::iter::{IntoIterator, FromIterator};
 use std::mem;
 use std::slice;
 use std::vec;
@@ -30,7 +30,7 @@ enum SmallVectorRepr<T> {
 }
 
 impl<T> FromIterator<T> for SmallVector<T> {
-    fn from_iter<I: Iterator<Item=T>>(iter: I) -> SmallVector<T> {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> SmallVector<T> {
         let mut v = SmallVector::zero();
         v.extend(iter);
         v
@@ -38,7 +38,7 @@ impl<T> FromIterator<T> for SmallVector<T> {
 }
 
 impl<T> Extend<T> for SmallVector<T> {
-    fn extend<I: Iterator<Item=T>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item=T>>(&mut self, iter: I) {
         for val in iter {
             self.push(val);
         }

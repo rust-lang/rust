@@ -144,13 +144,12 @@
 
 #![stable(feature = "rust1", since = "1.0.0")]
 
-use core::borrow::BorrowFrom;
 use core::cell::Cell;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
 use core::default::Default;
 use core::fmt;
-use core::hash::{self, Hash};
+use core::hash::{Hasher, Hash};
 use core::marker;
 use core::mem::{transmute, min_align_of, size_of, forget};
 use core::nonzero::NonZero;
@@ -346,12 +345,6 @@ impl<T: Clone> Rc<T> {
         // possible reference to the inner value.
         let inner = unsafe { &mut **self._ptr };
         &mut inner.value
-    }
-}
-
-impl<T> BorrowFrom<Rc<T>> for T {
-    fn borrow_from(owned: &Rc<T>) -> &T {
-        &**owned
     }
 }
 
@@ -599,9 +592,17 @@ impl<T: Ord> Ord for Rc<T> {
 }
 
 // FIXME (#18248) Make `T` `Sized?`
-impl<S: hash::Hasher, T: Hash<S>> Hash<S> for Rc<T> {
+#[cfg(stage0)]
+impl<S: Hasher, T: Hash<S>> Hash<S> for Rc<T> {
     #[inline]
     fn hash(&self, state: &mut S) {
+        (**self).hash(state);
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: Hash> Hash for Rc<T> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (**self).hash(state);
     }
 }

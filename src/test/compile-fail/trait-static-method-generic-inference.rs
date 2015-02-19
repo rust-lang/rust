@@ -16,6 +16,7 @@
 mod base {
     pub trait HasNew<T> {
         fn new() -> T;
+        fn dummy(&self) { }
     }
 
     pub struct Foo {

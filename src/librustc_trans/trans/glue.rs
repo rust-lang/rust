@@ -170,7 +170,7 @@ pub fn get_drop_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Val
 
     let (glue, new_sym) = match ccx.available_drop_glues().borrow().get(&t) {
         Some(old_sym) => {
-            let glue = decl_cdecl_fn(ccx, &old_sym[], llfnty, ty::mk_nil(ccx.tcx()));
+            let glue = decl_cdecl_fn(ccx, &old_sym[..], llfnty, ty::mk_nil(ccx.tcx()));
             (glue, None)
         },
         None => {
@@ -304,7 +304,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                      class_did,
                                      &[get_drop_glue_type(bcx.ccx(), t)],
                                      ty::mk_nil(bcx.tcx()));
-        let (_, variant_cx) = invoke(variant_cx, dtor_addr, &args[], dtor_ty, DebugLoc::None);
+        let (_, variant_cx) = invoke(variant_cx, dtor_addr, &args[..], dtor_ty, DebugLoc::None);
 
         variant_cx.fcx.pop_and_trans_custom_cleanup_scope(variant_cx, field_scope);
         variant_cx
@@ -513,7 +513,7 @@ pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
     let llalign = llalign_of(ccx, llty);
     let name = mangle_internal_name_by_type_and_seq(ccx, t, "tydesc");
     debug!("+++ declare_tydesc {} {}", ppaux::ty_to_string(ccx.tcx(), t), name);
-    let buf = CString::from_slice(name.as_bytes());
+    let buf = CString::new(name.clone()).unwrap();
     let gvar = unsafe {
         llvm::LLVMAddGlobal(ccx.llmod(), ccx.tydesc_type().to_ref(),
                             buf.as_ptr())
@@ -541,7 +541,7 @@ fn declare_generic_glue<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>,
         ccx,
         t,
         &format!("glue_{}", name)[]);
-    let llfn = decl_cdecl_fn(ccx, &fn_nm[], llfnty, ty::mk_nil(ccx.tcx()));
+    let llfn = decl_cdecl_fn(ccx, &fn_nm[..], llfnty, ty::mk_nil(ccx.tcx()));
     note_unique_llvm_symbol(ccx, fn_nm.clone());
     return (fn_nm, llfn);
 }

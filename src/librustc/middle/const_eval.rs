@@ -62,7 +62,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
             None => None,
             Some(ast_map::NodeItem(it)) => match it.node {
                 ast::ItemEnum(ast::EnumDef { ref variants }, _) => {
-                    variant_expr(&variants[], variant_def.node)
+                    variant_expr(&variants[..], variant_def.node)
                 }
                 _ => None
             },
@@ -83,7 +83,7 @@ fn lookup_variant_by_id<'a>(tcx: &'a ty::ctxt,
                     // NOTE this doesn't do the right thing, it compares inlined
                     // NodeId's to the original variant_def's NodeId, but they
                     // come from different crates, so they will likely never match.
-                    variant_expr(&variants[], variant_def.node).map(|e| e.id)
+                    variant_expr(&variants[..], variant_def.node).map(|e| e.id)
                 }
                 _ => None
             },
@@ -209,7 +209,7 @@ pub fn const_expr_to_pat(tcx: &ty::ctxt, expr: &Expr, span: Span) -> P<ast::Pat>
 pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     match eval_const_expr_partial(tcx, e, None) {
         Ok(r) => r,
-        Err(s) => tcx.sess.span_fatal(e.span, &s[])
+        Err(s) => tcx.sess.span_fatal(e.span, &s[..])
     }
 }
 
@@ -501,7 +501,7 @@ fn lit_to_const(lit: &ast::Lit, ty_hint: Option<Ty>) -> const_val {
     match lit.node {
         ast::LitStr(ref s, _) => const_str((*s).clone()),
         ast::LitBinary(ref data) => {
-            const_binary(Rc::new(data.iter().map(|x| *x).collect()))
+            const_binary(data.clone())
         }
         ast::LitByte(n) => const_uint(n as u64),
         ast::LitChar(n) => const_uint(n as u64),
@@ -552,14 +552,14 @@ pub fn compare_lit_exprs<'tcx>(tcx: &ty::ctxt<'tcx>,
     let a = match eval_const_expr_partial(tcx, a, ty_hint) {
         Ok(a) => a,
         Err(s) => {
-            tcx.sess.span_err(a.span, &s[]);
+            tcx.sess.span_err(a.span, &s[..]);
             return None;
         }
     };
     let b = match eval_const_expr_partial(tcx, b, ty_hint) {
         Ok(b) => b,
         Err(s) => {
-            tcx.sess.span_err(b.span, &s[]);
+            tcx.sess.span_err(b.span, &s[..]);
             return None;
         }
     };

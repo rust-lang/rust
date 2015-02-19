@@ -102,7 +102,7 @@ pub fn expand_meta_derive(cx: &mut ExtCtxt,
                                                    |i| push(i)))
                         }
 
-                        match &tname[] {
+                        match &tname[..] {
                             "Clone" => expand!(clone::expand_deriving_clone),
 
                             "Hash" => expand!(hash::expand_deriving_hash),

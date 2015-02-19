@@ -59,7 +59,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
             Some(previous_span) => {
                 ecx.span_warn(span, &format!(
                     "diagnostic code {} already used", &token::get_ident(code)
-                )[]);
+                ));
                 ecx.span_note(previous_span, "previous invocation");
             },
             None => ()
@@ -70,7 +70,7 @@ pub fn expand_diagnostic_used<'cx>(ecx: &'cx mut ExtCtxt,
         if !diagnostics.contains_key(&code.name) {
             ecx.span_err(span, &format!(
                 "used diagnostic code {} not registered", &token::get_ident(code)
-            )[]);
+            ));
         }
     });
     MacExpr::new(quote_expr!(ecx, ()))
@@ -95,12 +95,12 @@ pub fn expand_register_diagnostic<'cx>(ecx: &'cx mut ExtCtxt,
         if diagnostics.insert(code.name, description).is_some() {
             ecx.span_err(span, &format!(
                 "diagnostic code {} already registered", &token::get_ident(*code)
-            )[]);
+            ));
         }
     });
     let sym = Ident::new(token::gensym(&(
         "__register_diagnostic_".to_string() + &token::get_ident(*code)
-    )[]));
+    )));
     MacItems::new(vec![quote_item!(ecx, mod $sym {}).unwrap()].into_iter())
 }
 

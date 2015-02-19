@@ -62,6 +62,7 @@ use clone::Clone;
 use cmp;
 use cmp::Ord;
 use default::Default;
+use marker;
 use mem;
 use num::{ToPrimitive, Int};
 use ops::{Add, Deref, FnMut};
@@ -113,9 +114,9 @@ impl<'a, I: Iterator + ?Sized> Iterator for &'a mut I {
 #[rustc_on_unimplemented="a collection of type `{Self}` cannot be \
                           built from an iterator over elements of type `{A}`"]
 pub trait FromIterator<A> {
-    /// Build a container with elements from an external iterator.
+    /// Build a container with elements from something iterable.
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<T: Iterator<Item=A>>(iterator: T) -> Self;
+    fn from_iter<T: IntoIterator<Item=A>>(iterator: T) -> Self;
 }
 
 /// Conversion into an `Iterator`
@@ -147,7 +148,7 @@ impl<I: Iterator> IntoIterator for I {
 pub trait Extend<A> {
     /// Extend a container with the elements yielded by an arbitrary iterator
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn extend<T: Iterator<Item=A>>(&mut self, iterator: T);
+    fn extend<T: IntoIterator<Item=A>>(&mut self, iterable: T);
 }
 
 /// An extension trait providing numerous methods applicable to all iterators.
@@ -332,7 +333,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let xs = [100, 200, 300];
-    /// let mut it = xs.iter().map(|x| *x).peekable();
+    /// let mut it = xs.iter().cloned().peekable();
     /// assert_eq!(*it.peek().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 100);
     /// assert_eq!(it.next().unwrap(), 200);
@@ -522,11 +523,11 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// let a = [1, 4, 2, 3, 8, 9, 6];
     /// let sum = a.iter()
-    ///             .map(|&x| x)
-    ///             .inspect(|&x| println!("filtering {}", x))
-    ///             .filter(|&x| x % 2 == 0)
-    ///             .inspect(|&x| println!("{} made it through", x))
-    ///             .sum();
+    ///            .map(|x| *x)
+    ///            .inspect(|&x| println!("filtering {}", x))
+    ///            .filter(|&x| x % 2 == 0)
+    ///            .inspect(|&x| println!("{} made it through", x))
+    ///            .sum();
     /// println!("{}", sum);
     /// ```
     #[inline]
@@ -561,7 +562,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let a = [1, 2, 3, 4, 5];
-    /// let b: Vec<_> = a.iter().map(|&x| x).collect();
+    /// let b: Vec<_> = a.iter().cloned().collect();
     /// assert_eq!(a, b);
     /// ```
     #[inline]
@@ -937,7 +938,7 @@ pub trait IteratorExt: Iterator + Sized {
     ///
     /// ```
     /// let a = [(1, 2), (3, 4)];
-    /// let (left, right): (Vec<_>, Vec<_>) = a.iter().map(|&x| x).unzip();
+    /// let (left, right): (Vec<_>, Vec<_>) = a.iter().cloned().unzip();
     /// assert_eq!([1, 3], left);
     /// assert_eq!([2, 4], right);
     /// ```
@@ -947,7 +948,7 @@ pub trait IteratorExt: Iterator + Sized {
         FromB: Default + Extend<B>,
         Self: Iterator<Item=(A, B)>,
     {
-        struct SizeHint<A>(usize, Option<usize>);
+        struct SizeHint<A>(usize, Option<usize>, marker::PhantomData<A>);
         impl<A> Iterator for SizeHint<A> {
             type Item = A;
 
@@ -961,8 +962,8 @@ pub trait IteratorExt: Iterator + Sized {
         let mut ts: FromA = Default::default();
         let mut us: FromB = Default::default();
 
-        ts.extend(SizeHint(lo, hi));
-        us.extend(SizeHint(lo, hi));
+        ts.extend(SizeHint(lo, hi, marker::PhantomData));
+        us.extend(SizeHint(lo, hi, marker::PhantomData));
 
         for (t, u) in self {
             ts.extend(Some(t).into_iter());
@@ -1142,7 +1143,7 @@ pub trait AdditiveIterator<A> {
     /// use std::iter::AdditiveIterator;
     ///
     /// let a = [1i32, 2, 3, 4, 5];
-    /// let mut it = a.iter().map(|&x| x);
+    /// let mut it = a.iter().cloned();
     /// assert!(it.sum() == 15);
     /// ```
     fn sum(self) -> A;
@@ -1304,6 +1305,23 @@ impl<T, D, I> ExactSizeIterator for Cloned<I> where
     D: Deref<Target=T>,
     I: ExactSizeIterator<Item=D>,
 {}
+
+#[unstable(feature = "core", reason = "trait is experimental")]
+impl<T, D, I> RandomAccessIterator for Cloned<I> where
+    T: Clone,
+    D: Deref<Target=T>,
+    I: RandomAccessIterator<Item=D>
+{
+    #[inline]
+    fn indexable(&self) -> usize {
+        self.it.indexable()
+    }
+
+    #[inline]
+    fn idx(&mut self, index: usize) -> Option<T> {
+        self.it.idx(index).cloned()
+    }
+}
 
 /// An iterator that repeats endlessly
 #[derive(Clone)]
@@ -2047,8 +2065,8 @@ pub struct Scan<I, St, F> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<B, I: Iterator, St, F> Iterator for Scan<I, St, F> where
-    F: FnMut(&mut St, I::Item) -> Option<B>,
+impl<A, B, I: Iterator<Item=A>, St, F> Iterator for Scan<I, St, F> where
+    F: FnMut(&mut St, A) -> Option<B>,
 {
     type Item = B;
 

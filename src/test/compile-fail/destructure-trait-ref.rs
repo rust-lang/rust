@@ -14,7 +14,7 @@
 #![feature(box_patterns)]
 #![feature(box_syntax)]
 
-trait T {}
+trait T { fn foo(&self) {} }
 impl T for isize {}
 
 fn main() {

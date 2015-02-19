@@ -147,8 +147,24 @@ impl PartialEq for Repr {
 }
 impl Eq for Repr {}
 
+#[cfg(stage0)]
 impl<S: hash::Hasher + hash::Writer> hash::Hash<S> for Repr {
     fn hash(&self, s: &mut S) {
+        match *self {
+            Repr::V4(ref a) => {
+                (a.sin_family, a.sin_port, a.sin_addr.s_addr).hash(s)
+            }
+            Repr::V6(ref a) => {
+                (a.sin6_family, a.sin6_port, &a.sin6_addr.s6_addr,
+                 a.sin6_flowinfo, a.sin6_scope_id).hash(s)
+            }
+        }
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl hash::Hash for Repr {
+    fn hash<H: hash::Hasher>(&self, s: &mut H) {
         match *self {
             Repr::V4(ref a) => {
                 (a.sin_family, a.sin_port, a.sin_addr.s_addr).hash(s)

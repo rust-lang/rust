@@ -127,6 +127,7 @@ impl FromStr for Path {
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub struct ParsePathError;
 
+#[cfg(stage0)]
 impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Path {
     #[cfg(not(test))]
     #[inline]
@@ -137,6 +138,21 @@ impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Path {
     #[cfg(test)]
     #[inline]
     fn hash(&self, _: &mut S) {
+        // No-op because the `hash` implementation will be wrong.
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl hash::Hash for Path {
+    #[cfg(not(test))]
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
+        self.repr.hash(state)
+    }
+
+    #[cfg(test)]
+    #[inline]
+    fn hash<H: hash::Hasher>(&self, _: &mut H) {
         // No-op because the `hash` implementation will be wrong.
     }
 }
@@ -182,7 +198,7 @@ impl GenericPathUnsafe for Path {
                 s.push_str("..");
                 s.push(SEP);
                 s.push_str(filename);
-                self.update_normalized(&s[]);
+                self.update_normalized(&s[..]);
             }
             None => {
                 self.update_normalized(filename);
@@ -192,20 +208,20 @@ impl GenericPathUnsafe for Path {
                 s.push_str(&self.repr[..end]);
                 s.push(SEP);
                 s.push_str(filename);
-                self.update_normalized(&s[]);
+                self.update_normalized(&s[..]);
             }
             Some((idxb,idxa,_)) if self.prefix == Some(DiskPrefix) && idxa == self.prefix_len() => {
                 let mut s = String::with_capacity(idxb + filename.len());
                 s.push_str(&self.repr[..idxb]);
                 s.push_str(filename);
-                self.update_normalized(&s[]);
+                self.update_normalized(&s[..]);
             }
             Some((idxb,_,_)) => {
                 let mut s = String::with_capacity(idxb + 1 + filename.len());
                 s.push_str(&self.repr[..idxb]);
                 s.push(SEP);
                 s.push_str(filename);
-                self.update_normalized(&s[]);
+                self.update_normalized(&s[..]);
             }
         }
     }
@@ -229,7 +245,7 @@ impl GenericPathUnsafe for Path {
         }
         fn shares_volume(me: &Path, path: &str) -> bool {
             // path is assumed to have a prefix of Some(DiskPrefix)
-            let repr = &me.repr[];
+            let repr = &me.repr[..];
             match me.prefix {
                 Some(DiskPrefix) => {
                     repr.as_bytes()[0] == path.as_bytes()[0].to_ascii_uppercase()
@@ -261,7 +277,7 @@ impl GenericPathUnsafe for Path {
                         else { None };
             let pathlen = path_.as_ref().map_or(path.len(), |p| p.len());
             let mut s = String::with_capacity(me.repr.len() + 1 + pathlen);
-            s.push_str(&me.repr[]);
+            s.push_str(&me.repr[..]);
             let plen = me.prefix_len();
             // if me is "C:" we don't want to add a path separator
             match me.prefix {
@@ -273,9 +289,9 @@ impl GenericPathUnsafe for Path {
             }
             match path_ {
                 None => s.push_str(path),
-                Some(p) => s.push_str(&p[]),
+                Some(p) => s.push_str(&p[..]),
             };
-            me.update_normalized(&s[])
+            me.update_normalized(&s[..])
         }
 
         if !path.is_empty() {
@@ -329,7 +345,7 @@ impl GenericPath for Path {
     /// Always returns a `Some` value.
     #[inline]
     fn as_str<'a>(&'a self) -> Option<&'a str> {
-        Some(&self.repr[])
+        Some(&self.repr[..])
     }
 
     #[inline]
@@ -351,13 +367,13 @@ impl GenericPath for Path {
     /// Always returns a `Some` value.
     fn dirname_str<'a>(&'a self) -> Option<&'a str> {
         Some(match self.sepidx_or_prefix_len() {
-            None if ".." == self.repr => &self.repr[],
+            None if ".." == self.repr => &self.repr[..],
             None => ".",
             Some((_,idxa,end)) if &self.repr[idxa..end] == ".." => {
-                &self.repr[]
+                &self.repr[..]
             }
             Some((idxb,_,end)) if &self.repr[idxb..end] == "\\" => {
-                &self.repr[]
+                &self.repr[..]
             }
             Some((0,idxa,_)) => &self.repr[..idxa],
             Some((idxb,idxa,_)) => {
@@ -379,7 +395,7 @@ impl GenericPath for Path {
     /// See `GenericPath::filename_str` for info.
     /// Always returns a `Some` value if `filename` returns a `Some` value.
     fn filename_str<'a>(&'a self) -> Option<&'a str> {
-        let repr = &self.repr[];
+        let repr = &self.repr[..];
         match self.sepidx_or_prefix_len() {
             None if "." == repr || ".." == repr => None,
             None => Some(repr),
@@ -639,7 +655,7 @@ impl Path {
     /// Does not distinguish between absolute and cwd-relative paths, e.g.
     /// C:\foo and C:foo.
     pub fn str_components<'a>(&'a self) -> StrComponents<'a> {
-        let repr = &self.repr[];
+        let repr = &self.repr[..];
         let s = match self.prefix {
             Some(_) => {
                 let plen = self.prefix_len();
@@ -667,8 +683,8 @@ impl Path {
     }
 
     fn equiv_prefix(&self, other: &Path) -> bool {
-        let s_repr = &self.repr[];
-        let o_repr = &other.repr[];
+        let s_repr = &self.repr[..];
+        let o_repr = &other.repr[..];
         match (self.prefix, other.prefix) {
             (Some(DiskPrefix), Some(VerbatimDiskPrefix)) => {
                 self.is_absolute() &&
@@ -823,7 +839,7 @@ impl Path {
     fn update_sepidx(&mut self) {
         let s = if self.has_nonsemantic_trailing_slash() {
                     &self.repr[..self.repr.len()-1]
-                } else { &self.repr[] };
+                } else { &self.repr[..] };
         let sep_test: fn(char) -> bool = if !prefix_is_verbatim(self.prefix) {
             is_sep
         } else {
@@ -902,7 +918,7 @@ pub fn is_verbatim(path: &Path) -> bool {
 /// non-verbatim, the non-verbatim version is returned.
 /// Otherwise, None is returned.
 pub fn make_non_verbatim(path: &Path) -> Option<Path> {
-    let repr = &path.repr[];
+    let repr = &path.repr[..];
     let new_path = match path.prefix {
         Some(VerbatimPrefix(_)) | Some(DeviceNSPrefix(_)) => return None,
         Some(UNCPrefix(_,_)) | Some(DiskPrefix) | None => return Some(path.clone()),
@@ -2226,7 +2242,7 @@ mod tests {
                     assert_eq!(comps, exp);
                     let comps = path.str_components().rev().map(|x|x.unwrap())
                                 .collect::<Vec<&str>>();
-                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&str>>();
+                    let exp = exp.iter().rev().cloned().collect::<Vec<&str>>();
                     assert_eq!(comps, exp);
                 }
             );
@@ -2282,7 +2298,7 @@ mod tests {
                     let exp: &[&[u8]] = &$exp;
                     assert_eq!(comps, exp);
                     let comps = path.components().rev().collect::<Vec<&[u8]>>();
-                    let exp = exp.iter().rev().map(|&x|x).collect::<Vec<&[u8]>>();
+                    let exp = exp.iter().rev().cloned().collect::<Vec<&[u8]>>();
                     assert_eq!(comps, exp);
                 }
             )

@@ -9,14 +9,12 @@
 // except according to those terms.
 
 // Test slicing &expr[] is deprecated and gives a helpful error message.
-//
-// ignore-test
 
 struct Foo;
 
 fn main() {
     let x = Foo;
-    &x[]; //~ WARNING deprecated slicing syntax: `[]`
-          //~^ NOTE use `&expr[..]` to construct a slice of the whole of expr
-          //~^^ ERROR cannot index a value of type `Foo`
+    &x[];
+    //~^ WARN obsolete syntax
+    //~| ERROR cannot index
 }

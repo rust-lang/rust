@@ -91,7 +91,7 @@ fn test_iterator_chain() {
     assert_eq!(i, expected.len());
 
     let ys = count(30, 10).take(4);
-    let mut it = xs.iter().map(|&x| x).chain(ys);
+    let mut it = xs.iter().cloned().chain(ys);
     let mut i = 0;
     for x in it {
         assert_eq!(x, expected[i]);
@@ -119,7 +119,7 @@ fn test_iterator_enumerate() {
 #[test]
 fn test_iterator_peekable() {
     let xs = vec![0, 1, 2, 3, 4, 5];
-    let mut it = xs.iter().map(|&x|x).peekable();
+    let mut it = xs.iter().cloned().peekable();
 
     assert_eq!(it.len(), 6);
     assert_eq!(it.peek().unwrap(), &0);
@@ -259,12 +259,12 @@ fn test_inspect() {
     let mut n = 0;
 
     let ys = xs.iter()
-               .map(|&x| x)
+               .cloned()
                .inspect(|_| n += 1)
                .collect::<Vec<uint>>();
 
     assert_eq!(n, xs.len());
-    assert_eq!(&xs[], &ys[]);
+    assert_eq!(&xs[..], &ys[..]);
 }
 
 #[test]
@@ -329,33 +329,33 @@ fn test_iterator_len() {
 #[test]
 fn test_iterator_sum() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[..4].iter().map(|&x| x).sum(), 6);
-    assert_eq!(v.iter().map(|&x| x).sum(), 55);
-    assert_eq!(v[..0].iter().map(|&x| x).sum(), 0);
+    assert_eq!(v[..4].iter().cloned().sum(), 6);
+    assert_eq!(v.iter().cloned().sum(), 55);
+    assert_eq!(v[..0].iter().cloned().sum(), 0);
 }
 
 #[test]
 fn test_iterator_product() {
     let v: &[i32] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[..4].iter().map(|&x| x).product(), 0);
-    assert_eq!(v[1..5].iter().map(|&x| x).product(), 24);
-    assert_eq!(v[..0].iter().map(|&x| x).product(), 1);
+    assert_eq!(v[..4].iter().cloned().product(), 0);
+    assert_eq!(v[1..5].iter().cloned().product(), 24);
+    assert_eq!(v[..0].iter().cloned().product(), 1);
 }
 
 #[test]
 fn test_iterator_max() {
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[..4].iter().map(|&x| x).max(), Some(3));
-    assert_eq!(v.iter().map(|&x| x).max(), Some(10));
-    assert_eq!(v[..0].iter().map(|&x| x).max(), None);
+    assert_eq!(v[..4].iter().cloned().max(), Some(3));
+    assert_eq!(v.iter().cloned().max(), Some(10));
+    assert_eq!(v[..0].iter().cloned().max(), None);
 }
 
 #[test]
 fn test_iterator_min() {
     let v: &[_] = &[0, 1, 2, 3, 4, 5, 6, 7, 8, 9, 10];
-    assert_eq!(v[..4].iter().map(|&x| x).min(), Some(0));
-    assert_eq!(v.iter().map(|&x| x).min(), Some(0));
-    assert_eq!(v[..0].iter().map(|&x| x).min(), None);
+    assert_eq!(v[..4].iter().cloned().min(), Some(0));
+    assert_eq!(v.iter().cloned().min(), Some(0));
+    assert_eq!(v[..0].iter().cloned().min(), None);
 }
 
 #[test]
@@ -373,7 +373,7 @@ fn test_iterator_size_hint() {
     assert_eq!(c.clone().take_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().skip_while(|_| false).size_hint(), (0, None));
     assert_eq!(c.clone().enumerate().size_hint(), (uint::MAX, None));
-    assert_eq!(c.clone().chain(vi.clone().map(|&i| i)).size_hint(), (uint::MAX, None));
+    assert_eq!(c.clone().chain(vi.clone().cloned()).size_hint(), (uint::MAX, None));
     assert_eq!(c.clone().zip(vi.clone()).size_hint(), (10, Some(10)));
     assert_eq!(c.clone().scan(0, |_,_| Some(0)).size_hint(), (0, None));
     assert_eq!(c.clone().filter(|_| false).size_hint(), (0, None));
@@ -398,7 +398,7 @@ fn test_iterator_size_hint() {
 #[test]
 fn test_collect() {
     let a = vec![1, 2, 3, 4, 5];
-    let b: Vec<int> = a.iter().map(|&x| x).collect();
+    let b: Vec<int> = a.iter().cloned().collect();
     assert!(a == b);
 }
 
@@ -471,7 +471,7 @@ fn test_rev() {
     let mut it = xs.iter();
     it.next();
     it.next();
-    assert!(it.rev().map(|&x| x).collect::<Vec<int>>() ==
+    assert!(it.rev().cloned().collect::<Vec<int>>() ==
             vec![16, 14, 12, 10, 8, 6]);
 }
 
@@ -508,7 +508,7 @@ fn test_double_ended_map() {
 #[test]
 fn test_double_ended_enumerate() {
     let xs = [1, 2, 3, 4, 5, 6];
-    let mut it = xs.iter().map(|&x| x).enumerate();
+    let mut it = xs.iter().cloned().enumerate();
     assert_eq!(it.next(), Some((0, 1)));
     assert_eq!(it.next(), Some((1, 2)));
     assert_eq!(it.next_back(), Some((5, 6)));
@@ -522,8 +522,8 @@ fn test_double_ended_enumerate() {
 fn test_double_ended_zip() {
     let xs = [1, 2, 3, 4, 5, 6];
     let ys = [1, 2, 3, 7];
-    let a = xs.iter().map(|&x| x);
-    let b = ys.iter().map(|&x| x);
+    let a = xs.iter().cloned();
+    let b = ys.iter().cloned();
     let mut it = a.zip(b);
     assert_eq!(it.next(), Some((1, 1)));
     assert_eq!(it.next(), Some((2, 2)));
@@ -713,7 +713,7 @@ fn test_random_access_inspect() {
 fn test_random_access_map() {
     let xs = [1, 2, 3, 4, 5];
 
-    let mut it = xs.iter().map(|x| *x);
+    let mut it = xs.iter().cloned();
     assert_eq!(xs.len(), it.indexable());
     for (i, elt) in xs.iter().enumerate() {
         assert_eq!(Some(*elt), it.idx(i));

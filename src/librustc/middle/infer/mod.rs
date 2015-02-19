@@ -45,6 +45,7 @@ use self::lub::Lub;
 use self::unify::{UnificationTable, InferCtxtMethodsForSimplyUnifiableTypes};
 use self::error_reporting::ErrorReporting;
 
+pub mod bivariate;
 pub mod combine;
 pub mod equate;
 pub mod error_reporting;
@@ -208,6 +209,9 @@ pub enum SubregionOrigin<'tcx> {
 
     // Region in return type of invoked fn must enclose call
     CallReturn(Span),
+
+    // Operands must be in scope
+    Operand(Span),
 
     // Region resulting from a `&` expr must enclose the `&` expr
     AddrOf(Span),
@@ -1194,6 +1198,7 @@ impl<'tcx> SubregionOrigin<'tcx> {
             CallRcvr(a) => a,
             CallArg(a) => a,
             CallReturn(a) => a,
+            Operand(a) => a,
             AddrOf(a) => a,
             AutoBorrow(a) => a,
             SafeDestructor(a) => a,
@@ -1257,6 +1262,7 @@ impl<'tcx> Repr<'tcx> for SubregionOrigin<'tcx> {
             CallRcvr(a) => format!("CallRcvr({})", a.repr(tcx)),
             CallArg(a) => format!("CallArg({})", a.repr(tcx)),
             CallReturn(a) => format!("CallReturn({})", a.repr(tcx)),
+            Operand(a) => format!("Operand({})", a.repr(tcx)),
             AddrOf(a) => format!("AddrOf({})", a.repr(tcx)),
             AutoBorrow(a) => format!("AutoBorrow({})", a.repr(tcx)),
             SafeDestructor(a) => format!("SafeDestructor({})", a.repr(tcx)),

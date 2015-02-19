@@ -149,7 +149,7 @@ use clone::Clone;
 use cmp::{Eq, Ord};
 use default::Default;
 use iter::{ExactSizeIterator};
-use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator};
+use iter::{Iterator, IteratorExt, DoubleEndedIterator, FromIterator, IntoIterator};
 use mem;
 use ops::{Deref, FnOnce};
 use result::Result::{Ok, Err};
@@ -909,7 +909,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn from_iter<I: Iterator<Item=Option<A>>>(iter: I) -> Option<V> {
+    fn from_iter<I: IntoIterator<Item=Option<A>>>(iter: I) -> Option<V> {
         // FIXME(#11084): This could be replaced with Iterator::scan when this
         // performance bug is closed.
 
@@ -934,7 +934,7 @@ impl<A, V: FromIterator<A>> FromIterator<Option<A>> for Option<V> {
             }
         }
 
-        let mut adapter = Adapter { iter: iter, found_none: false };
+        let mut adapter = Adapter { iter: iter.into_iter(), found_none: false };
         let v: V = FromIterator::from_iter(adapter.by_ref());
 
         if adapter.found_none {

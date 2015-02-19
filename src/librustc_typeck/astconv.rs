@@ -404,17 +404,30 @@ fn create_substs_for_ast_path<'tcx>(
 
     let actual_supplied_ty_param_count = substs.types.len(TypeSpace);
     for param in &ty_param_defs[actual_supplied_ty_param_count..] {
-        match param.default {
-            Some(default) => {
+        if let Some(default) = param.default {
+            // If we are converting an object type, then the
+            // `Self` parameter is unknown. However, some of the
+            // other type parameters may reference `Self` in their
+            // defaults. This will lead to an ICE if we are not
+            // careful!
+            if self_ty.is_none() && ty::type_has_self(default) {
+                tcx.sess.span_err(
+                    span,
+                    &format!("the type parameter `{}` must be explicitly specified \
+                              in an object type because its default value `{}` references \
+                              the type `Self`",
+                             param.name.user_string(tcx),
+                             default.user_string(tcx)));
+                substs.types.push(TypeSpace, tcx.types.err);
+            } else {
                 // This is a default type parameter.
                 let default = default.subst_spanned(tcx,
                                                     &substs,
                                                     Some(span));
                 substs.types.push(TypeSpace, default);
             }
-            None => {
-                tcx.sess.span_bug(span, "extra parameter without default");
-            }
+        } else {
+            tcx.sess.span_bug(span, "extra parameter without default");
         }
     }
 
@@ -1139,14 +1152,14 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 ty::mk_vec(tcx, ast_ty_to_ty(this, rscope, &**ty), None)
             }
             ast::TyObjectSum(ref ty, ref bounds) => {
-                match ast_ty_to_trait_ref(this, rscope, &**ty, &bounds[]) {
+                match ast_ty_to_trait_ref(this, rscope, &**ty, &bounds[..]) {
                     Ok((trait_ref, projection_bounds)) => {
                         trait_ref_to_object_type(this,
                                                  rscope,
                                                  ast_ty.span,
                                                  trait_ref,
                                                  projection_bounds,
-                                                 &bounds[])
+                                                 &bounds[..])
                     }
                     Err(ErrorReported) => {
                         this.tcx().types.err
@@ -1185,7 +1198,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                 ty::mk_bare_fn(tcx, None, tcx.mk_bare_fn(bare_fn))
             }
             ast::TyPolyTraitRef(ref bounds) => {
-                conv_ty_poly_trait_ref(this, rscope, ast_ty.span, &bounds[])
+                conv_ty_poly_trait_ref(this, rscope, ast_ty.span, &bounds[..])
             }
             ast::TyPath(ref path, id) => {
                 let a_def = match tcx.def_map.borrow().get(&id) {
@@ -1424,7 +1437,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
             // Skip the first argument if `self` is present.
             &self_and_input_tys[1..]
         } else {
-            &self_and_input_tys[]
+            &self_and_input_tys[..]
         };
 
         let (ior, lfp) = find_implied_output_region(input_tys, input_pats);
@@ -1623,7 +1636,7 @@ fn conv_ty_poly_trait_ref<'tcx>(
     ast_bounds: &[ast::TyParamBound])
     -> Ty<'tcx>
 {
-    let mut partitioned_bounds = partition_bounds(this.tcx(), span, &ast_bounds[]);
+    let mut partitioned_bounds = partition_bounds(this.tcx(), span, &ast_bounds[..]);
 
     let mut projection_bounds = Vec::new();
     let main_trait_bound = if !partitioned_bounds.trait_bounds.is_empty() {

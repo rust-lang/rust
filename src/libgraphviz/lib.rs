@@ -275,15 +275,12 @@
        html_root_url = "http://doc.rust-lang.org/nightly/")]
 #![feature(int_uint)]
 #![feature(collections)]
-#![feature(core)]
 #![feature(old_io)]
 
 use self::LabelText::*;
 
-use std::borrow::IntoCow;
+use std::borrow::{IntoCow, Cow};
 use std::old_io;
-use std::string::CowString;
-use std::vec::CowVec;
 
 /// The text for a graphviz label on a node or edge.
 pub enum LabelText<'a> {
@@ -291,7 +288,7 @@ pub enum LabelText<'a> {
     ///
     /// Occurrences of backslashes (`\`) are escaped, and thus appear
     /// as backslashes in the rendered label.
-    LabelStr(CowString<'a>),
+    LabelStr(Cow<'a, str>),
 
     /// This kind of label uses the graphviz label escString type:
     /// http://www.graphviz.org/content/attrs#kescString
@@ -303,7 +300,7 @@ pub enum LabelText<'a> {
     /// to break a line (centering the line preceding the `\n`), there
     /// are also the escape sequences `\l` which left-justifies the
     /// preceding line and `\r` which right-justifies it.
-    EscStr(CowString<'a>),
+    EscStr(Cow<'a, str>),
 }
 
 // There is a tension in the design of the labelling API.
@@ -340,7 +337,7 @@ pub enum LabelText<'a> {
 
 /// `Id` is a Graphviz `ID`.
 pub struct Id<'a> {
-    name: CowString<'a>,
+    name: Cow<'a, str>,
 }
 
 impl<'a> Id<'a> {
@@ -358,7 +355,7 @@ impl<'a> Id<'a> {
     ///
     /// Passing an invalid string (containing spaces, brackets,
     /// quotes, ...) will return an empty `Err` value.
-    pub fn new<Name: IntoCow<'a, String, str>>(name: Name) -> Result<Id<'a>, ()> {
+    pub fn new<Name: IntoCow<'a, str>>(name: Name) -> Result<Id<'a>, ()> {
         let name = name.into_cow();
         {
             let mut chars = name.chars();
@@ -387,7 +384,7 @@ impl<'a> Id<'a> {
         &*self.name
     }
 
-    pub fn name(self) -> CowString<'a> {
+    pub fn name(self) -> Cow<'a, str> {
         self.name
     }
 }
@@ -427,11 +424,11 @@ pub trait Labeller<'a,N,E> {
 }
 
 impl<'a> LabelText<'a> {
-    pub fn label<S:IntoCow<'a, String, str>>(s: S) -> LabelText<'a> {
+    pub fn label<S:IntoCow<'a, str>>(s: S) -> LabelText<'a> {
         LabelStr(s.into_cow())
     }
 
-    pub fn escaped<S:IntoCow<'a, String, str>>(s: S) -> LabelText<'a> {
+    pub fn escaped<S:IntoCow<'a, str>>(s: S) -> LabelText<'a> {
         EscStr(s.into_cow())
     }
 
@@ -455,7 +452,7 @@ impl<'a> LabelText<'a> {
     pub fn escape(&self) -> String {
         match self {
             &LabelStr(ref s) => s.escape_default(),
-            &EscStr(ref s) => LabelText::escape_str(&s[]),
+            &EscStr(ref s) => LabelText::escape_str(&s[..]),
         }
     }
 
@@ -463,7 +460,7 @@ impl<'a> LabelText<'a> {
     /// yields same content as self.  The result obeys the law
     /// render(`lt`) == render(`EscStr(lt.pre_escaped_content())`) for
     /// all `lt: LabelText`.
-    fn pre_escaped_content(self) -> CowString<'a> {
+    fn pre_escaped_content(self) -> Cow<'a, str> {
         match self {
             EscStr(s) => s,
             LabelStr(s) => if s.contains_char('\\') {
@@ -484,13 +481,13 @@ impl<'a> LabelText<'a> {
         let mut prefix = self.pre_escaped_content().into_owned();
         let suffix = suffix.pre_escaped_content();
         prefix.push_str(r"\n\n");
-        prefix.push_str(&suffix[]);
+        prefix.push_str(&suffix[..]);
         EscStr(prefix.into_cow())
     }
 }
 
-pub type Nodes<'a,N> = CowVec<'a,N>;
-pub type Edges<'a,E> = CowVec<'a,E>;
+pub type Nodes<'a,N> = Cow<'a,[N]>;
+pub type Edges<'a,E> = Cow<'a,[E]>;
 
 // (The type parameters in GraphWalk should be associated items,
 // when/if Rust supports such.)
@@ -678,7 +675,7 @@ mod tests {
 
     impl<'a> Labeller<'a, Node, &'a Edge> for LabelledGraph {
         fn graph_id(&'a self) -> Id<'a> {
-            Id::new(&self.name[]).unwrap()
+            Id::new(&self.name[..]).unwrap()
         }
         fn node_id(&'a self, n: &Node) -> Id<'a> {
             id_name(n)

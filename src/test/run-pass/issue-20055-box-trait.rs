@@ -16,7 +16,9 @@
 // whichever arm is run, and subsequently dropped at the end of the
 // statement surrounding the `match`.
 
-trait Boo { }
+trait Boo {
+    fn dummy(&self) { }
+}
 
 impl Boo for [i8; 1] { }
 impl Boo for [i8; 2] { }

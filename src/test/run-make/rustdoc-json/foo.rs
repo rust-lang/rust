@@ -21,5 +21,5 @@ pub mod bar {
     }
 
     /// *wow*
-    pub trait Doge { }
+    pub trait Doge { fn dummy(&self) { } }
 }

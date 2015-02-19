@@ -431,7 +431,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             if name.is_empty() {
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(), noname())
             } else {
-                let name = CString::from_slice(name.as_bytes());
+                let name = CString::new(name).unwrap();
                 llvm::LLVMBuildAlloca(self.llbuilder, ty.to_ref(),
                                       name.as_ptr())
             }
@@ -567,7 +567,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         } else {
             let v = ixs.iter().map(|i| C_i32(self.ccx, *i as i32)).collect::<Vec<ValueRef>>();
             self.count_insn("gepi");
-            self.inbounds_gep(base, &v[])
+            self.inbounds_gep(base, &v[..])
         }
     }
 
@@ -775,8 +775,8 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let s = format!("{} ({})",
                             text,
                             self.ccx.sess().codemap().span_to_string(sp));
-            debug!("{}", &s[]);
-            self.add_comment(&s[]);
+            debug!("{}", &s[..]);
+            self.add_comment(&s[..]);
         }
     }
 
@@ -786,7 +786,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
             let comment_text = format!("{} {}", "#",
                                        sanitized.replace("\n", "\n\t# "));
             self.count_insn("inlineasm");
-            let comment_text = CString::from_vec(comment_text.into_bytes());
+            let comment_text = CString::new(comment_text).unwrap();
             let asm = unsafe {
                 llvm::LLVMConstInlineAsm(Type::func(&[], &Type::void(self.ccx)).to_ref(),
                                          comment_text.as_ptr(), noname(), False,
@@ -813,7 +813,7 @@ impl<'a, 'tcx> Builder<'a, 'tcx> {
         }).collect::<Vec<_>>();
 
         debug!("Asm Output Type: {}", self.ccx.tn().type_to_string(output));
-        let fty = Type::func(&argtys[], &output);
+        let fty = Type::func(&argtys[..], &output);
         unsafe {
             let v = llvm::LLVMInlineAsm(
                 fty.to_ref(), asm, cons, volatile, alignstack, dia as c_uint);

@@ -21,9 +21,8 @@ pub trait Foo<'a, 't> {
     fn has_bound<'b:'a>(self, b: Inv<'b>);
     fn wrong_bound1<'b,'c,'d:'a+'b>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
     fn okay_bound<'b,'c,'d:'a+'b+'c>(self, b: Inv<'b>, c: Inv<'c>, d: Inv<'d>);
-    fn another_bound<'x: 'a>(self, x: Inv<'x>);
+    fn another_bound<'x: 'a>(self, x: Inv<'x>, y: Inv<'t>);
 }
-
 
 impl<'a, 't> Foo<'a, 't> for &'a isize {
     fn no_bound<'b:'a>(self, b: Inv<'b>) {
@@ -51,7 +50,7 @@ impl<'a, 't> Foo<'a, 't> for &'a isize {
     fn okay_bound<'b,'c,'e:'b+'c>(self, b: Inv<'b>, c: Inv<'c>, e: Inv<'e>) {
     }
 
-    fn another_bound<'x: 't>(self, x: Inv<'x>) {}
+    fn another_bound<'x: 't>(self, x: Inv<'x>, y: Inv<'t>) {}
 }
 
 fn main() { }

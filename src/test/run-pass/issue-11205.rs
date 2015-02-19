@@ -12,7 +12,7 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
-trait Foo {}
+trait Foo { fn dummy(&self) { } }
 impl Foo for int {}
 fn foo(_: [&Foo; 2]) {}
 fn foos(_: &[&Foo]) {}

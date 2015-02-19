@@ -29,6 +29,7 @@ pub struct Baz<X> {
 
 trait Bar<X> {
     fn bar(x: Self, y: &Self, z: Box<Self>) -> Self;
+    fn dummy(&self, x: X) { }
 }
 
 impl Bar<int> for Box<Baz<int>> {

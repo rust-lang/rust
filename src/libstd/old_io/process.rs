@@ -104,9 +104,21 @@ struct EnvKey(CString);
 #[derive(Eq, Clone, Debug)]
 struct EnvKey(CString);
 
-#[cfg(windows)]
+#[cfg(all(windows, stage0))]
 impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for EnvKey {
     fn hash(&self, state: &mut H) {
+        let &EnvKey(ref x) = self;
+        match str::from_utf8(x.as_bytes()) {
+            Ok(s) => for ch in s.chars() {
+                (ch as u8 as char).to_lowercase().hash(state);
+            },
+            Err(..) => x.hash(state)
+        }
+    }
+}
+#[cfg(all(windows, not(stage0)))]
+impl hash::Hash for EnvKey {
+    fn hash<H: hash::Hasher>(&self, state: &mut H) {
         let &EnvKey(ref x) = self;
         match str::from_utf8(x.as_bytes()) {
             Ok(s) => for ch in s.chars() {
@@ -204,7 +216,7 @@ impl Command {
     /// otherwise configure the process.
     pub fn new<T: BytesContainer>(program: T) -> Command {
         Command {
-            program: CString::from_slice(program.container_as_bytes()),
+            program: CString::new(program.container_as_bytes()).unwrap(),
             args: Vec::new(),
             env: None,
             cwd: None,
@@ -219,14 +231,14 @@ impl Command {
 
     /// Add an argument to pass to the program.
     pub fn arg<'a, T: BytesContainer>(&'a mut self, arg: T) -> &'a mut Command {
-        self.args.push(CString::from_slice(arg.container_as_bytes()));
+        self.args.push(CString::new(arg.container_as_bytes()).unwrap());
         self
     }
 
     /// Add multiple arguments to pass to the program.
     pub fn args<'a, T: BytesContainer>(&'a mut self, args: &[T]) -> &'a mut Command {
         self.args.extend(args.iter().map(|arg| {
-            CString::from_slice(arg.container_as_bytes())
+            CString::new(arg.container_as_bytes()).unwrap()
         }));
         self
     }
@@ -239,8 +251,8 @@ impl Command {
                 // if the env is currently just inheriting from the parent's,
                 // materialize the parent's env into a hashtable.
                 self.env = Some(os::env_as_bytes().into_iter().map(|(k, v)| {
-                    (EnvKey(CString::from_slice(&k)),
-                     CString::from_slice(&v))
+                    (EnvKey(CString::new(k).unwrap()),
+                     CString::new(v).unwrap())
                 }).collect());
                 self.env.as_mut().unwrap()
             }
@@ -254,8 +266,8 @@ impl Command {
     pub fn env<'a, T, U>(&'a mut self, key: T, val: U)
                          -> &'a mut Command
                          where T: BytesContainer, U: BytesContainer {
-        let key = EnvKey(CString::from_slice(key.container_as_bytes()));
-        let val = CString::from_slice(val.container_as_bytes());
+        let key = EnvKey(CString::new(key.container_as_bytes()).unwrap());
+        let val = CString::new(val.container_as_bytes()).unwrap();
         self.get_env_map().insert(key, val);
         self
     }
@@ -263,7 +275,7 @@ impl Command {
     /// Removes an environment variable mapping.
     pub fn env_remove<'a, T>(&'a mut self, key: T) -> &'a mut Command
                              where T: BytesContainer {
-        let key = EnvKey(CString::from_slice(key.container_as_bytes()));
+        let key = EnvKey(CString::new(key.container_as_bytes()).unwrap());
         self.get_env_map().remove(&key);
         self
     }
@@ -276,15 +288,15 @@ impl Command {
                                  -> &'a mut Command
                                  where T: BytesContainer, U: BytesContainer {
         self.env = Some(env.iter().map(|&(ref k, ref v)| {
-            (EnvKey(CString::from_slice(k.container_as_bytes())),
-             CString::from_slice(v.container_as_bytes()))
+            (EnvKey(CString::new(k.container_as_bytes()).unwrap()),
+             CString::new(v.container_as_bytes()).unwrap())
         }).collect());
         self
     }
 
     /// Set the working directory for the child process.
     pub fn cwd<'a>(&'a mut self, dir: &Path) -> &'a mut Command {
-        self.cwd = Some(CString::from_slice(dir.as_vec()));
+        self.cwd = Some(CString::new(dir.as_vec()).unwrap());
         self
     }
 
@@ -1226,7 +1238,7 @@ mod tests {
         cmd.env("path", "foo");
         cmd.env("Path", "bar");
         let env = &cmd.env.unwrap();
-        let val = env.get(&EnvKey(CString::from_slice(b"PATH")));
-        assert!(val.unwrap() == &CString::from_slice(b"bar"));
+        let val = env.get(&EnvKey(CString::new(b"PATH").unwrap()));
+        assert!(val.unwrap() == &CString::new(b"bar").unwrap());
     }
 }

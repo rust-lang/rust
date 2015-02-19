@@ -9,7 +9,7 @@
 // except according to those terms.
 
 
-trait Foo {
+trait Foo : ::std::marker::MarkerTrait {
 }
 
 fn b(_x: Box<Foo+Send>) {

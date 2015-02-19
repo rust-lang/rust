@@ -32,6 +32,7 @@
 // is also useful to track which value is the "expected" value in
 // terms of error reporting.
 
+use super::bivariate::Bivariate;
 use super::equate::Equate;
 use super::glb::Glb;
 use super::lub::Lub;
@@ -39,7 +40,7 @@ use super::sub::Sub;
 use super::unify::InferCtxtMethodsForSimplyUnifiableTypes;
 use super::{InferCtxt, cres};
 use super::{MiscVariable, TypeTrace};
-use super::type_variable::{RelationDir, EqTo, SubtypeOf, SupertypeOf};
+use super::type_variable::{RelationDir, BiTo, EqTo, SubtypeOf, SupertypeOf};
 
 use middle::subst;
 use middle::subst::{ErasedRegions, NonerasedRegions, Substs};
@@ -48,7 +49,7 @@ use middle::ty::{IntType, UintType};
 use middle::ty::{BuiltinBounds};
 use middle::ty::{self, Ty};
 use middle::ty_fold;
-use middle::ty_fold::{TypeFoldable};
+use middle::ty_fold::{TypeFolder, TypeFoldable};
 use util::ppaux::Repr;
 
 use std::rc::Rc;
@@ -58,41 +59,32 @@ use syntax::abi;
 use syntax::codemap::Span;
 
 pub trait Combine<'tcx> : Sized {
-    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx>;
     fn tcx<'a>(&'a self) -> &'a ty::ctxt<'tcx> { self.infcx().tcx }
     fn tag(&self) -> String;
-    fn a_is_expected(&self) -> bool;
-    fn trace(&self) -> TypeTrace<'tcx>;
 
-    fn equate<'a>(&'a self) -> Equate<'a, 'tcx>;
-    fn sub<'a>(&'a self) -> Sub<'a, 'tcx>;
-    fn lub<'a>(&'a self) -> Lub<'a, 'tcx>;
-    fn glb<'a>(&'a self) -> Glb<'a, 'tcx>;
+    fn fields<'a>(&'a self) -> &'a CombineFields<'a, 'tcx>;
+
+    fn infcx<'a>(&'a self) -> &'a InferCtxt<'a, 'tcx> { self.fields().infcx }
+    fn a_is_expected(&self) -> bool { self.fields().a_is_expected }
+    fn trace(&self) -> TypeTrace<'tcx> { self.fields().trace.clone() }
+    fn equate<'a>(&'a self) -> Equate<'a, 'tcx> { self.fields().equate() }
+    fn bivariate<'a>(&'a self) -> Bivariate<'a, 'tcx> { self.fields().bivariate() }
+
+    fn sub<'a>(&'a self) -> Sub<'a, 'tcx> { self.fields().sub() }
+    fn lub<'a>(&'a self) -> Lub<'a, 'tcx> { Lub(self.fields().clone()) }
+    fn glb<'a>(&'a self) -> Glb<'a, 'tcx> { Glb(self.fields().clone()) }
 
     fn mts(&self, a: &ty::mt<'tcx>, b: &ty::mt<'tcx>) -> cres<'tcx, ty::mt<'tcx>>;
-    fn contratys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>>;
+
+    fn tys_with_variance(&self, variance: ty::Variance, a: Ty<'tcx>, b: Ty<'tcx>)
+                         -> cres<'tcx, Ty<'tcx>>;
+
     fn tys(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>>;
 
-    fn tps(&self,
-           _: subst::ParamSpace,
-           as_: &[Ty<'tcx>],
-           bs: &[Ty<'tcx>])
-           -> cres<'tcx, Vec<Ty<'tcx>>> {
-        // FIXME -- In general, we treat variance a bit wrong
-        // here. For historical reasons, we treat tps and Self
-        // as invariant. This is overly conservative.
+    fn regions_with_variance(&self, variance: ty::Variance, a: ty::Region, b: ty::Region)
+                             -> cres<'tcx, ty::Region>;
 
-        if as_.len() != bs.len() {
-            return Err(ty::terr_ty_param_size(expected_found(self,
-                                                             as_.len(),
-                                                             bs.len())));
-        }
-
-        try!(as_.iter().zip(bs.iter())
-                .map(|(a, b)| self.equate().tys(*a, *b))
-                .collect::<cres<Vec<Ty>>>());
-        Ok(as_.to_vec())
-    }
+    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region>;
 
     fn substs(&self,
               item_def_id: ast::DefId,
@@ -100,6 +92,11 @@ pub trait Combine<'tcx> : Sized {
               b_subst: &subst::Substs<'tcx>)
               -> cres<'tcx, subst::Substs<'tcx>>
     {
+        debug!("substs: item_def_id={} a_subst={} b_subst={}",
+               item_def_id.repr(self.infcx().tcx),
+               a_subst.repr(self.infcx().tcx),
+               b_subst.repr(self.infcx().tcx));
+
         let variances = if self.infcx().tcx.variance_computed.get() {
             Some(ty::item_variances(self.infcx().tcx, item_def_id))
         } else {
@@ -119,7 +116,8 @@ pub trait Combine<'tcx> : Sized {
         for &space in &subst::ParamSpace::all() {
             let a_tps = a_subst.types.get_slice(space);
             let b_tps = b_subst.types.get_slice(space);
-            let tps = try!(self.tps(space, a_tps, b_tps));
+            let t_variances = variances.map(|v| v.types.get_slice(space));
+            let tps = try!(relate_type_params(self, t_variances, a_tps, b_tps));
             substs.types.replace(space, tps);
         }
 
@@ -132,20 +130,7 @@ pub trait Combine<'tcx> : Sized {
                 for &space in &subst::ParamSpace::all() {
                     let a_regions = a.get_slice(space);
                     let b_regions = b.get_slice(space);
-
-                    let mut invariance = Vec::new();
-                    let r_variances = match variances {
-                        Some(variances) => {
-                            variances.regions.get_slice(space)
-                        }
-                        None => {
-                            for _ in a_regions {
-                                invariance.push(ty::Invariant);
-                            }
-                            &invariance[]
-                        }
-                    };
-
+                    let r_variances = variances.map(|v| v.regions.get_slice(space));
                     let regions = try!(relate_region_params(self,
                                                             r_variances,
                                                             a_regions,
@@ -157,13 +142,34 @@ pub trait Combine<'tcx> : Sized {
 
         return Ok(substs);
 
+        fn relate_type_params<'tcx, C: Combine<'tcx>>(this: &C,
+                                                      variances: Option<&[ty::Variance]>,
+                                                      a_tys: &[Ty<'tcx>],
+                                                      b_tys: &[Ty<'tcx>])
+                                                      -> cres<'tcx, Vec<Ty<'tcx>>>
+        {
+            if a_tys.len() != b_tys.len() {
+                return Err(ty::terr_ty_param_size(expected_found(this,
+                                                                 a_tys.len(),
+                                                                 b_tys.len())));
+            }
+
+            range(0, a_tys.len()).map(|i| {
+                let a_ty = a_tys[i];
+                let b_ty = b_tys[i];
+                let v = variances.map_or(ty::Invariant, |v| v[i]);
+                this.tys_with_variance(v, a_ty, b_ty)
+            }).collect()
+        }
+
         fn relate_region_params<'tcx, C: Combine<'tcx>>(this: &C,
-                                                        variances: &[ty::Variance],
+                                                        variances: Option<&[ty::Variance]>,
                                                         a_rs: &[ty::Region],
                                                         b_rs: &[ty::Region])
-                                                        -> cres<'tcx, Vec<ty::Region>> {
+                                                        -> cres<'tcx, Vec<ty::Region>>
+        {
             let tcx = this.infcx().tcx;
-            let num_region_params = variances.len();
+            let num_region_params = a_rs.len();
 
             debug!("relate_region_params(\
                    a_rs={}, \
@@ -173,22 +179,18 @@ pub trait Combine<'tcx> : Sized {
                    b_rs.repr(tcx),
                    variances.repr(tcx));
 
-            assert_eq!(num_region_params, a_rs.len());
+            assert_eq!(num_region_params,
+                       variances.map_or(num_region_params,
+                                        |v| v.len()));
+
             assert_eq!(num_region_params, b_rs.len());
-            let mut rs = vec!();
-            for i in 0..num_region_params {
+
+            (0..a_rs.len()).map(|i| {
                 let a_r = a_rs[i];
                 let b_r = b_rs[i];
-                let variance = variances[i];
-                let r = match variance {
-                    ty::Invariant => this.equate().regions(a_r, b_r),
-                    ty::Covariant => this.regions(a_r, b_r),
-                    ty::Contravariant => this.contraregions(a_r, b_r),
-                    ty::Bivariant => Ok(a_r),
-                };
-                rs.push(try!(r));
-            }
-            Ok(rs)
+                let variance = variances.map_or(ty::Invariant, |v| v[i]);
+                this.regions_with_variance(variance, a_r, b_r)
+            }).collect()
         }
     }
 
@@ -241,7 +243,7 @@ pub trait Combine<'tcx> : Sized {
     }
 
     fn args(&self, a: Ty<'tcx>, b: Ty<'tcx>) -> cres<'tcx, Ty<'tcx>> {
-        self.contratys(a, b).and_then(|t| Ok(t))
+        self.tys_with_variance(ty::Contravariant, a, b).and_then(|t| Ok(t))
     }
 
     fn unsafeties(&self, a: Unsafety, b: Unsafety) -> cres<'tcx, Unsafety>;
@@ -309,7 +311,7 @@ pub trait Combine<'tcx> : Sized {
                           b: &ty::ExistentialBounds<'tcx>)
                           -> cres<'tcx, ty::ExistentialBounds<'tcx>>
     {
-        let r = try!(self.contraregions(a.region_bound, b.region_bound));
+        let r = try!(self.regions_with_variance(ty::Contravariant, a.region_bound, b.region_bound));
         let nb = try!(self.builtin_bounds(a.builtin_bounds, b.builtin_bounds));
         let pb = try!(self.projection_bounds(&a.projection_bounds, &b.projection_bounds));
         Ok(ty::ExistentialBounds { region_bound: r,
@@ -321,11 +323,6 @@ pub trait Combine<'tcx> : Sized {
                       a: ty::BuiltinBounds,
                       b: ty::BuiltinBounds)
                       -> cres<'tcx, ty::BuiltinBounds>;
-
-    fn contraregions(&self, a: ty::Region, b: ty::Region)
-                  -> cres<'tcx, ty::Region>;
-
-    fn regions(&self, a: ty::Region, b: ty::Region) -> cres<'tcx, ty::Region>;
 
     fn trait_refs(&self,
                   a: &ty::TraitRef<'tcx>,
@@ -540,7 +537,8 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
       }
 
       (&ty::ty_rptr(a_r, ref a_mt), &ty::ty_rptr(b_r, ref b_mt)) => {
-            let r = try!(this.contraregions(*a_r, *b_r));
+            let r = try!(this.regions_with_variance(ty::Contravariant, *a_r, *b_r));
+
             // FIXME(14985)  If we have mutable references to trait objects, we
             // used to use covariant subtyping. I have preserved this behaviour,
             // even though it is probably incorrect. So don't go down the usual
@@ -644,6 +642,10 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
         Equate((*self).clone())
     }
 
+    fn bivariate(&self) -> Bivariate<'f, 'tcx> {
+        Bivariate((*self).clone())
+    }
+
     fn sub(&self) -> Sub<'f, 'tcx> {
         Sub((*self).clone())
     }
@@ -697,7 +699,7 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
                         EqTo => {
                             self.generalize(a_ty, b_vid, false)
                         }
-                        SupertypeOf | SubtypeOf => {
+                        BiTo | SupertypeOf | SubtypeOf => {
                             self.generalize(a_ty, b_vid, true)
                         }
                     });
@@ -721,6 +723,10 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
             // to associate causes/spans with each of the relations in
             // the stack to get this right.
             match dir {
+                BiTo => {
+                    try!(self.bivariate().tys(a_ty, b_ty));
+                }
+
                 EqTo => {
                     try!(self.equate().tys(a_ty, b_ty));
                 }
@@ -730,7 +736,7 @@ impl<'f, 'tcx> CombineFields<'f, 'tcx> {
                 }
 
                 SupertypeOf => {
-                    try!(self.sub().contratys(a_ty, b_ty));
+                    try!(self.sub().tys_with_variance(ty::Contravariant, a_ty, b_ty));
                 }
             }
         }

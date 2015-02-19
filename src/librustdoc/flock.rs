@@ -112,7 +112,7 @@ mod imp {
 
     impl Lock {
         pub fn new(p: &Path) -> Lock {
-            let buf = CString::from_slice(p.as_vec());
+            let buf = CString::new(p.as_vec()).unwrap();
             let fd = unsafe {
                 libc::open(buf.as_ptr(), libc::O_RDWR | libc::O_CREAT,
                            libc::S_IRWXU)

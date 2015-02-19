@@ -10,6 +10,7 @@
 
 trait Foo {
     fn new() -> bool { false }
+    fn dummy(&self) { }
 }
 
 trait Bar {

@@ -10,7 +10,7 @@
 
 // Check that an associated type cannot be bound in an expression path.
 
-trait Foo {
+trait Foo : ::std::marker::MarkerTrait {
     type A;
     fn bar() -> isize;
 }

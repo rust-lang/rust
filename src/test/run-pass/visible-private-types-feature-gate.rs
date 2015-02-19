@@ -10,7 +10,7 @@
 
 #![feature(visible_private_types)]
 
-trait Foo {}
+trait Foo { fn dummy(&self) { } }
 
 pub trait Bar : Foo {}
 

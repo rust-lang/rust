@@ -10,6 +10,7 @@
 
 trait PoolManager {
     type C;
+    fn dummy(&self) { }
 }
 
 struct InnerPool<M> {

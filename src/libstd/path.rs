@@ -108,12 +108,11 @@
 use core::prelude::*;
 
 use ascii::*;
-use borrow::BorrowFrom;
+use borrow::{Borrow, ToOwned, Cow};
 use cmp;
-use iter;
+use iter::{self, IntoIterator};
 use mem;
 use ops::{self, Deref};
-use string::CowString;
 use vec::Vec;
 use fmt;
 
@@ -953,7 +952,7 @@ impl PathBuf {
 }
 
 impl<'a, P: ?Sized + 'a> iter::FromIterator<&'a P> for PathBuf where P: AsPath {
-    fn from_iter<I: Iterator<Item = &'a P>>(iter: I) -> PathBuf {
+    fn from_iter<I: IntoIterator<Item = &'a P>>(iter: I) -> PathBuf {
         let mut buf = PathBuf::new("");
         buf.extend(iter);
         buf
@@ -961,7 +960,7 @@ impl<'a, P: ?Sized + 'a> iter::FromIterator<&'a P> for PathBuf where P: AsPath {
 }
 
 impl<'a, P: ?Sized + 'a> iter::Extend<&'a P> for PathBuf where P: AsPath {
-    fn extend<I: Iterator<Item = &'a P>>(&mut self, iter: I) {
+    fn extend<I: IntoIterator<Item = &'a P>>(&mut self, iter: I) {
         for p in iter {
             self.push(p)
         }
@@ -978,14 +977,19 @@ impl ops::Deref for PathBuf {
     type Target = Path;
 
     fn deref(&self) -> &Path {
-        unsafe { mem::transmute(&self.inner[]) }
+        unsafe { mem::transmute(&self.inner[..]) }
     }
 }
 
-impl BorrowFrom<PathBuf> for Path {
-    fn borrow_from(owned: &PathBuf) -> &Path {
-        owned.deref()
+impl Borrow<Path> for PathBuf {
+    fn borrow(&self) -> &Path {
+        self.deref()
     }
+}
+
+impl ToOwned for Path {
+    type Owned = PathBuf;
+    fn to_owned(&self) -> PathBuf { self.to_path_buf() }
 }
 
 impl cmp::PartialEq for PathBuf {
@@ -1010,7 +1014,7 @@ impl cmp::Ord for PathBuf {
 
 impl AsOsStr for PathBuf {
     fn as_os_str(&self) -> &OsStr {
-        &self.inner[]
+        &self.inner[..]
     }
 }
 
@@ -1066,10 +1070,10 @@ impl Path {
         self.inner.to_str()
     }
 
-    /// Convert a `Path` to a `CowString`.
+    /// Convert a `Path` to a `Cow<str>`.
     ///
     /// Any non-Unicode sequences are replaced with U+FFFD REPLACEMENT CHARACTER.
-    pub fn to_string_lossy(&self) -> CowString {
+    pub fn to_string_lossy(&self) -> Cow<str> {
         self.inner.to_string_lossy()
     }
 

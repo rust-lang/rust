@@ -21,6 +21,7 @@
 
 use core::prelude::*;
 use core::num::{Float, Int};
+use core::marker::PhantomData;
 
 use {Rng, Rand};
 
@@ -56,7 +57,13 @@ pub trait IndependentSample<Support>: Sample<Support> {
 
 /// A wrapper for generating types that implement `Rand` via the
 /// `Sample` & `IndependentSample` traits.
-pub struct RandSample<Sup>;
+pub struct RandSample<Sup> { _marker: PhantomData<Sup> }
+
+impl<Sup> RandSample<Sup> {
+    pub fn new() -> RandSample<Sup> {
+        RandSample { _marker: PhantomData }
+    }
+}
 
 impl<Sup: Rand> Sample<Sup> for RandSample<Sup> {
     fn sample<R: Rng>(&mut self, rng: &mut R) -> Sup { self.ind_sample(rng) }
@@ -285,7 +292,7 @@ mod tests {
 
     #[test]
     fn test_rand_sample() {
-        let mut rand_sample = RandSample::<ConstRand>;
+        let mut rand_sample = RandSample::<ConstRand>::new();
 
         assert_eq!(rand_sample.sample(&mut ::test::rng()), ConstRand(0));
         assert_eq!(rand_sample.ind_sample(&mut ::test::rng()), ConstRand(0));

@@ -10,13 +10,13 @@
 
 //! A doubly-linked list with owned nodes.
 //!
-//! The `DList` allows pushing and popping elements at either end and is thus
+//! The `LinkedList` allows pushing and popping elements at either end and is thus
 //! efficiently usable as a double-ended queue.
 
-// DList is constructed like a singly-linked list over the field `next`.
+// LinkedList is constructed like a singly-linked list over the field `next`.
 // including the last link being None; each Node owns its `next` field.
 //
-// Backlinks over DList::prev are raw pointers that form a full chain in
+// Backlinks over LinkedList::prev are raw pointers that form a full chain in
 // the reverse direction.
 
 #![stable(feature = "rust1", since = "1.0.0")]
@@ -27,14 +27,20 @@ use alloc::boxed::Box;
 use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
-use core::hash::{Writer, Hasher, Hash};
+use core::hash::{Hasher, Hash};
+#[cfg(stage0)]
+use core::hash::Writer;
 use core::iter::{self, FromIterator, IntoIterator};
 use core::mem;
 use core::ptr;
 
+#[deprecated(since = "1.0.0", reason = "renamed to LinkedList")]
+#[unstable(feature = "collections")]
+pub use LinkedList as DList;
+
 /// A doubly-linked list.
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct DList<T> {
+pub struct LinkedList<T> {
     length: usize,
     list_head: Link<T>,
     list_tail: Rawlink<Node<T>>,
@@ -56,7 +62,7 @@ struct Node<T> {
     value: T,
 }
 
-/// An iterator over references to the items of a `DList`.
+/// An iterator over references to the items of a `LinkedList`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Iter<'a, T:'a> {
     head: &'a Link<T>,
@@ -76,20 +82,20 @@ impl<'a, T> Clone for Iter<'a, T> {
     }
 }
 
-/// An iterator over mutable references to the items of a `DList`.
+/// An iterator over mutable references to the items of a `LinkedList`.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IterMut<'a, T:'a> {
-    list: &'a mut DList<T>,
+    list: &'a mut LinkedList<T>,
     head: Rawlink<Node<T>>,
     tail: Rawlink<Node<T>>,
     nelem: usize,
 }
 
-/// An iterator over mutable references to the items of a `DList`.
+/// An iterator over mutable references to the items of a `LinkedList`.
 #[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct IntoIter<T> {
-    list: DList<T>
+    list: LinkedList<T>
 }
 
 /// Rawlink is a type like Option<T> but for holding a raw pointer
@@ -147,7 +153,7 @@ fn link_with_prev<T>(mut next: Box<Node<T>>, prev: Rawlink<Node<T>>)
 }
 
 // private methods
-impl<T> DList<T> {
+impl<T> LinkedList<T> {
     /// Add a Node first in the list
     #[inline]
     fn push_front_node(&mut self, mut new_head: Box<Node<T>>) {
@@ -207,18 +213,18 @@ impl<T> DList<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Default for DList<T> {
+impl<T> Default for LinkedList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    fn default() -> DList<T> { DList::new() }
+    fn default() -> LinkedList<T> { LinkedList::new() }
 }
 
-impl<T> DList<T> {
-    /// Creates an empty `DList`.
+impl<T> LinkedList<T> {
+    /// Creates an empty `LinkedList`.
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new() -> DList<T> {
-        DList{list_head: None, list_tail: Rawlink::none(), length: 0}
+    pub fn new() -> LinkedList<T> {
+        LinkedList{list_head: None, list_tail: Rawlink::none(), length: 0}
     }
 
     /// Moves all elements from `other` to the end of the list.
@@ -231,10 +237,10 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut a = DList::new();
-    /// let mut b = DList::new();
+    /// let mut a = LinkedList::new();
+    /// let mut b = LinkedList::new();
     /// a.push_back(1);
     /// a.push_back(2);
     /// b.push_back(3);
@@ -247,7 +253,7 @@ impl<T> DList<T> {
     /// }
     /// println!("{}", b.len()); // prints 0
     /// ```
-    pub fn append(&mut self, other: &mut DList<T>) {
+    pub fn append(&mut self, other: &mut LinkedList<T>) {
         match self.list_tail.resolve() {
             None => {
                 self.length = other.length;
@@ -301,16 +307,16 @@ impl<T> DList<T> {
         IntoIter{list: self}
     }
 
-    /// Returns `true` if the `DList` is empty.
+    /// Returns `true` if the `LinkedList` is empty.
     ///
     /// This operation should compute in O(1) time.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     /// assert!(dl.is_empty());
     ///
     /// dl.push_front("foo");
@@ -322,16 +328,16 @@ impl<T> DList<T> {
         self.list_head.is_none()
     }
 
-    /// Returns the length of the `DList`.
+    /// Returns the length of the `LinkedList`.
     ///
     /// This operation should compute in O(1) time.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     ///
     /// dl.push_front(2);
     /// assert_eq!(dl.len(), 1);
@@ -349,16 +355,16 @@ impl<T> DList<T> {
         self.length
     }
 
-    /// Removes all elements from the `DList`.
+    /// Removes all elements from the `LinkedList`.
     ///
     /// This operation should compute in O(n) time.
     ///
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     ///
     /// dl.push_front(2);
     /// dl.push_front(1);
@@ -373,7 +379,7 @@ impl<T> DList<T> {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn clear(&mut self) {
-        *self = DList::new()
+        *self = LinkedList::new()
     }
 
     /// Provides a reference to the front element, or `None` if the list is
@@ -382,9 +388,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     /// assert_eq!(dl.front(), None);
     ///
     /// dl.push_front(1);
@@ -403,9 +409,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     /// assert_eq!(dl.front(), None);
     ///
     /// dl.push_front(1);
@@ -430,9 +436,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     /// assert_eq!(dl.back(), None);
     ///
     /// dl.push_back(1);
@@ -451,9 +457,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     /// assert_eq!(dl.back(), None);
     ///
     /// dl.push_back(1);
@@ -479,9 +485,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut dl = DList::new();
+    /// let mut dl = LinkedList::new();
     ///
     /// dl.push_front(2);
     /// assert_eq!(dl.front().unwrap(), &2);
@@ -503,9 +509,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut d = DList::new();
+    /// let mut d = LinkedList::new();
     /// assert_eq!(d.pop_front(), None);
     ///
     /// d.push_front(1);
@@ -526,9 +532,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut d = DList::new();
+    /// let mut d = LinkedList::new();
     /// d.push_back(1);
     /// d.push_back(3);
     /// assert_eq!(3, *d.back().unwrap());
@@ -544,9 +550,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut d = DList::new();
+    /// let mut d = LinkedList::new();
     /// assert_eq!(d.pop_back(), None);
     /// d.push_back(1);
     /// d.push_back(3);
@@ -569,9 +575,9 @@ impl<T> DList<T> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut d = DList::new();
+    /// let mut d = LinkedList::new();
     ///
     /// d.push_front(1);
     /// d.push_front(2);
@@ -583,13 +589,13 @@ impl<T> DList<T> {
     /// assert_eq!(splitted.pop_front(), None);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn split_off(&mut self, at: usize) -> DList<T> {
+    pub fn split_off(&mut self, at: usize) -> LinkedList<T> {
         let len = self.len();
         assert!(at <= len, "Cannot split off at a nonexistent index");
         if at == 0 {
-            return mem::replace(self, DList::new());
+            return mem::replace(self, LinkedList::new());
         } else if at == len {
-            return DList::new();
+            return LinkedList::new();
         }
 
         // Below, we iterate towards the `i-1`th node, either from the start or the end,
@@ -612,7 +618,7 @@ impl<T> DList<T> {
             iter.tail
         };
 
-        let mut splitted_list = DList {
+        let mut splitted_list = LinkedList {
             list_head: None,
             list_tail: self.list_tail,
             length: len - at
@@ -628,9 +634,9 @@ impl<T> DList<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> Drop for DList<T> {
+impl<T> Drop for LinkedList<T> {
     fn drop(&mut self) {
-        // Dissolve the dlist in backwards direction
+        // Dissolve the linked_list in backwards direction
         // Just dropping the list_head can lead to stack exhaustion
         // when length is >> 1_000_000
         let mut tail = self.list_tail;
@@ -761,9 +767,9 @@ impl<'a, A> IterMut<'a, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut list: DList<_> = vec![1, 3, 4].into_iter().collect();
+    /// let mut list: LinkedList<_> = vec![1, 3, 4].into_iter().collect();
     ///
     /// {
     ///     let mut it = list.iter_mut();
@@ -788,9 +794,9 @@ impl<'a, A> IterMut<'a, A> {
     /// # Examples
     ///
     /// ```
-    /// use std::collections::DList;
+    /// use std::collections::LinkedList;
     ///
-    /// let mut list: DList<_> = vec![1, 2, 3].into_iter().collect();
+    /// let mut list: LinkedList<_> = vec![1, 2, 3].into_iter().collect();
     ///
     /// let mut it = list.iter_mut();
     /// assert_eq!(it.next().unwrap(), &1);
@@ -829,16 +835,16 @@ impl<A> DoubleEndedIterator for IntoIter<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> FromIterator<A> for DList<A> {
-    fn from_iter<T: Iterator<Item=A>>(iterator: T) -> DList<A> {
+impl<A> FromIterator<A> for LinkedList<A> {
+    fn from_iter<T: IntoIterator<Item=A>>(iter: T) -> LinkedList<A> {
         let mut ret = DList::new();
-        ret.extend(iterator);
+        ret.extend(iter);
         ret
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T> IntoIterator for DList<T> {
+impl<T> IntoIterator for LinkedList<T> {
     type Item = T;
     type IntoIter = IntoIter<T>;
 
@@ -848,7 +854,7 @@ impl<T> IntoIterator for DList<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, T> IntoIterator for &'a DList<T> {
+impl<'a, T> IntoIterator for &'a LinkedList<T> {
     type Item = &'a T;
     type IntoIter = Iter<'a, T>;
 
@@ -857,7 +863,7 @@ impl<'a, T> IntoIterator for &'a DList<T> {
     }
 }
 
-impl<'a, T> IntoIterator for &'a mut DList<T> {
+impl<'a, T> IntoIterator for &'a mut LinkedList<T> {
     type Item = &'a mut T;
     type IntoIter = IterMut<'a, T>;
 
@@ -867,54 +873,54 @@ impl<'a, T> IntoIterator for &'a mut DList<T> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A> Extend<A> for DList<A> {
-    fn extend<T: Iterator<Item=A>>(&mut self, iterator: T) {
-        for elt in iterator { self.push_back(elt); }
+impl<A> Extend<A> for LinkedList<A> {
+    fn extend<T: IntoIterator<Item=A>>(&mut self, iter: T) {
+        for elt in iter { self.push_back(elt); }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: PartialEq> PartialEq for DList<A> {
-    fn eq(&self, other: &DList<A>) -> bool {
+impl<A: PartialEq> PartialEq for LinkedList<A> {
+    fn eq(&self, other: &LinkedList<A>) -> bool {
         self.len() == other.len() &&
             iter::order::eq(self.iter(), other.iter())
     }
 
-    fn ne(&self, other: &DList<A>) -> bool {
+    fn ne(&self, other: &LinkedList<A>) -> bool {
         self.len() != other.len() ||
             iter::order::ne(self.iter(), other.iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Eq> Eq for DList<A> {}
+impl<A: Eq> Eq for LinkedList<A> {}
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: PartialOrd> PartialOrd for DList<A> {
-    fn partial_cmp(&self, other: &DList<A>) -> Option<Ordering> {
+impl<A: PartialOrd> PartialOrd for LinkedList<A> {
+    fn partial_cmp(&self, other: &LinkedList<A>) -> Option<Ordering> {
         iter::order::partial_cmp(self.iter(), other.iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Ord> Ord for DList<A> {
+impl<A: Ord> Ord for LinkedList<A> {
     #[inline]
-    fn cmp(&self, other: &DList<A>) -> Ordering {
+    fn cmp(&self, other: &LinkedList<A>) -> Ordering {
         iter::order::cmp(self.iter(), other.iter())
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: Clone> Clone for DList<A> {
-    fn clone(&self) -> DList<A> {
-        self.iter().map(|x| x.clone()).collect()
+impl<A: Clone> Clone for LinkedList<A> {
+    fn clone(&self) -> LinkedList<A> {
+        self.iter().cloned().collect()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<A: fmt::Debug> fmt::Debug for DList<A> {
+impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        try!(write!(f, "DList ["));
+        try!(write!(f, "LinkedList ["));
 
         for (i, e) in self.iter().enumerate() {
             if i != 0 { try!(write!(f, ", ")); }
@@ -926,8 +932,19 @@ impl<A: fmt::Debug> fmt::Debug for DList<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for DList<A> {
+#[cfg(stage0)]
+impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for LinkedList<A> {
     fn hash(&self, state: &mut S) {
+        self.len().hash(state);
+        for elt in self {
+            elt.hash(state);
+        }
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+#[cfg(not(stage0))]
+impl<A: Hash> Hash for LinkedList<A> {
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);
         for elt in self {
             elt.hash(state);
@@ -944,9 +961,9 @@ mod tests {
     use test::Bencher;
     use test;
 
-    use super::{DList, Node};
+    use super::{LinkedList, Node};
 
-    pub fn check_links<T>(list: &DList<T>) {
+    pub fn check_links<T>(list: &LinkedList<T>) {
         let mut len = 0;
         let mut last_ptr: Option<&Node<T>> = None;
         let mut node_ptr: &Node<T>;
@@ -980,7 +997,7 @@ mod tests {
 
     #[test]
     fn test_basic() {
-        let mut m = DList::new();
+        let mut m = LinkedList::new();
         assert_eq!(m.pop_front(), None);
         assert_eq!(m.pop_back(), None);
         assert_eq!(m.pop_front(), None);
@@ -999,7 +1016,7 @@ mod tests {
         m.push_back(box 7);
         assert_eq!(m.pop_front(), Some(box 1));
 
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         n.push_front(2);
         n.push_front(3);
         {
@@ -1019,21 +1036,21 @@ mod tests {
     }
 
     #[cfg(test)]
-    fn generate_test() -> DList<i32> {
+    fn generate_test() -> LinkedList<i32> {
         list_from(&[0,1,2,3,4,5,6])
     }
 
     #[cfg(test)]
-    fn list_from<T: Clone>(v: &[T]) -> DList<T> {
-        v.iter().map(|x| (*x).clone()).collect()
+    fn list_from<T: Clone>(v: &[T]) -> LinkedList<T> {
+        v.iter().cloned().collect()
     }
 
     #[test]
     fn test_append() {
         // Empty to empty
         {
-            let mut m = DList::<i32>::new();
-            let mut n = DList::new();
+            let mut m = LinkedList::<i32>::new();
+            let mut n = LinkedList::new();
             m.append(&mut n);
             check_links(&m);
             assert_eq!(m.len(), 0);
@@ -1041,8 +1058,8 @@ mod tests {
         }
         // Non-empty to empty
         {
-            let mut m = DList::new();
-            let mut n = DList::new();
+            let mut m = LinkedList::new();
+            let mut n = LinkedList::new();
             n.push_back(2);
             m.append(&mut n);
             check_links(&m);
@@ -1053,8 +1070,8 @@ mod tests {
         }
         // Empty to non-empty
         {
-            let mut m = DList::new();
-            let mut n = DList::new();
+            let mut m = LinkedList::new();
+            let mut n = LinkedList::new();
             m.push_back(2);
             m.append(&mut n);
             check_links(&m);
@@ -1089,7 +1106,7 @@ mod tests {
     fn test_split_off() {
         // singleton
         {
-            let mut m = DList::new();
+            let mut m = LinkedList::new();
             m.push_back(1);
 
             let p = m.split_off(0);
@@ -1130,7 +1147,7 @@ mod tests {
 
         // no-op on the last index
         {
-            let mut m = DList::new();
+            let mut m = LinkedList::new();
             m.push_back(1);
 
             let p = m.split_off(1);
@@ -1148,7 +1165,7 @@ mod tests {
         for (i, elt) in m.iter().enumerate() {
             assert_eq!(i as i32, *elt);
         }
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         assert_eq!(n.iter().next(), None);
         n.push_front(4);
         let mut it = n.iter();
@@ -1160,7 +1177,7 @@ mod tests {
 
     #[test]
     fn test_iterator_clone() {
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         n.push_back(2);
         n.push_back(3);
         n.push_back(4);
@@ -1174,7 +1191,7 @@ mod tests {
 
     #[test]
     fn test_iterator_double_end() {
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         assert_eq!(n.iter().next(), None);
         n.push_front(4);
         n.push_front(5);
@@ -1196,7 +1213,7 @@ mod tests {
         for (i, elt) in m.iter().rev().enumerate() {
             assert_eq!((6 - i) as i32, *elt);
         }
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         assert_eq!(n.iter().rev().next(), None);
         n.push_front(4);
         let mut it = n.iter().rev();
@@ -1215,7 +1232,7 @@ mod tests {
             len -= 1;
         }
         assert_eq!(len, 0);
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         assert!(n.iter_mut().next().is_none());
         n.push_front(4);
         n.push_back(5);
@@ -1229,7 +1246,7 @@ mod tests {
 
     #[test]
     fn test_iterator_mut_double_end() {
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         assert!(n.iter_mut().next_back().is_none());
         n.push_front(4);
         n.push_front(5);
@@ -1278,7 +1295,7 @@ mod tests {
         for (i, elt) in m.iter_mut().rev().enumerate() {
             assert_eq!((6 - i) as i32, *elt);
         }
-        let mut n = DList::new();
+        let mut n = LinkedList::new();
         assert!(n.iter_mut().rev().next().is_none());
         n.push_front(4);
         let mut it = n.iter_mut().rev();
@@ -1313,8 +1330,8 @@ mod tests {
 
     #[test]
     fn test_hash() {
-      let mut x = DList::new();
-      let mut y = DList::new();
+      let mut x = LinkedList::new();
+      let mut y = LinkedList::new();
 
       assert!(hash::hash::<_, SipHasher>(&x) == hash::hash::<_, SipHasher>(&y));
 
@@ -1382,16 +1399,16 @@ mod tests {
 
     #[test]
     fn test_show() {
-        let list: DList<_> = (0..10).collect();
-        assert_eq!(format!("{:?}", list), "DList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
+        let list: LinkedList<_> = (0..10).collect();
+        assert_eq!(format!("{:?}", list), "LinkedList [0, 1, 2, 3, 4, 5, 6, 7, 8, 9]");
 
-        let list: DList<_> = vec!["just", "one", "test", "more"].iter().cloned().collect();
-        assert_eq!(format!("{:?}", list), "DList [\"just\", \"one\", \"test\", \"more\"]");
+        let list: LinkedList<_> = vec!["just", "one", "test", "more"].iter().cloned().collect();
+        assert_eq!(format!("{:?}", list), "LinkedList [\"just\", \"one\", \"test\", \"more\"]");
     }
 
     #[cfg(test)]
     fn fuzz_test(sz: i32) {
-        let mut m: DList<_> = DList::new();
+        let mut m: LinkedList<_> = LinkedList::new();
         let mut v = vec![];
         for i in 0..sz {
             check_links(&m);
@@ -1432,13 +1449,13 @@ mod tests {
     fn bench_collect_into(b: &mut test::Bencher) {
         let v = &[0; 64];
         b.iter(|| {
-            let _: DList<_> = v.iter().cloned().collect();
+            let _: LinkedList<_> = v.iter().cloned().collect();
         })
     }
 
     #[bench]
     fn bench_push_front(b: &mut test::Bencher) {
-        let mut m: DList<_> = DList::new();
+        let mut m: LinkedList<_> = LinkedList::new();
         b.iter(|| {
             m.push_front(0);
         })
@@ -1446,7 +1463,7 @@ mod tests {
 
     #[bench]
     fn bench_push_back(b: &mut test::Bencher) {
-        let mut m: DList<_> = DList::new();
+        let mut m: LinkedList<_> = LinkedList::new();
         b.iter(|| {
             m.push_back(0);
         })
@@ -1454,7 +1471,7 @@ mod tests {
 
     #[bench]
     fn bench_push_back_pop_back(b: &mut test::Bencher) {
-        let mut m: DList<_> = DList::new();
+        let mut m: LinkedList<_> = LinkedList::new();
         b.iter(|| {
             m.push_back(0);
             m.pop_back();
@@ -1463,7 +1480,7 @@ mod tests {
 
     #[bench]
     fn bench_push_front_pop_front(b: &mut test::Bencher) {
-        let mut m: DList<_> = DList::new();
+        let mut m: LinkedList<_> = LinkedList::new();
         b.iter(|| {
             m.push_front(0);
             m.pop_front();
@@ -1473,7 +1490,7 @@ mod tests {
     #[bench]
     fn bench_iter(b: &mut test::Bencher) {
         let v = &[0; 128];
-        let m: DList<_> = v.iter().cloned().collect();
+        let m: LinkedList<_> = v.iter().cloned().collect();
         b.iter(|| {
             assert!(m.iter().count() == 128);
         })
@@ -1481,7 +1498,7 @@ mod tests {
     #[bench]
     fn bench_iter_mut(b: &mut test::Bencher) {
         let v = &[0; 128];
-        let mut m: DList<_> = v.iter().cloned().collect();
+        let mut m: LinkedList<_> = v.iter().cloned().collect();
         b.iter(|| {
             assert!(m.iter_mut().count() == 128);
         })
@@ -1489,7 +1506,7 @@ mod tests {
     #[bench]
     fn bench_iter_rev(b: &mut test::Bencher) {
         let v = &[0; 128];
-        let m: DList<_> = v.iter().cloned().collect();
+        let m: LinkedList<_> = v.iter().cloned().collect();
         b.iter(|| {
             assert!(m.iter().rev().count() == 128);
         })
@@ -1497,7 +1514,7 @@ mod tests {
     #[bench]
     fn bench_iter_mut_rev(b: &mut test::Bencher) {
         let v = &[0; 128];
-        let mut m: DList<_> = v.iter().cloned().collect();
+        let mut m: LinkedList<_> = v.iter().cloned().collect();
         b.iter(|| {
             assert!(m.iter_mut().rev().count() == 128);
         })

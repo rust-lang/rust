@@ -472,7 +472,7 @@ mod tests {
             "echo \"a b c\""
         );
         assert_eq!(
-            test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[]),
+            test_wrapper("\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}", &[..]),
             "\u{03c0}\u{042f}\u{97f3}\u{00e6}\u{221e}"
         );
     }

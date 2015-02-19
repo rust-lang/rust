@@ -12,7 +12,9 @@
 
 #![feature(issue_5723_bootstrap)]
 
-trait Foo { }
+trait Foo {
+    fn dummy(&self) { }
+}
 
 fn foo<'a, 'b, 'c:'a+'b, 'd>() {
 }

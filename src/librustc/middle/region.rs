@@ -407,7 +407,7 @@ impl RegionMaps {
 
     pub fn opt_encl_scope(&self, id: CodeExtent) -> Option<CodeExtent> {
         //! Returns the narrowest scope that encloses `id`, if any.
-        self.scope_map.borrow().get(&id).map(|x| *x)
+        self.scope_map.borrow().get(&id).cloned()
     }
 
     #[allow(dead_code)] // used in middle::cfg

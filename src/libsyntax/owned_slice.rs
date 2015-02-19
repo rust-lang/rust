@@ -10,7 +10,7 @@
 
 use std::default::Default;
 use std::fmt;
-use std::iter::FromIterator;
+use std::iter::{IntoIterator, FromIterator};
 use std::ops::Deref;
 use std::vec;
 use serialize::{Encodable, Decodable, Encoder, Decoder};
@@ -77,8 +77,8 @@ impl<T: Clone> Clone for OwnedSlice<T> {
 }
 
 impl<T> FromIterator<T> for OwnedSlice<T> {
-    fn from_iter<I: Iterator<Item=T>>(iter: I) -> OwnedSlice<T> {
-        OwnedSlice::from_vec(iter.collect())
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> OwnedSlice<T> {
+        OwnedSlice::from_vec(iter.into_iter().collect())
     }
 }
 

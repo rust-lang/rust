@@ -14,7 +14,7 @@ pub extern {
 }
 
 trait A {
-    fn foo() {}
+    fn foo(&self) {}
 }
 
 struct B;
@@ -22,7 +22,7 @@ struct B;
 pub impl B {} //~ ERROR: unnecessary visibility
 
 pub impl A for B { //~ ERROR: unnecessary visibility
-    pub fn foo() {} //~ ERROR: unnecessary visibility
+    pub fn foo(&self) {} //~ ERROR: unnecessary visibility
 }
 
 pub fn main() {}
