@@ -441,18 +441,18 @@ pub fn encode_utf8_raw(code: u32, dst: &mut [u8]) -> Option<usize> {
         dst[0] = code as u8;
         Some(1)
     } else if code < MAX_TWO_B && dst.len() >= 2 {
-        dst[0] = (code >> 6u & 0x1F_u32) as u8 | TAG_TWO_B;
+        dst[0] = (code >> 6 & 0x1F_u32) as u8 | TAG_TWO_B;
         dst[1] = (code & 0x3F_u32) as u8 | TAG_CONT;
         Some(2)
     } else if code < MAX_THREE_B && dst.len() >= 3  {
-        dst[0] = (code >> 12u & 0x0F_u32) as u8 | TAG_THREE_B;
-        dst[1] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
+        dst[0] = (code >> 12 & 0x0F_u32) as u8 | TAG_THREE_B;
+        dst[1] = (code >>  6 & 0x3F_u32) as u8 | TAG_CONT;
         dst[2] = (code & 0x3F_u32) as u8 | TAG_CONT;
         Some(3)
     } else if dst.len() >= 4 {
-        dst[0] = (code >> 18u & 0x07_u32) as u8 | TAG_FOUR_B;
-        dst[1] = (code >> 12u & 0x3F_u32) as u8 | TAG_CONT;
-        dst[2] = (code >>  6u & 0x3F_u32) as u8 | TAG_CONT;
+        dst[0] = (code >> 18 & 0x07_u32) as u8 | TAG_FOUR_B;
+        dst[1] = (code >> 12 & 0x3F_u32) as u8 | TAG_CONT;
+        dst[2] = (code >>  6 & 0x3F_u32) as u8 | TAG_CONT;
         dst[3] = (code & 0x3F_u32) as u8 | TAG_CONT;
         Some(4)
     } else {

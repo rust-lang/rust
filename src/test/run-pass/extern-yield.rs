@@ -38,7 +38,7 @@ fn count(n: libc::uintptr_t) -> libc::uintptr_t {
 }
 
 pub fn main() {
-    (0..10u).map(|i| {
+    (0..10_usize).map(|i| {
         Thread::scoped(move|| {
             let result = count(5);
             println!("result = {}", result);

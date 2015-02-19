@@ -49,7 +49,7 @@ fn main() {
     assert_eq!(unsafe { NUM_DROPS }, 3);
     { let _x = FooBar::_Foo(Foo); }
     assert_eq!(unsafe { NUM_DROPS }, 5);
-    { let _x = FooBar::_Bar(42u); }
+    { let _x = FooBar::_Bar(42_usize); }
     assert_eq!(unsafe { NUM_DROPS }, 6);
 
     { let _ = Foo; }
@@ -60,6 +60,6 @@ fn main() {
     assert_eq!(unsafe { NUM_DROPS }, 9);
     { let _ = FooBar::_Foo(Foo); }
     assert_eq!(unsafe { NUM_DROPS }, 11);
-    { let _ = FooBar::_Bar(42u); }
+    { let _ = FooBar::_Bar(42_usize); }
     assert_eq!(unsafe { NUM_DROPS }, 12);
 }

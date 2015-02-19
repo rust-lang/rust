@@ -24,7 +24,7 @@ pub fn main() {
 
     assert_eq!(mem::size_of::<[Foo; 10]>(), 90);
 
-    for i in 0u..10 {
+    for i in 0_usize..10 {
         assert_eq!(foos[i], Foo { bar: 1, baz: 2});
     }
 

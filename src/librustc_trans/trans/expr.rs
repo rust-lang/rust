@@ -467,7 +467,7 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 PointerCast(bcx, lval.val, type_of::type_of(bcx.ccx(), unsized_ty).ptr_to())
             }
             ty::UnsizeLength(..) => {
-                GEPi(bcx, lval.val, &[0u, 0u])
+                GEPi(bcx, lval.val, &[0, 0])
             }
         };
 

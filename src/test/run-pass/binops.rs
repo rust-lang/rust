@@ -44,9 +44,9 @@ fn test_bool() {
 
 fn test_ptr() {
     unsafe {
-        let p1: *const u8 = ::std::mem::transmute(0u);
-        let p2: *const u8 = ::std::mem::transmute(0u);
-        let p3: *const u8 = ::std::mem::transmute(1u);
+        let p1: *const u8 = ::std::mem::transmute(0_usize);
+        let p2: *const u8 = ::std::mem::transmute(0_usize);
+        let p3: *const u8 = ::std::mem::transmute(1_usize);
 
         assert_eq!(p1, p2);
         assert!(p1 != p3);

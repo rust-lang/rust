@@ -16,6 +16,6 @@ fn or_alt(q: blah) -> int {
 
 pub fn main() {
     assert_eq!(or_alt(blah::c), 0);
-    assert_eq!(or_alt(blah::a(10, 100, 0u)), 110);
+    assert_eq!(or_alt(blah::a(10, 100, 0_usize)), 110);
     assert_eq!(or_alt(blah::b(20, 200)), 220);
 }

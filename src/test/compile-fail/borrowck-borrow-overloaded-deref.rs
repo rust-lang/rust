@@ -26,15 +26,15 @@ impl<T> Deref for Rc<T> {
 }
 
 fn deref_imm(x: Rc<isize>) {
-    let _i = &*x;
+    let __isize = &*x;
 }
 
 fn deref_mut1(x: Rc<isize>) {
-    let _i = &mut *x; //~ ERROR cannot borrow
+    let __isize = &mut *x; //~ ERROR cannot borrow
 }
 
 fn deref_mut2(mut x: Rc<isize>) {
-    let _i = &mut *x; //~ ERROR cannot borrow
+    let __isize = &mut *x; //~ ERROR cannot borrow
 }
 
 fn deref_extend<'a>(x: &'a Rc<isize>) -> &'a isize {

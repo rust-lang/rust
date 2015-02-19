@@ -15,7 +15,7 @@
 fn main() {
     // Unboxed closure case
     {
-        let mut x = 0us;
+        let mut x = 0_usize;
         let mut f = || &mut x; //~ ERROR cannot infer
         let x = f();
         let y = f();

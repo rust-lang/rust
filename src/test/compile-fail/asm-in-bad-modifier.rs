@@ -20,8 +20,8 @@ pub fn main() {
     let x: isize;
     let y: isize;
     unsafe {
-        asm!("mov $1, $0" : "=r"(x) : "=r"(5us)); //~ ERROR input operand constraint contains '='
-        asm!("mov $1, $0" : "=r"(y) : "+r"(5us)); //~ ERROR input operand constraint contains '+'
+        asm!("mov $1, $0" : "=r"(x) : "=r"(5_usize)); //~ ERROR operand constraint contains '='
+        asm!("mov $1, $0" : "=r"(y) : "+r"(5_usize)); //~ ERROR operand constraint contains '+'
     }
     foo(x);
     foo(y);

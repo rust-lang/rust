@@ -78,7 +78,7 @@ pub fn num_cpus() -> uint {
     }
 }
 
-pub const TMPBUF_SZ : uint = 1000u;
+pub const TMPBUF_SZ : uint = 1000;
 
 /// Returns the current working directory as a `Path`.
 ///
@@ -1442,7 +1442,7 @@ mod tests {
 
     fn make_rand_name() -> String {
         let mut rng = rand::thread_rng();
-        let n = format!("TEST{}", rng.gen_ascii_chars().take(10u)
+        let n = format!("TEST{}", rng.gen_ascii_chars().take(10)
                                      .collect::<String>());
         assert!(getenv(&n).is_none());
         n
@@ -1522,7 +1522,7 @@ mod tests {
     #[ignore]
     fn test_env_getenv() {
         let e = env();
-        assert!(e.len() > 0u);
+        assert!(e.len() > 0);
         for p in &e {
             let (n, v) = (*p).clone();
             debug!("{}", n);

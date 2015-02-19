@@ -10,5 +10,5 @@
 
 fn main() {
     use ::std::mem;
-    mem::drop(2u);
+    mem::drop(2_usize);
 }

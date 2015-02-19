@@ -21,7 +21,7 @@ impl Drop for cat {
 
 fn cat(done: extern fn(uint)) -> cat {
     cat {
-        meows: 0u,
+        meows: 0_usize,
         done: done
     }
 }

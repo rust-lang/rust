@@ -14,7 +14,7 @@
 #![feature(box_syntax)]
 
 fn main() {
-    (|| box *[0us].as_slice())();
+    (|| box *[0_usize].as_slice())();
     //~^ ERROR cannot move out of borrowed content
     //~^^ ERROR cannot move a value of type [usize]
 }

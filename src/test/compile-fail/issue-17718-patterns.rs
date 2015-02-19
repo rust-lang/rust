@@ -13,7 +13,7 @@ static mut A2: usize = 1;
 const A3: usize = 1;
 
 fn main() {
-    match 1us {
+    match 1_usize {
         A1 => {} //~ ERROR: static variables cannot be referenced in a pattern
         A2 => {} //~ ERROR: static variables cannot be referenced in a pattern
         A3 => {}

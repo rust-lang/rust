@@ -12,7 +12,7 @@
 
 use std::rc::Rc;
 
-fn f<T:Send>(_i: T) {
+fn f<T:Send>(__isize: T) {
 }
 
 fn main() {

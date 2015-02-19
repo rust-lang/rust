@@ -60,15 +60,15 @@ pub fn main() {
     t!(format!("{}", true), "true");
     t!(format!("{}", '☃'), "☃");
     t!(format!("{}", 10), "10");
-    t!(format!("{}", 10u), "10");
+    t!(format!("{}", 10_usize), "10");
     t!(format!("{:?}", '☃'), "'\\u{2603}'");
     t!(format!("{:?}", 10), "10");
-    t!(format!("{:?}", 10u), "10");
+    t!(format!("{:?}", 10_usize), "10");
     t!(format!("{:?}", "true"), "\"true\"");
     t!(format!("{:?}", "foo\nbar"), "\"foo\\nbar\"");
-    t!(format!("{:o}", 10u), "12");
-    t!(format!("{:x}", 10u), "a");
-    t!(format!("{:X}", 10u), "A");
+    t!(format!("{:o}", 10_usize), "12");
+    t!(format!("{:x}", 10_usize), "a");
+    t!(format!("{:X}", 10_usize), "A");
     t!(format!("{}", "foo"), "foo");
     t!(format!("{}", "foo".to_string()), "foo");
     t!(format!("{:p}", 0x1234 as *const isize), "0x1234");
@@ -153,7 +153,7 @@ pub fn main() {
     // make sure that format! doesn't cause spurious unused-unsafe warnings when
     // it's inside of an outer unsafe block
     unsafe {
-        let a: isize = ::std::mem::transmute(3u);
+        let a: isize = ::std::mem::transmute(3_usize);
         format!("{}", a);
     }
 

@@ -14,11 +14,11 @@
 fn my_err(s: String) -> ! { println!("{}", s); panic!(); }
 
 fn okay(i: uint) -> int {
-    if i == 3u {
+    if i == 3_usize {
         my_err("I don't like three".to_string());
     } else {
         return 42;
     }
 }
 
-pub fn main() { okay(4u); }
+pub fn main() { okay(4_usize); }

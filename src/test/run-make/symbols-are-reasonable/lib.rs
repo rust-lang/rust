@@ -16,5 +16,5 @@ impl Foo for uint {}
 
 pub fn dummy() {
     // force the vtable to be created
-    let _x = &1u as &Foo;
+    let _x = &1_usize as &Foo;
 }

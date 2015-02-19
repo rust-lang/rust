@@ -409,7 +409,7 @@ fn normalize_helper<'a>(v: &'a [u8], is_abs: bool) -> Option<Vec<&'a [u8]>> {
         return None;
     }
     let mut comps: Vec<&'a [u8]> = vec![];
-    let mut n_up = 0u;
+    let mut n_up = 0;
     let mut changed = false;
     for comp in v.split(is_sep_byte) {
         if comp.is_empty() { changed = true }

@@ -20,10 +20,10 @@ impl double for uint {
 }
 
 impl double for Box<uint> {
-    fn double(self) -> uint { *self * 2u }
+    fn double(self) -> uint { *self * 2_usize }
 }
 
 pub fn main() {
-    let x = box 3u;
-    assert_eq!(x.double(), 6u);
+    let x = box 3_usize;
+    assert_eq!(x.double(), 6_usize);
 }

@@ -18,12 +18,12 @@ pub fn main() {
     let s: String = chs.iter().cloned().collect();
     let schs: Vec<char> = s.chars().collect();
 
-    assert!(s.len() == 10u);
-    assert!(s.chars().count() == 4u);
-    assert!(schs.len() == 4u);
+    assert!(s.len() == 10_usize);
+    assert!(s.chars().count() == 4_usize);
+    assert!(schs.len() == 4_usize);
     assert!(schs.iter().cloned().collect::<String>() == s);
-    assert!(s.char_at(0u) == 'e');
-    assert!(s.char_at(1u) == 'é');
+    assert!(s.char_at(0_usize) == 'e');
+    assert!(s.char_at(1_usize) == 'é');
 
     assert!((str::from_utf8(s.as_bytes()).is_ok()));
     // invalid prefix

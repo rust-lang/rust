@@ -37,7 +37,7 @@ pub fn main() {
         box BarStruct{ x: 2 } as Box<FooTrait>
     );
 
-    for i in 0u..foos.len() {
+    for i in 0_usize..foos.len() {
         assert_eq!(i, foos[i].foo());
     }
 }

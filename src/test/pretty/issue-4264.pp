@@ -23,15 +23,15 @@ extern crate "std" as std;
 pub fn foo(_: [i32; (3 as usize)]) { }
 
 pub fn bar() {
-    const FOO: usize = ((5us as usize) - (4us as usize) as usize);
+    const FOO: usize = ((5 as usize) - (4 as usize) as usize);
     let _: [(); (FOO as usize)] = ([(() as ())] as [(); 1]);
 
-    let _: [(); (1us as usize)] = ([(() as ())] as [(); 1]);
+    let _: [(); (1usize as usize)] = ([(() as ())] as [(); 1]);
 
     let _ =
         (((&((([(1 as i32), (2 as i32), (3 as i32)] as [i32; 3])) as [i32; 3])
               as &[i32; 3]) as *const _ as *const [i32; 3]) as
-            *const [i32; (3us as usize)] as *const [i32; 3]);
+            *const [i32; (3usize as usize)] as *const [i32; 3]);
 
 
 
@@ -79,16 +79,16 @@ pub fn bar() {
                                                                                                      core::fmt::Arguments<'_>))
         as collections::string::String);
 }
-pub type Foo = [i32; (3us as usize)];
+pub type Foo = [i32; (3 as usize)];
 pub struct Bar {
-    pub x: [i32; (3us as usize)],
+    pub x: [i32; (3 as usize)],
 }
-pub struct TupleBar([i32; (4us as usize)]);
-pub enum Baz { BazVariant([i32; (5us as usize)]), }
+pub struct TupleBar([i32; (4 as usize)]);
+pub enum Baz { BazVariant([i32; (5 as usize)]), }
 pub fn id<T>(x: T) -> T { (x as T) }
 pub fn use_id() {
     let _ =
-        ((id::<[i32; (3us as usize)]> as
+        ((id::<[i32; (3 as usize)]> as
              fn([i32; 3]) -> [i32; 3] {id})(([(1 as i32), (2 as i32),
                                               (3 as i32)] as [i32; 3])) as
             [i32; 3]);

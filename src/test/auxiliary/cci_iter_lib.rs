@@ -12,10 +12,10 @@
 
 #[inline]
 pub fn iter<T, F>(v: &[T], mut f: F) where F: FnMut(&T) {
-    let mut i = 0u;
+    let mut i = 0_usize;
     let n = v.len();
     while i < n {
         f(&v[i]);
-        i += 1u;
+        i += 1_usize;
     }
 }

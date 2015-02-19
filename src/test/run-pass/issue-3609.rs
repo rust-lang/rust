@@ -29,7 +29,7 @@ fn foo(name: String, samples_chan: Sender<Msg>) {
 
         // `box() (...)` syntax is needed to make pretty printer converge in one try:
         let callback: SamplesFn = box() (move |buffer| {
-            for i in 0u..buffer.len() {
+            for i in 0_usize..buffer.len() {
                 println!("{}: {}", i, buffer[i])
             }
         });

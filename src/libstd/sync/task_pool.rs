@@ -63,17 +63,17 @@ impl<'a> Drop for Sentinel<'a> {
 /// use std::iter::AdditiveIterator;
 /// use std::sync::mpsc::channel;
 ///
-/// let pool = TaskPool::new(4u);
+/// let pool = TaskPool::new(4);
 ///
 /// let (tx, rx) = channel();
-/// for _ in 0..8u {
+/// for _ in 0..8 {
 ///     let tx = tx.clone();
 ///     pool.execute(move|| {
-///         tx.send(1u).unwrap();
+///         tx.send(1_u32).unwrap();
 ///     });
 /// }
 ///
-/// assert_eq!(rx.iter().take(8u).sum(), 8u);
+/// assert_eq!(rx.iter().take(8).sum(), 8);
 /// ```
 pub struct TaskPool {
     // How the threadpool communicates with subthreads.
@@ -142,7 +142,7 @@ mod test {
     use super::*;
     use sync::mpsc::channel;
 
-    const TEST_TASKS: uint = 4u;
+    const TEST_TASKS: uint = 4;
 
     #[test]
     fn test_works() {
@@ -154,7 +154,7 @@ mod test {
         for _ in 0..TEST_TASKS {
             let tx = tx.clone();
             pool.execute(move|| {
-                tx.send(1u).unwrap();
+                tx.send(1).unwrap();
             });
         }
 
@@ -183,7 +183,7 @@ mod test {
         for _ in 0..TEST_TASKS {
             let tx = tx.clone();
             pool.execute(move|| {
-                tx.send(1u).unwrap();
+                tx.send(1).unwrap();
             });
         }
 

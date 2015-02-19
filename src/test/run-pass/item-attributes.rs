@@ -175,7 +175,7 @@ mod test_foreign_items {
     #![str = "s"]
     #![char = 'c']
     #![int = 100]
-    #![uint = 100u]
+    #![uint = 100_usize]
     #![mach_int = 100u32]
     #![float = 1.0]
     #![mach_float = 1.0f32]

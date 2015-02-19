@@ -10,9 +10,9 @@
 
 // error-pattern:Number is odd
 fn even(x: uint) -> bool {
-    if x < 2u {
+    if x < 2_usize {
         return false;
-    } else if x == 2u { return true; } else { return even(x - 2u); }
+    } else if x == 2_usize { return true; } else { return even(x - 2_usize); }
 }
 
 fn foo(x: uint) {
@@ -23,4 +23,4 @@ fn foo(x: uint) {
     }
 }
 
-fn main() { foo(3u); }
+fn main() { foo(3_usize); }

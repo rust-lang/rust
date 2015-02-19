@@ -56,15 +56,15 @@ impl Point {
 }
 
 fn deref_imm_field(x: Own<Point>) {
-    let _i = &x.y;
+    let __isize = &x.y;
 }
 
 fn deref_mut_field1(x: Own<Point>) {
-    let _i = &mut x.y; //~ ERROR cannot borrow
+    let __isize = &mut x.y; //~ ERROR cannot borrow
 }
 
 fn deref_mut_field2(mut x: Own<Point>) {
-    let _i = &mut x.y;
+    let __isize = &mut x.y;
 }
 
 fn deref_extend_field(x: &Own<Point>) -> &isize {
@@ -114,7 +114,7 @@ fn assign_field4<'a>(x: &'a mut Own<Point>) {
 // FIXME(eddyb) #12825 This shouldn't attempt to call deref_mut.
 /*
 fn deref_imm_method(x: Own<Point>) {
-    let _i = x.get();
+    let __isize = x.get();
 }
 */
 

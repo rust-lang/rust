@@ -50,7 +50,7 @@ fn thread_ring(i: uint, count: uint, num_chan: pipe, num_port: pipe) {
     let mut num_chan = Some(num_chan);
     let mut num_port = Some(num_port);
     // Send/Receive lots of messages.
-    for j in 0u..count {
+    for j in 0..count {
         //println!("task %?, iter %?", i, j);
         let num_chan2 = num_chan.take().unwrap();
         let num_port2 = num_port.take().unwrap();
@@ -84,7 +84,7 @@ fn main() {
         // create the ring
         let mut futures = Vec::new();
 
-        for i in 1u..num_tasks {
+        for i in 1..num_tasks {
             //println!("spawning %?", i);
             let (new_chan, num_port) = init();
             let num_chan_2 = num_chan.clone();

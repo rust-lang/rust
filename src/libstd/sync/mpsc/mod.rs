@@ -1147,9 +1147,9 @@ mod test {
     fn stress() {
         let (tx, rx) = channel::<int>();
         let t = thread::spawn(move|| {
-            for _ in 0u..10000 { tx.send(1).unwrap(); }
+            for _ in 0..10000 { tx.send(1).unwrap(); }
         });
-        for _ in 0u..10000 {
+        for _ in 0..10000 {
             assert_eq!(rx.recv().unwrap(), 1);
         }
         t.join().ok().unwrap();
@@ -1209,7 +1209,7 @@ mod test {
                 assert_eq!(rx.recv().unwrap(), 1);
             }
         });
-        for _ in 0u..40 {
+        for _ in 0..40 {
             tx.send(1).unwrap();
         }
         t.join().ok().unwrap();
@@ -1530,7 +1530,7 @@ mod test {
             tx2.send(()).unwrap();
         });
         // make sure the other task has gone to sleep
-        for _ in 0u..5000 { thread::yield_now(); }
+        for _ in 0..5000 { thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -1654,9 +1654,9 @@ mod sync_tests {
     fn stress() {
         let (tx, rx) = sync_channel::<int>(0);
         thread::spawn(move|| {
-            for _ in 0u..10000 { tx.send(1).unwrap(); }
+            for _ in 0..10000 { tx.send(1).unwrap(); }
         });
-        for _ in 0u..10000 {
+        for _ in 0..10000 {
             assert_eq!(rx.recv().unwrap(), 1);
         }
     }
@@ -1893,8 +1893,8 @@ mod sync_tests {
     fn recv_a_lot() {
         // Regression test that we don't run out of stack in scheduler context
         let (tx, rx) = sync_channel(10000);
-        for _ in 0u..10000 { tx.send(()).unwrap(); }
-        for _ in 0u..10000 { rx.recv().unwrap(); }
+        for _ in 0..10000 { tx.send(()).unwrap(); }
+        for _ in 0..10000 { rx.recv().unwrap(); }
     }
 
     #[test]
@@ -1994,7 +1994,7 @@ mod sync_tests {
             tx2.send(()).unwrap();
         });
         // make sure the other task has gone to sleep
-        for _ in 0u..5000 { thread::yield_now(); }
+        for _ in 0..5000 { thread::yield_now(); }
 
         // upgrade to a shared chan and send a message
         let t = tx.clone();
@@ -2082,7 +2082,7 @@ mod sync_tests {
             rx2.recv().unwrap();
         }
 
-        for _ in 0u..100 {
+        for _ in 0..100 {
             repro()
         }
     }

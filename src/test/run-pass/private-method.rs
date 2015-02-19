@@ -16,13 +16,13 @@ struct cat {
 
 impl cat {
     pub fn play(&mut self) {
-        self.meows += 1u;
+        self.meows += 1_usize;
         self.nap();
     }
 }
 
 impl cat {
-    fn nap(&mut self) { for _ in 1u..10u { } }
+    fn nap(&mut self) { for _ in 1_usize..10_usize { } }
 }
 
 fn cat(in_x : uint, in_y : int) -> cat {
@@ -33,6 +33,6 @@ fn cat(in_x : uint, in_y : int) -> cat {
 }
 
 pub fn main() {
-  let mut nyan : cat = cat(52u, 99);
+  let mut nyan : cat = cat(52_usize, 99);
   nyan.play();
 }

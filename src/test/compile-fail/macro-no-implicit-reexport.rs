@@ -16,5 +16,5 @@
 extern crate macro_non_reexport_2;
 
 fn main() {
-    assert_eq!(reexported!(), 3us);  //~ ERROR macro undefined
+    assert_eq!(reexported!(), 3_usize);  //~ ERROR macro undefined
 }

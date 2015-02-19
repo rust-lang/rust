@@ -32,12 +32,12 @@ fn cat<U>(in_x : uint, in_y : int, in_info: Vec<U> ) -> cat<U> {
 }
 
 pub fn main() {
-  let mut nyan : cat<int> = cat::<int>(52u, 99, vec!(9));
-  let mut kitty = cat(1000u, 2, vec!("tabby".to_string()));
+  let mut nyan : cat<int> = cat::<int>(52_usize, 99, vec!(9));
+  let mut kitty = cat(1000_usize, 2, vec!("tabby".to_string()));
   assert_eq!(nyan.how_hungry, 99);
   assert_eq!(kitty.how_hungry, 2);
   nyan.speak(vec!(1,2,3));
-  assert_eq!(nyan.meow_count(), 55u);
+  assert_eq!(nyan.meow_count(), 55_usize);
   kitty.speak(vec!("meow".to_string(), "mew".to_string(), "purr".to_string(), "chirp".to_string()));
-  assert_eq!(kitty.meow_count(), 1004u);
+  assert_eq!(kitty.meow_count(), 1004_usize);
 }
