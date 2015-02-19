@@ -11,7 +11,7 @@
 #![feature(macro_rules)]
 
 use std::borrow::{Cow, IntoCow};
-use std::collections::Bitv;
+use std::collections::BitVec;
 use std::default::Default;
 use std::iter::FromIterator;
 use std::ops::Add;
@@ -63,8 +63,8 @@ tests! {
     Vec::<()>::new, fn() -> Vec<()>, ();
     Vec::with_capacity, fn(uint) -> Vec<()>, (5);
     Vec::<()>::with_capacity, fn(uint) -> Vec<()>, (5);
-    Bitv::from_fn, fn(uint, fn(uint) -> bool) -> Bitv, (5, odd);
-    Bitv::from_fn::<fn(uint) -> bool>, fn(uint, fn(uint) -> bool) -> Bitv, (5, odd);
+    BitVec::from_fn, fn(uint, fn(uint) -> bool) -> BitVec, (5, odd);
+    BitVec::from_fn::<fn(uint) -> bool>, fn(uint, fn(uint) -> bool) -> BitVec, (5, odd);
 
     // Inherent non-static method.
     Vec::map_in_place, fn(Vec<u8>, fn(u8) -> i8) -> Vec<i8>, (vec![b'f', b'o', b'o'], u8_as_i8);
