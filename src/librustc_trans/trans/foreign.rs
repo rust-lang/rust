@@ -135,7 +135,7 @@ pub fn register_static(ccx: &CrateContext,
             };
             unsafe {
                 // Declare a symbol `foo` with the desired linkage.
-                let buf = CString::from_slice(ident.as_bytes());
+                let buf = CString::new(ident.as_bytes()).unwrap();
                 let g1 = llvm::LLVMAddGlobal(ccx.llmod(), llty2.to_ref(),
                                              buf.as_ptr());
                 llvm::SetLinkage(g1, linkage);
@@ -148,7 +148,7 @@ pub fn register_static(ccx: &CrateContext,
                 // zero.
                 let mut real_name = "_rust_extern_with_linkage_".to_string();
                 real_name.push_str(&ident);
-                let real_name = CString::from_vec(real_name.into_bytes());
+                let real_name = CString::new(real_name).unwrap();
                 let g2 = llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(),
                                              real_name.as_ptr());
                 llvm::SetLinkage(g2, llvm::InternalLinkage);
@@ -158,7 +158,7 @@ pub fn register_static(ccx: &CrateContext,
         }
         None => unsafe {
             // Generate an external declaration.
-            let buf = CString::from_slice(ident.as_bytes());
+            let buf = CString::new(ident.as_bytes()).unwrap();
             llvm::LLVMAddGlobal(ccx.llmod(), llty.to_ref(), buf.as_ptr())
         }
     }
@@ -238,7 +238,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         _ => ccx.sess().bug("trans_native_call called on non-function type")
     };
     let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
-    let llsig = foreign_signature(ccx, &fn_sig, &passed_arg_tys[]);
+    let llsig = foreign_signature(ccx, &fn_sig, &passed_arg_tys[..]);
     let fn_type = cabi::compute_abi_info(ccx,
                                          &llsig.llarg_tys[],
                                          llsig.llret_ty,
@@ -370,7 +370,7 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     let llforeign_retval = CallWithConv(bcx,
                                         llfn,
-                                        &llargs_foreign[],
+                                        &llargs_foreign[..],
                                         cc,
                                         Some(attrs),
                                         call_debug_loc);
@@ -611,7 +611,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                ccx.tcx().map.path_to_string(id),
                id, t.repr(tcx));
 
-        let llfn = base::decl_internal_rust_fn(ccx, t, &ps[]);
+        let llfn = base::decl_internal_rust_fn(ccx, t, &ps[..]);
         base::set_llvm_fn_attrs(ccx, attrs, llfn);
         base::trans_fn(ccx, decl, body, llfn, param_substs, id, &[]);
         llfn
@@ -974,7 +974,7 @@ fn lltype_for_fn_from_foreign_types(ccx: &CrateContext, tys: &ForeignTypes) -> T
     if tys.fn_sig.variadic {
         Type::variadic_func(&llargument_tys, &llreturn_ty)
     } else {
-        Type::func(&llargument_tys[], &llreturn_ty)
+        Type::func(&llargument_tys[..], &llreturn_ty)
     }
 }
 

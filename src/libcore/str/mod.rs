@@ -1280,7 +1280,7 @@ mod traits {
 /// Any string that can be represented as a slice
 #[unstable(feature = "core",
            reason = "Instead of taking this bound generically, this trait will be \
-                     replaced with one of slicing syntax (&foo[]), deref coercions, or \
+                     replaced with one of slicing syntax (&foo[..]), deref coercions, or \
                      a more generic conversion trait")]
 pub trait Str {
     /// Work with `self` as a slice.

@@ -10,7 +10,9 @@
 
 // ignore-tidy-linelength
 
-struct Foo<'x> { bar: isize }
+use std::marker::PhantomData;
+
+struct Foo<'x> { bar: isize, marker: PhantomData<&'x ()> }
 fn foo1<'a>(x: &Foo) -> &'a isize {
 //~^ HELP: consider using an explicit lifetime parameter as shown: fn foo1<'a>(x: &'a Foo) -> &'a isize
     &x.bar //~ ERROR: cannot infer

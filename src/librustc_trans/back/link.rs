@@ -127,7 +127,7 @@ pub fn find_crate_name(sess: Option<&Session>,
                        attrs: &[ast::Attribute],
                        input: &Input) -> String {
     let validate = |s: String, span: Option<Span>| {
-        creader::validate_crate_name(sess, &s[], span);
+        creader::validate_crate_name(sess, &s[..], span);
         s
     };
 
@@ -141,11 +141,11 @@ pub fn find_crate_name(sess: Option<&Session>,
     if let Some(sess) = sess {
         if let Some(ref s) = sess.opts.crate_name {
             if let Some((attr, ref name)) = attr_crate_name {
-                if *s != &name[] {
+                if *s != &name[..] {
                     let msg = format!("--crate-name and #[crate_name] are \
                                        required to match, but `{}` != `{}`",
                                       s, name);
-                    sess.span_err(attr.span, &msg[]);
+                    sess.span_err(attr.span, &msg[..]);
                 }
             }
             return validate(s.clone(), None);
@@ -195,7 +195,7 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
     for meta in &*tcx.sess.crate_metadata.borrow() {
-        symbol_hasher.input_str(&meta[]);
+        symbol_hasher.input_str(&meta[..]);
     }
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(&encoder::encoded_ty(tcx, t)[]);
@@ -262,7 +262,7 @@ pub fn sanitize(s: &str) -> String {
     if result.len() > 0 &&
         result.as_bytes()[0] != '_' as u8 &&
         ! (result.as_bytes()[0] as char).is_xid_start() {
-        return format!("_{}", &result[]);
+        return format!("_{}", &result[..]);
     }
 
     return result;
@@ -331,17 +331,17 @@ pub fn mangle_exported_name<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, path: PathEl
     hash.push(EXTRA_CHARS.as_bytes()[extra2] as char);
     hash.push(EXTRA_CHARS.as_bytes()[extra3] as char);
 
-    exported_name(path, &hash[])
+    exported_name(path, &hash[..])
 }
 
 pub fn mangle_internal_name_by_type_and_seq<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                                       t: Ty<'tcx>,
                                                       name: &str) -> String {
     let s = ppaux::ty_to_string(ccx.tcx(), t);
-    let path = [PathName(token::intern(&s[])),
+    let path = [PathName(token::intern(&s[..])),
                 gensym_name(name)];
     let hash = get_symbol_hash(ccx, t);
-    mangle(path.iter().cloned(), Some(&hash[]))
+    mangle(path.iter().cloned(), Some(&hash[..]))
 }
 
 pub fn mangle_internal_name_by_path_and_seq(path: PathElems, flav: &str) -> String {
@@ -541,7 +541,7 @@ fn link_rlib<'a>(sess: &'a Session,
     for &(ref l, kind) in &*sess.cstore.get_used_libraries().borrow() {
         match kind {
             cstore::NativeStatic => {
-                ab.add_native_library(&l[]).unwrap();
+                ab.add_native_library(&l[..]).unwrap();
             }
             cstore::NativeFramework | cstore::NativeUnknown => {}
         }
@@ -619,7 +619,7 @@ fn link_rlib<'a>(sess: &'a Session,
                                                  e)[])
                 };
 
-                let bc_data_deflated = match flate::deflate_bytes(&bc_data[]) {
+                let bc_data_deflated = match flate::deflate_bytes(&bc_data[..]) {
                     Some(compressed) => compressed,
                     None => sess.fatal(&format!("failed to compress bytecode from {}",
                                                bc_filename.display())[])
@@ -678,7 +678,7 @@ fn write_rlib_bytecode_object_v1<T: Writer>(writer: &mut T,
     try! { writer.write_all(RLIB_BYTECODE_OBJECT_MAGIC) };
     try! { writer.write_le_u32(1) };
     try! { writer.write_le_u64(bc_data_deflated_size) };
-    try! { writer.write_all(&bc_data_deflated[]) };
+    try! { writer.write_all(&bc_data_deflated[..]) };
 
     let number_of_bytes_written_so_far =
         RLIB_BYTECODE_OBJECT_MAGIC.len() +                // magic id
@@ -733,7 +733,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
                 continue
             }
         };
-        ab.add_rlib(&p, &name[], sess.lto()).unwrap();
+        ab.add_rlib(&p, &name[..], sess.lto()).unwrap();
 
         let native_libs = csearch::get_native_libraries(&sess.cstore, cnum);
         all_native_libs.extend(native_libs.into_iter());
@@ -769,7 +769,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
 
     // The invocations of cc share some flags across platforms
     let pname = get_cc_prog(sess);
-    let mut cmd = Command::new(&pname[]);
+    let mut cmd = Command::new(&pname[..]);
 
     cmd.args(&sess.target.target.options.pre_link_args[]);
     link_args(&mut cmd, sess, dylib, tmpdir.path(),
@@ -798,7 +798,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
                 sess.note(&format!("{:?}", &cmd)[]);
                 let mut output = prog.error.clone();
                 output.push_all(&prog.output[]);
-                sess.note(str::from_utf8(&output[]).unwrap());
+                sess.note(str::from_utf8(&output[..]).unwrap());
                 sess.abort_if_errors();
             }
             debug!("linker stderr:\n{}", String::from_utf8(prog.error).unwrap());
@@ -868,7 +868,7 @@ fn link_args(cmd: &mut Command,
 
             let mut v = b"-Wl,-force_load,".to_vec();
             v.push_all(morestack.as_vec());
-            cmd.arg(&v[]);
+            cmd.arg(&v[..]);
         } else {
             cmd.args(&["-Wl,--whole-archive", "-lmorestack", "-Wl,--no-whole-archive"]);
         }
@@ -993,7 +993,7 @@ fn link_args(cmd: &mut Command,
             if sess.opts.cg.rpath {
                 let mut v = "-Wl,-install_name,@rpath/".as_bytes().to_vec();
                 v.push_all(out_filename.filename().unwrap());
-                cmd.arg(&v[]);
+                cmd.arg(&v[..]);
             }
         } else {
             cmd.arg("-shared");
@@ -1029,7 +1029,7 @@ fn link_args(cmd: &mut Command,
     // with any #[link_args] attributes found inside the crate
     let empty = Vec::new();
     cmd.args(&sess.opts.cg.link_args.as_ref().unwrap_or(&empty)[]);
-    cmd.args(&used_link_args[]);
+    cmd.args(&used_link_args[..]);
 }
 
 // # Native library linking
@@ -1086,14 +1086,14 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
         } else {
             // -force_load is the OSX equivalent of --whole-archive, but it
             // involves passing the full path to the library to link.
-            let lib = archive::find_library(&l[],
+            let lib = archive::find_library(&l[..],
                                             &sess.target.target.options.staticlib_prefix,
                                             &sess.target.target.options.staticlib_suffix,
-                                            &search_path[],
+                                            &search_path[..],
                                             &sess.diagnostic().handler);
             let mut v = b"-Wl,-force_load,".to_vec();
             v.push_all(lib.as_vec());
-            cmd.arg(&v[]);
+            cmd.arg(&v[..]);
         }
     }
     if takes_hints {
@@ -1106,7 +1106,7 @@ fn add_local_native_libraries(cmd: &mut Command, sess: &Session) {
                 cmd.arg(format!("-l{}", l));
             }
             cstore::NativeFramework => {
-                cmd.arg("-framework").arg(&l[]);
+                cmd.arg("-framework").arg(&l[..]);
             }
             cstore::NativeStatic => unreachable!(),
         }
@@ -1248,7 +1248,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
 
         let mut v = "-l".as_bytes().to_vec();
         v.push_all(unlib(&sess.target, cratepath.filestem().unwrap()));
-        cmd.arg(&v[]);
+        cmd.arg(&v[..]);
     }
 }
 
@@ -1290,7 +1290,7 @@ fn add_upstream_native_libraries(cmd: &mut Command, sess: &Session) {
                 }
                 cstore::NativeFramework => {
                     cmd.arg("-framework");
-                    cmd.arg(&lib[]);
+                    cmd.arg(&lib[..]);
                 }
                 cstore::NativeStatic => {
                     sess.bug("statics shouldn't be propagated");

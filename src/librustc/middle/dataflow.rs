@@ -89,7 +89,7 @@ struct PropagationContext<'a, 'b: 'a, 'tcx: 'b, O: 'a> {
 }
 
 fn to_cfgidx_or_die(id: ast::NodeId, index: &NodeMap<CFGIndex>) -> CFGIndex {
-    let opt_cfgindex = index.get(&id).map(|&i|i);
+    let opt_cfgindex = index.get(&id).cloned();
     opt_cfgindex.unwrap_or_else(|| {
         panic!("nodeid_to_index does not have entry for NodeId {}", id);
     })
@@ -312,7 +312,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 let mut t = on_entry.to_vec();
                 self.apply_gen_kill(cfgidx, &mut t);
                 temp_bits = t;
-                &temp_bits[]
+                &temp_bits[..]
             }
         };
         debug!("{} each_bit_for_node({:?}, cfgidx={:?}) bits={}",
@@ -400,7 +400,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
             let mut changed = false;
             for &node_id in &edge.data.exiting_scopes {
-                let opt_cfg_idx = self.nodeid_to_index.get(&node_id).map(|&i|i);
+                let opt_cfg_idx = self.nodeid_to_index.get(&node_id).cloned();
                 match opt_cfg_idx {
                     Some(cfg_idx) => {
                         let (start, end) = self.compute_id_range(cfg_idx);
@@ -421,7 +421,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                 let bits = &mut self.kills[start.. end];
                 debug!("{} add_kills_from_flow_exits flow_exit={:?} bits={} [before]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
-                bits.clone_from_slice(&orig_kills[]);
+                bits.clone_from_slice(&orig_kills[..]);
                 debug!("{} add_kills_from_flow_exits flow_exit={:?} bits={} [after]",
                        self.analysis_name, flow_exit, mut_bits_to_string(bits));
             }

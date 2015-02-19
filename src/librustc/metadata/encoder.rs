@@ -163,7 +163,7 @@ fn encode_variant_id(rbml_w: &mut Encoder, vid: DefId) {
     rbml_w.end_tag();
 
     rbml_w.start_tag(tag_mod_child);
-    rbml_w.wr_str(&s[]);
+    rbml_w.wr_str(&s[..]);
     rbml_w.end_tag();
 }
 
@@ -353,9 +353,9 @@ fn encode_enum_variant_info(ecx: &EncodeContext,
                 let fields = ty::lookup_struct_fields(ecx.tcx, def_id);
                 let idx = encode_info_for_struct(ecx,
                                                  rbml_w,
-                                                 &fields[],
+                                                 &fields[..],
                                                  index);
-                encode_struct_fields(rbml_w, &fields[], def_id);
+                encode_struct_fields(rbml_w, &fields[..], def_id);
                 encode_index(rbml_w, idx, write_i64);
             }
         }
@@ -1158,7 +1158,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
            class itself */
         let idx = encode_info_for_struct(ecx,
                                          rbml_w,
-                                         &fields[],
+                                         &fields[..],
                                          index);
 
         /* Index the class*/
@@ -1181,7 +1181,7 @@ fn encode_info_for_item(ecx: &EncodeContext,
         /* Encode def_ids for each field and method
          for methods, write all the stuff get_trait_method
         needs to know*/
-        encode_struct_fields(rbml_w, &fields[], def_id);
+        encode_struct_fields(rbml_w, &fields[..], def_id);
 
         encode_inlined_item(ecx, rbml_w, IIItemRef(item));
 
@@ -1588,9 +1588,51 @@ fn encode_info_for_items(ecx: &EncodeContext,
 
 // Path and definition ID indexing
 
+#[cfg(stage0)]
 fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
     F: FnMut(&mut SeekableMemWriter, &T),
     T: Hash<SipHasher>,
+{
+    let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
+    for elt in index {
+        let mut s = SipHasher::new();
+        elt.val.hash(&mut s);
+        let h = s.finish() as uint;
+        (&mut buckets[h % 256]).push(elt);
+    }
+
+    rbml_w.start_tag(tag_index);
+    let mut bucket_locs = Vec::new();
+    rbml_w.start_tag(tag_index_buckets);
+    for bucket in &buckets {
+        bucket_locs.push(rbml_w.writer.tell().unwrap());
+        rbml_w.start_tag(tag_index_buckets_bucket);
+        for elt in bucket {
+            rbml_w.start_tag(tag_index_buckets_bucket_elt);
+            assert!(elt.pos < 0xffff_ffff);
+            {
+                let wr: &mut SeekableMemWriter = rbml_w.writer;
+                wr.write_be_u32(elt.pos as u32);
+            }
+            write_fn(rbml_w.writer, &elt.val);
+            rbml_w.end_tag();
+        }
+        rbml_w.end_tag();
+    }
+    rbml_w.end_tag();
+    rbml_w.start_tag(tag_index_table);
+    for pos in &bucket_locs {
+        assert!(*pos < 0xffff_ffff);
+        let wr: &mut SeekableMemWriter = rbml_w.writer;
+        wr.write_be_u32(*pos as u32);
+    }
+    rbml_w.end_tag();
+    rbml_w.end_tag();
+}
+#[cfg(not(stage0))]
+fn encode_index<T, F>(rbml_w: &mut Encoder, index: Vec<entry<T>>, mut write_fn: F) where
+    F: FnMut(&mut SeekableMemWriter, &T),
+    T: Hash,
 {
     let mut buckets: Vec<Vec<entry<T>>> = (0..256u16).map(|_| Vec::new()).collect();
     for elt in index {

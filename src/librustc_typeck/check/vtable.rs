@@ -126,6 +126,13 @@ pub fn check_object_safety<'tcx>(tcx: &ty::ctxt<'tcx>,
                     "the trait cannot require that `Self : Sized`");
             }
 
+            ObjectSafetyViolation::SupertraitSelf => {
+                tcx.sess.span_note(
+                    span,
+                    "the trait cannot use `Self` as a type parameter \
+                     in the supertrait listing");
+            }
+
             ObjectSafetyViolation::Method(method, MethodViolationCode::ByValueSelf) => {
                 tcx.sess.span_note(
                     span,

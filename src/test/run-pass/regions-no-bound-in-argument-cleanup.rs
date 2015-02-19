@@ -10,7 +10,9 @@
 
 #![feature(unsafe_destructor)]
 
-pub struct Foo<T>;
+use std::marker;
+
+pub struct Foo<T>(marker::PhantomData<T>);
 
 impl<T> Iterator for Foo<T> {
     type Item = T;

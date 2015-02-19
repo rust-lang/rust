@@ -24,12 +24,12 @@ mod mlibc {
 }
 
 fn atol(s: String) -> int {
-    let c = CString::from_slice(s.as_bytes());
+    let c = CString::new(s).unwrap();
     unsafe { mlibc::atol(c.as_ptr()) as int }
 }
 
 fn atoll(s: String) -> i64 {
-    let c = CString::from_slice(s.as_bytes());
+    let c = CString::new(s).unwrap();
     unsafe { mlibc::atoll(c.as_ptr()) as i64 }
 }
 

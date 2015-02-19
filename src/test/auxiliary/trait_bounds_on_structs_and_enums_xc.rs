@@ -8,7 +8,9 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Trait {}
+pub trait Trait {
+    fn dummy(&self) { }
+}
 
 pub struct Foo<T:Trait> {
     pub x: T,

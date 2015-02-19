@@ -26,11 +26,11 @@ use parse::token;
 use ptr::P;
 
 use std::cell::{RefCell, Cell};
-use std::collections::BitvSet;
+use std::collections::BitSet;
 use std::collections::HashSet;
 use std::fmt;
 
-thread_local! { static USED_ATTRS: RefCell<BitvSet> = RefCell::new(BitvSet::new()) }
+thread_local! { static USED_ATTRS: RefCell<BitSet> = RefCell::new(BitSet::new()) }
 
 pub fn mark_used(attr: &Attribute) {
     let AttrId(id) = attr.node.id;
@@ -44,7 +44,7 @@ pub fn is_used(attr: &Attribute) -> bool {
 
 pub trait AttrMetaMethods {
     fn check_name(&self, name: &str) -> bool {
-        name == &self.name()[]
+        name == &self.name()[..]
     }
 
     /// Retrieve the name of the meta item, e.g. `foo` in `#[foo]`,
@@ -62,7 +62,7 @@ pub trait AttrMetaMethods {
 
 impl AttrMetaMethods for Attribute {
     fn check_name(&self, name: &str) -> bool {
-        let matches = name == &self.name()[];
+        let matches = name == &self.name()[..];
         if matches {
             mark_used(self);
         }
@@ -101,7 +101,7 @@ impl AttrMetaMethods for MetaItem {
 
     fn meta_item_list<'a>(&'a self) -> Option<&'a [P<MetaItem>]> {
         match self.node {
-            MetaList(_, ref l) => Some(&l[]),
+            MetaList(_, ref l) => Some(&l[..]),
             _ => None
         }
     }
@@ -142,7 +142,7 @@ impl AttributeMethods for Attribute {
             let meta = mk_name_value_item_str(
                 InternedString::new("doc"),
                 token::intern_and_get_ident(&strip_doc_comment_decoration(
-                        &comment)[]));
+                        &comment)));
             if self.node.style == ast::AttrOuter {
                 f(&mk_attr_outer(self.node.id, meta))
             } else {
@@ -302,9 +302,9 @@ pub fn find_inline_attr(attrs: &[Attribute]) -> InlineAttr {
             }
             MetaList(ref n, ref items) if *n == "inline" => {
                 mark_used(attr);
-                if contains_name(&items[], "always") {
+                if contains_name(&items[..], "always") {
                     InlineAlways
-                } else if contains_name(&items[], "never") {
+                } else if contains_name(&items[..], "never") {
                     InlineNever
                 } else {
                     InlineHint
@@ -326,11 +326,11 @@ pub fn requests_inline(attrs: &[Attribute]) -> bool {
 /// Tests if a cfg-pattern matches the cfg set
 pub fn cfg_matches(diagnostic: &SpanHandler, cfgs: &[P<MetaItem>], cfg: &ast::MetaItem) -> bool {
     match cfg.node {
-        ast::MetaList(ref pred, ref mis) if &pred[] == "any" =>
+        ast::MetaList(ref pred, ref mis) if &pred[..] == "any" =>
             mis.iter().any(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
-        ast::MetaList(ref pred, ref mis) if &pred[] == "all" =>
+        ast::MetaList(ref pred, ref mis) if &pred[..] == "all" =>
             mis.iter().all(|mi| cfg_matches(diagnostic, cfgs, &**mi)),
-        ast::MetaList(ref pred, ref mis) if &pred[] == "not" => {
+        ast::MetaList(ref pred, ref mis) if &pred[..] == "not" => {
             if mis.len() != 1 {
                 diagnostic.span_err(cfg.span, "expected 1 cfg-pattern");
                 return false;
@@ -382,7 +382,7 @@ fn find_stability_generic<'a,
 
     'outer: for attr in attrs {
         let tag = attr.name();
-        let tag = &tag[];
+        let tag = &tag[..];
         if tag != "deprecated" && tag != "unstable" && tag != "stable" {
             continue // not a stability level
         }
@@ -404,7 +404,7 @@ fn find_stability_generic<'a,
                             }
                         }
                     }
-                    if &meta.name()[] == "since" {
+                    if &meta.name()[..] == "since" {
                         match meta.value_str() {
                             Some(v) => since = Some(v),
                             None => {
@@ -413,7 +413,7 @@ fn find_stability_generic<'a,
                             }
                         }
                     }
-                    if &meta.name()[] == "reason" {
+                    if &meta.name()[..] == "reason" {
                         match meta.value_str() {
                             Some(v) => reason = Some(v),
                             None => {
@@ -501,7 +501,7 @@ pub fn require_unique_names(diagnostic: &SpanHandler, metas: &[P<MetaItem>]) {
 
         if !set.insert(name.clone()) {
             diagnostic.span_fatal(meta.span,
-                                  &format!("duplicate meta item `{}`", name)[]);
+                                  &format!("duplicate meta item `{}`", name));
         }
     }
 }
@@ -521,7 +521,7 @@ pub fn find_repr_attrs(diagnostic: &SpanHandler, attr: &Attribute) -> Vec<ReprAt
             for item in items {
                 match item.node {
                     ast::MetaWord(ref word) => {
-                        let hint = match &word[] {
+                        let hint = match &word[..] {
                             // Can't use "extern" because it's not a lexical identifier.
                             "C" => Some(ReprExtern),
                             "packed" => Some(ReprPacked),

@@ -45,16 +45,16 @@ fn no_prelude(attrs: &[ast::Attribute]) -> bool {
     attr::contains_name(attrs, "no_implicit_prelude")
 }
 
-struct StandardLibraryInjector<'a> {
-    alt_std_name: Option<String>
+struct StandardLibraryInjector {
+    alt_std_name: Option<String>,
 }
 
-impl<'a> fold::Folder for StandardLibraryInjector<'a> {
+impl fold::Folder for StandardLibraryInjector {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
 
         // The name to use in `extern crate "name" as std;`
         let actual_crate_name = match self.alt_std_name {
-            Some(ref s) => token::intern_and_get_ident(&s[]),
+            Some(ref s) => token::intern_and_get_ident(&s[..]),
             None => token::intern_and_get_ident("std"),
         };
 
@@ -80,9 +80,10 @@ fn inject_crates_ref(krate: ast::Crate, alt_std_name: Option<String>) -> ast::Cr
     fold.fold_crate(krate)
 }
 
-struct PreludeInjector<'a>;
+struct PreludeInjector;
 
-impl<'a> fold::Folder for PreludeInjector<'a> {
+
+impl fold::Folder for PreludeInjector {
     fn fold_crate(&mut self, mut krate: ast::Crate) -> ast::Crate {
         // only add `use std::prelude::*;` if there wasn't a
         // `#![no_implicit_prelude]` at the crate level.

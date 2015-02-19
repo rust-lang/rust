@@ -21,6 +21,7 @@
 #![feature(test)]
 #![feature(unicode)]
 #![feature(env)]
+#![feature(core)]
 
 #![deny(warnings)]
 
@@ -72,7 +73,7 @@ pub fn parse_config(args: Vec<String> ) -> Config {
           reqopt("", "aux-base", "directory to find auxiliary test files", "PATH"),
           reqopt("", "stage-id", "the target-stage identifier", "stageN-TARGET"),
           reqopt("", "mode", "which sort of compile tests to run",
-                 "(compile-fail|run-fail|run-pass|run-pass-valgrind|pretty|debug-info)"),
+                 "(compile-fail|parse-fail|run-fail|run-pass|run-pass-valgrind|pretty|debug-info)"),
           optflag("", "ignored", "run tests marked as ignored"),
           optopt("", "runtool", "supervisor program to run tests under \
                                  (eg. emulator, valgrind)", "PROGRAM"),

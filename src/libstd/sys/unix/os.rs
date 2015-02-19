@@ -14,7 +14,7 @@ use prelude::v1::*;
 use os::unix::*;
 
 use error::Error as StdError;
-use ffi::{self, CString, OsString, OsStr, AsOsStr};
+use ffi::{CString, CStr, OsString, OsStr, AsOsStr};
 use fmt;
 use iter;
 use libc::{self, c_int, c_char, c_void};
@@ -88,7 +88,7 @@ pub fn error_string(errno: i32) -> String {
         }
 
         let p = p as *const _;
-        str::from_utf8(ffi::c_str_to_bytes(&p)).unwrap().to_string()
+        str::from_utf8(CStr::from_ptr(p).to_bytes()).unwrap().to_string()
     }
 }
 
@@ -98,13 +98,13 @@ pub fn getcwd() -> IoResult<Path> {
         if libc::getcwd(buf.as_mut_ptr(), buf.len() as libc::size_t).is_null() {
             Err(IoError::last_error())
         } else {
-            Ok(Path::new(ffi::c_str_to_bytes(&buf.as_ptr())))
+            Ok(Path::new(CStr::from_ptr(buf.as_ptr()).to_bytes()))
         }
     }
 }
 
 pub fn chdir(p: &Path) -> IoResult<()> {
-    let p = CString::from_slice(p.as_vec());
+    let p = CString::new(p.as_vec()).unwrap();
     unsafe {
         match libc::chdir(p.as_ptr()) == (0 as c_int) {
             true => Ok(()),
@@ -211,7 +211,7 @@ pub fn current_exe() -> IoResult<Path> {
         if v.is_null() {
             Err(IoError::last_error())
         } else {
-            Ok(Path::new(ffi::c_str_to_bytes(&v).to_vec()))
+            Ok(Path::new(CStr::from_ptr(&v).to_bytes().to_vec()))
         }
     }
 }
@@ -266,7 +266,7 @@ pub fn args() -> Args {
         let (argc, argv) = (*_NSGetArgc() as isize,
                             *_NSGetArgv() as *const *const c_char);
         range(0, argc as isize).map(|i| {
-            let bytes = ffi::c_str_to_bytes(&*argv.offset(i)).to_vec();
+            let bytes = CStr::from_ptr(*argv.offset(i)).to_bytes().to_vec();
             OsStringExt::from_vec(bytes)
         }).collect::<Vec<_>>()
     };
@@ -324,7 +324,7 @@ pub fn args() -> Args {
             let tmp = objc_msgSend(args, object_at_sel, i);
             let utf_c_str: *const libc::c_char =
                 mem::transmute(objc_msgSend(tmp, utf8_sel));
-            let bytes = ffi::c_str_to_bytes(&utf_c_str);
+            let bytes = CStr::from_ptr(utf_c_str).to_bytes();
             res.push(OsString::from_str(str::from_utf8(bytes).unwrap()))
         }
     }
@@ -380,7 +380,7 @@ pub fn env() -> Env {
         }
         let mut result = Vec::new();
         while *environ != ptr::null() {
-            result.push(parse(ffi::c_str_to_bytes(&*environ)));
+            result.push(parse(CStr::from_ptr(*environ).to_bytes()));
             environ = environ.offset(1);
         }
         Env { iter: result.into_iter(), _dont_send_or_sync_me: 0 as *mut _ }
@@ -397,20 +397,20 @@ pub fn env() -> Env {
 
 pub fn getenv(k: &OsStr) -> Option<OsString> {
     unsafe {
-        let s = CString::from_slice(k.as_bytes());
+        let s = k.to_cstring().unwrap();
         let s = libc::getenv(s.as_ptr()) as *const _;
         if s.is_null() {
             None
         } else {
-            Some(OsStringExt::from_vec(ffi::c_str_to_bytes(&s).to_vec()))
+            Some(OsStringExt::from_vec(CStr::from_ptr(s).to_bytes().to_vec()))
         }
     }
 }
 
 pub fn setenv(k: &OsStr, v: &OsStr) {
     unsafe {
-        let k = CString::from_slice(k.as_bytes());
-        let v = CString::from_slice(v.as_bytes());
+        let k = k.to_cstring().unwrap();
+        let v = v.to_cstring().unwrap();
         if libc::funcs::posix01::unistd::setenv(k.as_ptr(), v.as_ptr(), 1) != 0 {
             panic!("failed setenv: {}", IoError::last_error());
         }
@@ -419,7 +419,7 @@ pub fn setenv(k: &OsStr, v: &OsStr) {
 
 pub fn unsetenv(n: &OsStr) {
     unsafe {
-        let nbuf = CString::from_slice(n.as_bytes());
+        let nbuf = n.to_cstring().unwrap();
         if libc::funcs::posix01::unistd::unsetenv(nbuf.as_ptr()) != 0 {
             panic!("failed unsetenv: {}", IoError::last_error());
         }
@@ -480,7 +480,7 @@ pub fn home_dir() -> Option<Path> {
                 _ => return None
             }
             let ptr = passwd.pw_dir as *const _;
-            let bytes = ffi::c_str_to_bytes(&ptr).to_vec();
+            let bytes = CStr::from_ptr(ptr).to_bytes().to_vec();
             return Some(OsStringExt::from_vec(bytes))
         }
     }

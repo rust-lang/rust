@@ -15,7 +15,7 @@ struct Fat<T: ?Sized> {
 }
 
 struct Foo;
-trait Bar {}
+trait Bar { fn bar(&self) {} }
 impl Bar for Foo {}
 
 fn baz<'a>() {

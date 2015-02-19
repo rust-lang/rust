@@ -11,7 +11,7 @@
 trait Trait<Input> {
     type Output;
 
-    fn method() -> bool { false }
+    fn method(&self, i: Input) -> bool { false }
 }
 
 fn main() {}

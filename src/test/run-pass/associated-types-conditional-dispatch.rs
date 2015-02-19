@@ -14,6 +14,7 @@
 // `Target=[A]`, then the impl marked with `(*)` is seen to conflict
 // with all the others.
 
+use std::marker::PhantomData;
 use std::ops::Deref;
 
 pub trait MyEq<U: ?Sized=Self> {
@@ -41,7 +42,8 @@ impl<'a, A, B, Lhs> MyEq<[B; 0]> for Lhs
 }
 
 struct DerefWithHelper<H, T> {
-    pub helper: H
+    pub helper: H,
+    pub marker: PhantomData<T>,
 }
 
 trait Helper<T> {
@@ -63,7 +65,8 @@ impl<T, H: Helper<T>> Deref for DerefWithHelper<H, T> {
 }
 
 pub fn check<T: MyEq>(x: T, y: T) -> bool {
-    let d: DerefWithHelper<Option<T>, T> = DerefWithHelper { helper: Some(x) };
+    let d: DerefWithHelper<Option<T>, T> = DerefWithHelper { helper: Some(x),
+                                                             marker: PhantomData };
     d.eq(&y)
 }
 

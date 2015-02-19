@@ -35,7 +35,7 @@ impl LintPass for Pass {
 
     fn check_item(&mut self, cx: &Context, it: &ast::Item) {
         let name = token::get_ident(it.ident);
-        if &name[] == "lintme" {
+        if &name[..] == "lintme" {
             cx.span_lint(TEST_LINT, it.span, "item is named 'lintme'");
         }
     }

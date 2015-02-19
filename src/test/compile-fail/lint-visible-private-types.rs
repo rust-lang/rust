@@ -12,8 +12,10 @@
 #![allow(dead_code)]
 #![crate_type="lib"]
 
-struct Private<T>;
-pub struct Public<T>;
+use std::marker;
+
+struct Private<T>(marker::PhantomData<T>);
+pub struct Public<T>(marker::PhantomData<T>);
 
 impl Private<Public<isize>> {
     pub fn a(&self) -> Private<isize> { panic!() }
@@ -103,7 +105,7 @@ impl PrivTrait for (Private<isize>,) {
     fn bar(&self) -> Private<isize> { panic!() }
 }
 
-pub trait ParamTrait<T> {
+pub trait ParamTrait<T> : marker::MarkerTrait {
     fn foo() -> T;
 }
 

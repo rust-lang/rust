@@ -258,7 +258,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
             unreachable!()
         }
     };
-    match str::from_utf8(&bytes[]).ok() {
+    match str::from_utf8(&bytes[..]).ok() {
         Some(s) => {
             return string_to_filemap(sess, s.to_string(),
                                      path.as_str().unwrap().to_string())
@@ -398,7 +398,7 @@ pub fn char_lit(lit: &str) -> (char, isize) {
     }
 
     let msg = format!("lexer should have rejected a bad character escape {}", lit);
-    let msg2 = &msg[];
+    let msg2 = &msg[..];
 
     fn esc(len: usize, lit: &str) -> Option<(char, isize)> {
         num::from_str_radix(&lit[2..len], 16).ok()
@@ -662,7 +662,7 @@ pub fn integer_lit(s: &str, suffix: Option<&str>, sd: &SpanHandler, sp: Span) ->
     // s can only be ascii, byte indexing is fine
 
     let s2 = s.chars().filter(|&c| c != '_').collect::<String>();
-    let mut s = &s2[];
+    let mut s = &s2[..];
 
     debug!("integer_lit: {}, {:?}", s, suffix);
 
@@ -819,7 +819,7 @@ mod test {
     #[test]
     fn string_to_tts_macro () {
         let tts = string_to_tts("macro_rules! zip (($a)=>($a))".to_string());
-        let tts: &[ast::TokenTree] = &tts[];
+        let tts: &[ast::TokenTree] = &tts[..];
         match tts {
             [ast::TtToken(_, token::Ident(name_macro_rules, token::Plain)),
              ast::TtToken(_, token::Not),
@@ -1114,24 +1114,24 @@ mod test {
         let use_s = "use foo::bar::baz;";
         let vitem = string_to_item(use_s.to_string()).unwrap();
         let vitem_s = item_to_string(&*vitem);
-        assert_eq!(&vitem_s[], use_s);
+        assert_eq!(&vitem_s[..], use_s);
 
         let use_s = "use foo::bar as baz;";
         let vitem = string_to_item(use_s.to_string()).unwrap();
         let vitem_s = item_to_string(&*vitem);
-        assert_eq!(&vitem_s[], use_s);
+        assert_eq!(&vitem_s[..], use_s);
     }
 
     #[test] fn parse_extern_crate() {
         let ex_s = "extern crate foo;";
         let vitem = string_to_item(ex_s.to_string()).unwrap();
         let vitem_s = item_to_string(&*vitem);
-        assert_eq!(&vitem_s[], ex_s);
+        assert_eq!(&vitem_s[..], ex_s);
 
         let ex_s = "extern crate \"foo\" as bar;";
         let vitem = string_to_item(ex_s.to_string()).unwrap();
         let vitem_s = item_to_string(&*vitem);
-        assert_eq!(&vitem_s[], ex_s);
+        assert_eq!(&vitem_s[..], ex_s);
     }
 
     fn get_spans_of_pat_idents(src: &str) -> Vec<Span> {
@@ -1203,19 +1203,19 @@ mod test {
         let source = "/// doc comment\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(&doc[], "/// doc comment");
+        assert_eq!(&doc[..], "/// doc comment");
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
         let docs = item.attrs.iter().filter(|a| &a.name()[] == "doc")
                     .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
         let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
-        assert_eq!(&docs[], b);
+        assert_eq!(&docs[..], b);
 
         let source = "/** doc comment\r\n *  with CRLF */\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name, source, Vec::new(), &sess).unwrap();
         let doc = first_attr_value_str_by_name(&item.attrs, "doc").unwrap();
-        assert_eq!(&doc[], "/** doc comment\n *  with CRLF */");
+        assert_eq!(&doc[..], "/** doc comment\n *  with CRLF */");
     }
 
     #[test]
@@ -1235,7 +1235,7 @@ mod test {
         let span = tts.iter().rev().next().unwrap().get_span();
 
         match sess.span_diagnostic.cm.span_to_snippet(span) {
-            Ok(s) => assert_eq!(&s[], "{ body }"),
+            Ok(s) => assert_eq!(&s[..], "{ body }"),
             Err(_) => panic!("could not get snippet"),
         }
     }

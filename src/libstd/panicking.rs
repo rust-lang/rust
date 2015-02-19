@@ -37,7 +37,7 @@ pub fn on_panic(obj: &(Any+Send), file: &'static str, line: uint) {
     let msg = match obj.downcast_ref::<&'static str>() {
         Some(s) => *s,
         None => match obj.downcast_ref::<String>() {
-            Some(s) => &s[],
+            Some(s) => &s[..],
             None => "Box<Any>",
         }
     };

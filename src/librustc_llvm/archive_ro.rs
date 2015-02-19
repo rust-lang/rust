@@ -30,7 +30,7 @@ impl ArchiveRO {
     /// raised.
     pub fn open(dst: &Path) -> Option<ArchiveRO> {
         unsafe {
-            let s = CString::from_slice(dst.as_vec());
+            let s = CString::new(dst.as_vec()).unwrap();
             let ar = ::LLVMRustOpenArchive(s.as_ptr());
             if ar.is_null() {
                 None
@@ -44,7 +44,7 @@ impl ArchiveRO {
     pub fn read<'a>(&'a self, file: &str) -> Option<&'a [u8]> {
         unsafe {
             let mut size = 0 as libc::size_t;
-            let file = CString::from_slice(file.as_bytes());
+            let file = CString::new(file).unwrap();
             let ptr = ::LLVMRustArchiveReadSection(self.ptr, file.as_ptr(),
                                                    &mut size);
             if ptr.is_null() {

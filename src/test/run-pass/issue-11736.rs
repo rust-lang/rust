@@ -10,13 +10,13 @@
 
 extern crate collections;
 
-use std::collections::Bitv;
+use std::collections::BitVec;
 use std::num::Float;
 
 fn main() {
     // Generate sieve of Eratosthenes for n up to 1e6
     let n = 1000000_usize;
-    let mut sieve = Bitv::from_elem(n+1, true);
+    let mut sieve = BitVec::from_elem(n+1, true);
     let limit: uint = (n as f32).sqrt() as uint;
     for i in 2..limit+1 {
         if sieve[i] {

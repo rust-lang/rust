@@ -12,7 +12,7 @@
 
 fn f<T,>(_: T,) {}
 
-struct Foo<T,>;
+struct Foo<T,>(T);
 
 struct Bar;
 
@@ -34,7 +34,7 @@ pub fn main() {
     let [_, _, .., _,] = [1, 1, 1, 1,];
     let [_, _, _.., _,] = [1, 1, 1, 1,];
 
-    let x: Foo<int,> = Foo::<int,>;
+    let x: Foo<int,> = Foo::<int,>(1);
 
     Bar::f(0,);
     Bar.g(0,);

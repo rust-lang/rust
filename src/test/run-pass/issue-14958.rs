@@ -10,7 +10,7 @@
 
 #![feature(unboxed_closures)]
 
-trait Foo {}
+trait Foo { fn dummy(&self) { }}
 
 struct Bar;
 

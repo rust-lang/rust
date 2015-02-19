@@ -17,10 +17,10 @@ pub struct Registry {
 
 impl Registry {
     pub fn new(descriptions: &[(&'static str, &'static str)]) -> Registry {
-        Registry { descriptions: descriptions.iter().map(|&tuple| tuple).collect() }
+        Registry { descriptions: descriptions.iter().cloned().collect() }
     }
 
     pub fn find_description(&self, code: &str) -> Option<&'static str> {
-        self.descriptions.get(code).map(|desc| *desc)
+        self.descriptions.get(code).cloned()
     }
 }

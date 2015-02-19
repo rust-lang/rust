@@ -14,6 +14,7 @@ use self::UndoEntry::*;
 
 use middle::ty::{self, Ty};
 use std::cmp::min;
+use std::marker::PhantomData;
 use std::mem;
 use std::u32;
 use util::snapshot_vec as sv;
@@ -42,13 +43,13 @@ enum UndoEntry {
     Relate(ty::TyVid, ty::TyVid),
 }
 
-struct Delegate<'tcx>;
+struct Delegate<'tcx>(PhantomData<&'tcx ()>);
 
 type Relation = (RelationDir, ty::TyVid);
 
 #[derive(Copy, PartialEq, Debug)]
 pub enum RelationDir {
-    SubtypeOf, SupertypeOf, EqTo
+    SubtypeOf, SupertypeOf, EqTo, BiTo
 }
 
 impl RelationDir {
@@ -56,14 +57,15 @@ impl RelationDir {
         match self {
             SubtypeOf => SupertypeOf,
             SupertypeOf => SubtypeOf,
-            EqTo => EqTo
+            EqTo => EqTo,
+            BiTo => BiTo,
         }
     }
 }
 
 impl<'tcx> TypeVariableTable<'tcx> {
     pub fn new() -> TypeVariableTable<'tcx> {
-        TypeVariableTable { values: sv::SnapshotVec::new(Delegate) }
+        TypeVariableTable { values: sv::SnapshotVec::new(Delegate(PhantomData)) }
     }
 
     fn relations<'a>(&'a mut self, a: ty::TyVid) -> &'a mut Vec<Relation> {

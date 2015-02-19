@@ -1046,14 +1046,14 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             controlflow::trans_if(bcx, expr.id, &**cond, &**thn, els.as_ref().map(|e| &**e), dest)
         }
         ast::ExprMatch(ref discr, ref arms, _) => {
-            _match::trans_match(bcx, expr, &**discr, &arms[], dest)
+            _match::trans_match(bcx, expr, &**discr, &arms[..], dest)
         }
         ast::ExprBlock(ref blk) => {
             controlflow::trans_block(bcx, &**blk, dest)
         }
         ast::ExprStruct(_, ref fields, ref base) => {
             trans_struct(bcx,
-                         &fields[],
+                         &fields[..],
                          base.as_ref().map(|e| &**e),
                          expr.span,
                          expr.id,
@@ -1118,7 +1118,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             trans_adt(bcx,
                       expr_ty(bcx, expr),
                       0,
-                      &numbered_fields[],
+                      &numbered_fields[..],
                       None,
                       dest,
                       expr.debug_loc())
@@ -1153,13 +1153,13 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 trans_overloaded_call(bcx,
                                       expr,
                                       &**f,
-                                      &args[],
+                                      &args[..],
                                       Some(dest))
             } else {
                 callee::trans_call(bcx,
                                    expr,
                                    &**f,
-                                   callee::ArgExprs(&args[]),
+                                   callee::ArgExprs(&args[..]),
                                    dest)
             }
         }
@@ -1167,7 +1167,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             callee::trans_method_call(bcx,
                                       expr,
                                       &*args[0],
-                                      callee::ArgExprs(&args[]),
+                                      callee::ArgExprs(&args[..]),
                                       dest)
         }
         ast::ExprBinary(op, ref lhs, ref rhs) => {
@@ -1197,7 +1197,7 @@ fn trans_rvalue_dps_unadjusted<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 let trait_ref =
                     bcx.tcx().object_cast_map.borrow()
                                              .get(&expr.id)
-                                             .map(|t| (*t).clone())
+                                             .cloned()
                                              .unwrap();
                 let trait_ref = bcx.monomorphize(&trait_ref);
                 let datum = unpack_datum!(bcx, trans(bcx, &**val));
@@ -1354,11 +1354,11 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
         ty::ty_struct(did, substs) => {
             let fields = struct_fields(tcx, did, substs);
             let fields = monomorphize::normalize_associated_type(tcx, &fields);
-            op(0, &fields[])
+            op(0, &fields[..])
         }
 
         ty::ty_tup(ref v) => {
-            op(0, &tup_fields(&v[])[])
+            op(0, &tup_fields(&v[..])[])
         }
 
         ty::ty_enum(_, substs) => {
@@ -1378,7 +1378,7 @@ pub fn with_field_tys<'tcx, R, F>(tcx: &ty::ctxt<'tcx>,
                                 tcx, enum_id, variant_id);
                             let fields = struct_fields(tcx, variant_id, substs);
                             let fields = monomorphize::normalize_associated_type(tcx, &fields);
-                            op(variant_info.disr_val, &fields[])
+                            op(variant_info.disr_val, &fields[..])
                         }
                         _ => {
                             tcx.sess.bug("resolve didn't map this expr to a \

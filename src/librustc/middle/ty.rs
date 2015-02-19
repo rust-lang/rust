@@ -68,15 +68,16 @@ use util::nodemap::{NodeMap, NodeSet, DefIdMap, DefIdSet};
 use util::nodemap::{FnvHashMap};
 
 use arena::TypedArena;
-use std::borrow::{BorrowFrom, Cow};
+use std::borrow::{Borrow, Cow};
 use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt;
-use std::hash::{Hash, Writer, SipHasher, Hasher};
+use std::hash::{Hash, SipHasher, Hasher};
+#[cfg(stage0)] use std::hash::Writer;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
-use std::vec::CowVec;
+use std::vec::{CowVec, IntoIter};
 use collections::enum_set::{EnumSet, CLike};
 use std::collections::{HashMap, HashSet};
 use syntax::abi;
@@ -958,8 +959,15 @@ impl<'tcx> PartialEq for TyS<'tcx> {
 }
 impl<'tcx> Eq for TyS<'tcx> {}
 
+#[cfg(stage0)]
 impl<'tcx, S: Writer + Hasher> Hash<S> for TyS<'tcx> {
     fn hash(&self, s: &mut S) {
+        (self as *const _).hash(s)
+    }
+}
+#[cfg(not(stage0))]
+impl<'tcx> Hash for TyS<'tcx> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
         (self as *const _).hash(s)
     }
 }
@@ -980,15 +988,22 @@ impl<'tcx> PartialEq for InternedTy<'tcx> {
 
 impl<'tcx> Eq for InternedTy<'tcx> {}
 
+#[cfg(stage0)]
 impl<'tcx, S: Writer + Hasher> Hash<S> for InternedTy<'tcx> {
     fn hash(&self, s: &mut S) {
         self.ty.sty.hash(s)
     }
 }
+#[cfg(not(stage0))]
+impl<'tcx> Hash for InternedTy<'tcx> {
+    fn hash<H: Hasher>(&self, s: &mut H) {
+        self.ty.sty.hash(s)
+    }
+}
 
-impl<'tcx> BorrowFrom<InternedTy<'tcx>> for sty<'tcx> {
-    fn borrow_from<'a>(ty: &'a InternedTy<'tcx>) -> &'a sty<'tcx> {
-        &ty.ty.sty
+impl<'tcx> Borrow<sty<'tcx>> for InternedTy<'tcx> {
+    fn borrow<'a>(&'a self) -> &'a sty<'tcx> {
+        &self.ty.sty
     }
 }
 
@@ -2004,6 +2019,40 @@ impl<'tcx> AsPredicate<'tcx> for PolyProjectionPredicate<'tcx> {
 }
 
 impl<'tcx> Predicate<'tcx> {
+    /// Iterates over the types in this predicate. Note that in all
+    /// cases this is skipping over a binder, so late-bound regions
+    /// with depth 0 are bound by the predicate.
+    pub fn walk_tys(&self) -> IntoIter<Ty<'tcx>> {
+        let vec: Vec<_> = match *self {
+            ty::Predicate::Trait(ref data) => {
+                data.0.trait_ref.substs.types.as_slice().to_vec()
+            }
+            ty::Predicate::Equate(ty::Binder(ref data)) => {
+                vec![data.0, data.1]
+            }
+            ty::Predicate::TypeOutlives(ty::Binder(ref data)) => {
+                vec![data.0]
+            }
+            ty::Predicate::RegionOutlives(..) => {
+                vec![]
+            }
+            ty::Predicate::Projection(ref data) => {
+                let trait_inputs = data.0.projection_ty.trait_ref.substs.types.as_slice();
+                trait_inputs.iter()
+                            .cloned()
+                            .chain(Some(data.0.ty).into_iter())
+                            .collect()
+            }
+        };
+
+        // The only reason to collect into a vector here is that I was
+        // too lazy to make the full (somewhat complicated) iterator
+        // type that would be needed here. But I wanted this fn to
+        // return an iterator conceptually, rather than a `Vec`, so as
+        // to be closer to `Ty::walk`.
+        vec.into_iter()
+    }
+
     pub fn has_escaping_regions(&self) -> bool {
         match *self {
             Predicate::Trait(ref trait_ref) => trait_ref.has_escaping_regions(),
@@ -2331,7 +2380,7 @@ impl ClosureKind {
         };
         match result {
             Ok(trait_did) => trait_did,
-            Err(err) => cx.sess.fatal(&err[]),
+            Err(err) => cx.sess.fatal(&err[..]),
         }
     }
 }
@@ -2665,7 +2714,7 @@ impl FlagComputation {
             }
 
             &ty_tup(ref ts) => {
-                self.add_tys(&ts[]);
+                self.add_tys(&ts[..]);
             }
 
             &ty_bare_fn(_, ref f) => {
@@ -2836,7 +2885,7 @@ pub fn mk_ctor_fn<'tcx>(cx: &ctxt<'tcx>,
                         def_id: ast::DefId,
                         input_tys: &[Ty<'tcx>],
                         output: Ty<'tcx>) -> Ty<'tcx> {
-    let input_args = input_tys.iter().map(|ty| *ty).collect();
+    let input_args = input_tys.iter().cloned().collect();
     mk_bare_fn(cx,
                Some(def_id),
                cx.mk_bare_fn(BareFnTy {
@@ -2958,6 +3007,13 @@ impl<'tcx> TyS<'tcx> {
         let r = walker.next();
         assert_eq!(r, Some(self));
         walker
+    }
+
+    pub fn as_opt_param_ty(&self) -> Option<ty::ParamTy> {
+        match self.sty {
+            ty::ty_param(ref d) => Some(d.clone()),
+            _ => None,
+        }
     }
 }
 
@@ -3451,7 +3507,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             ty_struct(did, substs) => {
                 let flds = struct_fields(cx, did, substs);
                 let mut res =
-                    TypeContents::union(&flds[],
+                    TypeContents::union(&flds[..],
                                         |f| tc_mt(cx, f.mt, cache));
 
                 if !lookup_repr_hints(cx, did).contains(&attr::ReprExtern) {
@@ -3474,14 +3530,14 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
             }
 
             ty_tup(ref tys) => {
-                TypeContents::union(&tys[],
+                TypeContents::union(&tys[..],
                                     |ty| tc_ty(cx, *ty, cache))
             }
 
             ty_enum(did, substs) => {
                 let variants = substd_enum_variants(cx, did, substs);
                 let mut res =
-                    TypeContents::union(&variants[], |variant| {
+                    TypeContents::union(&variants[..], |variant| {
                         TypeContents::union(&variant.args[],
                                             |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
@@ -3805,7 +3861,7 @@ pub fn is_type_representable<'tcx>(cx: &ctxt<'tcx>, sp: Span, ty: Ty<'tcx>)
                                        -> Representability {
         match ty.sty {
             ty_tup(ref ts) => {
-                find_nonrepresentable(cx, sp, seen, ts.iter().map(|ty| *ty))
+                find_nonrepresentable(cx, sp, seen, ts.iter().cloned())
             }
             // Fixed-length vectors.
             // FIXME(#11924) Behavior undecided for zero-length vectors.
@@ -4112,7 +4168,7 @@ pub fn positional_element_ty<'tcx>(cx: &ctxt<'tcx>,
                                    variant: Option<ast::DefId>) -> Option<Ty<'tcx>> {
 
     match (&ty.sty, variant) {
-        (&ty_tup(ref v), None) => v.get(i).map(|&t| t),
+        (&ty_tup(ref v), None) => v.get(i).cloned(),
 
 
         (&ty_struct(def_id, substs), None) => lookup_struct_fields(cx, def_id)
@@ -4933,7 +4989,7 @@ pub fn note_and_explain_type_err(cx: &ctxt, err: &type_err) {
 }
 
 pub fn provided_source(cx: &ctxt, id: ast::DefId) -> Option<ast::DefId> {
-    cx.provided_method_sources.borrow().get(&id).map(|x| *x)
+    cx.provided_method_sources.borrow().get(&id).cloned()
 }
 
 pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
@@ -4944,7 +5000,7 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                 match item.node {
                     ItemTrait(_, _, _, ref ms) => {
                         let (_, p) =
-                            ast_util::split_trait_methods(&ms[]);
+                            ast_util::split_trait_methods(&ms[..]);
                         p.iter()
                          .map(|m| {
                             match impl_or_trait_item(
@@ -6600,7 +6656,7 @@ pub fn accumulate_lifetimes_in_type(accumulator: &mut Vec<ty::Region>,
 }
 
 /// A free variable referred to in a function.
-#[derive(Copy, RustcEncodable, RustcDecodable)]
+#[derive(Copy, Clone, RustcEncodable, RustcDecodable)]
 pub struct Freevar {
     /// The variable being accessed free.
     pub def: def::Def,
@@ -6625,7 +6681,7 @@ pub fn with_freevars<T, F>(tcx: &ty::ctxt, fid: ast::NodeId, f: F) -> T where
 {
     match tcx.freevars.borrow().get(&fid) {
         None => f(&[]),
-        Some(d) => f(&d[])
+        Some(d) => f(&d[..])
     }
 }
 

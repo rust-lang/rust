@@ -10,7 +10,9 @@
 
 #![feature(box_syntax)]
 
-trait X {}
+use std::marker::MarkerTrait;
+
+trait X : MarkerTrait {}
 
 trait Iter {
     type Item: X;

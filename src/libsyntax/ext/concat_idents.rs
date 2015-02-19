@@ -49,7 +49,7 @@ pub fn expand_syntax_ext<'cx>(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree]
             }
         }
     }
-    let res = str_to_ident(&res_str[]);
+    let res = str_to_ident(&res_str[..]);
 
     let e = P(ast::Expr {
         id: ast::DUMMY_NODE_ID,

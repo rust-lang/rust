@@ -158,7 +158,7 @@ pub fn get_or_create_declaration_if_closure<'a, 'tcx>(ccx: &CrateContext<'a, 'tc
         mangle_internal_name_by_path_and_seq(path, "closure")
     });
 
-    let llfn = decl_internal_rust_fn(ccx, function_type, &symbol[]);
+    let llfn = decl_internal_rust_fn(ccx, function_type, &symbol[..]);
 
     // set an inline hint for all closures
     set_inline_hint(llfn);
@@ -208,7 +208,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
     let function_type = typer.closure_type(closure_id, param_substs);
 
     let freevars: Vec<ty::Freevar> =
-        ty::with_freevars(tcx, id, |fv| fv.iter().map(|&fv| fv).collect());
+        ty::with_freevars(tcx, id, |fv| fv.iter().cloned().collect());
 
     let sig = ty::erase_late_bound_regions(tcx, &function_type.sig);
 
@@ -221,7 +221,7 @@ pub fn trans_closure_expr<'a, 'tcx>(dest: Dest<'a, 'tcx>,
                   &[],
                   sig.output,
                   function_type.abi,
-                  ClosureEnv::Closure(&freevars[]));
+                  ClosureEnv::Closure(&freevars[..]));
 
     // Don't hoist this to the top of the function. It's perfectly legitimate
     // to have a zero-size closure (in which case dest will be `Ignore`) and

@@ -326,7 +326,7 @@ impl Encodable for str {
 
 impl Encodable for String {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self[])
+        s.emit_str(&self[..])
     }
 }
 

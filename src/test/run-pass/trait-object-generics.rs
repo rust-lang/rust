@@ -13,11 +13,14 @@
 #![allow(unknown_features)]
 #![feature(box_syntax)]
 
+use std::marker;
+
 pub trait Trait2<A> {
-    fn doit(&self);
+    fn doit(&self) -> A;
 }
 
 pub struct Impl<A1, A2, A3> {
+    m1: marker::PhantomData<(A1,A2,A3)>,
     /*
      * With A2 we get the ICE:
      * task <unnamed> failed at 'index out of bounds: the len is 1 but the index is 1',
@@ -28,13 +31,13 @@ pub struct Impl<A1, A2, A3> {
 
 impl<A1, A2, A3> Impl<A1, A2, A3> {
     pub fn step(&self) {
-        self.t.doit()
+        self.t.doit();
     }
 }
 
 // test for #8601
 
-enum Type<T> { Constant }
+enum Type<T> { Constant(T) }
 
 trait Trait<K,V> {
     fn method(&self,Type<(K,V)>) -> int;
@@ -46,5 +49,5 @@ impl<V> Trait<u8,V> for () {
 
 pub fn main() {
     let a = box() () as Box<Trait<u8, u8>>;
-    assert_eq!(a.method(Type::Constant), 0);
+    assert_eq!(a.method(Type::Constant((1u8, 2u8))), 0);
 }

@@ -15,21 +15,19 @@
 struct LM { resize_at: uint, size: uint }
 
 enum HashMap<K,V> {
-    HashMap_(LM)
+    HashMap_(LM, Vec<(K,V)>)
 }
-
-impl<K,V> Copy for HashMap<K,V> {}
 
 fn linear_map<K,V>() -> HashMap<K,V> {
     HashMap::HashMap_(LM{
         resize_at: 32,
-        size: 0})
+        size: 0}, Vec::new())
 }
 
 impl<K,V> HashMap<K,V> {
     pub fn len(&mut self) -> uint {
         match *self {
-            HashMap::HashMap_(l) => l.size
+            HashMap::HashMap_(ref l, _) => l.size
         }
     }
 }

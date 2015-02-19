@@ -13,16 +13,12 @@
 // Verify the compiler fails with an error on infinite function
 // recursions.
 
-struct Data(Box<Option<Data>>);
-
-fn generic<T>( _ : Vec<(Data,T)> ) {
-    let rec : Vec<(Data,(bool,T))> = Vec::new();
-    generic( rec );
+fn generic<T>() {
+    generic::<Option<T>>();
 }
 
 
 fn main () {
     // Use generic<T> at least once to trigger instantiation.
-    let input : Vec<(Data,())> = Vec::new();
-    generic(input);
+    generic::<i32>();
 }

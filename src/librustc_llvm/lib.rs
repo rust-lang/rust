@@ -25,7 +25,6 @@
 #![feature(box_syntax)]
 #![feature(collections)]
 #![feature(core)]
-#![feature(hash)]
 #![feature(int_uint)]
 #![feature(libc)]
 #![feature(link_args)]
@@ -2149,7 +2148,7 @@ impl Drop for TargetData {
 }
 
 pub fn mk_target_data(string_rep: &str) -> TargetData {
-    let string_rep = CString::from_slice(string_rep.as_bytes());
+    let string_rep = CString::new(string_rep).unwrap();
     TargetData {
         lltd: unsafe { LLVMCreateTargetData(string_rep.as_ptr()) }
     }

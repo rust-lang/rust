@@ -171,8 +171,8 @@ fn test_set_memory() {
 #[test]
 fn test_unsized_unique() {
     let xs: &mut [_] = &mut [1, 2, 3];
-    let ptr = Unique(xs as *mut [_]);
-    let ys = unsafe { &mut *ptr.ptr };
+    let ptr = unsafe { Unique::new(xs as *mut [_]) };
+    let ys = unsafe { &mut **ptr };
     let zs: &mut [_] = &mut [1, 2, 3];
     assert!(ys == zs);
 }

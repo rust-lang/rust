@@ -19,7 +19,7 @@
 #[derive(Clone)]
 struct B1;
 
-trait A {}
+trait A { fn foo(&self) {} }
 impl A for B1 {}
 
 fn main() {

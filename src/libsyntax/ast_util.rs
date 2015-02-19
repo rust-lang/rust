@@ -257,11 +257,11 @@ pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
     match *trait_ref {
         Some(ref trait_ref) => {
             pretty.push('.');
-            pretty.push_str(&pprust::path_to_string(&trait_ref.path)[]);
+            pretty.push_str(&pprust::path_to_string(&trait_ref.path));
         }
         None => {}
     }
-    token::gensym_ident(&pretty[])
+    token::gensym_ident(&pretty[..])
 }
 
 pub fn trait_method_to_ty_method(method: &Method) -> TypeMethod {
@@ -673,7 +673,7 @@ pub fn pat_is_ident(pat: P<ast::Pat>) -> bool {
 pub fn path_name_eq(a : &ast::Path, b : &ast::Path) -> bool {
     (a.span == b.span)
     && (a.global == b.global)
-    && (segments_name_eq(&a.segments[], &b.segments[]))
+    && (segments_name_eq(&a.segments[..], &b.segments[..]))
 }
 
 // are two arrays of segments equal when compared unhygienically?

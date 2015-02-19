@@ -34,13 +34,14 @@
 
 use core::prelude::*;
 
-use core::borrow::{BorrowFrom, ToOwned};
+use borrow::{Borrow, ToOwned};
 use fmt::{self, Debug};
 use mem;
 use string::{String, CowString};
 use ops;
 use cmp;
-use hash::{Hash, Hasher, Writer};
+use hash::{Hash, Hasher};
+#[cfg(stage0)] use hash::Writer;
 use old_path::{Path, GenericPath};
 
 use sys::os_str::{Buf, Slice};
@@ -103,7 +104,7 @@ impl ops::Deref for OsString {
 
     #[inline]
     fn deref(&self) -> &OsStr {
-        &self[]
+        &self[..]
     }
 }
 
@@ -162,9 +163,18 @@ impl Ord for OsString {
     }
 }
 
+#[cfg(stage0)]
 impl<'a, S: Hasher + Writer> Hash<S> for OsString {
     #[inline]
     fn hash(&self, state: &mut S) {
+        (&**self).hash(state)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for OsString {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
         (&**self).hash(state)
     }
 }
@@ -253,9 +263,18 @@ impl Ord for OsStr {
     fn cmp(&self, other: &OsStr) -> cmp::Ordering { self.bytes().cmp(other.bytes()) }
 }
 
+#[cfg(stage0)]
 impl<'a, S: Hasher + Writer> Hash<S> for OsStr {
     #[inline]
     fn hash(&self, state: &mut S) {
+        self.bytes().hash(state)
+    }
+}
+#[cfg(not(stage0))]
+#[stable(feature = "rust1", since = "1.0.0")]
+impl Hash for OsStr {
+    #[inline]
+    fn hash<H: Hasher>(&self, state: &mut H) {
         self.bytes().hash(state)
     }
 }
@@ -266,11 +285,12 @@ impl Debug for OsStr {
     }
 }
 
-impl BorrowFrom<OsString> for OsStr {
-    fn borrow_from(owned: &OsString) -> &OsStr { &owned[] }
+impl Borrow<OsStr> for OsString {
+    fn borrow(&self) -> &OsStr { &self[..] }
 }
 
-impl ToOwned<OsString> for OsStr {
+impl ToOwned for OsStr {
+    type Owned = OsString;
     fn to_owned(&self) -> OsString { self.to_os_string() }
 }
 
@@ -288,7 +308,7 @@ impl AsOsStr for OsStr {
 
 impl AsOsStr for OsString {
     fn as_os_str(&self) -> &OsStr {
-        &self[]
+        &self[..]
     }
 }
 
@@ -300,7 +320,7 @@ impl AsOsStr for str {
 
 impl AsOsStr for String {
     fn as_os_str(&self) -> &OsStr {
-        OsStr::from_str(&self[])
+        OsStr::from_str(&self[..])
     }
 }
 

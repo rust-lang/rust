@@ -132,7 +132,7 @@ fn run<W: Writer>(writer: &mut W) -> std::old_io::IoResult<()> {
                         ('t', 0.3015094502008)];
 
     try!(make_fasta(writer, ">ONE Homo sapiens alu\n",
-                    alu.as_bytes().iter().cycle().map(|c| *c), n * 2));
+                    alu.as_bytes().iter().cycle().cloned(), n * 2));
     try!(make_fasta(writer, ">TWO IUB ambiguity codes\n",
                     AAGen::new(rng, iub), n * 3));
     try!(make_fasta(writer, ">THREE Homo sapiens frequency\n",

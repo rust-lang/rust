@@ -225,15 +225,15 @@ impl<'a, 'tcx> Iterator for CrateContextMaybeIterator<'a, 'tcx> {
 
 unsafe fn create_context_and_module(sess: &Session, mod_name: &str) -> (ContextRef, ModuleRef) {
     let llcx = llvm::LLVMContextCreate();
-    let mod_name = CString::from_slice(mod_name.as_bytes());
+    let mod_name = CString::new(mod_name).unwrap();
     let llmod = llvm::LLVMModuleCreateWithNameInContext(mod_name.as_ptr(), llcx);
 
-    let data_layout = &*sess.target.target.data_layout;
-    let data_layout = CString::from_slice(data_layout.as_bytes());
+    let data_layout = sess.target.target.data_layout.as_bytes();
+    let data_layout = CString::new(data_layout).unwrap();
     llvm::LLVMSetDataLayout(llmod, data_layout.as_ptr());
 
-    let llvm_target = &*sess.target.target.llvm_target;
-    let llvm_target = CString::from_slice(llvm_target.as_bytes());
+    let llvm_target = sess.target.target.llvm_target.as_bytes();
+    let llvm_target = CString::new(llvm_target).unwrap();
     llvm::LLVMRustSetNormalizedTarget(llmod, llvm_target.as_ptr());
     (llcx, llmod)
 }
@@ -288,7 +288,7 @@ impl<'tcx> SharedCrateContext<'tcx> {
             // such as a function name in the module.
             // 1. http://llvm.org/bugs/show_bug.cgi?id=11479
             let llmod_id = format!("{}.{}.rs", crate_name, i);
-            let local_ccx = LocalCrateContext::new(&shared_ccx, &llmod_id[]);
+            let local_ccx = LocalCrateContext::new(&shared_ccx, &llmod_id[..]);
             shared_ccx.local_ccxs.push(local_ccx);
         }
 

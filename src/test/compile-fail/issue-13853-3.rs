@@ -10,6 +10,8 @@
 
 #![crate_type = "lib"]
 
+use std::marker::PhantomData;
+
 enum NodeContents<'a> {
     Children(Vec<Node<'a>>),
 }
@@ -22,11 +24,12 @@ impl<'a> Drop for NodeContents<'a> {
 
 struct Node<'a> {
     contents: NodeContents<'a>,
+    marker: PhantomData<&'a ()>,
 }
 
 impl<'a> Node<'a> {
     fn noName(contents: NodeContents<'a>) -> Node<'a> {
-        Node{  contents: contents,}
+        Node { contents: contents, marker: PhantomData }
     }
 }
 

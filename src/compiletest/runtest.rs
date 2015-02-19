@@ -11,7 +11,7 @@
 use self::TargetLocation::*;
 
 use common::Config;
-use common::{CompileFail, Pretty, RunFail, RunPass, RunPassValgrind, DebugInfoGdb};
+use common::{CompileFail, ParseFail, Pretty, RunFail, RunPass, RunPassValgrind, DebugInfoGdb};
 use common::{Codegen, DebugInfoLldb};
 use errors;
 use header::TestProps;
@@ -66,6 +66,7 @@ pub fn run_metrics(config: Config, testfile: String, mm: &mut MetricMap) {
     debug!("loaded props");
     match config.mode {
       CompileFail => run_cfail_test(&config, &props, &testfile),
+      ParseFail => run_cfail_test(&config, &props, &testfile),
       RunFail => run_rfail_test(&config, &props, &testfile),
       RunPass => run_rpass_test(&config, &props, &testfile),
       RunPassValgrind => run_valgrind_test(&config, &props, &testfile),
@@ -88,7 +89,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = compile_test(config, props, testfile);
 
     if proc_res.status.success() {
-        fatal_proc_rec("compile-fail test compiled successfully!",
+        fatal_proc_rec(&format!("{} test compiled successfully!", config.mode)[],
                       &proc_res);
     }
 
@@ -688,7 +689,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                                                .unwrap()
                                                .to_string();
 
-    script_str.push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[])[]);
+    script_str.push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[]);
     script_str.push_str("type summary add --no-value ");
     script_str.push_str("--python-function lldb_rust_formatters.print_val ");
     script_str.push_str("-x \".*\" --category Rust\n");
@@ -1133,7 +1134,7 @@ fn compile_test_(config: &Config, props: &TestProps,
     // FIXME (#9639): This needs to handle non-utf8 paths
     let mut link_args = vec!("-L".to_string(),
                              aux_dir.as_str().unwrap().to_string());
-    link_args.extend(extra_args.iter().map(|s| s.clone()));
+    link_args.extend(extra_args.iter().cloned());
     let args = make_compile_args(config,
                                  props,
                                  link_args,

@@ -13,7 +13,6 @@
 
 use core::prelude::*;
 
-use core::borrow::BorrowFrom;
 use core::cmp::Ordering::{self, Less, Greater, Equal};
 use core::default::Default;
 use core::fmt::Debug;
@@ -21,6 +20,7 @@ use core::fmt;
 use core::iter::{Peekable, Map, FromIterator, IntoIterator};
 use core::ops::{BitOr, BitAnd, BitXor, Sub};
 
+use borrow::Borrow;
 use btree_map::{BTreeMap, Keys};
 use Bound;
 
@@ -336,7 +336,7 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.contains(&4), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn contains<Q: ?Sized>(&self, value: &Q) -> bool where T: Borrow<Q>, Q: Ord {
         self.map.contains_key(value)
     }
 
@@ -466,14 +466,14 @@ impl<T: Ord> BTreeSet<T> {
     /// assert_eq!(set.remove(&2), false);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where Q: BorrowFrom<T> + Ord {
+    pub fn remove<Q: ?Sized>(&mut self, value: &Q) -> bool where T: Borrow<Q>, Q: Ord {
         self.map.remove(value).is_some()
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> FromIterator<T> for BTreeSet<T> {
-    fn from_iter<Iter: Iterator<Item=T>>(iter: Iter) -> BTreeSet<T> {
+    fn from_iter<I: IntoIterator<Item=T>>(iter: I) -> BTreeSet<T> {
         let mut set = BTreeSet::new();
         set.extend(iter);
         set
@@ -503,7 +503,7 @@ impl<'a, T> IntoIterator for &'a BTreeSet<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Ord> Extend<T> for BTreeSet<T> {
     #[inline]
-    fn extend<Iter: Iterator<Item=T>>(&mut self, iter: Iter) {
+    fn extend<Iter: IntoIterator<Item=T>>(&mut self, iter: Iter) {
         for elem in iter {
             self.insert(elem);
         }

@@ -215,7 +215,7 @@ impl Ord for Ordering {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn cmp(&self, other: &Ordering) -> Ordering {
-        (*self as int).cmp(&(*other as int))
+        (*self as i32).cmp(&(*other as i32))
     }
 }
 
@@ -224,7 +224,7 @@ impl PartialOrd for Ordering {
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
     fn partial_cmp(&self, other: &Ordering) -> Option<Ordering> {
-        (*self as int).partial_cmp(&(*other as int))
+        (*self as i32).partial_cmp(&(*other as i32))
     }
 }
 
@@ -482,7 +482,7 @@ mod impls {
     }
 
     partial_eq_impl! {
-        bool char uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64
+        bool char usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64
     }
 
     macro_rules! eq_impl {
@@ -492,7 +492,7 @@ mod impls {
         )*)
     }
 
-    eq_impl! { () bool char uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+    eq_impl! { () bool char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
     macro_rules! partial_ord_impl {
         ($($t:ty)*) => ($(
@@ -535,7 +535,7 @@ mod impls {
         }
     }
 
-    partial_ord_impl! { char uint u8 u16 u32 u64 int i8 i16 i32 i64 f32 f64 }
+    partial_ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 
     macro_rules! ord_impl {
         ($($t:ty)*) => ($(
@@ -565,7 +565,7 @@ mod impls {
         }
     }
 
-    ord_impl! { char uint u8 u16 u32 u64 int i8 i16 i32 i64 }
+    ord_impl! { char usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 
     // & pointers
 

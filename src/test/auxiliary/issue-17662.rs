@@ -11,7 +11,7 @@
 #![crate_type = "lib"]
 
 pub trait Foo<'a, T> {
-    fn foo(&self) -> T;
+    fn foo(&'a self) -> T;
 }
 
 pub fn foo<'a, T>(x: &'a Foo<'a, T>) -> T {

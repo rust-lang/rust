@@ -656,7 +656,7 @@ impl<'a, 'tcx> CheckLoanCtxt<'a, 'tcx> {
                                 &self.bccx.loan_path_to_string(move_path)[])
                 };
 
-                self.bccx.span_err(span, &err_message[]);
+                self.bccx.span_err(span, &err_message[..]);
                 self.bccx.span_note(
                     loan_span,
                     &format!("borrow of `{}` occurs here",

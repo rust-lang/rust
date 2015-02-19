@@ -566,7 +566,7 @@ fn enter_opt<'a, 'p, 'blk, 'tcx>(
         param_env: param_env,
     };
     enter_match(bcx, dm, m, col, val, |pats|
-        check_match::specialize(&mcx, &pats[], &ctor, col, variant_size)
+        check_match::specialize(&mcx, &pats[..], &ctor, col, variant_size)
     )
 }
 
@@ -987,7 +987,7 @@ fn compile_submatch<'a, 'p, 'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if has_nested_bindings(m, col) {
                 let expanded = expand_nested_bindings(bcx, m, col, val);
                 compile_submatch_continue(bcx,
-                                          &expanded[],
+                                          &expanded[..],
                                           vals,
                                           chk,
                                           col,
@@ -1233,10 +1233,10 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
         }
         let opt_ms = enter_opt(opt_cx, pat_id, dm, m, opt, col, size, val);
         let mut opt_vals = unpacked;
-        opt_vals.push_all(&vals_left[]);
+        opt_vals.push_all(&vals_left[..]);
         compile_submatch(opt_cx,
-                         &opt_ms[],
-                         &opt_vals[],
+                         &opt_ms[..],
+                         &opt_vals[..],
                          branch_chk.as_ref().unwrap_or(chk),
                          has_genuine_default);
     }
@@ -1255,8 +1255,8 @@ fn compile_submatch_continue<'a, 'p, 'blk, 'tcx>(mut bcx: Block<'blk, 'tcx>,
             }
             _ => {
                 compile_submatch(else_cx,
-                                 &defaults[],
-                                 &vals_left[],
+                                 &defaults[..],
+                                 &vals_left[..],
                                  chk,
                                  has_genuine_default);
             }
@@ -1468,7 +1468,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         && arm.pats.last().unwrap().node == ast::PatWild(ast::PatWildSingle)
     });
 
-    compile_submatch(bcx, &matches[], &[discr_datum.val], &chk, has_default);
+    compile_submatch(bcx, &matches[..], &[discr_datum.val], &chk, has_default);
 
     let mut arm_cxs = Vec::new();
     for arm_data in &arm_datas {
@@ -1482,7 +1482,7 @@ fn trans_match_inner<'blk, 'tcx>(scope_cx: Block<'blk, 'tcx>,
         arm_cxs.push(bcx);
     }
 
-    bcx = scope_cx.fcx.join_blocks(match_id, &arm_cxs[]);
+    bcx = scope_cx.fcx.join_blocks(match_id, &arm_cxs[..]);
     return bcx;
 }
 

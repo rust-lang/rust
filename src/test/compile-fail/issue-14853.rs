@@ -9,8 +9,9 @@
 // except according to those terms.
 
 use std::fmt::Debug;
+use std::marker::MarkerTrait;
 
-trait Str {}
+trait Str : MarkerTrait {}
 
 trait Something {
     fn yay<T: Debug>(_: Option<Self>, thing: &[T]);

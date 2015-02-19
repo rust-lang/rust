@@ -17,17 +17,18 @@
 fn main() {
     send::<Box<Foo>>(box Output(0));
     Test::<Box<Foo>>::foo(box Output(0));
-    Test::<Box<Foo>>.send(box Output(0));
+    Test::<Box<Foo>>::new().send(box Output(0));
 }
 
 fn send<T>(_: T) {}
 
-struct Test<T>;
+struct Test<T> { marker: std::marker::PhantomData<T> }
 impl<T> Test<T> {
+    fn new() -> Test<T> { Test { marker: ::std::marker::PhantomData } }
     fn foo(_: T) {}
     fn send(&self, _: T) {}
 }
 
-trait Foo {}
+trait Foo { fn dummy(&self) { }}
 struct Output(int);
 impl Foo for Output {}

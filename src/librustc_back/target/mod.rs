@@ -254,18 +254,18 @@ impl Target {
         macro_rules! key {
             ($key_name:ident) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[]).map(|o| o.as_string()
+                obj.find(&name[..]).map(|o| o.as_string()
                                     .map(|s| base.options.$key_name = s.to_string()));
             } );
             ($key_name:ident, bool) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[])
+                obj.find(&name[..])
                     .map(|o| o.as_boolean()
                          .map(|s| base.options.$key_name = s));
             } );
             ($key_name:ident, list) => ( {
                 let name = (stringify!($key_name)).replace("_", "-");
-                obj.find(&name[]).map(|o| o.as_array()
+                obj.find(&name[..]).map(|o| o.as_array()
                     .map(|v| base.options.$key_name = v.iter()
                         .map(|a| a.as_string().unwrap().to_string()).collect()
                         )

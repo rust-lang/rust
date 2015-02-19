@@ -14,12 +14,12 @@
 #![allow(dead_code)]
 #![feature(rustc_attrs)]
 
+use std::marker::PhantomFn;
+
 ///////////////////////////////////////////////////////////////////////////
 
-pub trait TheTrait<'b> {
+pub trait TheTrait<'b> : PhantomFn<&'b Self,Self> {
     type TheAssocType;
-
-    fn dummy(&'b self) { }
 }
 
 pub struct TheType<'b> {

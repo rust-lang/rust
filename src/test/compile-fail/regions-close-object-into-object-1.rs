@@ -11,13 +11,16 @@
 #![feature(box_syntax)]
 #![allow(warnings)]
 
-trait A<T> {}
+use std::marker::PhantomFn;
+
+trait A<T> : PhantomFn<(Self,T)> { }
 struct B<'a, T>(&'a (A<T>+'a));
 
-trait X {}
+trait X : ::std::marker::MarkerTrait {}
+
 impl<'a, T> X for B<'a, T> {}
 
-fn f<'a, T, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
+fn f<'a, T:'static, U>(v: Box<A<T>+'static>) -> Box<X+'static> {
     box B(&*v) as Box<X> //~ ERROR `*v` does not live long enough
 }
 

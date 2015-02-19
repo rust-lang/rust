@@ -14,7 +14,9 @@
 // with different mutability in macro in two methods
 
 #![allow(unused_variable)] // unused foobar_immut + foobar_mut
-trait FooBar {}
+trait FooBar {
+    fn dummy(&self) { }
+}
 struct Bar(i32);
 struct Foo { bar: Bar }
 

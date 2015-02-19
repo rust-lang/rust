@@ -13,7 +13,7 @@ extern crate collections;
 use self::collections::BTreeMap;
 use std::borrow::{Cow, IntoCow};
 
-type SendStr = Cow<'static, String, str>;
+type SendStr = Cow<'static, str>;
 
 pub fn main() {
     let mut map: BTreeMap<SendStr, uint> = BTreeMap::new();

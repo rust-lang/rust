@@ -9,6 +9,9 @@
 // except according to those terms.
 
 // error-pattern:quux
+
+use std::marker::PhantomData;
+
 fn test00_start(ch: chan_t<int>, message: int) { send(ch, message); }
 
 type task_id = int;
@@ -17,6 +20,7 @@ type port_id = int;
 struct chan_t<T> {
     task: task_id,
     port: port_id,
+    marker: PhantomData<*mut T>,
 }
 
 fn send<T:Send>(_ch: chan_t<T>, _data: T) { panic!(); }

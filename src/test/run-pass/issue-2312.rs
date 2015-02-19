@@ -10,7 +10,7 @@
 
 // Testing that the B's are resolved
 
-trait clam<A> { }
+trait clam<A> { fn get(self) -> A; }
 
 struct foo(int);
 

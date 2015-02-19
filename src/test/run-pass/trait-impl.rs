@@ -16,7 +16,9 @@ use traitimpl::Bar;
 
 static mut COUNT: uint = 1;
 
-trait T {}
+trait T {
+    fn t(&self) {}
+}
 
 impl<'a> T+'a {
     fn foo(&self) {

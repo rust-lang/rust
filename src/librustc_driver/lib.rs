@@ -272,7 +272,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                       -> Compilation {
         match matches.opt_str("explain") {
             Some(ref code) => {
-                match descriptions.find_description(&code[]) {
+                match descriptions.find_description(&code[..]) {
                     Some(ref description) => {
                         println!("{}", description);
                     }
@@ -582,7 +582,7 @@ Available lint options:
         for lint in lints {
             let name = lint.name_lower().replace("_", "-");
             println!("    {}  {:7.7}  {}",
-                     padded(&name[]), lint.default_level.as_str(), lint.desc);
+                     padded(&name[..]), lint.default_level.as_str(), lint.desc);
         }
         println!("\n");
     };
@@ -612,7 +612,7 @@ Available lint options:
             let desc = to.into_iter().map(|x| x.as_str().replace("_", "-"))
                          .collect::<Vec<String>>().connect(", ");
             println!("    {}  {}",
-                     padded(&name[]), desc);
+                     padded(&name[..]), desc);
         }
         println!("\n");
     };
@@ -678,7 +678,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     let matches =
-        match getopts::getopts(&args[], &config::optgroups()[]) {
+        match getopts::getopts(&args[..], &config::optgroups()[]) {
             Ok(m) => m,
             Err(f_stable_attempt) => {
                 // redo option parsing, including unstable options this time,
@@ -803,7 +803,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
                     "run with `RUST_BACKTRACE=1` for a backtrace".to_string(),
                 ];
                 for note in &xs {
-                    emitter.emit(None, &note[], None, diagnostic::Note)
+                    emitter.emit(None, &note[..], None, diagnostic::Note)
                 }
 
                 match r.read_to_string() {

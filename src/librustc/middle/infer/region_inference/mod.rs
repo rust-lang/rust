@@ -977,7 +977,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
         self.expansion(&mut var_data);
         self.contraction(&mut var_data);
         let values =
-            self.extract_values_and_collect_conflicts(&var_data[],
+            self.extract_values_and_collect_conflicts(&var_data[..],
                                                       errors);
         self.collect_concrete_region_errors(&values, errors);
         values

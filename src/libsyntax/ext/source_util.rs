@@ -65,7 +65,7 @@ pub fn expand_stringify(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         -> Box<base::MacResult+'static> {
     let s = pprust::tts_to_string(tts);
     base::MacExpr::new(cx.expr_str(sp,
-                                   token::intern_and_get_ident(&s[])))
+                                   token::intern_and_get_ident(&s[..])))
 }
 
 pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
@@ -78,7 +78,7 @@ pub fn expand_mod(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                    .connect("::");
     base::MacExpr::new(cx.expr_str(
             sp,
-            token::intern_and_get_ident(&string[])))
+            token::intern_and_get_ident(&string[..])))
 }
 
 /// include! : parse the given file as an expr
@@ -117,7 +117,7 @@ pub fn expand_include<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree
                     None => self.p.span_fatal(
                         self.p.span,
                         &format!("expected item, found `{}`",
-                                 self.p.this_token_to_string())[]
+                                 self.p.this_token_to_string())
                     )
                 }
             }
@@ -141,7 +141,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             cx.span_err(sp,
                         &format!("couldn't read {}: {}",
                                 file.display(),
-                                e)[]);
+                                e));
             return DummyResult::expr(sp);
         }
         Ok(bytes) => bytes,
@@ -151,7 +151,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
             // Add this input file to the code map to make it available as
             // dependency information
             let filename = format!("{}", file.display());
-            let interned = token::intern_and_get_ident(&src[]);
+            let interned = token::intern_and_get_ident(&src[..]);
             cx.codemap().new_filemap(filename, src);
 
             base::MacExpr::new(cx.expr_str(sp, interned))
@@ -159,7 +159,7 @@ pub fn expand_include_str(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
         Err(_) => {
             cx.span_err(sp,
                         &format!("{} wasn't a utf-8 file",
-                                file.display())[]);
+                                file.display()));
             return DummyResult::expr(sp);
         }
     }
@@ -175,11 +175,11 @@ pub fn expand_include_bytes(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
     match File::open(&file).read_to_end() {
         Err(e) => {
             cx.span_err(sp,
-                        &format!("couldn't read {}: {}", file.display(), e)[]);
+                        &format!("couldn't read {}: {}", file.display(), e));
             return DummyResult::expr(sp);
         }
         Ok(bytes) => {
-            let bytes = bytes.iter().map(|x| *x).collect();
+            let bytes = bytes.iter().cloned().collect();
             base::MacExpr::new(cx.expr_lit(sp, ast::LitBinary(Rc::new(bytes))))
         }
     }

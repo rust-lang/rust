@@ -200,9 +200,9 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                                 ref trace_origins,
                                 ref same_regions) => {
                     if !same_regions.is_empty() {
-                        self.report_processed_errors(&var_origins[],
-                                                     &trace_origins[],
-                                                     &same_regions[]);
+                        self.report_processed_errors(&var_origins[..],
+                                                     &trace_origins[..],
+                                                     &same_regions[..]);
                     }
                 }
             }
@@ -675,6 +675,17 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     sup,
                     "");
             }
+            infer::Operand(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "lifetime of operand does not outlive \
+                     the operation");
+                note_and_explain_region(
+                    self.tcx,
+                    "the operand is only valid for ",
+                    sup,
+                    "");
+            }
             infer::AddrOf(span) => {
                 self.tcx.sess.span_err(
                     span,
@@ -824,7 +835,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
         let parent = self.tcx.map.get_parent(scope_id);
         let parent_node = self.tcx.map.find(parent);
         let taken = lifetimes_in_scope(self.tcx, scope_id);
-        let life_giver = LifeGiver::with_taken(&taken[]);
+        let life_giver = LifeGiver::with_taken(&taken[..]);
         let node_inner = match parent_node {
             Some(ref node) => match *node {
                 ast_map::NodeItem(ref item) => {
@@ -924,7 +935,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
 
     fn rebuild(&self)
                -> (ast::FnDecl, Option<ast::ExplicitSelf_>, ast::Generics) {
-        let mut expl_self_opt = self.expl_self_opt.map(|x| x.clone());
+        let mut expl_self_opt = self.expl_self_opt.cloned();
         let mut inputs = self.fn_decl.inputs.clone();
         let mut output = self.fn_decl.output.clone();
         let mut ty_params = self.generics.ty_params.clone();
@@ -942,7 +953,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
             }
             expl_self_opt = self.rebuild_expl_self(expl_self_opt, lifetime,
                                                    &anon_nums, &region_names);
-            inputs = self.rebuild_args_ty(&inputs[], lifetime,
+            inputs = self.rebuild_args_ty(&inputs[..], lifetime,
                                           &anon_nums, &region_names);
             output = self.rebuild_output(&output, lifetime, &anon_nums, &region_names);
             ty_params = self.rebuild_ty_params(ty_params, lifetime,
@@ -1426,7 +1437,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                                               opt_explicit_self, generics);
         let msg = format!("consider using an explicit lifetime \
                            parameter as shown: {}", suggested_fn);
-        self.tcx.sess.span_help(span, &msg[]);
+        self.tcx.sess.span_help(span, &msg[..]);
     }
 
     fn report_inference_failure(&self,
@@ -1592,6 +1603,11 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                 self.tcx.sess.span_note(
                     span,
                     "...so that return value is valid for the call");
+            }
+            infer::Operand(span) => {
+                self.tcx.sess.span_err(
+                    span,
+                    "...so that operand is valid for operation");
             }
             infer::AddrOf(span) => {
                 self.tcx.sess.span_note(
@@ -1771,7 +1787,7 @@ impl LifeGiver {
             s.push_str(&num_to_string(self.counter.get())[]);
             if !self.taken.contains(&s) {
                 lifetime = name_to_dummy_lifetime(
-                                    token::str_to_ident(&s[]).name);
+                                    token::str_to_ident(&s[..]).name);
                 self.generated.borrow_mut().push(lifetime);
                 break;
             }

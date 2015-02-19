@@ -48,7 +48,7 @@ fn test_lev_distance() {
     for c in (0u32..MAX as u32)
              .filter_map(|i| from_u32(i))
              .map(|i| i.to_string()) {
-        assert_eq!(lev_distance(&c[], &c[]), 0);
+        assert_eq!(lev_distance(&c[..], &c[..]), 0);
     }
 
     let a = "\nMäry häd ä little lämb\n\nLittle lämb\n";

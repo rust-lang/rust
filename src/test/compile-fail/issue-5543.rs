@@ -10,7 +10,7 @@
 
 #![feature(box_syntax)]
 
-trait Foo {}
+trait Foo { fn foo(&self) {} }
 impl Foo for u8 {}
 
 fn main() {

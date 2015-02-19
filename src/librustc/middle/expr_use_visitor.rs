@@ -29,7 +29,6 @@ use middle::ty::{MethodOrigin, MethodParam, MethodTypeParam};
 use middle::ty::{MethodStatic, MethodStaticClosure};
 use util::ppaux::Repr;
 
-use std::marker;
 use syntax::{ast, ast_util};
 use syntax::ptr::P;
 use syntax::codemap::Span;
@@ -128,16 +127,14 @@ pub enum MatchMode {
     MovingMatch,
 }
 
-#[derive(PartialEq,Debug)]
-enum TrackMatchMode<T> {
+#[derive(Copy, PartialEq, Debug)]
+enum TrackMatchMode {
     Unknown,
     Definite(MatchMode),
     Conflicting,
 }
 
-impl<T> marker::Copy for TrackMatchMode<T> {}
-
-impl<T> TrackMatchMode<T> {
+impl TrackMatchMode {
     // Builds up the whole match mode for a pattern from its constituent
     // parts.  The lattice looks like this:
     //
@@ -931,7 +928,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
         return true;
     }
 
-    fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &ast::Arm) -> TrackMatchMode<Span> {
+    fn arm_move_mode(&mut self, discr_cmt: mc::cmt<'tcx>, arm: &ast::Arm) -> TrackMatchMode {
         let mut mode = Unknown;
         for pat in &arm.pats {
             self.determine_pat_move_mode(discr_cmt.clone(), &**pat, &mut mode);
@@ -966,7 +963,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
     fn determine_pat_move_mode(&mut self,
                                cmt_discr: mc::cmt<'tcx>,
                                pat: &ast::Pat,
-                               mode: &mut TrackMatchMode<Span>) {
+                               mode: &mut TrackMatchMode) {
         debug!("determine_pat_move_mode cmt_discr={} pat={}", cmt_discr.repr(self.tcx()),
                pat.repr(self.tcx()));
         return_if_err!(self.mc.cat_pattern(cmt_discr, pat, |_mc, cmt_pat, pat| {
@@ -1166,7 +1163,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                                 let msg = format!("Pattern has unexpected def: {:?} and type {}",
                                                   def,
                                                   cmt_pat.ty.repr(tcx));
-                                tcx.sess.span_bug(pat.span, &msg[])
+                                tcx.sess.span_bug(pat.span, &msg[..])
                             }
                         }
                     }

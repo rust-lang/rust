@@ -119,7 +119,7 @@ impl<'a> fold::Folder for TestHarnessGenerator<'a> {
             self.cx.path.push(ident);
         }
         debug!("current path: {}",
-               ast_util::path_name_i(&self.cx.path[]));
+               ast_util::path_name_i(&self.cx.path));
 
         if is_test_fn(&self.cx, &*i) || is_bench_fn(&self.cx, &*i) {
             match i.node {
@@ -274,8 +274,8 @@ fn strip_test_functions(krate: ast::Crate) -> ast::Crate {
     // When not compiling with --test we should not compile the
     // #[test] functions
     config::strip_items(krate, |attrs| {
-        !attr::contains_name(&attrs[], "test") &&
-        !attr::contains_name(&attrs[], "bench")
+        !attr::contains_name(&attrs[..], "test") &&
+        !attr::contains_name(&attrs[..], "bench")
     })
 }
 
@@ -563,7 +563,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
     match attr::find_crate_name(&krate.attrs[]) {
-        Some(ref s) if "test" == &s[] => true,
+        Some(ref s) if "test" == &s[..] => true,
         _ => false
     }
 }
@@ -603,11 +603,11 @@ fn mk_test_desc_and_fn_rec(cx: &TestCtxt, test: &Test) -> P<ast::Expr> {
     // creates $name: $expr
     let field = |name, expr| ecx.field_imm(span, ecx.ident_of(name), expr);
 
-    debug!("encoding {}", ast_util::path_name_i(&path[]));
+    debug!("encoding {}", ast_util::path_name_i(&path[..]));
 
     // path to the #[test] function: "foo::bar::baz"
-    let path_string = ast_util::path_name_i(&path[]);
-    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(&path_string[]));
+    let path_string = ast_util::path_name_i(&path[..]);
+    let name_expr = ecx.expr_str(span, token::intern_and_get_ident(&path_string[..]));
 
     // self::test::StaticTestName($name_expr)
     let name_expr = ecx.expr_call(span,

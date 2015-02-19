@@ -10,6 +10,7 @@
 
 use std::fmt::Show;
 use std::default::Default;
+use std::marker::MarkerTrait;
 
 // Test that two blanket impls conflict (at least without negative
 // bounds).  After all, some other crate could implement Even or Odd
@@ -19,9 +20,9 @@ trait MyTrait {
     fn get(&self) -> usize;
 }
 
-trait Even { }
+trait Even : MarkerTrait { }
 
-trait Odd { }
+trait Odd : MarkerTrait { }
 
 impl Even for isize { }
 
