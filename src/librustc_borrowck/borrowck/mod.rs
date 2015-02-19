@@ -612,13 +612,26 @@ impl<'a, 'tcx> BorrowckCtxt<'a, 'tcx> {
                 };
                 let (suggestion, _) =
                     move_suggestion(param_env, expr_span, expr_ty, ("moved by default", ""));
-                self.tcx.sess.span_note(
-                    expr_span,
-                    &format!("`{}` moved here{} because it has type `{}`, which is {}",
-                            ol,
-                            moved_lp_msg,
-                            expr_ty.user_string(self.tcx),
-                            suggestion));
+                // If the two spans are the same, it's because the expression will be evaluated
+                // multiple times. Avoid printing the same span and adjust the wording so it makes
+                // more sense that it's from multiple evalutations.
+                if expr_span == use_span {
+                    self.tcx.sess.note(
+                        &format!("`{}` was previously moved here{} because it has type `{}`, \
+                                  which is {}",
+                                 ol,
+                                 moved_lp_msg,
+                                 expr_ty.user_string(self.tcx),
+                                 suggestion));
+                } else {
+                    self.tcx.sess.span_note(
+                        expr_span,
+                        &format!("`{}` moved here{} because it has type `{}`, which is {}",
+                                 ol,
+                                 moved_lp_msg,
+                                 expr_ty.user_string(self.tcx),
+                                 suggestion));
+                }
             }
 
             move_data::MovePat => {
