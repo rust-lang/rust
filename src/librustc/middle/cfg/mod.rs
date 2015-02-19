@@ -26,9 +26,23 @@ pub struct CFG {
     pub exit: CFGIndex,
 }
 
-#[derive(Copy)]
-pub struct CFGNodeData {
-    pub id: ast::NodeId
+#[derive(Copy, PartialEq)]
+pub enum CFGNodeData {
+    AST(ast::NodeId),
+    Entry,
+    Exit,
+    Dummy,
+    Unreachable,
+}
+
+impl CFGNodeData {
+    pub fn id(&self) -> ast::NodeId {
+        if let CFGNodeData::AST(id) = *self {
+            id
+        } else {
+            ast::DUMMY_NODE_ID
+        }
+    }
 }
 
 pub struct CFGEdgeData {
@@ -50,6 +64,6 @@ impl CFG {
     }
 
     pub fn node_is_reachable(&self, id: ast::NodeId) -> bool {
-        self.graph.depth_traverse(self.entry).any(|node| node.id == id)
+        self.graph.depth_traverse(self.entry).any(|node| node.id() == id)
     }
 }
