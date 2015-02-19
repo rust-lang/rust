@@ -124,8 +124,9 @@ intentional. However, the most common way do ignore such things is
 with `let _ =`, and `ok()` is rarely used in comparison, in most
 code-bases: 2 instances in the rust-lang/rust codebase (vs. nearly 400
 text matches for `let _ =`) and 4 in the servo/servo (vs. 55 `let _
-=`). Yet another way to write this is `drop(foo())`, although neither
-this nor `let _ =` have the method chaining style.
+=`). See the appendix for a more formal treatment of this
+question. Yet another way to write this is `drop(foo())`, although
+neither this nor `let _ =` have the method chaining style.
 
 Marking functions `#[must_use]` is a breaking change in certain cases,
 e.g. if someone is ignoring their result and has the relevant lint (or
