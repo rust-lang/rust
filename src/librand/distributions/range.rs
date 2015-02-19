@@ -123,7 +123,7 @@ macro_rules! integer_impl {
                     // be uniformly distributed)
                     if v < r.accept_zone as $unsigned {
                         // and return it, with some adjustments
-                        return r.low + (v % r.range as $unsigned) as $ty;
+                        return r.low.wrapping_add((v % r.range as $unsigned) as $ty);
                     }
                 }
             }
