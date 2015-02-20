@@ -103,7 +103,7 @@ use middle::ty::{MethodCall, MethodCallee, MethodMap, ObjectCastMap};
 use middle::ty_fold::{TypeFolder, TypeFoldable};
 use rscope::RegionScope;
 use session::Session;
-use {CrateCtxt, lookup_def_ccx, require_same_types};
+use {CrateCtxt, lookup_full_def, require_same_types};
 use TypeAndSubsts;
 use lint;
 use util::common::{block_query, indenter, loop_query};
@@ -3401,7 +3401,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
               ast::ExprPath(None, ref path) => {
                   // FIXME(pcwalton): For now we hardcode the two permissible
                   // places: the exchange heap and the managed heap.
-                  let definition = lookup_def(fcx, path.span, place.id);
+                  let definition = lookup_full_def(tcx, path.span, place.id);
                   let def_id = definition.def_id();
                   let referent_ty = fcx.expr_ty(&**subexpr);
                   if tcx.lang_items.exchange_heap() == Some(def_id) {
@@ -3884,14 +3884,14 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
       }
       ast::ExprStruct(ref path, ref fields, ref base_expr) => {
         // Resolve the path.
-        let def = tcx.def_map.borrow().get(&id).map(|d| d.full_def());
+        let def = lookup_full_def(tcx, path.span, id);
         let struct_id = match def {
-            Some(def::DefVariant(enum_id, variant_id, true)) => {
+            def::DefVariant(enum_id, variant_id, true) => {
                 check_struct_enum_variant(fcx, id, expr.span, enum_id,
                                           variant_id, &fields[..]);
                 enum_id
             }
-            Some(def::DefTrait(def_id)) => {
+            def::DefTrait(def_id) => {
                 span_err!(tcx.sess, path.span, E0159,
                     "use of trait `{}` as a struct constructor",
                     pprust::path_to_string(path));
@@ -3901,7 +3901,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                              base_expr);
                 def_id
             },
-            Some(def) => {
+            def => {
                 // Verify that this was actually a struct.
                 let typ = ty::lookup_item_type(fcx.ccx.tcx, def.def_id());
                 match typ.ty.sty {
@@ -3925,10 +3925,6 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 }
 
                 def.def_id()
-            }
-            _ => {
-                tcx.sess.span_bug(path.span,
-                                  "structure constructor wasn't resolved")
             }
         };
 
@@ -4643,10 +4639,6 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     check_instantiable(ccx.tcx, sp, id);
 }
 
-pub fn lookup_def(fcx: &FnCtxt, sp: Span, id: ast::NodeId) -> def::Def {
-    lookup_def_ccx(fcx.ccx, sp, id)
-}
-
 // Returns the type parameter count and the type for the given definition.
 fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                                                 sp: Span,
@@ -5171,18 +5163,15 @@ pub fn may_break(cx: &ty::ctxt, id: ast::NodeId, b: &ast::Block) -> bool {
             _ => false
         }
     })) ||
-   // Second: is there a labeled break with label
-   // <id> nested anywhere inside the loop?
+    // Second: is there a labeled break with label
+    // <id> nested anywhere inside the loop?
     (block_query(b, |e| {
-        match e.node {
-            ast::ExprBreak(Some(_)) => {
-                match cx.def_map.borrow().get(&e.id).map(|d| d.full_def()) {
-                    Some(def::DefLabel(loop_id)) if id == loop_id => true,
-                    _ => false,
-                }
-            }
-            _ => false
-        }}))
+        if let ast::ExprBreak(Some(_)) = e.node {
+            lookup_full_def(cx, e.span, e.id) == def::DefLabel(id)
+        } else {
+            false
+        }
+    }))
 }
 
 pub fn check_bounds_are_used<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
