@@ -236,22 +236,103 @@ However, in order to be able to write something close to that in Rust,
 we would need macros in types:
 
 ```rust
-
-// Nat! would expand integer constants to type-level binary naturals; would
-// be implemented as a plugin for efficiency
-Nat!(4)
-    ==> ((_1, _0), _0)
-
 // Expr! would expand + to Add::Output and integer constants to Nat!; see
 // the HList append earlier in the RFC for a concrete example of how this
 // might be defined
 Expr!(N + M)
     ==> <N as Add<M>>::Output
 
+// Nat! would expand integer literals to type-level binary naturals
+// and be implemented as a plugin for efficiency; see the following
+// section for a concrete implementation
+Nat!(4)
+    ==> ((_1, _0), _0)
+
 // Now we could expand the following type to something meaningful in Rust:
 LengthVec<A, Expr!(N + 3)>
     ==> LengthVec<A, <N as Add< Nat!(3)>>::Output>
     ==> LengthVec<A, <N as Add<(_1, _1)>>::Output>
+```
+
+##### Implementation of `Nat!` as a plugin
+
+The following code demonstrates concretely how `Nat!` can be
+implemented as a plugin. As with the `HList!` example, this code is
+already usable with the type macros implemented in the branch
+referenced earlier in this RFC.
+
+For efficiency, the binary representation is first constructed as a
+string via iteration rather than recursively using `quote` macros. The
+string is then parsed as a type, returning an ast fragment.
+
+```rust
+// convert a u64 to a string representation of a type-level binary natural, e.g.,
+//     to_bin_nat(1024)
+//         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
+#[inline]
+fn to_bin_nat(mut num: u64) -> String {
+    let mut res = String::from_str("_");
+    if num < 2 {
+        res.push_str(num.to_string().as_slice());
+    } else {
+        let mut bin = vec![];
+        while num > 0 {
+            bin.push(num % 2);
+            num >>= 1;
+        }
+        res = ::std::iter::repeat('(').take(bin.len() - 1).collect();
+        res.push_str("_");
+        res.push_str(bin.pop().unwrap().to_string().as_slice());
+        for b in bin.iter().rev() {
+            res.push_str(", _");
+            res.push_str(b.to_string().as_slice());
+            res.push_str(")");
+        }
+    }
+    return res;
+}
+
+// generate a parser to convert a string representation of a type-level natural
+// to an ast fragment for a type
+#[inline]
+pub fn bin_nat_parser<'cx>(
+    ecx: &'cx mut base::ExtCtxt,
+    num: u64,
+) -> parse::parser::Parser<'cx> {
+    let filemap = ecx
+        .codemap()
+        .new_filemap(String::from_str("<nat!>"), to_bin_nat(num));
+    let reader  = lexer::StringReader::new(
+        &ecx.parse_sess().span_diagnostic,
+        filemap);
+    parser::Parser::new(
+        ecx.parse_sess(),
+        ecx.cfg(),
+        Box::new(reader))
+}
+
+// Expand Nat!(n) to a type-level binary nat where n is an int literal, e.g.,
+//     Nat!(1024)
+//         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
+#[inline]
+pub fn nat_expand<'cx>(
+     ecx: &'cx mut base::ExtCtxt,
+    span: codemap::Span,
+    args: &[ast::TokenTree],
+) -> Box<base::MacResult + 'cx> {
+    let mut litp = ecx.new_parser_from_tts(args);
+    if let ast::Lit_::LitInt(lit, _) = litp.parse_lit().node {
+        Some(lit)
+    } else {
+        None
+    }.and_then(|lit| {
+        let mut natp = bin_nat_parser(ecx, lit);
+        Some(base::MacTy::new(natp.parse_ty()))
+    }).unwrap_or_else(|| {
+        ecx.span_err(span, "Nat!: expected an integer literal argument");
+        base::DummyResult::any(span)
+    })
+}
 ```
 
 ##### Optimization of `Expr`!
