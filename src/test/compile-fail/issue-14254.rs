@@ -29,7 +29,7 @@ impl Foo for *const BarTy {
         baz();
         //~^ ERROR: unresolved name `baz`. Did you mean to call `self.baz`?
         a;
-        //~^ ERROR: unresolved name `a`. Did you mean to call `BarTy::a`?
+        //~^ ERROR: unresolved name `a`
     }
 }
 
@@ -42,11 +42,11 @@ impl<'a> Foo for &'a BarTy {
         y;
         //~^ ERROR: unresolved name `y`. Did you mean `self.y`?
         a;
-        //~^ ERROR: unresolved name `a`. Did you mean to call `BarTy::a`?
+        //~^ ERROR: unresolved name `a`
         bah;
         //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
         b;
-        //~^ ERROR: unresolved name `b`. Did you mean to call `self.b`?
+        //~^ ERROR: unresolved name `b`
     }
 }
 
@@ -59,11 +59,11 @@ impl<'a> Foo for &'a mut BarTy {
         y;
         //~^ ERROR: unresolved name `y`. Did you mean `self.y`?
         a;
-        //~^ ERROR: unresolved name `a`. Did you mean to call `BarTy::a`?
+        //~^ ERROR: unresolved name `a`
         bah;
         //~^ ERROR: unresolved name `bah`. Did you mean to call `Foo::bah`?
         b;
-        //~^ ERROR: unresolved name `b`. Did you mean to call `self.b`?
+        //~^ ERROR: unresolved name `b`
     }
 }
 

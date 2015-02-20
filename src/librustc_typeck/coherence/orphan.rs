@@ -15,8 +15,8 @@ use middle::traits;
 use middle::ty;
 use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
+use syntax::ast_map;
 use syntax::ast_util;
-use syntax::codemap::Span;
 use syntax::visit;
 use util::ppaux::{Repr, UserString};
 
@@ -30,9 +30,9 @@ struct OrphanChecker<'cx, 'tcx:'cx> {
 }
 
 impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
-    fn check_def_id(&self, span: Span, def_id: ast::DefId) {
+    fn check_def_id(&self, item: &ast::Item, def_id: ast::DefId) {
         if def_id.krate != ast::LOCAL_CRATE {
-            span_err!(self.tcx.sess, span, E0116,
+            span_err!(self.tcx.sess, item.span, E0116,
                       "cannot associate methods with a type outside the \
                        crate the type is defined in; define and implement \
                        a trait or new type instead");
@@ -41,7 +41,7 @@ impl<'cx, 'tcx> OrphanChecker<'cx, 'tcx> {
 }
 
 impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
-    fn visit_item(&mut self, item: &'v ast::Item) {
+    fn visit_item(&mut self, item: &ast::Item) {
         let def_id = ast_util::local_def(item.id);
         match item.node {
             ast::ItemImpl(_, _, _, None, _, _) => {
@@ -52,15 +52,13 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                 match self_ty.sty {
                     ty::ty_enum(def_id, _) |
                     ty::ty_struct(def_id, _) => {
-                        self.check_def_id(item.span, def_id);
+                        self.check_def_id(item, def_id);
                     }
                     ty::ty_trait(ref data) => {
-                        self.check_def_id(item.span, data.principal_def_id());
+                        self.check_def_id(item, data.principal_def_id());
                     }
                     ty::ty_uniq(..) => {
-                        self.check_def_id(item.span,
-                                          self.tcx.lang_items.owned_box()
-                                              .unwrap());
+                        self.check_def_id(item, self.tcx.lang_items.owned_box().unwrap());
                     }
                     _ => {
                         span_err!(self.tcx.sess, item.span, E0118,

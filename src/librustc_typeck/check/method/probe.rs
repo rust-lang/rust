@@ -281,6 +281,11 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
             ty::ty_closure(did, _, _) => {
                 self.assemble_inherent_impl_candidates_for_type(did);
             }
+            ty::ty_uniq(_) => {
+                if let Some(box_did) = self.tcx().lang_items.owned_box() {
+                    self.assemble_inherent_impl_candidates_for_type(box_did);
+                }
+            }
             ty::ty_param(p) => {
                 self.assemble_inherent_candidates_from_param(self_ty, p);
             }

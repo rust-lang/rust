@@ -609,6 +609,7 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
                             arenas,
                             def_map,
                             partial_def_map,
+                            last_private_map,
                             named_region_map,
                             ast_map,
                             freevars,
@@ -622,10 +623,9 @@ pub fn phase_3_run_analysis_passes<'tcx>(sess: Session,
     time(time_passes, "const checking", (), |_|
          middle::check_const::check_crate(&ty_cx));
 
-    let maps = (external_exports, last_private_map);
     let (exported_items, public_items) =
-            time(time_passes, "privacy checking", maps, |(a, b)|
-                 rustc_privacy::check_crate(&ty_cx, &export_map, a, b));
+            time(time_passes, "privacy checking", (), |_|
+                 rustc_privacy::check_crate(&ty_cx, &export_map, external_exports));
 
     // Do not move this check past lint
     time(time_passes, "stability index", (), |_|

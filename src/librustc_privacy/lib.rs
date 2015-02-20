@@ -38,8 +38,7 @@ use rustc::middle::def;
 use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
-use rustc::middle::privacy::{ExportedItems, PublicItems, LastPrivateMap};
-use rustc::middle::privacy::{ExternalExports};
+use rustc::middle::privacy::{ExternalExports, ExportedItems, PublicItems};
 use rustc::middle::ty::{MethodTypeParam, MethodStatic};
 use rustc::middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam};
 use rustc::middle::ty::{MethodStaticClosure, MethodObject};
@@ -379,7 +378,6 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
     in_foreign: bool,
     parents: NodeMap<ast::NodeId>,
     external_exports: ExternalExports,
-    last_private_map: LastPrivateMap,
 }
 
 enum PrivacyResult {
@@ -730,7 +728,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                    &format!("{} `{}`", tyname, name))
             };
 
-            match self.last_private_map[path_id] {
+            match self.tcx.last_private_map.borrow()[path_id] {
                 LastMod(AllPublic) => {},
                 LastMod(DependsOn(def)) => {
                     self.report_error(ck_public(def));
@@ -1500,8 +1498,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    export_map: &def::ExportMap,
-                   external_exports: ExternalExports,
-                   last_private_map: LastPrivateMap)
+                   external_exports: ExternalExports)
                    -> (ExportedItems, PublicItems) {
     let krate = tcx.map.krate();
 
@@ -1519,7 +1516,6 @@ pub fn check_crate(tcx: &ty::ctxt,
         tcx: tcx,
         parents: visitor.parents,
         external_exports: external_exports,
-        last_private_map: last_private_map,
     };
     visit::walk_crate(&mut visitor, krate);
 
