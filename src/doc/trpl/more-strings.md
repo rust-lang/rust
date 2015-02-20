@@ -38,8 +38,9 @@ string literal or a `String`.
 
 # String
 
-A `String` is a heap-allocated string. This string is growable, and is also
-guaranteed to be UTF-8.
+A `String` is a heap-allocated string. This string is growable, and is
+also guaranteed to be UTF-8. `String`s are commonly created by
+converting from a string slice using the `to_string` method.
 
 ```
 let mut s = "Hello".to_string();
@@ -49,7 +50,7 @@ s.push_str(", world.");
 println!("{}", s);
 ```
 
-You can coerce a `String` into a `&str` by dereferencing it:
+A reference to a `String` will automatically coerce to a string slice:
 
 ```
 fn takes_slice(slice: &str) {
@@ -58,7 +59,7 @@ fn takes_slice(slice: &str) {
 
 fn main() {
     let s = "Hello".to_string();
-    takes_slice(&*s);
+    takes_slice(&s);
 }
 ```
 
