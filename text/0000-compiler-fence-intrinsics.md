@@ -49,6 +49,12 @@ appropriate.
    negative impact on performance in some situations where a compiler-only fence
    is appropriate.
 
+ * Recommend inline assembly to get a similar effect, such as `asm!("" :::
+   "memory" : "volatile")`. LLVM provides an IR item specifically for this case
+   (`fence singlethread`), so I believe taking advantage of that feature in LLVM is
+   most appropriate, since its semantics are more rigorously defined and less
+   likely to yield unexpected (but not necessarily wrong) behavior.
+
 # Unresolved questions
 
 These intrinsics may be better represented with a different name, such as
