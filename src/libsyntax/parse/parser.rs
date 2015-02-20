@@ -2562,7 +2562,8 @@ impl<'a> Parser<'a> {
                     let index = self.mk_index(e, ix);
                     e = self.mk_expr(lo, hi, index);
 
-                    self.obsolete(span, ObsoleteSyntax::EmptyIndex);
+                    let obsolete_span = mk_sp(bracket_pos, hi);
+                    self.obsolete(obsolete_span, ObsoleteSyntax::EmptyIndex);
                 } else {
                     let ix = self.parse_expr();
                     hi = self.span.hi;
