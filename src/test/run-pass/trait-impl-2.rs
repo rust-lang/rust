@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-mod Foo {
-    trait Trait {
+pub mod Foo {
+    pub trait Trait {
         fn foo(&self);
     }
 }
