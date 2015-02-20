@@ -778,7 +778,9 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     assert!(bits <= 64);
     let  bits = bits as uint;
     let mask = (-1u64 >> (64 - bits)) as Disr;
-    if (max + 1) & mask == min & mask {
+    // For a (max) discr of -1, max will be `-1 as usize`, which overflows.
+    // However, that is fine here (it would still represent the full range),
+    if (max.wrapping_add(1)) & mask == min & mask {
         // i.e., if the range is everything.  The lo==hi case would be
         // rejected by the LLVM verifier (it would mean either an
         // empty set, which is impossible, or the entire range of the
@@ -787,7 +789,7 @@ fn load_discr(bcx: Block, ity: IntType, ptr: ValueRef, min: Disr, max: Disr)
     } else {
         // llvm::ConstantRange can deal with ranges that wrap around,
         // so an overflow on (max + 1) is fine.
-        LoadRangeAssert(bcx, ptr, min, (max+1), /* signed: */ True)
+        LoadRangeAssert(bcx, ptr, min, (max.wrapping_add(1)), /* signed: */ True)
     }
 }
 
