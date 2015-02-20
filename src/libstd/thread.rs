@@ -342,12 +342,15 @@ impl Builder {
     }
 }
 
-/// Spawn a new, returning a join handle for it.
+/// Spawn a new thread, returning a `JoinHandle` for it.
 ///
-/// The child thread may outlive the parent (unless the parent thread
-/// is the main thread; the whole process is terminated when the main
-/// thread finishes.) The join handle can be used to block on
-/// termination of the child thread, including recovering its panics.
+/// The join handle will implicitly *detach* the child thread upon being
+/// dropped. In this case, the child thread may outlive the parent (unless
+/// the parent thread is the main thread; the whole process is terminated when
+/// the main thread finishes.) Additionally, the join handle provides a `join`
+/// method that can be used to join the child thread. If the child thread
+/// panics, `join` will return an `Err` containing the argument given to
+/// `panic`.
 ///
 /// # Panics
 ///
