@@ -71,7 +71,7 @@ impl LanguageItems {
     }
 
     pub fn item_name(index: uint) -> &'static str {
-        let item: Option<LangItem> = FromPrimitive::from_uint(index);
+        let item: Option<LangItem> = FromPrimitive::from_usize(index);
         match item {
             $( Some($variant) => $name, )*
             None => "???"

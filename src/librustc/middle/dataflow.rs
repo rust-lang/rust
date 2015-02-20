@@ -205,7 +205,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                oper: O,
                id_range: IdRange,
                bits_per_id: uint) -> DataFlowContext<'a, 'tcx, O> {
-        let words_per_id = (bits_per_id + usize::BITS - 1) / usize::BITS;
+        let words_per_id = (bits_per_id + usize::BITS as usize - 1) / usize::BITS as usize;
         let num_nodes = cfg.graph.all_nodes().len();
 
         debug!("DataFlowContext::new(analysis_name: {}, id_range={:?}, \
@@ -377,7 +377,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
 
         for (word_index, &word) in words.iter().enumerate() {
             if word != 0 {
-                let base_index = word_index * usize::BITS;
+                let base_index = word_index * usize::BITS as usize;
                 for offset in 0..usize::BITS {
                     let bit = 1 << offset;
                     if (word & bit) != 0 {
@@ -390,7 +390,7 @@ impl<'a, 'tcx, O:DataFlowOperator> DataFlowContext<'a, 'tcx, O> {
                         // whether the bit_index is greater than the
                         // actual value the user specified and stop
                         // iterating if so.
-                        let bit_index = base_index + offset;
+                        let bit_index = base_index + offset as usize;
                         if bit_index >= self.bits_per_id {
                             return true;
                         } else if !f(bit_index) {
@@ -609,8 +609,8 @@ fn bitwise<Op:BitwiseOperator>(out_vec: &mut [uint],
 fn set_bit(words: &mut [uint], bit: uint) -> bool {
     debug!("set_bit: words={} bit={}",
            mut_bits_to_string(words), bit_str(bit));
-    let word = bit / usize::BITS;
-    let bit_in_word = bit % usize::BITS;
+    let word = bit / usize::BITS as usize;
+    let bit_in_word = bit % usize::BITS as usize;
     let bit_mask = 1 << bit_in_word;
     debug!("word={} bit_in_word={} bit_mask={}", word, bit_in_word, word);
     let oldv = words[word];

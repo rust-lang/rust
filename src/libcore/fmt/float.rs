@@ -156,7 +156,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
         deccum = deccum / radix_gen;
         deccum = deccum.trunc();
 
-        let c = char::from_digit(current_digit.to_int().unwrap() as u32, radix);
+        let c = char::from_digit(current_digit.to_isize().unwrap() as u32, radix);
         buf[end] = c.unwrap() as u8;
         end += 1;
 
@@ -211,7 +211,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
             // See note in first loop.
             let current_digit = deccum.trunc().abs();
 
-            let c = char::from_digit(current_digit.to_int().unwrap() as u32,
+            let c = char::from_digit(current_digit.to_isize().unwrap() as u32,
                                      radix);
             buf[end] = c.unwrap() as u8;
             end += 1;
