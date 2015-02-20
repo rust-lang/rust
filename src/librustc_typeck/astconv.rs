@@ -195,7 +195,7 @@ pub fn opt_ast_region_to_region<'tcx>(
                                     help_name
                                 } else {
                                     format!("one of {}'s {} elided lifetimes", help_name, n)
-                                })[]);
+                                })[..]);
 
                                 if len == 2 && i == 0 {
                                     m.push_str(" or ");
@@ -876,7 +876,7 @@ pub fn ast_ty_to_builtin_ty<'tcx>(
                         .sess
                         .span_bug(ast_ty.span,
                                   &format!("unbound path {}",
-                                          path.repr(this.tcx()))[])
+                                          path.repr(this.tcx())))
                 }
                 Some(&d) => d
             };
@@ -898,7 +898,7 @@ pub fn ast_ty_to_builtin_ty<'tcx>(
                             this.tcx().sess.span_bug(
                                 path.span,
                                 &format!("converting `Box` to `{}`",
-                                        ty.repr(this.tcx()))[]);
+                                        ty.repr(this.tcx())));
                         }
                     }
                 }
@@ -1206,7 +1206,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                         tcx.sess
                            .span_bug(ast_ty.span,
                                      &format!("unbound path {}",
-                                             path.repr(tcx))[])
+                                             path.repr(tcx)))
                     }
                     Some(&d) => d
                 };
@@ -1419,7 +1419,7 @@ fn ty_of_method_or_bare_fn<'a, 'tcx>(this: &AstConv<'tcx>,
     let input_params = if self_ty.is_some() {
         &decl.inputs[1..]
     } else {
-        &decl.inputs[]
+        &decl.inputs[..]
     };
     let input_tys = input_params.iter().map(|a| ty_of_arg(this, &rb, a, None));
     let input_pats: Vec<String> = input_params.iter()

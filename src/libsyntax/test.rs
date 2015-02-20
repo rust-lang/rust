@@ -73,14 +73,14 @@ pub fn modify_for_testing(sess: &ParseSess,
     // We generate the test harness when building in the 'test'
     // configuration, either with the '--test' or '--cfg test'
     // command line options.
-    let should_test = attr::contains_name(&krate.config[], "test");
+    let should_test = attr::contains_name(&krate.config, "test");
 
     // Check for #[reexport_test_harness_main = "some_name"] which
     // creates a `use some_name = __test::main;`. This needs to be
     // unconditional, so that the attribute is still marked as used in
     // non-test builds.
     let reexport_test_harness_main =
-        attr::first_attr_value_str_by_name(&krate.attrs[],
+        attr::first_attr_value_str_by_name(&krate.attrs,
                                            "reexport_test_harness_main");
 
     if should_test {
@@ -306,7 +306,7 @@ enum HasTestSignature {
 
 
 fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
-    let has_test_attr = attr::contains_name(&i.attrs[], "test");
+    let has_test_attr = attr::contains_name(&i.attrs, "test");
 
     fn has_test_signature(i: &ast::Item) -> HasTestSignature {
         match &i.node {
@@ -342,7 +342,7 @@ fn is_test_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
 }
 
 fn is_bench_fn(cx: &TestCtxt, i: &ast::Item) -> bool {
-    let has_bench_attr = attr::contains_name(&i.attrs[], "bench");
+    let has_bench_attr = attr::contains_name(&i.attrs, "bench");
 
     fn has_test_signature(i: &ast::Item) -> bool {
         match i.node {
@@ -562,7 +562,7 @@ fn mk_tests(cx: &TestCtxt) -> P<ast::Item> {
 }
 
 fn is_test_crate(krate: &ast::Crate) -> bool {
-    match attr::find_crate_name(&krate.attrs[]) {
+    match attr::find_crate_name(&krate.attrs) {
         Some(ref s) if "test" == &s[..] => true,
         _ => false
     }

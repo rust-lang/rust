@@ -878,7 +878,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         debug!("pick_method(self_ty={})", self.infcx().ty_to_string(self_ty));
 
         debug!("searching inherent candidates");
-        match self.consider_candidates(self_ty, &self.inherent_candidates[]) {
+        match self.consider_candidates(self_ty, &self.inherent_candidates) {
             None => {}
             Some(pick) => {
                 return Some(pick);
@@ -886,7 +886,7 @@ impl<'a,'tcx> ProbeContext<'a,'tcx> {
         }
 
         debug!("searching extension candidates");
-        self.consider_candidates(self_ty, &self.extension_candidates[])
+        self.consider_candidates(self_ty, &self.extension_candidates)
     }
 
     fn consider_candidates(&self,

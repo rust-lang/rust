@@ -189,7 +189,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
                 span,
                 &format!("region {:?} is not associated with \
                          any bound region from A!",
-                        r0)[])
+                        r0))
         }
     }
 
@@ -322,7 +322,7 @@ impl<'tcx,C> HigherRankedRelations<'tcx> for C
             }
             infcx.tcx.sess.span_bug(
                 span,
-                &format!("could not find original bound region for {:?}", r)[]);
+                &format!("could not find original bound region for {:?}", r));
         }
 
         fn fresh_bound_variable(infcx: &InferCtxt, debruijn: ty::DebruijnIndex) -> ty::Region {
@@ -339,7 +339,7 @@ fn var_ids<'tcx, T: Combine<'tcx>>(combiner: &T,
             r => {
                 combiner.infcx().tcx.sess.span_bug(
                     combiner.trace().origin.span(),
-                    &format!("found non-region-vid: {:?}", r)[]);
+                    &format!("found non-region-vid: {:?}", r));
             }
         }).collect()
 }

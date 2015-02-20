@@ -111,7 +111,7 @@ pub fn register_static(ccx: &CrateContext,
     let llty = type_of::type_of(ccx, ty);
 
     let ident = link_name(foreign_item);
-    match attr::first_attr_value_str_by_name(&foreign_item.attrs[],
+    match attr::first_attr_value_str_by_name(&foreign_item.attrs,
                                              "linkage") {
         // If this is a static with a linkage specified, then we need to handle
         // it a little specially. The typesystem prevents things like &T and
@@ -240,11 +240,11 @@ pub fn trans_native_call<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &passed_arg_tys[..]);
     let fn_type = cabi::compute_abi_info(ccx,
-                                         &llsig.llarg_tys[],
+                                         &llsig.llarg_tys,
                                          llsig.llret_ty,
                                          llsig.ret_def);
 
-    let arg_tys: &[cabi::ArgType] = &fn_type.arg_tys[];
+    let arg_tys: &[cabi::ArgType] = &fn_type.arg_tys;
 
     let mut llargs_foreign = Vec::new();
 
@@ -439,7 +439,7 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
                 tcx.sess.span_err(ast_ty.span,
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
                                         may result in invalid code",
-                                       pprust::ty_to_string(ast_ty))[]);
+                                       pprust::ty_to_string(ast_ty)));
                 tcx.sess.span_help(ast_ty.span,
                                    "add #![feature(simd_ffi)] to the crate attributes to enable");
             }
@@ -603,7 +603,7 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 ccx.sess().bug(&format!("build_rust_fn: extern fn {} has ty {}, \
                                         expected a bare fn ty",
                                        ccx.tcx().map.path_to_string(id),
-                                       t.repr(tcx))[]);
+                                       t.repr(tcx)));
             }
         };
 
@@ -868,9 +868,9 @@ pub fn trans_rust_fn_with_foreign_abi<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 // the massive simplifications that have occurred.
 
 pub fn link_name(i: &ast::ForeignItem) -> InternedString {
-    match attr::first_attr_value_str_by_name(&i.attrs[], "link_name") {
+    match attr::first_attr_value_str_by_name(&i.attrs, "link_name") {
         Some(ln) => ln.clone(),
-        None => match weak_lang_items::link_name(&i.attrs[]) {
+        None => match weak_lang_items::link_name(&i.attrs) {
             Some(name) => name,
             None => token::get_ident(i.ident),
         }
@@ -913,7 +913,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     let fn_sig = ty::erase_late_bound_regions(ccx.tcx(), fn_sig);
     let llsig = foreign_signature(ccx, &fn_sig, &fn_sig.inputs);
     let fn_ty = cabi::compute_abi_info(ccx,
-                                       &llsig.llarg_tys[],
+                                       &llsig.llarg_tys,
                                        llsig.llret_ty,
                                        llsig.ret_def);
     debug!("foreign_types_for_fn_ty(\
@@ -922,7 +922,7 @@ fn foreign_types_for_fn_ty<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
            fn_ty={} -> {}, \
            ret_def={}",
            ty.repr(ccx.tcx()),
-           ccx.tn().types_to_str(&llsig.llarg_tys[]),
+           ccx.tn().types_to_str(&llsig.llarg_tys),
            ccx.tn().type_to_string(llsig.llret_ty),
            ccx.tn().types_to_str(&fn_ty.arg_tys.iter().map(|t| t.ty).collect::<Vec<_>>()),
            ccx.tn().type_to_string(fn_ty.ret_ty.ty),

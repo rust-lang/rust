@@ -57,7 +57,7 @@ pub fn expand_file(cx: &mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
 
     let topmost = cx.original_span_in_file();
     let loc = cx.codemap().lookup_char_pos(topmost.lo);
-    let filename = token::intern_and_get_ident(&loc.file.name[]);
+    let filename = token::intern_and_get_ident(&loc.file.name);
     base::MacExpr::new(cx.expr_str(topmost, filename))
 }
 

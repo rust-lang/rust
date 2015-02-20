@@ -5191,7 +5191,7 @@ impl<'a> Parser<'a> {
                     -> (ast::Item_, Vec<ast::Attribute> ) {
         let mut prefix = Path::new(self.sess.span_diagnostic.cm.span_to_filename(self.span));
         prefix.pop();
-        let mod_path = Path::new(".").join_many(&self.mod_path_stack[]);
+        let mod_path = Path::new(".").join_many(&self.mod_path_stack);
         let dir_path = prefix.join(&mod_path);
         let mod_string = token::get_ident(id);
         let (file_path, owns_directory) = match ::attr::first_attr_value_str_by_name(

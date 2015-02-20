@@ -77,10 +77,10 @@ pub fn compile_input(sess: Session,
             let outputs = build_output_filenames(input,
                                                  outdir,
                                                  output,
-                                                 &krate.attrs[],
+                                                 &krate.attrs,
                                                  &sess);
             let id = link::find_crate_name(Some(&sess),
-                                           &krate.attrs[],
+                                           &krate.attrs,
                                            input);
             let expanded_crate
                 = match phase_2_configure_and_expand(&sess,
@@ -375,9 +375,9 @@ pub fn phase_2_configure_and_expand(sess: &Session,
     let time_passes = sess.time_passes();
 
     *sess.crate_types.borrow_mut() =
-        collect_crate_types(sess, &krate.attrs[]);
+        collect_crate_types(sess, &krate.attrs);
     *sess.crate_metadata.borrow_mut() =
-        collect_crate_metadata(sess, &krate.attrs[]);
+        collect_crate_metadata(sess, &krate.attrs);
 
     time(time_passes, "recursion limit", (), |_| {
         middle::recursion_limit::update_recursion_limit(sess, &krate);
@@ -721,7 +721,7 @@ pub fn phase_5_run_llvm_passes(sess: &Session,
         time(sess.time_passes(), "LLVM passes", (), |_|
             write::run_passes(sess,
                               trans,
-                              &sess.opts.output_types[],
+                              &sess.opts.output_types,
                               outputs));
     }
 
@@ -742,7 +742,7 @@ pub fn phase_6_link_output(sess: &Session,
          link::link_binary(sess,
                            trans,
                            outputs,
-                           &trans.link.crate_name[]));
+                           &trans.link.crate_name));
 
     env::set_var("PATH", &old_path);
 }
@@ -796,7 +796,7 @@ fn write_out_deps(sess: &Session,
         // write Makefile-compatible dependency rules
         let files: Vec<String> = sess.codemap().files.borrow()
                                    .iter().filter(|fmap| fmap.is_real_file())
-                                   .map(|fmap| escape_dep_filename(&fmap.name[]))
+                                   .map(|fmap| escape_dep_filename(&fmap.name))
                                    .collect();
         let mut file = try!(old_io::File::create(&deps_filename));
         for path in &out_filenames {
@@ -810,7 +810,7 @@ fn write_out_deps(sess: &Session,
         Ok(()) => {}
         Err(e) => {
             sess.fatal(&format!("error writing dependencies to `{}`: {}",
-                               deps_filename.display(), e)[]);
+                               deps_filename.display(), e));
         }
     }
 }
@@ -881,7 +881,7 @@ pub fn collect_crate_types(session: &Session,
         if !res {
             session.warn(&format!("dropping unsupported crate type `{}` \
                                    for target `{}`",
-                                 *crate_type, session.opts.target_triple)[]);
+                                 *crate_type, session.opts.target_triple));
         }
 
         res

@@ -595,7 +595,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
                 let trait_def = ty::lookup_trait_def(tcx, did);
                 let predicates = ty::predicates(tcx, ty::mk_self_type(tcx), &trait_def.bounds);
                 self.add_constraints_from_predicates(&trait_def.generics,
-                                                     &predicates[],
+                                                     &predicates,
                                                      self.covariant);
 
                 let trait_items = ty::trait_items(tcx, did);
@@ -652,7 +652,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
             None => {
                 self.tcx().sess.bug(&format!(
                         "no inferred index entry for {}",
-                        self.tcx().map.node_to_string(param_id))[]);
+                        self.tcx().map.node_to_string(param_id)));
             }
         }
     }
@@ -941,7 +941,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.tcx().sess.bug(
                     &format!("unexpected type encountered in \
                             variance inference: {}",
-                            ty.repr(self.tcx()))[]);
+                            ty.repr(self.tcx())));
             }
         }
     }
@@ -1071,7 +1071,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                     .sess
                     .bug(&format!("unexpected region encountered in variance \
                                   inference: {}",
-                                 region.repr(self.tcx()))[]);
+                                 region.repr(self.tcx())));
             }
         }
     }
