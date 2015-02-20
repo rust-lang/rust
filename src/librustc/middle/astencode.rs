@@ -1837,7 +1837,7 @@ fn decode_side_tables(dcx: &DecodeContext,
         debug!(">> Side table document with tag 0x{:x} \
                 found for id {} (orig {})",
                tag, id, id0);
-        let decoded_tag: Option<c::astencode_tag> = FromPrimitive::from_uint(tag);
+        let decoded_tag: Option<c::astencode_tag> = FromPrimitive::from_usize(tag);
         match decoded_tag {
             None => {
                 dcx.tcx.sess.bug(

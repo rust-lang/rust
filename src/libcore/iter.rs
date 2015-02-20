@@ -2467,7 +2467,7 @@ impl<A: Int + ToPrimitive> Iterator for Range<A> {
             Some(a) => {
                 let sz = self.stop.to_i64().map(|b| b.checked_sub(a));
                 match sz {
-                    Some(Some(bound)) => bound.to_uint(),
+                    Some(Some(bound)) => bound.to_usize(),
                     _ => None,
                 }
             },
@@ -2475,7 +2475,7 @@ impl<A: Int + ToPrimitive> Iterator for Range<A> {
                 Some(a) => {
                     let sz = self.stop.to_u64().map(|b| b.checked_sub(a));
                     match sz {
-                        Some(Some(bound)) => bound.to_uint(),
+                        Some(Some(bound)) => bound.to_usize(),
                         _ => None
                     }
                 },
@@ -2741,7 +2741,7 @@ impl<A: Int> Iterator for ::ops::Range<A> {
         if self.start >= self.end {
             (0, Some(0))
         } else {
-            let length = (self.end - self.start).to_uint();
+            let length = (self.end - self.start).to_usize();
             (length.unwrap_or(0), length)
         }
     }
