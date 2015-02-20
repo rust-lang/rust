@@ -1142,23 +1142,45 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
         }
 
-        match self_ty.sty {
-            ty::ty_trait(..) => {},
-            ty::ty_infer(ty::TyVar(_)) => {
-                // the defaulted impl might apply, we don't know
-                if ty::trait_has_default_impl(self.tcx(), def_id) {
+        if ty::trait_has_default_impl(self.tcx(), def_id) {
+            match self_ty.sty {
+                ty::ty_trait(..) |
+                ty::ty_param(..) |
+                ty::ty_projection(..) => {
+                    // In these cases, we don't know what the actual
+                    // type is.  Therefore, we cannot break it down
+                    // into its constituent types. So we don't
+                    // consider the `..` impl but instead just add no
+                    // candidates: this means that typeck will only
+                    // succeed if there is another reason to believe
+                    // that this obligation holds. That could be a
+                    // where-clause or, in the case of an object type,
+                    // it could be that the object type lists the
+                    // trait (e.g. `Foo+Send : Send`). See
+                    // `compile-fail/typeck-default-trait-impl-send-param.rs`
+                    // for an example of a test case that exercises
+                    // this path.
+                }
+                ty::ty_infer(ty::TyVar(_)) => {
+                    // the defaulted impl might apply, we don't know
                     candidates.ambiguous = true;
                 }
-            }
-            _ => {
-                if ty::trait_has_default_impl(self.tcx(), def_id) {
-                    match self.constituent_types_for_ty(self_ty) {
-                        Some(_) => {
-                            candidates.vec.push(DefaultImplCandidate(def_id.clone()))
-                        }
-                        None => {
-                            candidates.ambiguous = true;
-                        }
+                _ => {
+                    if self.constituent_types_for_ty(self_ty).is_some() {
+                        candidates.vec.push(DefaultImplCandidate(def_id.clone()))
+                    } else {
+                        // We don't yet know what the constituent
+                        // types are. So call it ambiguous for now,
+                        // though this is a bit stronger than
+                        // necessary: that is, we know that the
+                        // defaulted impl applies, but we can't
+                        // process the confirmation step without
+                        // knowing the constituent types. (Anyway, in
+                        // the particular case of defaulted impls, it
+                        // doesn't really matter much either way,
+                        // since we won't be aiding inference by
+                        // processing the confirmation step.)
+                        candidates.ambiguous = true;
                     }
                 }
             }
@@ -1632,6 +1654,17 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
         }
     }
 
+    /// For default impls, we need to break apart a type into its
+    /// "constituent types" -- meaning, the types that it contains.
+    ///
+    /// Here are some (simple) examples:
+    ///
+    /// ```
+    /// (i32, u32) -> [i32, u32]
+    /// Foo where struct Foo { x: i32, y: u32 } -> [i32, u32]
+    /// Bar<i32> where struct Bar<T> { x: T, y: u32 } -> [i32, u32]
+    /// Zed<i32> where enum Zed { A(T), B(u32) } -> [i32, u32]
+    /// ```
     fn constituent_types_for_ty(&self, t: Ty<'tcx>) -> Option<Vec<Ty<'tcx>>> {
         match t.sty {
             ty::ty_uint(_) |
@@ -1641,7 +1674,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_bare_fn(..) |
             ty::ty_str |
             ty::ty_err |
-            ty::ty_param(..) |
             ty::ty_infer(ty::IntVar(_)) |
             ty::ty_infer(ty::FloatVar(_)) |
             ty::ty_char => {
@@ -1649,8 +1681,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
 
             ty::ty_trait(..) |
+            ty::ty_param(..) |
             ty::ty_projection(..) |
-            ty::ty_infer(_) => {
+            ty::ty_infer(ty::TyVar(_)) => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble constituent types of unexpected type: {}",
