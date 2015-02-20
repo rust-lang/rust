@@ -25,6 +25,7 @@ use clean;
 use stability_summary::ModuleSummary;
 use html::item_type::ItemType;
 use html::render;
+use html::escape::Escape;
 use html::render::{cache, CURRENT_LOCATION_KEY};
 
 /// Helper to render an optional visibility with a space after it (if the
@@ -710,13 +711,14 @@ impl<'a> fmt::Display for Stability<'a> {
         let Stability(stab) = *self;
         match *stab {
             Some(ref stability) => {
+                let lvl = if stability.deprecated_since.is_empty() {
+                    format!("{}", stability.level)
+                } else {
+                    "Deprecated".to_string()
+                };
                 write!(f, "<a class='stability {lvl}' title='{reason}'>{lvl}</a>",
-                       lvl = if stability.deprecated_since.is_empty() {
-                           format!("{}", stability.level)
-                       } else {
-                           "Deprecated".to_string()
-                       },
-                       reason = stability.reason)
+                       lvl = Escape(&*lvl),
+                       reason = Escape(&*stability.reason))
             }
             None => Ok(())
         }
@@ -728,14 +730,15 @@ impl<'a> fmt::Display for ConciseStability<'a> {
         let ConciseStability(stab) = *self;
         match *stab {
             Some(ref stability) => {
+                let lvl = if stability.deprecated_since.is_empty() {
+                    format!("{}", stability.level)
+                } else {
+                    "Deprecated".to_string()
+                };
                 write!(f, "<a class='stability {lvl}' title='{lvl}{colon}{reason}'></a>",
-                       lvl = if stability.deprecated_since.is_empty() {
-                           format!("{}", stability.level)
-                       } else {
-                           "Deprecated".to_string()
-                       },
+                       lvl = Escape(&*lvl),
                        colon = if stability.reason.len() > 0 { ": " } else { "" },
-                       reason = stability.reason)
+                       reason = Escape(&*stability.reason))
             }
             None => {
                 write!(f, "<a class='stability Unmarked' title='No stability level'></a>")
