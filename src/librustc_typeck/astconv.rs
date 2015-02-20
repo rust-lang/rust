@@ -622,7 +622,7 @@ pub fn instantiate_trait_ref<'tcx>(
     -> Rc<ty::TraitRef<'tcx>>
 {
     let path = &trait_ref.path;
-    match ::lookup_def_tcx(this.tcx(), path.span, trait_ref.ref_id) {
+    match ::lookup_full_def(this.tcx(), path.span, trait_ref.ref_id) {
         def::DefTrait(trait_def_id) => {
             let trait_ref = ast_path_to_trait_ref(this,
                                                   rscope,
@@ -899,7 +899,10 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
 
     match ty.node {
         ast::TyPath(None, ref path) => {
-            let def = this.tcx().def_map.borrow().get(&ty.id).map(|d| d.full_def());
+            let def = match this.tcx().def_map.borrow().get(&ty.id) {
+                Some(&def::PathResolution { base_def, depth: 0, .. }) => Some(base_def),
+                _ => None
+            };
             match def {
                 Some(def::DefTrait(trait_def_id)) => {
                     let mut projection_bounds = Vec::new();
@@ -1202,7 +1205,10 @@ pub fn finish_resolving_def_to_ty<'tcx>(this: &AstConv<'tcx>,
                         segments.last().unwrap())
         }
         def::DefMod(id) => {
-            // Used as sentinel by callers to indicate the `<T>::a::b::c` form.
+            // Used as sentinel by callers to indicate the `<T>::A::B::C` form.
+            // FIXME(#22519) This part of the resolution logic should be
+            // avoided entirely for that form, once we stop needed a Def
+            // for `associated_path_def_to_ty`.
             if segments.is_empty() {
                 opt_self_ty.expect("missing T in <T>::a::b::c")
             } else {
@@ -1890,7 +1896,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
     for ast_bound in ast_bounds {
         match *ast_bound {
             ast::TraitTyParamBound(ref b, ast::TraitBoundModifier::None) => {
-                match ::lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
+                match ::lookup_full_def(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
                     def::DefTrait(trait_did) => {
                         match trait_def_ids.get(&trait_did) {
                             // Already seen this trait. We forbid
