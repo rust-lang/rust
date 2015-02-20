@@ -847,6 +847,11 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
         self.assemble_candidates_from_projected_tys(obligation, &mut candidates);
         try!(self.assemble_candidates_from_caller_bounds(stack, &mut candidates));
+        // Default implementations have lower priority, so we only
+        // consider triggering a default if there is no other impl that can apply.
+        if candidates.vec.len() == 0 {
+            try!(self.assemble_candidates_from_default_impls(obligation, &mut candidates));
+        }
         debug!("candidate list size: {}", candidates.vec.len());
         Ok(candidates)
     }
@@ -1142,6 +1147,20 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             });
         }
 
+        Ok(())
+    }
+
+    fn assemble_candidates_from_default_impls(&mut self,
+                                              obligation: &TraitObligation<'tcx>,
+                                              candidates: &mut SelectionCandidateSet<'tcx>)
+                                              -> Result<(), SelectionError<'tcx>>
+    {
+
+        let self_ty = self.infcx.shallow_resolve(obligation.self_ty());
+        debug!("assemble_candidates_from_default_impls(self_ty={})", self_ty.repr(self.tcx()));
+
+        let def_id = obligation.predicate.def_id();
+
         if ty::trait_has_default_impl(self.tcx(), def_id) {
             match self_ty.sty {
                 ty::ty_trait(..) |
@@ -1323,7 +1342,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             }
             (&DefaultImplCandidate(_), _) => {
                 // Prefer other candidates over default implementations.
-                true
+                self.tcx().sess.bug(
+                    "default implementations shouldn't be recorded \
+                     when there are other valid candidates");
             }
             (&ProjectionCandidate, &ParamCandidate(_)) => {
                 // FIXME(#20297) -- this gives where clauses precedent

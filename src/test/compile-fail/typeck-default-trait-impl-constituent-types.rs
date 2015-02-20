@@ -10,7 +10,9 @@
 
 #![feature(optin_builtin_traits)]
 
-trait MyTrait {}
+use std::marker::MarkerTrait;
+
+trait MyTrait: MarkerTrait {}
 
 impl MyTrait for .. {}
 impl<T> !MyTrait for *mut T {}
@@ -30,7 +32,4 @@ fn main() {
 
     is_mytrait::<MyS2>();
     //~^ ERROR the trait `MyTrait` is not implemented for the type `MyS2`
-
-    is_mytrait::<Vec<MyS3>>();
-    //~^ ERROR the trait `MyTrait` is not implemented for the type `*mut MyS3`
 }

@@ -10,7 +10,9 @@
 
 #![feature(optin_builtin_traits)]
 
-trait MyTrait {}
+use std::marker::MarkerTrait;
+
+trait MyTrait: MarkerTrait {}
 
 impl MyTrait for .. {}
 

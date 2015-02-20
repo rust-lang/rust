@@ -15,9 +15,11 @@
 
 #![feature(optin_builtin_traits)]
 
-trait NotImplemented { }
+use std::marker::MarkerTrait;
 
-trait MyTrait
+trait NotImplemented: MarkerTrait { }
+
+trait MyTrait: MarkerTrait
     where Option<Self> : NotImplemented
 {}
 
