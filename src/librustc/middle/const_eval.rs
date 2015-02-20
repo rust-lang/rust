@@ -25,6 +25,7 @@ use syntax::parse::token::InternedString;
 use syntax::ptr::P;
 use syntax::{ast_map, ast_util, codemap};
 
+use std::num::wrapping::OverflowingOps;
 use std::cmp::Ordering;
 use std::collections::hash_map::Entry::Vacant;
 use std::{i8, i16, i32, i64};
@@ -206,6 +207,33 @@ pub fn eval_const_expr(tcx: &ty::ctxt, e: &Expr) -> const_val {
     }
 }
 
+fn checked_add_int(a: i64, b: i64) -> Result<const_val, String> {
+    let (ret, oflo) = a.overflowing_add(b);
+    if !oflo { Ok(const_int(ret)) } else { Err(format!("constant arithmetic overflow")) }
+}
+fn checked_sub_int(a: i64, b: i64) -> Result<const_val, String> {
+    let (ret, oflo) = a.overflowing_sub(b);
+    if !oflo { Ok(const_int(ret)) } else { Err(format!("constant arithmetic overflow")) }
+}
+fn checked_mul_int(a: i64, b: i64) -> Result<const_val, String> {
+    let (ret, oflo) = a.overflowing_mul(b);
+    if !oflo { Ok(const_int(ret)) } else { Err(format!("constant arithmetic overflow")) }
+}
+
+fn checked_add_uint(a: u64, b: u64) -> Result<const_val, String> {
+    let (ret, oflo) = a.overflowing_add(b);
+    if !oflo { Ok(const_uint(ret)) } else { Err(format!("constant arithmetic overflow")) }
+}
+fn checked_sub_uint(a: u64, b: u64) -> Result<const_val, String> {
+    let (ret, oflo) = a.overflowing_sub(b);
+    if !oflo { Ok(const_uint(ret)) } else { Err(format!("constant arithmetic overflow")) }
+}
+fn checked_mul_uint(a: u64, b: u64) -> Result<const_val, String> {
+    let (ret, oflo) = a.overflowing_mul(b);
+    if !oflo { Ok(const_uint(ret)) } else { Err(format!("constant arithmetic overflow")) }
+}
+
+
 pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                                      e: &Expr,
                                      ty_hint: Option<Ty<'tcx>>)
@@ -276,9 +304,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
                 }
             };
             match op.node {
-              ast::BiAdd => Ok(const_int(a + b)),
-              ast::BiSub => Ok(const_int(a - b)),
-              ast::BiMul => Ok(const_int(a * b)),
+              ast::BiAdd => checked_add_int(a, b),
+              ast::BiSub => checked_sub_int(a, b),
+              ast::BiMul => checked_mul_int(a, b),
               ast::BiDiv => {
                   if b == 0 {
                       Err("attempted to divide by zero".to_string())
@@ -312,9 +340,9 @@ pub fn eval_const_expr_partial<'tcx>(tcx: &ty::ctxt<'tcx>,
           }
           (Ok(const_uint(a)), Ok(const_uint(b))) => {
             match op.node {
-              ast::BiAdd => Ok(const_uint(a + b)),
-              ast::BiSub => Ok(const_uint(a - b)),
-              ast::BiMul => Ok(const_uint(a * b)),
+              ast::BiAdd => checked_add_uint(a, b),
+              ast::BiSub => checked_sub_uint(a, b),
+              ast::BiMul => checked_mul_uint(a, b),
               ast::BiDiv if b == 0 => {
                   Err("attempted to divide by zero".to_string())
               }
