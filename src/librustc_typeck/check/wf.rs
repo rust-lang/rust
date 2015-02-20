@@ -139,6 +139,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         reject_non_type_param_bounds(ccx.tcx, item.span, &type_predicates);
         let param_env =
             ty::construct_parameter_environment(ccx.tcx,
+                                                item_def_id,
                                                 item.span,
                                                 &type_scheme.generics,
                                                 &type_predicates,

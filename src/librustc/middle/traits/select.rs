@@ -33,7 +33,7 @@ use super::{util};
 
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
-use middle::ty::{self, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, AssociatedType, RegionEscape, ToPolyTraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
@@ -2194,6 +2194,25 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
 
     ///////////////////////////////////////////////////////////////////////////
     // Miscellany
+
+    pub fn instantiate_assoc_type(&self,
+                                  assoc_ty: &AssociatedType,
+                                  impl_substs: &Substs<'tcx>)
+                                  -> Ty<'tcx>
+    {
+        let poly_ty = ty::lookup_item_type(self.tcx(), assoc_ty.def_id);
+        let substs =
+            if self.param_env().def_id == assoc_ty.container.id() {
+                // If the associated type we are about to instantiate is
+                // defined in the item current parameter environment is
+                // associated with, we are obliged to use free substitutions.
+                &self.param_env().free_substs
+            } else {
+                impl_substs
+            };
+
+        poly_ty.ty.subst(self.tcx(), substs)
+    }
 
     fn push_stack<'o,'s:'o>(&mut self,
                             previous_stack: Option<&'s TraitObligationStack<'s, 'tcx>>,
