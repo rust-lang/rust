@@ -12,9 +12,11 @@ use core::prelude::*;
 
 use boxed::Box;
 use cmp;
-use io::{self, SeekFrom, Read, Write, Seek, BufRead};
+use io::{self, SeekFrom, Read, Write, Seek, BufRead, Error, ErrorKind};
+use fmt;
 use mem;
 use slice;
+use string::String;
 use vec::Vec;
 
 // =============================================================================
@@ -22,9 +24,20 @@ use vec::Vec;
 
 impl<'a, R: Read + ?Sized> Read for &'a mut R {
     fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> { (**self).read(buf) }
+
+    fn read_to_end(&mut self, buf: &mut Vec<u8>) -> io::Result<()> { (**self).read_to_end(buf) }
+
+    fn read_to_string(&mut self, buf: &mut String) -> io::Result<()> {
+        (**self).read_to_string(buf)
+    }
 }
 impl<'a, W: Write + ?Sized> Write for &'a mut W {
     fn write(&mut self, buf: &[u8]) -> io::Result<usize> { (**self).write(buf) }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> { (**self).write_all(buf) }
+
+    fn write_fmt(&mut self, fmt: fmt::Arguments) -> io::Result<()> { (**self).write_fmt(fmt) }
+
     fn flush(&mut self) -> io::Result<()> { (**self).flush() }
 }
 impl<'a, S: Seek + ?Sized> Seek for &'a mut S {
@@ -32,7 +45,14 @@ impl<'a, S: Seek + ?Sized> Seek for &'a mut S {
 }
 impl<'a, B: BufRead + ?Sized> BufRead for &'a mut B {
     fn fill_buf(&mut self) -> io::Result<&[u8]> { (**self).fill_buf() }
+
     fn consume(&mut self, amt: usize) { (**self).consume(amt) }
+
+    fn read_until(&mut self, byte: u8, buf: &mut Vec<u8>) -> io::Result<()> {
+        (**self).read_until(byte, buf)
+    }
+
+    fn read_line(&mut self, buf: &mut String) -> io::Result<()> { (**self).read_line(buf) }
 }
 
 impl<R: Read + ?Sized> Read for Box<R> {
@@ -76,6 +96,15 @@ impl<'a> Write for &'a mut [u8] {
         *self = b;
         Ok(amt)
     }
+
+    fn write_all(&mut self, data: &[u8]) -> io::Result<()> {
+        if try!(self.write(data)) == data.len() {
+            Ok(())
+        } else {
+            Err(Error::new(ErrorKind::WriteZero, "failed to write whole buffer", None))
+        }
+    }
+
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
 
@@ -84,5 +113,11 @@ impl Write for Vec<u8> {
         self.push_all(buf);
         Ok(buf.len())
     }
+
+    fn write_all(&mut self, buf: &[u8]) -> io::Result<()> {
+        try!(self.write(buf));
+        Ok(())
+    }
+
     fn flush(&mut self) -> io::Result<()> { Ok(()) }
 }
