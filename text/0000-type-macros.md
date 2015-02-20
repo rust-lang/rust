@@ -315,7 +315,6 @@ macro_rules! hlist_match {
 //         my_mac!{ A0, A1, A2, A3 };
 //         my_mac!{ A0, A1, A2 };
 //         ...
-
 fn invoke_for_seq_upto_expand<'cx>(
     ecx: &'cx mut base::ExtCtxt,
     span: codemap::Span,
@@ -327,42 +326,45 @@ fn invoke_for_seq_upto_expand<'cx>(
     let mac = parser.parse_ident();
 
     // parse a comma
-    parser.eat(&token::Token::Comma);
+    parser.expect(&token::Token::Comma);
 
     // parse the number of iterations
-    let iterations = match parser.parse_lit().node {
-        ast::Lit_::LitInt(i, _) => i,
-        _ => {
-            ecx.span_err(span, "welp");
-            return base::DummyResult::any(span);
+    if let ast::Lit_::LitInt(lit, _) = parser.parse_lit().node {
+        Some(lit)
+    } else {
+        None
+    }.and_then(|iterations| {
+
+        // generate a token tree: A0, ..., An
+        let mut ctx = range(0, iterations * 2 - 1).flat_map(|k| {
+            if k % 2 == 0 {
+                token::str_to_ident(format!("A{}", (k / 2)).as_slice())
+                    .to_tokens(ecx)
+                    .into_iter()
+            } else {
+                let span  = codemap::DUMMY_SP;
+                let token = parse::token::Token::Comma;
+                vec![ast::TokenTree::TtToken(span, token)]
+                    .into_iter()
+            }
+        }).collect::<Vec<_>>();
+
+        // iterate over the ctx and generate impl syntax fragments
+        let mut items = vec![];
+        let mut i = ctx.len();
+        for _ in range(0, iterations) {
+            items.push(quote_item!(ecx, $mac!{ $ctx };).unwrap());
+            i -= 2;
+            ctx.truncate(i);
         }
-    };
 
-    // generate a token tree: A0, ..., An
-    let mut ctx = range(0, iterations * 2 - 1).flat_map(|k| {
-        if k % 2 == 0 {
-            token::str_to_ident(format!("A{}", (k / 2)).as_slice())
-                .to_tokens(ecx)
-                .into_iter()
-        } else {
-            let span  = codemap::DUMMY_SP;
-            let token = parse::token::Token::Comma;
-            vec![ast::TokenTree::TtToken(span, token)]
-                .into_iter()
-        }
-    }).collect::<Vec<_>>();
+        // splice the impl fragments into the ast
+        Some(base::MacItems::new(items.into_iter()))
 
-    // iterate over the ctx and generate impl syntax fragments
-    let mut items = vec![];
-    let mut i = ctx.len();
-    for _ in range(0, iterations) {
-        items.push(quote_item!(ecx, $mac!{ $ctx };).unwrap());
-        i -= 2;
-        ctx.truncate(i);
-    }
-
-    // splice the impl fragments into the ast
-    base::MacItems::new(items.into_iter())
+    }).unwrap_or_else(|| {
+        ecx.span_err(span, "invoke_for_seq_upto!: expected an integer literal argument");
+        base::DummyResult::any(span)
+    })
 }
 
 pub struct ToHList;
