@@ -21,7 +21,4 @@ impl MyTrait for .. {}
 impl MyTrait for .. {}
 //~^ ERROR conflicting implementations for trait `MyTrait`
 
-impl MyTrait for (i32, i32) {}
-//~^ ERROR implementations for traits providing default implementations are only allowed on
-
 fn main() {}
