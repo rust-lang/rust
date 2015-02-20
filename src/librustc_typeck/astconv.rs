@@ -205,9 +205,9 @@ pub fn opt_ast_region_to_region<'tcx>(
 
                                 if len == 2 && i == 0 {
                                     m.push_str(" or ");
-                                } else if i == len - 2 {
+                                } else if i + 2 == len {
                                     m.push_str(", or ");
-                                } else if i != len - 1 {
+                                } else if i + 1 != len {
                                     m.push_str(", ");
                                 }
                             }

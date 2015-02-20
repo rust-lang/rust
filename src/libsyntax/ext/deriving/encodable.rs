@@ -181,7 +181,6 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
         Struct(ref fields) => {
             let emit_struct_field = cx.ident_of("emit_struct_field");
             let mut stmts = Vec::new();
-            let last = fields.len() - 1;
             for (i, &FieldInfo {
                     name,
                     ref self_,
@@ -204,6 +203,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                                                  lambda));
 
                 // last call doesn't need a try!
+                let last = fields.len() - 1;
                 let call = if i != last {
                     cx.expr_try(span, call)
                 } else {
