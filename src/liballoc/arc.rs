@@ -139,6 +139,13 @@ pub struct Weak<T> {
 unsafe impl<T: Sync + Send> Send for Weak<T> { }
 unsafe impl<T: Sync + Send> Sync for Weak<T> { }
 
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<T: fmt::Debug> fmt::Debug for Weak<T> {
+    fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
+        write!(f, "(Weak)")
+    }
+}
+
 struct ArcInner<T> {
     strong: atomic::AtomicUsize,
     weak: atomic::AtomicUsize,
