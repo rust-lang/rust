@@ -8,8 +8,8 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// FIXME(eddyb/UFCS) This should have a nicer error, but that's not possible just yet.
-impl<T> Option<T> { //~ ERROR use of undeclared type name `Option`
+impl<T> Option<T> {
+//~^ ERROR cannot associate methods with a type outside the crate the type is defined in
     pub fn foo(&self) { }
 }
 

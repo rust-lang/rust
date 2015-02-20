@@ -15,6 +15,7 @@ use check::{FnCtxt};
 use check::vtable;
 use check::vtable::select_new_fcx_obligations;
 use middle::def;
+use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
 use middle::ty::*;
@@ -309,16 +310,22 @@ pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                               method_name: ast::Name,
                               self_ty: Ty<'tcx>,
                               expr_id: ast::NodeId)
-                              -> Result<def::Def, MethodError>
+                              -> Result<(def::Def, LastPrivate), MethodError>
 {
     let mode = probe::Mode::Path;
     let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
     let def_id = pick.method_ty.def_id;
+    let mut lp = LastMod(AllPublic);
     let provenance = match pick.kind {
-        probe::InherentImplPick(impl_def_id) => def::FromImpl(impl_def_id),
+        probe::InherentImplPick(impl_def_id) => {
+            if pick.method_ty.vis != ast::Public {
+                lp = LastMod(DependsOn(def_id));
+            }
+            def::FromImpl(impl_def_id)
+        }
         _ => def::FromTrait(pick.method_ty.container.id())
     };
-    Ok(def::DefMethod(def_id, provenance))
+    Ok((def::DefMethod(def_id, provenance), lp))
 }
 
 

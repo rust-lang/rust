@@ -80,6 +80,7 @@ register_diagnostics! {
     E0120,
     E0121,
     E0122,
+    E0123,
     E0124,
     E0127,
     E0128,

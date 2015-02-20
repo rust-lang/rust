@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -9,16 +9,16 @@
 // except according to those terms.
 
 mod foo {
-    pub struct Foo {
-        x: isize,
-        y: isize,
+    pub struct Point {
+        pub x: i32,
+        pub y: i32,
     }
 }
 
-impl foo::Foo {
-//~^ ERROR implementations may only be implemented in the same module
-    fn bar() {}
+impl foo::Point {
+    fn x(&self) -> i32 { self.x }
 }
 
-fn main() {}
-
+fn main() {
+    assert_eq!((foo::Point { x: 1, y: 3}).x(), 1);
+}

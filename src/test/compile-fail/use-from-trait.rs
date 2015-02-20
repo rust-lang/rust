@@ -11,7 +11,7 @@
 use Trait::foo;
 //~^ ERROR `foo` is not directly importable
 use Foo::new;
-//~^ ERROR `new` is not directly importable
+//~^ ERROR unresolved import `Foo::new`. Not a module `Foo`
 
 pub trait Trait {
     fn foo();

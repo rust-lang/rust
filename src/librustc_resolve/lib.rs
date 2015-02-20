@@ -514,7 +514,6 @@ enum ParentLink {
 enum ModuleKind {
     NormalModuleKind,
     TraitModuleKind,
-    ImplModuleKind,
     EnumModuleKind,
     TypeModuleKind,
     AnonymousModuleKind,
@@ -1863,13 +1862,11 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match import_resolution.value_target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref value) = *name_bindings.value_def.borrow() {
-                    let msg = format!("import `{}` conflicts with value \
-                                       in this module",
-                                      &token::get_name(name));
-                    span_err!(self.session, import_span, E0255, "{}", &msg[..]);
+                    span_err!(self.session, import_span, E0255,
+                              "import `{}` conflicts with value in this module",
+                              &token::get_name(name));
                     if let Some(span) = value.value_span {
-                        self.session.span_note(span,
-                                               "conflicting value here");
+                        self.session.span_note(span, "conflicting value here");
                     }
                 }
             }
@@ -1879,41 +1876,16 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match import_resolution.type_target {
             Some(ref target) if target.shadowable != Shadowable::Always => {
                 if let Some(ref ty) = *name_bindings.type_def.borrow() {
-                    match ty.module_def {
-                        None => {
-                            let msg = format!("import `{}` conflicts with type in \
-                                               this module",
-                                              &token::get_name(name));
-                            span_err!(self.session, import_span, E0256, "{}", &msg[..]);
-                            if let Some(span) = ty.type_span {
-                                self.session.span_note(span,
-                                                       "note conflicting type here")
-                            }
-                        }
-                        Some(ref module_def) => {
-                            match module_def.kind.get() {
-                                ImplModuleKind => {
-                                    if let Some(span) = ty.type_span {
-                                        let msg = format!("inherent implementations \
-                                                           are only allowed on types \
-                                                           defined in the current module");
-                                        span_err!(self.session, span, E0257, "{}", &msg[..]);
-                                        self.session.span_note(import_span,
-                                                               "import from other module here")
-                                    }
-                                }
-                                _ => {
-                                    let msg = format!("import `{}` conflicts with existing \
-                                                       submodule",
-                                                      &token::get_name(name));
-                                    span_err!(self.session, import_span, E0258, "{}", &msg[..]);
-                                    if let Some(span) = ty.type_span {
-                                        self.session.span_note(span,
-                                                               "note conflicting module here")
-                                    }
-                                }
-                            }
-                        }
+                    let (what, note) = if ty.module_def.is_some() {
+                        ("existing submodule", "note conflicting module here")
+                    } else {
+                        ("type in this module", "note conflicting type here")
+                    };
+                    span_err!(self.session, import_span, E0256,
+                              "import `{}` conflicts with {}",
+                              &token::get_name(name), what);
+                    if let Some(span) = ty.type_span {
+                        self.session.span_note(span, note);
                     }
                 }
             }
@@ -2267,7 +2239,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             return Failed(None);
                         }
                         TraitModuleKind |
-                        ImplModuleKind |
                         EnumModuleKind |
                         TypeModuleKind |
                         AnonymousModuleKind => {
@@ -2365,7 +2336,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     match new_module.kind.get() {
                         NormalModuleKind => return Some(new_module),
                         TraitModuleKind |
-                        ImplModuleKind |
                         EnumModuleKind |
                         TypeModuleKind |
                         AnonymousModuleKind => module_ = new_module,
@@ -2382,7 +2352,6 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match module_.kind.get() {
             NormalModuleKind => return module_,
             TraitModuleKind |
-            ImplModuleKind |
             EnumModuleKind |
             TypeModuleKind |
             AnonymousModuleKind => {
