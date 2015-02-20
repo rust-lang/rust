@@ -128,7 +128,6 @@ use std::ops;
 impl<Ys: HList> ops::Add<Ys> for Nil {
     type Output = Ys;
 
-    #[inline]
     fn add(self, rhs: Ys) -> Ys {
         rhs
     }
@@ -140,7 +139,6 @@ impl<Rec: HList + Sized, X, Xs: HList, Ys: HList> ops::Add<Ys> for Cons<X, Xs> w
 {
     type Output = Cons<X, Rec>;
 
-    #[inline]
     fn add(self, rhs: Ys) -> Cons<X, Rec> {
         Cons(self.0, self.1 + rhs)
     }
@@ -269,7 +267,6 @@ string is then parsed as a type, returning an ast fragment.
 // convert a u64 to a string representation of a type-level binary natural, e.g.,
 //     to_bin_nat(1024)
 //         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
-#[inline]
 fn to_bin_nat(mut num: u64) -> String {
     let mut res = String::from_str("_");
     if num < 2 {
@@ -294,7 +291,6 @@ fn to_bin_nat(mut num: u64) -> String {
 
 // generate a parser to convert a string representation of a type-level natural
 // to an ast fragment for a type
-#[inline]
 pub fn bin_nat_parser<'cx>(
     ecx: &'cx mut base::ExtCtxt,
     num: u64,
@@ -314,7 +310,6 @@ pub fn bin_nat_parser<'cx>(
 // Expand Nat!(n) to a type-level binary nat where n is an int literal, e.g.,
 //     Nat!(1024)
 //         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
-#[inline]
 pub fn nat_expand<'cx>(
      ecx: &'cx mut base::ExtCtxt,
     span: codemap::Span,
@@ -458,7 +453,6 @@ macro_rules! impl_to_tuple {
         #[allow(non_snake_case)]
         impl<$($seq,)*> Fn<(HList![$($seq),*],)> for ToTuple {
             type Output = ($($seq,)*);
-            #[inline]
             extern "rust-call" fn call(&self, (this,): (HList![$($seq),*],)) -> ($($seq,)*) {
                 match this {
                     hlist_match![$($seq),*] => ($($seq,)*)
@@ -475,7 +469,6 @@ macro_rules! impl_to_hlist {
         #[allow(non_snake_case)]
         impl<$($seq,)*> Fn<(($($seq,)*),)> for ToHList {
             type Output = HList![$($seq),*];
-            #[inline]
             extern "rust-call" fn call(&self, (this,): (($($seq,)*),)) -> HList![$($seq),*] {
                 match this {
                     ($($seq,)*) => hlist![$($seq),*]
