@@ -32,7 +32,6 @@ use borrow::Cow;
 use cmp;
 use fmt;
 use hash::{Hash, Hasher};
-#[cfg(stage0)] use hash::Writer;
 use iter::{FromIterator, IntoIterator};
 use mem;
 use num::Int;
@@ -796,14 +795,6 @@ impl<'a> Iterator for EncodeWide<'a> {
     }
 }
 
-#[cfg(stage0)]
-impl<S: Writer + Hasher> Hash<S> for CodePoint {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.value.hash(state)
-    }
-}
-#[cfg(not(stage0))]
 impl Hash for CodePoint {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -811,15 +802,6 @@ impl Hash for CodePoint {
     }
 }
 
-#[cfg(stage0)]
-impl<S: Writer + Hasher> Hash<S> for Wtf8Buf {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        state.write(&self.bytes);
-        0xfeu8.hash(state)
-    }
-}
-#[cfg(not(stage0))]
 impl Hash for Wtf8Buf {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {
@@ -828,15 +810,6 @@ impl Hash for Wtf8Buf {
     }
 }
 
-#[cfg(stage0)]
-impl<'a, S: Writer + Hasher> Hash<S> for Wtf8 {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        state.write(&self.bytes);
-        0xfeu8.hash(state)
-    }
-}
-#[cfg(not(stage0))]
 impl Hash for Wtf8 {
     #[inline]
     fn hash<H: Hasher>(&self, state: &mut H) {

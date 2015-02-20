@@ -21,7 +21,6 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hash, Hasher};
-#[cfg(stage0)] use core::hash::Writer;
 use core::iter::{Enumerate, FilterMap, Map, FromIterator, IntoIterator};
 use core::iter;
 use core::mem::replace;
@@ -113,21 +112,7 @@ impl<V:Clone> Clone for VecMap<V> {
     }
 }
 
-#[cfg(stage0)]
-impl<S: Writer + Hasher, V: Hash<S>> Hash<S> for VecMap<V> {
-    fn hash(&self, state: &mut S) {
-        // In order to not traverse the `VecMap` twice, count the elements
-        // during iteration.
-        let mut count: usize = 0;
-        for elt in self {
-            elt.hash(state);
-            count += 1;
-        }
-        count.hash(state);
-    }
-}
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 impl<V: Hash> Hash for VecMap<V> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         // In order to not traverse the `VecMap` twice, count the elements
