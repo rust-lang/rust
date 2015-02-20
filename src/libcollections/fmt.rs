@@ -404,7 +404,7 @@
 #![stable(feature = "rust1", since = "1.0.0")]
 
 pub use core::fmt::{Formatter, Result, Write, rt};
-pub use core::fmt::{Show, String, Octal, Binary};
+pub use core::fmt::{Octal, Binary};
 pub use core::fmt::{Display, Debug};
 pub use core::fmt::{LowerHex, UpperHex, Pointer};
 pub use core::fmt::{LowerExp, UpperExp};
