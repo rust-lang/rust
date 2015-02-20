@@ -61,9 +61,6 @@ use sync::{mutex, MutexGuard, PoisonError};
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Condvar { inner: Box<StaticCondvar> }
 
-unsafe impl Send for Condvar {}
-unsafe impl Sync for Condvar {}
-
 /// Statically allocated condition variables.
 ///
 /// This structure is identical to `Condvar` except that it is suitable for use
@@ -82,9 +79,6 @@ pub struct StaticCondvar {
     inner: sys::Condvar,
     mutex: AtomicUsize,
 }
-
-unsafe impl Send for StaticCondvar {}
-unsafe impl Sync for StaticCondvar {}
 
 /// Constant initializer for a statically allocated condition variable.
 #[unstable(feature = "std_misc",
