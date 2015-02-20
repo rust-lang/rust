@@ -2342,7 +2342,7 @@ impl<'a> State<'a> {
 
         // HACK(eddyb) ignore the separately printed self argument.
         let args = if first {
-            &decl.inputs[]
+            &decl.inputs[..]
         } else {
             &decl.inputs[1..]
         };

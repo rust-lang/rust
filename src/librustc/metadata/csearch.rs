@@ -92,7 +92,7 @@ pub fn get_item_path(tcx: &ty::ctxt, def: ast::DefId) -> Vec<ast_map::PathElem> 
 
     // FIXME #1920: This path is not always correct if the crate is not linked
     // into the root namespace.
-    let mut r = vec![ast_map::PathMod(token::intern(&cdata.name[]))];
+    let mut r = vec![ast_map::PathMod(token::intern(&cdata.name))];
     r.push_all(&path);
     r
 }
@@ -391,7 +391,7 @@ pub fn is_staged_api(cstore: &cstore::CStore, def: ast::DefId) -> bool {
     let cdata = cstore.get_crate_data(def.krate);
     let attrs = decoder::get_crate_attributes(cdata.data());
     for attr in &attrs {
-        if &attr.name()[] == "staged_api" {
+        if &attr.name()[..] == "staged_api" {
             match attr.node.value.node { ast::MetaWord(_) => return true, _ => (/*pass*/) }
         }
     }

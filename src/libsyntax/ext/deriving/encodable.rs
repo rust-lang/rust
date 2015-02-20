@@ -191,7 +191,7 @@ fn encodable_substructure(cx: &mut ExtCtxt, trait_span: Span,
                 let name = match name {
                     Some(id) => token::get_ident(id),
                     None => {
-                        token::intern_and_get_ident(&format!("_field{}", i)[])
+                        token::intern_and_get_ident(&format!("_field{}", i))
                     }
                 };
                 let enc = cx.expr_method_call(span, self_.clone(),

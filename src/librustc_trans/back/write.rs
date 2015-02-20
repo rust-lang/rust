@@ -54,7 +54,7 @@ pub fn llvm_err(handler: &diagnostic::Handler, msg: String) -> ! {
             libc::free(cstr as *mut _);
             handler.fatal(&format!("{}: {}",
                                   &msg[..],
-                                  &err[..])[]);
+                                  &err[..]));
         }
     }
 }
@@ -104,13 +104,13 @@ impl SharedEmitter {
             match diag.code {
                 Some(ref code) => {
                     handler.emit_with_code(None,
-                                           &diag.msg[],
+                                           &diag.msg,
                                            &code[..],
                                            diag.lvl);
                 },
                 None => {
                     handler.emit(None,
-                                 &diag.msg[],
+                                 &diag.msg,
                                  diag.lvl);
                 },
             }
@@ -166,7 +166,7 @@ fn get_llvm_opt_level(optimize: config::OptLevel) -> llvm::CodeGenOptLevel {
 fn create_target_machine(sess: &Session) -> TargetMachineRef {
     let reloc_model_arg = match sess.opts.cg.relocation_model {
         Some(ref s) => &s[..],
-        None => &sess.target.target.options.relocation_model[]
+        None => &sess.target.target.options.relocation_model[..],
     };
     let reloc_model = match reloc_model_arg {
         "pic" => llvm::RelocPIC,
@@ -177,7 +177,7 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
             sess.err(&format!("{:?} is not a valid relocation mode",
                              sess.opts
                                  .cg
-                                 .relocation_model)[]);
+                                 .relocation_model));
             sess.abort_if_errors();
             unreachable!();
         }
@@ -199,7 +199,7 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
 
     let code_model_arg = match sess.opts.cg.code_model {
         Some(ref s) => &s[..],
-        None => &sess.target.target.options.code_model[]
+        None => &sess.target.target.options.code_model[..],
     };
 
     let code_model = match code_model_arg {
@@ -212,13 +212,13 @@ fn create_target_machine(sess: &Session) -> TargetMachineRef {
             sess.err(&format!("{:?} is not a valid code model",
                              sess.opts
                                  .cg
-                                 .code_model)[]);
+                                 .code_model));
             sess.abort_if_errors();
             unreachable!();
         }
     };
 
-    let triple = &sess.target.target.llvm_target[];
+    let triple = &sess.target.target.llvm_target;
 
     let tm = unsafe {
         let triple = CString::new(triple.as_bytes()).unwrap();
@@ -526,14 +526,14 @@ unsafe fn optimize_and_codegen(cgcx: &CodegenContext,
         }
 
         if config.emit_asm {
-            let path = output_names.with_extension(&format!("{}.s", name_extra)[]);
+            let path = output_names.with_extension(&format!("{}.s", name_extra));
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::AssemblyFileType);
             });
         }
 
         if config.emit_obj {
-            let path = output_names.with_extension(&format!("{}.o", name_extra)[]);
+            let path = output_names.with_extension(&format!("{}.o", name_extra));
             with_codegen(tm, llmod, config.no_builtins, |cpm| {
                 write_output_file(cgcx.handler, tm, cpm, llmod, &path, llvm::ObjectFileType);
             });
@@ -647,7 +647,7 @@ pub fn run_passes(sess: &Session,
 
     // Process the work items, optionally using worker threads.
     if sess.opts.cg.codegen_units == 1 {
-        run_work_singlethreaded(sess, &trans.reachable[], work_items);
+        run_work_singlethreaded(sess, &trans.reachable, work_items);
     } else {
         run_work_multithreaded(sess, work_items, sess.opts.cg.codegen_units);
     }
@@ -679,7 +679,7 @@ pub fn run_passes(sess: &Session,
                 // 2) Multiple codegen units, with `-o some_name`.  We have
                 //    no good solution for this case, so warn the user.
                 sess.warn(&format!("ignoring -o because multiple .{} files were produced",
-                                  ext)[]);
+                                  ext));
             } else {
                 // 3) Multiple codegen units, but no `-o some_name`.  We
                 //    just leave the `foo.0.x` files in place.
@@ -713,18 +713,18 @@ pub fn run_passes(sess: &Session,
         let pname = get_cc_prog(sess);
         let mut cmd = Command::new(&pname[..]);
 
-        cmd.args(&sess.target.target.options.pre_link_args[]);
+        cmd.args(&sess.target.target.options.pre_link_args);
         cmd.arg("-nostdlib");
 
         for index in 0..trans.modules.len() {
-            cmd.arg(crate_output.with_extension(&format!("{}.o", index)[]));
+            cmd.arg(crate_output.with_extension(&format!("{}.o", index)));
         }
 
         cmd.arg("-r")
            .arg("-o")
            .arg(windows_output_path.as_ref().unwrap_or(output_path));
 
-        cmd.args(&sess.target.target.options.post_link_args[]);
+        cmd.args(&sess.target.target.options.post_link_args);
 
         if sess.opts.debugging_opts.print_link_args {
             println!("{:?}", &cmd);
@@ -737,14 +737,14 @@ pub fn run_passes(sess: &Session,
             Ok(status) => {
                 if !status.success() {
                     sess.err(&format!("linking of {} with `{:?}` failed",
-                                     output_path.display(), cmd)[]);
+                                     output_path.display(), cmd));
                     sess.abort_if_errors();
                 }
             },
             Err(e) => {
                 sess.err(&format!("could not exec the linker `{}`: {}",
                                  pname,
-                                 e)[]);
+                                 e));
                 sess.abort_if_errors();
             },
         }
@@ -971,10 +971,10 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
             if !prog.status.success() {
                 sess.err(&format!("linking with `{}` failed: {}",
                                  pname,
-                                 prog.status)[]);
-                sess.note(&format!("{:?}", &cmd)[]);
+                                 prog.status));
+                sess.note(&format!("{:?}", &cmd));
                 let mut note = prog.error.clone();
-                note.push_all(&prog.output[]);
+                note.push_all(&prog.output);
                 sess.note(str::from_utf8(&note[..]).unwrap());
                 sess.abort_if_errors();
             }
@@ -982,7 +982,7 @@ pub fn run_assembler(sess: &Session, outputs: &OutputFilenames) {
         Err(e) => {
             sess.err(&format!("could not exec the linker `{}`: {}",
                              pname,
-                             e)[]);
+                             e));
             sess.abort_if_errors();
         }
     }
@@ -1018,7 +1018,7 @@ unsafe fn configure_llvm(sess: &Session) {
         if sess.target.target.arch == "aarch64" { add("-fast-isel=0"); }
 
         for arg in &sess.opts.cg.llvm_args {
-            add(&(*arg)[]);
+            add(&(*arg));
         }
     }
 

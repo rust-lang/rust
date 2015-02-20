@@ -1575,7 +1575,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble builtin bounds of unexpected type: {}",
-                        self_ty.repr(self.tcx()))[]);
+                        self_ty.repr(self.tcx())));
             }
         };
 
@@ -1727,7 +1727,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     obligation.cause.span,
                     &format!("builtin bound for {} was ambig",
-                            obligation.repr(self.tcx()))[]);
+                            obligation.repr(self.tcx())));
             }
         }
     }
@@ -1995,7 +1995,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 self.tcx().sess.bug(
                     &format!("Impl {} was matchable against {} but now is not",
                             impl_def_id.repr(self.tcx()),
-                            obligation.repr(self.tcx()))[]);
+                            obligation.repr(self.tcx())));
             }
         }
     }

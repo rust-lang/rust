@@ -94,7 +94,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
 
         // dump info about all the external crates referenced from this crate
         self.sess.cstore.iter_crate_data(|n, cmd| {
-            self.fmt.external_crate_str(krate.span, &cmd.name[], n);
+            self.fmt.external_crate_str(krate.span, &cmd.name, n);
         });
         self.fmt.recorder.record("end_external_crates\n");
     }
@@ -216,7 +216,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
     fn lookup_type_ref(&self, ref_id: NodeId) -> Option<DefId> {
         if !self.analysis.ty_cx.def_map.borrow().contains_key(&ref_id) {
             self.sess.bug(&format!("def_map has no key for {} in lookup_type_ref",
-                                  ref_id)[]);
+                                  ref_id));
         }
         let def = (*self.analysis.ty_cx.def_map.borrow())[ref_id];
         match def {
@@ -229,7 +229,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         let def_map = self.analysis.ty_cx.def_map.borrow();
         if !def_map.contains_key(&ref_id) {
             self.sess.span_bug(span, &format!("def_map has no key for {} in lookup_def_kind",
-                                             ref_id)[]);
+                                             ref_id));
         }
         let def = (*def_map)[ref_id];
         match def {
@@ -258,7 +258,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefMethod(..) |
             def::DefPrimTy(_) => {
                 self.sess.span_bug(span, &format!("lookup_def_kind for unexpected item: {:?}",
-                                                 def)[]);
+                                                 def));
             },
         }
     }
@@ -279,7 +279,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                     span_utils.span_for_last_ident(p.span),
                                     id,
                                     qualname,
-                                    &path_to_string(p)[],
+                                    &path_to_string(p),
                                     &typ[..]);
             }
             self.collected_paths.clear();
@@ -302,7 +302,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     match item.node {
                         ast::ItemImpl(_, _, _, _, ref ty, _) => {
                             let mut result = String::from_str("<");
-                            result.push_str(&ty_to_string(&**ty)[]);
+                            result.push_str(&ty_to_string(&**ty));
 
                             match ty::trait_of_item(&self.analysis.ty_cx,
                                                     ast_util::local_def(method.id)) {
@@ -319,7 +319,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         _ => {
                             self.sess.span_bug(method.span,
                                                &format!("Container {} for method {} not an impl?",
-                                                       impl_id.node, method.id)[]);
+                                                       impl_id.node, method.id));
                         },
                     }
                 },
@@ -329,7 +329,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                            "Container {} for method {} is not a node item {:?}",
                                            impl_id.node,
                                            method.id,
-                                           self.analysis.ty_cx.map.get(impl_id.node))[]);
+                                           self.analysis.ty_cx.map.get(impl_id.node)));
                 },
             },
             None => match ty::trait_of_item(&self.analysis.ty_cx,
@@ -343,14 +343,14 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                         _ => {
                             self.sess.span_bug(method.span,
                                                &format!("Could not find container {} for method {}",
-                                                       def_id.node, method.id)[]);
+                                                       def_id.node, method.id));
                         }
                     }
                 },
                 None => {
                     self.sess.span_bug(method.span,
                                        &format!("Could not find container for method {}",
-                                               method.id)[]);
+                                               method.id));
                 },
             },
         };
@@ -442,7 +442,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                          scope_id),
                     None => self.sess.span_bug(field.span,
                                                &format!("Could not find sub-span for field {}",
-                                                       qualname)[]),
+                                                       qualname)),
                 }
             },
             _ => (),
@@ -528,7 +528,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             &get_ident(item.ident),
                             &qualname[..],
                             &value[..],
-                            &ty_to_string(&*typ)[],
+                            &ty_to_string(&*typ),
                             self.cur_scope);
 
         // walk type and init value
@@ -551,7 +551,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                             &get_ident(item.ident),
                             &qualname[..],
                             "",
-                            &ty_to_string(&*typ)[],
+                            &ty_to_string(&*typ),
                             self.cur_scope);
 
         // walk type and init value
@@ -603,7 +603,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                                 &val[..]),
             None => self.sess.span_bug(item.span,
                                        &format!("Could not find subspan for enum {}",
-                                               enum_name)[]),
+                                               enum_name)),
         }
         for variant in &enum_definition.variants {
             let name = get_ident(variant.node.name);
@@ -872,7 +872,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                                     &format!("Unexpected def kind while looking \
                                               up path in `{}`: `{:?}`",
                                              self.span.snippet(span),
-                                             *def)[]),
+                                             *def)),
         }
         // modules or types in the path prefix
         match *def {
@@ -1007,7 +1007,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                     None => {
                         self.sess.span_bug(p.span,
                                            &format!("Could not find struct_def for `{}`",
-                                                   self.span.snippet(p.span))[]);
+                                                   self.span.snippet(p.span)));
                     }
                 };
                 for &Spanned { node: ref field, span } in fields {
@@ -1255,7 +1255,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                     None => {
                         self.sess.span_bug(method_type.span,
                                            &format!("Could not find trait for method {}",
-                                                   method_type.id)[]);
+                                                   method_type.id));
                     },
                 };
 
@@ -1362,7 +1362,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                         }
                     }
                     _ => self.sess.span_bug(ex.span,
-                                            &format!("Expected struct type, found {:?}", ty)[]),
+                                            &format!("Expected struct type, found {:?}", ty)),
                 }
             },
             ast::ExprTupField(ref sub_ex, idx) => {
@@ -1391,7 +1391,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                     ty::ty_tup(_) => {}
                     _ => self.sess.span_bug(ex.span,
                                             &format!("Expected struct or tuple \
-                                                      type, found {:?}", ty)[]),
+                                                      type, found {:?}", ty)),
                 }
             },
             ast::ExprClosure(_, ref decl, ref body) => {
@@ -1400,7 +1400,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                 }
 
                 let mut id = String::from_str("$");
-                id.push_str(&ex.id.to_string()[]);
+                id.push_str(&ex.id.to_string());
                 self.process_formals(&decl.inputs, &id[..]);
 
                 // walk arg and return types
@@ -1448,7 +1448,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             if !def_map.contains_key(&id) {
                 self.sess.span_bug(p.span,
                                    &format!("def_map has no key for {} in visit_arm",
-                                           id)[]);
+                                           id));
             }
             let def = &(*def_map)[id];
             match *def {
@@ -1463,7 +1463,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
                     self.fmt.variable_str(p.span,
                                           Some(p.span),
                                           id,
-                                          &path_to_string(p)[],
+                                          &path_to_string(p),
                                           &value[..],
                                           "")
                 }
@@ -1519,7 +1519,7 @@ impl<'l, 'tcx, 'v> Visitor<'v> for DxrVisitor<'l, 'tcx> {
             self.fmt.variable_str(p.span,
                                   sub_span,
                                   id,
-                                  &path_to_string(p)[],
+                                  &path_to_string(p),
                                   &value[..],
                                   &typ[..]);
         }
@@ -1540,7 +1540,7 @@ pub fn process_crate(sess: &Session,
     }
 
     assert!(analysis.glob_map.is_some());
-    let cratename = match attr::find_crate_name(&krate.attrs[]) {
+    let cratename = match attr::find_crate_name(&krate.attrs) {
         Some(name) => name.to_string(),
         None => {
             info!("Could not find crate name, using 'unknown_crate'");
@@ -1561,7 +1561,7 @@ pub fn process_crate(sess: &Session,
 
     match fs::mkdir_recursive(&root_path, old_io::USER_RWX) {
         Err(e) => sess.err(&format!("Could not create directory {}: {}",
-                           root_path.display(), e)[]),
+                           root_path.display(), e)),
         _ => (),
     }
 
@@ -1578,7 +1578,7 @@ pub fn process_crate(sess: &Session,
         Ok(f) => box f,
         Err(e) => {
             let disp = root_path.display();
-            sess.fatal(&format!("Could not open {}: {}", disp, e)[]);
+            sess.fatal(&format!("Could not open {}: {}", disp, e));
         }
     };
     root_path.pop();

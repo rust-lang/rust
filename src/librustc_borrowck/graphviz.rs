@@ -60,7 +60,7 @@ impl<'a, 'tcx> DataflowLabeller<'a, 'tcx> {
             if seen_one { sets.push_str(" "); } else { seen_one = true; }
             sets.push_str(variant.short_name());
             sets.push_str(": ");
-            sets.push_str(&self.dataflow_for_variant(e, n, variant)[]);
+            sets.push_str(&self.dataflow_for_variant(e, n, variant));
         }
         sets
     }

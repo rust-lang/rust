@@ -325,7 +325,7 @@ impl<'a, 'tcx> IrMaps<'a, 'tcx> {
             self.tcx
                 .sess
                 .span_bug(span, &format!("no variable registered for id {}",
-                                        node_id)[]);
+                                        node_id));
           }
         }
     }
@@ -585,7 +585,7 @@ impl<'a, 'tcx> Liveness<'a, 'tcx> {
             self.ir.tcx.sess.span_bug(
                 span,
                 &format!("no live node registered for node {}",
-                        node_id)[]);
+                        node_id));
           }
         }
     }

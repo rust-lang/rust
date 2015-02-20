@@ -118,7 +118,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                     expr.span,
                     &format!("type of callee is neither bare-fn nor closure: \
                              {}",
-                            bcx.ty_to_string(datum.ty))[]);
+                            bcx.ty_to_string(datum.ty)));
             }
         }
     }
@@ -215,7 +215,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     &format!("cannot translate def {:?} \
-                             to a callable thing!", def)[]);
+                             to a callable thing!", def));
             }
         }
     }
@@ -298,7 +298,7 @@ pub fn trans_fn_pointer_shim<'a, 'tcx>(
 
             _ => {
                 tcx.sess.bug(&format!("trans_fn_pointer_shim invoked on invalid type: {}",
-                                           bare_fn_ty.repr(tcx))[]);
+                                           bare_fn_ty.repr(tcx)));
             }
         };
     let sig = ty::erase_late_bound_regions(tcx, sig);

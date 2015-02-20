@@ -1068,7 +1068,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     };
                     let msg = format!("unresolved import `{}`{}",
                                       self.import_path_to_string(
-                                          &import_directive.module_path[],
+                                          &import_directive.module_path,
                                           import_directive.subclass),
                                       help);
                     self.resolve_error(span, &msg[..]);
@@ -2247,7 +2247,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                               true) {
                 Failed(Some((span, msg))) =>
                     self.resolve_error(span, &format!("failed to resolve. {}",
-                                                     msg)[]),
+                                                     msg)),
                 Failed(None) => (), // Continue up the search chain.
                 Indeterminate => {
                     // We couldn't see through the higher scope because of an
@@ -2603,7 +2603,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
         match def_like {
             DlDef(d @ DefUpvar(..)) => {
                 self.session.span_bug(span,
-                    &format!("unexpected {:?} in bindings", d)[])
+                    &format!("unexpected {:?} in bindings", d))
             }
             DlDef(d @ DefLocal(_)) => {
                 let node_id = d.def_id().node;
@@ -2931,7 +2931,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
 
                 self.resolve_struct(item.id,
                                     generics,
-                                    &struct_def.fields[]);
+                                    &struct_def.fields);
             }
 
             ItemMod(ref module_) => {
@@ -3019,7 +3019,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                     parameter in this type \
                                                     parameter list",
                                                    token::get_name(
-                                                       name))[])
+                                                       name)))
                     }
                     seen_bindings.insert(name);
 
@@ -3204,14 +3204,14 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.resolve_error(trait_reference.path.span,
                                            &format!("`{}` is not a trait",
                                                    self.path_names_to_string(
-                                                       &trait_reference.path))[]);
+                                                       &trait_reference.path)));
 
                         // If it's a typedef, give a note
                         if let DefTy(..) = def {
                             self.session.span_note(
                                 trait_reference.path.span,
                                 &format!("`type` aliases cannot be used for traits")
-                                []);
+                                );
                         }
                     }
                 }
@@ -3408,7 +3408,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.resolve_error(span,
                                     &format!("method `{}` is not a member of trait `{}`",
                                             token::get_name(name),
-                                            path_str)[]);
+                                            path_str));
             }
         }
     }
@@ -3477,7 +3477,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         &format!("variable `{}` from pattern #1 is \
                                   not bound in pattern #{}",
                                 token::get_name(key),
-                                i + 1)[]);
+                                i + 1));
                   }
                   Some(binding_i) => {
                     if binding_0.binding_mode != binding_i.binding_mode {
@@ -3486,7 +3486,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                             &format!("variable `{}` is bound with different \
                                       mode in pattern #{} than in pattern #1",
                                     token::get_name(key),
-                                    i + 1)[]);
+                                    i + 1));
                     }
                   }
                 }
@@ -3499,7 +3499,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         &format!("variable `{}` from pattern {}{} is \
                                   not bound in pattern {}1",
                                 token::get_name(key),
-                                "#", i + 1, "#")[]);
+                                "#", i + 1, "#"));
                 }
             }
         }
@@ -3698,7 +3698,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                 &format!("declaration of `{}` shadows an enum \
                                          variant or unit-like struct in \
                                          scope",
-                                        token::get_name(renamed))[]);
+                                        token::get_name(renamed)));
                         }
                         FoundConst(ref def, lp) if mode == RefutableMode => {
                             debug!("(resolving pattern) resolving `{}` to \
@@ -3750,7 +3750,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                                             list",
                                                            token::get_ident(
                                                                ident))
-                                                   [])
+                                                   )
                             } else if bindings_list.get(&renamed) ==
                                     Some(&pat_id) {
                                 // Then this is a duplicate variable in the
@@ -3759,7 +3759,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     &format!("identifier `{}` is bound \
                                              more than once in the same \
                                              pattern",
-                                            token::get_ident(ident))[]);
+                                            token::get_ident(ident)));
                             }
                             // Else, not bound in the same pattern: do
                             // nothing.
@@ -3883,7 +3883,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 match err {
                     Some((span, msg)) => {
                         self.resolve_error(span, &format!("failed to resolve: {}",
-                                                         msg)[]);
+                                                         msg));
                     }
                     None => ()
                 }
@@ -4093,7 +4093,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
 
                 self.resolve_error(span, &format!("failed to resolve. {}",
-                                                 msg)[]);
+                                                 msg));
                 return None;
             }
             Indeterminate => panic!("indeterminate unexpected"),
@@ -4152,7 +4152,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 };
 
                 self.resolve_error(span, &format!("failed to resolve. {}",
-                                                 msg)[]);
+                                                 msg));
                 return None;
             }
 
@@ -4193,7 +4193,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             TypeNS => {
                 let name = ident.name;
-                self.search_ribs(&self.type_ribs[], name, span)
+                self.search_ribs(&self.type_ribs, name, span)
             }
         };
 
@@ -4248,7 +4248,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 match err {
                     Some((span, msg)) =>
                         self.resolve_error(span, &format!("failed to resolve. {}",
-                                                         msg)[]),
+                                                         msg)),
                     None => ()
                 }
 
@@ -4410,7 +4410,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             values[smallest] != usize::MAX &&
             values[smallest] < name.len() + 2 &&
             values[smallest] <= max_distance &&
-            name != &maybes[smallest][] {
+            name != &maybes[smallest][..] {
 
             Some(maybes[smallest].to_string())
 
@@ -4502,7 +4502,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                     false // Stop advancing
                                 });
 
-                                if method_scope && &token::get_name(self.self_name)[]
+                                if method_scope && &token::get_name(self.self_name)[..]
                                                                    == path_name {
                                         self.resolve_error(
                                             expr.span,
@@ -4592,7 +4592,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         self.resolve_error(
                             expr.span,
                             &format!("use of undeclared label `{}`",
-                                    token::get_ident(label))[])
+                                    token::get_ident(label)))
                     }
                     Some(DlDef(def @ DefLabel(_))) => {
                         // Since this def is a label, it is never read.
@@ -4731,7 +4731,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                                   then {:?}",
                                  node_id,
                                  *entry.get(),
-                                 def)[]);
+                                 def));
             },
             Vacant(entry) => { entry.insert(def); },
         }
@@ -4747,7 +4747,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 self.resolve_error(pat.span,
                                    &format!("cannot use `ref` binding mode \
                                             with {}",
-                                           descr)[]);
+                                           descr));
             }
         }
     }
@@ -4783,7 +4783,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             return "???".to_string();
         }
         self.names_to_string(&names.into_iter().rev()
-                                  .collect::<Vec<ast::Name>>()[])
+                                  .collect::<Vec<ast::Name>>())
     }
 
     #[allow(dead_code)]   // useful for debugging

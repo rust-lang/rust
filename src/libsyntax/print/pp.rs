@@ -139,7 +139,7 @@ pub fn buf_str(toks: &[Token],
         }
         s.push_str(&format!("{}={}",
                            szs[i],
-                           tok_str(&toks[i]))[]);
+                           tok_str(&toks[i])));
         i += 1;
         i %= n;
     }

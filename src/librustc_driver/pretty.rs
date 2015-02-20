@@ -312,7 +312,7 @@ impl<'tcx> pprust::PpAnn for TypedAnnotation<'tcx> {
                 try!(pp::word(&mut s.s,
                               &ppaux::ty_to_string(
                                   tcx,
-                                  ty::expr_ty(tcx, expr))[]));
+                                  ty::expr_ty(tcx, expr))));
                 s.pclose()
             }
             _ => Ok(())
@@ -602,7 +602,7 @@ pub fn pretty_print_input(sess: Session,
             debug!("pretty printing flow graph for {:?}", opt_uii);
             let uii = opt_uii.unwrap_or_else(|| {
                 sess.fatal(&format!("`pretty flowgraph=..` needs NodeId (int) or
-                                     unique path suffix (b::c::d)")[])
+                                     unique path suffix (b::c::d)"))
 
             });
             let ast_map = ast_map.expect("--pretty flowgraph missing ast_map");
@@ -610,7 +610,7 @@ pub fn pretty_print_input(sess: Session,
 
             let node = ast_map.find(nodeid).unwrap_or_else(|| {
                 sess.fatal(&format!("--pretty flowgraph couldn't find id: {}",
-                                   nodeid)[])
+                                   nodeid))
             });
 
             let code = blocks::Code::from_node(node);

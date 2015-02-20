@@ -378,7 +378,7 @@ impl<'tcx> LocalCrateContext<'tcx> {
                                           .target
                                           .target
                                           .data_layout
-                                          []);
+                                          );
 
             let dbg_cx = if shared.tcx.sess.opts.debuginfo != NoDebugInfo {
                 Some(debuginfo::CrateDebugContext::new(llmod))
@@ -731,7 +731,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     /// currently conservatively bounded to 1 << 47 as that is enough to cover the current usable
     /// address space on 64-bit ARMv8 and x86_64.
     pub fn obj_size_bound(&self) -> u64 {
-        match &self.sess().target.target.target_pointer_width[] {
+        match &self.sess().target.target.target_pointer_width[..] {
             "32" => 1 << 31,
             "64" => 1 << 47,
             _ => unreachable!() // error handled by config::build_target_config
@@ -741,7 +741,7 @@ impl<'b, 'tcx> CrateContext<'b, 'tcx> {
     pub fn report_overbig_object(&self, obj: Ty<'tcx>) -> ! {
         self.sess().fatal(
             &format!("the type `{}` is too big for the current architecture",
-                    obj.repr(self.tcx()))[])
+                    obj.repr(self.tcx())))
     }
 }
 

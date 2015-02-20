@@ -307,7 +307,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                         self.tcx().sess.span_bug(
                             cmt.span,
                             &format!("invalid borrow lifetime: {:?}",
-                                    loan_region)[]);
+                                    loan_region));
                     }
                 };
                 debug!("loan_scope = {:?}", loan_scope);
