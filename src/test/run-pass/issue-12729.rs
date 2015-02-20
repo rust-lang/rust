@@ -8,19 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
+pub struct Foo;
 
-pub mod a {
-    pub struct Foo { a: usize }
-}
+mod bar {
+    use Foo;
 
-pub mod b {
-    use a::Foo;
-    impl Foo { //~ERROR inherent implementations are only allowed on types defined in the current module
-        fn bar(&self) { }
+    impl Foo {
+        fn baz(&self) {}
     }
 }
-
-pub fn main() { }
-
+fn main() {}
 

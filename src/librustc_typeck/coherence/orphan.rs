@@ -15,7 +15,6 @@ use middle::traits;
 use middle::ty;
 use syntax::ast::{Item, ItemImpl};
 use syntax::ast;
-use syntax::ast_map;
 use syntax::ast_util;
 use syntax::visit;
 use util::ppaux::{Repr, UserString};
