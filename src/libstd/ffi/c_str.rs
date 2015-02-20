@@ -371,7 +371,7 @@ impl CStr {
 
 impl PartialEq for CStr {
     fn eq(&self, other: &CStr) -> bool {
-        self.to_bytes().eq(&other.to_bytes())
+        self.to_bytes().eq(other.to_bytes())
     }
 }
 impl Eq for CStr {}
