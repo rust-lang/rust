@@ -1642,13 +1642,15 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_str |
             ty::ty_err |
             ty::ty_param(..) |
+            ty::ty_infer(ty::IntVar(_)) |
+            ty::ty_infer(ty::FloatVar(_)) |
             ty::ty_char => {
                 Some(Vec::new())
             }
 
             ty::ty_trait(..) |
             ty::ty_projection(..) |
-            ty::ty_infer(..) => {
+            ty::ty_infer(_) => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble constituent types of unexpected type: {}",
