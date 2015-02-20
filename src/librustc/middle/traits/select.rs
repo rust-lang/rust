@@ -1683,7 +1683,9 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
             ty::ty_trait(..) |
             ty::ty_param(..) |
             ty::ty_projection(..) |
-            ty::ty_infer(ty::TyVar(_)) => {
+            ty::ty_infer(ty::TyVar(_)) |
+            ty::ty_infer(ty::FreshTy(_)) |
+            ty::ty_infer(ty::FreshIntTy(_)) => {
                 self.tcx().sess.bug(
                     &format!(
                         "asked to assemble constituent types of unexpected type: {}",
