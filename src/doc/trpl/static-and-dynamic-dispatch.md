@@ -79,10 +79,11 @@ fn main() {
 }
 ```
 
-This has some upsides: static dispatching of any method calls, allowing for
-inlining and hence usually higher performance. It also has some downsides:
-causing code bloat due to many copies of the same function existing in the
-binary, one for each type.
+This has a great upside: static dispatch allows function calls to be
+inlined because the callee is known at compile time, and inlining is
+the key to good optimization. Static dispatch is fast, but it comes at
+a tradeoff: 'code bloat', due to many copies of the same function
+existing in the binary, one for each type.
 
 Furthermore, compilers aren’t perfect and may “optimise” code to become slower.
 For example, functions inlined too eagerly will bloat the instruction cache
