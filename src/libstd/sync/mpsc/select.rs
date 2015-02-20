@@ -134,7 +134,7 @@ impl Select {
     /// Creates a new handle into this receiver set for a new receiver. Note
     /// that this does *not* add the receiver to the receiver set, for that you
     /// must call the `add` method on the handle itself.
-    pub fn handle<'a, T: Send + 'static>(&'a self, rx: &'a Receiver<T>) -> Handle<'a, T> {
+    pub fn handle<'a, T: Send>(&'a self, rx: &'a Receiver<T>) -> Handle<'a, T> {
         let id = self.next_id.get();
         self.next_id.set(id + 1);
         Handle {
@@ -251,7 +251,7 @@ impl Select {
     fn iter(&self) -> Packets { Packets { cur: self.head } }
 }
 
-impl<'rx, T: Send + 'static> Handle<'rx, T> {
+impl<'rx, T: Send> Handle<'rx, T> {
     /// Retrieve the id of this handle.
     #[inline]
     pub fn id(&self) -> uint { self.id }
@@ -322,7 +322,7 @@ impl Drop for Select {
 }
 
 #[unsafe_destructor]
-impl<'rx, T: Send + 'static> Drop for Handle<'rx, T> {
+impl<'rx, T: Send> Drop for Handle<'rx, T> {
     fn drop(&mut self) {
         unsafe { self.remove() }
     }

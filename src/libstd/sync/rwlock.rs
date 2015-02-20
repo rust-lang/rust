@@ -64,8 +64,8 @@ pub struct RwLock<T> {
     data: UnsafeCell<T>,
 }
 
-unsafe impl<T:'static+Send> Send for RwLock<T> {}
-unsafe impl<T> Sync for RwLock<T> {}
+unsafe impl<T: Send + Sync> Send for RwLock<T> {}
+unsafe impl<T: Send + Sync> Sync for RwLock<T> {}
 
 /// Structure representing a statically allocated RwLock.
 ///

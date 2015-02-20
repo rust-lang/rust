@@ -64,7 +64,7 @@ pub enum Failure {
     Disconnected,
 }
 
-impl<T: Send + 'static> Packet<T> {
+impl<T: Send> Packet<T> {
     // Creation of a packet *must* be followed by a call to postinit_lock
     // and later by inherit_blocker
     pub fn new() -> Packet<T> {
@@ -474,7 +474,7 @@ impl<T: Send + 'static> Packet<T> {
 }
 
 #[unsafe_destructor]
-impl<T: Send + 'static> Drop for Packet<T> {
+impl<T: Send> Drop for Packet<T> {
     fn drop(&mut self) {
         // Note that this load is not only an assert for correctness about
         // disconnection, but also a proper fence before the read of

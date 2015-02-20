@@ -120,9 +120,9 @@ pub struct Mutex<T> {
     data: UnsafeCell<T>,
 }
 
-unsafe impl<T: Send + 'static> Send for Mutex<T> { }
+unsafe impl<T: Send> Send for Mutex<T> { }
 
-unsafe impl<T: Send + 'static> Sync for Mutex<T> { }
+unsafe impl<T: Send> Sync for Mutex<T> { }
 
 /// The static mutex type is provided to allow for static allocation of mutexes.
 ///
@@ -180,7 +180,7 @@ pub const MUTEX_INIT: StaticMutex = StaticMutex {
     poison: poison::FLAG_INIT,
 };
 
-impl<T: Send + 'static> Mutex<T> {
+impl<T: Send> Mutex<T> {
     /// Creates a new mutex in an unlocked state ready for use.
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn new(t: T) -> Mutex<T> {
@@ -243,7 +243,7 @@ impl<T: Send + 'static> Mutex<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send + 'static> Drop for Mutex<T> {
+impl<T: Send> Drop for Mutex<T> {
     fn drop(&mut self) {
         // This is actually safe b/c we know that there is no further usage of
         // this mutex (it's up to the user to arrange for a mutex to get
@@ -354,7 +354,7 @@ mod test {
 
     struct Packet<T>(Arc<(Mutex<T>, Condvar)>);
 
-    unsafe impl<T:'static+Send> Send for Packet<T> {}
+    unsafe impl<T: Send> Send for Packet<T> {}
     unsafe impl<T> Sync for Packet<T> {}
 
     #[test]
