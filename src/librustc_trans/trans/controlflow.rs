@@ -12,6 +12,7 @@ use llvm::ValueRef;
 use middle::def;
 use middle::lang_items::{PanicFnLangItem, PanicBoundsCheckFnLangItem};
 use trans::base::*;
+use trans::basic_block::BasicBlock;
 use trans::build::*;
 use trans::callee;
 use trans::cleanup::CleanupMethods;
@@ -279,6 +280,12 @@ pub fn trans_loop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     Br(body_bcx_out, body_bcx_in.llbb, DebugLoc::None);
 
     fcx.pop_loop_cleanup_scope(loop_expr.id);
+
+    // If there are no predecessors for the next block, we just translated an endless loop and the
+    // next block is unreachable
+    if BasicBlock(next_bcx_in.llbb).pred_iter().next().is_none() {
+        Unreachable(next_bcx_in);
+    }
 
     return next_bcx_in;
 }
