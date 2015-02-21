@@ -51,7 +51,7 @@ Version 1.0.0-alpha.2 (February 2015)
     * Abstract [OS-specific string types][osstr], `std::ff::{OsString,
       OsStr}`, provide strings in platform-specific encodings for easier
       interop with system APIs. [RFC][osstr-rfc].
-    * The `boxed::into_raw` and `Box::frow_raw` functions [convert
+    * The `boxed::into_raw` and `Box::from_raw` functions [convert
       between `Box<T>` and `*mut T`][boxraw], a common pattern for
       creating raw pointers.
 
