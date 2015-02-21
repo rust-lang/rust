@@ -84,7 +84,7 @@ inlining and hence usually higher performance. It also has some downsides:
 causing code bloat due to many copies of the same function existing in the
 binary, one for each type.
 
-Furthermore, compilers aren’t perfect and may “optimise” code to become slower.
+Furthermore, compilers aren’t perfect and may “optimize” code to become slower.
 For example, functions inlined too eagerly will bloat the instruction cache
 (cache rules everything around us). This is part of the reason that `#[inline]`
 and `#[inline(always)]` should be used carefully, and one reason why using a
@@ -104,7 +104,7 @@ objects, like `&Foo` or `Box<Foo>`, are normal values that store a value of
 known at runtime. The methods of the trait can be called on a trait object via
 a special record of function pointers (created and managed by the compiler).
 
-A function that takes a trait object is not specialised to each of the types
+A function that takes a trait object is not specialized to each of the types
 that implements `Foo`: only one copy is generated, often (but not always)
 resulting in less code bloat. However, this comes at the cost of requiring
 slower virtual function calls, and effectively inhibiting any chance of
@@ -112,7 +112,7 @@ inlining and related optimisations from occurring.
 
 Trait objects are both simple and complicated: their core representation and
 layout is quite straight-forward, but there are some curly error messages and
-surprising behaviours to discover.
+surprising behaviors to discover.
 
 ### Obtaining a trait object
 
@@ -140,13 +140,13 @@ and casts are identical.
 
 This operation can be seen as "erasing" the compiler's knowledge about the
 specific type of the pointer, and hence trait objects are sometimes referred to
-"type erasure".
+as "type erasure".
 
 ### Representation
 
 Let's start simple, with the runtime representation of a trait object. The
 `std::raw` module contains structs with layouts that are the same as the
-complicated build-in types, [including trait objects][stdraw]:
+complicated built-in types, [including trait objects][stdraw]:
 
 ```rust
 # mod foo {
@@ -223,14 +223,14 @@ static Foo_for_String_vtable: FooVtable = FooVtable {
 The `destructor` field in each vtable points to a function that will clean up
 any resources of the vtable's type, for `u8` it is trivial, but for `String` it
 will free the memory. This is necessary for owning trait objects like
-`Box<Foo>`, which need to clean-up both the `Box` allocation and as well as the
+`Box<Foo>`, which need to clean-up both the `Box` allocation as well as the
 internal type when they go out of scope. The `size` and `align` fields store
 the size of the erased type, and its alignment requirements; these are
 essentially unused at the moment since the information is embedded in the
-destructor, but will be used in future, as trait objects are progressively made
-more flexible.
+destructor, but will be used in the future, as trait objects are progressively
+made more flexible.
 
-Suppose we've got some values that implement `Foo`, the explicit form of
+Suppose we've got some values that implement `Foo`, then the explicit form of
 construction and use of `Foo` trait objects might look a bit like (ignoring the
 type mismatches: they're all just pointers anyway):
 
