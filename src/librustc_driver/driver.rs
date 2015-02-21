@@ -112,6 +112,7 @@ pub fn compile_input(sess: Session,
                                                                      &sess,
                                                                      outdir,
                                                                      &ast_map,
+                                                                     &ast_map.krate(),
                                                                      &id[..]));
 
         let analysis = phase_3_run_analysis_passes(sess,
@@ -287,11 +288,13 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
                               session: &'a Session,
                               out_dir: &'a Option<Path>,
                               ast_map: &'a ast_map::Map<'ast>,
+                              expanded_crate: &'a ast::Crate,
                               crate_name: &'a str)
                               -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             crate_name: Some(crate_name),
             ast_map: Some(ast_map),
+            expanded_crate: Some(expanded_crate),
             .. CompileState::empty(input, session, out_dir)
         }
     }
@@ -299,14 +302,14 @@ impl<'a, 'ast, 'tcx> CompileState<'a, 'ast, 'tcx> {
     fn state_after_analysis(input: &'a Input,
                             session: &'a Session,
                             out_dir: &'a Option<Path>,
-                            krate: &'a ast::Crate,
+                            expanded_crate: &'a ast::Crate,
                             analysis: &'a ty::CrateAnalysis<'tcx>,
                             tcx: &'a ty::ctxt<'tcx>)
                             -> CompileState<'a, 'ast, 'tcx> {
         CompileState {
             analysis: Some(analysis),
             tcx: Some(tcx),
-            krate: Some(krate),
+            expanded_crate: Some(expanded_crate),
             .. CompileState::empty(input, session, out_dir)
         }
     }
