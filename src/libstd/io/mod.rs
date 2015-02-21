@@ -681,6 +681,21 @@ impl<T: Read> Read for Take<T> {
     }
 }
 
+impl<T: BufRead> BufRead for Take<T> {
+    fn fill_buf(&mut self) -> Result<&[u8]> {
+        let buf = try!(self.inner.fill_buf());
+        let cap = cmp::min(buf.len() as u64, self.limit) as usize;
+        Ok(&buf[..cap])
+    }
+
+    fn consume(&mut self, amt: usize) {
+        // Don't let callers reset the limit by passing an overlarge value
+        let amt = cmp::min(amt as u64, self.limit) as usize;
+        self.limit -= amt as u64;
+        self.inner.consume(amt);
+    }
+}
+
 /// An adaptor which will emit all read data to a specified writer as well.
 ///
 /// For more information see `ReadExt::tee`
