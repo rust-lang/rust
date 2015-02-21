@@ -220,7 +220,7 @@ pub fn current_exe() -> IoResult<Path> {
         if v.is_null() {
             Err(IoError::last_error())
         } else {
-            Ok(Path::new(CStr::from_ptr(&v).to_bytes().to_vec()))
+            Ok(Path::new(CStr::from_ptr(v).to_bytes().to_vec()))
         }
     }
 }
