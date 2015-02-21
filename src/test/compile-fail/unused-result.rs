@@ -23,11 +23,28 @@ fn bar() -> isize { return foo::<isize>(); }
 fn baz() -> MustUse { return foo::<MustUse>(); }
 fn qux() -> MustUseMsg { return foo::<MustUseMsg>(); }
 
+#[must_use]
+fn func() -> bool { true }
+#[must_use = "some message"]
+fn func_msg() -> i32 { 1 }
+
+impl MustUse {
+    #[must_use]
+    fn method(&self) -> f64 { 0.0 }
+    #[must_use = "some message"]
+    fn method_msg(&self) -> &str { "foo" }
+}
+
 #[allow(unused_results)]
 fn test() {
     foo::<isize>();
     foo::<MustUse>(); //~ ERROR: unused result which must be used
     foo::<MustUseMsg>(); //~ ERROR: unused result which must be used: some message
+    func(); //~ ERROR: unused result which must be used
+    func_msg(); //~ ERROR: unused result which must be used: some message
+
+    MustUse::Test.method(); //~ ERROR: unused result which must be used
+    MustUse::Test.method_msg(); //~ ERROR: unused result which must be used: some message
 }
 
 #[allow(unused_results, unused_must_use)]
@@ -35,14 +52,26 @@ fn test2() {
     foo::<isize>();
     foo::<MustUse>();
     foo::<MustUseMsg>();
+    func();
+    func_msg();
+    MustUse::Test.method();
+    MustUse::Test.method_msg();
 }
 
 fn main() {
     foo::<isize>(); //~ ERROR: unused result
     foo::<MustUse>(); //~ ERROR: unused result which must be used
     foo::<MustUseMsg>(); //~ ERROR: unused result which must be used: some message
+    func(); //~ ERROR: unused result which must be used
+    func_msg(); //~ ERROR: unused result which must be used: some message
+    MustUse::Test.method(); //~ ERROR: unused result which must be used
+    MustUse::Test.method_msg(); //~ ERROR: unused result which must be used: some message
 
     let _ = foo::<isize>();
     let _ = foo::<MustUse>();
     let _ = foo::<MustUseMsg>();
+    let _ = func();
+    let _ = func_msg();
+    let _ = MustUse::Test.method();
+    let _ = MustUse::Test.method_msg();
 }

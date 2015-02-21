@@ -5619,15 +5619,37 @@ pub fn predicates<'tcx>(
     vec
 }
 
-/// Get the attributes of a definition.
-pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId)
-                       -> CowVec<'tcx, ast::Attribute> {
-    if is_local(did) {
-        let item = tcx.map.expect_item(did.node);
-        Cow::Borrowed(&item.attrs[])
+/// Get the attributes of a definition, returning `None` if `did`
+/// refers to nothing or something that cannot have attributes.
+pub fn get_attrs_opt<'tcx>(tcx: &'tcx ctxt, did: DefId)
+                       -> Option<CowVec<'tcx, ast::Attribute>> {
+    let attrs: CowVec<'tcx, ast::Attribute> = if is_local(did) {
+        match tcx.map.find(did.node) {
+            Some(ast_map::NodeItem(item)) => Cow::Borrowed(&item.attrs),
+            Some(ast_map::NodeForeignItem(item)) => Cow::Borrowed(&item.attrs),
+            Some(ast_map::NodeTraitItem(item)) => match *item {
+                ast::RequiredMethod(ref ty_meth) => Cow::Borrowed(&ty_meth.attrs),
+                ast::ProvidedMethod(ref meth) => Cow::Borrowed(&meth.attrs),
+                ast::TypeTraitItem(ref ty) => Cow::Borrowed(&ty.attrs),
+            },
+            Some(ast_map::NodeImplItem(item)) => match *item {
+                ast::MethodImplItem(ref meth) => Cow::Borrowed(&meth.attrs),
+                ast::TypeImplItem(ref ty) => Cow::Borrowed(&ty.attrs),
+            },
+            Some(ast_map::NodeVariant(variant)) => Cow::Borrowed(&variant.node.attrs),
+            _ => return None
+        }
     } else {
         Cow::Owned(csearch::get_item_attrs(&tcx.sess.cstore, did))
-    }
+    };
+    Some(attrs)
+}
+
+/// Get the attributes of a definition.
+pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId) -> CowVec<'tcx, ast::Attribute> {
+    get_attrs_opt(tcx, did).unwrap_or_else(|| {
+        tcx.sess.bug("get_attrs: DefId without attributes")
+    })
 }
 
 /// Determine whether an item is annotated with an attribute
