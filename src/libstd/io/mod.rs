@@ -15,7 +15,7 @@
 //! > module while the details of this module shake out.
 
 #![unstable(feature = "io",
-            reason = "this new I/O module is still under active deveopment and \
+            reason = "this new I/O module is still under active development and \
                       APIs are subject to tweaks fairly regularly")]
 
 use cmp;
