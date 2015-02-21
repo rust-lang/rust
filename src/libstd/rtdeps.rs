@@ -39,7 +39,9 @@ extern {}
 #[link(name = "pthread")]
 extern {}
 
-#[cfg(any(target_os = "dragonfly", target_os = "openbsd"))]
+#[cfg(any(target_os = "dragonfly",
+          target_os = "bitrig",
+          target_os = "openbsd"))]
 #[link(name = "pthread")]
 extern {}
 

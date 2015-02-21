@@ -42,6 +42,18 @@ mod m {
     }
 }
 
+#[cfg(target_os = "bitrig")]
+mod m {
+    #[main]
+    #[cfg(target_arch = "x86_64")]
+    pub fn main() {
+        unsafe {
+            assert_eq!(::rusti::pref_align_of::<u64>(), 8u);
+            assert_eq!(::rusti::min_align_of::<u64>(), 8u);
+        }
+    }
+}
+
 #[cfg(target_os = "windows")]
 mod m {
     #[main]

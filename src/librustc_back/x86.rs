@@ -45,13 +45,7 @@ pub fn get_target_strs(target_triple: String, target_os: abi::Os)
             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
           }
 
-          abi::OsFreebsd => {
-            "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
-          }
-          abi::OsDragonfly => {
-            "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
-          }
-          abi::OsOpenbsd => {
+          abi::OsFreebsd | abi::OsDragonfly | abi::OsBitrig | abi::OsOpenbsd => {
             "e-p:32:32-f64:32:64-i64:32:64-f80:32:32-n8:16:32".to_string()
           }
 

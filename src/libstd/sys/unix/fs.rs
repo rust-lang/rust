@@ -291,6 +291,33 @@ fn mkstat(stat: &libc::stat) -> FileStat {
     // FileStat times are in milliseconds
     fn mktime(secs: u64, nsecs: u64) -> u64 { secs * 1000 + nsecs / 1000000 }
 
+    #[cfg(target_os = "bitrig")]
+    fn ctime(stat: &libc::stat) -> u64 {
+      mktime(stat.st_ctim.tv_sec as u64, stat.st_ctim.tv_nsec as u64)
+    }
+    #[cfg(not(target_os = "bitrig"))]
+    fn ctime(stat: &libc::stat) -> u64 {
+      mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64)
+    }
+
+    #[cfg(target_os = "bitrig")]
+    fn atime(stat: &libc::stat) -> u64 {
+      mktime(stat.st_atim.tv_sec as u64, stat.st_atim.tv_nsec as u64)
+    }
+    #[cfg(not(target_os = "bitrig"))]
+    fn atime(stat: &libc::stat) -> u64 {
+      mktime(stat.st_atime as u64, stat.st_atime_nsec as u64)
+    }
+
+    #[cfg(target_os = "bitrig")]
+    fn mtime(stat: &libc::stat) -> u64 {
+      mktime(stat.st_mtim.tv_sec as u64, stat.st_mtim.tv_nsec as u64)
+    }
+    #[cfg(not(target_os = "bitrig"))]
+    fn mtime(stat: &libc::stat) -> u64 {
+      mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64)
+    }
+
     #[cfg(not(any(target_os = "linux", target_os = "android")))]
     fn flags(stat: &libc::stat) -> u64 { stat.st_flags as u64 }
     #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -312,9 +339,9 @@ fn mkstat(stat: &libc::stat) -> FileStat {
             _ => old_io::FileType::Unknown,
         },
         perm: FilePermission::from_bits_truncate(stat.st_mode as u32),
-        created: mktime(stat.st_ctime as u64, stat.st_ctime_nsec as u64),
-        modified: mktime(stat.st_mtime as u64, stat.st_mtime_nsec as u64),
-        accessed: mktime(stat.st_atime as u64, stat.st_atime_nsec as u64),
+        created: ctime(stat),
+        modified: mtime(stat),
+        accessed: atime(stat),
         unstable: UnstableFileStat {
             device: stat.st_dev as u64,
             inode: stat.st_ino as u64,

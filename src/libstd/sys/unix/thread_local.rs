@@ -43,6 +43,7 @@ type pthread_key_t = ::libc::c_ulong;
 
 #[cfg(any(target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 type pthread_key_t = ::libc::c_int;
 
@@ -50,6 +51,7 @@ type pthread_key_t = ::libc::c_int;
               target_os = "ios",
               target_os = "freebsd",
               target_os = "dragonfly",
+              target_os = "bitrig",
               target_os = "openbsd")))]
 type pthread_key_t = ::libc::c_uint;
 

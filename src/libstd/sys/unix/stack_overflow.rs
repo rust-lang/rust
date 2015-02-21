@@ -34,6 +34,7 @@ impl Drop for Handler {
 
 #[cfg(any(target_os = "linux",
           target_os = "macos",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 mod imp {
     use core::prelude::*;
@@ -205,7 +206,9 @@ mod imp {
 
     }
 
-    #[cfg(any(target_os = "macos", target_os = "openbsd"))]
+    #[cfg(any(target_os = "macos",
+              target_os = "bitrig",
+              target_os = "openbsd"))]
     mod signal {
         use libc;
         use super::sighandler_t;
@@ -216,7 +219,7 @@ mod imp {
 
         #[cfg(target_os = "macos")]
         pub const SIGSTKSZ: libc::size_t = 131072;
-        #[cfg(target_os = "openbsd")]
+        #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
         pub const SIGSTKSZ: libc::size_t = 40960;
 
         pub const SIG_DFL: sighandler_t = 0 as sighandler_t;
@@ -237,14 +240,14 @@ mod imp {
             pub si_addr: *mut libc::c_void
         }
 
-        #[cfg(target_os = "openbsd")]
+        #[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
         #[repr(C)]
         pub struct siginfo {
             pub si_signo: libc::c_int,
             pub si_code: libc::c_int,
             pub si_errno: libc::c_int,
-            // union
-            pub si_addr: *mut libc::c_void,
+            //union
+            pub si_addr: *mut libc::c_void
         }
 
         #[repr(C)]
@@ -277,6 +280,7 @@ mod imp {
 
 #[cfg(not(any(target_os = "linux",
               target_os = "macos",
+              target_os = "bitrig",
               target_os = "openbsd")))]
 mod imp {
     use libc;

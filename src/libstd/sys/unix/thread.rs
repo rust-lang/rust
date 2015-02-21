@@ -34,6 +34,7 @@ pub extern fn thread_start(main: *mut libc::c_void) -> rust_thread_return {
 
 #[cfg(all(not(target_os = "linux"),
           not(target_os = "macos"),
+          not(target_os = "bitrig"),
           not(target_os = "openbsd")))]
 pub mod guard {
     pub unsafe fn current() -> uint {
@@ -51,11 +52,13 @@ pub mod guard {
 
 #[cfg(any(target_os = "linux",
           target_os = "macos",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 pub mod guard {
     use super::*;
     #[cfg(any(target_os = "linux",
               target_os = "android",
+              target_os = "bitrig",
               target_os = "openbsd"))]
     use mem;
     #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -72,7 +75,9 @@ pub mod guard {
     static mut PAGE_SIZE: uint = 0;
     static mut GUARD_PAGE: uint = 0;
 
-    #[cfg(any(target_os = "macos", target_os = "openbsd"))]
+    #[cfg(any(target_os = "macos",
+              target_os = "bitrig",
+              target_os = "openbsd"))]
     unsafe fn get_stack_start() -> *mut libc::c_void {
         current() as *mut libc::c_void
     }
@@ -190,6 +195,22 @@ pub mod guard {
 
         stackaddr as uint + guardsize as uint
     }
+
+    #[cfg(target_os = "bitrig")]
+    pub unsafe fn current() -> uint {
+      let mut current_stack: stack_t = mem::zeroed();
+      if pthread_stackseg_np(pthread_self(), &mut current_stack) != 0 {
+        panic!("failed to get current stack: pthread_stackseg_np")
+      }
+
+      if pthread_main_np() == 1 {
+        // main thread
+        current_stack.ss_sp as uint - current_stack.ss_size as uint + 3 * PAGE_SIZE as uint
+      } else {
+        // new thread
+        current_stack.ss_sp as uint - current_stack.ss_size as uint
+      }
+    }
 }
 
 pub unsafe fn create(stack: uint, p: Thunk) -> io::Result<rust_thread> {
@@ -252,6 +273,7 @@ pub unsafe fn set_name(name: &str) {
 
 #[cfg(any(target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 pub unsafe fn set_name(name: &str) {
     // pthread_set_name_np() since almost forever on all BSDs
@@ -334,6 +356,15 @@ extern {
     fn pthread_setname_np(name: *const libc::c_char) -> libc::c_int;
 }
 
+#[cfg(target_os = "bitrig")]
+extern {
+    pub fn pthread_self() -> libc::pthread_t;
+    pub fn pthread_stackseg_np(thread: libc::pthread_t,
+                              sinfo: *mut stack_t) -> libc::c_uint;
+    pub fn pthread_main_np() -> libc::c_uint;
+    fn pthread_set_name_np(tid: libc::pthread_t, name: *const libc::c_char);
+}
+
 #[cfg(target_os = "openbsd")]
 extern {
         pub fn pthread_stackseg_np(thread: libc::pthread_t,
@@ -341,7 +372,7 @@ extern {
         pub fn pthread_main_np() -> libc::c_uint;
 }
 
-#[cfg(target_os = "openbsd")]
+#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
 #[repr(C)]
 pub struct stack_t {
     pub ss_sp: *mut libc::c_void,

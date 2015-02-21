@@ -374,8 +374,12 @@ case $CFG_OSTYPE in
         CFG_OSTYPE=unknown-dragonfly
         ;;
 
+    Bitrig)
+        CFG_OSTYPE=unknown-bitrig
+        ;;
+
     OpenBSD)
-	CFG_OSTYPE=unknown-openbsd
+        CFG_OSTYPE=unknown-openbsd
        ;;
 
     Darwin)
@@ -744,6 +748,13 @@ fi
 if [ $CFG_OSTYPE = unknown-freebsd ]
 then
     step_msg "on FreeBSD, forcing use of clang"
+    CFG_ENABLE_CLANG=1
+fi
+
+# Force bitrig to build with clang; gcc doesn't like us there
+if [ $CFG_OSTYPE = unknown-bitrig ]
+then
+    step_msg "on Bitrig, forcing use of clang"
     CFG_ENABLE_CLANG=1
 fi
 

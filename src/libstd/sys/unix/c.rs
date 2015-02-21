@@ -24,6 +24,7 @@ use libc;
           target_os = "ios",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 pub const FIONBIO: libc::c_ulong = 0x8004667e;
 #[cfg(any(all(target_os = "linux",
@@ -43,6 +44,7 @@ pub const FIONBIO: libc::c_ulong = 0x667e;
           target_os = "ios",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 pub const FIOCLEX: libc::c_ulong = 0x20006601;
 #[cfg(any(all(target_os = "linux",
@@ -62,6 +64,7 @@ pub const FIOCLEX: libc::c_ulong = 0x6601;
           target_os = "ios",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 pub const MSG_DONTWAIT: libc::c_int = 0x80;
 #[cfg(any(target_os = "linux", target_os = "android"))]
@@ -75,7 +78,8 @@ pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 70;
           target_os = "freebsd",
           target_os = "dragonfly"))]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 71;
-#[cfg(target_os = "openbsd")]
+#[cfg(any(target_os = "bitrig",
+          target_os = "openbsd"))]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 101;
 #[cfg(target_os = "android")]
 pub const _SC_GETPW_R_SIZE_MAX: libc::c_int = 0x0048;
@@ -96,6 +100,7 @@ pub struct passwd {
 #[cfg(any(target_os = "macos",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 pub struct passwd {
     pub pw_name: *mut libc::c_char,
@@ -177,6 +182,7 @@ mod select {
 #[cfg(any(target_os = "android",
           target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd",
           target_os = "linux"))]
 mod select {
@@ -302,8 +308,7 @@ mod signal {
 #[cfg(any(target_os = "macos",
           target_os = "ios",
           target_os = "freebsd",
-          target_os = "dragonfly",
-          target_os = "openbsd"))]
+          target_os = "dragonfly"))]
 mod signal {
     use libc;
 
@@ -317,8 +322,7 @@ mod signal {
     pub const SIGCHLD: libc::c_int = 20;
 
     #[cfg(any(target_os = "macos",
-              target_os = "ios",
-              target_os = "openbsd"))]
+              target_os = "ios"))]
     pub type sigset_t = u32;
     #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
     #[repr(C)]
@@ -343,5 +347,43 @@ mod signal {
         pub sa_handler: extern fn(libc::c_int),
         pub sa_flags: libc::c_int,
         pub sa_mask: sigset_t,
+    }
+}
+
+#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
+mod signal {
+    use libc;
+
+    pub const SA_ONSTACK: libc::c_int = 0x0001;
+    pub const SA_RESTART: libc::c_int = 0x0002;
+    pub const SA_RESETHAND: libc::c_int = 0x0004;
+    pub const SA_NOCLDSTOP: libc::c_int = 0x0008;
+    pub const SA_NODEFER: libc::c_int = 0x0010;
+    pub const SA_NOCLDWAIT: libc::c_int = 0x0020;
+    pub const SA_SIGINFO: libc::c_int = 0x0040;
+    pub const SIGCHLD: libc::c_int = 20;
+
+    pub type sigset_t = libc::c_uint;
+
+    // This structure has more fields, but we're not all that interested in
+    // them.
+    #[repr(C)]
+    pub struct siginfo {
+        pub si_signo: libc::c_int,
+        pub si_code: libc::c_int,
+        pub si_errno: libc::c_int,
+        // FIXME: Bitrig has a crazy union here in the siginfo, I think this
+        // layout will still work tho.  The status might be off by the size of
+        // a clock_t by my reading, but we can fix this later.
+        pub pid: libc::pid_t,
+        pub uid: libc::uid_t,
+        pub status: libc::c_int,
+    }
+
+    #[repr(C)]
+    pub struct sigaction {
+        pub sa_handler: extern fn(libc::c_int),
+        pub sa_mask: sigset_t,
+        pub sa_flags: libc::c_int,
     }
 }

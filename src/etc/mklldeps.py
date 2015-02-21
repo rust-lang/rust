@@ -57,7 +57,16 @@ else:
 args.extend(components)
 out = run(args)
 for lib in out.strip().replace("\n", ' ').split(' '):
-    lib = lib.strip()[2:] # chop of the leading '-l'
+    if len(lib) == 0:
+        continue
+    # in some cases we get extra spaces in between libs so ignore those
+    if len(lib) == 1 and lib == ' ':
+        continue
+    # not all libs strictly follow -lfoo, on Bitrig, there is -pthread
+    if lib[0:2] == '-l':
+        lib = lib.strip()[2:]
+    elif lib[0] == '-':
+        lib = lib.strip()[1:]
     f.write("#[link(name = \"" + lib + "\"")
     # LLVM libraries are all static libraries
     if 'LLVM' in lib:
