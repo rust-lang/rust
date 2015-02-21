@@ -456,12 +456,6 @@ mod tests {
         }
     }
 
-    pub fn socket_name(addr: SocketAddr) {
-    }
-
-    pub fn peer_name(addr: SocketAddr) {
-    }
-
     #[test]
     fn socket_and_peer_name_ip4() {
         each_ip(&mut |addr| {
