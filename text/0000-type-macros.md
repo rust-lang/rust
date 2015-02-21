@@ -268,10 +268,9 @@ string is then parsed as a type, returning an ast fragment.
 //     nat_str(1024)
 //         ==> (((((((((_1, _0), _0), _0), _0), _0), _0), _0), _0), _0)
 fn nat_str(mut num: u64) -> String {
-    let path = "bit::_";
-    let mut res = String::from_str(path);
+    let mut res: String;
     if num < 2 {
-        res.push_str(num.to_string().as_slice());
+        res = num.to_string();
     } else {
         let mut bin = vec![];
         while num > 0 {
@@ -279,11 +278,9 @@ fn nat_str(mut num: u64) -> String {
             num >>= 1;
         }
         res = ::std::iter::repeat('(').take(bin.len() - 1).collect();
-        res.push_str(path);
         res.push_str(bin.pop().unwrap().to_string().as_slice());
         for b in bin.iter().rev() {
             res.push_str(", ");
-            res.push_str(path);
             res.push_str(b.to_string().as_slice());
             res.push_str(")");
         }
@@ -567,8 +564,16 @@ type macros would not prevent additional extensions.
 
 # Unresolved questions
 
+## Alternative syntax for macro invocations in types
+
 There is a question as to whether macros in types should allow `<` and
 `>` as delimiters for invocations, e.g. `Foo!<A>`. However, this would
 raise a number of additional complications and is not necessary to
 consider for this RFC. If deemed desirable by the community, this
 functionality can be proposed separately.
+
+## Hygiene and type macros
+
+This RFC does not address the topic of hygiene regarding macros in
+types. It is not clear to me whether there are issues here or not but
+it may be worth considering in further detail.
