@@ -20,4 +20,16 @@ fn f() {
 
 pub fn main() {
     let _t = thread::spawn(f);
+
+    #[cfg(windows)]
+    {
+        // Quick fix for an intermittent failure
+        // We don't want to exit the test till we know that the
+        // child has finished unwinding, because Windows blocks the
+        // test libraries till the thread exits
+        // FIXME #22628
+        use std::old_io::timer::sleep;
+        use std::time::duration::Duration;
+        sleep(Duration::seconds(20));
+    }
 }
