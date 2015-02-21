@@ -60,6 +60,8 @@
 //! ```
 
 #![unstable(feature = "old_path")]
+#![allow(deprecated)] // seriously this is all deprecated
+#![allow(unused_imports)]
 
 use core::marker::Sized;
 use ffi::CString;

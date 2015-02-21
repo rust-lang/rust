@@ -702,7 +702,7 @@ mod test {
     use boxed::BoxAny;
     use result;
     use std::old_io::{ChanReader, ChanWriter};
-    use super::{Thread, Builder};
+    use super::{Builder};
     use thread;
     use thunk::Thunk;
     use time::Duration;
@@ -767,7 +767,7 @@ mod test {
     #[test]
     #[should_fail]
     fn test_scoped_implicit_panic() {
-        thread::scoped(|| panic!());
+        let _ = thread::scoped(|| panic!());
     }
 
     #[test]
