@@ -100,29 +100,39 @@ more details here. If you need a refresher, go re-read that section.
 
 ## Generating a secret number
 
-Next, we need to generate a secret number. To do that, we need to use Rust's
-random number generation, which we haven't talked about yet. Rust includes a
-bunch of interesting functions in its standard library. If you need a bit of
-code, it's possible that it's already been written for you! In this case,
-we do know that Rust has random number generation, but we don't know how to
-use it.
+Next, we need to generate a random secret number. The functionality we want
+is in the `rand` crate from [crates.io](https://crates.io/crates/rand).
+Cargo has a built-in ability to get crates from crates.io.  You just
+need to tell it which crates you want in your `Cargo.toml` file. You
+do this by adding a `[dependencies]` section at the bottom of
+`Cargo.toml` like so:
 
-Enter the docs. Rust has a page specifically to document the standard library.
-You can find that page [here](../std/index.html). There's a lot of information on
-that page, but the best part is the search bar. Right up at the top, there's
-a box that you can enter in a search term. The search is pretty primitive
-right now, but is getting better all the time. If you type "random" in that
-box, the page will update to [this one](../std/index.html?search=random). The very
-first result is a link to [`std::rand::random`](../std/rand/fn.random.html). If we
-click on that result, we'll be taken to its documentation page.
+```toml
+[dependencies]
+rand = "*"
+```
+
+We can run `cargo build` again and watch Cargo do its magic.
+
+```bash
+
+$ cargo build
+    Updating registry `https://github.com/rust-lang/crates.io-index`
+   Compiling log v0.2.4
+   Compiling libc v0.1.2
+   Compiling rand v0.1.3
+   Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
+```
+
+The documentation for the `rand` crate is available [here](../rand/rand/index.html).
 
 This page shows us a few things: the type signature of the function, some
 explanatory text, and then an example. Let's try to modify our code to add in the
 `random` function and see what happens:
 
 ```{rust,ignore}
+extern crate rand;
 use std::old_io;
-use std::rand;
 
 fn main() {
     println!("Guess the number!");
@@ -142,9 +152,10 @@ fn main() {
 }
 ```
 
-The first thing we changed was to `use std::rand`, as the docs
-explained.  We then added in a `let` expression to create a variable binding
-named `secret_number`, and we printed out its result.
+The first thing we changed was to tell rust that we were using an
+external crate with `extern crate rand`.  We then added in a `let`
+expression to create a variable binding named `secret_number`, and we
+printed out its result.
 
 Also, you may wonder why we are using `%` on the result of `rand::random()`.
 This operator is called *modulo*, and it returns the remainder of a division.
@@ -158,19 +169,16 @@ Let's try to compile this using `cargo build`:
 ```bash
 $ cargo build
    Compiling guessing_game v0.0.1 (file:///home/you/projects/guessing_game)
-src/main.rs:7:26: 7:34 error: the type of this value must be known in this context
-src/main.rs:7     let secret_number = (rand::random() % 100) + 1;
-                                       ^~~~~~~~
-error: aborting due to previous error
 ```
 
-It didn't work! Rust says "the type of this value must be known in this
-context." What's up with that? Well, as it turns out, `rand::random()` can
-generate many kinds of random values, not just integers. And in this case, Rust
-isn't sure what kind of value `random()` should generate. So we have to help
-it. With number literals, we can just add an `i32` onto the end to tell Rust they're
-integers, but that does not work with functions. There's a different syntax,
-and it looks like this:
+It compiles. However, as it turns out, `rand::random()` can generate
+many kinds of random values. In this case, it can infer that we want
+some sort of integer, but without a deep understanding of the crate
+and Rust internals, we don't really know what kind of integer it will
+give us, so why not add a type annotation? With number literals, we
+can just add an `i32` onto the end to tell Rust they're integers, but
+that does not work with functions. There's a different syntax, and it
+looks like this:
 
 ```{rust,ignore}
 rand::random::<i32>();
@@ -180,8 +188,8 @@ This says "please give me a random `i32` value." We can change our code to use
 this hint:
 
 ```{rust,no_run}
+extern crate rand;
 use std::old_io;
-use std::rand;
 
 fn main() {
     println!("Guess the number!");
@@ -233,8 +241,8 @@ unsigned integer approach. If we want a random positive number, we should ask fo
 a random positive number. Our code looks like this now:
 
 ```{rust,no_run}
+extern crate rand;
 use std::old_io;
-use std::rand;
 
 fn main() {
     println!("Guess the number!");
@@ -276,8 +284,8 @@ two numbers. Let's add that in, along with a `match` statement to compare our
 guess to the secret number:
 
 ```{rust,ignore}
+extern crate rand;
 use std::old_io;
-use std::rand;
 use std::cmp::Ordering;
 
 fn main() {
@@ -331,8 +339,8 @@ but we've given it unsigned integers. In this case, the fix is easy, because
 we wrote the `cmp` function! Let's change it to take `u32`s:
 
 ```{rust,ignore}
+extern crate rand;
 use std::old_io;
-use std::rand;
 use std::cmp::Ordering;
 
 fn main() {
@@ -431,8 +439,8 @@ the `ok` method as well.  Anyway, with us now converting our input to a number,
 our code looks like this:
 
 ```{rust,ignore}
+extern crate rand;
 use std::old_io;
-use std::rand;
 use std::cmp::Ordering;
 
 fn main() {
@@ -481,8 +489,8 @@ need to unwrap the Option. If you remember from before, `match` is a great way
 to do that. Try this code:
 
 ```{rust,no_run}
+extern crate rand;
 use std::old_io;
-use std::rand;
 use std::cmp::Ordering;
 
 fn main() {
@@ -548,8 +556,8 @@ method we can use defined on them: `trim()`. One small modification, and our
 code looks like this:
 
 ```{rust,no_run}
+extern crate rand;
 use std::old_io;
-use std::rand;
 use std::cmp::Ordering;
 
 fn main() {
@@ -698,7 +706,7 @@ Ha! `quit` actually quits. As does any other non-number input. Well, this is
 suboptimal to say the least. First, let's actually quit when you win the game:
 
 ```{rust,no_run}
-use std::old_io;
+extern crate rand;
 use std::rand;
 use std::cmp::Ordering;
 
@@ -754,8 +762,8 @@ we don't want to quit, we just want to ignore it. Change that `return` to
 
 
 ```{rust,no_run}
+extern crate rand;
 use std::old_io;
-use std::rand;
 use std::cmp::Ordering;
 
 fn main() {
@@ -833,8 +841,8 @@ think of what it is? That's right, we don't want to print out the secret number.
 It was good for testing, but it kind of ruins the game. Here's our final source:
 
 ```{rust,no_run}
+extern crate rand;
 use std::old_io;
-use std::rand;
 use std::cmp::Ordering;
 
 fn main() {
