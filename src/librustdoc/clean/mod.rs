@@ -2169,7 +2169,7 @@ impl Clean<Vec<Item>> for doctree::Import {
         // forcefully don't inline if this is not public or if the
         // #[doc(no_inline)] attribute is present.
         let denied = self.vis != ast::Public || self.attrs.iter().any(|a| {
-            &a.name()[] == "doc" && match a.meta_item_list() {
+            &a.name()[..] == "doc" && match a.meta_item_list() {
                 Some(l) => attr::contains_name(l, "no_inline"),
                 None => false,
             }

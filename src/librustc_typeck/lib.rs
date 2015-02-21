@@ -253,7 +253,7 @@ fn check_main_fn_ty(ccx: &CrateCtxt,
                               &format!("main has a non-function type: found \
                                        `{}`",
                                       ppaux::ty_to_string(tcx,
-                                                       main_t))[]);
+                                                       main_t)));
         }
     }
 }
@@ -304,7 +304,7 @@ fn check_start_fn_ty(ccx: &CrateCtxt,
             tcx.sess.span_bug(start_span,
                               &format!("start has a non-function type: found \
                                        `{}`",
-                                      ppaux::ty_to_string(tcx, start_t))[]);
+                                      ppaux::ty_to_string(tcx, start_t)));
         }
     }
 }

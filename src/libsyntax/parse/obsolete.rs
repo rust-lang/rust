@@ -106,16 +106,16 @@ impl<'a> ParserObsoleteMethods for parser::Parser<'a> {
               desc: &str,
               error: bool) {
         if error {
-            self.span_err(sp, &format!("obsolete syntax: {}", kind_str)[]);
+            self.span_err(sp, &format!("obsolete syntax: {}", kind_str));
         } else {
-            self.span_warn(sp, &format!("obsolete syntax: {}", kind_str)[]);
+            self.span_warn(sp, &format!("obsolete syntax: {}", kind_str));
         }
 
         if !self.obsolete_set.contains(&kind) {
             self.sess
                 .span_diagnostic
                 .handler()
-                .note(&format!("{}", desc)[]);
+                .note(&format!("{}", desc));
             self.obsolete_set.insert(kind);
         }
     }

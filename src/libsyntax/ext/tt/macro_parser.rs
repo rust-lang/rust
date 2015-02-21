@@ -153,7 +153,7 @@ pub fn count_names(ms: &[TokenTree]) -> usize {
                 seq.num_captures
             }
             &TtDelimited(_, ref delim) => {
-                count_names(&delim.tts[])
+                count_names(&delim.tts)
             }
             &TtToken(_, MatchNt(..)) => {
                 1

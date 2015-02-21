@@ -652,47 +652,47 @@ impl BytesContainer for InternedString {
 
 impl fmt::Debug for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Debug::fmt(&self.string[], f)
+        fmt::Debug::fmt(&self.string, f)
     }
 }
 
 impl fmt::Display for InternedString {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
-        fmt::Display::fmt(&self.string[], f)
+        fmt::Display::fmt(&self.string, f)
     }
 }
 
 impl<'a> PartialEq<&'a str> for InternedString {
     #[inline(always)]
     fn eq(&self, other: & &'a str) -> bool {
-        PartialEq::eq(&self.string[], *other)
+        PartialEq::eq(&self.string[..], *other)
     }
     #[inline(always)]
     fn ne(&self, other: & &'a str) -> bool {
-        PartialEq::ne(&self.string[], *other)
+        PartialEq::ne(&self.string[..], *other)
     }
 }
 
 impl<'a> PartialEq<InternedString > for &'a str {
     #[inline(always)]
     fn eq(&self, other: &InternedString) -> bool {
-        PartialEq::eq(*self, &other.string[])
+        PartialEq::eq(*self, &other.string[..])
     }
     #[inline(always)]
     fn ne(&self, other: &InternedString) -> bool {
-        PartialEq::ne(*self, &other.string[])
+        PartialEq::ne(*self, &other.string[..])
     }
 }
 
 impl Decodable for InternedString {
     fn decode<D: Decoder>(d: &mut D) -> Result<InternedString, D::Error> {
-        Ok(get_name(get_ident_interner().intern(&try!(d.read_str())[])))
+        Ok(get_name(get_ident_interner().intern(&try!(d.read_str())[..])))
     }
 }
 
 impl Encodable for InternedString {
     fn encode<S: Encoder>(&self, s: &mut S) -> Result<(), S::Error> {
-        s.emit_str(&self.string[])
+        s.emit_str(&self.string)
     }
 }
 

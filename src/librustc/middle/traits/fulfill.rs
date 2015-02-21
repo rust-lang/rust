@@ -227,7 +227,7 @@ impl<'tcx> FulfillmentContext<'tcx> {
     }
 
     pub fn pending_obligations(&self) -> &[PredicateObligation<'tcx>] {
-        &self.predicates[]
+        &self.predicates
     }
 
     /// Attempts to select obligations using `selcx`. If `only_new_obligations` is true, then it

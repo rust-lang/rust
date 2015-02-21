@@ -220,14 +220,14 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.resolve_error(sp,
                         &format!("duplicate definition of {} `{}`",
                              namespace_error_to_string(duplicate_type),
-                             token::get_name(name))[]);
+                             token::get_name(name)));
                     {
                         let r = child.span_for_namespace(ns);
                         if let Some(sp) = r {
                             self.session.span_note(sp,
                                  &format!("first definition of {} `{}` here",
                                       namespace_error_to_string(duplicate_type),
-                                      token::get_name(name))[]);
+                                      token::get_name(name)));
                         }
                     }
                 }
@@ -307,8 +307,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     ViewPathSimple(binding, ref full_path) => {
                         let source_name =
                             full_path.segments.last().unwrap().identifier.name;
-                        if &token::get_name(source_name)[] == "mod" ||
-                           &token::get_name(source_name)[] == "self" {
+                        if &token::get_name(source_name)[..] == "mod" ||
+                           &token::get_name(source_name)[..] == "self" {
                             self.resolve_error(view_path.span,
                                 "`self` imports are only allowed within a { } list");
                         }
@@ -1192,7 +1192,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 debug!("(building import directive) building import \
                         directive: {}::{}",
                        self.names_to_string(&module_.imports.borrow().last().unwrap().
-                                                             module_path[]),
+                                                             module_path),
                        token::get_name(target));
 
                 let mut import_resolutions = module_.import_resolutions

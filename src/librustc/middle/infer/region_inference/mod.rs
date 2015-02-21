@@ -473,7 +473,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 origin.span(),
                 &format!("cannot relate bound region: {} <= {}",
                         sub.repr(self.tcx),
-                        sup.repr(self.tcx))[]);
+                        sup.repr(self.tcx)));
           }
           (_, ReStatic) => {
             // all regions are subregions of static, so we can ignore this
@@ -733,7 +733,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             self.tcx.sess.bug(
                 &format!("cannot relate bound region: LUB({}, {})",
                         a.repr(self.tcx),
-                        b.repr(self.tcx))[]);
+                        b.repr(self.tcx)));
           }
 
           (ReStatic, _) | (_, ReStatic) => {
@@ -750,7 +750,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                 &format!("lub_concrete_regions invoked with \
                          non-concrete regions: {:?}, {:?}",
                         a,
-                        b)[]);
+                        b));
           }
 
           (ReFree(ref fr), ReScope(s_id)) |
@@ -834,7 +834,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
               self.tcx.sess.bug(
                   &format!("cannot relate bound region: GLB({}, {})",
                           a.repr(self.tcx),
-                          b.repr(self.tcx))[]);
+                          b.repr(self.tcx)));
             }
 
             (ReStatic, r) | (r, ReStatic) => {
@@ -854,7 +854,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     &format!("glb_concrete_regions invoked with \
                              non-concrete regions: {:?}, {:?}",
                             a,
-                            b)[]);
+                            b));
             }
 
             (ReFree(ref fr), ReScope(s_id)) |
@@ -1417,7 +1417,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
                     for var {:?}, lower_bounds={}, upper_bounds={}",
                     node_idx,
                     lower_bounds.repr(self.tcx),
-                    upper_bounds.repr(self.tcx))[]);
+                    upper_bounds.repr(self.tcx)));
     }
 
     fn collect_error_for_contracting_node(
@@ -1461,7 +1461,7 @@ impl<'a, 'tcx> RegionVarBindings<'a, 'tcx> {
             &format!("collect_error_for_contracting_node() could not find error \
                      for var {:?}, upper_bounds={}",
                     node_idx,
-                    upper_bounds.repr(self.tcx))[]);
+                    upper_bounds.repr(self.tcx)));
     }
 
     fn collect_concrete_regions(&self,
