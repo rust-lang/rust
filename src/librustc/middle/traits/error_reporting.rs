@@ -422,5 +422,5 @@ pub fn suggest_new_overflow_limit(tcx: &ty::ctxt, span: Span) {
         span,
         &format!(
             "consider adding a `#![recursion_limit=\"{}\"]` attribute to your crate",
-            suggested_limit)[]);
+            suggested_limit));
 }

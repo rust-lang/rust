@@ -393,7 +393,7 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
         self.tcx().sess.span_err(
             span,
             &format!("parameter `{}` is never used",
-                     param_name.user_string(self.tcx()))[]);
+                     param_name.user_string(self.tcx())));
 
         match suggested_marker_id {
             Some(def_id) => {

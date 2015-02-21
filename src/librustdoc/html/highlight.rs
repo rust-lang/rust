@@ -142,7 +142,7 @@ fn doit(sess: &parse::ParseSess, mut lexer: lexer::StringReader,
 
             // keywords are also included in the identifier set
             token::Ident(ident, _is_mod_sep) => {
-                match &token::get_ident(ident)[] {
+                match &token::get_ident(ident)[..] {
                     "ref" | "mut" => "kw-2",
 
                     "self" => "self",

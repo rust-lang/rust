@@ -71,7 +71,7 @@ pub fn report_error<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if is_field {
                 cx.sess.span_note(span,
                     &format!("use `(s.{0})(...)` if you meant to call the \
-                            function stored in the `{0}` field", method_ustring)[]);
+                            function stored in the `{0}` field", method_ustring));
             }
 
             if static_sources.len() > 0 {

@@ -113,7 +113,7 @@ pub fn expand_asm<'cx>(cx: &'cx mut ExtCtxt, sp: Span, tts: &[ast::TokenTree])
                         Some(('=', _)) => None,
                         Some(('+', operand)) => {
                             Some(token::intern_and_get_ident(&format!(
-                                        "={}", operand)[]))
+                                        "={}", operand)))
                         }
                         _ => {
                             cx.span_err(span, "output operand constraint lacks '=' or '+'");

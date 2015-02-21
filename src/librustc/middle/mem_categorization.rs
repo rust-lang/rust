@@ -624,7 +624,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                           span,
                           &format!("Upvar of non-closure {} - {}",
                                   fn_node_id,
-                                  ty.repr(self.tcx()))[]);
+                                  ty.repr(self.tcx())));
                   }
               }
           }

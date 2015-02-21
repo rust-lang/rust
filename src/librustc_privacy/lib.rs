@@ -712,7 +712,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                                              method_id,
                                              None,
                                              &format!("method `{}`",
-                                                     string)[]));
+                                                     string)));
     }
 
     // Checks that a path is in scope.
@@ -727,7 +727,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                 self.ensure_public(span,
                                    def,
                                    Some(origdid),
-                                   &format!("{} `{}`", tyname, name)[])
+                                   &format!("{} `{}`", tyname, name))
             };
 
             match self.last_private_map[path_id] {

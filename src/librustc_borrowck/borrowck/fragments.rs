@@ -123,12 +123,12 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
         let attrs : &[ast::Attribute];
         attrs = match tcx.map.find(id) {
             Some(ast_map::NodeItem(ref item)) =>
-                &item.attrs[],
+                &item.attrs,
             Some(ast_map::NodeImplItem(&ast::MethodImplItem(ref m))) =>
-                &m.attrs[],
+                &m.attrs,
             Some(ast_map::NodeTraitItem(&ast::ProvidedMethod(ref m))) =>
-                &m.attrs[],
-            _ => &[][],
+                &m.attrs,
+            _ => &[],
         };
 
         let span_err =
@@ -144,7 +144,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
         for (i, mpi) in vec_rc.iter().enumerate() {
             let render = || this.path_loan_path(*mpi).user_string(tcx);
             if span_err {
-                tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render())[]);
+                tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render()));
             }
             if print {
                 println!("id:{} {}[{}] `{}`", id, kind, i, render());
@@ -156,7 +156,7 @@ pub fn instrument_move_fragments<'tcx>(this: &MoveData<'tcx>,
         for (i, f) in vec_rc.iter().enumerate() {
             let render = || f.loan_path_user_string(this, tcx);
             if span_err {
-                tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render())[]);
+                tcx.sess.span_err(sp, &format!("{}: `{}`", kind, render()));
             }
             if print {
                 println!("id:{} {}[{}] `{}`", id, kind, i, render());

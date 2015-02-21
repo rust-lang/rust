@@ -176,7 +176,7 @@ impl<'a, 'tcx> CheckCrateVisitor<'a, 'tcx> {
         };
 
         self.tcx.sess.span_err(e.span, &format!("mutable statics are not allowed \
-                                                 to have {}", suffix)[]);
+                                                 to have {}", suffix));
     }
 
     fn check_static_type(&self, e: &ast::Expr) {
@@ -382,7 +382,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
             if v.mode != Mode::Var {
                 v.tcx.sess.span_err(e.span,
                                     &format!("{}s are not allowed to have destructors",
-                                             v.msg())[]);
+                                             v.msg()));
             }
         }
         _ => {}

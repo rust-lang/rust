@@ -177,7 +177,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                   ..
               } => {
                   let d = mk_lldecl(abi);
-                  let needs_body = setup_lldecl(d, &i.attrs[]);
+                  let needs_body = setup_lldecl(d, &i.attrs);
                   if needs_body {
                       if abi != abi::Rust {
                           foreign::trans_rust_fn_with_foreign_abi(
@@ -220,7 +220,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             match *ii {
                 ast::MethodImplItem(ref mth) => {
                     let d = mk_lldecl(abi::Rust);
-                    let needs_body = setup_lldecl(d, &mth.attrs[]);
+                    let needs_body = setup_lldecl(d, &mth.attrs);
                     if needs_body {
                         trans_fn(ccx,
                                  mth.pe_fn_decl(),
@@ -241,7 +241,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             match *method {
                 ast::ProvidedMethod(ref mth) => {
                     let d = mk_lldecl(abi::Rust);
-                    let needs_body = setup_lldecl(d, &mth.attrs[]);
+                    let needs_body = setup_lldecl(d, &mth.attrs);
                     if needs_body {
                         trans_fn(ccx, mth.pe_fn_decl(), mth.pe_body(), d,
                                  psubsts, mth.id, &[]);
@@ -250,7 +250,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 }
                 _ => {
                     ccx.sess().bug(&format!("can't monomorphize a {:?}",
-                                           map_node)[])
+                                           map_node))
                 }
             }
         }
@@ -258,7 +258,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
             let d = mk_lldecl(abi::Rust);
             set_inline_hint(d);
             base::trans_tuple_struct(ccx,
-                                     &struct_def.fields[],
+                                     &struct_def.fields,
                                      struct_def.ctor_id.expect("ast-mapped tuple struct \
                                                                 didn't have a ctor id"),
                                      psubsts,
@@ -276,7 +276,7 @@ pub fn monomorphic_fn<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         ast_map::NodePat(..) |
         ast_map::NodeLocal(..) => {
             ccx.sess().bug(&format!("can't monomorphize a {:?}",
-                                   map_node)[])
+                                   map_node))
         }
     };
 

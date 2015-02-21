@@ -278,7 +278,7 @@ pub fn gensym_name(name: &str) -> PathElem {
     let num = token::gensym(name).usize();
     // use one colon which will get translated to a period by the mangler, and
     // we're guaranteed that `num` is globally unique for this crate.
-    PathName(token::gensym(&format!("{}:{}", name, num)[]))
+    PathName(token::gensym(&format!("{}:{}", name, num)))
 }
 
 #[derive(Copy)]
@@ -606,7 +606,7 @@ impl<'blk, 'tcx> BlockS<'blk, 'tcx> {
             Some(v) => v.clone(),
             None => {
                 self.tcx().sess.bug(&format!(
-                    "no def associated with node id {}", nid)[]);
+                    "no def associated with node id {}", nid));
             }
         }
     }
@@ -1011,7 +1011,7 @@ pub fn fulfill_obligation<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 span,
                 &format!("Encountered error `{}` selecting `{}` during trans",
                         e.repr(tcx),
-                        trait_ref.repr(tcx))[])
+                        trait_ref.repr(tcx)))
         }
     };
 
@@ -1104,7 +1104,7 @@ pub fn drain_fulfillment_cx<'a,'tcx,T>(span: Span,
                 infcx.tcx.sess.span_bug(
                     span,
                     &format!("Encountered errors `{}` fulfilling during trans",
-                            errors.repr(infcx.tcx))[]);
+                            errors.repr(infcx.tcx)));
             }
         }
     }
@@ -1144,7 +1144,7 @@ pub fn node_id_substs<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
 
     if substs.types.any(|t| ty::type_needs_infer(*t)) {
             tcx.sess.bug(&format!("type parameters for node {:?} include inference types: {:?}",
-                                 node, substs.repr(tcx))[]);
+                                 node, substs.repr(tcx)));
         }
 
         monomorphize::apply_param_substs(tcx,

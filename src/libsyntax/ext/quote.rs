@@ -466,7 +466,7 @@ pub fn expand_quote_stmt(cx: &mut ExtCtxt,
 }
 
 fn ids_ext(strs: Vec<String> ) -> Vec<ast::Ident> {
-    strs.iter().map(|str| str_to_ident(&(*str)[])).collect()
+    strs.iter().map(|str| str_to_ident(&(*str))).collect()
 }
 
 fn id_ext(str: &str) -> ast::Ident {

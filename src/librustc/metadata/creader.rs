@@ -61,7 +61,7 @@ fn dump_crates(cstore: &CStore) {
 }
 
 fn should_link(i: &ast::Item) -> bool {
-    !attr::contains_name(&i.attrs[], "no_link")
+    !attr::contains_name(&i.attrs, "no_link")
 }
 
 struct CrateInfo {
@@ -85,7 +85,7 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
     for c in s.chars() {
         if c.is_alphanumeric() { continue }
         if c == '_' || c == '-' { continue }
-        err(&format!("invalid character `{}` in crate name: `{}`", c, s)[]);
+        err(&format!("invalid character `{}` in crate name: `{}`", c, s));
     }
     match sess {
         Some(sess) => sess.abort_if_errors(),
@@ -210,8 +210,8 @@ impl<'a> CrateReader<'a> {
                 match self.extract_crate_info(i) {
                     Some(info) => {
                         let (cnum, _, _) = self.resolve_crate(&None,
-                                                              &info.ident[],
-                                                              &info.name[],
+                                                              &info.ident,
+                                                              &info.name,
                                                               None,
                                                               i.span,
                                                               PathKind::Crate);
@@ -268,7 +268,7 @@ impl<'a> CrateReader<'a> {
                                     } else {
                                         self.sess.span_err(m.span,
                                             &format!("unknown kind: `{}`",
-                                                    k)[]);
+                                                    k));
                                         cstore::NativeUnknown
                                     }
                                 }
@@ -413,7 +413,7 @@ impl<'a> CrateReader<'a> {
                     hash: hash.map(|a| &*a),
                     filesearch: self.sess.target_filesearch(kind),
                     target: &self.sess.target.target,
-                    triple: &self.sess.opts.target_triple[],
+                    triple: &self.sess.opts.target_triple,
                     root: root,
                     rejected_via_hash: vec!(),
                     rejected_via_triple: vec!(),
@@ -440,8 +440,8 @@ impl<'a> CrateReader<'a> {
         decoder::get_crate_deps(cdata).iter().map(|dep| {
             debug!("resolving dep crate {} hash: `{}`", dep.name, dep.hash);
             let (local_cnum, _, _) = self.resolve_crate(root,
-                                                   &dep.name[],
-                                                   &dep.name[],
+                                                   &dep.name,
+                                                   &dep.name,
                                                    Some(&dep.hash),
                                                    span,
                                                    PathKind::Dependency);
@@ -450,7 +450,7 @@ impl<'a> CrateReader<'a> {
     }
 
     fn read_extension_crate(&mut self, span: Span, info: &CrateInfo) -> ExtensionCrate {
-        let target_triple = &self.sess.opts.target_triple[];
+        let target_triple = &self.sess.opts.target_triple[..];
         let is_cross = target_triple != config::host_triple();
         let mut should_link = info.should_link && !is_cross;
         let mut target_only = false;
@@ -493,8 +493,8 @@ impl<'a> CrateReader<'a> {
                                                           PathKind::Crate).is_none();
         let metadata = if register {
             // Register crate now to avoid double-reading metadata
-            let (_, cmd, _) = self.register_crate(&None, &info.ident[],
-                                &info.name[], span, library);
+            let (_, cmd, _) = self.register_crate(&None, &info.ident,
+                                &info.name, span, library);
             PMDSource::Registered(cmd)
         } else {
             // Not registering the crate; just hold on to the metadata

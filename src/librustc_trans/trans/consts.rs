@@ -54,7 +54,7 @@ pub fn const_lit(cx: &CrateContext, e: &ast::Expr, lit: &ast::Lit)
                 _ => cx.sess().span_bug(lit.span,
                         &format!("integer literal has type {} (expected int \
                                  or uint)",
-                                ty_to_string(cx.tcx(), lit_int_ty))[])
+                                ty_to_string(cx.tcx(), lit_int_ty)))
             }
         }
         ast::LitFloat(ref fs, t) => {
@@ -152,7 +152,7 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         None => {
             cx.sess().bug(&format!("unexpected dereferenceable type {}",
-                                   ty_to_string(cx.tcx(), ty))[])
+                                   ty_to_string(cx.tcx(), ty)))
         }
     }
 }
@@ -174,7 +174,7 @@ pub fn get_const_expr<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
     } else {
         ccx.sess().span_bug(ref_expr.span,
                             &format!("get_const_val given non-constant item {}",
-                                     item.repr(ccx.tcx()))[]);
+                                     item.repr(ccx.tcx())));
     }
 }
 
@@ -301,7 +301,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                             }
                             None => {
                                 cx.sess().bug(&format!("unexpected dereferenceable type {}",
-                                                       ty_to_string(cx.tcx(), ty))[])
+                                                       ty_to_string(cx.tcx(), ty)))
                             }
                         }
                     }
@@ -309,7 +309,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
                 Some(autoref) => {
                     cx.sess().span_bug(e.span,
-                        &format!("unimplemented const first autoref {:?}", autoref)[])
+                        &format!("unimplemented const first autoref {:?}", autoref))
                 }
             };
             match second_autoref {
@@ -333,7 +333,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 }
                 Some(autoref) => {
                     cx.sess().span_bug(e.span,
-                        &format!("unimplemented const second autoref {:?}", autoref)[])
+                        &format!("unimplemented const second autoref {:?}", autoref))
                 }
             }
         }
@@ -351,7 +351,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
         }
         cx.sess().bug(&format!("const {} of type {} has size {} instead of {}",
                          e.repr(cx.tcx()), ty_to_string(cx.tcx(), ety_adjusted),
-                         csize, tsize)[]);
+                         csize, tsize));
     }
     (llconst, ety_adjusted)
 }
@@ -485,7 +485,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       _ => cx.sess().span_bug(base.span,
                                               &format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt))[])
+                                                      ty_to_string(cx.tcx(), bt)))
                   },
                   ty::ty_rptr(_, mt) => match mt.ty.sty {
                       ty::ty_vec(_, Some(u)) => {
@@ -494,12 +494,12 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       _ => cx.sess().span_bug(base.span,
                                               &format!("index-expr base must be a vector \
                                                        or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt))[])
+                                                      ty_to_string(cx.tcx(), bt)))
                   },
                   _ => cx.sess().span_bug(base.span,
                                           &format!("index-expr base must be a vector \
                                                    or string type, found {}",
-                                                  ty_to_string(cx.tcx(), bt))[])
+                                                  ty_to_string(cx.tcx(), bt)))
               };
 
               let len = llvm::LLVMConstIntGetZExtValue(len) as u64;

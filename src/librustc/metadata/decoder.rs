@@ -1225,7 +1225,7 @@ pub fn get_crate_deps(data: &[u8]) -> Vec<CrateDep> {
     }
     reader::tagged_docs(depsdoc, tag_crate_dep, |depdoc| {
         let name = docstr(depdoc, tag_crate_dep_crate_name);
-        let hash = Svh::new(&docstr(depdoc, tag_crate_dep_hash)[]);
+        let hash = Svh::new(&docstr(depdoc, tag_crate_dep_hash));
         deps.push(CrateDep {
             cnum: crate_num,
             name: name,
