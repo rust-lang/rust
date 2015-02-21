@@ -669,6 +669,11 @@ impl<T> Take<T> {
 
 impl<T: Read> Read for Take<T> {
     fn read(&mut self, buf: &mut [u8]) -> Result<usize> {
+        // Don't call into inner reader at all at EOF because it may still block
+        if self.limit == 0 {
+            return Ok(0);
+        }
+
         let max = cmp::min(buf.len() as u64, self.limit) as usize;
         let n = try!(self.inner.read(&mut buf[..max]));
         self.limit -= n as u64;
@@ -846,6 +851,7 @@ impl<B: BufRead> Iterator for Lines<B> {
 mod tests {
     use prelude::v1::*;
     use io::prelude::*;
+    use io;
     use super::Cursor;
 
     #[test]
@@ -942,5 +948,19 @@ mod tests {
         let mut c = Cursor::new(b"\xff");
         let mut v = String::new();
         assert!(c.read_to_string(&mut v).is_err());
+    }
+
+    #[test]
+    fn take_eof() {
+        struct R;
+
+        impl Read for R {
+            fn read(&mut self, buf: &mut [u8]) -> io::Result<usize> {
+                Err(io::Error::new(io::ErrorKind::Other, "", None))
+            }
+        }
+
+        let mut buf = [0; 1];
+        assert_eq!(Ok(0), R.take(0).read(&mut buf));
     }
 }
