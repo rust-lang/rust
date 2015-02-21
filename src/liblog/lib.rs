@@ -342,7 +342,7 @@ pub struct LogRecord<'a> {
     pub file: &'a str,
 
     /// The line number of where the LogRecord originated.
-    pub line: uint,
+    pub line: u32,
 }
 
 #[doc(hidden)]
@@ -350,7 +350,7 @@ pub struct LogRecord<'a> {
 pub struct LogLocation {
     pub module_path: &'static str,
     pub file: &'static str,
-    pub line: uint,
+    pub line: u32,
 }
 
 /// Tests whether a given module's name is enabled for a particular level of
