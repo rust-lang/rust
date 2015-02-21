@@ -15,7 +15,7 @@
 //! types.
 //!
 //! This module defines atomic versions of a select number of primitive
-//! types, including `AtomicBool`, `AtomicIsize`, `AtomicUsize`, and `AtomicOption`.
+//! types, including `AtomicBool`, `AtomicIsize`, and `AtomicUsize`.
 //! Atomic types present operations that, when used correctly, synchronize
 //! updates between threads.
 //!
