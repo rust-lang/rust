@@ -9,7 +9,7 @@
 // except according to those terms.
 
 //! Enforces the Rust effect system. Currently there is just one effect,
-/// `unsafe`.
+//! `unsafe`.
 use self::UnsafeContext::*;
 
 use middle::def;
