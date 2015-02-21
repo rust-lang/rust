@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -1269,25 +1269,69 @@ impl LintPass for UnusedUnsafe {
 }
 
 declare_lint! {
-    UNSAFE_BLOCKS,
+    UNSAFE_CODE,
     Allow,
-    "usage of an `unsafe` block"
+    "usage of `unsafe` code"
 }
 
 #[derive(Copy)]
-pub struct UnsafeBlocks;
+pub struct UnsafeCode;
 
-impl LintPass for UnsafeBlocks {
+impl LintPass for UnsafeCode {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNSAFE_BLOCKS)
+        lint_array!(UNSAFE_CODE)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if let ast::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == ast::UnsafeBlock(ast::UserProvided) {
-                cx.span_lint(UNSAFE_BLOCKS, blk.span, "usage of an `unsafe` block");
+                cx.span_lint(UNSAFE_CODE, blk.span, "usage of an `unsafe` block");
             }
+        }
+    }
+
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+        use syntax::ast::Unsafety::Unsafe;
+
+        fn check_method(cx: &Context, meth: &P<ast::Method>) {
+            if let ast::Method_::MethDecl(_, _, _, _, Unsafe, _, _, _) = meth.node {
+                cx.span_lint(UNSAFE_CODE, meth.span, "implementation of an `unsafe` method");
+            }
+        }
+
+        match it.node {
+            ast::ItemFn(_, Unsafe, _, _, _) =>
+                cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` function"),
+
+            ast::ItemTrait(trait_safety, _, _, ref items) => {
+                if trait_safety == Unsafe {
+                    cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait");
+                }
+
+                for it in items {
+                    match *it {
+                        ast::RequiredMethod(ast::TypeMethod { unsafety: Unsafe, span, ..}) =>
+                            cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` method"),
+                        ast::ProvidedMethod(ref meth) => check_method(cx, meth),
+                        _ => (),
+                    }
+                }
+            },
+
+            ast::ItemImpl(impl_safety, _, _, _, _, ref impls) => {
+                if impl_safety == Unsafe {
+                    cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait");
+                }
+
+                for item in impls {
+                    if let ast::ImplItem::MethodImplItem(ref meth) = *item {
+                        check_method(cx, meth);
+                    }
+                }
+            },
+
+            _ => return,
         }
     }
 }
