@@ -414,6 +414,22 @@ hard for a computer, too! There is an entire [guide devoted to references, owner
 and lifetimes](ownership.html) that goes into this topic in
 great detail, so if you want the full details, check that out.
 
+Rust provides some syntactic sugar when dealing with pointers:
+
+```{rust}
+    let x = &mut 5;
+```
+
+The line above is equivalent to the lines below.
+
+```{rust}
+    let mut v = 5;
+    let x = &mut v;
+```
+
+This can be extremely useful when you have an `A` or `mut A` and have a function that takes
+type `&A` or `&mut A`.
+
 ## Best practices
 
 In general, prefer stack allocation over heap allocation. Using references to
