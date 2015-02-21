@@ -405,6 +405,25 @@ fn main() {
 }
 ```
 
+# Debugging macro code
+
+To see the results of expanding macros, run `rustc --pretty expanded`. The
+output represents a whole crate, so you can also feed it back in to `rustc`,
+which will sometimes produce better error messages than the original
+compilation. Note that the `--pretty expanded` output may have a different
+meaning if multiple variables of the same name (but different syntax contexts)
+are in play in the same scope. In this case `--pretty expanded,hygiene` will
+tell you about the syntax contexts.
+
+`rustc` provides two syntax extensions that help with macro debugging. For now,
+they are unstable and require feature gates.
+
+* `log_syntax!(...)` will print its arguments to standard output, at compile
+  time, and "expand" to nothing.
+
+* `trace_macros!(true)` will enable a compiler message every time a macro is
+  expanded. Use `trace_macros!(false)` later in expansion to turn it off.
+
 # Further reading
 
 The [advanced macros chapter][] goes into more detail about macro syntax. It

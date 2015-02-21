@@ -239,19 +239,11 @@ fn main() {
 Exercise: use macros to reduce duplication in the above definition of the
 `bct!` macro.
 
-# A final note
-
-Macros, as currently implemented, are not for the faint of heart. Even
-ordinary syntax errors can be more difficult to debug when they occur inside a
-macro, and errors caused by parse problems in generated code can be very
-tricky. Invoking the `log_syntax!` macro can help elucidate intermediate
-states, invoking `trace_macros!(true)` will automatically print those
-intermediate states out, and passing the flag `--pretty expanded` as a
-command-line argument to the compiler will show the result of expansion.
+# Procedural macros
 
 If Rust's macro system can't do what you need, you may want to write a
 [compiler plugin](plugins.html) instead. Compared to `macro_rules!`
 macros, this is significantly more work, the interfaces are much less stable,
-and the warnings about debugging apply ten-fold. In exchange you get the
+and bugs can be much harder to track down. In exchange you get the
 flexibility of running arbitrary Rust code within the compiler. Syntax
 extension plugins are sometimes called *procedural macros* for this reason.
