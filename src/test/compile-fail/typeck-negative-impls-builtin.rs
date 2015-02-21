@@ -17,6 +17,6 @@ trait TestTrait {
 }
 
 impl !TestTrait for TestType {}
-//~^ ERROR  negative impls are currently allowed just for `Send` and `Sync`
+//~^ ERROR negative impls are only allowed for traits with default impls (e.g., `Send` and `Sync`)
 
 fn main() {}
