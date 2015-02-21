@@ -248,38 +248,12 @@ impl<'a> Display for Arguments<'a> {
 
 /// Format trait for the `:?` format. Useful for debugging, all types
 /// should implement this.
-#[deprecated(since = "1.0.0", reason = "renamed to Debug")]
-#[unstable(feature = "old_fmt")]
-pub trait Show {
-    /// Formats the value using the given formatter.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
-}
-
-/// Format trait for the `:?` format. Useful for debugging, all types
-/// should implement this.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is \
                             defined in your crate, add `#[derive(Debug)]` or \
                             manually implement it"]
 #[lang = "debug_trait"]
 pub trait Debug {
-    /// Formats the value using the given formatter.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
-}
-
-#[allow(deprecated)]
-impl<T: Show + ?Sized> Debug for T {
-    #[allow(deprecated)]
-    fn fmt(&self, f: &mut Formatter) -> Result { Show::fmt(self, f) }
-}
-
-/// When a value can be semantically expressed as a String, this trait may be
-/// used. It corresponds to the default format, `{}`.
-#[deprecated(since = "1.0.0", reason = "renamed to Display")]
-#[unstable(feature = "old_fmt")]
-pub trait String {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, &mut Formatter) -> Result;
@@ -295,12 +269,6 @@ pub trait Display {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, &mut Formatter) -> Result;
-}
-
-#[allow(deprecated)]
-impl<T: String + ?Sized> Display for T {
-    #[allow(deprecated)]
-    fn fmt(&self, f: &mut Formatter) -> Result { String::fmt(self, f) }
 }
 
 /// Format trait for the `o` character

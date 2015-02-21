@@ -8,11 +8,10 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Show;
+use std::fmt::Debug;
 
 fn main() {
-    let x: Box<Show+> = box 3 as Box<Show+>;
+    let x: Box<Debug+> = box 3 as Box<Debug+>;
     //~^ ERROR at least one type parameter bound must be specified
     //~^^ ERROR at least one type parameter bound must be specified
 }
-
