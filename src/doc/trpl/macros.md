@@ -189,14 +189,12 @@ shorthand for a data type could be valid as either an expression or a pattern.
 
 ## Repetition
 
-The repetition behavior can seem somewhat magical, especially when multiple
-names are bound at multiple nested levels of repetition. The two rules to keep
-in mind are:
+The repetition operator follows two principal rules:
 
-1. the behavior of `$(...)*` is to walk through one "layer" of repetitions, for
-all of the `$name`s it contains, in lockstep, and
+1. `$(...)*` walks through one "layer" of repetitions, for all of the `$name`s
+   it contains, in lockstep, and
 2. each `$name` must be under at least as many `$(...)*`s as it was matched
-against. If it is under more, it'll be duplicated, as appropriate.
+   against. If it is under more, it'll be duplicated, as appropriate.
 
 This baroque macro illustrates the duplication of variables from outer
 repetition levels.
@@ -225,6 +223,10 @@ That's most of the matcher syntax. These examples use `$(...)*`, which is a
 "zero or more" match. Alternatively you can write `$(...)+` for a "one or
 more" match. Both forms optionally include a separator, which can be any token
 except `+` or `*`.
+
+This system is based on
+"[Macro-by-Example](http://www.cs.indiana.edu/ftp/techreports/TR206.pdf)"
+(PDF link).
 
 # Hygiene
 
@@ -273,18 +275,25 @@ macro, using [a GNU C extension] to emulate Rust's expression blocks.
 })
 ```
 
-This looks reasonable, but watch what happens in this example:
+Here's a simple use case that goes terribly wrong:
 
 ```text
 const char *state = "reticulating splines";
-LOG(state);
+LOG(state)
 ```
 
-The program will likely segfault, after it tries to execute
+This expands to
 
 ```text
-printf("log(%d): %s\n", state, state);
+const char *state = "reticulating splines";
+int state = get_log_state();
+if (state > 0) {
+    printf("log(%d): %s\n", state, state);
+}
 ```
+
+The second variable named `state` shadows the first one.  This is a problem
+because the print statement should refer to both of them.
 
 The equivalent Rust macro has the desired behavior.
 
