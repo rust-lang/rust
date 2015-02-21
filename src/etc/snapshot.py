@@ -46,12 +46,12 @@ snapshot_files = {
         "winnt": ["bin/rustc.exe"],
         "freebsd": ["bin/rustc"],
         "dragonfly": ["bin/rustc"],
+        "bitrig": ["bin/rustc"],
         "openbsd": ["bin/rustc"],
         }
 
 winnt_runtime_deps_32 = ["libgcc_s_dw2-1.dll", "libstdc++-6.dll"]
 winnt_runtime_deps_64 = ["libgcc_s_seh-1.dll", "libstdc++-6.dll"]
-
 
 def parse_line(n, line):
     global snapshotfile
@@ -101,6 +101,8 @@ def get_kernel(triple):
         return "freebsd"
     if os_name == "dragonfly":
         return "dragonfly"
+    if os_name == "bitrig":
+        return "bitrig"
     if os_name == "openbsd":
         return "openbsd"
     return "linux"

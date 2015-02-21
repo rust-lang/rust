@@ -694,7 +694,8 @@ impl TcpStream {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPALIVE,
                    seconds as libc::c_int)
     }
-    #[cfg(any(target_os = "freebsd", target_os = "dragonfly"))]
+    #[cfg(any(target_os = "freebsd",
+              target_os = "dragonfly"))]
     fn set_tcp_keepalive(&mut self, seconds: uint) -> IoResult<()> {
         setsockopt(self.fd(), libc::IPPROTO_TCP, libc::TCP_KEEPIDLE,
                    seconds as libc::c_int)

@@ -144,14 +144,14 @@ FIND_COMPILER = $(word 1,$(1:ccache=))
 define CFG_MAKE_TOOLCHAIN
   # Prepend the tools with their prefix if cross compiling
   ifneq ($(CFG_BUILD),$(1))
-	CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
-	CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
-	CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
-	AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
-	RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
-	    -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
+       CC_$(1)=$(CROSS_PREFIX_$(1))$(CC_$(1))
+       CXX_$(1)=$(CROSS_PREFIX_$(1))$(CXX_$(1))
+       CPP_$(1)=$(CROSS_PREFIX_$(1))$(CPP_$(1))
+       AR_$(1)=$(CROSS_PREFIX_$(1))$(AR_$(1))
+       RUSTC_CROSS_FLAGS_$(1)=-C linker=$$(call FIND_COMPILER,$$(CC_$(1))) \
+           -C ar=$$(call FIND_COMPILER,$$(AR_$(1))) $(RUSTC_CROSS_FLAGS_$(1))
 
-	RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
+       RUSTC_FLAGS_$(1)=$$(RUSTC_CROSS_FLAGS_$(1)) $(RUSTC_FLAGS_$(1))
   endif
 
   CFG_COMPILE_C_$(1) = $$(CC_$(1)) \
@@ -179,11 +179,19 @@ define CFG_MAKE_TOOLCHAIN
 
   ifeq ($$(findstring $(HOST_$(1)),arm aarch64 mips mipsel powerpc),)
 
+  # On Bitrig, we need the relocation model to be PIC for everthing
+  ifeq (,$(filter $(OSTYPE_$(1)),bitrig))
+    LLVM_MC_RELOCATION_MODEL="pic"
+  else
+    LLVM_MC_RELOCATION_MODEL="default"
+  endif
+
   # We're using llvm-mc as our assembler because it supports
   # .cfi pseudo-ops on mac
   CFG_ASSEMBLE_$(1)=$$(CPP_$(1)) -E $$(CFG_DEPEND_FLAGS) $$(2) | \
                     $$(LLVM_MC_$$(CFG_BUILD)) \
                     -assemble \
+                    -relocation-model=$$(LLVM_MC_RELOCATION_MODEL) \
                     -filetype=obj \
                     -triple=$(1) \
                     -o=$$(1)
@@ -192,7 +200,7 @@ define CFG_MAKE_TOOLCHAIN
   # For the ARM, AARCH64, MIPS and POWER crosses, use the toolchain assembler
   # FIXME: We should be able to use the LLVM assembler
   CFG_ASSEMBLE_$(1)=$$(CC_$(1)) $$(CFG_GCCISH_CFLAGS_$(1)) \
-		    $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
+                   $$(CFG_DEPEND_FLAGS) $$(2) -c -o $$(1)
 
   endif
 

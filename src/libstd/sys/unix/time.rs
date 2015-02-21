@@ -80,8 +80,11 @@ mod inner {
     }
 
     // Apparently android provides this in some other library?
+    // Bitrig's RT extensions are in the C library, not a separate librt
     // OpenBSD provide it via libc
-    #[cfg(not(any(target_os = "android", target_os = "openbsd")))]
+    #[cfg(not(any(target_os = "android",
+                  target_os = "bitrig",
+                  target_os = "openbsd")))]
     #[link(name = "rt")]
     extern {}
 

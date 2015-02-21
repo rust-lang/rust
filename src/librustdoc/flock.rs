@@ -64,7 +64,9 @@ mod imp {
         pub const F_SETLKW: libc::c_int = 13;
     }
 
-    #[cfg(any(target_os = "dragonfly", target_os = "openbsd"))]
+    #[cfg(any(target_os = "dragonfly",
+              target_os = "bitrig",
+              target_os = "openbsd"))]
     mod os {
         use libc;
 

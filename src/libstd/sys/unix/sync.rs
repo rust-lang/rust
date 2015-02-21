@@ -46,6 +46,7 @@ extern {
 
 #[cfg(any(target_os = "freebsd",
           target_os = "dragonfly",
+          target_os = "bitrig",
           target_os = "openbsd"))]
 mod os {
     use libc;

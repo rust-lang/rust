@@ -37,7 +37,7 @@ extern {}
 #[link(name = "c")]
 extern {}
 
-#[cfg(target_os = "openbsd")]
+#[cfg(any(target_os = "bitrig", target_os = "openbsd"))]
 #[link(name = "c")]
 extern {}
 

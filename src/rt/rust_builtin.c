@@ -47,8 +47,8 @@ extern char **environ;
 #endif
 #endif
 
-#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) \
-  || defined(__DragonFly__) || defined(__OpenBSD__)
+#if defined(__FreeBSD__) || defined(__linux__) || defined(__ANDROID__) || \
+    defined(__DragonFly__) || defined(__Bitrig__) || defined(__OpenBSD__)
 extern char **environ;
 #endif
 
@@ -200,7 +200,282 @@ rust_unset_sigprocmask() {
 int *__dfly_error(void) { return __error(); }
 #endif
 
-#if defined(__OpenBSD__)
+#if defined(__Bitrig__)
+#include <stdio.h>
+#include <sys/param.h>
+#include <sys/sysctl.h>
+#include <limits.h>
+
+int rust_get_path(void *p, size_t* sz)
+{
+  int mib[4];
+  char *eq = NULL;
+  char *key = NULL;
+  char *val = NULL;
+  char **menv = NULL;
+  size_t maxlen, len;
+  int nenv = 0;
+  int i;
+
+  if ((p == NULL) && (sz == NULL))
+    return -1;
+
+  /* get the argv array */
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_PROC_ARGS;
+  mib[2] = getpid();
+  mib[3] = KERN_PROC_ENV;
+
+  /* get the number of bytes needed to get the env */
+  maxlen = 0;
+  if (sysctl(mib, 4, NULL, &maxlen, NULL, 0) == -1)
+    return -1;
+
+  /* allocate the buffer */
+  if ((menv = calloc(maxlen, sizeof(char))) == NULL)
+    return -1;
+
+  /* get the env array */
+  if (sysctl(mib, 4, menv, &maxlen, NULL, 0) == -1)
+  {
+    free(menv);
+    return -1;
+  }
+
+  mib[3] = KERN_PROC_NENV;
+  len = sizeof(int);
+  /* get the length of env array */
+  if (sysctl(mib, 4, &nenv, &len, NULL, 0) == -1)
+  {
+    free(menv);
+    return -1;
+  }
+
+  /* find _ key and resolve the value */
+  for (i = 0; i < nenv; i++)
+  {
+    if ((eq = strstr(menv[i], "=")) == NULL)
+      continue;
+
+    key = menv[i];
+    val = eq + 1;
+    *eq = '\0';
+
+    if (strncmp(key, "PATH", maxlen) != 0)
+      continue;
+
+    if (p == NULL)
+    {
+      /* return the length of the value + NUL */
+      *sz = strnlen(val, maxlen) + 1;
+      free(menv);
+      return 0;
+    }
+    else
+    {
+      /* copy *sz bytes to the output buffer */
+      memcpy(p, val, *sz);
+      free(menv);
+      return 0;
+    }
+  }
+
+  free(menv);
+  return -1;
+}
+
+int rust_get_path_array(void * p, size_t * sz)
+{
+  char *path, *str;
+  char **buf;
+  int i, num;
+  size_t len;
+
+  if ((p == NULL) && (sz == NULL))
+    return -1;
+
+  /* get the length of the PATH value */
+  if (rust_get_path(NULL, &len) == -1)
+    return -1;
+
+  if (len == 0)
+    return -1;
+
+  /* allocate the buffer */
+  if ((path = calloc(len, sizeof(char))) == NULL)
+    return -1;
+
+  /* get the PATH value */
+  if (rust_get_path(path, &len) == -1)
+  {
+    free(path);
+    return -1;
+  }
+
+  /* count the number of parts in the PATH */
+  num = 1;
+  for(str = path; *str != '\0'; str++)
+  {
+    if (*str == ':')
+      num++;
+  }
+
+  /* calculate the size of the buffer for the 2D array */
+  len = (num * sizeof(char*) + 1) + strlen(path) + 1;
+
+  if (p == NULL)
+  {
+    free(path);
+    *sz = len;
+    return 0;
+  }
+
+  /* make sure we have enough buffer space */
+  if (*sz < len)
+  {
+    free(path);
+    return -1;
+  }
+
+  /* zero out the buffer */
+  buf = (char**)p;
+  memset(buf, 0, *sz);
+
+  /* copy the data into the right place */
+  str = p + ((num+1) * sizeof(char*));
+  memcpy(str, path, strlen(path));
+
+  /* parse the path into it's parts */
+  for (i = 0; i < num && (buf[i] = strsep(&str, ":")) != NULL; i++) {;}
+  buf[num] = NULL;
+
+  free(path);
+  return 0;
+}
+
+int rust_get_argv_zero(void* p, size_t* sz)
+{
+  int mib[4];
+  char **argv = NULL;
+  size_t len;
+
+  if ((p == NULL) && (sz == NULL))
+    return -1;
+
+  /* get the argv array */
+  mib[0] = CTL_KERN;
+  mib[1] = KERN_PROC_ARGS;
+  mib[2] = getpid();
+  mib[3] = KERN_PROC_ARGV;
+
+  /* request KERN_PROC_ARGV size */
+  len = 0;
+  if (sysctl(mib, 4, NULL, &len, NULL, 0) == -1)
+    return -1;
+
+  /* allocate buffer to receive the values */
+  if ((argv = malloc(len)) == NULL)
+    return -1;
+
+  /* get the argv array */
+  if (sysctl(mib, 4, argv, &len, NULL, 0) == -1)
+  {
+    free(argv);
+    return -1;
+  }
+
+  /* get length of argv[0] */
+  len = strnlen(argv[0], len) + 1;
+
+  if (p == NULL)
+  {
+    *sz = len;
+    free(argv);
+    return 0;
+  }
+
+  if (*sz < len)
+  {
+    free(argv);
+    return -1;
+  }
+
+  memset(p, 0, len);
+  memcpy(p, argv[0], len);
+  free(argv);
+  return 0;
+}
+
+const char * rust_current_exe()
+{
+  static char *self = NULL;
+  char *argv0;
+  char **paths;
+  size_t sz;
+  int i;
+  char buf[2*PATH_MAX], exe[2*PATH_MAX];
+
+  if (self != NULL)
+    return self;
+
+  if (rust_get_argv_zero(NULL, &sz) == -1)
+    return NULL;
+  if ((argv0 = calloc(sz, sizeof(char))) == NULL)
+    return NULL;
+  if (rust_get_argv_zero(argv0, &sz) == -1)
+  {
+    free(argv0);
+    return NULL;
+  }
+
+  /* if argv0 is a relative or absolute path, resolve it with realpath */
+  if ((*argv0 == '.') || (*argv0 == '/') || (strstr(argv0, "/") != NULL))
+  {
+    self = realpath(argv0, NULL);
+    free(argv0);
+    return self;
+  }
+
+  /* get the path array */
+  if (rust_get_path_array(NULL, &sz) == -1)
+  {
+    free(argv0);
+    return NULL;
+  }
+  if ((paths = calloc(sz, sizeof(char))) == NULL)
+  {
+    free(argv0);
+    return NULL;
+  }
+  if (rust_get_path_array(paths, &sz) == -1)
+  {
+    free(argv0);
+    free(paths);
+    return NULL;
+  }
+
+  for(i = 0; paths[i] != NULL; i++)
+  {
+    snprintf(buf, 2*PATH_MAX, "%s/%s", paths[i], argv0);
+    if (realpath(buf, exe) == NULL)
+      continue;
+
+    if (access(exe, F_OK | X_OK) == -1)
+      continue;
+
+    self = strdup(exe);
+    free(argv0);
+    free(paths);
+    return self;
+  }
+
+  free(argv0);
+  free(paths);
+  return NULL;
+}
+
+#elif defined(__OpenBSD__)
+
 #include <sys/param.h>
 #include <sys/sysctl.h>
 #include <limits.h>
@@ -248,6 +523,7 @@ const char * rust_current_exe() {
 
     return (self);
 }
+
 #endif
 
 //
