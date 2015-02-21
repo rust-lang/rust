@@ -592,14 +592,6 @@ impl<T: Ord> Ord for Rc<T> {
 }
 
 // FIXME (#18248) Make `T` `Sized?`
-#[cfg(stage0)]
-impl<S: Hasher, T: Hash<S>> Hash<S> for Rc<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        (**self).hash(state);
-    }
-}
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash> Hash for Rc<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {

@@ -18,7 +18,6 @@ use std::borrow::Borrow;
 use std::cell::RefCell;
 use std::cmp::Ordering;
 use std::collections::HashMap;
-#[cfg(stage0)] use std::collections::hash_map::Hasher;
 use std::fmt;
 use std::hash::Hash;
 use std::ops::Deref;
@@ -30,71 +29,6 @@ pub struct Interner<T> {
 }
 
 // when traits can extend traits, we should extend index<Name,T> to get []
-#[cfg(stage0)]
-impl<T: Eq + Hash<Hasher> + Clone + 'static> Interner<T> {
-    pub fn new() -> Interner<T> {
-        Interner {
-            map: RefCell::new(HashMap::new()),
-            vect: RefCell::new(Vec::new()),
-        }
-    }
-
-    pub fn prefill(init: &[T]) -> Interner<T> {
-        let rv = Interner::new();
-        for v in init {
-            rv.intern((*v).clone());
-        }
-        rv
-    }
-
-    pub fn intern(&self, val: T) -> Name {
-        let mut map = self.map.borrow_mut();
-        match (*map).get(&val) {
-            Some(&idx) => return idx,
-            None => (),
-        }
-
-        let mut vect = self.vect.borrow_mut();
-        let new_idx = Name((*vect).len() as u32);
-        (*map).insert(val.clone(), new_idx);
-        (*vect).push(val);
-        new_idx
-    }
-
-    pub fn gensym(&self, val: T) -> Name {
-        let mut vect = self.vect.borrow_mut();
-        let new_idx = Name((*vect).len() as u32);
-        // leave out of .map to avoid colliding
-        (*vect).push(val);
-        new_idx
-    }
-
-    pub fn get(&self, idx: Name) -> T {
-        let vect = self.vect.borrow();
-        (*vect)[idx.usize()].clone()
-    }
-
-    pub fn len(&self) -> usize {
-        let vect = self.vect.borrow();
-        (*vect).len()
-    }
-
-    pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
-    where T: Borrow<Q>, Q: Eq + Hash<Hasher> {
-        let map = self.map.borrow();
-        match (*map).get(val) {
-            Some(v) => Some(*v),
-            None => None,
-        }
-    }
-
-    pub fn clear(&self) {
-        *self.map.borrow_mut() = HashMap::new();
-        *self.vect.borrow_mut() = Vec::new();
-    }
-}
-// when traits can extend traits, we should extend index<Name,T> to get []
-#[cfg(not(stage0))]
 impl<T: Eq + Hash + Clone + 'static> Interner<T> {
     pub fn new() -> Interner<T> {
         Interner {
@@ -275,15 +209,6 @@ impl StrInterner {
         self.vect.borrow().len()
     }
 
-    #[cfg(stage0)]
-    pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
-    where RcStr: Borrow<Q>, Q: Eq + Hash<Hasher> {
-        match (*self.map.borrow()).get(val) {
-            Some(v) => Some(*v),
-            None => None,
-        }
-    }
-    #[cfg(not(stage0))]
     pub fn find<Q: ?Sized>(&self, val: &Q) -> Option<Name>
     where RcStr: Borrow<Q>, Q: Eq + Hash {
         match (*self.map.borrow()).get(val) {

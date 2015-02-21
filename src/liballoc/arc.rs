@@ -598,13 +598,6 @@ impl<T: Default + Sync + Send> Default for Arc<T> {
     fn default() -> Arc<T> { Arc::new(Default::default()) }
 }
 
-#[cfg(stage0)]
-impl<H: Hasher, T: Hash<H>> Hash<H> for Arc<T> {
-    fn hash(&self, state: &mut H) {
-        (**self).hash(state)
-    }
-}
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Hash> Hash for Arc<T> {
     fn hash<H: Hasher>(&self, state: &mut H) {

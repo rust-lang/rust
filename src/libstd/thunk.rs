@@ -17,9 +17,6 @@ use core::marker::Send;
 use core::ops::FnOnce;
 
 pub struct Thunk<'a, A=(),R=()> {
-    #[cfg(stage0)]
-    invoke: Box<Invoke<A,R>+Send>,
-    #[cfg(not(stage0))]
     invoke: Box<Invoke<A,R>+Send + 'a>,
 }
 

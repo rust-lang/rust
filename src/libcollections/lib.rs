@@ -86,22 +86,16 @@ mod macros;
 pub mod binary_heap;
 mod bit;
 mod btree;
-pub mod linked_list;
+pub mod borrow;
 pub mod enum_set;
 pub mod fmt;
-pub mod vec_deque;
+pub mod linked_list;
 pub mod slice;
 pub mod str;
 pub mod string;
 pub mod vec;
+pub mod vec_deque;
 pub mod vec_map;
-
-#[cfg(stage0)]
-#[path = "borrow_stage0.rs"]
-pub mod borrow;
-
-#[cfg(not(stage0))]
-pub mod borrow;
 
 #[unstable(feature = "collections",
            reason = "RFC 509")]
