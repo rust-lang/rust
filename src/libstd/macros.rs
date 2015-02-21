@@ -44,7 +44,7 @@ macro_rules! panic {
     ($msg:expr) => ({
         $crate::rt::begin_unwind($msg, {
             // static requires less code at runtime, more constant data
-            static _FILE_LINE: (&'static str, usize) = (file!(), line!());
+            static _FILE_LINE: (&'static str, usize) = (file!(), line!() as usize);
             &_FILE_LINE
         })
     });
@@ -54,7 +54,7 @@ macro_rules! panic {
             // used inside a dead function. Just `#[allow(dead_code)]` is
             // insufficient, since the user may have
             // `#[forbid(dead_code)]` and which cannot be overridden.
-            static _FILE_LINE: (&'static str, usize) = (file!(), line!());
+            static _FILE_LINE: (&'static str, usize) = (file!(), line!() as usize);
             &_FILE_LINE
         })
     });

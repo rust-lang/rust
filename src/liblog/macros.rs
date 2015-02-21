@@ -51,7 +51,7 @@
 macro_rules! log {
     ($lvl:expr, $($arg:tt)+) => ({
         static LOC: ::log::LogLocation = ::log::LogLocation {
-            line: line!(),
+            line: line!() as usize,
             file: file!(),
             module_path: module_path!(),
         };
