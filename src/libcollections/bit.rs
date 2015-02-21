@@ -110,7 +110,7 @@ fn reverse_bits(byte: u8) -> u8 {
     result
 }
 
-// Take two BitV's, and return iterators of their words, where the shorter one
+// Take two BitVec's, and return iterators of their words, where the shorter one
 // has been padded with 0's
 fn match_words <'a,'b>(a: &'a BitVec, b: &'b BitVec) -> (MatchWords<'a>, MatchWords<'b>) {
     let a_len = a.storage.len();

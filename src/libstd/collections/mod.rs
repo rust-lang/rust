@@ -23,9 +23,9 @@
 //!
 //! Rust's collections can be grouped into four major categories:
 //!
-//! * Sequences: `Vec`, `VecDeque`, `LinkedList`, `BitV`
+//! * Sequences: `Vec`, `VecDeque`, `LinkedList`, `BitVec`
 //! * Maps: `HashMap`, `BTreeMap`, `VecMap`
-//! * Sets: `HashSet`, `BTreeSet`, `BitVSet`
+//! * Sets: `HashSet`, `BTreeSet`, `BitSet`
 //! * Misc: `BinaryHeap`
 //!
 //! # When Should You Use Which Collection?
@@ -73,11 +73,11 @@
 //! * There is no meaningful value to associate with your keys.
 //! * You just want a set.
 //!
-//! ### Use a `BitV` when:
+//! ### Use a `BitVec` when:
 //! * You want to store an unbounded number of booleans in a small space.
 //! * You want a bit vector.
 //!
-//! ### Use a `BitVSet` when:
+//! ### Use a `BitSet` when:
 //! * You want a `VecSet`.
 //!
 //! ### Use a `BinaryHeap` when:
