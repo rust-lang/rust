@@ -28,8 +28,6 @@ use core::cmp::Ordering;
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hasher, Hash};
-#[cfg(stage0)]
-use core::hash::Writer;
 use core::iter::{self, FromIterator, IntoIterator};
 use core::mem;
 use core::ptr;
@@ -932,17 +930,6 @@ impl<A: fmt::Debug> fmt::Debug for LinkedList<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for LinkedList<A> {
-    fn hash(&self, state: &mut S) {
-        self.len().hash(state);
-        for elt in self {
-            elt.hash(state);
-        }
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 impl<A: Hash> Hash for LinkedList<A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);

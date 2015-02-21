@@ -834,16 +834,7 @@ impl fmt::Debug for String {
     }
 }
 
-#[unstable(feature = "collections", reason = "waiting on Hash stabilization")]
-#[cfg(stage0)]
-impl<H: hash::Writer + hash::Hasher> hash::Hash<H> for String {
-    #[inline]
-    fn hash(&self, hasher: &mut H) {
-        (**self).hash(hasher)
-    }
-}
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 impl hash::Hash for String {
     #[inline]
     fn hash<H: hash::Hasher>(&self, hasher: &mut H) {

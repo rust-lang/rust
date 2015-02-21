@@ -1303,15 +1303,7 @@ impl<T:Clone> Clone for Vec<T> {
     }
 }
 
-#[cfg(stage0)]
-impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for Vec<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        Hash::hash(&**self, state)
-    }
-}
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 impl<T: Hash> Hash for Vec<T> {
     #[inline]
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
@@ -1599,9 +1591,7 @@ impl<T> AsSlice<T> for Vec<T> {
     fn as_slice(&self) -> &[T] {
         unsafe {
             let p = *self.ptr;
-            if cfg!(not(stage0)) { // NOTE remove cfg after next snapshot
-                assume(p != 0 as *mut T);
-            }
+            assume(p != 0 as *mut T);
             mem::transmute(RawSlice {
                 data: p,
                 len: self.len

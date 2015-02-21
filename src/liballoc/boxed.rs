@@ -220,14 +220,6 @@ impl<T: ?Sized + Ord> Ord for Box<T> {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Eq> Eq for Box<T> {}
 
-#[cfg(stage0)]
-impl<S: hash::Hasher, T: ?Sized + Hash<S>> Hash<S> for Box<T> {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        (**self).hash(state);
-    }
-}
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: ?Sized + Hash> Hash for Box<T> {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
