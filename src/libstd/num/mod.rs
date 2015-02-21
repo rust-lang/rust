@@ -702,7 +702,7 @@ pub trait Float
     /// ```
     #[unstable(feature = "std_misc",
                reason = "pending integer conventions")]
-    fn ldexp(x: Self, exp: isize) -> Self;
+    fn ldexp(self, exp: isize) -> Self;
     /// Breaks the number into a normalized fraction and a base-2 exponent,
     /// satisfying:
     ///
