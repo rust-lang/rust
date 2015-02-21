@@ -192,6 +192,53 @@ To keep this system simple and correct, `#[macro_use] extern crate ...` may
 only appear at the root of your crate, not inside `mod`. This ensures that
 `$crate` is a single identifier.
 
+# The deep end
+
+The introductory chapter mentioned recursive macros, but it did not give the
+full story. Recursive macros are useful for another reason: Each recursive
+invocation gives you another opportunity to pattern-match the macro's
+arguments.
+
+As an extreme example, it is possible, though hardly advisable, to implement
+the [Bitwise Cyclic Tag](http://esolangs.org/wiki/Bitwise_Cyclic_Tag) automaton
+within Rust's macro system.
+
+```rust
+#![feature(trace_macros)]
+
+macro_rules! bct {
+    // cmd 0:  d ... => ...
+    (0, $($ps:tt),* ; $_d:tt)
+        => (bct!($($ps),*, 0 ; ));
+    (0, $($ps:tt),* ; $_d:tt, $($ds:tt),*)
+        => (bct!($($ps),*, 0 ; $($ds),*));
+
+    // cmd 1p:  1 ... => 1 ... p
+    (1, $p:tt, $($ps:tt),* ; 1)
+        => (bct!($($ps),*, 1, $p ; 1, $p));
+    (1, $p:tt, $($ps:tt),* ; 1, $($ds:tt),*)
+        => (bct!($($ps),*, 1, $p ; 1, $($ds),*, $p));
+
+    // cmd 1p:  0 ... => 0 ...
+    (1, $p:tt, $($ps:tt),* ; $($ds:tt),*)
+        => (bct!($($ps),*, 1, $p ; $($ds),*));
+
+    // halt on empty data string
+    ( $($ps:tt),* ; )
+        => (());
+}
+
+fn main() {
+    trace_macros!(true);
+# /* just check the definition
+    bct!(0, 0, 1, 1, 1 ; 1, 0, 1);
+# */
+}
+```
+
+Exercise: use macros to reduce duplication in the above definition of the
+`bct!` macro.
+
 # A final note
 
 Macros, as currently implemented, are not for the faint of heart. Even
