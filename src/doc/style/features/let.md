@@ -61,8 +61,8 @@ conditional expression.
 Prefer
 
 ```rust
-s.iter().map(|x| x * 2)
-        .collect::<Vec<_>>()
+let v = s.iter().map(|x| x * 2)
+                .collect::<Vec<_>>();
 ```
 
 over
