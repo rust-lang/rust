@@ -13,7 +13,9 @@ trait Foo {
 
 struct Bar;
 
-impl Foo + Owned for Bar { //~ ERROR not a trait
+impl Foo + Owned for Bar {
+//~^ ERROR not a trait
+//~^^ ERROR expected one of `..`, `where`, or `{`, found `Bar`
 }
 
 fn main() { }
