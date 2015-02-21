@@ -10,7 +10,6 @@
 
 // aux-build:lang-item-public.rs
 // ignore-android
-// ignore-windows #13361
 
 #![feature(lang_items, start, no_std)]
 #![no_std]
