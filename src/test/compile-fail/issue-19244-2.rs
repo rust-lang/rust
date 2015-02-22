@@ -13,5 +13,7 @@ const STRUCT: MyStruct = MyStruct { field: 42 };
 
 fn main() {
     let a: [isize; STRUCT.nonexistent_field];
-    //~^ ERROR expected constant expr for array length: nonexistent struct field
+    //~^ ERROR array length constant evaluation error: nonexistent struct field
+    //~| ERROR attempted access of field `nonexistent_field`
+    //~| ERROR attempted access of field `nonexistent_field`
 }
