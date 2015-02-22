@@ -1410,42 +1410,8 @@ impl<T> ops::DerefMut for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> Vec<T> {
-        let mut iterator = iterable.into_iter();
-        let (lower, _) = iterator.size_hint();
-        let mut vector = Vec::with_capacity(lower);
-
-        // This function should be the moral equivalent of:
-        //
-        //      for item in iterator {
-        //          vector.push(item);
-        //      }
-        //
-        // This equivalent crucially runs the iterator precisely once. Below we
-        // actually in theory run the iterator twice (one without bounds checks
-        // and one with). To achieve the "moral equivalent", we use the `if`
-        // statement below to break out early.
-        //
-        // If the first loop has terminated, then we have one of two conditions.
-        //
-        // 1. The underlying iterator returned `None`. In this case we are
-        //    guaranteed that less than `vector.capacity()` elements have been
-        //    returned, so we break out early.
-        // 2. The underlying iterator yielded `vector.capacity()` elements and
-        //    has not yielded `None` yet. In this case we run the iterator to
-        //    its end below.
-        for element in iterator.by_ref().take(vector.capacity()) {
-            let len = vector.len();
-            unsafe {
-                ptr::write(vector.get_unchecked_mut(len), element);
-                vector.set_len(len + 1);
-            }
-        }
-
-        if vector.len() == vector.capacity() {
-            for element in iterator {
-                vector.push(element);
-            }
-        }
+        let mut vector = Vec::new();
+        vector.extend(iterable);
         vector
     }
 }
@@ -1482,13 +1448,31 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 
 #[unstable(feature = "collections", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
-    #[inline]
     fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
-        let iterator = iterable.into_iter();
-        let (lower, _) = iterator.size_hint();
-        self.reserve(lower);
-        for element in iterator {
-            self.push(element)
+        let mut iterator = iterable.into_iter();
+
+        // This function should be the moral equivalent of:
+        //
+        //      for item in iterator {
+        //          self.push(item);
+        //      }
+        loop {
+            match iterator.next() {
+                None => {
+                    break;
+                }
+                Some(element) => {
+                    let len = self.len();
+                    if len == self.capacity() {
+                        let (lower, _) = iterator.size_hint();
+                        self.reserve(lower + 1);
+                    }
+                    unsafe {
+                        ptr::write(self.get_unchecked_mut(len), element);
+                        self.set_len(len + 1);
+                    }
+                }
+            }
         }
     }
 }
