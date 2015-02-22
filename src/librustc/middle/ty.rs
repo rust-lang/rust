@@ -4295,8 +4295,8 @@ pub fn ty_region(tcx: &ctxt,
     }
 }
 
-pub fn free_region_from_def(outlives_extent: region::DestructionScopeData,
-                            def: &RegionParameterDef)
+fn free_region_from_def(outlives_extent: region::DestructionScopeData,
+                        def: &RegionParameterDef)
     -> ty::Region
 {
     let ret =
@@ -6342,7 +6342,7 @@ pub fn construct_free_substs<'a,'tcx>(
                           region_params: &[RegionParameterDef])
     {
         for r in region_params {
-            regions.push(r.space, ty::free_region_from_def(all_outlive_extent, r));
+            regions.push(r.space, free_region_from_def(all_outlive_extent, r));
         }
     }
 
