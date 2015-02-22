@@ -78,7 +78,7 @@ pub struct Queue<T> {
 }
 
 unsafe impl<T:Send> Send for Queue<T> { }
-unsafe impl<T: Send + 'static> Sync for Queue<T> { }
+unsafe impl<T: Send> Sync for Queue<T> { }
 
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
@@ -89,7 +89,7 @@ impl<T> Node<T> {
     }
 }
 
-impl<T: Send + 'static> Queue<T> {
+impl<T: Send> Queue<T> {
     /// Creates a new queue that is safe to share among multiple producers and
     /// one consumer.
     pub fn new() -> Queue<T> {
@@ -140,7 +140,7 @@ impl<T: Send + 'static> Queue<T> {
 
 #[unsafe_destructor]
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<T: Send + 'static> Drop for Queue<T> {
+impl<T: Send> Drop for Queue<T> {
     fn drop(&mut self) {
         unsafe {
             let mut cur = *self.tail.get();
