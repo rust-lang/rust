@@ -1410,7 +1410,25 @@ impl<T> ops::DerefMut for Vec<T> {
 impl<T> FromIterator<T> for Vec<T> {
     #[inline]
     fn from_iter<I: IntoIterator<Item=T>>(iterable: I) -> Vec<T> {
-        let mut vector = Vec::new();
+        // Unroll the first iteration, as the vector is going to be
+        // expanded on this iteration in every case when the iterable is not
+        // empty, but the loop in extend_desugared() is not going to see the
+        // vector being full in the few subsequent loop iterations.
+        // So we get better branch prediction and the possibility to
+        // construct the vector with initial estimated capacity.
+        let mut iterator = iterable.into_iter();
+        let mut vector = match iterator.next() {
+            None => return Vec::new(),
+            Some(element) => {
+                let (lower, _) = iterator.size_hint();
+                let mut vector = Vec::with_capacity(1 + lower);
+                unsafe {
+                    ptr::write(vector.get_unchecked_mut(0), element);
+                    vector.set_len(1);
+                }
+                vector
+            }
+        };
         vector.extend(iterable);
         vector
     }
