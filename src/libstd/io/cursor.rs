@@ -62,30 +62,51 @@ impl<T> Cursor<T> {
     pub fn set_position(&mut self, pos: u64) { self.pos = pos; }
 }
 
-macro_rules! seek {
-    () => {
-        fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
-            let pos = match style {
-                SeekFrom::Start(n) => { self.pos = n; return Ok(n) }
-                SeekFrom::End(n) => self.inner.len() as i64 + n,
-                SeekFrom::Current(n) => self.pos as i64 + n,
-            };
-
-            if pos < 0 {
-                Err(Error::new(ErrorKind::InvalidInput,
-                               "invalid seek to a negative position",
-                               None))
-            } else {
-                self.pos = pos as u64;
-                Ok(self.pos)
-            }
+macro_rules! validate_pos {
+    ($pos:expr) => {
+        if $pos < 0 {
+            return Err(Error::new(ErrorKind::InvalidInput,
+                                  "invalid seek to a negative position",
+                                  None))
+        } else {
+            $pos as u64
         }
     }
 }
 
-impl<'a> io::Seek for Cursor<&'a [u8]> { seek!(); }
-impl<'a> io::Seek for Cursor<&'a mut [u8]> { seek!(); }
-impl io::Seek for Cursor<Vec<u8>> { seek!(); }
+macro_rules! assert_pos_bound {
+    ($pos:expr, $end:expr) => {{
+        debug_assert!($pos <= $end,
+                      "requested to consume past the length of the buffer");
+        $pos
+    }}
+}
+
+macro_rules! clamp_pos_to_end {
+    ($pos:expr, $end:expr) => (cmp::min($pos, $end))
+}
+
+macro_rules! allow_pos_past_end {
+    ($pos:expr, $end:expr) => ($pos)
+}
+
+macro_rules! seek {
+    ($limit_pos:ident) => {
+        fn seek(&mut self, style: SeekFrom) -> io::Result<u64> {
+            let pos = match style {
+                SeekFrom::Start(n) => n,
+                SeekFrom::End(n) => validate_pos!(self.inner.len() as i64 + n),
+                SeekFrom::Current(n) => validate_pos!(self.pos as i64 + n),
+            };
+            self.pos = $limit_pos!(pos, self.inner.len() as u64);
+            Ok(self.pos)
+        }
+    }
+}
+
+impl<'a> io::Seek for Cursor<&'a [u8]> { seek!(clamp_pos_to_end); }
+impl<'a> io::Seek for Cursor<&'a mut [u8]> { seek!(clamp_pos_to_end); }
+impl io::Seek for Cursor<Vec<u8>> { seek!(allow_pos_past_end); }
 
 macro_rules! read {
     () => {
@@ -101,19 +122,37 @@ impl<'a> Read for Cursor<&'a [u8]> { read!(); }
 impl<'a> Read for Cursor<&'a mut [u8]> { read!(); }
 impl Read for Cursor<Vec<u8>> { read!(); }
 
-macro_rules! buffer {
-    () => {
+macro_rules! fill_buf {
+    ($limit_pos:ident) => {
         fn fill_buf(&mut self) -> io::Result<&[u8]> {
-            let amt = cmp::min(self.pos, self.inner.len() as u64);
-            Ok(&self.inner[(amt as usize)..])
+            let pos = $limit_pos!(self.pos, self.inner.len() as u64);
+            Ok(&self.inner[(pos as usize)..])
         }
-        fn consume(&mut self, amt: usize) { self.pos += amt as u64; }
     }
 }
 
-impl<'a> BufRead for Cursor<&'a [u8]> { buffer!(); }
-impl<'a> BufRead for Cursor<&'a mut [u8]> { buffer!(); }
-impl<'a> BufRead for Cursor<Vec<u8>> { buffer!(); }
+macro_rules! consume {
+    ($limit_pos:ident) => {
+        fn consume(&mut self, amt: usize) {
+            let pos = $limit_pos!(self.pos + amt as u64,
+                                  self.inner.len() as u64);
+            self.pos = pos;
+        }
+    }
+}
+
+impl<'a> BufRead for Cursor<&'a [u8]> {
+    fill_buf!(allow_pos_past_end);
+    consume!(assert_pos_bound);
+}
+impl<'a> BufRead for Cursor<&'a mut [u8]> {
+    fill_buf!(allow_pos_past_end);
+    consume!(assert_pos_bound);
+}
+impl<'a> BufRead for Cursor<Vec<u8>> {
+    fill_buf!(clamp_pos_to_end);
+    consume!(clamp_pos_to_end);
+}
 
 impl<'a> Write for Cursor<&'a mut [u8]> {
     fn write(&mut self, data: &[u8]) -> io::Result<usize> {
@@ -332,7 +371,7 @@ mod tests {
     fn seek_past_end() {
         let buf = [0xff];
         let mut r = Cursor::new(&buf[..]);
-        assert_eq!(r.seek(SeekFrom::Start(10)), Ok(10));
+        assert_eq!(r.seek(SeekFrom::Start(10)), Ok(1));
         assert_eq!(r.read(&mut [0]), Ok(0));
 
         let mut r = Cursor::new(vec!(10u8));
@@ -341,7 +380,7 @@ mod tests {
 
         let mut buf = [0];
         let mut r = Cursor::new(&mut buf[..]);
-        assert_eq!(r.seek(SeekFrom::Start(10)), Ok(10));
+        assert_eq!(r.seek(SeekFrom::Start(10)), Ok(1));
         assert_eq!(r.write(&[3]), Ok(0));
     }
 
