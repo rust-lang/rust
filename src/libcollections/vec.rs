@@ -1429,7 +1429,7 @@ impl<T> FromIterator<T> for Vec<T> {
                 vector
             }
         };
-        vector.extend(iterable);
+        vector.extend_desugared(iterator);
         vector
     }
 }
@@ -1466,9 +1466,14 @@ impl<'a, T> IntoIterator for &'a mut Vec<T> {
 
 #[unstable(feature = "collections", reason = "waiting on Extend stability")]
 impl<T> Extend<T> for Vec<T> {
+    #[inline]
     fn extend<I: IntoIterator<Item=T>>(&mut self, iterable: I) {
-        let mut iterator = iterable.into_iter();
+        self.extend_desugared(iterable.into_iter())
+    }
+}
 
+impl<T> Vec<T> {
+    fn extend_desugared<I: Iterator<Item=T>>(&mut self, mut iterator: I) {
         // This function should be the moral equivalent of:
         //
         //      for item in iterator {
