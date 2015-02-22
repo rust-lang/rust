@@ -92,10 +92,6 @@
 //! return the result produced by the thread.  A handle to the thread
 //! itself is available via the `thread` method of the join guard.
 //!
-//! (Note: eventually, the `scoped` constructor will allow the parent and child
-//! threads to data that lives on the parent thread's stack, but some language
-//! changes are needed before this is possible.)
-//!
 //! ## Configuring threads
 //!
 //! A new thread can be configured before it is spawned via the `Builder` type,
