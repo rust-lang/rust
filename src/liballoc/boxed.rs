@@ -250,11 +250,12 @@ impl BoxAny for Box<Any> {
         if self.is::<T>() {
             unsafe {
                 // Get the raw representation of the trait object
+                let raw = into_raw(self);
                 let to: TraitObject =
-                    mem::transmute::<Box<Any>, TraitObject>(self);
+                    mem::transmute::<*mut Any, TraitObject>(raw);
 
                 // Extract the data pointer
-                Ok(mem::transmute(to.data))
+                Ok(Box::from_raw(to.data as *mut T))
             }
         } else {
             Err(self)

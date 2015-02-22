@@ -27,7 +27,7 @@ pub fn start_thread(main: *mut libc::c_void) -> thread::rust_thread_return {
     unsafe {
         stack::record_os_managed_stack_bounds(0, usize::MAX);
         let handler = stack_overflow::Handler::new();
-        let f: Box<Thunk> = mem::transmute(main);
+        let f: Box<Thunk> = Box::from_raw(main as *mut Thunk);
         f.invoke(());
         drop(handler);
         mem::transmute(0 as thread::rust_thread_return)

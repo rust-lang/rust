@@ -37,8 +37,8 @@
 
 use core::prelude::*;
 
+use alloc::boxed;
 use alloc::boxed::Box;
-use core::mem;
 use core::ptr;
 use core::cell::UnsafeCell;
 
@@ -81,7 +81,7 @@ unsafe impl<T: Send> Sync for Queue<T> { }
 impl<T: Send> Node<T> {
     fn new() -> *mut Node<T> {
         unsafe {
-            mem::transmute(box Node {
+            boxed::into_raw(box Node {
                 value: None,
                 next: AtomicPtr::new(ptr::null_mut::<Node<T>>()),
             })
@@ -200,7 +200,7 @@ impl<T: Send> Queue<T> {
                           .next.store(next, Ordering::Relaxed);
                     // We have successfully erased all references to 'tail', so
                     // now we can safely drop it.
-                    let _: Box<Node<T>> = mem::transmute(tail);
+                    let _: Box<Node<T>> = Box::from_raw(tail);
                 }
             }
             return ret;
@@ -233,7 +233,7 @@ impl<T: Send> Drop for Queue<T> {
             let mut cur = *self.first.get();
             while !cur.is_null() {
                 let next = (*cur).next.load(Ordering::Relaxed);
-                let _n: Box<Node<T>> = mem::transmute(cur);
+                let _n: Box<Node<T>> = Box::from_raw(cur);
                 cur = next;
             }
         }
