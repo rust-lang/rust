@@ -1363,10 +1363,10 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
         match self.inh.locals.borrow().get(&nid) {
             Some(&t) => t,
             None => {
-                self.tcx().sess.span_bug(
+                self.tcx().sess.span_err(
                     span,
-                    &format!("no type for local variable {}",
-                            nid));
+                    &format!("no type for local variable {}", nid));
+                self.tcx().types.err
             }
         }
     }
