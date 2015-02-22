@@ -6,209 +6,159 @@ functions are called *closures*. By themselves, closures aren't all that
 interesting, but when you combine them with functions that take closures as
 arguments, really powerful things are possible.
 
-Let's make a closure:
+## Declaring closures
 
-```{rust}
-let add_one = |x| { 1 + x };
+Here's a very simple function, and its closure version:
 
-println!("The sum of 5 plus 1 is {}.", add_one(5));
+```rust
+fn add_one(x: i32) -> i32 { x + 1 }
+
+let add_one = |x| { x + 1 };
 ```
 
-We create a closure using the `|...| { ... }` syntax, and then we create a
-binding so we can use it later. Note that we call the function using the
-binding name and two parentheses, just like we would for a named function.
+Here, let's change the whitespace a little, so we can see the parts line up:
 
-Let's compare syntax. The two are pretty close:
-
-```{rust}
-let add_one = |x: i32| -> i32 { 1 + x };
-fn  add_one   (x: i32) -> i32 { 1 + x }
+```rust
+fn  add_one   (x: i32) -> i32 { x + 1 }
+let add_one = |x|             { x + 1 };
 ```
 
-As you may have noticed, closures infer their argument and return types, so you
-don't need to declare one. This is different from named functions, which
-default to returning unit (`()`).
+The biggest thing you'll notice is that closures infer the types of their
+arguments and return values. Second, arguments go between a set of pipes (`|`),
+rather than in parentheses. Finally, to give a closure a name, we need to use
+`let` to assign it to a binding.
 
-There's one big difference between a closure and named functions, and it's in
-the name: a closure "closes over its environment." What does that mean? It means
-this:
+Calling a closure looks just like calling a function. Let's change the closure
+version to be bound to `plus_one` so we can compare:
 
-```{rust}
-fn main() {
-    let x: i32 = 5;
+```rust
+fn add_one(x: i32) -> i32 { x + 1 }
 
-    let printer = || { println!("x is: {}", x); };
+let plus_one = |x| { x + 1 };
 
-    printer(); // prints "x is: 5"
+assert_eq!(6, add_one(5));
+assert_eq!(6, plus_one(5));
+```
+
+So what's the big deal? Closures are useful when you want to pass a closure to
+another function. But before we can learn about that, we need to talk about the
+traits that closures are built on.
+
+## `Fn`, `FnMut`, `FnOnce`
+
+Rust's closures have a secret: they're actually just sugar for traits. In some
+sense, `()` is an overloadable operator. Like other operators, you can overload
+`()` by implementing a trait. In the case of `()`, it's actually three different
+traits:
+
+```rust
+trait Fn<Args> {
+    type Output;
+
+    fn call(&self, args: Args) -> Self::Output;
+}
+
+trait FnMut<Args> {
+    type Output;
+
+    fn call_mut(&mut self, args: Args) -> Self::Output;
+}
+
+trait FnOnce<Args> {
+    type Output;
+
+    fn call_once(self, args: Args) -> Self::Output;
 }
 ```
 
-The `||` syntax means this is an anonymous closure that takes no arguments.
-Without it, we'd just have a block of code in `{}`s.
+These three traits correspond to the three kinds of methods: `Fn` is `&self`,
+`FnMut` is `&mut self`, and `FnOnce` is `self`. We'll talk more about these three
+kinds in a moment, so for now, let's just consider `Fn`.
 
-In other words, a closure has access to variables in the scope where it's
-defined. The closure borrows any variables it uses, so this will error:
+## Taking closures as arguments
 
-```{rust,ignore}
-fn main() {
-    let mut x: i32 = 5;
+You can declare a closure as an argument to a function like this:
 
-    let printer = || { println!("x is: {}", x); };
-
-    x = 6; // error: cannot assign to `x` because it is borrowed
+```rust
+fn call<F>(s: String, f: F) -> u32 
+    where F: Fn(String) -> u32
+{
+    f(s)
 }
 ```
 
-## Moving closures
+This function, `call`, takes a `String` and a function from `String -> u32`,
+and calls that function on the string.
 
-Rust has a second type of closure, called a *moving closure*. Moving
-closures are indicated using the `move` keyword (e.g., `move || x *
-x`). The difference between a moving closure and an ordinary closure
-is that a moving closure always takes ownership of all variables that
-it uses. Ordinary closures, in contrast, just create a reference into
-the enclosing stack frame. Moving closures are most useful with Rust's
-concurrency features, and so we'll just leave it at this for
-now. We'll talk about them more in the "Threads" section of the guide.
+Let's call `call`:
 
-## Accepting closures as arguments
+```rust
+# fn call<F>(s: String, f: F) -> u32 
+#    where F: Fn(String) -> u32
+# { f(s) }
 
-Closures are most useful as an argument to another function. Here's an example:
+let forty_two = "42".to_string();
+let function = |s: String| { s.parse().unwrap() };
 
-```{rust}
-fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
-    f(x) + f(x)
-}
+call(forty_two, function);
 
-fn main() {
-    let square = |x: i32| { x * x };
+// or inline
+let forty_two = "42".to_string();
 
-    twice(5, square); // evaluates to 50
-}
+call(forty_two, |s| {
+    s.parse().unwrap()
+});
 ```
 
-Let's break the example down, starting with `main`:
+As you can see, when we define `function`, we need to let Rust know what
+type the argument `s` is. We can do that with a colon, just like in named
+`fn` declarations.
 
-```{rust}
-let square = |x: i32| { x * x };
+This function doesn't refer to anything but its arguments, and so doesn't
+really close over anything. Let's change that:
+
+```rust
+# fn call<F>(s: String, f: F) -> u32 
+#    where F: Fn(String) -> u32
+# { f(s) }
+
+let forty_two = "42".to_string();
+let number = 5;
+
+call(forty_two, |s| {
+    s.parse().unwrap() + number
+});
 ```
 
-We've seen this before. We make a closure that takes an integer, and returns
-its square.
+The Rust compiler turns this closure into something like this:
 
-```{rust}
-# fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 { f(x) + f(x) }
-# let square = |x: i32| { x * x };
-twice(5, square); // evaluates to 50
+```ignore
+struct ClosureEnvironment {
+    number: u32
+}
+
+impl Fn(String) -> u32 for ClosureEnvironment {
+    fn call(&self, (s,): (String,)) -> u32 {
+	s.parse().unwrap() + self.number
+    }
+}
+
+let forty_two = "42".to_string();
+let number = 5;
+let closure = ClosureEnvironment{ number: number };
+
+call(forty_two, closure);
 ```
 
-This line is more interesting. Here, we call our function, `twice`, and we pass
-it two arguments: an integer, `5`, and our closure, `square`. This is just like
-passing any other two variable bindings to a function, but if you've never
-worked with closures before, it can seem a little complex. Just think: "I'm
-passing two variables: one is an i32, and one is a function."
+As you can see, we generate a new `struct` for the environment, and then implements
+the `Fn` trait for that struct. Because the struct implements the trait, it can be
+passed to the function, which takes something that implements that trait.
 
-Next, let's look at how `twice` is defined:
+This also further explains why we need the three traits: If we only borrow our
+environment, we use `Fn`, if we borrow it mutably, we use `FnMut`, and if we consume
+our environment, we use `FnOnce`.
 
-```{rust,ignore}
-fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
-```
+## `move` closures
 
-`twice` takes two arguments, `x` and `f`. That's why we called it with two
-arguments. `x` is an `i32`, we've done that a ton of times. `f` is a function,
-though, and that function takes an `i32` and returns an `i32`. This is
-what the requirement `Fn(i32) -> i32` for the type parameter `F` says.
-Now `F` represents *any* function that takes an `i32` and returns an `i32`.
 
-This is the most complicated function signature we've seen yet! Give it a read
-a few times until you can see how it works. It takes a teeny bit of practice, and
-then it's easy. The good news is that this kind of passing a closure around
-can be very efficient. With all the type information available at compile-time
-the compiler can do wonders.
-
-Finally, `twice` returns an `i32` as well.
-
-Okay, let's look at the body of `twice`:
-
-```{rust}
-fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
-  f(x) + f(x)
-}
-```
-
-Since our closure is named `f`, we can call it just like we called our closures
-before, and we pass in our `x` argument to each one, hence the name `twice`.
-
-If you do the math, `(5 * 5) + (5 * 5) == 50`, so that's the output we get.
-
-Play around with this concept until you're comfortable with it. Rust's standard
-library uses lots of closures where appropriate, so you'll be using
-this technique a lot.
-
-If we didn't want to give `square` a name, we could just define it inline.
-This example is the same as the previous one:
-
-```{rust}
-fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
-    f(x) + f(x)
-}
-
-fn main() {
-    twice(5, |x: i32| { x * x }); // evaluates to 50
-}
-```
-
-A named function's name can be used wherever you'd use a closure. Another
-way of writing the previous example:
-
-```{rust}
-fn twice<F: Fn(i32) -> i32>(x: i32, f: F) -> i32 {
-    f(x) + f(x)
-}
-
-fn square(x: i32) -> i32 { x * x }
-
-fn main() {
-    twice(5, square); // evaluates to 50
-}
-```
-
-Doing this is not particularly common, but it's useful every once in a while.
-
-Before we move on, let us look at a function that accepts two closures.
-
-```{rust}
-fn compose<F, G>(x: i32, f: F, g: G) -> i32
-    where F: Fn(i32) -> i32, G: Fn(i32) -> i32 {
-    g(f(x))
-}
-
-fn main() {
-    compose(5,
-            |n: i32| { n + 42 },
-            |n: i32| { n * 2 }); // evaluates to 94
-}
-```
-
-You might ask yourself: why do we need to introduce two type
-parameters `F` and `G` here?  Evidently, both `f` and `g` have the
-same signature: `Fn(i32) -> i32`.
-
-That is because in Rust each closure has its own unique type.
-So, not only do closures with different signatures have different types,
-but different closures with the *same* signature have *different*
-types, as well!
-
-You can think of it this way: the behavior of a closure is part of its
-type.  Therefore, using a single type parameter for both closures
-will accept the first of them, rejecting the second. The distinct
-type of the second closure does not allow it to be represented by the
-same type parameter as that of the first.  We acknowledge this, and
-use two different type parameters `F` and `G`.
-
-This also introduces the `where` clause, which lets us describe type
-parameters in a more flexible manner.
-
-That's all you need to get the hang of closures! Closures are a little bit
-strange at first, but once you're used to them, you'll miss them
-in other languages. Passing functions to other functions is
-incredibly powerful, as you will see in the following chapter about iterators.
+## Returning closures from functions
