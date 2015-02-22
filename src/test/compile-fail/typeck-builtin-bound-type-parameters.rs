@@ -9,19 +9,20 @@
 // except according to those terms.
 
 fn foo1<T:Copy<U>, U>(x: T) {}
-//~^ ERROR: builtin bounds do not require arguments, 1 given
+//~^ ERROR: wrong number of type arguments: expected 0, found 1
 
 trait Trait: Copy<Send> {}
-//~^ ERROR: builtin bounds do not require arguments, 1 given
+//~^ ERROR: wrong number of type arguments: expected 0, found 1
 
 struct MyStruct1<T: Copy<T>>;
-//~^ ERROR builtin bounds do not require arguments, 1 given
+//~^ ERROR wrong number of type arguments: expected 0, found 1
 
 struct MyStruct2<'a, T: Copy<'a>>;
-//~^ ERROR: builtin bounds do not require arguments, 1 given
+//~^ ERROR: wrong number of lifetime parameters: expected 0, found 1
 
 fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-//~^ ERROR builtin bounds do not require arguments, 2 given
+//~^ ERROR: wrong number of type arguments: expected 0, found 1
+//~^^ ERROR: wrong number of lifetime parameters: expected 0, found 1
 
 fn main() {
 }
