@@ -348,7 +348,7 @@ impl FromStr for UserIdentifiedItem {
     type Err = ();
     fn from_str(s: &str) -> Result<UserIdentifiedItem, ()> {
         Ok(s.parse().map(ItemViaNode).unwrap_or_else(|_| {
-            ItemViaPath(s.split_str("::").map(|s| s.to_string()).collect())
+            ItemViaPath(s.split("::").map(|s| s.to_string()).collect())
         }))
     }
 }

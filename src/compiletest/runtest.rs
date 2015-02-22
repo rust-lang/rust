@@ -847,7 +847,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
             check_lines.iter().map(|s| {
                 s
                  .trim()
-                 .split_str("[...]")
+                 .split("[...]")
                  .map(|x| x.to_string())
                  .collect()
             }).collect();
@@ -866,7 +866,7 @@ fn check_debugger_output(debugger_run_result: &ProcRes, check_lines: &[String]) 
                         None
                     }
                 } else {
-                    rest.find_str(frag)
+                    rest.find(frag)
                 };
                 match found {
                     None => {
