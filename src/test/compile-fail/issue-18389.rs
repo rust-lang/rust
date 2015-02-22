@@ -23,6 +23,7 @@ pub trait Public: Private<
     <Self as Public>::P,
 //~^ ERROR illegal recursive type; insert an enum or struct in the cycle, if this is desired
     <Self as Public>::R
+//~^ ERROR unsupported cyclic reference between types/traits detected
 > {
     type P;
     type R;

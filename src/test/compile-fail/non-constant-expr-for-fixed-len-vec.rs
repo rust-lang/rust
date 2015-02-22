@@ -13,6 +13,7 @@
 fn main() {
     fn bar(n: isize) {
         let _x: [isize; n];
-        //~^ ERROR expected constant expr for array length: non-constant path in constant expr
+        //~^ ERROR no type for local variable
+        //~| ERROR array length constant evaluation error: non-constant path in constant expr
     }
 }
