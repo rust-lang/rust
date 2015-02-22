@@ -105,9 +105,9 @@ impl<T : ?Sized> Box<T> {
     /// After this function call, pointer is owned by resulting box.
     /// In particular, it means that `Box` destructor calls destructor
     /// of `T` and releases memory. Since the way `Box` allocates and
-    /// releases memory is unspecified, so the only valid pointer to
-    /// pass to this function is the one taken from another `Box` with
-    /// `box::into_raw` function.
+    /// releases memory is unspecified, the only valid pointer to pass
+    /// to this function is the one taken from another `Box` with
+    /// `boxed::into_raw` function.
     ///
     /// Function is unsafe, because improper use of this function may
     /// lead to memory problems like double-free, for example if the
