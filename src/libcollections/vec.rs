@@ -1479,22 +1479,15 @@ impl<T> Vec<T> {
         //      for item in iterator {
         //          self.push(item);
         //      }
-        loop {
-            match iterator.next() {
-                None => {
-                    break;
-                }
-                Some(element) => {
-                    let len = self.len();
-                    if len == self.capacity() {
-                        let (lower, _) = iterator.size_hint();
-                        self.reserve(lower + 1);
-                    }
-                    unsafe {
-                        ptr::write(self.get_unchecked_mut(len), element);
-                        self.set_len(len + 1);
-                    }
-                }
+        while let Some(element) = iterator.next() {
+            let len = self.len();
+            if len == self.capacity() {
+                let (lower, _) = iterator.size_hint();
+                self.reserve(lower + 1);
+            }
+            unsafe {
+                ptr::write(self.get_unchecked_mut(len), element);
+                self.set_len(len + 1);
             }
         }
     }
