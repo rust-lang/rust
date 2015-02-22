@@ -81,11 +81,13 @@ pub fn validate_crate_name(sess: Option<&Session>, s: &str, sp: Option<Span>) {
     };
     if s.len() == 0 {
         err("crate name must not be empty");
+    } else if s.char_at(0) == '-' {
+        err(&format!("crate name cannot start with a hyphen: {}", s));
     }
     for c in s.chars() {
         if c.is_alphanumeric() { continue }
         if c == '_' || c == '-' { continue }
-        err(&format!("invalid character `{}` in crate name: `{}`", c, s)[]);
+        err(&format!("invalid character `{}` in crate name: `{}`", c, s));
     }
     match sess {
         Some(sess) => sess.abort_if_errors(),
