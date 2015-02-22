@@ -4604,8 +4604,9 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
                                 "expected signed integer constant");
                         }
                         Err(ref err) => {
-                            span_err!(ccx.tcx.sess, e.span, E0080,
-                                "expected constant: {}", *err);
+                            span_err!(ccx.tcx.sess, err.span, E0080,
+                                      "constant evaluation error: {}",
+                                      err.description().as_slice());
                         }
                     }
                 },
