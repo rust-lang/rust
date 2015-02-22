@@ -165,7 +165,7 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
             ty::ty_open(_) => {
                 self.tcx().sess.bug(
                     &format!("Unexpected type encountered while doing wf check: {}",
-                            ty.repr(self.tcx()))[]);
+                            ty.repr(self.tcx())));
             }
         }
     }

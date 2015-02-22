@@ -554,7 +554,7 @@ fn bits_to_string(words: &[uint]) -> String {
         let mut v = word;
         for _ in 0..usize::BYTES {
             result.push(sep);
-            result.push_str(&format!("{:02x}", v & 0xFF)[]);
+            result.push_str(&format!("{:02x}", v & 0xFF));
             v >>= 8;
             sep = '-';
         }

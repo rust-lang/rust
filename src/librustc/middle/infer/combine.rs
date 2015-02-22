@@ -433,7 +433,7 @@ pub fn super_tys<'tcx, C: Combine<'tcx>>(this: &C,
             &format!("{}: bot and var types should have been handled ({},{})",
                     this.tag(),
                     a.repr(this.infcx().tcx),
-                    b.repr(this.infcx().tcx))[]);
+                    b.repr(this.infcx().tcx)));
       }
 
       (&ty::ty_err, _) | (_, &ty::ty_err) => {
@@ -818,7 +818,7 @@ impl<'cx, 'tcx> ty_fold::TypeFolder<'tcx> for Generalizer<'cx, 'tcx> {
                 self.tcx().sess.span_bug(
                     self.span,
                     &format!("Encountered early bound region when generalizing: {}",
-                            r.repr(self.tcx()))[]);
+                            r.repr(self.tcx())));
             }
 
             // Always make a fresh region variable for skolemized regions;

@@ -36,7 +36,7 @@ use syntax::parse::token;
 use util::ppaux::{Repr, ty_to_string};
 
 pub fn get_simple_intrinsic(ccx: &CrateContext, item: &ast::ForeignItem) -> Option<ValueRef> {
-    let name = match &token::get_ident(item.ident)[] {
+    let name = match &token::get_ident(item.ident)[..] {
         "sqrtf32" => "llvm.sqrt.f32",
         "sqrtf64" => "llvm.sqrt.f64",
         "powif32" => "llvm.powi.f32",

@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -105,7 +105,7 @@ impl LintStore {
     }
 
     pub fn get_lints<'t>(&'t self) -> &'t [(&'static Lint, bool)] {
-        &self.lints[]
+        &self.lints
     }
 
     pub fn get_lint_groups<'t>(&'t self) -> Vec<(&'static str, Vec<LintId>, bool)> {
@@ -206,7 +206,7 @@ impl LintStore {
                      UnusedImportBraces,
                      NonShorthandFieldPatterns,
                      UnusedUnsafe,
-                     UnsafeBlocks,
+                     UnsafeCode,
                      UnusedMut,
                      UnusedAllocation,
                      MissingCopyImplementations,
@@ -276,7 +276,7 @@ impl LintStore {
                              .collect::<Vec<()>>();
                         }
                         None => sess.err(&format!("unknown {} flag: {}",
-                                                 level.as_str(), lint_name)[]),
+                                                 level.as_str(), lint_name)),
                     }
                 }
             }
@@ -527,7 +527,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
                     self.tcx.sess.span_err(span,
                                            &format!("{}({}) overruled by outer forbid({})",
                                                    level.as_str(), lint_name,
-                                                   lint_name)[]);
+                                                   lint_name));
                 } else if now != level {
                     let src = self.lints.get_level_source(lint_id).1;
                     self.level_stack.push((lint_id, (now, src)));
@@ -562,7 +562,7 @@ impl<'a, 'tcx> Context<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     fn visit_item(&mut self, it: &ast::Item) {
-        self.with_lint_attrs(&it.attrs[], |cx| {
+        self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_item, it);
             cx.visit_ids(|v| v.visit_item(it));
             visit::walk_item(cx, it);
@@ -570,7 +570,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, it: &ast::ForeignItem) {
-        self.with_lint_attrs(&it.attrs[], |cx| {
+        self.with_lint_attrs(&it.attrs, |cx| {
             run_lints!(cx, check_foreign_item, it);
             visit::walk_foreign_item(cx, it);
         })
@@ -595,7 +595,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
                 body: &'v ast::Block, span: Span, id: ast::NodeId) {
         match fk {
             visit::FkMethod(_, _, m) => {
-                self.with_lint_attrs(&m.attrs[], |cx| {
+                self.with_lint_attrs(&m.attrs, |cx| {
                     run_lints!(cx, check_fn, fk, decl, body, span, id);
                     cx.visit_ids(|v| {
                         v.visit_fn(fk, decl, body, span, id);
@@ -611,7 +611,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_ty_method(&mut self, t: &ast::TypeMethod) {
-        self.with_lint_attrs(&t.attrs[], |cx| {
+        self.with_lint_attrs(&t.attrs, |cx| {
             run_lints!(cx, check_ty_method, t);
             visit::walk_ty_method(cx, t);
         })
@@ -628,14 +628,14 @@ impl<'a, 'tcx, 'v> Visitor<'v> for Context<'a, 'tcx> {
     }
 
     fn visit_struct_field(&mut self, s: &ast::StructField) {
-        self.with_lint_attrs(&s.node.attrs[], |cx| {
+        self.with_lint_attrs(&s.node.attrs, |cx| {
             run_lints!(cx, check_struct_field, s);
             visit::walk_struct_field(cx, s);
         })
     }
 
     fn visit_variant(&mut self, v: &ast::Variant, g: &ast::Generics) {
-        self.with_lint_attrs(&v.node.attrs[], |cx| {
+        self.with_lint_attrs(&v.node.attrs, |cx| {
             run_lints!(cx, check_variant, v, g);
             visit::walk_variant(cx, v, g);
             run_lints!(cx, check_variant_post, v, g);
@@ -779,7 +779,7 @@ pub fn check_crate(tcx: &ty::ctxt,
     let mut cx = Context::new(tcx, krate, exported_items);
 
     // Visit the whole crate.
-    cx.with_lint_attrs(&krate.attrs[], |cx| {
+    cx.with_lint_attrs(&krate.attrs, |cx| {
         cx.visit_id(ast::CRATE_NODE_ID);
         cx.visit_ids(|v| {
             v.visited_outermost = true;

@@ -79,7 +79,7 @@ pub fn trans_impl(ccx: &CrateContext,
         match *impl_item {
             ast::MethodImplItem(ref method) => {
                 if method.pe_generics().ty_params.len() == 0 {
-                    let trans_everywhere = attr::requests_inline(&method.attrs[]);
+                    let trans_everywhere = attr::requests_inline(&method.attrs);
                     for (ref ccx, is_origin) in ccx.maybe_iter(trans_everywhere) {
                         let llfn = get_item_val(ccx, method.id);
                         let empty_substs = tcx.mk_substs(Substs::trans_empty());
@@ -305,7 +305,7 @@ pub fn trans_static_method_callee<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
         }
         _ => {
             tcx.sess.bug(&format!("static call to invalid vtable: {}",
-                                 vtbl.repr(tcx))[]);
+                                 vtbl.repr(tcx)));
         }
     }
 }
@@ -393,7 +393,7 @@ fn trans_monomorphized_callee<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         traits::VtableParam(..) => {
             bcx.sess().bug(
                 &format!("resolved vtable bad vtable {} in trans",
-                        vtable.repr(bcx.tcx()))[]);
+                        vtable.repr(bcx.tcx())));
         }
     }
 }
@@ -749,7 +749,7 @@ pub fn get_vtable<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                 tcx.sess.bug(
                     &format!("resolved vtable for {} to bad vtable {} in trans",
                             trait_ref.repr(tcx),
-                            vtable.repr(tcx))[]);
+                            vtable.repr(tcx)));
             }
         }
     });

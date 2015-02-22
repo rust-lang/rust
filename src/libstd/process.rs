@@ -489,18 +489,14 @@ impl Child {
 mod tests {
     use io::ErrorKind;
     use io::prelude::*;
-    use prelude::v1::{Ok, Err, range, drop, Some, None, Vec};
+    use prelude::v1::{Ok, Err, drop, Some, Vec};
     use prelude::v1::{String, Clone};
     use prelude::v1::{SliceExt, Str, StrExt, AsSlice, ToString, GenericPath};
-    use path::Path;
     use old_path;
     use old_io::fs::PathExtensions;
     use rt::running_on_valgrind;
     use str;
-    use super::{Child, Command, Output, ExitStatus, Stdio};
-    use sync::mpsc::channel;
-    use thread;
-    use time::Duration;
+    use super::{Command, Output, Stdio};
 
     // FIXME(#10380) these tests should not all be ignored on android.
 

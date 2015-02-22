@@ -12,6 +12,15 @@
 #![feature(int_uint)]
 #![feature(unboxed_closures)]
 #![feature(unsafe_destructor)]
+#![feature(core)]
+#![feature(test)]
+#![feature(rand)]
+#![feature(unicode)]
+#![feature(std_misc)]
+#![feature(libc)]
+#![feature(hash)]
+#![feature(io)]
+#![feature(collections)]
 #![allow(deprecated)] // rand
 
 extern crate core;

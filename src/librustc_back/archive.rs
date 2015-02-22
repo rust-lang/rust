@@ -73,19 +73,19 @@ fn run_ar(handler: &ErrorHandler, maybe_ar_prog: &Option<String>,
         Ok(prog) => {
             let o = prog.wait_with_output().unwrap();
             if !o.status.success() {
-                handler.err(&format!("{:?} failed with: {}", cmd, o.status)[]);
+                handler.err(&format!("{:?} failed with: {}", cmd, o.status));
                 handler.note(&format!("stdout ---\n{}",
-                                  str::from_utf8(&o.output[]).unwrap())[]);
+                                  str::from_utf8(&o.output).unwrap()));
                 handler.note(&format!("stderr ---\n{}",
-                                  str::from_utf8(&o.error[]).unwrap())
-                             []);
+                                  str::from_utf8(&o.error).unwrap())
+                             );
                 handler.abort_if_errors();
             }
             o
         },
         Err(e) => {
             handler.err(&format!("could not exec `{}`: {}", &ar[..],
-                             e)[]);
+                             e));
             handler.abort_if_errors();
             panic!("rustc::back::archive::run_ar() should not reach this point");
         }
@@ -110,7 +110,7 @@ pub fn find_library(name: &str, osprefix: &str, ossuffix: &str,
     }
     handler.fatal(&format!("could not find native static library `{}`, \
                            perhaps an -L flag is missing?",
-                          name)[]);
+                          name));
 }
 
 impl<'a> Archive<'a> {
@@ -142,7 +142,7 @@ impl<'a> Archive<'a> {
     /// Lists all files in an archive
     pub fn files(&self) -> Vec<String> {
         let output = run_ar(self.handler, &self.maybe_ar_prog, "t", None, &[&self.dst]);
-        let output = str::from_utf8(&output.output[]).unwrap();
+        let output = str::from_utf8(&output.output).unwrap();
         // use lines_any because windows delimits output with `\r\n` instead of
         // just `\n`
         output.lines_any().map(|s| s.to_string()).collect()
@@ -174,9 +174,9 @@ impl<'a> ArchiveBuilder<'a> {
     /// search in the relevant locations for a library named `name`.
     pub fn add_native_library(&mut self, name: &str) -> old_io::IoResult<()> {
         let location = find_library(name,
-                                    &self.archive.slib_prefix[],
-                                    &self.archive.slib_suffix[],
-                                    &self.archive.lib_search_paths[],
+                                    &self.archive.slib_prefix,
+                                    &self.archive.slib_suffix,
+                                    &self.archive.lib_search_paths,
                                     self.archive.handler);
         self.add_archive(&location, name, |_| false)
     }

@@ -117,7 +117,7 @@ use std::iter::repeat;
 use std::slice;
 use syntax::{self, abi, attr};
 use syntax::attr::AttrMetaMethods;
-use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId};
+use syntax::ast::{self, ProvidedMethod, RequiredMethod, TypeTraitItem, DefId, Visibility};
 use syntax::ast_util::{self, local_def, PostExpansionMethod};
 use syntax::codemap::{self, Span};
 use syntax::owned_slice::OwnedSlice;
@@ -615,7 +615,7 @@ fn check_fn<'a, 'tcx>(ccx: &'a CrateCtxt<'a, 'tcx>,
     let tcx = ccx.tcx;
     let err_count_on_creation = tcx.sess.err_count();
 
-    let arg_tys = &fn_sig.inputs[];
+    let arg_tys = &fn_sig.inputs;
     let ret_ty = fn_sig.output;
 
     debug!("check_fn(arg_tys={}, ret_ty={}, fn_id={})",
@@ -713,7 +713,7 @@ pub fn check_item<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>, it: &'tcx ast::Item) {
       ast::ItemEnum(ref enum_definition, _) => {
         check_enum_variants(ccx,
                             it.span,
-                            &enum_definition.variants[],
+                            &enum_definition.variants,
                             it.id);
       }
       ast::ItemFn(ref decl, _, _, _, ref body) => {
@@ -1334,7 +1334,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx().sess.span_bug(
                     span,
                     &format!("no type for local variable {}",
-                            nid)[]);
+                            nid));
             }
         }
     }
@@ -1707,7 +1707,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
             Some(&t) => t,
             None => {
                 self.tcx().sess.bug(&format!("no type for expr in fcx {}",
-                                            self.tag())[]);
+                                            self.tag()));
             }
         }
     }
@@ -1739,7 +1739,7 @@ impl<'a, 'tcx> FnCtxt<'a, 'tcx> {
                 self.tcx().sess.bug(
                     &format!("no type for node {}: {} in fcx {}",
                             id, self.tcx().map.node_to_string(id),
-                            self.tag())[]);
+                            self.tag()));
             }
         }
     }
@@ -2275,7 +2275,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         if arg_types.len() == 1 {""} else {"s"},
                         args.len(),
                         if args.len() == 1 {" was"} else {"s were"});
-                    expected_arg_tys = &[][];
+                    expected_arg_tys = &[];
                     err_args(fcx.tcx(), args.len())
                 } else {
                     expected_arg_tys = match expected_arg_tys.get(0) {
@@ -2292,7 +2292,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 span_err!(tcx.sess, sp, E0059,
                     "cannot use call notation; the first type parameter \
                      for the function trait is neither a tuple nor unit");
-                expected_arg_tys = &[][];
+                expected_arg_tys = &[];
                 err_args(fcx.tcx(), args.len())
             }
         }
@@ -2309,7 +2309,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 if expected_arg_count == 1 {""} else {"s"},
                 supplied_arg_count,
                 if supplied_arg_count == 1 {" was"} else {"s were"});
-            expected_arg_tys = &[][];
+            expected_arg_tys = &[];
             err_args(fcx.tcx(), supplied_arg_count)
         }
     } else {
@@ -2319,7 +2319,7 @@ fn check_argument_types<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
             if expected_arg_count == 1 {""} else {"s"},
             supplied_arg_count,
             if supplied_arg_count == 1 {" was"} else {"s were"});
-        expected_arg_tys = &[][];
+        expected_arg_tys = &[];
         err_args(fcx.tcx(), supplied_arg_count)
     };
 
@@ -2809,7 +2809,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
         };
         let args = match rhs {
             Some(rhs) => slice::ref_slice(rhs),
-            None => &[][]
+            None => &[][..]
         };
         match method {
             Some(method) => {
@@ -3115,6 +3115,10 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
             let n = elem.name.as_str();
             // ignore already set fields
             if skip.iter().any(|&x| x == n) {
+                continue;
+            }
+            // ignore private fields from non-local crates
+            if id.krate != ast::LOCAL_CRATE && elem.vis != Visibility::Public {
                 continue;
             }
             let dist = lev_distance(n, name);
@@ -4584,7 +4588,7 @@ pub fn check_enum_variants<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     }
 
     let hint = *ty::lookup_repr_hints(ccx.tcx, ast::DefId { krate: ast::LOCAL_CRATE, node: id })
-        [].get(0).unwrap_or(&attr::ReprAny);
+        .get(0).unwrap_or(&attr::ReprAny);
 
     if hint != attr::ReprAny && vs.len() <= 1 {
         if vs.len() == 1 {

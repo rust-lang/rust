@@ -784,7 +784,7 @@ pub fn usage(brief: &str, opts: &[OptGroup]) -> String {
 
         // FIXME: #5516 should be graphemes not codepoints
         // wrapped description
-        row.push_str(&desc_rows.connect(&desc_sep[..])[]);
+        row.push_str(&desc_rows.connect(&desc_sep[..]));
 
         row
     });

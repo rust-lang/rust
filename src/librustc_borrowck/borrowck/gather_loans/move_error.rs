@@ -121,7 +121,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
         mc::cat_static_item => {
             bccx.span_err(move_from.span,
                           &format!("cannot move out of {}",
-                                  move_from.descriptive_string(bccx.tcx))[]);
+                                  move_from.descriptive_string(bccx.tcx)));
         }
 
         mc::cat_interior(ref b, mc::InteriorElement(Kind::Index, _)) => {
@@ -130,7 +130,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                 bccx.span_err(move_from.span,
                               &format!("cannot move out of type `{}`, \
                                         a non-copy fixed-size array",
-                                       b.ty.user_string(bccx.tcx))[]);
+                                       b.ty.user_string(bccx.tcx)));
             }
         }
 
@@ -143,7 +143,7 @@ fn report_cannot_move_out_of<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                         move_from.span,
                         &format!("cannot move out of type `{}`, \
                                  which defines the `Drop` trait",
-                                b.ty.user_string(bccx.tcx))[]);
+                                b.ty.user_string(bccx.tcx)));
                 },
                 _ => {
                     bccx.span_bug(move_from.span, "this path should not cause illegal move")
@@ -170,10 +170,10 @@ fn note_move_destination(bccx: &BorrowckCtxt,
             &format!("to prevent the move, \
                      use `ref {0}` or `ref mut {0}` to capture value by \
                      reference",
-                    pat_name)[]);
+                    pat_name));
     } else {
         bccx.span_note(move_to_span,
                        &format!("and here (use `ref {0}` or `ref mut {0}`)",
-                               pat_name)[]);
+                               pat_name));
     }
 }

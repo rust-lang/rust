@@ -185,7 +185,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
     let llsizingty = match t.sty {
         _ if !lltype_is_sized(cx.tcx(), t) => {
             cx.sess().bug(&format!("trying to take the sizing type of {}, an unsized type",
-                                  ppaux::ty_to_string(cx.tcx(), t))[])
+                                  ppaux::ty_to_string(cx.tcx(), t)))
         }
 
         ty::ty_bool => Type::bool(cx),
@@ -238,7 +238,7 @@ pub fn sizing_type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Typ
 
         ty::ty_projection(..) | ty::ty_infer(..) | ty::ty_param(..) | ty::ty_err(..) => {
             cx.sess().bug(&format!("fictitious type {} in sizing_type_of()",
-                                  ppaux::ty_to_string(cx.tcx(), t))[])
+                                  ppaux::ty_to_string(cx.tcx(), t)))
         }
         ty::ty_vec(_, None) | ty::ty_trait(..) | ty::ty_str => panic!("unreachable")
     };
@@ -418,7 +418,7 @@ pub fn type_of<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>) -> Type {
           }
           ty::ty_trait(..) => Type::opaque_trait(cx),
           _ => cx.sess().bug(&format!("ty_open with sized type: {}",
-                                     ppaux::ty_to_string(cx.tcx(), t))[])
+                                     ppaux::ty_to_string(cx.tcx(), t)))
       },
 
       ty::ty_infer(..) => cx.sess().bug("type_of with ty_infer"),

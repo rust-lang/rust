@@ -254,7 +254,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
         Ok(bytes) => bytes,
         Err(e) => {
             err(&format!("couldn't read {:?}: {}",
-                        path.display(), e)[]);
+                        path.display(), e));
             unreachable!()
         }
     };
@@ -264,7 +264,7 @@ pub fn file_to_filemap(sess: &ParseSess, path: &Path, spanopt: Option<Span>)
                                      path.as_str().unwrap().to_string())
         }
         None => {
-            err(&format!("{:?} is not UTF-8 encoded", path.display())[])
+            err(&format!("{:?} is not UTF-8 encoded", path.display()))
         }
     }
     unreachable!()
@@ -827,19 +827,19 @@ mod test {
              ast::TtDelimited(_, ref macro_delimed)]
             if name_macro_rules.as_str() == "macro_rules"
             && name_zip.as_str() == "zip" => {
-                match &macro_delimed.tts[] {
+                match &macro_delimed.tts[..] {
                     [ast::TtDelimited(_, ref first_delimed),
                      ast::TtToken(_, token::FatArrow),
                      ast::TtDelimited(_, ref second_delimed)]
                     if macro_delimed.delim == token::Paren => {
-                        match &first_delimed.tts[] {
+                        match &first_delimed.tts[..] {
                             [ast::TtToken(_, token::Dollar),
                              ast::TtToken(_, token::Ident(name, token::Plain))]
                             if first_delimed.delim == token::Paren
                             && name.as_str() == "a" => {},
                             _ => panic!("value 3: {:?}", **first_delimed),
                         }
-                        match &second_delimed.tts[] {
+                        match &second_delimed.tts[..] {
                             [ast::TtToken(_, token::Dollar),
                              ast::TtToken(_, token::Ident(name, token::Plain))]
                             if second_delimed.delim == token::Paren
@@ -1207,7 +1207,7 @@ mod test {
 
         let source = "/// doc comment\r\n/// line 2\r\nfn foo() {}".to_string();
         let item = parse_item_from_source_str(name.clone(), source, Vec::new(), &sess).unwrap();
-        let docs = item.attrs.iter().filter(|a| &a.name()[] == "doc")
+        let docs = item.attrs.iter().filter(|a| &*a.name() == "doc")
                     .map(|a| a.value_str().unwrap().to_string()).collect::<Vec<_>>();
         let b: &[_] = &["/// doc comment".to_string(), "/// line 2".to_string()];
         assert_eq!(&docs[..], b);

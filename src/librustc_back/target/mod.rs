@@ -239,7 +239,7 @@ impl Target {
                      .and_then(|os| os.map(|s| s.to_string())) {
                 Some(val) => val,
                 None =>
-                    handler.fatal(&format!("Field {} in target specification is required", name)[])
+                    handler.fatal(&format!("Field {} in target specification is required", name))
             }
         };
 

@@ -687,7 +687,9 @@ than the hundred `int`s that make up the `BigStruct`.
 
 This is an antipattern in Rust. Instead, write this:
 
-```{rust}
+```rust
+#![feature(box_syntax)]
+
 struct BigStruct {
     one: i32,
     two: i32,
@@ -706,9 +708,12 @@ fn main() {
         one_hundred: 100,
     });
 
-    let y = Box::new(foo(x));
+    let y = box foo(x);
 }
 ```
+
+Note that this uses the `box_syntax` feature gate, so this syntax may change in
+the future.
 
 This gives you flexibility without sacrificing performance.
 

@@ -15,7 +15,7 @@
 //! > module while the details of this module shake out.
 
 #![unstable(feature = "io",
-            reason = "this new I/O module is still under active deveopment and \
+            reason = "this new I/O module is still under active development and \
                       APIs are subject to tweaks fairly regularly")]
 
 use cmp;
@@ -869,12 +869,12 @@ mod tests {
 
     #[test]
     fn split() {
-        let mut buf = Cursor::new(b"12");
+        let buf = Cursor::new(b"12");
         let mut s = buf.split(b'3');
         assert_eq!(s.next(), Some(Ok(vec![b'1', b'2'])));
         assert_eq!(s.next(), None);
 
-        let mut buf = Cursor::new(b"1233");
+        let buf = Cursor::new(b"1233");
         let mut s = buf.split(b'3');
         assert_eq!(s.next(), Some(Ok(vec![b'1', b'2'])));
         assert_eq!(s.next(), Some(Ok(vec![])));
@@ -902,12 +902,12 @@ mod tests {
 
     #[test]
     fn lines() {
-        let mut buf = Cursor::new(b"12");
+        let buf = Cursor::new(b"12");
         let mut s = buf.lines();
         assert_eq!(s.next(), Some(Ok("12".to_string())));
         assert_eq!(s.next(), None);
 
-        let mut buf = Cursor::new(b"12\n\n");
+        let buf = Cursor::new(b"12\n\n");
         let mut s = buf.lines();
         assert_eq!(s.next(), Some(Ok("12".to_string())));
         assert_eq!(s.next(), Some(Ok(String::new())));

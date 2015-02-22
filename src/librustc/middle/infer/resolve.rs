@@ -96,7 +96,7 @@ impl<'a, 'tcx> ty_fold::TypeFolder<'tcx> for FullTypeResolver<'a, 'tcx> {
                 ty::ty_infer(_) => {
                     self.infcx.tcx.sess.bug(
                         &format!("Unexpected type in full type resolver: {}",
-                                t.repr(self.infcx.tcx))[]);
+                                t.repr(self.infcx.tcx)));
                 }
                 _ => {
                     ty_fold::super_fold_ty(self, t)

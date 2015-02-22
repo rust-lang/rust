@@ -1324,7 +1324,6 @@ impl<T: AsOsStr + ?Sized> AsPath for T {
 #[cfg(test)]
 mod tests {
     use super::*;
-    use ffi::OsStr;
     use core::prelude::*;
     use string::{ToString, String};
     use vec::Vec;

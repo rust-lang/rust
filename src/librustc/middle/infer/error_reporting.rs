@@ -449,7 +449,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!(
                         "consider adding an explicit lifetime bound `{}: {}`...",
                         bound_kind.user_string(self.tcx),
-                        sub.user_string(self.tcx))[]);
+                        sub.user_string(self.tcx)));
             }
 
             ty::ReStatic => {
@@ -460,7 +460,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound `{}: 'static`...",
-                        bound_kind.user_string(self.tcx))[]);
+                        bound_kind.user_string(self.tcx)));
             }
 
             _ => {
@@ -472,10 +472,10 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     origin.span(),
                     &format!(
                         "consider adding an explicit lifetime bound for `{}`",
-                        bound_kind.user_string(self.tcx))[]);
+                        bound_kind.user_string(self.tcx)));
                 note_and_explain_region(
                     self.tcx,
-                    &format!("{} must be valid for ", labeled_user_string)[],
+                    &format!("{} must be valid for ", labeled_user_string),
                     sub,
                     "...");
             }
@@ -525,7 +525,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!("...but `{}` is only valid for ",
                             ty::local_var_name_str(self.tcx,
                                                    upvar_id.var_id)
-                                .to_string())[],
+                                .to_string()),
                     sup,
                     "");
             }
@@ -568,7 +568,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!("captured variable `{}` does not \
                             outlive the enclosing closure",
                             ty::local_var_name_str(self.tcx,
-                                                   id).to_string())[]);
+                                                   id).to_string()));
                 note_and_explain_region(
                     self.tcx,
                     "captured variable is valid for ",
@@ -610,7 +610,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("the type `{}` does not fulfill the \
                              required lifetime",
-                            self.ty_to_string(ty))[]);
+                            self.ty_to_string(ty)));
                 note_and_explain_region(self.tcx,
                                         "type must outlive ",
                                         sub,
@@ -636,7 +636,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("the type `{}` (provided as the value of \
                              a type parameter) is not valid at this point",
-                            self.ty_to_string(ty))[]);
+                            self.ty_to_string(ty)));
                 note_and_explain_region(self.tcx,
                                         "type must outlive ",
                                         sub,
@@ -713,7 +713,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("type of expression contains references \
                              that are not valid during the expression: `{}`",
-                            self.ty_to_string(t))[]);
+                            self.ty_to_string(t)));
                 note_and_explain_region(
                     self.tcx,
                     "type is only valid for ",
@@ -752,7 +752,7 @@ impl<'a, 'tcx> ErrorReporting<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("in type `{}`, reference has a longer lifetime \
                              than the data it references",
-                            self.ty_to_string(ty))[]);
+                            self.ty_to_string(ty)));
                 note_and_explain_region(
                     self.tcx,
                     "the pointer is valid for ",
@@ -988,7 +988,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                 names.push(lt_name);
             }
             names.sort();
-            let name = token::str_to_ident(&names[0][]).name;
+            let name = token::str_to_ident(&names[0]).name;
             return (name_to_dummy_lifetime(name), Kept);
         }
         return (self.life_giver.give_lifetime(), Fresh);
@@ -1240,7 +1240,7 @@ impl<'a, 'tcx> Rebuilder<'a, 'tcx> {
                                 .sess
                                 .fatal(&format!(
                                         "unbound path {}",
-                                        pprust::path_to_string(path))[])
+                                        pprust::path_to_string(path)))
                         }
                         Some(&d) => d
                     };
@@ -1479,7 +1479,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
             var_origin.span(),
             &format!("cannot infer an appropriate lifetime{} \
                     due to conflicting requirements",
-                    var_description)[]);
+                    var_description));
     }
 
     fn note_region_origin(&self, origin: &SubregionOrigin<'tcx>) {
@@ -1527,7 +1527,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                         self.tcx.sess.span_note(
                             trace.origin.span(),
                             &format!("...so that {} ({})",
-                                    desc, values_str)[]);
+                                    desc, values_str));
                     }
                     None => {
                         // Really should avoid printing this error at
@@ -1536,7 +1536,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                         // doing right now. - nmatsakis
                         self.tcx.sess.span_note(
                             trace.origin.span(),
-                            &format!("...so that {}", desc)[]);
+                            &format!("...so that {}", desc));
                     }
                 }
             }
@@ -1552,7 +1552,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!(
                         "...so that closure can access `{}`",
                         ty::local_var_name_str(self.tcx, upvar_id.var_id)
-                            .to_string())[])
+                            .to_string()))
             }
             infer::InfStackClosure(span) => {
                 self.tcx.sess.span_note(
@@ -1577,7 +1577,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                             does not outlive the enclosing closure",
                             ty::local_var_name_str(
                                 self.tcx,
-                                id).to_string())[]);
+                                id).to_string()));
             }
             infer::IndexSlice(span) => {
                 self.tcx.sess.span_note(
@@ -1626,7 +1626,7 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("...so type `{}` of expression is valid during the \
                              expression",
-                            self.ty_to_string(t))[]);
+                            self.ty_to_string(t)));
             }
             infer::BindingTypeIsNotValidAtDecl(span) => {
                 self.tcx.sess.span_note(
@@ -1638,14 +1638,14 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     span,
                     &format!("...so that the reference type `{}` \
                              does not outlive the data it points at",
-                            self.ty_to_string(ty))[]);
+                            self.ty_to_string(ty)));
             }
             infer::RelateParamBound(span, t) => {
                 self.tcx.sess.span_note(
                     span,
                     &format!("...so that the type `{}` \
                              will meet its required lifetime bounds",
-                            self.ty_to_string(t))[]);
+                            self.ty_to_string(t)));
             }
             infer::RelateDefaultParamBound(span, t) => {
                 self.tcx.sess.span_note(
@@ -1653,13 +1653,13 @@ impl<'a, 'tcx> ErrorReportingHelpers<'tcx> for InferCtxt<'a, 'tcx> {
                     &format!("...so that type parameter \
                              instantiated with `{}`, \
                              will meet its declared lifetime bounds",
-                            self.ty_to_string(t))[]);
+                            self.ty_to_string(t)));
             }
             infer::RelateRegionParamBound(span) => {
                 self.tcx.sess.span_note(
                     span,
                     &format!("...so that the declared lifetime parameter bounds \
-                                are satisfied")[]);
+                                are satisfied"));
             }
             infer::SafeDestructor(span) => {
                 self.tcx.sess.span_note(
@@ -1717,7 +1717,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
         Some(node) => match node {
             ast_map::NodeItem(item) => match item.node {
                 ast::ItemFn(_, _, _, ref gen, _) => {
-                    taken.push_all(&gen.lifetimes[]);
+                    taken.push_all(&gen.lifetimes);
                     None
                 },
                 _ => None
@@ -1725,7 +1725,7 @@ fn lifetimes_in_scope(tcx: &ty::ctxt,
             ast_map::NodeImplItem(ii) => {
                 match *ii {
                     ast::MethodImplItem(ref m) => {
-                        taken.push_all(&m.pe_generics().lifetimes[]);
+                        taken.push_all(&m.pe_generics().lifetimes);
                         Some(m.id)
                     }
                     ast::TypeImplItem(_) => None,
@@ -1784,7 +1784,7 @@ impl LifeGiver {
         let mut lifetime;
         loop {
             let mut s = String::from_str("'");
-            s.push_str(&num_to_string(self.counter.get())[]);
+            s.push_str(&num_to_string(self.counter.get()));
             if !self.taken.contains(&s) {
                 lifetime = name_to_dummy_lifetime(
                                     token::str_to_ident(&s[..]).name);

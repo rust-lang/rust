@@ -32,7 +32,6 @@ use core::ptr::{self, Unique};
 use core::raw::Slice as RawSlice;
 
 use core::hash::{Hash, Hasher};
-#[cfg(stage0)] use core::hash::Writer;
 use core::cmp;
 
 use alloc::heap;
@@ -1675,17 +1674,6 @@ impl<A: Ord> Ord for VecDeque<A> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-impl<S: Writer + Hasher, A: Hash<S>> Hash<S> for VecDeque<A> {
-    fn hash(&self, state: &mut S) {
-        self.len().hash(state);
-        for elt in self {
-            elt.hash(state);
-        }
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 impl<A: Hash> Hash for VecDeque<A> {
     fn hash<H: Hasher>(&self, state: &mut H) {
         self.len().hash(state);

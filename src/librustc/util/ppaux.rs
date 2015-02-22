@@ -29,7 +29,6 @@ use middle::ty_fold::TypeFoldable;
 use std::collections::HashMap;
 use std::collections::hash_state::HashState;
 use std::hash::Hash;
-#[cfg(stage0)] use std::hash::Hasher;
 use std::rc::Rc;
 use syntax::abi;
 use syntax::ast_map;
@@ -58,12 +57,12 @@ pub fn note_and_explain_region(cx: &ctxt,
       (ref str, Some(span)) => {
         cx.sess.span_note(
             span,
-            &format!("{}{}{}", prefix, *str, suffix)[]);
+            &format!("{}{}{}", prefix, *str, suffix));
         Some(span)
       }
       (ref str, None) => {
         cx.sess.note(
-            &format!("{}{}{}", prefix, *str, suffix)[]);
+            &format!("{}{}{}", prefix, *str, suffix));
         None
       }
     }
@@ -274,7 +273,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         };
 
         if abi != abi::Rust {
-            s.push_str(&format!("extern {} ", abi.to_string())[]);
+            s.push_str(&format!("extern {} ", abi.to_string()));
         };
 
         s.push_str("fn");
@@ -330,7 +329,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             ty::FnConverging(t) => {
                 if !ty::type_is_nil(t) {
                    s.push_str(" -> ");
-                   s.push_str(&ty_to_string(cx, t)[]);
+                   s.push_str(&ty_to_string(cx, t));
                 }
             }
             ty::FnDiverging => {
@@ -367,7 +366,7 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
         }
         ty_rptr(r, ref tm) => {
             let mut buf = region_ptr_to_string(cx, *r);
-            buf.push_str(&mt_to_string(cx, tm)[]);
+            buf.push_str(&mt_to_string(cx, tm));
             buf
         }
         ty_open(typ) =>
@@ -561,7 +560,7 @@ pub fn parameterized<'tcx,GG>(cx: &ctxt<'tcx>,
                 } else if strs[0].starts_with("(") && strs[0].ends_with(")") {
                     &strs[0][1 .. strs[0].len() - 1] // Remove '(' and ')'
                 } else {
-                    &strs[0][]
+                    &strs[0][..]
                 },
                 tail)
     } else if strs.len() > 0 {
@@ -1434,23 +1433,6 @@ impl<'tcx, T:Repr<'tcx>> Repr<'tcx> for ty::Binder<T> {
     }
 }
 
-#[cfg(stage0)]
-impl<'tcx, S, K, V> Repr<'tcx> for HashMap<K, V, S>
-    where K: Hash<<S as HashState>::Hasher> + Eq + Repr<'tcx>,
-          V: Repr<'tcx>,
-          S: HashState,
-          <S as HashState>::Hasher: Hasher<Output=u64>,
-{
-    fn repr(&self, tcx: &ctxt<'tcx>) -> String {
-        format!("HashMap({})",
-                self.iter()
-                    .map(|(k,v)| format!("{} => {}", k.repr(tcx), v.repr(tcx)))
-                    .collect::<Vec<String>>()
-                    .connect(", "))
-    }
-}
-
-#[cfg(not(stage0))]
 impl<'tcx, S, K, V> Repr<'tcx> for HashMap<K, V, S>
     where K: Hash + Eq + Repr<'tcx>,
           V: Repr<'tcx>,

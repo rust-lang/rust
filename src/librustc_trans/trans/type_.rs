@@ -109,7 +109,7 @@ impl Type {
     }
 
     pub fn int(ccx: &CrateContext) -> Type {
-        match &ccx.tcx().sess.target.target.target_pointer_width[] {
+        match &ccx.tcx().sess.target.target.target_pointer_width[..] {
             "32" => Type::i32(ccx),
             "64" => Type::i64(ccx),
             tws => panic!("Unsupported target word size for int: {}", tws),

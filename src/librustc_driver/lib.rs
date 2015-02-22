@@ -124,7 +124,7 @@ pub fn run_compiler<'a>(args: &[String],
     let sopts = config::build_session_options(&matches);
 
     let (odir, ofile) = make_output(&matches);
-    let (input, input_file_path) = match make_input(&matches.free[]) {
+    let (input, input_file_path) = match make_input(&matches.free) {
         Some((input, input_file_path)) => callbacks.some_input(input, input_file_path),
         None => match callbacks.no_input(&matches, &sopts, &odir, &ofile, &descriptions) {
             Some((input, input_file_path)) => (input, input_file_path),
@@ -166,7 +166,7 @@ fn make_output(matches: &getopts::Matches) -> (Option<Path>, Option<Path>) {
 // Extract input (string or file and optional path) from matches.
 fn make_input(free_matches: &[String]) -> Option<(Input, Option<Path>)> {
     if free_matches.len() == 1 {
-        let ifile = &free_matches[0][];
+        let ifile = &free_matches[0][..];
         if ifile == "-" {
             let contents = old_io::stdin().read_to_end().unwrap();
             let src = String::from_utf8(contents).unwrap();
@@ -277,7 +277,7 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
                         println!("{}", description);
                     }
                     None => {
-                        early_error(&format!("no extended information for {}", code)[]);
+                        early_error(&format!("no extended information for {}", code));
                     }
                 }
                 return Compilation::Stop;
@@ -373,11 +373,13 @@ impl<'a> CompilerCalls<'a> for RustcDefaultCalls {
 
         if sess.opts.debugging_opts.save_analysis {
             control.after_analysis.callback = box |state| {
-                time(state.session.time_passes(), "save analysis", state.krate.unwrap(), |krate|
-                     save::process_crate(state.session,
-                                         krate,
-                                         state.analysis.unwrap(),
-                                         state.out_dir));
+                time(state.session.time_passes(),
+                     "save analysis",
+                     state.expanded_crate.unwrap(),
+                     |krate| save::process_crate(state.session,
+                                                 krate,
+                                                 state.analysis.unwrap(),
+                                                 state.out_dir));
             };
             control.make_glob_map = resolve::MakeGlobMap::Yes;
         }
@@ -678,7 +680,7 @@ pub fn handle_options(mut args: Vec<String>) -> Option<getopts::Matches> {
     }
 
     let matches =
-        match getopts::getopts(&args[..], &config::optgroups()[]) {
+        match getopts::getopts(&args[..], &config::optgroups()) {
             Ok(m) => m,
             Err(f_stable_attempt) => {
                 // redo option parsing, including unstable options this time,
@@ -811,7 +813,7 @@ pub fn monitor<F:FnOnce()+Send+'static>(f: F) {
                     Err(e) => {
                         emitter.emit(None,
                                      &format!("failed to read internal \
-                                              stderr: {}", e)[],
+                                              stderr: {}", e),
                                      None,
                                      diagnostic::Error)
                     }
