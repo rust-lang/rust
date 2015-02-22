@@ -363,7 +363,7 @@ impl<'a> TraitDef<'a> {
         // generated implementations are linted
         let mut attrs = newitem.attrs.clone();
         attrs.extend(item.attrs.iter().filter(|a| {
-            match &a.name()[] {
+            match &a.name()[..] {
                 "allow" | "warn" | "deny" | "forbid" => true,
                 _ => false,
             }
@@ -671,7 +671,7 @@ impl<'a> MethodDef<'a> {
 
         for (i, ty) in self.args.iter().enumerate() {
             let ast_ty = ty.to_ty(cx, trait_.span, type_ident, generics);
-            let ident = cx.ident_of(&format!("__arg_{}", i)[]);
+            let ident = cx.ident_of(&format!("__arg_{}", i));
             arg_tys.push((ident, ast_ty));
 
             let arg_expr = cx.expr_ident(trait_.span, ident);
@@ -778,7 +778,7 @@ impl<'a> MethodDef<'a> {
                                              struct_path,
                                              struct_def,
                                              &format!("__self_{}",
-                                                     i)[],
+                                                     i),
                                              ast::MutImmutable);
             patterns.push(pat);
             raw_fields.push(ident_expr);
@@ -971,7 +971,7 @@ impl<'a> MethodDef<'a> {
                 let mut subpats = Vec::with_capacity(self_arg_names.len());
                 let mut self_pats_idents = Vec::with_capacity(self_arg_names.len() - 1);
                 let first_self_pat_idents = {
-                    let (p, idents) = mk_self_pat(cx, &self_arg_names[0][]);
+                    let (p, idents) = mk_self_pat(cx, &self_arg_names[0]);
                     subpats.push(p);
                     idents
                 };
@@ -1289,7 +1289,7 @@ impl<'a> TraitDef<'a> {
                     cx.span_bug(sp, "a struct with named and unnamed fields in `derive`");
                 }
             };
-            let ident = cx.ident_of(&format!("{}_{}", prefix, i)[]);
+            let ident = cx.ident_of(&format!("{}_{}", prefix, i));
             paths.push(codemap::Spanned{span: sp, node: ident});
             let val = cx.expr(
                 sp, ast::ExprParen(cx.expr_deref(sp, cx.expr_path(cx.path_ident(sp,ident)))));
@@ -1335,7 +1335,7 @@ impl<'a> TraitDef<'a> {
                 let mut ident_expr = Vec::new();
                 for (i, va) in variant_args.iter().enumerate() {
                     let sp = self.set_expn_info(cx, va.ty.span);
-                    let ident = cx.ident_of(&format!("{}_{}", prefix, i)[]);
+                    let ident = cx.ident_of(&format!("{}_{}", prefix, i));
                     let path1 = codemap::Spanned{span: sp, node: ident};
                     paths.push(path1);
                     let expr_path = cx.expr_path(cx.path_ident(sp, ident));
@@ -1378,7 +1378,7 @@ pub fn cs_fold<F>(use_foldl: bool,
                       field.span,
                       old,
                       field.self_.clone(),
-                      &field.other[])
+                      &field.other)
                 })
             } else {
                 all_fields.iter().rev().fold(base, |old, field| {
@@ -1386,7 +1386,7 @@ pub fn cs_fold<F>(use_foldl: bool,
                       field.span,
                       old,
                       field.self_.clone(),
-                      &field.other[])
+                      &field.other)
                 })
             }
         },

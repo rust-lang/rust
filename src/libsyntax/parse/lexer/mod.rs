@@ -1109,7 +1109,7 @@ impl<'a> StringReader<'a> {
                 // expansion purposes. See #12512 for the gory details of why
                 // this is necessary.
                 let ident = self.with_str_from(start, |lifetime_name| {
-                    str_to_ident(&format!("'{}", lifetime_name)[])
+                    str_to_ident(&format!("'{}", lifetime_name))
                 });
 
                 // Conjure up a "keyword checking ident" to make sure that

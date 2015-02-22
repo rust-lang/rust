@@ -32,6 +32,8 @@
 #![feature(rustc_private)]
 #![feature(staged_api)]
 
+#![cfg_attr(test, feature(test))]
+
 extern crate serialize;
 #[macro_use] extern crate log;
 

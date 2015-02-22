@@ -305,7 +305,7 @@ fn parse_bound_region_<F>(st: &mut PState, conv: &mut F) -> ty::BoundRegion wher
         }
         '[' => {
             let def = parse_def_(st, RegionParameter, conv);
-            let ident = token::str_to_ident(&parse_str(st, ']')[]);
+            let ident = token::str_to_ident(&parse_str(st, ']'));
             ty::BrNamed(def, ident.name)
         }
         'f' => {
@@ -344,7 +344,7 @@ fn parse_region_<F>(st: &mut PState, conv: &mut F) -> ty::Region where
         assert_eq!(next(st), '|');
         let index = parse_u32(st);
         assert_eq!(next(st), '|');
-        let nm = token::str_to_ident(&parse_str(st, ']')[]);
+        let nm = token::str_to_ident(&parse_str(st, ']'));
         ty::ReEarlyBound(node_id, space, index, nm.name)
       }
       'f' => {
@@ -485,7 +485,7 @@ fn parse_ty_<'a, 'tcx, F>(st: &mut PState<'a, 'tcx>, conv: &mut F) -> Ty<'tcx> w
         assert_eq!(next(st), '|');
         let space = parse_param_space(st);
         assert_eq!(next(st), '|');
-        let name = token::intern(&parse_str(st, ']')[]);
+        let name = token::intern(&parse_str(st, ']'));
         return ty::mk_param(tcx, space, index, name);
       }
       '~' => return ty::mk_uniq(tcx, parse_ty_(st, conv)),

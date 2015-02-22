@@ -32,6 +32,8 @@
 #![deprecated(reason = "use the crates.io `rand` library instead",
               since = "1.0.0-alpha")]
 
+#![cfg_attr(test, feature(test, rand))]
+
 #![allow(deprecated)]
 
 #[macro_use]

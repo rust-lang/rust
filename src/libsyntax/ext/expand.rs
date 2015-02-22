@@ -389,7 +389,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                     fld.cx.span_err(
                         pth.span,
                         &format!("macro undefined: '{}!'",
-                                &extnamestr)[]);
+                                &extnamestr));
 
                     // let compilation continue
                     None
@@ -426,7 +426,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                                     pth.span,
                                     &format!("non-expression macro in expression position: {}",
                                             &extnamestr[..]
-                                            )[]);
+                                            ));
                                 return None;
                             }
                         };
@@ -436,7 +436,7 @@ fn expand_mac_invoc<T, F, G>(mac: ast::Mac, span: codemap::Span,
                         fld.cx.span_err(
                             pth.span,
                             &format!("'{}' is not a tt-style macro",
-                                    &extnamestr)[]);
+                                    &extnamestr));
                         None
                     }
                 }
@@ -608,7 +608,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
             None => {
                 fld.cx.span_err(path_span,
                                 &format!("macro undefined: '{}!'",
-                                        extnamestr)[]);
+                                        extnamestr));
                 // let compilation continue
                 return SmallVector::zero();
             }
@@ -618,10 +618,9 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     if it.ident.name != parse::token::special_idents::invalid.name {
                         fld.cx
                             .span_err(path_span,
-                                      &format!("macro {}! expects no ident argument, \
-                                        given '{}'",
-                                      extnamestr,
-                                      token::get_ident(it.ident))[]);
+                                      &format!("macro {}! expects no ident argument, given '{}'",
+                                               extnamestr,
+                                               token::get_ident(it.ident)));
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -640,7 +639,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         &format!("macro {}! expects an ident argument",
-                                                &extnamestr)[]);
+                                                &extnamestr));
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -659,7 +658,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                     if it.ident.name == parse::token::special_idents::invalid.name {
                         fld.cx.span_err(path_span,
                                         &format!("macro_rules! expects an ident argument")
-                                        []);
+                                        );
                         return SmallVector::zero();
                     }
                     fld.cx.bt_push(ExpnInfo {
@@ -691,7 +690,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
                 _ => {
                     fld.cx.span_err(it.span,
                                     &format!("{}! is not legal in item position",
-                                            &extnamestr)[]);
+                                            &extnamestr));
                     return SmallVector::zero();
                 }
             }
@@ -710,7 +709,7 @@ pub fn expand_item_mac(it: P<ast::Item>,
         None => {
             fld.cx.span_err(path_span,
                             &format!("non-item macro in item position: {}",
-                                    &extnamestr)[]);
+                                    &extnamestr));
             return SmallVector::zero();
         }
     };
@@ -954,7 +953,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
             None => {
                 fld.cx.span_err(pth.span,
                                 &format!("macro undefined: '{}!'",
-                                        extnamestr)[]);
+                                        extnamestr));
                 // let compilation continue
                 return DummyResult::raw_pat(span);
             }
@@ -983,7 +982,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                                 &format!(
                                     "non-pattern macro in pattern position: {}",
                                     &extnamestr
-                                    )[]
+                                    )
                             );
                             return DummyResult::raw_pat(span);
                         }
@@ -995,7 +994,7 @@ fn expand_pat(p: P<ast::Pat>, fld: &mut MacroExpander) -> P<ast::Pat> {
                 _ => {
                     fld.cx.span_err(span,
                                     &format!("{}! is not legal in pattern position",
-                                            &extnamestr)[]);
+                                            &extnamestr));
                     return DummyResult::raw_pat(span);
                 }
             }
@@ -1981,7 +1980,7 @@ foo_module!();
         // the xx binding should bind all of the xx varrefs:
         for (idx,v) in varrefs.iter().filter(|p| {
             p.segments.len() == 1
-            && "xx" == &token::get_ident(p.segments[0].identifier)[]
+            && "xx" == &*token::get_ident(p.segments[0].identifier)
         }).enumerate() {
             if mtwt::resolve(v.segments[0].identifier) != resolved_binding {
                 println!("uh oh, xx binding didn't match xx varref:");

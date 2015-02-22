@@ -191,17 +191,17 @@ fn symbol_hash<'tcx>(tcx: &ty::ctxt<'tcx>,
     // to be independent of one another in the crate.
 
     symbol_hasher.reset();
-    symbol_hasher.input_str(&link_meta.crate_name[]);
+    symbol_hasher.input_str(&link_meta.crate_name);
     symbol_hasher.input_str("-");
     symbol_hasher.input_str(link_meta.crate_hash.as_str());
     for meta in &*tcx.sess.crate_metadata.borrow() {
         symbol_hasher.input_str(&meta[..]);
     }
     symbol_hasher.input_str("-");
-    symbol_hasher.input_str(&encoder::encoded_ty(tcx, t)[]);
+    symbol_hasher.input_str(&encoder::encoded_ty(tcx, t));
     // Prefix with 'h' so that it never blends into adjacent digits
     let mut hash = String::from_str("h");
-    hash.push_str(&truncated_hash_result(symbol_hasher)[]);
+    hash.push_str(&truncated_hash_result(symbol_hasher));
     hash
 }
 
@@ -288,7 +288,7 @@ pub fn mangle<PI: Iterator<Item=PathElem>>(path: PI,
 
     fn push(n: &mut String, s: &str) {
         let sani = sanitize(s);
-        n.push_str(&format!("{}{}", sani.len(), sani)[]);
+        n.push_str(&format!("{}{}", sani.len(), sani));
     }
 
     // First, connect each component with <len, name> pairs.
@@ -361,7 +361,7 @@ pub fn remove(sess: &Session, path: &Path) {
         Err(e) => {
             sess.err(&format!("failed to remove {}: {}",
                              path.display(),
-                             e)[]);
+                             e));
         }
     }
 }
@@ -376,7 +376,7 @@ pub fn link_binary(sess: &Session,
     for &crate_type in &*sess.crate_types.borrow() {
         if invalid_output_for_target(sess, crate_type) {
             sess.bug(&format!("invalid output type `{:?}` for target os `{}`",
-                             crate_type, sess.opts.target_triple)[]);
+                             crate_type, sess.opts.target_triple));
         }
         let out_file = link_binary_output(sess, trans, crate_type, outputs,
                                           crate_name);
@@ -441,8 +441,8 @@ pub fn filename_for_input(sess: &Session,
             out_filename.with_filename(format!("lib{}.rlib", libname))
         }
         config::CrateTypeDylib => {
-            let (prefix, suffix) = (&sess.target.target.options.dll_prefix[],
-                                    &sess.target.target.options.dll_suffix[]);
+            let (prefix, suffix) = (&sess.target.target.options.dll_prefix,
+                                    &sess.target.target.options.dll_suffix);
             out_filename.with_filename(format!("{}{}{}",
                                                prefix,
                                                libname,
@@ -452,7 +452,7 @@ pub fn filename_for_input(sess: &Session,
             out_filename.with_filename(format!("lib{}.a", libname))
         }
         config::CrateTypeExecutable => {
-            let suffix = &sess.target.target.options.exe_suffix[];
+            let suffix = &sess.target.target.options.exe_suffix;
             out_filename.with_filename(format!("{}{}", libname, suffix))
         }
     }
@@ -481,12 +481,12 @@ fn link_binary_output(sess: &Session,
     if !out_is_writeable {
         sess.fatal(&format!("output file {} is not writeable -- check its \
                             permissions.",
-                           out_filename.display())[]);
+                           out_filename.display()));
     }
     else if !obj_is_writeable {
         sess.fatal(&format!("object file {} is not writeable -- check its \
                             permissions.",
-                           obj_filename.display())[]);
+                           obj_filename.display()));
     }
 
     match crate_type {
@@ -588,12 +588,12 @@ fn link_rlib<'a>(sess: &'a Session,
             // the same filename for metadata (stomping over one another)
             let tmpdir = TempDir::new("rustc").ok().expect("needs a temp dir");
             let metadata = tmpdir.path().join(METADATA_FILENAME);
-            match fs::File::create(&metadata).write_all(&trans.metadata[]) {
+            match fs::File::create(&metadata).write_all(&trans.metadata) {
                 Ok(..) => {}
                 Err(e) => {
                     sess.err(&format!("failed to write {}: {}",
                                      metadata.display(),
-                                     e)[]);
+                                     e));
                     sess.abort_if_errors();
                 }
             }
@@ -611,25 +611,25 @@ fn link_rlib<'a>(sess: &'a Session,
                 // was exactly 16 bytes.
                 let bc_filename = obj_filename.with_extension(&format!("{}.bc", i));
                 let bc_deflated_filename = obj_filename.with_extension(
-                    &format!("{}.bytecode.deflate", i)[]);
+                    &format!("{}.bytecode.deflate", i));
 
                 let bc_data = match fs::File::open(&bc_filename).read_to_end() {
                     Ok(buffer) => buffer,
                     Err(e) => sess.fatal(&format!("failed to read bytecode: {}",
-                                                 e)[])
+                                                 e))
                 };
 
                 let bc_data_deflated = match flate::deflate_bytes(&bc_data[..]) {
                     Some(compressed) => compressed,
                     None => sess.fatal(&format!("failed to compress bytecode from {}",
-                                               bc_filename.display())[])
+                                               bc_filename.display()))
                 };
 
                 let mut bc_file_deflated = match fs::File::create(&bc_deflated_filename) {
                     Ok(file) => file,
                     Err(e) => {
                         sess.fatal(&format!("failed to create compressed bytecode \
-                                            file: {}", e)[])
+                                            file: {}", e))
                     }
                 };
 
@@ -638,7 +638,7 @@ fn link_rlib<'a>(sess: &'a Session,
                     Ok(()) => {}
                     Err(e) => {
                         sess.err(&format!("failed to write compressed bytecode: \
-                                          {}", e)[]);
+                                          {}", e));
                         sess.abort_if_errors()
                     }
                 };
@@ -729,7 +729,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
         let p = match *path {
             Some(ref p) => p.clone(), None => {
                 sess.err(&format!("could not find rlib for: `{}`",
-                                 name)[]);
+                                 name));
                 continue
             }
         };
@@ -755,7 +755,7 @@ fn link_staticlib(sess: &Session, obj_filename: &Path, out_filename: &Path) {
             cstore::NativeUnknown => "library",
             cstore::NativeFramework => "framework",
         };
-        sess.note(&format!("{}: {}", name, *lib)[]);
+        sess.note(&format!("{}: {}", name, *lib));
     }
 }
 
@@ -771,10 +771,10 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
     let pname = get_cc_prog(sess);
     let mut cmd = Command::new(&pname[..]);
 
-    cmd.args(&sess.target.target.options.pre_link_args[]);
+    cmd.args(&sess.target.target.options.pre_link_args);
     link_args(&mut cmd, sess, dylib, tmpdir.path(),
               trans, obj_filename, out_filename);
-    cmd.args(&sess.target.target.options.post_link_args[]);
+    cmd.args(&sess.target.target.options.post_link_args);
     if !sess.target.target.options.no_compiler_rt {
         cmd.arg("-lcompiler-rt");
     }
@@ -794,10 +794,10 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
             if !prog.status.success() {
                 sess.err(&format!("linking with `{}` failed: {}",
                                  pname,
-                                 prog.status)[]);
-                sess.note(&format!("{:?}", &cmd)[]);
+                                 prog.status));
+                sess.note(&format!("{:?}", &cmd));
                 let mut output = prog.error.clone();
-                output.push_all(&prog.output[]);
+                output.push_all(&prog.output);
                 sess.note(str::from_utf8(&output[..]).unwrap());
                 sess.abort_if_errors();
             }
@@ -807,7 +807,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
         Err(e) => {
             sess.err(&format!("could not exec the linker `{}`: {}",
                              pname,
-                             e)[]);
+                             e));
             sess.abort_if_errors();
         }
     }
@@ -819,7 +819,7 @@ fn link_natively(sess: &Session, trans: &CrateTranslation, dylib: bool,
         match Command::new("dsymutil").arg(out_filename).output() {
             Ok(..) => {}
             Err(e) => {
-                sess.err(&format!("failed to run dsymutil: {}", e)[]);
+                sess.err(&format!("failed to run dsymutil: {}", e));
                 sess.abort_if_errors();
             }
         }
@@ -1005,7 +1005,7 @@ fn link_args(cmd: &mut Command,
     // addl_lib_search_paths
     if sess.opts.cg.rpath {
         let sysroot = sess.sysroot();
-        let target_triple = &sess.opts.target_triple[];
+        let target_triple = &sess.opts.target_triple;
         let get_install_prefix_lib_path = || {
             let install_prefix = option_env!("CFG_PREFIX").expect("CFG_PREFIX");
             let tlib = filesearch::relative_target_lib_path(sysroot, target_triple);
@@ -1022,13 +1022,13 @@ fn link_args(cmd: &mut Command,
             get_install_prefix_lib_path: get_install_prefix_lib_path,
             realpath: ::util::fs::realpath
         };
-        cmd.args(&rpath::get_rpath_flags(rpath_config)[]);
+        cmd.args(&rpath::get_rpath_flags(rpath_config));
     }
 
     // Finally add all the linker arguments provided on the command line along
     // with any #[link_args] attributes found inside the crate
     let empty = Vec::new();
-    cmd.args(&sess.opts.cg.link_args.as_ref().unwrap_or(&empty)[]);
+    cmd.args(&sess.opts.cg.link_args.as_ref().unwrap_or(&empty));
     cmd.args(&used_link_args[..]);
 }
 
@@ -1189,7 +1189,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
             let name = cratepath.filename_str().unwrap();
             let name = &name[3..name.len() - 5]; // chop off lib/.rlib
             time(sess.time_passes(),
-                 &format!("altering {}.rlib", name)[],
+                 &format!("altering {}.rlib", name),
                  (), |()| {
                 let dst = tmpdir.join(cratepath.filename().unwrap());
                 match fs::copy(&cratepath, &dst) {
@@ -1198,7 +1198,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                         sess.err(&format!("failed to copy {} to {}: {}",
                                          cratepath.display(),
                                          dst.display(),
-                                         e)[]);
+                                         e));
                         sess.abort_if_errors();
                     }
                 }
@@ -1210,7 +1210,7 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                     Err(e) => {
                         sess.err(&format!("failed to chmod {} when preparing \
                                           for LTO: {}", dst.display(),
-                                         e)[]);
+                                         e));
                         sess.abort_if_errors();
                     }
                 }
@@ -1224,9 +1224,9 @@ fn add_upstream_rust_crates(cmd: &mut Command, sess: &Session,
                     maybe_ar_prog: sess.opts.cg.ar.clone()
                 };
                 let mut archive = Archive::open(config);
-                archive.remove_file(&format!("{}.o", name)[]);
+                archive.remove_file(&format!("{}.o", name));
                 let files = archive.files();
-                if files.iter().any(|s| s[].ends_with(".o")) {
+                if files.iter().any(|s| s.ends_with(".o")) {
                     cmd.arg(dst);
                 }
             });

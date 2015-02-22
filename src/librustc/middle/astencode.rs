@@ -1852,7 +1852,7 @@ fn decode_side_tables(dcx: &DecodeContext,
             None => {
                 dcx.tcx.sess.bug(
                     &format!("unknown tag found in side tables: {:x}",
-                            tag)[]);
+                            tag));
             }
             Some(value) => {
                 let val_doc = entry_doc.get(c::tag_table_val as uint);
@@ -1937,7 +1937,7 @@ fn decode_side_tables(dcx: &DecodeContext,
                     _ => {
                         dcx.tcx.sess.bug(
                             &format!("unknown tag found in side tables: {:x}",
-                                    tag)[]);
+                                    tag));
                     }
                 }
             }

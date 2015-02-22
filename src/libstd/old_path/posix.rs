@@ -100,14 +100,6 @@ impl FromStr for Path {
 #[derive(Debug, Clone, PartialEq, Copy)]
 pub struct ParsePathError;
 
-#[cfg(stage0)]
-impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for Path {
-    #[inline]
-    fn hash(&self, state: &mut S) {
-        self.repr.hash(state)
-    }
-}
-#[cfg(not(stage0))]
 #[stable(feature = "rust1", since = "1.0.0")]
 impl hash::Hash for Path {
     #[inline]

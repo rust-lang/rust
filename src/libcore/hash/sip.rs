@@ -16,8 +16,6 @@ use prelude::*;
 use default::Default;
 
 use super::Hasher;
-#[cfg(stage0)]
-use super::Writer;
 
 /// An implementation of SipHash 2-4.
 ///
@@ -175,26 +173,9 @@ impl SipHasher {
     }
 }
 
-#[cfg(stage0)]
-impl Writer for SipHasher {
-    #[inline]
-    fn write(&mut self, msg: &[u8]) {
-        self.write(msg)
-    }
-}
-
 #[stable(feature = "rust1", since = "1.0.0")]
 impl Hasher for SipHasher {
-    #[cfg(stage0)]
-    type Output = u64;
-
-    #[cfg(stage0)]
-    fn reset(&mut self) {
-        self.reset();
-    }
-
     #[inline]
-    #[cfg(not(stage0))]
     fn write(&mut self, msg: &[u8]) {
         self.write(msg)
     }

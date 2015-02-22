@@ -35,13 +35,6 @@ macro_rules! array_impls {
                 }
             }
 
-            #[cfg(stage0)]
-            impl<S: hash::Writer + hash::Hasher, T: Hash<S>> Hash<S> for [T; $N] {
-                fn hash(&self, state: &mut S) {
-                    Hash::hash(&self[..], state)
-                }
-            }
-            #[cfg(not(stage0))]
             #[stable(feature = "rust1", since = "1.0.0")]
             impl<T: Hash> Hash for [T; $N] {
                 fn hash<H: hash::Hasher>(&self, state: &mut H) {

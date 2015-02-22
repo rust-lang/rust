@@ -162,7 +162,7 @@ impl<'a> FmtStrs<'a> {
         if values.len() != fields.len() {
             self.span.sess.span_bug(span, &format!(
                 "Mismatch between length of fields for '{}', expected '{}', found '{}'",
-                kind, fields.len(), values.len())[]);
+                kind, fields.len(), values.len()));
         }
 
         let values = values.iter().map(|s| {
@@ -191,7 +191,7 @@ impl<'a> FmtStrs<'a> {
         if needs_span {
             self.span.sess.span_bug(span, &format!(
                 "Called record_without_span for '{}' which does requires a span",
-                label)[]);
+                label));
         }
         assert!(!dump_spans);
 
@@ -268,7 +268,7 @@ impl<'a> FmtStrs<'a> {
         // variable def's node id
         let mut qualname = String::from_str(name);
         qualname.push_str("$");
-        qualname.push_str(&id.to_string()[]);
+        qualname.push_str(&id.to_string());
         self.check_and_record(Variable,
                               span,
                               sub_span,

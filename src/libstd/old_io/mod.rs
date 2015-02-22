@@ -240,6 +240,8 @@
 
 #![unstable(feature = "old_io")]
 #![deny(unused_must_use)]
+#![allow(deprecated)] // seriously this is all deprecated
+#![allow(unused_imports)]
 
 pub use self::SeekStyle::*;
 pub use self::FileMode::*;

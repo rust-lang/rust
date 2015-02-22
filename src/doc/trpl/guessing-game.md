@@ -91,7 +91,7 @@ fn main() {
 ```
 
 You've seen this code before, when we talked about standard input. We
-import the `std::io` module with `use`, and then our `main` function contains
+import the `std::old_io` module with `use`, and then our `main` function contains
 our program's logic. We print a little message announcing the game, ask the
 user to input a guess, get their input, and then print it out.
 

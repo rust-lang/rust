@@ -374,8 +374,14 @@ a {
     color: #000;
     background: transparent;
 }
-.docblock a { color: #4e8bca; }
-.docblock a:hover { text-decoration: underline; }
+
+.docblock a {
+    color: #4e8bca;
+}
+
+.docblock a:hover {
+    text-decoration: underline;
+}
 
 .content span.trait, .content a.trait, .block a.current.trait { color: #ed9603; }
 .content span.mod, .content a.mod, block a.current.mod { color: #4d76ae; }
@@ -529,8 +535,17 @@ pre.rust { position: relative; }
     margin: 0 0 -5px;
     padding: 0;
 }
+
 .section-header:hover a:after {
     content: '\2002\00a7\2002';
+}
+
+.section-header:hover a {
+    text-decoration: none;
+}
+
+.section-header a {
+    color: inherit;
 }
 
 .collapse-toggle {

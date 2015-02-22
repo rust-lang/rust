@@ -88,7 +88,6 @@ impl DefaultResizePolicy {
 
 #[test]
 fn test_resize_policy() {
-    use prelude::v1::*;
     let rp = DefaultResizePolicy;
     for n in 0..1000 {
         assert!(rp.min_capacity(rp.usable_capacity(n)) <= n);
@@ -2256,6 +2255,7 @@ mod test_map {
 
     #[test]
     fn test_entry_take_doesnt_corrupt() {
+        #![allow(deprecated)] //rand
         // Test for #19292
         fn check(m: &HashMap<isize, ()>) {
             for k in m.keys() {

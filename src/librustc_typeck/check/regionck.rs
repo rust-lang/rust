@@ -188,7 +188,7 @@ fn region_of_def(fcx: &FnCtxt, def: def::Def) -> ty::Region {
         }
         _ => {
             tcx.sess.bug(&format!("unexpected def in region_of_def: {:?}",
-                                 def)[])
+                                 def))
         }
     }
 }
@@ -288,7 +288,7 @@ impl<'a, 'tcx> Rcx<'a, 'tcx> {
             Some(f) => f,
             None => {
                 self.tcx().sess.bug(
-                    &format!("No fn-sig entry for id={}", id)[]);
+                    &format!("No fn-sig entry for id={}", id));
             }
         };
 
@@ -1013,7 +1013,7 @@ fn constrain_autoderefs<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
                         rcx.tcx().sess.span_bug(
                             deref_expr.span,
                             &format!("bad overloaded deref type {}",
-                                     method.ty.repr(rcx.tcx()))[])
+                                     method.ty.repr(rcx.tcx())))
                     }
                 };
 
@@ -1417,7 +1417,7 @@ fn link_reborrowed_region<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
                     rcx.tcx().sess.span_bug(
                         span,
                         &format!("Illegal upvar id: {}",
-                                upvar_id.repr(rcx.tcx()))[]);
+                                upvar_id.repr(rcx.tcx())));
                 }
             }
         }
@@ -1562,7 +1562,7 @@ fn generic_must_outlive<'a, 'tcx>(rcx: &Rcx<'a, 'tcx>,
         GenericKind::Param(..) => { }
         GenericKind::Projection(ref projection_ty) => {
             param_bounds.push_all(
-                &projection_bounds(rcx, origin.span(), projection_ty)[]);
+                &projection_bounds(rcx, origin.span(), projection_ty));
         }
     }
 

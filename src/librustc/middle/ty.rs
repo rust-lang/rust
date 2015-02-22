@@ -73,7 +73,6 @@ use std::cell::{Cell, RefCell};
 use std::cmp;
 use std::fmt;
 use std::hash::{Hash, SipHasher, Hasher};
-#[cfg(stage0)] use std::hash::Writer;
 use std::mem;
 use std::ops;
 use std::rc::Rc;
@@ -959,13 +958,6 @@ impl<'tcx> PartialEq for TyS<'tcx> {
 }
 impl<'tcx> Eq for TyS<'tcx> {}
 
-#[cfg(stage0)]
-impl<'tcx, S: Writer + Hasher> Hash<S> for TyS<'tcx> {
-    fn hash(&self, s: &mut S) {
-        (self as *const _).hash(s)
-    }
-}
-#[cfg(not(stage0))]
 impl<'tcx> Hash for TyS<'tcx> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         (self as *const _).hash(s)
@@ -988,13 +980,6 @@ impl<'tcx> PartialEq for InternedTy<'tcx> {
 
 impl<'tcx> Eq for InternedTy<'tcx> {}
 
-#[cfg(stage0)]
-impl<'tcx, S: Writer + Hasher> Hash<S> for InternedTy<'tcx> {
-    fn hash(&self, s: &mut S) {
-        self.ty.sty.hash(s)
-    }
-}
-#[cfg(not(stage0))]
 impl<'tcx> Hash for InternedTy<'tcx> {
     fn hash<H: Hasher>(&self, s: &mut H) {
         self.ty.sty.hash(s)
@@ -2295,7 +2280,7 @@ impl<'a, 'tcx> ParameterEnvironment<'a, 'tcx> {
             _ => {
                 cx.sess.bug(&format!("ParameterEnvironment::from_item(): \
                                      `{}` is not an item",
-                                    cx.map.node_to_string(id))[])
+                                    cx.map.node_to_string(id)))
             }
         }
     }
@@ -2737,7 +2722,7 @@ impl FlagComputation {
     fn add_fn_sig(&mut self, fn_sig: &PolyFnSig) {
         let mut computation = FlagComputation::new();
 
-        computation.add_tys(&fn_sig.0.inputs[]);
+        computation.add_tys(&fn_sig.0.inputs);
 
         if let ty::FnConverging(output) = fn_sig.0.output {
             computation.add_ty(output);
@@ -3177,7 +3162,7 @@ pub fn sequence_element_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
         ty_str => mk_mach_uint(cx, ast::TyU8),
         ty_open(ty) => sequence_element_type(cx, ty),
         _ => cx.sess.bug(&format!("sequence_element_type called on non-sequence value: {}",
-                                 ty_to_string(cx, ty))[]),
+                                 ty_to_string(cx, ty))),
     }
 }
 
@@ -3538,7 +3523,7 @@ pub fn type_contents<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> TypeContents {
                 let variants = substd_enum_variants(cx, did, substs);
                 let mut res =
                     TypeContents::union(&variants[..], |variant| {
-                        TypeContents::union(&variant.args[],
+                        TypeContents::union(&variant.args,
                                             |arg_ty| {
                             tc_ty(cx, *arg_ty, cache)
                         })
@@ -4121,7 +4106,7 @@ pub fn close_type<'tcx>(cx: &ctxt<'tcx>, ty: Ty<'tcx>) -> Ty<'tcx> {
     match ty.sty {
         ty_open(ty) => mk_rptr(cx, cx.mk_region(ReStatic), mt {ty: ty, mutbl:ast::MutImmutable}),
         _ => cx.sess.bug(&format!("Trying to close a non-open type {}",
-                                 ty_to_string(cx, ty))[])
+                                 ty_to_string(cx, ty)))
     }
 }
 
@@ -4222,7 +4207,7 @@ pub fn node_id_to_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId)
         Some(ty) => ty.clone(),
         None => cx.sess.bug(
             &format!("node_id_to_trait_ref: no trait ref for node `{}`",
-                    cx.map.node_to_string(id))[])
+                    cx.map.node_to_string(id)))
     }
 }
 
@@ -4231,7 +4216,7 @@ pub fn node_id_to_type<'tcx>(cx: &ctxt<'tcx>, id: ast::NodeId) -> Ty<'tcx> {
        Some(ty) => ty,
        None => cx.sess.bug(
            &format!("node_id_to_type: no type for node `{}`",
-                   cx.map.node_to_string(id))[])
+                   cx.map.node_to_string(id)))
     }
 }
 
@@ -4305,7 +4290,7 @@ pub fn ty_region(tcx: &ctxt,
             tcx.sess.span_bug(
                 span,
                 &format!("ty_region() invoked on an inappropriate ty: {:?}",
-                        s)[]);
+                        s));
         }
     }
 }
@@ -4370,11 +4355,11 @@ pub fn expr_span(cx: &ctxt, id: NodeId) -> Span {
         Some(f) => {
             cx.sess.bug(&format!("Node id {} is not an expr: {:?}",
                                 id,
-                                f)[]);
+                                f));
         }
         None => {
             cx.sess.bug(&format!("Node id {} is not present \
-                                in the node map", id)[]);
+                                in the node map", id));
         }
     }
 }
@@ -4390,14 +4375,14 @@ pub fn local_var_name_str(cx: &ctxt, id: NodeId) -> InternedString {
                     cx.sess.bug(
                         &format!("Variable id {} maps to {:?}, not local",
                                 id,
-                                pat)[]);
+                                pat));
                 }
             }
         }
         r => {
             cx.sess.bug(&format!("Variable id {} maps to {:?}, not local",
                                 id,
-                                r)[]);
+                                r));
         }
     }
 }
@@ -4428,7 +4413,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                             cx.sess.bug(
                                 &format!("AdjustReifyFnPointer adjustment on non-fn-item: \
                                          {:?}",
-                                        b)[]);
+                                        b));
                         }
                     }
                 }
@@ -4459,7 +4444,7 @@ pub fn adjust_ty<'tcx, F>(cx: &ctxt<'tcx>,
                                                 {}",
                                                 i,
                                                 ty_to_string(cx, adjusted_ty))
-                                        []);
+                                        );
                                 }
                             }
                         }
@@ -4522,7 +4507,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
             }
             _ => cx.sess.span_bug(span,
                                   &format!("UnsizeLength with bad sty: {:?}",
-                                          ty_to_string(cx, ty))[])
+                                          ty_to_string(cx, ty)))
         },
         &UnsizeStruct(box ref k, tp_index) => match ty.sty {
             ty_struct(did, substs) => {
@@ -4534,7 +4519,7 @@ pub fn unsize_ty<'tcx>(cx: &ctxt<'tcx>,
             }
             _ => cx.sess.span_bug(span,
                                   &format!("UnsizeStruct with bad sty: {:?}",
-                                          ty_to_string(cx, ty))[])
+                                          ty_to_string(cx, ty)))
         },
         &UnsizeVtable(TyTrait { ref principal, ref bounds }, _) => {
             mk_trait(cx, principal.clone(), bounds.clone())
@@ -4547,7 +4532,7 @@ pub fn resolve_expr(tcx: &ctxt, expr: &ast::Expr) -> def::Def {
         Some(&def) => def,
         None => {
             tcx.sess.span_bug(expr.span, &format!(
-                "no def-map entry for expr {}", expr.id)[]);
+                "no def-map entry for expr {}", expr.id));
         }
     }
 }
@@ -4639,7 +4624,7 @@ pub fn expr_kind(tcx: &ctxt, expr: &ast::Expr) -> ExprKind {
                         expr.span,
                         &format!("uncategorized def for expr {}: {:?}",
                                 expr.id,
-                                def)[]);
+                                def));
                 }
             }
         }
@@ -4767,7 +4752,7 @@ pub fn field_idx_strict(tcx: &ctxt, name: ast::Name, fields: &[field])
         token::get_name(name),
         fields.iter()
               .map(|f| token::get_name(f.name).to_string())
-              .collect::<Vec<String>>())[]);
+              .collect::<Vec<String>>()));
 }
 
 pub fn impl_or_trait_item_idx(id: ast::Name, trait_items: &[ImplOrTraitItem])
@@ -5019,14 +5004,14 @@ pub fn provided_trait_methods<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                     _ => {
                         cx.sess.bug(&format!("provided_trait_methods: `{:?}` is \
                                              not a trait",
-                                            id)[])
+                                            id))
                     }
                 }
             }
             _ => {
                 cx.sess.bug(&format!("provided_trait_methods: `{:?}` is not a \
                                      trait",
-                                    id)[])
+                                    id))
             }
         }
     } else {
@@ -5262,7 +5247,7 @@ impl<'tcx> VariantInfo<'tcx> {
                 };
             },
             ast::StructVariantKind(ref struct_def) => {
-                let fields: &[StructField] = &struct_def.fields[];
+                let fields: &[StructField] = &struct_def.fields;
 
                 assert!(fields.len() > 0);
 
@@ -5624,7 +5609,7 @@ pub fn get_attrs<'tcx>(tcx: &'tcx ctxt, did: DefId)
                        -> CowVec<'tcx, ast::Attribute> {
     if is_local(did) {
         let item = tcx.map.expect_item(did.node);
-        Cow::Borrowed(&item.attrs[])
+        Cow::Borrowed(&item.attrs)
     } else {
         Cow::Owned(csearch::get_item_attrs(&tcx.sess.cstore, did))
     }
@@ -5686,7 +5671,7 @@ pub fn lookup_struct_fields(cx: &ctxt, did: ast::DefId) -> Vec<field_ty> {
             _ => {
                 cx.sess.bug(
                     &format!("ID not mapped to struct fields: {}",
-                            cx.map.node_to_string(did.node))[]);
+                            cx.map.node_to_string(did.node)));
             }
         }
     } else {
@@ -5719,7 +5704,7 @@ pub fn struct_fields<'tcx>(cx: &ctxt<'tcx>, did: ast::DefId, substs: &Substs<'tc
 pub fn tup_fields<'tcx>(v: &[Ty<'tcx>]) -> Vec<field<'tcx>> {
     v.iter().enumerate().map(|(i, &f)| {
        field {
-            name: token::intern(&i.to_string()[]),
+            name: token::intern(&i.to_string()),
             mt: mt {
                 ty: f,
                 mutbl: MutImmutable

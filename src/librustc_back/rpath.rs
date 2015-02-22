@@ -49,7 +49,7 @@ pub fn get_rpath_flags<F, G>(config: RPathConfig<F, G>) -> Vec<String> where
 fn rpaths_to_flags(rpaths: &[String]) -> Vec<String> {
     let mut ret = Vec::new();
     for rpath in rpaths {
-        ret.push(format!("-Wl,-rpath,{}", &(*rpath)[]));
+        ret.push(format!("-Wl,-rpath,{}", &(*rpath)));
     }
     return ret;
 }

@@ -444,7 +444,7 @@ fn enter_match<'a, 'b, 'p, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let _indenter = indenter();
 
     m.iter().filter_map(|br| {
-        e(&br.pats[]).map(|pats| {
+        e(&br.pats).map(|pats| {
             let this = br.pats[col];
             let mut bound_ptrs = br.bound_ptrs.clone();
             match this.node {
@@ -825,7 +825,7 @@ fn compare_values<'blk, 'tcx>(cx: Block<'blk, 'tcx>,
         let did = langcall(cx,
                            None,
                            &format!("comparison of `{}`",
-                                   cx.ty_to_string(rhs_t))[],
+                                   cx.ty_to_string(rhs_t)),
                            StrEqFnLangItem);
         let t = ty::mk_str_slice(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), ast::MutImmutable);
         // The comparison function gets the slices by value, so we have to make copies here. Even
@@ -1375,7 +1375,7 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                                  "__llmatch");
                 trmode = TrByCopy(alloca_no_lifetime(bcx,
                                          llvariable_ty,
-                                         &bcx.ident(ident)[]));
+                                         &bcx.ident(ident)));
             }
             ast::BindByValue(_) => {
                 // in this case, the final type of the variable will be T,
@@ -1383,13 +1383,13 @@ fn create_bindings_map<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, pat: &ast::Pat,
                 // above
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty.ptr_to(),
-                                 &bcx.ident(ident)[]);
+                                 &bcx.ident(ident));
                 trmode = TrByMove;
             }
             ast::BindByRef(_) => {
                 llmatch = alloca_no_lifetime(bcx,
                                  llvariable_ty,
-                                 &bcx.ident(ident)[]);
+                                 &bcx.ident(ident));
                 trmode = TrByRef;
             }
         };
@@ -1610,7 +1610,7 @@ fn mk_binding_alloca<'blk, 'tcx, A, F>(bcx: Block<'blk, 'tcx>,
     let var_ty = node_id_type(bcx, p_id);
 
     // Allocate memory on stack for the binding.
-    let llval = alloc_ty(bcx, var_ty, &bcx.ident(*ident)[]);
+    let llval = alloc_ty(bcx, var_ty, &bcx.ident(*ident));
 
     // Subtle: be sure that we *populate* the memory *before*
     // we schedule the cleanup.
@@ -1648,7 +1648,7 @@ fn bind_irrefutable_pat<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     if bcx.sess().asm_comments() {
         add_comment(bcx, &format!("bind_irrefutable_pat(pat={})",
-                                 pat.repr(bcx.tcx()))[]);
+                                 pat.repr(bcx.tcx())));
     }
 
     let _indenter = indenter();

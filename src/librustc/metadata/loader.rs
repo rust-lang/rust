@@ -329,7 +329,7 @@ impl<'a> Context<'a> {
             for (i, &CrateMismatch{ ref path, ref got }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
                     &format!("crate `{}`, path #{}, triple {}: {}",
-                            self.ident, i+1, got, path.display())[]);
+                            self.ident, i+1, got, path.display()));
             }
         }
         if self.rejected_via_hash.len() > 0 {
@@ -339,7 +339,7 @@ impl<'a> Context<'a> {
             for (i, &CrateMismatch{ ref path, .. }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
                     &format!("crate `{}` path #{}: {}",
-                            self.ident, i+1, path.display())[]);
+                            self.ident, i+1, path.display()));
             }
             match self.root {
                 &None => {}
@@ -347,7 +347,7 @@ impl<'a> Context<'a> {
                     for (i, path) in r.paths().iter().enumerate() {
                         self.sess.fileline_note(self.span,
                             &format!("crate `{}` path #{}: {}",
-                                    r.ident, i+1, path.display())[]);
+                                    r.ident, i+1, path.display()));
                     }
                 }
             }
@@ -359,7 +359,7 @@ impl<'a> Context<'a> {
             for (i, &CrateMismatch { ref path, .. }) in mismatches.enumerate() {
                 self.sess.fileline_note(self.span,
                                         &format!("crate `{}` path #{}: {}",
-                                                 self.ident, i+1, path.display())[]);
+                                                 self.ident, i+1, path.display()));
             }
         }
         self.sess.abort_if_errors();
@@ -472,26 +472,26 @@ impl<'a> Context<'a> {
             _ => {
                 self.sess.span_err(self.span,
                     &format!("multiple matching crates for `{}`",
-                            self.crate_name)[]);
+                            self.crate_name));
                 self.sess.note("candidates:");
                 for lib in &libraries {
                     match lib.dylib {
                         Some((ref p, _)) => {
                             self.sess.note(&format!("path: {}",
-                                                   p.display())[]);
+                                                   p.display()));
                         }
                         None => {}
                     }
                     match lib.rlib {
                         Some((ref p, _)) => {
                             self.sess.note(&format!("path: {}",
-                                                    p.display())[]);
+                                                    p.display()));
                         }
                         None => {}
                     }
                     let data = lib.metadata.as_slice();
                     let name = decoder::get_crate_name(data);
-                    note_crate_name(self.sess.diagnostic(), &name[]);
+                    note_crate_name(self.sess.diagnostic(), &name);
                 }
                 None
             }
@@ -545,11 +545,11 @@ impl<'a> Context<'a> {
                                    &format!("multiple {} candidates for `{}` \
                                             found",
                                            flavor,
-                                           self.crate_name)[]);
+                                           self.crate_name));
                 self.sess.span_note(self.span,
                                     &format!(r"candidate #1: {}",
                                             ret.as_ref().unwrap().0
-                                               .display())[]);
+                                               .display()));
                 error = 1;
                 ret = None;
             }
@@ -557,7 +557,7 @@ impl<'a> Context<'a> {
                 error += 1;
                 self.sess.span_note(self.span,
                                     &format!(r"candidate #{}: {}", error,
-                                            lib.display())[]);
+                                            lib.display()));
                 continue
             }
             *slot = Some(metadata);
@@ -630,14 +630,14 @@ impl<'a> Context<'a> {
             let locs = locs.iter().map(|l| Path::new(&l[..])).filter(|loc| {
                 if !loc.exists() {
                     sess.err(&format!("extern location for {} does not exist: {}",
-                                     self.crate_name, loc.display())[]);
+                                     self.crate_name, loc.display()));
                     return false;
                 }
                 let file = match loc.filename_str() {
                     Some(file) => file,
                     None => {
                         sess.err(&format!("extern location for {} is not a file: {}",
-                                         self.crate_name, loc.display())[]);
+                                         self.crate_name, loc.display()));
                         return false;
                     }
                 };
@@ -651,7 +651,7 @@ impl<'a> Context<'a> {
                     }
                 }
                 sess.err(&format!("extern location for {} is of an unknown type: {}",
-                                 self.crate_name, loc.display())[]);
+                                 self.crate_name, loc.display()));
                 false
             });
 
@@ -686,7 +686,7 @@ impl<'a> Context<'a> {
 }
 
 pub fn note_crate_name(diag: &SpanHandler, name: &str) {
-    diag.handler().note(&format!("crate name: {}", name)[]);
+    diag.handler().note(&format!("crate name: {}", name));
 }
 
 impl ArchiveMetadata {

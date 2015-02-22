@@ -985,17 +985,6 @@ impl fmt::Debug for BitVec {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(stage0)]
-impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for BitVec {
-    fn hash(&self, state: &mut S) {
-        self.nbits.hash(state);
-        for elem in self.blocks() {
-            elem.hash(state);
-        }
-    }
-}
-#[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 impl hash::Hash for BitVec {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         self.nbits.hash(state);
@@ -1776,16 +1765,7 @@ impl fmt::Debug for BitSet {
     }
 }
 
-#[cfg(stage0)]
-impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for BitSet {
-    fn hash(&self, state: &mut S) {
-        for pos in self {
-            pos.hash(state);
-        }
-    }
-}
 #[stable(feature = "rust1", since = "1.0.0")]
-#[cfg(not(stage0))]
 impl hash::Hash for BitSet {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         for pos in self {

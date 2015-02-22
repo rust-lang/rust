@@ -163,7 +163,7 @@ fn check_expr(cx: &mut MatchCheckCtxt, ex: &ast::Expr) {
                 // First, check legality of move bindings.
                 check_legality_of_move_bindings(cx,
                                                 arm.guard.is_some(),
-                                                &arm.pats[]);
+                                                &arm.pats);
 
                 // Second, if there is a guard on each arm, make sure it isn't
                 // assigning or borrowing anything mutably.
@@ -1101,7 +1101,7 @@ fn check_legality_of_move_bindings(cx: &MatchCheckCtxt,
                             &format!("binding pattern {} is not an \
                                      identifier: {:?}",
                                     p.id,
-                                    p.node)[]);
+                                    p.node));
                     }
                 }
             }

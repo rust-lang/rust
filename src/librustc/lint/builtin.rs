@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -588,7 +588,7 @@ impl LintPass for RawPointerDerive {
     }
 
     fn check_item(&mut self, cx: &Context, item: &ast::Item) {
-        if !attr::contains_name(&item.attrs[], "automatically_derived") {
+        if !attr::contains_name(&item.attrs, "automatically_derived") {
             return
         }
         let did = match item.node {
@@ -652,7 +652,7 @@ impl LintPass for UnusedAttributes {
 
         if !attr::is_used(attr) {
             cx.span_lint(UNUSED_ATTRIBUTES, attr.span, "unused attribute");
-            if KNOWN_ATTRIBUTES.contains(&(&attr.name()[], AttributeType::CrateLevel)) {
+            if KNOWN_ATTRIBUTES.contains(&(&attr.name(), AttributeType::CrateLevel)) {
                 let msg = match attr.node.style {
                     ast::AttrOuter => "crate-level attribute should be an inner \
                                        attribute: add an exclamation mark: #![foo]",
@@ -732,7 +732,7 @@ impl LintPass for UnusedResults {
             ty::ty_enum(did, _) => {
                 if ast_util::is_local(did) {
                     if let ast_map::NodeItem(it) = cx.tcx.map.get(did.node) {
-                        warned |= check_must_use(cx, &it.attrs[], s.span);
+                        warned |= check_must_use(cx, &it.attrs, s.span);
                     }
                 } else {
                     let attrs = csearch::get_item_attrs(&cx.sess().cstore, did);
@@ -1093,7 +1093,7 @@ impl UnusedParens {
             if !necessary {
                 cx.span_lint(UNUSED_PARENS, value.span,
                              &format!("unnecessary parentheses around {}",
-                                     msg)[])
+                                     msg))
             }
         }
 
@@ -1235,7 +1235,7 @@ impl LintPass for NonShorthandFieldPatterns {
                     if ident.node.as_str() == fieldpat.node.ident.as_str() {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
                                      &format!("the `{}:` in this pattern is redundant and can \
-                                              be removed", ident.node.as_str())[])
+                                              be removed", ident.node.as_str()))
                     }
                 }
             }
@@ -1269,25 +1269,69 @@ impl LintPass for UnusedUnsafe {
 }
 
 declare_lint! {
-    UNSAFE_BLOCKS,
+    UNSAFE_CODE,
     Allow,
-    "usage of an `unsafe` block"
+    "usage of `unsafe` code"
 }
 
 #[derive(Copy)]
-pub struct UnsafeBlocks;
+pub struct UnsafeCode;
 
-impl LintPass for UnsafeBlocks {
+impl LintPass for UnsafeCode {
     fn get_lints(&self) -> LintArray {
-        lint_array!(UNSAFE_BLOCKS)
+        lint_array!(UNSAFE_CODE)
     }
 
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if let ast::ExprBlock(ref blk) = e.node {
             // Don't warn about generated blocks, that'll just pollute the output.
             if blk.rules == ast::UnsafeBlock(ast::UserProvided) {
-                cx.span_lint(UNSAFE_BLOCKS, blk.span, "usage of an `unsafe` block");
+                cx.span_lint(UNSAFE_CODE, blk.span, "usage of an `unsafe` block");
             }
+        }
+    }
+
+    fn check_item(&mut self, cx: &Context, it: &ast::Item) {
+        use syntax::ast::Unsafety::Unsafe;
+
+        fn check_method(cx: &Context, meth: &P<ast::Method>) {
+            if let ast::Method_::MethDecl(_, _, _, _, Unsafe, _, _, _) = meth.node {
+                cx.span_lint(UNSAFE_CODE, meth.span, "implementation of an `unsafe` method");
+            }
+        }
+
+        match it.node {
+            ast::ItemFn(_, Unsafe, _, _, _) =>
+                cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` function"),
+
+            ast::ItemTrait(trait_safety, _, _, ref items) => {
+                if trait_safety == Unsafe {
+                    cx.span_lint(UNSAFE_CODE, it.span, "declaration of an `unsafe` trait");
+                }
+
+                for it in items {
+                    match *it {
+                        ast::RequiredMethod(ast::TypeMethod { unsafety: Unsafe, span, ..}) =>
+                            cx.span_lint(UNSAFE_CODE, span, "declaration of an `unsafe` method"),
+                        ast::ProvidedMethod(ref meth) => check_method(cx, meth),
+                        _ => (),
+                    }
+                }
+            },
+
+            ast::ItemImpl(impl_safety, _, _, _, _, ref impls) => {
+                if impl_safety == Unsafe {
+                    cx.span_lint(UNSAFE_CODE, it.span, "implementation of an `unsafe` trait");
+                }
+
+                for item in impls {
+                    if let ast::ImplItem::MethodImplItem(ref meth) = *item {
+                        check_method(cx, meth);
+                    }
+                }
+            },
+
+            _ => return,
         }
     }
 }
@@ -1339,7 +1383,7 @@ impl LintPass for UnusedMut {
     fn check_expr(&mut self, cx: &Context, e: &ast::Expr) {
         if let ast::ExprMatch(_, ref arms, _) = e.node {
             for a in arms {
-                self.check_unused_mut_pat(cx, &a.pats[])
+                self.check_unused_mut_pat(cx, &a.pats)
             }
         }
     }
@@ -1460,7 +1504,7 @@ impl MissingDoc {
         });
         if !has_doc {
             cx.span_lint(MISSING_DOCS, sp,
-                &format!("missing documentation for {}", desc)[]);
+                &format!("missing documentation for {}", desc));
         }
     }
 }
@@ -1496,7 +1540,7 @@ impl LintPass for MissingDoc {
     }
 
     fn check_crate(&mut self, cx: &Context, krate: &ast::Crate) {
-        self.check_missing_docs_attrs(cx, None, &krate.attrs[],
+        self.check_missing_docs_attrs(cx, None, &krate.attrs,
                                      krate.span, "crate");
     }
 
@@ -1510,7 +1554,7 @@ impl LintPass for MissingDoc {
             ast::ItemTy(..) => "a type alias",
             _ => return
         };
-        self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs[],
+        self.check_missing_docs_attrs(cx, Some(it.id), &it.attrs,
                                      it.span, desc);
     }
 
@@ -1523,13 +1567,13 @@ impl LintPass for MissingDoc {
 
             // Otherwise, doc according to privacy. This will also check
             // doc for default methods defined on traits.
-            self.check_missing_docs_attrs(cx, Some(m.id), &m.attrs[],
+            self.check_missing_docs_attrs(cx, Some(m.id), &m.attrs,
                                           m.span, "a method");
         }
     }
 
     fn check_ty_method(&mut self, cx: &Context, tm: &ast::TypeMethod) {
-        self.check_missing_docs_attrs(cx, Some(tm.id), &tm.attrs[],
+        self.check_missing_docs_attrs(cx, Some(tm.id), &tm.attrs,
                                      tm.span, "a type method");
     }
 
@@ -1539,14 +1583,14 @@ impl LintPass for MissingDoc {
                 let cur_struct_def = *self.struct_def_stack.last()
                     .expect("empty struct_def_stack");
                 self.check_missing_docs_attrs(cx, Some(cur_struct_def),
-                                              &sf.node.attrs[], sf.span,
+                                              &sf.node.attrs, sf.span,
                                               "a struct field")
             }
         }
     }
 
     fn check_variant(&mut self, cx: &Context, v: &ast::Variant, _: &ast::Generics) {
-        self.check_missing_docs_attrs(cx, Some(v.node.id), &v.node.attrs[],
+        self.check_missing_docs_attrs(cx, Some(v.node.id), &v.node.attrs,
                                      v.span, "a variant");
         assert!(!self.in_variant);
         self.in_variant = true;

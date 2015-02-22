@@ -253,7 +253,7 @@ impl<'a, 'tcx> RustdocVisitor<'a, 'tcx> {
                     let please_inline = item.attrs.iter().any(|item| {
                         match item.meta_item_list() {
                             Some(list) => {
-                                list.iter().any(|i| &i.name()[] == "inline")
+                                list.iter().any(|i| &i.name()[..] == "inline")
                             }
                             None => false,
                         }

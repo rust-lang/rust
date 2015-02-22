@@ -185,14 +185,6 @@ impl PartialEq for LintId {
 
 impl Eq for LintId { }
 
-#[cfg(stage0)]
-impl<S: hash::Writer + hash::Hasher> hash::Hash<S> for LintId {
-    fn hash(&self, state: &mut S) {
-        let ptr = self.lint as *const Lint;
-        ptr.hash(state);
-    }
-}
-#[cfg(not(stage0))]
 impl hash::Hash for LintId {
     fn hash<H: hash::Hasher>(&self, state: &mut H) {
         let ptr = self.lint as *const Lint;

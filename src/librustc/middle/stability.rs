@@ -181,7 +181,7 @@ impl Index {
     pub fn new(krate: &Crate) -> Index {
         let mut staged_api = false;
         for attr in &krate.attrs {
-            if &attr.name()[] == "staged_api" {
+            if &attr.name()[..] == "staged_api" {
                 match attr.node.value.node {
                     ast::MetaWord(_) => {
                         attr::mark_used(attr);
