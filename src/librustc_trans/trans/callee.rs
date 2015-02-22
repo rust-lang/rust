@@ -765,8 +765,16 @@ pub fn trans_call_inner<'a, 'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     if is_rust_fn {
         let mut llargs = Vec::new();
 
-        if let (ty::FnConverging(ret_ty), Some(llretslot)) = (ret_ty, opt_llretslot) {
+        if let (ty::FnConverging(ret_ty), Some(mut llretslot)) = (ret_ty, opt_llretslot) {
             if type_of::return_uses_outptr(ccx, ret_ty) {
+                let llformal_ret_ty = type_of::type_of(ccx, ret_ty).ptr_to();
+                let llret_ty = common::val_ty(llretslot);
+                if llformal_ret_ty != llret_ty {
+                    // this could happen due to e.g. subtyping
+                    debug!("casting actual return type ({}) to match formal ({})",
+                        bcx.llty_str(llret_ty), bcx.llty_str(llformal_ret_ty));
+                    llretslot = PointerCast(bcx, llretslot, llformal_ret_ty);
+                }
                 llargs.push(llretslot);
             }
         }
