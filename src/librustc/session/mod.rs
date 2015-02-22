@@ -280,9 +280,9 @@ fn split_msg_into_multilines(msg: &str) -> Option<String> {
     }
 
     let mut tail = &msg[head..];
-    let third = tail.find_str("(values differ")
-                   .or(tail.find_str("(lifetime"))
-                   .or(tail.find_str("(cyclic type of infinite size"));
+    let third = tail.find("(values differ")
+                   .or(tail.find("(lifetime"))
+                   .or(tail.find("(cyclic type of infinite size"));
     // Insert `\n` before any remaining messages which match.
     if let Some(pos) = third {
         // The end of the message may just be wrapped in `()` without

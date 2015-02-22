@@ -92,7 +92,7 @@ pub fn strip_doc_comment_decoration(comment: &str) -> String {
         let mut first = true;
         for line in &lines {
             for (j, c) in line.chars().enumerate() {
-                if j > i || !"* \t".contains_char(c) {
+                if j > i || !"* \t".contains(c) {
                     can_trim = false;
                     break;
                 }
@@ -264,7 +264,7 @@ fn read_block_comment(rdr: &mut StringReader,
         if is_block_doc_comment(&curr_line[..]) {
             return
         }
-        assert!(!curr_line.contains_char('\n'));
+        assert!(!curr_line.contains('\n'));
         lines.push(curr_line);
     } else {
         let mut level: isize = 1;

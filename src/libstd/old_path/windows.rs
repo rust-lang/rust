@@ -507,7 +507,7 @@ impl GenericPath for Path {
 
     fn path_relative_from(&self, base: &Path) -> Option<Path> {
         fn comp_requires_verbatim(s: &str) -> bool {
-            s == "." || s == ".." || s.contains_char(SEP2)
+            s == "." || s == ".." || s.contains(SEP2)
         }
 
         if !self.equiv_prefix(base) {

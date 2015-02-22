@@ -84,7 +84,7 @@ impl UnicodeStr for str {
 
     #[inline]
     fn trim(&self) -> &str {
-        self.trim_left().trim_right()
+        self.trim_matches(|c: char| c.is_whitespace())
     }
 
     #[inline]

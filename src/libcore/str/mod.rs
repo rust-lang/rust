@@ -16,7 +16,7 @@
 
 #![doc(primitive = "str")]
 
-use self::Searcher::{Naive, TwoWay, TwoWayLong};
+use self::OldSearcher::{TwoWay, TwoWayLong};
 
 use clone::Clone;
 use cmp::{self, Eq};
@@ -35,6 +35,11 @@ use raw::{Repr, Slice};
 use result::Result::{self, Ok, Err};
 use slice::{self, SliceExt};
 use usize;
+
+pub use self::pattern::Pattern;
+pub use self::pattern::{Searcher, ReverseSearcher, DoubleEndedSearcher, SearchStep};
+
+mod pattern;
 
 macro_rules! delegate_iter {
     (exact $te:ty : $ti:ty) => {
@@ -70,7 +75,7 @@ macro_rules! delegate_iter {
     };
     (pattern $te:ty : $ti:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: CharEq> Iterator for $ti {
+        impl<'a, P: Pattern<'a>> Iterator for $ti {
             type Item = $te;
 
             #[inline]
@@ -83,7 +88,8 @@ macro_rules! delegate_iter {
             }
         }
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: CharEq> DoubleEndedIterator for $ti {
+        impl<'a, P: Pattern<'a>> DoubleEndedIterator for $ti
+        where P::Searcher: DoubleEndedSearcher<'a> {
             #[inline]
             fn next_back(&mut self) -> Option<$te> {
                 self.0.next_back()
@@ -92,7 +98,8 @@ macro_rules! delegate_iter {
     };
     (pattern forward $te:ty : $ti:ty) => {
         #[stable(feature = "rust1", since = "1.0.0")]
-        impl<'a, P: CharEq> Iterator for $ti {
+        impl<'a, P: Pattern<'a>> Iterator for $ti
+        where P::Searcher: DoubleEndedSearcher<'a> {
             type Item = $te;
 
             #[inline]
@@ -235,8 +242,10 @@ pub unsafe fn from_c_str(s: *const i8) -> &'static str {
 }
 
 /// Something that can be used to compare against a character
-#[unstable(feature = "core",
-           reason = "definition may change as pattern-related methods are stabilized")]
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0",
+             reason = "use `Pattern` instead")]
+// NB: Rather than removing it, make it private and move it into self::pattern
 pub trait CharEq {
     /// Determine if the splitter should split at the given character
     fn matches(&mut self, char) -> bool;
@@ -245,6 +254,7 @@ pub trait CharEq {
     fn only_ascii(&self) -> bool;
 }
 
+#[allow(deprecated) /* for CharEq */ ]
 impl CharEq for char {
     #[inline]
     fn matches(&mut self, c: char) -> bool { *self == c }
@@ -253,6 +263,7 @@ impl CharEq for char {
     fn only_ascii(&self) -> bool { (*self as u32) < 128 }
 }
 
+#[allow(deprecated) /* for CharEq */ ]
 impl<F> CharEq for F where F: FnMut(char) -> bool {
     #[inline]
     fn matches(&mut self, c: char) -> bool { (*self)(c) }
@@ -261,13 +272,16 @@ impl<F> CharEq for F where F: FnMut(char) -> bool {
     fn only_ascii(&self) -> bool { false }
 }
 
+#[allow(deprecated) /* for CharEq */ ]
 impl<'a> CharEq for &'a [char] {
     #[inline]
+    #[allow(deprecated) /* for CharEq */ ]
     fn matches(&mut self, c: char) -> bool {
         self.iter().any(|&m| { let mut m = m; m.matches(c) })
     }
 
     #[inline]
+    #[allow(deprecated) /* for CharEq */ ]
     fn only_ascii(&self) -> bool {
         self.iter().all(|m| m.only_ascii())
     }
@@ -337,6 +351,7 @@ fn unwrap_or_0(opt: Option<&u8>) -> u8 {
 /// Reads the next code point out of a byte iterator (assuming a
 /// UTF-8-like encoding).
 #[unstable(feature = "core")]
+#[inline]
 pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
     // Decode UTF-8
     let x = match bytes.next() {
@@ -368,6 +383,38 @@ pub fn next_code_point(bytes: &mut slice::Iter<u8>) -> Option<u32> {
     Some(ch)
 }
 
+/// Reads the last code point out of a byte iterator (assuming a
+/// UTF-8-like encoding).
+#[unstable(feature = "core")]
+#[inline]
+pub fn next_code_point_reverse(bytes: &mut slice::Iter<u8>) -> Option<u32> {
+    // Decode UTF-8
+    let w = match bytes.next_back() {
+        None => return None,
+        Some(&next_byte) if next_byte < 128 => return Some(next_byte as u32),
+        Some(&back_byte) => back_byte,
+    };
+
+    // Multibyte case follows
+    // Decode from a byte combination out of: [x [y [z w]]]
+    let mut ch;
+    let z = unwrap_or_0(bytes.next_back());
+    ch = utf8_first_byte!(z, 2);
+    if utf8_is_cont_byte!(z) {
+        let y = unwrap_or_0(bytes.next_back());
+        ch = utf8_first_byte!(y, 3);
+        if utf8_is_cont_byte!(y) {
+            let x = unwrap_or_0(bytes.next_back());
+            ch = utf8_first_byte!(x, 4);
+            ch = utf8_acc_cont_byte!(ch, y);
+        }
+        ch = utf8_acc_cont_byte!(ch, z);
+    }
+    ch = utf8_acc_cont_byte!(ch, w);
+
+    Some(ch)
+}
+
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<'a> Iterator for Chars<'a> {
     type Item = char;
@@ -393,33 +440,12 @@ impl<'a> Iterator for Chars<'a> {
 impl<'a> DoubleEndedIterator for Chars<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<char> {
-        let w = match self.iter.next_back() {
-            None => return None,
-            Some(&back_byte) if back_byte < 128 => return Some(back_byte as char),
-            Some(&back_byte) => back_byte,
-        };
-
-        // Multibyte case follows
-        // Decode from a byte combination out of: [x [y [z w]]]
-        let mut ch;
-        let z = unwrap_or_0(self.iter.next_back());
-        ch = utf8_first_byte!(z, 2);
-        if utf8_is_cont_byte!(z) {
-            let y = unwrap_or_0(self.iter.next_back());
-            ch = utf8_first_byte!(y, 3);
-            if utf8_is_cont_byte!(y) {
-                let x = unwrap_or_0(self.iter.next_back());
-                ch = utf8_first_byte!(x, 4);
-                ch = utf8_acc_cont_byte!(ch, y);
+        next_code_point_reverse(&mut self.iter).map(|ch| {
+            // str invariant says `ch` is a valid Unicode Scalar Value
+            unsafe {
+                mem::transmute(ch)
             }
-            ch = utf8_acc_cont_byte!(ch, z);
-        }
-        ch = utf8_acc_cont_byte!(ch, w);
-
-        // str invariant says `ch` is a valid Unicode Scalar Value
-        unsafe {
-            Some(mem::transmute(ch))
-        }
+        })
     }
 }
 
@@ -495,22 +521,20 @@ impl<'a> Fn<(&'a u8,)> for BytesDeref {
 }
 
 /// An iterator over the substrings of a string, separated by `sep`.
-#[derive(Clone)]
-struct CharSplits<'a, Sep> {
+struct CharSplits<'a, P: Pattern<'a>> {
     /// The slice remaining to be iterated
-    string: &'a str,
-    sep: Sep,
+    start: usize,
+    end: usize,
+    matcher: P::Searcher,
     /// Whether an empty string at the end is allowed
     allow_trailing_empty: bool,
-    only_ascii: bool,
     finished: bool,
 }
 
 /// An iterator over the substrings of a string, separated by `sep`,
 /// splitting at most `count` times.
-#[derive(Clone)]
-struct CharSplitsN<'a, Sep> {
-    iter: CharSplits<'a, Sep>,
+struct CharSplitsN<'a, P: Pattern<'a>> {
+    iter: CharSplits<'a, P>,
     /// The number of splits remaining
     count: usize,
     invert: bool,
@@ -528,12 +552,15 @@ pub struct LinesAny<'a> {
     inner: Map<Lines<'a>, fn(&str) -> &str>,
 }
 
-impl<'a, Sep> CharSplits<'a, Sep> {
+impl<'a, P: Pattern<'a>> CharSplits<'a, P> {
     #[inline]
     fn get_end(&mut self) -> Option<&'a str> {
-        if !self.finished && (self.allow_trailing_empty || self.string.len() > 0) {
+        if !self.finished && (self.allow_trailing_empty || self.end - self.start > 0) {
             self.finished = true;
-            Some(self.string)
+            unsafe {
+                let string = self.matcher.haystack().slice_unchecked(self.start, self.end);
+                Some(string)
+            }
         } else {
             None
         }
@@ -541,33 +568,18 @@ impl<'a, Sep> CharSplits<'a, Sep> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
+impl<'a, P: Pattern<'a>> Iterator for CharSplits<'a, P> {
     type Item = &'a str;
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
         if self.finished { return None }
 
-        let mut next_split = None;
-        if self.only_ascii {
-            for (idx, byte) in self.string.bytes().enumerate() {
-                if self.sep.matches(byte as char) && byte < 128u8 {
-                    next_split = Some((idx, idx + 1));
-                    break;
-                }
-            }
-        } else {
-            for (idx, ch) in self.string.char_indices() {
-                if self.sep.matches(ch) {
-                    next_split = Some((idx, self.string.char_range_at(idx).next));
-                    break;
-                }
-            }
-        }
-        match next_split {
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match() {
             Some((a, b)) => unsafe {
-                let elt = self.string.slice_unchecked(0, a);
-                self.string = self.string.slice_unchecked(b, self.string.len());
+                let elt = haystack.slice_unchecked(self.start, a);
+                self.start = b;
                 Some(elt)
             },
             None => self.get_end(),
@@ -576,7 +588,8 @@ impl<'a, Sep: CharEq> Iterator for CharSplits<'a, Sep> {
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
+impl<'a, P: Pattern<'a>> DoubleEndedIterator for CharSplits<'a, P>
+where P::Searcher: DoubleEndedSearcher<'a> {
     #[inline]
     fn next_back(&mut self) -> Option<&'a str> {
         if self.finished { return None }
@@ -588,37 +601,25 @@ impl<'a, Sep: CharEq> DoubleEndedIterator for CharSplits<'a, Sep> {
                 _ => if self.finished { return None }
             }
         }
-        let len = self.string.len();
-        let mut next_split = None;
 
-        if self.only_ascii {
-            for (idx, byte) in self.string.bytes().enumerate().rev() {
-                if self.sep.matches(byte as char) && byte < 128u8 {
-                    next_split = Some((idx, idx + 1));
-                    break;
-                }
-            }
-        } else {
-            for (idx, ch) in self.string.char_indices().rev() {
-                if self.sep.matches(ch) {
-                    next_split = Some((idx, self.string.char_range_at(idx).next));
-                    break;
-                }
-            }
-        }
-        match next_split {
+        let haystack = self.matcher.haystack();
+        match self.matcher.next_match_back() {
             Some((a, b)) => unsafe {
-                let elt = self.string.slice_unchecked(b, len);
-                self.string = self.string.slice_unchecked(0, a);
+                let elt = haystack.slice_unchecked(b, self.end);
+                self.end = a;
                 Some(elt)
             },
-            None => { self.finished = true; Some(self.string) }
+            None => unsafe {
+                self.finished = true;
+                Some(haystack.slice_unchecked(self.start, self.end))
+            },
         }
     }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a, Sep: CharEq> Iterator for CharSplitsN<'a, Sep> {
+impl<'a, P: Pattern<'a>> Iterator for CharSplitsN<'a, P>
+where P::Searcher: DoubleEndedSearcher<'a> {
     type Item = &'a str;
 
     #[inline]
@@ -629,32 +630,6 @@ impl<'a, Sep: CharEq> Iterator for CharSplitsN<'a, Sep> {
         } else {
             self.iter.get_end()
         }
-    }
-}
-
-/// The internal state of an iterator that searches for matches of a substring
-/// within a larger string using naive search
-#[derive(Clone)]
-struct NaiveSearcher {
-    position: usize
-}
-
-impl NaiveSearcher {
-    fn new() -> NaiveSearcher {
-        NaiveSearcher { position: 0 }
-    }
-
-    fn next(&mut self, haystack: &[u8], needle: &[u8]) -> Option<(usize, usize)> {
-        while self.position + needle.len() <= haystack.len() {
-            if &haystack[self.position .. self.position + needle.len()] == needle {
-                let match_pos = self.position;
-                self.position += needle.len(); // add 1 for all matches
-                return Some((match_pos, match_pos + needle.len()));
-            } else {
-                self.position += 1;
-            }
-        }
-        None
     }
 }
 
@@ -743,6 +718,7 @@ struct TwoWaySearcher {
 
 */
 impl TwoWaySearcher {
+    #[allow(dead_code)]
     fn new(needle: &[u8]) -> TwoWaySearcher {
         let (crit_pos_false, period_false) = TwoWaySearcher::maximal_suffix(needle, false);
         let (crit_pos_true, period_true) = TwoWaySearcher::maximal_suffix(needle, true);
@@ -852,6 +828,7 @@ impl TwoWaySearcher {
     // Specifically, returns (i, p), where i is the starting index of v in some
     // critical factorization (u, v) and p = period(v)
     #[inline]
+    #[allow(dead_code)]
     fn maximal_suffix(arr: &[u8], reversed: bool) -> (usize, usize) {
         let mut left = -1; // Corresponds to i in the paper
         let mut right = 0; // Corresponds to j in the paper
@@ -896,20 +873,26 @@ impl TwoWaySearcher {
 /// The internal state of an iterator that searches for matches of a substring
 /// within a larger string using a dynamically chosen search algorithm
 #[derive(Clone)]
-enum Searcher {
-    Naive(NaiveSearcher),
+// NB: This is kept around for convenience because
+// it is planned to be used again in the future
+enum OldSearcher {
     TwoWay(TwoWaySearcher),
-    TwoWayLong(TwoWaySearcher)
+    TwoWayLong(TwoWaySearcher),
 }
 
-impl Searcher {
-    fn new(haystack: &[u8], needle: &[u8]) -> Searcher {
+impl OldSearcher {
+    #[allow(dead_code)]
+    fn new(haystack: &[u8], needle: &[u8]) -> OldSearcher {
+        if needle.len() == 0 {
+            // Handle specially
+            unimplemented!()
         // FIXME: Tune this.
         // FIXME(#16715): This unsigned integer addition will probably not
         // overflow because that would mean that the memory almost solely
         // consists of the needle. Needs #16715 to be formally fixed.
-        if needle.len() + 20 > haystack.len() {
-            Naive(NaiveSearcher::new())
+        } else if needle.len() + 20 > haystack.len() {
+            // Use naive searcher
+            unimplemented!()
         } else {
             let searcher = TwoWaySearcher::new(needle);
             if searcher.memory == usize::MAX { // If the period is long
@@ -921,66 +904,58 @@ impl Searcher {
     }
 }
 
-/// An iterator over the start and end indices of the matches of a
-/// substring within a larger string
 #[derive(Clone)]
-#[unstable(feature = "core", reason = "type may be removed")]
-pub struct MatchIndices<'a> {
+// NB: This is kept around for convenience because
+// it is planned to be used again in the future
+struct OldMatchIndices<'a, 'b> {
     // constants
     haystack: &'a str,
-    needle: &'a str,
-    searcher: Searcher
+    needle: &'b str,
+    searcher: OldSearcher
 }
 
-/// An iterator over the substrings of a string separated by a given
-/// search string
-#[derive(Clone)]
+// FIXME: #21637 Prevents a Clone impl
+/// An iterator over the start and end indices of the matches of a
+/// substring within a larger string
 #[unstable(feature = "core", reason = "type may be removed")]
-pub struct SplitStr<'a> {
-    it: MatchIndices<'a>,
-    last_end: usize,
-    finished: bool
-}
+pub struct MatchIndices<'a, P: Pattern<'a>>(P::Searcher);
 
 #[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for MatchIndices<'a> {
+impl<'a, P: Pattern<'a>> Iterator for MatchIndices<'a, P> {
     type Item = (usize, usize);
 
     #[inline]
     fn next(&mut self) -> Option<(usize, usize)> {
-        match self.searcher {
-            Naive(ref mut searcher)
-                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes()),
-            TwoWay(ref mut searcher)
-                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), false),
-            TwoWayLong(ref mut searcher)
-                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), true)
-        }
+        self.0.next_match()
     }
 }
 
-#[stable(feature = "rust1", since = "1.0.0")]
-impl<'a> Iterator for SplitStr<'a> {
+/// An iterator over the substrings of a string separated by a given
+/// search string
+#[unstable(feature = "core")]
+#[deprecated(since = "1.0.0", reason = "use `Split` with a `&str`")]
+pub struct SplitStr<'a, P: Pattern<'a>>(Split<'a, P>);
+impl<'a, P: Pattern<'a>> Iterator for SplitStr<'a, P> {
     type Item = &'a str;
 
     #[inline]
     fn next(&mut self) -> Option<&'a str> {
-        if self.finished { return None; }
-
-        match self.it.next() {
-            Some((from, to)) => {
-                let ret = Some(&self.it.haystack[self.last_end .. from]);
-                self.last_end = to;
-                ret
-            }
-            None => {
-                self.finished = true;
-                Some(&self.it.haystack[self.last_end .. self.it.haystack.len()])
-            }
-        }
+        Iterator::next(&mut self.0)
     }
 }
 
+impl<'a, 'b>  OldMatchIndices<'a, 'b> {
+    #[inline]
+    #[allow(dead_code)]
+    fn next(&mut self) -> Option<(usize, usize)> {
+        match self.searcher {
+            TwoWay(ref mut searcher)
+                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), false),
+            TwoWayLong(ref mut searcher)
+                => searcher.next(self.haystack.as_bytes(), self.needle.as_bytes(), true),
+        }
+    }
+}
 
 /*
 Section: Comparing strings
@@ -1298,28 +1273,39 @@ impl<'a, S: ?Sized> Str for &'a S where S: Str {
 }
 
 /// Return type of `StrExt::split`
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct Split<'a, P>(CharSplits<'a, P>);
-delegate_iter!{pattern &'a str : Split<'a, P>}
+pub struct Split<'a, P: Pattern<'a>>(CharSplits<'a, P>);
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, P: Pattern<'a>> Iterator for Split<'a, P> {
+    type Item = &'a str;
+
+    #[inline]
+    fn next(&mut self) -> Option<&'a str> {
+        self.0.next()
+    }
+}
+#[stable(feature = "rust1", since = "1.0.0")]
+impl<'a, P: Pattern<'a>> DoubleEndedIterator for Split<'a, P>
+where P::Searcher: DoubleEndedSearcher<'a> {
+    #[inline]
+    fn next_back(&mut self) -> Option<&'a str> {
+        self.0.next_back()
+    }
+}
 
 /// Return type of `StrExt::split_terminator`
-#[derive(Clone)]
-#[unstable(feature = "core",
-           reason = "might get removed in favour of a constructor method on Split")]
-pub struct SplitTerminator<'a, P>(CharSplits<'a, P>);
+#[stable(feature = "rust1", since = "1.0.0")]
+pub struct SplitTerminator<'a, P: Pattern<'a>>(CharSplits<'a, P>);
 delegate_iter!{pattern &'a str : SplitTerminator<'a, P>}
 
 /// Return type of `StrExt::splitn`
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct SplitN<'a, P>(CharSplitsN<'a, P>);
+pub struct SplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str : SplitN<'a, P>}
 
 /// Return type of `StrExt::rsplitn`
-#[derive(Clone)]
 #[stable(feature = "rust1", since = "1.0.0")]
-pub struct RSplitN<'a, P>(CharSplitsN<'a, P>);
+pub struct RSplitN<'a, P: Pattern<'a>>(CharSplitsN<'a, P>);
 delegate_iter!{pattern forward &'a str : RSplitN<'a, P>}
 
 /// Methods for string slices
@@ -1328,36 +1314,40 @@ pub trait StrExt {
     // NB there are no docs here are they're all located on the StrExt trait in
     // libcollections, not here.
 
-    fn contains(&self, pat: &str) -> bool;
-    fn contains_char<P: CharEq>(&self, pat: P) -> bool;
+    fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
+    fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
     fn chars<'a>(&'a self) -> Chars<'a>;
     fn bytes<'a>(&'a self) -> Bytes<'a>;
     fn char_indices<'a>(&'a self) -> CharIndices<'a>;
-    fn split<'a, P: CharEq>(&'a self, pat: P) -> Split<'a, P>;
-    fn splitn<'a, P: CharEq>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
-    fn split_terminator<'a, P: CharEq>(&'a self, pat: P) -> SplitTerminator<'a, P>;
-    fn rsplitn<'a, P: CharEq>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>;
-    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a>;
-    fn split_str<'a>(&'a self, pat: &'a str) -> SplitStr<'a>;
+    fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P>;
+    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P>;
+    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P>;
+    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P>;
+    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P>;
+    fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P>;
     fn lines<'a>(&'a self) -> Lines<'a>;
     fn lines_any<'a>(&'a self) -> LinesAny<'a>;
     fn char_len(&self) -> usize;
     fn slice_chars<'a>(&'a self, begin: usize, end: usize) -> &'a str;
     unsafe fn slice_unchecked<'a>(&'a self, begin: usize, end: usize) -> &'a str;
-    fn starts_with(&self, pat: &str) -> bool;
-    fn ends_with(&self, pat: &str) -> bool;
-    fn trim_matches<'a, P: CharEq>(&'a self, pat: P) -> &'a str;
-    fn trim_left_matches<'a, P: CharEq>(&'a self, pat: P) -> &'a str;
-    fn trim_right_matches<'a, P: CharEq>(&'a self, pat: P) -> &'a str;
+    fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool;
+    fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
+        where P::Searcher: ReverseSearcher<'a>;
+    fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+        where P::Searcher: DoubleEndedSearcher<'a>;
+    fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str;
+    fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+        where P::Searcher: ReverseSearcher<'a>;
     fn is_char_boundary(&self, index: usize) -> bool;
     fn char_range_at(&self, start: usize) -> CharRange;
     fn char_range_at_reverse(&self, start: usize) -> CharRange;
     fn char_at(&self, i: usize) -> char;
     fn char_at_reverse(&self, i: usize) -> char;
     fn as_bytes<'a>(&'a self) -> &'a [u8];
-    fn find<P: CharEq>(&self, pat: P) -> Option<usize>;
-    fn rfind<P: CharEq>(&self, pat: P) -> Option<usize>;
-    fn find_str(&self, pat: &str) -> Option<usize>;
+    fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
+    fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
+        where P::Searcher: ReverseSearcher<'a>;
+    fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>;
     fn slice_shift_char<'a>(&'a self) -> Option<(char, &'a str)>;
     fn subslice_offset(&self, inner: &str) -> usize;
     fn as_ptr(&self) -> *const u8;
@@ -1375,13 +1365,13 @@ fn slice_error_fail(s: &str, begin: usize, end: usize) -> ! {
 
 impl StrExt for str {
     #[inline]
-    fn contains(&self, needle: &str) -> bool {
-        self.find_str(needle).is_some()
+    fn contains<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
+        pat.is_contained_in(self)
     }
 
     #[inline]
-    fn contains_char<P: CharEq>(&self, pat: P) -> bool {
-        self.find(pat).is_some()
+    fn contains_char<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
+        pat.is_contained_in(self)
     }
 
     #[inline]
@@ -1400,18 +1390,18 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn split<P: CharEq>(&self, pat: P) -> Split<P> {
+    fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
         Split(CharSplits {
-            string: self,
-            only_ascii: pat.only_ascii(),
-            sep: pat,
+            start: 0,
+            end: self.len(),
+            matcher: pat.into_searcher(self),
             allow_trailing_empty: true,
             finished: false,
         })
     }
 
     #[inline]
-    fn splitn<P: CharEq>(&self, count: usize, pat: P) -> SplitN<P> {
+    fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
         SplitN(CharSplitsN {
             iter: self.split(pat).0,
             count: count,
@@ -1420,7 +1410,7 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn split_terminator<P: CharEq>(&self, pat: P) -> SplitTerminator<P> {
+    fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
         SplitTerminator(CharSplits {
             allow_trailing_empty: false,
             ..self.split(pat).0
@@ -1428,7 +1418,7 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn rsplitn<P: CharEq>(&self, count: usize, pat: P) -> RSplitN<P> {
+    fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
         RSplitN(CharSplitsN {
             iter: self.split(pat).0,
             count: count,
@@ -1437,22 +1427,14 @@ impl StrExt for str {
     }
 
     #[inline]
-    fn match_indices<'a>(&'a self, sep: &'a str) -> MatchIndices<'a> {
-        assert!(!sep.is_empty());
-        MatchIndices {
-            haystack: self,
-            needle: sep,
-            searcher: Searcher::new(self.as_bytes(), sep.as_bytes())
-        }
+    fn match_indices<'a, P: Pattern<'a>>(&'a self, pat: P) -> MatchIndices<'a, P> {
+        MatchIndices(pat.into_searcher(self))
     }
 
     #[inline]
-    fn split_str<'a>(&'a self, sep: &'a str) -> SplitStr<'a> {
-        SplitStr {
-            it: self.match_indices(sep),
-            last_end: 0,
-            finished: false
-        }
+    #[allow(deprecated) /* for SplitStr */ ]
+    fn split_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitStr<'a, P> {
+        SplitStr(self.split(pat))
     }
 
     #[inline]
@@ -1500,54 +1482,69 @@ impl StrExt for str {
     #[inline]
     unsafe fn slice_unchecked(&self, begin: usize, end: usize) -> &str {
         mem::transmute(Slice {
-            data: self.as_ptr().offset(begin as isize),
+            data: self.as_ptr().offset(begin as int),
             len: end - begin,
         })
     }
 
     #[inline]
-    fn starts_with(&self, needle: &str) -> bool {
-        let n = needle.len();
-        self.len() >= n && needle.as_bytes() == &self.as_bytes()[..n]
+    fn starts_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool {
+        pat.is_prefix_of(self)
     }
 
     #[inline]
-    fn ends_with(&self, needle: &str) -> bool {
-        let (m, n) = (self.len(), needle.len());
-        m >= n && needle.as_bytes() == &self.as_bytes()[m-n..]
+    fn ends_with<'a, P: Pattern<'a>>(&'a self, pat: P) -> bool
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        pat.is_suffix_of(self)
     }
 
     #[inline]
-    fn trim_matches<P: CharEq>(&self, mut pat: P) -> &str {
-        let cur = match self.find(|c: char| !pat.matches(c)) {
-            None => "",
-            Some(i) => unsafe { self.slice_unchecked(i, self.len()) }
-        };
-        match cur.rfind(|c: char| !pat.matches(c)) {
-            None => "",
-            Some(i) => {
-                let right = cur.char_range_at(i).next;
-                unsafe { cur.slice_unchecked(0, right) }
-            }
+    fn trim_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+        where P::Searcher: DoubleEndedSearcher<'a>
+    {
+        let mut i = 0;
+        let mut j = 0;
+        let mut matcher = pat.into_searcher(self);
+        if let Some((a, b)) = matcher.next_reject() {
+            i = a;
+            j = b; // Rember earliest known match, correct it below if
+                   // last match is different
+        }
+        if let Some((_, b)) = matcher.next_reject_back() {
+            j = b;
+        }
+        unsafe {
+            // Searcher is known to return valid indices
+            self.slice_unchecked(i, j)
         }
     }
 
     #[inline]
-    fn trim_left_matches<P: CharEq>(&self, mut pat: P) -> &str {
-        match self.find(|c: char| !pat.matches(c)) {
-            None => "",
-            Some(first) => unsafe { self.slice_unchecked(first, self.len()) }
+    fn trim_left_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str {
+        let mut i = self.len();
+        let mut matcher = pat.into_searcher(self);
+        if let Some((a, _)) = matcher.next_reject() {
+            i = a;
+        }
+        unsafe {
+            // Searcher is known to return valid indices
+            self.slice_unchecked(i, self.len())
         }
     }
 
     #[inline]
-    fn trim_right_matches<P: CharEq>(&self, mut pat: P) -> &str {
-        match self.rfind(|c: char| !pat.matches(c)) {
-            None => "",
-            Some(last) => {
-                let next = self.char_range_at(last).next;
-                unsafe { self.slice_unchecked(0, next) }
-            }
+    fn trim_right_matches<'a, P: Pattern<'a>>(&'a self, pat: P) -> &'a str
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        let mut j = 0;
+        let mut matcher = pat.into_searcher(self);
+        if let Some((_, b)) = matcher.next_reject_back() {
+            j = b;
+        }
+        unsafe {
+            // Searcher is known to return valid indices
+            self.slice_unchecked(0, j)
         }
     }
 
@@ -1612,36 +1609,18 @@ impl StrExt for str {
         unsafe { mem::transmute(self) }
     }
 
-    fn find<P: CharEq>(&self, mut pat: P) -> Option<usize> {
-        if pat.only_ascii() {
-            self.bytes().position(|b| pat.matches(b as char))
-        } else {
-            for (index, c) in self.char_indices() {
-                if pat.matches(c) { return Some(index); }
-            }
-            None
-        }
+    fn find<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
+        pat.into_searcher(self).next_match().map(|(i, _)| i)
     }
 
-    fn rfind<P: CharEq>(&self, mut pat: P) -> Option<usize> {
-        if pat.only_ascii() {
-            self.bytes().rposition(|b| pat.matches(b as char))
-        } else {
-            for (index, c) in self.char_indices().rev() {
-                if pat.matches(c) { return Some(index); }
-            }
-            None
-        }
+    fn rfind<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize>
+        where P::Searcher: ReverseSearcher<'a>
+    {
+        pat.into_searcher(self).next_match_back().map(|(i, _)| i)
     }
 
-    fn find_str(&self, needle: &str) -> Option<usize> {
-        if needle.is_empty() {
-            Some(0)
-        } else {
-            self.match_indices(needle)
-                .next()
-                .map(|(start, _end)| start)
-        }
+    fn find_str<'a, P: Pattern<'a>>(&'a self, pat: P) -> Option<usize> {
+        self.find(pat)
     }
 
     #[inline]
