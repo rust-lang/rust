@@ -5366,8 +5366,9 @@ pub fn enum_variants<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
                                                       "expected signed integer constant");
                                         }
                                         Err(err) => {
-                                            span_err!(cx.sess, e.span, E0305,
-                                                      "expected constant: {}", err);
+                                            span_err!(cx.sess, err.span, E0305,
+                                                      "constant evaluation error: {}",
+                                                      err.description().as_slice());
                                         }
                                     }
                                 } else {
