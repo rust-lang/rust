@@ -33,14 +33,15 @@ use super::{util};
 
 use middle::fast_reject;
 use middle::subst::{Subst, Substs, TypeSpace, VecPerParamSpace};
-use middle::ty::{self, AssociatedType, RegionEscape, ToPolyTraitRef, Ty};
+use middle::ty::{self, AssociatedType, RegionEscape, ToPolyTraitRef, TraitRef, Ty};
 use middle::infer;
 use middle::infer::{InferCtxt, TypeFreshener};
 use middle::ty_fold::TypeFoldable;
 use std::cell::RefCell;
 use std::collections::hash_map::HashMap;
 use std::rc::Rc;
-use syntax::{abi, ast};
+use syntax::abi;
+use syntax::ast::{self, DefId};
 use util::common::ErrorReported;
 use util::ppaux::Repr;
 
@@ -2201,17 +2202,31 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                                   -> Ty<'tcx>
     {
         let poly_ty = ty::lookup_item_type(self.tcx(), assoc_ty.def_id);
-        let substs =
-            if self.param_env().def_id == assoc_ty.container.id() {
-                // If the associated type we are about to instantiate is
-                // defined in the item current parameter environment is
-                // associated with, we are obliged to use free substitutions.
-                &self.param_env().free_substs
-            } else {
-                impl_substs
-            };
-
+        let substs = self.maybe_pick_free_substs(assoc_ty.container.id(), impl_substs);
         poly_ty.ty.subst(self.tcx(), substs)
+    }
+
+    pub fn instantiate_trait_predicates(&self,
+                                        trait_ref: &Rc<TraitRef<'tcx>>)
+                                        -> ty::InstantiatedPredicates<'tcx>
+    {
+        let trait_predicates = ty::lookup_predicates(self.tcx(), trait_ref.def_id);
+        let substs = self.maybe_pick_free_substs(trait_ref.def_id, trait_ref.substs);
+        trait_predicates.instantiate(self.tcx(), substs)
+    }
+
+    fn maybe_pick_free_substs(&self,
+                              target_def_id: DefId,
+                              substs: &'cx Substs<'tcx>)
+                              -> &'cx Substs<'tcx>
+    {
+        // The free substitutions take precedence over the given one if
+        // current parameter environment is associated with `target_def_id`.
+        if self.param_env().def_id == target_def_id {
+            &self.param_env().free_substs
+        } else {
+            substs
+        }
     }
 
     fn push_stack<'o,'s:'o>(&mut self,

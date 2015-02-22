@@ -22,12 +22,12 @@ impl<'a> Foo<'a> for &'a i16 {
 }
 
 impl<'a> Foo<'static> for &'a i32 {
-    //~^ ERROR cannot infer
+    //~^ ERROR does not fulfill the required lifetime
     type Value = &'a i32;
 }
 
 impl<'a,'b> Foo<'b> for &'a i64 {
-    //~^ ERROR cannot infer
+    //~^ ERROR does not fulfill the required lifetime
     type Value = &'a i32;
 }
 
