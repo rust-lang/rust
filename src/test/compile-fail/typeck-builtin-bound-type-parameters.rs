@@ -15,13 +15,13 @@ trait Trait: Copy<Send> {}
 //~^ ERROR: builtin bounds do not require arguments, 1 given
 
 struct MyStruct1<T: Copy<T>>;
-//~^ ERROR: builtin bounds do not require arguments, 1 given
+//~^ ERROR builtin bounds do not require arguments, 1 given
 
 struct MyStruct2<'a, T: Copy<'a>>;
 //~^ ERROR: builtin bounds do not require arguments, 1 given
 
 fn foo2<'a, T:Copy<'a, U>, U>(x: T) {}
-//~^ ERROR: builtin bounds do not require arguments, 1 given
+//~^ ERROR builtin bounds do not require arguments, 2 given
 
 fn main() {
 }

@@ -1849,12 +1849,12 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
                                                      &mut builtin_bounds) {
                             let segments = &b.trait_ref.path.segments;
                             let parameters = &segments[segments.len() - 1].parameters;
-                            if parameters.is_empty() {
-                                continue; // success
+                            if !parameters.is_empty() {
+                                span_err!(tcx.sess, b.trait_ref.path.span, E0316,
+                                          "builtin bounds do not require arguments, {} given",
+                                          parameters.lifetimes().len() + parameters.types().len());
                             }
-                            span_err!(tcx.sess, b.trait_ref.path.span, E0316,
-                                      "builtin bounds do not require arguments, {} given",
-                                      parameters.types().len());
+                            continue; // success
                         }
                     }
                     _ => {
