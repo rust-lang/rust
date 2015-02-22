@@ -114,6 +114,7 @@ impl<T : ?Sized> Box<T> {
     /// function is called twice on the same raw pointer.
     #[unstable(feature = "alloc",
                reason = "may be renamed or moved out of Box scope")]
+    #[inline]
     pub unsafe fn from_raw(raw: *mut T) -> Self {
         mem::transmute(raw)
     }
@@ -141,6 +142,7 @@ impl<T : ?Sized> Box<T> {
 /// ```
 #[unstable(feature = "alloc",
            reason = "may be renamed")]
+#[inline]
 pub unsafe fn into_raw<T : ?Sized>(b: Box<T>) -> *mut T {
     mem::transmute(b)
 }
