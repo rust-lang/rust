@@ -388,7 +388,7 @@ impl<T> Vec<T> {
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         self.shrink_to_fit();
         unsafe {
-            let xs: Box<[T]> = mem::transmute(&mut *self);
+            let xs: Box<[T]> = Box::from_raw(&mut *self);
             mem::forget(self);
             xs
         }

@@ -27,6 +27,7 @@
 
 use self::StdSource::*;
 
+use boxed;
 use boxed::Box;
 use cell::RefCell;
 use clone::Clone;
@@ -218,7 +219,7 @@ impl Reader for StdinReader {
 /// See `stdout()` for more notes about this function.
 pub fn stdin() -> StdinReader {
     // We're following the same strategy as kimundi's lazy_static library
-    static mut STDIN: *const StdinReader = 0 as *const StdinReader;
+    static mut STDIN: *mut StdinReader = 0 as *mut StdinReader;
     static ONCE: Once = ONCE_INIT;
 
     unsafe {
@@ -235,12 +236,12 @@ pub fn stdin() -> StdinReader {
             let stdin = StdinReader {
                 inner: Arc::new(Mutex::new(RaceBox(stdin)))
             };
-            STDIN = mem::transmute(box stdin);
+            STDIN = boxed::into_raw(box stdin);
 
             // Make sure to free it at exit
             rt::at_exit(|| {
-                mem::transmute::<_, Box<StdinReader>>(STDIN);
-                STDIN = ptr::null();
+                Box::from_raw(STDIN);
+                STDIN = ptr::null_mut();
             });
         });
 

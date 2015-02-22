@@ -22,8 +22,8 @@
 
 use prelude::v1::*;
 
+use boxed;
 use cell::UnsafeCell;
-use mem;
 use ptr;
 use rt;
 use sync::{StaticMutex, StaticCondvar};
@@ -88,7 +88,7 @@ impl<M: Send> Helper<M> {
             let _guard = self.lock.lock().unwrap();
             if !*self.initialized.get() {
                 let (tx, rx) = channel();
-                *self.chan.get() = mem::transmute(box tx);
+                *self.chan.get() = boxed::into_raw(box tx);
                 let (receive, send) = helper_signal::new();
                 *self.signal.get() = send as uint;
 
@@ -132,7 +132,7 @@ impl<M: Send> Helper<M> {
             let mut guard = self.lock.lock().unwrap();
 
             // Close the channel by destroying it
-            let chan: Box<Sender<M>> = mem::transmute(*self.chan.get());
+            let chan: Box<Sender<M>> = Box::from_raw(*self.chan.get());
             *self.chan.get() = ptr::null_mut();
             drop(chan);
             helper_signal::signal(*self.signal.get() as helper_signal::signal);

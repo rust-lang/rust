@@ -167,6 +167,7 @@
        html_playground_url = "http://play.rust-lang.org/")]
 #![deny(missing_docs)]
 
+#![feature(alloc)]
 #![feature(staged_api)]
 #![feature(box_syntax)]
 #![feature(int_uint)]
@@ -175,6 +176,7 @@
 #![feature(std_misc)]
 #![feature(env)]
 
+use std::boxed;
 use std::cell::RefCell;
 use std::fmt;
 use std::old_io::LineBufferedWriter;
@@ -205,11 +207,11 @@ const DEFAULT_LOG_LEVEL: u32 = 1;
 /// logging statement should be run.
 static mut LOG_LEVEL: u32 = MAX_LOG_LEVEL;
 
-static mut DIRECTIVES: *const Vec<directive::LogDirective> =
-    0 as *const Vec<directive::LogDirective>;
+static mut DIRECTIVES: *mut Vec<directive::LogDirective> =
+    0 as *mut Vec<directive::LogDirective>;
 
 /// Optional filter.
-static mut FILTER: *const String = 0 as *const _;
+static mut FILTER: *mut String = 0 as *mut _;
 
 /// Debug log level
 pub const DEBUG: u32 = 4;
@@ -419,23 +421,23 @@ fn init() {
 
         assert!(FILTER.is_null());
         match filter {
-            Some(f) => FILTER = mem::transmute(box f),
+            Some(f) => FILTER = boxed::into_raw(box f),
             None => {}
         }
 
         assert!(DIRECTIVES.is_null());
-        DIRECTIVES = mem::transmute(box directives);
+        DIRECTIVES = boxed::into_raw(box directives);
 
         // Schedule the cleanup for the globals for when the runtime exits.
         rt::at_exit(move || {
             assert!(!DIRECTIVES.is_null());
             let _directives: Box<Vec<directive::LogDirective>> =
-                mem::transmute(DIRECTIVES);
-            DIRECTIVES = ptr::null();
+                Box::from_raw(DIRECTIVES);
+            DIRECTIVES = ptr::null_mut();
 
             if !FILTER.is_null() {
-                let _filter: Box<String> = mem::transmute(FILTER);
-                FILTER = 0 as *const _;
+                let _filter: Box<String> = Box::from_raw(FILTER);
+                FILTER = 0 as *mut _;
             }
         });
     }
