@@ -212,7 +212,7 @@ pub fn memoized<T, U, S, F>(cache: &RefCell<HashMap<T, U, S>>, arg: T, f: F) -> 
           F: FnOnce(T) -> U,
 {
     let key = arg.clone();
-    let result = cache.borrow().get(&key).map(|result| result.clone());
+    let result = cache.borrow().get(&key).cloned();
     match result {
         Some(result) => result,
         None => {

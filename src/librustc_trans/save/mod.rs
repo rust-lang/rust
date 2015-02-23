@@ -663,23 +663,21 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         match typ.node {
             // Common case impl for a struct or something basic.
             ast::TyPath(ref path, id) => {
-                match self.lookup_type_ref(id) {
-                    Some(id) => {
-                        let sub_span = self.span.sub_span_for_type_name(path.span);
-                        self.fmt.ref_str(recorder::TypeRef,
-                                         path.span,
-                                         sub_span,
-                                         id,
-                                         self.cur_scope);
-                        self.fmt.impl_str(path.span,
-                                          sub_span,
-                                          item.id,
-                                          Some(id),
-                                          trait_id,
-                                          self.cur_scope);
-                    },
-                    None => ()
-                }
+                let sub_span = self.span.sub_span_for_type_name(path.span);
+                let self_id = self.lookup_type_ref(id).map(|id| {
+                    self.fmt.ref_str(recorder::TypeRef,
+                                     path.span,
+                                     sub_span,
+                                     id,
+                                     self.cur_scope);
+                    id
+                });
+                self.fmt.impl_str(path.span,
+                                  sub_span,
+                                  item.id,
+                                  self_id,
+                                  trait_id,
+                                  self.cur_scope);
             },
             _ => {
                 // Less useful case, impl for a compound type.
@@ -1002,28 +1000,39 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             ast::PatStruct(ref path, ref fields, _) => {
                 self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
                 visit::walk_path(self, path);
-                let struct_def = match self.lookup_type_ref(p.id) {
-                    Some(sd) => sd,
-                    None => {
-                        self.sess.span_bug(p.span,
-                                           &format!("Could not find struct_def for `{}`",
-                                                   self.span.snippet(p.span)));
-                    }
-                };
-                for &Spanned { node: ref field, span } in fields {
-                    let sub_span = self.span.span_for_first_ident(span);
-                    let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
-                    for f in fields {
-                        if f.name == field.ident.name {
-                            self.fmt.ref_str(recorder::VarRef,
-                                             span,
-                                             sub_span,
-                                             f.id,
-                                             self.cur_scope);
-                            break;
+
+                let def = self.analysis.ty_cx.def_map.borrow()[p.id];
+                let struct_def = match def {
+                    def::DefConst(..) => None,
+                    def::DefVariant(_, variant_id, _) => Some(variant_id),
+                    _ => {
+                        match ty::ty_to_def_id(ty::node_id_to_type(&self.analysis.ty_cx, p.id)) {
+                            None => {
+                                self.sess.span_bug(p.span,
+                                                   &format!("Could not find struct_def for `{}`",
+                                                            self.span.snippet(p.span)));
+                            }
+                            Some(def_id) => Some(def_id),
                         }
                     }
-                    self.visit_pat(&*field.pat);
+                };
+
+                if let Some(struct_def) = struct_def {
+                    let struct_fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
+                    for &Spanned { node: ref field, span } in fields {
+                        let sub_span = self.span.span_for_first_ident(span);
+                        for f in &struct_fields {
+                            if f.name == field.ident.name {
+                                self.fmt.ref_str(recorder::VarRef,
+                                                 span,
+                                                 sub_span,
+                                                 f.id,
+                                                 self.cur_scope);
+                                break;
+                            }
+                        }
+                        self.visit_pat(&*field.pat);
+                    }
                 }
             }
             ast::PatEnum(ref path, _) => {

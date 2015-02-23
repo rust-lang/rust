@@ -53,8 +53,8 @@ Here `x` represents some variable, `LV.f` is a field reference,
 and `*LV` is a pointer dereference. There is no auto-deref or other
 niceties. This means that if you have a type like:
 
-```text
-struct S { f: uint }
+```rust
+struct S { f: i32 }
 ```
 
 and a variable `a: Box<S>`, then the rust expression `a.f` would correspond
@@ -63,8 +63,8 @@ to an `LV` of `(*a).f`.
 Here is the formal grammar for the types we'll consider:
 
 ```text
-TY = () | S<'LT...> | Box<TY> | & 'LT MQ TY
-MQ = mut | imm | const
+TY = i32 | bool | S<'LT...> | Box<TY> | & 'LT MQ TY
+MQ = mut | imm
 ```
 
 Most of these types should be pretty self explanatory. Here `S` is a
@@ -82,13 +82,13 @@ SD = struct S<'LT...> { (f: TY)... }
 
 Now, imagine we had a program like this:
 
-```text
-struct Foo { f: uint, g: uint }
+```rust
+struct Foo { f: i32, g: i32 }
 ...
 'a: {
-  let mut x: Box<Foo> = ...;
-  let y = &mut (*x).f;
-  x = ...;
+    let mut x: Box<Foo> = ...;
+    let y = &mut (*x).f;
+    x = ...;
 }
 ```
 
@@ -198,7 +198,7 @@ The kinds of expressions which in-scope loans can render illegal are:
 
 Now that we hopefully have some kind of intuitive feeling for how the
 borrow checker works, let's look a bit more closely now at the precise
-conditions that it uses. For simplicity I will ignore const loans.
+conditions that it uses.
 
 I will present the rules in a modified form of standard inference
 rules, which looks as follows:
@@ -261,12 +261,11 @@ that will go into the final loan. We'll discuss in more detail below.
 ## Checking mutability
 
 Checking mutability is fairly straightforward. We just want to prevent
-immutable data from being borrowed as mutable. Note that it is ok to
-borrow mutable data as immutable, since that is simply a
-freeze. Formally we define a predicate `MUTABLE(LV, MQ)` which, if
-defined, means that "borrowing `LV` with mutability `MQ` is ok. The
-Rust code corresponding to this predicate is the function
-`check_mutability` in `middle::borrowck::gather_loans`.
+immutable data from being borrowed as mutable. Note that it is ok to borrow
+mutable data as immutable, since that is simply a freeze. The judgement
+`MUTABILITY(LV, MQ)` means the mutability of `LV` is compatible with a borrow
+of mutability `MQ`. The Rust code corresponding to this predicate is the
+function `check_mutability` in `middle::borrowck::gather_loans`.
 
 ### Checking mutability of variables
 
@@ -275,15 +274,14 @@ but also the code in `mem_categorization`.
 
 Let's begin with the rules for variables, which state that if a
 variable is declared as mutable, it may be borrowed any which way, but
-otherwise the variable must be borrowed as immutable or const:
+otherwise the variable must be borrowed as immutable:
 
 ```text
 MUTABILITY(X, MQ)                   // M-Var-Mut
   DECL(X) = mut
 
-MUTABILITY(X, MQ)                   // M-Var-Imm
+MUTABILITY(X, imm)                  // M-Var-Imm
   DECL(X) = imm
-  MQ = imm | const
 ```
 
 ### Checking mutability of owned content
@@ -304,12 +302,11 @@ MUTABILITY(*LV, MQ)                 // M-Deref-Unique
 ### Checking mutability of immutable pointer types
 
 Immutable pointer types like `&T` can only
-be borrowed if MQ is immutable or const:
+be borrowed if MQ is immutable:
 
 ```text
-MUTABILITY(*LV, MQ)                // M-Deref-Borrowed-Imm
+MUTABILITY(*LV, imm)               // M-Deref-Borrowed-Imm
   TYPE(LV) = &Ty
-  MQ == imm | const
 ```
 
 ### Checking mutability of mutable pointer types
@@ -323,12 +320,11 @@ MUTABILITY(*LV, MQ)                 // M-Deref-Borrowed-Mut
 
 ## Checking aliasability
 
-The goal of the aliasability check is to ensure that we never permit
-`&mut` borrows of aliasable data. Formally we define a predicate
-`ALIASABLE(LV, MQ)` which if defined means that
-"borrowing `LV` with mutability `MQ` is ok". The
-Rust code corresponding to this predicate is the function
-`check_aliasability()` in `middle::borrowck::gather_loans`.
+The goal of the aliasability check is to ensure that we never permit `&mut`
+borrows of aliasable data. The judgement `ALIASABLE(LV, MQ)` means the
+aliasability of `LV` is compatible with a borrow of mutability `MQ`. The Rust
+code corresponding to this predicate is the function `check_aliasability()` in
+`middle::borrowck::gather_loans`.
 
 ### Checking aliasability of variables
 
@@ -379,40 +375,6 @@ Formally, we define a predicate `LIFETIME(LV, LT, MQ)`, which states that
 `MQ`". The Rust code corresponding to this predicate is the module
 `middle::borrowck::gather_loans::lifetime`.
 
-### The Scope function
-
-Several of the rules refer to a helper function `SCOPE(LV)=LT`.  The
-`SCOPE(LV)` yields the lifetime `LT` for which the lvalue `LV` is
-guaranteed to exist, presuming that no mutations occur.
-
-The scope of a local variable is the block where it is declared:
-
-```text
-  SCOPE(X) = block where X is declared
-```
-
-The scope of a field is the scope of the struct:
-
-```text
-  SCOPE(LV.f) = SCOPE(LV)
-```
-
-The scope of a unique referent is the scope of the pointer, since
-(barring mutation or moves) the pointer will not be freed until
-the pointer itself `LV` goes out of scope:
-
-```text
-  SCOPE(*LV) = SCOPE(LV) if LV has type Box<T>
-```
-
-The scope of a borrowed referent is the scope associated with the
-pointer.  This is a conservative approximation, since the data that
-the pointer points at may actually live longer:
-
-```text
-  SCOPE(*LV) = LT if LV has type &'LT T or &'LT mut T
-```
-
 ### Checking lifetime of variables
 
 The rule for variables states that a variable can only be borrowed a
@@ -420,7 +382,7 @@ lifetime `LT` that is a subregion of the variable's scope:
 
 ```text
 LIFETIME(X, LT, MQ)                 // L-Local
-  LT <= SCOPE(X)
+  LT <= block where X is declared
 ```
 
 ### Checking lifetime for owned content
@@ -466,15 +428,12 @@ are computed based on the kind of borrow:
 ```text
 &mut LV =>   RESTRICTIONS(LV, LT, MUTATE|CLAIM|FREEZE)
 &LV =>       RESTRICTIONS(LV, LT, MUTATE|CLAIM)
-&const LV => RESTRICTIONS(LV, LT, [])
 ```
 
 The reasoning here is that a mutable borrow must be the only writer,
 therefore it prevents other writes (`MUTATE`), mutable borrows
 (`CLAIM`), and immutable borrows (`FREEZE`). An immutable borrow
 permits other immutable borrows but forbids writes and mutable borrows.
-Finally, a const borrow just wants to be sure that the value is not
-moved out from under it, so no actions are forbidden.
 
 ### Restrictions for loans of a local variable
 
@@ -548,8 +507,8 @@ specify that the lifetime of the loan must be less than the lifetime
 of the `&Ty` pointer. In simple cases, this clause is redundant, since
 the `LIFETIME()` function will already enforce the required rule:
 
-```
-fn foo(point: &'a Point) -> &'static f32 {
+```rust
+fn foo(point: &'a Point) -> &'static i32 {
     &point.x // Error
 }
 ```
@@ -558,8 +517,8 @@ The above example fails to compile both because of clause (1) above
 but also by the basic `LIFETIME()` check. However, in more advanced
 examples involving multiple nested pointers, clause (1) is needed:
 
-```
-fn foo(point: &'a &'b mut Point) -> &'b f32 {
+```rust
+fn foo(point: &'a &'b mut Point) -> &'b i32 {
     &point.x // Error
 }
 ```
@@ -577,8 +536,8 @@ which is only `'a`, not `'b`. Hence this example yields an error.
 As a final twist, consider the case of two nested *immutable*
 pointers, rather than a mutable pointer within an immutable one:
 
-```
-fn foo(point: &'a &'b Point) -> &'b f32 {
+```rust
+fn foo(point: &'a &'b Point) -> &'b i32 {
     &point.x // OK
 }
 ```
@@ -599,8 +558,8 @@ The rules pertaining to `LIFETIME` exist to ensure that we don't
 create a borrowed pointer that outlives the memory it points at. So
 `LIFETIME` prevents a function like this:
 
-```
-fn get_1<'a>() -> &'a int {
+```rust
+fn get_1<'a>() -> &'a i32 {
     let x = 1;
     &x
 }
@@ -619,8 +578,8 @@ after we return and hence the remaining code in `'a` cannot possibly
 mutate it. This distinction is important for type checking functions
 like this one:
 
-```
-fn inc_and_get<'a>(p: &'a mut Point) -> &'a int {
+```rust
+fn inc_and_get<'a>(p: &'a mut Point) -> &'a i32 {
     p.x += 1;
     &p.x
 }
@@ -640,19 +599,6 @@ in terms of capability, the caller passed in the ability to mutate
 `*p`, and we never gave it back. (Note that we can't return `p` while
 `*p` is borrowed since that would be a move of `p`, as `&mut` pointers
 are affine.)
-
-### Restrictions for loans of const aliasable referents
-
-Freeze pointers are read-only. There may be `&mut` or `&` aliases, and
-we can not prevent *anything* but moves in that case. So the
-`RESTRICTIONS` function is only defined if `ACTIONS` is the empty set.
-Because moves from a `&const` lvalue are never legal, it is not
-necessary to add any restrictions at all to the final result.
-
-```text
-    RESTRICTIONS(*LV, LT, []) = []                // R-Deref-Freeze-Borrowed
-      TYPE(LV) = &const Ty
-```
 
 ### Restrictions for loans of mutable borrowed referents
 
@@ -685,7 +631,7 @@ maximum of `LT'`.
 
 Here is a concrete example of a bug this rule prevents:
 
-```
+```rust
 // Test region-reborrow-from-shorter-mut-ref.rs:
 fn copy_pointer<'a,'b,T>(x: &'a mut &'b mut T) -> &'b mut T {
     &mut **p // ERROR due to clause (1)
@@ -713,10 +659,10 @@ ways to violate the rules is to move the base pointer to a new name
 and access it via that new name, thus bypassing the restrictions on
 the old name. Here is an example:
 
-```
+```rust
 // src/test/compile-fail/borrowck-move-mut-base-ptr.rs
-fn foo(t0: &mut int) {
-    let p: &int = &*t0; // Freezes `*t0`
+fn foo(t0: &mut i32) {
+    let p: &i32 = &*t0; // Freezes `*t0`
     let t1 = t0;        //~ ERROR cannot move out of `t0`
     *t1 = 22;           // OK, not a write through `*t0`
 }
@@ -733,11 +679,11 @@ danger is to mutably borrow the base path. This can lead to two bad
 scenarios. The most obvious is that the mutable borrow itself becomes
 another path to access the same data, as shown here:
 
-```
+```rust
 // src/test/compile-fail/borrowck-mut-borrow-of-mut-base-ptr.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0;     // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &i32 = &*t0;     // Freezes `*t0`
     let mut t2 = &mut t0;   //~ ERROR cannot borrow `t0`
     **t2 += 1;              // Mutates `*t0`
 }
@@ -754,11 +700,11 @@ of `t0`. Hence the claim `&mut t0` is illegal.
 Another danger with an `&mut` pointer is that we could swap the `t0`
 value away to create a new path:
 
-```
+```rust
 // src/test/compile-fail/borrowck-swap-mut-base-ptr.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0;     // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &i32 = &*t0;     // Freezes `*t0`
     swap(&mut t0, &mut t1); //~ ERROR cannot borrow `t0`
     *t1 = 22;
 }
@@ -772,37 +718,37 @@ careful to ensure this example is still illegal.
 referent is claimed, even freezing the base pointer can be dangerous,
 as shown in the following example:
 
-```
+```rust
 // src/test/compile-fail/borrowck-borrow-of-mut-base-ptr.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &mut int = &mut *t0; // Claims `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &mut i32 = &mut *t0; // Claims `*t0`
     let mut t2 = &t0;           //~ ERROR cannot borrow `t0`
-    let q: &int = &*t2;         // Freezes `*t0` but not through `*p`
+    let q: &i32 = &*t2;         // Freezes `*t0` but not through `*p`
     *p += 1;                    // violates type of `*q`
 }
 ```
 
 Here the problem is that `*t0` is claimed by `p`, and hence `p` wants
 to be the controlling pointer through which mutation or freezes occur.
-But `t2` would -- if it were legal -- have the type `& &mut int`, and
+But `t2` would -- if it were legal -- have the type `& &mut i32`, and
 hence would be a mutable pointer in an aliasable location, which is
 considered frozen (since no one can write to `**t2` as it is not a
-unique path). Therefore, we could reasonably create a frozen `&int`
+unique path). Therefore, we could reasonably create a frozen `&i32`
 pointer pointing at `*t0` that coexists with the mutable pointer `p`,
 which is clearly unsound.
 
 However, it is not always unsafe to freeze the base pointer. In
 particular, if the referent is frozen, there is no harm in it:
 
-```
+```rust
 // src/test/run-pass/borrowck-borrow-of-mut-base-ptr-safe.rs
-fn foo<'a>(mut t0: &'a mut int,
-           mut t1: &'a mut int) {
-    let p: &int = &*t0; // Freezes `*t0`
+fn foo<'a>(mut t0: &'a mut i32,
+           mut t1: &'a mut i32) {
+    let p: &i32 = &*t0; // Freezes `*t0`
     let mut t2 = &t0;
-    let q: &int = &*t2; // Freezes `*t0`, but that's ok...
-    let r: &int = &*t0; // ...after all, could do same thing directly.
+    let q: &i32 = &*t2; // Freezes `*t0`, but that's ok...
+    let r: &i32 = &*t0; // ...after all, could do same thing directly.
 }
 ```
 
@@ -811,11 +757,11 @@ thing `t2` can be used for is to further freeze `*t0`, which is
 already frozen. In particular, we cannot assign to `*t0` through the
 new alias `t2`, as demonstrated in this test case:
 
-```
+```rust
 // src/test/run-pass/borrowck-borrow-mut-base-ptr-in-aliasable-loc.rs
-fn foo(t0: & &mut int) {
+fn foo(t0: & &mut i32) {
     let t1 = t0;
-    let p: &int = &**t0;
+    let p: &i32 = &**t0;
     **t1 = 22; //~ ERROR cannot assign
 }
 ```
@@ -855,6 +801,9 @@ prohibited from both freezes and claims. This would avoid the need to
 prevent `const` borrows of the base pointer when the referent is
 borrowed.
 
+[ Previous revisions of this document discussed `&const` in more detail.
+See the revision history. ]
+
 # Moves and initialization
 
 The borrow checker is also in charge of ensuring that:
@@ -881,9 +830,9 @@ moves/uninitializations of the variable that is being used.
 
 Let's look at a simple example:
 
-```
-fn foo(a: Box<int>) {
-    let b: Box<int>;   // Gen bit 0.
+```rust
+fn foo(a: Box<i32>) {
+    let b: Box<i32>;   // Gen bit 0.
 
     if cond {          // Bits: 0
         use(&*a);
@@ -897,7 +846,7 @@ fn foo(a: Box<int>) {
     use(&*b);          // Error.
 }
 
-fn use(a: &int) { }
+fn use(a: &i32) { }
 ```
 
 In this example, the variable `b` is created uninitialized. In one
@@ -1028,8 +977,8 @@ not) the destructor invocation for that path.
 A simple example of this is the following:
 
 ```rust
-struct D { p: int }
-impl D { fn new(x: int) -> D { ... }
+struct D { p: i32 }
+impl D { fn new(x: i32) -> D { ... }
 impl Drop for D { ... }
 
 fn foo(a: D, b: D, t: || -> bool) {
@@ -1142,7 +1091,7 @@ the elements of an array that has been passed by value, such as
 the following:
 
 ```rust
-fn foo(a: [D; 10], i: uint) -> D {
+fn foo(a: [D; 10], i: i32) -> D {
     a[i]
 }
 ```
@@ -1158,7 +1107,7 @@ all-but-one element of the array.  A place where that distinction
 would arise is the following:
 
 ```rust
-fn foo(a: [D; 10], b: [D; 10], i: uint, t: bool) -> D {
+fn foo(a: [D; 10], b: [D; 10], i: i32, t: bool) -> D {
     if t {
         a[i]
     } else {
@@ -1173,7 +1122,7 @@ fn foo(a: [D; 10], b: [D; 10], i: uint, t: bool) -> D {
 
 There are a number of ways that the trans backend could choose to
 compile this (e.g. a `[bool; 10]` array for each such moved array;
-or an `Option<uint>` for each moved array).  From the viewpoint of the
+or an `Option<usize>` for each moved array).  From the viewpoint of the
 borrow-checker, the important thing is to record what kind of fragment
 is implied by the relevant moves.
 

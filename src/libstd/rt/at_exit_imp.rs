@@ -14,9 +14,9 @@
 
 use core::prelude::*;
 
+use boxed;
 use boxed::Box;
 use vec::Vec;
-use mem;
 use thunk::Thunk;
 use sys_common::mutex::{Mutex, MUTEX_INIT};
 
@@ -32,7 +32,7 @@ static mut QUEUE: *mut Queue = 0 as *mut Queue;
 unsafe fn init() {
     if QUEUE.is_null() {
         let state: Box<Queue> = box Vec::new();
-        QUEUE = mem::transmute(state);
+        QUEUE = boxed::into_raw(state);
     } else {
         // can't re-init after a cleanup
         rtassert!(QUEUE as uint != 1);
@@ -57,7 +57,7 @@ pub fn cleanup() {
 
         // If we never called init, not need to cleanup!
         if queue as uint != 0 {
-            let queue: Box<Queue> = mem::transmute(queue);
+            let queue: Box<Queue> = Box::from_raw(queue);
             for to_run in *queue {
                 to_run.invoke(());
             }

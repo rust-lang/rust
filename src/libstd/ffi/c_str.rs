@@ -224,7 +224,7 @@ impl CString {
     /// Returns the contents of this `CString` as a slice of bytes.
     ///
     /// The returned slice does **not** contain the trailing nul separator and
-    /// it is guaranteet to not have any interior nul bytes.
+    /// it is guaranteed to not have any interior nul bytes.
     pub fn as_bytes(&self) -> &[u8] {
         &self.inner[..self.inner.len() - 1]
     }
@@ -333,7 +333,7 @@ impl CStr {
     /// Return the inner pointer to this C string.
     ///
     /// The returned pointer will be valid for as long as `self` is and points
-    /// to a continguous region of memory terminated with a 0 byte to represent
+    /// to a contiguous region of memory terminated with a 0 byte to represent
     /// the end of the string.
     pub fn as_ptr(&self) -> *const libc::c_char {
         self.inner.as_ptr()
@@ -371,7 +371,7 @@ impl CStr {
 
 impl PartialEq for CStr {
     fn eq(&self, other: &CStr) -> bool {
-        self.to_bytes().eq(&other.to_bytes())
+        self.to_bytes().eq(other.to_bytes())
     }
 }
 impl Eq for CStr {}

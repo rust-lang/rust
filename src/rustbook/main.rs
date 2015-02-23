@@ -12,7 +12,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(old_io)]
-#![feature(os)]
 #![feature(env)]
 #![feature(old_path)]
 #![feature(rustdoc)]
@@ -54,16 +53,16 @@ fn main() {
     if cmd.len() <= 1 {
         help::usage()
     } else {
-        match subcommand::parse_name(&cmd[1][]) {
+        match subcommand::parse_name(&cmd[1][..]) {
             Some(mut subcmd) => {
                 match subcmd.parse_args(cmd.tail()) {
                     Ok(_) => {
                         match subcmd.execute(&mut term) {
                             Ok(_) => (),
                             Err(err) => {
-                                term.err(&format!("error: {}", err.description())[]);
+                                term.err(&format!("error: {}", err.description())[..]);
                                 err.detail().map(|detail| {
-                                    term.err(&format!("detail: {}", detail)[]);
+                                    term.err(&format!("detail: {}", detail)[..]);
                                 });
                             }
                         }

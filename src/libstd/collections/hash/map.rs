@@ -203,7 +203,7 @@ fn test_resize_policy() {
 // produces identical results to a linear naive reinsertion from the same
 // element.
 //
-// FIXME(Gankro, pczarn): review the proof and put it all in a separate doc.rs
+// FIXME(Gankro, pczarn): review the proof and put it all in a separate README.md
 
 /// A hash map implementation which uses linear probing with Robin
 /// Hood bucket stealing.
