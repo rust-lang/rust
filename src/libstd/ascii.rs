@@ -37,6 +37,7 @@ pub trait OwnedAsciiExt {
 /// Extension methods for ASCII-subset only operations on string slices
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait AsciiExt {
+    /// Container type for copied ASCII characters.
     #[stable(feature = "rust1", since = "1.0.0")]
     type Owned;
 
