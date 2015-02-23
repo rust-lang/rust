@@ -295,7 +295,7 @@ impl<'tcx> PartialEq for LoanPath<'tcx> {
 
 #[derive(PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathKind<'tcx> {
-    LpVar(ast::NodeId),                         // `x` in doc.rs
+    LpVar(ast::NodeId),                         // `x` in README.md
     LpUpvar(ty::UpvarId),                       // `x` captured by-value into closure
     LpDowncast(Rc<LoanPath<'tcx>>, ast::DefId), // `x` downcast to particular enum variant
     LpExtend(Rc<LoanPath<'tcx>>, mc::MutabilityCategory, LoanPathElem)
@@ -336,8 +336,8 @@ impl ToInteriorKind for mc::InteriorKind {
 
 #[derive(Copy, PartialEq, Eq, Hash, Debug)]
 pub enum LoanPathElem {
-    LpDeref(mc::PointerKind),    // `*LV` in doc.rs
-    LpInterior(InteriorKind),    // `LV.f` in doc.rs
+    LpDeref(mc::PointerKind),    // `*LV` in README.md
+    LpInterior(InteriorKind),    // `LV.f` in README.md
 }
 
 pub fn closure_to_block(closure_id: ast::NodeId,

@@ -852,7 +852,7 @@ fn resolve_expr(visitor: &mut RegionResolutionVisitor, expr: &ast::Expr) {
                 // The idea is that call.callee_id represents *the time when
                 // the invoked function is actually running* and call.id
                 // represents *the time to prepare the arguments and make the
-                // call*.  See the section "Borrows in Calls" borrowck/doc.rs
+                // call*.  See the section "Borrows in Calls" borrowck/README.md
                 // for an extended explanation of why this distinction is
                 // important.
                 //

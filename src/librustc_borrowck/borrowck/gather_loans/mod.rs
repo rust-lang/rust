@@ -173,7 +173,7 @@ impl<'a, 'tcx> euv::Delegate<'tcx> for GatherLoanCtxt<'a, 'tcx> {
     }
 }
 
-/// Implements the A-* rules in doc.rs.
+/// Implements the A-* rules in README.md.
 fn check_aliasability<'a, 'tcx>(bccx: &BorrowckCtxt<'a, 'tcx>,
                                 borrow_span: Span,
                                 loan_cause: euv::LoanCause,
@@ -375,7 +375,7 @@ impl<'a, 'tcx> GatherLoanCtxt<'a, 'tcx> {
                                       cmt: mc::cmt<'tcx>,
                                       req_kind: ty::BorrowKind)
                                       -> Result<(),()> {
-            //! Implements the M-* rules in doc.rs.
+            //! Implements the M-* rules in README.md.
 
             match req_kind {
                 ty::UniqueImmBorrow | ty::ImmBorrow => {
