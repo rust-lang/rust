@@ -345,8 +345,8 @@ impl Process {
             unsafe {
                 let mut pipes = [0; 2];
                 assert_eq!(libc::pipe(pipes.as_mut_ptr()), 0);
-                set_nonblocking(pipes[0], true).ok().unwrap();
-                set_nonblocking(pipes[1], true).ok().unwrap();
+                set_nonblocking(pipes[0], true);
+                set_nonblocking(pipes[1], true);
                 WRITE_FD = pipes[1];
 
                 let mut old: c::sigaction = mem::zeroed();
@@ -362,7 +362,7 @@ impl Process {
         fn waitpid_helper(input: libc::c_int,
                           messages: Receiver<Req>,
                           (read_fd, old): (libc::c_int, c::sigaction)) {
-            set_nonblocking(input, true).ok().unwrap();
+            set_nonblocking(input, true);
             let mut set: c::fd_set = unsafe { mem::zeroed() };
             let mut tv: libc::timeval;
             let mut active = Vec::<(libc::pid_t, Sender<ProcessExit>, u64)>::new();
