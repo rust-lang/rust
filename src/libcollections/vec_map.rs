@@ -17,13 +17,13 @@ use self::Entry::*;
 
 use core::prelude::*;
 
-use core::cmp::Ordering;
+use core::cmp::{max, Ordering};
 use core::default::Default;
 use core::fmt;
 use core::hash::{Hash, Hasher};
 use core::iter::{Enumerate, FilterMap, Map, FromIterator, IntoIterator};
 use core::iter;
-use core::mem::replace;
+use core::mem::{replace, swap};
 use core::ops::{Index, IndexMut};
 
 use {vec, slice};
@@ -318,6 +318,95 @@ impl<V> VecMap<V> {
         let filter: fn((usize, Option<V>)) -> Option<(usize, V)> = filter; // coerce to fn ptr
 
         IntoIter { iter: self.v.into_iter().enumerate().filter_map(filter) }
+    }
+
+    /// Moves all elements from `other` into the map while overwriting existing keys.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    ///
+    /// let mut a = VecMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    ///
+    /// let mut b = VecMap::new();
+    /// b.insert(3, "c");
+    /// b.insert(4, "d");
+    ///
+    /// a.append(&mut b);
+    ///
+    /// assert_eq!(a.len(), 4);
+    /// assert_eq!(b.len(), 0);
+    /// assert_eq!(a[1], "a");
+    /// assert_eq!(a[2], "b");
+    /// assert_eq!(a[3], "c");
+    /// assert_eq!(a[4], "d");
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "recently added as part of collections reform 2")]
+    pub fn append(&mut self, other: &mut Self) {
+        self.extend(other.drain());
+    }
+
+    /// Splits the collection into two at the given key.
+    ///
+    /// Returns a newly allocated `Self`. `self` contains elements `[0, at)`,
+    /// and the returned `Self` contains elements `[at, max_key)`.
+    ///
+    /// Note that the capacity of `self` does not change.
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// use std::collections::VecMap;
+    ///
+    /// let mut a = VecMap::new();
+    /// a.insert(1, "a");
+    /// a.insert(2, "b");
+    /// a.insert(3, "c");
+    /// a.insert(4, "d");
+    ///
+    /// let b = a.split_off(3);
+    ///
+    /// assert_eq!(a[1], "a");
+    /// assert_eq!(a[2], "b");
+    ///
+    /// assert_eq!(b[3], "c");
+    /// assert_eq!(b[4], "d");
+    /// ```
+    #[unstable(feature = "collections",
+               reason = "recently added as part of collections reform 2")]
+    pub fn split_off(&mut self, at: usize) -> Self {
+        let mut other = VecMap::new();
+
+        if at == 0 {
+            // Move all elements to other
+            swap(self, &mut other);
+            return other
+        } else if at > self.v.len() {
+            // No elements to copy
+            return other;
+        }
+
+        // Look up the index of the first non-None item
+        let first_index = self.v.iter().position(|el| el.is_some());
+        let start_index = match first_index {
+            Some(index) => max(at, index),
+            None => {
+                // self has no elements
+                return other;
+            }
+        };
+
+        // Fill the new VecMap with `None`s until `start_index`
+        other.v.extend((0..start_index).map(|_| None));
+
+        // Move elements beginning with `start_index` from `self` into `other`
+        other.v.extend(self.v[start_index..].iter_mut().map(|el| el.take()));
+
+        other
     }
 
     /// Returns an iterator visiting all key-value pairs in ascending order of
@@ -1139,6 +1228,85 @@ mod test_map {
 
         assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
         assert_eq!(map.len(), 0);
+    }
+
+    #[test]
+    fn test_append() {
+        let mut a = VecMap::new();
+        a.insert(1, "a");
+        a.insert(2, "b");
+        a.insert(3, "c");
+
+        let mut b = VecMap::new();
+        b.insert(3, "d");  // Overwrite element from a
+        b.insert(4, "e");
+        b.insert(5, "f");
+
+        a.append(&mut b);
+
+        assert_eq!(a.len(), 5);
+        assert_eq!(b.len(), 0);
+        // Capacity shouldn't change for possible reuse
+        assert!(b.capacity() >= 4);
+
+        assert_eq!(a[1], "a");
+        assert_eq!(a[2], "b");
+        assert_eq!(a[3], "d");
+        assert_eq!(a[4], "e");
+        assert_eq!(a[5], "f");
+    }
+
+    #[test]
+    fn test_split_off() {
+        // Split within the key range
+        let mut a = VecMap::new();
+        a.insert(1, "a");
+        a.insert(2, "b");
+        a.insert(3, "c");
+        a.insert(4, "d");
+
+        let b = a.split_off(3);
+
+        assert_eq!(a.len(), 2);
+        assert_eq!(b.len(), 2);
+
+        assert_eq!(a[1], "a");
+        assert_eq!(a[2], "b");
+
+        assert_eq!(b[3], "c");
+        assert_eq!(b[4], "d");
+
+        // Split at 0
+        a.clear();
+        a.insert(1, "a");
+        a.insert(2, "b");
+        a.insert(3, "c");
+        a.insert(4, "d");
+
+        let b = a.split_off(0);
+
+        assert_eq!(a.len(), 0);
+        assert_eq!(b.len(), 4);
+        assert_eq!(b[1], "a");
+        assert_eq!(b[2], "b");
+        assert_eq!(b[3], "c");
+        assert_eq!(b[4], "d");
+
+        // Split behind max_key
+        a.clear();
+        a.insert(1, "a");
+        a.insert(2, "b");
+        a.insert(3, "c");
+        a.insert(4, "d");
+
+        let b = a.split_off(5);
+
+        assert_eq!(a.len(), 4);
+        assert_eq!(b.len(), 0);
+        assert_eq!(a[1], "a");
+        assert_eq!(a[2], "b");
+        assert_eq!(a[3], "c");
+        assert_eq!(a[4], "d");
     }
 
     #[test]
