@@ -57,14 +57,13 @@ for i in 0..nums.len() {
 }
 ```
 
-This is strictly worse than using an actual iterator. The `.iter()` method on
-vectors returns an iterator which iterates through a reference to each element
-of the vector in turn. So write this:
+This is strictly worse than using an actual iterator. You can iterate over vectors
+directly, so write this:
 
 ```rust
 let nums = vec![1, 2, 3];
 
-for num in nums.iter() {
+for num in &nums {
     println!("{}", num);
 }
 ```
@@ -86,16 +85,17 @@ see it. This code works fine too:
 ```rust
 let nums = vec![1, 2, 3];
 
-for num in nums.iter() {
+for num in &nums {
     println!("{}", *num);
 }
 ```
 
-Now we're explicitly dereferencing `num`. Why does `iter()` give us references?
-Well, if it gave us the data itself, we would have to be its owner, which would
-involve making a copy of the data and giving us the copy. With references,
-we're just borrowing a reference to the data, and so it's just passing
-a reference, without needing to do the copy.
+Now we're explicitly dereferencing `num`. Why does `&nums` give us
+references?  Firstly, because we explicitly asked it to with
+`&`. Secondly, if it gave us the data itself, we would have to be its
+owner, which would involve making a copy of the data and giving us the
+copy. With references, we're just borrowing a reference to the data,
+and so it's just passing a reference, without needing to do the move.
 
 So, now that we've established that ranges are often not what you want, let's
 talk about what you do want instead.
@@ -230,9 +230,9 @@ let nums = (1..100).collect::<Vec<i32>>();
 Now, `collect()` will require that the range gives it some numbers, and so
 it will do the work of generating the sequence.
 
-Ranges are one of two basic iterators that you'll see. The other is `iter()`,
-which you've used before. `iter()` can turn a vector into a simple iterator
-that gives you each element in turn:
+Ranges are one of two basic iterators that you'll see. The other is `iter()`.
+`iter()` can turn a vector into a simple iterator that gives you each element
+in turn:
 
 ```rust
 let nums = [1, 2, 3];
