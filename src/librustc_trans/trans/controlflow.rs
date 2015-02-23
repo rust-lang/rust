@@ -377,7 +377,7 @@ pub fn trans_fail<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let loc = bcx.sess().codemap().lookup_char_pos(call_info.span.lo);
     let filename = token::intern_and_get_ident(&loc.file.name);
     let filename = C_str_slice(ccx, filename);
-    let line = C_uint(ccx, loc.line);
+    let line = C_u32(ccx, loc.line as u32);
     let expr_file_line_const = C_struct(ccx, &[v_str, filename, line], false);
     let expr_file_line = consts::addr_of(ccx, expr_file_line_const,
                                          "panic_loc", call_info.id);
@@ -406,7 +406,7 @@ pub fn trans_fail_bounds_check<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 
     // Invoke the lang item
     let filename = C_str_slice(ccx,  filename);
-    let line = C_uint(ccx, loc.line);
+    let line = C_u32(ccx, loc.line as u32);
     let file_line_const = C_struct(ccx, &[filename, line], false);
     let file_line = consts::addr_of(ccx, file_line_const,
                                     "panic_bounds_check_loc", call_info.id);
