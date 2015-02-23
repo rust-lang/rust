@@ -42,9 +42,6 @@ pub enum ObjectSafetyViolation<'tcx> {
 /// Reasons a method might not be object-safe.
 #[derive(Copy,Clone,Debug)]
 pub enum MethodViolationCode {
-    /// e.g., `fn(self)`
-    ByValueSelf,
-
     /// e.g., `fn foo()`
     StaticMethod,
 
@@ -204,17 +201,15 @@ fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
         return None;
     }
 
-    // The method's first parameter must be something that derefs to
-    // `&self`. For now, we only accept `&self` and `Box<Self>`.
+    // The method's first parameter must be something that derefs (or
+    // autorefs) to `&self`. For now, we only accept `self`, `&self`
+    // and `Box<Self>`.
     match method.explicit_self {
-        ty::ByValueExplicitSelfCategory => {
-            return Some(MethodViolationCode::ByValueSelf);
-        }
-
         ty::StaticExplicitSelfCategory => {
             return Some(MethodViolationCode::StaticMethod);
         }
 
+        ty::ByValueExplicitSelfCategory |
         ty::ByReferenceExplicitSelfCategory(..) |
         ty::ByBoxExplicitSelfCategory => {
         }
