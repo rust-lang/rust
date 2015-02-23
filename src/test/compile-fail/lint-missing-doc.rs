@@ -68,6 +68,19 @@ pub trait D {
     fn dummy(&self) { }
 }
 
+/// dox
+pub trait E {
+    type AssociatedType; //~ ERROR: missing documentation
+    type AssociatedTypeDef = Self; //~ ERROR: missing documentation
+
+    /// dox
+    type DocumentedType;
+    /// dox
+    type DocumentedTypeDef = Self;
+    /// dox
+    fn dummy(&self) {}
+}
+
 impl Foo {
     pub fn foo() {}
     fn bar() {}
