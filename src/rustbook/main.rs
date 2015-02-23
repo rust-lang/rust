@@ -12,7 +12,6 @@
 #![feature(collections)]
 #![feature(core)]
 #![feature(old_io)]
-#![feature(os)]
 #![feature(env)]
 #![feature(old_path)]
 #![feature(rustdoc)]

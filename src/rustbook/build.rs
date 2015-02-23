@@ -10,7 +10,6 @@
 
 //! Implementation of the `build` subcommand, used to compile a book.
 
-use std::os;
 use std::env;
 use std::old_io;
 use std::old_io::{fs, File, BufferedWriter, TempDir, IoResult};
@@ -82,7 +81,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
 
         let src;
         if env::args().len() < 3 {
-            src = os::getcwd().unwrap().clone();
+            src = env::current_dir().unwrap().clone();
         } else {
             src = Path::new(env::args().nth(2).unwrap().clone());
         }
@@ -150,7 +149,7 @@ impl Subcommand for Build {
     }
     fn usage(&self) {}
     fn execute(&mut self, term: &mut Term) -> CommandResult<()> {
-        let cwd = os::getcwd().unwrap();
+        let cwd = env::current_dir().unwrap();
         let src;
         let tgt;
 
