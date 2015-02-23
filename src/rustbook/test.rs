@@ -17,7 +17,7 @@ use error::Error;
 use term::Term;
 use book;
 use std::old_io::{Command, File};
-use std::os;
+use std::env;
 
 struct Test;
 
@@ -35,7 +35,7 @@ impl Subcommand for Test {
     }
     fn usage(&self) {}
     fn execute(&mut self, term: &mut Term) -> CommandResult<()> {
-        let cwd = os::getcwd().unwrap();
+        let cwd = env::current_dir().unwrap();
         let src = cwd.clone();
 
         let summary = File::open(&src.join("SUMMARY.md"));
