@@ -24,7 +24,7 @@
 //! # Example
 //!
 //! ```
-//! scoped_thread_local!(static FOO: uint);
+//! scoped_thread_local!(static FOO: u32);
 //!
 //! // Initially each scoped slot is empty.
 //! assert!(!FOO.is_set());
@@ -140,7 +140,7 @@ impl<T> Key<T> {
     /// # Example
     ///
     /// ```
-    /// scoped_thread_local!(static FOO: uint);
+    /// scoped_thread_local!(static FOO: u32);
     ///
     /// FOO.set(&100, || {
     ///     let val = FOO.with(|v| *v);
@@ -192,7 +192,7 @@ impl<T> Key<T> {
     /// # Example
     ///
     /// ```no_run
-    /// scoped_thread_local!(static FOO: uint);
+    /// scoped_thread_local!(static FOO: u32);
     ///
     /// FOO.with(|slot| {
     ///     // work with `slot`
@@ -269,11 +269,11 @@ mod tests {
     use cell::Cell;
     use prelude::v1::*;
 
-    scoped_thread_local!(static FOO: uint);
+    scoped_thread_local!(static FOO: u32);
 
     #[test]
     fn smoke() {
-        scoped_thread_local!(static BAR: uint);
+        scoped_thread_local!(static BAR: u32);
 
         assert!(!BAR.is_set());
         BAR.set(&1, || {
@@ -287,7 +287,7 @@ mod tests {
 
     #[test]
     fn cell_allowed() {
-        scoped_thread_local!(static BAR: Cell<uint>);
+        scoped_thread_local!(static BAR: Cell<u32>);
 
         BAR.set(&Cell::new(1), || {
             BAR.with(|slot| {
