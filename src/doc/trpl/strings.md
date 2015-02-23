@@ -25,8 +25,10 @@ compiled program, and exists for the entire duration it runs. The `string`
 binding is a reference to this statically allocated string. String slices
 have a fixed size, and cannot be mutated.
 
-A `String`, on the other hand, is an in-memory string.  This string is
-growable, and is also guaranteed to be UTF-8.
+A `String`, on the other hand, is a heap-allocated string. This string
+is growable, and is also guaranteed to be UTF-8. `String`s are
+commonly created by converting from a string slice using the
+`to_string` method.
 
 ```{rust}
 let mut s = "Hello".to_string(); // mut s: String

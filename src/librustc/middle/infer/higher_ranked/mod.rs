@@ -465,7 +465,8 @@ pub fn skolemize_late_bound_regions<'a,'tcx,T>(infcx: &InferCtxt<'a,'tcx>,
      * Replace all regions bound by `binder` with skolemized regions and
      * return a map indicating which bound-region was replaced with what
      * skolemized region. This is the first step of checking subtyping
-     * when higher-ranked things are involved. See `doc.rs` for more details.
+     * when higher-ranked things are involved. See `README.md` for more
+     * details.
      */
 
     let (result, map) = ty::replace_late_bound_regions(infcx.tcx, binder, |br| {
@@ -490,7 +491,7 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
      * and checks to determine whether any of the skolemized regions created
      * in `skol_map` would "escape" -- meaning that they are related to
      * other regions in some way. If so, the higher-ranked subtyping doesn't
-     * hold. See `doc.rs` for more details.
+     * hold. See `README.md` for more details.
      */
 
     debug!("leak_check: skol_map={}",
@@ -533,7 +534,7 @@ pub fn leak_check<'a,'tcx>(infcx: &InferCtxt<'a,'tcx>,
 /// passed; currently, it's used in the trait matching code to create
 /// a set of nested obligations frmo an impl that matches against
 /// something higher-ranked.  More details can be found in
-/// `middle::traits::doc.rs`.
+/// `librustc/middle/traits/README.md`.
 ///
 /// As a brief example, consider the obligation `for<'a> Fn(&'a int)
 /// -> &'a int`, and the impl:

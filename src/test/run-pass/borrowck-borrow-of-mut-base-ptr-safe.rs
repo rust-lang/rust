@@ -11,7 +11,7 @@
 // Test that freezing an `&mut` pointer while referent is
 // frozen is legal.
 //
-// Example from src/middle/borrowck/doc.rs
+// Example from src/librustc_borrowck/borrowck/README.md
 
 fn foo<'a>(mut t0: &'a mut int,
            mut t1: &'a mut int) {

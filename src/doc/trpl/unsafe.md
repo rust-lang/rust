@@ -649,53 +649,78 @@ it exists. The marker is the attribute `#[lang="..."]` and there are
 various different values of `...`, i.e. various different 'lang
 items'.
 
-For example, `Box` pointers require two lang items, one for allocation
-and one for deallocation. A freestanding program that uses the `Box`
-sugar for dynamic allocations via `malloc` and `free`:
+For example, there are three lang items related to task panicking:
+one, `panic_bounds_check`, is called on panics due to out-of-bounds
+array accesses; the second, `panic`, is used by explicit invocations
+of `panic!`, and a third, `panic_fmt`, handles unwinding the stack in
+the Rust standard library.
+
+A freestanding program that provides its own definition of the
+`panic_bounds_check` lang item:
 
 ```
-#![feature(lang_items, box_syntax, start, no_std)]
+#![feature(lang_items, intrinsics, start, no_std)]
 #![no_std]
 
-extern crate libc;
+// To be able to print to standard output from this demonstration
+// program, we link with `printf` from the C standard library. Note
+// that this requires we null-terminate our strings with "\0".
 
-extern {
-    fn abort() -> !;
-}
+mod printf {
+    #[link(name="c")]
+    extern { fn printf(f: *const u8, ...); }
 
-#[lang = "owned_box"]
-pub struct Box<T>(*mut T);
-
-#[lang="exchange_malloc"]
-unsafe fn allocate(size: usize, _align: usize) -> *mut u8 {
-    let p = libc::malloc(size as libc::size_t) as *mut u8;
-
-    // malloc failed
-    if p as usize == 0 {
-        abort();
+    extern "rust-intrinsic" {
+        pub fn transmute<T,U>(e: T) -> U;
     }
 
-    p
+    pub unsafe fn print0(s: &str) {
+        let (bytes, _len): (*const u8, usize) = transmute(s);
+        printf(bytes);
+    }
+
+    pub unsafe fn print2(s: &str, arg1: u32, arg2: u32) {
+        let (bytes, _len): (*const u8, usize) = transmute(s);
+        printf(bytes, arg1, arg2);
+    }
 }
-#[lang="exchange_free"]
-unsafe fn deallocate(ptr: *mut u8, _size: usize, _align: usize) {
-    libc::free(ptr as *mut libc::c_void)
+
+#[lang="panic_bounds_check"]
+fn panic_bounds_check(_file_line: &(&'static str, usize),
+                      index: usize, len: usize) {
+    // For simplicity of demonstration, just print message and exit.
+    extern { fn exit(status: u32) -> !; }
+
+    let index = index as u32;
+    let len = len as u32;
+    unsafe {
+        printf::print2("panic_bounds_check index: %d len: %d\n\0", index, len);
+
+        // (we pass 0 since this is expected behavior for the demonstration.)
+        exit(0);
+    }
 }
 
 #[start]
-fn main(argc: isize, argv: *const *const u8) -> isize {
-    let x = box 1;
-
-    0
+fn main(_argc: isize, _argv: *const *const u8) -> isize {
+    let a = [100, 200, 300];
+    unsafe { printf::print0("doing a[4] for a.len() == 3\n\0"); }
+    a[4];
+    unsafe { printf::print0("Should not get here.\n\0"); }
+    return 0;
 }
+
+// Again, these functions and traits are used by the compiler, and are
+// normally provided by libstd. (The `Sized` and `Copy` lang_items
+// require definitions due to the type-parametric code above.)
 
 #[lang = "stack_exhausted"] extern fn stack_exhausted() {}
 #[lang = "eh_personality"] extern fn eh_personality() {}
 #[lang = "panic_fmt"] fn panic_fmt() -> ! { loop {} }
-```
 
-Note the use of `abort`: the `exchange_malloc` lang item is assumed to
-return a valid pointer, and so needs to do the check internally.
+#[lang="sized"] pub trait Sized {}
+#[lang="copy"] pub trait Copy {}
+```
 
 Other features provided by lang items include:
 
@@ -712,6 +737,6 @@ Other features provided by lang items include:
   `contravariant_lifetime`, etc.
 
 Lang items are loaded lazily by the compiler; e.g. if one never uses
-`Box` then there is no need to define functions for `exchange_malloc`
-and `exchange_free`. `rustc` will emit an error when an item is needed
-but not found in the current crate or any that it depends on.
+array indexing `a[i]` then there is no need to define a function for
+`panic_bounds_check`. `rustc` will emit an error when an item is
+needed but not found in the current crate or any that it depends on.

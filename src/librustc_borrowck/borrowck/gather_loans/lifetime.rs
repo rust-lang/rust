@@ -106,8 +106,6 @@ impl<'a, 'tcx> GuaranteeLifetimeContext<'a, 'tcx> {
         //! lvalue `cmt` is guaranteed to be valid without any
         //! rooting etc, and presuming `cmt` is not mutated.
 
-        // See the SCOPE(LV) function in doc.rs
-
         match cmt.cat {
             mc::cat_rvalue(temp_scope) => {
                 temp_scope
