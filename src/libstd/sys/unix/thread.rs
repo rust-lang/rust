@@ -164,7 +164,7 @@ pub mod guard {
 
         if pthread_main_np() == 1 {
             // main thread
-            current_stack.ss_sp as uint - current_stack.ss_size as uint + 3 * PAGE_SIZE as uint
+            current_stack.ss_sp as uint - current_stack.ss_size as uint + PAGE_SIZE as uint
 
         } else {
             // new thread
