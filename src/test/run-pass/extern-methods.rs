@@ -7,7 +7,10 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
-trait A {
+
+use std::marker::MarkerTrait;
+
+trait A : MarkerTrait {
     extern "fastcall" fn test1(i: i32);
     extern fn test2(i: i32);
 }
