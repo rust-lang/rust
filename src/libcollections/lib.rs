@@ -30,6 +30,7 @@
 #![feature(unboxed_closures)]
 #![feature(unicode)]
 #![feature(unsafe_destructor)]
+#![feature(unique)]
 #![feature(unsafe_no_drop_flag)]
 #![cfg_attr(test, feature(rand, rustc_private, test))]
 #![cfg_attr(test, allow(deprecated))] // rand

@@ -267,7 +267,7 @@ impl<T> Vec<T> {
     pub unsafe fn from_raw_buf(ptr: *const T, elts: usize) -> Vec<T> {
         let mut dst = Vec::with_capacity(elts);
         dst.set_len(elts);
-        ptr::copy_nonoverlapping_memory(dst.as_mut_ptr(), ptr, elts);
+        ptr::copy_nonoverlapping(dst.as_mut_ptr(), ptr, elts);
         dst
     }
 
@@ -548,7 +548,7 @@ impl<T> Vec<T> {
                 let p = self.as_mut_ptr().offset(index as isize);
                 // Shift everything over to make space. (Duplicating the
                 // `index`th element into two consecutive places.)
-                ptr::copy_memory(p.offset(1), &*p, len - index);
+                ptr::copy(p.offset(1), &*p, len - index);
                 // Write it in, overwriting the first copy of the `index`th
                 // element.
                 ptr::write(&mut *p, element);
@@ -585,7 +585,7 @@ impl<T> Vec<T> {
                 ret = ptr::read(ptr);
 
                 // Shift everything down to fill in that spot.
-                ptr::copy_memory(ptr, &*ptr.offset(1), len - index - 1);
+                ptr::copy(ptr, &*ptr.offset(1), len - index - 1);
             }
             self.set_len(len - 1);
             ret
@@ -718,7 +718,7 @@ impl<T> Vec<T> {
         self.reserve(other.len());
         let len = self.len();
         unsafe {
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 self.get_unchecked_mut(len),
                 other.as_ptr(),
                 other.len());
@@ -1036,7 +1036,7 @@ impl<T> Vec<T> {
             self.set_len(at);
             other.set_len(other_len);
 
-            ptr::copy_nonoverlapping_memory(
+            ptr::copy_nonoverlapping(
                 other.as_mut_ptr(),
                 self.as_ptr().offset(at as isize),
                 other.len());

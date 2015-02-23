@@ -293,7 +293,7 @@ extern "rust-intrinsic" {
     ///     }
     /// }
     /// ```
-    #[unstable(feature = "core")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy_nonoverlapping_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Copies `count * size_of<T>` bytes from `src` to `dst`. The source
@@ -323,13 +323,12 @@ extern "rust-intrinsic" {
     /// }
     /// ```
     ///
-    #[unstable(feature = "core")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn copy_memory<T>(dst: *mut T, src: *const T, count: usize);
 
     /// Invokes memset on the specified pointer, setting `count * size_of::<T>()`
     /// bytes of memory starting at `dst` to `c`.
-    #[unstable(feature = "core",
-               reason = "uncertain about naming and semantics")]
+    #[stable(feature = "rust1", since = "1.0.0")]
     pub fn set_memory<T>(dst: *mut T, val: u8, count: usize);
 
     /// Equivalent to the appropriate `llvm.memcpy.p0i8.0i8.*` intrinsic, with
