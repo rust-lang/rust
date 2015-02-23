@@ -60,14 +60,10 @@ impl AsInner<c_int> for FileDesc {
 
 impl Drop for FileDesc {
     fn drop(&mut self) {
-        // closing stdio file handles makes no sense, so never do it. Also, note
-        // that errors are ignored when closing a file descriptor. The reason
-        // for this is that if an error occurs we don't actually know if the
-        // file descriptor was closed or not, and if we retried (for something
-        // like EINTR), we might close another valid file descriptor (opened
-        // after we closed ours.
-        if self.fd > libc::STDERR_FILENO {
-            let _ = unsafe { libc::close(self.fd) };
-        }
+        // Note that errors are ignored when closing a file descriptor. The reason for
+        // this is that if an error occurs we don't actually know if the file descriptor
+        // was closed or not, and if we retried (for something like EINTR), we might close
+        // another valid file descriptor (opened after we closed ours.
+        unsafe { libc::close(self.fd); }
     }
 }
