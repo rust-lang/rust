@@ -27,6 +27,7 @@
 #![feature(int_uint)]
 #![feature(libc)]
 #![feature(staged_api)]
+#![feature(unique)]
 
 #[cfg(test)] #[macro_use] extern crate log;
 
