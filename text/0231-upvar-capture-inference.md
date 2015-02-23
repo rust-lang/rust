@@ -8,9 +8,9 @@ The `||` unboxed closure form should be split into two forms—`||` for nonescap
 
 # Motivation
 
-Having to specify `ref` and the capture mode for each unboxed closure is inconvenient (see Rust PR rust-lang/rust#16610). It would be more convenient for the programmer if, the type of the closure and the modes of the upvars could be inferred. This also eliminates the "line-noise" syntaxes like `|&:|`, which are arguably unsightly.
+Having to specify `ref` and the capture mode for each unboxed closure is inconvenient (see Rust PR rust-lang/rust#16610). It would be more convenient for the programmer if the type of the closure and the modes of the upvars could be inferred. This also eliminates the "line-noise" syntaxes like `|&:|`, which are arguably unsightly.
 
-Not all knobs can be removed, however: the programmer must manually specify whether each closure is escaping or nonescaping. To see this, observe that no sensible default for the closure `|| (*x).clone()` exists: if the function is nonescaping, it's a closure that returns a copy of `x` every time but does not move `x` into it; if the function is escaping, it's a that returns a copy of `x` and takes ownership of `x`.
+Not all knobs can be removed, however—the programmer must manually specify whether each closure is escaping or nonescaping. To see this, observe that no sensible default for the closure `|| (*x).clone()` exists: if the function is nonescaping, it's a closure that returns a copy of `x` every time but does not move `x` into it; if the function is escaping, it's a closure that returns a copy of `x` and takes ownership of `x`.
 
 Therefore, we need two forms: one for *nonescaping* closures and one for *escaping* closures. Nonescaping closures are the commonest, so they get the `||` syntax that we have today, and a new `move ||` syntax will be introduced for escaping closures.
 
