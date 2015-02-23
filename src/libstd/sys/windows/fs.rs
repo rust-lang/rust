@@ -368,7 +368,9 @@ pub fn readlink(p: &Path) -> IoResult<Path> {
                                   buf as *const u16,
                                   sz - 1,
                                   libc::VOLUME_NAME_DOS)
-    }, super::os2path);
+    }, |data| {
+        Path::new(String::from_utf16(data).unwrap())
+    });
     assert!(unsafe { libc::CloseHandle(handle) } != 0);
     return ret;
 }

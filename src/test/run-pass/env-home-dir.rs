@@ -9,13 +9,14 @@
 // except according to those terms.
 
 use std::env::*;
+use std::path::PathBuf;
 
 #[cfg(unix)]
 fn main() {
     let oldhome = var("HOME");
 
     set_var("HOME", "/home/MountainView");
-    assert!(home_dir() == Some(Path::new("/home/MountainView")));
+    assert!(home_dir() == Some(PathBuf::new("/home/MountainView")));
 
     remove_var("HOME");
     if cfg!(target_os = "android") {

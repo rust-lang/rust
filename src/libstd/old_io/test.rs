@@ -38,10 +38,11 @@ fn next_test_unix_socket() -> String {
 
 /// Get a temporary path which could be the location of a unix socket
 #[cfg(not(target_os = "ios"))]
+#[allow(deprecated)]
 pub fn next_test_unix() -> Path {
     let string = next_test_unix_socket();
     if cfg!(unix) {
-        env::temp_dir().join(string)
+        ::os::tmpdir().join(string)
     } else {
         Path::new(format!("{}{}", r"\\.\pipe\", string))
     }
@@ -88,7 +89,7 @@ fn base_port() -> u16 {
 
     // FIXME (#9639): This needs to handle non-utf8 paths
     let path = env::current_dir().unwrap();
-    let path_s = path.as_str().unwrap();
+    let path_s = path.to_str().unwrap();
 
     let mut final_base = base;
 
