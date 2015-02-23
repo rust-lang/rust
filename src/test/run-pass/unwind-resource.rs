@@ -37,7 +37,8 @@ fn f(tx: Sender<bool>) {
 
 pub fn main() {
     let (tx, rx) = channel();
-    let _t = thread::spawn(move|| f(tx.clone()));
+    let t = thread::spawn(move|| f(tx.clone()));
     println!("hiiiiiiiii");
     assert!(rx.recv().unwrap());
+    drop(t.join());
 }
