@@ -50,8 +50,8 @@ impl Subcommand for Test {
                         Ok(output) => {
                             if !output.status.success() {
                                 term.err(&format!("{}\n{}",
-                                         String::from_utf8_lossy(&output.output[]),
-                                         String::from_utf8_lossy(&output.error[]))[]);
+                                         String::from_utf8_lossy(&output.output[..]),
+                                         String::from_utf8_lossy(&output.error[..]))[..]);
                                 return Err(box "Some tests failed." as Box<Error>);
                             }
 
