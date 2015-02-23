@@ -15,8 +15,7 @@ fn needs_fn<F>(x: F) where F: Fn(isize) -> isize {}
 
 fn main() {
     let _: () = (box |_: isize| {}) as Box<FnOnce(isize)>;
-    //~^ ERROR object-safe
-    //~| ERROR mismatched types
+    //~^ ERROR mismatched types
     //~| expected `()`
     //~| found `Box<core::ops::FnOnce(isize)>`
     //~| expected ()
