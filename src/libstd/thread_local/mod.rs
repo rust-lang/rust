@@ -330,6 +330,7 @@ impl<T: 'static> Key<T> {
 mod imp {
     use prelude::v1::*;
 
+    use alloc::boxed;
     use cell::UnsafeCell;
     use intrinsics;
     use ptr;
@@ -422,14 +423,14 @@ mod imp {
         type List = Vec<(*mut u8, unsafe extern fn(*mut u8))>;
         if DTORS.get().is_null() {
             let v: Box<List> = box Vec::new();
-            DTORS.set(mem::transmute(v));
+            DTORS.set(boxed::into_raw(v) as *mut u8);
         }
         let list: &mut List = &mut *(DTORS.get() as *mut List);
         list.push((t, dtor));
 
         unsafe extern fn run_dtors(mut ptr: *mut u8) {
             while !ptr.is_null() {
-                let list: Box<List> = mem::transmute(ptr);
+                let list: Box<List> = Box::from_raw(ptr as *mut List);
                 for &(ptr, dtor) in &*list {
                     dtor(ptr);
                 }
@@ -467,6 +468,7 @@ mod imp {
 mod imp {
     use prelude::v1::*;
 
+    use alloc::boxed;
     use cell::UnsafeCell;
     use mem;
     use ptr;
@@ -517,7 +519,7 @@ mod imp {
                 key: self,
                 value: mem::transmute_copy(&self.inner),
             };
-            let ptr: *mut Value<T> = mem::transmute(ptr);
+            let ptr: *mut Value<T> = boxed::into_raw(ptr);
             self.os.set(ptr as *mut u8);
             Some(&mut (*ptr).value as *mut T)
         }
@@ -533,7 +535,7 @@ mod imp {
         //
         // Note that to prevent an infinite loop we reset it back to null right
         // before we return from the destructor ourselves.
-        let ptr: Box<Value<T>> = mem::transmute(ptr);
+        let ptr: Box<Value<T>> = Box::from_raw(ptr as *mut Value<T>);
         let key = ptr.key;
         key.os.set(1 as *mut u8);
         drop(ptr);

@@ -133,13 +133,13 @@ unsafe fn init_dtors() {
     if !DTORS.is_null() { return }
 
     let dtors = box Vec::<(Key, Dtor)>::new();
-    DTORS = mem::transmute(dtors);
+    DTORS = boxed::into_raw(dtors);
 
     rt::at_exit(move|| {
         DTOR_LOCK.lock();
         let dtors = DTORS;
         DTORS = ptr::null_mut();
-        mem::transmute::<_, Box<Vec<(Key, Dtor)>>>(dtors);
+        Boxed::from_raw(dtors);
         assert!(DTORS.is_null()); // can't re-init after destructing
         DTOR_LOCK.unlock();
     });
