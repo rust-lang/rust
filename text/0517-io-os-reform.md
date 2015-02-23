@@ -62,6 +62,7 @@ follow-up PRs against this RFC.
             * [Errors]
             * [Channel adapters]
             * [stdin, stdout, stderr]
+            * [Printing functions]
         * [std::env]
         * [std::fs]
             * [Free functions]
@@ -72,7 +73,6 @@ follow-up PRs against this RFC.
             * [TCP]
             * [UDP]
             * [Addresses]
-        * [std::net] (stub)
         * [std::process]
             * [Command]
             * [Child]
@@ -1155,7 +1155,49 @@ RFC recommends they remain unstable.
 #### `stdin`, `stdout`, `stderr`
 [stdin, stdout, stderr]: #stdin-stdout-stderr
 
-> To be added in a follow-up PR.
+The current `stdio` module will be removed in favor of three constructors:
+
+* `stdin` - returns a handle to a **globally shared** to the standard input of
+  the process which is buffered as well. All operations on this handle will
+  first require acquiring a lock to ensure access to the shared buffer is
+  synchronized. The handle can be explicitly locked for a critical section so
+  relocking is not necessary.
+
+  The `Read` trait will be implemented directly on the returned `Stdin` handle
+  but the `BufRead` trait will not be (due to synchronization concerns). The
+  locked version of `Stdin` will provide an implementation of `BufRead`.
+
+  The design will largely be the same as is today with the `old_io` module.
+
+* `stderr` - returns a **non buffered** handle to the standard error output
+  stream for the process. Each call to `write` will roughly translate to a
+  system call to output data when written to `stderr`.
+
+* `stdout` - returns a **locally buffered** handle to the standard output of the
+  current process. The amount of buffering can be decided at runtime to allow
+  for different situations such as being attached to a TTY or being redirected
+  to an output file. The `Write` trait will be implemented for this handle.
+
+The `stderr_raw` constructor is removed because the handle is no longer buffered
+and the `stdin_raw` and `stdout_raw` handles are removed to be added at a later
+date in the `std::os` modules if necessary.
+
+#### Printing functions
+[Printing functions]: #printing-functions
+
+The current `print`, `println`, `print_args`, and `println_args` functions will
+all be "removed from the public interface" by [prefixing them with `__` and
+marking `#[doc(hidden)]`][gh22607]. These are all implementation details of the
+`print!` and `println!` macros and don't need to be exposed in the public
+interface.
+
+[gh22607]: https://github.com/rust-lang/rust/issues/22607
+
+The `set_stdout` and `set_stderr` functions will be moved to a new
+`std::fmt::output` module and renamed to `set_print` and `set_panic`,
+respectively. These new names reflect what they actually do, removing a
+longstanding confusion. The current `stdio::flush` function will also move to
+this module and be renamed to `flush_print`.
 
 ### `std::env`
 [std::env]: #stdenv
@@ -1173,7 +1215,8 @@ and the signatures will be updated to follow this RFC's
 
 * `vars` (renamed from `env`): yields a vector of `(OsString, OsString)` pairs.
 * `var` (renamed from `getenv`): take a value bounded by `AsOsStr`,
-  allowing Rust strings and slices to be ergonomically passed in. Yields an `Option<OsString>`.
+  allowing Rust strings and slices to be ergonomically passed in. Yields an
+  `Option<OsString>`.
 * `var_string`: take a value bounded by `AsOsStr`, returning `Result<String,
   VarError>` where `VarError` represents a non-unicode `OsString` or a "not
   present" value.
