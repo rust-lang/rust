@@ -72,6 +72,9 @@
 #[macro_use]
 mod macros;
 
+#[macro_use]
+mod cmp_macros;
+
 #[path = "num/float_macros.rs"]
 #[macro_use]
 mod float_macros;
