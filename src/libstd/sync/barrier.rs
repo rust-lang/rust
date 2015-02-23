@@ -33,13 +33,13 @@ use sync::{Mutex, Condvar};
 pub struct Barrier {
     lock: Mutex<BarrierState>,
     cvar: Condvar,
-    num_threads: uint,
+    num_threads: usize,
 }
 
 // The inner state of a double barrier
 struct BarrierState {
-    count: uint,
-    generation_id: uint,
+    count: usize,
+    generation_id: usize,
 }
 
 /// A result returned from wait.
@@ -54,7 +54,7 @@ impl Barrier {
     /// A barrier will block `n`-1 threads which call `wait` and then wake up
     /// all threads at once when the `n`th thread calls `wait`.
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub fn new(n: uint) -> Barrier {
+    pub fn new(n: usize) -> Barrier {
         Barrier {
             lock: Mutex::new(BarrierState {
                 count: 0,
@@ -115,7 +115,7 @@ mod tests {
 
     #[test]
     fn test_barrier() {
-        const N: uint = 10;
+        const N: usize = 10;
 
         let barrier = Arc::new(Barrier::new(N));
         let (tx, rx) = channel();
