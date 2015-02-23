@@ -11,7 +11,6 @@
 use prelude::v1::*;
 
 use boxed;
-use boxed::Box;
 use cmp;
 use io;
 use mem;

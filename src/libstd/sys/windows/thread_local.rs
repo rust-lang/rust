@@ -12,6 +12,7 @@ use prelude::v1::*;
 
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
+use boxed;
 use mem;
 use ptr;
 use rt;
@@ -139,7 +140,7 @@ unsafe fn init_dtors() {
         DTOR_LOCK.lock();
         let dtors = DTORS;
         DTORS = ptr::null_mut();
-        Boxed::from_raw(dtors);
+        Box::from_raw(dtors);
         assert!(DTORS.is_null()); // can't re-init after destructing
         DTOR_LOCK.unlock();
     });
