@@ -13,7 +13,6 @@ use prelude::v1::*;
 use boxed;
 use cmp;
 use io;
-use mem;
 use ptr;
 use libc;
 use libc::types::os::arch::extra::{LPSECURITY_ATTRIBUTES, SIZE_T, BOOL,
