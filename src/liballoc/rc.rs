@@ -143,8 +143,10 @@
 //! ```
 
 #![stable(feature = "rust1", since = "1.0.0")]
-
+#[cfg(not(test))]
 use boxed;
+#[cfg(test)]
+use std::boxed;
 use core::cell::Cell;
 use core::clone::Clone;
 use core::cmp::{PartialEq, PartialOrd, Eq, Ord, Ordering};
