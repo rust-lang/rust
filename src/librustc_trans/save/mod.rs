@@ -1002,28 +1002,39 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             ast::PatStruct(ref path, ref fields, _) => {
                 self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
                 visit::walk_path(self, path);
-                let struct_def = match self.lookup_type_ref(p.id) {
-                    Some(sd) => sd,
-                    None => {
-                        self.sess.span_bug(p.span,
-                                           &format!("Could not find struct_def for `{}`",
-                                                   self.span.snippet(p.span)));
-                    }
-                };
-                for &Spanned { node: ref field, span } in fields {
-                    let sub_span = self.span.span_for_first_ident(span);
-                    let fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
-                    for f in fields {
-                        if f.name == field.ident.name {
-                            self.fmt.ref_str(recorder::VarRef,
-                                             span,
-                                             sub_span,
-                                             f.id,
-                                             self.cur_scope);
-                            break;
+
+                let def = self.analysis.ty_cx.def_map.borrow()[p.id];
+                let struct_def = match def {
+                    def::DefConst(..) => None,
+                    def::DefVariant(_, variant_id, _) => Some(variant_id),
+                    _ => {
+                        match ty::ty_to_def_id(ty::node_id_to_type(&self.analysis.ty_cx, p.id)) {
+                            None => {
+                                self.sess.span_bug(p.span,
+                                                   &format!("Could not find struct_def for `{}`",
+                                                            self.span.snippet(p.span)));
+                            }
+                            Some(def_id) => Some(def_id),
                         }
                     }
-                    self.visit_pat(&*field.pat);
+                };
+
+                if let Some(struct_def) = struct_def {
+                    let struct_fields = ty::lookup_struct_fields(&self.analysis.ty_cx, struct_def);
+                    for &Spanned { node: ref field, span } in fields {
+                        let sub_span = self.span.span_for_first_ident(span);
+                        for f in &struct_fields {
+                            if f.name == field.ident.name {
+                                self.fmt.ref_str(recorder::VarRef,
+                                                 span,
+                                                 sub_span,
+                                                 f.id,
+                                                 self.cur_scope);
+                                break;
+                            }
+                        }
+                        self.visit_pat(&*field.pat);
+                    }
                 }
             }
             ast::PatEnum(ref path, _) => {
