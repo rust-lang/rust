@@ -21,6 +21,7 @@ use ffi::CString;
 use mem;
 use env;
 use str;
+use os;
 
 pub struct DynamicLibrary {
     handle: *mut u8
@@ -102,7 +103,7 @@ impl DynamicLibrary {
     /// process
     pub fn search_path() -> Vec<Path> {
         match env::var_os(DynamicLibrary::envvar()) {
-            Some(var) => env::split_paths(&var).collect(),
+            Some(var) => os::split_paths(var.to_str().unwrap()),
             None => Vec::new(),
         }
     }

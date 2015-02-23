@@ -310,6 +310,7 @@ impl Target {
     /// JSON decoding.
     pub fn search(target: &str) -> Result<Target, String> {
         use std::env;
+        use std::os;
         use std::ffi::OsString;
         use std::old_io::File;
         use std::old_path::Path;
@@ -396,7 +397,7 @@ impl Target {
 
         // FIXME 16351: add a sane default search path?
 
-        for dir in env::split_paths(&target_path) {
+        for dir in os::split_paths(target_path.to_str().unwrap()).iter() {
             let p =  dir.join(path.clone());
             if p.is_file() {
                 return load_file(&p);

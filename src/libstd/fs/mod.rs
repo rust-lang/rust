@@ -25,6 +25,10 @@ use sys::fs2 as fs_imp;
 use sys_common::{AsInnerMut, FromInner, AsInner};
 use vec::Vec;
 
+pub use self::tempdir::TempDir;
+
+mod tempdir;
+
 /// A reference to an open file on the filesystem.
 ///
 /// An instance of a `File` can be read and/or written depending on what options
