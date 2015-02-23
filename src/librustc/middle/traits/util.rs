@@ -110,8 +110,8 @@ pub fn elaborate_predicates<'cx, 'tcx>(
 }
 
 impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
-    pub fn filter_to_traits(self) -> Supertraits<'cx, 'tcx> {
-        Supertraits { elaborator: self }
+    pub fn filter_to_traits(self) -> JustTraits<Elaborator<'cx, 'tcx>> {
+        JustTraits::new(self)
     }
 
     fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
@@ -185,11 +185,7 @@ impl<'cx, 'tcx> Iterator for Elaborator<'cx, 'tcx> {
 // Supertrait iterator
 ///////////////////////////////////////////////////////////////////////////
 
-/// A filter around the `Elaborator` that just yields up supertrait references,
-/// not other kinds of predicates.
-pub struct Supertraits<'cx, 'tcx:'cx> {
-    elaborator: Elaborator<'cx, 'tcx>,
-}
+pub type Supertraits<'cx, 'tcx> = JustTraits<Elaborator<'cx, 'tcx>>;
 
 pub fn supertraits<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
                               trait_ref: ty::PolyTraitRef<'tcx>)
@@ -205,12 +201,28 @@ pub fn transitive_bounds<'cx, 'tcx>(tcx: &'cx ty::ctxt<'tcx>,
     elaborate_trait_refs(tcx, bounds).filter_to_traits()
 }
 
-impl<'cx, 'tcx> Iterator for Supertraits<'cx, 'tcx> {
+///////////////////////////////////////////////////////////////////////////
+// Other
+///////////////////////////////////////////////////////////////////////////
+
+/// A filter around an iterator of predicates that makes it yield up
+/// just trait references.
+pub struct JustTraits<I> {
+    base_iterator: I
+}
+
+impl<I> JustTraits<I> {
+    fn new(base: I) -> JustTraits<I> {
+        JustTraits { base_iterator: base }
+    }
+}
+
+impl<'tcx,I:Iterator<Item=ty::Predicate<'tcx>>> Iterator for JustTraits<I> {
     type Item = ty::PolyTraitRef<'tcx>;
 
     fn next(&mut self) -> Option<ty::PolyTraitRef<'tcx>> {
         loop {
-            match self.elaborator.next() {
+            match self.base_iterator.next() {
                 None => {
                     return None;
                 }
@@ -223,6 +235,7 @@ impl<'cx, 'tcx> Iterator for Supertraits<'cx, 'tcx> {
         }
     }
 }
+
 
 ///////////////////////////////////////////////////////////////////////////
 // Other
