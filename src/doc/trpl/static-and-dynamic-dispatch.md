@@ -92,8 +92,8 @@ dynamic dispatch is sometimes more efficient.
 
 However, the common case is that it is more efficient to use static dispatch,
 and one can always have a thin statically-dispatched wrapper function that does
-a dynamic, but not vice versa, meaning static calls are more flexible. The
-standard library tries to be statically dispatched where possible for this
+a dynamic dispatch, but not vice versa, meaning static calls are more flexible.
+The standard library tries to be statically dispatched where possible for this
 reason. 
 
 ## Dynamic dispatch
