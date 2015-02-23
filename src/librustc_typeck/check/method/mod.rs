@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! Method lookup: the secret sauce of Rust. See `doc.rs`.
+//! Method lookup: the secret sauce of Rust. See `README.md`.
 
 use astconv::AstConv;
 use check::{FnCtxt};

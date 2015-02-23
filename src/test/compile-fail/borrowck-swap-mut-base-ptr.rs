@@ -11,7 +11,7 @@
 // Test that attempt to swap `&mut` pointer while pointee is borrowed
 // yields an error.
 //
-// Example from src/middle/borrowck/doc.rs
+// Example from src/librustc_borrowck/borrowck/README.md
 
 use std::mem::swap;
 

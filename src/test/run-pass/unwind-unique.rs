@@ -19,5 +19,6 @@ fn f() {
 }
 
 pub fn main() {
-    let _t = thread::spawn(f);
+    let t = thread::spawn(f);
+    drop(t.join());
 }

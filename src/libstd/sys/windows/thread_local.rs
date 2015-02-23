@@ -12,7 +12,7 @@ use prelude::v1::*;
 
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
-use mem;
+use boxed;
 use ptr;
 use rt;
 use sys_common::mutex::{MUTEX_INIT, Mutex};
@@ -133,13 +133,13 @@ unsafe fn init_dtors() {
     if !DTORS.is_null() { return }
 
     let dtors = box Vec::<(Key, Dtor)>::new();
-    DTORS = mem::transmute(dtors);
+    DTORS = boxed::into_raw(dtors);
 
     rt::at_exit(move|| {
         DTOR_LOCK.lock();
         let dtors = DTORS;
         DTORS = ptr::null_mut();
-        mem::transmute::<_, Box<Vec<(Key, Dtor)>>>(dtors);
+        Box::from_raw(dtors);
         assert!(DTORS.is_null()); // can't re-init after destructing
         DTOR_LOCK.unlock();
     });

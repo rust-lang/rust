@@ -388,7 +388,7 @@ impl<T> Vec<T> {
     pub fn into_boxed_slice(mut self) -> Box<[T]> {
         self.shrink_to_fit();
         unsafe {
-            let xs: Box<[T]> = mem::transmute(&mut *self);
+            let xs: Box<[T]> = Box::from_raw(&mut *self);
             mem::forget(self);
             xs
         }
@@ -1493,68 +1493,33 @@ impl<T> Extend<T> for Vec<T> {
     }
 }
 
-impl<A, B> PartialEq<Vec<B>> for Vec<A> where A: PartialEq<B> {
-    #[inline]
-    fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(&**self, &**other) }
-    #[inline]
-    fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(&**self, &**other) }
-}
+__impl_slice_eq1! { Vec<A>, Vec<B> }
+__impl_slice_eq2! { Vec<A>, &'b [B] }
+__impl_slice_eq2! { Vec<A>, &'b mut [B] }
+__impl_slice_eq2! { CowVec<'a, A>, &'b [B], Clone }
+__impl_slice_eq2! { CowVec<'a, A>, &'b mut [B], Clone }
+__impl_slice_eq2! { CowVec<'a, A>, Vec<B>, Clone }
 
-macro_rules! impl_eq {
-    ($lhs:ty, $rhs:ty) => {
-        impl<'b, A, B> PartialEq<$rhs> for $lhs where A: PartialEq<B> {
-            #[inline]
-            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
-            #[inline]
-            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
-        }
-
-        impl<'b, A, B> PartialEq<$lhs> for $rhs where B: PartialEq<A> {
-            #[inline]
-            fn eq(&self, other: &$lhs) -> bool { PartialEq::eq(&**self, &**other) }
-            #[inline]
-            fn ne(&self, other: &$lhs) -> bool { PartialEq::ne(&**self, &**other) }
-        }
+macro_rules! array_impls {
+    ($($N: expr)+) => {
+        $(
+            // NOTE: some less important impls are omitted to reduce code bloat
+            __impl_slice_eq2! { Vec<A>, [B; $N] }
+            __impl_slice_eq2! { Vec<A>, &'b [B; $N] }
+            // __impl_slice_eq2! { Vec<A>, &'b mut [B; $N] }
+            // __impl_slice_eq2! { CowVec<'a, A>, [B; $N], Clone }
+            // __impl_slice_eq2! { CowVec<'a, A>, &'b [B; $N], Clone }
+            // __impl_slice_eq2! { CowVec<'a, A>, &'b mut [B; $N], Clone }
+        )+
     }
 }
 
-impl_eq! { Vec<A>, &'b [B] }
-impl_eq! { Vec<A>, &'b mut [B] }
-
-impl<'a, A, B> PartialEq<Vec<B>> for Cow<'a, [A]> where A: PartialEq<B> + Clone {
-    #[inline]
-    fn eq(&self, other: &Vec<B>) -> bool { PartialEq::eq(&**self, &**other) }
-    #[inline]
-    fn ne(&self, other: &Vec<B>) -> bool { PartialEq::ne(&**self, &**other) }
+array_impls! {
+     0  1  2  3  4  5  6  7  8  9
+    10 11 12 13 14 15 16 17 18 19
+    20 21 22 23 24 25 26 27 28 29
+    30 31 32
 }
-
-impl<'a, A, B> PartialEq<Cow<'a, [A]>> for Vec<B> where A: Clone, B: PartialEq<A> {
-    #[inline]
-    fn eq(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::eq(&**self, &**other) }
-    #[inline]
-    fn ne(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::ne(&**self, &**other) }
-}
-
-macro_rules! impl_eq_for_cowvec {
-    ($rhs:ty) => {
-        impl<'a, 'b, A, B> PartialEq<$rhs> for Cow<'a, [A]> where A: PartialEq<B> + Clone {
-            #[inline]
-            fn eq(&self, other: &$rhs) -> bool { PartialEq::eq(&**self, &**other) }
-            #[inline]
-            fn ne(&self, other: &$rhs) -> bool { PartialEq::ne(&**self, &**other) }
-        }
-
-        impl<'a, 'b, A, B> PartialEq<Cow<'a, [A]>> for $rhs where A: Clone, B: PartialEq<A> {
-            #[inline]
-            fn eq(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::eq(&**self, &**other) }
-            #[inline]
-            fn ne(&self, other: &Cow<'a, [A]>) -> bool { PartialEq::ne(&**self, &**other) }
-        }
-    }
-}
-
-impl_eq_for_cowvec! { &'b [B] }
-impl_eq_for_cowvec! { &'b mut [B] }
 
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: PartialOrd> PartialOrd for Vec<T> {
@@ -2470,7 +2435,7 @@ mod tests {
     fn test_into_boxed_slice() {
         let xs = vec![1, 2, 3];
         let ys = xs.into_boxed_slice();
-        assert_eq!(ys, [1, 2, 3]);
+        assert_eq!(&*ys, [1, 2, 3]);
     }
 
     #[test]

@@ -12,7 +12,7 @@ Rust has two distinct terms that relate to the module system: *crate* and
 *module*. A crate is synonymous with a *library* or *package* in other
 languages. Hence "Cargo" as the name of Rust's package management tool: you
 ship your crates to others with Cargo. Crates can produce an executable or a
-shared library, depending on the project.
+library, depending on the project.
 
 Each crate has an implicit *root module* that contains the code for that crate.
 You can then define a tree of sub-modules under that root module. Modules allow

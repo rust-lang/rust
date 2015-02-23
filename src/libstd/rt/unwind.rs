@@ -60,6 +60,7 @@
 use prelude::v1::*;
 
 use any::Any;
+use boxed;
 use cell::Cell;
 use cmp;
 use panicking;
@@ -173,7 +174,8 @@ fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
             },
             cause: Some(cause),
         };
-        let error = uw::_Unwind_RaiseException(mem::transmute(exception));
+        let exception_param = boxed::into_raw(exception) as *mut uw::_Unwind_Exception;
+        let error = uw::_Unwind_RaiseException(exception_param);
         rtabort!("Could not unwind stack, error = {}", error as int)
     }
 
@@ -181,7 +183,7 @@ fn rust_panic(cause: Box<Any + Send + 'static>) -> ! {
                                 exception: *mut uw::_Unwind_Exception) {
         rtdebug!("exception_cleanup()");
         unsafe {
-            let _: Box<Exception> = mem::transmute(exception);
+            let _: Box<Exception> = Box::from_raw(exception as *mut Exception);
         }
     }
 }

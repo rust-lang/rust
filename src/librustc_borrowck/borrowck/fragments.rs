@@ -10,7 +10,7 @@
 
 //! Helper routines used for fragmenting structural paths due to moves for
 //! tracking drop obligations. Please see the extensive comments in the
-//! section "Structural fragments" in `doc.rs`.
+//! section "Structural fragments" in `README.md`.
 
 use self::Fragment::*;
 

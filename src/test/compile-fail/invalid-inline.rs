@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -7,17 +7,18 @@
 // <LICENSE-MIT or http://opensource.org/licenses/MIT>, at your
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
+#![allow(dead_code)]
 
-// Test that attempt to move `&mut` pointer while pointee is borrowed
-// yields an error.
-//
-// Example from src/librustc_borrowck/borrowck/README.md
-
-fn foo(t0: &mut isize) {
-    let p: &isize = &*t0; // Freezes `*t0`
-    let t1 = t0;        //~ ERROR cannot move out of `t0`
-    *t1 = 22;
+#[inline(please_no)] //~ ERROR invalid argument
+fn a() {
 }
 
-fn main() {
+#[inline(please,no)] //~ ERROR expected one argument
+fn b() {
 }
+
+#[inline()] //~ ERROR expected one argument
+fn c() {
+}
+
+fn main() {}

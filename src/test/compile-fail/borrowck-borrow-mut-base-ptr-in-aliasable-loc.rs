@@ -11,7 +11,7 @@
 // Test that attempt to reborrow an `&mut` pointer in an aliasable
 // location yields an error.
 //
-// Example from src/middle/borrowck/doc.rs
+// Example from src/librustc_borrowck/borrowck/README.md
 
 fn foo(t0: & &mut isize) {
     let t1 = t0;

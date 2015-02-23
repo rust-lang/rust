@@ -10,7 +10,6 @@
 
 //! Implementation of the `build` subcommand, used to compile a book.
 
-use std::os;
 use std::env;
 use std::old_io;
 use std::old_io::{fs, File, BufferedWriter, TempDir, IoResult};
@@ -41,7 +40,7 @@ fn write_toc(book: &Book, path_to_root: &Path, out: &mut Writer) -> IoResult<()>
                   path_to_root: &Path,
                   out: &mut Writer) -> IoResult<()> {
         for (i, item) in items.iter().enumerate() {
-            try!(walk_item(item, &format!("{}{}.", section, i + 1)[], path_to_root, out));
+            try!(walk_item(item, &format!("{}{}.", section, i + 1)[..], path_to_root, out));
         }
         Ok(())
     }
@@ -55,7 +54,7 @@ fn write_toc(book: &Book, path_to_root: &Path, out: &mut Writer) -> IoResult<()>
                  item.title));
         if !item.children.is_empty() {
             try!(writeln!(out, "<ul class='section'>"));
-            let _ = walk_items(&item.children[], section, path_to_root, out);
+            let _ = walk_items(&item.children[..], section, path_to_root, out);
             try!(writeln!(out, "</ul>"));
         }
         try!(writeln!(out, "</li>"));
@@ -65,7 +64,7 @@ fn write_toc(book: &Book, path_to_root: &Path, out: &mut Writer) -> IoResult<()>
 
     try!(writeln!(out, "<div id='toc' class='mobile-hidden'>"));
     try!(writeln!(out, "<ul class='chapter'>"));
-    try!(walk_items(&book.chapters[], "", path_to_root, out));
+    try!(walk_items(&book.chapters[..], "", path_to_root, out));
     try!(writeln!(out, "</ul>"));
     try!(writeln!(out, "</div>"));
 
@@ -82,7 +81,7 @@ fn render(book: &Book, tgt: &Path) -> CliResult<()> {
 
         let src;
         if env::args().len() < 3 {
-            src = os::getcwd().unwrap().clone();
+            src = env::current_dir().unwrap().clone();
         } else {
             src = Path::new(env::args().nth(2).unwrap().clone());
         }
@@ -150,7 +149,7 @@ impl Subcommand for Build {
     }
     fn usage(&self) {}
     fn execute(&mut self, term: &mut Term) -> CommandResult<()> {
-        let cwd = os::getcwd().unwrap();
+        let cwd = env::current_dir().unwrap();
         let src;
         let tgt;
 
@@ -179,7 +178,7 @@ impl Subcommand for Build {
             Err(errors) => {
                 let n = errors.len();
                 for err in errors {
-                    term.err(&format!("error: {}", err)[]);
+                    term.err(&format!("error: {}", err)[..]);
                 }
 
                 Err(box format!("{} errors occurred", n) as Box<Error>)

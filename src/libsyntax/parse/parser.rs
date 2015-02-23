@@ -3494,6 +3494,9 @@ impl<'a> Parser<'a> {
                     };
                     pat = PatIdent(BindByValue(MutImmutable), pth1, sub);
                 }
+            } else if self.look_ahead(1, |t| *t == token::Lt) {
+                self.bump();
+                self.unexpected()
             } else {
                 // parse an enum pat
                 let enum_path = self.parse_path(LifetimeAndTypesWithColons);

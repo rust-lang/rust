@@ -122,6 +122,7 @@
 #![feature(unsafe_destructor)]
 #![feature(unsafe_no_drop_flag)]
 #![feature(macro_reexport)]
+#![feature(hash)]
 #![cfg_attr(test, feature(test, rustc_private, env))]
 
 // Don't link to std. We are std.

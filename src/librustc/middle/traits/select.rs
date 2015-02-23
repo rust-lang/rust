@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-//! See `doc.rs` for high-level documentation
+//! See `README.md` for high-level documentation
 #![allow(dead_code)] // FIXME -- just temporarily
 
 pub use self::MethodMatchResult::*;
@@ -547,7 +547,8 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     //
     // The selection process begins by examining all in-scope impls,
     // caller obligations, and so forth and assembling a list of
-    // candidates. See `doc.rs` and the `Candidate` type for more details.
+    // candidates. See `README.md` and the `Candidate` type for more
+    // details.
 
     fn candidate_from_obligation<'o>(&mut self,
                                      stack: &TraitObligationStack<'o, 'tcx>)
@@ -1619,7 +1620,7 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
     //
     // Confirmation unifies the output type parameters of the trait
     // with the values found in the obligation, possibly yielding a
-    // type error.  See `doc.rs` for more details.
+    // type error.  See `README.md` for more details.
 
     fn confirm_candidate(&mut self,
                          obligation: &TraitObligation<'tcx>,
