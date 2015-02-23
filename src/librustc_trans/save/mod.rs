@@ -663,23 +663,21 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
         match typ.node {
             // Common case impl for a struct or something basic.
             ast::TyPath(ref path, id) => {
-                match self.lookup_type_ref(id) {
-                    Some(id) => {
-                        let sub_span = self.span.sub_span_for_type_name(path.span);
-                        self.fmt.ref_str(recorder::TypeRef,
-                                         path.span,
-                                         sub_span,
-                                         id,
-                                         self.cur_scope);
-                        self.fmt.impl_str(path.span,
-                                          sub_span,
-                                          item.id,
-                                          Some(id),
-                                          trait_id,
-                                          self.cur_scope);
-                    },
-                    None => ()
-                }
+                let sub_span = self.span.sub_span_for_type_name(path.span);
+                let self_id = self.lookup_type_ref(id).map(|id| {
+                    self.fmt.ref_str(recorder::TypeRef,
+                                     path.span,
+                                     sub_span,
+                                     id,
+                                     self.cur_scope);
+                    id
+                });
+                self.fmt.impl_str(path.span,
+                                  sub_span,
+                                  item.id,
+                                  self_id,
+                                  trait_id,
+                                  self.cur_scope);
             },
             _ => {
                 // Less useful case, impl for a compound type.
