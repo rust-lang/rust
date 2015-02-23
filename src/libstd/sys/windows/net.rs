@@ -25,6 +25,8 @@ pub type wrlen_t = i32;
 
 pub struct Socket(libc::SOCKET);
 
+/// Checks whether the Windows socket interface has been started already, and
+/// if not, starts it.
 pub fn init() {
     static START: Once = ONCE_INIT;
 
@@ -38,10 +40,16 @@ pub fn init() {
     });
 }
 
+/// Returns the last error from the Windows socket interface.
 fn last_error() -> io::Error {
     io::Error::from_os_error(unsafe { c::WSAGetLastError() })
 }
 
+/// Checks if the signed integer is the Windows constant `SOCKET_ERROR` (-1)
+/// and if so, returns the last error from the Windows socket interface. . This
+/// function must be called before another call to the socket API is made.
+///
+/// FIXME: generics needed?
 pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
     let one: T = Int::one();
     if t == -one {
@@ -51,11 +59,14 @@ pub fn cvt<T: SignedInt>(t: T) -> io::Result<T> {
     }
 }
 
+/// Provides the functionality of `cvt` for the return values of `getaddrinfo`
+/// and similar, meaning that they return an error if the return value is 0.
 pub fn cvt_gai(err: c_int) -> io::Result<()> {
     if err == 0 { return Ok(()) }
     cvt(err).map(|_| ())
 }
 
+/// Provides the functionality of `cvt` for a closure.
 pub fn cvt_r<T: SignedInt, F>(mut f: F) -> io::Result<T> where F: FnMut() -> T {
     cvt(f())
 }
@@ -112,7 +123,7 @@ impl Socket {
 
 impl Drop for Socket {
     fn drop(&mut self) {
-        unsafe { let _ = libc::closesocket(self.0); }
+        unsafe { cvt(libc::closesocket(self.0)).unwrap(); }
     }
 }
 
