@@ -4748,9 +4748,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
 
     assert!(segments.len() >= 1);
 
-    // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory.
-    let mut require_type_space = opt_self_ty.is_some();
-
+    let mut ufcs_method = None;
     let mut segment_spaces: Vec<_>;
     match def {
         // Case 1 and 1b. Reference to a *type* or *enum variant*.
@@ -4777,8 +4775,8 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
 
         // Case 3. Reference to a method.
-        def::DefMethod(_, providence) => {
-            match providence {
+        def::DefMethod(_, provenance) => {
+            match provenance {
                 def::FromTrait(trait_did) => {
                     callee::check_legal_trait_for_method_call(fcx.ccx, span, trait_did)
                 }
@@ -4791,9 +4789,9 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                 segment_spaces.push(Some(subst::FnSpace));
             } else {
                 // `<T>::method` will end up here, and so can `T::method`.
-                assert!(opt_self_ty.is_some());
-                require_type_space = false;
+                let self_ty = opt_self_ty.expect("UFCS sugared method missing Self");
                 segment_spaces = vec![Some(subst::FnSpace)];
+                ufcs_method = Some((provenance, self_ty));
             }
         }
 
@@ -4811,6 +4809,11 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         }
     }
     assert_eq!(segment_spaces.len(), segments.len());
+
+    // In `<T as Trait<A, B>>::method`, `A` and `B` are mandatory, but
+    // `opt_self_ty` can also be Some for `Foo::method`, where Foo's
+    // type parameters are not mandatory.
+    let require_type_space = opt_self_ty.is_some() && ufcs_method.is_none();
 
     debug!("segment_spaces={:?}", segment_spaces);
 
@@ -4878,6 +4881,28 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     // Substitute the values for the type parameters into the type of
     // the referenced item.
     let ty_substituted = fcx.instantiate_type_scheme(span, &substs, &type_scheme.ty);
+
+
+    if let Some((def::FromImpl(impl_def_id), self_ty)) = ufcs_method {
+        // In the case of `Foo<T>::method` and `<Foo<T>>::method`, if `method`
+        // is inherent, there is no `Self` parameter, instead, the impl needs
+        // type parameters, which we can infer by unifying the provided `Self`
+        // with the substituted impl type.
+        let impl_scheme = ty::lookup_item_type(fcx.tcx(), impl_def_id);
+        assert_eq!(substs.types.len(subst::TypeSpace),
+                   impl_scheme.generics.types.len(subst::TypeSpace));
+        assert_eq!(substs.regions().len(subst::TypeSpace),
+                   impl_scheme.generics.regions.len(subst::TypeSpace));
+
+        let impl_ty = fcx.instantiate_type_scheme(span, &substs, &impl_scheme.ty);
+        if fcx.mk_subty(false, infer::Misc(span), self_ty, impl_ty).is_err() {
+            fcx.tcx().sess.span_bug(span,
+            &format!(
+                "instantiate_path: (UFCS) {} was a subtype of {} but now is not?",
+                self_ty.repr(fcx.tcx()),
+                impl_ty.repr(fcx.tcx())));
+        }
+    }
 
     fcx.write_ty(node_id, ty_substituted);
     fcx.write_substs(node_id, ty::ItemSubsts { substs: substs });
