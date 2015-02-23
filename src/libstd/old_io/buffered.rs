@@ -14,6 +14,8 @@
 
 use cmp;
 use fmt;
+use ptr;
+use mem;
 use old_io::{Reader, Writer, Stream, Buffer, DEFAULT_BUF_SIZE, IoResult};
 use iter::{IteratorExt, ExactSizeIterator, repeat};
 use ops::Drop;
@@ -146,7 +148,7 @@ impl<R: Reader> Reader for BufferedReader<R> {
 /// writer.flush().unwrap();
 /// ```
 pub struct BufferedWriter<W> {
-    inner: Option<W>,
+    inner: W,
     buf: Vec<u8>,
     pos: uint
 }
@@ -155,7 +157,7 @@ pub struct BufferedWriter<W> {
 impl<W> fmt::Debug for BufferedWriter<W> where W: fmt::Debug {
     fn fmt(&self, fmt: &mut fmt::Formatter) -> fmt::Result {
         write!(fmt, "BufferedWriter {{ writer: {:?}, buffer: {}/{} }}",
-               self.inner.as_ref().unwrap(), self.pos, self.buf.len())
+               self.inner, self.pos, self.buf.len())
     }
 }
 
@@ -171,7 +173,7 @@ impl<W: Writer> BufferedWriter<W> {
         let mut buf = Vec::with_capacity(cap);
         unsafe { buf.set_len(cap); }
         BufferedWriter {
-            inner: Some(inner),
+            inner: inner,
             buf: buf,
             pos: 0
         }
@@ -184,7 +186,7 @@ impl<W: Writer> BufferedWriter<W> {
 
     fn flush_buf(&mut self) -> IoResult<()> {
         if self.pos != 0 {
-            let ret = self.inner.as_mut().unwrap().write_all(&self.buf[..self.pos]);
+            let ret = self.inner.write_all(&self.buf[..self.pos]);
             self.pos = 0;
             ret
         } else {
@@ -193,14 +195,14 @@ impl<W: Writer> BufferedWriter<W> {
     }
 
     /// Gets a reference to the underlying writer.
-    pub fn get_ref(&self) -> &W { self.inner.as_ref().unwrap() }
+    pub fn get_ref(&self) -> &W { &self.inner }
 
     /// Gets a mutable reference to the underlying write.
     ///
     /// # Warning
     ///
-    /// It is inadvisable to directly read from the underlying writer.
-    pub fn get_mut(&mut self) -> &mut W { self.inner.as_mut().unwrap() }
+    /// It is inadvisable to directly write to the underlying writer.
+    pub fn get_mut(&mut self) -> &mut W { &mut self.inner }
 
     /// Unwraps this `BufferedWriter`, returning the underlying writer.
     ///
@@ -208,7 +210,21 @@ impl<W: Writer> BufferedWriter<W> {
     pub fn into_inner(mut self) -> W {
         // FIXME(#12628): is panicking the right thing to do if flushing panicks?
         self.flush_buf().unwrap();
-        self.inner.take().unwrap()
+
+        // We want to get the writer out, so we have to cancel
+        // the destructor, but we still want to clean up the buffer.
+        unsafe {
+            // Get the writer by creating a byte-copy.
+            let writer = ptr::read(&self.inner);
+
+            // Get and drop the buffer, cleaning it up.
+            ptr::read(&self.buf);
+
+            // Forget self so we don't try to re-clean-up buf and inner.
+            mem::forget(self);
+
+            writer
+        }
     }
 }
 
@@ -219,7 +235,7 @@ impl<W: Writer> Writer for BufferedWriter<W> {
         }
 
         if buf.len() > self.buf.len() {
-            self.inner.as_mut().unwrap().write_all(buf)
+            self.inner.write_all(buf)
         } else {
             let dst = &mut self.buf[self.pos..];
             slice::bytes::copy_memory(dst, buf);
@@ -229,17 +245,14 @@ impl<W: Writer> Writer for BufferedWriter<W> {
     }
 
     fn flush(&mut self) -> IoResult<()> {
-        self.flush_buf().and_then(|()| self.inner.as_mut().unwrap().flush())
+        self.flush_buf().and_then(|()| self.inner.flush())
     }
 }
 
 #[unsafe_destructor]
 impl<W: Writer> Drop for BufferedWriter<W> {
     fn drop(&mut self) {
-        if self.inner.is_some() {
-            // dtors should not panic, so we ignore a panicked flush
-            let _ = self.flush_buf();
-        }
+        let _ = self.flush_buf();
     }
 }
 
@@ -307,7 +320,7 @@ impl<W> InternalBufferedWriter<W> {
 
 impl<W: Reader> Reader for InternalBufferedWriter<W> {
     fn read(&mut self, buf: &mut [u8]) -> IoResult<uint> {
-        self.get_mut().inner.as_mut().unwrap().read(buf)
+        self.get_mut().inner.read(buf)
     }
 }
 
