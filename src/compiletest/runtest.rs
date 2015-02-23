@@ -89,7 +89,7 @@ fn run_cfail_test(config: &Config, props: &TestProps, testfile: &Path) {
     let proc_res = compile_test(config, props, testfile);
 
     if proc_res.status.success() {
-        fatal_proc_rec(&format!("{} test compiled successfully!", config.mode)[],
+        fatal_proc_rec(&format!("{} test compiled successfully!", config.mode)[..],
                       &proc_res);
     }
 
@@ -398,7 +398,7 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             for line in breakpoint_lines.iter() {
                 script_str.push_str(&format!("break {:?}:{}\n",
                                              testfile.filename_display(),
-                                             *line)[]);
+                                             *line)[..]);
             }
             script_str.push_str(&cmds);
             script_str.push_str("quit\n");
@@ -553,17 +553,17 @@ fn run_debuginfo_gdb_test(config: &Config, props: &TestProps, testfile: &Path) {
             script_str.push_str("set print pretty off\n");
 
             // Add the pretty printer directory to GDB's source-file search path
-            script_str.push_str(&format!("directory {}\n", rust_pp_module_abs_path)[]);
+            script_str.push_str(&format!("directory {}\n", rust_pp_module_abs_path)[..]);
 
             // Load the target executable
             script_str.push_str(&format!("file {}\n",
-                                         exe_file.as_str().unwrap().replace("\\", "\\\\"))[]);
+                                         exe_file.as_str().unwrap().replace("\\", "\\\\"))[..]);
 
             // Add line breakpoints
             for line in &breakpoint_lines {
                 script_str.push_str(&format!("break '{}':{}\n",
                                              testfile.filename_display(),
-                                             *line)[]);
+                                             *line)[..]);
             }
 
             script_str.push_str(&cmds);
@@ -689,7 +689,7 @@ fn run_debuginfo_lldb_test(config: &Config, props: &TestProps, testfile: &Path) 
                                                .unwrap()
                                                .to_string();
 
-    script_str.push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[]);
+    script_str.push_str(&format!("command script import {}\n", &rust_pp_module_abs_path[..])[..]);
     script_str.push_str("type summary add --no-value ");
     script_str.push_str("--python-function lldb_rust_formatters.print_val ");
     script_str.push_str("-x \".*\" --category Rust\n");
