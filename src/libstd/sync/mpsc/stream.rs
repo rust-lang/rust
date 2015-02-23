@@ -43,7 +43,7 @@ pub struct Packet<T> {
     queue: spsc::Queue<Message<T>>, // internal queue for all message
 
     cnt: AtomicIsize, // How many items are on this channel
-    steals: int, // How many times has a port received without blocking?
+    steals: isize, // How many times has a port received without blocking?
     to_wake: AtomicUsize, // SignalToken for the blocked thread to wake up
 
     port_dropped: AtomicBool, // flag if the channel has been destroyed.
@@ -146,7 +146,7 @@ impl<T: Send> Packet<T> {
         let ptr = self.to_wake.load(Ordering::SeqCst);
         self.to_wake.store(0, Ordering::SeqCst);
         assert!(ptr != 0);
-        unsafe { SignalToken::cast_from_uint(ptr) }
+        unsafe { SignalToken::cast_from_usize(ptr) }
     }
 
     // Decrements the count on the channel for a sleeper, returning the sleeper
@@ -154,7 +154,7 @@ impl<T: Send> Packet<T> {
     // steals into account.
     fn decrement(&mut self, token: SignalToken) -> Result<(), SignalToken> {
         assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
-        let ptr = unsafe { token.cast_to_uint() };
+        let ptr = unsafe { token.cast_to_usize() };
         self.to_wake.store(ptr, Ordering::SeqCst);
 
         let steals = self.steals;
@@ -171,7 +171,7 @@ impl<T: Send> Packet<T> {
         }
 
         self.to_wake.store(0, Ordering::SeqCst);
-        Err(unsafe { SignalToken::cast_from_uint(ptr) })
+        Err(unsafe { SignalToken::cast_from_usize(ptr) })
     }
 
     pub fn recv(&mut self) -> Result<T, Failure<T>> {
@@ -350,7 +350,7 @@ impl<T: Send> Packet<T> {
     }
 
     // increment the count on the channel (used for selection)
-    fn bump(&mut self, amt: int) -> int {
+    fn bump(&mut self, amt: isize) -> isize {
         match self.cnt.fetch_add(amt, Ordering::SeqCst) {
             DISCONNECTED => {
                 self.cnt.store(DISCONNECTED, Ordering::SeqCst);
