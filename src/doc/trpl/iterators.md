@@ -91,11 +91,11 @@ for num in &nums {
 ```
 
 Now we're explicitly dereferencing `num`. Why does `&nums` give us
-references?  Because we asked it to with `&`. If we had not had the
-`&`, `nums` would have been moved into the `for` loop and consumed,
-and we we would no longer be able to access `nums` afterward.  With
-references, we're just borrowing a reference to the data, and so it's
-just passing a reference, without needing to do the move.
+references?  Firstly, because we explicitly asked it to with
+`&`. Secondly, if it gave us the data itself, we would have to be its
+owner, which would involve making a copy of the data and giving us the
+copy. With references, we're just borrowing a reference to the data,
+and so it's just passing a reference, without needing to do the move.
 
 So, now that we've established that ranges are often not what you want, let's
 talk about what you do want instead.
@@ -241,9 +241,6 @@ for num in nums.iter() {
    println!("{}", num);
 }
 ```
-
-Sometimes you need this functionality, but since for loops operate on the
-`IntoIterator` trait, calling `.iter()` is rarely necessary.
 
 These two basic iterators should serve you well. There are some more
 advanced iterators, including ones that are infinite. Like `count`:
