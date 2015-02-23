@@ -305,6 +305,18 @@ mod tests {
     }
 
     #[test]
+    #[should_fail]
+    fn overconsume() {
+        let in_buf = vec![0xffu8];
+        let mut reader = Cursor::new(&in_buf[..]);
+        assert_eq!(reader.fill_buf(), Ok(&in_buf[..]));
+        // If the debug assertion in consume() is not compiled in,
+        // the next fill_buf() should panic.
+        reader.consume(2);
+        reader.fill_buf().unwrap();
+    }
+
+    #[test]
     fn test_slice_reader() {
         let in_buf = vec![0u8, 1, 2, 3, 4, 5, 6, 7];
         let mut reader = &mut in_buf.as_slice();
