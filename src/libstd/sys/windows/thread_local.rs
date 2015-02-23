@@ -13,7 +13,6 @@ use prelude::v1::*;
 use libc::types::os::arch::extra::{DWORD, LPVOID, BOOL};
 
 use boxed;
-use mem;
 use ptr;
 use rt;
 use sys_common::mutex::{MUTEX_INIT, Mutex};

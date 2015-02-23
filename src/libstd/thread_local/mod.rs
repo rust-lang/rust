@@ -330,7 +330,6 @@ impl<T: 'static> Key<T> {
 mod imp {
     use prelude::v1::*;
 
-    use alloc::boxed;
     use cell::UnsafeCell;
     use intrinsics;
     use ptr;
@@ -389,6 +388,7 @@ mod imp {
     // Due to rust-lang/rust#18804, make sure this is not generic!
     #[cfg(target_os = "linux")]
     unsafe fn register_dtor(t: *mut u8, dtor: unsafe extern fn(*mut u8)) {
+        use boxed;
         use mem;
         use libc;
         use sys_common::thread_local as os;
