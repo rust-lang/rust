@@ -11,6 +11,7 @@
 use core::prelude::*;
 
 use io;
+use boxed;
 use boxed::Box;
 use cmp;
 use mem;
@@ -241,13 +242,15 @@ pub unsafe fn create(stack: uint, p: Thunk) -> io::Result<rust_thread> {
         },
     };
 
-    let arg: *mut libc::c_void = mem::transmute(box p); // must box since sizeof(p)=2*uint
+    // must box since sizeof(p)=2*uint
+    let raw_p = boxed::into_raw(box p);
+    let arg = raw_p as *mut libc::c_void;
     let ret = pthread_create(&mut native, &attr, thread_start, arg);
     assert_eq!(pthread_attr_destroy(&mut attr), 0);
 
     if ret != 0 {
         // be sure to not leak the closure
-        let _p: Box<Box<FnOnce()+Send>> = mem::transmute(arg);
+        let _p: Box<Thunk> = Box::from_raw(raw_p);
         Err(io::Error::from_os_error(ret))
     } else {
         Ok(native)

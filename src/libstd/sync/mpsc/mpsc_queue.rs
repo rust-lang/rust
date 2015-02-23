@@ -44,8 +44,8 @@ pub use self::PopResult::*;
 
 use core::prelude::*;
 
+use alloc::boxed;
 use alloc::boxed::Box;
-use core::mem;
 use core::ptr;
 use core::cell::UnsafeCell;
 
@@ -82,7 +82,7 @@ unsafe impl<T: Send> Sync for Queue<T> { }
 
 impl<T> Node<T> {
     unsafe fn new(v: Option<T>) -> *mut Node<T> {
-        mem::transmute(box Node {
+        boxed::into_raw(box Node {
             next: AtomicPtr::new(ptr::null_mut()),
             value: v,
         })
@@ -129,7 +129,7 @@ impl<T: Send> Queue<T> {
                 assert!((*tail).value.is_none());
                 assert!((*next).value.is_some());
                 let ret = (*next).value.take().unwrap();
-                let _: Box<Node<T>> = mem::transmute(tail);
+                let _: Box<Node<T>> = Box::from_raw(tail);
                 return Data(ret);
             }
 
@@ -146,7 +146,7 @@ impl<T: Send> Drop for Queue<T> {
             let mut cur = *self.tail.get();
             while !cur.is_null() {
                 let next = (*cur).next.load(Ordering::Relaxed);
-                let _: Box<Node<T>> = mem::transmute(cur);
+                let _: Box<Node<T>> = Box::from_raw(cur);
                 cur = next;
             }
         }
