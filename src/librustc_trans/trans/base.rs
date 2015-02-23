@@ -435,7 +435,7 @@ pub fn set_inline_hint(f: ValueRef) {
 pub fn set_llvm_fn_attrs(ccx: &CrateContext, attrs: &[ast::Attribute], llfn: ValueRef) {
     use syntax::attr::*;
     // Set the inline hint if there is one
-    match find_inline_attr(attrs) {
+    match find_inline_attr(Some(ccx.sess().diagnostic()), attrs) {
         InlineHint   => set_inline_hint(llfn),
         InlineAlways => set_always_inline(llfn),
         InlineNever  => set_no_inline(llfn),
