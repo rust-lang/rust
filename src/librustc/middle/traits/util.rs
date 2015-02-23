@@ -76,13 +76,8 @@ impl<'a,'tcx> PredicateSet<'a,'tcx> {
 /// 'static`.
 pub struct Elaborator<'cx, 'tcx:'cx> {
     tcx: &'cx ty::ctxt<'tcx>,
-    stack: Vec<StackEntry<'tcx>>,
+    stack: Vec<ty::Predicate<'tcx>>,
     visited: PredicateSet<'cx,'tcx>,
-}
-
-struct StackEntry<'tcx> {
-    position: uint,
-    predicates: Vec<ty::Predicate<'tcx>>,
 }
 
 pub fn elaborate_trait_ref<'cx, 'tcx>(
@@ -111,8 +106,7 @@ pub fn elaborate_predicates<'cx, 'tcx>(
 {
     let mut visited = PredicateSet::new(tcx);
     predicates.retain(|pred| visited.insert(pred));
-    let entry = StackEntry { position: 0, predicates: predicates };
-    Elaborator { tcx: tcx, stack: vec![entry], visited: visited }
+    Elaborator { tcx: tcx, stack: predicates, visited: visited }
 }
 
 impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
@@ -134,8 +128,7 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
                 // Sized { }`.
                 predicates.retain(|r| self.visited.insert(r));
 
-                self.stack.push(StackEntry { position: 0,
-                                             predicates: predicates });
+                self.stack.extend(predicates.into_iter());
             }
             ty::Predicate::Equate(..) => {
                 // Currently, we do not "elaborate" predicates like
@@ -175,41 +168,16 @@ impl<'cx, 'tcx> Iterator for Elaborator<'cx, 'tcx> {
     type Item = ty::Predicate<'tcx>;
 
     fn next(&mut self) -> Option<ty::Predicate<'tcx>> {
-        loop {
-            // Extract next item from top-most stack frame, if any.
-            let next_predicate = match self.stack.last_mut() {
-                None => {
-                    // No more stack frames. Done.
-                    return None;
-                }
-                Some(entry) => {
-                    let p = entry.position;
-                    if p < entry.predicates.len() {
-                        // Still more predicates left in the top stack frame.
-                        entry.position += 1;
-
-                        let next_predicate =
-                            entry.predicates[p].clone();
-
-                        Some(next_predicate)
-                    } else {
-                        None
-                    }
-                }
-            };
-
-            match next_predicate {
-                Some(next_predicate) => {
-                    self.push(&next_predicate);
-                    return Some(next_predicate);
-                }
-
-                None => {
-                    // Top stack frame is exhausted, pop it.
-                    self.stack.pop();
-                }
+        // Extract next item from top-most stack frame, if any.
+        let next_predicate = match self.stack.pop() {
+            Some(predicate) => predicate,
+            None => {
+                // No more stack frames. Done.
+                return None;
             }
-        }
+        };
+        self.push(&next_predicate);
+        return Some(next_predicate);
     }
 }
 
