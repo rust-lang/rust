@@ -105,10 +105,10 @@ fn borrowck_item(this: &mut BorrowckCtxt, item: &ast::Item) {
         ast::ItemConst(_, ref ex) => {
             gather_loans::gather_loans_in_static_initializer(this, &**ex);
         }
-        _ => {
-            visit::walk_item(this, item);
-        }
+        _ => { }
     }
+
+    visit::walk_item(this, item);
 }
 
 /// Collection of conclusions determined via borrow checker analyses.
