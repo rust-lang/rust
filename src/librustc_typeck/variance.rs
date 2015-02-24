@@ -849,7 +849,7 @@ impl<'a, 'tcx> ConstraintContext<'a, 'tcx> {
                 self.add_constraints_from_mt(generics, mt, variance);
             }
 
-            ty::ty_uniq(typ) | ty::ty_vec(typ, _) | ty::ty_open(typ) => {
+            ty::ty_uniq(typ) | ty::ty_vec(typ, _) => {
                 self.add_constraints_from_ty(generics, typ, variance);
             }
 

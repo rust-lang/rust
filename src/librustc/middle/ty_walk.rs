@@ -28,7 +28,7 @@ impl<'tcx> TypeWalker<'tcx> {
             ty::ty_bool | ty::ty_char | ty::ty_int(_) | ty::ty_uint(_) | ty::ty_float(_) |
             ty::ty_str | ty::ty_infer(_) | ty::ty_param(_) | ty::ty_err => {
             }
-            ty::ty_uniq(ty) | ty::ty_vec(ty, _) | ty::ty_open(ty) => {
+            ty::ty_uniq(ty) | ty::ty_vec(ty, _) => {
                 self.stack.push(ty);
             }
             ty::ty_ptr(ref mt) | ty::ty_rptr(_, ref mt) => {

@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012-2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,10 +10,9 @@
 
 //~^^^^^^^^^^ ERROR overflow
 //
-// We also get a second error message at the top of file (dummy
-// span). This is not helpful, but also kind of annoying to prevent,
-// so for now just live with it, since we also get a second message
-// that is more helpful.
+// We get an error message at the top of file (dummy span).
+// This is not helpful, but also kind of annoying to prevent,
+// so for now just live with it.
 
 enum Nil {NilValue}
 struct Cons<T> {head:isize, tail:T}
@@ -28,9 +27,8 @@ impl<T:Dot> Dot for Cons<T> {
 }
 fn test<T:Dot> (n:isize, i:isize, first:T, second:T) ->isize {
   match n {    0 => {first.dot(second)}
-      //~^ ERROR: reached the recursion limit during monomorphization
-      // Error message should be here. It should be a type error
-      // to instantiate `test` at a type other than T. (See #4287)
+      // FIXME(#4287) Error message should be here. It should be
+      // a type error to instantiate `test` at a type other than T.
     _ => {test (n-1, i+1, Cons {head:2*i+1, tail:first}, Cons{head:i*i, tail:second})}
   }
 }
