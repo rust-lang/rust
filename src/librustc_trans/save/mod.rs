@@ -1004,7 +1004,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
                 self.collected_paths.push((p.id, path.clone(), false, recorder::StructRef));
                 visit::walk_path(self, path);
 
-                let def = self.analysis.ty_cx.def_map.borrow()[p.id];
+                let def = self.analysis.ty_cx.def_map.borrow()[p.id].full_def();
                 let struct_def = match def {
                     def::DefConst(..) => None,
                     def::DefVariant(_, variant_id, _) => Some(variant_id),

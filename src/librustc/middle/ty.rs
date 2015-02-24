@@ -5116,15 +5116,12 @@ pub fn impl_trait_ref<'tcx>(cx: &ctxt<'tcx>, id: ast::DefId)
         if id.krate == ast::LOCAL_CRATE {
             debug!("(impl_trait_ref) searching for trait impl {:?}", id);
             if let Some(ast_map::NodeItem(item)) = cx.map.find(id.node) {
-                if let ast::ItemImpl(_, _, _, ref opt_trait, _, _) = item.node {
-                    opt_trait.as_ref().map(|_| {
-                        ty::impl_id_to_trait_ref(cx, id.node)
-                    })
-                } else {
-                    None
-                        ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
-                            Some(ty::node_id_to_trait_ref(cx, ast_trait_ref.ref_id))
-                        }
+                match item.node {
+                    ast::ItemImpl(_, _, _, Some(_), _, _) |
+                    ast::ItemDefaultImpl(..) => {
+                        Some(ty::impl_id_to_trait_ref(cx, id.node))
+                    }
+                    _ => None
                 }
             } else {
                 None

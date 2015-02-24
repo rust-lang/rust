@@ -2772,7 +2772,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
 
             ItemDefaultImpl(_, ref trait_ref) => {
-                self.resolve_trait_reference(item.id, trait_ref, TraitImplementation);
+                self.with_optional_trait_ref(Some(trait_ref), |_| {});
             }
             ItemImpl(_, _,
                      ref generics,
@@ -3022,12 +3022,12 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
     }
 
     fn with_optional_trait_ref<T, F>(&mut self,
-                                     opt_trait_ref: &Option<TraitRef>,
+                                     opt_trait_ref: Option<&TraitRef>,
                                      f: F) -> T where
         F: FnOnce(&mut Resolver) -> T,
     {
         let mut new_val = None;
-        if let Some(ref trait_ref) = *opt_trait_ref {
+        if let Some(trait_ref) = opt_trait_ref {
             match self.resolve_trait_reference(trait_ref.ref_id, &trait_ref.path, 0) {
                 Ok(path_res) => {
                     self.record_def(trait_ref.ref_id, path_res);
@@ -3057,7 +3057,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             this.visit_generics(generics);
 
             // Resolve the trait reference, if necessary.
-            this.with_optional_trait_ref(opt_trait_reference, |this| {
+            this.with_optional_trait_ref(opt_trait_reference.as_ref(), |this| {
                 // Resolve the self type.
                 this.visit_ty(self_type);
 
