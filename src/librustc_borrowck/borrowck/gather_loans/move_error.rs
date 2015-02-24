@@ -165,7 +165,7 @@ fn note_move_destination(bccx: &BorrowckCtxt,
         bccx.span_note(
             move_to_span,
             "attempting to move value to here");
-        bccx.span_help(
+        bccx.fileline_help(
             move_to_span,
             &format!("to prevent the move, \
                      use `ref {0}` or `ref mut {0}` to capture value by \

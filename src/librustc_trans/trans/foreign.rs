@@ -440,7 +440,7 @@ fn gate_simd_ffi(tcx: &ty::ctxt, decl: &ast::FnDecl, ty: &ty::BareFnTy) {
                               &format!("use of SIMD type `{}` in FFI is highly experimental and \
                                         may result in invalid code",
                                        pprust::ty_to_string(ast_ty)));
-                tcx.sess.span_help(ast_ty.span,
+                tcx.sess.fileline_help(ast_ty.span,
                                    "add #![feature(simd_ffi)] to the crate attributes to enable");
             }
         };
