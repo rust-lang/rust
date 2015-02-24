@@ -1699,8 +1699,6 @@ impl<'cx, 'tcx> SelectionContext<'cx, 'tcx> {
                 Some(vec![referent_ty])
             }
 
-            ty::ty_open(element_ty) => {Some(vec![element_ty])},
-
             ty::ty_ptr(ty::mt { ty: element_ty, ..}) |
             ty::ty_rptr(_, ty::mt { ty: element_ty, ..}) => {
                 Some(vec![element_ty])
