@@ -184,6 +184,7 @@ macro_rules! forward_ref_binop {
 #[lang="add"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Add<RHS=Self> {
+    /// The resulting type after applying the `+` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -237,6 +238,7 @@ add_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 #[lang="sub"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Sub<RHS=Self> {
+    /// The resulting type after applying the `-` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -290,6 +292,7 @@ sub_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 #[lang="mul"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Mul<RHS=Self> {
+    /// The resulting type after applying the `*` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -343,6 +346,7 @@ mul_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 #[lang="div"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Div<RHS=Self> {
+    /// The resulting type after applying the `/` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -396,6 +400,7 @@ div_impl! { usize u8 u16 u32 u64 isize i8 i16 i32 i64 f32 f64 }
 #[lang="rem"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Rem<RHS=Self> {
+    /// The resulting type after applying the `%` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output = Self;
 
@@ -468,6 +473,7 @@ rem_float_impl! { f64, fmod }
 #[lang="neg"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Neg {
+    /// The resulting type after applying the `-` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -544,6 +550,7 @@ neg_uint_impl! { u64, i64 }
 #[lang="not"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Not {
+    /// The resulting type after applying the `!` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -597,6 +604,7 @@ not_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 #[lang="bitand"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitAnd<RHS=Self> {
+    /// The resulting type after applying the `&` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -650,6 +658,7 @@ bitand_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 #[lang="bitor"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitOr<RHS=Self> {
+    /// The resulting type after applying the `|` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -703,6 +712,7 @@ bitor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 #[lang="bitxor"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait BitXor<RHS=Self> {
+    /// The resulting type after applying the `^` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -756,6 +766,7 @@ bitxor_impl! { bool usize u8 u16 u32 u64 isize i8 i16 i32 i64 }
 #[lang="shl"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Shl<RHS> {
+    /// The resulting type after applying the `<<` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -827,6 +838,7 @@ shl_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 #[lang="shr"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Shr<RHS> {
+    /// The resulting type after applying the `>>` operator
     #[stable(feature = "rust1", since = "1.0.0")]
     type Output;
 
@@ -900,6 +912,7 @@ shr_impl_all! { u8 u16 u32 u64 usize i8 i16 i32 i64 isize }
 #[rustc_on_unimplemented = "the type `{Self}` cannot be indexed by `{Idx}`"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Index<Idx: ?Sized> {
+    /// The returned type after indexing
     type Output: ?Sized;
 
     /// The method for the indexing (`Foo[Bar]`) operation
@@ -1047,6 +1060,7 @@ impl<Idx: fmt::Debug> fmt::Debug for RangeTo<Idx> {
 #[lang="deref"]
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait Deref {
+    /// The resulting type after dereferencing
     #[stable(feature = "rust1", since = "1.0.0")]
     type Target: ?Sized;
 
@@ -1122,6 +1136,7 @@ impl<'a, T: ?Sized> DerefMut for &'a mut T {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 pub trait Fn<Args> {
+    /// The returned type after the call operator is used.
     type Output;
 
     /// This is called when the call operator is used.
@@ -1133,6 +1148,7 @@ pub trait Fn<Args> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 pub trait FnMut<Args> {
+    /// The returned type after the call operator is used.
     type Output;
 
     /// This is called when the call operator is used.
@@ -1144,6 +1160,7 @@ pub trait FnMut<Args> {
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_paren_sugar]
 pub trait FnOnce<Args> {
+    /// The returned type after the call operator is used.
     type Output;
 
     /// This is called when the call operator is used.
