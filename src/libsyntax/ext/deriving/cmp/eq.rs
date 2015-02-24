@@ -70,7 +70,7 @@ pub fn expand_deriving_eq<F>(cx: &mut ExtCtxt,
                 generics: LifetimeBounds::empty(),
                 explicit_self: borrowed_explicit_self(),
                 args: vec!(borrowed_self()),
-                ret_ty: Literal(path!(bool)),
+                ret_ty: Literal(path_local!(bool)),
                 attributes: attrs,
                 combine_substructure: combine_substructure(box |a, b, c| {
                     $f(a, b, c)

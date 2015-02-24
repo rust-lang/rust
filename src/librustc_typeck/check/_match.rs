@@ -103,7 +103,7 @@ pub fn check_pat<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
             demand::eqtype(fcx, pat.span, expected, lhs_ty);
         }
         ast::PatEnum(..) | ast::PatIdent(..) if pat_is_const(&tcx.def_map, pat) => {
-            let const_did = tcx.def_map.borrow()[pat.id].clone().def_id();
+            let const_did = tcx.def_map.borrow()[pat.id].def_id();
             let const_scheme = ty::lookup_item_type(tcx, const_did);
             assert!(const_scheme.generics.is_empty());
             let const_ty = pcx.fcx.instantiate_type_scheme(pat.span,
@@ -433,9 +433,9 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let def = tcx.def_map.borrow()[pat.id].clone();
+    let def = tcx.def_map.borrow()[pat.id].full_def();
     let (enum_def_id, variant_def_id) = match def {
-        def::DefaultImpl(_) => {
+        def::DefTrait(_) => {
             let name = pprust::path_to_string(path);
             span_err!(tcx.sess, pat.span, E0168,
                 "use of trait `{}` in a struct pattern", name);
@@ -470,7 +470,7 @@ pub fn check_pat_struct<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>, pat: &'tcx ast::Pat,
     };
 
     instantiate_path(pcx.fcx,
-                     path,
+                     &path.segments,
                      ty::lookup_item_type(tcx, enum_def_id),
                      &ty::lookup_predicates(tcx, enum_def_id),
                      None,
@@ -502,7 +502,7 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     let fcx = pcx.fcx;
     let tcx = pcx.fcx.ccx.tcx;
 
-    let def = tcx.def_map.borrow()[pat.id].clone();
+    let def = tcx.def_map.borrow()[pat.id].full_def();
     let enum_def = def.variant_def_ids()
         .map_or_else(|| def.def_id(), |(enum_def, _)| enum_def);
 
@@ -517,7 +517,9 @@ pub fn check_pat_enum<'a, 'tcx>(pcx: &pat_ctxt<'a, 'tcx>,
     } else {
         ctor_scheme
     };
-    instantiate_path(pcx.fcx, path, path_scheme, &ctor_predicates, None, def, pat.span, pat.id);
+    instantiate_path(pcx.fcx, &path.segments,
+                     path_scheme, &ctor_predicates,
+                     None, def, pat.span, pat.id);
 
     let pat_ty = fcx.node_ty(pat.id);
     demand::eqtype(fcx, pat.span, expected, pat_ty);

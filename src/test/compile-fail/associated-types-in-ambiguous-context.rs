@@ -22,5 +22,8 @@ trait Grab {
     //~^ ERROR ambiguous associated type
 }
 
+type X = std::ops::Deref::Target;
+//~^ ERROR ambiguous associated type
+
 fn main() {
 }

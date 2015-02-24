@@ -71,13 +71,13 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn lookup_and_handle_definition(&mut self, id: &ast::NodeId) {
         self.tcx.def_map.borrow().get(id).map(|def| {
-            match def {
-                &def::DefConst(_) => {
+            match def.full_def() {
+                def::DefConst(_) => {
                     self.check_def_id(def.def_id())
                 }
                 _ if self.ignore_non_const_paths => (),
-                &def::DefPrimTy(_) => (),
-                &def::DefVariant(enum_id, variant_id, _) => {
+                def::DefPrimTy(_) => (),
+                def::DefVariant(enum_id, variant_id, _) => {
                     self.check_def_id(enum_id);
                     self.check_def_id(variant_id);
                 }
@@ -158,7 +158,7 @@ impl<'a, 'tcx> MarkSymbolVisitor<'a, 'tcx> {
 
     fn handle_field_pattern_match(&mut self, lhs: &ast::Pat,
                                   pats: &[codemap::Spanned<ast::FieldPat>]) {
-        let id = match (*self.tcx.def_map.borrow())[lhs.id] {
+        let id = match self.tcx.def_map.borrow()[lhs.id].full_def() {
             def::DefVariant(_, id, _) => id,
             _ => {
                 match ty::ty_to_def_id(ty::node_id_to_type(self.tcx,

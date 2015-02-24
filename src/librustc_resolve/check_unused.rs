@@ -68,17 +68,17 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
                                   "unused import".to_string());
         }
 
-        let (v_priv, t_priv) = match self.last_private.get(&id) {
-            Some(&LastImport {
-                value_priv: v,
-                value_used: _,
-                type_priv: t,
-                type_used: _
-            }) => (v, t),
-            Some(_) => {
+        let mut def_map = self.def_map.borrow_mut();
+        let path_res = if let Some(r) = def_map.get_mut(&id) {
+            r
+        } else {
+            return;
+        };
+        let (v_priv, t_priv) = match path_res.last_private {
+            LastImport { value_priv, type_priv, .. } => (value_priv, type_priv),
+            _ => {
                 panic!("we should only have LastImport for `use` directives")
             }
-            _ => return,
         };
 
         let mut v_used = if self.used_imports.contains(&(id, ValueNS)) {
@@ -100,10 +100,12 @@ impl<'a, 'b, 'tcx> UnusedImportCheckVisitor<'a, 'b, 'tcx> {
             _ => {},
         }
 
-        self.last_private.insert(id, LastImport{value_priv: v_priv,
-                                                value_used: v_used,
-                                                type_priv: t_priv,
-                                                type_used: t_used});
+        path_res.last_private = LastImport {
+            value_priv: v_priv,
+            value_used: v_used,
+            type_priv: t_priv,
+            type_used: t_used
+        };
     }
 }
 

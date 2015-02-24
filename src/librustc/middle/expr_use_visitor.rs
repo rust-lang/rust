@@ -422,7 +422,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                 self.walk_expr(&**subexpr)
             }
 
-            ast::ExprPath(_) | ast::ExprQPath(_) => { }
+            ast::ExprPath(..) => { }
 
             ast::ExprUnary(ast::UnDeref, ref base) => {      // *base
                 if !self.walk_overloaded_operator(expr, &**base, Vec::new(), PassArgs::ByRef) {
@@ -1017,7 +1017,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
                 // Each match binding is effectively an assignment to the
                 // binding being produced.
-                let def = def_map.borrow()[pat.id].clone();
+                let def = def_map.borrow()[pat.id].full_def();
                 match mc.cat_def(pat.id, pat.span, pat_ty, def) {
                     Ok(binding_cmt) => {
                         delegate.mutate(pat.id, pat.span, binding_cmt, Init);
@@ -1097,13 +1097,13 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
 
             match pat.node {
                 ast::PatEnum(_, _) | ast::PatIdent(_, _, None) | ast::PatStruct(..) => {
-                    match def_map.get(&pat.id) {
+                    match def_map.get(&pat.id).map(|d| d.full_def()) {
                         None => {
                             // no definition found: pat is not a
                             // struct or enum pattern.
                         }
 
-                        Some(&def::DefVariant(enum_did, variant_did, _is_struct)) => {
+                        Some(def::DefVariant(enum_did, variant_did, _is_struct)) => {
                             let downcast_cmt =
                                 if ty::enum_is_univariant(tcx, enum_did) {
                                     cmt_pat
@@ -1119,7 +1119,7 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             delegate.matched_pat(pat, downcast_cmt, match_mode);
                         }
 
-                        Some(&def::DefStruct(..)) | Some(&def::DefTy(_, false)) => {
+                        Some(def::DefStruct(..)) | Some(def::DefTy(_, false)) => {
                             // A struct (in either the value or type
                             // namespace; we encounter the former on
                             // e.g. patterns for unit structs).
@@ -1131,14 +1131,14 @@ impl<'d,'t,'tcx,TYPER:mc::Typer<'tcx>> ExprUseVisitor<'d,'t,'tcx,TYPER> {
                             delegate.matched_pat(pat, cmt_pat, match_mode);
                         }
 
-                        Some(&def::DefConst(..)) |
-                        Some(&def::DefLocal(..)) => {
+                        Some(def::DefConst(..)) |
+                        Some(def::DefLocal(..)) => {
                             // This is a leaf (i.e. identifier binding
                             // or constant value to match); thus no
                             // `matched_pat` call.
                         }
 
-                        Some(def @ &def::DefTy(_, true)) => {
+                        Some(def @ def::DefTy(_, true)) => {
                             // An enum's type -- should never be in a
                             // pattern.
 

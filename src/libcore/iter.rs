@@ -981,7 +981,7 @@ pub trait IteratorExt: Iterator + Sized {
     #[unstable(feature = "core", reason = "recent addition")]
     fn cloned(self) -> Cloned<Self> where
         Self::Item: Deref,
-        <Self::Item as Deref>::Output: Clone,
+        <Self::Item as Deref>::Target: Clone,
     {
         Cloned { it: self }
     }

@@ -46,7 +46,7 @@ pub fn try_inline(cx: &DocContext, id: ast::NodeId, into: Option<ast::Ident>)
         None => return None,
     };
     let def = match tcx.def_map.borrow().get(&id) {
-        Some(def) => *def,
+        Some(d) => d.full_def(),
         None => return None,
     };
     let did = def.def_id();
@@ -69,7 +69,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
     let mut ret = Vec::new();
     let did = def.def_id();
     let inner = match def {
-        def::DefaultImpl(did) => {
+        def::DefTrait(did) => {
             record_extern_fqn(cx, did, clean::TypeTrait);
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }

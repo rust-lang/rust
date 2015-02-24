@@ -193,8 +193,8 @@ pub fn get_const_expr_as_global<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                                           -> ValueRef {
     // Special-case constants to cache a common global for all uses.
     match expr.node {
-        ast::ExprPath(_) => {
-            let def = ccx.tcx().def_map.borrow()[expr.id];
+        ast::ExprPath(..) => {
+            let def = ccx.tcx().def_map.borrow()[expr.id].full_def();
             match def {
                 def::DefConst(def_id) => {
                     if !ccx.tcx().adjustments.borrow().contains_key(&expr.id) {
@@ -582,7 +582,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                       _ => break,
                   }
               }
-              let opt_def = cx.tcx().def_map.borrow().get(&cur.id).cloned();
+              let opt_def = cx.tcx().def_map.borrow().get(&cur.id).map(|d| d.full_def());
               if let Some(def::DefStatic(def_id, _)) = opt_def {
                   return get_static_val(cx, def_id, ety);
               }
@@ -663,10 +663,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 C_array(llunitty, &vs[..])
             }
           }
-          ast::ExprPath(_) | ast::ExprQPath(_) => {
-            let def = cx.tcx().def_map.borrow()[e.id];
+          ast::ExprPath(..) => {
+            let def = cx.tcx().def_map.borrow()[e.id].full_def();
             match def {
-                def::DefFn(..) | def::DefStaticMethod(..) | def::DefMethod(..) => {
+                def::DefFn(..) | def::DefMethod(..) => {
                     expr::trans_def_fn_unadjusted(cx, e, def, param_substs).val
                 }
                 def::DefConst(def_id) => {
@@ -701,7 +701,7 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
             }
           }
           ast::ExprCall(ref callee, ref args) => {
-              let opt_def = cx.tcx().def_map.borrow().get(&callee.id).cloned();
+              let opt_def = cx.tcx().def_map.borrow().get(&callee.id).map(|d| d.full_def());
               let arg_vals = map_list(&args[..]);
               match opt_def {
                   Some(def::DefStruct(_)) => {

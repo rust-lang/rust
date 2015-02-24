@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,17 +8,14 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// Test calling methods on an impl for a bare trait. This test checks trait impls
-// must be in the same module as the trait.
+pub struct Foo;
 
-mod Foo {
-    trait T {}
-}
+mod bar {
+    use Foo;
 
-mod Bar {
-    impl<'a> ::Foo::T+'a { //~ERROR: inherent implementations may only be implemented in the same
-        fn foo(&self) {}
+    impl Foo {
+        fn baz(&self) {}
     }
 }
-
 fn main() {}
+

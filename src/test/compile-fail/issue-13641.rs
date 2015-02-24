@@ -17,9 +17,9 @@ mod a {
 
 fn main() {
     a::Foo::new();
-    //~^ ERROR: static method `new` is inaccessible
+    //~^ ERROR: method `new` is inaccessible
     //~^^ NOTE: struct `Foo` is private
     a::Bar::new();
-    //~^ ERROR: static method `new` is inaccessible
+    //~^ ERROR: method `new` is inaccessible
     //~^^ NOTE: enum `Bar` is private
 }

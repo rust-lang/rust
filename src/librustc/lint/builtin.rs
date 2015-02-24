@@ -405,8 +405,8 @@ struct ImproperCTypesVisitor<'a, 'tcx: 'a> {
 }
 
 impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
-    fn check_def(&mut self, sp: Span, ty_id: ast::NodeId, path_id: ast::NodeId) {
-        match self.cx.tcx.def_map.borrow()[path_id].clone() {
+    fn check_def(&mut self, sp: Span, id: ast::NodeId) {
+        match self.cx.tcx.def_map.borrow()[id].full_def() {
             def::DefPrimTy(ast::TyInt(ast::TyIs(_))) => {
                 self.cx.span_lint(IMPROPER_CTYPES, sp,
                                   "found rust type `isize` in foreign module, while \
@@ -418,7 +418,7 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
                                    libc::c_uint or libc::c_ulong should be used");
             }
             def::DefTy(..) => {
-                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&ty_id) {
+                let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
                     Some(&ty::atttce_resolved(t)) => t,
                     _ => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
                 };
@@ -437,9 +437,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for ImproperCTypesVisitor<'a, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        match ty.node {
-            ast::TyPath(_, id) => self.check_def(ty.span, ty.id, id),
-            _ => (),
+        if let ast::TyPath(..) = ty.node {
+            self.check_def(ty.span, ty.id);
         }
         visit::walk_ty(self, ty);
     }
@@ -683,8 +682,8 @@ impl LintPass for PathStatements {
         match s.node {
             ast::StmtSemi(ref expr, _) => {
                 match expr.node {
-                    ast::ExprPath(_) => cx.span_lint(PATH_STATEMENTS, s.span,
-                                                     "path statement with no effect"),
+                    ast::ExprPath(..) => cx.span_lint(PATH_STATEMENTS, s.span,
+                                                      "path statement with no effect"),
                     _ => ()
                 }
             }
@@ -1001,7 +1000,8 @@ impl LintPass for NonSnakeCase {
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         if let &ast::PatIdent(_, ref path1, _) = &p.node {
-            if let Some(&def::DefLocal(_)) = cx.tcx.def_map.borrow().get(&p.id) {
+            let def = cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def());
+            if let Some(def::DefLocal(_)) = def {
                 self.check_snake_case(cx, "variable", path1.node, p.span);
             }
         }
@@ -1066,8 +1066,8 @@ impl LintPass for NonUpperCaseGlobals {
 
     fn check_pat(&mut self, cx: &Context, p: &ast::Pat) {
         // Lint for constants that look like binding identifiers (#7526)
-        match (&p.node, cx.tcx.def_map.borrow().get(&p.id)) {
-            (&ast::PatIdent(_, ref path1, _), Some(&def::DefConst(..))) => {
+        match (&p.node, cx.tcx.def_map.borrow().get(&p.id).map(|d| d.full_def())) {
+            (&ast::PatIdent(_, ref path1, _), Some(def::DefConst(..))) => {
                 NonUpperCaseGlobals::check_upper_case(cx, "constant in pattern",
                                                       path1.node, p.span);
             }
@@ -1227,10 +1227,13 @@ impl LintPass for NonShorthandFieldPatterns {
     fn check_pat(&mut self, cx: &Context, pat: &ast::Pat) {
         let def_map = cx.tcx.def_map.borrow();
         if let ast::PatStruct(_, ref v, _) = pat.node {
-            for fieldpat in v.iter()
-                             .filter(|fieldpat| !fieldpat.node.is_shorthand)
-                             .filter(|fieldpat| def_map.get(&fieldpat.node.pat.id)
-                                                == Some(&def::DefLocal(fieldpat.node.pat.id))) {
+            let field_pats = v.iter()
+                              .filter(|fieldpat| !fieldpat.node.is_shorthand)
+                              .filter(|fieldpat| {
+                let def = def_map.get(&fieldpat.node.pat.id).map(|d| d.full_def());
+                def == Some(def::DefLocal(fieldpat.node.pat.id))
+            });
+            for fieldpat in field_pats {
                 if let ast::PatIdent(_, ident, None) = fieldpat.node.pat.node {
                     if ident.node.as_str() == fieldpat.node.ident.as_str() {
                         cx.span_lint(NON_SHORTHAND_FIELD_PATTERNS, fieldpat.span,
@@ -1909,10 +1912,7 @@ impl LintPass for UnconditionalRecursion {
                                       _: ast::Ident,
                                       id: ast::NodeId) -> bool {
             tcx.def_map.borrow().get(&id)
-                .map_or(false, |def| {
-                    let did = def.def_id();
-                    ast_util::is_local(did) && did.node == fn_id
-                })
+                .map_or(false, |def| def.def_id() == ast_util::local_def(fn_id))
         }
 
         // check if the method call `id` refers to method `method_id`

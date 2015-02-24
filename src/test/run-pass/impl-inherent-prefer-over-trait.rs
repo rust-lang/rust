@@ -8,18 +8,31 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// aux-build:issue-21202.rs
+struct Foo;
 
-extern crate "issue-21202" as crate1;
-
-use crate1::A;
-
-mod B {
-    use crate1::A::Foo;
-    fn bar(f: Foo) {
-        Foo::foo(&f);
-        //~^ ERROR: method `foo` is private
-    }
+trait Trait {
+    fn bar(&self);
 }
 
-fn main() { }
+// Inherent impls should be preferred over trait ones.
+impl Foo {
+    fn bar(&self) {}
+}
+
+impl Trait {
+    fn baz(_: &Foo) {}
+}
+
+impl Trait for Foo {
+    fn bar(&self) { panic!("wrong method called!") }
+}
+
+fn main() {
+    Foo.bar();
+    Foo::bar(&Foo);
+    <Foo>::bar(&Foo);
+
+    // Should work even if Trait::baz doesn't exist.
+    // N.B: `<Trait>::bar` would be ambiguous.
+    <Trait>::baz(&Foo);
+}

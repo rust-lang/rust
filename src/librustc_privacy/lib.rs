@@ -17,7 +17,6 @@
       html_favicon_url = "http://www.rust-lang.org/favicon.ico",
       html_root_url = "http://doc.rust-lang.org/nightly/")]
 
-#![feature(core)]
 #![feature(int_uint)]
 #![feature(rustc_diagnostic_macros)]
 #![feature(rustc_private)]
@@ -38,8 +37,7 @@ use rustc::middle::def;
 use rustc::middle::privacy::ImportUse::*;
 use rustc::middle::privacy::LastPrivate::*;
 use rustc::middle::privacy::PrivateDep::*;
-use rustc::middle::privacy::{ExportedItems, PublicItems, LastPrivateMap};
-use rustc::middle::privacy::{ExternalExports};
+use rustc::middle::privacy::{ExternalExports, ExportedItems, PublicItems};
 use rustc::middle::ty::{MethodTypeParam, MethodStatic};
 use rustc::middle::ty::{MethodCall, MethodMap, MethodOrigin, MethodParam};
 use rustc::middle::ty::{MethodStaticClosure, MethodObject};
@@ -259,8 +257,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             // * Private trait impls for private types can be completely ignored
             ast::ItemImpl(_, _, _, _, ref ty, ref impl_items) => {
                 let public_ty = match ty.node {
-                    ast::TyPath(_, id) => {
-                        match self.tcx.def_map.borrow()[id].clone() {
+                    ast::TyPath(..) => {
+                        match self.tcx.def_map.borrow()[ty.id].full_def() {
                             def::DefPrimTy(..) => true,
                             def => {
                                 let did = def.def_id();
@@ -326,8 +324,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for EmbargoVisitor<'a, 'tcx> {
             }
 
             ast::ItemTy(ref ty, _) if public_first => {
-                if let ast::TyPath(_, id) = ty.node {
-                    match self.tcx.def_map.borrow()[id].clone() {
+                if let ast::TyPath(..) = ty.node {
+                    match self.tcx.def_map.borrow()[ty.id].full_def() {
                         def::DefPrimTy(..) | def::DefTyParam(..) => {},
                         def => {
                             let did = def.def_id();
@@ -379,7 +377,6 @@ struct PrivacyVisitor<'a, 'tcx: 'a> {
     in_foreign: bool,
     parents: NodeMap<ast::NodeId>,
     external_exports: ExternalExports,
-    last_private_map: LastPrivateMap,
 }
 
 enum PrivacyResult {
@@ -628,11 +625,11 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
                     // back up the chains to find the relevant struct/enum that
                     // was private.
                     ast::ItemImpl(_, _, _, _, ref ty, _) => {
-                        let id = match ty.node {
-                            ast::TyPath(_, id) => id,
+                        match ty.node {
+                            ast::TyPath(..) => {}
                             _ => return Some((err_span, err_msg, None)),
                         };
-                        let def = self.tcx.def_map.borrow()[id].clone();
+                        let def = self.tcx.def_map.borrow()[ty.id].full_def();
                         let did = def.def_id();
                         assert!(is_local(did));
                         match self.tcx.map.get(did.node) {
@@ -716,21 +713,21 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
     }
 
     // Checks that a path is in scope.
-    fn check_path(&mut self, span: Span, path_id: ast::NodeId, path: &ast::Path) {
+    fn check_path(&mut self, span: Span, path_id: ast::NodeId, last: ast::Ident) {
         debug!("privacy - path {}", self.nodestr(path_id));
-        let orig_def = self.tcx.def_map.borrow()[path_id].clone();
+        let path_res = self.tcx.def_map.borrow()[path_id];
         let ck = |tyname: &str| {
             let ck_public = |def: ast::DefId| {
                 debug!("privacy - ck_public {:?}", def);
-                let name = token::get_ident(path.segments.last().unwrap().identifier);
-                let origdid = orig_def.def_id();
+                let name = token::get_ident(last);
+                let origdid = path_res.def_id();
                 self.ensure_public(span,
                                    def,
                                    Some(origdid),
                                    &format!("{} `{}`", tyname, name))
             };
 
-            match self.last_private_map[path_id] {
+            match path_res.last_private {
                 LastMod(AllPublic) => {},
                 LastMod(DependsOn(def)) => {
                     self.report_error(ck_public(def));
@@ -794,17 +791,15 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
         // def map is not. Therefore the names we work out below will not always
         // be accurate and we can get slightly wonky error messages (but type
         // checking is always correct).
-        match self.tcx.def_map.borrow()[path_id].clone() {
-            def::DefStaticMethod(..) => ck("static method"),
+        match path_res.full_def() {
             def::DefFn(..) => ck("function"),
             def::DefStatic(..) => ck("static"),
             def::DefConst(..) => ck("const"),
             def::DefVariant(..) => ck("variant"),
             def::DefTy(_, false) => ck("type"),
             def::DefTy(_, true) => ck("enum"),
-            def::DefaultImpl(..) => ck("trait"),
+            def::DefTrait(..) => ck("trait"),
             def::DefStruct(..) => ck("struct"),
-            def::DefMethod(_, Some(..), _) => ck("trait method"),
             def::DefMethod(..) => ck("method"),
             def::DefMod(..) => ck("module"),
             _ => {}
@@ -832,37 +827,22 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
 
 impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     fn visit_item(&mut self, item: &ast::Item) {
-        match item.node {
-            ast::ItemUse(ref vpath) => {
-                match vpath.node {
-                    ast::ViewPathSimple(..) | ast::ViewPathGlob(..) => {}
-                    ast::ViewPathList(ref prefix, ref list) => {
-                        for pid in list {
-                            match pid.node {
-                                ast::PathListIdent { id, name } => {
-                                    debug!("privacy - ident item {}", id);
-                                    let seg = ast::PathSegment {
-                                        identifier: name,
-                                        parameters: ast::PathParameters::none(),
-                                    };
-                                    let segs = vec![seg];
-                                    let path = ast::Path {
-                                        global: false,
-                                        span: pid.span,
-                                        segments: segs,
-                                    };
-                                    self.check_path(pid.span, id, &path);
-                                }
-                                ast::PathListMod { id } => {
-                                    debug!("privacy - mod item {}", id);
-                                    self.check_path(pid.span, id, prefix);
-                                }
-                            }
+        if let ast::ItemUse(ref vpath) = item.node {
+            if let ast::ViewPathList(ref prefix, ref list) = vpath.node {
+                for pid in list {
+                    match pid.node {
+                        ast::PathListIdent { id, name } => {
+                            debug!("privacy - ident item {}", id);
+                            self.check_path(pid.span, id, name);
+                        }
+                        ast::PathListMod { id } => {
+                            debug!("privacy - mod item {}", id);
+                            let name = prefix.segments.last().unwrap().identifier;
+                            self.check_path(pid.span, id, name);
                         }
                     }
                 }
             }
-            _ => {}
         }
         let orig_curitem = replace(&mut self.curitem, item.id);
         visit::walk_item(self, item);
@@ -908,7 +888,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        match self.tcx.def_map.borrow()[expr.id].clone() {
+                        match self.tcx.def_map.borrow()[expr.id].full_def() {
                             def::DefVariant(_, variant_id, _) => {
                                 for field in fields {
                                     self.check_field(expr.span, variant_id,
@@ -927,7 +907,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                                                             struct type?!"),
                 }
             }
-            ast::ExprPath(_) | ast::ExprQPath(_) => {
+            ast::ExprPath(..) => {
                 let guard = |did: ast::DefId| {
                     let fields = ty::lookup_struct_fields(self.tcx, did);
                     let any_priv = fields.iter().any(|f| {
@@ -941,8 +921,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                              with private fields");
                     }
                 };
-                match self.tcx.def_map.borrow().get(&expr.id) {
-                    Some(&def::DefStruct(did)) => {
+                match self.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
+                    Some(def::DefStruct(did)) => {
                         guard(if is_local(did) {
                             local_def(self.tcx.map.get_parent(did.node))
                         } else {
@@ -981,8 +961,8 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
                         }
                     }
                     ty::ty_enum(_, _) => {
-                        match self.tcx.def_map.borrow().get(&pattern.id) {
-                            Some(&def::DefVariant(_, variant_id, _)) => {
+                        match self.tcx.def_map.borrow().get(&pattern.id).map(|d| d.full_def()) {
+                            Some(def::DefVariant(_, variant_id, _)) => {
                                 for field in fields {
                                     self.check_field(pattern.span, variant_id,
                                                      NamedField(field.node.ident.name));
@@ -1033,7 +1013,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for PrivacyVisitor<'a, 'tcx> {
     }
 
     fn visit_path(&mut self, path: &ast::Path, id: ast::NodeId) {
-        self.check_path(path.span, id, path);
+        self.check_path(path.span, id, path.segments.last().unwrap().identifier);
         visit::walk_path(self, path);
     }
 }
@@ -1233,7 +1213,7 @@ struct CheckTypeForPrivatenessVisitor<'a, 'b: 'a, 'tcx: 'b> {
 
 impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
     fn path_is_private_type(&self, path_id: ast::NodeId) -> bool {
-        let did = match self.tcx.def_map.borrow().get(&path_id).cloned() {
+        let did = match self.tcx.def_map.borrow().get(&path_id).map(|d| d.full_def()) {
             // `int` etc. (None doesn't seem to occur.)
             None | Some(def::DefPrimTy(..)) => return false,
             Some(def) => def.def_id()
@@ -1273,8 +1253,8 @@ impl<'a, 'tcx> VisiblePrivateTypesVisitor<'a, 'tcx> {
 
 impl<'a, 'b, 'tcx, 'v> Visitor<'v> for CheckTypeForPrivatenessVisitor<'a, 'b, 'tcx> {
     fn visit_ty(&mut self, ty: &ast::Ty) {
-        if let ast::TyPath(_, path_id) = ty.node {
-            if self.inner.path_is_private_type(path_id) {
+        if let ast::TyPath(..) = ty.node {
+            if self.inner.path_is_private_type(ty.id) {
                 self.contains_private = true;
                 // found what we're looking for so let's stop
                 // working.
@@ -1398,7 +1378,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
                             //
                             // Those in 2. are warned via walk_generics and this
                             // call here.
-                            self.visit_trait_ref(tr)
+                            visit::walk_path(self, &tr.path);
                         }
                     }
                 } else if trait_ref.is_none() && self_is_public_path {
@@ -1479,9 +1459,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
     }
 
     fn visit_ty(&mut self, t: &ast::Ty) {
-        if let ast::TyPath(ref p, path_id) = t.node {
+        if let ast::TyPath(_, ref p) = t.node {
             if !self.tcx.sess.features.borrow().visible_private_types &&
-                self.path_is_private_type(path_id) {
+                self.path_is_private_type(t.id) {
                 self.tcx.sess.span_err(p.span,
                                        "private type in exported type signature");
             }
@@ -1517,8 +1497,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for VisiblePrivateTypesVisitor<'a, 'tcx> {
 
 pub fn check_crate(tcx: &ty::ctxt,
                    export_map: &def::ExportMap,
-                   external_exports: ExternalExports,
-                   last_private_map: LastPrivateMap)
+                   external_exports: ExternalExports)
                    -> (ExportedItems, PublicItems) {
     let krate = tcx.map.krate();
 
@@ -1536,7 +1515,6 @@ pub fn check_crate(tcx: &ty::ctxt,
         tcx: tcx,
         parents: visitor.parents,
         external_exports: external_exports,
-        last_private_map: last_private_map,
     };
     visit::walk_crate(&mut visitor, krate);
 

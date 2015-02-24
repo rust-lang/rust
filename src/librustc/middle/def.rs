@@ -10,10 +10,9 @@
 
 pub use self::Def::*;
 pub use self::MethodProvenance::*;
-pub use self::TraitItemKind::*;
 
+use middle::privacy::LastPrivate;
 use middle::subst::ParamSpace;
-use middle::ty::{ExplicitSelfCategory, StaticExplicitSelfCategory};
 use util::nodemap::NodeMap;
 use syntax::ast;
 use syntax::ast_util::local_def;
@@ -23,7 +22,6 @@ use std::cell::RefCell;
 #[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
 pub enum Def {
     DefFn(ast::DefId, bool /* is_ctor */),
-    DefStaticMethod(/* method */ ast::DefId, MethodProvenance),
     DefSelfTy(/* trait id */ ast::NodeId),
     DefMod(ast::DefId),
     DefForeignMod(ast::DefId),
@@ -32,13 +30,8 @@ pub enum Def {
     DefLocal(ast::NodeId),
     DefVariant(ast::DefId /* enum */, ast::DefId /* variant */, bool /* is_structure */),
     DefTy(ast::DefId, bool /* is_enum */),
-    DefAssociatedTy(ast::DefId),
-    // A partially resolved path to an associated type `T::U` where `T` is a concrete
-    // type (indicated by the DefId) which implements a trait which has an associated
-    // type `U` (indicated by the Ident).
-    // FIXME(#20301) -- should use Name
-    DefAssociatedPath(TyParamProvenance, ast::Ident),
-    DefaultImpl(ast::DefId),
+    DefAssociatedTy(ast::DefId /* trait */, ast::DefId),
+    DefTrait(ast::DefId),
     DefPrimTy(ast::PrimTy),
     DefTyParam(ParamSpace, u32, ast::DefId, ast::Name),
     DefUse(ast::DefId),
@@ -54,14 +47,48 @@ pub enum Def {
     /// - If it's an ExprPath referring to some tuple struct, then DefMap maps
     ///   it to a def whose id is the StructDef.ctor_id.
     DefStruct(ast::DefId),
-    DefTyParamBinder(ast::NodeId), /* struct, impl or trait with ty params */
     DefRegion(ast::NodeId),
     DefLabel(ast::NodeId),
-    DefMethod(ast::DefId /* method */, Option<ast::DefId> /* trait */, MethodProvenance),
+    DefMethod(ast::DefId /* method */, MethodProvenance),
+}
+
+/// The result of resolving a path.
+/// Before type checking completes, `depth` represents the number of
+/// trailing segments which are yet unresolved. Afterwards, if there
+/// were no errors, all paths should be fully resolved, with `depth`
+/// set to `0` and `base_def` representing the final resolution.
+///
+///     module::Type::AssocX::AssocY::MethodOrAssocType
+///     ^~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
+///     base_def      depth = 3
+///
+///     <T as Trait>::AssocX::AssocY::MethodOrAssocType
+///           ^~~~~~~~~~~~~~  ^~~~~~~~~~~~~~~~~~~~~~~~~
+///           base_def        depth = 2
+#[derive(Copy, Debug)]
+pub struct PathResolution {
+    pub base_def: Def,
+    pub last_private: LastPrivate,
+    pub depth: usize
+}
+
+impl PathResolution {
+    /// Get the definition, if fully resolved, otherwise panic.
+    pub fn full_def(&self) -> Def {
+        if self.depth != 0 {
+            panic!("path not fully resolved: {:?}", self);
+        }
+        self.base_def
+    }
+
+    /// Get the DefId, if fully resolved, otherwise panic.
+    pub fn def_id(&self) -> ast::DefId {
+        self.full_def().def_id()
+    }
 }
 
 // Definition mapping
-pub type DefMap = RefCell<NodeMap<Def>>;
+pub type DefMap = RefCell<NodeMap<PathResolution>>;
 // This is the replacement export map. It maps a module to all of the exports
 // within.
 pub type ExportMap = NodeMap<Vec<Export>>;
@@ -78,12 +105,6 @@ pub enum MethodProvenance {
     FromImpl(ast::DefId),
 }
 
-#[derive(Clone, Copy, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub enum TyParamProvenance {
-    FromSelf(ast::DefId),
-    FromParam(ast::DefId),
-}
-
 impl MethodProvenance {
     pub fn map<F>(self, f: F) -> MethodProvenance where
         F: FnOnce(ast::DefId) -> ast::DefId,
@@ -91,34 +112,6 @@ impl MethodProvenance {
         match self {
             FromTrait(did) => FromTrait(f(did)),
             FromImpl(did) => FromImpl(f(did))
-        }
-    }
-}
-
-impl TyParamProvenance {
-    pub fn def_id(&self) -> ast::DefId {
-        match *self {
-            TyParamProvenance::FromSelf(ref did) => did.clone(),
-            TyParamProvenance::FromParam(ref did) => did.clone(),
-        }
-    }
-}
-
-#[derive(Clone, Copy, Eq, PartialEq)]
-pub enum TraitItemKind {
-    NonstaticMethodTraitItemKind,
-    StaticMethodTraitItemKind,
-    TypeTraitItemKind,
-}
-
-impl TraitItemKind {
-    pub fn from_explicit_self_category(explicit_self_category:
-                                       ExplicitSelfCategory)
-                                       -> TraitItemKind {
-        if explicit_self_category == StaticExplicitSelfCategory {
-            StaticMethodTraitItemKind
-        } else {
-            NonstaticMethodTraitItemKind
         }
     }
 }
@@ -132,25 +125,21 @@ impl Def {
 
     pub fn def_id(&self) -> ast::DefId {
         match *self {
-            DefFn(id, _) | DefStaticMethod(id, _) | DefMod(id) |
-            DefForeignMod(id) | DefStatic(id, _) |
-            DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(id) |
-            DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefaultImpl(id) |
-            DefMethod(id, _, _) | DefConst(id) |
-            DefAssociatedPath(TyParamProvenance::FromSelf(id), _) |
-            DefAssociatedPath(TyParamProvenance::FromParam(id), _) => {
+            DefFn(id, _) | DefMod(id) | DefForeignMod(id) | DefStatic(id, _) |
+            DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(_, id) |
+            DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
+            DefMethod(id, _) | DefConst(id) => {
                 id
             }
             DefLocal(id) |
             DefSelfTy(id) |
             DefUpvar(id, _) |
             DefRegion(id) |
-            DefTyParamBinder(id) |
             DefLabel(id) => {
                 local_def(id)
             }
 
-            DefPrimTy(_) => panic!()
+            DefPrimTy(_) => panic!("attempted .def_id() on DefPrimTy")
         }
     }
 

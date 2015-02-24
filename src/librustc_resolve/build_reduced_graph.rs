@@ -23,10 +23,8 @@ use Namespace::{TypeNS, ValueNS};
 use NameBindings;
 use ParentLink::{self, ModuleParentLink, BlockParentLink};
 use Resolver;
-use RibKind::*;
 use Shadowable;
 use TypeNsDef;
-use TypeParameters::HasTypeParameters;
 
 use self::DuplicateCheckingMode::*;
 use self::NamespaceError::*;
@@ -34,7 +32,6 @@ use self::NamespaceError::*;
 use rustc::metadata::csearch;
 use rustc::metadata::decoder::{DefLike, DlDef, DlField, DlImpl};
 use rustc::middle::def::*;
-use rustc::middle::subst::FnSpace;
 
 use syntax::ast::{Block, Crate};
 use syntax::ast::{DeclItem, DefId};
@@ -42,19 +39,16 @@ use syntax::ast::{ForeignItem, ForeignItemFn, ForeignItemStatic};
 use syntax::ast::{Item, ItemConst, ItemEnum, ItemExternCrate, ItemFn};
 use syntax::ast::{ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
 use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
-use syntax::ast::{MethodImplItem, Name, NamedField, NodeId};
-use syntax::ast::{PathListIdent, PathListMod};
-use syntax::ast::{Public, SelfStatic};
+use syntax::ast::{Name, NamedField, NodeId};
+use syntax::ast::{PathListIdent, PathListMod, Public};
 use syntax::ast::StmtDecl;
 use syntax::ast::StructVariantKind;
 use syntax::ast::TupleVariantKind;
-use syntax::ast::TyObjectSum;
-use syntax::ast::{TypeImplItem, UnnamedField};
+use syntax::ast::UnnamedField;
 use syntax::ast::{Variant, ViewPathGlob, ViewPathList, ViewPathSimple};
 use syntax::ast::{Visibility};
-use syntax::ast::TyPath;
 use syntax::ast;
-use syntax::ast_util::{self, PostExpansionMethod, local_def};
+use syntax::ast_util::{self, local_def};
 use syntax::attr::AttrMetaMethods;
 use syntax::parse::token::{self, special_idents};
 use syntax::codemap::{Span, DUMMY_SP};
@@ -181,12 +175,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                         Some(TypeNS)
                     }
                     ForbidDuplicateTypesAndModules => {
-                        match child.def_for_namespace(TypeNS) {
-                            None => {}
-                            Some(_) if child.get_module_if_available()
-                                            .map(|m| m.kind.get()) ==
-                                       Some(ImplModuleKind) => {}
-                            Some(_) => duplicate_type = TypeError
+                        if child.defined_in_namespace(TypeNS) {
+                            duplicate_type = TypeError;
                         }
                         Some(TypeNS)
                     }
@@ -465,9 +455,6 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 name_bindings.define_type(DefTy(local_def(item.id), true), sp, modifiers);
 
                 let parent_link = self.get_parent_link(parent, name);
-                // We want to make sure the module type is EnumModuleKind
-                // even if there's already an ImplModuleKind module defined,
-                // since that's how we prevent duplicate enum definitions
                 name_bindings.set_module_kind(parent_link,
                                               Some(local_def(item.id)),
                                               EnumModuleKind,
@@ -517,147 +504,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 parent.clone()
             }
 
-            ItemImpl(_, _, _, None, ref ty, ref impl_items) => {
-                // If this implements an anonymous trait, then add all the
-                // methods within to a new module, if the type was defined
-                // within this module.
-
-                let mod_name = match ty.node {
-                    TyPath(ref path, _) if path.segments.len() == 1 => {
-                        // FIXME(18446) we should distinguish between the name of
-                        // a trait and the name of an impl of that trait.
-                        Some(path.segments.last().unwrap().identifier.name)
-                    }
-                    TyObjectSum(ref lhs_ty, _) => {
-                        match lhs_ty.node {
-                            TyPath(ref path, _) if path.segments.len() == 1 => {
-                                Some(path.segments.last().unwrap().identifier.name)
-                            }
-                            _ => {
-                                None
-                            }
-                        }
-                    }
-                    _ => {
-                        None
-                    }
-                };
-
-                let mod_name = match mod_name {
-                    Some(mod_name) => mod_name,
-                    None => {
-                        self.resolve_error(ty.span,
-                                           "inherent implementations may \
-                                            only be implemented in the same \
-                                            module as the type they are \
-                                            implemented for");
-                        return parent.clone();
-                    }
-                };
-                // Create the module and add all methods.
-                let child_opt = parent.children.borrow().get(&mod_name)
-                                       .and_then(|m| m.get_module_if_available());
-                let new_parent = match child_opt {
-                    // It already exists
-                    Some(ref child) if (child.kind.get() == ImplModuleKind ||
-                                        child.kind.get() == TraitModuleKind) => {
-                        child.clone()
-                    }
-                    Some(ref child) if child.kind.get() == EnumModuleKind ||
-                                       child.kind.get() == TypeModuleKind => {
-                        child.clone()
-                    }
-                    // Create the module
-                    _ => {
-                        let name_bindings =
-                            self.add_child(mod_name, parent, ForbidDuplicateModules, sp);
-
-                        let parent_link = self.get_parent_link(parent, name);
-                        let def_id = local_def(item.id);
-                        let ns = TypeNS;
-                        let is_public =
-                            !name_bindings.defined_in_namespace(ns) ||
-                            name_bindings.defined_in_public_namespace(ns);
-
-                        name_bindings.define_module(parent_link,
-                                                    Some(def_id),
-                                                    ImplModuleKind,
-                                                    false,
-                                                    is_public,
-                                                    sp);
-
-                        name_bindings.get_module()
-                    }
-                };
-
-                // For each implementation item...
-                for impl_item in impl_items {
-                    match *impl_item {
-                        MethodImplItem(ref method) => {
-                            // Add the method to the module.
-                            let name = method.pe_ident().name;
-                            let method_name_bindings =
-                                self.add_child(name,
-                                               &new_parent,
-                                               ForbidDuplicateValues,
-                                               method.span);
-                            let def = match method.pe_explicit_self()
-                                .node {
-                                    SelfStatic => {
-                                        // Static methods become
-                                        // `DefStaticMethod`s.
-                                        DefStaticMethod(local_def(method.id),
-                                                        FromImpl(local_def(item.id)))
-                                    }
-                                    _ => {
-                                        // Non-static methods become
-                                        // `DefMethod`s.
-                                        DefMethod(local_def(method.id),
-                                                  None,
-                                                  FromImpl(local_def(item.id)))
-                                    }
-                                };
-
-                            // NB: not IMPORTABLE
-                            let modifiers = if method.pe_vis() == ast::Public {
-                                PUBLIC
-                            } else {
-                                DefModifiers::empty()
-                            };
-                            method_name_bindings.define_value(
-                                def,
-                                method.span,
-                                modifiers);
-                        }
-                        TypeImplItem(ref typedef) => {
-                            // Add the typedef to the module.
-                            let name = typedef.ident.name;
-                            let typedef_name_bindings =
-                                self.add_child(
-                                    name,
-                                    &new_parent,
-                                    ForbidDuplicateTypesAndModules,
-                                    typedef.span);
-                            let def = DefAssociatedTy(local_def(
-                                typedef.id));
-                            // NB: not IMPORTABLE
-                            let modifiers = if typedef.vis == ast::Public {
-                                PUBLIC
-                            } else {
-                                DefModifiers::empty()
-                            };
-                            typedef_name_bindings.define_type(
-                                def,
-                                typedef.span,
-                                modifiers);
-                        }
-                    }
-                }
-                parent.clone()
-            }
-
             ItemDefaultImpl(_, _) |
-            ItemImpl(_, _, _, Some(_), _, _) => parent.clone(),
+            ItemImpl(..) => parent.clone(),
 
             ItemTrait(_, _, _, ref items) => {
                 let name_bindings =
@@ -677,7 +525,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
                 // Add the names of all the items to the trait info.
                 for trait_item in items {
-                    let (name, kind) = match *trait_item {
+                    let (name, trait_item_id) = match *trait_item {
                         ast::RequiredMethod(_) |
                         ast::ProvidedMethod(_) => {
                             let ty_m = ast_util::trait_item_to_ty_method(trait_item);
@@ -685,23 +533,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                             let name = ty_m.ident.name;
 
                             // Add it as a name in the trait module.
-                            let (def, static_flag) = match ty_m.explicit_self
-                                                               .node {
-                                SelfStatic => {
-                                    // Static methods become `DefStaticMethod`s.
-                                    (DefStaticMethod(
-                                            local_def(ty_m.id),
-                                            FromTrait(local_def(item.id))),
-                                     StaticMethodTraitItemKind)
-                                }
-                                _ => {
-                                    // Non-static methods become `DefMethod`s.
-                                    (DefMethod(local_def(ty_m.id),
-                                               Some(local_def(item.id)),
-                                               FromTrait(local_def(item.id))),
-                                     NonstaticMethodTraitItemKind)
-                                }
-                            };
+                            let def = DefMethod(local_def(ty_m.id),
+                                                FromTrait(local_def(item.id)));
 
                             let method_name_bindings =
                                 self.add_child(name,
@@ -713,11 +546,11 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                               ty_m.span,
                                                               PUBLIC);
 
-                            (name, static_flag)
+                            (name, local_def(ty_m.id))
                         }
                         ast::TypeTraitItem(ref associated_type) => {
-                            let def = DefAssociatedTy(local_def(
-                                    associated_type.ty_param.id));
+                            let def = DefAssociatedTy(local_def(item.id),
+                                                      local_def(associated_type.ty_param.id));
 
                             let name_bindings =
                                 self.add_child(associated_type.ty_param.ident.name,
@@ -729,14 +562,15 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                       associated_type.ty_param.span,
                                                       PUBLIC);
 
-                            (associated_type.ty_param.ident.name, TypeTraitItemKind)
+                            (associated_type.ty_param.ident.name,
+                             local_def(associated_type.ty_param.id))
                         }
                     };
 
-                    self.trait_item_map.insert((name, def_id), kind);
+                    self.trait_item_map.insert((name, def_id), trait_item_id);
                 }
 
-                name_bindings.define_type(DefaultImpl(def_id), sp, modifiers);
+                name_bindings.define_type(DefTrait(def_id), sp, modifiers);
                 parent.clone()
             }
             ItemMac(..) => parent.clone()
@@ -773,12 +607,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
     }
 
     /// Constructs the reduced graph for one foreign item.
-    fn build_reduced_graph_for_foreign_item<F>(&mut self,
-                                               foreign_item: &ForeignItem,
-                                               parent: &Rc<Module>,
-                                               f: F) where
-        F: FnOnce(&mut Resolver),
-    {
+    fn build_reduced_graph_for_foreign_item(&mut self,
+                                            foreign_item: &ForeignItem,
+                                            parent: &Rc<Module>) {
         let name = foreign_item.ident.name;
         let is_public = foreign_item.vis == ast::Public;
         let modifiers = if is_public { PUBLIC } else { DefModifiers::empty() } | IMPORTABLE;
@@ -786,25 +617,15 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             self.add_child(name, parent, ForbidDuplicateValues,
                            foreign_item.span);
 
-        match foreign_item.node {
-            ForeignItemFn(_, ref generics) => {
-                let def = DefFn(local_def(foreign_item.id), false);
-                name_bindings.define_value(def, foreign_item.span, modifiers);
-
-                self.with_type_parameter_rib(
-                    HasTypeParameters(generics,
-                                      FnSpace,
-                                      foreign_item.id,
-                                      NormalRibKind),
-                    f);
+        let def = match foreign_item.node {
+            ForeignItemFn(..) => {
+                DefFn(local_def(foreign_item.id), false)
             }
             ForeignItemStatic(_, m) => {
-                let def = DefStatic(local_def(foreign_item.id), m);
-                name_bindings.define_value(def, foreign_item.span, modifiers);
-
-                f(self.resolver)
+                DefStatic(local_def(foreign_item.id), m)
             }
-        }
+        };
+        name_bindings.define_value(def, foreign_item.span, modifiers);
     }
 
     fn build_reduced_graph_for_block(&mut self, block: &Block, parent: &Rc<Module>) -> Rc<Module> {
@@ -850,8 +671,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
         let kind = match def {
             DefTy(_, true) => EnumModuleKind,
-            DefTy(_, false) => TypeModuleKind,
-            DefStruct(..) => ImplModuleKind,
+            DefTy(_, false) | DefStruct(..) => TypeModuleKind,
             _ => NormalModuleKind
         };
 
@@ -905,7 +725,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 csearch::get_tuple_struct_definition_if_ctor(&self.session.cstore, ctor_id)
                     .map_or(def, |_| DefStruct(ctor_id)), DUMMY_SP, modifiers);
           }
-          DefFn(..) | DefStaticMethod(..) | DefStatic(..) | DefConst(..) | DefMethod(..) => {
+          DefFn(..) | DefStatic(..) | DefConst(..) | DefMethod(..) => {
             debug!("(building reduced graph for external \
                     crate) building value (fn/static) {}", final_ident);
             // impl methods have already been defined with the correct importability modifier
@@ -918,7 +738,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
             child_name_bindings.define_value(def, DUMMY_SP, modifiers);
           }
-          DefaultImpl(def_id) => {
+          DefTrait(def_id) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
@@ -927,21 +747,19 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
 
               let trait_item_def_ids =
                 csearch::get_trait_item_def_ids(&self.session.cstore, def_id);
-              for trait_item_def_id in &trait_item_def_ids {
-                  let (trait_item_name, trait_item_kind) =
-                      csearch::get_trait_item_name_and_kind(
-                          &self.session.cstore,
-                          trait_item_def_id.def_id());
+              for trait_item_def in &trait_item_def_ids {
+                  let trait_item_name = csearch::get_trait_name(&self.session.cstore,
+                                                                trait_item_def.def_id());
 
                   debug!("(building reduced graph for external crate) ... \
                           adding trait item '{}'",
                          token::get_name(trait_item_name));
 
-                  self.trait_item_map.insert((trait_item_name, def_id), trait_item_kind);
+                  self.trait_item_map.insert((trait_item_name, def_id),
+                                             trait_item_def.def_id());
 
                   if is_exported {
-                      self.external_exports
-                          .insert(trait_item_def_id.def_id());
+                      self.external_exports.insert(trait_item_def.def_id());
                   }
               }
 
@@ -956,7 +774,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                                                   is_public,
                                                   DUMMY_SP)
           }
-          DefTy(..) | DefAssociatedTy(..) | DefAssociatedPath(..) => {
+          DefTy(..) | DefAssociatedTy(..) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
@@ -980,7 +798,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
           }
           DefLocal(..) | DefPrimTy(..) | DefTyParam(..) |
           DefUse(..) | DefUpvar(..) | DefRegion(..) |
-          DefTyParamBinder(..) | DefLabel(..) | DefSelfTy(..) => {
+          DefLabel(..) | DefSelfTy(..) => {
             panic!("didn't expect `{:?}`", def);
           }
         }
@@ -1027,92 +845,9 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     }
                 }
             }
-            DlImpl(def) => {
-                match csearch::get_type_name_if_impl(&self.session.cstore, def) {
-                    None => {}
-                    Some(final_name) => {
-                        let methods_opt =
-                            csearch::get_methods_if_impl(&self.session.cstore, def);
-                        match methods_opt {
-                            Some(ref methods) if
-                                methods.len() >= 1 => {
-                                debug!("(building reduced graph for \
-                                        external crate) processing \
-                                        static methods for type name {}",
-                                        token::get_name(final_name));
-
-                                let child_name_bindings =
-                                    self.add_child(
-                                        final_name,
-                                        root,
-                                        OverwriteDuplicates,
-                                        DUMMY_SP);
-
-                                // Process the static methods. First,
-                                // create the module.
-                                let type_module;
-                                let type_def = child_name_bindings.type_def.borrow().clone();
-                                match type_def {
-                                    Some(TypeNsDef {
-                                        module_def: Some(module_def),
-                                        ..
-                                    }) => {
-                                        // We already have a module. This
-                                        // is OK.
-                                        type_module = module_def;
-
-                                        // Mark it as an impl module if
-                                        // necessary.
-                                        type_module.kind.set(ImplModuleKind);
-                                    }
-                                    Some(_) | None => {
-                                        let parent_link =
-                                            self.get_parent_link(root, final_name);
-                                        child_name_bindings.define_module(
-                                            parent_link,
-                                            Some(def),
-                                            ImplModuleKind,
-                                            true,
-                                            true,
-                                            DUMMY_SP);
-                                        type_module =
-                                            child_name_bindings.
-                                                get_module();
-                                    }
-                                }
-
-                                // Add each static method to the module.
-                                let new_parent = type_module;
-                                for method_info in methods {
-                                    let name = method_info.name;
-                                    debug!("(building reduced graph for \
-                                             external crate) creating \
-                                             static method '{}'",
-                                           token::get_name(name));
-
-                                    let method_name_bindings =
-                                        self.add_child(name,
-                                                       &new_parent,
-                                                       OverwriteDuplicates,
-                                                       DUMMY_SP);
-                                    let def = DefFn(method_info.def_id, false);
-
-                                    // NB: not IMPORTABLE
-                                    let modifiers = if method_info.vis == ast::Public {
-                                        PUBLIC
-                                    } else {
-                                        DefModifiers::empty()
-                                    };
-                                    method_name_bindings.define_value(
-                                        def, DUMMY_SP, modifiers);
-                                }
-                            }
-
-                            // Otherwise, do nothing.
-                            Some(_) | None => {}
-                        }
-                    }
-                }
+            DlImpl(_) => {
+                debug!("(building reduced graph for external crate) \
+                        ignoring impl");
             }
             DlField => {
                 debug!("(building reduced graph for external crate) \
@@ -1241,16 +976,7 @@ impl<'a, 'b, 'v, 'tcx> Visitor<'v> for BuildReducedGraphVisitor<'a, 'b, 'tcx> {
     }
 
     fn visit_foreign_item(&mut self, foreign_item: &ForeignItem) {
-        let parent = &self.parent;
-        self.builder.build_reduced_graph_for_foreign_item(foreign_item,
-                                                          parent,
-                                                          |r| {
-            let mut v = BuildReducedGraphVisitor {
-                builder: GraphBuilder { resolver: r },
-                parent: parent.clone()
-            };
-            visit::walk_foreign_item(&mut v, foreign_item);
-        })
+        self.builder.build_reduced_graph_for_foreign_item(foreign_item, &self.parent);
     }
 
     fn visit_block(&mut self, block: &Block) {

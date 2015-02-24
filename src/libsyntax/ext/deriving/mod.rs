@@ -30,6 +30,12 @@ macro_rules! path {
     )
 }
 
+macro_rules! path_local {
+    ($x:ident) => (
+        ::ext::deriving::generic::ty::Path::new_local(stringify!($x))
+    )
+}
+
 macro_rules! pathvec_std {
     ($cx:expr, $first:ident :: $($rest:ident)::+) => (
         if $cx.use_std {
