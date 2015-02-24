@@ -52,7 +52,7 @@ fn invalid_encoding() -> IoError {
 
 pub fn is_tty(fd: c_int) -> bool {
     let mut out: DWORD = 0;
-    // If this function doesn't panic then fd is a TTY
+    // If this function doesn't return an error, then fd is a TTY
     match unsafe { GetConsoleMode(get_osfhandle(fd) as HANDLE,
                                   &mut out as LPDWORD) } {
         0 => false,
