@@ -19,6 +19,7 @@ use libc::{self, HANDLE};
 use mem;
 use path::{Path, PathBuf};
 use ptr;
+use sync::Arc;
 use sys::handle::Handle as RawHandle;
 use sys::{c, cvt};
 use vec::Vec;
@@ -27,12 +28,20 @@ pub struct File { handle: RawHandle }
 pub struct FileAttr { data: c::WIN32_FILE_ATTRIBUTE_DATA }
 
 pub struct ReadDir {
-    handle: libc::HANDLE,
-    root: PathBuf,
+    handle: FindNextFileHandle,
+    root: Arc<PathBuf>,
     first: Option<libc::WIN32_FIND_DATAW>,
 }
 
-pub struct DirEntry { path: PathBuf }
+struct FindNextFileHandle(libc::HANDLE);
+
+unsafe impl Send for FindNextFileHandle {}
+unsafe impl Sync for FindNextFileHandle {}
+
+pub struct DirEntry {
+    root: Arc<PathBuf>,
+    data: libc::WIN32_FIND_DATAW,
+}
 
 #[derive(Clone, Default)]
 pub struct OpenOptions {
@@ -61,7 +70,7 @@ impl Iterator for ReadDir {
         unsafe {
             let mut wfd = mem::zeroed();
             loop {
-                if libc::FindNextFileW(self.handle, &mut wfd) == 0 {
+                if libc::FindNextFileW(self.handle.0, &mut wfd) == 0 {
                     if libc::GetLastError() ==
                         c::ERROR_NO_MORE_FILES as libc::DWORD {
                         return None
@@ -77,15 +86,15 @@ impl Iterator for ReadDir {
     }
 }
 
-impl Drop for ReadDir {
+impl Drop for FindNextFileHandle {
     fn drop(&mut self) {
-        let r = unsafe { libc::FindClose(self.handle) };
+        let r = unsafe { libc::FindClose(self.0) };
         debug_assert!(r != 0);
     }
 }
 
 impl DirEntry {
-    fn new(root: &Path, wfd: &libc::WIN32_FIND_DATAW) -> Option<DirEntry> {
+    fn new(root: &Arc<PathBuf>, wfd: &libc::WIN32_FIND_DATAW) -> Option<DirEntry> {
         match &wfd.cFileName[0..3] {
             // check for '.' and '..'
             [46, 0, ..] |
@@ -93,13 +102,15 @@ impl DirEntry {
             _ => {}
         }
 
-        let filename = super::truncate_utf16_at_nul(&wfd.cFileName);
-        let filename: OsString = OsStringExt::from_wide(filename);
-        Some(DirEntry { path: root.join(&filename) })
+        Some(DirEntry {
+            root: root.clone(),
+            data: *wfd,
+        })
     }
 
     pub fn path(&self) -> PathBuf {
-        self.path.clone()
+        let filename = super::truncate_utf16_at_nul(&self.data.cFileName);
+        self.root.join(&<OsString as OsStringExt>::from_wide(filename))
     }
 }
 
@@ -312,7 +323,11 @@ pub fn readdir(p: &Path) -> io::Result<ReadDir> {
         let mut wfd = mem::zeroed();
         let find_handle = libc::FindFirstFileW(path.as_ptr(), &mut wfd);
         if find_handle != libc::INVALID_HANDLE_VALUE {
-            Ok(ReadDir { handle: find_handle, root: root, first: Some(wfd) })
+            Ok(ReadDir {
+                handle: FindNextFileHandle(find_handle),
+                root: Arc::new(root),
+                first: Some(wfd),
+            })
         } else {
             Err(Error::last_os_error())
         }
