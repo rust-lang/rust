@@ -13,7 +13,7 @@
 extern crate go_trait;
 
 use go_trait::{Go,GoMut};
-use std::fmt::Show;
+use std::fmt::Debug;
 use std::default::Default;
 
 struct MyThingy;

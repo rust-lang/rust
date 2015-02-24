@@ -8,7 +8,7 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-use std::fmt::Show;
+use std::fmt::Debug;
 use std::default::Default;
 use std::marker::MarkerTrait;
 
