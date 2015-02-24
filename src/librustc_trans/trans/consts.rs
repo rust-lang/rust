@@ -146,8 +146,8 @@ fn const_deref<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                 (const_deref_ptr(cx, v), mt.ty)
             } else {
                 // Derefing a fat pointer does not change the representation,
-                // just the type to ty_open.
-                (v, ty::mk_open(cx.tcx(), mt.ty))
+                // just the type to the unsized contents.
+                (v, mt.ty)
             }
         }
         None => {
@@ -290,15 +290,7 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                         // an optimisation, it is necessary for mutable vectors to
                         // work properly.
                         ty = match ty::deref(ty, true) {
-                            Some(mt) => {
-                                if type_is_sized(cx.tcx(), mt.ty) {
-                                    mt.ty
-                                } else {
-                                    // Derefing a fat pointer does not change the representation,
-                                    // just the type to ty_open.
-                                    ty::mk_open(cx.tcx(), mt.ty)
-                                }
-                            }
+                            Some(mt) => mt.ty,
                             None => {
                                 cx.sess().bug(&format!("unexpected dereferenceable type {}",
                                                        ty_to_string(cx.tcx(), ty)))
@@ -319,11 +311,12 @@ pub fn const_expr<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
                     llconst = addr_of(cx, llconst, "autoref", e.id);
                 }
                 Some(box ty::AutoUnsize(ref k)) => {
-                    let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);
                     let info = expr::unsized_info(cx, k, e.id, ty, param_substs,
                         |t| ty::mk_imm_rptr(cx.tcx(), cx.tcx().mk_region(ty::ReStatic), t));
 
-                    let base = ptrcast(llconst, type_of::type_of(cx, unsized_ty).ptr_to());
+                    let unsized_ty = ty::unsize_ty(cx.tcx(), ty, k, e.span);
+                    let ptr_ty = type_of::in_memory_type_of(cx, unsized_ty).ptr_to();
+                    let base = ptrcast(llconst, ptr_ty);
                     let prev_const = cx.const_unsized().borrow_mut()
                                        .insert(base, llconst);
                     assert!(prev_const.is_none() || prev_const == Some(llconst));
@@ -477,16 +470,10 @@ fn const_expr_unadjusted<'a, 'tcx>(cx: &CrateContext<'a, 'tcx>,
               };
               let (arr, len) = match bt.sty {
                   ty::ty_vec(_, Some(u)) => (bv, C_uint(cx, u)),
-                  ty::ty_open(ty) => match ty.sty {
-                      ty::ty_vec(_, None) | ty::ty_str => {
-                          let e1 = const_get_elt(cx, bv, &[0]);
-                          (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
-                      },
-                      _ => cx.sess().span_bug(base.span,
-                                              &format!("index-expr base must be a vector \
-                                                       or string type, found {}",
-                                                      ty_to_string(cx.tcx(), bt)))
-                  },
+                  ty::ty_vec(_, None) | ty::ty_str => {
+                      let e1 = const_get_elt(cx, bv, &[0]);
+                      (const_deref_ptr(cx, e1), const_get_elt(cx, bv, &[1]))
+                  }
                   ty::ty_rptr(_, mt) => match mt.ty.sty {
                       ty::ty_vec(_, Some(u)) => {
                           (const_deref_ptr(cx, bv), C_uint(cx, u))

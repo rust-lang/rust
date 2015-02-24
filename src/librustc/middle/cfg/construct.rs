@@ -11,16 +11,15 @@
 use middle::cfg::*;
 use middle::def;
 use middle::graph;
+use middle::pat_util;
 use middle::region::CodeExtent;
 use middle::ty;
 use syntax::ast;
 use syntax::ast_util;
 use syntax::ptr::P;
-use util::nodemap::NodeMap;
 
 struct CFGBuilder<'a, 'tcx: 'a> {
     tcx: &'a ty::ctxt<'tcx>,
-    exit_map: NodeMap<CFGIndex>,
     graph: CFGGraph,
     fn_exit: CFGIndex,
     loop_scopes: Vec<LoopScope>,
@@ -36,17 +35,16 @@ struct LoopScope {
 pub fn construct(tcx: &ty::ctxt,
                  blk: &ast::Block) -> CFG {
     let mut graph = graph::Graph::new();
-    let entry = add_initial_dummy_node(&mut graph);
+    let entry = graph.add_node(CFGNodeData::Entry);
 
     // `fn_exit` is target of return exprs, which lies somewhere
     // outside input `blk`. (Distinguishing `fn_exit` and `block_exit`
     // also resolves chicken-and-egg problem that arises if you try to
     // have return exprs jump to `block_exit` during construction.)
-    let fn_exit = add_initial_dummy_node(&mut graph);
+    let fn_exit = graph.add_node(CFGNodeData::Exit);
     let block_exit;
 
     let mut cfg_builder = CFGBuilder {
-        exit_map: NodeMap(),
         graph: graph,
         fn_exit: fn_exit,
         tcx: tcx,
@@ -54,15 +52,10 @@ pub fn construct(tcx: &ty::ctxt,
     };
     block_exit = cfg_builder.block(blk, entry);
     cfg_builder.add_contained_edge(block_exit, fn_exit);
-    let CFGBuilder {exit_map, graph, ..} = cfg_builder;
-    CFG {exit_map: exit_map,
-         graph: graph,
+    let CFGBuilder {graph, ..} = cfg_builder;
+    CFG {graph: graph,
          entry: entry,
          exit: fn_exit}
-}
-
-fn add_initial_dummy_node(g: &mut CFGGraph) -> CFGIndex {
-    g.add_node(CFGNodeData { id: ast::DUMMY_NODE_ID })
 }
 
 impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
@@ -74,19 +67,19 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
 
         let expr_exit = self.opt_expr(&blk.expr, stmts_exit);
 
-        self.add_node(blk.id, &[expr_exit])
+        self.add_ast_node(blk.id, &[expr_exit])
     }
 
     fn stmt(&mut self, stmt: &ast::Stmt, pred: CFGIndex) -> CFGIndex {
         match stmt.node {
             ast::StmtDecl(ref decl, id) => {
                 let exit = self.decl(&**decl, pred);
-                self.add_node(id, &[exit])
+                self.add_ast_node(id, &[exit])
             }
 
             ast::StmtExpr(ref expr, id) | ast::StmtSemi(ref expr, id) => {
                 let exit = self.expr(&**expr, pred);
-                self.add_node(id, &[exit])
+                self.add_ast_node(id, &[exit])
             }
 
             ast::StmtMac(..) => {
@@ -115,33 +108,33 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             ast::PatLit(..) |
             ast::PatRange(..) |
             ast::PatWild(_) => {
-                self.add_node(pat.id, &[pred])
+                self.add_ast_node(pat.id, &[pred])
             }
 
             ast::PatBox(ref subpat) |
             ast::PatRegion(ref subpat, _) |
             ast::PatIdent(_, _, Some(ref subpat)) => {
                 let subpat_exit = self.pat(&**subpat, pred);
-                self.add_node(pat.id, &[subpat_exit])
+                self.add_ast_node(pat.id, &[subpat_exit])
             }
 
             ast::PatEnum(_, Some(ref subpats)) |
             ast::PatTup(ref subpats) => {
                 let pats_exit = self.pats_all(subpats.iter(), pred);
-                self.add_node(pat.id, &[pats_exit])
+                self.add_ast_node(pat.id, &[pats_exit])
             }
 
             ast::PatStruct(_, ref subpats, _) => {
                 let pats_exit =
                     self.pats_all(subpats.iter().map(|f| &f.node.pat), pred);
-                self.add_node(pat.id, &[pats_exit])
+                self.add_ast_node(pat.id, &[pats_exit])
             }
 
             ast::PatVec(ref pre, ref vec, ref post) => {
                 let pre_exit = self.pats_all(pre.iter(), pred);
                 let vec_exit = self.pats_all(vec.iter(), pre_exit);
                 let post_exit = self.pats_all(post.iter(), vec_exit);
-                self.add_node(pat.id, &[post_exit])
+                self.add_ast_node(pat.id, &[post_exit])
             }
 
             ast::PatMac(_) => {
@@ -157,28 +150,11 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         pats.fold(pred, |pred, pat| self.pat(&**pat, pred))
     }
 
-    fn pats_any(&mut self,
-                pats: &[P<ast::Pat>],
-                pred: CFGIndex) -> CFGIndex {
-        //! Handles case where just one of the patterns must match.
-
-        if pats.len() == 1 {
-            self.pat(&*pats[0], pred)
-        } else {
-            let collect = self.add_dummy_node(&[]);
-            for pat in pats {
-                let pat_exit = self.pat(&**pat, pred);
-                self.add_contained_edge(pat_exit, collect);
-            }
-            collect
-        }
-    }
-
     fn expr(&mut self, expr: &ast::Expr, pred: CFGIndex) -> CFGIndex {
         match expr.node {
             ast::ExprBlock(ref blk) => {
                 let blk_exit = self.block(&**blk, pred);
-                self.add_node(expr.id, &[blk_exit])
+                self.add_ast_node(expr.id, &[blk_exit])
             }
 
             ast::ExprIf(ref cond, ref then, None) => {
@@ -198,7 +174,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //
                 let cond_exit = self.expr(&**cond, pred);                // 1
                 let then_exit = self.block(&**then, cond_exit);          // 2
-                self.add_node(expr.id, &[cond_exit, then_exit])          // 3,4
+                self.add_ast_node(expr.id, &[cond_exit, then_exit])      // 3,4
             }
 
             ast::ExprIf(ref cond, ref then, Some(ref otherwise)) => {
@@ -219,7 +195,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 let cond_exit = self.expr(&**cond, pred);                // 1
                 let then_exit = self.block(&**then, cond_exit);          // 2
                 let else_exit = self.expr(&**otherwise, cond_exit);      // 3
-                self.add_node(expr.id, &[then_exit, else_exit])          // 4, 5
+                self.add_ast_node(expr.id, &[then_exit, else_exit])      // 4, 5
             }
 
             ast::ExprIfLet(..) => {
@@ -247,7 +223,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 // Is the condition considered part of the loop?
                 let loopback = self.add_dummy_node(&[pred]);              // 1
                 let cond_exit = self.expr(&**cond, loopback);             // 2
-                let expr_exit = self.add_node(expr.id, &[cond_exit]);     // 3
+                let expr_exit = self.add_ast_node(expr.id, &[cond_exit]); // 3
                 self.loop_scopes.push(LoopScope {
                     loop_id: expr.id,
                     continue_index: loopback,
@@ -283,7 +259,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 // may cause additional edges.
 
                 let loopback = self.add_dummy_node(&[pred]);              // 1
-                let expr_exit = self.add_node(expr.id, &[]);              // 2
+                let expr_exit = self.add_ast_node(expr.id, &[]);          // 2
                 self.loop_scopes.push(LoopScope {
                     loop_id: expr.id,
                     continue_index: loopback,
@@ -296,45 +272,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             }
 
             ast::ExprMatch(ref discr, ref arms, _) => {
-                //
-                //     [pred]
-                //       |
-                //       v 1
-                //    [discr]
-                //       |
-                //       v 2
-                //    [cond1]
-                //      /  \
-                //     |    \
-                //     v 3   \
-                //  [pat1]    \
-                //     |       |
-                //     v 4     |
-                //  [guard1]   |
-                //     |       |
-                //     |       |
-                //     v 5     v
-                //  [body1]  [cond2]
-                //     |      /  \
-                //     |    ...  ...
-                //     |     |    |
-                //     v 6   v    v
-                //  [.....expr.....]
-                //
-                let discr_exit = self.expr(&**discr, pred);              // 1
-
-                let expr_exit = self.add_node(expr.id, &[]);
-                let mut cond_exit = discr_exit;
-                for arm in arms {
-                    cond_exit = self.add_dummy_node(&[cond_exit]);        // 2
-                    let pats_exit = self.pats_any(&arm.pats,
-                                                  cond_exit);            // 3
-                    let guard_exit = self.opt_expr(&arm.guard,
-                                                   pats_exit);           // 4
-                    let body_exit = self.expr(&*arm.body, guard_exit);   // 5
-                    self.add_contained_edge(body_exit, expr_exit);       // 6
-                }
-                expr_exit
+                self.match_(expr.id, &discr, &arms, pred)
             }
 
             ast::ExprBinary(op, ref l, ref r) if ast_util::lazy_binop(op.node) => {
@@ -354,30 +292,30 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                 //
                 let l_exit = self.expr(&**l, pred);                      // 1
                 let r_exit = self.expr(&**r, l_exit);                    // 2
-                self.add_node(expr.id, &[l_exit, r_exit])                 // 3,4
+                self.add_ast_node(expr.id, &[l_exit, r_exit])            // 3,4
             }
 
             ast::ExprRet(ref v) => {
                 let v_exit = self.opt_expr(v, pred);
-                let b = self.add_node(expr.id, &[v_exit]);
+                let b = self.add_ast_node(expr.id, &[v_exit]);
                 self.add_returning_edge(expr, b);
-                self.add_node(ast::DUMMY_NODE_ID, &[])
+                self.add_unreachable_node()
             }
 
             ast::ExprBreak(label) => {
                 let loop_scope = self.find_scope(expr, label);
-                let b = self.add_node(expr.id, &[pred]);
+                let b = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, b,
                                       loop_scope, loop_scope.break_index);
-                self.add_node(ast::DUMMY_NODE_ID, &[])
+                self.add_unreachable_node()
             }
 
             ast::ExprAgain(label) => {
                 let loop_scope = self.find_scope(expr, label);
-                let a = self.add_node(expr.id, &[pred]);
+                let a = self.add_ast_node(expr.id, &[pred]);
                 self.add_exiting_edge(expr, a,
                                       loop_scope, loop_scope.continue_index);
-                self.add_node(ast::DUMMY_NODE_ID, &[])
+                self.add_unreachable_node()
             }
 
             ast::ExprVec(ref elems) => {
@@ -454,7 +392,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
                     let &(_, ref expr, _) = a;
                     &**expr
                 }), post_inputs);
-                self.add_node(expr.id, &[post_outputs])
+                self.add_ast_node(expr.id, &[post_outputs])
             }
 
             ast::ExprMac(..) |
@@ -481,7 +419,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         let func_or_rcvr_exit = self.expr(func_or_rcvr, pred);
         let ret = self.straightline(call_expr, func_or_rcvr_exit, args);
         if return_ty.diverges() {
-            self.add_node(ast::DUMMY_NODE_ID, &[])
+            self.add_unreachable_node()
         } else {
             ret
         }
@@ -508,20 +446,126 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
         //! Handles case of an expression that evaluates `subexprs` in order
 
         let subexprs_exit = self.exprs(subexprs, pred);
-        self.add_node(expr.id, &[subexprs_exit])
+        self.add_ast_node(expr.id, &[subexprs_exit])
+    }
+
+    fn match_(&mut self, id: ast::NodeId, discr: &ast::Expr,
+              arms: &[ast::Arm], pred: CFGIndex) -> CFGIndex {
+        // The CFG for match expression is quite complex, so no ASCII
+        // art for it (yet).
+        //
+        // The CFG generated below matches roughly what trans puts
+        // out. Each pattern and guard is visited in parallel, with
+        // arms containing multiple patterns generating multiple nodes
+        // for the same guard expression. The guard expressions chain
+        // into each other from top to bottom, with a specific
+        // exception to allow some additional valid programs
+        // (explained below). Trans differs slightly in that the
+        // pattern matching may continue after a guard but the visible
+        // behaviour should be the same.
+        //
+        // What is going on is explained in further comments.
+
+        // Visit the discriminant expression
+        let discr_exit = self.expr(discr, pred);
+
+        // Add a node for the exit of the match expression as a whole.
+        let expr_exit = self.add_ast_node(id, &[]);
+
+        // Keep track of the previous guard expressions
+        let mut prev_guards = Vec::new();
+        // Track if the previous pattern contained bindings or wildcards
+        let mut prev_has_bindings = false;
+
+        for arm in arms {
+            // Add an exit node for when we've visited all the
+            // patterns and the guard (if there is one) in the arm.
+            let arm_exit = self.add_dummy_node(&[]);
+
+            for pat in &arm.pats {
+                // Visit the pattern, coming from the discriminant exit
+                let mut pat_exit = self.pat(&**pat, discr_exit);
+
+                // If there is a guard expression, handle it here
+                if let Some(ref guard) = arm.guard {
+                    // Add a dummy node for the previous guard
+                    // expression to target
+                    let guard_start = self.add_dummy_node(&[pat_exit]);
+                    // Visit the guard expression
+                    let guard_exit = self.expr(&**guard, guard_start);
+
+                    let this_has_bindings = pat_util::pat_contains_bindings_or_wild(
+                        &self.tcx.def_map, &**pat);
+
+                    // If both this pattern and the previous pattern
+                    // were free of bindings, they must consist only
+                    // of "constant" patterns. Note we cannot match an
+                    // all-constant pattern, fail the guard, and then
+                    // match *another* all-constant pattern. This is
+                    // because if the previous pattern matches, then
+                    // we *cannot* match this one, unless all the
+                    // constants are the same (which is rejected by
+                    // `check_match`).
+                    //
+                    // We can use this to be smarter about the flow
+                    // along guards. If the previous pattern matched,
+                    // then we know we will not visit the guard in
+                    // this one (whether or not the guard succeeded),
+                    // if the previous pattern failed, then we know
+                    // the guard for that pattern will not have been
+                    // visited. Thus, it is not possible to visit both
+                    // the previous guard and the current one when
+                    // both patterns consist only of constant
+                    // sub-patterns.
+                    //
+                    // However, if the above does not hold, then all
+                    // previous guards need to be wired to visit the
+                    // current guard pattern.
+                    if prev_has_bindings || this_has_bindings {
+                        while let Some(prev) = prev_guards.pop() {
+                            self.add_contained_edge(prev, guard_start);
+                        }
+                    }
+
+                    prev_has_bindings = this_has_bindings;
+
+                    // Push the guard onto the list of previous guards
+                    prev_guards.push(guard_exit);
+
+                    // Update the exit node for the pattern
+                    pat_exit = guard_exit;
+                }
+
+                // Add an edge from the exit of this pattern to the
+                // exit of the arm
+                self.add_contained_edge(pat_exit, arm_exit);
+            }
+
+            // Visit the body of this arm
+            let body_exit = self.expr(&arm.body, arm_exit);
+
+            // Link the body to the exit of the expression
+            self.add_contained_edge(body_exit, expr_exit);
+        }
+
+        expr_exit
     }
 
     fn add_dummy_node(&mut self, preds: &[CFGIndex]) -> CFGIndex {
-        self.add_node(ast::DUMMY_NODE_ID, preds)
+        self.add_node(CFGNodeData::Dummy, preds)
     }
 
-    fn add_node(&mut self, id: ast::NodeId, preds: &[CFGIndex]) -> CFGIndex {
-        assert!(!self.exit_map.contains_key(&id));
-        let node = self.graph.add_node(CFGNodeData {id: id});
-        if id != ast::DUMMY_NODE_ID {
-            assert!(!self.exit_map.contains_key(&id));
-            self.exit_map.insert(id, node);
-        }
+    fn add_ast_node(&mut self, id: ast::NodeId, preds: &[CFGIndex]) -> CFGIndex {
+        assert!(id != ast::DUMMY_NODE_ID);
+        self.add_node(CFGNodeData::AST(id), preds)
+    }
+
+    fn add_unreachable_node(&mut self) -> CFGIndex {
+        self.add_node(CFGNodeData::Unreachable, &[])
+    }
+
+    fn add_node(&mut self, data: CFGNodeData, preds: &[CFGIndex]) -> CFGIndex {
+        let node = self.graph.add_node(data);
         for &pred in preds {
             self.add_contained_edge(pred, node);
         }

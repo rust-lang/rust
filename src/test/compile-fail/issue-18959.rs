@@ -17,7 +17,11 @@ impl Foo for Thing {
     fn foo<T>(&self, _: &T) {}
 }
 
-#[inline(never)] fn foo(b: &Bar) { b.foo(&0_usize) }
+#[inline(never)]
+fn foo(b: &Bar) {
+    b.foo(&0usize)
+    //~^ ERROR the trait `Foo` is not implemented for the type `Bar`
+}
 
 fn main() {
     let mut thing = Thing;

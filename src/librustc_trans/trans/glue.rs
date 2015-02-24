@@ -34,7 +34,7 @@ use trans::expr;
 use trans::machine::*;
 use trans::tvec;
 use trans::type_::Type;
-use trans::type_of::{type_of, sizing_type_of, align_of};
+use trans::type_of::{self, type_of, sizing_type_of, align_of};
 use middle::ty::{self, Ty};
 use util::ppaux::{ty_to_short_str, Repr};
 use util::ppaux;
@@ -265,8 +265,7 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         assert_eq!(params.len(), 1);
         let self_arg = if type_is_fat_ptr(bcx.tcx(), self_ty) {
             // The dtor expects a fat pointer, so make one, even if we have to fake it.
-            let boxed_ty = ty::mk_open(bcx.tcx(), t);
-            let scratch = datum::rvalue_scratch_datum(bcx, boxed_ty, "__fat_ptr_drop_self");
+            let scratch = datum::rvalue_scratch_datum(bcx, t, "__fat_ptr_drop_self");
             Store(bcx, value, GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
             Store(bcx,
                   // If we just had a thin pointer, make a fat pointer by sticking
@@ -284,20 +283,18 @@ fn trans_struct_drop<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         // Add all the fields as a value which needs to be cleaned at the end of
         // this scope. Iterate in reverse order so a Drop impl doesn't reverse
         // the order in which fields get dropped.
-        for (i, ty) in st.fields.iter().enumerate().rev() {
+        for (i, &ty) in st.fields.iter().enumerate().rev() {
             let llfld_a = adt::struct_field_ptr(variant_cx, &*st, value, i, false);
 
-            let val = if type_is_sized(bcx.tcx(), *ty) {
+            let val = if type_is_sized(bcx.tcx(), ty) {
                 llfld_a
             } else {
-                let boxed_ty = ty::mk_open(bcx.tcx(), *ty);
-                let scratch = datum::rvalue_scratch_datum(bcx, boxed_ty, "__fat_ptr_drop_field");
+                let scratch = datum::rvalue_scratch_datum(bcx, ty, "__fat_ptr_drop_field");
                 Store(bcx, llfld_a, GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
                 Store(bcx, info.unwrap(), GEPi(bcx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
                 scratch.val
             };
-            variant_cx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope),
-                                             val, *ty);
+            variant_cx.fcx.schedule_drop_mem(cleanup::CustomScope(field_scope), val, ty);
         }
 
         let dtor_ty = ty::mk_ctor_fn(bcx.tcx(),
@@ -502,7 +499,10 @@ pub fn declare_tydesc<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, t: Ty<'tcx>)
     // tydescs.
     assert!(!ccx.finished_tydescs().get());
 
-    let llty = type_of(ccx, t);
+    // This really shouldn't be like this, size/align will be wrong for
+    // unsized types (i.e. [T] will have the size/align of T).
+    // But we need it until we split this out into a "type name" intrinsic.
+    let llty = type_of::in_memory_type_of(ccx, t);
 
     if ccx.sess().count_type_sizes() {
         println!("{}\t{}", llsize_of_real(ccx, llty),

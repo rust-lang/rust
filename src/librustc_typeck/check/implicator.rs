@@ -161,12 +161,6 @@ impl<'a, 'tcx> Implicator<'a, 'tcx> {
                 //   entering the fn check. We should do this after
                 //   the fn check, then we can call this case a bug().
             }
-
-            ty::ty_open(_) => {
-                self.tcx().sess.bug(
-                    &format!("Unexpected type encountered while doing wf check: {}",
-                            ty.repr(self.tcx())));
-            }
         }
     }
 

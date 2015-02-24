@@ -23,7 +23,6 @@
 #[doc(no_inline)] pub use mem::drop;
 
 // Reexported types and traits
-
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use boxed::Box;
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -45,9 +44,7 @@
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use result::Result::{self, Ok, Err};
 #[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use slice::AsSlice;
-#[stable(feature = "rust1", since = "1.0.0")]
-#[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt};
+#[doc(no_inline)] pub use slice::{SliceExt, SliceConcatExt, AsSlice};
 #[stable(feature = "rust1", since = "1.0.0")]
 #[doc(no_inline)] pub use str::{Str, StrExt};
 #[stable(feature = "rust1", since = "1.0.0")]

@@ -89,7 +89,7 @@ impl TaskPool {
     /// # Panics
     ///
     /// This function will panic if `threads` is 0.
-    pub fn new(threads: uint) -> TaskPool {
+    pub fn new(threads: usize) -> TaskPool {
         assert!(threads >= 1);
 
         let (tx, rx) = channel::<Thunk>();
@@ -142,7 +142,7 @@ mod test {
     use super::*;
     use sync::mpsc::channel;
 
-    const TEST_TASKS: uint = 4;
+    const TEST_TASKS: usize = 4;
 
     #[test]
     fn test_works() {
