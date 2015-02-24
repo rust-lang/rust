@@ -47,4 +47,7 @@ fn main() {
     //~^^^^ ERROR overflow evaluating
     //~^^^^^ NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
     //~^^^^^^ NOTE required by `is_send`
+    //~^^^^^^^ ERROR overflow evaluating
+    //~^^^^^^^^ NOTE consider adding a `#![recursion_limit="20"]` attribute to your crate
+    //~^^^^^^^^^ NOTE required by `is_send`
 }

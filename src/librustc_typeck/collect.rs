@@ -648,6 +648,12 @@ fn convert_item(ccx: &CollectCtxt, it: &ast::Item) {
                                    predicates,
                                    &enum_definition.variants);
         },
+        ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
+            let trait_ref = astconv::instantiate_trait_ref(ccx, &ExplicitRscope,
+                                                           ast_trait_ref, None, None);
+
+            ty::record_default_trait_implementation(tcx, trait_ref.def_id, local_def(it.id))
+        }
         ast::ItemImpl(_, _,
                       ref generics,
                       ref opt_trait_ref,
@@ -1141,6 +1147,7 @@ fn compute_type_scheme_of_item<'a,'tcx>(ccx: &CollectCtxt<'a,'tcx>,
             let t = ty::mk_struct(tcx, local_def(it.id), tcx.mk_substs(substs));
             ty::TypeScheme { ty: t, generics: ty_generics }
         }
+        ast::ItemDefaultImpl(..) |
         ast::ItemTrait(..) |
         ast::ItemImpl(..) |
         ast::ItemMod(..) |
@@ -1183,6 +1190,7 @@ fn convert_typed_item<'a, 'tcx>(ccx: &CollectCtxt<'a, 'tcx>,
         ast::ItemStruct(_, ref generics) => {
             ty_generic_bounds_for_type_or_impl(ccx, &scheme.generics, generics)
         }
+        ast::ItemDefaultImpl(..) |
         ast::ItemTrait(..) |
         ast::ItemExternCrate(..) |
         ast::ItemUse(..) |

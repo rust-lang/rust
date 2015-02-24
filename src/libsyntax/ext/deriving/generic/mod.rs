@@ -498,7 +498,7 @@ impl<'a> TraitDef<'a> {
         // Just mark it now since we know that it'll end up used downstream
         attr::mark_used(&attr);
         let opt_trait_ref = Some(trait_ref);
-        let ident = ast_util::impl_pretty_name(&opt_trait_ref, &*self_type);
+        let ident = ast_util::impl_pretty_name(&opt_trait_ref, Some(&*self_type));
         let mut a = vec![attr];
         a.extend(self.attributes.iter().cloned());
         cx.item(

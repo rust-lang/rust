@@ -709,6 +709,7 @@ fn assemble_candidates_from_impls<'cx,'tcx>(
             // projection. And the projection where clause is handled
             // in `assemble_candidates_from_param_env`.
         }
+        super::VtableDefaultImpl(..) |
         super::VtableBuiltin(..) => {
             // These traits have no associated types.
             selcx.tcx().sess.span_bug(

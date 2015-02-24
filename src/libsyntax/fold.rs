@@ -999,6 +999,9 @@ pub fn noop_fold_item_underscore<T: Folder>(i: Item_, folder: &mut T) -> Item_ {
             let struct_def = folder.fold_struct_def(struct_def);
             ItemStruct(struct_def, folder.fold_generics(generics))
         }
+        ItemDefaultImpl(unsafety, ref trait_ref) => {
+            ItemDefaultImpl(unsafety, folder.fold_trait_ref((*trait_ref).clone()))
+        }
         ItemImpl(unsafety, polarity, generics, ifce, ty, impl_items) => {
             let new_impl_items = impl_items.into_iter().flat_map(|item| {
                 folder.fold_impl_item(item).into_iter()
@@ -1150,7 +1153,7 @@ pub fn noop_fold_item_simple<T: Folder>(Item {id, ident, attrs, node, vis, span}
     let ident = match node {
         // The node may have changed, recompute the "pretty" impl name.
         ItemImpl(_, _, _, ref maybe_trait, ref ty, _) => {
-            ast_util::impl_pretty_name(maybe_trait, &**ty)
+            ast_util::impl_pretty_name(maybe_trait, Some(&**ty))
         }
         _ => ident
     };

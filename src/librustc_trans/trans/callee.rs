@@ -207,7 +207,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefUpvar(..) => {
                 datum_callee(bcx, ref_expr)
             }
-            def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
+            def::DefMod(..) | def::DefForeignMod(..) | def::DefaultImpl(..) |
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
             def::DefUse(..) | def::DefTyParamBinder(..) |
             def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |

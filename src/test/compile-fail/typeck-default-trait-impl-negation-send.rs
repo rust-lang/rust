@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,13 +10,22 @@
 
 #![feature(optin_builtin_traits)]
 
-struct TestType;
-
-trait TestTrait {
-    fn dummy(&self) { }
+struct MySendable {
+   t: *mut u8
 }
 
-impl !TestTrait for TestType {}
-//~^ ERROR negative impls are only allowed for traits with default impls (e.g., `Send` and `Sync`)
+unsafe impl Send for MySendable {}
 
-fn main() {}
+struct MyNotSendable {
+   t: *mut u8
+}
+
+impl !Send for MyNotSendable {}
+
+fn is_send<T: Send>() {}
+
+fn main() {
+    is_send::<MySendable>();
+    is_send::<MyNotSendable>();
+    //~^ ERROR the trait `core::marker::Send` is not implemented for the type `MyNotSendable`
+}

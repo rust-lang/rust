@@ -206,7 +206,7 @@ impl<'a, 'tcx> Env<'a, 'tcx> {
 
                 ast::ItemEnum(..) | ast::ItemStruct(..) |
                 ast::ItemTrait(..) | ast::ItemImpl(..) |
-                ast::ItemMac(..) => {
+                ast::ItemMac(..) | ast::ItemDefaultImpl(..) => {
                     None
                 }
 

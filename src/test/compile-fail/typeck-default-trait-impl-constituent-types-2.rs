@@ -1,4 +1,4 @@
-// Copyright 2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -10,13 +10,23 @@
 
 #![feature(optin_builtin_traits)]
 
-struct TestType;
+use std::marker::MarkerTrait;
 
-trait TestTrait {
-    fn dummy(&self) { }
+trait MyTrait: MarkerTrait {}
+
+impl MyTrait for .. {}
+
+struct MyS;
+
+struct MyS2;
+
+impl !MyTrait for MyS2 {}
+
+fn is_mytrait<T: MyTrait>() {}
+
+fn main() {
+    is_mytrait::<MyS>();
+
+    is_mytrait::<(MyS2, MyS)>();
+    //~^ ERROR the trait `MyTrait` is not implemented for the type `MyS2`
 }
-
-impl !TestTrait for TestType {}
-//~^ ERROR negative impls are only allowed for traits with default impls (e.g., `Send` and `Sync`)
-
-fn main() {}

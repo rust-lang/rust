@@ -20,7 +20,7 @@ use util::nodemap::FnvHashSet;
 use util::ppaux::Repr;
 
 use super::{Obligation, ObligationCause, PredicateObligation,
-            VtableImpl, VtableParam, VtableImplData};
+            VtableImpl, VtableParam, VtableImplData, VtableDefaultImplData};
 
 struct PredicateSet<'a,'tcx:'a> {
     tcx: &'a ty::ctxt<'tcx>,
@@ -323,6 +323,35 @@ pub fn trait_ref_for_builtin_bound<'tcx>(
     }
 }
 
+
+pub fn predicate_for_trait_ref<'tcx>(
+    cause: ObligationCause<'tcx>,
+    trait_ref: Rc<ty::TraitRef<'tcx>>,
+    recursion_depth: uint)
+    -> Result<PredicateObligation<'tcx>, ErrorReported>
+{
+    Ok(Obligation {
+        cause: cause,
+        recursion_depth: recursion_depth,
+        predicate: trait_ref.as_predicate(),
+    })
+}
+
+pub fn predicate_for_default_trait_impl<'tcx>(
+    tcx: &ty::ctxt<'tcx>,
+    cause: ObligationCause<'tcx>,
+    trait_def_id: ast::DefId,
+    recursion_depth: uint,
+    param_ty: Ty<'tcx>)
+    -> Result<PredicateObligation<'tcx>, ErrorReported>
+{
+    let trait_ref = Rc::new(ty::TraitRef {
+        def_id: trait_def_id,
+        substs: tcx.mk_substs(Substs::empty().with_self_ty(param_ty))
+    });
+    predicate_for_trait_ref(cause, trait_ref, recursion_depth)
+}
+
 pub fn predicate_for_builtin_bound<'tcx>(
     tcx: &ty::ctxt<'tcx>,
     cause: ObligationCause<'tcx>,
@@ -332,11 +361,7 @@ pub fn predicate_for_builtin_bound<'tcx>(
     -> Result<PredicateObligation<'tcx>, ErrorReported>
 {
     let trait_ref = try!(trait_ref_for_builtin_bound(tcx, builtin_bound, param_ty));
-    Ok(Obligation {
-        cause: cause,
-        recursion_depth: recursion_depth,
-        predicate: trait_ref.as_predicate(),
-    })
+    predicate_for_trait_ref(cause, trait_ref, recursion_depth)
 }
 
 /// Cast a trait reference into a reference to one of its super
@@ -444,6 +469,9 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::Vtable<'tcx, N> {
             super::VtableImpl(ref v) =>
                 v.repr(tcx),
 
+            super::VtableDefaultImpl(ref t) =>
+                t.repr(tcx),
+
             super::VtableClosure(ref d, ref s) =>
                 format!("VtableClosure({},{})",
                         d.repr(tcx),
@@ -479,6 +507,14 @@ impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableImplData<'tcx, N> {
 impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableBuiltinData<N> {
     fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
         format!("VtableBuiltin(nested={})",
+                self.nested.repr(tcx))
+    }
+}
+
+impl<'tcx, N:Repr<'tcx>> Repr<'tcx> for super::VtableDefaultImplData<N> {
+    fn repr(&self, tcx: &ty::ctxt<'tcx>) -> String {
+        format!("VtableDefaultImplData(trait_def_id={}, nested={})",
+                self.trait_def_id.repr(tcx),
                 self.nested.repr(tcx))
     }
 }

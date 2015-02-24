@@ -144,7 +144,7 @@
 use clone::Clone;
 use cmp::PartialEq;
 use default::Default;
-use marker::{Copy, Send};
+use marker::{Copy, Send, Sync};
 use ops::{Deref, DerefMut, Drop};
 use option::Option;
 use option::Option::{None, Some};
@@ -659,6 +659,8 @@ pub struct UnsafeCell<T> {
     #[unstable(feature = "core")]
     pub value: T,
 }
+
+impl<T> !Sync for UnsafeCell<T> {}
 
 impl<T> UnsafeCell<T> {
     /// Construct a new instance of `UnsafeCell` which will wrap the specified

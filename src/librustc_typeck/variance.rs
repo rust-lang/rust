@@ -476,6 +476,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for TermsContext<'a, 'tcx> {
 
             ast::ItemExternCrate(_) |
             ast::ItemUse(_) |
+            ast::ItemDefaultImpl(..) |
             ast::ItemImpl(..) |
             ast::ItemStatic(..) |
             ast::ItemConst(..) |
@@ -626,6 +627,7 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
             ast::ItemForeignMod(..) |
             ast::ItemTy(..) |
             ast::ItemImpl(..) |
+            ast::ItemDefaultImpl(..) |
             ast::ItemMac(..) => {
             }
         }

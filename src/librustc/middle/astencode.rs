@@ -440,7 +440,7 @@ impl tr for def::Def {
           def::DefVariant(e_did, v_did, is_s) => {
             def::DefVariant(e_did.tr(dcx), v_did.tr(dcx), is_s)
           },
-          def::DefTrait(did) => def::DefTrait(did.tr(dcx)),
+          def::DefaultImpl(did) => def::DefaultImpl(did.tr(dcx)),
           def::DefTy(did, is_enum) => def::DefTy(did.tr(dcx), is_enum),
           def::DefAssociatedTy(did) => def::DefAssociatedTy(did.tr(dcx)),
           def::DefAssociatedPath(def::TyParamProvenance::FromSelf(did), ident) =>

@@ -17,16 +17,22 @@ use middle::infer::{self, new_infer_ctxt};
 use syntax::ast::{DefId};
 use syntax::ast::{LOCAL_CRATE};
 use syntax::ast;
-use syntax::codemap::{Span};
+use syntax::ast_util;
+use syntax::visit;
+use syntax::codemap::Span;
 use util::ppaux::Repr;
 
 pub fn check(tcx: &ty::ctxt) {
-    let overlap = OverlapChecker { tcx: tcx };
+    let mut overlap = OverlapChecker { tcx: tcx };
     overlap.check_for_overlapping_impls();
+
+    // this secondary walk specifically checks for impls of defaulted
+    // traits, for which additional overlap rules exist
+    visit::walk_crate(&mut overlap, tcx.map.krate());
 }
 
 struct OverlapChecker<'cx, 'tcx:'cx> {
-    tcx: &'cx ty::ctxt<'tcx>
+    tcx: &'cx ty::ctxt<'tcx>,
 }
 
 impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
@@ -90,17 +96,28 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
             return;
         }
 
-        span_err!(self.tcx.sess, self.span_of_impl(impl1_def_id), E0119,
+        self.report_overlap_error(trait_def_id, impl1_def_id, impl2_def_id);
+    }
+
+    fn report_overlap_error(&self, trait_def_id: ast::DefId,
+                            impl1: ast::DefId, impl2: ast::DefId) {
+
+        span_err!(self.tcx.sess, self.span_of_impl(impl1), E0119,
                   "conflicting implementations for trait `{}`",
                   ty::item_path_str(self.tcx, trait_def_id));
 
-        if impl2_def_id.krate == ast::LOCAL_CRATE {
-            span_note!(self.tcx.sess, self.span_of_impl(impl2_def_id),
+        self.report_overlap_note(impl1, impl2);
+    }
+
+    fn report_overlap_note(&self, impl1: ast::DefId, impl2: ast::DefId) {
+
+        if impl2.krate == ast::LOCAL_CRATE {
+            span_note!(self.tcx.sess, self.span_of_impl(impl2),
                        "note conflicting implementation here");
         } else {
             let crate_store = &self.tcx.sess.cstore;
-            let cdata = crate_store.get_crate_data(impl2_def_id.krate);
-            span_note!(self.tcx.sess, self.span_of_impl(impl1_def_id),
+            let cdata = crate_store.get_crate_data(impl2.krate);
+            span_note!(self.tcx.sess, self.span_of_impl(impl1),
                        "conflicting implementation in crate `{}`",
                        cdata.name);
         }
@@ -109,5 +126,35 @@ impl<'cx, 'tcx> OverlapChecker<'cx, 'tcx> {
     fn span_of_impl(&self, impl_did: ast::DefId) -> Span {
         assert_eq!(impl_did.krate, ast::LOCAL_CRATE);
         self.tcx.map.span(impl_did.node)
+    }
+}
+
+
+impl<'cx, 'tcx,'v> visit::Visitor<'v> for OverlapChecker<'cx, 'tcx> {
+    fn visit_item(&mut self, item: &'v ast::Item) {
+        match item.node {
+            ast::ItemDefaultImpl(_, _) => {
+                let impl_def_id = ast_util::local_def(item.id);
+                match ty::impl_trait_ref(self.tcx, impl_def_id) {
+                    Some(ref trait_ref) => {
+                        match ty::trait_default_impl(self.tcx, trait_ref.def_id) {
+                            Some(other_impl) if other_impl != impl_def_id => {
+                                self.report_overlap_error(trait_ref.def_id,
+                                                          other_impl,
+                                                          impl_def_id);
+                            }
+                            Some(_) => {}
+                            None => {
+                                self.tcx.sess.bug(
+                                          &format!("no default implementation recorded for `{:?}`",
+                                          item)[]);
+                            }
+                        }
+                    }
+                    _ => {}
+                }
+            }
+            _ => {}
+        }
     }
 }

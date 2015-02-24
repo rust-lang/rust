@@ -617,7 +617,7 @@ pub fn instantiate_trait_ref<'tcx>(
     -> Rc<ty::TraitRef<'tcx>>
 {
     match ::lookup_def_tcx(this.tcx(), ast_trait_ref.path.span, ast_trait_ref.ref_id) {
-        def::DefTrait(trait_def_id) => {
+        def::DefaultImpl(trait_def_id) => {
             let trait_ref = ast_path_to_trait_ref(this,
                                                   rscope,
                                                   trait_def_id,
@@ -931,7 +931,7 @@ fn ast_ty_to_trait_ref<'tcx>(this: &AstConv<'tcx>,
     match ty.node {
         ast::TyPath(ref path, id) => {
             match this.tcx().def_map.borrow().get(&id) {
-                Some(&def::DefTrait(trait_def_id)) => {
+                Some(&def::DefaultImpl(trait_def_id)) => {
                     let mut projection_bounds = Vec::new();
                     let trait_ref = object_path_to_poly_trait_ref(this,
                                                                   rscope,
@@ -1211,7 +1211,7 @@ pub fn ast_ty_to_ty<'tcx>(this: &AstConv<'tcx>,
                     Some(&d) => d
                 };
                 match a_def {
-                    def::DefTrait(trait_def_id) => {
+                    def::DefaultImpl(trait_def_id) => {
                         // N.B. this case overlaps somewhat with
                         // TyObjectSum, see that fn for details
                         let mut projection_bounds = Vec::new();
@@ -1821,7 +1821,7 @@ pub fn partition_bounds<'a>(tcx: &ty::ctxt,
         match *ast_bound {
             ast::TraitTyParamBound(ref b, ast::TraitBoundModifier::None) => {
                 match ::lookup_def_tcx(tcx, b.trait_ref.path.span, b.trait_ref.ref_id) {
-                    def::DefTrait(trait_did) => {
+                    def::DefaultImpl(trait_did) => {
                         match trait_def_ids.get(&trait_did) {
                             // Already seen this trait. We forbid
                             // duplicates in the list (for some

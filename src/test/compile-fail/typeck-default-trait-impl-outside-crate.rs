@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,11 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
-}
+// ignore-tidy-linelength
 
-struct Bar;
+#![feature(optin_builtin_traits)]
 
-impl Foo + Owned for Bar {
-//~^ ERROR not a trait
-//~^^ ERROR expected one of `..`, `where`, or `{`, found `Bar`
-}
+impl Copy for .. {}
+//~^ ERROR cannot create default implementations for traits outside the crate they're defined in; define a new trait instead.
 
-fn main() { }
+fn main() {}

@@ -3862,7 +3862,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                                           variant_id, &fields[..]);
                 enum_id
             }
-            Some(def::DefTrait(def_id)) => {
+            Some(def::DefaultImpl(def_id)) => {
                 span_err!(tcx.sess, path.span, E0159,
                     "use of trait `{}` as a struct constructor",
                     pprust::path_to_string(path));
@@ -4634,7 +4634,7 @@ fn type_scheme_and_predicates_for_def<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefStruct(id) | def::DefConst(id) => {
             (ty::lookup_item_type(fcx.tcx(), id), ty::lookup_predicates(fcx.tcx(), id))
         }
-        def::DefTrait(_) |
+        def::DefaultImpl(_) |
         def::DefTy(..) |
         def::DefAssociatedTy(..) |
         def::DefAssociatedPath(..) |
@@ -4738,7 +4738,7 @@ pub fn instantiate_path<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
         def::DefTy(..) |
         def::DefAssociatedTy(..) |
         def::DefAssociatedPath(..) |
-        def::DefTrait(..) |
+        def::DefaultImpl(..) |
         def::DefPrimTy(..) |
         def::DefTyParam(..) => {
             // Everything but the final segment should have no
