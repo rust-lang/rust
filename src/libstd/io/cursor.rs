@@ -151,7 +151,7 @@ impl<'a> BufRead for Cursor<&'a mut [u8]> {
 }
 impl<'a> BufRead for Cursor<Vec<u8>> {
     fill_buf!(clamp_pos_to_end);
-    consume!(clamp_pos_to_end);
+    consume!(assert_pos_bound);
 }
 
 impl<'a> Write for Cursor<&'a mut [u8]> {
