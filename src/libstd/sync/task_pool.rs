@@ -12,8 +12,8 @@
 
 #![deprecated(since = "1.0.0",
               reason = "This kind of API needs some time to bake in \
-                        crates.io. Consider trying \
-                        https://github.com/carllerche/syncbox")]
+                        crates.io. This functionality is available through \
+                        https://crates.io/crates/threadpool")]
 #![unstable(feature = "std_misc")]
 
 use core::prelude::*;
