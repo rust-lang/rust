@@ -61,17 +61,17 @@ impl SignalToken {
         wake
     }
 
-    /// Convert to an unsafe uint value. Useful for storing in a pipe's state
+    /// Convert to an unsafe usize value. Useful for storing in a pipe's state
     /// flag.
     #[inline]
-    pub unsafe fn cast_to_uint(self) -> uint {
+    pub unsafe fn cast_to_usize(self) -> usize {
         mem::transmute(self.inner)
     }
 
-    /// Convert from an unsafe uint value. Useful for retrieving a pipe's state
+    /// Convert from an unsafe usize value. Useful for retrieving a pipe's state
     /// flag.
     #[inline]
-    pub unsafe fn cast_from_uint(signal_ptr: uint) -> SignalToken {
+    pub unsafe fn cast_from_usize(signal_ptr: usize) -> SignalToken {
         SignalToken { inner: mem::transmute(signal_ptr) }
     }
 

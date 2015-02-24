@@ -86,6 +86,7 @@ use usize;
 #[rustc_on_unimplemented = "`{Self}` is not an iterator; maybe try calling `.iter()` or a similar \
                             method"]
 pub trait Iterator {
+    /// The type of the elements being iterated
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
@@ -122,9 +123,11 @@ pub trait FromIterator<A> {
 /// Conversion into an `Iterator`
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait IntoIterator {
+    /// The type of the elements being iterated
     #[stable(feature = "rust1", since = "1.0.0")]
     type Item;
 
+    /// A container for iterating over elements of type Item
     #[stable(feature = "rust1", since = "1.0.0")]
     type IntoIter: Iterator<Item=Self::Item>;
 

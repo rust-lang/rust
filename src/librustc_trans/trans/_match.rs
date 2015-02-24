@@ -678,7 +678,7 @@ fn bind_subslice_pat(bcx: Block,
 }
 
 fn extract_vec_elems<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
-                                 left_ty: Ty,
+                                 left_ty: Ty<'tcx>,
                                  before: uint,
                                  after: uint,
                                  val: ValueRef)

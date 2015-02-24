@@ -18,7 +18,7 @@ struct Number {
     n: i64
 }
 
-impl fmt::String for Number {
+impl fmt::Display for Number {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         write!(f, "{}", self.n)
     }

@@ -249,6 +249,7 @@ pub unsafe fn write<T>(dst: *mut T, src: T) {
 /// Methods on raw pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait PtrExt: Sized {
+    /// The type which is being pointed at
     type Target;
 
     /// Returns true if the pointer is null.
@@ -284,6 +285,7 @@ pub trait PtrExt: Sized {
 /// Methods on mutable raw pointers
 #[stable(feature = "rust1", since = "1.0.0")]
 pub trait MutPtrExt {
+    /// The type which is being pointed at
     type Target;
 
     /// Returns `None` if the pointer is null, or else returns a mutable

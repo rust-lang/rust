@@ -110,11 +110,14 @@ pub trait Write {
 /// traits.
 #[stable(feature = "rust1", since = "1.0.0")]
 pub struct Formatter<'a> {
-    flags: uint,
+    #[cfg(not(stage0))]
+    flags: u32,
+    #[cfg(stage0)]
+    flags: usize,
     fill: char,
     align: rt::v1::Alignment,
-    width: Option<uint>,
-    precision: Option<uint>,
+    width: Option<usize>,
+    precision: Option<usize>,
 
     buf: &'a mut (Write+'a),
     curarg: slice::Iter<'a, ArgumentV1<'a>>,
@@ -140,7 +143,7 @@ pub struct ArgumentV1<'a> {
 
 impl<'a> ArgumentV1<'a> {
     #[inline(never)]
-    fn show_uint(x: &uint, f: &mut Formatter) -> Result {
+    fn show_usize(x: &usize, f: &mut Formatter) -> Result {
         Display::fmt(x, f)
     }
 
@@ -156,15 +159,22 @@ impl<'a> ArgumentV1<'a> {
         }
     }
 
+    #[cfg(stage0)]
     #[doc(hidden)]
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn from_uint(x: &uint) -> ArgumentV1 {
-        ArgumentV1::new(x, ArgumentV1::show_uint)
+        ArgumentV1::new(x, ArgumentV1::show_usize)
+    }
+    #[cfg(not(stage0))]
+    #[doc(hidden)]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn from_usize(x: &usize) -> ArgumentV1 {
+        ArgumentV1::new(x, ArgumentV1::show_usize)
     }
 
-    fn as_uint(&self) -> Option<uint> {
-        if self.formatter as uint == ArgumentV1::show_uint as uint {
-            Some(unsafe { *(self.value as *const _ as *const uint) })
+    fn as_usize(&self) -> Option<usize> {
+        if self.formatter as usize == ArgumentV1::show_usize as usize {
+            Some(unsafe { *(self.value as *const _ as *const usize) })
         } else {
             None
         }
@@ -194,7 +204,7 @@ impl<'a> Arguments<'a> {
     /// The `pieces` array must be at least as long as `fmt` to construct
     /// a valid Arguments structure. Also, any `Count` within `fmt` that is
     /// `CountIsParam` or `CountIsNextParam` has to point to an argument
-    /// created with `argumentuint`. However, failing to do so doesn't cause
+    /// created with `argumentusize`. However, failing to do so doesn't cause
     /// unsafety, but will ignore invalid .
     #[doc(hidden)] #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -248,38 +258,12 @@ impl<'a> Display for Arguments<'a> {
 
 /// Format trait for the `:?` format. Useful for debugging, all types
 /// should implement this.
-#[deprecated(since = "1.0.0", reason = "renamed to Debug")]
-#[unstable(feature = "old_fmt")]
-pub trait Show {
-    /// Formats the value using the given formatter.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
-}
-
-/// Format trait for the `:?` format. Useful for debugging, all types
-/// should implement this.
 #[stable(feature = "rust1", since = "1.0.0")]
 #[rustc_on_unimplemented = "`{Self}` cannot be formatted using `:?`; if it is \
                             defined in your crate, add `#[derive(Debug)]` or \
                             manually implement it"]
 #[lang = "debug_trait"]
 pub trait Debug {
-    /// Formats the value using the given formatter.
-    #[stable(feature = "rust1", since = "1.0.0")]
-    fn fmt(&self, &mut Formatter) -> Result;
-}
-
-#[allow(deprecated)]
-impl<T: Show + ?Sized> Debug for T {
-    #[allow(deprecated)]
-    fn fmt(&self, f: &mut Formatter) -> Result { Show::fmt(self, f) }
-}
-
-/// When a value can be semantically expressed as a String, this trait may be
-/// used. It corresponds to the default format, `{}`.
-#[deprecated(since = "1.0.0", reason = "renamed to Display")]
-#[unstable(feature = "old_fmt")]
-pub trait String {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, &mut Formatter) -> Result;
@@ -295,12 +279,6 @@ pub trait Display {
     /// Formats the value using the given formatter.
     #[stable(feature = "rust1", since = "1.0.0")]
     fn fmt(&self, &mut Formatter) -> Result;
-}
-
-#[allow(deprecated)]
-impl<T: String + ?Sized> Display for T {
-    #[allow(deprecated)]
-    fn fmt(&self, f: &mut Formatter) -> Result { String::fmt(self, f) }
 }
 
 /// Format trait for the `o` character
@@ -434,15 +412,15 @@ impl<'a> Formatter<'a> {
         (value.formatter)(value.value, self)
     }
 
-    fn getcount(&mut self, cnt: &rt::v1::Count) -> Option<uint> {
+    fn getcount(&mut self, cnt: &rt::v1::Count) -> Option<usize> {
         match *cnt {
             rt::v1::Count::Is(n) => Some(n),
             rt::v1::Count::Implied => None,
             rt::v1::Count::Param(i) => {
-                self.args[i].as_uint()
+                self.args[i].as_usize()
             }
             rt::v1::Count::NextParam => {
-                self.curarg.next().and_then(|arg| arg.as_uint())
+                self.curarg.next().and_then(|arg| arg.as_usize())
             }
         }
     }
@@ -476,12 +454,12 @@ impl<'a> Formatter<'a> {
         let mut sign = None;
         if !is_positive {
             sign = Some('-'); width += 1;
-        } else if self.flags & (1 << (FlagV1::SignPlus as uint)) != 0 {
+        } else if self.flags & (1 << (FlagV1::SignPlus as u32)) != 0 {
             sign = Some('+'); width += 1;
         }
 
         let mut prefixed = false;
-        if self.flags & (1 << (FlagV1::Alternate as uint)) != 0 {
+        if self.flags & (1 << (FlagV1::Alternate as u32)) != 0 {
             prefixed = true; width += prefix.char_len();
         }
 
@@ -511,7 +489,7 @@ impl<'a> Formatter<'a> {
             }
             // The sign and prefix goes before the padding if the fill character
             // is zero
-            Some(min) if self.flags & (1 << (FlagV1::SignAwareZeroPad as uint)) != 0 => {
+            Some(min) if self.flags & (1 << (FlagV1::SignAwareZeroPad as u32)) != 0 => {
                 self.fill = '0';
                 try!(write_prefix(self));
                 self.with_padding(min - width, Alignment::Right, |f| {
@@ -581,7 +559,7 @@ impl<'a> Formatter<'a> {
 
     /// Runs a callback, emitting the correct padding either before or
     /// afterwards depending on whether right or left alignment is requested.
-    fn with_padding<F>(&mut self, padding: uint, default: Alignment,
+    fn with_padding<F>(&mut self, padding: usize, default: Alignment,
                        f: F) -> Result
         where F: FnOnce(&mut Formatter) -> Result,
     {
@@ -627,6 +605,11 @@ impl<'a> Formatter<'a> {
         write(self.buf, fmt)
     }
 
+    #[cfg(not(stage0))]
+    /// Flags for formatting (packed version of rt::Flag)
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub fn flags(&self) -> u32 { self.flags }
+    #[cfg(stage0)]
     /// Flags for formatting (packed version of rt::Flag)
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn flags(&self) -> usize { self.flags }
@@ -641,11 +624,11 @@ impl<'a> Formatter<'a> {
 
     /// Optionally specified integer width that the output should be
     #[unstable(feature = "core", reason = "method was just created")]
-    pub fn width(&self) -> Option<uint> { self.width }
+    pub fn width(&self) -> Option<usize> { self.width }
 
     /// Optionally specified precision for numeric types
     #[unstable(feature = "core", reason = "method was just created")]
-    pub fn precision(&self) -> Option<uint> { self.precision }
+    pub fn precision(&self) -> Option<usize> { self.precision }
 }
 
 #[stable(feature = "rust1", since = "1.0.0")]
@@ -731,9 +714,9 @@ impl Display for char {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T> Pointer for *const T {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        f.flags |= 1 << (FlagV1::Alternate as uint);
-        let ret = LowerHex::fmt(&(*self as uint), f);
-        f.flags &= !(1 << (FlagV1::Alternate as uint));
+        f.flags |= 1 << (FlagV1::Alternate as u32);
+        let ret = LowerHex::fmt(&(*self as u32), f);
+        f.flags &= !(1 << (FlagV1::Alternate as u32));
         ret
     }
 }
@@ -889,7 +872,7 @@ impl<'a> Debug for &'a (any::Any+'a) {
 #[stable(feature = "rust1", since = "1.0.0")]
 impl<T: Debug> Debug for [T] {
     fn fmt(&self, f: &mut Formatter) -> Result {
-        if f.flags & (1 << (FlagV1::Alternate as uint)) == 0 {
+        if f.flags & (1 << (FlagV1::Alternate as u32)) == 0 {
             try!(write!(f, "["));
         }
         let mut is_first = true;
@@ -901,7 +884,7 @@ impl<T: Debug> Debug for [T] {
             }
             try!(write!(f, "{:?}", *x))
         }
-        if f.flags & (1 << (FlagV1::Alternate as uint)) == 0 {
+        if f.flags & (1 << (FlagV1::Alternate as u32)) == 0 {
             try!(write!(f, "]"));
         }
         Ok(())

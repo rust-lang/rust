@@ -69,7 +69,7 @@ pub struct Queue<T> {
 
     // Cache maintenance fields. Additions and subtractions are stored
     // separately in order to allow them to use nonatomic addition/subtraction.
-    cache_bound: uint,
+    cache_bound: usize,
     cache_additions: AtomicUsize,
     cache_subtractions: AtomicUsize,
 }
@@ -107,7 +107,7 @@ impl<T: Send> Queue<T> {
     ///               cache (if desired). If the value is 0, then the cache has
     ///               no bound. Otherwise, the cache will never grow larger than
     ///               `bound` (although the queue itself could be much larger.
-    pub unsafe fn new(bound: uint) -> Queue<T> {
+    pub unsafe fn new(bound: usize) -> Queue<T> {
         let n1 = Node::new();
         let n2 = Node::new();
         (*n1).next.store(n2, Ordering::Relaxed);
@@ -319,7 +319,7 @@ mod test {
             stress_bound(1);
         }
 
-        unsafe fn stress_bound(bound: uint) {
+        unsafe fn stress_bound(bound: usize) {
             let q = Arc::new(Queue::new(bound));
 
             let (tx, rx) = channel();

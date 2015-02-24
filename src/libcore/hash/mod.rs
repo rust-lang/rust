@@ -20,7 +20,7 @@
 //!
 //! #[derive(Hash)]
 //! struct Person {
-//!     id: uint,
+//!     id: u32,
 //!     name: String,
 //!     phone: u64,
 //! }
@@ -38,7 +38,7 @@
 //! use std::hash::{hash, Hash, Hasher, SipHasher};
 //!
 //! struct Person {
-//!     id: uint,
+//!     id: u32,
 //!     name: String,
 //!     phone: u64,
 //! }

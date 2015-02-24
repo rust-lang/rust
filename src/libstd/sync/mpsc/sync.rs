@@ -64,7 +64,7 @@ struct State<T> {
     queue: Queue,       // queue of senders waiting to send data
     blocker: Blocker,   // currently blocked task on this channel
     buf: Buffer<T>,     // storage for buffered messages
-    cap: uint,          // capacity of this channel
+    cap: usize,         // capacity of this channel
 
     /// A curious flag used to indicate whether a sender failed or succeeded in
     /// blocking. This is used to transmit information back to the task that it
@@ -101,8 +101,8 @@ unsafe impl Send for Node {}
 /// A simple ring-buffer
 struct Buffer<T> {
     buf: Vec<Option<T>>,
-    start: uint,
-    size: uint,
+    start: usize,
+    size: usize,
 }
 
 #[derive(Debug)]
@@ -137,7 +137,7 @@ fn wakeup<T>(token: SignalToken, guard: MutexGuard<State<T>>) {
 }
 
 impl<T: Send> Packet<T> {
-    pub fn new(cap: uint) -> Packet<T> {
+    pub fn new(cap: usize) -> Packet<T> {
         Packet {
             channels: AtomicUsize::new(1),
             lock: Mutex::new(State {
@@ -442,8 +442,8 @@ impl<T> Buffer<T> {
         result.take().unwrap()
     }
 
-    fn size(&self) -> uint { self.size }
-    fn cap(&self) -> uint { self.buf.len() }
+    fn size(&self) -> usize { self.size }
+    fn cap(&self) -> usize { self.buf.len() }
 }
 
 ////////////////////////////////////////////////////////////////////////////////

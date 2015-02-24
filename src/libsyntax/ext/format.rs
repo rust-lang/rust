@@ -417,7 +417,7 @@ impl<'a, 'b> Context<'a, 'b> {
                     parse::AlignUnknown => align("Unknown"),
                 };
                 let align = self.ecx.expr_path(align);
-                let flags = self.ecx.expr_usize(sp, arg.format.flags);
+                let flags = self.ecx.expr_u32(sp, arg.format.flags);
                 let prec = self.trans_count(arg.format.precision);
                 let width = self.trans_count(arg.format.width);
                 let path = self.ecx.path_global(sp, Context::rtpath(self.ecx, "FormatSpec"));
@@ -610,7 +610,7 @@ impl<'a, 'b> Context<'a, 'b> {
                         ecx.ident_of_std("core"),
                         ecx.ident_of("fmt"),
                         ecx.ident_of("ArgumentV1"),
-                        ecx.ident_of("from_uint")], vec![arg])
+                        ecx.ident_of("from_usize")], vec![arg])
             }
         };
 

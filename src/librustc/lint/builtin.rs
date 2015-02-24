@@ -1577,6 +1577,14 @@ impl LintPass for MissingDoc {
                                      tm.span, "a type method");
     }
 
+    fn check_trait_method(&mut self, cx: &Context, it: &ast::TraitItem) {
+        if let ast::TraitItem::TypeTraitItem(ref ty) = *it {
+            let assoc_ty = &ty.ty_param;
+            self.check_missing_docs_attrs(cx, Some(assoc_ty.id), &ty.attrs,
+                                          assoc_ty.span, "an associated type");
+        }
+    }
+
     fn check_struct_field(&mut self, cx: &Context, sf: &ast::StructField) {
         if let ast::NamedField(_, vis) = sf.node.kind {
             if vis == ast::Public || self.in_variant {
@@ -1848,7 +1856,7 @@ impl LintPass for UnconditionalRecursion {
                 continue
             }
             visited.insert(cfg_id);
-            let node_id = cfg.graph.node_data(idx).id;
+            let node_id = cfg.graph.node_data(idx).id();
 
             // is this a recursive call?
             if node_id != ast::DUMMY_NODE_ID && checker(cx.tcx, impl_node_id, id, name, node_id) {

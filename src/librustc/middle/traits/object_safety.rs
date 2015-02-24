@@ -42,9 +42,6 @@ pub enum ObjectSafetyViolation<'tcx> {
 /// Reasons a method might not be object-safe.
 #[derive(Copy,Clone,Debug)]
 pub enum MethodViolationCode {
-    /// e.g., `fn(self)`
-    ByValueSelf,
-
     /// e.g., `fn foo()`
     StaticMethod,
 
@@ -158,18 +155,24 @@ fn trait_has_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
                               trait_def_id: ast::DefId)
                               -> bool
 {
+    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
+    let trait_predicates = ty::lookup_predicates(tcx, trait_def_id);
+    generics_require_sized_self(tcx, &trait_def.generics, &trait_predicates)
+}
+
+fn generics_require_sized_self<'tcx>(tcx: &ty::ctxt<'tcx>,
+                                     generics: &ty::Generics<'tcx>,
+                                     predicates: &ty::GenericPredicates<'tcx>)
+                                     -> bool
+{
     let sized_def_id = match tcx.lang_items.sized_trait() {
         Some(def_id) => def_id,
         None => { return false; /* No Sized trait, can't require it! */ }
     };
 
     // Search for a predicate like `Self : Sized` amongst the trait bounds.
-    let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
-    let free_substs = ty::construct_free_substs(tcx, &trait_def.generics, ast::DUMMY_NODE_ID);
-
-    let trait_predicates = ty::lookup_predicates(tcx, trait_def_id);
-    let predicates = trait_predicates.instantiate(tcx, &free_substs).predicates.into_vec();
-
+    let free_substs = ty::construct_free_substs(tcx, generics, ast::DUMMY_NODE_ID);
+    let predicates = predicates.instantiate(tcx, &free_substs).predicates.into_vec();
     elaborate_predicates(tcx, predicates)
         .any(|predicate| {
             match predicate {
@@ -192,17 +195,21 @@ fn object_safety_violations_for_method<'tcx>(tcx: &ty::ctxt<'tcx>,
                                              method: &ty::Method<'tcx>)
                                              -> Option<MethodViolationCode>
 {
-    // The method's first parameter must be something that derefs to
-    // `&self`. For now, we only accept `&self` and `Box<Self>`.
-    match method.explicit_self {
-        ty::ByValueExplicitSelfCategory => {
-            return Some(MethodViolationCode::ByValueSelf);
-        }
+    // Any method that has a `Self : Sized` requisite is otherwise
+    // exempt from the regulations.
+    if generics_require_sized_self(tcx, &method.generics, &method.predicates) {
+        return None;
+    }
 
+    // The method's first parameter must be something that derefs (or
+    // autorefs) to `&self`. For now, we only accept `self`, `&self`
+    // and `Box<Self>`.
+    match method.explicit_self {
         ty::StaticExplicitSelfCategory => {
             return Some(MethodViolationCode::StaticMethod);
         }
 
+        ty::ByValueExplicitSelfCategory |
         ty::ByReferenceExplicitSelfCategory(..) |
         ty::ByBoxExplicitSelfCategory => {
         }

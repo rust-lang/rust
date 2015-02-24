@@ -74,7 +74,7 @@ pub mod __impl {
 /// use std::cell::RefCell;
 /// use std::thread;
 ///
-/// thread_local!(static FOO: RefCell<uint> = RefCell::new(1));
+/// thread_local!(static FOO: RefCell<u32> = RefCell::new(1));
 ///
 /// FOO.with(|f| {
 ///     assert_eq!(*f.borrow(), 1);
@@ -503,7 +503,7 @@ mod imp {
         unsafe fn ptr(&'static self) -> Option<*mut T> {
             let ptr = self.os.get() as *mut Value<T>;
             if !ptr.is_null() {
-                if ptr as uint == 1 {
+                if ptr as usize == 1 {
                     return None
                 }
                 return Some(&mut (*ptr).value as *mut T);
@@ -563,7 +563,7 @@ mod tests {
 
     #[test]
     fn smoke_no_dtor() {
-        thread_local!(static FOO: UnsafeCell<int> = UnsafeCell { value: 1 });
+        thread_local!(static FOO: UnsafeCell<i32> = UnsafeCell { value: 1 });
 
         FOO.with(|f| unsafe {
             assert_eq!(*f.get(), 1);
@@ -632,7 +632,7 @@ mod tests {
         thread_local!(static K2: UnsafeCell<Option<S2>> = UnsafeCell {
             value: None
         });
-        static mut HITS: uint = 0;
+        static mut HITS: u32 = 0;
 
         impl Drop for S1 {
             fn drop(&mut self) {
@@ -723,8 +723,8 @@ mod dynamic_tests {
 
     #[test]
     fn smoke() {
-        fn square(i: int) -> int { i * i }
-        thread_local!(static FOO: int = square(3));
+        fn square(i: i32) -> i32 { i * i }
+        thread_local!(static FOO: i32 = square(3));
 
         FOO.with(|f| {
             assert_eq!(*f, 9);
@@ -733,12 +733,12 @@ mod dynamic_tests {
 
     #[test]
     fn hashmap() {
-        fn map() -> RefCell<HashMap<int, int>> {
+        fn map() -> RefCell<HashMap<i32, i32>> {
             let mut m = HashMap::new();
             m.insert(1, 2);
             RefCell::new(m)
         }
-        thread_local!(static FOO: RefCell<HashMap<int, int>> = map());
+        thread_local!(static FOO: RefCell<HashMap<i32, i32>> = map());
 
         FOO.with(|map| {
             assert_eq!(map.borrow()[1], 2);
@@ -747,7 +747,7 @@ mod dynamic_tests {
 
     #[test]
     fn refcell_vec() {
-        thread_local!(static FOO: RefCell<Vec<uint>> = RefCell::new(vec![1, 2, 3]));
+        thread_local!(static FOO: RefCell<Vec<u32>> = RefCell::new(vec![1, 2, 3]));
 
         FOO.with(|vec| {
             assert_eq!(vec.borrow().len(), 3);

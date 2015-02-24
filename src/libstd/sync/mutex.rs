@@ -50,7 +50,7 @@ use sys_common::mutex as sys;
 /// use std::thread;
 /// use std::sync::mpsc::channel;
 ///
-/// const N: uint = 10;
+/// const N: usize = 10;
 ///
 /// // Spawn a few threads to increment a shared variable (non-atomically), and
 /// // let the main thread know once all increments are done.
@@ -377,9 +377,9 @@ mod test {
     #[test]
     fn lots_and_lots() {
         static M: StaticMutex = MUTEX_INIT;
-        static mut CNT: uint = 0;
-        static J: uint = 1000;
-        static K: uint = 3;
+        static mut CNT: u32 = 0;
+        static J: u32 = 1000;
+        static K: u32 = 3;
 
         fn inc() {
             for _ in 0..J {
@@ -501,7 +501,7 @@ mod test {
         let arc2 = arc.clone();
         let _ = thread::spawn(move|| -> () {
             struct Unwinder {
-                i: Arc<Mutex<int>>,
+                i: Arc<Mutex<i32>>,
             }
             impl Drop for Unwinder {
                 fn drop(&mut self) {

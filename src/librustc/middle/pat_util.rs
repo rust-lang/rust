@@ -119,6 +119,21 @@ pub fn pat_contains_bindings(dm: &DefMap, pat: &ast::Pat) -> bool {
     contains_bindings
 }
 
+/// Checks if the pattern contains any patterns that bind something to
+/// an ident or wildcard, e.g. `foo`, or `Foo(_)`, `foo @ Bar(..)`,
+pub fn pat_contains_bindings_or_wild(dm: &DefMap, pat: &ast::Pat) -> bool {
+    let mut contains_bindings = false;
+    walk_pat(pat, |p| {
+        if pat_is_binding_or_wild(dm, p) {
+            contains_bindings = true;
+            false // there's at least one binding/wildcard, can short circuit now.
+        } else {
+            true
+        }
+    });
+    contains_bindings
+}
+
 pub fn simple_identifier<'a>(pat: &'a ast::Pat) -> Option<&'a ast::Ident> {
     match pat.node {
         ast::PatIdent(ast::BindByValue(_), ref path1, None) => {

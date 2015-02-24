@@ -101,7 +101,7 @@ impl<T: Send> Packet<T> {
         token.map(|token| {
             assert_eq!(self.cnt.load(Ordering::SeqCst), 0);
             assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
-            self.to_wake.store(unsafe { token.cast_to_uint() }, Ordering::SeqCst);
+            self.to_wake.store(unsafe { token.cast_to_usize() }, Ordering::SeqCst);
             self.cnt.store(-1, Ordering::SeqCst);
 
             // This store is a little sketchy. What's happening here is that
@@ -241,7 +241,7 @@ impl<T: Send> Packet<T> {
     // Returns true if blocking should proceed.
     fn decrement(&mut self, token: SignalToken) -> StartResult {
         assert_eq!(self.to_wake.load(Ordering::SeqCst), 0);
-        let ptr = unsafe { token.cast_to_uint() };
+        let ptr = unsafe { token.cast_to_usize() };
         self.to_wake.store(ptr, Ordering::SeqCst);
 
         let steals = self.steals;
@@ -258,7 +258,7 @@ impl<T: Send> Packet<T> {
         }
 
         self.to_wake.store(0, Ordering::SeqCst);
-        drop(unsafe { SignalToken::cast_from_uint(ptr) });
+        drop(unsafe { SignalToken::cast_from_usize(ptr) });
         Abort
     }
 
@@ -380,7 +380,7 @@ impl<T: Send> Packet<T> {
         let ptr = self.to_wake.load(Ordering::SeqCst);
         self.to_wake.store(0, Ordering::SeqCst);
         assert!(ptr != 0);
-        unsafe { SignalToken::cast_from_uint(ptr) }
+        unsafe { SignalToken::cast_from_usize(ptr) }
     }
 
     ////////////////////////////////////////////////////////////////////////////

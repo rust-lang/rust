@@ -34,13 +34,13 @@ use super::Hasher;
 pub struct SipHasher {
     k0: u64,
     k1: u64,
-    length: uint, // how many bytes we've processed
+    length: usize, // how many bytes we've processed
     v0: u64,      // hash state
     v1: u64,
     v2: u64,
     v3: u64,
     tail: u64, // unprocessed bytes le
-    ntail: uint,  // how many bytes in tail are valid
+    ntail: usize,  // how many bytes in tail are valid
 }
 
 // sadly, these macro definitions can't appear later,
