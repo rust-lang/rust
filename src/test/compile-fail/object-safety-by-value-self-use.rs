@@ -8,23 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-pub trait Foo { fn foo<T>(&self, ext_thing: &T); }
-pub trait Bar: Foo { }
-impl<T: Foo> Bar for T { }
+// Check that while a trait with by-value self is object-safe, we
+// can't actually invoke it from an object (yet...?).
 
-pub struct Thing;
-impl Foo for Thing {
-    fn foo<T>(&self, _: &T) {}
+#![feature(rustc_attrs)]
+
+trait Bar {
+    fn bar(self);
 }
 
-#[inline(never)]
-fn foo(b: &Bar) {
-    b.foo(&0usize)
-    //~^ ERROR the trait `Foo` is not implemented for the type `Bar`
+trait Baz {
+    fn baz(self: Self);
 }
 
-fn main() {
-    let mut thing = Thing;
-    let test: &Bar = &mut thing; //~ ERROR cannot convert to a trait object
-    foo(test);
+fn use_bar(t: Box<Bar>) {
+    t.bar() //~ ERROR cannot move a value of type Bar
 }
+
+fn main() { }
+
