@@ -56,6 +56,7 @@
 /* General structure */
 
 body {
+    background-color: white;
     margin: 0 auto;
     padding: 0 15px;
     font-family: "Source Serif Pro", Georgia, Times, "Times New Roman", serif;
