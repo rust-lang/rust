@@ -1353,7 +1353,7 @@ fn build_cfg(tcx: &ty::ctxt, id: ast::NodeId) -> (ast::NodeId, Option<cfg::CFG>)
 // the clobbering of the existing value in the return slot.
 fn has_nested_returns(tcx: &ty::ctxt, cfg: &cfg::CFG, blk_id: ast::NodeId) -> bool {
     for n in cfg.graph.depth_traverse(cfg.entry) {
-        match tcx.map.find(n.id) {
+        match tcx.map.find(n.id()) {
             Some(ast_map::NodeExpr(ex)) => {
                 if let ast::ExprRet(Some(ref ret_expr)) = ex.node {
                     let mut visitor = FindNestedReturn::new();
