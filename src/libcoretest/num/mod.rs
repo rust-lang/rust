@@ -124,7 +124,7 @@ mod test {
     }
 
     #[test]
-    test_int_from_minus_sign() {
+    fn test_int_from_minus_sign() {
         assert_eq!("-".parse::<i32>().ok(), None);
     }
 }
