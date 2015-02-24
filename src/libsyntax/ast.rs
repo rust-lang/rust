@@ -1641,6 +1641,10 @@ pub enum Item_ {
               Generics,
               TyParamBounds,
               Vec<TraitItem>),
+
+    // Default trait implementations
+    // `impl Trait for ..`
+    ItemDefaultImpl(Unsafety, TraitRef),
     ItemImpl(Unsafety,
              ImplPolarity,
              Generics,
@@ -1666,7 +1670,8 @@ impl Item_ {
             ItemStruct(..) => "struct",
             ItemTrait(..) => "trait",
             ItemMac(..) |
-            ItemImpl(..) => "item"
+            ItemImpl(..) |
+            ItemDefaultImpl(..) => "item"
         }
     }
 }

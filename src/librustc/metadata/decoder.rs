@@ -126,6 +126,7 @@ enum Family {
     TupleVariant,          // v
     StructVariant,         // V
     Impl,                  // i
+    DefaultImpl,              // d
     Trait,                 // I
     Struct,                // S
     PublicField,           // g
@@ -151,6 +152,7 @@ fn item_family(item: rbml::Doc) -> Family {
       'v' => TupleVariant,
       'V' => StructVariant,
       'i' => Impl,
+      'd' => DefaultImpl,
       'I' => Trait,
       'S' => Struct,
       'g' => PublicField,
@@ -355,9 +357,9 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
             let enum_did = item_reqd_and_translated_parent_item(cnum, item);
             DlDef(def::DefVariant(enum_did, did, false))
         }
-        Trait => DlDef(def::DefTrait(did)),
+        Trait => DlDef(def::DefaultImpl(did)),
         Enum => DlDef(def::DefTy(did, true)),
-        Impl => DlImpl(did),
+        Impl | DefaultImpl => DlImpl(did),
         PublicField | InheritedField => DlField,
     }
 }
@@ -480,7 +482,7 @@ pub fn get_impl_trait<'tcx>(cdata: Cmd,
     let item_doc = lookup_item(id, cdata.data());
     let fam = item_family(item_doc);
     match fam {
-        Family::Impl => {
+        Family::Impl | Family::DefaultImpl => {
             reader::maybe_get_doc(item_doc, tag_item_trait_ref).map(|tp| {
                 doc_trait_ref(tp, tcx, cdata)
             })
@@ -1356,7 +1358,7 @@ pub fn get_trait_of_item(cdata: Cmd, id: ast::NodeId, tcx: &ty::ctxt)
     let parent_item_doc = lookup_item(parent_item_id.node, cdata.data());
     match item_family(parent_item_doc) {
         Trait => Some(item_def_id(parent_item_doc, cdata)),
-        Impl => {
+        Impl | DefaultImpl => {
             reader::maybe_get_doc(parent_item_doc, tag_item_trait_ref)
                 .map(|_| item_trait_ref(parent_item_doc, tcx, cdata).def_id)
         }
@@ -1559,5 +1561,14 @@ pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {
     match maybe_find_item(id, items) {
         None => false,
         Some(item) => item_sort(item) == 't',
+    }
+}
+
+
+pub fn is_default_trait<'tcx>(cdata: Cmd, id: ast::NodeId) -> bool {
+    let item_doc = lookup_item(id, cdata.data());
+    match item_family(item_doc) {
+        Family::DefaultImpl => true,
+        _ => false
     }
 }

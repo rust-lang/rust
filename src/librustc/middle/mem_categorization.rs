@@ -579,7 +579,7 @@ impl<'t,'tcx,TYPER:Typer<'tcx>> MemCategorizationContext<'t,TYPER> {
                 Ok(self.cat_rvalue_node(id, span, expr_ty))
           }
           def::DefMod(_) | def::DefForeignMod(_) | def::DefUse(_) |
-          def::DefTrait(_) | def::DefTy(..) | def::DefPrimTy(_) |
+          def::DefaultImpl(_) | def::DefTy(..) | def::DefPrimTy(_) |
           def::DefTyParam(..) | def::DefTyParamBinder(..) | def::DefRegion(_) |
           def::DefLabel(_) | def::DefSelfTy(..) |
           def::DefAssociatedTy(..) | def::DefAssociatedPath(..)=> {

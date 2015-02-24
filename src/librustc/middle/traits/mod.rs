@@ -221,6 +221,12 @@ pub enum Vtable<'tcx, N> {
     /// Vtable identifying a particular impl.
     VtableImpl(VtableImplData<'tcx, N>),
 
+    /// Vtable for default trait implementations
+    /// This carries the information and nested obligations with regards
+    /// to a default implementation for a trait `Trait`. The nested obligations
+    /// ensure the trait implementation holds for all the constituent types.
+    VtableDefaultImpl(VtableDefaultImplData<N>),
+
     /// Successful resolution to an obligation provided by the caller
     /// for some type parameter. The `Vec<N>` represents the
     /// obligations incurred from normalizing the where-clause (if
@@ -257,6 +263,12 @@ pub struct VtableImplData<'tcx, N> {
     pub impl_def_id: ast::DefId,
     pub substs: subst::Substs<'tcx>,
     pub nested: subst::VecPerParamSpace<N>
+}
+
+#[derive(Debug,Clone)]
+pub struct VtableDefaultImplData<N> {
+    pub trait_def_id: ast::DefId,
+    pub nested: Vec<N>
 }
 
 #[derive(Debug,Clone)]
@@ -513,17 +525,18 @@ impl<'tcx, N> Vtable<'tcx, N> {
     pub fn iter_nested(&self) -> Iter<N> {
         match *self {
             VtableImpl(ref i) => i.iter_nested(),
-            VtableFnPointer(..) => (&[]).iter(),
-            VtableClosure(..) => (&[]).iter(),
             VtableParam(ref n) => n.iter(),
-            VtableObject(_) => (&[]).iter(),
             VtableBuiltin(ref i) => i.iter_nested(),
+            VtableObject(_) |
+            VtableDefaultImpl(..) | VtableFnPointer(..) |
+            VtableClosure(..) => (&[]).iter(),
         }
     }
 
     pub fn map_nested<M, F>(&self, op: F) -> Vtable<'tcx, M> where F: FnMut(&N) -> M {
         match *self {
             VtableImpl(ref i) => VtableImpl(i.map_nested(op)),
+            VtableDefaultImpl(ref t) => VtableDefaultImpl(t.map_nested(op)),
             VtableFnPointer(ref sig) => VtableFnPointer((*sig).clone()),
             VtableClosure(d, ref s) => VtableClosure(d, s.clone()),
             VtableParam(ref n) => VtableParam(n.iter().map(op).collect()),
@@ -539,6 +552,7 @@ impl<'tcx, N> Vtable<'tcx, N> {
             VtableImpl(i) => VtableImpl(i.map_move_nested(op)),
             VtableFnPointer(sig) => VtableFnPointer(sig),
             VtableClosure(d, s) => VtableClosure(d, s),
+            VtableDefaultImpl(t) => VtableDefaultImpl(t.map_move_nested(op)),
             VtableParam(n) => VtableParam(n.into_iter().map(op).collect()),
             VtableObject(p) => VtableObject(p),
             VtableBuiltin(no) => VtableBuiltin(no.map_move_nested(op)),
@@ -569,6 +583,31 @@ impl<'tcx, N> VtableImplData<'tcx, N> {
             impl_def_id: impl_def_id,
             substs: substs,
             nested: nested.map_move(op)
+        }
+    }
+}
+
+impl<N> VtableDefaultImplData<N> {
+    pub fn iter_nested(&self) -> Iter<N> {
+        self.nested.iter()
+    }
+
+    pub fn map_nested<M, F>(&self, op: F) -> VtableDefaultImplData<M> where
+        F: FnMut(&N) -> M,
+    {
+        VtableDefaultImplData {
+            trait_def_id: self.trait_def_id,
+            nested: self.nested.iter().map(op).collect()
+        }
+    }
+
+    pub fn map_move_nested<M, F>(self, op: F) -> VtableDefaultImplData<M> where
+        F: FnMut(N) -> M,
+    {
+        let VtableDefaultImplData { trait_def_id, nested } = self;
+        VtableDefaultImplData {
+            trait_def_id: trait_def_id,
+            nested: nested.into_iter().map(op).collect()
         }
     }
 }

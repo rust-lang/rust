@@ -290,7 +290,8 @@ impl<'a, 'tcx> ReachableContext<'a, 'tcx> {
                     ast::ItemTy(..) | ast::ItemStatic(_, _, _) |
                     ast::ItemMod(..) | ast::ItemForeignMod(..) |
                     ast::ItemImpl(..) | ast::ItemTrait(..) |
-                    ast::ItemStruct(..) | ast::ItemEnum(..) => {}
+                    ast::ItemStruct(..) | ast::ItemEnum(..) |
+                    ast::ItemDefaultImpl(..) => {}
 
                     _ => {
                         self.tcx.sess.span_bug(item.span,

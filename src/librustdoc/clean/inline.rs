@@ -69,7 +69,7 @@ fn try_inline_def(cx: &DocContext, tcx: &ty::ctxt,
     let mut ret = Vec::new();
     let did = def.def_id();
     let inner = match def {
-        def::DefTrait(did) => {
+        def::DefaultImpl(did) => {
             record_extern_fqn(cx, did, clean::TypeTrait);
             clean::TraitItem(build_external_trait(cx, tcx, did))
         }

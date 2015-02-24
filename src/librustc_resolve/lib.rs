@@ -70,7 +70,7 @@ use syntax::ast::{ExprClosure, ExprLoop, ExprWhile, ExprMethodCall};
 use syntax::ast::{ExprPath, ExprQPath, ExprStruct, FnDecl};
 use syntax::ast::{ForeignItemFn, ForeignItemStatic, Generics};
 use syntax::ast::{Ident, ImplItem, Item, ItemConst, ItemEnum, ItemExternCrate};
-use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic};
+use syntax::ast::{ItemFn, ItemForeignMod, ItemImpl, ItemMac, ItemMod, ItemStatic, ItemDefaultImpl};
 use syntax::ast::{ItemStruct, ItemTrait, ItemTy, ItemUse};
 use syntax::ast::{Local, MethodImplItem, Mod, Name, NodeId};
 use syntax::ast::{Pat, PatEnum, PatIdent, PatLit};
@@ -2840,6 +2840,9 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 });
             }
 
+            ItemDefaultImpl(_, ref trait_ref) => {
+                self.resolve_trait_reference(item.id, trait_ref, TraitImplementation);
+            }
             ItemImpl(_, _,
                      ref generics,
                      ref implemented_traits,
@@ -2986,7 +2989,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // check for imports shadowing primitive types
                 if let ast::ViewPathSimple(ident, _) = view_path.node {
                     match self.def_map.borrow().get(&item.id) {
-                        Some(&DefTy(..)) | Some(&DefStruct(..)) | Some(&DefTrait(..)) | None => {
+                        Some(&DefTy(..)) | Some(&DefStruct(..)) | Some(&DefaultImpl(..)) | None => {
                             self.check_if_primitive_type_name(ident.name, item.span);
                         }
                         _ => {}
@@ -3196,7 +3199,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Some(def) => {
                 match def {
-                    (DefTrait(_), _) => {
+                    (DefaultImpl(_), _) => {
                         debug!("(resolving trait) found trait def: {:?}", def);
                         self.record_def(trait_reference.ref_id, def);
                     }
@@ -4672,7 +4675,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None => continue
                     };
                     let trait_def_id = match def {
-                        DefTrait(trait_def_id) => trait_def_id,
+                        DefaultImpl(trait_def_id) => trait_def_id,
                         _ => continue,
                     };
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
@@ -4688,7 +4691,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(target) => target,
                 };
                 let did = match target.bindings.def_for_namespace(TypeNS) {
-                    Some(DefTrait(trait_def_id)) => trait_def_id,
+                    Some(DefaultImpl(trait_def_id)) => trait_def_id,
                     Some(..) | None => continue,
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {

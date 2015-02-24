@@ -1,4 +1,4 @@
-// Copyright 2013 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,14 +8,22 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-trait Foo {
+// Test that when a `..` impl applies, we also check that any
+// supertrait conditions are met.
+
+#![feature(optin_builtin_traits)]
+
+use std::marker::MarkerTrait;
+
+trait MyTrait : 'static {}
+
+impl MyTrait for .. {}
+
+fn foo<T:MyTrait>() { }
+
+fn bar<'a>() {
+    foo::<&'a ()>(); //~ ERROR does not fulfill the required lifetime
 }
 
-struct Bar;
-
-impl Foo + Owned for Bar {
-//~^ ERROR not a trait
-//~^^ ERROR expected one of `..`, `where`, or `{`, found `Bar`
+fn main() {
 }
-
-fn main() { }

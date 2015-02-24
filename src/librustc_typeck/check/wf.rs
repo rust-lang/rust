@@ -83,12 +83,15 @@ impl<'ccx, 'tcx> CheckTypeWellFormedVisitor<'ccx, 'tcx> {
             }
             ast::ItemImpl(_, ast::ImplPolarity::Negative, _, Some(ref tref), _, _) => {
                 let trait_ref = ty::node_id_to_trait_ref(ccx.tcx, tref.ref_id);
+                ty::populate_implementations_for_trait_if_necessary(ccx.tcx, trait_ref.def_id);
                 match ccx.tcx.lang_items.to_builtin_kind(trait_ref.def_id) {
                     Some(ty::BoundSend) | Some(ty::BoundSync) => {}
                     Some(_) | None => {
-                        span_err!(ccx.tcx.sess, item.span, E0192,
-                            "negative impls are currently \
-                                     allowed just for `Send` and `Sync`")
+                        if !ty::trait_has_default_impl(ccx.tcx, trait_ref.def_id) {
+                            span_err!(ccx.tcx.sess, item.span, E0192,
+                                      "negative impls are only allowed for traits with \
+                                       default impls (e.g., `Send` and `Sync`)")
+                        }
                     }
                 }
             }

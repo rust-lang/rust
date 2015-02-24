@@ -252,8 +252,12 @@ pub fn name_to_dummy_lifetime(name: Name) -> Lifetime {
 /// hint of where they came from, (previously they would all just be
 /// listed as `__extensions__::method_name::hash`, with no indication
 /// of the type).
-pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: &Ty) -> Ident {
-    let mut pretty = pprust::ty_to_string(ty);
+pub fn impl_pretty_name(trait_ref: &Option<TraitRef>, ty: Option<&Ty>) -> Ident {
+    let mut pretty = match ty {
+        Some(t) => pprust::ty_to_string(t),
+        None => String::from_str("..")
+    };
+
     match *trait_ref {
         Some(ref trait_ref) => {
             pretty.push('.');

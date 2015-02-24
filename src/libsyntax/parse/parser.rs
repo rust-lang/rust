@@ -31,7 +31,7 @@ use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
 use ast::{Ident, Inherited, ImplItem, Item, Item_, ItemStatic};
 use ast::{ItemEnum, ItemFn, ItemForeignMod, ItemImpl, ItemConst};
-use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy};
+use ast::{ItemMac, ItemMod, ItemStruct, ItemTrait, ItemTy, ItemDefaultImpl};
 use ast::{ItemExternCrate, ItemUse};
 use ast::{LifetimeDef, Lit, Lit_};
 use ast::{LitBool, LitChar, LitByte, LitBinary};
@@ -4787,10 +4787,13 @@ impl<'a> Parser<'a> {
         (impl_items, inner_attrs)
     }
 
-    /// Parses two variants (with the region/type params always optional):
+    /// Parses items implementations variants
     ///    impl<T> Foo { ... }
-    ///    impl<T> ToString for ~[T] { ... }
+    ///    impl<T> ToString for &'static T { ... }
+    ///    impl Send for .. {}
     fn parse_item_impl(&mut self, unsafety: ast::Unsafety) -> ItemInfo {
+        let impl_span = self.span;
+
         // First, parse type parameters if necessary.
         let mut generics = self.parse_generics();
 
@@ -4811,7 +4814,7 @@ impl<'a> Parser<'a> {
         // Parse traits, if necessary.
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
-            let opt_trait_ref = match ty.node {
+            match ty.node {
                 TyPath(ref path, node_id) => {
                     Some(TraitRef {
                         path: (*path).clone(),
@@ -4822,10 +4825,7 @@ impl<'a> Parser<'a> {
                     self.span_err(ty.span, "not a trait");
                     None
                 }
-            };
-
-            ty = self.parse_ty_sum();
-            opt_trait_ref
+            }
         } else {
             match polarity {
                 ast::ImplPolarity::Negative => {
@@ -4838,14 +4838,27 @@ impl<'a> Parser<'a> {
             None
         };
 
-        self.parse_where_clause(&mut generics);
-        let (impl_items, attrs) = self.parse_impl_items();
+        if self.eat(&token::DotDot) {
+            if generics.is_parameterized() {
+                self.span_err(impl_span, "default trait implementations are not \
+                                          allowed to have genercis");
+            }
 
-        let ident = ast_util::impl_pretty_name(&opt_trait, &*ty);
+            self.expect(&token::OpenDelim(token::Brace));
+            self.expect(&token::CloseDelim(token::Brace));
+            (ast_util::impl_pretty_name(&opt_trait, None),
+             ItemDefaultImpl(unsafety, opt_trait.unwrap()), None)
+        } else {
+            if opt_trait.is_some() {
+                ty = self.parse_ty_sum();
+            }
+            self.parse_where_clause(&mut generics);
+            let (impl_items, attrs) = self.parse_impl_items();
 
-        (ident,
-         ItemImpl(unsafety, polarity, generics, opt_trait, ty, impl_items),
-         Some(attrs))
+            (ast_util::impl_pretty_name(&opt_trait, Some(&*ty)),
+             ItemImpl(unsafety, polarity, generics, opt_trait, ty, impl_items),
+             Some(attrs))
+        }
     }
 
     /// Parse a::B<String,i32>

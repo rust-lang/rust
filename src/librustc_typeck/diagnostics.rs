@@ -171,7 +171,9 @@ register_diagnostics! {
     E0247, // found module name used as a type
     E0248, // found value name used as a type
     E0249, // expected constant expr for array length
-    E0250  // expected constant expr for array length
+    E0250, // expected constant expr for array length
+    E0318, // can't create default impls for traits outside their crates
+    E0319  // trait impls for defaulted traits allowed just for structs/enums
 }
 
 __build_diagnostic_array! { DIAGNOSTICS }
