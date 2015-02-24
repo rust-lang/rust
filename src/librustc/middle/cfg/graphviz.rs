@@ -65,10 +65,10 @@ impl<'a, 'ast> dot::Labeller<'a, Node<'a>, Edge<'a>> for LabelledCFG<'a, 'ast> {
             dot::LabelText::LabelStr("entry".into_cow())
         } else if i == self.cfg.exit {
             dot::LabelText::LabelStr("exit".into_cow())
-        } else if n.data.id == ast::DUMMY_NODE_ID {
+        } else if n.data.id() == ast::DUMMY_NODE_ID {
             dot::LabelText::LabelStr("(dummy_node)".into_cow())
         } else {
-            let s = self.ast_map.node_to_string(n.data.id);
+            let s = self.ast_map.node_to_string(n.data.id());
             // left-aligns the lines
             let s = replace_newline_with_backslash_l(s);
             dot::LabelText::EscStr(s.into_cow())
