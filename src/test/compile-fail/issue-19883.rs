@@ -18,13 +18,11 @@ trait To {
     // This is a typo, the return type should be `<Dst as From<Self>>::Output`
     fn to<Dst: From<Self>>(
         self
-        //~^ error: the trait `core::marker::Sized` is not implemented
     ) ->
         <Dst as From<Self>>::Dst
-        //~^ error: the trait `core::marker::Sized` is not implemented
+        //~^ error: cannot find binding for item `Dst` within trait `From<Self>`
     {
         From::from(
-            //~^ error: the trait `core::marker::Sized` is not implemented
             self
         )
     }
