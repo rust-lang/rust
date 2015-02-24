@@ -214,14 +214,7 @@ pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<
 }
 
 pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    // Unsized types cannot be dropped automatically - these are lvalues pointing
-    // to alloca's containing the actual data pointer (and the unsizing info),
-    // which only be obtained by dereferencing a pointer from which moves are
-    // not allowed. Datum & friends could possibly be adjusted to avoid getting
-    // this far - maybe the (*data, info) aggregate could be an SSA value?
-    // Lvalues don't have to be pointers, just behave like a pointer, but there
-    // is no telling what other implicit assumptions are lurking around.
-    ty::type_contents(cx, ty).needs_drop(cx) && type_is_sized(cx, ty)
+    ty::type_contents(cx, ty).needs_drop(cx)
 }
 
 fn type_is_newtype_immediate<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<'tcx>) -> bool {

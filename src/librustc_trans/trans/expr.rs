@@ -463,11 +463,13 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), unsized_ty).ptr_to();
         let base = PointerCast(bcx, lval.val, ptr_ty);
 
-        let scratch = rvalue_scratch_datum(bcx, unsized_ty, "__fat_ptr");
-        Store(bcx, base, get_dataptr(bcx, scratch.val));
-        Store(bcx, info, get_len(bcx, scratch.val));
+        let llty = type_of::type_of(bcx.ccx(), unsized_ty);
+        // HACK(eddyb) get around issues with lifetime intrinsics.
+        let scratch = alloca_no_lifetime(bcx, llty, "__fat_ptr");
+        Store(bcx, base, get_dataptr(bcx, scratch));
+        Store(bcx, info, get_len(bcx, scratch));
 
-        DatumBlock::new(bcx, scratch.to_expr_datum())
+        DatumBlock::new(bcx, Datum::new(scratch, unsized_ty, LvalueExpr))
     }
 
     fn unsize_unique_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
