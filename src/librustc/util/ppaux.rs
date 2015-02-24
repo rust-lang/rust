@@ -20,7 +20,7 @@ use middle::ty::{ReSkolemized, ReVar, BrEnv};
 use middle::ty::{mt, Ty, ParamTy};
 use middle::ty::{ty_bool, ty_char, ty_struct, ty_enum};
 use middle::ty::{ty_err, ty_str, ty_vec, ty_float, ty_bare_fn};
-use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup, ty_open};
+use middle::ty::{ty_param, ty_ptr, ty_rptr, ty_tup};
 use middle::ty::{ty_closure};
 use middle::ty::{ty_uniq, ty_trait, ty_int, ty_uint, ty_infer};
 use middle::ty;
@@ -369,8 +369,6 @@ pub fn ty_to_string<'tcx>(cx: &ctxt<'tcx>, typ: &ty::TyS<'tcx>) -> String {
             buf.push_str(&mt_to_string(cx, tm));
             buf
         }
-        ty_open(typ) =>
-            format!("opened<{}>", ty_to_string(cx, typ)),
         ty_tup(ref elems) => {
             let strs = elems
                 .iter()

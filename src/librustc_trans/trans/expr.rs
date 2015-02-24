@@ -451,8 +451,6 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
         let datum_ty = datum.ty;
         let unsized_ty = ty::unsize_ty(tcx, datum_ty, k, expr.span);
         debug!("unsized_ty={}", unsized_ty.repr(bcx.tcx()));
-        let dest_ty = ty::mk_open(tcx, unsized_ty);
-        debug!("dest_ty={}", unsized_ty.repr(bcx.tcx()));
 
         let info = unsized_info(bcx.ccx(), k, expr.id, datum_ty, bcx.fcx.param_substs,
                                 |t| ty::mk_imm_rptr(tcx, tcx.mk_region(ty::ReStatic), t));
@@ -462,20 +460,16 @@ fn apply_adjustments<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                                  datum.to_lvalue_datum(bcx, "into_fat_ptr", expr.id));
         // Compute the base pointer. This doesn't change the pointer value,
         // but merely its type.
-        let base = match *k {
-            ty::UnsizeStruct(..) | ty::UnsizeVtable(..) => {
-                PointerCast(bcx, lval.val, type_of::type_of(bcx.ccx(), unsized_ty).ptr_to())
-            }
-            ty::UnsizeLength(..) => {
-                GEPi(bcx, lval.val, &[0, 0])
-            }
-        };
+        let ptr_ty = type_of::in_memory_type_of(bcx.ccx(), unsized_ty).ptr_to();
+        let base = PointerCast(bcx, lval.val, ptr_ty);
 
-        let scratch = rvalue_scratch_datum(bcx, dest_ty, "__fat_ptr");
-        Store(bcx, base, get_dataptr(bcx, scratch.val));
-        Store(bcx, info, get_len(bcx, scratch.val));
+        let llty = type_of::type_of(bcx.ccx(), unsized_ty);
+        // HACK(eddyb) get around issues with lifetime intrinsics.
+        let scratch = alloca_no_lifetime(bcx, llty, "__fat_ptr");
+        Store(bcx, base, get_dataptr(bcx, scratch));
+        Store(bcx, info, get_len(bcx, scratch));
 
-        DatumBlock::new(bcx, scratch.to_expr_datum())
+        DatumBlock::new(bcx, Datum::new(scratch, unsized_ty, LvalueExpr))
     }
 
     fn unsize_unique_vec<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
@@ -711,7 +705,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_rec_field");
 
     let base_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, base, "field"));
-    let bare_ty = ty::unopen_type(base_datum.ty);
+    let bare_ty = base_datum.ty;
     let repr = adt::represent_type(bcx.ccx(), bare_ty);
     with_field_tys(bcx.tcx(), bare_ty, None, move |discr, field_tys| {
         let ix = get_idx(bcx.tcx(), field_tys);
@@ -723,7 +717,7 @@ fn trans_field<'blk, 'tcx, F>(bcx: Block<'blk, 'tcx>,
         if type_is_sized(bcx.tcx(), d.ty) {
             DatumBlock { datum: d.to_expr_datum(), bcx: bcx }
         } else {
-            let scratch = rvalue_scratch_datum(bcx, ty::mk_open(bcx.tcx(), d.ty), "");
+            let scratch = rvalue_scratch_datum(bcx, d.ty, "");
             Store(bcx, d.val, get_dataptr(bcx, scratch.val));
             let info = Load(bcx, get_len(bcx, base_datum.val));
             Store(bcx, info, get_len(bcx, scratch.val));
@@ -809,7 +803,7 @@ fn trans_index<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if type_is_sized(bcx.tcx(), elt_ty) {
                 Datum::new(datum.to_llscalarish(bcx), elt_ty, LvalueExpr)
             } else {
-                Datum::new(datum.val, ty::mk_open(bcx.tcx(), elt_ty), LvalueExpr)
+                Datum::new(datum.val, elt_ty, LvalueExpr)
             }
         }
         None => {
@@ -1671,7 +1665,7 @@ fn trans_uniq_expr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
 fn ref_fat_ptr<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                            lval: Datum<'tcx, Lvalue>)
                            -> DatumBlock<'blk, 'tcx, Expr> {
-    let dest_ty = ty::close_type(bcx.tcx(), lval.ty);
+    let dest_ty = ty::mk_imm_rptr(bcx.tcx(), bcx.tcx().mk_region(ty::ReStatic), lval.ty);
     let scratch = rvalue_scratch_datum(bcx, dest_ty, "__fat_ptr");
     memcpy_ty(bcx, scratch.val, lval.val, scratch.ty);
 
@@ -1685,16 +1679,13 @@ fn trans_addr_of<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
     let _icx = push_ctxt("trans_addr_of");
     let mut bcx = bcx;
     let sub_datum = unpack_datum!(bcx, trans_to_lvalue(bcx, subexpr, "addr_of"));
-    match sub_datum.ty.sty {
-        ty::ty_open(_) => {
-            // Opened DST value, close to a fat pointer
-            ref_fat_ptr(bcx, sub_datum)
-        }
-        _ => {
-            // Sized value, ref to a thin pointer
-            let ty = expr_ty(bcx, expr);
-            immediate_rvalue_bcx(bcx, sub_datum.val, ty).to_expr_datumblock()
-        }
+    if !type_is_sized(bcx.tcx(), sub_datum.ty) {
+        // DST lvalue, close to a fat pointer
+        ref_fat_ptr(bcx, sub_datum)
+    } else {
+        // Sized value, ref to a thin pointer
+        let ty = expr_ty(bcx, expr);
+        immediate_rvalue_bcx(bcx, sub_datum.val, ty).to_expr_datumblock()
     }
 }
 
@@ -2234,16 +2225,15 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
             if type_is_sized(bcx.tcx(), content_ty) {
                 deref_owned_pointer(bcx, expr, datum, content_ty)
             } else {
-                // A fat pointer and an opened DST value have the same
-                // representation just different types. Since there is no
-                // temporary for `*e` here (because it is unsized), we cannot
-                // emulate the sized object code path for running drop glue and
-                // free. Instead, we schedule cleanup for `e`, turning it into
-                // an lvalue.
+                // A fat pointer and a DST lvalue have the same representation
+                // just different types. Since there is no temporary for `*e`
+                // here (because it is unsized), we cannot emulate the sized
+                // object code path for running drop glue and free. Instead,
+                // we schedule cleanup for `e`, turning it into an lvalue.
                 let datum = unpack_datum!(
                     bcx, datum.to_lvalue_datum(bcx, "deref", expr.id));
 
-                let datum = Datum::new(datum.val, ty::mk_open(bcx.tcx(), content_ty), LvalueExpr);
+                let datum = Datum::new(datum.val, content_ty, LvalueExpr);
                 DatumBlock::new(bcx, datum)
             }
         }
@@ -2260,11 +2250,9 @@ fn deref_once<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
                 // owner (or, in the case of *T, by the user).
                 DatumBlock::new(bcx, Datum::new(ptr, content_ty, LvalueExpr))
             } else {
-                // A fat pointer and an opened DST value have the same representation
+                // A fat pointer and a DST lvalue have the same representation
                 // just different types.
-                DatumBlock::new(bcx, Datum::new(datum.val,
-                                                ty::mk_open(bcx.tcx(), content_ty),
-                                                LvalueExpr))
+                DatumBlock::new(bcx, Datum::new(datum.val, content_ty, LvalueExpr))
             }
         }
 

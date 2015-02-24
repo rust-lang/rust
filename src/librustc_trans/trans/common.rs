@@ -120,14 +120,16 @@ pub fn erase_regions<'tcx,T>(cx: &ty::ctxt<'tcx>, value: &T) -> T
 // Is the type's representation size known at compile time?
 pub fn type_is_sized<'tcx>(tcx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     let param_env = ty::empty_parameter_environment(tcx);
-    ty::type_is_sized(&param_env, DUMMY_SP, ty)
-}
-
-pub fn lltype_is_sized<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
-    match ty.sty {
-        ty::ty_open(_) => true,
-        _ => type_is_sized(cx, ty),
+    // FIXME(#4287) This can cause errors due to polymorphic recursion,
+    // a better span should be provided, if available.
+    let err_count = tcx.sess.err_count();
+    let is_sized = ty::type_is_sized(&param_env, DUMMY_SP, ty);
+    // Those errors aren't fatal, but an incorrect result can later
+    // trip over asserts in both rustc's trans and LLVM.
+    if err_count < tcx.sess.err_count() {
+        tcx.sess.abort_if_errors();
     }
+    is_sized
 }
 
 pub fn type_is_fat_ptr<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
@@ -211,9 +213,7 @@ pub fn type_needs_unwind_cleanup<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>, ty: Ty<
     }
 }
 
-pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>,
-                         ty: Ty<'tcx>)
-                         -> bool {
+pub fn type_needs_drop<'tcx>(cx: &ty::ctxt<'tcx>, ty: Ty<'tcx>) -> bool {
     ty::type_contents(cx, ty).needs_drop(cx)
 }
 

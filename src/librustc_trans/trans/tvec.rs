@@ -372,38 +372,31 @@ pub fn get_fixed_base_and_len(bcx: Block,
     (base, len)
 }
 
-fn get_slice_base_and_len(bcx: Block,
-                          llval: ValueRef)
-                          -> (ValueRef, ValueRef) {
-    let base = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_ADDR]));
-    let len = Load(bcx, GEPi(bcx, llval, &[0, abi::FAT_PTR_EXTRA]));
-    (base, len)
-}
-
 /// Converts a vector into the slice pair.  The vector should be stored in `llval` which should be
 /// by-reference.  If you have a datum, you would probably prefer to call
 /// `Datum::get_base_and_len()` which will handle any conversions for you.
-pub fn get_base_and_len(bcx: Block,
-                        llval: ValueRef,
-                        vec_ty: Ty)
-                        -> (ValueRef, ValueRef) {
+pub fn get_base_and_len<'blk, 'tcx>(bcx: Block<'blk, 'tcx>,
+                                    llval: ValueRef,
+                                    vec_ty: Ty<'tcx>)
+                                    -> (ValueRef, ValueRef) {
     let ccx = bcx.ccx();
 
     match vec_ty.sty {
         ty::ty_vec(_, Some(n)) => get_fixed_base_and_len(bcx, llval, n),
-        ty::ty_open(ty) => match ty.sty {
-            ty::ty_vec(_, None) | ty::ty_str => get_slice_base_and_len(bcx, llval),
-            _ => ccx.sess().bug("unexpected type in get_base_and_len")
-        },
+        ty::ty_vec(_, None) | ty::ty_str => {
+            let base = Load(bcx, expr::get_dataptr(bcx, llval));
+            let len = Load(bcx, expr::get_len(bcx, llval));
+            (base, len)
+        }
 
         // Only used for pattern matching.
-        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => match ty.sty {
-            ty::ty_vec(_, None) | ty::ty_str => get_slice_base_and_len(bcx, llval),
-            ty::ty_vec(_, Some(n)) => {
-                let base = GEPi(bcx, Load(bcx, llval), &[0, 0]);
-                (base, C_uint(ccx, n))
-            }
-            _ => ccx.sess().bug("unexpected type in get_base_and_len"),
+        ty::ty_uniq(ty) | ty::ty_rptr(_, ty::mt{ty, ..}) => {
+            let inner = if type_is_sized(bcx.tcx(), ty) {
+                Load(bcx, llval)
+            } else {
+                llval
+            };
+            get_base_and_len(bcx, inner, ty)
         },
         _ => ccx.sess().bug("unexpected type in get_base_and_len"),
     }

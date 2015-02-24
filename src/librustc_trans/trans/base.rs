@@ -676,8 +676,7 @@ pub fn iter_structural_ty<'blk, 'tcx, F>(cx: Block<'blk, 'tcx>,
                   let val = if common::type_is_sized(cx.tcx(), field_ty) {
                       llfld_a
                   } else {
-                      let boxed_ty = ty::mk_open(cx.tcx(), field_ty);
-                      let scratch = datum::rvalue_scratch_datum(cx, boxed_ty, "__fat_ptr_iter");
+                      let scratch = datum::rvalue_scratch_datum(cx, field_ty, "__fat_ptr_iter");
                       Store(cx, llfld_a, GEPi(cx, scratch.val, &[0, abi::FAT_PTR_ADDR]));
                       Store(cx, info.unwrap(), GEPi(cx, scratch.val, &[0, abi::FAT_PTR_EXTRA]));
                       scratch.val
