@@ -818,9 +818,6 @@ fn emit_vtable_methods<'a, 'tcx>(ccx: &CrateContext<'a, 'tcx>,
                         param_substs,
                         substs.clone()).val;
 
-                    // currently, at least, by-value self is not object safe
-                    assert!(m.explicit_self != ty::ByValueExplicitSelfCategory);
-
                     Some(fn_ref).into_iter()
                 }
             }
