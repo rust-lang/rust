@@ -15,7 +15,7 @@ use ext::base::{NormalTT, TTMacroExpander};
 use ext::tt::macro_parser::{Success, Error, Failure};
 use ext::tt::macro_parser::{NamedMatch, MatchedSeq, MatchedNonterminal};
 use ext::tt::macro_parser::{parse, parse_or_else};
-use parse::lexer::{new_tt_reader, new_tt_reader_with_doc_flag};
+use parse::lexer::new_tt_reader;
 use parse::parser::Parser;
 use parse::attr::ParserAttr;
 use parse::token::{self, special_idents, gensym_ident, NtTT, Token};
@@ -154,15 +154,8 @@ fn generic_extension<'cx>(cx: &'cx ExtCtxt,
                 TtDelimited(_, ref delim) => &delim.tts[..],
                 _ => cx.span_fatal(sp, "malformed macro lhs")
             };
-            // `None` is because we're not interpolating
-            let arg_rdr = new_tt_reader_with_doc_flag(&cx.parse_sess().span_diagnostic,
-                                                      None,
-                                                      None,
-                                                      arg.iter()
-                                                         .cloned()
-                                                         .collect(),
-                                                      true);
-            match parse(cx.parse_sess(), cx.cfg(), arg_rdr, lhs_tt) {
+
+            match TokenTree::parse(cx, lhs_tt, arg) {
               Success(named_matches) => {
                 let rhs = match *rhses[i] {
                     // okay, what's your transcriber?
