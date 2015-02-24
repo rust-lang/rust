@@ -206,21 +206,6 @@ pub fn write_region(ecx: &EncodeContext,
     tyencode::enc_region(rbml_w, ty_str_ctxt, r);
 }
 
-fn encode_bounds<'a, 'tcx>(rbml_w: &mut Encoder,
-                           ecx: &EncodeContext<'a, 'tcx>,
-                           bounds: &ty::ParamBounds<'tcx>,
-                           tag: uint) {
-    rbml_w.start_tag(tag);
-
-    let ty_str_ctxt = &tyencode::ctxt { diag: ecx.diag,
-                                        ds: def_to_string,
-                                        tcx: ecx.tcx,
-                                        abbrevs: &ecx.type_abbrevs };
-    tyencode::enc_bounds(rbml_w, ty_str_ctxt, bounds);
-
-    rbml_w.end_tag();
-}
-
 fn encode_type<'a, 'tcx>(ecx: &EncodeContext<'a, 'tcx>,
                          rbml_w: &mut Encoder,
                          typ: Ty<'tcx>) {
@@ -728,6 +713,7 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
         tcx: ecx.tcx,
         abbrevs: &ecx.type_abbrevs
     };
+
     for param in generics.types.iter() {
         rbml_w.start_tag(tag_type_param_def);
         tyencode::enc_type_param_def(rbml_w, ty_str_ctxt, param);
@@ -758,6 +744,22 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
         rbml_w.end_tag();
     }
 
+    encode_predicates_in_current_doc(rbml_w, ecx, predicates);
+
+    rbml_w.end_tag();
+}
+
+fn encode_predicates_in_current_doc<'a,'tcx>(rbml_w: &mut Encoder,
+                                             ecx: &EncodeContext<'a,'tcx>,
+                                             predicates: &ty::GenericPredicates<'tcx>)
+{
+    let ty_str_ctxt = &tyencode::ctxt {
+        diag: ecx.diag,
+        ds: def_to_string,
+        tcx: ecx.tcx,
+        abbrevs: &ecx.type_abbrevs
+    };
+
     for (space, _, predicate) in predicates.predicates.iter_enumerated() {
         rbml_w.start_tag(tag_predicate);
 
@@ -769,7 +771,15 @@ fn encode_generics<'a, 'tcx>(rbml_w: &mut Encoder,
 
         rbml_w.end_tag();
     }
+}
 
+fn encode_predicates<'a,'tcx>(rbml_w: &mut Encoder,
+                              ecx: &EncodeContext<'a,'tcx>,
+                              predicates: &ty::GenericPredicates<'tcx>,
+                              tag: uint)
+{
+    rbml_w.start_tag(tag);
+    encode_predicates_in_current_doc(rbml_w, ecx, predicates);
     rbml_w.end_tag();
 }
 
@@ -1280,6 +1290,8 @@ fn encode_info_for_item(ecx: &EncodeContext,
         encode_paren_sugar(rbml_w, trait_def.paren_sugar);
         encode_associated_type_names(rbml_w, &trait_def.associated_type_names);
         encode_generics(rbml_w, ecx, &trait_def.generics, &trait_predicates, tag_item_generics);
+        encode_predicates(rbml_w, ecx, &ty::lookup_super_predicates(tcx, def_id),
+                          tag_item_super_predicates);
         encode_trait_ref(rbml_w, ecx, &*trait_def.trait_ref, tag_item_trait_ref);
         encode_name(rbml_w, item.ident.name);
         encode_attributes(rbml_w, &item.attrs);
@@ -1303,8 +1315,6 @@ fn encode_info_for_item(ecx: &EncodeContext,
                                  &def_to_string(method_def_id.def_id()));
         }
         encode_path(rbml_w, path.clone());
-
-        encode_bounds(rbml_w, ecx, &trait_def.bounds, tag_trait_def_bounds);
 
         // Encode the implementations of this trait.
         encode_extension_implementations(ecx, rbml_w, def_id);

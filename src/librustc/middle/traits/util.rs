@@ -117,9 +117,17 @@ impl<'cx, 'tcx> Elaborator<'cx, 'tcx> {
     fn push(&mut self, predicate: &ty::Predicate<'tcx>) {
         match *predicate {
             ty::Predicate::Trait(ref data) => {
-                let mut predicates =
-                    ty::predicates_for_trait_ref(self.tcx,
-                                                 &data.to_poly_trait_ref());
+                // Predicates declared on the trait.
+                let predicates = ty::lookup_super_predicates(self.tcx, data.def_id());
+
+                let mut predicates: Vec<_> =
+                    predicates.predicates
+                              .iter()
+                              .map(|p| p.subst_supertrait(self.tcx, &data.to_poly_trait_ref()))
+                              .collect();
+
+                debug!("super_predicates: data={} predicates={}",
+                       data.repr(self.tcx), predicates.repr(self.tcx));
 
                 // Only keep those bounds that we haven't already
                 // seen.  This is necessary to prevent infinite

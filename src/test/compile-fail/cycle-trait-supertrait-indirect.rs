@@ -12,9 +12,12 @@
 // a direct participant in the cycle.
 
 trait A: B {
+    //~^ ERROR unsupported cyclic reference
 }
 
-trait B: C { }
+trait B: C {
+    //~^ ERROR unsupported cyclic reference
+}
 
 trait C: B { }
     //~^ ERROR unsupported cyclic reference

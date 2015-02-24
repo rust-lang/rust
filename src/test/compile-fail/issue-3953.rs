@@ -13,7 +13,6 @@
 use std::cmp::PartialEq;
 
 trait Hahaha: PartialEq + PartialEq {
-    //~^ ERROR trait `PartialEq` already appears in the list of bounds
 }
 
 struct Lol(isize);
@@ -21,8 +20,8 @@ struct Lol(isize);
 impl Hahaha for Lol { }
 
 impl PartialEq for Lol {
-    fn eq(&self, other: &Lol) -> bool { **self != **other }
-    fn ne(&self, other: &Lol) -> bool { **self == **other }
+    fn eq(&self, other: &Lol) -> bool { loop { } }
+    fn ne(&self, other: &Lol) -> bool { loop { } }
 }
 
 fn main() {

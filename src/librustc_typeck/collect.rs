@@ -26,35 +26,17 @@ represented by an instance of `ty::TypeScheme`.  This combines the
 core type along with a list of the bounds for each parameter. Type
 parameters themselves are represented as `ty_param()` instances.
 
-The phasing of type conversion is somewhat complicated. There are a
-number of possible cycles that can arise.
+The phasing of type conversion is somewhat complicated. There is no
+clear set of phases we can enforce (e.g., converting traits first,
+then types, or something like that) because the user can introduce
+arbitrary interdependencies. So instead we generally convert things
+lazilly and on demand, and include logic that checks for cycles.
+Demand is driven by calls to `AstConv::get_item_type_scheme` or
+`AstConv::lookup_trait_def`.
 
-Converting types can require:
-
-1. `Foo<X>` where `Foo` is a type alias, or trait requires knowing:
-   - number of region / type parameters
-   - for type parameters, `T:'a` annotations to control defaults for object lifetimes
-   - defaults for type parameters (which are themselves types!)
-2. `Foo<X>` where `Foo` is a type alias requires knowing what `Foo` expands to
-3. Translating `SomeTrait` with no explicit lifetime bound requires knowing
-   - supertraits of `SomeTrait`
-4. Translating `T::X` (vs `<T as Trait>::X`) requires knowing
-   - bounds on `T`
-   - supertraits of those bounds
-
-So as you can see, in general translating types requires knowing the
-trait hierarchy. But this gets a bit tricky because translating the
-trait hierarchy requires converting the types that appear in trait
-references. One potential saving grace is that in general knowing the
-trait hierarchy is only necessary for shorthands like `T::X` or
-handling omitted lifetime bounds on object types. Therefore, if we are
-lazy about expanding out the trait hierachy, users can sever cycles if
-necessary. Lazy expansion is also needed for type aliases.
-
-This system is not perfect yet. Currently, we "convert" types and
-traits in three phases (note that conversion only affects the types of
-items / enum variants / methods; it does not e.g. compute the types of
-individual expressions):
+Currently, we "convert" types and traits in three phases (note that
+conversion only affects the types of items / enum variants / methods;
+it does not e.g. compute the types of individual expressions):
 
 0. Intrinsics
 1. Trait definitions
@@ -64,16 +46,13 @@ Conversion itself is done by simply walking each of the items in turn
 and invoking an appropriate function (e.g., `trait_def_of_item` or
 `convert_item`). However, it is possible that while converting an
 item, we may need to compute the *type scheme* or *trait definition*
-for other items. This is a kind of shallow conversion that is
-triggered on demand by calls to `AstConv::get_item_type_scheme` or
-`AstConv::lookup_trait_def`. It is possible for cycles to result from
-this (e.g., `type A = B; type B = A;`), in which case astconv
-(currently) reports the error.
+for other items.
 
 There are some shortcomings in this design:
 
-- Cycles through trait definitions (e.g. supertraits) are not currently
-  detected by astconv. (#12511)
+- Before walking the set of supertraits for a given trait, you must
+  call `ensure_super_predicates` on that trait def-id. Otherwise,
+  `lookup_super_predicates` will result in ICEs.
 - Because the type scheme includes defaults, cycles through type
   parameter defaults are illegal even if those defaults are never
   employed. This is not necessarily a bug.
@@ -169,6 +148,7 @@ struct ItemCtxt<'a,'tcx:'a> {
 enum AstConvRequest {
     GetItemTypeScheme(ast::DefId),
     GetTraitDef(ast::DefId),
+    EnsureSuperPredicates(ast::DefId),
     GetTypeParameterBounds(ast::NodeId),
 }
 
@@ -245,7 +225,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                         request: AstConvRequest,
                         code: F)
                         -> Result<R,ErrorReported>
-        where F: FnOnce() -> R
+        where F: FnOnce() -> Result<R,ErrorReported>
     {
         {
             let mut stack = self.stack.borrow_mut();
@@ -263,7 +243,7 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
         let result = code();
 
         self.stack.borrow_mut().pop();
-        Ok(result)
+        result
     }
 
     fn report_cycle(&self,
@@ -284,6 +264,11 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                     &format!("the cycle begins when processing `{}`...",
                              ty::item_path_str(tcx, def_id)));
             }
+            AstConvRequest::EnsureSuperPredicates(def_id) => {
+                tcx.sess.note(
+                    &format!("the cycle begins when computing the supertraits of `{}`...",
+                             ty::item_path_str(tcx, def_id)));
+            }
             AstConvRequest::GetTypeParameterBounds(id) => {
                 let def = tcx.type_parameter_def(id);
                 tcx.sess.note(
@@ -299,6 +284,11 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                 AstConvRequest::GetTraitDef(def_id) => {
                     tcx.sess.note(
                         &format!("...which then requires processing `{}`...",
+                                 ty::item_path_str(tcx, def_id)));
+                }
+                AstConvRequest::EnsureSuperPredicates(def_id) => {
+                    tcx.sess.note(
+                        &format!("...which then requires computing the supertraits of `{}`...",
                                  ty::item_path_str(tcx, def_id)));
                 }
                 AstConvRequest::GetTypeParameterBounds(id) => {
@@ -318,6 +308,12 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                     &format!("...which then again requires processing `{}`, completing the cycle.",
                              ty::item_path_str(tcx, def_id)));
             }
+            AstConvRequest::EnsureSuperPredicates(def_id) => {
+                tcx.sess.note(
+                    &format!("...which then again requires computing the supertraits of `{}`, \
+                              completing the cycle.",
+                             ty::item_path_str(tcx, def_id)));
+            }
             AstConvRequest::GetTypeParameterBounds(id) => {
                 let def = tcx.type_parameter_def(id);
                 tcx.sess.note(
@@ -326,6 +322,41 @@ impl<'a,'tcx> CrateCtxt<'a,'tcx> {
                              def.name.user_string(tcx)));
             }
         }
+    }
+
+    /// Loads the trait def for a given trait, returning ErrorReported if a cycle arises.
+    fn get_trait_def(&self, trait_id: ast::DefId)
+                     -> Rc<ty::TraitDef<'tcx>>
+    {
+        let tcx = self.tcx;
+
+        if trait_id.krate != ast::LOCAL_CRATE {
+            return ty::lookup_trait_def(tcx, trait_id)
+        }
+
+        let item = match tcx.map.get(trait_id.node) {
+            ast_map::NodeItem(item) => item,
+            _ => tcx.sess.bug(&format!("get_trait_def({}): not an item", trait_id.repr(tcx)))
+        };
+
+        trait_def_of_item(self, &*item)
+    }
+
+    /// Ensure that the (transitive) super predicates for
+    /// `trait_def_id` are available. This will report a cycle error
+    /// if a trait `X` (transitively) extends itself in some form.
+    fn ensure_super_predicates(&self, span: Span, trait_def_id: ast::DefId)
+                               -> Result<(), ErrorReported>
+    {
+        self.cycle_check(span, AstConvRequest::EnsureSuperPredicates(trait_def_id), || {
+            let def_ids = ensure_super_predicates_step(self, trait_def_id);
+
+            for def_id in def_ids {
+                try!(self.ensure_super_predicates(span, def_id));
+            }
+
+            Ok(())
+        })
     }
 }
 
@@ -342,7 +373,7 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                             -> Result<ty::TypeScheme<'tcx>, ErrorReported>
     {
         self.ccx.cycle_check(span, AstConvRequest::GetItemTypeScheme(id), || {
-            type_scheme_of_def_id(self.ccx, id)
+            Ok(type_scheme_of_def_id(self.ccx, id))
         })
     }
 
@@ -350,9 +381,21 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                      -> Result<Rc<ty::TraitDef<'tcx>>, ErrorReported>
     {
         self.ccx.cycle_check(span, AstConvRequest::GetTraitDef(id), || {
-            get_trait_def(self.ccx, id)
+            Ok(self.ccx.get_trait_def(id))
         })
     }
+
+    fn ensure_super_predicates(&self,
+                               span: Span,
+                               trait_def_id: ast::DefId)
+                               -> Result<(), ErrorReported>
+    {
+        debug!("ensure_super_predicates(trait_def_id={})",
+               trait_def_id.repr(self.tcx()));
+
+        self.ccx.ensure_super_predicates(span, trait_def_id)
+    }
+
 
     fn get_type_parameter_bounds(&self,
                                  span: Span,
@@ -360,7 +403,11 @@ impl<'a, 'tcx> AstConv<'tcx> for ItemCtxt<'a, 'tcx> {
                                  -> Result<Vec<ty::PolyTraitRef<'tcx>>, ErrorReported>
     {
         self.ccx.cycle_check(span, AstConvRequest::GetTypeParameterBounds(node_id), || {
-            self.param_bounds.get_type_parameter_bounds(self, span, node_id)
+            let v = self.param_bounds.get_type_parameter_bounds(self, span, node_id)
+                                     .into_iter()
+                                     .filter_map(|p| p.to_opt_poly_trait_ref())
+                                     .collect();
+            Ok(v)
         })
     }
 
@@ -400,7 +447,7 @@ trait GetTypeParameterBounds<'tcx> {
                                  astconv: &AstConv<'tcx>,
                                  span: Span,
                                  node_id: ast::NodeId)
-                                 -> Vec<ty::PolyTraitRef<'tcx>>;
+                                 -> Vec<ty::Predicate<'tcx>>;
 }
 
 /// Find bounds from both elements of the tuple.
@@ -411,7 +458,7 @@ impl<'a,'b,'tcx,A,B> GetTypeParameterBounds<'tcx> for (&'a A,&'b B)
                                  astconv: &AstConv<'tcx>,
                                  span: Span,
                                  node_id: ast::NodeId)
-                                 -> Vec<ty::PolyTraitRef<'tcx>>
+                                 -> Vec<ty::Predicate<'tcx>>
     {
         let mut v = self.0.get_type_parameter_bounds(astconv, span, node_id);
         v.extend(self.1.get_type_parameter_bounds(astconv, span, node_id).into_iter());
@@ -425,7 +472,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for () {
                                  _astconv: &AstConv<'tcx>,
                                  _span: Span,
                                  _node_id: ast::NodeId)
-                                 -> Vec<ty::PolyTraitRef<'tcx>>
+                                 -> Vec<ty::Predicate<'tcx>>
     {
         Vec::new()
     }
@@ -439,29 +486,28 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ty::GenericPredicates<'tcx> {
                                  astconv: &AstConv<'tcx>,
                                  _span: Span,
                                  node_id: ast::NodeId)
-                                 -> Vec<ty::PolyTraitRef<'tcx>>
+                                 -> Vec<ty::Predicate<'tcx>>
     {
         let def = astconv.tcx().type_parameter_def(node_id);
 
         self.predicates
             .iter()
-            .filter_map(|predicate| {
-                match *predicate {
+            .filter(|predicate| {
+                match **predicate {
                     ty::Predicate::Trait(ref data) => {
-                        if data.0.self_ty().is_param(def.space, def.index) {
-                            Some(data.to_poly_trait_ref())
-                        } else {
-                            None
-                        }
+                        data.skip_binder().self_ty().is_param(def.space, def.index)
+                    }
+                    ty::Predicate::TypeOutlives(ref data) => {
+                        data.skip_binder().0.is_param(def.space, def.index)
                     }
                     ty::Predicate::Equate(..) |
                     ty::Predicate::RegionOutlives(..) |
-                    ty::Predicate::TypeOutlives(..) |
                     ty::Predicate::Projection(..) => {
-                        None
+                        false
                     }
                 }
             })
+            .cloned()
             .collect()
     }
 }
@@ -475,7 +521,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
                                  astconv: &AstConv<'tcx>,
                                  _: Span,
                                  node_id: ast::NodeId)
-                                 -> Vec<ty::PolyTraitRef<'tcx>>
+                                 -> Vec<ty::Predicate<'tcx>>
     {
         // In the AST, bounds can derive from two places. Either
         // written inline like `<T:Foo>` or in a where clause like
@@ -489,7 +535,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
                 .iter()
                 .filter(|p| p.id == node_id)
                 .flat_map(|p| p.bounds.iter())
-                .filter_map(|b| poly_trait_ref_from_bound(astconv, ty, b, &mut Vec::new()));
+                .flat_map(|b| predicates_from_bound(astconv, ty, b).into_iter());
 
         let from_where_clauses =
             self.where_clause
@@ -501,7 +547,7 @@ impl<'tcx> GetTypeParameterBounds<'tcx> for ast::Generics {
                 })
                 .filter(|bp| is_param(astconv.tcx(), &bp.bounded_ty, node_id))
                 .flat_map(|bp| bp.bounds.iter())
-                .filter_map(|b| poly_trait_ref_from_bound(astconv, ty, b, &mut Vec::new()));
+                .flat_map(|b| predicates_from_bound(astconv, ty, b).into_iter());
 
         from_ty_params.chain(from_where_clauses).collect()
     }
@@ -518,10 +564,15 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
     if let ast::TyPath(None, _) = ast_ty.node {
         let path_res = tcx.def_map.borrow()[ast_ty.id];
-        if let def::DefTyParam(_, _, def_id, _) = path_res.base_def {
-            path_res.depth == 0 && def_id == local_def(param_id)
-        } else {
-            false
+        match path_res.base_def {
+            def::DefSelfTy(node_id) =>
+                path_res.depth == 0 && node_id == param_id,
+
+            def::DefTyParam(_, _, def_id, _) =>
+                path_res.depth == 0 && def_id == local_def(param_id),
+
+            _ =>
+                false,
         }
     } else {
         false
@@ -790,9 +841,10 @@ fn convert_methods<'a,'tcx,'i,I>(ccx: &CrateCtxt<'a, 'tcx>,
                                  rcvr_visibility: ast::Visibility)
                                  where I: Iterator<Item=&'i ast::Method>
 {
-    debug!("convert_methods(untransformed_rcvr_ty={}, rcvr_ty_generics={})",
+    debug!("convert_methods(untransformed_rcvr_ty={}, rcvr_ty_generics={}, rcvr_ty_predicates={})",
            untransformed_rcvr_ty.repr(ccx.tcx),
-           rcvr_ty_generics.repr(ccx.tcx));
+           rcvr_ty_generics.repr(ccx.tcx),
+           rcvr_ty_predicates.repr(ccx.tcx));
 
     let tcx = ccx.tcx;
     let mut seen_methods = FnvHashSet();
@@ -1036,6 +1088,8 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
         },
         ast::ItemTrait(_, _, _, ref trait_items) => {
             let trait_def = trait_def_of_item(ccx, it);
+            let _: Result<(), ErrorReported> = // any error is already reported, can ignore
+                ccx.ensure_super_predicates(it.span, local_def(it.id));
             convert_trait_predicates(ccx, it);
             let trait_predicates = ty::lookup_predicates(ccx.tcx, local_def(it.id));
 
@@ -1181,22 +1235,84 @@ fn convert_struct<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     }
 }
 
-fn get_trait_def<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
-                           trait_id: ast::DefId)
-                           -> Rc<ty::TraitDef<'tcx>> {
+/// Ensures that the super-predicates of the trait with def-id
+/// trait_def_id are converted and stored. This does NOT ensure that
+/// the transitive super-predicates are converted; that is the job of
+/// the `ensure_super_predicates()` method in the `AstConv` impl
+/// above. Returns a list of trait def-ids that must be ensured as
+/// well to guarantee that the transitive superpredicates are
+/// converted.
+fn ensure_super_predicates_step(ccx: &CrateCtxt,
+                                trait_def_id: ast::DefId)
+                                -> Vec<ast::DefId>
+{
     let tcx = ccx.tcx;
 
-    if trait_id.krate != ast::LOCAL_CRATE {
-        return ty::lookup_trait_def(tcx, trait_id)
+    debug!("ensure_super_predicates_step(trait_def_id={})", trait_def_id.repr(tcx));
+
+    if trait_def_id.krate != ast::LOCAL_CRATE {
+        return Vec::new();
     }
 
-    match tcx.map.get(trait_id.node) {
-        ast_map::NodeItem(item) => trait_def_of_item(ccx, &*item),
-        _ => {
-            tcx.sess.bug(&format!("get_trait_def({}): not an item",
-                                  trait_id.node))
-        }
-    }
+    let superpredicates = tcx.super_predicates.borrow().get(&trait_def_id).cloned();
+    let superpredicates = superpredicates.unwrap_or_else(|| {
+        let trait_node_id = trait_def_id.node;
+
+        let item = match ccx.tcx.map.get(trait_node_id) {
+            ast_map::NodeItem(item) => item,
+            _ => ccx.tcx.sess.bug(&format!("trait_node_id {} is not an item", trait_node_id))
+        };
+
+        let (generics, bounds) = match item.node {
+            ast::ItemTrait(_, ref generics, ref supertraits, _) => (generics, supertraits),
+            _ => tcx.sess.span_bug(item.span,
+                                   "ensure_super_predicates_step invoked on non-trait"),
+        };
+
+        // In-scope when converting the superbounds for `Trait` are
+        // that `Self:Trait` as well as any bounds that appear on the
+        // generic types:
+        let trait_def = trait_def_of_item(ccx, item);
+        let self_predicate = ty::GenericPredicates {
+            predicates: VecPerParamSpace::new(vec![],
+                                              vec![trait_def.trait_ref.as_predicate()],
+                                              vec![])
+        };
+        let scope = &(generics, &self_predicate);
+
+        // Convert the bounds that follow the colon, e.g. `Bar+Zed` in `trait Foo : Bar+Zed`.
+        let self_param_ty = ty::mk_self_type(tcx);
+        let superbounds1 = compute_bounds(&ccx.icx(scope), self_param_ty, bounds,
+                                          SizedByDefault::No, item.span);
+        let superbounds1 = ty::predicates(tcx, self_param_ty, &superbounds1);
+
+        // Convert any explicit superbounds in the where clause,
+        // e.g. `trait Foo where Self : Bar`:
+        let superbounds2 = generics.get_type_parameter_bounds(&ccx.icx(scope), item.span, item.id);
+
+        // Combine the two lists to form the complete set of superbounds:
+        let superbounds = superbounds1.into_iter().chain(superbounds2.into_iter()).collect();
+        let superpredicates = ty::GenericPredicates {
+            predicates: VecPerParamSpace::new(superbounds, vec![], vec![])
+        };
+        debug!("superpredicates for trait {} = {}",
+               local_def(item.id).repr(ccx.tcx),
+               superpredicates.repr(ccx.tcx));
+
+        tcx.super_predicates.borrow_mut().insert(trait_def_id, superpredicates.clone());
+
+        superpredicates
+    });
+
+    let def_ids: Vec<_> = superpredicates.predicates
+                                         .iter()
+                                         .filter_map(|p| p.to_opt_poly_trait_ref())
+                                         .map(|tr| tr.def_id())
+                                         .collect();
+
+    debug!("ensure_super_predicates_step: def_ids={}", def_ids.repr(tcx));
+
+    def_ids
 }
 
 fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
@@ -1210,18 +1326,9 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         return def.clone();
     }
 
-    let (unsafety, generics, bounds, items) = match it.node {
-        ast::ItemTrait(unsafety,
-                       ref generics,
-                       ref supertraits,
-                       ref items) => {
-            (unsafety, generics, supertraits, items)
-        }
-        ref s => {
-            tcx.sess.span_bug(
-                it.span,
-                &format!("trait_def_of_item invoked on {:?}", s));
-        }
+    let (unsafety, generics, items) = match it.node {
+        ast::ItemTrait(unsafety, ref generics, _, ref items) => (unsafety, generics, items),
+        _ => tcx.sess.span_bug(it.span, "trait_def_of_item invoked on non-trait"),
     };
 
     let paren_sugar = ty::has_attr(tcx, def_id, "rustc_paren_sugar");
@@ -1238,15 +1345,6 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
     let substs = ccx.tcx.mk_substs(mk_trait_substs(ccx, generics));
 
     let ty_generics = ty_generics_for_trait(ccx, it.id, substs, generics);
-
-    let self_param_ty = ty::ParamTy::for_self().to_ty(ccx.tcx);
-
-    // supertraits:
-    let bounds = compute_bounds(&ccx.icx(generics),
-                                self_param_ty,
-                                bounds,
-                                SizedByDefault::No,
-                                it.span);
 
     let associated_type_names: Vec<_> =
         items.iter()
@@ -1267,7 +1365,6 @@ fn trait_def_of_item<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>,
         paren_sugar: paren_sugar,
         unsafety: unsafety,
         generics: ty_generics,
-        bounds: bounds,
         trait_ref: trait_ref,
         associated_type_names: associated_type_names,
     });
@@ -1348,19 +1445,14 @@ fn convert_trait_predicates<'a, 'tcx>(ccx: &CrateCtxt<'a, 'tcx>, it: &ast::Item)
         }
     };
 
-    let self_param_ty = ty::ParamTy::for_self().to_ty(ccx.tcx);
-
-    let super_predicates = ty::predicates(ccx.tcx, self_param_ty, &trait_def.bounds);
+    let super_predicates = ty::lookup_super_predicates(ccx.tcx, def_id);
 
     // `ty_generic_predicates` below will consider the bounds on the type
     // parameters (including `Self`) and the explicit where-clauses,
     // but to get the full set of predicates on a trait we need to add
     // in the supertrait bounds and anything declared on the
     // associated types.
-    let mut base_predicates =
-        ty::GenericPredicates {
-            predicates: VecPerParamSpace::new(super_predicates, vec![], vec![])
-        };
+    let mut base_predicates = super_predicates;
 
     // Add in a predicate that `Self:Trait` (where `Trait` is the
     // current trait).  This is needed for builtin bounds.
@@ -1990,7 +2082,7 @@ fn compute_object_lifetime_default<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
     }
 }
 
-enum SizedByDefault { Yes, No }
+enum SizedByDefault { Yes, No, }
 
 /// Translate the AST's notion of ty param bounds (which are an enum consisting of a newtyped Ty or
 /// a region) to ty's notion of ty param bounds, which can either be user-defined traits, or the
@@ -2012,11 +2104,6 @@ fn compute_bounds<'tcx>(astconv: &AstConv<'tcx>,
                           &mut param_bounds.builtin_bounds,
                           ast_bounds,
                           span);
-
-        check_bounds_compatible(astconv,
-                                param_ty,
-                                &param_bounds,
-                                span);
     }
 
     param_bounds.trait_bounds.sort_by(|a,b| a.def_id().cmp(&b.def_id()));
@@ -2024,48 +2111,29 @@ fn compute_bounds<'tcx>(astconv: &AstConv<'tcx>,
     param_bounds
 }
 
-fn check_bounds_compatible<'tcx>(astconv: &AstConv<'tcx>,
-                                 param_ty: Ty<'tcx>,
-                                 param_bounds: &ty::ParamBounds<'tcx>,
-                                 span: Span) {
-    let tcx = astconv.tcx();
-    if !param_bounds.builtin_bounds.contains(&ty::BoundSized) {
-        ty::each_bound_trait_and_supertraits(
-            tcx,
-            &param_bounds.trait_bounds,
-            |trait_ref| {
-                match astconv.get_trait_def(span, trait_ref.def_id()) {
-                    Ok(trait_def) => {
-                        if trait_def.bounds.builtin_bounds.contains(&ty::BoundSized) {
-                            span_err!(tcx.sess, span, E0129,
-                                      "incompatible bounds on `{}`, \
-                                        bound `{}` does not allow unsized type",
-                                      param_ty.user_string(tcx),
-                                      trait_ref.user_string(tcx));
-                        }
-                    }
-                    Err(ErrorReported) => { }
-                }
-                true
-            });
-    }
-}
-
 /// Converts a specific TyParamBound from the AST into the
 /// appropriate poly-trait-reference.
-fn poly_trait_ref_from_bound<'tcx>(astconv: &AstConv<'tcx>,
-                                   param_ty: Ty<'tcx>,
-                                   bound: &ast::TyParamBound,
-                                   projections: &mut Vec<ty::PolyProjectionPredicate<'tcx>>)
-                                   -> Option<ty::PolyTraitRef<'tcx>>
+fn predicates_from_bound<'tcx>(astconv: &AstConv<'tcx>,
+                               param_ty: Ty<'tcx>,
+                               bound: &ast::TyParamBound)
+                               -> Vec<ty::Predicate<'tcx>>
 {
     match *bound {
         ast::TraitTyParamBound(ref tr, ast::TraitBoundModifier::None) => {
-            Some(conv_poly_trait_ref(astconv, param_ty, tr, projections))
+            let mut projections = Vec::new();
+            let pred = conv_poly_trait_ref(astconv, param_ty, tr, &mut projections);
+            projections.into_iter()
+                       .map(|p| p.as_predicate())
+                       .chain(Some(pred.as_predicate()).into_iter())
+                       .collect()
         }
-        ast::TraitTyParamBound(_, ast::TraitBoundModifier::Maybe) |
-        ast::RegionTyParamBound(_) => {
-            None
+        ast::RegionTyParamBound(ref lifetime) => {
+            let region = ast_region_to_region(astconv.tcx(), lifetime);
+            let pred = ty::Binder(ty::OutlivesPredicate(param_ty, region));
+            vec![ty::Predicate::TypeOutlives(pred)]
+        }
+        ast::TraitTyParamBound(_, ast::TraitBoundModifier::Maybe) => {
+            Vec::new()
         }
     }
 }
