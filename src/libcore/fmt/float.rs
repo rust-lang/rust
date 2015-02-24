@@ -40,10 +40,10 @@ pub enum ExponentFormat {
 pub enum SignificantDigits {
     /// At most the given number of digits will be printed, truncating any
     /// trailing zeroes.
-    DigMax(uint),
+    DigMax(usize),
 
     /// Precisely the given number of digits will be printed.
-    DigExact(uint)
+    DigExact(usize)
 }
 
 /// How to emit the sign of a number.
@@ -240,27 +240,27 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
                     // If reached left end of number, have to
                     // insert additional digit:
                     if i < 0
-                    || buf[i as uint] == b'-'
-                    || buf[i as uint] == b'+' {
-                        for j in (i as uint + 1..end).rev() {
+                    || buf[i as usize] == b'-'
+                    || buf[i as usize] == b'+' {
+                        for j in (i as usize + 1..end).rev() {
                             buf[j + 1] = buf[j];
                         }
-                        buf[(i + 1) as uint] = value2ascii(1);
+                        buf[(i + 1) as usize] = value2ascii(1);
                         end += 1;
                         break;
                     }
 
                     // Skip the '.'
-                    if buf[i as uint] == b'.' { i -= 1; continue; }
+                    if buf[i as usize] == b'.' { i -= 1; continue; }
 
                     // Either increment the digit,
                     // or set to 0 if max and carry the 1.
-                    let current_digit = ascii2value(buf[i as uint]);
+                    let current_digit = ascii2value(buf[i as usize]);
                     if current_digit < (radix - 1) {
-                        buf[i as uint] = value2ascii(current_digit+1);
+                        buf[i as usize] = value2ascii(current_digit+1);
                         break;
                     } else {
-                        buf[i as uint] = value2ascii(0);
+                        buf[i as usize] = value2ascii(0);
                         i -= 1;
                     }
                 }
@@ -311,7 +311,7 @@ pub fn float_to_str_bytes_common<T: Float, U, F>(
 
             struct Filler<'a> {
                 buf: &'a mut [u8],
-                end: &'a mut uint,
+                end: &'a mut usize,
             }
 
             impl<'a> fmt::Write for Filler<'a> {

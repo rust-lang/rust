@@ -32,8 +32,12 @@ pub struct FormatSpec {
     pub fill: char,
     #[stable(feature = "rust1", since = "1.0.0")]
     pub align: Alignment,
+    #[cfg(stage0)]
     #[stable(feature = "rust1", since = "1.0.0")]
-    pub flags: uint,
+    pub flags: usize,
+    #[cfg(not(stage0))]
+    #[stable(feature = "rust1", since = "1.0.0")]
+    pub flags: u32,
     #[stable(feature = "rust1", since = "1.0.0")]
     pub precision: Count,
     #[stable(feature = "rust1", since = "1.0.0")]
