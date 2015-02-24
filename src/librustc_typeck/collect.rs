@@ -1720,7 +1720,7 @@ fn ty_generic_predicates<'a,'tcx>(ccx: &CrateCtxt<'a,'tcx>,
         let param_ty = ty::ParamTy::new(space, index, param.ident.name).to_ty(ccx.tcx);
         let bounds = compute_bounds(&ccx.icx(&(base_predicates, ast_generics)),
                                     param_ty,
-                                    &param.bounds[],
+                                    &param.bounds,
                                     SizedByDefault::Yes,
                                     param.span);
         let predicates = ty::predicates(ccx.tcx, param_ty, &bounds);
