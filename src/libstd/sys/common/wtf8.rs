@@ -1202,11 +1202,11 @@ mod tests {
             string.code_points().map(|c| c.to_char()).collect::<Vec<_>>()
         }
         let mut string = Wtf8Buf::from_str("é ");
-        assert_eq!(cp(&string), vec![Some('é'), Some(' ')]);
+        assert_eq!(cp(&string), [Some('é'), Some(' ')]);
         string.push(c(0xD83D));
-        assert_eq!(cp(&string), vec![Some('é'), Some(' '), None]);
+        assert_eq!(cp(&string), [Some('é'), Some(' '), None]);
         string.push(c(0xDCA9));
-        assert_eq!(cp(&string), vec![Some('é'), Some(' '), Some('💩')]);
+        assert_eq!(cp(&string), [Some('é'), Some(' '), Some('💩')]);
     }
 
     #[test]

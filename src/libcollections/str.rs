@@ -552,7 +552,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// ```
     /// let v: Vec<char> = "abc åäö".chars().collect();
     ///
-    /// assert_eq!(v, vec!['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
+    /// assert_eq!(v, ['a', 'b', 'c', ' ', 'å', 'ä', 'ö']);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn chars(&self) -> Chars {
@@ -600,20 +600,20 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lamb".split(' ').collect();
-    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
+    /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
     ///
     /// let v: Vec<&str> = "".split('X').collect();
-    /// assert_eq!(v, vec![""]);
+    /// assert_eq!(v, [""]);
     /// ```
     ///
     /// More complex patterns with a lambda:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi".split(|c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, vec!["abc", "def", "ghi"]);
+    /// assert_eq!(v, ["abc", "def", "ghi"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".split('X').collect();
-    /// assert_eq!(v, vec!["lion", "", "tiger", "leopard"]);
+    /// assert_eq!(v, ["lion", "", "tiger", "leopard"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn split<'a, P: Pattern<'a>>(&'a self, pat: P) -> Split<'a, P> {
@@ -632,23 +632,23 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lambda".splitn(2, ' ').collect();
-    /// assert_eq!(v, vec!["Mary", "had", "a little lambda"]);
+    /// assert_eq!(v, ["Mary", "had", "a little lambda"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".splitn(2, 'X').collect();
-    /// assert_eq!(v, vec!["lion", "", "tigerXleopard"]);
+    /// assert_eq!(v, ["lion", "", "tigerXleopard"]);
     ///
     /// let v: Vec<&str> = "abcXdef".splitn(0, 'X').collect();
-    /// assert_eq!(v, vec!["abcXdef"]);
+    /// assert_eq!(v, ["abcXdef"]);
     ///
     /// let v: Vec<&str> = "".splitn(1, 'X').collect();
-    /// assert_eq!(v, vec![""]);
+    /// assert_eq!(v, [""]);
     /// ```
     ///
     /// More complex patterns with a lambda:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi".splitn(1, |c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, vec!["abc", "def2ghi"]);
+    /// assert_eq!(v, ["abc", "def2ghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn splitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> SplitN<'a, P> {
@@ -669,17 +669,17 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// ```
     /// let v: Vec<&str> = "A.B.".split_terminator('.').collect();
-    /// assert_eq!(v, vec!["A", "B"]);
+    /// assert_eq!(v, ["A", "B"]);
     ///
     /// let v: Vec<&str> = "A..B..".split_terminator('.').collect();
-    /// assert_eq!(v, vec!["A", "", "B", ""]);
+    /// assert_eq!(v, ["A", "", "B", ""]);
     /// ```
     ///
     /// More complex patterns with a lambda:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi3".split_terminator(|c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, vec!["abc", "def", "ghi"]);
+    /// assert_eq!(v, ["abc", "def", "ghi"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn split_terminator<'a, P: Pattern<'a>>(&'a self, pat: P) -> SplitTerminator<'a, P> {
@@ -699,17 +699,17 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// ```
     /// let v: Vec<&str> = "Mary had a little lamb".rsplitn(2, ' ').collect();
-    /// assert_eq!(v, vec!["lamb", "little", "Mary had a"]);
+    /// assert_eq!(v, ["lamb", "little", "Mary had a"]);
     ///
     /// let v: Vec<&str> = "lionXXtigerXleopard".rsplitn(2, 'X').collect();
-    /// assert_eq!(v, vec!["leopard", "tiger", "lionX"]);
+    /// assert_eq!(v, ["leopard", "tiger", "lionX"]);
     /// ```
     ///
     /// More complex patterns with a lambda:
     ///
     /// ```
     /// let v: Vec<&str> = "abc1def2ghi".rsplitn(1, |c: char| c.is_numeric()).collect();
-    /// assert_eq!(v, vec!["ghi", "abc1def"]);
+    /// assert_eq!(v, ["ghi", "abc1def"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn rsplitn<'a, P: Pattern<'a>>(&'a self, count: usize, pat: P) -> RSplitN<'a, P> {
@@ -727,13 +727,13 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// ```
     /// let v: Vec<(usize, usize)> = "abcXXXabcYYYabc".match_indices("abc").collect();
-    /// assert_eq!(v, vec![(0,3), (6,9), (12,15)]);
+    /// assert_eq!(v, [(0,3), (6,9), (12,15)]);
     ///
     /// let v: Vec<(usize, usize)> = "1abcabc2".match_indices("abc").collect();
-    /// assert_eq!(v, vec![(1,4), (4,7)]);
+    /// assert_eq!(v, [(1,4), (4,7)]);
     ///
     /// let v: Vec<(usize, usize)> = "ababa".match_indices("aba").collect();
-    /// assert_eq!(v, vec![(0, 3)]); // only the first `aba`
+    /// assert_eq!(v, [(0, 3)]); // only the first `aba`
     /// ```
     #[unstable(feature = "collections",
                reason = "might have its iterator type changed")]
@@ -749,10 +749,10 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     ///
     /// ```
     /// let v: Vec<&str> = "abcXXXabcYYYabc".split_str("abc").collect();
-    /// assert_eq!(v, vec!["", "XXX", "YYY", ""]);
+    /// assert_eq!(v, ["", "XXX", "YYY", ""]);
     ///
     /// let v: Vec<&str> = "1abcabc2".split_str("abc").collect();
-    /// assert_eq!(v, vec!["1", "", "2"]);
+    /// assert_eq!(v, ["1", "", "2"]);
     /// ```
     #[unstable(feature = "collections")]
     #[deprecated(since = "1.0.0", reason = "use `split()` with a `&str`")]
@@ -770,7 +770,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let four_lines = "foo\nbar\n\nbaz";
     /// let v: Vec<&str> = four_lines.lines().collect();
     ///
-    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     ///
     /// Leaving off the trailing character:
@@ -779,7 +779,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let four_lines = "foo\nbar\n\nbaz\n";
     /// let v: Vec<&str> = four_lines.lines().collect();
     ///
-    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines(&self) -> Lines {
@@ -796,7 +796,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let four_lines = "foo\r\nbar\n\r\nbaz";
     /// let v: Vec<&str> = four_lines.lines_any().collect();
     ///
-    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     ///
     /// Leaving off the trailing character:
@@ -805,7 +805,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let four_lines = "foo\r\nbar\n\r\nbaz\n";
     /// let v: Vec<&str> = four_lines.lines_any().collect();
     ///
-    /// assert_eq!(v, vec!["foo", "bar", "", "baz"]);
+    /// assert_eq!(v, ["foo", "bar", "", "baz"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     fn lines_any(&self) -> LinesAny {
@@ -1441,7 +1441,7 @@ pub trait StrExt: Index<RangeFull, Output = str> {
     /// let some_words = " Mary   had\ta little  \n\t lamb";
     /// let v: Vec<&str> = some_words.words().collect();
     ///
-    /// assert_eq!(v, vec!["Mary", "had", "a", "little", "lamb"]);
+    /// assert_eq!(v, ["Mary", "had", "a", "little", "lamb"]);
     /// ```
     #[unstable(feature = "str_words",
                reason = "the precise algorithm to use is unclear")]
@@ -2400,17 +2400,17 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: Vec<&str> = data.splitn(3, ' ').collect();
-        assert_eq!(split, vec!["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        assert_eq!(split, ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         let split: Vec<&str> = data.splitn(3, |c: char| c == ' ').collect();
-        assert_eq!(split, vec!["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
+        assert_eq!(split, ["\nMäry", "häd", "ä", "little lämb\nLittle lämb\n"]);
 
         // Unicode
         let split: Vec<&str> = data.splitn(3, 'ä').collect();
-        assert_eq!(split, vec!["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        assert_eq!(split, ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
 
         let split: Vec<&str> = data.splitn(3, |c: char| c == 'ä').collect();
-        assert_eq!(split, vec!["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
+        assert_eq!(split, ["\nM", "ry h", "d ", " little lämb\nLittle lämb\n"]);
     }
 
     #[test]
@@ -2418,17 +2418,17 @@ mod tests {
         let data = "\nMäry häd ä little lämb\nLittle lämb\n";
 
         let split: Vec<&str> = data.split('\n').collect();
-        assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb", ""]);
+        assert_eq!(split, ["", "Märy häd ä little lämb", "Little lämb", ""]);
 
         let split: Vec<&str> = data.split_terminator('\n').collect();
-        assert_eq!(split, vec!["", "Märy häd ä little lämb", "Little lämb"]);
+        assert_eq!(split, ["", "Märy häd ä little lämb", "Little lämb"]);
     }
 
     #[test]
     fn test_words() {
         let data = "\n \tMäry   häd\tä  little lämb\nLittle lämb\n";
         let words: Vec<&str> = data.words().collect();
-        assert_eq!(words, vec!["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
+        assert_eq!(words, ["Märy", "häd", "ä", "little", "lämb", "Little", "lämb"])
     }
 
     #[test]
@@ -2513,11 +2513,11 @@ mod tests {
     fn test_lines() {
         let data = "\nMäry häd ä little lämb\n\nLittle lämb\n";
         let lines: Vec<&str> = data.lines().collect();
-        assert_eq!(lines, vec!["", "Märy häd ä little lämb", "", "Little lämb"]);
+        assert_eq!(lines, ["", "Märy häd ä little lämb", "", "Little lämb"]);
 
         let data = "\nMäry häd ä little lämb\n\nLittle lämb"; // no trailing \n
         let lines: Vec<&str> = data.lines().collect();
-        assert_eq!(lines, vec!["", "Märy häd ä little lämb", "", "Little lämb"]);
+        assert_eq!(lines, ["", "Märy häd ä little lämb", "", "Little lämb"]);
     }
 
     #[test]

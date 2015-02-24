@@ -45,7 +45,7 @@ fn combine(seek: SeekStyle, cur: uint, end: uint, offset: i64) -> IoResult<u64> 
 /// let mut w = SeekableMemWriter::new();
 /// w.write(&[0, 1, 2]);
 ///
-/// assert_eq!(w.unwrap(), vec!(0, 1, 2));
+/// assert_eq!(w.unwrap(), [0, 1, 2]);
 /// ```
 pub struct SeekableMemWriter {
     buf: Vec<u8>,

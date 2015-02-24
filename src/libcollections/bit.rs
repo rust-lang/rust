@@ -640,13 +640,13 @@ impl BitVec {
     /// let mut bv = BitVec::from_elem(3, true);
     /// bv.set(1, false);
     ///
-    /// assert_eq!(bv.to_bytes(), vec!(0b10100000));
+    /// assert_eq!(bv.to_bytes(), [0b10100000]);
     ///
     /// let mut bv = BitVec::from_elem(9, false);
     /// bv.set(2, true);
     /// bv.set(8, true);
     ///
-    /// assert_eq!(bv.to_bytes(), vec!(0b00100000, 0b10000000));
+    /// assert_eq!(bv.to_bytes(), [0b00100000, 0b10000000]);
     /// ```
     pub fn to_bytes(&self) -> Vec<u8> {
         fn bit(bit_vec: &BitVec, byte: usize, bit: usize) -> u8 {
@@ -806,7 +806,7 @@ impl BitVec {
     /// let mut bv = BitVec::from_bytes(&[0b01001011]);
     /// bv.grow(2, true);
     /// assert_eq!(bv.len(), 10);
-    /// assert_eq!(bv.to_bytes(), vec!(0b01001011, 0b11000000));
+    /// assert_eq!(bv.to_bytes(), [0b01001011, 0b11000000]);
     /// ```
     pub fn grow(&mut self, n: usize, value: bool) {
         // Note: we just bulk set all the bits in the last word in this fn in multiple places
@@ -2285,12 +2285,12 @@ mod tests {
     fn test_to_bytes() {
         let mut bv = BitVec::from_elem(3, true);
         bv.set(1, false);
-        assert_eq!(bv.to_bytes(), vec!(0b10100000));
+        assert_eq!(bv.to_bytes(), [0b10100000]);
 
         let mut bv = BitVec::from_elem(9, false);
         bv.set(2, true);
         bv.set(8, true);
-        assert_eq!(bv.to_bytes(), vec!(0b00100000, 0b10000000));
+        assert_eq!(bv.to_bytes(), [0b00100000, 0b10000000]);
     }
 
     #[test]
@@ -2675,7 +2675,7 @@ mod bit_set_test {
         let bit_vec: BitSet = usizes.into_iter().collect();
 
         let idxs: Vec<_> = bit_vec.iter().collect();
-        assert_eq!(idxs, vec![0, 2, 3]);
+        assert_eq!(idxs, [0, 2, 3]);
 
         let long: BitSet = (0..10000).filter(|&n| n % 2 == 0).collect();
         let real: Vec<_> = range_step(0, 10000, 2).collect();

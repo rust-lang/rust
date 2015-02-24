@@ -73,7 +73,7 @@ macro_rules! vec {
     };
 }
 # fn main() {
-#     assert_eq!(&[1,2,3], &vec![1,2,3]);
+#     assert_eq!([1,2,3], vec![1,2,3]);
 # }
 ```
 
