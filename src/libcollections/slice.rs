@@ -1779,10 +1779,10 @@ mod tests {
         let mut v = vec![1, 2, 3, 4, 5];
         let mut e = v.swap_remove(0);
         assert_eq!(e, 1);
-        assert_eq!(v, vec![5, 2, 3, 4]);
+        assert_eq!(v, [5, 2, 3, 4]);
         e = v.swap_remove(3);
         assert_eq!(e, 4);
-        assert_eq!(v, vec![5, 2, 3]);
+        assert_eq!(v, [5, 2, 3]);
     }
 
     #[test]
@@ -1890,7 +1890,7 @@ mod tests {
     fn test_retain() {
         let mut v = vec![1, 2, 3, 4, 5];
         v.retain(is_odd);
-        assert_eq!(v, vec![1, 3, 5]);
+        assert_eq!(v, [1, 3, 5]);
     }
 
     #[test]
@@ -2159,45 +2159,45 @@ mod tests {
         let v: [Vec<i32>; 0] = [];
         let c = v.concat();
         assert_eq!(c, []);
-        let d = [vec![1], vec![2,3]].concat();
-        assert_eq!(d, vec![1, 2, 3]);
+        let d = [vec![1], vec![2, 3]].concat();
+        assert_eq!(d, [1, 2, 3]);
 
         let v: &[&[_]] = &[&[1], &[2, 3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 3]);
         let v: &[&[_]] = &[&[1], &[2], &[3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
     }
 
     #[test]
     fn test_connect() {
         let v: [Vec<i32>; 0] = [];
-        assert_eq!(v.connect(&0), vec![]);
-        assert_eq!([vec![1], vec![2, 3]].connect(&0), vec![1, 0, 2, 3]);
-        assert_eq!([vec![1], vec![2], vec![3]].connect(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!(v.connect(&0), []);
+        assert_eq!([vec![1i], vec![2, 3]].connect(&0), [1, 0, 2, 3]);
+        assert_eq!([vec![1i], vec![2], vec![3]].connect(&0), [1, 0, 2, 0, 3]);
 
         let v: [&[_]; 2] = [&[1], &[2, 3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 3]);
         let v: [&[_]; 3] = [&[1], &[2], &[3]];
-        assert_eq!(v.connect(&0), vec![1, 0, 2, 0, 3]);
+        assert_eq!(v.connect(&0), [1, 0, 2, 0, 3]);
     }
 
     #[test]
     fn test_insert() {
         let mut a = vec![1, 2, 4];
         a.insert(2, 3);
-        assert_eq!(a, vec![1, 2, 3, 4]);
+        assert_eq!(a, [1, 2, 3, 4]);
 
         let mut a = vec![1, 2, 3];
         a.insert(0, 0);
-        assert_eq!(a, vec![0, 1, 2, 3]);
+        assert_eq!(a, [0, 1, 2, 3]);
 
         let mut a = vec![1, 2, 3];
         a.insert(3, 4);
-        assert_eq!(a, vec![1, 2, 3, 4]);
+        assert_eq!(a, [1, 2, 3, 4]);
 
         let mut a = vec![];
         a.insert(0, 1);
-        assert_eq!(a, vec![1]);
+        assert_eq!(a, [1]);
     }
 
     #[test]
@@ -2212,16 +2212,16 @@ mod tests {
         let mut a = vec![1, 2, 3, 4];
 
         assert_eq!(a.remove(2), 3);
-        assert_eq!(a, vec![1, 2, 4]);
+        assert_eq!(a, [1, 2, 4]);
 
         assert_eq!(a.remove(2), 4);
-        assert_eq!(a, vec![1, 2]);
+        assert_eq!(a, [1, 2]);
 
         assert_eq!(a.remove(0), 1);
-        assert_eq!(a, vec![2]);
+        assert_eq!(a, [2]);
 
         assert_eq!(a.remove(0), 2);
-        assert_eq!(a, vec![]);
+        assert_eq!(a, []);
     }
 
     #[test]
