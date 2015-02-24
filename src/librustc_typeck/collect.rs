@@ -504,7 +504,7 @@ fn is_param<'tcx>(tcx: &ty::ctxt<'tcx>,
                   -> bool
 {
     if let ast::TyPath(None, _) = ast_ty.node {
-        let path_res = ccx.tcx.def_map.borrow()[ast_ty.id];
+        let path_res = tcx.def_map.borrow()[ast_ty.id];
         if let def::DefTyParam(_, _, def_id, _) = path_res.base_def {
             path_res.depth == 0 && def_id == local_def(param_id)
         } else {

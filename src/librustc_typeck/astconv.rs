@@ -688,7 +688,7 @@ fn ast_path_to_trait_ref<'a,'tcx>(
     -> Rc<ty::TraitRef<'tcx>>
 {
     debug!("ast_path_to_trait_ref {:?}", trait_segment);
-    let trait_def = match this.get_trait_def(path.span, trait_def_id) {
+    let trait_def = match this.get_trait_def(span, trait_def_id) {
         Ok(trait_def) => trait_def,
         Err(ErrorReported) => {
             // No convenient way to recover from a cycle here. Just bail. Sorry!
@@ -873,16 +873,18 @@ fn ast_path_to_ty<'tcx>(
     -> Ty<'tcx>
 {
     let tcx = this.tcx();
-    let substs = match this.get_item_type_scheme(path.span, did) {
+    let (generics, decl_ty) = match this.get_item_type_scheme(span, did) {
         Ok(ty::TypeScheme { generics,  ty: decl_ty }) => {
-            ast_path_substs_for_ty(this, rscope,
-                                   span, param_mode,
-                                   &generics, item_segment)
+            (generics, decl_ty)
         }
         Err(ErrorReported) => {
-            return TypeAndSubsts { substs: Substs::empty(), ty: tcx.types.err };
+            return tcx.types.err;
         }
     };
+
+    let substs = ast_path_substs_for_ty(this, rscope,
+                                        span, param_mode,
+                                        &generics, item_segment);
 
     // FIXME(#12938): This is a hack until we have full support for DST.
     if Some(did) == this.tcx().lang_items.owned_box() {
@@ -1020,7 +1022,7 @@ fn associated_path_def_to_ty<'tcx>(this: &AstConv<'tcx>,
 
     // FIXME(#20300) -- search where clauses, not bounds
     let bounds =
-        this.get_type_parameter_bounds(ast_ty.span, ty_param_ndoe_id)
+        this.get_type_parameter_bounds(span, ty_param_node_id)
             .unwrap_or(Vec::new());
 
     let mut suitable_bounds: Vec<_> =
