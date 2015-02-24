@@ -328,7 +328,7 @@ mod test {
     fn read_bytes() {
         let mut reader = MemReader::new(vec!(10, 11, 12, 13));
         let bytes = reader.read_exact(4).unwrap();
-        assert!(bytes == vec!(10, 11, 12, 13));
+        assert_eq!(bytes, [10, 11, 12, 13]);
     }
 
     #[test]
@@ -337,7 +337,7 @@ mod test {
             count: 0,
         };
         let bytes = reader.read_exact(4).unwrap();
-        assert!(bytes == vec!(10, 11, 12, 13));
+        assert_eq!(bytes, [10, 11, 12, 13]);
     }
 
     #[test]
@@ -351,7 +351,7 @@ mod test {
         let mut reader = MemReader::new(vec![10, 11, 12, 13]);
         let mut buf = vec![8, 9];
         assert!(reader.push_at_least(4, 4, &mut buf).is_ok());
-        assert!(buf == vec![8, 9, 10, 11, 12, 13]);
+        assert_eq!(buf, [8, 9, 10, 11, 12, 13]);
     }
 
     #[test]
@@ -361,7 +361,7 @@ mod test {
         };
         let mut buf = vec![8, 9];
         assert!(reader.push_at_least(4, 4, &mut buf).is_ok());
-        assert!(buf == vec![8, 9, 10, 11, 12, 13]);
+        assert_eq!(buf, [8, 9, 10, 11, 12, 13]);
     }
 
     #[test]
@@ -369,7 +369,7 @@ mod test {
         let mut reader = MemReader::new(vec![10, 11]);
         let mut buf = vec![8, 9];
         assert!(reader.push_at_least(4, 4, &mut buf).is_err());
-        assert!(buf == vec![8, 9, 10, 11]);
+        assert_eq!(buf, [8, 9, 10, 11]);
     }
 
     #[test]
@@ -379,7 +379,7 @@ mod test {
         };
         let mut buf = vec![8, 9];
         assert!(reader.push_at_least(4, 4, &mut buf).is_err());
-        assert!(buf == vec![8, 9, 10]);
+        assert_eq!(buf, [8, 9, 10]);
     }
 
     #[test]
@@ -388,7 +388,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end().unwrap();
-        assert!(buf == vec!(10, 11, 12, 13));
+        assert_eq!(buf, [10, 11, 12, 13]);
     }
 
     #[test]
@@ -398,7 +398,7 @@ mod test {
             count: 0,
         };
         let buf = reader.read_to_end().unwrap();
-        assert!(buf == vec!(10, 11));
+        assert_eq!(buf, [10, 11]);
     }
 
     #[test]

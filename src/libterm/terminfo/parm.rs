@@ -652,15 +652,15 @@ mod test {
             let s = format!("%{{1}}%{{2}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.err().unwrap());
-            assert_eq!(res.unwrap(), vec!(b'0' + bs[0]));
+            assert_eq!(res.unwrap(), [b'0' + bs[0]]);
             let s = format!("%{{1}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.err().unwrap());
-            assert_eq!(res.unwrap(), vec!(b'0' + bs[1]));
+            assert_eq!(res.unwrap(), [b'0' + bs[1]]);
             let s = format!("%{{2}}%{{1}}%{}%d", op);
             let res = expand(s.as_bytes(), &[], &mut Variables::new());
             assert!(res.is_ok(), res.err().unwrap());
-            assert_eq!(res.unwrap(), vec!(b'0' + bs[2]));
+            assert_eq!(res.unwrap(), [b'0' + bs[2]]);
         }
     }
 

@@ -120,7 +120,7 @@ impl String {
     /// let invalid_vec = vec![240, 144, 128];
     /// let s = String::from_utf8(invalid_vec).err().unwrap();
     /// assert_eq!(s.utf8_error(), Utf8Error::TooShort);
-    /// assert_eq!(s.into_bytes(), vec![240, 144, 128]);
+    /// assert_eq!(s.into_bytes(), [240, 144, 128]);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -340,7 +340,7 @@ impl String {
     /// ```
     /// let s = String::from_str("hello");
     /// let bytes = s.into_bytes();
-    /// assert_eq!(bytes, vec![104, 101, 108, 108, 111]);
+    /// assert_eq!(bytes, [104, 101, 108, 108, 111]);
     /// ```
     #[inline]
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -619,7 +619,7 @@ impl String {
     /// let mut s = String::from_str("hello");
     /// unsafe {
     ///     let vec = s.as_mut_vec();
-    ///     assert!(vec == &mut vec![104, 101, 108, 108, 111]);
+    ///     assert!(vec == &[104, 101, 108, 108, 111]);
     ///     vec.reverse();
     /// }
     /// assert_eq!(s.as_slice(), "olleh");

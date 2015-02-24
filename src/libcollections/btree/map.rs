@@ -1281,7 +1281,7 @@ impl<K, V> BTreeMap<K, V> {
     /// a.insert(2, "b");
     ///
     /// let keys: Vec<usize> = a.keys().cloned().collect();
-    /// assert_eq!(keys, vec![1,2,]);
+    /// assert_eq!(keys, [1, 2]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn keys<'a>(&'a self) -> Keys<'a, K, V> {
@@ -1303,7 +1303,7 @@ impl<K, V> BTreeMap<K, V> {
     /// a.insert(2, "b");
     ///
     /// let values: Vec<&str> = a.values().cloned().collect();
-    /// assert_eq!(values, vec!["a","b"]);
+    /// assert_eq!(values, ["a", "b"]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn values<'a>(&'a self) -> Values<'a, K, V> {
