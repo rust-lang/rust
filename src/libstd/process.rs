@@ -355,11 +355,11 @@ impl Stdio {
     pub fn capture() -> Stdio { Stdio(StdioImp::Capture) }
 
     /// The child inherits from the corresponding parent descriptor.
-    pub fn inherit() -> Stdio { Stdio(StdioImp::Capture) }
+    pub fn inherit() -> Stdio { Stdio(StdioImp::Inherit) }
 
     /// This stream will be ignored. This is the equivalent of attaching the
     /// stream to `/dev/null`
-    pub fn null() -> Stdio { Stdio(StdioImp::Capture) }
+    pub fn null() -> Stdio { Stdio(StdioImp::Null) }
 }
 
 /// Describes the result of a process after it has terminated.
