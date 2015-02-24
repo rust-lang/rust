@@ -27,6 +27,7 @@ use marker;
 /// to `Default` when asked to create a hasher.
 #[unstable(feature = "std_misc", reason = "hasher stuff is unclear")]
 pub trait HashState {
+    /// Type of the hasher that will be created.
     type Hasher: hash::Hasher;
 
     /// Creates a new hasher based on the given state of this object.
