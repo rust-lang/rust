@@ -239,7 +239,7 @@ impl <'l, 'tcx> DxrVisitor<'l, 'tcx> {
             def::DefTy(..) |
             def::DefAssociatedTy(..) |
             def::DefAssociatedPath(..) |
-            def::DefaultImpl(_) => Some(recorder::TypeRef),
+            def::DefTrait(_) => Some(recorder::TypeRef),
             def::DefStatic(_, _) |
             def::DefConst(_) |
             def::DefLocal(_) |

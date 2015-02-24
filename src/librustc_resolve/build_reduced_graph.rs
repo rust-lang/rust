@@ -736,7 +736,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                     self.trait_item_map.insert((name, def_id), kind);
                 }
 
-                name_bindings.define_type(DefaultImpl(def_id), sp, modifiers);
+                name_bindings.define_type(DefTrait(def_id), sp, modifiers);
                 parent.clone()
             }
             ItemMac(..) => parent.clone()
@@ -918,7 +918,7 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
             }
             child_name_bindings.define_value(def, DUMMY_SP, modifiers);
           }
-          DefaultImpl(def_id) => {
+          DefTrait(def_id) => {
               debug!("(building reduced graph for external \
                       crate) building type {}", final_ident);
 
