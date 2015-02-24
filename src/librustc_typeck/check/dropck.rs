@@ -14,8 +14,9 @@ use middle::infer;
 use middle::region;
 use middle::subst;
 use middle::ty::{self, Ty};
-use util::ppaux::{Repr};
+use util::ppaux::{Repr, UserString};
 
+use syntax::ast;
 use syntax::codemap::Span;
 
 pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>,
@@ -28,23 +29,85 @@ pub fn check_safety_of_destructor_if_necessary<'a, 'tcx>(rcx: &mut Rcx<'a, 'tcx>
     // types that have been traversed so far by `traverse_type_if_unseen`
     let mut breadcrumbs: Vec<Ty<'tcx>> = Vec::new();
 
-    iterate_over_potentially_unsafe_regions_in_type(
+    let result = iterate_over_potentially_unsafe_regions_in_type(
         rcx,
         &mut breadcrumbs,
+        TypeContext::Root,
         typ,
         span,
         scope,
         0);
+    match result {
+        Ok(()) => {}
+        Err(Error::Overflow(ref ctxt, ref detected_on_typ)) => {
+            let tcx = rcx.tcx();
+            span_err!(tcx.sess, span, E0320,
+                      "overflow while adding drop-check rules for {}",
+                      typ.user_string(rcx.tcx()));
+            match *ctxt {
+                TypeContext::Root => {
+                    // no need for an additional note if the overflow
+                    // was somehow on the root.
+                }
+                TypeContext::EnumVariant { def_id, variant, arg_index } => {
+                    // FIXME (pnkfelix): eventually lookup arg_name
+                    // for the given index on struct variants.
+                    span_note!(
+                        rcx.tcx().sess,
+                        span,
+                        "overflowed on enum {} variant {} argument {} type: {}",
+                        ty::item_path_str(tcx, def_id),
+                        variant,
+                        arg_index,
+                        detected_on_typ.user_string(rcx.tcx()));
+                }
+                TypeContext::Struct { def_id, field } => {
+                    span_note!(
+                        rcx.tcx().sess,
+                        span,
+                        "overflowed on struct {} field {} type: {}",
+                        ty::item_path_str(tcx, def_id),
+                        field,
+                        detected_on_typ.user_string(rcx.tcx()));
+                }
+            }
+        }
+    }
+}
+
+enum Error<'tcx> {
+    Overflow(TypeContext, ty::Ty<'tcx>),
+}
+
+enum TypeContext {
+    Root,
+    EnumVariant {
+        def_id: ast::DefId,
+        variant: ast::Name,
+        arg_index: usize,
+    },
+    Struct {
+        def_id: ast::DefId,
+        field: ast::Name,
+    }
 }
 
 fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
     rcx: &mut Rcx<'a, 'tcx>,
     breadcrumbs: &mut Vec<Ty<'tcx>>,
+    context: TypeContext,
     ty_root: ty::Ty<'tcx>,
     span: Span,
     scope: region::CodeExtent,
-    depth: uint)
+    depth: uint) -> Result<(), Error<'tcx>>
 {
+    // Issue #22443: Watch out for overflow. While we are careful to
+    // handle regular types properly, non-regular ones cause problems.
+    let recursion_limit = rcx.tcx().sess.recursion_limit.get();
+    if depth >= recursion_limit {
+        return Err(Error::Overflow(context, ty_root))
+    }
+
     let origin = |&:| infer::SubregionOrigin::SafeDestructor(span);
     let mut walker = ty_root.walk();
     let opt_phantom_data_def_id = rcx.tcx().lang_items.phantom_data();
@@ -240,13 +303,17 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                                                   struct_did,
                                                   field.id,
                                                   substs);
-                        iterate_over_potentially_unsafe_regions_in_type(
+                        try!(iterate_over_potentially_unsafe_regions_in_type(
                             rcx,
                             breadcrumbs,
+                            TypeContext::Struct {
+                                def_id: struct_did,
+                                field: field.name,
+                            },
                             field_type,
                             span,
                             scope,
-                            depth+1)
+                            depth+1))
                     }
                 }
 
@@ -260,14 +327,19 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
                                                  enum_did,
                                                  substs);
                     for variant_info in all_variant_info.iter() {
-                        for argument_type in variant_info.args.iter() {
-                            iterate_over_potentially_unsafe_regions_in_type(
+                        for (i, arg_type) in variant_info.args.iter().enumerate() {
+                            try!(iterate_over_potentially_unsafe_regions_in_type(
                                 rcx,
                                 breadcrumbs,
-                                *argument_type,
+                                TypeContext::EnumVariant {
+                                    def_id: enum_did,
+                                    variant: variant_info.name,
+                                    arg_index: i,
+                                },
+                                *arg_type,
                                 span,
                                 scope,
-                                depth+1)
+                                depth+1));
                         }
                     }
                 }
@@ -290,4 +362,6 @@ fn iterate_over_potentially_unsafe_regions_in_type<'a, 'tcx>(
             // is done.
         }
     }
+
+    return Ok(());
 }
