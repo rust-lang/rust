@@ -2868,17 +2868,17 @@ mod tests {
 
         // normal append
         a.append(&mut b);
-        assert_eq!(a.iter().cloned().collect(), [1, 2, 3, 4, 5, 6]);
-        assert_eq!(b.iter().cloned().collect(), []);
+        assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
         // append nothing to something
         a.append(&mut b);
-        assert_eq!(a.iter().cloned().collect(), [1, 2, 3, 4, 5, 6]);
-        assert_eq!(b.iter().cloned().collect(), []);
+        assert_eq!(a.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect::<Vec<_>>(), []);
 
         // append something to nothing
         b.append(&mut a);
-        assert_eq!(b.iter().cloned().collect(), [1, 2, 3, 4, 5, 6]);
-        assert_eq!(a.iter().cloned().collect(), []);
+        assert_eq!(b.iter().cloned().collect::<Vec<_>>(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(a.iter().cloned().collect::<Vec<_>>(), []);
     }
 }
