@@ -48,7 +48,7 @@ impl<R: Read> BufReader<R> {
     }
 
     /// Gets a reference to the underlying reader.
-    pub fn get_ref<'a>(&self) -> &R { &self.inner }
+    pub fn get_ref(&self) -> &R { &self.inner }
 
     /// Gets a mutable reference to the underlying reader.
     ///
