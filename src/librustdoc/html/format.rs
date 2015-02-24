@@ -454,9 +454,6 @@ fn tybounds(w: &mut fmt::Formatter,
 impl fmt::Display for clean::Type {
     fn fmt(&self, f: &mut fmt::Formatter) -> fmt::Result {
         match *self {
-            clean::TyParamBinder(id) => {
-                f.write_str(&cache().typarams[ast_util::local_def(id)])
-            }
             clean::Generic(ref name) => {
                 f.write_str(name)
             }

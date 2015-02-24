@@ -25,7 +25,7 @@ use ast::{ExprAssign, ExprAssignOp, ExprBinary, ExprBlock, ExprBox};
 use ast::{ExprBreak, ExprCall, ExprCast};
 use ast::{ExprField, ExprTupField, ExprClosure, ExprIf, ExprIfLet, ExprIndex};
 use ast::{ExprLit, ExprLoop, ExprMac, ExprRange};
-use ast::{ExprMethodCall, ExprParen, ExprPath, ExprQPath};
+use ast::{ExprMethodCall, ExprParen, ExprPath};
 use ast::{ExprRepeat, ExprRet, ExprStruct, ExprTup, ExprUnary};
 use ast::{ExprVec, ExprWhile, ExprWhileLet, ExprForLoop, Field, FnDecl};
 use ast::{ForeignItem, ForeignItemStatic, ForeignItemFn, ForeignMod, FunctionRetTy};
@@ -43,7 +43,7 @@ use ast::{MethodImplItem, NamedField, UnNeg, NoReturn, NodeId, UnNot};
 use ast::{Pat, PatEnum, PatIdent, PatLit, PatRange, PatRegion, PatStruct};
 use ast::{PatTup, PatBox, PatWild, PatWildMulti, PatWildSingle};
 use ast::{PolyTraitRef};
-use ast::{QPath, RequiredMethod};
+use ast::{QSelf, RequiredMethod};
 use ast::{Return, BiShl, BiShr, Stmt, StmtDecl};
 use ast::{StmtExpr, StmtSemi, StmtMac, StructDef, StructField};
 use ast::{StructVariantKind, BiSub, StrStyle};
@@ -53,7 +53,7 @@ use ast::{TtDelimited, TtSequence, TtToken};
 use ast::{TupleVariantKind, Ty, Ty_, TypeBinding};
 use ast::{TyFixedLengthVec, TyBareFn};
 use ast::{TyTypeof, TyInfer, TypeMethod};
-use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr, TyQPath};
+use ast::{TyParam, TyParamBound, TyParen, TyPath, TyPolyTraitRef, TyPtr};
 use ast::{TyRptr, TyTup, TyU32, TyVec, UnUniq};
 use ast::{TypeImplItem, TypeTraitItem, Typedef,};
 use ast::{UnnamedField, UnsafeBlock};
@@ -143,7 +143,7 @@ macro_rules! maybe_whole_expr {
                         _ => unreachable!()
                     };
                     let span = $p.span;
-                    Some($p.mk_expr(span.lo, span.hi, ExprPath(pt)))
+                    Some($p.mk_expr(span.lo, span.hi, ExprPath(None, pt)))
                 }
                 token::Interpolated(token::NtBlock(_)) => {
                     // FIXME: The following avoids an issue with lexical borrowck scopes,
@@ -1076,8 +1076,7 @@ impl<'a> Parser<'a> {
     }
 
     pub fn parse_ty_path(&mut self) -> Ty_ {
-        let path = self.parse_path(LifetimeAndTypesWithoutColons);
-        TyPath(path, ast::DUMMY_NODE_ID)
+        TyPath(None, self.parse_path(LifetimeAndTypesWithoutColons))
     }
 
     /// parse a TyBareFn type:
@@ -1525,19 +1524,36 @@ impl<'a> Parser<'a> {
         } else if self.eat_lt() {
             // QUALIFIED PATH `<TYPE as TRAIT_REF>::item`
             let self_type = self.parse_ty_sum();
-            self.expect_keyword(keywords::As);
-            let trait_ref = self.parse_trait_ref();
+
+            let mut path = if self.eat_keyword(keywords::As) {
+                self.parse_path(LifetimeAndTypesWithoutColons)
+            } else {
+                ast::Path {
+                    span: self.span,
+                    global: false,
+                    segments: vec![]
+                }
+            };
+
+            let qself = QSelf {
+                ty: self_type,
+                position: path.segments.len()
+            };
+
             self.expect(&token::Gt);
             self.expect(&token::ModSep);
-            let item_name = self.parse_ident();
-            TyQPath(P(QPath {
-                self_type: self_type,
-                trait_ref: P(trait_ref),
-                item_path: ast::PathSegment {
-                    identifier: item_name,
-                    parameters: ast::PathParameters::none()
-                }
-            }))
+
+            path.segments.push(ast::PathSegment {
+                identifier: self.parse_ident(),
+                parameters: ast::PathParameters::none()
+            });
+
+            if path.segments.len() == 1 {
+                path.span.lo = self.last_span.lo;
+            }
+            path.span.hi = self.last_span.hi;
+
+            TyPath(Some(qself), path)
         } else if self.check(&token::ModSep) ||
                   self.token.is_ident() ||
                   self.token.is_path() {
@@ -2178,7 +2194,7 @@ impl<'a> Parser<'a> {
                          }, token::Plain) => {
                 self.bump();
                 let path = ast_util::ident_to_path(mk_sp(lo, hi), id);
-                ex = ExprPath(path);
+                ex = ExprPath(None, path);
                 hi = self.last_span.hi;
             }
             token::OpenDelim(token::Bracket) => {
@@ -2220,10 +2236,22 @@ impl<'a> Parser<'a> {
                 if self.eat_lt() {
                     // QUALIFIED PATH `<TYPE as TRAIT_REF>::item::<'a, T>`
                     let self_type = self.parse_ty_sum();
-                    self.expect_keyword(keywords::As);
-                    let trait_ref = self.parse_trait_ref();
+                    let mut path = if self.eat_keyword(keywords::As) {
+                        self.parse_path(LifetimeAndTypesWithoutColons)
+                    } else {
+                        ast::Path {
+                            span: self.span,
+                            global: false,
+                            segments: vec![]
+                        }
+                    };
+                    let qself = QSelf {
+                        ty: self_type,
+                        position: path.segments.len()
+                    };
                     self.expect(&token::Gt);
                     self.expect(&token::ModSep);
+
                     let item_name = self.parse_ident();
                     let parameters = if self.eat(&token::ModSep) {
                         self.expect_lt();
@@ -2238,15 +2266,18 @@ impl<'a> Parser<'a> {
                     } else {
                         ast::PathParameters::none()
                     };
+                    path.segments.push(ast::PathSegment {
+                        identifier: item_name,
+                        parameters: parameters
+                    });
+
+                    if path.segments.len() == 1 {
+                        path.span.lo = self.last_span.lo;
+                    }
+                    path.span.hi = self.last_span.hi;
+
                     let hi = self.span.hi;
-                    return self.mk_expr(lo, hi, ExprQPath(P(QPath {
-                        self_type: self_type,
-                        trait_ref: P(trait_ref),
-                        item_path: ast::PathSegment {
-                            identifier: item_name,
-                            parameters: parameters
-                        }
-                    })));
+                    return self.mk_expr(lo, hi, ExprPath(Some(qself), path));
                 }
                 if self.eat_keyword(keywords::Move) {
                     return self.parse_lambda_expr(CaptureByValue);
@@ -2386,7 +2417,7 @@ impl<'a> Parser<'a> {
                     }
 
                     hi = pth.span.hi;
-                    ex = ExprPath(pth);
+                    ex = ExprPath(None, pth);
                 } else {
                     // other literal expression
                     let lit = self.parse_lit();
@@ -3428,7 +3459,7 @@ impl<'a> Parser<'a> {
                 let end = if self.token.is_ident() || self.token.is_path() {
                     let path = self.parse_path(LifetimeAndTypesWithColons);
                     let hi = self.span.hi;
-                    self.mk_expr(lo, hi, ExprPath(path))
+                    self.mk_expr(lo, hi, ExprPath(None, path))
                 } else {
                     self.parse_literal_maybe_minus()
                 };
@@ -4815,10 +4846,10 @@ impl<'a> Parser<'a> {
         let opt_trait = if could_be_trait && self.eat_keyword(keywords::For) {
             // New-style trait. Reinterpret the type as a trait.
             match ty.node {
-                TyPath(ref path, node_id) => {
+                TyPath(None, ref path) => {
                     Some(TraitRef {
                         path: (*path).clone(),
-                        ref_id: node_id,
+                        ref_id: ty.id,
                     })
                 }
                 _ => {

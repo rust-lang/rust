@@ -439,8 +439,8 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                 }
             }
         }
-        ast::ExprPath(_) | ast::ExprQPath(_) => {
-            let def = v.tcx.def_map.borrow().get(&e.id).cloned();
+        ast::ExprPath(..) => {
+            let def = v.tcx.def_map.borrow().get(&e.id).map(|d| d.full_def());
             match def {
                 Some(def::DefVariant(_, _, _)) => {
                     // Count the discriminator or function pointer.
@@ -452,8 +452,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                         v.add_qualif(NON_ZERO_SIZED);
                     }
                 }
-                Some(def::DefFn(..)) |
-                Some(def::DefStaticMethod(..)) | Some(def::DefMethod(..)) => {
+                Some(def::DefFn(..)) | Some(def::DefMethod(..)) => {
                     // Count the function pointer.
                     v.add_qualif(NON_ZERO_SIZED);
                 }
@@ -500,7 +499,7 @@ fn check_expr<'a, 'tcx>(v: &mut CheckCrateVisitor<'a, 'tcx>,
                     _ => break
                 };
             }
-            let def = v.tcx.def_map.borrow().get(&callee.id).cloned();
+            let def = v.tcx.def_map.borrow().get(&callee.id).map(|d| d.full_def());
             match def {
                 Some(def::DefStruct(..)) => {}
                 Some(def::DefVariant(..)) => {

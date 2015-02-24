@@ -146,10 +146,6 @@ pub trait Folder : Sized {
         noop_fold_ty(t, self)
     }
 
-    fn fold_qpath(&mut self, t: P<QPath>) -> P<QPath> {
-        noop_fold_qpath(t, self)
-    }
-
     fn fold_ty_binding(&mut self, t: P<TypeBinding>) -> P<TypeBinding> {
         noop_fold_ty_binding(t, self)
     }
@@ -428,16 +424,18 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             }
             TyTup(tys) => TyTup(tys.move_map(|ty| fld.fold_ty(ty))),
             TyParen(ty) => TyParen(fld.fold_ty(ty)),
-            TyPath(path, id) => {
-                let id = fld.new_id(id);
-                TyPath(fld.fold_path(path), id)
+            TyPath(qself, path) => {
+                let qself = qself.map(|QSelf { ty, position }| {
+                    QSelf {
+                        ty: fld.fold_ty(ty),
+                        position: position
+                    }
+                });
+                TyPath(qself, fld.fold_path(path))
             }
             TyObjectSum(ty, bounds) => {
                 TyObjectSum(fld.fold_ty(ty),
                             fld.fold_bounds(bounds))
-            }
-            TyQPath(qpath) => {
-                TyQPath(fld.fold_qpath(qpath))
             }
             TyFixedLengthVec(ty, e) => {
                 TyFixedLengthVec(fld.fold_ty(ty), fld.fold_expr(e))
@@ -450,19 +448,6 @@ pub fn noop_fold_ty<T: Folder>(t: P<Ty>, fld: &mut T) -> P<Ty> {
             }
         },
         span: fld.new_span(span)
-    })
-}
-
-pub fn noop_fold_qpath<T: Folder>(qpath: P<QPath>, fld: &mut T) -> P<QPath> {
-    qpath.map(|qpath| {
-        QPath {
-            self_type: fld.fold_ty(qpath.self_type),
-            trait_ref: qpath.trait_ref.map(|tr| fld.fold_trait_ref(tr)),
-            item_path: PathSegment {
-                identifier: fld.fold_ident(qpath.item_path.identifier),
-                parameters: fld.fold_path_parameters(qpath.item_path.parameters),
-            }
-        }
     })
 }
 
@@ -1364,8 +1349,15 @@ pub fn noop_fold_expr<T: Folder>(Expr {id, node, span}: Expr, folder: &mut T) ->
                 ExprRange(e1.map(|x| folder.fold_expr(x)),
                           e2.map(|x| folder.fold_expr(x)))
             }
-            ExprPath(pth) => ExprPath(folder.fold_path(pth)),
-            ExprQPath(qpath) => ExprQPath(folder.fold_qpath(qpath)),
+            ExprPath(qself, path) => {
+                let qself = qself.map(|QSelf { ty, position }| {
+                    QSelf {
+                        ty: folder.fold_ty(ty),
+                        position: position
+                    }
+                });
+                ExprPath(qself, folder.fold_path(path))
+            }
             ExprBreak(opt_ident) => ExprBreak(opt_ident.map(|x| folder.fold_ident(x))),
             ExprAgain(opt_ident) => ExprAgain(opt_ident.map(|x| folder.fold_ident(x))),
             ExprRet(e) => ExprRet(e.map(|x| folder.fold_expr(x))),

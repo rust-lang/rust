@@ -150,12 +150,9 @@ pub fn get_trait_name(cstore: &cstore::CStore, def: ast::DefId) -> ast::Name {
                             def.node)
 }
 
-pub fn get_trait_item_name_and_kind(cstore: &cstore::CStore, def: ast::DefId)
-                                    -> (ast::Name, def::TraitItemKind) {
+pub fn is_static_method(cstore: &cstore::CStore, def: ast::DefId) -> bool {
     let cdata = cstore.get_crate_data(def.krate);
-    decoder::get_trait_item_name_and_kind(cstore.intr.clone(),
-                                          &*cdata,
-                                          def.node)
+    decoder::is_static_method(&*cdata, def.node)
 }
 
 pub fn get_trait_item_def_ids(cstore: &cstore::CStore, def: ast::DefId)

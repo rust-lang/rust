@@ -18,11 +18,11 @@
 mod foo {
     mod baz {
         struct Test;
-        impl Add for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl Clone for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl Iterator for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl ToString for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
+        impl Add for Test {} //~ ERROR: use of undeclared trait
+        impl Clone for Test {} //~ ERROR: use of undeclared trait
+        impl Iterator for Test {} //~ ERROR: use of undeclared trait
+        impl ToString for Test {} //~ ERROR: use of undeclared trait
+        impl Writer for Test {} //~ ERROR: use of undeclared trait
 
         fn foo() {
             drop(2) //~ ERROR: unresolved name
@@ -30,11 +30,11 @@ mod foo {
     }
 
     struct Test;
-    impl Add for Test {} //~ ERROR: attempt to implement a nonexistent trait
-    impl Clone for Test {} //~ ERROR: attempt to implement a nonexistent trait
-    impl Iterator for Test {} //~ ERROR: attempt to implement a nonexistent trait
-    impl ToString for Test {} //~ ERROR: attempt to implement a nonexistent trait
-    impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
+    impl Add for Test {} //~ ERROR: use of undeclared trait
+    impl Clone for Test {} //~ ERROR: use of undeclared trait
+    impl Iterator for Test {} //~ ERROR: use of undeclared trait
+    impl ToString for Test {} //~ ERROR: use of undeclared trait
+    impl Writer for Test {} //~ ERROR: use of undeclared trait
 
     fn foo() {
         drop(2) //~ ERROR: unresolved name
@@ -45,11 +45,11 @@ fn qux() {
     #[no_implicit_prelude]
     mod qux_inner {
         struct Test;
-        impl Add for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl Clone for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl Iterator for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl ToString for Test {} //~ ERROR: attempt to implement a nonexistent trait
-        impl Writer for Test {} //~ ERROR: attempt to implement a nonexistent trait
+        impl Add for Test {} //~ ERROR: use of undeclared trait
+        impl Clone for Test {} //~ ERROR: use of undeclared trait
+        impl Iterator for Test {} //~ ERROR: use of undeclared trait
+        impl ToString for Test {} //~ ERROR: use of undeclared trait
+        impl Writer for Test {} //~ ERROR: use of undeclared trait
 
         fn foo() {
             drop(2) //~ ERROR: unresolved name

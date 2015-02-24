@@ -14,7 +14,7 @@ mod a {
 trait A {
 }
 
-impl A for a { //~ERROR found module name used as a type
+impl A for a { //~ ERROR use of undeclared type name `a`
 }
 
 fn main() {

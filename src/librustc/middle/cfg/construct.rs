@@ -398,8 +398,7 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
             ast::ExprMac(..) |
             ast::ExprClosure(..) |
             ast::ExprLit(..) |
-            ast::ExprPath(..) |
-            ast::ExprQPath(..) => {
+            ast::ExprPath(..) => {
                 self.straightline(expr, pred, None::<ast::Expr>.iter())
             }
         }
@@ -610,32 +609,24 @@ impl<'a, 'tcx> CFGBuilder<'a, 'tcx> {
     fn find_scope(&self,
                   expr: &ast::Expr,
                   label: Option<ast::Ident>) -> LoopScope {
-        match label {
-            None => {
-                return *self.loop_scopes.last().unwrap();
-            }
+        if label.is_none() {
+            return *self.loop_scopes.last().unwrap();
+        }
 
-            Some(_) => {
-                match self.tcx.def_map.borrow().get(&expr.id) {
-                    Some(&def::DefLabel(loop_id)) => {
-                        for l in &self.loop_scopes {
-                            if l.loop_id == loop_id {
-                                return *l;
-                            }
-                        }
-                        self.tcx.sess.span_bug(
-                            expr.span,
-                            &format!("no loop scope for id {}",
-                                    loop_id));
-                    }
-
-                    r => {
-                        self.tcx.sess.span_bug(
-                            expr.span,
-                            &format!("bad entry `{:?}` in def_map for label",
-                                    r));
+        match self.tcx.def_map.borrow().get(&expr.id).map(|d| d.full_def()) {
+            Some(def::DefLabel(loop_id)) => {
+                for l in &self.loop_scopes {
+                    if l.loop_id == loop_id {
+                        return *l;
                     }
                 }
+                self.tcx.sess.span_bug(expr.span,
+                    &format!("no loop scope for id {}", loop_id));
+            }
+
+            r => {
+                self.tcx.sess.span_bug(expr.span,
+                    &format!("bad entry `{:?}` in def_map for label", r));
             }
         }
     }
