@@ -907,7 +907,7 @@ fn convert_item(ccx: &CrateCtxt, it: &ast::Item) {
                                    &enum_definition.variants);
         },
         ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
-            let trait_ref = astconv::instantiate_trait_ref(ccx,
+            let trait_ref = astconv::instantiate_trait_ref(&ccx.icx(&()),
                                                            &ExplicitRscope,
                                                            ast_trait_ref,
                                                            Some(it.id),
