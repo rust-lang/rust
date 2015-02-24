@@ -347,7 +347,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
             let result = stack.with(move |pusher, node| {
                 // Same basic logic as found in `find`, but with PartialSearchStack mediating the
                 // actual nodes for us
-                return match Node::search(node, &key) {
+                match Node::search(node, &key) {
                     Found(mut handle) => {
                         // Perfect match, swap the values and return the old one
                         mem::swap(handle.val_mut(), &mut value);
@@ -372,7 +372,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
                 }
             });
             match result {
-                Finished(ret) => { return ret; },
+                Finished(ret) => return ret,
                 Continue((new_stack, renewed_key, renewed_val)) => {
                     stack = new_stack;
                     key = renewed_key;
@@ -439,7 +439,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
             let result = stack.with(move |pusher, node| {
-                return match Node::search(node, key) {
+                match Node::search(node, key) {
                     Found(handle) => {
                         // Perfect match. Terminate the stack here, and remove the entry
                         Finished(Some(pusher.seal(handle).remove()))
@@ -1560,7 +1560,7 @@ impl<K: Ord, V> BTreeMap<K, V> {
         let mut stack = stack::PartialSearchStack::new(self);
         loop {
             let result = stack.with(move |pusher, node| {
-                return match Node::search(node, &key) {
+                match Node::search(node, &key) {
                     Found(handle) => {
                         // Perfect match
                         Finished(Occupied(OccupiedEntry {
