@@ -308,7 +308,7 @@ impl<V> VecMap<V> {
     ///
     /// let vec: Vec<(usize, &str)> = map.into_iter().collect();
     ///
-    /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+    /// assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[stable(feature = "rust1", since = "1.0.0")]
     pub fn into_iter(self) -> IntoIter<V> {
@@ -425,7 +425,7 @@ impl<V> VecMap<V> {
     ///
     /// let vec: Vec<(usize, &str)> = map.drain().collect();
     ///
-    /// assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+    /// assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
     /// ```
     #[unstable(feature = "collections",
                reason = "matches collection reform specification, waiting for dust to settle")]
@@ -1226,7 +1226,7 @@ mod test_map {
 
         let vec: Vec<_> = map.drain().collect();
 
-        assert_eq!(vec, vec![(1, "a"), (2, "b"), (3, "c")]);
+        assert_eq!(vec, [(1, "a"), (2, "b"), (3, "c")]);
         assert_eq!(map.len(), 0);
     }
 

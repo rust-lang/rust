@@ -2105,7 +2105,7 @@ mod tests {
         let mut d: VecDeque<_> = (0..5).collect();
         d.pop_front();
         d.swap(0, 3);
-        assert_eq!(d.iter().cloned().collect::<Vec<_>>(), vec!(4, 2, 3, 1));
+        assert_eq!(d.iter().cloned().collect::<Vec<_>>(), [4, 2, 3, 1]);
     }
 
     #[test]
@@ -2868,17 +2868,17 @@ mod tests {
 
         // normal append
         a.append(&mut b);
-        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(b.iter().cloned().collect(), vec![]);
+        assert_eq!(a.iter().cloned().collect(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect(), []);
 
         // append nothing to something
         a.append(&mut b);
-        assert_eq!(a.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(b.iter().cloned().collect(), vec![]);
+        assert_eq!(a.iter().cloned().collect(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(b.iter().cloned().collect(), []);
 
         // append something to nothing
         b.append(&mut a);
-        assert_eq!(b.iter().cloned().collect(), vec![1, 2, 3, 4, 5, 6]);
-        assert_eq!(a.iter().cloned().collect(), vec![]);
+        assert_eq!(b.iter().cloned().collect(), [1, 2, 3, 4, 5, 6]);
+        assert_eq!(a.iter().cloned().collect(), []);
     }
 }
