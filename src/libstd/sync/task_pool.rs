@@ -142,7 +142,7 @@ mod test {
     use super::*;
     use sync::mpsc::channel;
 
-    const TEST_TASKS: u32 = 4;
+    const TEST_TASKS: usize = 4;
 
     #[test]
     fn test_works() {
