@@ -244,12 +244,20 @@ impl<'a, 'tcx> AstConv<'tcx> for CollectCtxt<'a, 'tcx> {
     }
 
     fn projected_ty(&self,
-                    _span: Span,
+                    span: Span,
                     trait_ref: Rc<ty::TraitRef<'tcx>>,
                     item_name: ast::Name)
                     -> Ty<'tcx>
     {
-        ty::mk_projection(self.tcx(), trait_ref, item_name)
+        let trait_def = ty::lookup_trait_def(self.tcx, trait_ref.def_id);
+        if !trait_def.associated_type_names.contains(&item_name) {
+            span_err!(self.tcx.sess, span, E0320,
+                      "cannot find binding for item `{}` within trait `{}`",
+                      item_name.as_str(), trait_ref.user_string(self.tcx));
+            ty::mk_t(self.tcx(), ty::ty_err)
+        } else {
+            ty::mk_projection(self.tcx(), trait_ref, item_name)
+        }
     }
 }
 
