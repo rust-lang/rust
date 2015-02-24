@@ -122,4 +122,9 @@ mod test {
         assert_eq!("-9223372036854775808".parse::<i64>().ok(), Some(i64_val));
         assert_eq!("-9223372036854775809".parse::<i64>().ok(), None);
     }
+
+    #[test]
+    fn test_int_from_minus_sign() {
+        assert_eq!("-".parse::<i32>().ok(), None);
+    }
 }
