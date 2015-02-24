@@ -554,8 +554,12 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
                                                                expr.span);
             }
             Err(..) => {
-                rcx.fcx.tcx().sess.span_note(expr.span,
-                                             "cat_expr_unadjusted Errd during dtor check");
+                let tcx = rcx.fcx.tcx();
+                if tcx.sess.has_errors() {
+                    // cannot run dropck; okay b/c in error state anyway.
+                } else {
+                    tcx.sess.span_bug(expr.span, "cat_expr_unadjusted Errd");
+                }
             }
         }
     }
@@ -571,8 +575,12 @@ fn visit_expr(rcx: &mut Rcx, expr: &ast::Expr) {
             check_safety_of_rvalue_destructor_if_necessary(rcx, head_cmt, expr.span);
         }
         Err(..) => {
-            rcx.fcx.tcx().sess.span_note(expr.span,
-                                         "cat_expr Errd during dtor check");
+            let tcx = rcx.fcx.tcx();
+            if tcx.sess.has_errors() {
+                // cannot run dropck; okay b/c in error state anyway.
+            } else {
+                tcx.sess.span_bug(expr.span, "cat_expr Errd");
+            }
         }
     }
 
