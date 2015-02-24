@@ -93,10 +93,10 @@ impl<'cx, 'tcx,'v> visit::Visitor<'v> for OrphanChecker<'cx, 'tcx> {
                     }
                 }
             }
-            ast::ItemDefaultImpl(_, ref ast_trait_ref) => {
+            ast::ItemDefaultImpl(..) => {
                 // "Trait" impl
                 debug!("coherence2::orphan check: default trait impl {}", item.repr(self.tcx));
-                let trait_ref = ty::node_id_to_trait_ref(self.tcx, ast_trait_ref.ref_id);
+                let trait_ref = ty::impl_trait_ref(self.tcx, def_id).unwrap();
                 if trait_ref.def_id.krate != ast::LOCAL_CRATE {
                     span_err!(self.tcx.sess, item.span, E0318,
                               "cannot create default implementations for traits outside the \

@@ -504,8 +504,8 @@ impl<'a, 'b:'a, 'tcx:'b> GraphBuilder<'a, 'b, 'tcx> {
                 parent.clone()
             }
 
-            ItemImpl(..) => parent.clone(),
             ItemDefaultImpl(_, _) |
+            ItemImpl(..) => parent.clone(),
 
             ItemTrait(_, _, _, ref items) => {
                 let name_bindings =
