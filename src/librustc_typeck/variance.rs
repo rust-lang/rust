@@ -644,9 +644,9 @@ impl<'a, 'tcx, 'v> Visitor<'v> for ConstraintContext<'a, 'tcx> {
 
             ast::ItemTrait(..) => {
                 let trait_def = ty::lookup_trait_def(tcx, did);
-                let predicates = ty::predicates(tcx, ty::mk_self_type(tcx), &trait_def.bounds);
+                let predicates = ty::lookup_super_predicates(tcx, did);
                 self.add_constraints_from_predicates(&trait_def.generics,
-                                                     &predicates,
+                                                     predicates.predicates.as_slice(),
                                                      self.covariant);
 
                 let trait_items = ty::trait_items(tcx, did);

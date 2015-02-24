@@ -432,8 +432,8 @@ impl<'a, 'tcx> ImproperCTypesVisitor<'a, 'tcx> {
             }
             def::DefTy(..) => {
                 let tty = match self.cx.tcx.ast_ty_to_ty_cache.borrow().get(&id) {
-                    Some(&ty::atttce_resolved(t)) => t,
-                    _ => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
+                    Some(&t) => t,
+                    None => panic!("ast_ty_to_ty_cache was incomplete after typeck!")
                 };
 
                 if !ty::is_ffi_safe(self.cx.tcx, tty) {

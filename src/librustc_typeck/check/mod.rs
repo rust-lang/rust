@@ -1218,6 +1218,11 @@ impl<'a, 'tcx> AstConv<'tcx> for FnCtxt<'a, 'tcx> {
         Ok(ty::lookup_trait_def(self.tcx(), id))
     }
 
+    fn ensure_super_predicates(&self, _: Span, _: ast::DefId) -> Result<(), ErrorReported> {
+        // all super predicates are ensured during collect pass
+        Ok(())
+    }
+
     fn get_free_substs(&self) -> Option<&Substs<'tcx>> {
         Some(&self.inh.param_env.free_substs)
     }

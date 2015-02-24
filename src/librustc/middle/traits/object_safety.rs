@@ -22,7 +22,7 @@ use super::elaborate_predicates;
 
 use middle::subst::{self, SelfSpace, TypeSpace};
 use middle::traits;
-use middle::ty::{self, Ty};
+use middle::ty::{self, ToPolyTraitRef, Ty};
 use std::rc::Rc;
 use syntax::ast;
 use util::ppaux::Repr;
@@ -128,9 +128,12 @@ fn supertraits_reference_self<'tcx>(tcx: &ty::ctxt<'tcx>,
 {
     let trait_def = ty::lookup_trait_def(tcx, trait_def_id);
     let trait_ref = trait_def.trait_ref.clone();
-    let predicates = ty::predicates_for_trait_ref(tcx, &ty::Binder(trait_ref));
+    let trait_ref = trait_ref.to_poly_trait_ref();
+    let predicates = ty::lookup_super_predicates(tcx, trait_def_id);
     predicates
+        .predicates
         .into_iter()
+        .map(|predicate| predicate.subst_supertrait(tcx, &trait_ref))
         .any(|predicate| {
             match predicate {
                 ty::Predicate::Trait(ref data) => {

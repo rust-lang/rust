@@ -25,7 +25,7 @@ trait Trait { type Item; }
 struct A<T>
     where T : Trait,
           T : Add<T::Item>
-    //~^ ERROR illegal recursive type
+    //~^ ERROR unsupported cyclic reference between types/traits detected
 {
     data: T
 }
