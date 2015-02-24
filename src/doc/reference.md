@@ -764,7 +764,15 @@ usually in [procedural macros](book/plugins.html#syntax-extensions):
 * `quote_pat!`
 * `quote_stmt!`
 * `quote_tokens!`
+* `quote_matcher!`
 * `quote_ty!`
+* `quote_attr!`
+
+Keep in mind that when `$name : ident` appears in the input to
+`quote_tokens!`, the result contains unquoted `name` followed by two tokens.
+However, input of the same form passed to `quote_matcher!` becomes a
+quasiquoted MBE-matcher of a nonterminal. No unquotation happens. Otherwise
+the result of `quote_matcher!` is identical to that of `quote_tokens!`.
 
 Documentation is very limited at the moment.
 

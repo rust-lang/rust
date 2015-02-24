@@ -1,4 +1,4 @@
-// Copyright 2012-2014 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -74,6 +74,9 @@ fn main() {
 
     let arm = quote_arm!(cx, (ref x, ref y) => (x, y));
     check_pp(ext_cx, arm, pprust::print_stmt, "(ref x, ref y) = (x, y)".to_string());
+
+    let attr = quote_attr!(cx, #![cfg(foo = "bar")]);
+    check_pp(ext_cx, attr, pprust::print_attribute, "#![cfg(foo = "bar")]".to_string());
 }
 
 fn check_pp<T>(cx: fake_ext_ctxt,
