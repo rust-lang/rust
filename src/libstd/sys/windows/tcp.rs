@@ -192,7 +192,7 @@ impl TcpAcceptor {
                         c::WSAEventSelect(socket, events[1], 0)
                     };
                     if ret != 0 { return Err(last_net_error()) }
-                    try!(set_nonblocking(socket, false));
+                    set_nonblocking(socket, false);
                     return Ok(stream)
                 }
             }

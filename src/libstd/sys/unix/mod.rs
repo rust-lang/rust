@@ -214,9 +214,9 @@ pub fn wouldblock() -> bool {
     err == libc::EWOULDBLOCK as i32 || err == libc::EAGAIN as i32
 }
 
-pub fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
+pub fn set_nonblocking(fd: sock_t, nb: bool) {
     let set = nb as libc::c_int;
-    mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) }))
+    mkerr_libc(retry(|| unsafe { c::ioctl(fd, c::FIONBIO, &set) })).unwrap();
 }
 
 // nothing needed on unix platforms
