@@ -571,7 +571,7 @@ fn contains_macro_use(fld: &mut MacroExpander, attrs: &[ast::Attribute]) -> bool
             fld.cx.span_warn(attr.span, "macro_escape is a deprecated synonym for macro_use");
             is_use = true;
             if let ast::AttrInner = attr.node.style {
-                fld.cx.span_help(attr.span, "consider an outer attribute, \
+                fld.cx.fileline_help(attr.span, "consider an outer attribute, \
                                              #[macro_use] mod ...");
             }
         };

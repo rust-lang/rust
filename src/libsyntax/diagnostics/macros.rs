@@ -53,6 +53,13 @@ macro_rules! span_help {
 }
 
 #[macro_export]
+macro_rules! fileline_help {
+    ($session:expr, $span:expr, $($message:tt)*) => ({
+        ($session).fileline_help($span, &format!($($message)*))
+    })
+}
+
+#[macro_export]
 macro_rules! register_diagnostics {
     ($($code:tt),*) => (
         $(register_diagnostic! { $code })*
