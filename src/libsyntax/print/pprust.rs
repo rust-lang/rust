@@ -2048,9 +2048,12 @@ impl<'a> State<'a> {
     {
         try!(word(&mut self.s, "<"));
         try!(self.print_type(&qself.ty));
-        try!(space(&mut self.s));
-        try!(self.word_space("as"));
-        try!(self.print_path(&path, false, 1));
+        if qself.position > 0 {
+            try!(space(&mut self.s));
+            try!(self.word_space("as"));
+            let depth = path.segments.len() - qself.position;
+            try!(self.print_path(&path, false, depth));
+        }
         try!(word(&mut self.s, ">"));
         try!(word(&mut self.s, "::"));
         let item_segment = path.segments.last().unwrap();
