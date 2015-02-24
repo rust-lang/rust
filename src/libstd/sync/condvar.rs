@@ -327,7 +327,7 @@ impl StaticCondvar {
     }
 
     fn verify(&self, mutex: &sys_mutex::Mutex) {
-        let addr = mutex as *const _ as uint;
+        let addr = mutex as *const _ as usize;
         match self.mutex.compare_and_swap(0, addr, Ordering::SeqCst) {
             // If we got out 0, then we have successfully bound the mutex to
             // this cvar.
@@ -388,7 +388,7 @@ mod tests {
 
     #[test]
     fn notify_all() {
-        const N: uint = 10;
+        const N: usize = 10;
 
         let data = Arc::new((Mutex::new(0), Condvar::new()));
         let (tx, rx) = channel();

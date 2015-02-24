@@ -425,8 +425,8 @@ mod tests {
     #[test]
     fn frob() {
         static R: StaticRwLock = RW_LOCK_INIT;
-        static N: usize = 10;
-        static M: usize = 1000;
+        static N: u32 = 10;
+        static M: u32 = 1000;
 
         let (tx, rx) = channel::<()>();
         for _ in 0..N {

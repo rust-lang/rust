@@ -214,7 +214,7 @@ macro_rules! integer {
         show! { $Uint with $SU }
     }
 }
-integer! { int, uint, "i", "u" }
+integer! { isize, usize, "i", "u" }
 integer! { i8, u8 }
 integer! { i16, u16 }
 integer! { i32, u32 }
