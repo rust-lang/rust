@@ -5434,6 +5434,11 @@ pub fn check_intrinsic_type(ccx: &CrateCtxt, it: &ast::ForeignItem) {
 
             "assume" => (0, vec![tcx.types.bool], ty::mk_nil(tcx)),
 
+            "expect8" => (0, vec![tcx.types.u8, tcx.types.u8], tcx.types.u8),
+            "expect16" => (0, vec![tcx.types.u16, tcx.types.u16], tcx.types.u16),
+            "expect32" => (0, vec![tcx.types.u32, tcx.types.u32], tcx.types.u32),
+            "expect64" => (0, vec![tcx.types.u64, tcx.types.u64], tcx.types.u64),
+
             ref other => {
                 span_err!(tcx.sess, it.span, E0093,
                     "unrecognized intrinsic function: `{}`", *other);

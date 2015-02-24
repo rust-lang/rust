@@ -873,6 +873,10 @@ fn declare_intrinsic(ccx: &CrateContext, key: & &'static str) -> Option<ValueRef
     ifn!("llvm.lifetime.end", fn(t_i64, i8p) -> void);
 
     ifn!("llvm.expect.i1", fn(i1, i1) -> i1);
+    ifn!("llvm.expect.i8", fn(t_i8, t_i8) -> t_i8);
+    ifn!("llvm.expect.i16", fn(t_i16, t_i16) -> t_i16);
+    ifn!("llvm.expect.i32", fn(t_i32, t_i32) -> t_i32);
+    ifn!("llvm.expect.i64", fn(t_i64, t_i64) -> t_i64);
     ifn!("llvm.assume", fn(i1) -> void);
 
     // Some intrinsics were introduced in later versions of LLVM, but they have
