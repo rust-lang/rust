@@ -68,7 +68,7 @@ There are questions that are asked quite often, and so we've made FAQs for them:
 * [Language Design FAQ](complement-design-faq.html)
 * [Language FAQ](complement-lang-faq.html)
 * [Project FAQ](complement-project-faq.html)
-* [How to submit a bug report](complement-bugreport.html)
+* [How to submit a bug report](https://github.com/rust-lang/rust/blob/master/CONTRIBUTING.md#bug-reports)
 
 # The standard library
 
