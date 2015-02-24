@@ -3637,7 +3637,7 @@ fn check_expr_with_unifier<'a, 'tcx, F>(fcx: &FnCtxt<'a, 'tcx>,
                 }
             } else {
               tcx.sess.span_bug(expr.span,
-                                &format!("unbound path {}", expr.repr(tcx))[])
+                                &format!("unbound path {}", expr.repr(tcx)))
           };
 
           let mut def = path_res.base_def;
