@@ -192,12 +192,12 @@ pub fn wouldblock() -> bool {
     err == libc::WSAEWOULDBLOCK as i32
 }
 
-pub fn set_nonblocking(fd: sock_t, nb: bool) -> IoResult<()> {
+pub fn set_nonblocking(fd: sock_t, nb: bool) {
     let mut set = nb as libc::c_ulong;
-    if unsafe { c::ioctlsocket(fd, c::FIONBIO, &mut set) != 0 } {
-        Err(last_error())
-    } else {
-        Ok(())
+    if unsafe { c::ioctlsocket(fd, c::FIONBIO, &mut set) } != 0 {
+        // The above function should not return an error unless we passed it
+        // invalid parameters. Panic on errors.
+        Err(last_error()).unwrap();
     }
 }
 

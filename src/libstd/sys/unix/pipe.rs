@@ -235,9 +235,9 @@ impl UnixListener {
 
             _ => {
                 let (reader, writer) = try!(unsafe { sys::os::pipe() });
-                try!(set_nonblocking(reader.fd(), true));
-                try!(set_nonblocking(writer.fd(), true));
-                try!(set_nonblocking(self.fd(), true));
+                set_nonblocking(reader.fd(), true);
+                set_nonblocking(writer.fd(), true);
+                set_nonblocking(self.fd(), true);
                 Ok(UnixAcceptor {
                     inner: Arc::new(AcceptorInner {
                         listener: self,
