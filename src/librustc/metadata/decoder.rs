@@ -357,7 +357,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
             let enum_did = item_reqd_and_translated_parent_item(cnum, item);
             DlDef(def::DefVariant(enum_did, did, false))
         }
-        Trait => DlDef(def::DefaultImpl(did)),
+        Trait => DlDef(def::DefTrait(did)),
         Enum => DlDef(def::DefTy(did, true)),
         Impl | DefaultImpl => DlImpl(did),
         PublicField | InheritedField => DlField,

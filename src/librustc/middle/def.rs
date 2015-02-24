@@ -38,7 +38,7 @@ pub enum Def {
     // type `U` (indicated by the Ident).
     // FIXME(#20301) -- should use Name
     DefAssociatedPath(TyParamProvenance, ast::Ident),
-    DefaultImpl(ast::DefId),
+    DefTrait(ast::DefId),
     DefPrimTy(ast::PrimTy),
     DefTyParam(ParamSpace, u32, ast::DefId, ast::Name),
     DefUse(ast::DefId),
@@ -135,7 +135,7 @@ impl Def {
             DefFn(id, _) | DefStaticMethod(id, _) | DefMod(id) |
             DefForeignMod(id) | DefStatic(id, _) |
             DefVariant(_, id, _) | DefTy(id, _) | DefAssociatedTy(id) |
-            DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefaultImpl(id) |
+            DefTyParam(_, _, id, _) | DefUse(id) | DefStruct(id) | DefTrait(id) |
             DefMethod(id, _, _) | DefConst(id) |
             DefAssociatedPath(TyParamProvenance::FromSelf(id), _) |
             DefAssociatedPath(TyParamProvenance::FromParam(id), _) => {

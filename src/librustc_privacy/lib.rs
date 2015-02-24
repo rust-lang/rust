@@ -802,7 +802,7 @@ impl<'a, 'tcx> PrivacyVisitor<'a, 'tcx> {
             def::DefVariant(..) => ck("variant"),
             def::DefTy(_, false) => ck("type"),
             def::DefTy(_, true) => ck("enum"),
-            def::DefaultImpl(..) => ck("trait"),
+            def::DefTrait(..) => ck("trait"),
             def::DefStruct(..) => ck("struct"),
             def::DefMethod(_, Some(..), _) => ck("trait method"),
             def::DefMethod(..) => ck("method"),

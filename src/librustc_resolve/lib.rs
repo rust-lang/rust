@@ -2989,7 +2989,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                 // check for imports shadowing primitive types
                 if let ast::ViewPathSimple(ident, _) = view_path.node {
                     match self.def_map.borrow().get(&item.id) {
-                        Some(&DefTy(..)) | Some(&DefStruct(..)) | Some(&DefaultImpl(..)) | None => {
+                        Some(&DefTy(..)) | Some(&DefStruct(..)) | Some(&DefTrait(..)) | None => {
                             self.check_if_primitive_type_name(ident.name, item.span);
                         }
                         _ => {}
@@ -3199,7 +3199,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
             }
             Some(def) => {
                 match def {
-                    (DefaultImpl(_), _) => {
+                    (DefTrait(_), _) => {
                         debug!("(resolving trait) found trait def: {:?}", def);
                         self.record_def(trait_reference.ref_id, def);
                     }
@@ -4675,7 +4675,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                         None => continue
                     };
                     let trait_def_id = match def {
-                        DefaultImpl(trait_def_id) => trait_def_id,
+                        DefTrait(trait_def_id) => trait_def_id,
                         _ => continue,
                     };
                     if self.trait_item_map.contains_key(&(name, trait_def_id)) {
@@ -4691,7 +4691,7 @@ impl<'a, 'tcx> Resolver<'a, 'tcx> {
                     Some(target) => target,
                 };
                 let did = match target.bindings.def_for_namespace(TypeNS) {
-                    Some(DefaultImpl(trait_def_id)) => trait_def_id,
+                    Some(DefTrait(trait_def_id)) => trait_def_id,
                     Some(..) | None => continue,
                 };
                 if self.trait_item_map.contains_key(&(name, did)) {
