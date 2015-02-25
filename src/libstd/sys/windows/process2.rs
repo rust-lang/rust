@@ -16,16 +16,15 @@ use collections;
 use env;
 use ffi::{OsString, OsStr};
 use fmt;
+use fs;
 use io::{self, Error};
 use libc::{self, c_void};
-use old_io::fs;
-use old_path;
 use os::windows::OsStrExt;
 use ptr;
 use sync::{StaticMutex, MUTEX_INIT};
+use sys::handle::Handle;
 use sys::pipe2::AnonPipe;
 use sys::{self, cvt};
-use sys::handle::Handle;
 use sys_common::{AsInner, FromInner};
 
 ////////////////////////////////////////////////////////////////////////////////
@@ -142,9 +141,8 @@ impl Process {
                 for path in split_paths(&v) {
                     let path = path.join(cfg.program.to_str().unwrap())
                                    .with_extension(env::consts::EXE_EXTENSION);
-                    // FIXME: update with new fs module once it lands
-                    if fs::stat(&old_path::Path::new(&path)).is_ok() {
-                        return Some(OsString::from_str(path.as_str().unwrap()))
+                    if fs::metadata(&path).is_ok() {
+                        return Some(path.into_os_string())
                     }
                 }
                 break
