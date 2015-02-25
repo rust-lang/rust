@@ -927,7 +927,7 @@ mod tests {
     fn split_paths_windows() {
         fn check_parse(unparsed: &str, parsed: &[&str]) -> bool {
             split_paths(unparsed).collect::<Vec<_>>() ==
-                parsed.iter().map(|s| Path::new(*s)).collect::<Vec<_>>()
+                parsed.iter().map(|s| PathBuf::new(*s)).collect::<Vec<_>>()
         }
 
         assert!(check_parse("", &mut [""]));
