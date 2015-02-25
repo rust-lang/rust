@@ -243,7 +243,9 @@ pub static KNOWN_ATTRIBUTES: &'static [(&'static str, AttributeType)] = &[
     ("static_assert", Whitelisted),
     ("no_debug", Whitelisted),
     ("omit_gdb_pretty_printer_section", Whitelisted),
-    ("unsafe_no_drop_flag", Whitelisted),
+    ("unsafe_no_drop_flag", Gated("unsafe_no_drop_flag",
+                                  "unsafe_no_drop_flag has unstable semantics \
+                                   and may be removed in the future")),
 
     // used in resolve
     ("prelude_import", Whitelisted),
