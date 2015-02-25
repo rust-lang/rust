@@ -14,6 +14,8 @@ use astconv::AstConv;
 use check::{FnCtxt};
 use check::vtable;
 use check::vtable::select_new_fcx_obligations;
+use middle::def;
+use middle::privacy::{AllPublic, DependsOn, LastPrivate, LastMod};
 use middle::subst;
 use middle::traits;
 use middle::ty::*;
@@ -66,7 +68,8 @@ pub fn exists<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
                         call_expr_id: ast::NodeId)
                         -> bool
 {
-    match probe::probe(fcx, span, method_name, self_ty, call_expr_id) {
+    let mode = probe::Mode::MethodCall;
+    match probe::probe(fcx, span, mode, method_name, self_ty, call_expr_id) {
         Ok(..) => true,
         Err(NoMatch(..)) => false,
         Err(Ambiguity(..)) => true,
@@ -103,8 +106,9 @@ pub fn lookup<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
            call_expr.repr(fcx.tcx()),
            self_expr.repr(fcx.tcx()));
 
+    let mode = probe::Mode::MethodCall;
     let self_ty = fcx.infcx().resolve_type_vars_if_possible(&self_ty);
-    let pick = try!(probe::probe(fcx, span, method_name, self_ty, call_expr.id));
+    let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, call_expr.id));
     Ok(confirm::confirm(fcx, span, self_expr, call_expr, self_ty, pick, supplied_method_types))
 }
 
@@ -299,6 +303,29 @@ pub fn lookup_in_trait_adjusted<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
     debug!("callee = {}", callee.repr(fcx.tcx()));
 
     Some(callee)
+}
+
+pub fn resolve_ufcs<'a, 'tcx>(fcx: &FnCtxt<'a, 'tcx>,
+                              span: Span,
+                              method_name: ast::Name,
+                              self_ty: Ty<'tcx>,
+                              expr_id: ast::NodeId)
+                              -> Result<(def::Def, LastPrivate), MethodError>
+{
+    let mode = probe::Mode::Path;
+    let pick = try!(probe::probe(fcx, span, mode, method_name, self_ty, expr_id));
+    let def_id = pick.method_ty.def_id;
+    let mut lp = LastMod(AllPublic);
+    let provenance = match pick.kind {
+        probe::InherentImplPick(impl_def_id) => {
+            if pick.method_ty.vis != ast::Public {
+                lp = LastMod(DependsOn(def_id));
+            }
+            def::FromImpl(impl_def_id)
+        }
+        _ => def::FromTrait(pick.method_ty.container.id())
+    };
+    Ok((def::DefMethod(def_id, provenance), lp))
 }
 
 

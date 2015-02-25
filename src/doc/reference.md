@@ -731,15 +731,20 @@ Rust syntax is restricted in two ways:
    pairs when they occur at the beginning of, or immediately after, a `$(...)*`;
    requiring a distinctive token in front can solve the problem.
 
-## Syntax extensions useful for the macro author
+## Syntax extensions useful in macros
+
+* `stringify!` : turn the identifier argument into a string literal
+* `concat!` : concatenates a comma-separated list of literals
+
+## Syntax extensions for macro debugging
 
 * `log_syntax!` : print out the arguments at compile time
 * `trace_macros!` : supply `true` or `false` to enable or disable macro expansion logging
-* `stringify!` : turn the identifier argument into a string literal
-* `concat!` : concatenates a comma-separated list of literals
-* `concat_idents!` : create a new identifier by concatenating the arguments
 
-The following attributes are used for quasiquoting in procedural macros:
+## Quasiquoting
+
+The following syntax extensions are used for quasiquoting Rust syntax trees,
+usually in [procedural macros](book/plugins.html#syntax-extensions):
 
 * `quote_expr!`
 * `quote_item!`
@@ -747,6 +752,8 @@ The following attributes are used for quasiquoting in procedural macros:
 * `quote_stmt!`
 * `quote_tokens!`
 * `quote_ty!`
+
+Documentation is very limited at the moment.
 
 # Crates and source files
 

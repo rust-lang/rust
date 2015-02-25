@@ -1,4 +1,4 @@
-// Copyright 2012 The Rust Project Developers. See the COPYRIGHT
+// Copyright 2015 The Rust Project Developers. See the COPYRIGHT
 // file at the top-level directory of this distribution and at
 // http://rust-lang.org/COPYRIGHT.
 //
@@ -8,19 +8,17 @@
 // option. This file may not be copied, modified, or distributed
 // except according to those terms.
 
-// ignore-tidy-linelength
-
-pub mod a {
-    pub struct Foo { a: usize }
-}
-
-pub mod b {
-    use a::Foo;
-    impl Foo { //~ERROR inherent implementations are only allowed on types defined in the current module
-        fn bar(&self) { }
+mod foo {
+    pub struct Point {
+        pub x: i32,
+        pub y: i32,
     }
 }
 
-pub fn main() { }
+impl foo::Point {
+    fn x(&self) -> i32 { self.x }
+}
 
-
+fn main() {
+    assert_eq!((foo::Point { x: 1, y: 3}).x(), 1);
+}

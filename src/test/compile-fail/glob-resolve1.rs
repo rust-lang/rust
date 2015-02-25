@@ -36,9 +36,6 @@ fn main() {
     import(); //~ ERROR: unresolved
 
     foo::<A>(); //~ ERROR: undeclared
-    //~^ ERROR: undeclared
     foo::<C>(); //~ ERROR: undeclared
-    //~^ ERROR: undeclared
     foo::<D>(); //~ ERROR: undeclared
-    //~^ ERROR: undeclared
 }

@@ -119,7 +119,6 @@ enum Family {
     StaticMethod,          // F
     Method,                // h
     Type,                  // y
-    ForeignType,           // T
     Mod,                   // m
     ForeignMod,            // n
     Enum,                  // t
@@ -145,7 +144,6 @@ fn item_family(item: rbml::Doc) -> Family {
       'F' => StaticMethod,
       'h' => Method,
       'y' => Type,
-      'T' => ForeignType,
       'm' => Mod,
       'n' => ForeignMod,
       't' => Enum,
@@ -174,16 +172,13 @@ fn item_visibility(item: rbml::Doc) -> ast::Visibility {
     }
 }
 
-fn item_sort(item: rbml::Doc) -> char {
+fn item_sort(item: rbml::Doc) -> Option<char> {
     let mut ret = None;
     reader::tagged_docs(item, tag_item_trait_item_sort, |doc| {
         ret = Some(doc.as_str_slice().as_bytes()[0] as char);
         false
     });
-    match ret {
-        Some(r) => r,
-        None => panic!("No item_sort found")
-    }
+    ret
 }
 
 fn item_symbol(item: rbml::Doc) -> String {
@@ -339,14 +334,16 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
                 def::FromImpl(item_reqd_and_translated_parent_item(cnum,
                                                                    item))
             };
-            match fam {
-                // We don't bother to get encode/decode the trait id, we don't need it.
-                Method => DlDef(def::DefMethod(did, None, provenance)),
-                StaticMethod => DlDef(def::DefStaticMethod(did, provenance)),
-                _ => panic!()
+            DlDef(def::DefMethod(did, provenance))
+        }
+        Type => {
+            if item_sort(item) == Some('t') {
+                let trait_did = item_reqd_and_translated_parent_item(cnum, item);
+                DlDef(def::DefAssociatedTy(trait_did, did))
+            } else {
+                DlDef(def::DefTy(did, false))
             }
         }
-        Type | ForeignType => DlDef(def::DefTy(did, false)),
         Mod => DlDef(def::DefMod(did)),
         ForeignMod => DlDef(def::DefForeignMod(did)),
         StructVariant => {
@@ -357,7 +354,7 @@ fn item_to_def_like(item: rbml::Doc, did: ast::DefId, cnum: ast::CrateNum)
             let enum_did = item_reqd_and_translated_parent_item(cnum, item);
             DlDef(def::DefVariant(enum_did, did, false))
         }
-        Trait => DlDef(def::DefaultImpl(did)),
+        Trait => DlDef(def::DefTrait(did)),
         Enum => DlDef(def::DefTy(did, true)),
         Impl | DefaultImpl => DlImpl(did),
         PublicField | InheritedField => DlField,
@@ -831,8 +828,10 @@ pub fn get_impl_items(cdata: Cmd, impl_id: ast::NodeId)
                         tag_item_impl_item, |doc| {
         let def_id = item_def_id(doc, cdata);
         match item_sort(doc) {
-            'r' | 'p' => impl_items.push(ty::MethodTraitItemId(def_id)),
-            't' => impl_items.push(ty::TypeTraitItemId(def_id)),
+            Some('r') | Some('p') => {
+                impl_items.push(ty::MethodTraitItemId(def_id))
+            }
+            Some('t') => impl_items.push(ty::TypeTraitItemId(def_id)),
             _ => panic!("unknown impl item sort"),
         }
         true
@@ -849,22 +848,13 @@ pub fn get_trait_name(intr: Rc<IdentInterner>,
     item_name(&*intr, doc)
 }
 
-pub fn get_trait_item_name_and_kind(intr: Rc<IdentInterner>,
-                                    cdata: Cmd,
-                                    id: ast::NodeId)
-                                    -> (ast::Name, def::TraitItemKind) {
+pub fn is_static_method(cdata: Cmd, id: ast::NodeId) -> bool {
     let doc = lookup_item(id, cdata.data());
-    let name = item_name(&*intr, doc);
     match item_sort(doc) {
-        'r' | 'p' => {
-            let explicit_self = get_explicit_self(doc);
-            (name, def::TraitItemKind::from_explicit_self_category(explicit_self))
+        Some('r') | Some('p') => {
+            get_explicit_self(doc) == ty::StaticExplicitSelfCategory
         }
-        't' => (name, def::TypeTraitItemKind),
-        c => {
-            panic!("get_trait_item_name_and_kind(): unknown trait item kind \
-                   in metadata: `{}`", c)
-        }
+        _ => false
     }
 }
 
@@ -889,7 +879,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
     let vis = item_visibility(method_doc);
 
     match item_sort(method_doc) {
-        'r' | 'p' => {
+        Some('r') | Some('p') => {
             let generics = doc_generics(method_doc, tcx, cdata, tag_method_ty_generics);
             let predicates = doc_predicates(method_doc, tcx, cdata, tag_method_ty_generics);
             let fty = doc_method_fty(method_doc, tcx, cdata);
@@ -906,7 +896,7 @@ pub fn get_impl_or_trait_item<'tcx>(intr: Rc<IdentInterner>,
                                                         container,
                                                         provided_source)))
         }
-        't' => {
+        Some('t') => {
             ty::TypeTraitItem(Rc::new(ty::AssociatedType {
                 name: name,
                 vis: vis,
@@ -926,8 +916,10 @@ pub fn get_trait_item_def_ids(cdata: Cmd, id: ast::NodeId)
     reader::tagged_docs(item, tag_item_trait_item, |mth| {
         let def_id = item_def_id(mth, cdata);
         match item_sort(mth) {
-            'r' | 'p' => result.push(ty::MethodTraitItemId(def_id)),
-            't' => result.push(ty::TypeTraitItemId(def_id)),
+            Some('r') | Some('p') => {
+                result.push(ty::MethodTraitItemId(def_id));
+            }
+            Some('t') => result.push(ty::TypeTraitItemId(def_id)),
             _ => panic!("unknown trait item sort"),
         }
         true
@@ -956,7 +948,7 @@ pub fn get_provided_trait_methods<'tcx>(intr: Rc<IdentInterner>,
         let did = item_def_id(mth_id, cdata);
         let mth = lookup_item(did.node, data);
 
-        if item_sort(mth) == 'p' {
+        if item_sort(mth) == Some('p') {
             let trait_item = get_impl_or_trait_item(intr.clone(),
                                                     cdata,
                                                     did.node,
@@ -1560,7 +1552,7 @@ pub fn is_associated_type(cdata: Cmd, id: ast::NodeId) -> bool {
     let items = reader::get_doc(rbml::Doc::new(cdata.data()), tag_items);
     match maybe_find_item(id, items) {
         None => false,
-        Some(item) => item_sort(item) == 't',
+        Some(item) => item_sort(item) == Some('t'),
     }
 }
 

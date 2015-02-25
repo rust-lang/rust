@@ -753,11 +753,10 @@ pub enum Expr_ {
     ExprIndex(P<Expr>, P<Expr>),
     ExprRange(Option<P<Expr>>, Option<P<Expr>>),
 
-    /// Variable reference, possibly containing `::` and/or
-    /// type parameters, e.g. foo::bar::<baz>
-    ExprPath(Path),
-    /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
-    ExprQPath(P<QPath>),
+    /// Variable reference, possibly containing `::` and/or type
+    /// parameters, e.g. foo::bar::<baz>. Optionally "qualified",
+    /// e.g. `<Vec<T> as SomeTrait>::SomeType`.
+    ExprPath(Option<QSelf>, Path),
 
     ExprAddrOf(Mutability, P<Expr>),
     ExprBreak(Option<Ident>),
@@ -778,16 +777,22 @@ pub enum Expr_ {
     ExprParen(P<Expr>)
 }
 
-/// A "qualified path":
+/// The explicit Self type in a "qualified path". The actual
+/// path, including the trait and the associated item, is stored
+/// sepparately. `position` represents the index of the associated
+/// item qualified with this Self type.
 ///
-///     <Vec<T> as SomeTrait>::SomeAssociatedItem
-///      ^~~~~     ^~~~~~~~~   ^~~~~~~~~~~~~~~~~~
-///      self_type  trait_name  item_path
+///     <Vec<T> as a::b::Trait>::AssociatedItem
+///      ^~~~~     ~~~~~~~~~~~~~~^
+///      ty        position = 3
+///
+///     <Vec<T>>::AssociatedItem
+///      ^~~~~    ^
+///      ty       position = 0
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug)]
-pub struct QPath {
-    pub self_type: P<Ty>,
-    pub trait_ref: P<TraitRef>,
-    pub item_path: PathSegment,
+pub struct QSelf {
+    pub ty: P<Ty>,
+    pub position: usize
 }
 
 #[derive(Clone, PartialEq, Eq, RustcEncodable, RustcDecodable, Hash, Debug, Copy)]
@@ -1254,16 +1259,15 @@ pub enum Ty_ {
     TyBareFn(P<BareFnTy>),
     /// A tuple (`(A, B, C, D,...)`)
     TyTup(Vec<P<Ty>> ),
-    /// A path (`module::module::...::Type`) or primitive
+    /// A path (`module::module::...::Type`), optionally
+    /// "qualified", e.g. `<Vec<T> as SomeTrait>::SomeType`.
     ///
     /// Type parameters are stored in the Path itself
-    TyPath(Path, NodeId),
+    TyPath(Option<QSelf>, Path),
     /// Something like `A+B`. Note that `B` must always be a path.
     TyObjectSum(P<Ty>, TyParamBounds),
     /// A type like `for<'a> Foo<&'a Bar>`
     TyPolyTraitRef(TyParamBounds),
-    /// A "qualified path", e.g. `<Vec<T> as SomeTrait>::SomeType`
-    TyQPath(P<QPath>),
     /// No-op; kept solely so that we can pretty-print faithfully
     TyParen(P<Ty>),
     /// Unused for now

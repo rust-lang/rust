@@ -12,5 +12,5 @@ use std::borrow::IntoCow;
 
 fn main() {
     <String as IntoCow>::into_cow("foo".to_string());
-    //~^ ERROR wrong number of type arguments: expected 1, found 0
+    //~^ ERROR too few type parameters provided: expected 1 parameter(s)
 }

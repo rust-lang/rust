@@ -93,7 +93,7 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
 
     // pick out special kinds of expressions that can be called:
     match expr.node {
-        ast::ExprPath(_) | ast::ExprQPath(_) => {
+        ast::ExprPath(..) => {
             return trans_def(bcx, bcx.def(expr.id), expr);
         }
         _ => {}
@@ -165,13 +165,11 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
                 let def_id = inline::maybe_instantiate_inline(bcx.ccx(), did);
                 Callee { bcx: bcx, data: Intrinsic(def_id.node, substs) }
             }
-            def::DefFn(did, _) | def::DefMethod(did, _, def::FromImpl(_)) |
-            def::DefStaticMethod(did, def::FromImpl(_)) => {
+            def::DefFn(did, _) | def::DefMethod(did, def::FromImpl(_)) => {
                 fn_callee(bcx, trans_fn_ref(bcx.ccx(), did, ExprId(ref_expr.id),
                                             bcx.fcx.param_substs).val)
             }
-            def::DefStaticMethod(meth_did, def::FromTrait(trait_did)) |
-            def::DefMethod(meth_did, _, def::FromTrait(trait_did)) => {
+            def::DefMethod(meth_did, def::FromTrait(trait_did)) => {
                 fn_callee(bcx, meth::trans_static_method_callee(bcx.ccx(),
                                                                 meth_did,
                                                                 trait_did,
@@ -207,11 +205,10 @@ fn trans<'blk, 'tcx>(bcx: Block<'blk, 'tcx>, expr: &ast::Expr)
             def::DefUpvar(..) => {
                 datum_callee(bcx, ref_expr)
             }
-            def::DefMod(..) | def::DefForeignMod(..) | def::DefaultImpl(..) |
+            def::DefMod(..) | def::DefForeignMod(..) | def::DefTrait(..) |
             def::DefTy(..) | def::DefPrimTy(..) | def::DefAssociatedTy(..) |
-            def::DefUse(..) | def::DefTyParamBinder(..) |
-            def::DefRegion(..) | def::DefLabel(..) | def::DefTyParam(..) |
-            def::DefSelfTy(..) | def::DefAssociatedPath(..) => {
+            def::DefUse(..) | def::DefRegion(..) | def::DefLabel(..) |
+            def::DefTyParam(..) | def::DefSelfTy(..) => {
                 bcx.tcx().sess.span_bug(
                     ref_expr.span,
                     &format!("cannot translate def {:?} \
