@@ -19,6 +19,12 @@
 //! instances as clients.
 
 #![allow(missing_docs)]
+#![deprecated(since = "1.0.0",
+              reason = "will be removed to be reintroduced at a later date; \
+                        in the meantime consider using the `unix_socket` crate \
+                        for unix sockets; there is currently no replacement \
+                        for named pipes")]
+#![unstable(feature = "old_io")]
 
 use prelude::v1::*;
 

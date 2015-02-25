@@ -10,6 +10,10 @@
 
 //! Networking I/O
 
+#![deprecated(since = "1.0.0",
+              reason = "replaced with new I/O primitives in `std::net`")]
+#![unstable(feature = "old_io")]
+
 use old_io::{IoError, IoResult, InvalidInput};
 use ops::FnMut;
 use option::Option::None;
