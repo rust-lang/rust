@@ -145,6 +145,37 @@ fn test_escape_default() {
 }
 
 #[test]
+fn test_escape_control() {
+    fn string(c: char) -> String {
+        c.escape_control().collect()
+    }
+    let s = string('\n');
+    assert_eq!(s, "\\n");
+    let s = string('\r');
+    assert_eq!(s, "\\r");
+    let s = string('\'');
+    assert_eq!(s, "\\'");
+    let s = string('"');
+    assert_eq!(s, "\\\"");
+    let s = string(' ');
+    assert_eq!(s, " ");
+    let s = string('a');
+    assert_eq!(s, "a");
+    let s = string('ä');
+    assert_eq!(s, "ä");
+    let s = string('~');
+    assert_eq!(s, "~");
+    let s = string('\x00');
+    assert_eq!(s, "\\u{0}");
+    let s = string('\x1f');
+    assert_eq!(s, "\\u{1f}");
+    let s = string('\u{ff}');
+    assert_eq!(s, "\u{ff}");
+    let s = string('\u{11b}');
+    assert_eq!(s, "\u{11b}");
+}
+
+#[test]
 fn test_escape_unicode() {
     fn string(c: char) -> String { c.escape_unicode().collect() }
 

@@ -675,7 +675,7 @@ impl Display for bool {
 impl Debug for str {
     fn fmt(&self, f: &mut Formatter) -> Result {
         try!(write!(f, "\""));
-        for c in self.chars().flat_map(|c| c.escape_default()) {
+        for c in self.chars().flat_map(|c| c.escape_control()) {
             try!(write!(f, "{}", c));
         }
         write!(f, "\"")
@@ -694,7 +694,7 @@ impl Debug for char {
     fn fmt(&self, f: &mut Formatter) -> Result {
         use char::CharExt;
         try!(write!(f, "'"));
-        for c in self.escape_default() {
+        for c in self.escape_control() {
             try!(write!(f, "{}", c));
         }
         write!(f, "'")

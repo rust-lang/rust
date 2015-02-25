@@ -77,6 +77,41 @@ pub trait CharExt {
     #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> char::EscapeDefault;
 
+    /// Escapes all C0 and C1 control characters (ISO 646 (ASCII), ISO 6429). 
+    /// This method is called when printing a string with `{:?}`. The exact 
+    /// rules for escaping are:
+    ///
+    /// * Tab, CR and LF are escaped as '\t', '\r' and '\n' respectively.
+    /// * Single-quote, double-quote and backslash chars are backslash-
+    ///   escaped.
+    /// * Any other C0 ([0x00, 0x1f]) and C1 ([0x80, 0x9f]) chars are escaped
+    ///   with the Rust unicode syntax: `\\u{NNNN}`.
+    /// * Any other chars are not escaped
+    ///
+    /// Note: 0x7f (delete) is often considered a control character, but is not
+    /// escaped!
+    ///
+    /// # Examples
+    ///
+    /// ```
+    /// for c in "ä\n☃".chars() {
+    ///     for i in c.escape_control() {
+    ///         print!("{}", i);
+    ///     }
+    ///     println!("");
+    /// }
+    /// ```
+    ///
+    /// This prints:
+    ///
+    /// ```text
+    /// ä
+    /// \n
+    /// ☃
+    /// ```
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn escape_control(self) -> char::EscapeDefault;
+
     /// Returns the amount of bytes this character would need if encoded in
     /// UTF-8.
     #[stable(feature = "rust1", since = "1.0.0")]
@@ -231,6 +266,8 @@ impl CharExt for char {
     fn escape_unicode(self) -> char::EscapeUnicode { C::escape_unicode(self) }
     #[stable(feature = "rust1", since = "1.0.0")]
     fn escape_default(self) -> char::EscapeDefault { C::escape_default(self) }
+    #[stable(feature = "rust1", since = "1.0.0")]
+    fn escape_control(self) -> char::EscapeDefault { C::escape_control(self) }
     #[stable(feature = "rust1", since = "1.0.0")]
     fn len_utf8(self) -> usize { C::len_utf8(self) }
     #[stable(feature = "rust1", since = "1.0.0")]
